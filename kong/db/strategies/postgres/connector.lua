@@ -2,6 +2,7 @@ local logger       = require "kong.cmd.utils.log"
 local pgmoon       = require "pgmoon"
 local arrays       = require "pgmoon.arrays"
 local stringx      = require "pl.stringx"
+local split_prefix   = require "kong.workspaces".split_prefix
 
 
 local setmetatable = setmetatable
@@ -9,6 +10,7 @@ local encode_array = arrays.encode_array
 local tonumber     = tonumber
 local tostring     = tostring
 local concat       = table.concat
+local insert       = table.insert
 local ipairs       = ipairs
 local pairs        = pairs
 local error        = error
@@ -43,6 +45,7 @@ local function now_updated()
   update_time()
   return now()
 end
+
 
 
 local function visit(k, n, m, s)
@@ -675,6 +678,515 @@ function _mt:schema_reset()
 
   return true
 end
+
+function _mt:run_api_migrations(opts)
+  local conn = self:get_stored_connection()
+  if not conn then
+    error("no connection")
+  end
+
+  local migrated, skipped, failed = 0, 0, 0
+
+  local results = {
+    migrated = {},
+    skipped  = {},
+    failed   = {},
+    script   = nil,
+  }
+
+  local apis = { n = 0 }
+  for api, err in self:iterate([[
+    SELECT id,
+           EXTRACT(EPOCH FROM created_at AT TIME ZONE 'UTC') AS created_at,
+           name,
+           upstream_url,
+           preserve_host,
+           retries,
+           https_only,
+           http_if_terminated,
+           hosts,
+           uris,
+           methods,
+           strip_uri,
+           upstream_connect_timeout,
+           upstream_send_timeout,
+           upstream_read_timeout
+      FROM apis;]]) do
+    if not api then
+      return nil, err
+    end
+
+    apis.n = apis.n + 1
+    apis[apis.n] = api
+  end
+
+  if apis.n == 0 then
+    return results
+  end
+
+  table.sort(apis, function(api_a, api_b)
+    return api_a.created_at < api_b.created_at
+  end)
+
+  local plugins = {}
+  for plugin, err in self:iterate([[
+    SELECT id,
+           name,
+           api_id
+      FROM plugins;]]) do
+    if not plugin then
+      return nil, err
+    end
+
+    local api_id = plugin.api_id
+    if api_id ~= nil and
+       api_id ~= null then
+      if not plugins[api_id] then
+        plugins[api_id] = { n = 0 }
+      end
+
+      plugins[api_id].n = plugins[api_id].n + 1
+      plugins[api_id][plugins[api_id].n] = plugin
+    end
+  end
+
+  local constants = require "kong.constants"
+  local cjson     = require "cjson.safe"
+  local utils     = require "kong.tools.utils"
+  local url       = require "socket.url"
+
+  local migrations = { n = apis.n }
+  for i = 1, apis.n do
+    local api = apis[i]
+
+    local rbac_role_entities, err = self:query(fmt(
+      [[ SELECT
+         role_id,
+         entity_id,
+         entity_type,
+         actions,
+         negative,
+         comment,
+         EXTRACT(EPOCH FROM created_at AT TIME ZONE 'UTC') AS created_at
+      FROM rbac_role_entities
+      WHERE entity_id = '%s';]], api.id)
+    )
+    if err then
+      return nil, err
+    end
+
+    local workspace_entities, err = self:query(fmt(concat({
+      "SELECT *\n",
+      "  FROM workspace_entities \n",
+      " WHERE unique_field_name = 'id' and entity_id = '%s';"}), api.id)
+    )
+    if err then
+      return nil, err
+    end
+
+
+    local created_at
+    local updated_at
+    if api.created_at ~= nil and
+       api.created_at ~= null then
+      created_at = floor(api.created_at)
+      updated_at = created_at
+    else
+      created_at = ngx.time()
+      updated_at = created_at
+    end
+
+    local protocol
+    local host
+    local port
+    local path
+    if api.upstream_url ~= nil and
+       api.upstream_url ~= null then
+      local parsed_url = url.parse(api.upstream_url)
+
+      if parsed_url.scheme then
+        protocol = parsed_url.scheme
+      end
+
+      if parsed_url.host then
+        host = parsed_url.host
+      end
+
+      if parsed_url.port then
+        port = tonumber(parsed_url.port, 10)
+      end
+
+      if not port and protocol then
+        if protocol == "http" then
+          port = 80
+        elseif protocol == "https" then
+          port = 443
+        end
+      end
+
+      if parsed_url.path then
+        path = parsed_url.path
+      end
+    end
+
+    local name
+    if api.name ~= nil and
+       api.name ~= null then
+      name = api.name
+    end
+
+    local retries
+    local connect_timeout
+    local write_timeout
+    local read_timeout
+
+    if api.retries ~= nil and
+       api.retries ~= null then
+      retries = tonumber(api.retries, 10)
+    end
+
+    if api.upstream_connect_timeout ~= nil and
+       api.upstream_connect_timeout ~= null then
+      connect_timeout = tonumber(api.upstream_connect_timeout, 10)
+    end
+
+    if api.upstream_send_timeout ~= nil and
+       api.upstream_send_timeout ~= null then
+      write_timeout = tonumber(api.upstream_send_timeout, 10)
+    end
+
+    if api.upstream_read_timeout ~= nil and
+       api.upstream_read_timeout ~= null then
+      read_timeout = tonumber(api.upstream_read_timeout, 10)
+    end
+
+    local service_id = utils.uuid()
+    local service = {
+      id              = service_id,
+      name            = name,
+      created_at      = created_at,
+      updated_at      = updated_at,
+      retries         = retries,
+      protocol        = protocol,
+      host            = host,
+      port            = port,
+      path            = path,
+      connect_timeout = connect_timeout,
+      write_timeout   = write_timeout,
+      read_timeout    = read_timeout,
+    }
+
+    local route_id = utils.uuid()
+
+    local methods
+    if api.methods ~= nil and
+       api.methods ~= null then
+      methods = cjson.decode(api.methods)
+    end
+
+    local hosts
+    if api.hosts ~= nil and
+       api.hosts ~= null then
+      hosts = cjson.decode(api.hosts)
+    end
+
+    local paths
+    if api.uris ~= nil and
+       api.uris ~= null then
+      paths = cjson.decode(api.uris)
+    end
+
+    local regex_priority = 0
+
+    local strip_path
+    local preserve_host
+    local https_only
+
+    if api.strip_uri ~= nil and
+       api.strip_uri ~= null then
+      strip_path = not not api.strip_uri
+    end
+
+    if api.preserve_host ~= nil and
+       api.preserve_host ~= null then
+      preserve_host = not not api.preserve_host
+    end
+
+    if api.https_only ~= nil and
+       api.https_only ~= null then
+      https_only = not not api.https_only
+    end
+
+    local protocols = https_only and { "https" } or { "http", "https" }
+
+    local route = {
+      id             = route_id,
+      created_at     = created_at,
+      updated_at     = updated_at,
+      service_id     = service_id,
+      protocols      = protocols,
+      methods        = methods,
+      hosts          = hosts,
+      paths          = paths,
+      regex_priority = regex_priority,
+      strip_path     = strip_path,
+      preserve_host  = preserve_host,
+    }
+
+    migrations[i] = {
+      api     = api,
+      route   = route,
+      service = service,
+      plugins = plugins[api.id],
+      role_entities   = rbac_role_entities,
+      workspace_entities = workspace_entities
+    }
+  end
+
+  local escape = function(literal, type)
+    if literal == nil or
+       literal == null then
+      return "NULL"
+    end
+
+    if type == "timestamp" then
+      return concat {
+        "TO_TIMESTAMP(", self:escape_literal(tonumber(fmt("%.3f", literal))),
+        ") AT TIME ZONE 'UTC'"
+      }
+    end
+
+    if type == "array" then
+      if not literal[1] then
+        return self:escape_literal("{}")
+      end
+
+      return encode_array(literal)
+    end
+
+    return self:escape_literal(literal)
+  end
+
+  local force
+  if opts then
+    force = not not opts.force
+  end
+
+  local migration_script = {}
+
+  for i = 1, migrations.n do
+    local migration = migrations[i]
+    local service   = migration.service
+    local route     = migration.route
+    local api       = migration.api
+
+    local workspace, api_name  = split_prefix(api.name)
+    if not workspace then
+      error("no workspace attached")
+    end
+
+    local custom_plugins_count = 0
+    local custom_plugins = {}
+
+    local plugins_sql = {}
+    if migration.plugins then
+      for j = 1, migration.plugins.n do
+        local plugin = migration.plugins[j]
+        if not constants.BUNDLED_PLUGINS[plugin.name] then
+          custom_plugins_count = custom_plugins_count + 1
+          custom_plugins[custom_plugins_count] = true
+        end
+
+        if plugin.name ~= nil and
+          plugin.name ~= null then
+          plugins_sql[j] = fmt([[
+
+       UPDATE plugins
+          SET route_id = %s, api_id = %s
+        WHERE id   = %s
+          AND name = %s;
+]],
+          escape(route.id),
+          escape(nil),
+          escape(plugin.id),
+          escape(plugin.name))
+        else
+          plugins_sql[j] = fmt([[
+
+       UPDATE plugins
+          SET route_id = %s, api_id = %s
+        WHERE id   = %s;
+]],
+          escape(route.id),
+          escape(nil),
+          escape(plugin.id))
+        end
+      end
+    end
+
+    local workspace_sql = {}
+    if migration.workspace_entities then
+      for _, workspace in ipairs(migration.workspace_entities) do
+        insert(workspace_sql, fmt("insert into workspace_entities" ..
+          "(workspace_name, workspace_id, entity_id, entity_type, unique_field_name, unique_field_value)" ..
+          " values(%s, %s, %s, 'services', 'name', %s);",
+          escape(workspace.workspace_name),
+          escape(workspace.workspace_id),
+          escape(service.id),
+          escape(service.name)))
+
+        insert(workspace_sql, fmt("insert into workspace_entities " ..
+          "(workspace_name, workspace_id, entity_id, entity_type, unique_field_name, unique_field_value)" ..
+          " values(%s, %s, %s, 'services', 'id', %s);",
+          escape(workspace.workspace_name),
+          escape(workspace.workspace_id),
+          escape(service.id),
+          escape(service.id)))
+
+        insert(workspace_sql, fmt("insert into workspace_entities " ..
+          "(workspace_name, workspace_id, entity_id, entity_type, unique_field_name, unique_field_value)" ..
+          " values(%s, %s, %s, 'routes', 'id', %s);",
+          escape(workspace.workspace_name),
+          escape(workspace.workspace_id),
+          escape(route.id),
+          escape(route.id)))
+
+        insert(workspace_sql, fmt("DELETE from workspace_entities " ..
+          "where workspace_id = %s AND entity_id = %s AND unique_field_name = 'id';",
+          escape(workspace.workspace_id),
+          escape(api.id)))
+      end
+    end
+
+    local rbac_roles_sql = {}
+    if migration.role_entities then
+      for _, row in ipairs(migration.role_entities) do
+        local created_at
+        if row.created_at ~= nil and
+          row.created_at ~= null then
+          created_at = floor(row.created_at)
+        else
+          created_at = ngx.time()
+        end
+
+        local rbac_roles_service_sql =
+        fmt([[ INSERT INTO rbac_role_entities (role_id, entity_id, entity_type, actions, negative, comment, created_at) VALUES (%s, %s, 'services', %s, %s, %s, %s); ]],
+          escape(row.role_id),
+          escape(service.id),
+          escape(row.actions),
+          escape(row.negative),
+          escape(row.comment),
+          escape(created_at, "timestamp"))
+        insert(rbac_roles_sql, rbac_roles_service_sql)
+        local rbac_roles_route_sql =
+          fmt([[ INSERT INTO rbac_role_entities (role_id, entity_id, entity_type, actions, negative, comment, created_at) VALUES (%s, %s, 'routes', %s, %s, %s, %s); ]],
+            escape(row.role_id),
+            escape(route.id),
+            escape(row.actions),
+            escape(row.negative),
+            escape(row.comment),
+            escape(created_at, "timestamp"))
+        insert(rbac_roles_sql, rbac_roles_route_sql)
+        local rbac_roles_api_delete_sql =
+        fmt([[ DELETE FROM rbac_role_entities where role_id = %s and entity_id = %s; ]],
+          escape(row.role_id),
+          escape(api.id))
+        insert(rbac_roles_sql, rbac_roles_api_delete_sql)
+      end
+    end
+
+    --
+
+    local sql = fmt([[
+BEGIN;
+  INSERT INTO services (id, created_at, updated_at, name, retries, protocol, host, port, path, connect_timeout, write_timeout, read_timeout)
+       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+
+  INSERT INTO routes (id, created_at, updated_at, service_id, protocols, methods, hosts, paths, regex_priority, strip_path, preserve_host)
+       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+%s
+  DELETE FROM apis
+        WHERE id = %s;
+COMMIT;]],
+      escape(service.id),
+      escape(service.created_at, "timestamp"),
+      escape(service.updated_at, "timestamp"),
+      escape(service.name),
+      escape(service.retries),
+      escape(service.protocol),
+      escape(service.host),
+      escape(service.port),
+      escape(service.path),
+      escape(service.connect_timeout),
+      escape(service.write_timeout),
+      escape(service.read_timeout),
+      escape(route.id),
+      escape(route.created_at, "timestamp"),
+      escape(route.updated_at, "timestamp"),
+      escape(route.service_id),
+      escape(route.protocols, "array"),
+      escape(route.methods, "array"),
+      escape(route.hosts, "array"),
+      escape(route.paths, "array"),
+      escape(route.regex_priority),
+      escape(route.strip_path),
+      escape(route.preserve_host),
+      concat(plugins_sql) .. concat(workspace_sql) .. concat(rbac_roles_sql),
+      escape(api.id)
+    )
+
+    migration_script[i] = sql
+
+    logger("migrating api '%s' from workspace '%s' ...", api_name, workspace)
+    logger.debug(sql)
+
+    if not force and custom_plugins_count > 0 then
+      logger("migrating api '%s' from workspace '%s' skipped (use -f to migrate apis with " ..
+             "custom plugins", api_name, workspace)
+      skipped = skipped + 1
+      results.skipped[skipped] = {
+        api = api,
+        custom_plugins = custom_plugins,
+      }
+
+    else
+      local res, err = self:query(sql)
+      if not res then
+        logger("migrating api '%s' from workspace '%s' failed (%s)", api_name, workspace, err)
+        failed = failed + 1
+        results.failed[failed] = {
+          api = api,
+          err = err,
+        }
+
+      else
+        logger("migrating api '%s' from workspace '%s' done", api_name, workspace)
+        migrated = migrated + 1
+        results.migrated[migrated] = {
+          api = api,
+        }
+      end
+    end
+  end
+
+  if migrated > 0 then
+    logger("%d/%d migrations succeeded", migrated, migrations.n)
+  end
+
+  if skipped > 0 then
+    logger("%d/%d migrations skipped", skipped, migrations.n)
+  end
+
+  if failed > 0 then
+    logger("%d/%d migrations failed", skipped, migrations.n)
+  end
+
+  migration_script = concat(migration_script, "\n\n")
+  results.script = migration_script
+
+  return results
+end
+
 
 function _mt:run_up_migration(name, up_sql)
   if type(name) ~= "string" then

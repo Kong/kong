@@ -380,6 +380,12 @@ do
       return false
     end
 
+    -- add lock table if not present
+    local ok, err = self.connector:setup_locks(DEFAULT_LOCKS_TTL, true)
+    if not ok then
+      return nil, prefix_err(self, err)
+    end
+
     -- worker lock acquired, other workers are waiting on it
     -- now acquire cluster lock via strategy-specific connector
 
@@ -677,6 +683,15 @@ do
     self.connector:close()
 
     return true
+  end
+
+  function DB:run_api_migrations(opts)
+    local ok, err = self.connector:connect_migrations()
+    if not ok then
+      return nil, prefix_err(self, err)
+    end
+
+    return self.connector:run_api_migrations(opts)
   end
 
 

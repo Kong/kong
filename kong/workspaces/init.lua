@@ -972,4 +972,18 @@ function _M.build_ws_portal_cors_origins(workspace)
 end
 
 
+function _M.split_prefix(name)
+  if not name then
+    return
+  end
+
+  local names = utils_split(name, WORKSPACE_DELIMETER)
+  if #names > 1 then
+    local prefix = names[1]
+    table_remove(names, 1)
+    return prefix, table_concat(names, WORKSPACE_DELIMETER)
+  end
+end
+
+
 return _M
