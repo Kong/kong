@@ -43,7 +43,7 @@ function _M:push_diffs(diffs)
   end
 
   local red = redis.connection(self.config)
-  if not red then
+  if not red or #diffs == 0 then
     return
   end
 
@@ -67,7 +67,10 @@ function _M:push_diffs(diffs)
     log(ERR, "failed to push diff pipeline: ", err)
   end
 
-  red:set_keepalive()
+  -- redis cluster library handles keepalive itself
+  if not redis.is_redis_cluster(self.config) then
+    red:set_keepalive()
+  end
 end
 
 
@@ -94,7 +97,10 @@ function _M:get_counters(namespace, window_sizes, time)
     return
   end
 
-  red:set_keepalive()
+  -- redis cluster library handles keepalive itself
+  if not redis.is_redis_cluster(self.config) then
+    red:set_keepalive()
+  end
 
   local num_hashes = #res
   local res_idx = 0
@@ -156,7 +162,10 @@ function _M:get_window(key, namespace, window_start, window_size)
     log(ERR, "failed to retrieve ", key, ": ", err)
   end
 
-  red:set_keepalive()
+  -- redis cluster library handles keepalive itself
+  if not redis.is_redis_cluster(self.config) then
+    red:set_keepalive()
+  end
 
   return tonumber(res)
 end
