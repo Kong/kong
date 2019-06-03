@@ -196,7 +196,7 @@ local function get_db_utils(strategy, tables, plugins)
   -- Clean workspaces from the context - otherwise, migrations will fail,
   -- as some of them have dao calls
   -- If `no_truncate` is falsey, `dao:truncate` and `db:truncate` are called,
-  -- and these set the workspae back again to the new `default` workspace
+  -- and these set the workspace back again to the new `default` workspace
   ngx.ctx.workspaces = nil
 
   -- new DAO (DB module)
