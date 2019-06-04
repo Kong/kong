@@ -66,6 +66,7 @@ local field_schema = {
   { default = { type = "self" }, },
   { abstract = { type = "boolean" }, },
   { generate_admin_api = { type = "boolean" }, },
+  { creatable = { type = "boolean" }, },
   { legacy = { type = "boolean" }, },
 }
 

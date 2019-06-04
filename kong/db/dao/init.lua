@@ -198,15 +198,16 @@ local function resolve_foreign(self, entity)
       local value = entity[field_name]
       if value and value ~= null then
         if not schema:validate_primary_key(value, true) then
+          local resolved
           local resolve_errors = {}
           local has_resolve_errors
+          local dao = self.db[schema.name]
           for unique_field_name, unique_field in schema:each_field() do
             if unique_field.unique or unique_field.endpoint_key then
               local unique_value = value[unique_field_name]
               if unique_value and unique_value ~= null and
                  schema:validate_field(unique_field, unique_value) then
 
-                local dao = self.db[schema.name]
                 local select = dao["select_by_" .. unique_field_name]
                 local foreign_entity, err, err_t = select(dao, unique_value)
                 if err_t then
@@ -214,6 +215,7 @@ local function resolve_foreign(self, entity)
                 end
 
                 if foreign_entity then
+                  resolved = true
                   entity[field_name] = schema:extract_pk_values(foreign_entity)
                   break
                 end
@@ -226,6 +228,14 @@ local function resolve_foreign(self, entity)
 
                 has_resolve_errors = true
               end
+            end
+          end
+
+          if not resolved and field.creatable then
+            local foreign_entity = dao:insert(value)
+            if foreign_entity then
+              entity[field_name] = schema:extract_pk_values(foreign_entity)
+              has_resolve_errors = false
             end
           end
 
