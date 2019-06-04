@@ -51,6 +51,7 @@ describe("Plugins", function()
       "zipkin",
       "bot-detection",
       "cors",
+      "session",
       "kubernetes-sidecar-injector",
       "jwt",
       "oauth2",

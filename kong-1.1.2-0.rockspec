@@ -43,6 +43,7 @@ dependencies = {
   "kong-plugin-serverless-functions ~> 0.2",
   "kong-prometheus-plugin ~> 0.3",
   "kong-proxy-cache-plugin ~> 1.2",
+  "kong-plugin-session == 1.0.2-3",
 }
 build = {
   type = "builtin",
