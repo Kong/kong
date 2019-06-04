@@ -1,3 +1,4 @@
+local helpers = require "spec.helpers"
 local schema_def = require "kong.plugins.rate-limiting.schema"
 local v = require("spec.helpers").validate_plugin_config_schema
 
@@ -14,6 +15,20 @@ describe("Plugin: rate-limiting (schema)", function()
     local ok, _, err = v(config, schema_def)
     assert.truthy(ok)
     assert.is_nil(err)
+  end)
+
+  it("proper database strategy/policy combination", function()
+    if helpers.db.strategy == "off" then
+      local config = { policy = "cluster", second = 10, }
+      local ok, err = v(config, schema_def)
+      assert.falsy(ok)
+      assert.equal("expected one of: local, redis", err.config.policy)
+      config = { policy = "local", second = 10, }
+      assert(v(config, schema_def))
+    else
+      local config = { policy = "cluster", second = 10, }
+      assert(v(config, schema_def))
+    end
   end)
 
   describe("errors", function()
