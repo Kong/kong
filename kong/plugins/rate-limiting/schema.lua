@@ -1,3 +1,4 @@
+local kong = kong
 local typedefs = require "kong.db.schema.typedefs"
 
 
@@ -22,6 +23,9 @@ local function validate_periods_order(config)
   return true
 end
 
+local conf_db = kong and kong.configuration and kong.configuration.database
+local valid_policies = conf_db == "off" and { "local", "redis" } or
+                      { "local", "cluster", "redis" }
 
 return {
   name = "rate-limiting",
@@ -44,9 +48,9 @@ return {
           }, },
           { policy = {
               type = "string",
-              default = "cluster",
+              default = "local",
               len_min = 0,
-              one_of = { "local", "cluster", "redis" },
+              one_of = valid_policies,
           }, },
           { fault_tolerant = { type = "boolean", default = true }, },
           { redis_host = typedefs.host },
