@@ -22,7 +22,6 @@ local pairs = pairs
 local new_tab = require("table.new")
 local tb_concat = table.concat
 local ngx_md5 = ngx.md5
-local null = ngx.null
 local cache_opts = {
   l1_serializer = function(cas)
     local trust_store = openssl_x509_store.new()
@@ -96,7 +95,7 @@ local function find_credential(subject_name, ca_id, ttl)
 
   -- try wildcard match
   credential_cache_key = kong.db.mtls_auth_credentials
-                         :cache_key(subject_name, null)
+                         :cache_key(subject_name, nil)
   kong.log.debug("cache key is: ", credential_cache_key)
   credential, err = kong.cache:get(credential_cache_key, nil, load_credential,
                                    credential_cache_key)
