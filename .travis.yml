@@ -49,6 +49,7 @@ before_install:
 install:
   - luarocks make
   - cd kong-ce
+  - git checkout next
   - make dev
   - cp -r spec/fixtures ../spec
   - createuser --createdb kong
