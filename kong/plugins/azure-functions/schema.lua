@@ -4,10 +4,10 @@ local typedefs = require "kong.db.schema.typedefs"
 return {
   name = "azure-functions",
   fields = {
+    { run_on = typedefs.run_on_first },
     { config = {
         type = "record",
         fields = {
-          { run_on = typedefs.run_on_first },
           -- connection basics
           { timeout       = { type = "number",  default  = 600000}, },
           { keepalive     = { type = "number",  default  = 60000 }, },
