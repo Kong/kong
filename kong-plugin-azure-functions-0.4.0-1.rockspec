@@ -1,8 +1,8 @@
 package = "kong-plugin-azure-functions"
-version = "0.3.1-1"
+version = "0.4.0-1"
 source = {
   url = "git://github.com/kong/kong-plugin-azure-functions",
-  tag = "0.3.1"
+  tag = "0.4.0"
 }
 description = {
   summary = "This plugin allows Kong to invoke Azure functions.",

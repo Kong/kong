@@ -10,6 +10,10 @@ for details on installation and usage.
 
 # History
 
+0.4.0
+- Fix #7 (run_on in schema should be in toplevel fields table)
+- Remove BasePlugin inheritance (not needed anymore)
+
 0.3.1
 - Fix invalid references to functions invoked in the handler module
 - Strip connections headers disallowed by HTTP/2

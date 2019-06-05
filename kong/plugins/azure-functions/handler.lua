@@ -20,11 +20,10 @@ local function send(status, content, headers)
 end
 
 
-local azure = {}
-
-
-azure.PRIORITY = 749
-azure.VERSION = "0.1.1"
+local azure = {
+  PRIORITY = 749,
+  VERSION  = "0.4.0",
+}
 
 
 function azure:access(config)
