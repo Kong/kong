@@ -21,6 +21,8 @@ return {
     { consumer = { type = "foreign", reference = "consumers", default = null, on_delete = "cascade", }, },
     { config = { type = "record", abstract = true, }, },
     { run_on = typedefs.run_on },
+    { protocols = typedefs.protocols },
     { enabled = { type = "boolean", default = true, }, },
+    { tags           = typedefs.tags },
   },
 }

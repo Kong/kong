@@ -1,5 +1,9 @@
 # Table of Contents
 
+- [1.2.0rc2](#120rc2)
+- [1.1.2](#112)
+- [1.1.1](#111)
+- [1.1.0](#110)
 - [1.0.3](#103)
 - [1.0.2](#102)
 - [1.0.1](#101)
@@ -22,6 +26,375 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+## [1.2.0rc2]
+
+> Released on: 2019/05/31
+
+This release brings **improvements to reduce P95 latency** and **consolidates
+declarative configuration support**. It also comes with **newly open sourced
+plugins**, previously only available to Enterprise customers, and a few
+features around usability.
+
+### Installation
+
+- All Bintray repositories have been renamed from `kong-community-edition-*`
+  to `kong-*`.
+- All Kong packages have been renamed from `kong-community-edition` to `kong`.
+
+For more details about the updated installation, please visit the official docs:
+[https://konghq.com/install](https://konghq.com/install/).
+
+### Additions
+
+##### Core
+
+- :fireworks: Support for **wildcard SNI matching**: the `ssl_certificate_by_lua`
+  phase (and stream preread) is now able to match an SNI against any registered
+  wildcard SNI.
+  [#4457](https://github.com/Kong/kong/pull/4457)
+- :fireworks: **HTTPS routes can now be matched by SNI**: the `snis` route attribute
+  can now be set for HTTPS routes and is used as a routing attribute
+- The loading of declarative configuration is now done atomically, and with a
+  safety check to verify that the new configuration fits in memory.
+  [#4579](https://github.com/Kong/kong/pull/4579)
+- The status code for HTTPS redirects is now configurable: a new attribute
+  `https_redirect_status_code` was added to Route entities.
+  [#4424](https://github.com/Kong/kong/pull/4424)
+- Schema fields can now be marked immutable
+  [#4381](https://github.com/Kong/kong/pull/4381)
+- DAO operations can now be passed a new options `no_broadcast_crud_event`
+  to prevent Kong firing the worker events.
+  [#4540](https://github.com/Kong/kong/pull/4540)
+
+##### Configuration
+
+- :fireworks: **Asynchronous router updates**: introduce a configuration properties
+  `router_consistency`, with two possible values: `strict` and `eventual`. If
+  set to `eventual`, router rebuild operations are performed out of the
+  proxy path, asynchronously, reducing P95 latency when performing runtime
+  Services/Routes manipulation.
+  [#4639](https://github.com/Kong/kong/pull/4639)
+- :fireworks: Kong can now preload entities at initialization with **Cache Warmup**.
+  A new configuration directive `db_cache_warmup_entities` was introduced, allowing
+  users to specify which entities should be preloaded. Cache warmup allows for
+  ahead of time DNS resolution for Services with a hostname. This feature reduces
+  first requests latency, improving P99 latency.
+  [#4565](https://github.com/Kong/kong/pull/4565)
+- New optional configuration properties for Postgres concurrency control:
+  `pg_max_concurrent_queries` sets the maximum number of concurrent queries
+  to the database; `pg_semaphore_timeout` allows you to tune the timeout for
+  acquiring access to the database connection. The default behavior remains
+  the same, with no concurrency limitation.
+  [#4551](https://github.com/Kong/kong/pull/4551)
+
+##### Admin API
+
+- :fireworks: Add declarative configuration **hash checking**, avoiding reloading
+  if the configuration has not changed. The `/config` endpoint now accepts a
+  `check_hash` query argument; hash checking only happens if its value is set to
+  `1`.
+  [#4609](https://github.com/Kong/kong/pull/4609)
+- :fireworks: Entity **schema validation endpoints**: the new endpoint
+  `/schemas/:entity_name/validate` can be used to validate an instance
+  of any entity type in Kong without creating the entity.
+  [#4413](https://github.com/Kong/kong/pull/4413)
+- :fireworks: Add **memory statistics** to the `/status` endpoint. The response now
+  includes a `memory` field, which contains `lua_shared_dicts` and `workers_lua_vms`,
+  with stats on shared dictionaries and workers Lua VM memory usage. Additionally,
+  the endpoint supports two optional query arguments: `unit`, which can be one of
+  `b/B`, `k/K`, `m/M`, `g/G` (for bytes, kibibytes, mebibytes, gibibytes; the default
+  is `k`); `scale`, the number of digits to the right of the decimal points when
+  in the new human-readable memory strings; the default is `2`.
+  [#4592](https://github.com/Kong/kong/pull/4592)
+
+##### PDK
+
+- New function `kong.node.get_memory_stats`
+  [#4632](https://github.com/Kong/kong/pull/4632)
+
+##### Plugins
+
+- :fireworks: *proxy-cache*: the [HTTP proxy cache plugin](https://github.com/kong/kong-plugin-proxy-cache),
+  previously an Enterprise-only feature, is now bundled in Kong.
+  [#4650](https://github.com/Kong/kong/pull/4650)
+- :fireworks: The `request-transformer` and `request-transformer-advanced`
+  (previously only available in Enterprise) plugins were merged
+  [#4658](https://github.com/Kong/kong/pull/4658)
+- Logging plugins: log request TLS version, cipher, and verification status.
+  [#4581](https://github.com/Kong/kong/pull/4581)
+  [#4626](https://github.com/Kong/kong/pull/4626)
+- Plugin development: inheriting from `BasePlugin` is now optional
+  [#4590](https://github.com/Kong/kong/pull/4590)
+
+### Fixes
+
+#### Core
+
+- Active healthchecks: `http` checks aren't performed for TCP/TLS services anymore;
+  only `tcp` healthchecks are performed.
+  [#4616](https://github.com/Kong/kong/pull/4616)
+- Fix an issue where updates in migrations would not correctly populate default
+  values.
+  [#4635](https://github.com/Kong/kong/pull/4635)
+- Improvements in reentrancy of Cassandra migrations.
+  [#4611](https://github.com/Kong/kong/pull/4611)
+- Fix to an issue introduced in `1.2.0rc1` where `init_worker` was not being
+  called on plugins that implemented it
+  [#4670](https://github.com/Kong/kong/pull/4670)
+- Fix to an issue where `:new` was not always called when Plugins
+  deep-inherited from BasePlugin
+  [#4671](https://github.com/Kong/kong/pull/4671) 
+
+#### CLI
+
+- `kong migrations [up|finish] -f` commands do not run if there are no executed
+  migrations.
+  [#4617](https://github.com/Kong/kong/pull/4617)
+- Fix db_import to upsert via deterministic v5 UUIDs
+  [#4657](https://github.com/Kong/kong/pull/4657) 
+
+#### Plugins
+
+- ldap-auth: reuse TLS connections correctly
+  [#4620](https://github.com/Kong/kong/pull/4620)
+- oauth2: fix ttl in migrations of OAuth2 tokens
+  [#4572](https://github.com/Kong/kong/pull/4572)
+
+[Back to TOC](#table-of-contents)
+
+## [1.1.2]
+
+> Released on: 2019/04/24
+
+This is a patch release in the 1.0 series. Being a patch release, it strictly
+contains bugfixes. The are no new features or breaking changes.
+
+### Fixes
+
+- core: address issue where field type "record" nested values reset on update
+  [#4495](https://github.com/Kong/kong/pull/4495)
+- core: correctly manage primary keys of type "foreign"
+  [#4429](https://github.com/Kong/kong/pull/4429)
+- core: declarative config is not parsed on db-mode anymore
+  [#4487](https://github.com/Kong/kong/pull/4487)
+  [#4509](https://github.com/Kong/kong/pull/4509)
+- db-less: Fixed a problem in Kong balancer timing out.
+  [#4534](https://github.com/Kong/kong/pull/4534)
+- db-less: Accept declarative config directly in JSON requests.
+  [#4527](https://github.com/Kong/kong/pull/4527)
+- db-less: do not mis-detect mesh mode
+  [#4498](https://github.com/Kong/kong/pull/4498)
+- db-less: fix crash when field has same name as entity
+  [#4478](https://github.com/Kong/kong/pull/4478)
+- basic-auth: ignore password if nil on basic auth credential patch
+  [#4470](https://github.com/Kong/kong/pull/4470)
+- http-log: Simplify queueing mechanism. Fixed a bug where traces were lost
+  in some cases.
+  [#4510](https://github.com/Kong/kong/pull/4510)
+- request-transformer: validate header values in plugin configuration.
+  Thanks, [@rune-chan](https://github.com/rune-chan)!
+  [#4512](https://github.com/Kong/kong/pull/4512).
+- rate-limiting: added index on rate-limiting metrics.
+  Thanks, [@mvanholsteijn](https://github.com/mvanholsteijn)!
+  [#4486](https://github.com/Kong/kong/pull/4486)
+
+[Back to TOC](#table-of-contents)
+
+## [1.1.1]
+
+> Released on: 2019/03/28
+
+This release contains a fix for 0.14 Kong clusters using Cassandra to safely
+migrate to Kong 1.1.
+
+### Fixes
+
+- Ensure the 0.14 -> 1.1 migration path for Cassandra does not corrupt the
+  database schema.
+  [#4450](https://github.com/Kong/kong/pull/4450)
+- Allow the `kong config init` command to run without a pointing to a prefix
+  directory.
+  [#4451](https://github.com/Kong/kong/pull/4451)
+
+[Back to TOC](#table-of-contents)
+
+## [1.1.0]
+
+> Released on: 2019/03/27
+
+This release introduces new features such as **Declarative
+Configuration**, **DB-less Mode**, **Bulk Database Import**, **Tags**, as well
+as **Transparent Proxying**. It contains a large number of other features and
+fixes, listed below. Also, the Plugin Development kit also saw a minor
+updated, bumped to version 1.1.
+
+This release includes database migrations. Please take a few minutes to read
+the [1.1 Upgrade Path](https://github.com/Kong/kong/blob/master/UPGRADE.md)
+for more details regarding changes and migrations before planning to upgrade
+your Kong cluster.
+
+:large_orange_diamond: **Post-release note (as of 2019/03/28):** an issue has
+been found when migrating from a 0.14 Kong cluster to 1.1.0 when running on top
+of Cassandra. Kong 1.1.1 has been released to address this issue. Kong clusters
+running on top of PostgreSQL are not affected by this issue, and can migrate to
+1.1.0 or 1.1.1 safely.
+
+### Additions
+
+##### Core
+
+- :fireworks: Kong can now run **without a database**, using in-memory
+  storage only. When running Kong in DB-less mode, entities are loaded via a
+  **declarative configuration** file, specified either through Kong's
+  configuration file, or uploaded via the Admin API.
+  [#4315](https://github.com/Kong/kong/pull/4315)
+- :fireworks: **Transparent proxying** - the `service` attribute on
+  Routes is now optional; a Route without an assigned Service will
+  proxy transparently
+  [#4286](https://github.com/Kong/kong/pull/4286)
+- Support for **tags** in entities
+  [#4275](https://github.com/Kong/kong/pull/4275)
+  - Every core entity now adds a `tags` field
+- New `protocols` field in the Plugin entity, allowing plugin instances
+  to be set for specific protocols only (`http`, `https`, `tcp` or `tls`).
+  [#4248](https://github.com/Kong/kong/pull/4248)
+  - It filters out plugins during execution according to their `protocols` field
+  - It throws an error when trying to associate a Plugin to a Route
+    which is not compatible, protocols-wise, or to a Service with no
+    compatible routes.
+
+##### Configuration
+
+- New option in `kong.conf`: `database=off` to start Kong without
+  a database
+- New option in `kong.conf`: `declarative_config=kong.yml` to
+  load a YAML file using Kong's new [declarative config
+  format](https://discuss.konghq.com/t/rfc-kong-native-declarative-config-format/2719)
+- New option in `kong.conf`: `pg_schema` to specify Postgres schema
+  to be used
+- The Stream subsystem now supports Nginx directive injections
+  [#4148](https://github.com/Kong/kong/pull/4148)
+  - `nginx_stream_*` (or `KONG_NGINX_STREAM_*` environment variables)
+    for injecting entries to the `stream` block
+  - `nginx_sproxy_*` (or `KONG_NGINX_SPROXY_*` environment variables)
+    for injecting entries to the `server` block inside `stream`
+
+##### CLI
+
+- :fireworks: **Bulk database import** using the same declarative
+  configuration format as the in-memory mode, using the new command:
+  `kong config db_import kong.yml`. This command upserts all
+  entities specified in the given `kong.yml` file in bulk
+  [#4284](https://github.com/Kong/kong/pull/4284)
+- New command: `kong config init` to generate a template `kong.yml`
+  file to get you started
+- New command: `kong config parse kong.yml` to verify the syntax of
+  the `kong.yml` file before using it
+- New option `--wait` in `kong quit` to ease graceful termination when using orchestration tools
+  [#4201](https://github.com/Kong/kong/pull/4201)
+
+##### Admin API
+
+- New Admin API endpoint: `/config` to replace the configuration of
+  Kong entities entirely, replacing it with the contents of a new
+  declarative config file
+  - When using the new `database=off` configuration option,
+    the Admin API endpoints for entities (such as `/routes` and
+    `/services`) are read-only, since the configuration can only
+    be updated via `/config`
+    [#4308](https://github.com/Kong/kong/pull/4308)
+- Admin API endpoints now support searching by tag
+  (for example, `/consumers?tags=example_tag`)
+  - You can search by multiple tags:
+     - `/services?tags=serv1,mobile` to search for services matching tags `serv1` and `mobile`
+     - `/services?tags=serv1/serv2` to search for services matching tags `serv1` or `serv2`
+- New Admin API endpoint `/tags/` for listing entities by tag: `/tags/example_tag`
+
+##### PDK
+
+- New PDK function: `kong.client.get_protocol` for obtaining the protocol
+  in use during the current request
+  [#4307](https://github.com/Kong/kong/pull/4307)
+- New PDK function: `kong.nginx.get_subsystem`, so plugins can detect whether
+  they are running on the HTTP or Stream subsystem
+  [#4358](https://github.com/Kong/kong/pull/4358)
+
+##### Plugins
+
+- :fireworks: Support for ACL **authenticated groups**, so that authentication plugins
+  that use a 3rd party (other than Kong) to store credentials can benefit
+  from using a central ACL plugin to do authorization for them
+  [#4013](https://github.com/Kong/kong/pull/4013)
+- The Kubernetes Sidecar Injection plugin is now bundled into Kong for a smoother K8s experience
+  [#4304](https://github.com/Kong/kong/pull/4304)
+- aws-lambda: includes AWS China region.
+  Thanks [@wubins](https://github.com/wubins) for the patch!
+  [#4176](https://github.com/Kong/kong/pull/4176)
+
+### Changes
+
+##### Dependencies
+
+- The required OpenResty version is still 1.13.6.2, but for a full feature set
+  including stream routing and Service Mesh abilities with mutual TLS, Kong's
+  [openresty-patches](https://github.com/kong/openresty-patches) must be
+  applied (those patches are already bundled with our official distribution
+  packages). The openresty-patches bundle was updated in Kong 1.1.0 to include
+  the `stream_realip_module` as well.
+  Kong in HTTP(S) Gateway scenarios does not require these patches.
+  [#4163](https://github.com/Kong/kong/pull/4163)
+- Service Mesh abilities require at least OpenSSL version 1.1.1. In our
+  official distribution packages, OpenSSL has been bumped to 1.1.1b.
+  [#4345](https://github.com/Kong/kong/pull/4345),
+  [#4440](https://github.com/Kong/kong/pull/4440)
+
+### Fixes
+
+##### Core
+
+- Resolve hostnames properly during initialization of Cassandra contact points
+  [#4296](https://github.com/Kong/kong/pull/4296),
+  [#4378](https://github.com/Kong/kong/pull/4378)
+- Fix health checks for Targets that need two-level DNS resolution
+  (e.g. SRV → A → IP) [#4386](https://github.com/Kong/kong/pull/4386)
+- Fix serialization of map types in the Cassandra backend
+  [#4383](https://github.com/Kong/kong/pull/4383)
+- Fix target cleanup and cascade-delete for Targets
+  [#4319](https://github.com/Kong/kong/pull/4319)
+- Avoid crash when failing to obtain list of Upstreams
+  [#4301](https://github.com/Kong/kong/pull/4301)
+- Disallow invalid timeout value of 0ms for attributes in Services
+  [#4430](https://github.com/Kong/kong/pull/4430)
+- DAO fix for foreign fields used as primary keys
+  [#4387](https://github.com/Kong/kong/pull/4387)
+
+##### Admin API
+
+- Proper support for `PUT /{entities}/{entity}/plugins/{plugin}`
+  [#4288](https://github.com/Kong/kong/pull/4288)
+- Fix Admin API inferencing of map types using form-encoded
+  [#4368](https://github.com/Kong/kong/pull/4368)
+- Accept UUID-like values in `/consumers?custom_id=`
+  [#4435](https://github.com/Kong/kong/pull/4435)
+
+##### Plugins
+
+- basic-auth, ldap-auth, key-auth, jwt, hmac-auth: fixed
+  status code for unauthorized requests: they now return HTTP 401
+  instead of 403
+  [#4238](https://github.com/Kong/kong/pull/4238)
+- tcp-log: remove spurious trailing carriage return
+  Thanks [@cvuillemez](https://github.com/cvuillemez) for the patch!
+  [#4158](https://github.com/Kong/kong/pull/4158)
+- jwt: fix `typ` handling for supporting JOSE (JSON Object
+  Signature and Validation)
+  Thanks [@cdimascio](https://github.com/cdimascio) for the patch!
+  [#4256](https://github.com/Kong/kong/pull/4256)
+- Fixes to the best-effort auto-converter for legacy plugin schemas
+  [#4396](https://github.com/Kong/kong/pull/4396)
+
+[Back to TOC](#table-of-contents)
 
 ## [1.0.3]
 
@@ -3389,6 +3762,10 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[1.2.0rc2]: https://github.com/Kong/kong/compare/1.1.2...1.2.0rc2
+[1.1.2]: https://github.com/Kong/kong/compare/1.1.1...1.1.2
+[1.1.1]: https://github.com/Kong/kong/compare/1.1.0...1.1.1
+[1.1.0]: https://github.com/Kong/kong/compare/1.0.3...1.1.0
 [1.0.3]: https://github.com/Kong/kong/compare/1.0.2...1.0.3
 [1.0.2]: https://github.com/Kong/kong/compare/1.0.1...1.0.2
 [1.0.1]: https://github.com/Kong/kong/compare/1.0.0...1.0.1

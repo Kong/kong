@@ -134,9 +134,9 @@ for _, strategy in helpers.each_strategy() do
 
     end)
 
-    describe("Forbidden", function()
+    describe("Unauthorized", function()
 
-      it("returns 403 Forbidden on invalid credentials in Authorization", function()
+      it("returns 401 Unauthorized on invalid credentials in Authorization", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/status/200",
@@ -145,12 +145,12 @@ for _, strategy in helpers.each_strategy() do
             ["Host"]          = "basic-auth1.com"
           }
         })
-        local body = assert.res_status(403, res)
+        local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "Invalid authentication credentials" }, json)
       end)
 
-      it("returns 403 Forbidden on invalid credentials in Proxy-Authorization", function()
+      it("returns 401 Unauthorized on invalid credentials in Proxy-Authorization", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/status/200",
@@ -159,12 +159,12 @@ for _, strategy in helpers.each_strategy() do
             ["Host"]                = "basic-auth1.com"
           }
         })
-        local body = assert.res_status(403, res)
+        local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "Invalid authentication credentials" }, json)
       end)
 
-      it("returns 403 Forbidden on password only", function()
+      it("returns 401 Unauthorized on password only", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/status/200",
@@ -173,12 +173,12 @@ for _, strategy in helpers.each_strategy() do
             ["Host"]          = "basic-auth1.com"
           }
         })
-        local body = assert.res_status(403, res)
+        local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "Invalid authentication credentials" }, json)
       end)
 
-      it("returns 403 Forbidden on username only", function()
+      it("returns 401 Unauthorized on username only", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/status/200",
@@ -187,7 +187,7 @@ for _, strategy in helpers.each_strategy() do
             ["Host"]          = "basic-auth1.com"
           }
         })
-        local body = assert.res_status(403, res)
+        local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "Invalid authentication credentials" }, json)
       end)
@@ -230,7 +230,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("bob", body.headers["x-consumer-username"])
       end)
 
-      it("returns 403 for valid Base64 encoding", function()
+      it("returns 401 for valid Base64 encoding", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/status/200",
@@ -239,7 +239,7 @@ for _, strategy in helpers.each_strategy() do
             ["Host"]          = "basic-auth1.com"
           }
         })
-        local body = assert.res_status(403, res)
+        local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "Invalid authentication credentials" }, json)
       end)

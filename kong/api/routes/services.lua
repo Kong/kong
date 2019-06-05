@@ -67,6 +67,7 @@ return {
       return parent()
     end
   },
+
   ["/services/:services/plugins"] = {
     POST = function(_, _, _, parent)
       return parent(post_process)

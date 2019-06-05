@@ -5,6 +5,8 @@ local REGIONS = {
   "ap-south-1",
   "ap-southeast-1", "ap-southeast-2",
   "ca-central-1",
+  "cn-north-1",
+  "cn-northwest-1",
   "eu-central-1",
   "eu-west-1", "eu-west-2",
   "sa-east-1",
@@ -18,6 +20,7 @@ return {
   name = "aws-lambda",
   fields = {
     { run_on = typedefs.run_on_first },
+    { protocols = typedefs.protocols_http },
     { config = {
         type = "record",
         fields = {

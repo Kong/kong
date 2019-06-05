@@ -197,6 +197,36 @@ local function add_immutable_value(k, v)
 end
 
 
+local function configure_ping(kong_conf)
+  if type(kong_conf) ~= "table" then
+    error("kong_config must be a table", 2)
+  end
+
+  add_immutable_value("database", kong_conf.database)
+  add_immutable_value("_admin", #kong_conf.admin_listeners > 0 and 1 or 0)
+  add_immutable_value("_proxy", #kong_conf.proxy_listeners > 0 and 1 or 0)
+  add_immutable_value("_stream", #kong_conf.stream_listeners > 0 and 1 or 0)
+  add_immutable_value("_orig", #kong_conf.origins > 0 and 1 or 0)
+
+  local _tip = 0
+
+  for _, property in ipairs({ "proxy_listeners", "stream_listeners" }) do
+    if _tip == 1 then
+      break
+    end
+
+    for i = 1, #kong_conf[property] or {} do
+      if kong_conf[property][i].transparent then
+        _tip = 1
+        break
+      end
+    end
+  end
+
+  add_immutable_value("_tip", _tip)
+end
+
+
 local retrieve_redis_version
 
 
@@ -292,9 +322,13 @@ return {
     create_timer(PING_INTERVAL, ping_handler)
   end,
   add_immutable_value = add_immutable_value,
+  configure_ping = configure_ping,
   add_ping_value = add_ping_value,
   get_ping_value = function(k)
     return _ping_infos[k]
+  end,
+  send_ping = function(host, port)
+    send_report("ping", _ping_infos, host, port)
   end,
   log = function()
     if not _enabled then

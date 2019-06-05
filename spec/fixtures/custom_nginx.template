@@ -12,6 +12,7 @@ error_log logs/error.log ${{LOG_LEVEL}};
 events {}
 
 http {
+> if #proxy_listeners > 0 or #admin_listeners > 0 then
     charset UTF-8;
 
     error_log logs/error.log ${{LOG_LEVEL}};
@@ -43,7 +44,13 @@ http {
     lua_max_pending_timers 16384;
     lua_shared_dict kong                5m;
     lua_shared_dict kong_db_cache       ${{MEM_CACHE_SIZE}};
+> if database == "off" then
+    lua_shared_dict kong_db_cache_2     ${{MEM_CACHE_SIZE}};
+> end
     lua_shared_dict kong_db_cache_miss 12m;
+> if database == "off" then
+    lua_shared_dict kong_db_cache_miss_2 12m;
+> end
     lua_shared_dict kong_locks          8m;
     lua_shared_dict kong_process_events 5m;
     lua_shared_dict kong_cluster_events 5m;
@@ -127,6 +134,7 @@ http {
             default_type '';
 
             set $ctx_ref                     '';
+            set $upstream_te                 '';
             set $upstream_host               '';
             set $upstream_upgrade            '';
             set $upstream_connection         '';
@@ -246,64 +254,6 @@ http {
 > end
 
     server {
-        server_name mock_aws_lambda;
-        listen 10001 ssl;
-
-        ssl_certificate ${{SSL_CERT}};
-        ssl_certificate_key ${{SSL_CERT_KEY}};
-        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
-
-        location ~ "/2015-03-31/functions/(?:[^/])*/invocations" {
-            content_by_lua_block {
-                local function say(res, status)
-                  ngx.header["x-amzn-RequestId"] = "foo"
-
-                  if string.match(ngx.var.uri, "functionWithUnhandledError") then
-                    ngx.header["X-Amz-Function-Error"] = "Unhandled"
-                  end
-
-                  ngx.status = status
-
-                  if string.match(ngx.var.uri, "functionWithBadJSON") then
-                    local badRes = "{\"foo\":\"bar\""
-                    ngx.header["Content-Length"] = #badRes + 1
-                    ngx.say(badRes)
-
-                  elseif string.match(ngx.var.uri, "functionWithNoResponse") then
-                    ngx.header["Content-Length"] = 0
-
-                  elseif type(res) == 'string' then
-                    ngx.header["Content-Length"] = #res + 1
-                    ngx.say(res)
-
-                  else
-                    ngx.req.discard_body()
-                    ngx.header['Content-Length'] = 0
-                  end
-
-                  ngx.exit(0)
-                end
-
-                ngx.sleep(.2) -- mock some network latency
-
-                local invocation_type = ngx.var.http_x_amz_invocation_type
-                if invocation_type == 'Event' then
-                  say(nil, 202)
-
-                elseif invocation_type == 'DryRun' then
-                  say(nil, 204)
-                end
-
-                local qargs = ngx.req.get_uri_args()
-                ngx.req.read_body()
-                local args = require("cjson").decode(ngx.req.get_body_data())
-
-                say(ngx.req.get_body_data(), 200)
-            }
-        }
-    }
-
-    server {
         server_name mock_upstream;
 
         listen 15555;
@@ -314,6 +264,14 @@ http {
         ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 
         set_real_ip_from 127.0.0.1;
+
+        location / {
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                ngx.status = 404
+                return mu.send_default_json_response()
+            }
+        }
 
         location = / {
             content_by_lua_block {
@@ -387,6 +345,25 @@ http {
             content_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
                 return mu.send_default_json_response({}, ngx.req.get_uri_args())
+            }
+        }
+
+        location = /hop-by-hop {
+            content_by_lua_block {
+                local header = ngx.header
+                header["Keep-Alive"]          = "timeout=5, max=1000"
+                header["Proxy"]               = "Remove-Me"
+                header["Proxy-Connection"]    = "close"
+                header["Proxy-Authenticate"]  = "Basic"
+                header["Proxy-Authorization"] = "Basic YWxhZGRpbjpvcGVuc2VzYW1l"
+                header["Transfer-Encoding"]   = "chunked"
+                header["Content-Length"]      = nil
+                header["TE"]                  = "trailers, deflate;q=0.5"
+                header["Trailer"]             = "Expires"
+                header["Upgrade"]             = "example/1, foo/2"
+
+                ngx.print("hello\r\n\r\nExpires: Wed, 21 Oct 2015 07:28:00 GMT\r\n\r\n")
+                ngx.exit(200)
             }
         }
 
@@ -466,14 +443,14 @@ http {
             }
         }
 
-        location ~ "^/post_log/(?<logname>[a-z_]+)$" {
+        location ~ "^/post_log/(?<logname>[a-z0-9_]+)$" {
             content_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
                 return mu.store_log(ngx.var.logname)
             }
         }
 
-        location ~ "^/post_auth_log/(?<logname>[a-z_]+)/(?<username>[a-zA-Z0-9_]+)/(?<password>.+)$" {
+        location ~ "^/post_auth_log/(?<logname>[a-z0-9_]+)/(?<username>[a-zA-Z0-9_]+)/(?<password>.+)$" {
             access_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
                 return mu.filter_access_by_basic_auth(ngx.var.username,
@@ -485,18 +462,28 @@ http {
             }
         }
 
-        location ~ "^/read_log/(?<logname>[a-z_]+)$" {
+        location ~ "^/read_log/(?<logname>[a-z0-9_]+)$" {
             content_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
                 return mu.retrieve_log(ngx.var.logname)
             }
         }
+
+        location ~ "^/reset_log/(?<logname>[a-z0-9_]+)$" {
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.reset_log(ngx.var.logname)
     }
+}
+    }
+
+    include '*.http_mock';
+
+> end
 }
 
 > if #stream_listeners > 0 then
 stream {
-
     log_format basic '$remote_addr [$time_local] '
                      '$protocol $status $bytes_sent $bytes_received '
                      '$session_time';
@@ -505,7 +492,13 @@ stream {
     lua_package_cpath '${{LUA_PACKAGE_CPATH}};;';
     lua_shared_dict stream_kong                5m;
     lua_shared_dict stream_kong_db_cache       ${{MEM_CACHE_SIZE}};
+> if database == "off" then
+    lua_shared_dict stream_kong_db_cache_2     ${{MEM_CACHE_SIZE}};
+> end
     lua_shared_dict stream_kong_db_cache_miss 12m;
+> if database == "off" then
+    lua_shared_dict stream_kong_db_cache_miss_2  12m;
+> end
     lua_shared_dict stream_kong_locks          8m;
     lua_shared_dict stream_kong_process_events 5m;
     lua_shared_dict stream_kong_cluster_events 5m;
@@ -519,12 +512,10 @@ stream {
     lua_shared_dict stream_kong_vitals_lists     1m;
 
 
-    upstream kong_upstream {
-        server 0.0.0.1:1;
-        balancer_by_lua_block {
-            Kong.balancer()
-        }
-    }
+    # injected nginx_stream_* directives
+> for _, el in ipairs(nginx_stream_directives) do
+    $(el.name) $(el.value);
+> end
 
     init_by_lua_block {
         -- shared dictionaries conflict between stream/http modules. use a prefix.
@@ -548,6 +539,13 @@ stream {
         Kong.init_worker()
     }
 
+    upstream kong_upstream {
+        server 0.0.0.1:1;
+        balancer_by_lua_block {
+            Kong.balancer()
+        }
+    }
+
     server {
 > for i = 1, #stream_listeners do
         listen $(stream_listeners[i].listener);
@@ -556,12 +554,23 @@ stream {
         access_log logs/access.log basic;
         error_log logs/error.log debug;
 
+> for i = 1, #trusted_ips do
+        set_real_ip_from   $(trusted_ips[i]);
+> end
+
+        # injected nginx_sproxy_* directives
+> for _, el in ipairs(nginx_sproxy_directives) do
+        $(el.name) $(el.value);
+> end
+
 > if ssl_preread_enabled then
         ssl_preread on;
 > end
+
         preread_by_lua_block {
             Kong.preread()
         }
+
         proxy_pass kong_upstream;
 
         log_by_lua_block {
@@ -583,6 +592,8 @@ stream {
             ngx.say(data) -- echo whatever was sent
         }
     }
+
+    include '*.stream_mock';
 
 }
 > end

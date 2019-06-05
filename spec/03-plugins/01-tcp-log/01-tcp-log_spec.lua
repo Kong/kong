@@ -7,7 +7,7 @@ local TCP_PORT = 35001
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: tcp-log (log) [#" .. strategy .. "]", function()
-    local proxy_client
+    local proxy_client, proxy_ssl_client
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -49,6 +49,7 @@ for _, strategy in helpers.each_strategy() do
       }))
 
       proxy_client = helpers.proxy_client()
+      proxy_ssl_client = helpers.proxy_ssl_client()
     end)
 
     lazy_teardown(function()
@@ -80,6 +81,9 @@ for _, strategy in helpers.each_strategy() do
       -- Making sure it's alright
       local log_message = cjson.decode(res)
       assert.equal("127.0.0.1", log_message.client_ip)
+
+      -- Since it's over HTTP, let's make sure there are no TLS information
+      assert.is_nil(log_message.request.tls)
     end)
 
     it("#flaky logs proper latencies", function()
@@ -138,6 +142,32 @@ for _, strategy in helpers.each_strategy() do
       -- Making sure it's alright
       --local log_message = cjson.decode(res)
       --assert.equal("127.0.0.1", log_message.client_ip)
+    end)
+
+    it("logs TLS info", function()
+      local thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
+
+      -- Making the request
+      local r = assert(proxy_ssl_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          host  = "tcp_logging.com",
+        },
+      })
+
+      assert.response(r).has.status(200)
+
+      -- Getting back the TCP server input
+      local ok, res = thread:join()
+      assert.True(ok)
+      assert.is_string(res)
+
+      -- Making sure it's alright
+      local log_message = cjson.decode(res)
+      assert.equal("TLSv1.2", log_message.request.tls.version)
+      assert.is_string(log_message.request.tls.cipher)
+      assert.equal("NONE", log_message.request.tls.client_verify)
     end)
 
   end)

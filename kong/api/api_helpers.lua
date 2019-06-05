@@ -2,11 +2,11 @@ local pl_string = require "pl.stringx"
 local utils = require "kong.tools.utils"
 local url = require "socket.url"
 local tablex      = require "pl.tablex"
+local cjson = require "cjson"
 
 local type = type
 local pairs = pairs
 local remove = table.remove
-local tonumber = tonumber
 
 
 local _M = {}
@@ -71,28 +71,84 @@ function _M.normalize_nested_params(obj)
 end
 
 
-function _M.resolve_url_params(self)
-  local sugar_url = self.args.post.url
+-- Remove functions from a schema definition so that
+-- cjson can encode the schema.
+local schema_to_jsonable
+do
+  local insert = table.insert
+  local ipairs = ipairs
+  local next = next
 
-  self.args.post.url = nil
+  local fdata_to_jsonable
 
-  if type(sugar_url) ~= "string" then
-    return
+
+  local function fields_to_jsonable(fields)
+    local out = {}
+    for _, field in ipairs(fields) do
+      local fname = next(field)
+      local fdata = field[fname]
+      insert(out, { [fname] = fdata_to_jsonable(fdata, "no") })
+    end
+    setmetatable(out, cjson.array_mt)
+    return out
   end
 
-  local parsed_url = url.parse(sugar_url)
-  if not parsed_url then
-    return
+
+  -- Convert field data from schemas into something that can be
+  -- passed to a JSON encoder.
+  -- @tparam table fdata A Lua table with field data
+  -- @tparam string is_array A three-state enum: "yes", "no" or "maybe"
+  -- @treturn table A JSON-convertible Lua table
+  fdata_to_jsonable = function(fdata, is_array)
+    local out = {}
+    local iter = is_array == "yes" and ipairs or pairs
+
+    for k, v in iter(fdata) do
+      if is_array == "maybe" and type(k) ~= "number" then
+        is_array = "no"
+      end
+
+      if k == "schema" then
+        out[k] = schema_to_jsonable(v)
+
+      elseif type(v) == "table" then
+        if k == "fields" and fdata.type == "record" then
+          out[k] = fields_to_jsonable(v)
+
+        elseif k == "default" and fdata.type == "array" then
+          out[k] = fdata_to_jsonable(v, "yes")
+
+        else
+          out[k] = fdata_to_jsonable(v, "maybe")
   end
 
-  self.args.post.protocol = parsed_url.scheme
-  self.args.post.host     = parsed_url.host
-  self.args.post.port     = tonumber(parsed_url.port) or
-                            parsed_url.port or
-                            (parsed_url.scheme == "http" and 80) or
-                            (parsed_url.scheme == "https" and 443) or
-                            nil
-  self.args.post.path     = parsed_url.path
+      elseif type(v) == "number" then
+        if v ~= v then
+          out[k] = "nan"
+        elseif v == math.huge then
+          out[k] = "inf"
+        elseif v == -math.huge then
+          out[k] = "-inf"
+        else
+          out[k] = v
+  end
+
+      elseif type(v) ~= "function" then
+        out[k] = v
+      end
+    end
+    if is_array == "yes" or is_array == "maybe" then
+      setmetatable(out, cjson.array_mt)
+    end
+    return out
+  end
+
+
+  schema_to_jsonable = function(schema)
+    local fields = fields_to_jsonable(schema.fields)
+    return { fields = fields }
+  end
+  _M.schema_to_jsonable = schema_to_jsonable
 end
 
 

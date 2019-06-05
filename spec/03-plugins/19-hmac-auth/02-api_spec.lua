@@ -43,10 +43,10 @@ for _, strategy in helpers.each_strategy() do
           db:truncate("plugins")
           db:truncate("hmacauth_credentials")
 
-          consumer = bp.consumers:insert{
+          consumer = bp.consumers:insert({
             username  = "bob",
             custom_id = "1234"
-          }
+          }, { nulls = true })
         end)
         it("[SUCCESS] should create a hmac-auth credential", function()
           local res = assert(admin_client:send {

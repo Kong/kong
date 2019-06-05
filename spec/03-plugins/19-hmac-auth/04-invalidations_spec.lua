@@ -137,7 +137,7 @@ for _, strategy in helpers.each_strategy() do
             authorization = authorization
           }
         })
-        assert.res_status(403, res)
+        assert.res_status(401, res)
       end)
       it("should invalidate when Hmac Auth Credential entity is updated", function()
         local res = assert(admin_client:send {
@@ -181,7 +181,7 @@ for _, strategy in helpers.each_strategy() do
             authorization = authorization
           }
         })
-        assert.res_status(403, res)
+        assert.res_status(401, res)
 
         -- Update Hmac Auth credential (which triggers invalidation)
         res = assert(admin_client:send {
@@ -275,7 +275,7 @@ for _, strategy in helpers.each_strategy() do
             authorization = authorization
           }
         })
-        assert.res_status(403, res)
+        assert.res_status(401, res)
       end)
     end)
   end)

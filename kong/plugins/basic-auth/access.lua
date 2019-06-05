@@ -179,7 +179,7 @@ local function do_authentication(conf)
   end
 
   if not credential or not validate_credentials(credential, given_password) then
-    return false, { status = 403, message = "Invalid authentication credentials" }
+    return false, { status = 401, message = "Invalid authentication credentials" }
   end
 
   -- Retrieve consumer

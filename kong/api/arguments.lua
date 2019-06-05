@@ -207,7 +207,7 @@ local function infer_value(value, field)
   elseif field.type == "map" then
     if type(value) == "table" then
       for k, v in pairs(value) do
-        value[k] = infer_value(v, field.elements)
+        value[k] = infer_value(v, field.values)
       end
     end
 
@@ -246,6 +246,10 @@ infer = function(args, schema)
     if value then
       args[field_name] = infer_value(value, field)
     end
+  end
+
+  if schema.ttl == true and args.ttl then
+    args.ttl = tonumber(args.ttl) or args.ttl
   end
 
   return args

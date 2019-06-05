@@ -9,7 +9,12 @@ return {
         "secret"       TEXT
       );
 
-      CREATE INDEX IF NOT EXISTS "hmacauth_credentials_consumer_id" ON "hmacauth_credentials" ("consumer_id");
+      DO $$
+      BEGIN
+        CREATE INDEX IF NOT EXISTS "hmacauth_credentials_consumer_id" ON "hmacauth_credentials" ("consumer_id");
+      EXCEPTION WHEN UNDEFINED_COLUMN THEN
+        -- Do nothing, accept existing state
+      END$$;
     ]],
   },
 

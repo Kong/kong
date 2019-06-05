@@ -1,6 +1,10 @@
 local helpers = require "spec.helpers"
 
-describe("kong start/stop", function()
+
+
+for _, strategy in helpers.each_strategy() do
+
+describe("kong start/stop #" .. strategy, function()
   lazy_setup(function()
     helpers.get_db_utils(nil, {
       "routes",
@@ -53,6 +57,21 @@ describe("kong start/stop", function()
     assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
     assert.truthy(helpers.path.exists(helpers.test_conf.kong_env))
   end)
+
+  if strategy == "cassandra" then
+    it("start resolves cassandra contact points", function()
+      assert(helpers.kong_exec("start", {
+        prefix = helpers.test_conf.prefix,
+        database = strategy,
+        cassandra_contact_points = "localhost",
+        cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+      }))
+      assert(helpers.kong_exec("stop", {
+        prefix = helpers.test_conf.prefix,
+      }))
+    end)
+  end
+
   it("creates prefix directory if it doesn't exist", function()
     finally(function()
       helpers.kill_all("foobar")
@@ -231,6 +250,65 @@ describe("kong start/stop", function()
     end)
   end)
 
+  if strategy == "off" then
+    describe("declarative config start", function()
+      it("starts with a valid declarative config file", function()
+        local yaml_file = helpers.make_yaml_file [[
+          _format_version: "1.1"
+          services:
+          - name: my-service
+            url: http://127.0.0.1:15555
+            routes:
+            - name: example-route
+              hosts:
+              - example.test
+        ]]
+
+        local proxy_client
+
+        finally(function()
+          os.remove(yaml_file)
+          helpers.stop_kong(helpers.test_conf.prefix)
+          if proxy_client then
+            proxy_client:close()
+          end
+        end)
+
+        assert(helpers.start_kong({
+          database = "off",
+          declarative_config = yaml_file,
+          nginx_worker_processes = 100, -- stress test initialization
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+
+        helpers.wait_until(function()
+          -- get a connection, retry until kong starts
+          helpers.wait_until(function()
+            local pok
+            pok, proxy_client = pcall(helpers.proxy_client)
+            return pok
+          end, 10)
+
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              host = "example.test",
+            }
+          })
+          local ok = res.status == 200
+
+          if proxy_client then
+            proxy_client:close()
+            proxy_client = nil
+          end
+
+          return ok
+        end, 10)
+      end)
+    end)
+  end
+
   describe("errors", function()
     it("start inexistent Kong conf file", function()
       local ok, stderr = helpers.kong_exec "start --conf foobar.conf"
@@ -302,5 +380,67 @@ describe("kong start/stop", function()
           dict .. " [SIZE];' directive is defined.", err, nil, true)
       end
     end)
+
+    if strategy == "cassandra" then
+      it("errors when cassandra contact points cannot be resolved", function()
+        local ok, stderr = helpers.start_kong({
+          database = strategy,
+          cassandra_contact_points = "invalid.inexistent.host",
+          cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+        })
+
+        assert.False(ok)
+        assert.matches("could not resolve any of the provided Cassandra contact points " ..
+                       "(cassandra_contact_points = 'invalid.inexistent.host')", stderr, nil, true)
+
+        finally(function()
+          helpers.stop_kong()
+          helpers.kill_all()
+          pcall(helpers.dir.rmtree)
   end)
 end)
+    end
+
+    if strategy == "off" then
+      it("does not start with an invalid declarative config file", function()
+        local yaml_file = helpers.make_yaml_file [[
+          _format_version: "1.1"
+          services:
+          - name: "@gobo"
+            url: http://mockbin.org
+          - name: my-service
+            url: http://mockbin.org
+            routes:
+            - name: example-route
+              hosts:
+              - example.test
+              - \\99
+        ]]
+
+        finally(function()
+          os.remove(yaml_file)
+          helpers.stop_kong()
+        end)
+
+        local ok, err = helpers.start_kong({
+          database = "off",
+          declarative_config = yaml_file,
+        })
+        assert.falsy(ok)
+        assert.matches(helpers.unindent[[
+          in 'services':
+            - in entry 1 of 'services':
+              in 'name': invalid value '@gobo': it must only contain alphanumeric and '., -, _, ~' characters
+            - in entry 2 of 'services':
+              in 'routes':
+                - in entry 1 of 'routes':
+                  in 'hosts':
+                    - in entry 2 of 'hosts': invalid value: \\99
+        ]], err, nil, true)
+      end)
+    end
+
+  end)
+end)
+
+end

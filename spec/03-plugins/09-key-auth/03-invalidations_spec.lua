@@ -98,7 +98,7 @@ for _, strategy in helpers.each_strategy() do
           ["apikey"] = "kong"
         }
       })
-      assert.res_status(403, res)
+      assert.res_status(401, res)
     end)
 
     it("invalidates credentials from cache when deleted", function()
@@ -147,7 +147,7 @@ for _, strategy in helpers.each_strategy() do
           ["apikey"] = "kong"
         }
       })
-      assert.res_status(403, res)
+      assert.res_status(401, res)
     end)
 
     it("invalidated credentials from cache when updated", function()
@@ -202,7 +202,7 @@ for _, strategy in helpers.each_strategy() do
           ["apikey"] = "kong"
         }
       })
-      assert.res_status(403, res)
+      assert.res_status(401, res)
 
       res = assert(proxy_client:send {
         method  = "GET",

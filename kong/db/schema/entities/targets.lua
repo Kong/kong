@@ -20,8 +20,9 @@ return {
   fields = {
     { id = typedefs.uuid },
     { created_at = typedefs.auto_timestamp_ms },
-    { upstream   = { type = "foreign", reference = "upstreams", required = true }, },
+    { upstream   = { type = "foreign", reference = "upstreams", required = true, on_delete = "cascade" }, },
     { target     = { type = "string", required = true, custom_validator = validate_target, }, },
     { weight     = { type = "integer", default = 100, between = { 0, 1000 }, }, },
+    { tags       = typedefs.tags },
   },
 }

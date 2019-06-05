@@ -324,6 +324,15 @@ describe("NGINX conf compiler", function()
         assert.matches("set_real_ip_from%s+192.168.1.0",    nginx_conf)
         assert.matches("set_real_ip_from%s+2001:0db8::/32", nginx_conf)
       end)
+      it("set_real_ip_from (stream proxy)", function()
+        local conf = assert(conf_loader(nil, {
+          trusted_ips = "192.168.1.0/24,192.168.2.1,2001:0db8::/32"
+        }))
+        local nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
+        assert.matches("set_real_ip_from%s+192.168.1.0/24", nginx_conf)
+        assert.matches("set_real_ip_from%s+192.168.1.0",    nginx_conf)
+        assert.matches("set_real_ip_from%s+2001:0db8::/32", nginx_conf)
+      end)
       it("proxy_protocol", function()
         local conf = assert(conf_loader(nil, {
           proxy_listen = "0.0.0.0:8000 proxy_protocol, 0.0.0.0:8443 ssl",
@@ -464,12 +473,15 @@ describe("NGINX conf compiler", function()
     it("dump Kong conf (custom conf)", function()
       local conf = assert(conf_loader(nil, {
         pg_database = "foobar",
+        pg_schema   = "foo",
         prefix = tmp_config.prefix
       }))
       assert.equal("foobar", conf.pg_database)
+      assert.equal("foo", conf.pg_schema)
       assert(prefix_handler.prepare_prefix(conf))
       local in_prefix_kong_conf = assert(conf_loader(tmp_config.kong_env, {
         pg_database = "foobar",
+        pg_schema = "foo",
         prefix = tmp_config.prefix,
       }))
       assert.same(conf, in_prefix_kong_conf)

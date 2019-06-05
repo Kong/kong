@@ -1,4 +1,13 @@
 local BasePlugin = require "kong.plugins.base_plugin"
+local tablex = require "pl.tablex"
+local inspect = require "inspect"
+
+
+local ngx = ngx
+local kong = kong
+local type = type
+local error = error
+local tostring = tostring
 
 
 local CtxCheckerHandler = BasePlugin:extend()
@@ -44,14 +53,25 @@ function CtxCheckerHandler:access(conf)
   end
 
   local ctx = get_ctx(conf.ctx_kind)
-  if ctx[set_field] and conf.throw_error then
+  local existing = ctx[set_field]
+  if existing ~= nil and conf.throw_error then
+    if type(existing) == "table" then
+      existing = inspect(existing)
+    end
+
     error("Expected to be able to set" ..
-          conf.ctx_kind,
+          conf.ctx_kind ..
           "['" .. set_field ..
           "'] but it was already set. Found value: " ..
-          tostring(ctx[set_field]))
+          tostring(existing))
   end
-  ctx[set_field] = conf.ctx_set_value
+
+
+  if type(conf.ctx_set_array) == "table" then
+    ctx[set_field] = conf.ctx_set_array
+  elseif type(conf.ctx_set_value) == "string" then
+    ctx[set_field] = conf.ctx_set_value
+  end
 end
 
 
@@ -64,17 +84,33 @@ function CtxCheckerHandler:header_filter(conf)
   end
 
   local ctx = get_ctx(conf.ctx_kind)
+  local val = ctx[check_field]
 
-  if not conf.ctx_check_value or ctx[check_field] == conf.ctx_check_value then
-    set_header(conf,
-               self._name .. "-" .. check_field,
-               ctx[check_field])
+  local ok
+  if conf.ctx_check_array then
+    if type(val) == "table" then
+      ok = tablex.compare(val, conf.ctx_check_array, "==")
+    else
+      ok = false
+    end
+
+  elseif conf.ctx_check_value then
+    ok = val == conf.ctx_check_value
+  else
+    ok = true
+  end
+
+  if type(val) == "table" then
+    val = inspect(val)
+  end
+
+  if ok then
+    return set_header(conf, self._name .. "-" .. check_field, tostring(val))
   end
 
   if conf.throw_error then
-    error("Expected " .. conf.ctx_kind .. "['" ..
-          check_field .. "'] to be set, but it was " .. tostring(ctx[check_field]))
-
+    error("Expected " .. conf.ctx_kind .. "['" .. check_field ..
+          "'] to be set, but it was " .. tostring(val))
   end
 end
 

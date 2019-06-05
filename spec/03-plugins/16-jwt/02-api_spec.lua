@@ -25,9 +25,9 @@ for _, strategy in helpers.each_strategy() do
 
       admin_client = helpers.admin_client()
 
-      consumer = bp.consumers:insert {
+      consumer = bp.consumers:insert({
         username = "bob"
-      }
+      }, { nulls = true })
     end)
     lazy_teardown(function()
       if admin_client then

@@ -22,14 +22,14 @@ be used to start Kong from the nginx binary without using the 'kong start'
 command.
 
 Example usage:
-  kong migrations up
-  kong prepare -p /usr/local/kong -c kong.conf
-  nginx -p /usr/local/kong -c /usr/local/kong/nginx.conf
+ kong migrations up
+ kong prepare -p /usr/local/kong -c kong.conf
+ nginx -p /usr/local/kong -c /usr/local/kong/nginx.conf
 
 Options:
-  -c,--conf       (optional string) configuration file
-  -p,--prefix     (optional string) override prefix directory
-  --nginx-conf    (optional string) custom Nginx configuration template
+ -c,--conf       (optional string) configuration file
+ -p,--prefix     (optional string) override prefix directory
+ --nginx-conf    (optional string) custom Nginx configuration template
 ]]
 
 

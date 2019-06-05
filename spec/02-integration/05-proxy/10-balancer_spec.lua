@@ -1,6 +1,7 @@
 -- these tests only apply to the ring-balancer
 -- for dns-record balancing see the `dns_spec` files
 
+local declarative = require "kong.db.declarative"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
@@ -76,8 +77,8 @@ local function direct_request(host, port, path)
 end
 
 
-local function post_target_endpoint(upstream_name, host, port, endpoint)
-  local url = "/upstreams/" .. upstream_name
+local function post_target_endpoint(upstream_id, host, port, endpoint)
+  local url = "/upstreams/" .. upstream_id
                             .. "/targets/"
                             .. utils.format_host(host, port)
                             .. "/" .. endpoint
@@ -107,12 +108,11 @@ local function http_server(host, port, counts, test_log, protocol)
 
   -- This is a "hard limit" for the execution of tests that launch
   -- the custom http_server
-  local hard_timeout = 300
-  local expire = ngx.now() + hard_timeout
+  local hard_timeout = ngx.now() + 300
 
   local threads = require "llthreads2.ex"
   local thread = threads.new({
-    function(expire, host, port, counts, TEST_LOG, protocol) -- luacheck: ignore
+    function(hard_timeout, host, port, counts, TEST_LOG, protocol) -- luacheck: ignore
       local TIMEOUT = -1 -- luacheck: ignore
 
       local function test_log(...) -- luacheck: ignore
@@ -185,8 +185,10 @@ local function http_server(host, port, counts, test_log, protocol)
             server.loop = function(self)
               while not self.quit do
                 local cskt, err = sskt:accept()
-                if socket.gettime() > expire then
+                if socket.gettime() > hard_timeout then
+                  if cskt then
                   cskt:close()
+                  end
                   break
                 elseif err ~= "timeout" then
                   if err then
@@ -299,7 +301,7 @@ local function http_server(host, port, counts, test_log, protocol)
       test_log("stopped")
       return ok_responses, fail_responses, n_checks
     end
-  }, expire, host, port, counts, test_log or TEST_LOG, protocol)
+  }, hard_timeout, host, port, counts, test_log or TEST_LOG, protocol)
 
   local server = thread:start()
 
@@ -308,7 +310,7 @@ local function http_server(host, port, counts, test_log, protocol)
     if err then
       ngx.sleep(0.01) -- poll-wait
     end
-  until (ngx.now() > expire) or not err
+  until (ngx.now() > hard_timeout) or not err
 
   server.done = function(self)
     direct_request(host, port, "/shutdown")
@@ -365,9 +367,6 @@ local get_router_version
 local add_target
 local add_api
 local patch_api
-local delete_api
-local add_plugin
-local delete_plugin
 local gen_port
 do
   local gen_sym
@@ -398,32 +397,34 @@ do
     return res.status, res_body
   end
 
-  add_upstream = function(data, name)
-    local upstream_name = name or gen_sym("upstream")
+  add_upstream = function(bp, data)
+    local upstream_id = utils.uuid()
+    local upstream_name = gen_sym("upstream")
     if TEST_LOG then
-      print("ADDING UPSTREAM ", upstream_name)
+      print("ADDING UPSTREAM ", upstream_id)
     end
     local req = utils.deep_copy(data) or {}
     req.name = req.name or upstream_name
     req.slots = req.slots or SLOTS
-    assert.same(201, api_send("POST", "/upstreams", req))
-    return upstream_name
+    req.id = upstream_id
+    bp.upstreams:insert(req)
+    return upstream_name, upstream_id
   end
 
-  patch_upstream = function(upstream_name, data)
-    assert.same(200, api_send("PATCH", "/upstreams/" .. upstream_name, data))
+  patch_upstream = function(upstream_id, data)
+    assert.same(200, api_send("PATCH", "/upstreams/" .. upstream_id, data))
   end
 
-  get_upstream = function(upstream_name, forced_port)
-    local path = "/upstreams/" .. upstream_name
+  get_upstream = function(upstream_id, forced_port)
+    local path = "/upstreams/" .. upstream_id
     local status, body = api_send("GET", path, nil, forced_port)
     if status == 200 then
       return body
     end
   end
 
-  get_upstream_health = function(upstream_name, forced_port)
-    local path = "/upstreams/" .. upstream_name .."/health"
+  get_upstream_health = function(upstream_id, forced_port)
+    local path = "/upstreams/" .. upstream_id .."/health"
     local status, body = api_send("GET", path, nil, forced_port)
     if status == 200 then
       return body
@@ -446,80 +447,52 @@ do
     end
   end
 
-  add_target = function(upstream_name, host, port, data)
+  add_target = function(bp, upstream_id, host, port, data)
     port = port or gen_port()
     local req = utils.deep_copy(data) or {}
     req.target = req.target or utils.format_host(host, port)
     req.weight = req.weight or 10
-    local path = "/upstreams/" .. upstream_name .. "/targets"
-    assert.same(201, api_send("POST", path, req))
+    req.upstream = { id = upstream_id }
+    bp.targets:insert(req)
     return port
   end
 
-  add_api = function(upstream_name, read_timeout, write_timeout, connect_timeout, retries, protocol)
-    local service_name = gen_sym("service")
+  add_api = function(bp, upstream_name, read_timeout, write_timeout, connect_timeout, retries, protocol)
+    local route_id = utils.uuid()
+    local service_id = utils.uuid()
     local route_host = gen_sym("host")
-    assert.same(201, api_send("POST", "/services", {
-      name = service_name,
+    bp.services:insert({
+      id = service_id,
       url = (protocol or "http") .. "://" .. upstream_name .. ":" .. (protocol == "tcp" and 9100 or 80),
       read_timeout = read_timeout,
       write_timeout = write_timeout,
       connect_timeout = connect_timeout,
       retries = retries,
       protocol = protocol,
-    }))
-    local path = "/services/" .. service_name .. "/routes"
-    local status, res = api_send("POST", path, {
+    })
+    bp.routes:insert({
+      id = route_id,
+      service = { id = service_id },
       protocols = { protocol or "http" },
       hosts = protocol ~= "tcp" and { route_host } or nil,
       destinations = (protocol == "tcp") and {{ port = 9100 }} or nil,
     })
-    assert.same(201, status)
-    return route_host, service_name, res.id
+    return route_host, service_id, route_id
   end
 
-  patch_api = function(service_name, new_upstream, read_timeout)
-    assert.same(200, api_send("PATCH", "/services/" .. service_name, {
+  patch_api = function(bp, service_id, new_upstream, read_timeout)
+    bp.services:update(service_id, {
       url = new_upstream,
       read_timeout = read_timeout,
-    }))
-  end
-
-  add_plugin = function(service_name, body)
-    local path = "/services/" .. service_name .. "/plugins"
-    local status, plugin = assert(api_send("POST", path, body))
-    assert.same(status, 201)
-    return plugin.id
-  end
-
-  delete_plugin = function(service_name, plugin_id)
-    local path = "/plugins/" .. plugin_id
-    assert.same(204, api_send("DELETE", path, {}))
-  end
-
-  delete_api = function(service_name, route_id)
-    local path = "/routes/" .. route_id
-    assert.same(204, api_send("DELETE", path, {}))
-    path = "/services/" .. service_name
-    assert.same(204, api_send("DELETE", path, {}))
+    })
   end
 end
 
 
-local function truncate_relevant_tables(db)
-  db:truncate("services")
-  db:truncate("routes")
-  db:truncate("upstreams")
-  db:truncate("targets")
-  db:truncate("workspaces")
-end
-
-
-local function poll_wait_health(upstream_name, host, port, value, admin_port)
-  local hard_timeout = 300
-  local expire = ngx.now() + hard_timeout
-  while ngx.now() < expire do
-    local health = get_upstream_health(upstream_name, admin_port)
+local function poll_wait_health(upstream_id, host, port, value, admin_port)
+  local hard_timeout = ngx.now() + 10
+  while ngx.now() < hard_timeout do
+    local health = get_upstream_health(upstream_id, admin_port)
     if health then
       for _, d in ipairs(health.data) do
         if d.target == host .. ":" .. port and d.health == value then
@@ -527,18 +500,18 @@ local function poll_wait_health(upstream_name, host, port, value, admin_port)
         end
       end
     end
-    ngx.sleep(0.01) -- poll-wait
+    ngx.sleep(0.1) -- poll-wait
   end
   assert(false, "timed out waiting for " .. host .. ":" .. port .. " in " ..
-                upstream_name .. " to become " .. value)
+                upstream_id .. " to become " .. value)
 end
 
 
-local function wait_for_router_update(old_rv, localhost, proxy_port, admin_port)
+local function wait_for_router_update(bp, old_rv, localhost, proxy_port, admin_port)
   -- add dummy upstream just to rebuild router
-  local dummy_upstream_name = add_upstream()
-  local dummy_port = add_target(dummy_upstream_name, localhost)
-  local dummy_api_host = add_api(dummy_upstream_name)
+  local dummy_upstream_name, dummy_upstream_id = add_upstream(bp)
+  local dummy_port = add_target(bp, dummy_upstream_id, localhost)
+  local dummy_api_host = add_api(bp, dummy_upstream_name)
   local dummy_server = http_server(localhost, dummy_port, { 1000 })
 
   helpers.wait_until(function()
@@ -551,6 +524,68 @@ local function wait_for_router_update(old_rv, localhost, proxy_port, admin_port)
 end
 
 
+local function tcp_client_requests(nreqs, host, port)
+  local fails, ok1, ok2 = 0, 0, 0
+  for _ = 1, nreqs do
+    local sock = ngx.socket.tcp()
+    assert(sock:connect(host, port))
+    assert(sock:send("hello\n"))
+    local response, err = sock:receive()
+    if err then
+      fails = fails + 1
+    elseif response:match("^1 ") then
+      ok1 = ok1 + 1
+    elseif response:match("^2 ") then
+      ok2 = ok2 + 1
+    end
+  end
+  return ok1, ok2, fails
+end
+
+
+local function begin_testcase_setup(strategy, bp)
+  if strategy == "off" then
+    bp.done()
+  end
+end
+
+local function begin_testcase_setup_update(strategy, bp)
+  if strategy == "off" then
+    bp.reset_back()
+  end
+end
+
+
+local function end_testcase_setup(strategy, bp)
+  if strategy == "off" then
+    local cfg = bp.done()
+    local yaml = declarative.to_yaml_string(cfg)
+    local admin_client = helpers.admin_client()
+    local res = assert(admin_client:send {
+      method  = "POST",
+      path    = "/config",
+      body    = {
+        config = yaml,
+      },
+      headers = {
+        ["Content-Type"] = "multipart/form-data",
+      }
+    })
+    assert.res_status(201, res)
+    admin_client:close()
+  end
+end
+
+
+local function get_db_utils_for_dc_and_admin_api(strategy, tables)
+  local bp = assert(helpers.get_db_utils(strategy, tables))
+  if strategy ~= "off" then
+    bp = require("spec.fixtures.admin_api")
+  end
+  return bp
+end
+
+
 local localhosts = {
   ipv4 = "127.0.0.1",
   ipv6 = "[0000:0000:0000:0000:0000:0000:0000:0001]",
@@ -560,61 +595,40 @@ local localhosts = {
 
 for _, strategy in helpers.each_strategy() do
 
+  local bp
+
   describe("Ring-balancer resolution #" .. strategy, function()
 
     local dns_mock_filename = helpers.test_conf.prefix .. "/dns_mock_records.lua"
 
     lazy_setup(function()
+      bp = get_db_utils_for_dc_and_admin_api(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "upstreams",
+        "targets",
+      })
 
-      local _, db = helpers.get_db_utils(strategy, {})
-      truncate_relevant_tables(db)
+      local fixtures = {
+        dns_mock = helpers.dns_mock.new()
+      }
+
+      fixtures.dns_mock:SRV {
+        name = "my.srv.test.com",
+        target = "a.my.srv.test.com",
+        port = 80,  -- port should fail to connect
+      }
+      fixtures.dns_mock:A {
+        name = "a.my.srv.test.com",
+        address = "127.0.0.1",
+      }
 
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         db_update_frequency = 0.1,
-        -- inject path to mock-resolver to make Kong load that module
-        lua_package_path = "spec/fixtures/mocks/lua-resty-dns/?.lua;" .. package.path,
-      }))
-
-      -- write the mock dns file AFTER kong starts, or it will be erased again
-      assert(require("pl.utils").writefile(dns_mock_filename,[[
-        local TYPE_A, TYPE_AAAA, TYPE_CNAME, TYPE_SRV = 1, 28, 5, 33
-        return {
-          [TYPE_SRV] = {
-            ["my.srv.test.com"] = {
-              {
-                type     = TYPE_SRV,
-                name     = "my.srv.test.com",
-                target   = "a.my.srv.test.com",
-                port     = 80,  -- this port should FAIL to connect
-                weight   = 10,
-                ttl      = 600,
-                priority = 20,
-                class    = 1,
-              },
-            },
-          },
-
-          [TYPE_A] = {
-            ["a.my.srv.test.com"] = {
-              {
-                type     = TYPE_A,
-                name     = "a.my.srv.test.com",
-                address  = "127.0.0.1",
-                ttl      = 600,
-                class    = 1,
-              },
-            },
-          },
-
-          [TYPE_AAAA] = {
-          },
-
-          [TYPE_CNAME] = {
-          },
-        }
-      ]]))
+      }, nil, nil, fixtures))
 
     end)
 
@@ -635,7 +649,8 @@ for _, strategy in helpers.each_strategy() do
       -- and error is returned that the target could not be disabled.
 
       -- configure healthchecks
-      local upstream_name, upstream_id = add_upstream({
+      begin_testcase_setup(strategy, bp)
+      local upstream_name, upstream_id = add_upstream(bp, {
         healthchecks = healthchecks_config {
           passive = {
             unhealthy = {
@@ -646,8 +661,9 @@ for _, strategy in helpers.each_strategy() do
       })
       -- the following port will not be used, will be overwritten by
       -- the mocked SRV record.
-      add_target(upstream_name, "my.srv.test.com", 80)
-      local api_host = add_api(upstream_name)
+      add_target(bp, upstream_id, "my.srv.test.com", 80)
+      local api_host = add_api(bp, upstream_name)
+      end_testcase_setup(strategy, bp)
 
       -- we do not set up servers, since we want the connection to get refused
       -- Go hit the api with requests, 1x round the balancer
@@ -668,23 +684,28 @@ for _, strategy in helpers.each_strategy() do
   describe("Ring-balancer #" .. strategy, function()
 
     lazy_setup(function()
-      local _, db = helpers.get_db_utils(strategy, {})
+      bp = get_db_utils_for_dc_and_admin_api(strategy, {
+        "services",
+        "routes",
+        "upstreams",
+        "targets",
+      })
 
-      truncate_relevant_tables(db)
-      helpers.start_kong({
+      assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         lua_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
         stream_listen = "0.0.0.0:9100",
         db_update_frequency = 0.1,
-      })
+        plugins = "bundled,fail-once-auth",
+      }))
     end)
 
     lazy_teardown(function()
       helpers.stop_kong()
     end)
 
-    describe("#healthchecks (#cluster)", function()
+    describe("#healthchecks (#cluster #db)", function()
 
       -- second node ports are Kong test ports + 10
       local proxy_port_1 = 9000
@@ -715,13 +736,13 @@ for _, strategy in helpers.each_strategy() do
 
           it("does not perform health checks when disabled (#3304)", function()
 
+            begin_testcase_setup(strategy, bp)
             local old_rv = get_router_version(admin_port_2)
-
-            local upstream_name = add_upstream()
-            local port = add_target(upstream_name, localhost)
-            local api_host = add_api(upstream_name)
-
-            wait_for_router_update(old_rv, localhost, proxy_port_2, admin_port_2)
+            local upstream_name, upstream_id = add_upstream(bp)
+            local port = add_target(bp, upstream_id, localhost)
+            local api_host = add_api(bp, upstream_name)
+            wait_for_router_update(bp, old_rv, localhost, proxy_port_2, admin_port_2)
+            end_testcase_setup(strategy, bp)
 
             -- server responds, then fails, then responds again
             local server = http_server(localhost, port, { 20, 20, 20 })
@@ -750,25 +771,25 @@ for _, strategy in helpers.each_strategy() do
 
           it("propagates posted health info #flaky", function()
 
+            begin_testcase_setup(strategy, bp)
             local old_rv = get_router_version(admin_port_2)
-
-            local upstream_name = add_upstream({
+            local _, upstream_id = add_upstream(bp, {
               healthchecks = healthchecks_config {}
             })
-            local port = add_target(upstream_name, localhost)
-
+            local port = add_target(bp, upstream_id, localhost)
             wait_for_router_update(old_rv, localhost, proxy_port_2, admin_port_2)
+            end_testcase_setup(strategy, bp)
 
-            local health1 = get_upstream_health(upstream_name, admin_port_1)
-            local health2 = get_upstream_health(upstream_name, admin_port_2)
+            local health1 = get_upstream_health(upstream_id, admin_port_1)
+            local health2 = get_upstream_health(upstream_id, admin_port_2)
 
             assert.same("HEALTHY", health1.data[1].health)
             assert.same("HEALTHY", health2.data[1].health)
 
-            post_target_endpoint(upstream_name, localhost, port, "unhealthy")
+            post_target_endpoint(upstream_id, localhost, port, "unhealthy")
 
-            poll_wait_health(upstream_name, localhost, port, "UNHEALTHY", admin_port_1)
-            poll_wait_health(upstream_name, localhost, port, "UNHEALTHY", admin_port_2)
+            poll_wait_health(upstream_id, localhost, port, "UNHEALTHY", admin_port_1)
+            poll_wait_health(upstream_id, localhost, port, "UNHEALTHY", admin_port_2)
 
           end)
 
@@ -784,9 +805,11 @@ for _, strategy in helpers.each_strategy() do
 
           -- Regression test for a missing invalidation in 0.12rc1
           it("created via the API are functional", function()
-            local upstream_name = add_upstream()
-            local target_port = add_target(upstream_name, localhost)
-            local api_host = add_api(upstream_name)
+            begin_testcase_setup(strategy, bp)
+            local upstream_name, upstream_id = add_upstream(bp)
+            local target_port = add_target(bp, upstream_id, localhost)
+            local api_host = add_api(bp, upstream_name)
+            end_testcase_setup(strategy, bp)
 
             local server = http_server(localhost, target_port, { 1 })
 
@@ -800,10 +823,15 @@ for _, strategy in helpers.each_strategy() do
             assert.same(0, server_fails)
           end)
 
-          it("can have their config partially updated", function()
-            local upstream_name = add_upstream()
+          -- #db == disabled for database=off, because it tests
+          -- for a PATCH operation
+          it("#db can have their config partially updated", function()
+            begin_testcase_setup(strategy, bp)
+            local _, upstream_id = add_upstream(bp)
+            end_testcase_setup(strategy, bp)
 
-            patch_upstream(upstream_name, {
+            begin_testcase_setup_update(strategy, bp)
+            patch_upstream(upstream_id, {
               healthchecks = {
                 active = {
                   http_path = "/status",
@@ -818,6 +846,7 @@ for _, strategy in helpers.each_strategy() do
                 }
               }
             })
+            end_testcase_setup(strategy, bp)
 
             local updated = {
               active = {
@@ -856,21 +885,27 @@ for _, strategy in helpers.each_strategy() do
               }
             }
 
-            local upstream_data = get_upstream(upstream_name)
+            local upstream_data = get_upstream(upstream_id)
             assert.same(updated, upstream_data.healthchecks)
           end)
 
-          it("can be renamed without producing stale cache", function()
+          -- #db == disabled for database=off, because it tests
+          -- for a PATCH operation.
+          -- TODO produce an equivalent test when upstreams are preserved
+          -- (not rebuilt) across declarative config updates.
+          it("#db can be renamed without producing stale cache", function()
             -- create two upstreams, each with a target pointing to a server
+            begin_testcase_setup(strategy, bp)
             local upstreams = {}
             for i = 1, 2 do
               upstreams[i] = {}
-              upstreams[i].name = add_upstream({
+              upstreams[i].name = add_upstream(bp, {
                 healthchecks = healthchecks_config {}
               })
-              upstreams[i].port = add_target(upstreams[i].name, localhost)
-              upstreams[i].api_host = add_api(upstreams[i].name)
+              upstreams[i].port = add_target(bp, upstreams[i].name, localhost)
+              upstreams[i].api_host = add_api(bp, upstreams[i].name)
             end
+            end_testcase_setup(strategy, bp)
 
             -- start two servers
             local server1 = http_server(localhost, upstreams[1].port, { 1 })
@@ -908,10 +943,16 @@ for _, strategy in helpers.each_strategy() do
             assert.same({1, 0}, { server2_oks, server2_fails })
           end)
 
-          it("do not leave a stale healthchecker when renamed", function()
+          -- #db == disabled for database=off, because it tests
+          -- for a PATCH operation.
+          -- TODO produce an equivalent test when upstreams are preserved
+          -- (not rebuilt) across declarative config updates.
+          it("#db do not leave a stale healthchecker when renamed", function()
+
+            begin_testcase_setup(strategy, bp)
 
             -- create an upstream
-            local upstream_name = add_upstream({
+            local upstream_name, upstream_id = add_upstream(bp, {
               healthchecks = healthchecks_config {
                 active = {
                   http_path = "/status",
@@ -926,12 +967,14 @@ for _, strategy in helpers.each_strategy() do
                 }
               }
             })
-            local port = add_target(upstream_name, localhost)
-            local _, api_name = add_api(upstream_name)
+            local port = add_target(bp, upstream_id, localhost)
+            local _, service_id = add_api(bp, upstream_name)
+
+            end_testcase_setup(strategy, bp)
 
             -- rename upstream
-            local new_name = upstream_name .. "_new"
-            patch_upstream(upstream_name, {
+            local new_name = upstream_id .. "_new"
+            patch_upstream(upstream_id, {
               name = new_name
             })
 
@@ -958,7 +1001,9 @@ for _, strategy in helpers.each_strategy() do
             -- give time for healthchecker to (not!) run
             ngx.sleep(HEALTHCHECK_INTERVAL * 3)
 
-            patch_api(api_name, "http://" .. new_name)
+            begin_testcase_setup_update(strategy, bp)
+            patch_api(bp, service_id, "http://" .. new_name)
+            end_testcase_setup(strategy, bp)
 
             -- collect results
             local _, server1_oks, server1_fails, hcs = server1:done()
@@ -970,10 +1015,14 @@ for _, strategy in helpers.each_strategy() do
 
         describe("#healthchecks", function()
 
+          local stream_it = (mode == "ipv6" or strategy == "off") and pending or it
+
           it("do not count Kong-generated errors as failures", function()
 
+            begin_testcase_setup(strategy, bp)
+
             -- configure healthchecks with a 1-error threshold
-            local upstream_name = add_upstream({
+            local upstream_name, upstream_id = add_upstream(bp, {
               healthchecks = healthchecks_config {
                 passive = {
                   healthy = {
@@ -988,23 +1037,25 @@ for _, strategy in helpers.each_strategy() do
                 }
               }
             })
-            local port1 = add_target(upstream_name, localhost)
-            local port2 = add_target(upstream_name, localhost)
-            local api_host, api_name = add_api(upstream_name)
+            local port1 = add_target(bp, upstream_id, localhost)
+            local port2 = add_target(bp, upstream_id, localhost)
+            local api_host, service_id = add_api(bp, upstream_name)
 
             -- add a plugin
-            local plugin_id = add_plugin(api_name, {
-              name = "key-auth"
+            local plugin_id = utils.uuid()
+            bp.plugins:insert({
+              id = plugin_id,
+              service = { id = service_id },
+              name = "fail-once-auth",
             })
+
+            end_testcase_setup(strategy, bp)
 
             -- run request: fails with 401, but doesn't hit the 1-error threshold
             local oks, fails, last_status = client_requests(1, api_host)
             assert.same(0, oks)
             assert.same(1, fails)
             assert.same(401, last_status)
-
-            -- delete the plugin
-            delete_plugin(api_name, plugin_id)
 
             -- start servers, they are unaffected by the failure above
             local server1 = http_server(localhost, port1, { SLOTS })
@@ -1030,8 +1081,9 @@ for _, strategy in helpers.each_strategy() do
 
             for nfails = 1, 3 do
 
+              begin_testcase_setup(strategy, bp)
               -- configure healthchecks
-              local upstream_name = add_upstream({
+              local upstream_name, upstream_id = add_upstream(bp, {
                 healthchecks = healthchecks_config {
                   passive = {
                     unhealthy = {
@@ -1040,9 +1092,10 @@ for _, strategy in helpers.each_strategy() do
                   }
                 }
               })
-              local port1 = add_target(upstream_name, localhost)
-              local port2 = add_target(upstream_name, localhost)
-              local api_host = add_api(upstream_name)
+              local port1 = add_target(bp, upstream_id, localhost)
+              local port2 = add_target(bp, upstream_id, localhost)
+              local api_host = add_api(bp, upstream_name)
+              end_testcase_setup(strategy, bp)
 
               local requests = SLOTS * 2 -- go round the balancer twice
 
@@ -1076,14 +1129,15 @@ for _, strategy in helpers.each_strategy() do
             end
           end)
 
-          it("#stream and http modules do not duplicate active health checks", function()
+          stream_it("#stream and http modules do not duplicate active health checks", function()
 
             local port1 = gen_port()
 
             local server1 = http_server(localhost, port1, { 1 })
 
             -- configure healthchecks
-            local upstream_name = add_upstream({
+            begin_testcase_setup(strategy, bp)
+            local _, upstream_id = add_upstream(bp, {
               healthchecks = healthchecks_config {
                 active = {
                   http_path = "/status",
@@ -1098,7 +1152,8 @@ for _, strategy in helpers.each_strategy() do
                 }
               }
             })
-            add_target(upstream_name, localhost, port1)
+            add_target(bp, upstream_id, localhost, port1)
+            end_testcase_setup(strategy, bp)
 
             ngx.sleep(HEALTHCHECK_INTERVAL * 5)
 
@@ -1124,7 +1179,8 @@ for _, strategy in helpers.each_strategy() do
               local server2 = http_server(localhost, port2, { server2_oks })
 
               -- configure healthchecks
-              local upstream_name = add_upstream({
+              begin_testcase_setup(strategy, bp)
+              local upstream_name, upstream_id = add_upstream(bp, {
                 healthchecks = healthchecks_config {
                   active = {
                     http_path = "/status",
@@ -1139,9 +1195,10 @@ for _, strategy in helpers.each_strategy() do
                   }
                 }
               })
-              add_target(upstream_name, localhost, port1)
-              add_target(upstream_name, localhost, port2)
-              local api_host = add_api(upstream_name)
+              add_target(bp, upstream_id, localhost, port1)
+              add_target(bp, upstream_id, localhost, port2)
+              local api_host = add_api(bp, upstream_name)
+              end_testcase_setup(strategy, bp)
 
               -- Phase 1: server1 and server2 take requests
               local client_oks, client_fails = client_requests(server2_oks * 2, api_host)
@@ -1150,7 +1207,7 @@ for _, strategy in helpers.each_strategy() do
               direct_request(localhost, port2, "/unhealthy")
 
               -- Give time for healthchecker to detect
-              poll_wait_health(upstream_name, localhost, port2, "UNHEALTHY")
+              poll_wait_health(upstream_id, localhost, port2, "UNHEALTHY")
 
               -- Phase 3: server1 takes all requests
               do
@@ -1174,7 +1231,7 @@ for _, strategy in helpers.each_strategy() do
             end
           end)
 
-          for _, protocol in ipairs({"http", "https"}) do
+          for _, protocol in ipairs({"http"}) do
             it("perform active health checks -- automatic recovery #" .. protocol, function()
               for nchecks = 1, 3 do
 
@@ -1190,7 +1247,8 @@ for _, strategy in helpers.each_strategy() do
                 local server2 = http_server(localhost, port2, { server2_oks }, nil, protocol)
 
                 -- configure healthchecks
-                local upstream_name = add_upstream({
+                begin_testcase_setup(strategy, bp)
+                local upstream_name, upstream_id = add_upstream(bp, {
                   healthchecks = healthchecks_config {
                     active = {
                       type = protocol,
@@ -1207,9 +1265,10 @@ for _, strategy in helpers.each_strategy() do
                     }
                   }
                 })
-                add_target(upstream_name, localhost, port1)
-                add_target(upstream_name, localhost, port2)
-                local api_host = add_api(upstream_name)
+                add_target(bp, upstream_id, localhost, port1)
+                add_target(bp, upstream_id, localhost, port2)
+                local api_host = add_api(bp, upstream_name)
+                end_testcase_setup(strategy, bp)
 
                 -- 1) server1 and server2 take requests
                 local oks, fails = client_requests(SLOTS, api_host)
@@ -1217,7 +1276,7 @@ for _, strategy in helpers.each_strategy() do
                 -- server2 goes unhealthy
                 direct_request(localhost, port2, "/unhealthy")
                 -- Wait until healthchecker detects
-                poll_wait_health(upstream_name, localhost, port2, "UNHEALTHY")
+                poll_wait_health(upstream_id, localhost, port2, "UNHEALTHY")
 
                 -- 2) server1 takes all requests
                 do
@@ -1229,7 +1288,7 @@ for _, strategy in helpers.each_strategy() do
                 -- server2 goes healthy again
                 direct_request(localhost, port2, "/healthy")
                 -- Give time for healthchecker to detect
-                poll_wait_health(upstream_name, localhost, port2, "HEALTHY")
+                poll_wait_health(upstream_id, localhost, port2, "HEALTHY")
 
                 -- 3) server1 and server2 take requests again
                 do
@@ -1254,6 +1313,95 @@ for _, strategy in helpers.each_strategy() do
             end)
           end
 
+          it("#flaky #db perform active health checks -- automatic recovery #stream", function()
+
+            local port1 = gen_port()
+            local port2 = gen_port()
+
+            -- setup target servers:
+            -- server2 will only respond for part of the test,
+            -- then server1 will take over.
+            local server1 = helpers.tcp_server(port1, {
+              requests = 1000,
+              prefix = "1 ",
+            })
+            local server2 = helpers.tcp_server(port2, {
+              requests = 1000,
+              prefix = "2 ",
+            })
+            ngx.sleep(0.1)
+
+            -- configure healthchecks
+            begin_testcase_setup(strategy, bp)
+            local upstream_name, upstream_id = add_upstream(bp, {
+              healthchecks = healthchecks_config {
+                active = {
+                  type = "tcp",
+                  healthy = {
+                    interval = HEALTHCHECK_INTERVAL,
+                    successes = 1,
+                  },
+                  unhealthy = {
+                    interval = HEALTHCHECK_INTERVAL,
+                    tcp_failures = 1,
+                  },
+                }
+              }
+            })
+
+            add_target(bp, upstream_id, localhost, port1)
+            add_target(bp, upstream_id, localhost, port2)
+            local _, service_id, route_id = add_api(bp, upstream_name, 500, 500, nil, nil, "tcp")
+            end_testcase_setup(strategy, bp)
+
+            finally(function()
+              helpers.kill_tcp_server(port1)
+              helpers.kill_tcp_server(port2)
+              server1:join()
+              server2:join()
+
+              bp.routes:remove({ id = route_id })
+              bp.services:remove({ id = service_id })
+            end)
+
+            ngx.sleep(0.5)
+
+            -- 1) server1 and server2 take requests
+            local ok1, ok2 = tcp_client_requests(SLOTS * 2, localhost, 9100)
+            assert.same(SLOTS, ok1)
+            assert.same(SLOTS, ok2)
+
+            -- server2 goes unhealthy
+            helpers.kill_tcp_server(port2)
+            server2:join()
+
+            -- Wait until healthchecker detects
+            -- We cannot use poll_wait_health because health endpoints
+            -- are not currently available for stream routes.
+            ngx.sleep(strategy == "cassandra" and 2 or 1)
+
+            -- 2) server1 takes all requests
+            ok1, ok2 = tcp_client_requests(SLOTS * 2, localhost, 9100)
+            assert.same(SLOTS * 2, ok1)
+            assert.same(0, ok2)
+
+            -- server2 goes healthy again
+            server2 = helpers.tcp_server(port2, {
+              requests = 1000,
+              prefix = "2 ",
+            })
+
+            -- Give time for healthchecker to detect
+            -- Again, we cannot use poll_wait_health because health endpoints
+            -- are not currently available for stream routes.
+            ngx.sleep(strategy == "cassandra" and 2 or 1)
+
+            -- 3) server1 and server2 take requests again
+            ok1, ok2 = tcp_client_requests(SLOTS * 2, localhost, 9100)
+            assert.same(SLOTS, ok1)
+            assert.same(SLOTS, ok2)
+          end)
+
           it("perform active health checks -- can detect before any proxy traffic", function()
 
             local nfails = 2
@@ -1265,7 +1413,8 @@ for _, strategy in helpers.each_strategy() do
             local server1 = http_server(localhost, port1, { requests })
             local server2 = http_server(localhost, port2, { requests })
             -- configure healthchecks
-            local upstream_name = add_upstream({
+            begin_testcase_setup(strategy, bp)
+            local upstream_name, upstream_id = add_upstream(bp, {
               healthchecks = healthchecks_config {
                 active = {
                   http_path = "/status",
@@ -1281,25 +1430,29 @@ for _, strategy in helpers.each_strategy() do
                 }
               }
             })
-            add_target(upstream_name, localhost, port1)
-            add_target(upstream_name, localhost, port2)
-            local api_host = add_api(upstream_name)
+            add_target(bp, upstream_id, localhost, port1)
+            add_target(bp, upstream_id, localhost, port2)
+            local api_host = add_api(bp, upstream_name)
+            end_testcase_setup(strategy, bp)
 
             -- server2 goes unhealthy before the first request
             direct_request(localhost, port2, "/unhealthy")
 
             -- restart Kong
-            helpers.stop_kong(nil, true, true)
-            helpers.start_kong({
+            begin_testcase_setup_update(strategy, bp)
+            helpers.restart_kong({
               database   = strategy,
               nginx_conf = "spec/fixtures/custom_nginx.template",
               lua_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
               db_update_frequency = 0.1,
               stream_listen = "0.0.0.0:9100",
+              plugins = "bundled,fail-once-auth",
             })
+            end_testcase_setup(strategy, bp)
+            ngx.sleep(1)
 
             -- Give time for healthchecker to detect
-            poll_wait_health(upstream_name, localhost, port2, "UNHEALTHY")
+            poll_wait_health(upstream_id, localhost, port2, "UNHEALTHY")
 
             -- server1 takes all requests
 
@@ -1324,7 +1477,8 @@ for _, strategy in helpers.each_strategy() do
 
             for nfails = 1, 3 do
               -- configure healthchecks
-              local upstream_name = add_upstream({
+              begin_testcase_setup(strategy, bp)
+              local upstream_name, upstream_id = add_upstream(bp, {
                 healthchecks = healthchecks_config {
                   passive = {
                     unhealthy = {
@@ -1333,9 +1487,10 @@ for _, strategy in helpers.each_strategy() do
                   }
                 }
               })
-              local port1 = add_target(upstream_name, localhost)
-              local port2 = add_target(upstream_name, localhost)
-              local api_host = add_api(upstream_name)
+              local port1 = add_target(bp, upstream_id, localhost)
+              local port2 = add_target(bp, upstream_id, localhost)
+              local api_host = add_api(bp, upstream_name)
+              end_testcase_setup(strategy, bp)
 
               -- setup target servers:
               -- server2 will only respond for part of the test,
@@ -1364,7 +1519,7 @@ for _, strategy in helpers.each_strategy() do
               end
 
               -- manually bring it back using the endpoint
-              post_target_endpoint(upstream_name, localhost, port2, "healthy")
+              post_target_endpoint(upstream_id, localhost, port2, "healthy")
 
               -- 3) server1 and server2 take requests again
               do
@@ -1391,7 +1546,8 @@ for _, strategy in helpers.each_strategy() do
           it("perform passive health checks -- manual shutdown", function()
 
             -- configure healthchecks
-            local upstream_name = add_upstream({
+            begin_testcase_setup(strategy, bp)
+            local upstream_name, upstream_id = add_upstream(bp, {
               healthchecks = healthchecks_config {
                 passive = {
                   unhealthy = {
@@ -1400,9 +1556,10 @@ for _, strategy in helpers.each_strategy() do
                 }
               }
             })
-            local port1 = add_target(upstream_name, localhost)
-            local port2 = add_target(upstream_name, localhost)
-            local api_host = add_api(upstream_name)
+            local port1 = add_target(bp, upstream_id, localhost)
+            local port2 = add_target(bp, upstream_id, localhost)
+            local api_host = add_api(bp, upstream_name)
+            end_testcase_setup(strategy, bp)
 
             -- setup target servers:
             -- server2 will only respond for part of the test,
@@ -1416,7 +1573,7 @@ for _, strategy in helpers.each_strategy() do
             local oks, fails = client_requests(SLOTS, api_host)
 
             -- manually bring it down using the endpoint
-            post_target_endpoint(upstream_name, localhost, port2, "unhealthy")
+            post_target_endpoint(upstream_id, localhost, port2, "unhealthy")
 
             -- 2) server1 takes all requests
             do
@@ -1426,7 +1583,7 @@ for _, strategy in helpers.each_strategy() do
             end
 
             -- manually bring it back using the endpoint
-            post_target_endpoint(upstream_name, localhost, port2, "healthy")
+            post_target_endpoint(upstream_id, localhost, port2, "healthy")
 
             -- 3) server1 and server2 take requests again
             do
@@ -1453,7 +1610,8 @@ for _, strategy in helpers.each_strategy() do
           it("perform passive health checks -- connection #timeouts", function()
 
             -- configure healthchecks
-            local upstream_name = add_upstream({
+            begin_testcase_setup(strategy, bp)
+            local upstream_name, upstream_id = add_upstream(bp, {
               healthchecks = healthchecks_config {
                 passive = {
                   unhealthy = {
@@ -1462,9 +1620,10 @@ for _, strategy in helpers.each_strategy() do
                 }
               }
             })
-            local port1 = add_target(upstream_name, localhost)
-            local port2 = add_target(upstream_name, localhost)
-            local api_host = add_api(upstream_name, 50, 50)
+            local port1 = add_target(bp, upstream_id, localhost)
+            local port2 = add_target(bp, upstream_id, localhost)
+            local api_host = add_api(bp, upstream_name, 50, 50)
+            end_testcase_setup(strategy, bp)
 
             -- setup target servers:
             -- server2 will only respond for half of the test
@@ -1506,11 +1665,12 @@ for _, strategy in helpers.each_strategy() do
             assert.are.equal(0, fails)
           end)
 
-          local stream_it = (mode == "ipv6") and pending or it
+          -- XXX EE local stream_it = (mode == "ipv6") and pending or it
           stream_it("#flaky perform passive health checks -- #stream connection failure", function()
 
             -- configure healthchecks
-            local upstream_name = add_upstream({
+            begin_testcase_setup(strategy, bp)
+            local upstream_name, upstream_id = add_upstream(bp, {
               healthchecks = healthchecks_config {
                 passive = {
                   unhealthy = {
@@ -1519,11 +1679,14 @@ for _, strategy in helpers.each_strategy() do
                 }
               }
             })
-            local port1 = add_target(upstream_name, localhost)
-            local port2 = add_target(upstream_name, localhost)
-            local _, service_name, route_id = add_api(upstream_name, 50, 50, nil, nil, "tcp")
+            local port1 = add_target(bp, upstream_id, localhost)
+            local port2 = add_target(bp, upstream_id, localhost)
+            local _, service_id, route_id = add_api(bp, upstream_name, 50, 50, nil, nil, "tcp")
+            end_testcase_setup(strategy, bp)
+
             finally(function()
-              delete_api(service_name, route_id)
+              bp.routes:remove({ id = route_id })
+              bp.services:remove({ id = service_id })
             end)
 
             -- setup target servers:
@@ -1539,27 +1702,11 @@ for _, strategy in helpers.each_strategy() do
               requests = server2_oks,
               prefix = "2 ",
             })
-            ngx.sleep(1)
+            ngx.sleep(strategy == "cassandra" and 2 or 1)
 
             -- server1 and server2 take requests
             -- server1 takes all requests once server2 fails
-            local ok1 = 0
-            local ok2 = 0
-            local fails = 0
-            for _ = 1, SLOTS * 2 do
-              local sock = ngx.socket.tcp()
-              assert(sock:connect(localhost, 9100))
-              assert(sock:send("hello\n"))
-              local response, err = sock:receive()
-              if err then
-                fails = fails + 1
-                print(err)
-              elseif response:match("^1 ") then
-                ok1 = ok1 + 1
-              elseif response:match("^2 ") then
-                ok2 = ok2 + 1
-              end
-            end
+            local ok1, ok2, fails = tcp_client_requests(SLOTS * 2, localhost, 9100)
 
             -- finish up TCP server threads
             server1:join()
@@ -1571,10 +1718,15 @@ for _, strategy in helpers.each_strategy() do
             assert.are.equal(0, fails)
           end)
 
-          it("perform passive health checks -- send #timeouts", function()
+          -- #db == disabled for database=off, because healthcheckers
+          -- are currently reset when a new configuration is loaded
+          -- TODO enable this test when upstreams are preserved (not rebuild)
+          -- across a declarative config updates.
+          it("#db perform passive health checks -- send #timeouts", function()
 
             -- configure healthchecks
-            local upstream_name = add_upstream({
+            begin_testcase_setup(strategy, bp)
+            local upstream_name, upstream_id = add_upstream(bp, {
               healthchecks = healthchecks_config {
                 passive = {
                   unhealthy = {
@@ -1585,8 +1737,9 @@ for _, strategy in helpers.each_strategy() do
                 }
               }
             })
-            local port1 = add_target(upstream_name, localhost)
-            local api_host, api_name = add_api(upstream_name, 10, nil, nil, 0)
+            local port1 = add_target(bp, upstream_id, localhost)
+            local api_host, service_id = add_api(bp, upstream_name, 10, nil, nil, 0)
+            end_testcase_setup(strategy, bp)
 
             local server1 = http_server(localhost, port1, {
               TIMEOUT,
@@ -1599,9 +1752,11 @@ for _, strategy in helpers.each_strategy() do
             assert.same(1, oks1)
             assert.same(0, fails1)
 
-            patch_api(api_name, nil, 60000)
+            begin_testcase_setup_update(strategy, bp)
+            patch_api(bp, service_id, nil, 60000)
+            local port2 = add_target(bp, upstream_id, localhost)
+            end_testcase_setup(strategy, bp)
 
-            local port2 = add_target(upstream_name, localhost)
             local server2 = http_server(localhost, port2, {
               10,
             })
@@ -1612,7 +1767,6 @@ for _, strategy in helpers.each_strategy() do
             local _, oks2, fails2 = server2:done()
             assert.same(10, oks2)
             assert.same(0, fails2)
-
           end)
 
         end)
@@ -1623,10 +1777,12 @@ for _, strategy in helpers.each_strategy() do
 
             it("over multiple targets", function()
 
-              local upstream_name = add_upstream()
-              local port1 = add_target(upstream_name, localhost)
-              local port2 = add_target(upstream_name, localhost)
-              local api_host = add_api(upstream_name)
+              begin_testcase_setup(strategy, bp)
+              local upstream_name, upstream_id = add_upstream(bp)
+              local port1 = add_target(bp, upstream_id, localhost)
+              local port2 = add_target(bp, upstream_id, localhost)
+              local api_host = add_api(bp, upstream_name)
+              end_testcase_setup(strategy, bp)
 
               local requests = SLOTS * 2 -- go round the balancer twice
 
@@ -1649,10 +1805,12 @@ for _, strategy in helpers.each_strategy() do
 
             it("adding a target", function()
 
-              local upstream_name = add_upstream()
-              local port1 = add_target(upstream_name, localhost, nil, { weight = 10 })
-              local port2 = add_target(upstream_name, localhost, nil, { weight = 10 })
-              local api_host = add_api(upstream_name)
+              begin_testcase_setup(strategy, bp)
+              local upstream_name, upstream_id = add_upstream(bp)
+              local port1 = add_target(bp, upstream_id, localhost, nil, { weight = 10 })
+              local port2 = add_target(bp, upstream_id, localhost, nil, { weight = 10 })
+              local api_host = add_api(bp, upstream_name)
+              end_testcase_setup(strategy, bp)
 
               local requests = SLOTS * 2 -- go round the balancer twice
 
@@ -1674,7 +1832,9 @@ for _, strategy in helpers.each_strategy() do
 
               -- add a new target 3
               -- shift proportions from 50/50 to 40/40/20
-              local port3 = add_target(upstream_name, localhost, nil, { weight = 5 })
+              begin_testcase_setup_update(strategy, bp)
+              local port3 = add_target(bp, upstream_id, localhost, nil, { weight = 5 })
+              end_testcase_setup(strategy, bp)
 
               -- now go and hit the same balancer again
               -----------------------------------------
@@ -1703,10 +1863,12 @@ for _, strategy in helpers.each_strategy() do
             it("removing a target", function()
               local requests = SLOTS * 2 -- go round the balancer twice
 
-              local upstream_name = add_upstream()
-              local port1 = add_target(upstream_name, localhost)
-              local port2 = add_target(upstream_name, localhost)
-              local api_host = add_api(upstream_name)
+              begin_testcase_setup(strategy, bp)
+              local upstream_name, upstream_id = add_upstream(bp)
+              local port1 = add_target(bp, upstream_id, localhost)
+              local port2 = add_target(bp, upstream_id, localhost)
+              local api_host = add_api(bp, upstream_name)
+              end_testcase_setup(strategy, bp)
 
               -- setup target servers
               local server1 = http_server(localhost, port1, { requests / 2 })
@@ -1725,9 +1887,11 @@ for _, strategy in helpers.each_strategy() do
               assert.are.equal(requests / 2, count2)
 
               -- modify weight for target 2, set to 0
-              add_target(upstream_name, localhost, port2, {
+              begin_testcase_setup_update(strategy, bp)
+              add_target(bp, upstream_id, localhost, port2, {
                 weight = 0, -- disable this target
               })
+              end_testcase_setup(strategy, bp)
 
               -- now go and hit the same balancer again
               -----------------------------------------
@@ -1748,10 +1912,12 @@ for _, strategy in helpers.each_strategy() do
             it("modifying target weight", function()
               local requests = SLOTS * 2 -- go round the balancer twice
 
-              local upstream_name = add_upstream()
-              local port1 = add_target(upstream_name, localhost)
-              local port2 = add_target(upstream_name, localhost)
-              local api_host = add_api(upstream_name)
+              begin_testcase_setup(strategy, bp)
+              local upstream_name, upstream_id = add_upstream(bp)
+              local port1 = add_target(bp, upstream_id, localhost)
+              local port2 = add_target(bp, upstream_id, localhost)
+              local api_host = add_api(bp, upstream_name)
+              end_testcase_setup(strategy, bp)
 
               -- setup target servers
               local server1 = http_server(localhost, port1, { requests / 2 })
@@ -1770,9 +1936,11 @@ for _, strategy in helpers.each_strategy() do
               assert.are.equal(requests / 2, count2)
 
               -- modify weight for target 2
-              add_target(upstream_name, localhost, port2, {
+              begin_testcase_setup_update(strategy, bp)
+              add_target(bp, upstream_id, localhost, port2, {
                 weight = 15,   -- shift proportions from 50/50 to 40/60
               })
+              end_testcase_setup(strategy, bp)
 
               -- now go and hit the same balancer again
               -----------------------------------------
@@ -1797,11 +1965,12 @@ for _, strategy in helpers.each_strategy() do
             it("failure due to targets all 0 weight", function()
               local requests = SLOTS * 2 -- go round the balancer twice
 
-              local upstream_name = add_upstream()
-
-              local port1 = add_target(upstream_name, localhost)
-              local port2 = add_target(upstream_name, localhost)
-              local api_host = add_api(upstream_name)
+              begin_testcase_setup(strategy, bp)
+              local upstream_name, upstream_id = add_upstream(bp)
+              local port1 = add_target(bp, upstream_id, localhost)
+              local port2 = add_target(bp, upstream_id, localhost)
+              local api_host = add_api(bp, upstream_name)
+              end_testcase_setup(strategy, bp)
 
               -- setup target servers
               local server1 = http_server(localhost, port1, { requests / 2 })
@@ -1820,8 +1989,10 @@ for _, strategy in helpers.each_strategy() do
               assert.are.equal(requests / 2, count2)
 
               -- modify weight for both targets, set to 0
-              add_target(upstream_name, localhost, port1, { weight = 0 })
-              add_target(upstream_name, localhost, port2, { weight = 0 })
+              begin_testcase_setup_update(strategy, bp)
+              add_target(bp, upstream_id, localhost, port1, { weight = 0 })
+              add_target(bp, upstream_id, localhost, port2, { weight = 0 })
+              end_testcase_setup(strategy, bp)
 
               -- now go and hit the same balancer again
               -----------------------------------------
@@ -1839,13 +2010,15 @@ for _, strategy in helpers.each_strategy() do
               it("hashing on header", function()
                 local requests = SLOTS * 2 -- go round the balancer twice
 
-                local upstream_name = add_upstream({
+                begin_testcase_setup(strategy, bp)
+                local upstream_name, upstream_id = add_upstream(bp, {
                   hash_on = "header",
                   hash_on_header = "hashme",
                 })
-                local port1 = add_target(upstream_name, localhost)
-                local port2 = add_target(upstream_name, localhost)
-                local api_host = add_api(upstream_name)
+                local port1 = add_target(bp, upstream_id, localhost)
+                local port2 = add_target(bp, upstream_id, localhost)
+                local api_host = add_api(bp, upstream_name)
+                end_testcase_setup(strategy, bp)
 
                 -- setup target servers
                 local server1 = http_server(localhost, port1, { requests })
@@ -1871,12 +2044,14 @@ for _, strategy in helpers.each_strategy() do
 
               describe("hashing on cookie", function()
                 it("does not reply with Set-Cookie if cookie is already set", function()
-                  local upstream_name = add_upstream({
+                  begin_testcase_setup(strategy, bp)
+                  local upstream_name, upstream_id = add_upstream(bp, {
                     hash_on = "cookie",
                     hash_on_cookie = "hashme",
                   })
-                  local port = add_target(upstream_name, localhost)
-                  local api_host = add_api(upstream_name)
+                  local port = add_target(bp, upstream_id, localhost)
+                  local api_host = add_api(bp, upstream_name)
+                  end_testcase_setup(strategy, bp)
 
                   -- setup target server
                   local server = http_server(localhost, port, { 1 })
@@ -1903,13 +2078,15 @@ for _, strategy in helpers.each_strategy() do
                 it("replies with Set-Cookie if cookie is not set", function()
                   local requests = SLOTS * 2 -- go round the balancer twice
 
-                  local upstream_name = add_upstream({
+                  begin_testcase_setup(strategy, bp)
+                  local upstream_name, upstream_id = add_upstream(bp, {
                     hash_on = "cookie",
                     hash_on_cookie = "hashme",
                   })
-                  local port1 = add_target(upstream_name, localhost)
-                  local port2 = add_target(upstream_name, localhost)
-                  local api_host = add_api(upstream_name)
+                  local port1 = add_target(bp, upstream_id, localhost)
+                  local port2 = add_target(bp, upstream_id, localhost)
+                  local api_host = add_api(bp, upstream_name)
+                  end_testcase_setup(strategy, bp)
 
                   -- setup target servers
                   local server1 = http_server(localhost, port1, { requests })
@@ -1959,8 +2136,10 @@ for _, strategy in helpers.each_strategy() do
 
             it("failure due to no targets", function()
 
-              local upstream_name = add_upstream()
-              local api_host = add_api(upstream_name)
+              begin_testcase_setup(strategy, bp)
+              local upstream_name = add_upstream(bp)
+              local api_host = add_api(bp, upstream_name)
+              end_testcase_setup(strategy, bp)
 
               -- Go hit it with a request
               local _, _, status = client_requests(1, api_host)

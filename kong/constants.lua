@@ -27,11 +27,13 @@ local plugins = {
   "request-termination",
   -- external plugins
   "azure-functions",
+  "kubernetes-sidecar-injector",
   "zipkin",
   "pre-function",
   "post-function",
   "prometheus",
   "session",
+  "proxy-cache",
 }
 
 local plugin_map = {}
@@ -74,11 +76,26 @@ return {
     RATELIMIT_LIMIT = "X-RateLimit-Limit",
     RATELIMIT_REMAINING = "X-RateLimit-Remaining",
     CONSUMER_GROUPS = "X-Consumer-Groups",
+    AUTHENTICATED_GROUPS = "X-Authenticated-Groups",
     FORWARDED_HOST = "X-Forwarded-Host",
     FORWARDED_PREFIX = "X-Forwarded-Prefix",
     ANONYMOUS = "X-Anonymous-Consumer",
     VIA = "Via",
     SERVER = "Server"
+  },
+  -- Notice that the order in which they are listed is important:
+  -- schemas of dependencies need to be loaded first.
+  CORE_ENTITIES = {
+    "consumers",
+    "services",
+    "routes",
+    "certificates",
+    "snis",
+    "upstreams",
+    "targets",
+    "plugins",
+    "cluster_ca",
+    "tags",
   },
   RATELIMIT = {
     PERIODS = {

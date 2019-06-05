@@ -11,7 +11,7 @@ describe("Proxy error handlers", function()
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong()
+    helpers.stop_kong(nil, true)
   end)
 
   before_each(function()

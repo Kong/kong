@@ -17,9 +17,9 @@ describe("migrations schema", function()
     assert.equal("required field missing", errs["name"])
   end)
 
-  for _, strategy in helpers.each_strategy() do
+  for _, strategy in helpers.each_strategy({"postgres", "cassandra"}) do
 
-    it("requires all strateges to be specified", function()
+    it("requires all strategies to be specified", function()
       local t = {
         postgres = { up = "" },
         cassandra = { up = "" },
