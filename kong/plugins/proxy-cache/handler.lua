@@ -1,4 +1,3 @@
-local BasePlugin  = require "kong.plugins.base_plugin"
 local cache_key   = require "kong.plugins.proxy-cache.cache_key"
 local utils       = require "kong.tools.utils"
 
@@ -249,16 +248,11 @@ local function send_response(res)
 end
 
 
-local ProxyCacheHandler = BasePlugin:extend()
+local ProxyCacheHandler = {
+  VERSION  = "1.2.1",
+  PRIORITY = 100,
+}
 
-
-ProxyCacheHandler.PRIORITY = 100
-ProxyCacheHandler.VERSION = "1.2.1"
-
-
-function ProxyCacheHandler:new()
-  ProxyCacheHandler.super.new(self, "proxy-cache")
-end
 
 function ProxyCacheHandler:init_worker()
   -- catch notifications from other nodes that we purged a cache entry
@@ -302,9 +296,8 @@ function ProxyCacheHandler:init_worker()
   end)
 end
 
-function ProxyCacheHandler:access(conf)
-  ProxyCacheHandler.super.access(self)
 
+function ProxyCacheHandler:access(conf)
   local cc = req_cc()
 
   -- if we know this request isnt cacheable, bail out
@@ -400,8 +393,6 @@ end
 
 
 function ProxyCacheHandler:header_filter(conf)
-  ProxyCacheHandler.super.header_filter(self)
-
   local ctx = ngx.ctx.proxy_cache
   -- dont look at our headers if
   -- a). the request wasnt cachable or
@@ -428,8 +419,6 @@ end
 
 
 function ProxyCacheHandler:body_filter(conf)
-  ProxyCacheHandler.super.body_filter(self)
-
   local ctx = ngx.ctx.proxy_cache
   if not ctx then
     return
@@ -469,5 +458,6 @@ function ProxyCacheHandler:body_filter(conf)
     ngx.ctx.proxy_cache = ctx
   end
 end
+
 
 return ProxyCacheHandler
