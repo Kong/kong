@@ -1,9 +1,10 @@
-local BasePlugin    = require "kong.plugins.base_plugin"
 local constants     = require "kong.constants"
 local meta          = require "kong.meta"
 local http          = require "resty.http"
 
 
+local kong          = kong
+local var           = ngx.var
 local pairs         = pairs
 local server_header = meta._SERVER_TOKENS
 local conf_cache    = setmetatable({}, { __mode = "k" })
@@ -19,21 +20,14 @@ local function send(status, content, headers)
 end
 
 
-local azure = BasePlugin:extend()
+local azure = {}
+
 
 azure.PRIORITY = 749
 azure.VERSION = "0.1.1"
 
 
-function azure:new()
-  azure.super.new(self, "azure-functions")
-end
-
-
 function azure:access(config)
-  azure.super.access(self)
-  local var = ngx.var
-
   -- prepare and store updated config in cache
   local conf = conf_cache[config]
   if not conf then
