@@ -59,7 +59,6 @@ local DEBUG        = ngx.DEBUG
 local ERROR        = ngx.ERROR
 
 
-local CACHE_ROUTER_OPTS = { ttl = 0 }
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
 local EMPTY_T = {}
 local TTL_ZERO = { ttl = 0 }
@@ -418,7 +417,8 @@ do
 
 
   update_plugins_iterator = function()
-    local version, err = kong.cache:get("plugins_iterator:version", TTL_ZERO, utils.uuid)
+    local version, err = kong.cache:get("plugins_iterator:version", TTL_ZERO,
+                                        utils.uuid)
     if err then
       return nil, "failed to retrieve plugins iterator version: " .. err
     end
@@ -525,7 +525,7 @@ do
     -- kong.cache is not available on init phase
     if kong.cache then
       local cache_key = db.services:cache_key(service_pk.id)
-      service, err = kong.cache:get(cache_key, CACHE_ROUTER_OPTS,
+      service, err = kong.cache:get(cache_key, TTL_ZERO,
                                     load_service_from_db, service_pk)
 
     else -- init phase, not present on init cache
@@ -642,9 +642,7 @@ do
     -- we might not need to rebuild the router (if we were not
     -- the first request in this process to enter this code path)
     -- check again and rebuild only if necessary
-    local version, err = kong.cache:get("router:version",
-                                        CACHE_ROUTER_OPTS,
-                                        utils.uuid)
+    local version, err = kong.cache:get("router:version", TTL_ZERO, utils.uuid)
     if err then
       log(CRIT, "could not ensure router is up to date: ", err)
       return nil, err
