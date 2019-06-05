@@ -670,6 +670,39 @@ describe("Configuration loader", function()
           assert.is_nil(err)
           assert.same(http_tls.modern_cipher_list, conf.ssl_ciphers)
         end)
+        it("defines ssl_protocols by default", function()
+          local conf, err = conf_loader(nil, {})
+          assert.is_nil(err)
+          assert.equal("TLSv1.1 TLSv1.2 TLSv1.3", conf.ssl_protocols, nil, true)
+        end)
+        it("explicitly defines ssl_protocols", function()
+          local conf, err = conf_loader(nil, {
+            ssl_protocols = "tlsv1"
+          })
+          assert.is_nil(err)
+          assert.equal("TLSv1", conf.ssl_protocols, nil, true)
+        end)
+        it("explicitly defines multiple ssl_protocols (comma separated)", function()
+          local conf, err = conf_loader(nil, {
+            ssl_protocols = "SSLV3, tlsv1"
+          })
+          assert.is_nil(err)
+          assert.equal("SSLv3 TLSv1", conf.ssl_protocols, nil, true)
+        end)
+        it("explicitly defines multiple ssl_protocols (space separated)", function()
+          local conf, err = conf_loader(nil, {
+            ssl_protocols = "SSLV3  tlsv1"
+          })
+          assert.is_nil(err)
+          assert.equal("SSLv3 TLSv1", conf.ssl_protocols, nil, true)
+        end)
+        it("doesn't define ssl_protocols when no protocols specified (uses nginx defaults)", function()
+          local conf, err = conf_loader(nil, {
+            ssl_protocols = ""
+          })
+          assert.is_nil(err)
+          assert.equal(nil, conf.ssl_protocols, nil, true)
+        end)
       end)
       describe("client", function()
         it("requires both proxy SSL cert and key", function()

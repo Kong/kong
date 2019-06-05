@@ -167,6 +167,7 @@ local CONF_INFERENCES = {
   dns_no_sync = { typ = "boolean" },
   router_consistency = { enum = { "strict", "eventual" } },
 
+  ssl_protocols = { typ = "array" },
   client_ssl = { typ = "boolean" },
 
   proxy_access_log = { typ = "string" },
@@ -376,6 +377,41 @@ local function check_and_infer(conf)
     if conf.admin_ssl_cert_key and not pl_path.exists(conf.admin_ssl_cert_key) then
       errors[#errors + 1] = "admin_ssl_cert_key: no such file at " ..
                           conf.admin_ssl_cert_key
+    end
+  end
+
+  if conf.ssl_protocols then
+    local allowed = {
+      ["SSLV2"]   = "SSLv2",
+      ["SSLV3"]   = "SSLv3",
+      ["TLSV1"]   = "TLSv1",
+      ["TLSV1.1"] = "TLSv1.1",
+      ["TLSV1.2"] = "TLSv1.2",
+      ["TLSV1.3"] = "TLSv1.3",
+    }
+
+    local protocols = {}
+    for _, name in ipairs(conf.ssl_protocols) do
+      local protocol_values = pl_stringx.split(name, " ")
+      for _, protocol_value in ipairs(protocol_values) do
+        protocol_value = pl_stringx.strip(protocol_value)
+        if protocol_value ~= "" then
+          local protocol = allowed[protocol_value:upper()]
+          if protocol then
+            protocols[#protocols + 1] = protocol
+          else
+            protocols[#protocols + 1] = name
+            errors[#errors + 1] = fmt("ssl_protocols: invalid entry '%s'",
+                                      tostring(name))
+          end
+        end
+      end
+    end
+
+    if #protocols > 0 then
+      conf.ssl_protocols = concat(protocols, " ")
+    else
+      conf.ssl_protocols = nil
     end
   end
 

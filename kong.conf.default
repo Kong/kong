@@ -239,6 +239,11 @@
                                  # `m`, with a minimum recommended value of
                                  # a few MBs.
 
+#ssl_protocols = TLSv1.1, TLSv1.2, TLSv1.3  # Enables specified `ssl_protocols`.
+                                            # The allowed values are `SSLv2`,
+                                            # `SSLv3`, `TLSv1`, `TLSv1.1`,
+                                            # `TLSv1.2`, and `TLSv1.3`
+
 #ssl_cipher_suite = modern       # Defines the TLS ciphers served by Nginx.
                                  # Accepted values are `modern`,
                                  # `intermediate`, `old`, or `custom`.
