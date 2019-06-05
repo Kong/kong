@@ -2,6 +2,7 @@
 return function(plugin_name)
 
   local typedefs = require "kong.db.schema.typedefs"
+  local loadstring = loadstring
 
 
   local function validate_function(fun)

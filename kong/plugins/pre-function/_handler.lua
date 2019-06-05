@@ -1,18 +1,17 @@
 -- handler file for both the pre-function and post-function plugin
 return function(plugin_name, priority)
-
-  local BasePlugin = require "kong.plugins.base_plugin"
-  local ServerlessFunction = BasePlugin:extend()
+  local loadstring = loadstring
+  local insert = table.insert
+  local ipairs = ipairs
 
   local config_cache = setmetatable({}, { __mode = "k" })
 
-  function ServerlessFunction:new()
-    ServerlessFunction.super.new(self, plugin_name)
-  end
-
+  local ServerlessFunction = {
+    PRIORITY = priority,
+    VERSION = "0.1.0",
+  }
 
   function ServerlessFunction:access(config)
-    ServerlessFunction.super.access(self)
 
     local functions = config_cache[config]
     if not functions then
@@ -20,7 +19,7 @@ return function(plugin_name, priority)
       for _, fn_str in ipairs(config.functions) do
         local func1 = loadstring(fn_str)
         local _, func2 = pcall(func1)
-        table.insert(functions, type(func2) == "function" and func2 or func1)
+        insert(functions, type(func2) == "function" and func2 or func1)
       end
       config_cache[config] = functions
     end
@@ -29,10 +28,6 @@ return function(plugin_name, priority)
       fn()
     end
   end
-
-
-  ServerlessFunction.PRIORITY = priority
-  ServerlessFunction.VERSION = "0.1.0"
 
 
   return ServerlessFunction
