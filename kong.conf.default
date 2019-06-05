@@ -130,6 +130,14 @@
                          # - `transparent` will cause kong to listen to, and
                          #   respond from, any and all IP addresses and ports
                          #   you configure in iptables.
+                         # - `deferred` instructs to use a deferred accept on
+                         #   Linux (the TCP_DEFER_ACCEPT socket option).
+                         # - `bind` instructs to make a separate bind() call
+                         #   for a given address:port pair.
+                         # - `reuseport` instructs to create an individual
+                         #   listening socket for each worker process
+                         #   allowing a kernel to distribute incoming
+                         #   connections between worker processes
                          #
                          # This value can be set to `off`, thus disabling
                          # the HTTP/HTTPS proxy port for this node.
@@ -165,6 +173,12 @@
                          # - `transparent` will cause kong to listen to, and
                          #   respond from, any and all IP addresses and ports
                          #   you configure in iptables.
+                         # - `bind` instructs to make a separate bind() call
+                         #   for a given address:port pair.
+                         # - `reuseport` instructs to create an individual
+                         #   listening socket for each worker process
+                         #   allowing a kernel to distribute incoming
+                         #   connections between worker processes
                          #
                          # **Note:** The `ssl` suffix is not supported,
                          # and each address/port will accept TCP with or
@@ -200,8 +214,19 @@
                          #   enabled.
                          # - `http2` will allow for clients to open HTTP/2
                          #   connections to Kong's proxy server.
-                         # - Finally, `proxy_protocol` will enable usage of the
+                         # - `proxy_protocol` will enable usage of the
                          #   PROXY protocol for a given address/port.
+                         # - `transparent` will cause kong to listen to, and
+                         #   respond from, any and all IP addresses and ports
+                         #   you configure in iptables.
+                         # - `deferred` instructs to use a deferred accept on
+                         #   Linux (the TCP_DEFER_ACCEPT socket option).
+                         # - `bind` instructs to make a separate bind() call
+                         #   for a given address:port pair.
+                         # - `reuseport` instructs to create an individual
+                         #   listening socket for each worker process
+                         #   allowing a kernel to distribute incoming
+                         #   connections between worker processes
                          #
                          # This value can be set to `off`, thus disabling
                          # the Admin interface for this node, enabling a

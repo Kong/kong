@@ -149,6 +149,27 @@ describe("NGINX conf compiler", function()
       assert.matches("listen 0.0.0.0:9000 proxy_protocol;", kong_nginx_conf, nil, true)
       assert.matches("real_ip_header%s+proxy_protocol;", kong_nginx_conf)
     end)
+    it("enables deferred", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        proxy_listen = "0.0.0.0:9000 deferred",
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("listen 0.0.0.0:9000 deferred;", kong_nginx_conf, nil, true)
+    end)
+    it("enables bind", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        proxy_listen = "0.0.0.0:9000 bind",
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("listen 0.0.0.0:9000 bind;", kong_nginx_conf, nil, true)
+    end)
+    it("enables reuseport", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        proxy_listen = "0.0.0.0:9000 reuseport",
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("listen 0.0.0.0:9000 reuseport;", kong_nginx_conf, nil, true)
+    end)
     it("disables SSL", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         proxy_listen = "127.0.0.1:8000",

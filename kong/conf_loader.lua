@@ -865,8 +865,10 @@ local function load(path, custom_conf)
   end
 
   do
-    local http_flags = { "ssl", "http2", "proxy_protocol", "transparent" }
-    local stream_flags = { "proxy_protocol", "transparent" }
+    local http_flags = { "ssl", "http2", "proxy_protocol", "transparent",
+                         "deferred", "bind", "reuseport" }
+    local stream_flags = { "proxy_protocol", "transparent", "bind",
+                           "reuseport" }
 
     -- extract ports/listen ips
     conf.proxy_listeners, err = parse_listeners(conf.proxy_listen, http_flags)
