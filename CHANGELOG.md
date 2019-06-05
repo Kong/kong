@@ -1,3 +1,9 @@
+## 1.2.1
+
+### Changed
+
+- Remove dependency to `BasePlugin` (not needed anymore)
+
 ## 0.35
 
 ### Changed
