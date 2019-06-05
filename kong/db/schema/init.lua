@@ -1560,7 +1560,7 @@ end
 -- @return the merged entity
 function Schema:merge_values(top, bottom)
   local output = {}
-  bottom = bottom or {}
+  bottom = (bottom ~= nil and bottom ~= null) and bottom or {}
   for k,v in pairs(bottom) do
     output[k] = v
   end
