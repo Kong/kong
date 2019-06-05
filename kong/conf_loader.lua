@@ -491,6 +491,10 @@ local function check_and_infer(conf)
     errors[#errors + 1] = "pg_semaphore_timeout must be greater than 0"
   end
 
+  if conf.pg_semaphore_timeout ~= math.floor(conf.pg_semaphore_timeout) then
+    errors[#errors + 1] = "pg_semaphore_timeout must be an integer greater than 0"
+  end
+
   return #errors == 0, errors[1], errors
 end
 

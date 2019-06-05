@@ -474,11 +474,12 @@
                                  # The default value of 0 removes this
                                  # concurrency limitation.
 
-#pg_semaphore_timeout = 60       # Defines the timeout, in seconds, after which
-                                 # Postgres query semaphore resource acquisition
-                                 # attempts will fail. Such failures will
-                                 # generally result in the associated proxy or
-                                 # Admin API request failing with an HTTP 500.
+#pg_semaphore_timeout = 60000    # Defines the timeout (in ms) after which
+                                 # PostgreSQL query semaphore resource
+                                 # acquisition attempts will fail. Such
+                                 # failures will generally result in the
+                                 # associated proxy or Admin API request
+                                 # failing with an HTTP 500 status code.
                                  # Detailed discussion of this behavior is
                                  # available in the online documentation.
 

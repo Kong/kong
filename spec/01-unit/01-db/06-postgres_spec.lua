@@ -101,7 +101,7 @@ describe("kong.db [#postgres] connector", function()
         local new_config = {
           pg_database = "kong",
           pg_max_concurrent_queries = 1,
-          pg_semaphore_timeout = 1,
+          pg_semaphore_timeout = 1000,
         }
 
         connector = require "kong.db.strategies.postgres.connector".new(new_config)
@@ -168,7 +168,7 @@ describe("kong.db [#postgres] connector", function()
         local new_config = {
           pg_database = "kong",
           pg_max_concurrent_queries = 2,
-          pg_semaphore_timeout = 0.1,
+          pg_semaphore_timeout = 100,
         }
 
         connector = require "kong.db.strategies.postgres.connector".new(new_config)
