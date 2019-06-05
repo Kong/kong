@@ -21,6 +21,63 @@ local ffi = require "ffi"
 local fmt = string.format
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 
+
+local DHPARAMS = {
+  ffdhe2048 = [[
+-----BEGIN DH PARAMETERS-----
+MIIBCAKCAQEA//////////+t+FRYortKmq/cViAnPTzx2LnFg84tNpWp4TZBFGQz
++8yTnc4kmz75fS/jY2MMddj2gbICrsRhetPfHtXV/WVhJDP1H18GbtCFY2VVPe0a
+87VXE15/V8k1mE8McODmi3fipona8+/och3xWKE2rec1MKzKT0g6eXq8CrGCsyT7
+YdEIqUuyyOP7uWrat2DX9GgdT0Kj3jlN9K5W7edjcrsZCwenyO4KbXCeAvzhzffi
+7MA0BM0oNC9hkXL+nOmFg/+OTxIy7vKBg8P+OxtMb61zO7X8vC7CIAXFjvGDfRaD
+ssbzSibBsu/6iGtCOGEoXJf//////////wIBAg==
+-----END DH PARAMETERS-----
+]],
+  ffdhe3072 = [[
+-----BEGIN DH PARAMETERS-----
+MIIBiAKCAYEA//////////+t+FRYortKmq/cViAnPTzx2LnFg84tNpWp4TZBFGQz
++8yTnc4kmz75fS/jY2MMddj2gbICrsRhetPfHtXV/WVhJDP1H18GbtCFY2VVPe0a
+87VXE15/V8k1mE8McODmi3fipona8+/och3xWKE2rec1MKzKT0g6eXq8CrGCsyT7
+YdEIqUuyyOP7uWrat2DX9GgdT0Kj3jlN9K5W7edjcrsZCwenyO4KbXCeAvzhzffi
+7MA0BM0oNC9hkXL+nOmFg/+OTxIy7vKBg8P+OxtMb61zO7X8vC7CIAXFjvGDfRaD
+ssbzSibBsu/6iGtCOGEfz9zeNVs7ZRkDW7w09N75nAI4YbRvydbmyQd62R0mkff3
+7lmMsPrBhtkcrv4TCYUTknC0EwyTvEN5RPT9RFLi103TZPLiHnH1S/9croKrnJ32
+nuhtK8UiNjoNq8Uhl5sN6todv5pC1cRITgq80Gv6U93vPBsg7j/VnXwl5B0rZsYu
+N///////////AgEC
+-----END DH PARAMETERS-----
+]],
+  ffdhe4096 = [[
+-----BEGIN DH PARAMETERS-----
+MIICCAKCAgEA//////////+t+FRYortKmq/cViAnPTzx2LnFg84tNpWp4TZBFGQz
++8yTnc4kmz75fS/jY2MMddj2gbICrsRhetPfHtXV/WVhJDP1H18GbtCFY2VVPe0a
+87VXE15/V8k1mE8McODmi3fipona8+/och3xWKE2rec1MKzKT0g6eXq8CrGCsyT7
+YdEIqUuyyOP7uWrat2DX9GgdT0Kj3jlN9K5W7edjcrsZCwenyO4KbXCeAvzhzffi
+7MA0BM0oNC9hkXL+nOmFg/+OTxIy7vKBg8P+OxtMb61zO7X8vC7CIAXFjvGDfRaD
+ssbzSibBsu/6iGtCOGEfz9zeNVs7ZRkDW7w09N75nAI4YbRvydbmyQd62R0mkff3
+7lmMsPrBhtkcrv4TCYUTknC0EwyTvEN5RPT9RFLi103TZPLiHnH1S/9croKrnJ32
+nuhtK8UiNjoNq8Uhl5sN6todv5pC1cRITgq80Gv6U93vPBsg7j/VnXwl5B0rZp4e
+8W5vUsMWTfT7eTDp5OWIV7asfV9C1p9tGHdjzx1VA0AEh/VbpX4xzHpxNciG77Qx
+iu1qHgEtnmgyqQdgCpGBMMRtx3j5ca0AOAkpmaMzy4t6Gh25PXFAADwqTs6p+Y0K
+zAqCkc3OyX3Pjsm1Wn+IpGtNtahR9EGC4caKAH5eZV9q//////////8CAQI=
+-----END DH PARAMETERS-----
+]] }
+
+
+local function gen_dhparams(kong_config)
+  for name, pem in pairs(DHPARAMS) do
+    local ssl_path = pl_path.join(kong_config.prefix, "ssl")
+    if pl_path.exists(ssl_path) then
+      local dhparam = pl_path.join(ssl_path, name .. ".pem")
+      if not pl_path.exists(dhparam) then
+        local fd = assert(io.open(dhparam, "w+b"))
+        assert(fd:write(pem))
+        fd:close()
+      end
+    end
+  end
+end
+
+
 local function gen_default_ssl_cert(kong_config, admin)
   -- create SSL folder
   local ok, err = pl_dir.makepath(pl_path.join(kong_config.prefix, "ssl"))
@@ -268,6 +325,10 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     kong_config.admin_ssl_cert_key = kong_config.admin_ssl_cert_key_default
   end
 
+  if kong_config.admin_ssl_enabled or kong_config.proxy_ssl_enabled then
+    gen_dhparams(kong_config)
+  end
+
   -- check ulimit
   local ulimit, err = get_ulimit()
   if not ulimit then return nil, err
@@ -353,5 +414,6 @@ return {
   compile_kong_conf = compile_kong_conf,
   compile_kong_stream_conf = compile_kong_stream_conf,
   compile_nginx_conf = compile_nginx_conf,
-  gen_default_ssl_cert = gen_default_ssl_cert
+  gen_default_ssl_cert = gen_default_ssl_cert,
+  gen_dhparams = gen_dhparams,
 }

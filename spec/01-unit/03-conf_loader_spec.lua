@@ -670,6 +670,58 @@ describe("Configuration loader", function()
           assert.is_nil(err)
           assert.same(http_tls.modern_cipher_list, conf.ssl_ciphers)
         end)
+
+        it("defines ssl_dhparam by default (on non-modern cipher suite)", function()
+          local conf, err = conf_loader(nil, {
+            ssl_cipher_suite = "intermediate",
+          })
+          assert.is_nil(err)
+          assert.matches("ffdhe2048.pem", conf.ssl_dhparam, nil, true)
+        end)
+        it("explicitly defines ssl_dhparam using pre-defined groups (on non-modern cipher suite)", function()
+          local conf, err = conf_loader(nil, {
+            ssl_cipher_suite = "intermediate",
+            ssl_dhparam = "ffdhe2048"
+          })
+          assert.is_nil(err)
+          assert.matches("ffdhe2048.pem", conf.ssl_dhparam, nil, true)
+
+          local conf, err = conf_loader(nil, {
+            ssl_cipher_suite = "intermediate",
+            ssl_dhparam = "ffdhe3072"
+          })
+          assert.is_nil(err)
+          assert.matches("ffdhe3072.pem", conf.ssl_dhparam, nil, true)
+
+          local conf, err = conf_loader(nil, {
+            ssl_cipher_suite = "intermediate",
+            ssl_dhparam = "ffdhe4096"
+          })
+          assert.is_nil(err)
+          assert.matches("ffdhe4096.pem", conf.ssl_dhparam, nil, true)
+        end)
+        it("errors when explicit ssl_dhparam full path does not exists (on non-modern cipher suite)", function()
+          local default_conf, err = conf_loader(nil, {
+            ssl_cipher_suite = "intermediate",
+          })
+          assert.is_nil(err)
+
+          local path = require "pl.path"
+          local dhparams_file = path.join(default_conf.prefix, "ssl", "ffdhe1234.pem")
+          local _, err = conf_loader(nil, {
+            ssl_cipher_suite = "intermediate",
+            ssl_dhparam = dhparams_file
+          })
+          assert.matches("ssl_dhparam: no such file at " .. dhparams_file, err)
+        end)
+        it("doesn't define ssl_dhparam when no parameters specified (uses nginx defaults) (on non-modern cipher suite)", function()
+          local conf, err = conf_loader(nil, {
+            ssl_cipher_suite = "intermediate",
+            ssl_dhparam = ""
+          })
+          assert.is_nil(err)
+          assert.equal(nil, conf.ssl_dhparam, nil, true)
+        end)
       end)
       describe("client", function()
         it("requires both proxy SSL cert and key", function()

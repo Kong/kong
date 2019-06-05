@@ -102,6 +102,9 @@ server {
     ssl_session_timeout 10m;
     ssl_prefer_server_ciphers on;
     ssl_ciphers ${{SSL_CIPHERS}};
+> if ssl_dhparam then
+    ssl_dhparam ${{SSL_DHPARAM}};
+> end
 > end
 
 > if client_ssl then
@@ -216,6 +219,9 @@ server {
     ssl_session_timeout 10m;
     ssl_prefer_server_ciphers on;
     ssl_ciphers ${{SSL_CIPHERS}};
+> if ssl_dhparam then
+    ssl_dhparam ${{SSL_DHPARAM}};
+> end
 > end
 
     # injected nginx_admin_* directives

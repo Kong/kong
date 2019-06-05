@@ -253,6 +253,11 @@
                                  # This value is ignored if `ssl_cipher_suite`
                                  # is not `custom`.
 
+#ssl_dhparam = ffdhe2048         # Defines `ssl_dhparam` from the pre-defined
+                                 # DHE groups: `ffdhe2048`, `ffdhe2048`,
+                                 # `ffdhe4096`, or by specifying the absolute
+                                 # path to DH parameters file.
+
 #ssl_cert =                      # The absolute path to the SSL certificate for
                                  # `proxy_listen` values with SSL enabled.
 

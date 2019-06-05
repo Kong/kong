@@ -379,6 +379,29 @@ local function check_and_infer(conf)
     end
   end
 
+  if conf.ssl_dhparam then
+    if conf.ssl_cipher_suite == "modern" then
+      conf.ssl_dhparam = nil
+
+    else
+      local predefined_paths = {
+        ffdhe2048 = pl_path.join(conf.prefix, "ssl", "ffdhe2048.pem"),
+        ffdhe3072 = pl_path.join(conf.prefix, "ssl", "ffdhe3072.pem"),
+        ffdhe4096 = pl_path.join(conf.prefix, "ssl", "ffdhe4096.pem"),
+      }
+
+      local predefined_path = predefined_paths[conf.ssl_dhparam:lower()]
+      if predefined_path then
+        conf.ssl_dhparam = predefined_path
+
+      else
+        if not pl_path.exists(conf.ssl_dhparam) then
+          errors[#errors + 1] = "ssl_dhparam: no such file at " .. conf.ssl_dhparam
+        end
+      end
+    end
+  end
+
   if conf.ssl_cipher_suite ~= "custom" then
     local list = cipher_suites[conf.ssl_cipher_suite]
     if list then

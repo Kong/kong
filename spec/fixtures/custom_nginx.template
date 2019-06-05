@@ -111,6 +111,9 @@ http {
         ssl_certificate_by_lua_block {
             Kong.ssl_certificate()
         }
+> if ssl_dhparam then
+        ssl_dhparam ${{SSL_DHPARAM}};
+> end
 > end
 
         real_ip_header     ${{REAL_IP_HEADER}};
@@ -213,6 +216,9 @@ http {
         ssl_certificate ${{ADMIN_SSL_CERT}};
         ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
         ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+> if ssl_dhparam then
+        ssl_dhparam ${{SSL_DHPARAM}};
+> end
 > end
 
         # injected nginx_admin_* directives
