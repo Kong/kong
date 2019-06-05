@@ -1,5 +1,3 @@
-local typedefs = require "kong.db.schema.typedefs"
-
 local function validate_shared_dict()
   if not ngx.shared.prometheus_metrics then
     return nil,
