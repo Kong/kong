@@ -55,6 +55,7 @@
 
 - Initial release of Prometheus plugin for Kong.
 
+[0.4.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.3.4...0.4.0
 [0.3.4]: https://github.com/Kong/kong-plugin-prometheus/compare/0.3.3...0.3.4
 [0.3.3]: https://github.com/Kong/kong-plugin-prometheus/compare/0.3.2...0.3.3
 [0.3.2]: https://github.com/Kong/kong-plugin-prometheus/compare/0.3.1...0.3.2
