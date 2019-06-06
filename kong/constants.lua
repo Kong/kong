@@ -96,6 +96,22 @@ return {
     "plugins",
     "cluster_ca",
     "tags",
+    -- ENTERPRISE
+    "files",
+    "developers",
+    "workspaces",
+    "workspace_entities",
+    "workspace_entity_counters",
+    "consumer_reset_secrets",
+    "credentials",
+    "audit_requests",
+    "audit_objects",
+    "rbac_users",
+    "rbac_roles",
+    "rbac_user_roles",
+    "rbac_role_entities",
+    "rbac_role_endpoints",
+    "admins",
   },
   RATELIMIT = {
     PERIODS = {
