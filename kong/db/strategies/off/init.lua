@@ -183,6 +183,11 @@ end
 
 
 local function select_by_field(self, field, value)
+  if type(value) == "table" then
+    local _
+    _, value = next(value)
+  end
+
   local key = self.schema.name .. "|" .. field .. ":" .. value
   return select_by_key(self, key)
 end
