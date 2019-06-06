@@ -1567,6 +1567,13 @@ function Schema:process_auto_fields(data, context, nulls)
     or self.entity_checks)
   then
     read_before_write = true
+
+  elseif context == "select" then
+    for key in pairs(data) do
+      if not self.fields[key] then
+        data[key] = nil
+      end
+    end
   end
 
   return data, nil, read_before_write, check_immutable_fields

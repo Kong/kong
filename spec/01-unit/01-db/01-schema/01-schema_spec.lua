@@ -2711,7 +2711,37 @@ describe("schema", function()
             foo = "bla",
           }
         }, output)
+      end)
 
+      it("removes fields that have been removed from the schema (on select context)", function()
+        local Test = Schema.new({
+          name = "test",
+          subschema_key = "name",
+          fields = {
+            { name = { type = "string", required = true, } },
+            { config = { type = "record", abstract = true } },
+          }
+        })
+        assert(Test:new_subschema("my_subschema", {
+          fields = {
+            { config = {
+              type = "record",
+              fields = {
+                { foo = { type = "string" } },
+              },
+              default = { foo = "bla" }
+            } }
+          }
+        }))
+
+        local input = {
+          name = "my_subschema",
+          config = { foo = "hello", bar = "world" },
+        }
+
+        local output = Test:process_auto_fields(input, "select")
+        input.config.bar = nil
+        assert.same(input, output)
       end)
     end)
   end)
