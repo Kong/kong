@@ -1,6 +1,6 @@
 # Table of Contents
 
-- [1.2.0rc2](#120rc2)
+- [1.2.0](#120)
 - [1.1.2](#112)
 - [1.1.1](#111)
 - [1.1.0](#110)
@@ -27,9 +27,9 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
-## [1.2.0rc2]
+## [1.2.0]
 
-> Released on: 2019/05/31
+> Released on: 2019/06/07
 
 This release brings **improvements to reduce P95 latency** and **consolidates
 declarative configuration support**. It also comes with **newly open sourced
@@ -144,7 +144,7 @@ For more details about the updated installation, please visit the official docs:
   [#4670](https://github.com/Kong/kong/pull/4670)
 - Fix to an issue where `:new` was not always called when Plugins
   deep-inherited from BasePlugin
-  [#4671](https://github.com/Kong/kong/pull/4671) 
+  [#4671](https://github.com/Kong/kong/pull/4671)
 
 #### CLI
 
@@ -152,7 +152,7 @@ For more details about the updated installation, please visit the official docs:
   migrations.
   [#4617](https://github.com/Kong/kong/pull/4617)
 - Fix db_import to upsert via deterministic v5 UUIDs
-  [#4657](https://github.com/Kong/kong/pull/4657) 
+  [#4657](https://github.com/Kong/kong/pull/4657)
 
 #### Plugins
 
@@ -3762,7 +3762,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[1.2.0rc2]: https://github.com/Kong/kong/compare/1.1.2...1.2.0rc2
+[1.2.0]: https://github.com/Kong/kong/compare/1.1.2...1.2.0
 [1.1.2]: https://github.com/Kong/kong/compare/1.1.1...1.1.2
 [1.1.1]: https://github.com/Kong/kong/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/Kong/kong/compare/1.0.3...1.1.0
