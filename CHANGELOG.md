@@ -1,6 +1,6 @@
 # Table of Contents
 
-- [1.2.0rc2](#120rc2)
+- [1.2.0](#120)
 - [1.1.2](#112)
 - [1.1.1](#111)
 - [1.1.0](#110)
@@ -27,14 +27,19 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
-## [1.2.0rc2]
+## [1.2.0]
 
-> Released on: 2019/05/31
+> Released on: 2019/06/07
 
 This release brings **improvements to reduce P95 latency** and **consolidates
 declarative configuration support**. It also comes with **newly open sourced
 plugins**, previously only available to Enterprise customers, and a few
 features around usability.
+
+This release includes database migrations. Please take a few minutes to read
+the [1.2 Upgrade Path](https://github.com/Kong/kong/blob/master/UPGRADE.md)
+for more details regarding changes and migrations before planning to upgrade
+your Kong cluster.
 
 ### Installation
 
@@ -55,6 +60,7 @@ For more details about the updated installation, please visit the official docs:
   [#4457](https://github.com/Kong/kong/pull/4457)
 - :fireworks: **HTTPS routes can now be matched by SNI**: the `snis` route attribute
   can now be set for HTTPS routes and is used as a routing attribute
+  [#4633](https://github.com/Kong/kong/pull/4633)
 - The loading of declarative configuration is now done atomically, and with a
   safety check to verify that the new configuration fits in memory.
   [#4579](https://github.com/Kong/kong/pull/4579)
@@ -66,6 +72,13 @@ For more details about the updated installation, please visit the official docs:
 - DAO operations can now be passed a new options `no_broadcast_crud_event`
   to prevent Kong firing the worker events.
   [#4540](https://github.com/Kong/kong/pull/4540)
+- Support loading custom DAO strategies for plugins.
+  [#4518](https://github.com/Kong/kong/pull/4518)
+- Use unique fields or endpoint keys in `insert`, `update`, `upsert`,
+  `update_by_*`, `upsert_by_*` Kong DB calls and admin API calls.
+  [#4339](https://github.com/Kong/kong/pull/4339)
+- Add support for stream ipv6 routes.
+  [#4333](https://github.com/Kong/kong/pull/4333)
 
 ##### Configuration
 
@@ -144,7 +157,10 @@ For more details about the updated installation, please visit the official docs:
   [#4670](https://github.com/Kong/kong/pull/4670)
 - Fix to an issue where `:new` was not always called when Plugins
   deep-inherited from BasePlugin
-  [#4671](https://github.com/Kong/kong/pull/4671) 
+  [#4671](https://github.com/Kong/kong/pull/4671)
+- Fix an issue where Postgres would not bootstrap the schema with an account
+  with limited permissions. [#4506](https://github.com/Kong/kong/pull/4506)
+
 
 #### CLI
 
@@ -152,7 +168,7 @@ For more details about the updated installation, please visit the official docs:
   migrations.
   [#4617](https://github.com/Kong/kong/pull/4617)
 - Fix db_import to upsert via deterministic v5 UUIDs
-  [#4657](https://github.com/Kong/kong/pull/4657) 
+  [#4657](https://github.com/Kong/kong/pull/4657)
 
 #### Plugins
 
@@ -3762,7 +3778,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[1.2.0rc2]: https://github.com/Kong/kong/compare/1.1.2...1.2.0rc2
+[1.2.0]: https://github.com/Kong/kong/compare/1.1.2...1.2.0
 [1.1.2]: https://github.com/Kong/kong/compare/1.1.1...1.1.2
 [1.1.1]: https://github.com/Kong/kong/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/Kong/kong/compare/1.0.3...1.1.0
