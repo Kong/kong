@@ -1,11 +1,15 @@
+local helpers = require "spec.helpers"
 local session = require "kong.plugins.session.session"
+local phases = require "kong.pdk.private.phases"
 
 describe("Plugin: Session - session.lua", function()
   local old_ngx
 
   before_each(function()
+    kong.ctx.core.phase = phases.phases.request
+
     old_ngx = {
-      var = {},
+      get_phase = function()end,
       req = {
         read_body = function()end
       },
@@ -21,10 +25,8 @@ describe("Plugin: Session - session.lua", function()
 
 
   it("logs out with GET request", function()
-    ngx.req.get_uri_args = function()
-      return {["session_logout"] = true}
-    end
-    ngx.var.request_method = "GET"
+    kong.request.get_query = function() return {["session_logout"] = true} end
+    kong.request.get_method = function() return "GET" end
 
     local conf = {
       logout_methods = {"GET", "POST"},
@@ -39,7 +41,7 @@ describe("Plugin: Session - session.lua", function()
       return {["session_logout"] = true}
     end
     ngx.req.read_body = function() end
-    ngx.var.request_method = "POST"
+    kong.request.get_method = function() return "POST" end
 
     local conf = {
       logout_methods = {"POST"},
@@ -54,8 +56,8 @@ describe("Plugin: Session - session.lua", function()
       return {["session_logout"] = true}
     end
     ngx.req.read_body = function() end
-    ngx.var.request_method = "DELETE"
-    
+    kong.request.get_method = function() return "DELETE" end
+
     local conf = {
       logout_methods = {"DELETE"},
       logout_post_arg = "session_logout"
@@ -65,10 +67,8 @@ describe("Plugin: Session - session.lua", function()
   end)
 
   it("logs out with DELETE request with query params", function()
-    ngx.req.get_uri_args = function()
-      return {["session_logout"] = true}
-    end
-    ngx.var.request_method = "DELETE"
+    kong.request.get_query = function() return {["session_logout"] = true} end
+    kong.request.get_method = function() return "DELETE" end
 
     local conf = {
       logout_methods = {"DELETE"},
@@ -79,10 +79,8 @@ describe("Plugin: Session - session.lua", function()
   end)
 
   it("does not logout with GET requests when method is not allowed", function()
-    ngx.req.get_uri_args = function()
-      return {["session_logout"] = true}
-    end
-    ngx.var.request_method = "GET"
+    kong.request.get_query = function() return {["session_logout"] = true} end
+    kong.request.get_method = function() return "GET" end
 
     local conf = {
       logout_methods = {"DELETE"},
@@ -96,7 +94,7 @@ describe("Plugin: Session - session.lua", function()
     ngx.req.get_post_args = function()
       return {["session_logout"] = true}
     end
-    ngx.var.request_method = "POST"
+    kong.request.get_method = function() return "POST" end
 
     local conf = {
       logout_methods = {"DELETE"},

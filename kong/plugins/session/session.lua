@@ -1,5 +1,5 @@
 local session = require "resty.session"
-local log = ngx.log
+local kong = kong
 
 local _M = {}
 
@@ -82,7 +82,7 @@ function _M.logout(conf)
 
   local logout_methods = conf.logout_methods
   if logout_methods then
-    local request_method = ngx.var.request_method
+    local request_method = kong.request.get_method()
     for _, logout_method in ipairs(logout_methods) do
       if logout_method == request_method then
         logout = true
@@ -94,14 +94,14 @@ function _M.logout(conf)
 
       local logout_query_arg = conf.logout_query_arg
       if logout_query_arg then
-        local uri_args = ngx.req.get_uri_args()
+        local uri_args = kong.request.get_query()
         if uri_args[logout_query_arg] then
           logout = true
         end
       end
 
       if logout then
-        log(ngx.DEBUG, "logout by query argument")
+        kong.log.debug("logout by query argument")
       else
         local logout_post_arg = conf.logout_post_arg
         if logout_post_arg then
@@ -112,7 +112,7 @@ function _M.logout(conf)
           end
 
           if logout then
-            log(ngx.DEBUG, "logout by post argument")
+            kong.log.debug("logout by post argument")
           end
         end
       end

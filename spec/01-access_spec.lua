@@ -116,11 +116,11 @@ for _, strategy in helpers.each_strategy() do
         })
 
         assert.response(res).has.status(200)
-        
+
         local cookie = assert.response(res).has.header("Set-Cookie")
         local cookie_name = utils.split(cookie, "=")[1]
         assert.equal("session", cookie_name)
-        
+
         -- e.g. ["Set-Cookie"] = 
         --    "da_cookie=m1EL96jlDyQztslA4_6GI20eVuCmsfOtd6Y3lSo4BTY.|15434724
         --    06|U5W4A6VXhvqvBSf4G_v0-Q..|DFJMMSR1HbleOSko25kctHZ44oo.; Path=/
@@ -147,10 +147,10 @@ for _, strategy in helpers.each_strategy() do
         request.headers.apikey = "kong"
         res = assert(client:send(request))
         assert.response(res).has.status(200)
-        
+
         cookie = assert.response(res).has.header("Set-Cookie")
         assert.equal("da_cookie", utils.split(cookie, "=")[1])
-        
+
         local cookie_parts = utils.split(cookie, "; ")
         assert.equal("SameSite=Lax", cookie_parts[3])
         assert.equal(nil, cookie_parts[4])

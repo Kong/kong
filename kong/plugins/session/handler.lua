@@ -2,32 +2,27 @@ local BasePlugin = require "kong.plugins.base_plugin"
 local access = require "kong.plugins.session.access"
 local session = require "kong.plugins.session.session"
 
+local kong = kong
 
--- Grab pluginname from module name
-local plugin_name = ({...})[1]:match("^kong%.plugins%.([^%.]+)")
+local KongSessionHandler = {
+  PRIORITY = 1900,
+  VERSION = "2.0.0",
+}
 
-local KongSessionHandler = BasePlugin:extend()
-
-KongSessionHandler.PRIORITY = 1900
-KongSessionHandler.VERSION = "1.0.0"
-
-function KongSessionHandler:new()
-  KongSessionHandler.super.new(self, plugin_name)
-end
 
 function KongSessionHandler:header_filter(conf)
-  KongSessionHandler.super.header_filter(self)
-  local ctx = ngx.ctx
+  local credential = kong.client.get_credential()
+  local consumer = kong.client.get_consumer()
 
-  if not ctx.authenticated_credential then
+  if not credential then
     -- don't open sessions for anonymous users
-    ngx.log(ngx.DEBUG, "Anonymous: No credential.")
+    kong.log.debug("anonymous: no credential.")
     return
   end
 
-  local credential_id = ctx.authenticated_credential and ctx.authenticated_credential.id
-  local consumer_id = ctx.authenticated_consumer and ctx.authenticated_consumer.id
-  local s = ctx.authenticated_session
+  local credential_id = credential.id
+  local consumer_id = consumer and consumer.id
+  local s = kong.ctx.shared.authenticated_session
 
   -- if session exists and the data in the session matches the ctx then
   -- don't worry about saving the session data or sending cookie
@@ -50,7 +45,6 @@ end
 
 
 function KongSessionHandler:access(conf)
-  KongSessionHandler.super.access(self)
   access.execute(conf)
 end
 

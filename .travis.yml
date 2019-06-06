@@ -48,7 +48,7 @@ env:
 before_install:
   - git clone https://$GITHUB_TOKEN:@github.com/Kong/kong-ci.git
   - source kong-ci/setup_env.sh
-  - git clone https://github.com/Kong/kong.git kong-ce
+  - git clone -b next https://github.com/Kong/kong.git kong-ce
 
 install:
   - luarocks make

@@ -35,7 +35,7 @@ function kong_storage:get(sid)
   local s, err = kong.cache:get(cache_key, nil, load_session, sid)
 
   if err then
-    ngx.log(ngx.ERR, "Error finding session:", err)
+    kong.log.err("could not find session:", err)
   end
 
   return s, err
@@ -91,7 +91,7 @@ function kong_storage:insert_session(sid, data, expires)
   }, { ttl = self.lifetime })
 
   if err then
-    ngx.log(ngx.ERR, "Error inserting session: ", err)
+    kong.log.err("could not insert session: ", err)
   end
 end
 
@@ -99,7 +99,7 @@ end
 function kong_storage:update_session(id, params, ttl)
   local _, err = self.db.sessions:update({ id = id }, params, { ttl = ttl })
   if err then
-    ngx.log(ngx.ERR, "Error updating session: ", err)
+    kong.log.err("could not update session: ", err)
   end
 end
 
@@ -120,7 +120,7 @@ function kong_storage:save(id, expires, data, hmac)
     return value
   end
 
-  return nil, "expired" 
+  return nil, "expired"
 end
 
 
@@ -136,7 +136,7 @@ function kong_storage:destroy(id)
   })
 
   if err then
-    ngx.log(ngx.ERR, "Error deleting session: ", err)
+    kong.log.err("could not delete session: ", err)
   end
 end
 
