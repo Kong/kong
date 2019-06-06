@@ -1,7 +1,7 @@
 local singletons = require "kong.singletons"
-local utils      = require "kong.tools.utils"
+local utils = require "kong.tools.utils"
 local tablex = require "pl.tablex"
-local cjson = require "cjson"
+local cjson = require "cjson.safe"
 local ws_dao_wrappers = require "kong.workspaces.dao_wrappers"
 local counters = require "kong.workspaces.counters"
 
@@ -895,12 +895,14 @@ end
 --   in an error.
 -- * if workspace specific config does not exist fall back to
 --   default config value.
--- * if 'explicitly_ws' flag evaluates to true, workspace config
+-- * if 'opts.explicitly_ws' flag evaluates to true, workspace config
 --   will be returned, even if it is nil/null
-function _M.retrieve_ws_config(config_name, workspace, explicitly_ws)
+-- * if 'opts.decode_json' and conf is string, will decode and return table
+function _M.retrieve_ws_config(config_name, workspace, opts)
   local conf
+  opts = opts or {}
 
-  if explicitly_ws or workspace.config and
+  if opts.explicitly_ws or workspace.config and
     workspace.config[config_name] ~= nil and
     workspace.config[config_name] ~= ngx.null then
     conf = workspace.config[config_name]
@@ -913,6 +915,15 @@ function _M.retrieve_ws_config(config_name, workspace, explicitly_ws)
   -- if table, return a copy so that we don't mutate the conf
   if type(conf) == "table" then
     return utils.deep_copy(conf)
+  end
+
+  if opts.decode_json and type(conf) == "string" then
+    local json_conf, err = cjson.decode(conf)
+    if err then
+      return nil, err
+    end
+
+    return json_conf
   end
 
   return conf

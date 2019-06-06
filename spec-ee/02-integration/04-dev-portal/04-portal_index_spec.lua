@@ -5,7 +5,7 @@ local pl_path    = require "pl.path"
 local pl_file    = require "pl.file"
 
 
-local PORTAL_SESSION_CONF = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }"
+local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
 
 
 local function configure_portal(db, workspace_name)

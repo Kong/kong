@@ -72,7 +72,7 @@ for _, strategy in helpers.each_strategy() do
           database = strategy,
           portal = conf_on,
           portal_auth = "basic-auth",
-          portal_session_conf = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }",
+          portal_session_conf = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }",
         }))
 
         developer = assert(db.developers:insert {

@@ -331,7 +331,8 @@ end
 
 function _M.exit_if_portal_disabled()
   local ws = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-  local enabled_in_ws = workspaces.retrieve_ws_config(PORTAL, ws, true)
+  local opts = { explicitly_ws = true }
+  local enabled_in_ws = workspaces.retrieve_ws_config(PORTAL, ws, opts)
   local enabled_in_conf = kong.configuration.portal
   if not enabled_in_conf or not enabled_in_ws then
     return kong.response.exit(404, { message = "Not Found" })

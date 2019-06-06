@@ -234,21 +234,21 @@ describe("Configuration loader - enterprise", function()
       assert.equal("portal_session_conf is required when portal_auth is set to basic-auth", err)
     end)
 
-    it("enforces portal_session_conf 'storage' must be set to 'kong'", function()
+    it("enforces portal_session_conf 'secret' must be type 'string'", function()
       local _, err = conf_loader(nil, {
         portal = "on",
         portal_auth = "basic-auth",
-        portal_session_conf = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }",
+        portal_session_conf = "{ \"secret\": \"super-secret\" }",
       })
       assert.is_nil(err)
 
       local conf, err = conf_loader(nil, {
         portal = "on",
         portal_auth = "basic-auth",
-        portal_session_conf = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false }",
+        portal_session_conf = "{}",
       })
       assert.is_nil(conf)
-      assert.equal("portal_session_conf 'storage' must equal 'kong'", err)
+      assert.equal("portal_session_conf 'secret' must be type 'string'", err)
     end)
   end)
 

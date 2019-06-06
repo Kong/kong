@@ -3,7 +3,11 @@ local cjson       = require "cjson"
 local utils       = require "kong.tools.utils"
 local workspaces  = require "kong.workspaces"
 
-
+local PORTAL_SESSION_CONF = {
+  storage = "kong",
+  cookie_name = "portal_cookie",
+  secret = "shh"
+}
 for _, strategy in helpers.each_strategy() do
 
 describe("Workspaces Admin API (#" .. strategy .. "): ", function()
@@ -136,7 +140,6 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
       end)
 
       describe("portal_auth_conf", function()
-
         after_each(function()
           db:truncate("files")
           db:truncate("workspaces")
@@ -192,8 +195,9 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
               config = {
                 portal_auth = "basic-auth",
                 portal_auth_conf = {
-                  ["hide_credentials"] = true
-                }
+                  hide_credentials = true
+                },
+                portal_session_conf = PORTAL_SESSION_CONF,
               }
             },
             headers = {
@@ -255,8 +259,9 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
               config = {
                 portal_auth = "key-auth",
                 portal_auth_conf = {
-                  ["hide_credentials"] = true
-                }
+                  hide_credentials = true
+                },
+                portal_session_conf = PORTAL_SESSION_CONF
               }
             },
             headers = {
@@ -276,7 +281,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
               config = {
                 portal_auth = "key-auth",
                 portal_auth_conf = {
-                  ["hide_credentials"] = true,
+                  hide_credentials = true,
                 },
                 portal_developer_meta_fields = cjson.encode({{
                   label = "Gotcha",
@@ -308,9 +313,10 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
               config = {
                 portal_auth = "key-auth",
                 portal_auth_conf = {
-                  ["hide_credentials"] = true
+                  hide_credentials = true
                 },
-                portal_developer_meta_fields = cjson.encode(meta_fields)
+                portal_developer_meta_fields = cjson.encode(meta_fields),
+                portal_session_conf = PORTAL_SESSION_CONF
               }
             },
             headers = {
@@ -437,6 +443,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
           config = {
             portal = true,
             portal_auth = "basic-auth",
+            portal_session_conf = PORTAL_SESSION_CONF,
             portal_auto_approve = true,
           }
         })
@@ -462,12 +469,12 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         local res = assert(client:get("/workspaces/sweet-portal-dude"))
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equals(json.config.portal, expected_config.portal)
-        assert.equals(json.config.portal_auth, expected_config.portal_auth)
-        assert.equals(json.config.portal_auto_approve, expected_config.portal_auto_approve)
+        assert.equals(expected_config.portal, json.config.portal)
+        assert.equals(expected_config.portal_auth, json.config.portal_auth)
+        assert.equals(expected_config.portal_auto_approve, json.config.portal_auto_approve)
       end)
 
-      it("validats auth type with current auth conf when none is sent with request", function()
+      it("validates auth type with current auth conf when none is sent with request", function()
         assert(bp.workspaces:insert {
           name = "neat-portal-friend",
           config = {
@@ -475,7 +482,8 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
             portal_auth = "key-auth",
             portal_auth_conf = {
               ["key_in_body"] = false,
-            }
+            },
+            portal_session_conf = PORTAL_SESSION_CONF
           }
         })
 
@@ -492,11 +500,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
-        assert.same({
-          config = {
-            key_in_body = 'unknown field'
-          }
-        }, json.message)
+        assert.equals('unknown field', json.message.config.key_in_body)
       end)
 
       describe("portal_auth_conf", function()
@@ -507,7 +511,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
           db:truncate("workspace_entities")
         end)
 
-        it("(basic-auth) does not allow PATCH without 'portal_auth' value", function()
+        it("allows PATCH withv'portal_auth_conf' without 'portal_auth' value", function()
           assert(bp.workspaces:insert {
             name = "rad-portal-man",
             config = {
@@ -519,7 +523,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
             body = {
               config = {
                 portal_auth_conf = {
-                  ["hide_credentials"] = true
+                  hide_credentials = true
                 }
               }
             },
@@ -528,9 +532,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
             }
           })
 
-          local body = assert.res_status(400, res)
-          local json = cjson.decode(body)
-          assert.equals("'config.portal_auth' must be set in order to configure 'config.portal_auth_conf'", json.message)
+          assert.res_status(200, res)
         end)
 
         it("(basic-auth) allows PATCH when setting 'portal_auth' in same call", function()
@@ -545,9 +547,10 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
             body = {
               config = {
                 portal_auth_conf = {
-                  ["hide_credentials"] = true
+                  hide_credentials = true
                 },
-                portal_auth = 'basic-auth'
+                portal_auth = 'basic-auth',
+                portal_session_conf = PORTAL_SESSION_CONF
               }
             },
             headers = {
@@ -565,7 +568,8 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
             name = "rad-portal-man",
             config = {
               portal = true,
-              portal_auth = 'basic-auth'
+              portal_auth = 'basic-auth',
+              portal_session_conf = PORTAL_SESSION_CONF
             }
           })
 
@@ -573,7 +577,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
             body = {
               config = {
                 portal_auth_conf = {
-                  ["hide_credentials"] = true
+                  hide_credentials = true
                 }
               }
             },
@@ -594,8 +598,9 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
               config = {
                 portal_auth = "basic-auth",
                 portal_auth_conf = {
-                  ["hide_credentials"] = true,
-                }
+                  hide_credentials = true,
+                },
+                portal_session_conf = PORTAL_SESSION_CONF
               }
             },
             headers = {
@@ -612,7 +617,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
             body = {
               config = {
                 portal_auth_conf = {
-                  ["hide_credentials"] = false
+                  hide_credentials = false
                 }
               }
             },
@@ -633,9 +638,10 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
               config = {
                 portal_auth = "key-auth",
                 portal_auth_conf = {
-                  ["hide_credentials"] = false,
+                  hide_credentials = false,
                   ["key_names"] = { "dog" }
-                }
+                },
+                portal_session_conf = PORTAL_SESSION_CONF
               }
             },
             headers = {
@@ -653,7 +659,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
             body = {
               config = {
                 portal_auth_conf = {
-                  ["hide_credentials"] = true
+                  hide_credentials = true
                 }
               }
             },
@@ -668,6 +674,262 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
             '{"hide_credentials":true}',
             json.config.portal_auth_conf
           )
+        end)
+      end)
+
+      describe("portal_session_conf", function()
+        before_each(function()
+          db:truncate("files")
+          db:truncate("workspaces")
+          db:truncate("workspace_entities")
+        end)
+
+        it("(basic-auth) requires portal_session conf when portal_auth is basic-auth", function()
+          assert(bp.workspaces:insert {
+            name = "rad-portal-man",
+            config = {
+              portal = true
+            }
+          })
+
+          local res = client:patch("/workspaces/rad-portal-man", {
+            body = {
+              config = {
+                portal_auth = "basic-auth"
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.equals("'portal_session_conf' is required when 'portal_auth' is set to basic-auth", json.message)
+        end)
+
+        it("(key-auth) requires portal_session conf when portal_auth is key-auth", function()
+          assert(bp.workspaces:insert {
+            name = "rad-portal-man",
+            config = {
+              portal = true
+            }
+          })
+
+          local res = client:patch("/workspaces/rad-portal-man", {
+            body = {
+              config = {
+                portal_auth = "key-auth"
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.equals("'portal_session_conf' is required when 'portal_auth' is set to key-auth", json.message)
+        end)
+
+        it("(nil auth) does not require portal_session conf when portal_auth is not set", function()
+          assert(bp.workspaces:insert {
+            name = "rad-portal-man",
+            config = {
+              portal = false,
+            }
+          })
+
+          local res = client:patch("/workspaces/rad-portal-man", {
+            body = {
+              config = {
+                portal = true,
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          assert.res_status(200, res)
+        end)
+
+
+        it("(null auth) does not require portal_session conf when portal_auth is not set", function()
+          assert(bp.workspaces:insert {
+            name = "rad-portal-man",
+            config = {
+              portal = false,
+            }
+          })
+
+          local res = client:patch("/workspaces/rad-portal-man", {
+            body = {
+              config = {
+                portal = true,
+                portal_auth = ngx.null,
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          assert.res_status(200, res)
+        end)
+
+        it("(auth off) does not require portal_session conf when portal_auth is not set", function()
+          assert(bp.workspaces:insert {
+            name = "rad-portal-man",
+            config = {
+              portal = false,
+            }
+          })
+
+          local res = client:patch("/workspaces/rad-portal-man", {
+            body = {
+              config = {
+                portal = true,
+                portal_auth = "",
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          assert.res_status(200, res)
+        end)
+
+        it("requires portal_session_conf to be a table", function()
+          assert(bp.workspaces:insert {
+            name = "rad-portal-man",
+            config = {
+              portal = true,
+            }
+          })
+
+          local res = client:patch("/workspaces/rad-portal-man", {
+            body = {
+              config = {
+                portal_auth = "basic-auth",
+                portal_session_conf = "yeet",
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.equals("'config.portal_session_conf' must be type 'table'", json.message)
+        end)
+
+        it("requires secret to be a string", function()
+          assert(bp.workspaces:insert {
+            name = "rad-portal-man",
+            config = {
+              portal = true,
+            }
+          })
+
+          local res = client:patch("/workspaces/rad-portal-man", {
+            body = {
+              config = {
+                portal_auth = "basic-auth",
+                portal_session_conf = {},
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.equals("'config.portal_session_conf.secret' must be type 'string'", json.message)
+        end)
+
+        pending("(openid-connect) does not require portal_session conf when portal_auth is openid-connect", function()
+          assert(bp.workspaces:insert {
+            name = "rad-portal-man",
+            config = {
+              portal = true
+            }
+          })
+
+          local res = client:patch("/workspaces/rad-portal-man", {
+            body = {
+              config = {
+                portal_auth = "openid-connect",
+                portal_auth_conf = {
+                  issuer = "https://accounts.google.com/"
+                }
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          assert.res_status(200, res)
+        end)
+
+        it("accepts valid config", function()
+          assert(bp.workspaces:insert {
+            name = "rad-portal-man",
+            config = {
+              portal = true,
+            }
+          })
+
+          local res = client:patch("/workspaces/rad-portal-man", {
+            body = {
+              config = {
+                portal_auth = "basic-auth",
+                portal_session_conf = {
+                  secret = "shh"
+                }
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          assert.res_status(200, res)
+        end)
+
+        it("overrides previous values", function()
+          assert(bp.workspaces:insert {
+            name = "rad-portal-man",
+            config = {
+              portal = true,
+              portal_auth = "basic-auth",
+              portal_session_conf = {
+                secret = "don't tell anyone"
+              }
+            }
+          })
+
+          local res = client:patch("/workspaces/rad-portal-man", {
+            body = {
+              config = {
+                portal_auth = "basic-auth",
+                portal_session_conf = PORTAL_SESSION_CONF
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          local session_conf = cjson.decode(json.config.portal_session_conf)
+
+          assert.same(PORTAL_SESSION_CONF, session_conf)
         end)
       end)
     end)

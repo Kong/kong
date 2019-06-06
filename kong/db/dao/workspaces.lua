@@ -4,12 +4,7 @@ local _Workspaces = {}
 
 
 function _Workspaces:insert(entity, options)
-  local entity, err = portal_helpers.set_portal_auth_conf({}, entity)
-  if not entity then
-    return kong.response.exit(400, { message = err })
-  end
-
-  entity, err = portal_helpers.set_portal_developer_meta_fields({}, entity)
+  local entity, err = portal_helpers.set_portal_conf({}, entity)
   if not entity then
     return kong.response.exit(400, { message = err })
   end
@@ -24,12 +19,7 @@ function _Workspaces:update(workspace_pk, entity, options)
     return nil, err, err_t
   end
 
-  entity, err = portal_helpers.set_portal_auth_conf(ws, entity)
-  if not entity then
-    return kong.response.exit(400, { message = err })
-  end
-
-  entity, err = portal_helpers.set_portal_developer_meta_fields({}, entity)
+  local entity, err = portal_helpers.set_portal_conf(ws, entity)
   if not entity then
     return kong.response.exit(400, { message = err })
   end
@@ -44,12 +34,7 @@ function _Workspaces:update_by_name(workspace_name, entity, options)
     return nil, err, err_t
   end
 
-  entity, err = portal_helpers.set_portal_auth_conf(ws, entity)
-  if not entity then
-    return kong.response.exit(400, { message = err })
-  end
-
-  entity, err = portal_helpers.set_portal_developer_meta_fields({}, entity)
+  local entity, err = portal_helpers.set_portal_conf(ws, entity)
   if not entity then
     return kong.response.exit(400, { message = err })
   end

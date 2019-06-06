@@ -5,6 +5,9 @@ local enums       = require "kong.enterprise_edition.dao.enums"
 local ee_helpers  = require "spec-ee.helpers"
 
 
+local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
+
+
 local function configure_portal()
   singletons.db.workspaces:upsert_by_name("default", {
     name = "default",
@@ -53,7 +56,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
     assert(helpers.start_kong({
       portal = true,
       portal_auth = "basic-auth",
-      portal_session_conf = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }",
+      portal_session_conf = PORTAL_SESSION_CONF,
       database = strategy,
     }))
   end)
@@ -606,7 +609,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
             database   = strategy,
             portal     = true,
             portal_auth = "basic-auth",
-            portal_session_conf = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }",
+            portal_session_conf = PORTAL_SESSION_CONF,
             portal_auth_config = "{ \"hide_credentials\": true }",
             portal_auto_approve = "off",
             portal_invite_email = "off",
@@ -645,7 +648,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
             database   = strategy,
             portal     = true,
             portal_auth = "basic-auth",
-            portal_session_conf = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }",
+            portal_session_conf = PORTAL_SESSION_CONF,
             portal_auth_config = "{ \"hide_credentials\": true }",
             portal_auto_approve = "off",
             portal_emails_from = "me@example.com",
@@ -821,7 +824,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         database   = strategy,
         portal     = true,
         portal_auth = "basic-auth",
-        portal_session_conf = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }",
+        portal_session_conf = PORTAL_SESSION_CONF,
         portal_auth_config = "{ \"hide_credentials\": true }",
         portal_auto_approve = "off",
         portal_invite_email = "off",
@@ -949,7 +952,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         database   = strategy,
         portal     = true,
         portal_auth = "basic-auth",
-        portal_session_conf = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }",
+        portal_session_conf = PORTAL_SESSION_CONF,
         portal_auth_config = "{ \"hide_credentials\": true }",
         portal_auto_approve = "off",
         portal_invite_email = "off",
