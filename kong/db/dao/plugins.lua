@@ -93,7 +93,7 @@ end
 
 
 function Plugins:update(primary_key, entity, options)
-  local rbw_entity = self.strategy:select(primary_key, options) -- ignore errors
+  local rbw_entity = self.super.select(self, primary_key, options) -- ignore errors
   if rbw_entity then
     entity = self.schema:merge_values(entity, rbw_entity)
   end
@@ -107,7 +107,7 @@ end
 
 
 function Plugins:upsert(primary_key, entity, options)
-  local rbw_entity = self.strategy:select(primary_key, options) -- ignore errors
+  local rbw_entity = self.super.select(self, primary_key, options) -- ignore errors
   if rbw_entity then
     entity = self.schema:merge_values(entity, rbw_entity)
   end
