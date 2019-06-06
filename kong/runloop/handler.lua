@@ -728,7 +728,6 @@ local function balancer_prepare(ctx, match_t, host_type, host, port,
       upstream_postfix    = match_t.upstream_uri_postfix or "",
       upstream_prefix     = (service or EMPTY_T).path or "/",
       -- downstream_match = nil,
-      -- has_args         = nil,
     }
   }
 
@@ -738,10 +737,8 @@ local function balancer_prepare(ctx, match_t, host_type, host, port,
 
       if idx then
         idx = idx - 1
-        balancer_data.uri.has_args = true
       else
         idx = #request_uri
-        balancer_data.uri.has_args = false
       end
 
       idx = idx - #(match_t.upstream_uri_postfix or "")
@@ -791,7 +788,7 @@ local function balancer_execute(ctx)
 end
 
 
-local function build_upstream_uri(components, request_args)
+local function build_upstream_uri(components)
   local upstream_uri
   local postfix = components.upstream_postfix
   local prefix = components.upstream_prefix or "/"
@@ -814,8 +811,8 @@ local function build_upstream_uri(components, request_args)
   end
 
 
-  if components.has_args then
-    return upstream_uri .. "?" .. (request_args or "")
+  if var.is_args == "?" or sub(var.request_uri, -1) == "?" then
+    upstream_uri = upstream_uri .. "?" .. (var.args or "")
   end
 
   return upstream_uri
@@ -1256,7 +1253,7 @@ return {
       local balancer_data = ctx.balancer_data
 
       if balancer_data.uri.request_uri then
-        var.upstream_uri = build_upstream_uri(balancer_data.uri, var.args)
+        var.upstream_uri = build_upstream_uri(balancer_data.uri)
       end
 
       balancer_data.scheme = var.upstream_scheme -- COMPAT: pdk
