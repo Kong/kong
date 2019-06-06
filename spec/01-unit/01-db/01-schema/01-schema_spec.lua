@@ -1705,7 +1705,7 @@ describe("schema", function()
         a1 = "foo"
       })
       assert.is_falsy(ok)
-      assert.match("All or none of 'a1', 'a3' must be set. Only 'a1' found", err["@entity"][1])
+      assert.match("all or none of these fields must be set: 'a1', 'a3'", err["@entity"][1])
 
       ok, err = Test:validate_update({
         a2 = "foo"
@@ -1734,7 +1734,7 @@ describe("schema", function()
         a5 = "bla",
       })
       assert.is_falsy(ok)
-      assert.match("'a1' must not be set with 'a5'", err["@entity"][1])
+      assert.same("these sets are mutually exclusive: ('a1'), ('a5')", err["@entity"][1])
 
       ok, err = Test:validate_update({
         a1 = "foo",
@@ -1747,7 +1747,7 @@ describe("schema", function()
         a5 = "bla",
       })
       assert.is_falsy(ok)
-      assert.match("'a3' must not be set with 'a5'", err["@entity"][1])
+      assert.same("these sets are mutually exclusive: ('a3'), ('a5')", err["@entity"][1])
 
       ok, err = Test:validate_update({
         a5 = "foo",
