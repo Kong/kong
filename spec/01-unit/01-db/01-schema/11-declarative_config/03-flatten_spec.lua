@@ -342,7 +342,8 @@ describe("declarative config: flatten", function()
               created_at = 1234567890,
               custom_id = null,
               id = "UUID",
-              username = "my-consumer"
+              username = "my-consumer",
+              type = 0,
             }
           },
           plugins = {
@@ -1172,7 +1173,8 @@ describe("declarative config: flatten", function()
                 custom_id = null,
                 id = "UUID",
                 tags = null,
-                username = "bob"
+                username = "bob",
+                type = 0,
               } }
           }, idempotent(config))
 
@@ -1198,7 +1200,8 @@ describe("declarative config: flatten", function()
                 custom_id = null,
                 id = "UUID",
                 tags = null,
-                username = "bob"
+                username = "bob",
+                type = 0,
               } },
             oauth2_credentials = { {
                 client_id = "RANDOM",

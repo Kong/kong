@@ -22,7 +22,7 @@ describe("declarative config: process_auto_fields", function()
         ]])
         config = DeclarativeConfig:process_auto_fields(config, "select", false)
         assert.same({
-          _format_version = "1.1",
+         _format_version = "1.1",
           services = {}
         }, config)
       end)
@@ -723,6 +723,7 @@ describe("declarative config: process_auto_fields", function()
             _format_version = "1.1",
             consumers = {
               {
+                type = 0,
                 username = "bob",
                 oauth2_credentials = {},
               }
@@ -748,6 +749,7 @@ describe("declarative config: process_auto_fields", function()
             _format_version = "1.1",
             consumers = {
               {
+                type = 0,
                 username = "bob",
                 oauth2_credentials = {
                   {
