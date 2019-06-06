@@ -121,8 +121,8 @@ local function validate_portal_session(conf, errors)
       errors[#errors+1] = "portal_session_conf must be valid json or not set: "
         .. err .. " - " .. conf.portal_session_conf
     else
-      if session_config.storage ~= "kong" then
-        errors[#errors+1] = "portal_session_conf 'storage' must equal 'kong'"
+      if type(session_config.secret) ~= "string" then
+        errors[#errors+1] = "portal_session_conf 'secret' must be type 'string'"
       end
 
       conf.portal_session_conf = session_config

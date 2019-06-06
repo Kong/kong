@@ -12,6 +12,7 @@ describe("retrieve_ws_config", function()
     snapshot = assert:snapshot()
 
     singletons.configuration = {
+      portal = true,
       portal_auth = "basic-auth",
       portal_auth_conf = "{ hide_credentials = true }",
       portal_auto_approve = true,
@@ -27,6 +28,7 @@ describe("retrieve_ws_config", function()
       smtp_admin_emails = {"admin@example.com"},
       portal_session_conf = {
         cookie_name = "yum",
+        secret = "shh"
       },
     }
   end)
@@ -181,6 +183,45 @@ describe("retrieve_ws_config", function()
     local session_conf_2 = workspaces.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
     assert.same(session_conf_2, workspace.config.portal_session_conf)
     assert.not_equal(session_conf_2.cookie_name, session_conf.cookie_name)
+  end)
+
+  it("should return decoded json when opts.decode_json is true", function()
+    local workspace = {
+      config = {
+        portal_session_conf = "{ \"cookie_name\": \"IT WORKS\"}"
+      }
+    }
+
+    local session_conf = workspaces.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
+    assert.is_string(session_conf)
+
+
+    local opts = {
+      decode_json = true
+    }
+
+    local session_conf = workspaces.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace, opts)
+    assert.is_table(session_conf)
+    assert.same("IT WORKS", session_conf.cookie_name)
+  end)
+
+  it("should return workspace config even if nil when opts.explicitly_ws is passed", function()
+    local workspace = {
+      config = {}
+    }
+
+    local portal_enabled = workspaces.retrieve_ws_config(ws_constants.PORTAL, workspace)
+    assert.is_true(portal_enabled)
+    assert.equals(singletons.configuration.portal, portal_enabled)
+
+
+    local opts = {
+      explicitly_ws = true
+    }
+
+    local portal_enabled = workspaces.retrieve_ws_config(ws_constants.PORTAL, workspace, opts)
+    assert.is_nil(portal_enabled)
+    assert.equals(workspace.config.portal, portal_enabled)
   end)
 end)
 

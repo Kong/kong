@@ -8,7 +8,7 @@ local uuid         = require("kong.tools.utils").uuid
 local ee_helpers   = require "spec-ee.helpers"
 local type         = type
 
-local PORTAL_SESSION_CONF = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }"
+local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
 local DEFAULT_CONSUMER = {
   ["basic-auth"] = {
     headers = {

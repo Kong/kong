@@ -197,8 +197,10 @@ function _M.prepare_portal(self, kong_config)
   local portal_gui_url = workspaces.build_ws_portal_gui_url(kong_config, workspace)
   local portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
 
-  local portal_developer_meta_fields =
-    workspaces.retrieve_ws_config(ws_constants.PORTAL_DEVELOPER_META_FIELDS, workspace, true) or '[]'
+  local opts = { explicitly_ws = true }
+  local portal_developer_meta_fields = workspaces.retrieve_ws_config(
+                            ws_constants.PORTAL_DEVELOPER_META_FIELDS,
+                            workspace, opts) or '[]'
 
   return {
     PORTAL_API_URL = prepare_variable(kong_config.portal_api_url),

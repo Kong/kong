@@ -6,7 +6,7 @@ local helpers = require "spec.helpers"
 local ee_helpers = require "spec-ee.helpers"
 local singletons = require "kong.singletons"
 
-local PORTAL_SESSION_CONF = "{ \"cookie_name\": \"portal_session\", \"secret\": \"super-secret\", \"cookie_secure\": false, \"storage\": \"kong\" }"
+local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
 
 local function close_clients(clients)
   for idx, client in ipairs(clients) do

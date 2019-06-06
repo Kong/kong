@@ -13,17 +13,38 @@ local ERR = ngx.ERR
 
 local DEVELOPER_TYPE = enums.CONSUMERS.TYPE.DEVELOPER
 
+local UNEXPECTED_ERR = { message = "An unexpected error occurred" }
+
 local kong = kong
 
 local _M = {}
 
 local auth_plugins = {
-  ["basic-auth"] =     { name = "basic-auth", dao = "basicauth_credentials", credential_key = "password" },
-  ["oauth2"] =         { name = "oauth2",     dao = "oauth2_credentials" },
-  ["hmac-auth"] =      { name = "hmac-auth",  dao = "hmacauth_credentials" },
-  ["jwt"] =            { name = "jwt",        dao = "jwt_secrets" },
-  ["key-auth"] =       { name = "key-auth",   dao = "keyauth_credentials", credential_key = "key" },
-  ["openid-connect"] = { name = "openid-connect" },
+  ["basic-auth"] = {
+    name = "basic-auth",
+    dao = "basicauth_credentials",
+    credential_key = "password",
+  },
+  ["oauth2"] = {
+     name = "oauth2",
+     dao = "oauth2_credentials",
+  },
+  ["hmac-auth"] = {
+    name = "hmac-auth",
+    dao = "hmacauth_credentials"
+  },
+  ["jwt"] = {
+    name = "jwt",
+    dao = "jwt_secrets"
+  },
+  ["key-auth"] = {
+    name = "key-auth",
+    dao = "keyauth_credentials",
+    credential_key = "key"
+  },
+  ["openid-connect"] = {
+    name = "openid-connect"
+  },
 }
 
 local function get_conf_arg(conf, name, default)
@@ -40,7 +61,8 @@ end
 
 local function check_oidc_session()
   local workspace = workspaces.get_workspace()
-  local conf = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH_CONF, workspace)
+  local conf = workspaces.retrieve_ws_config(
+                                      ws_constants.PORTAL_AUTH_CONF, workspace)
   conf = utils.deep_copy(conf or {})
   local cookie_name = get_conf_arg(conf, "session_cookie_name", "session")
 
@@ -69,7 +91,8 @@ local function get_developer()
 
   local status = developer.status
   if status ~= enums.CONSUMERS.STATUS.APPROVED then
-    return nil, "Unauthorized: Developer status: " .. enums.CONSUMERS.STATUS_LABELS[developer.status]
+    local status_label = enums.CONSUMERS.STATUS_LABELS[developer.status]
+    return nil, "Unauthorized: Developer status: " .. status_label
   end
 
   return developer
@@ -91,10 +114,25 @@ function _M.validate_auth_plugin(self, db, helpers, portal_auth)
   return self.collection
 end
 
-function _M.apply_workspace_cookie_name(session_conf, workspace)
-  if workspace.name ~= "default" then
-    session_conf.cookie_name = workspace.name .. "_" .. session_conf.cookie_name
+
+function _M.add_required_session_conf(session_conf, workspace)
+  local session_cookie_name = session_conf.cookie_name
+  local kong_conf_session = kong.configuration.portal_session_conf or {}
+
+  local conflicts_with_default = workspace.name ~= "default" and
+                           session_cookie_name == kong_conf_session.cookie_name
+
+  local not_set = session_cookie_name == nil or
+                  session_cookie_name == "" or
+                  type(session_cookie_name) ~= "string"
+
+  -- assign a unique cookie name if it conflicts the default or is not set
+  if conflicts_with_default or not_set then
+    session_conf.cookie_name = workspace.name .. "_portal_session"
   end
+
+  session_conf.storage = "kong"
+
   return session_conf
 end
 
@@ -105,7 +143,8 @@ function _M.login(self, db, helpers)
   _M.validate_auth_plugin(self, db, helpers)
 
   local workspace = workspaces.get_workspace()
-  local auth_conf = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH_CONF, workspace)
+  local auth_conf = workspaces.retrieve_ws_config(
+                                      ws_constants.PORTAL_AUTH_CONF, workspace)
 
   local ok, err = invoke_plugin({
     name = self.plugin.name,
@@ -117,13 +156,16 @@ function _M.login(self, db, helpers)
 
   if not ok then
     log(ERR, err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return kong.response.exit(500, UNEXPECTED_ERR)
   end
 
-  -- if not openid-connect, run session header_filter to attach session to response
+  -- if not openid-connect
+  -- run session header_filter to attach session to response
   if self.plugin.name ~= "openid-connect" then
-    local session_conf = workspaces.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
-    session_conf = _M.apply_workspace_cookie_name(session_conf, workspace)
+    local opts = { decode_json = true }
+    local session_conf = workspaces.retrieve_ws_config(
+                             ws_constants.PORTAL_SESSION_CONF, workspace, opts)
+    session_conf = _M.add_required_session_conf(session_conf, workspace)
 
     local ok, err = invoke_plugin({
       name = "session",
@@ -135,7 +177,7 @@ function _M.login(self, db, helpers)
 
     if not ok then
       log(ERR, err)
-      return kong.response.exit(500, { message = "An unexpected error occurred" })
+      return kong.response.exit(500, UNEXPECTED_ERR)
     end
   end
 
@@ -162,7 +204,8 @@ function _M.authenticate_api_session(self, db, helpers)
 
   if self.plugin.name == "openid-connect" then
     -- if openid-connect, use the plugin to verify auth
-    local auth_conf = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH_CONF, workspace)
+    local auth_conf = workspaces.retrieve_ws_config(
+                                      ws_constants.PORTAL_AUTH_CONF, workspace)
     ok, err = invoke_plugin({
       name = self.plugin.name,
       config = auth_conf,
@@ -173,12 +216,14 @@ function _M.authenticate_api_session(self, db, helpers)
 
     if not ok then
       log(ERR, err)
-      return kong.response.exit(500, { message = "An unexpected error occurred" })
+      return kong.response.exit(500, UNEXPECTED_ERR)
     end
   else
     -- otherwise, verify the session
-    local session_conf = workspaces.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
-    session_conf = _M.apply_workspace_cookie_name(session_conf, workspace)
+    local opts = { decode_json = true }
+    local session_conf = workspaces.retrieve_ws_config(
+                             ws_constants.PORTAL_SESSION_CONF, workspace, opts)
+    session_conf = _M.add_required_session_conf(session_conf, workspace)
 
     ok, err = invoke_plugin({
       name = "session",
@@ -191,7 +236,7 @@ function _M.authenticate_api_session(self, db, helpers)
 
   if not ok then
     log(ERR, err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return kong.response.exit(500, UNEXPECTED_ERR)
   end
 
   local developer, err = get_developer()
@@ -210,7 +255,8 @@ end
 function _M.authenticate_gui_session(self, db, helpers)
   local invoke_plugin = singletons.invoke_plugin
   local workspace = workspaces.get_workspace()
-  local portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+  local portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH,
+                                                    workspace)
 
   if portal_auth == nil or portal_auth == '' then
     self.developer = {}
@@ -240,7 +286,8 @@ function _M.authenticate_gui_session(self, db, helpers)
       return
     end
 
-    local auth_conf = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH_CONF, workspace)
+    local auth_conf = workspaces.retrieve_ws_config(
+                                      ws_constants.PORTAL_AUTH_CONF, workspace)
     ok, err = invoke_plugin({
       name = self.plugin.name,
       config = auth_conf,
@@ -250,8 +297,10 @@ function _M.authenticate_gui_session(self, db, helpers)
     })
   else
     -- otherwise, verify the session
-    local session_conf = workspaces.retrieve_ws_config(ws_constants.PORTAL_SESSION_CONF, workspace)
-    session_conf = _M.apply_workspace_cookie_name(session_conf, workspace)
+    local opts = { decode_json = true }
+    local session_conf = workspaces.retrieve_ws_config(
+                            ws_constants.PORTAL_SESSION_CONF, workspace, opts)
+    session_conf = _M.add_required_session_conf(session_conf, workspace)
 
     ok, err = invoke_plugin({
       name = "session",
@@ -264,7 +313,7 @@ function _M.authenticate_gui_session(self, db, helpers)
 
   if not ok then
     log(ERR, err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return kong.response.exit(500, UNEXPECTED_ERR)
   end
 
   local developer = get_developer()
@@ -292,7 +341,9 @@ function _M.verify_developer_status(consumer)
 
     local status = developer.status
     if status ~= enums.CONSUMERS.STATUS.APPROVED then
-      return false, 'Unauthorized: Developer status ' .. '"' .. enums.CONSUMERS.STATUS_LABELS[developer.status] .. '"'
+      local label = enums.CONSUMERS.STATUS_LABELS[developer.status]
+      local msg = 'Unauthorized: Developer status ' .. '"' .. label .. '"'
+      return false, msg
     end
   end
 
