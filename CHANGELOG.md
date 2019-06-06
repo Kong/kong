@@ -1,8 +1,9 @@
 # Changelog; Kong Serverless Functions Plugin
 
-## Unreleased
+## 0.3.0
 
 - Functions can now have upvalues
+- Plugins are no longer required to inherit from the `BasePlugin` module
 
 ## 0.2.0
 

@@ -8,7 +8,7 @@ return function(plugin_name, priority)
 
   local ServerlessFunction = {
     PRIORITY = priority,
-    VERSION = "0.1.0",
+    VERSION = "0.3.0",
   }
 
   function ServerlessFunction:access(config)
