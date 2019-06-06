@@ -70,7 +70,6 @@ local openssl_x509 = require "openssl.x509"
 local runloop = require "kong.runloop.handler"
 local mesh = require "kong.runloop.mesh"
 local tracing = require "kong.tracing"
-local semaphore = require "ngx.semaphore"
 local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
 local ngx_balancer = require "ngx.balancer"
@@ -121,11 +120,6 @@ local TLS_SCHEMES = {
   tls = true,
 }
 
-local PLUGINS_MAP_CACHE_OPTS = { ttl = 0 }
-
-local plugins_map_semaphore
-local plugins_map_version
-local loaded_plugins
 local declarative_entities
 local schema_state
 
@@ -182,7 +176,9 @@ local function execute_cache_warmup(kong_config)
     end
   end
 
-  singletons.configured_plugins = map
+  -- XXX EE
+  -- singletons.configured_plugins = map
+  -- XXX EE/
 
   return true
 end
@@ -194,46 +190,50 @@ end
 local Kong = {}
 
 
-local function sort_plugins_for_execution(kong_conf, db, plugin_list)
-  -- sort plugins by order of execution
-  table.sort(plugin_list, function(a, b)
-    local priority_a = a.handler.PRIORITY or 0
-    local priority_b = b.handler.PRIORITY or 0
-    return priority_a > priority_b
-  end)
+-- XXX EE this has been refactored into get_loaded_plugins that gets
+-- called from update_plugins_iterator which gets updated every X
+-- seconds, so we better not create the lambdas for reported entities
+-- every X seconds and find a better way.
 
-  -- add reports plugin if not disabled
-  if kong_conf.anonymous_reports then
-    local reports = require "kong.reports"
 
-    reports.add_ping_value("database", kong_conf.database)
-    reports.add_ping_value("database_version", db.infos.db_ver)
+-- local function sort_plugins_for_execution(kong_conf,
+-- db, plugin_list) -- sort plugins by order of execution
+-- table.sort(plugin_list, function(a, b) local priority_a =
+-- a.handler.PRIORITY or 0 local priority_b = b.handler.PRIORITY or 0
+-- return priority_a > priority_b end)
 
-    reports.toggle(true)
+--   -- add reports plugin if not disabled
+--   if kong_conf.anonymous_reports then
+--     local reports = require "kong.reports"
 
-    local shm = ngx.shared
+--     reports.add_ping_value("database", kong_conf.database)
+--     reports.add_ping_value("database_version", db.infos.db_ver)
 
-    local reported_entities = {
-      a = "apis",
-      r = "routes",
-      c = "consumers",
-      s = "services",
-    }
+--     reports.toggle(true)
 
-    for k, v in pairs(reported_entities) do
-      reports.add_ping_value(k, function()
-        return shm["kong_reports_" .. v] and
-          #shm["kong_reports_" .. v]:get_keys(70000)
-      end)
-    end
+--     local shm = ngx.shared
 
-    plugin_list[#plugin_list+1] = {
-      name = "reports",
-      handler = reports,
-    }
-  end
-end
+--     local reported_entities = {
+--       a = "apis",
+--       r = "routes",
+--       c = "consumers",
+--       s = "services",
+--     }
 
+--     for k, v in pairs(reported_entities) do
+--       reports.add_ping_value(k, function()
+--         return shm["kong_reports_" .. v] and
+--           #shm["kong_reports_" .. v]:get_keys(70000)
+--       end)
+--     end
+
+--     plugin_list[#plugin_list+1] = {
+--       name = "reports",
+--       handler = reports,
+--     }
+--   end
+-- end
+-- XXX EE/
 
 local function flush_delayed_response(ctx)
   ctx.delay_response = false
@@ -467,7 +467,7 @@ function Kong.init()
 
 
   singletons.invoke_plugin = invoke_plugin.new {
-    loaded_plugins = loaded_plugins,
+    loaded_plugins = config.loaded_plugins,
     kong_global = kong_global,
   }
 

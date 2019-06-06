@@ -476,9 +476,8 @@ do
     local old_ws = ngx.ctx.workspaces
     ngx.ctx.workspaces = workspaces
 
-    for up in singletons.db.upstreams:each(1000) do
-    -- build a dictionary, indexed by the upstream name
     for up, err in singletons.db.upstreams:each(1000) do
+      -- build a dictionary, indexed by the upstream name
       if err then
         log(CRIT, "could not obtain list of upstreams: ", err)
         return nil
@@ -492,23 +491,19 @@ do
   end
   _load_upstreams_dict_into_memory = load_upstreams_dict_into_memory
 
-
-  local opts = { neg_ttl = 10 }
-
-
   ------------------------------------------------------------------------------
   -- Implements a simple dictionary with all upstream-ids indexed
   -- by their name.
   -- @return The upstreams dictionary (a map with upstream names as string keys
   -- and upstream entity tables as values), or nil+error
   get_all_upstreams = function(workspaces)
-     workspaces = workspaces or ngx.ctx.workspaces
+    workspaces = workspaces or ngx.ctx.workspaces
 
     -- for access phase
     local upstreams_dict = {}
     for _, workspace in ipairs(workspaces) do
       local upstreams_dict, err = singletons.cache:get("balancer:upstreams:" .. workspace.id , nil,
-                                                       load_upstreams_dict_into_memory, {workspace})
+        load_upstreams_dict_into_memory, {workspace})
       if err then
         return nil, err
       end
@@ -542,7 +537,6 @@ do
     return upstream_list
   end
 end
-
 
 ------------------------------------------------------------------------------
 -- Finds and returns an upstream entity. This function covers

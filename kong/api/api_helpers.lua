@@ -1,6 +1,5 @@
 local pl_string = require "pl.stringx"
 local utils = require "kong.tools.utils"
-local url = require "socket.url"
 local tablex      = require "pl.tablex"
 local cjson = require "cjson"
 

@@ -1135,16 +1135,15 @@ do
     local args
     local err
 
-    local is_partitioned = false
     if not foreign_key then
-      cql, err, is_partitioned = get_query(self, "select_page")
+      cql, err = get_query(self, "select_page")
       if err then
         return nil, err
       end
 
     elseif foreign_key and foreign_key_db_columns then
       args = new_tab(#foreign_key_db_columns, 0)
-      cql, err, is_partitioned = get_query(self, "select_with_filter")
+      cql, err = get_query(self, "select_with_filter")
       if err then
         return nil, err
       end

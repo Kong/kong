@@ -197,23 +197,24 @@ local function load_plugin_entity_strategy(schema, db, plugin)
     setmetatable(strategy, mt)
   end
 
-            db.strategies[schema.name] = strategy
+  db.strategies[schema.name] = strategy
 
-            local dao, err = DAO.new(db, schema, strategy, db.errors)
-            if not dao then
-              return nil, err
-            end
-            db.daos[schema.name] = dao
-            if schema_def.workspaceable then
-              local unique_keys = {}
-              for field_name, field_schema in schema:each_field() do
-                if field_schema.unique then
-                  unique_keys[field_name] = field_schema
-                end
-              end
-              wokspaces.register_workspaceable_relation(schema.name, schema.primary_key, unique_keys)
-            end
-          end
+  local dao, err = DAO.new(db, schema, strategy, db.errors)
+  if not dao then
+    return nil, err
+  end
+  db.daos[schema.name] = dao
+  -- XXX EE: maybe schema_def comming from plugin_entity_loader?
+  if schema.workspaceable then
+    local unique_keys = {}
+    for field_name, field_schema in schema:each_field() do
+      if field_schema.unique then
+        unique_keys[field_name] = field_schema
+      end
+    end
+    wokspaces.register_workspaceable_relation(schema.name, schema.primary_key, unique_keys)
+  end
+end
 
 
 local function plugin_entity_loader(db)
@@ -222,11 +223,11 @@ local function plugin_entity_loader(db)
     local schema, err = plugin_loader.load_entity_schema(plugin, schema_def, db.errors)
     if not schema then
       return nil, err
-        end
+    end
 
     load_plugin_entity_strategy(schema, db, plugin)
-      end
-    end
+  end
+end
 
 
 local function load_plugin(self, plugin)
