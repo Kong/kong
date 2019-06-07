@@ -15,12 +15,19 @@ chmod +x $BUILD_TOOLS_DOWNLOAD/kong-ngx-build
 
 export PATH=$BUILD_TOOLS_DOWNLOAD:$PATH
 
+KONG_NGINX_MODULE_DOWNLOAD=$DOWNLOAD_CACHE/lua-kong-nginx-module-$KONG_NGINX_MODULE
+if [ ! "$(ls -A $KONG_NGINX_MODULE_DOWNLOAD)" ]; then
+  pushd $DOWNLOAD_CACHE/$DEPS_HASH
+    git clone -q https://github.com/Kong/lua-kong-nginx-module.git $KONG_NGINX_MODULE_DOWNLOAD
+  popd
+fi
+
 #--------
 # Install
 #--------
 INSTALL_ROOT=$INSTALL_CACHE/$DEPS_HASH
 
-kong-ngx-build -p $INSTALL_ROOT --work $DOWNLOAD_ROOT --openresty $OPENRESTY --openssl $OPENSSL --luarocks $LUAROCKS -j $JOBS
+kong-ngx-build -p $INSTALL_ROOT --work $DOWNLOAD_ROOT --openresty $OPENRESTY --openssl $OPENSSL --luarocks $LUAROCKS -j $JOBS --add-module $KONG_NGINX_MODULE_DOWNLOAD
 
 OPENSSL_INSTALL=$INSTALL_ROOT/openssl
 OPENRESTY_INSTALL=$INSTALL_ROOT/openresty
