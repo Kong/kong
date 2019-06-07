@@ -83,8 +83,7 @@ function concurrency.with_coroutine_mutex(opts, fn)
     local err
     semaphore, err = ngx_semaphore.new()
     if err then
-      kong.log.crit("failed to create ", opts.name, " lock: ", err)
-      return nil, "critical error"
+      return nil, "failed to create " .. opts.name .. " lock: " .. err
     end
     semaphores[opts.name] = semaphore
 

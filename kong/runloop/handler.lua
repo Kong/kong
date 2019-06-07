@@ -54,12 +54,10 @@ local unpack       = unpack
 local ERR          = ngx.ERR
 local INFO         = ngx.INFO
 local WARN         = ngx.WARN
-local CRIT         = ngx.CRIT
 local DEBUG        = ngx.DEBUG
 local ERROR        = ngx.ERROR
 
 
-local CACHE_ROUTER_OPTS = { ttl = 0 }
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
 local EMPTY_T = {}
 local TTL_ZERO = { ttl = 0 }
@@ -392,7 +390,7 @@ local function rebuild(name, callback, version, opts)
   local current_version, err = kong.cache:get(name .. ":version", TTL_ZERO,
                                               utils.uuid)
   if err then
-    return nil, "could not ensure " .. name .. " is up to date: " .. err
+    return nil, "failed to retrieve " .. name .. " version: " .. err
   end
 
   if current_version == version then
@@ -418,7 +416,8 @@ do
 
 
   update_plugins_iterator = function()
-    local version, err = kong.cache:get("plugins_iterator:version", TTL_ZERO, utils.uuid)
+    local version, err = kong.cache:get("plugins_iterator:version", TTL_ZERO,
+                                        utils.uuid)
     if err then
       return nil, "failed to retrieve plugins iterator version: " .. err
     end
@@ -429,7 +428,7 @@ do
 
     local ok, err = build_plugins_iterator(version)
     if not ok then
-      return nil, "error found when building plugins iterator: " .. err
+      return nil, --[[ 'err' fully formatted ]] err
     end
 
     return true
@@ -447,8 +446,10 @@ do
     if kong.configuration.router_consistency == "strict" then
       local ok, err = rebuild_plugins_iterator(PLUGINS_ITERATOR_SYNC_OPTS)
       if not ok then
-        -- If an error happens while updating, log it and return non-updated version
-        log(CRIT, "error while updating plugins iterator: ", err)
+        -- If an error happens while updating, log it and return non-updated
+        -- version
+        log(ERR, "could not rebuild plugins iterator: ", err,
+                 " (stale plugins iterator will be used)")
       end
     end
     return plugins_iterator
@@ -525,7 +526,7 @@ do
     -- kong.cache is not available on init phase
     if kong.cache then
       local cache_key = db.services:cache_key(service_pk.id)
-      service, err = kong.cache:get(cache_key, CACHE_ROUTER_OPTS,
+      service, err = kong.cache:get(cache_key, TTL_ZERO,
                                     load_service_from_db, service_pk)
 
     else -- init phase, not present on init cache
@@ -642,12 +643,9 @@ do
     -- we might not need to rebuild the router (if we were not
     -- the first request in this process to enter this code path)
     -- check again and rebuild only if necessary
-    local version, err = kong.cache:get("router:version",
-                                        CACHE_ROUTER_OPTS,
-                                        utils.uuid)
+    local version, err = kong.cache:get("router:version", TTL_ZERO, utils.uuid)
     if err then
-      log(CRIT, "could not ensure router is up to date: ", err)
-      return nil, err
+      return nil, "failed to retrieve router version: " .. err
     end
 
     if version == router_version then
@@ -656,7 +654,7 @@ do
 
     local ok, err = build_router(version)
     if not ok then
-      return nil, "error found when building router: " .. err
+      return nil, --[[ 'err' fully formatted ]] err
     end
 
     return true
@@ -672,8 +670,10 @@ do
     if kong.configuration.router_consistency == "strict" then
       local ok, err = rebuild_router(ROUTER_SYNC_OPTS)
       if not ok then
-        -- If an error happens while updating, log it and return non-updated version
-        log(CRIT, "error while updating router(reason: ", err, ")")
+        -- If an error happens while updating, log it and return non-updated
+        -- version.
+        log(ERR, "could not rebuild router: ", err,
+                 " (stale router will be used)")
       end
     end
     return router
@@ -820,11 +820,13 @@ return {
           return
         end
 
-        -- Don't wait for the semaphore (timeout = 0) when updating via the timer
-        -- If the semaphore is locked, that means that the rebuild is already ongoing
+        -- Don't wait for the semaphore (timeout = 0) when updating via the
+        -- timer.
+        -- If the semaphore is locked, that means that the rebuild is
+        -- already ongoing.
         local ok, err = rebuild_router(ROUTER_ASYNC_OPTS)
         if not ok then
-          log(ERR, "failure while rebuilding router via timer: ", err)
+          log(ERR, "could not rebuild router via timer: ", err)
         end
       end)
 
@@ -835,7 +837,7 @@ return {
 
         local ok, err = rebuild_plugins_iterator(PLUGINS_ITERATOR_ASYNC_OPTS)
         if not ok then
-          log(ERR, "failure while rebuilding plugins_iterator via timer: ", err)
+          log(ERR, "could not rebuild plugins iterator via timer: ", err)
         end
       end)
 

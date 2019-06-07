@@ -36,18 +36,15 @@ local function execute(args)
 
   log.disable()
   -- retrieve default prefix or use given one
-  local default_conf = assert(conf_loader(args.conf, {
+  local conf = assert(conf_loader(args.conf, {
     prefix = args.prefix
   }))
   log.enable()
 
-  assert(pl_path.exists(default_conf.prefix),
-         "no such prefix: " .. default_conf.prefix)
-  assert(pl_path.exists(default_conf.kong_env),
-         "Kong is not running at " .. default_conf.prefix)
-
-  -- load <PREFIX>/kong.conf containing running node's config
-  local conf = assert(conf_loader(default_conf.kong_env))
+  if pl_path.exists(conf.kong_env) then
+    -- load <PREFIX>/kong.conf containing running node's config
+    conf = assert(conf_loader(conf.kong_env))
+  end
 
   if args.command == "db-import" then
     args.command = "db_import"

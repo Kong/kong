@@ -842,7 +842,7 @@ describe("Configuration loader", function()
 
     it("rejects a pg_max_concurrent_queries with a decimal", function()
       local conf, err = conf_loader(nil, {
-        pg_max_concurrent_queries = 0.1
+        pg_max_concurrent_queries = 0.1,
       })
       assert.is_nil(conf)
       assert.equal("pg_max_concurrent_queries must be an integer greater than 0", err)
@@ -856,11 +856,12 @@ describe("Configuration loader", function()
       assert.equal("pg_semaphore_timeout must be greater than 0", err)
     end)
 
-    it("accepts a pg_semaphore_timeout with a decimal", function()
-      local _, err = conf_loader(nil, {
-        pg_semaphore_timeout = 0.1
+    it("rejects a pg_semaphore_timeout with a decimal", function()
+      local conf, err = conf_loader(nil, {
+        pg_semaphore_timeout = 0.1,
       })
-      assert.is_nil(err)
+      assert.is_nil(conf)
+      assert.equal("pg_semaphore_timeout must be an integer greater than 0", err)
     end)
   end)
 

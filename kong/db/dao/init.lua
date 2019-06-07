@@ -282,7 +282,7 @@ end
 
 
 local function check_update(self, key, entity, options, name)
-  local entity_to_update, err, read_before_write =
+  local entity_to_update, err, read_before_write, check_immutable_fields =
     self.schema:process_auto_fields(entity, "update")
   if not entity_to_update then
     local err_t = self.errors:schema_violation(err)
@@ -299,6 +299,15 @@ local function check_update(self, key, entity, options, name)
     end
     if err then
       return nil, nil, err, err_t
+    end
+
+    if rbw_entity and check_immutable_fields then
+      local ok, errors = self.schema:validate_immutable_fields(entity_to_update, rbw_entity)
+
+      if not ok then
+        local err_t = self.errors:schema_violation(errors)
+        return nil, nil, tostring(err_t), err_t
+      end
     end
 
     if rbw_entity then
@@ -407,9 +416,9 @@ local function find_cascade_delete_entities(self, entity)
 end
 
 
-local function propagate_cascade_delete_events(entries)
+local function propagate_cascade_delete_events(entries, options)
   for _, entry in ipairs(entries) do
-    entry.dao:post_crud_event("delete", entry.entity)
+    entry.dao:post_crud_event("delete", entry.entity, nil, options)
   end
 end
 
@@ -596,7 +605,7 @@ local function generate_foreign_key_methods(schema)
           return nil, err, err_t
         end
 
-        self:post_crud_event("update", row, rbw_entity)
+        self:post_crud_event("update", row, rbw_entity, options)
 
         return row
       end
@@ -632,7 +641,7 @@ local function generate_foreign_key_methods(schema)
           return nil, err, err_t
         end
 
-        self:post_crud_event("update", row)
+        self:post_crud_event("update", row, nil, options)
 
         return row
       end
@@ -676,8 +685,8 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        self:post_crud_event("delete", entity)
-        propagate_cascade_delete_events(cascade_entries)
+        self:post_crud_event("delete", entity, nil, options)
+        propagate_cascade_delete_events(cascade_entries, options)
 
         return true
       end
@@ -855,7 +864,7 @@ function DAO:insert(entity, options)
     return nil, err, err_t
   end
 
-  self:post_crud_event("create", row)
+  self:post_crud_event("create", row, nil, options)
 
   return row
 end
@@ -893,7 +902,7 @@ function DAO:update(primary_key, entity, options)
     return nil, err, err_t
   end
 
-  self:post_crud_event("update", row, rbw_entity)
+  self:post_crud_event("update", row, rbw_entity, options)
 
   return row
 end
@@ -928,7 +937,7 @@ function DAO:upsert(primary_key, entity, options)
     return nil, err, err_t
   end
 
-  self:post_crud_event("update", row)
+  self:post_crud_event("update", row, nil, options)
 
   return row
 end
@@ -972,8 +981,8 @@ function DAO:delete(primary_key, options)
     return nil, tostring(err_t), err_t
   end
 
-  self:post_crud_event("delete", entity)
-  propagate_cascade_delete_events(cascade_entries)
+  self:post_crud_event("delete", entity, nil, options)
+  propagate_cascade_delete_events(cascade_entries, options)
 
   return true
 end
@@ -1044,7 +1053,11 @@ function DAO:row_to_entity(row, options)
 end
 
 
-function DAO:post_crud_event(operation, entity, old_entity)
+function DAO:post_crud_event(operation, entity, old_entity, options)
+  if options and options.no_broadcast_crud_event then
+    return
+  end
+
   if self.events then
     local _, err = self.events.post_local("dao:crud", operation, {
       operation  = operation,

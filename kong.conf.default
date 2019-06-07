@@ -499,11 +499,12 @@
                                  # The default value of 0 removes this
                                  # concurrency limitation.
 
-#pg_semaphore_timeout = 60       # Defines the timeout, in seconds, after which
-                                 # Postgres query semaphore resource acquisition
-                                 # attempts will fail. Such failures will
-                                 # generally result in the associated proxy or
-                                 # Admin API request failing with an HTTP 500.
+#pg_semaphore_timeout = 60000    # Defines the timeout (in ms) after which
+                                 # PostgreSQL query semaphore resource
+                                 # acquisition attempts will fail. Such
+                                 # failures will generally result in the
+                                 # associated proxy or Admin API request
+                                 # failing with an HTTP 500 status code.
                                  # Detailed discussion of this behavior is
                                  # available in the online documentation.
 
@@ -749,18 +750,33 @@
 # TUNING & BEHAVIOR
 #------------------------------------------------------------------------------
 
-#router_consistency = strict     # Defines whether or not updates of internal
-                                 # data structures used in routing are
-                                 # done asynchronously. Accepted values are:
+#router_consistency = strict     # Defines whether this node should rebuild its
+                                 # router synchronously or asynchronously (the
+                                 # router is rebuilt every time a Route or a
+                                 # Service is updated via the Admin API or
+                                 # loading a declarative configuration file).
                                  #
-                                 # - `strict` - the state of memory is
-                                 #   checked against the latest datastore
-                                 #   state on each request: if memory is
-                                 #   outdated, it is updated before handling
-                                 #   the request.
-                                 # - `eventual` - the state of memory is
-                                 #   updated asynchronously via an internal
-                                 #   periodic timer.
+                                 # Accepted values are:
+                                 #
+                                 # - `strict`: the router will be rebuilt
+                                 # synchronously, causing incoming requests to
+                                 # be delayed until the rebuild is finished.
+                                 # - `eventual`: the router will be rebuilt
+                                 # asynchronously via a recurring background
+                                 # job running every second inside of each
+                                 # worker.
+                                 #
+                                 # Note that `strict` ensures that all workers
+                                 # of a given node will always proxy requests
+                                 # with an identical router, but that increased
+                                 # long tail latency can be observed if
+                                 # frequent Routes and Services updates are
+                                 # expected.
+                                 # Using `eventual` will help preventing long
+                                 # tail latency issues in such cases, but may
+                                 # cause workers to route requests differently
+                                 # for a short period of time after Routes and
+                                 # Services updates.
 
 #------------------------------------------------------------------------------
 # DEVELOPMENT & MISCELLANEOUS
