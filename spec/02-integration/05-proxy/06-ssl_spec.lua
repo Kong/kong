@@ -22,6 +22,7 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "certificates",
+        "snis",
       })
 
       local service = bp.services:insert {
@@ -86,6 +87,38 @@ for _, strategy in helpers.each_strategy() do
         preserve_host = false,
       }
 
+      local service7 = bp.services:insert {
+        name     = "service-7",
+        protocol = helpers.mock_upstream_ssl_protocol,
+        host     = helpers.mock_upstream_hostname,
+        port     = helpers.mock_upstream_ssl_port,
+      }
+
+      bp.routes:insert {
+        protocols     = { "https" },
+        hosts         = { "example.com" },
+        paths         = { "/redirect-301" },
+        https_redirect_status_code = 301,
+        service       = service7,
+        preserve_host = false,
+      }
+
+      local service8 = bp.services:insert {
+        name     = "service-8",
+        protocol = helpers.mock_upstream_ssl_protocol,
+        host     = helpers.mock_upstream_hostname,
+        port     = helpers.mock_upstream_ssl_port,
+      }
+
+      bp.routes:insert {
+        protocols     = { "https" },
+        hosts         = { "example.com" },
+        paths         = { "/redirect-302" },
+        https_redirect_status_code = 302,
+        service       = service8,
+        preserve_host = false,
+      }
+
       local cert = bp.certificates:insert {
         cert  = ssl_fixtures.cert,
         key   = ssl_fixtures.key,
@@ -100,6 +133,45 @@ for _, strategy in helpers.each_strategy() do
         name = "ssl1.com",
         certificate = cert,
       }
+
+      -- wildcard tests
+
+      local certificate_alt = bp.certificates:insert {
+        cert = ssl_fixtures.cert_alt,
+        key = ssl_fixtures.key_alt,
+      }
+
+      local certificate_alt_alt = bp.certificates:insert {
+        cert = ssl_fixtures.cert_alt_alt,
+        key = ssl_fixtures.key_alt_alt,
+      }
+
+      bp.snis:insert {
+        name = "*.wildcard.com",
+        certificate = certificate_alt,
+      }
+
+      bp.snis:insert {
+        name = "wildcard.*",
+        certificate = certificate_alt,
+      }
+
+      bp.snis:insert {
+        name = "wildcard.org",
+        certificate = certificate_alt_alt,
+      }
+
+      bp.snis:insert {
+        name = "test.wildcard.*",
+        certificate = certificate_alt_alt,
+      }
+
+      bp.snis:insert {
+        name = "*.www.wildcard.com",
+        certificate = certificate_alt_alt,
+      }
+
+      -- /wildcard tests
 
       assert(helpers.start_kong {
         database    = strategy,
@@ -141,6 +213,38 @@ for _, strategy in helpers.each_strategy() do
         cert = get_cert("example.com")
         assert.cn("ssl-example.com", cert)
       end)
+
+      describe("wildcard sni", function()
+        it("matches *.wildcard.com (prefix)", function()
+          local cert = get_cert("test.wildcard.com")
+          assert.matches("CN%s*=%s*ssl%-alt%.com", cert)
+        end)
+
+        it("matches wildcard.* (suffix)", function()
+          local cert = get_cert("wildcard.eu")
+          assert.matches("CN%s*=%s*ssl%-alt%.com", cert)
+        end)
+
+        it("respects matching priorities (exact first)", function()
+          local cert = get_cert("wildcard.org")
+          assert.matches("CN%s*=%s*ssl%-alt%-alt%.com", cert)
+        end)
+
+        it("respects matching priorities (prefix second)", function()
+          local cert = get_cert("test.wildcard.com")
+          assert.matches("CN%s*=%s*ssl%-alt%.com", cert)
+        end)
+
+        it("respects matching priorities (suffix third)", function()
+          local cert = get_cert("test.wildcard.org")
+          assert.matches("CN%s*=%s*ssl%-alt%-alt%.com", cert)
+        end)
+
+        it("matches *.www.wildcard.com", function()
+          local cert = get_cert("test.www.wildcard.com")
+          assert.matches("CN%s*=%s*ssl%-alt%-alt%.com", cert)
+        end)
+      end)
     end)
 
     describe("SSL termination", function()
@@ -158,6 +262,32 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "Please use HTTPS protocol" }, json)
         assert.contains("Upgrade", res.headers.connection)
         assert.equal("TLS/1.2, HTTP/1.1", res.headers.upgrade)
+      end)
+
+      it("returns 301 when route has https_redirect_status_code set to 301", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/redirect-301",
+          headers = {
+            ["Host"] = "example.com",
+          }
+        })
+
+        assert.res_status(301, res)
+        assert.equal("https://example.com/redirect-301", res.headers.location)
+      end)
+
+      it("returns 302 when route has https_redirect_status_code set to 302", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/redirect-302?foo=bar",
+          headers = {
+            ["Host"] = "example.com",
+          }
+        })
+
+        assert.res_status(302, res)
+        assert.equal("https://example.com/redirect-302?foo=bar", res.headers.location)
       end)
 
       describe("from not trusted_ip", function()

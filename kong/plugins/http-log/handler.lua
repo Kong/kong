@@ -1,5 +1,4 @@
 local basic_serializer = require "kong.plugins.log-serializers.basic"
-local BasePlugin = require "kong.plugins.base_plugin"
 local BatchQueue = require "kong.tools.batch_queue"
 local cjson = require "cjson"
 local url = require "socket.url"
@@ -12,11 +11,11 @@ local table_concat = table.concat
 local fmt = string.format
 
 
-local HttpLogHandler = BasePlugin:extend()
+local HttpLogHandler = {}
 
 
 HttpLogHandler.PRIORITY = 12
-HttpLogHandler.VERSION = "1.0.0"
+HttpLogHandler.VERSION = "2.0.0"
 
 
 local queues = {} -- one queue per unique plugin config
@@ -141,19 +140,7 @@ local function get_queue_id(conf)
 end
 
 
--- Only provide `name` when deriving from this class,
--- not when initializing an instance.
-function HttpLogHandler:new(name)
-  name = name or "http-log"
-  HttpLogHandler.super.new(self, name)
-
-  self.name = name
-end
-
-
 function HttpLogHandler:log(conf)
-  HttpLogHandler.super.log(self)
-
   local entry = cjson_encode(basic_serializer.serialize(ngx))
 
   local queue_id = get_queue_id(conf)

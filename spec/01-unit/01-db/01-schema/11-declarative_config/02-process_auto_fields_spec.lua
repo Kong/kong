@@ -439,6 +439,7 @@ describe("declarative config: process_auto_fields", function()
                     regex_priority = 0,
                     strip_path = true,
                     protocols = { "http", "https" },
+                    https_redirect_status_code = 426,
                   },
                   {
                     hosts = { "example.com" },
@@ -446,6 +447,7 @@ describe("declarative config: process_auto_fields", function()
                     regex_priority = 0,
                     strip_path = true,
                     protocols = { "http", "https" },
+                    https_redirect_status_code = 426,
                   },
                   {
                     methods = { "GET", "POST" },
@@ -453,6 +455,7 @@ describe("declarative config: process_auto_fields", function()
                     regex_priority = 0,
                     strip_path = true,
                     protocols = { "http", "https" },
+                    https_redirect_status_code = 426,
                   },
                 }
               },
@@ -474,6 +477,7 @@ describe("declarative config: process_auto_fields", function()
                     regex_priority = 0,
                     strip_path = true,
                     protocols = { "http", "https" },
+                    https_redirect_status_code = 426,
                   },
                 }
               }
@@ -516,6 +520,7 @@ describe("declarative config: process_auto_fields", function()
                     strip_path = true,
                     protocols = { "http", "https" },
                     regex_priority = 0,
+                    https_redirect_status_code = 426,
                     plugins = {}
                   }
                 }
@@ -574,6 +579,7 @@ describe("declarative config: process_auto_fields", function()
                     strip_path = true,
                     protocols = { "http", "https" },
                     regex_priority = 0,
+                    https_redirect_status_code = 426,
                     plugins = {
                       {
                         name = "key-auth",
@@ -624,6 +630,7 @@ describe("declarative config: process_auto_fields", function()
                     strip_path = true,
                     protocols = { "http", "https" },
                     regex_priority = 0,
+                    https_redirect_status_code = 426,
                     plugins = {
                       {
                         name = "basic-auth",

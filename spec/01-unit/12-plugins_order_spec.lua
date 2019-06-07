@@ -67,6 +67,7 @@ describe("Plugins", function()
       "response-transformer",
       "aws-lambda",
       "azure-functions",
+      "proxy-cache",
       "prometheus",
       "http-log",
       "statsd",

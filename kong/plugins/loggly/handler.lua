@@ -1,11 +1,10 @@
-local BasePlugin = require "kong.plugins.base_plugin"
 local basic_serializer = require "kong.plugins.log-serializers.basic"
 local cjson = require "cjson"
 
-local LogglyLogHandler = BasePlugin:extend()
+local LogglyLogHandler = {}
 
 LogglyLogHandler.PRIORITY = 6
-LogglyLogHandler.VERSION = "1.0.0"
+LogglyLogHandler.VERSION = "2.0.0"
 
 local os_date = os.date
 local tostring = tostring
@@ -103,14 +102,7 @@ local function log(premature, conf, message)
   end
 end
 
-
-function LogglyLogHandler:new()
-  LogglyLogHandler.super.new(self, "loggly")
-end
-
 function LogglyLogHandler:log(conf)
-  LogglyLogHandler.super.log(self)
-
   local message = basic_serializer.serialize(ngx)
 
   local ok, err = ngx_timer_at(0, log, conf, message)

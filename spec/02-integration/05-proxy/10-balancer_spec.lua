@@ -353,6 +353,25 @@ local function wait_for_router_update(bp, old_rv, localhost, proxy_port, admin_p
 end
 
 
+local function tcp_client_requests(nreqs, host, port)
+  local fails, ok1, ok2 = 0, 0, 0
+  for _ = 1, nreqs do
+    local sock = ngx.socket.tcp()
+    assert(sock:connect(host, port))
+    assert(sock:send("hello\n"))
+    local response, err = sock:receive()
+    if err then
+      fails = fails + 1
+    elseif response:match("^1 ") then
+      ok1 = ok1 + 1
+    elseif response:match("^2 ") then
+      ok2 = ok2 + 1
+    end
+  end
+  return ok1, ok2, fails
+end
+
+
 local function begin_testcase_setup(strategy, bp)
   if strategy == "off" then
     bp.done()
@@ -1041,7 +1060,7 @@ for _, strategy in helpers.each_strategy() do
             end
           end)
 
-          for _, protocol in ipairs({"http", "https"}) do
+          for _, protocol in ipairs({"http"}) do
             it("perform active health checks -- automatic recovery #" .. protocol, function()
               for nchecks = 1, 3 do
 
@@ -1125,6 +1144,95 @@ for _, strategy in helpers.each_strategy() do
               end
             end)
           end
+
+          it("#flaky #db perform active health checks -- automatic recovery #stream", function()
+
+            local port1 = gen_port()
+            local port2 = gen_port()
+
+            -- setup target servers:
+            -- server2 will only respond for part of the test,
+            -- then server1 will take over.
+            local server1 = helpers.tcp_server(port1, {
+              requests = 1000,
+              prefix = "1 ",
+            })
+            local server2 = helpers.tcp_server(port2, {
+              requests = 1000,
+              prefix = "2 ",
+            })
+            ngx.sleep(0.1)
+
+            -- configure healthchecks
+            begin_testcase_setup(strategy, bp)
+            local upstream_name, upstream_id = add_upstream(bp, {
+              healthchecks = healthchecks_config {
+                active = {
+                  type = "tcp",
+                  healthy = {
+                    interval = HEALTHCHECK_INTERVAL,
+                    successes = 1,
+                  },
+                  unhealthy = {
+                    interval = HEALTHCHECK_INTERVAL,
+                    tcp_failures = 1,
+                  },
+                }
+              }
+            })
+
+            add_target(bp, upstream_id, localhost, port1)
+            add_target(bp, upstream_id, localhost, port2)
+            local _, service_id, route_id = add_api(bp, upstream_name, 500, 500, nil, nil, "tcp")
+            end_testcase_setup(strategy, bp)
+
+            finally(function()
+              helpers.kill_tcp_server(port1)
+              helpers.kill_tcp_server(port2)
+              server1:join()
+              server2:join()
+
+              bp.routes:remove({ id = route_id })
+              bp.services:remove({ id = service_id })
+            end)
+
+            ngx.sleep(0.5)
+
+            -- 1) server1 and server2 take requests
+            local ok1, ok2 = tcp_client_requests(SLOTS * 2, localhost, 9100)
+            assert.same(SLOTS, ok1)
+            assert.same(SLOTS, ok2)
+
+            -- server2 goes unhealthy
+            helpers.kill_tcp_server(port2)
+            server2:join()
+
+            -- Wait until healthchecker detects
+            -- We cannot use poll_wait_health because health endpoints
+            -- are not currently available for stream routes.
+            ngx.sleep(strategy == "cassandra" and 2 or 1)
+
+            -- 2) server1 takes all requests
+            ok1, ok2 = tcp_client_requests(SLOTS * 2, localhost, 9100)
+            assert.same(SLOTS * 2, ok1)
+            assert.same(0, ok2)
+
+            -- server2 goes healthy again
+            server2 = helpers.tcp_server(port2, {
+              requests = 1000,
+              prefix = "2 ",
+            })
+
+            -- Give time for healthchecker to detect
+            -- Again, we cannot use poll_wait_health because health endpoints
+            -- are not currently available for stream routes.
+            ngx.sleep(strategy == "cassandra" and 2 or 1)
+
+            -- 3) server1 and server2 take requests again
+            ok1, ok2 = tcp_client_requests(SLOTS * 2, localhost, 9100)
+            assert.same(SLOTS, ok1)
+            assert.same(SLOTS, ok2)
+          end)
 
           it("perform active health checks -- can detect before any proxy traffic", function()
 
@@ -1392,7 +1500,7 @@ for _, strategy in helpers.each_strategy() do
             assert.are.equal(0, fails)
           end)
 
-          stream_it("perform passive health checks -- #stream connection failure", function()
+          stream_it("#flaky perform passive health checks -- #stream connection failure", function()
 
             -- configure healthchecks
             begin_testcase_setup(strategy, bp)
@@ -1432,27 +1540,11 @@ for _, strategy in helpers.each_strategy() do
               requests = server2_oks,
               prefix = "2 ",
             })
-            ngx.sleep(1)
+            ngx.sleep(strategy == "cassandra" and 2 or 1)
 
             -- server1 and server2 take requests
             -- server1 takes all requests once server2 fails
-            local ok1 = 0
-            local ok2 = 0
-            local fails = 0
-            for _ = 1, SLOTS * 2 do
-              local sock = ngx.socket.tcp()
-              assert(sock:connect(localhost, 9100))
-              assert(sock:send("hello\n"))
-              local response, err = sock:receive()
-              if err then
-                fails = fails + 1
-                print(err)
-              elseif response:match("^1 ") then
-                ok1 = ok1 + 1
-              elseif response:match("^2 ") then
-                ok2 = ok2 + 1
-              end
-            end
+            local ok1, ok2, fails = tcp_client_requests(SLOTS * 2, localhost, 9100)
 
             -- finish up TCP server threads
             server1:join()

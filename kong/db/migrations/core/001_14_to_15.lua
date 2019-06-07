@@ -35,7 +35,12 @@ return {
 
 
 
-      CREATE INDEX IF NOT EXISTS "targets_upstream_id_idx" ON "targets" ("upstream_id");
+      DO $$
+      BEGIN
+        CREATE INDEX IF NOT EXISTS "targets_upstream_id_idx" ON "targets" ("upstream_id");
+      EXCEPTION WHEN UNDEFINED_COLUMN THEN
+        -- Do nothing, accept existing state
+      END$$;
 
 
 
@@ -127,7 +132,12 @@ return {
       END;
       $$;
 
-      CREATE INDEX IF NOT EXISTS "snis_certificate_id_idx" ON "snis" ("certificate_id");
+      DO $$
+      BEGIN
+        CREATE INDEX IF NOT EXISTS "snis_certificate_id_idx" ON "snis" ("certificate_id");
+      EXCEPTION WHEN UNDEFINED_COLUMN THEN
+        -- Do nothing, accept existing state
+      END$$;
 
       DO $$
       BEGIN
@@ -149,10 +159,7 @@ return {
       BEGIN
         ALTER TABLE IF EXISTS ONLY "snis"
           RENAME CONSTRAINT "snis_name_unique" TO "snis_name_key";
-      EXCEPTION
-        WHEN UNDEFINED_OBJECT THEN
-          -- Do nothing, accept existing state
-        WHEN DUPLICATE_TABLE THEN
+      EXCEPTION WHEN UNDEFINED_OBJECT OR DUPLICATE_TABLE THEN
           -- Do nothing, accept existing state
       END;
       $$;
@@ -165,37 +172,82 @@ return {
       END;
       $$;
 
-      CREATE INDEX IF NOT EXISTS "plugins_run_on_idx" ON "plugins" ("run_on");
-
-
-      ALTER TABLE IF EXISTS ONLY "apis"
-        ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
-        ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(3) AT TIME ZONE 'UTC';
-
-      ALTER TABLE IF EXISTS ONLY "consumers"
-        ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
-        ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC';
-
-      ALTER TABLE IF EXISTS ONLY "plugins"
-        ALTER "config"     TYPE JSONB USING "config"::JSONB,
-        ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
-        ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC';
-
-      ALTER TABLE IF EXISTS ONLY "upstreams"
-        ALTER "healthchecks" TYPE JSONB USING "healthchecks"::JSONB,
-        ALTER "created_at"   TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
-        ALTER "created_at"   SET DEFAULT CURRENT_TIMESTAMP(3) AT TIME ZONE 'UTC';
-
-      ALTER TABLE IF EXISTS ONLY "targets"
-        ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
-        ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(3) AT TIME ZONE 'UTC';
+      DO $$
+      BEGIN
+        CREATE INDEX IF NOT EXISTS "plugins_run_on_idx" ON "plugins" ("run_on");
+      EXCEPTION WHEN UNDEFINED_COLUMN THEN
+        -- Do nothing, accept existing state
+      END$$;
 
 
 
-      CREATE TABLE IF NOT EXISTS cluster_ca(
-        pk boolean NOT NULL PRIMARY KEY CHECK(pk=true),
-        key text NOT NULL,
-        cert text NOT NULL
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "apis"
+          ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
+          ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(3) AT TIME ZONE 'UTC';
+      EXCEPTION WHEN UNDEFINED_COLUMN THEN
+        -- Do nothing, accept existing state
+      END$$;
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "consumers"
+          ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
+          ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC';
+      EXCEPTION WHEN UNDEFINED_COLUMN THEN
+        -- Do nothing, accept existing state
+      END$$;
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "plugins"
+          ALTER "config" TYPE JSONB USING "config"::JSONB;
+      EXCEPTION WHEN UNDEFINED_COLUMN THEN
+        -- Do nothing, accept existing state
+      END$$;
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "plugins"
+          ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
+          ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC';
+      EXCEPTION WHEN UNDEFINED_COLUMN THEN
+        -- Do nothing, accept existing state
+      END$$;
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "upstreams"
+          ALTER "healthchecks" TYPE JSONB USING "healthchecks"::JSONB;
+      EXCEPTION WHEN UNDEFINED_COLUMN THEN
+        -- Do nothing, accept existing state
+      END$$;
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "upstreams"
+          ALTER "created_at"   TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
+          ALTER "created_at"   SET DEFAULT CURRENT_TIMESTAMP(3) AT TIME ZONE 'UTC';
+      EXCEPTION WHEN UNDEFINED_COLUMN THEN
+        -- Do nothing, accept existing state
+      END$$;
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "targets"
+          ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
+          ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(3) AT TIME ZONE 'UTC';
+      EXCEPTION WHEN UNDEFINED_COLUMN THEN
+        -- Do nothing, accept existing state
+      END$$;
+
+
+
+      CREATE TABLE IF NOT EXISTS "cluster_ca" (
+        "pk"    BOOLEAN  NOT NULL  PRIMARY KEY CHECK(pk=true),
+        "key"   TEXT     NOT NULL,
+        "cert"  TEXT     NOT NULL
       );
     ]],
 

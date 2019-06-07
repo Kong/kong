@@ -44,7 +44,13 @@ http {
     lua_max_pending_timers 16384;
     lua_shared_dict kong                5m;
     lua_shared_dict kong_db_cache       ${{MEM_CACHE_SIZE}};
-    lua_shared_dict kong_db_cache_miss 12m;
+> if database == "off" then
+    lua_shared_dict kong_db_cache_2     ${{MEM_CACHE_SIZE}};
+> end
+    lua_shared_dict kong_db_cache_miss   12m;
+> if database == "off" then
+    lua_shared_dict kong_db_cache_miss_2 12m;
+> end
     lua_shared_dict kong_locks          8m;
     lua_shared_dict kong_process_events 5m;
     lua_shared_dict kong_cluster_events 5m;
@@ -122,6 +128,7 @@ http {
             default_type '';
 
             set $ctx_ref                     '';
+            set $upstream_te                 '';
             set $upstream_host               '';
             set $upstream_upgrade            '';
             set $upstream_connection         '';
@@ -327,6 +334,25 @@ http {
             }
         }
 
+        location = /hop-by-hop {
+            content_by_lua_block {
+                local header = ngx.header
+                header["Keep-Alive"]          = "timeout=5, max=1000"
+                header["Proxy"]               = "Remove-Me"
+                header["Proxy-Connection"]    = "close"
+                header["Proxy-Authenticate"]  = "Basic"
+                header["Proxy-Authorization"] = "Basic YWxhZGRpbjpvcGVuc2VzYW1l"
+                header["Transfer-Encoding"]   = "chunked"
+                header["Content-Length"]      = nil
+                header["TE"]                  = "trailers, deflate;q=0.5"
+                header["Trailer"]             = "Expires"
+                header["Upgrade"]             = "example/1, foo/2"
+
+                ngx.print("hello\r\n\r\nExpires: Wed, 21 Oct 2015 07:28:00 GMT\r\n\r\n")
+                ngx.exit(200)
+            }
+        }
+
         location ~ "^/cache/(?<n>\d+)$" {
             content_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
@@ -452,7 +478,13 @@ stream {
     lua_package_cpath '${{LUA_PACKAGE_CPATH}};;';
     lua_shared_dict stream_kong                5m;
     lua_shared_dict stream_kong_db_cache       ${{MEM_CACHE_SIZE}};
-    lua_shared_dict stream_kong_db_cache_miss 12m;
+> if database == "off" then
+    lua_shared_dict stream_kong_db_cache_2     ${{MEM_CACHE_SIZE}};
+> end
+    lua_shared_dict stream_kong_db_cache_miss    12m;
+> if database == "off" then
+    lua_shared_dict stream_kong_db_cache_miss_2  12m;
+> end
     lua_shared_dict stream_kong_locks          8m;
     lua_shared_dict stream_kong_process_events 5m;
     lua_shared_dict stream_kong_cluster_events 5m;

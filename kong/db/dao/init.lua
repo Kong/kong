@@ -188,8 +188,101 @@ local function validate_options_value(options, schema, context)
 end
 
 
+local function resolve_foreign(self, entity)
+  local errors = {}
+  local has_errors
+
+  for field_name, field in self.schema:each_field() do
+    local schema = field.schema
+    if field.type == "foreign" and schema.validate_primary_key then
+      local value = entity[field_name]
+      if value and value ~= null then
+        if not schema:validate_primary_key(value, true) then
+          local resolve_errors = {}
+          local has_resolve_errors
+          for unique_field_name, unique_field in schema:each_field() do
+            if unique_field.unique or unique_field.endpoint_key then
+              local unique_value = value[unique_field_name]
+              if unique_value and unique_value ~= null and
+                 schema:validate_field(unique_field, unique_value) then
+
+                local dao = self.db[schema.name]
+                local select = dao["select_by_" .. unique_field_name]
+                local foreign_entity, err, err_t = select(dao, unique_value)
+                if err_t then
+                  return nil, err, err_t
+                end
+
+                if foreign_entity then
+                  entity[field_name] = schema:extract_pk_values(foreign_entity)
+                  break
+                end
+
+                resolve_errors[unique_field_name] = {
+                  name   = unique_field_name,
+                  value  = unique_value,
+                  parent = schema.name,
+                }
+
+                has_resolve_errors = true
+              end
+            end
+          end
+
+          if has_resolve_errors then
+            errors[field_name] = resolve_errors
+            has_errors = true
+          end
+        end
+      end
+    end
+  end
+
+  if has_errors then
+    local err_t = self.errors:foreign_keys_unresolved(errors)
+    return nil, tostring(err_t), err_t
+  end
+
+  return true
+end
+
+
+local function check_insert(self, entity, options)
+  local entity_to_insert, err = self.schema:process_auto_fields(entity, "insert")
+  if not entity_to_insert then
+    local err_t = self.errors:schema_violation(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  local ok, err, err_t = resolve_foreign(self, entity_to_insert)
+  if not ok then
+    return nil, err, err_t
+  end
+
+  local ok, errors = self.schema:validate_insert(entity_to_insert)
+  if not ok then
+    local err_t = self.errors:schema_violation(errors)
+    return nil, tostring(err_t), err_t
+  end
+
+  if options ~= nil then
+    ok, errors = validate_options_value(options, self.schema, "insert")
+    if not ok then
+      local err_t = self.errors:invalid_options(errors)
+      return nil, tostring(err_t), err_t
+    end
+  end
+
+  if self.schema.cache_key and #self.schema.cache_key > 1 then
+    entity_to_insert.cache_key = self:cache_key(entity_to_insert)
+  end
+
+  return entity_to_insert
+end
+
+
 local function check_update(self, key, entity, options, name)
-  local entity_to_update, err, read_before_write =
+  local entity_to_update, err, read_before_write, check_immutable_fields =
     self.schema:process_auto_fields(entity, "update")
   if not entity_to_update then
     local err_t = self.errors:schema_violation(err)
@@ -200,12 +293,21 @@ local function check_update(self, key, entity, options, name)
   if read_before_write then
     local err, err_t
     if name then
-       rbw_entity, err, err_t = self.strategy:select_by_field(name, key, options)
+       rbw_entity, err, err_t = self["select_by_" .. name](self, key, options)
     else
-       rbw_entity, err, err_t = self.strategy:select(key, options)
+       rbw_entity, err, err_t = self:select(key, options)
     end
     if err then
       return nil, nil, err, err_t
+    end
+
+    if rbw_entity and check_immutable_fields then
+      local ok, errors = self.schema:validate_immutable_fields(entity_to_update, rbw_entity)
+
+      if not ok then
+        local err_t = self.errors:schema_violation(errors)
+        return nil, nil, tostring(err_t), err_t
+      end
     end
 
     if rbw_entity then
@@ -216,6 +318,11 @@ local function check_update(self, key, entity, options, name)
                     or  self.errors:not_found(key)
       return nil, nil, tostring(err_t), err_t
     end
+  end
+
+  local ok, err, err_t = resolve_foreign(self, entity_to_update)
+  if not ok then
+    return nil, err, err_t
   end
 
   local ok, errors = self.schema:validate_update(entity_to_update)
@@ -237,6 +344,48 @@ local function check_update(self, key, entity, options, name)
   end
 
   return entity_to_update, rbw_entity
+end
+
+
+local function check_upsert(self, entity, options, name, value)
+  local entity_to_upsert, err = self.schema:process_auto_fields(entity, "upsert")
+  if not entity_to_upsert then
+    local err_t = self.errors:schema_violation(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  if name then
+    entity_to_upsert[name] = value
+  end
+
+  local ok, err, err_t = resolve_foreign(self, entity_to_upsert)
+  if not ok then
+    return nil, err, err_t
+  end
+
+  local ok, errors = self.schema:validate_upsert(entity_to_upsert)
+  if not ok then
+    local err_t = self.errors:schema_violation(errors)
+    return nil, tostring(err_t), err_t
+  end
+
+  if name then
+    entity_to_upsert[name] = nil
+  end
+
+  if options ~= nil then
+    local ok, errors = validate_options_value(options, self.schema, "upsert")
+    if not ok then
+      local err_t = self.errors:invalid_options(errors)
+      return nil, tostring(err_t), err_t
+    end
+  end
+
+  if self.schema.cache_key and #self.schema.cache_key > 1 then
+    entity_to_upsert.cache_key = self:cache_key(entity_to_upsert)
+  end
+
+  return entity_to_upsert
 end
 
 
@@ -267,9 +416,9 @@ local function find_cascade_delete_entities(self, entity)
 end
 
 
-local function propagate_cascade_delete_events(entries)
+local function propagate_cascade_delete_events(entries, options)
   for _, entry in ipairs(entries) do
-    entry.dao:post_crud_event("delete", entry.entity)
+    entry.dao:post_crud_event("delete", entry.entity, nil, options)
   end
 end
 
@@ -456,7 +605,7 @@ local function generate_foreign_key_methods(schema)
           return nil, err, err_t
         end
 
-        self:post_crud_event("update", row, rbw_entity)
+        self:post_crud_event("update", row, rbw_entity, options)
 
         return row
       end
@@ -475,30 +624,10 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        local entity_to_upsert, err = self.schema:process_auto_fields(entity, "upsert")
+        local entity_to_upsert, err, err_t = check_upsert(self, entity, options,
+                                                          name, unique_value)
         if not entity_to_upsert then
-          local err_t = self.errors:schema_violation(err)
-          return nil, tostring(err_t), err_t
-        end
-
-        entity_to_upsert[name] = unique_value
-        local errors
-        ok, errors = self.schema:validate_upsert(entity_to_upsert)
-        if not ok then
-          local err_t = self.errors:schema_violation(errors)
-          return nil, tostring(err_t), err_t
-        end
-        if self.schema.cache_key and #self.schema.cache_key > 1 then
-          entity_to_upsert.cache_key = self:cache_key(entity_to_upsert)
-        end
-        entity_to_upsert[name] = nil
-
-        if options ~= nil then
-          ok, errors = validate_options_value(options, schema, "upsert")
-          if not ok then
-            local err_t = self.errors:invalid_options(errors)
-            return nil, tostring(err_t), err_t
-          end
+          return nil, err, err_t
         end
 
         local row, err_t = self.strategy:upsert_by_field(name, unique_value,
@@ -512,7 +641,7 @@ local function generate_foreign_key_methods(schema)
           return nil, err, err_t
         end
 
-        self:post_crud_event("update", row)
+        self:post_crud_event("update", row, nil, options)
 
         return row
       end
@@ -556,8 +685,8 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        self:post_crud_event("delete", entity)
-        propagate_cascade_delete_events(cascade_entries)
+        self:post_crud_event("delete", entity, nil, options)
+        propagate_cascade_delete_events(cascade_entries, options)
 
         return true
       end
@@ -720,28 +849,9 @@ function DAO:insert(entity, options)
     validate_options_type(options)
   end
 
-  local entity_to_insert, err = self.schema:process_auto_fields(entity, "insert")
+  local entity_to_insert, err, err_t = check_insert(self, entity, options)
   if not entity_to_insert then
-    local err_t = self.errors:schema_violation(err)
-    return nil, tostring(err_t), err_t
-  end
-
-  local ok, errors = self.schema:validate_insert(entity_to_insert)
-  if not ok then
-    local err_t = self.errors:schema_violation(errors)
-    return nil, tostring(err_t), err_t
-  end
-
-  if options ~= nil then
-    ok, errors = validate_options_value(options, self.schema, "insert")
-    if not ok then
-      local err_t = self.errors:invalid_options(errors)
-      return nil, tostring(err_t), err_t
-    end
-  end
-
-  if self.schema.cache_key and #self.schema.cache_key > 1 then
-    entity_to_insert.cache_key = self:cache_key(entity_to_insert)
+    return nil, err, err_t
   end
 
   local row, err_t = self.strategy:insert(entity_to_insert, options)
@@ -754,7 +864,7 @@ function DAO:insert(entity, options)
     return nil, err, err_t
   end
 
-  self:post_crud_event("create", row)
+  self:post_crud_event("create", row, nil, options)
 
   return row
 end
@@ -792,7 +902,7 @@ function DAO:update(primary_key, entity, options)
     return nil, err, err_t
   end
 
-  self:post_crud_event("update", row, rbw_entity)
+  self:post_crud_event("update", row, rbw_entity, options)
 
   return row
 end
@@ -812,28 +922,9 @@ function DAO:upsert(primary_key, entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  local entity_to_upsert, err = self.schema:process_auto_fields(entity, "upsert")
+  local entity_to_upsert, err, err_t = check_upsert(self, entity, options)
   if not entity_to_upsert then
-    local err_t = self.errors:schema_violation(err)
-    return nil, tostring(err_t), err_t
-  end
-
-  ok, errors = self.schema:validate_upsert(entity_to_upsert)
-  if not ok then
-    local err_t = self.errors:schema_violation(errors)
-    return nil, tostring(err_t), err_t
-  end
-
-  if options ~= nil then
-    ok, errors = validate_options_value(options, self.schema, "upsert")
-    if not ok then
-      local err_t = self.errors:invalid_options(errors)
-      return nil, tostring(err_t), err_t
-    end
-  end
-
-  if self.schema.cache_key and #self.schema.cache_key > 1 then
-    entity_to_upsert.cache_key = self:cache_key(entity_to_upsert)
+    return nil, err, err_t
   end
 
   local row, err_t = self.strategy:upsert(primary_key, entity_to_upsert, options)
@@ -846,7 +937,7 @@ function DAO:upsert(primary_key, entity, options)
     return nil, err, err_t
   end
 
-  self:post_crud_event("update", row)
+  self:post_crud_event("update", row, nil, options)
 
   return row
 end
@@ -890,8 +981,8 @@ function DAO:delete(primary_key, options)
     return nil, tostring(err_t), err_t
   end
 
-  self:post_crud_event("delete", entity)
-  propagate_cascade_delete_events(cascade_entries)
+  self:post_crud_event("delete", entity, nil, options)
+  propagate_cascade_delete_events(cascade_entries, options)
 
   return true
 end
@@ -962,7 +1053,11 @@ function DAO:row_to_entity(row, options)
 end
 
 
-function DAO:post_crud_event(operation, entity, old_entity)
+function DAO:post_crud_event(operation, entity, old_entity, options)
+  if options and options.no_broadcast_crud_event then
+    return
+  end
+
   if self.events then
     local _, err = self.events.post_local("dao:crud", operation, {
       operation  = operation,

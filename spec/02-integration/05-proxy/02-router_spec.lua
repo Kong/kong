@@ -34,7 +34,7 @@ local function insert_routes(bp, routes)
     service = bp.named_services:insert(service)
     route.service = service
 
-    if not route.protocol then
+    if not route.protocols then
       route.protocols = { "http" }
     end
 
@@ -811,6 +811,84 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    describe("[snis] for HTTPs connections", function()
+      local routes
+      local proxy_ssl_client
+
+      lazy_setup(function()
+        routes = insert_routes(bp, {
+          {
+            protocols = { "https" },
+            snis = { "www.example.org" },
+            service = {
+              name = "service_behind_www.example.org"
+            },
+          },
+          {
+            protocols = { "https" },
+            snis = { "example.org" },
+            service = {
+              name = "service_behind_example.org"
+            },
+          },
+        })
+      end)
+
+      lazy_teardown(function()
+        remove_routes(strategy, routes)
+      end)
+
+      after_each(function()
+        if proxy_ssl_client then
+          proxy_ssl_client:close()
+        end
+      end)
+
+      it("matches a Route based on its 'snis' attribute", function()
+        proxy_ssl_client = helpers.proxy_ssl_client(nil, "www.example.org")
+
+        local res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = { ["kong-debug"] = 1 },
+        })
+        assert.res_status(200, res)
+        assert.equal("service_behind_www.example.org",
+                     res.headers["kong-service-name"])
+
+        res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/status/201",
+          headers = { ["kong-debug"] = 1 },
+        })
+        assert.res_status(201, res)
+        assert.equal("service_behind_www.example.org",
+                     res.headers["kong-service-name"])
+
+        proxy_ssl_client:close()
+
+        proxy_ssl_client = helpers.proxy_ssl_client(nil, "example.org")
+
+        local res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = { ["kong-debug"] = 1 },
+        })
+        assert.res_status(200, res)
+        assert.equal("service_behind_example.org",
+                     res.headers["kong-service-name"])
+
+        res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/status/201",
+          headers = { ["kong-debug"] = 1 },
+        })
+        assert.res_status(201, res)
+        assert.equal("service_behind_example.org",
+                     res.headers["kong-service-name"])
+      end)
+    end)
+
     describe("[paths] + [methods]", function()
       local routes
 
@@ -1117,5 +1195,61 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
     end)
+  end)
+
+  describe("Router at startup [#" .. strategy .. "]" , function()
+    local proxy_client
+    local route
+
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "apis",
+      })
+
+      route = bp.routes:insert({
+        methods    = { "GET" },
+        protocols  = { "http" },
+        strip_path = false,
+      })
+
+      assert(helpers.start_kong({
+        database = strategy,
+        nginx_worker_processes = 4,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    after_each(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+    end)
+
+    it("uses configuration from datastore or declarative_config", function()
+      for _ = 1, 1000 do
+        proxy_client = helpers.proxy_client()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = { ["kong-debug"] = 1 },
+        })
+
+        assert.response(res).has_status(200)
+
+        assert.equal(route.service.name, res.headers["kong-service-name"])
+        proxy_client:close()
+      end
+    end)
+
   end)
 end

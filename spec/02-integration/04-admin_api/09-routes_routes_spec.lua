@@ -139,6 +139,39 @@ for _, strategy in helpers.each_strategy() do
           end
         end)
 
+        it_content_types("creates a complex route by referencing a service by name", function(content_type, name)
+          return function()
+            if content_type == "multipart/form-data" then
+              -- the client doesn't play well with this
+              return
+            end
+
+            local s = bp.named_services:insert()
+            local res = client:post("/routes", {
+              body    = {
+                protocols = { "http" },
+                methods   = { "GET", "POST", "PATCH" },
+                hosts     = { "foo.api.com", "bar.api.com" },
+                paths     = { "/foo", "/bar" },
+                service   = { name = s.name },
+              },
+              headers = { ["Content-Type"] = content_type }
+            })
+
+            -- TODO: For some reason the body which arrives to the server is
+            -- incorrectly parsed on this test: self.params.methods is the string
+            -- "PATCH" instead of an array, for example. I could not find the
+            -- cause
+
+            local body = assert.res_status(201, res)
+            local json = cjson.decode(body)
+            assert.same({ "foo.api.com", "bar.api.com" }, json.hosts)
+            assert.same({ "/foo","/bar" }, json.paths)
+            assert.same({ "GET", "POST", "PATCH" }, json.methods)
+            assert.same(s.id, json.service.id)
+          end
+        end)
+
         describe("errors", function()
           it("handles malformed JSON body", function()
             local res = client:post("/routes", {
@@ -167,11 +200,33 @@ for _, strategy in helpers.each_strategy() do
                 name    = "schema violation",
                 message = unindent([[
                   schema violation
-                  (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https')
+                  (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http')
                 ]], true, true),
-                fields = {
+                fields  = {
                   ["@entity"] = {
-                    "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https'"
+                    "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'",
+                  }
+                }
+              }, cjson.decode(body))
+
+              -- Missing https params
+              res = client:post("/routes", {
+                body = {
+                  protocols = { "https" },
+                },
+                headers = { ["Content-Type"] = content_type }
+              })
+              body = assert.res_status(400, res)
+              assert.same({
+                code    = Errors.codes.SCHEMA_VIOLATION,
+                name    = "schema violation",
+                message = unindent([[
+                  schema violation
+                  (must set one of 'methods', 'hosts', 'paths', 'snis' when 'protocols' is 'https')
+                ]], true, true),
+                fields  = {
+                  ["@entity"] = {
+                    "must set one of 'methods', 'hosts', 'paths', 'snis' when 'protocols' is 'https'",
                   }
                 }
               }, cjson.decode(body))
@@ -192,6 +247,96 @@ for _, strategy in helpers.each_strategy() do
                           "(protocols.1: expected one of: http, https, tcp, tls)",
                 fields = {
                   protocols = { "expected one of: http, https, tcp, tls" },
+                }
+              }, cjson.decode(body))
+
+              -- Invalid foreign entity
+              res = client:post("/routes", {
+                body = {
+                  methods   = { "GET" },
+                  protocols = { "foo" },
+                  service = { name = [[\o/]] },
+                },
+                headers = { ["Content-Type"] = content_type }
+              })
+              body = assert.res_status(400, res)
+              assert.same({
+                code    = Errors.codes.SCHEMA_VIOLATION,
+                name    = "schema violation",
+                message = "2 schema violations " ..
+                  "(protocols.1: expected one of: http, https, tcp, tls; " ..
+                  [[service.name: invalid value '\o/': it must only contain alphanumeric and '., -, _, ~' characters)]],
+                fields = {
+                  protocols = { "expected one of: http, https, tcp, tls" },
+                  service = {
+                    name = [[invalid value '\o/': it must only contain alphanumeric and '., -, _, ~' characters]]
+                  }
+                }
+              }, cjson.decode(body))
+
+              -- Invalid foreign entity reference
+              res = client:post("/routes", {
+                body = {
+                  methods   = { "GET" },
+                  service = { name = "non-existing" },
+                },
+                headers = { ["Content-Type"] = content_type }
+              })
+              body = assert.res_status(400, res)
+              assert.same({
+                code    = Errors.codes.FOREIGN_KEYS_UNRESOLVED,
+                name    = "foreign keys unresolved",
+                message = [[foreign key unresolved (service.name: the foreign key cannot be resolved with ]] ..
+                          [['{name="non-existing"}' for an existing 'services' entity)]],
+                fields = {
+                  service = {
+                    name = [[the foreign key cannot be resolved with '{name="non-existing"}' ]] ..
+                           [[for an existing 'services' entity]]
+                  }
+                }
+              }, cjson.decode(body))
+
+              local service_name = content_type == "application/json" and cjson.null or ""
+              -- Invalid foreign entity reference
+              res = client:post("/routes", {
+                body = {
+                  methods = { "GET" },
+                  service = { name = service_name },
+                },
+                headers = { ["Content-Type"] = content_type }
+              })
+              body = assert.res_status(400, res)
+              assert.same({
+                code    = Errors.codes.SCHEMA_VIOLATION,
+                name    = "schema violation",
+                message = "schema violation " ..
+                  "(service.id: missing primary key)",
+                fields = {
+                  service = {
+                    id = "missing primary key"
+                  }
+                }
+              }, cjson.decode(body))
+
+
+              -- Foreign entity cannot be resolved
+              res = client:post("/routes", {
+                body = {
+                  methods   = { "GET" },
+                  service = { protocol = "http" },
+                },
+                headers = { ["Content-Type"] = content_type }
+              })
+              body = assert.res_status(400, res)
+              assert.same({
+                code    = Errors.codes.SCHEMA_VIOLATION,
+                name    = "schema violation",
+                message = "schema violation " ..
+                          "(service.id: missing primary key)",
+                fields = {
+                  service = {
+                    id = "missing primary key"
+                  }
                 }
               }, cjson.decode(body))
             end
@@ -587,11 +732,11 @@ for _, strategy in helpers.each_strategy() do
                   name    = "schema violation",
                   message = unindent([[
                   schema violation
-                  (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https')
-                ]], true, true),
+                  (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http')
+                  ]], true, true),
                   fields  = {
                     ["@entity"] = {
-                      "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https'"
+                      "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'",
                     }
                   }
                 }, cjson.decode(body))

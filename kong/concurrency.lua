@@ -2,6 +2,9 @@ local resty_lock = require "resty.lock"
 local ngx_semaphore = require "ngx.semaphore"
 
 
+local get_phase = ngx.get_phase
+
+
 local concurrency = {}
 
 
@@ -61,8 +64,14 @@ function concurrency.with_coroutine_mutex(opts, fn)
   if opts.timeout and type(opts.timeout) ~= "number" then
     error("opts.timeout must be a number", 2)
   end
-  if opts.on_timeout and opts.on_timeout ~= "run_unlocked" then
+  if opts.on_timeout and
+     opts.on_timeout ~= "run_unlocked" and
+     opts.on_timeout ~= "return_true" then
     error("invalid value for opts.on_timeout", 2)
+  end
+
+  if get_phase() == "init_worker" then
+    return fn()
   end
 
   local timeout = opts.timeout or 60
@@ -74,8 +83,7 @@ function concurrency.with_coroutine_mutex(opts, fn)
     local err
     semaphore, err = ngx_semaphore.new()
     if err then
-      kong.log.crit("failed to create ", opts.name, " lock: ", err)
-      return nil, "critical error"
+      return nil, "failed to create " .. opts.name .. " lock: " .. err
     end
     semaphores[opts.name] = semaphore
 
@@ -91,6 +99,8 @@ function concurrency.with_coroutine_mutex(opts, fn)
 
     if opts.on_timeout == "run_unlocked" then
       kong.log.warn("bypassing ", opts.name, " lock: timeout")
+    elseif opts.on_timeout == "return_true" then
+      return true
     else
       return nil, "timeout acquiring " .. opts.name .. " lock"
     end

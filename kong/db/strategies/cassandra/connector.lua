@@ -36,7 +36,7 @@ function CassandraConnector.new(kong_config)
     package.loaded["resty.dns.client"] = nil
     package.loaded["resty.dns.resolver"] = nil
 
-    ngx.socket.tcp = function(...)
+    ngx.socket.tcp = function(...) -- luacheck: ignore
       local tcp = require("socket").tcp(...)
       return setmetatable({}, {
         __newindex = function(_, k, v)
@@ -63,7 +63,7 @@ function CassandraConnector.new(kong_config)
       })
     end
 
-    ngx.socket.udp = function(...)
+    ngx.socket.udp = function(...) -- luacheck: ignore
       local udp = require("socket").udp(...)
       return setmetatable({}, {
         __newindex = function(_, k, v)
@@ -115,8 +115,8 @@ function CassandraConnector.new(kong_config)
     package.loaded["kong.tools.dns"] = nil
     package.loaded["socket"] = nil
 
-    ngx.socket.udp = udp_old
-    ngx.socket.tcp = tcp_old
+    ngx.socket.udp = udp_old -- luacheck: ignore
+    ngx.socket.tcp = tcp_old -- luacheck: ignore
   end
 
   if #resolved_contact_points == 0 then

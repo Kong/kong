@@ -7,8 +7,11 @@ local iputils = require "resty.iputils"
 local Schema = require("kong.db.schema")
 local socket_url = require("socket.url")
 local constants = require "kong.constants"
+local px = require "resty.mediador.proxy"
 
 
+local pairs = pairs
+local pcall = pcall
 local match = string.match
 local gsub = string.gsub
 local null = ngx.null
@@ -43,7 +46,18 @@ local function validate_ip(ip)
 end
 
 
-local function validate_cidr(ip)
+local function validate_ip_or_cidr(ip)
+  local pok, perr = pcall(px.compile, ip)
+
+  if pok and type(perr) == "function" then
+    return true
+  end
+
+  return nil, "invalid ip or cidr range: '" .. ip .. "'"
+end
+
+
+local function validate_cidr_v4(ip)
   local _, err = iputils.parse_cidr(ip)
 
   -- It's an error only if the second variable is a string
@@ -89,6 +103,39 @@ end
 
 
 local function validate_sni(host)
+  local res, err_or_port = utils.normalize_ip(host)
+  if type(err_or_port) == "string" and err_or_port ~= "invalid port number" then
+    return nil, "invalid value: " .. host
+  end
+
+  if res.type ~= "name" then
+    return nil, "must not be an IP"
+  end
+
+  if err_or_port == "invalid port number" or type(res.port) == "number" then
+    return nil, "must not have a port"
+  end
+
+  return true
+end
+
+
+local function validate_wildcard_host(host)
+  local idx = string.find(host, "*", nil, true)
+  if idx then
+    if idx ~= 1 and idx ~= #host then
+      return nil, "wildcard must be leftmost or rightmost character"
+    end
+
+    -- substitute wildcard for upcoming host normalization
+    local mock_host, count = string.gsub(host, "%*", "wildcard")
+    if count > 1 then
+      return nil, "only one wildcard must be specified"
+    end
+
+    host = mock_host
+  end
+
   local res, err_or_port = utils.normalize_ip(host)
   if type(err_or_port) == "string" and err_or_port ~= "invalid port number" then
     return nil, "invalid value: " .. host
@@ -168,17 +215,29 @@ typedefs.host = Schema.define {
 }
 
 
+typedefs.wildcard_host = Schema.define {
+  type = "string",
+  custom_validator = validate_wildcard_host,
+}
+
+
 typedefs.ip = Schema.define {
   type = "string",
   custom_validator = validate_ip,
 }
 
-
-typedefs.cidr = Schema.define {
+typedefs.ip_or_cidr = Schema.define {
   type = "string",
-  custom_validator = validate_cidr,
+  custom_validator = validate_ip_or_cidr,
 }
 
+typedefs.cidr_v4 = Schema.define {
+  type = "string",
+  custom_validator = validate_cidr_v4,
+}
+
+-- deprecated alias
+typedefs.cidr = typedefs.cidr_v4
 
 typedefs.port = Schema.define {
   type = "integer",
@@ -304,7 +363,7 @@ typedefs.run_on_first = Schema.define {
 
 typedefs.tag = Schema.define {
   type = "string",
-  required = true, 
+  required = true,
   match = "^[%w%.%-%_~]+$",
 }
 

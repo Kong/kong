@@ -1,5 +1,7 @@
 local declarative = require("kong.db.declarative")
+local concurrency = require("kong.concurrency")
 local reports = require("kong.reports")
+local errors = require("kong.db.errors")
 local kong = kong
 local dc = declarative.new_config(kong.configuration)
 
@@ -26,9 +28,16 @@ return {
         })
       end
 
-      local entities, err_or_ver
+      local check_hash, old_hash
+      if tostring(self.params.check_hash) == "1" then
+        check_hash = true
+        old_hash = declarative.get_current_hash()
+      end
+      self.params.check_hash = nil
+
+      local entities, _, err_t, vers, new_hash
       if self.params._format_version then
-        entities, err_or_ver = dc:parse_table(self.params)
+        entities, _, err_t, vers, new_hash = dc:parse_table(self.params)
       else
         local config = self.params.config
         if not config then
@@ -36,21 +45,35 @@ return {
             message = "expected a declarative configuration"
           })
         end
-        -- TODO extract proper filename from the input
-        entities, err_or_ver = dc:parse_string(config, "config.yml", accept)
+        entities, _, err_t, vers, new_hash =
+          dc:parse_string(config, nil, accept, old_hash)
+      end
+
+      if check_hash and new_hash and old_hash == new_hash then
+        return kong.response.exit(304)
       end
 
       if not entities then
-        return kong.response.exit(400, { error = err_or_ver })
+        return kong.response.exit(400, errors:declarative_config(err_t))
       end
 
-      local ok, err = declarative.load_into_cache_with_events(entities)
+      local ok, err = concurrency.with_worker_mutex({ name = "dbless-worker" }, function()
+        return declarative.load_into_cache_with_events(entities, new_hash)
+      end)
+
+      if err == "no memory" then
+        kong.log.err("not enough cache space for declarative config")
+        return kong.response.exit(413, {
+          message = "Configuration does not fit in Kong cache"
+        })
+      end
+
       if not ok then
         kong.log.err("failed loading declarative config into cache: ", err)
         return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 
-      _reports.decl_fmt_version = err_or_ver
+      _reports.decl_fmt_version = vers
       reports.send("dbless-reconfigure", _reports)
 
       return kong.response.exit(201, entities)

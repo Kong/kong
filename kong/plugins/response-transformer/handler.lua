@@ -1,4 +1,3 @@
-local BasePlugin = require "kong.plugins.base_plugin"
 local body_transformer = require "kong.plugins.response-transformer.body_transformer"
 local header_transformer = require "kong.plugins.response-transformer.header_transformer"
 
@@ -10,24 +9,15 @@ local kong = kong
 local ngx = ngx
 
 
-local ResponseTransformerHandler = BasePlugin:extend()
-
-
-function ResponseTransformerHandler:new()
-  ResponseTransformerHandler.super.new(self, "response-transformer")
-end
+local ResponseTransformerHandler = {}
 
 
 function ResponseTransformerHandler:header_filter(conf)
-  ResponseTransformerHandler.super.header_filter(self)
-
   header_transformer.transform_headers(conf, kong.response.get_headers())
 end
 
 
 function ResponseTransformerHandler:body_filter(conf)
-  ResponseTransformerHandler.super.body_filter(self)
-
   if is_body_transform_set(conf) and is_json_body(kong.response.get_header("Content-Type")) then
     local ctx = ngx.ctx
     local chunk, eof = ngx.arg[1], ngx.arg[2]
@@ -50,7 +40,7 @@ end
 
 
 ResponseTransformerHandler.PRIORITY = 800
-ResponseTransformerHandler.VERSION = "1.0.0"
+ResponseTransformerHandler.VERSION = "2.0.0"
 
 
 return ResponseTransformerHandler

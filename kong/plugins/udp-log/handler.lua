@@ -1,14 +1,13 @@
-local BasePlugin = require "kong.plugins.base_plugin"
 local serializer = require "kong.plugins.log-serializers.basic"
 local cjson = require "cjson"
 
 local timer_at = ngx.timer.at
 local udp = ngx.socket.udp
 
-local UdpLogHandler = BasePlugin:extend()
+local UdpLogHandler = {}
 
 UdpLogHandler.PRIORITY = 8
-UdpLogHandler.VERSION = "1.0.0"
+UdpLogHandler.VERSION = "2.0.0"
 
 local function log(premature, conf, str)
   if premature then
@@ -37,13 +36,7 @@ local function log(premature, conf, str)
   end
 end
 
-function UdpLogHandler:new()
-  UdpLogHandler.super.new(self, "udp-log")
-end
-
 function UdpLogHandler:log(conf)
-  UdpLogHandler.super.log(self)
-
   local ok, err = timer_at(0, log, conf, cjson.encode(serializer.serialize(ngx)))
   if not ok then
     ngx.log(ngx.ERR, "[udp-log] could not create timer: ", err)

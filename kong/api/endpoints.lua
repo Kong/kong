@@ -20,18 +20,19 @@ local split        = utils.split
 
 -- error codes http status codes
 local ERRORS_HTTP_CODES = {
-  [Errors.codes.INVALID_PRIMARY_KEY]   = 400,
-  [Errors.codes.SCHEMA_VIOLATION]      = 400,
-  [Errors.codes.PRIMARY_KEY_VIOLATION] = 400,
-  [Errors.codes.FOREIGN_KEY_VIOLATION] = 400,
-  [Errors.codes.UNIQUE_VIOLATION]      = 409,
-  [Errors.codes.NOT_FOUND]             = 404,
-  [Errors.codes.INVALID_OFFSET]        = 400,
-  [Errors.codes.DATABASE_ERROR]        = 500,
-  [Errors.codes.INVALID_SIZE]          = 400,
-  [Errors.codes.INVALID_UNIQUE]        = 400,
-  [Errors.codes.INVALID_OPTIONS]       = 400,
-  [Errors.codes.OPERATION_UNSUPPORTED] = 405,
+  [Errors.codes.INVALID_PRIMARY_KEY]     = 400,
+  [Errors.codes.SCHEMA_VIOLATION]        = 400,
+  [Errors.codes.PRIMARY_KEY_VIOLATION]   = 400,
+  [Errors.codes.FOREIGN_KEY_VIOLATION]   = 400,
+  [Errors.codes.UNIQUE_VIOLATION]        = 409,
+  [Errors.codes.NOT_FOUND]               = 404,
+  [Errors.codes.INVALID_OFFSET]          = 400,
+  [Errors.codes.DATABASE_ERROR]          = 500,
+  [Errors.codes.INVALID_SIZE]            = 400,
+  [Errors.codes.INVALID_UNIQUE]          = 400,
+  [Errors.codes.INVALID_OPTIONS]         = 400,
+  [Errors.codes.OPERATION_UNSUPPORTED]   = 405,
+  [Errors.codes.FOREIGN_KEYS_UNRESOLVED] = 400,
 }
 
 
@@ -187,11 +188,7 @@ local function query_entity(context, self, db, schema, method)
     args = self.args.uri
   end
 
-  local opts, err = extract_options(args, schema, context)
-  if err then
-    return nil, err, db[schema.name].errors:invalid_size(err)
-  end
-
+  local opts = extract_options(args, schema, context)
   local dao = db[schema.name]
 
   if is_insert then
@@ -290,7 +287,6 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
     end
 
     local data, _, err_t, offset = page_collection(self, db, schema, method)
-
     if err_t then
       return handle_error(err_t)
     end

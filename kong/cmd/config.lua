@@ -36,18 +36,15 @@ local function execute(args)
 
   log.disable()
   -- retrieve default prefix or use given one
-  local default_conf = assert(conf_loader(args.conf, {
+  local conf = assert(conf_loader(args.conf, {
     prefix = args.prefix
   }))
   log.enable()
 
-  assert(pl_path.exists(default_conf.prefix),
-         "no such prefix: " .. default_conf.prefix)
-  assert(pl_path.exists(default_conf.kong_env),
-         "Kong is not running at " .. default_conf.prefix)
-
-  -- load <PREFIX>/kong.conf containing running node's config
-  local conf = assert(conf_loader(default_conf.kong_env))
+  if pl_path.exists(conf.kong_env) then
+    -- load <PREFIX>/kong.conf containing running node's config
+    conf = assert(conf_loader(conf.kong_env))
+  end
 
   if args.command == "db-import" then
     args.command = "db_import"
@@ -72,9 +69,9 @@ local function execute(args)
       error("expected a declarative configuration file; see `kong config --help`")
     end
 
-    local dc_table, err_or_ver = dc:parse_file(filename, accepted_formats)
+    local dc_table, err, _, vers = dc:parse_file(filename, accepted_formats)
     if not dc_table then
-      error("Failed parsing:\n" .. err_or_ver)
+      error("Failed parsing:\n" .. err)
     end
 
     if args.command == "db_import" then
@@ -103,7 +100,7 @@ local function execute(args)
         kong_reports.configure_ping(conf)
         kong_reports.toggle(true)
 
-        local report = { decl_fmt_version = err_or_ver }
+        local report = { decl_fmt_version = vers }
         kong_reports.send("config-db-import", report)
       end
 
@@ -123,14 +120,14 @@ Usage: kong config COMMAND [OPTIONS]
 Use declarative configuration files with Kong.
 
 The available commands are:
-  init                          Generate an example config file to
-                                get you started.
+  init                                Generate an example config file to
+                                      get you started.
 
-  db_import <file>              Import a declarative config file into
-                                the Kong database.
+  db_import <file>                    Import a declarative config file into
+                                      the Kong database.
 
-  parse <file>                  Parse a declarative config file (check
-                                its syntax) but do not load it into Kong.
+  parse <file>                        Parse a declarative config file (check
+                                      its syntax) but do not load it into Kong.
 
 Options:
  -c,--conf        (optional string)   Configuration file.

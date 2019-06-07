@@ -1,9 +1,9 @@
 package = "kong"
-version = "1.1.2-0"
+version = "1.2.0-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "1.1.2"
+  tag = "1.2.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -12,7 +12,7 @@ description = {
 }
 dependencies = {
   "inspect == 3.1.1",
-  "luasec == 0.7",
+  "luasec == 0.8",
   "luasocket == 3.0-rc1",
   "penlight == 1.5.4",
   "lua-resty-http == 0.13",
@@ -21,8 +21,8 @@ dependencies = {
   "version == 1.0.1",
   "kong-lapis == 1.6.0.1",
   "lua-cassandra == 1.4.0",
-  "pgmoon == 1.9.0",
-  "luatz == 0.3",
+  "pgmoon == 1.10.0",
+  "luatz == 0.4",
   "http == 0.3",
   "lua_system_constants == 0.1.3",
   "lyaml == 6.2.3",
@@ -33,7 +33,7 @@ dependencies = {
   "lua-resty-dns-client == 3.0.2",
   "lua-resty-worker-events == 0.3.3",
   "lua-resty-mediador == 0.1.2",
-  "lua-resty-healthcheck == 0.6.1",
+  "lua-resty-healthcheck == 0.6.2",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.0",
   -- external Kong plugins
@@ -42,6 +42,8 @@ dependencies = {
   "kong-plugin-zipkin ~> 0.1",
   "kong-plugin-serverless-functions ~> 0.2",
   "kong-prometheus-plugin ~> 0.3",
+  "kong-proxy-cache-plugin ~> 1.2",
+  "kong-plugin-request-transformer ~> 1.2",
 }
 build = {
   type = "builtin",
@@ -56,6 +58,7 @@ build = {
     ["kong.singletons"] = "kong/singletons.lua",
     ["kong.concurrency"] = "kong/concurrency.lua",
     ["kong.conf_loader"] = "kong/conf_loader.lua",
+    ["kong.cache_warmup"] = "kong/cache_warmup.lua",
     ["kong.globalpatches"] = "kong/globalpatches.lua",
     ["kong.error_handlers"] = "kong/error_handlers.lua",
 
@@ -175,6 +178,7 @@ build = {
     ["kong.db.migrations.core.001_14_to_15"] = "kong/db/migrations/core/001_14_to_15.lua",
     ["kong.db.migrations.core.002_15_to_1"] = "kong/db/migrations/core/002_15_to_1.lua",
     ["kong.db.migrations.core.003_100_to_110"] = "kong/db/migrations/core/003_100_to_110.lua",
+    ["kong.db.migrations.core.004_110_to_120"] = "kong/db/migrations/core/004_110_to_120.lua",
 
     ["kong.pdk"] = "kong/pdk/init.lua",
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",
@@ -265,10 +269,6 @@ build = {
 
     ["kong.plugins.request-size-limiting.handler"] = "kong/plugins/request-size-limiting/handler.lua",
     ["kong.plugins.request-size-limiting.schema"] = "kong/plugins/request-size-limiting/schema.lua",
-
-    ["kong.plugins.request-transformer.handler"] = "kong/plugins/request-transformer/handler.lua",
-    ["kong.plugins.request-transformer.access"] = "kong/plugins/request-transformer/access.lua",
-    ["kong.plugins.request-transformer.schema"] = "kong/plugins/request-transformer/schema.lua",
 
     ["kong.plugins.response-transformer.handler"] = "kong/plugins/response-transformer/handler.lua",
     ["kong.plugins.response-transformer.body_transformer"] = "kong/plugins/response-transformer/body_transformer.lua",

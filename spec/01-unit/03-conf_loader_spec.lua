@@ -454,6 +454,12 @@ describe("Configuration loader", function()
       assert.equal("database has an invalid value: 'mysql' (postgres, cassandra, off)", err)
       assert.is_nil(conf)
 
+      local conf, err = conf_loader(nil, {
+        router_consistency = "magical"
+      })
+      assert.equal("router_consistency has an invalid value: 'magical' (strict, eventual)", err)
+      assert.is_nil(conf)
+
       conf, err = conf_loader(nil, {
         cassandra_consistency = "FOUR"
       })
@@ -461,6 +467,7 @@ describe("Configuration loader", function()
                  .. " (ALL, EACH_QUORUM, QUORUM, LOCAL_QUORUM, ONE, TWO,"
                  .. " THREE, LOCAL_ONE)", err)
       assert.is_nil(conf)
+
     end)
     it("enforces listen addresses format", function()
       local conf, err = conf_loader(nil, {
@@ -821,6 +828,40 @@ describe("Configuration loader", function()
 
       local conf = assert(conf_loader(helpers.test_conf_path))
       assert.equal("postgres", conf.database)
+    end)
+  end)
+
+  describe("pg_semaphore options", function()
+    it("rejects a pg_max_concurrent_queries with a negative number", function()
+      local conf, err = conf_loader(nil, {
+        pg_max_concurrent_queries = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_max_concurrent_queries must be greater than 0", err)
+    end)
+
+    it("rejects a pg_max_concurrent_queries with a decimal", function()
+      local conf, err = conf_loader(nil, {
+        pg_max_concurrent_queries = 0.1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_max_concurrent_queries must be an integer greater than 0", err)
+    end)
+
+    it("rejects a pg_semaphore_timeout with a negative number", function()
+      local conf, err = conf_loader(nil, {
+        pg_semaphore_timeout = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_semaphore_timeout must be greater than 0", err)
+    end)
+
+    it("rejects a pg_semaphore_timeout with a decimal", function()
+      local conf, err = conf_loader(nil, {
+        pg_semaphore_timeout = 0.1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_semaphore_timeout must be an integer greater than 0", err)
     end)
   end)
 

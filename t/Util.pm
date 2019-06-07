@@ -7,7 +7,7 @@ use Cwd qw(cwd);
 our $cwd = cwd();
 
 our $HttpConfig = <<_EOC_;
-    lua_package_path \'$cwd/?/init.lua;;\';
+    lua_package_path \'$cwd/?.lua;$cwd/?/init.lua;;\';
 
     init_by_lua_block {
         local log = ngx.log

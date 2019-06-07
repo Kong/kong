@@ -37,6 +37,7 @@ local version = require "version"
 local pl_dir = require "pl.dir"
 local pl_Set = require "pl.Set"
 local Schema = require "kong.db.schema"
+local Entity = require "kong.db.schema.entity"
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local http = require "resty.http"
@@ -480,12 +481,12 @@ end
 
 --- returns a pre-configured `http_client` for the Kong SSL proxy port.
 -- @name proxy_ssl_client
-local function proxy_ssl_client(timeout)
+local function proxy_ssl_client(timeout, sni)
   local proxy_ip = get_proxy_ip(true)
   local proxy_port = get_proxy_port(true)
   assert(proxy_ip, "No https-proxy found in the configuration")
   local client = http_client(proxy_ip, proxy_port, timeout)
-  assert(client:ssl_handshake())
+  assert(client:ssl_handshake(nil, sni, false)) -- explicit no-verify
   return client
 end
 
@@ -544,6 +545,7 @@ local function tcp_server(port, opts)
       assert(server:bind("*", port))
       assert(server:listen())
       local line
+      local oks, fails = 0, 0
       local handshake_done = false
       local n = opts.requests or 1
       for _ = 1, n + 1 do
@@ -562,16 +564,31 @@ local function tcp_server(port, opts)
           client:dohandshake()
         end
 
-        line = assert(client:receive())
+        local err
+        line, err = client:receive()
+        if err == "closed" then
+          fails = fails + 1
 
-        if not handshake_done then
-          assert(line == "\\START")
-          client:send("\\OK\n")
-          handshake_done = true
         else
-          client:send((opts.prefix or "") .. line .. "\n")
+          if not handshake_done then
+            assert(line == "\\START")
+            client:send("\\OK\n")
+            handshake_done = true
+
+          else
+            if line == "@DIE@" then
+              client:send(string.format("%d:%d\n", oks, fails))
+              client:close()
+              break
+            end
+
+            oks = oks + 1
+
+            client:send((opts.prefix or "") .. line .. "\n")
+          end
+
+          client:close()
         end
-        client:close()
       end
       server:close()
       return line
@@ -600,6 +617,16 @@ local function tcp_server(port, opts)
   sock:close()
 
   return thr
+end
+
+local function kill_tcp_server(port)
+  local sock = ngx.socket.tcp()
+  assert(sock:connect("localhost", port))
+  assert(sock:send("@DIE@\n"))
+  local str = assert(sock:receive())
+  assert(sock:close())
+  local oks, fails = str:match("(%d+):(%d+)")
+  return tonumber(oks), tonumber(fails)
 end
 
 --- Starts a HTTP server.
@@ -1100,6 +1127,28 @@ luassert:register("assertion", "formparam", req_form_param,
                   "assertion.req_form_param.negative",
                   "assertion.req_form_param.positive")
 
+---
+-- Adds an assertion to ensure a value is greater than another.
+-- @name is_gt
+local function is_gt(state, arguments)
+  local expected = arguments[1]
+  local value = arguments[2]
+
+  arguments[1] = value
+  arguments[2] = expected
+
+  return value > expected
+end
+say:set("assertion.gt.negative", [[
+Given value (%s) should be greater than expected value (%s)
+]])
+say:set("assertion.gt.positive", [[
+Given value (%s) should not be greater than expected value (%s)
+]])
+luassert:register("assertion", "gt", is_gt,
+                  "assertion.gt.negative",
+                  "assertion.gt.positive")
+
 --- Assertion to check whether a CN is matched in an SSL cert.
 -- @param expected The CN value
 -- @param cert The cert
@@ -1440,7 +1489,7 @@ Schema.new(consumers_schema_def)
 Schema.new(services_schema_def)
 Schema.new(routes_schema_def)
 
-local plugins_schema = assert(Schema.new(plugins_schema_def))
+local plugins_schema = assert(Entity.new(plugins_schema_def))
 
 local function validate_plugin_config_schema(config, schema_def)
   assert(plugins_schema:new_subschema(schema_def.name, schema_def))
@@ -1581,10 +1630,12 @@ local function restart_kong(env, tables)
 end
 
 
-local function make_yaml_file(content)
-  local filename = os.tmpname()
-  os.rename(filename, filename .. ".yml")
-  filename = filename .. ".yml"
+local function make_yaml_file(content, filename)
+  if not filename then
+    filename = os.tmpname()
+    os.rename(filename, filename .. ".yml")
+    filename = filename .. ".yml"
+  end
   local fd = assert(io.open(filename, "w"))
   assert(fd:write(unindent(content)))
   assert(fd:write("\n")) -- ensure last line ends in newline
@@ -1640,6 +1691,7 @@ return {
   wait_until = wait_until,
   tcp_server = tcp_server,
   udp_server = udp_server,
+  kill_tcp_server = kill_tcp_server,
   http_server = http_server,
   get_proxy_ip = get_proxy_ip,
   get_proxy_port = get_proxy_port,

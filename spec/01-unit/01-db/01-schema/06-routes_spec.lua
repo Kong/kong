@@ -114,6 +114,17 @@ describe("routes schema", function()
     assert.truthy(errs["protocols"])
   end)
 
+  it("invalid https_redirect_status_code produces error", function()
+
+    local route = Routes:process_auto_fields({ protocols = { "http" },
+                                               https_redirect_status_code = 404,
+                                             }, "insert")
+    local ok, errs = Routes:validate(route)
+    assert.falsy(ok)
+    assert.truthy(errs["https_redirect_status_code"])
+  end)
+
+
   it("produces defaults", function()
     local route = {
       protocols = { "http" },
@@ -133,6 +144,7 @@ describe("routes schema", function()
     assert.same(0,             route.regex_priority)
     assert.same(true,          route.strip_path)
     assert.same(false,         route.preserve_host)
+    assert.same(426,           route.https_redirect_status_code)
   end)
 
   it("validates the foreign key in entities", function()
@@ -250,13 +262,13 @@ describe("routes schema", function()
 
     -- acceptance
     it("accepts an apex '/'", function()
-      local route = {
+      local route = Routes:process_auto_fields({
         protocols = { "http" },
         service = { id = a_valid_uuid },
         methods = {},
         hosts = {},
         paths = { "/" },
-      }
+      }, "insert")
 
       local ok, err = Routes:validate(route)
       assert.is_nil(err)
@@ -264,13 +276,13 @@ describe("routes schema", function()
     end)
 
     it("accepts unreserved characters from RFC 3986", function()
-      local route = {
+      local route = Routes:process_auto_fields({
         protocols = { "http" },
         service = { id = a_valid_uuid },
         methods = {},
         hosts = {},
         paths = { "/abcd~user~2" },
-      }
+      }, "insert")
 
       local ok, err = Routes:validate(route)
       assert.is_nil(err)
@@ -281,13 +293,13 @@ describe("routes schema", function()
       local valid_paths = { "/abcd%aa%10%ff%AA%FF" }
 
       for i = 1, #valid_paths do
-        local route = {
+        local route = Routes:process_auto_fields({
           protocols = { "http" },
           service = { id = a_valid_uuid },
           methods = {},
           hosts = {},
           paths = { valid_paths[i] },
-        }
+        }, "insert")
 
         local ok, err = Routes:validate(route)
         assert.is_nil(err)
@@ -296,13 +308,13 @@ describe("routes schema", function()
     end)
 
     it("accepts trailing slash", function()
-      local route = {
+      local route = Routes:process_auto_fields({
         protocols = { "http" },
         service = { id = a_valid_uuid },
         methods = {},
         hosts = {},
         paths = { "/ovo/" },
-      }
+      }, "insert")
 
       local ok, err = Routes:validate(route)
       assert.is_nil(err)
@@ -445,13 +457,13 @@ describe("routes schema", function()
       }
 
       for i = 1, #valid_hosts do
-        local route = {
+        local route = Routes:process_auto_fields({
           protocols = { "http" },
           service = { id = a_valid_uuid },
           methods = {},
           paths = {},
           hosts = { valid_hosts[i] },
-        }
+        }, "insert")
 
         local ok, err = Routes:validate(route)
         assert.is_nil(err)
@@ -466,13 +478,13 @@ describe("routes schema", function()
       }
 
       for i = 1, #valid_hosts do
-        local route = {
+        local route = Routes:process_auto_fields({
           protocols = { "http" },
           service = { id = a_valid_uuid },
           methods = {},
           paths = {},
           hosts = { valid_hosts[i] },
-        }
+        }, "insert")
 
         local ok, err = Routes:validate(route)
         assert.is_nil(err)
@@ -540,13 +552,13 @@ describe("routes schema", function()
       }
 
       for i = 1, #valid_methods do
-        local route = {
+        local route = Routes:process_auto_fields({
           protocols = { "http" },
           service = { id = a_valid_uuid },
           paths = {},
           hosts = {},
           methods = { valid_methods[i] },
-        }
+        }, "insert")
 
         local ok, err = Routes:validate(route)
         assert.is_nil(err)
@@ -612,12 +624,12 @@ describe("routes schema", function()
       }
 
       for i = 1, #valid_names do
-        local route = {
+        local route = Routes:process_auto_fields({
           protocols = { "http" },
           paths = { "/" },
           name = valid_names[i],
           service = { id = a_valid_uuid }
-        }
+        }, "insert")
 
         local ok, err = Routes:validate(route)
         assert.is_nil(err)
@@ -769,7 +781,7 @@ describe("routes schema", function()
 
         it("'" .. v .. "' rejects invalid 'ip' values", function()
           -- invalid IPs
-          for _, ip_val in ipairs({ "127.", ":::1", "1" }) do
+          for _, ip_val in ipairs({ "127.", ":::1", "-1", "localhost", "foo" }) do
             for _, protocol in ipairs({ "tcp", "tls" }) do
               local route = Routes:process_auto_fields({
                 protocols = { protocol },
@@ -781,7 +793,7 @@ describe("routes schema", function()
               }, "insert")
               local ok, errs = Routes:validate(route)
               assert.falsy(ok, "ip test value was valid: " .. ip_val)
-              assert.matches("invalid cidr range: Invalid IP", errs[v][1].ip)
+              assert.equal("invalid ip or cidr range: '" .. ip_val .. "'", errs[v][1].ip)
             end
           end
 
@@ -798,7 +810,49 @@ describe("routes schema", function()
               }, "insert")
               local ok, errs = Routes:validate(route)
               assert.falsy(ok, "ip test value was valid: " .. ip_val)
-              assert.matches("invalid cidr range: Invalid IP", errs[v][1].ip)
+              assert.equal("invalid ip or cidr range: '" .. ip_val .. "'", errs[v][1].ip)
+            end
+          end
+        end)
+
+        it("'" .. v .. "' accepts valid 'ip cidr' values", function()
+          -- valid CIDRs
+          for _, ip_val in ipairs({ "1/0", "2130706433/2", "4294967295/3",
+                                    "0.0.0.0/0", "::/0", "0.0.0.0/1", "::/1",
+                                    "0.0.0.0/32", "::/128" }) do
+            for _, protocol in ipairs({ "tcp", "tls" }) do
+              local route = Routes:process_auto_fields({
+                protocols = { protocol },
+                [v] = {
+                  { ip = ip_val },
+                  { ip = "127.75.78.72", port = 8000 },
+                },
+                service = s,
+              }, "insert")
+              local ok, errs = Routes:validate(route)
+              assert.truthy(ok, "ip test value was valid: " .. ip_val)
+              assert.is_nil(errs)
+            end
+          end
+        end)
+
+        it("'" .. v .. "' rejects invalid 'ip cidr' values", function()
+          -- invalid CIDRs
+          for _, ip_val in ipairs({ "-1/0", "4294967296/2", "0.0.0.0/a",
+                                    "::/a", "0.0.0.0/-1", "::/-1",
+                                    "0.0.0.0/33", "::/129" }) do
+            for _, protocol in ipairs({ "tcp", "tls" }) do
+              local route = Routes:process_auto_fields({
+                protocols = { protocol },
+                [v] = {
+                  { ip = ip_val },
+                  { ip = "127.75.78.72", port = 8000 },
+                },
+                service = s,
+              }, "insert")
+              local ok, errs = Routes:validate(route)
+              assert.falsy(ok, "ip test value was valid: " .. ip_val)
+              assert.equal("invalid ip or cidr range: '" .. ip_val .. "'", errs[v][1].ip)
             end
           end
         end)
@@ -808,10 +862,23 @@ describe("routes schema", function()
     describe("'snis' matching attribute", function()
       local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
 
-      it("accepts valid SNIs", function()
+      it("accepts valid SNIs for stream Routes", function()
         for _, sni in ipairs({ "example.org", "www.example.org" }) do
           local route = Routes:process_auto_fields({
             protocols = { "tcp", "tls" },
+            snis = { sni },
+            service = s,
+          }, "insert")
+          local ok, errs = Routes:validate(route)
+          assert.is_nil(errs)
+          assert.truthy(ok)
+        end
+      end)
+
+      it("accepts valid SNIs for https Routes", function()
+        for _, sni in ipairs({ "example.org", "www.example.org" }) do
+          local route = Routes:process_auto_fields({
+            protocols = { "https" },
             snis = { sni },
             service = s,
           }, "insert")
@@ -839,6 +906,22 @@ describe("routes schema", function()
           end
         end
       end)
+
+      it("rejects specifying 'snis' if 'protocols' does not have 'https' or 'tls'", function()
+        local route = Routes:process_auto_fields({
+          protocols = { "tcp" },
+          snis = { "example.org" },
+          service = s,
+        }, "insert")
+        local ok, errs = Routes:validate(route)
+        assert.falsy(ok)
+        assert.same({
+          ["@entity"] = {
+            "'snis' can only be set when 'protocols' is 'https' or 'tls'",
+          },
+          snis = "length must be 0",
+        }, errs)
+      end)
     end)
 
     it("errors if no L4 matching attribute set", function()
@@ -861,18 +944,28 @@ describe("routes schema", function()
 
   it("errors if no L7 matching attribute set", function()
     local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
-      for _, v in ipairs({ "http", "https" }) do
-        local route = Routes:process_auto_fields({
-          protocols = { v },
-          service = s,
-        }, "insert")
-        local ok, errs = Routes:validate(route)
-        assert.falsy(ok)
-        assert.same({
-          ["@entity"] = {
-            "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http' or 'https'"
-          }
-        }, errs)
-      end
+    local route = Routes:process_auto_fields({
+      protocols = { "http" },
+      service = s,
+    }, "insert")
+    local ok, errs = Routes:validate(route)
+    assert.falsy(ok)
+    assert.same({
+      ["@entity"] = {
+        "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'"
+      }
+    }, errs)
+
+    route = Routes:process_auto_fields({
+      protocols = { "https" },
+      service = s,
+    }, "insert")
+    ok, errs = Routes:validate(route)
+    assert.falsy(ok)
+    assert.same({
+      ["@entity"] = {
+        "must set one of 'methods', 'hosts', 'paths', 'snis' when 'protocols' is 'https'"
+      }
+    }, errs)
   end)
 end)

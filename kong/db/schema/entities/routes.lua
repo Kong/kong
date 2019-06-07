@@ -74,6 +74,10 @@ return {
                            },
                          }
                        }, },
+    { https_redirect_status_code = { type = "integer",
+                                     one_of = { 426, 301, 302, 307, 308 },
+                                     default = 426, required = true,
+                                   }, },
     { regex_priority = { type = "integer", default = 0 }, },
     { strip_path     = { type = "boolean", default = true }, },
     { preserve_host  = { type = "boolean", default = false }, },
@@ -83,7 +87,7 @@ return {
                   elements = {
                     type = "record",
                     fields = {
-                      { ip = typedefs.cidr },
+                      { ip = typedefs.ip_or_cidr },
                       { port = typedefs.port },
                     },
                     entity_checks = {
@@ -95,7 +99,7 @@ return {
                        elements = {
                          type = "record",
                          fields = {
-                           { ip = typedefs.cidr },
+                           { ip = typedefs.ip_or_cidr },
                            { port = typedefs.port },
                          },
                          entity_checks = {
@@ -109,12 +113,17 @@ return {
 
   entity_checks = {
     { conditional_at_least_one_of = { if_field = "protocols",
-                                      if_match = { elements = { type = "string", one_of = { "http", "https" }}},
+                                      if_match = { contains = "http" },
                                       then_at_least_one_of = { "methods", "hosts", "paths" },
-                                      then_err = "must set one of %s when 'protocols' is 'http' or 'https'",
-                                      else_match = { elements = { type = "string", one_of = { "tcp", "tls" }}},
-                                      else_then_at_least_one_of = { "sources", "destinations", "snis" },
-                                      else_then_err = "must set one of %s when 'protocols' is 'tcp' or 'tls'",
+                                      then_err = "must set one of %s when 'protocols' is 'http'",
+                                      else_match = { contains = "https" },
+                                      else_then_at_least_one_of = { "methods", "hosts", "paths", "snis" },
+                                      else_then_err = "must set one of %s when 'protocols' is 'https'",
+                                    }},
+    { conditional_at_least_one_of = { if_field = "protocols",
+                                      if_match = { elements = { type = "string", one_of = { "tcp", "tls" } } },
+                                      then_at_least_one_of = { "sources", "destinations", "snis" },
+                                      then_err = "must set one of %s when 'protocols' is 'tcp' or 'tls'",
                                     }},
 
     { conditional = { if_field = "protocols",
@@ -135,13 +144,6 @@ return {
                       then_match = { len_eq = 0 },
                       then_err = "cannot set 'methods' when 'protocols' is 'tcp' or 'tls'",
                     }},
-
-    { conditional = { if_field = "protocols",
-                      if_match = { elements = { type = "string", one_of = { "http", "https" }}},
-                      then_field = "snis",
-                      then_match = { len_eq = 0 },
-                      then_err = "cannot set 'snis' when 'protocols' is 'http' or 'https'",
-                    }},
     { conditional = { if_field = "protocols",
                       if_match = { elements = { type = "string", one_of = { "http", "https" }}},
                       then_field = "destinations",
@@ -153,6 +155,12 @@ return {
                       then_field = "sources",
                       then_match = { len_eq = 0 },
                       then_err = "cannot set 'sources' when 'protocols' is 'http' or 'https'",
+                    }},
+    { conditional = { if_field = "protocols",
+                      if_match = { elements = { type = "string", not_one_of = { "https", "tls" }}},
+                      then_field = "snis",
+                      then_match = { len_eq = 0 },
+                      then_err = "'snis' can only be set when 'protocols' is 'https' or 'tls'",
                     }},
   },
 }

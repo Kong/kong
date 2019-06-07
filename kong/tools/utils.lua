@@ -922,4 +922,49 @@ do
 end
 
 
+---
+-- Converts bytes to another unit in a human-readable string.
+-- @tparam number bytes A value in bytes.
+--
+-- @tparam[opt] string unit The unit to convert the bytes into. Can be either
+-- of `b/B`, `k/K`, `m/M`, or `g/G` for bytes (unchanged), kibibytes,
+-- mebibytes, or gibibytes, respectively. Defaults to `b` (bytes).
+-- @tparam[opt] number scale The number of digits to the right of the decimal
+-- point. Defaults to 2.
+-- @treturn string A human-readable string.
+-- @usage
+--
+-- bytes_to_str(5497558) -- "5497558"
+-- bytes_to_str(5497558, "m") -- "5.24 MiB"
+-- bytes_to_str(5497558, "G", 3) -- "5.120 GiB"
+--
+function _M.bytes_to_str(bytes, unit, scale)
+  if not unit or unit == "" or lower(unit) == "b" then
+    return fmt("%d", bytes)
+  end
+
+  scale = scale or 2
+
+  if type(scale) ~= "number" or scale < 0 then
+    error("scale must be equal or greater than 0", 2)
+  end
+
+  local fspec = fmt("%%.%df", scale)
+
+  if lower(unit) == "k" then
+    return fmt(fspec .. " KiB", bytes / 2^10)
+  end
+
+  if lower(unit) == "m" then
+    return fmt(fspec .. " MiB", bytes / 2^20)
+  end
+
+  if lower(unit) == "g" then
+    return fmt(fspec .. " GiB", bytes / 2^30)
+  end
+
+  error("invalid unit '" .. unit .. "' (expected 'k/K', 'm/M', or 'g/G')", 2)
+end
+
+
 return _M

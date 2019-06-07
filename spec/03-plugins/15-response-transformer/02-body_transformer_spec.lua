@@ -183,7 +183,6 @@ describe("Plugin: response-transformer", function()
         },
       }
       handler = require("kong.plugins.response-transformer.handler")
-      handler:new()
     end)
 
     lazy_teardown(function()

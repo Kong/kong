@@ -6,10 +6,21 @@ return {
     teardown = function(connector)
       assert(connector:connect_migrations())
       assert(connector:query [[
-        ALTER TABLE IF EXISTS ONLY "response_ratelimiting_metrics"
-         DROP CONSTRAINT IF EXISTS "response_ratelimiting_metrics_pkey" CASCADE,
-                   ADD PRIMARY KEY ("identifier", "period", "period_date", "service_id", "route_id");
+        DO $$
+        BEGIN
+          ALTER TABLE IF EXISTS ONLY "response_ratelimiting_metrics"
+           DROP CONSTRAINT IF EXISTS "response_ratelimiting_metrics_pkey" CASCADE;
+        EXCEPTION WHEN UNDEFINED_COLUMN THEN
+          -- Do nothing, accept existing state
+        END$$;
 
+        DO $$
+        BEGIN
+          ALTER TABLE IF EXISTS ONLY "response_ratelimiting_metrics"
+                     ADD PRIMARY KEY ("identifier", "period", "period_date", "service_id", "route_id");
+        EXCEPTION WHEN UNDEFINED_COLUMN THEN
+          -- Do nothing, accept existing state
+        END$$;
 
         DO $$
         BEGIN

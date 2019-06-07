@@ -300,12 +300,9 @@ do
 
       -- Do not run active healthchecks in `stream` module
       local checks = upstream.healthchecks
-      if ngx.config.subsystem == "stream"
-         and (checks.active.healthy.interval ~= 0
-              or checks.active.unhealthy.interval ~= 0)
+      if (ngx.config.subsystem == "stream" and checks.active.type ~= "tcp")
+         or (ngx.config.subsystem == "http" and checks.active.type == "tcp")
       then
-        log(ngx.INFO, "[healthchecks] disabling active healthchecks in ",
-                      "stream module")
         checks = pl_tablex.deepcopy(checks)
         checks.active.healthy.interval = 0
         checks.active.unhealthy.interval = 0

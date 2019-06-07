@@ -206,6 +206,62 @@ describe("kong.concurrency", function()
       ]]), table.concat(output, "\n"))
     end)
 
+    it("has option on_timeout = 'return_true'", function()
+      setup_it_block()
+
+      local output = {}
+
+      local co = {}
+      for c = 1, 2 do
+        co[c] = coroutine.create(function()
+          local concurrency = require("kong.concurrency")
+          table.insert(output, "hello " .. c)
+          coroutine.yield()
+          local opts = {
+            name = "test",
+            timeout = 5,
+            on_timeout = "return_true",
+          }
+          local ok, err = concurrency.with_coroutine_mutex(opts, function()
+            for i = 1, 10 do
+              table.insert(output, "taking a while (" .. i .. ") " .. c)
+              coroutine.yield()
+            end
+            table.insert(output, "releasing " .. c)
+          end)
+          if c == 2 then
+            assert.truthy(ok)
+            assert.is_nil(err)
+          end
+          table.insert(output, "goodbye " .. c)
+        end)
+      end
+
+      -- mock a round-robin coroutine scheduler
+      for i = 1, 20 do
+        coroutine.resume(co[1])
+        coroutine.resume(co[2])
+      end
+
+      assert.same(unindent([[
+        hello 1
+        hello 2
+        taking a while (1) 1
+        taking a while (2) 1
+        taking a while (3) 1
+        taking a while (4) 1
+        taking a while (5) 1
+        taking a while (6) 1
+        goodbye 2
+        taking a while (7) 1
+        taking a while (8) 1
+        taking a while (9) 1
+        taking a while (10) 1
+        releasing 1
+        goodbye 1
+      ]]), table.concat(output, "\n"))
+    end)
+
     it("supports multiple locks", function()
       setup_it_block()
 

@@ -5,8 +5,13 @@ local bit           = require "bit"
 
 
 local hostname_type = utils.hostname_type
+local subsystem     = ngx.config.subsystem
+local get_method    = ngx.req.get_method
 local re_match      = ngx.re.match
 local re_find       = ngx.re.find
+local header        = ngx.header
+local var           = ngx.var
+local ngx_log       = ngx.log
 local insert        = table.insert
 local sort          = table.sort
 local upper         = string.upper
@@ -22,13 +27,12 @@ local band          = bit.band
 local bor           = bit.bor
 
 
-local ERR      = ngx.ERR
+local ERR           = ngx.ERR
 
 
 local clear_tab
 local log
 do
-  local ngx_log = ngx.log
   log = function(lvl, ...)
     ngx_log(lvl, "[router] ", ...)
   end
@@ -73,6 +77,51 @@ local EMPTY_T = {}
 
 local match_route
 local reduce
+
+
+local function _set_ngx(mock_ngx)
+  if type(mock_ngx) ~= "table" then
+    return
+  end
+
+  if mock_ngx.header then
+    header = mock_ngx.header
+  end
+
+  if mock_ngx.var then
+    var = mock_ngx.var
+  end
+
+  if mock_ngx.log then
+    ngx_log = mock_ngx.log
+  end
+
+  if mock_ngx.ERR then
+    ERR = mock_ngx.ERR
+  end
+
+  if type(mock_ngx.req) == "table" then
+    if mock_ngx.req.get_method then
+      get_method = mock_ngx.req.get_method
+    end
+  end
+
+  if type(mock_ngx.config) == "table" then
+    if mock_ngx.config.subsystem then
+      subsystem = mock_ngx.config.subsystem
+    end
+  end
+
+  if type(mock_ngx.re) == "table" then
+    if mock_ngx.re.match then
+      re_match = mock_ngx.re.match
+    end
+
+    if mock_ngx.re.find then
+      re_find = mock_ngx.re.find
+    end
+  end
+end
 
 
 local function has_capturing_groups(subj)
@@ -797,6 +846,10 @@ local _M = {}
 _M.has_capturing_groups = has_capturing_groups
 
 
+-- for unit-testing purposes only
+_M._set_ngx = _set_ngx
+
+
 function _M.new(routes)
   if type(routes) ~= "table" then
     return error("expected arg #1 routes to be a table")
@@ -915,8 +968,10 @@ function _M.new(routes)
     end
   end
 
-  local function find_route(req_method, req_uri, req_host, ngx,
-                            src_ip, src_port, dst_ip, dst_port, sni)
+  local function find_route(req_method, req_uri, req_host,
+                            src_ip, src_port,
+                            dst_ip, dst_port,
+                            sni)
     if req_method and type(req_method) ~= "string" then
       error("method must be a string", 2)
     end
@@ -1163,7 +1218,7 @@ function _M.new(routes)
               -- preserve_host header logic
 
               if matched_route.preserve_host then
-                upstream_host = raw_req_host or ngx.var.http_host
+                upstream_host = raw_req_host or var.http_host
               end
             end
 
@@ -1204,18 +1259,13 @@ function _M.new(routes)
 
 
   self.select = find_route
+  self._set_ngx = _set_ngx
 
-  if ngx.config.subsystem == "http" then
-    function self.exec(ngx)
-      local var = ngx.var
-
-      local req_method = ngx.req.get_method()
+  if subsystem == "http" then
+    function self.exec()
+      local req_method = get_method()
       local req_uri = var.request_uri
       local req_host = var.http_host or ""
-      local src_ip = var.remote_addr
-      local src_port = tonumber(var.remote_port, 10)
-      local dst_ip = var.server_addr
-      local dst_port = tonumber(var.server_port, 10)
       local sni = var.ssl_server_name
 
       do
@@ -1225,32 +1275,34 @@ function _M.new(routes)
         end
       end
 
-      local match_t = find_route(req_method, req_uri, req_host, ngx,
-                                 src_ip, src_port, dst_ip, dst_port, sni)
+      local match_t = find_route(req_method, req_uri, req_host,
+                                 nil, nil, -- src_ip, src_port
+                                 nil, nil, -- dst_ip, dst_port
+                                 sni)
       if not match_t then
         return nil
       end
 
       -- debug HTTP request header logic
 
-      if ngx.var.http_kong_debug then
+      if var.http_kong_debug then
         if match_t.route then
           if match_t.route.id then
-            ngx.header["Kong-Route-Id"] = match_t.route.id
+            header["Kong-Route-Id"] = match_t.route.id
           end
 
           if match_t.route.name then
-            ngx.header["Kong-Route-Name"] = match_t.route.name
+            header["Kong-Route-Name"] = match_t.route.name
           end
         end
 
         if match_t.service then
           if match_t.service.id then
-            ngx.header["Kong-Service-Id"] = match_t.service.id
+            header["Kong-Service-Id"] = match_t.service.id
           end
 
           if match_t.service.name then
-            ngx.header["Kong-Service-Name"] = match_t.service.name
+            header["Kong-Service-Name"] = match_t.service.name
           end
         end
       end
@@ -1259,17 +1311,17 @@ function _M.new(routes)
     end
 
   else -- stream
-    function self.exec(ngx)
-      local var = ngx.var
-
+    function self.exec()
       local src_ip = var.remote_addr
       local src_port = tonumber(var.remote_port, 10)
       local dst_ip = var.server_addr
       local dst_port = tonumber(var.server_port, 10)
       local sni = var.ssl_preread_server_name
 
-      return find_route(nil, nil, nil, ngx,
-                        src_ip, src_port, dst_ip, dst_port, sni)
+      return find_route(nil, nil, nil,
+                        src_ip, src_port,
+                        dst_ip, dst_port,
+                        sni)
     end
   end
 

@@ -1,11 +1,10 @@
-local BasePlugin = require "kong.plugins.base_plugin"
 local basic_serializer = require "kong.plugins.log-serializers.basic"
 local cjson = require "cjson"
 
-local TcpLogHandler = BasePlugin:extend()
+local TcpLogHandler = {}
 
 TcpLogHandler.PRIORITY = 7
-TcpLogHandler.VERSION = "1.0.0"
+TcpLogHandler.VERSION = "2.0.0"
 
 local function log(premature, conf, message)
   if premature then
@@ -48,13 +47,7 @@ local function log(premature, conf, message)
   end
 end
 
-function TcpLogHandler:new()
-  TcpLogHandler.super.new(self, "tcp-log")
-end
-
 function TcpLogHandler:log(conf)
-  TcpLogHandler.super.log(self)
-
   local message = basic_serializer.serialize(ngx)
   local ok, err = ngx.timer.at(0, log, conf, message)
   if not ok then

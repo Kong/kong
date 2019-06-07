@@ -23,6 +23,14 @@ local function make_records_required(field)
   end
 end
 
+
+function Entity.new_subschema(schema, key, definition)
+  make_records_required(definition)
+  definition.required = nil
+  return Schema.new_subschema(schema, key, definition)
+end
+
+
 function Entity.new(definition)
 
   local self, err = Schema.new(definition)
@@ -54,14 +62,9 @@ function Entity.new(definition)
     ::continue::
   end
 
+  self.new_subschema = Entity.new_subschema
+
   return self
-end
-
-
-function Entity.new_subschema(schema, key, definition)
-  make_records_required(definition)
-  definition.required = nil
-  return Schema.new_subschema(schema, key, definition)
 end
 
 
