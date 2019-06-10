@@ -223,11 +223,11 @@ local function get_db_utils(strategy, tables, plugins)
   end
 
   db:truncate("plugins")
-  local loaded_plugins = assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
+  assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
 
   -- XXX EE
   singletons.invoke_plugin = invoke_plugin.new {
-    loaded_plugins = loaded_plugins,
+    loaded_plugins = db.plugins:get_handlers(),
     kong_global = kong_global,
   }
 
