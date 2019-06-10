@@ -17,9 +17,7 @@ export PATH=$BUILD_TOOLS_DOWNLOAD:$PATH
 
 KONG_NGINX_MODULE_DOWNLOAD=$DOWNLOAD_CACHE/lua-kong-nginx-module-$KONG_NGINX_MODULE
 if [ ! "$(ls -A $KONG_NGINX_MODULE_DOWNLOAD)" ]; then
-  pushd $DOWNLOAD_CACHE/$DEPS_HASH
-    git clone -q https://github.com/Kong/lua-kong-nginx-module.git $KONG_NGINX_MODULE_DOWNLOAD
-  popd
+    git clone -q -b $KONG_NGINX_MODULE https://$GITHUB_TOKEN@github.com/Kong/lua-kong-nginx-module.git $KONG_NGINX_MODULE_DOWNLOAD
 fi
 
 #--------
@@ -37,6 +35,9 @@ export OPENSSL_DIR=$OPENSSL_INSTALL # for LuaSec install
 
 export PATH=$OPENSSL_INSTALL/bin:$OPENRESTY_INSTALL/nginx/sbin:$OPENRESTY_INSTALL/bin:$LUAROCKS_INSTALL/bin:$PATH
 export LD_LIBRARY_PATH=$OPENSSL_INSTALL/lib:$LD_LIBRARY_PATH # for openssl's CLI invoked in the test suite
+
+
+make -C $KONG_NGINX_MODULE_DOWNLOAD LUA_LIB_DIR=${OPENRESTY_INSTALL}/lualib install
 
 eval `luarocks path`
 
