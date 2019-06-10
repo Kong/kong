@@ -227,7 +227,7 @@ app:before_filter(function(self)
     })
 
     if not ok then
-      return api_helpers.yield_error(err)
+      return app_helpers.yield_error(err)
     end
 
     local rbac_auth_header = singletons.configuration.rbac_auth_header
