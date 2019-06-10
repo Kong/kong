@@ -898,7 +898,7 @@ function Schema:validate_field(field, value)
   end
 
   for _, k in ipairs(Schema.validators_order) do
-    if field[k] then
+    if field[k] ~= nil then
       local ok, err = self.validators[k](value, field[k], field)
       if not ok then
         if not err then
