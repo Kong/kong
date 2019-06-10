@@ -121,6 +121,29 @@ describe("schema", function()
       assert.falsy(Test:validate({ a_number = "wat" }))
     end)
 
+    it("'eq' accepts false", function()
+      local Test = Schema.new({
+        fields = {
+          { a_boolean = { type = "boolean", eq = false } }
+        }
+      })
+      assert.truthy(Test:validate({ a_boolean = false }))
+      assert.falsy(Test:validate({ a_boolean = true }))
+      assert.falsy(Test:validate({ a_boolean = "false" }))
+    end)
+
+    it("'eq' accepts null", function()
+      local Test = Schema.new({
+        fields = {
+          { a_boolean = { type = "boolean", eq = ngx.null } }
+        }
+      })
+      assert.truthy(Test:validate({ a_boolean = ngx.null }))
+      -- null means unset, so not passing a value matches it
+      assert.truthy(Test:validate({ a_boolean = nil }))
+      assert.falsy(Test:validate({ a_boolean = "null" }))
+    end)
+
     it("forces a value with 'gt'", function()
       local Test = Schema.new({
         fields = {
