@@ -11,7 +11,7 @@ return {
       { created_at = typedefs.auto_timestamp_s },
       { consumer = { type = "foreign", reference = "consumers", default = ngx.null, on_delete = "cascade", }, },
       { subject_name = { type = "string", required = true, }, },
-      { certificate_authority = { type = "string", required = false, }, },
+      { certificate_authority = { type = "string", uuid = true, default = ngx.null, required = false, }, },
     },
   },
 }

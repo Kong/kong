@@ -62,7 +62,7 @@ return {
       GET = endpoints.get_collection_endpoint(credentials_schema),
     }
   },
-  ["/mtls-auths/:mtls_autmtls_authentials/consumer"] = {
+  ["/mtls-auths/:mtls_auth_credentials/consumer"] = {
     schema = consumers_schema,
     methods = {
       GET = endpoints.get_entity_endpoint(
