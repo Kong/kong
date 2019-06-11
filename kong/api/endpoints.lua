@@ -10,6 +10,7 @@ local unescape_uri = ngx.unescape_uri
 local tonumber     = tonumber
 local tostring     = tostring
 local select       = select
+local pairs        = pairs
 local null         = ngx.null
 local type         = type
 local fmt          = string.format
@@ -321,8 +322,11 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
     end
 
     local foreign_key = self.params[foreign_schema.name]
-    local next_page = offset and fmt("/%s/%s/%s?offset=%s", foreign_schema.name,
-                                     foreign_key, schema.name, escape_uri(offset)) or null
+    local next_page = offset and fmt("/%s/%s/%s?offset=%s",
+                                     foreign_schema.name,
+                                     foreign_key,
+                                     schema.name,
+                                     escape_uri(offset)) or null
 
 
     return ok {
@@ -386,6 +390,7 @@ end
 -- and
 --
 -- /services/:services
+-- /services/:services/routes/:routes
 local function get_entity_endpoint(schema, foreign_schema, foreign_field_name, method)
   return function(self, db, helpers)
     local entity, _, err_t
@@ -404,12 +409,21 @@ local function get_entity_endpoint(schema, foreign_schema, foreign_field_name, m
     end
 
     if foreign_schema then
-      local pk = entity[foreign_field_name]
-      if not pk or pk == null then
-        return not_found()
-      end
+      local inverse = not foreign_schema.fields[foreign_field_name] and
+                                  schema.fields[foreign_field_name]
 
-      self.params[foreign_schema.name] = pk
+      local pk
+      if inverse then
+        pk = entity[foreign_field_name]
+        if not pk or pk == null then
+          return not_found()
+        end
+
+        self.params[foreign_schema.name] = pk
+
+      else
+        pk = schema:extract_pk_values(entity)
+      end
 
       entity, _, err_t = select_entity(self, db, foreign_schema, method)
       if err_t then
@@ -418,6 +432,20 @@ local function get_entity_endpoint(schema, foreign_schema, foreign_field_name, m
 
       if not entity then
         return not_found()
+      end
+
+      if not inverse then
+        local fk = entity[foreign_field_name]
+        if not fk or fk == null then
+          return not_found()
+        end
+
+        fk = schema:extract_pk_values(fk)
+        for k, v in pairs(pk) do
+          if fk[k] ~= v then
+            return not_found()
+          end
+        end
       end
     end
 
@@ -436,6 +464,7 @@ end
 -- and
 --
 -- /services/:services
+-- /services/:services/routes/:routes
 local function put_entity_endpoint(schema, foreign_schema, foreign_field_name, method)
   return not foreign_schema and function(self, db, helpers)
     local entity, _, err_t = upsert_entity(self, db, schema, method)
@@ -459,12 +488,19 @@ local function put_entity_endpoint(schema, foreign_schema, foreign_field_name, m
       return not_found()
     end
 
-    local pk = entity[foreign_field_name]
-    if not pk or pk == null then
-      return not_found()
-    end
+    local inverse = not foreign_schema.fields[foreign_field_name] and
+                                schema.fields[foreign_field_name]
 
-    self.params[foreign_schema.name] = pk
+    if inverse then
+      local pk = entity[foreign_field_name]
+      if not pk or pk == null then
+        return not_found()
+      end
+
+      self.params[foreign_schema.name] = pk
+    else
+      self.args.post[foreign_field_name] = schema:extract_pk_values(entity)
+    end
 
     entity, _, err_t = upsert_entity(self, db, foreign_schema, method)
     if err_t then
@@ -490,6 +526,7 @@ end
 -- and
 --
 -- /services/:services
+-- /services/:services/routes/:routes
 local function patch_entity_endpoint(schema, foreign_schema, foreign_field_name, method)
   return not foreign_schema and function(self, db, helpers)
     local entity, _, err_t = update_entity(self, db, schema, method)
@@ -513,12 +550,40 @@ local function patch_entity_endpoint(schema, foreign_schema, foreign_field_name,
       return not_found()
     end
 
-    local pk = entity[foreign_field_name]
-    if not pk or pk == null then
-      return not_found()
-    end
+    local inverse = not foreign_schema.fields[foreign_field_name] and
+                                schema.fields[foreign_field_name]
 
-    self.params[foreign_schema.name] = pk
+    if inverse then
+      local pk = entity[foreign_field_name]
+      if not pk or pk == null then
+        return not_found()
+      end
+
+      self.params[foreign_schema.name] = pk
+
+    else
+      local pk = schema:extract_pk_values(entity)
+      entity, _, err_t = select_entity(self, db, foreign_schema)
+      if err_t then
+        return handle_error(err_t)
+      end
+
+      if not entity then
+        return not_found()
+      end
+
+      local fk = entity[foreign_field_name]
+      if not fk or fk == null then
+        return not_found()
+      end
+
+      fk = schema:extract_pk_values(fk)
+      for k, v in pairs(pk) do
+        if fk[k] ~= v then
+          return not_found()
+        end
+      end
+    end
 
     entity, _, err_t = update_entity(self, db, foreign_schema, method)
     if err_t then
@@ -544,6 +609,7 @@ end
 -- and
 --
 -- /services/:services
+-- /services/:services/routes/:routes
 local function delete_entity_endpoint(schema, foreign_schema, foreign_field_name, method)
   return not foreign_schema and  function(self, db, helpers)
     local _, _, err_t = delete_entity(self, db, schema, method)
@@ -559,16 +625,59 @@ local function delete_entity_endpoint(schema, foreign_schema, foreign_field_name
       return handle_error(err_t)
     end
 
-    local id = entity and entity[foreign_field_name]
-    if not id or id == null then
+    local inverse = not foreign_schema.fields[foreign_field_name] and
+                                schema.fields[foreign_field_name]
+
+    if inverse then
+      local id = entity and entity[foreign_field_name]
+      if not id or id == null then
+        return not_found()
+      end
+
+      return method_not_allowed()
+    end
+
+    local pk = schema:extract_pk_values(entity)
+    entity, _, err_t = select_entity(self, db, foreign_schema)
+    if err_t then
+      return handle_error(err_t)
+    end
+
+    if not entity then
       return not_found()
     end
 
-    return method_not_allowed()
+    local fk = entity[foreign_field_name]
+    if not fk or fk == null then
+      return not_found()
+    end
+
+    fk = schema:extract_pk_values(fk)
+    for k, v in pairs(pk) do
+      if fk[k] ~= v then
+        return not_found()
+      end
+    end
+
+    local _, _, err_t = delete_entity(self, db, foreign_schema, method)
+    if err_t then
+      return handle_error(err_t)
+    end
+
+    return no_content()
   end
 end
 
-
+-- Generates admin api collection endpoint functions
+--
+-- Examples:
+--
+-- /routes
+-- /services/:services/routes
+--
+-- and
+--
+-- /services
 local function generate_collection_endpoints(endpoints, schema, foreign_schema, foreign_field_name)
   local collection_path
   if foreign_schema then
@@ -593,10 +702,28 @@ local function generate_collection_endpoints(endpoints, schema, foreign_schema, 
 end
 
 
+-- Generates admin api entity endpoint functions
+--
+-- Examples:
+--
+-- /routes/:routes
+-- /routes/:routes/service
+--
+-- and
+--
+-- /services/:services
+-- /services/:services/routes/:routes
 local function generate_entity_endpoints(endpoints, schema, foreign_schema, foreign_field_name)
   local entity_path
   if foreign_schema then
-    entity_path = fmt("/%s/:%s/%s", schema.name, schema.name, foreign_field_name)
+    local inverse = not foreign_schema.fields[foreign_field_name] and
+                                schema.fields[foreign_field_name]
+    if inverse then
+      entity_path = fmt("/%s/:%s/%s", schema.name, schema.name, foreign_field_name)
+    else
+      entity_path = fmt("/%s/:%s/%s/:%s", schema.name, schema.name, foreign_schema.name,
+                                          foreign_schema.name)
+    end
 
   else
     entity_path = fmt("/%s/:%s", schema.name, schema.name)
@@ -630,6 +757,7 @@ end
 --
 -- /services
 -- /services/:services
+-- /services/:services/routes/:routes
 local function generate_endpoints(schema, endpoints)
   -- e.g. /routes
   generate_collection_endpoints(endpoints, schema)
@@ -644,6 +772,9 @@ local function generate_endpoints(schema, endpoints)
 
       -- e.g. /services/:services/routes
       generate_collection_endpoints(endpoints, schema, foreign_field.schema, foreign_field_name)
+
+      -- e.g. /services/:services/routes/:routes
+      generate_entity_endpoints(endpoints, foreign_field.schema, schema, foreign_field_name)
     end
   end
 
