@@ -394,6 +394,18 @@ local MetaSchema = Schema.new({
       },
     },
     {
+      admin_api_name = {
+        type = "string",
+        nilable = true,
+      },
+    },
+    {
+      admin_api_nested_name = {
+        type = "string",
+        nilable = true,
+      },
+    },
+    {
       legacy = {
         type = "boolean",
         nilable = true,
