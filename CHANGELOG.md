@@ -31,10 +31,10 @@
 
 > Released on: 2019/06/07
 
-This release brings **improvements to reduce P95 latency** and **consolidates
-declarative configuration support**. It also comes with **newly open sourced
-plugins**, previously only available to Enterprise customers, and a few
-features around usability.
+This release brings **improvements to reduce long latency tails**,
+**consolidates declarative configuration support**, and comes with **newly open
+sourced plugins** previously only available to Enterprise customers. It also
+ships with new features improving observability and usability.
 
 This release includes database migrations. Please take a few minutes to read
 the [1.2 Upgrade Path](https://github.com/Kong/kong/blob/master/UPGRADE.md)
@@ -43,9 +43,10 @@ your Kong cluster.
 
 ### Installation
 
-- All Bintray repositories have been renamed from `kong-community-edition-*`
-  to `kong-*`.
-- All Kong packages have been renamed from `kong-community-edition` to `kong`.
+- :warning: All Bintray repositories have been renamed from
+  `kong-community-edition-*` to `kong-*`.
+- :warning: All Kong packages have been renamed from `kong-community-edition`
+  to `kong`.
 
 For more details about the updated installation, please visit the official docs:
 [https://konghq.com/install](https://konghq.com/install/).
@@ -54,127 +55,130 @@ For more details about the updated installation, please visit the official docs:
 
 ##### Core
 
-- :fireworks: Support for **wildcard SNI matching**: the `ssl_certificate_by_lua`
-  phase (and stream preread) is now able to match an SNI against any registered
-  wildcard SNI.
+- :fireworks: Support for **wildcard SNI matching**: the
+  `ssl_certificate_by_lua` phase and the stream `preread` phase) is now able to
+  match an client hello SNI against any registered wildcard SNI. This is
+  particularly helpful for deployments serving a certificate for multiple
+  subdomains.
   [#4457](https://github.com/Kong/kong/pull/4457)
-- :fireworks: **HTTPS routes can now be matched by SNI**: the `snis` route attribute
-  can now be set for HTTPS routes and is used as a routing attribute
+- :fireworks: **HTTPS Routes can now be matched by SNI**: the `snis` Route
+  attribute (previously only available for `tls` Routes) can now be set for
+  `https` Routes and is evaluated by the HTTP router.
   [#4633](https://github.com/Kong/kong/pull/4633)
+- :fireworks: **Native support for HTTPS redirects**: Routes have a new
+  `https_redirect_status_code` attribute specifying the status code to send
+  back to the client if a plain text request was sent to an `https` Route.
+  [#4424](https://github.com/Kong/kong/pull/4424)
 - The loading of declarative configuration is now done atomically, and with a
   safety check to verify that the new configuration fits in memory.
   [#4579](https://github.com/Kong/kong/pull/4579)
-- The status code for HTTPS redirects is now configurable: a new attribute
-  `https_redirect_status_code` was added to Route entities.
-  [#4424](https://github.com/Kong/kong/pull/4424)
-- Schema fields can now be marked immutable
+- Schema fields can now be marked as immutable.
   [#4381](https://github.com/Kong/kong/pull/4381)
-- DAO operations can now be passed a new options `no_broadcast_crud_event`
-  to prevent Kong firing the worker events.
-  [#4540](https://github.com/Kong/kong/pull/4540)
-- Support loading custom DAO strategies for plugins.
+- Support for loading custom DAO strategies from plugins.
   [#4518](https://github.com/Kong/kong/pull/4518)
-- Use unique fields or endpoint keys in `insert`, `update`, `upsert`,
-  `update_by_*`, `upsert_by_*` Kong DB calls and admin API calls.
-  [#4339](https://github.com/Kong/kong/pull/4339)
-- Add support for stream ipv6 routes.
+- Support for IPv6 to `tcp` and `tls` Routes.
   [#4333](https://github.com/Kong/kong/pull/4333)
 
 ##### Configuration
 
-- :fireworks: **Asynchronous router updates**: introduce a configuration properties
-  `router_consistency`, with two possible values: `strict` and `eventual`. If
-  set to `eventual`, router rebuild operations are performed out of the
-  proxy path, asynchronously, reducing P95 latency when performing runtime
-  Services/Routes manipulation.
+- :fireworks: **Asynchronous router updates**: a new configuration property
+  `router_consistency` accepts two possible values: `strict` and `eventual`.
+  The former is the default setting and makes router rebuilds highly
+  consistent between Nginx workers. It can result in long tail latency if
+  frequent Routes and Services updates are expected. The latter helps
+  preventing long tail latency issues by instructing Kong to rebuild the router
+  asynchronously (with eventual consistency between Nginx workers).
   [#4639](https://github.com/Kong/kong/pull/4639)
-- :fireworks: Kong can now preload entities at initialization with **Cache Warmup**.
-  A new configuration directive `db_cache_warmup_entities` was introduced, allowing
-  users to specify which entities should be preloaded. Cache warmup allows for
-  ahead of time DNS resolution for Services with a hostname. This feature reduces
-  first requests latency, improving P99 latency.
+- :fireworks: **Database cache warmup**: Kong can now preload entities during
+  its initialization. A new configuration property (`db_cache_warmup_entities`)
+  was introduced, allowing users to specify which entities should be preloaded.
+  DB cache warmup allows for ahead-of-time DNS resolution for Services with a
+  hostname. This feature reduces first requests latency, improving the overall
+  P99 latency tail.
   [#4565](https://github.com/Kong/kong/pull/4565)
-- New optional configuration properties for Postgres concurrency control:
-  `pg_max_concurrent_queries` sets the maximum number of concurrent queries
-  to the database; `pg_semaphore_timeout` allows you to tune the timeout for
-  acquiring access to the database connection. The default behavior remains
-  the same, with no concurrency limitation.
+- Improved PostgreSQL connection management: two new configuration properties
+  have been added: `pg_max_concurrent_queries` sets the maximum number of
+  concurrent queries to the database, and `pg_semaphore_timeout` allows for
+  tuning the timeout when acquiring access to a database connection. The
+  default behavior remains the same, with no concurrency limitation.
   [#4551](https://github.com/Kong/kong/pull/4551)
 
 ##### Admin API
 
-- :fireworks: Add declarative configuration **hash checking**, avoiding reloading
-  if the configuration has not changed. The `/config` endpoint now accepts a
-  `check_hash` query argument; hash checking only happens if its value is set to
-  `1`.
+- :fireworks: Add declarative configuration **hash checking** avoiding
+  reloading if the configuration has not changed. The `/config` endpoint now
+  accepts a `check_hash` query argument. Hash checking only happens if this
+  argument's value is set to `1`.
   [#4609](https://github.com/Kong/kong/pull/4609)
-- :fireworks: Entity **schema validation endpoints**: the new endpoint
-  `/schemas/:entity_name/validate` can be used to validate an instance
-  of any entity type in Kong without creating the entity.
+- :fireworks: Add a **schema validation endpoint for entities**: a new
+  endpoint `/schemas/:entity_name/validate` can be used to validate an instance
+  of any entity type in Kong without creating the entity itself.
   [#4413](https://github.com/Kong/kong/pull/4413)
-- :fireworks: Add **memory statistics** to the `/status` endpoint. The response now
-  includes a `memory` field, which contains `lua_shared_dicts` and `workers_lua_vms`,
-  with stats on shared dictionaries and workers Lua VM memory usage. Additionally,
-  the endpoint supports two optional query arguments: `unit`, which can be one of
-  `b/B`, `k/K`, `m/M`, `g/G` (for bytes, kibibytes, mebibytes, gibibytes; the default
-  is `k`); `scale`, the number of digits to the right of the decimal points when
-  in the new human-readable memory strings; the default is `2`.
+- :fireworks: Add **memory statistics** to the `/status` endpoint. The response
+  now includes a `memory` field, which contains the `lua_shared_dicts` and
+  `workers_lua_vms` fields with statistics on shared dictionaries and workers
+  Lua VM memory usage.
   [#4592](https://github.com/Kong/kong/pull/4592)
 
 ##### PDK
 
-- New function `kong.node.get_memory_stats`
+- New function `kong.node.get_memory_stats()`. This function returns statistics
+  on shared dictionaries and workers Lua VM memory usage, and powers the memory
+  statistics newly exposed by the `/status` endpoint.
   [#4632](https://github.com/Kong/kong/pull/4632)
 
 ##### Plugins
 
-- :fireworks: *proxy-cache*: the [HTTP proxy cache plugin](https://github.com/kong/kong-plugin-proxy-cache),
-  previously an Enterprise-only feature, is now bundled in Kong.
+- :fireworks: **Newly open-sourced plugin**: the HTTP [proxy-cache
+  plugin](https://github.com/kong/kong-plugin-proxy-cache) (previously only
+  available in Enterprise) is now bundled in Kong.
   [#4650](https://github.com/Kong/kong/pull/4650)
-- :fireworks: The `request-transformer` and `request-transformer-advanced`
-  (previously only available in Enterprise) plugins were merged
+- :fireworks: **Newly open-sourced plugin capabilities**: The
+  [request-transformer
+  plugin](https://github.com/Kong/kong-plugin-request-transformer) now includes
+  capabilities previously only available in Enterprise, among which templating
+  and variables interpolation.
   [#4658](https://github.com/Kong/kong/pull/4658)
 - Logging plugins: log request TLS version, cipher, and verification status.
   [#4581](https://github.com/Kong/kong/pull/4581)
   [#4626](https://github.com/Kong/kong/pull/4626)
-- Plugin development: inheriting from `BasePlugin` is now optional
+- Plugin development: inheriting from `BasePlugin` is now optional. Avoiding
+  the inheritance paradigm improves plugins' performance.
   [#4590](https://github.com/Kong/kong/pull/4590)
 
 ### Fixes
 
-#### Core
+##### Core
 
-- Active healthchecks: `http` checks aren't performed for TCP/TLS services anymore;
-  only `tcp` healthchecks are performed.
+- Active healthchecks: `http` checks are not performed for `tcp` and `tls`
+  Services anymore; only `tcp` healthchecks are performed against such
+  Services.
   [#4616](https://github.com/Kong/kong/pull/4616)
 - Fix an issue where updates in migrations would not correctly populate default
   values.
   [#4635](https://github.com/Kong/kong/pull/4635)
-- Improvements in reentrancy of Cassandra migrations.
+- Improvements in the reentrancy of Cassandra migrations.
   [#4611](https://github.com/Kong/kong/pull/4611)
-- Fix to an issue introduced in `1.2.0rc1` where `init_worker` was not being
-  called on plugins that implemented it
-  [#4670](https://github.com/Kong/kong/pull/4670)
-- Fix to an issue where `:new` was not always called when Plugins
-  deep-inherited from BasePlugin
-  [#4671](https://github.com/Kong/kong/pull/4671)
-- Fix an issue where Postgres would not bootstrap the schema with an account
-  with limited permissions. [#4506](https://github.com/Kong/kong/pull/4506)
+- Fix an issue causing the PostgreSQL strategy to not bootstrap the schema when
+  using a PostgreSQL account with limited permissions.
+  [#4506](https://github.com/Kong/kong/pull/4506)
 
+##### CLI
 
-#### CLI
-
-- `kong migrations [up|finish] -f` commands do not run if there are no executed
-  migrations.
-  [#4617](https://github.com/Kong/kong/pull/4617)
-- Fix db_import to upsert via deterministic v5 UUIDs
+- Fix `kong db_import` to support inserting entities without specifying a UUID
+  for their primary key. Entities with a unique identifier (e.g. `name` for
+  Services) can have their primary key omitted.
   [#4657](https://github.com/Kong/kong/pull/4657)
+- The `kong migrations [up|finish] -f` commands does not run anymore if there
+  are no previously executed migrations.
+  [#4617](https://github.com/Kong/kong/pull/4617)
 
-#### Plugins
+##### Plugins
 
-- ldap-auth: reuse TLS connections correctly
+- ldap-auth: ensure TLS connections are reused.
   [#4620](https://github.com/Kong/kong/pull/4620)
-- oauth2: fix ttl in migrations of OAuth2 tokens
+- oauth2: ensured access tokens preserve their `token_expiration` value when
+  migrating from previous Kong versions.
   [#4572](https://github.com/Kong/kong/pull/4572)
 
 [Back to TOC](#table-of-contents)
