@@ -1,4 +1,3 @@
-local api_helpers = require "kong.api.api_helpers"
 local singletons  = require "kong.singletons"
 local reports     = require "kong.reports"
 local utils       = require "kong.tools.utils"

@@ -54,7 +54,7 @@ describe("#flaky Plugins overwrite:", function()
           path    = "/plugins",
           body    = {
             name = "rate-limiting",
-            route_id = route.id,
+            route = route,
             config = {
               policy = "local",
               redis_host = "my-redis-host.net",
@@ -234,7 +234,7 @@ describe("#flaky Plugins overwrite:", function()
           path    = "/plugins",
           body    = {
             name = "response-ratelimiting",
-            route_id = route.id,
+            route = route,
             config = {
               policy = "local",
               redis_host = "my-redis-host.net",
