@@ -6,7 +6,7 @@ local fixtures = {
     least_connections = [[
 
       server {
-          server_name mock_aws_lambda;
+          server_name mock_delay_100;
           listen 10001;
 
           location ~ "/leastconnections" {
@@ -21,7 +21,7 @@ local fixtures = {
       }
 
       server {
-          server_name mock_aws_lambda;
+          server_name mock_delay_200;
           listen 10002;
 
           location ~ "/leastconnections" {
