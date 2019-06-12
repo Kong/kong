@@ -467,7 +467,7 @@ function Kong.init()
 
 
   singletons.invoke_plugin = invoke_plugin.new {
-    loaded_plugins = config.loaded_plugins,
+    loaded_plugins = db.plugins:get_handlers(),
     kong_global = kong_global,
   }
 
