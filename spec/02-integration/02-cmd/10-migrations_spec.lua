@@ -174,8 +174,10 @@ for _, strategy in helpers.each_strategy() do
         --              "session: 000_base_session\n" ..
         --              "with-migrations: 000_base_with_migrations, 001_14_to_15",
         assert.match("Executed migrations:\n" ..
-                     "core: 000_base\n\n" ..
+                     "      core: 000_base\n" ..
+                     "enterprise: 000_base\n\n" ..
                      "New migrations available:\n" ..
+                     "        session: 000_base_session\n" ..
                      "with-migrations: 000_base_with_migrations, 001_14_to_15\n\n" ..
                      "Run 'kong migrations up' to proceed",
                      stdout, 1, true)
