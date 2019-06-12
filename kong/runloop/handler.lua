@@ -668,6 +668,7 @@ do
     end)
 
     local new_router, err = Router.new(routes)
+    tracing.wrap_router(new_router)
     if not new_router then
       return nil, "could not create router: " .. err
     end
