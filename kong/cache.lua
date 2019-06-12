@@ -2,7 +2,6 @@ local resty_mlcache = require "resty.mlcache"
 local reports = require "kong.reports"
 
 
-local kong    = kong
 local type    = type
 local max     = math.max
 local ngx_log = ngx.log
@@ -192,7 +191,7 @@ function _M.new(opts)
   local self          = {
     propagation_delay = max(opts.propagation_delay or 0, 0),
     cluster_events    = opts.cluster_events,
-    vitals            = kong.vitals,
+    vitals            = _G.kong.vitals,
     mlcache           = mlcaches[1],
     mlcaches          = mlcaches,
     shm_names         = shm_names,

@@ -550,7 +550,14 @@ function Kong.init_worker()
   end
   kong.cluster_events = cluster_events
 
-  local cache, err = kong_global.init_cache(kong.configuration, cluster_events, worker_events)
+  -- vitals functions require a timer, so must start in worker context
+  local ok, err = kong.vitals:init()
+  if not ok then
+    ngx.log(ngx.CRIT, "could not initialize vitals: ", err)
+    return
+  end
+
+  local cache, err = kong_global.init_cache(kong.configuration, cluster_events, worker_events, kong.vitals)
   if not cache then
     ngx_log(ngx_CRIT, "could not create kong cache: ", err)
     return
@@ -560,21 +567,6 @@ function Kong.init_worker()
   ok, err = runloop.set_init_versions_in_cache()
   if not ok then
     ngx_log(ngx_CRIT, err)
-    return
-  end
-
-  local ok, err = cache:get("plugins_map:version", { ttl = 0 }, function()
-    return "init"
-  end)
-  if not ok then
-    ngx_log(ngx_CRIT, "could not set plugins map version in cache: ", err)
-    return
-  end
-
-  -- vitals functions require a timer, so must start in worker context
-  local ok, err = kong.vitals:init()
-  if not ok then
-    ngx.log(ngx.CRIT, "could not initialize vitals: ", err)
     return
   end
 
