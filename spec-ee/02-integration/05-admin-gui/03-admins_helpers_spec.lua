@@ -546,6 +546,11 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("rbac token", function()
+      before_each(function()
+        db:truncate("rbac_users")
+        db:truncate("admins")
+      end)
+
       it("update_token - successful", function()
         local admin = db.admins:insert({
           username = "an_admin_1",
@@ -553,23 +558,56 @@ for _, strategy in helpers.each_strategy() do
           status = 4,
         })
 
-        db.rbac_user_roles:insert({
-          user = { id = admin.rbac_user.id },
-          role = { id = 4 }
-        })
-
+        local user_token = "my-new-token" .. utils.uuid()
         local params = {
-          token = "my-new-token"
+          token = user_token
         }
 
         local original_rbac_user = kong.db.rbac_users:select({id = admin.rbac_user.id})
         local res = assert(admins_helpers.update_token(admin, params))
         local updated_rbac_user = kong.db.rbac_users:select({id = admin.rbac_user.id})
         assert.not_equal(original_rbac_user.user_token, updated_rbac_user.user_token)
-        assert(bcrypt.verify("my-new-token", updated_rbac_user.user_token))
+        assert(bcrypt.verify(user_token, updated_rbac_user.user_token))
         assert.equal("Token reset successfully", res.body.message)
         assert.equal(200, res.code)
         assert.not_equal(admin.rbac_user.user_token, params.token)
+      end)
+      it("update_token - cannot reuse an existing token", function()
+        local admin = db.admins:insert({
+          username = "an_admin_11",
+          email = "test1@konghq.com",
+          status = 4,
+        })
+
+        local user_token = "my-new-token" .. utils.uuid()
+        local params = {
+          token = user_token
+        }
+
+        assert(admins_helpers.update_token(admin, params))
+        local _, err = admins_helpers.update_token(admin, params)
+        assert.equal("UNIQUE violation detected on '{\"user_token\"}'", err.fields.message)
+      end)
+      it("update_token - cannot use another user's token", function()
+        local admin = db.admins:insert({
+          username = "an_admin_12",
+          email = "test1@konghq.com",
+          status = 4,
+        })
+
+        local cool_token = "my-rad-token-" .. utils.uuid()
+
+        local _, _ = db.rbac_users:insert({
+          name = "rbac_to_the_beat",
+          user_token = cool_token,
+        })
+
+        local params = {
+          token = cool_token
+        }
+
+        local _, err = admins_helpers.update_token(admin, params)
+        assert.equal("UNIQUE violation detected on '{\"user_token\"}'", err.fields.message)
       end)
     end)
   end)
