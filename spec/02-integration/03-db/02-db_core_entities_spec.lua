@@ -3,6 +3,7 @@ local utils   = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 
+
 local fmt      = string.format
 local unindent = helpers.unindent
 
@@ -21,6 +22,8 @@ for _, strategy in helpers.each_strategy() do
         "basicauth_credentials",
         "upstreams",
         "targets",
+        "certificates",
+        "snis",
       })
     end)
 
@@ -1948,6 +1951,35 @@ for _, strategy in helpers.each_strategy() do
           }, 1)
           assert.not_nil(page)
           assert.is_string(offset)
+        end)
+      end)
+    end)
+
+    --[[
+    -- SNIs entity
+
+    db.snis:list_for_certificate(primary_key)
+    --]]
+
+    describe("SNIs", function()
+      local certificate
+
+      lazy_setup(function()
+        certificate = db.certificates.schema:extract_pk_values(bp.certificates:insert())
+      end)
+
+      describe(":list_for_certificate()", function()
+        it("returns array with 'cjson.array_mt' metatable", function()
+          local snis = assert(db.snis:list_for_certificate(certificate))
+          local json = cjson.encode(snis)
+          assert.equal("[]", json)
+          assert.equal(cjson.array_mt, getmetatable(snis))
+
+          db.snis:update_list(certificate, { "example.org" })
+          snis = assert(db.snis:list_for_certificate(certificate))
+          json = cjson.encode(snis)
+          assert.equal('["example.org"]', json)
+          assert.equal(cjson.array_mt, getmetatable(snis))
         end)
       end)
     end)
