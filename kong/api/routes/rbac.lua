@@ -159,7 +159,7 @@ return {
     methods = {
       GET  =  function(self, db, helpers)
         local args = self.args.uri
-        local opts = endpoints.extract_options(args, "rbac_users", "select")
+        local opts = endpoints.extract_options(args, rbac_users.schema, "select")
         local size, err = endpoints.get_page_size(args)
         if err then
           return endpoints.handle_error(db.rbac_users.errors:invalid_size(err))
