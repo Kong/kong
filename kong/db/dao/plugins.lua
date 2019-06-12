@@ -153,13 +153,13 @@ local function load_plugin_handler(plugin)
 
     local plugin_handler = "kong.plugins." .. plugin .. ".handler"
 
-    tracing.plugin_wrap(plugin_handler, plugin)
 
     local ok, handler = utils.load_module_if_exists(plugin_handler)
     if not ok then
       return nil, plugin .. " plugin is enabled but not installed;\n" .. plugin_handler
     end
 
+    tracing.plugin_wrap(handler, plugin)
     return handler
 end
 
