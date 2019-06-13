@@ -734,12 +734,12 @@
                                  # Accepted values are:
                                  #
                                  # - `strict`: the router will be rebuilt
-                                 # synchronously, causing incoming requests to
-                                 # be delayed until the rebuild is finished.
+                                 #   synchronously, causing incoming requests to
+                                 #   be delayed until the rebuild is finished.
                                  # - `eventual`: the router will be rebuilt
-                                 # asynchronously via a recurring background
-                                 # job running every second inside of each
-                                 # worker.
+                                 #   asynchronously via a recurring background
+                                 #   job running every second inside of each
+                                 #   worker.
                                  #
                                  # Note that `strict` ensures that all workers
                                  # of a given node will always proxy requests
