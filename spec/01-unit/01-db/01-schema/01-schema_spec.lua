@@ -1307,6 +1307,30 @@ describe("schema", function()
       end)
 
       describe("conditional", function()
+        it("can check on false", function()
+          local Test = Schema.new({
+            fields = {
+              { a = { type = "boolean" }, },
+              { b = { type = "boolean" }, },
+            },
+            entity_checks = {
+              { conditional = { if_field = "a",
+                                if_match = { eq = true },
+                                then_field = "b",
+                                then_match = { eq = false },
+                                then_err = "can't have a and b at the same time", }
+              },
+            }
+          })
+
+          assert.truthy(Test:validate_insert({ a = true, b = false }))
+          local ok, errs = Test:validate_insert({ a = true, b = true })
+          assert.falsy(ok)
+          assert.same({
+            "can't have a and b at the same time"
+          }, errs["@entity"])
+        end)
+
         it("supports a custom error message", function()
           local Test = Schema.new({
             fields = {

@@ -628,7 +628,10 @@ Schema.entity_checkers = {
     required_fields = { ["if_field"] = true },
     fn = function(entity, arg, schema, errors)
       local if_value = get_field(entity, arg.if_field)
-      local then_value = get_field(entity, arg.then_field) or null
+      local then_value = get_field(entity, arg.then_field)
+      if then_value == nil then
+        then_value = null
+      end
 
       setmetatable(arg.if_match, {
         __index = get_schema_field(schema, arg.if_field)
