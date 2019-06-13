@@ -76,7 +76,7 @@ local function seed_kong_admin_data_pg()
     SELECT * into tmp FROM consumers where username='default:kong_admin' limit 1;
     IF NOT FOUND THEN
         SELECT '%s'::uuid into kong_admin_consumer_id;
-        INSERT into consumers(id, username, type, custom_id) VALUES(kong_admin_consumer_id, 'default:kong_admin', 2, 'foo:bar');
+        INSERT into consumers(id, username, type) VALUES(kong_admin_consumer_id, 'default:kong_admin', 2);
         INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_consumer_id, 'consumers', 'id', kong_admin_consumer_id);
         INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_consumer_id, 'consumers', 'username', 'kong_admin');
         INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_consumer_id, 'consumers', 'custom_id', null);
@@ -176,8 +176,8 @@ local function seed_kong_admin_data_cas(def_ws_id)
     -- create the admin consumer
     local kong_admin_consumer_id = utils.uuid()
     table.insert(res,
-      fmt("INSERT into consumers(id, username, type, created_at, status, custom_id) VALUES(%s, 'default:%s', %s, %s, %s, 'default:%s')",
-        kong_admin_consumer_id, "kong_admin", 2, created_ts, 0, 'bar'))
+      fmt("INSERT into consumers(id, username, type, created_at, status) VALUES(%s, 'default:%s', %s, %s, %s)",
+        kong_admin_consumer_id, "kong_admin", 2, created_ts, 0))
 
     helpers.add_to_default_ws(res, kong_admin_consumer_id, "consumers", "id", kong_admin_consumer_id, def_ws_id)
     helpers.add_to_default_ws(res, kong_admin_consumer_id, "consumers", "username", "kong_admin", def_ws_id)
