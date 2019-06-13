@@ -382,11 +382,14 @@ local function get_next(self)
 
   local ctx = self.ctx
 
+  ctx.plugins_for_request = ctx.plugins_for_request or {}
   if MUST_LOAD_CONFIGURATION_IN_PHASES[self.phase] then
     local combos = self.iterator.combos[plugin.name]
     if combos then
       local cfg = load_configuration_through_combos(ctx, combos, plugin)
       if cfg then
+        ctx.plugins_for_request = ctx.plugins_for_request or {}
+        ctx.plugins_for_request[plugin.name] = cfg -- XXX EE
         ctx.plugins[plugin.name] = cfg
       end
     end
@@ -413,7 +416,7 @@ local function get_next(self)
           return plugin, ctx.plugins[plugin.name]
         end
 
-        return plugin, plugin_configuration
+        return get_next(self)
       end
 
       -- ignore global plugin fetched in earlier phase
@@ -430,7 +433,7 @@ local function get_next(self)
 
     -- when workspace scope empty, return global plugin
     -- fetched in earlier phase
-    return plugin, plugin_configuration
+    return get_next(self) -- Load next plugin
   end
 
   return get_next(self) -- Load next plugin
