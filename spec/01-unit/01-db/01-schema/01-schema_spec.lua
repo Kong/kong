@@ -2347,7 +2347,21 @@ describe("schema", function()
       assert.equals(5.5, tbl.fingers)
     end)
 
-    it("adds cjson.empty_array_mt on empty array and set fields", function()
+    it("adds cjson.array_mt on non-empty array fields", function()
+      local Test = Schema.new({
+        fields = {
+          { arr = { type = "array", elements = { type = "string" } } },
+        },
+      })
+
+      local tbl = Test:process_auto_fields({
+        arr = { "hello" },
+      }, "insert")
+
+      assert.same(cjson.array_mt, getmetatable(tbl.arr))
+    end)
+
+    it("adds cjson.array_mt on empty array and set fields", function()
       local Test = Schema.new({
         fields = {
           { arr = { type = "array", elements = { type = "string" } } },
@@ -2360,11 +2374,11 @@ describe("schema", function()
         set = {}
       }, "insert")
 
-      assert.same(cjson.empty_array_mt, getmetatable(tbl.arr))
-      assert.same(cjson.empty_array_mt, getmetatable(tbl.set))
+      assert.same(cjson.array_mt, getmetatable(tbl.arr))
+      assert.same(cjson.array_mt, getmetatable(tbl.set))
     end)
 
-    it("adds cjson.empty_array_mt on empty array and set fields", function()
+    it("adds cjson.array_mt on empty array and set fields", function()
       local Test = Schema.new({
         fields = {
           { arr = { type = "array", elements = { type = "string" } } },
@@ -2378,8 +2392,8 @@ describe("schema", function()
           set = {}
         }, operation)
 
-        assert.same(cjson.empty_array_mt, getmetatable(tbl.arr))
-        assert.same(cjson.empty_array_mt, getmetatable(tbl.set))
+        assert.same(cjson.array_mt, getmetatable(tbl.arr))
+        assert.same(cjson.array_mt, getmetatable(tbl.set))
       end
     end)
 
@@ -2404,26 +2418,39 @@ describe("schema", function()
       end
     end)
 
-    it("does not add a helper metatable to arrays or maps", function()
+    it("does not add a helper metatable to maps", function()
       local Test = Schema.new({
         fields = {
-          { arr = { type = "array", elements = { type = "string" } } },
           { map = { type = "map", keys = { type = "string" }, values = { type = "boolean" } } },
         },
       })
 
       for _, operation in pairs{ "insert", "update", "select", "delete" } do
         local tbl = Test:process_auto_fields({
-          arr = { "http", "https" },
           map = { http = true },
         }, operation)
 
-        assert.is_nil(getmetatable(tbl.arr))
         assert.is_nil(getmetatable(tbl.map))
-        assert.is_equal("http", tbl.arr[1])
-        assert.is_nil(tbl.arr.http)
         assert.is_true(tbl.map.http)
         assert.is_nil(tbl.map.https)
+      end
+    end)
+
+    it("does add array_mt metatable to arrays", function()
+      local Test = Schema.new({
+        fields = {
+          { arr = { type = "array", elements = { type = "string" } } },
+        },
+      })
+
+      for _, operation in pairs{ "insert", "update", "select", "delete" } do
+        local tbl = Test:process_auto_fields({
+          arr = { "http", "https" },
+        }, operation)
+
+        assert.is_equal(cjson.array_mt, getmetatable(tbl.arr))
+        assert.is_equal("http", tbl.arr[1])
+        assert.is_nil(tbl.arr.http)
       end
     end)
 
