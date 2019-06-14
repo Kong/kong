@@ -507,39 +507,6 @@ for _, strategy in helpers.each_strategy() do
 
         -- ]]
 
-        it_content_types("uses default values when replacing", function(content_type)
-          return function()
-            local plugin = assert(bp.plugins:insert_ws({
-              name = "key-auth",
-              service = {
-                id = service.id,
-              },
-              config = { hide_credentials = true }
-            }, foo_ws))
-            assert.True(plugin.config.hide_credentials)
-            assert.same({ "apikey" }, plugin.config.key_names)
-
-            local res = assert(client:send {
-              method = "PUT",
-              path = "/foo/services/" .. service.id .. "/plugins/" .. plugin.id,
-              body = inputs[content_type],
-              headers = { ["Content-Type"] = content_type }
-            })
-            local body = assert.res_status(200, res)
-            local json = cjson.decode(body)
-            assert.False(json.config.hide_credentials) -- not true anymore
-
-            with_current_ws({foo_ws}, function()
-              plugin = assert(db.plugins:select {
-                id = plugin.id,
-              })
-            end)
-
-            assert.False(plugin.config.hide_credentials)
-            assert.same({ "apikey", "key" }, plugin.config.key_names)
-          end
-        end)
-
         it_content_types("overrides a plugin previous config if partial", function(content_type)
           return function()
             local plugin = assert(bp.plugins:insert_ws({
