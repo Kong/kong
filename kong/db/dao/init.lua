@@ -1103,13 +1103,11 @@ function DAO:cache_key(key, arg2, arg3, arg4, arg5)
   for _, name in ipairs(source) do
     local field = self.schema.fields[name]
     local value = key[name]
-    if field.type == "foreign" then
+    if value == null or value == nil then
+      value = ""
+    elseif field.type == "foreign" then
       -- FIXME extract foreign key, do not assume `id`
-      if value == null or value == nil then
-        value = ""
-      else
-        value = value.id
-      end
+      value = value.id
     end
     values[i] = tostring(value)
     i = i + 1
