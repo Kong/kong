@@ -181,7 +181,7 @@ for _, strategy in helpers.each_strategy() do
             ["apikey"] = "default:kong",
           }
         })
-        assert.res_status(403, res)
+        assert.res_status(401, res)
       end)
       it("cache added for plugin in default workspace", function()
         local cache_key = db.plugins:cache_key("key-auth",
