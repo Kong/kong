@@ -1,10 +1,15 @@
-local NewErrors = require "kong.db.errors"
-local metaschema = require "kong.plugins.request-validator.metaschema"
-local utils = require "kong.plugins.request-validator.utils"
 
+local SUPPORTED_VERSIONS = {
+  "kong",       -- first one listed is the default
+  "draft4",
+}
 
-local gen_schema = utils.gen_schema
+local function validate_schema(entity)
+  local validator = require("kong.plugins.request-validator." ..
+                             entity.config.version).validate
 
+  return validator(entity)
+end
 
 return {
   name = "request-validator",
@@ -17,6 +22,12 @@ return {
             type = "string",
             required = true,
           }},
+          { version = {
+              type = "string",
+              one_of = SUPPORTED_VERSIONS,
+              default = SUPPORTED_VERSIONS[1],
+              required = true,
+          }},
         },
       }
     },
@@ -25,21 +36,7 @@ return {
   entity_checks = {
     { custom_entity_check = {
       field_sources = { "config" },
-      fn = function(entity)
-        local schema, err = gen_schema(entity.config.body_schema)
-        if err then
-          return false, err
-        end
-
-        -- validate against metaschema
-        local ok
-        ok, err = metaschema:validate(schema)
-        if not ok then
-          return false, NewErrors:schema_violation(err)
-        end
-
-      return true
-    end
+      fn = validate_schema,
     }},
   }
 }

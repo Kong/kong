@@ -22,12 +22,12 @@ local function add_plugin(admin_client, config, expected_status)
   return json
 end
 
-for _, strategy in helpers.each_strategy({"postgres"})do
+for _, strategy in helpers.each_strategy()do
   local proxy_client
   local admin_client
 
   describe("Plugin: request-validator (access) [#" .. strategy .. "]", function()
-    setup(function()
+    lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, nil, { "request-validator" })
 
       bp.routes:insert {
@@ -44,7 +44,7 @@ for _, strategy in helpers.each_strategy({"postgres"})do
       admin_client = helpers.admin_client()
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then
         proxy_client:close()
       end
@@ -101,11 +101,11 @@ for _, strategy in helpers.each_strategy({"postgres"})do
       ]]
     }
 
-    describe("request-validator", function()
+    describe("[kong]", function()
       for _, schema in ipairs(invalid_schema_jsons) do
         it("errors with invalid schema json", function()
           local plugin = add_plugin(admin_client, {body_schema = schema}, 400)
-          assert.same("failed decoding schema", plugin.fields["@entity"][1])
+          assert.same("failed decoding schema: ", plugin.fields["@entity"][1]:sub(1,24))
         end)
       end
 
