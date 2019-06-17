@@ -1671,7 +1671,73 @@ local function gen_grpcurl_opts(opts_t)
   return table.concat(opts_l, " ")
 end
 
---- Creates a gRPC client, based on the grpcurl CLI. Based on https://github.com/fullstorydev/grpcurl
+
+--- Creates an HTTP/2 client, based on the lua-http library.
+-- @name http2_client
+-- @param host hostname to connect to
+-- @param port port to connect to
+-- @param tls boolean indicating whether to establish a tls session
+-- @return http2 client
+local function http2_client(host, port, tls)
+  local host = assert(host)
+  local port = assert(port)
+  tls = tls or false
+
+  local request = require "http.request"
+  local req = request.new_from_uri({
+    scheme = tls and "https" or "http",
+    host = host,
+    port = port,
+  })
+  req.version = 2
+  req.tls = tls
+
+  if tls then
+    local http_tls = require "http.tls"
+    local openssl_ctx = require "openssl.ssl.context"
+    local n_ctx = http_tls.new_client_context()
+    n_ctx:setVerify(openssl_ctx.VERIFY_NONE)
+    req.ctx = n_ctx
+  end
+
+  local meta = getmetatable(req) or {}
+
+  meta.__call = function(req, opts)
+    local headers = opts and opts.headers
+    local timeout = opts and opts.timeout
+
+    for k, v in pairs(headers or {}) do
+      req.headers:upsert(k, v)
+    end
+
+    local headers, stream = req:go(timeout)
+    local body = stream:get_body_as_string()
+    return body, headers
+  end
+
+  return setmetatable(req, meta)
+end
+
+--- returns a pre-configured cleartext `http2_client` for the Kong proxy port.
+-- @name proxy_client_h2c
+local function proxy_client_h2c()
+  local proxy_ip = get_proxy_ip(false, true)
+  local proxy_port = get_proxy_port(false, true)
+  assert(proxy_ip, "No http-proxy found in the configuration")
+  return http2_client(proxy_ip, proxy_port)
+end
+
+--- returns a pre-configured TLS `http2_client` for the Kong SSL proxy port.
+-- @name proxy_client_h2
+local function proxy_client_h2()
+  local proxy_ip = get_proxy_ip(true, true)
+  local proxy_port = get_proxy_port(true, true)
+  assert(proxy_ip, "No https-proxy found in the configuration")
+  return http2_client(proxy_ip, proxy_port, true)
+end
+
+
+--- Creates a gRPC client, based on the grpcurl CLI.
 -- @name grpc_client
 -- @param host hostname to connect to
 -- @param port port to connect to
@@ -1783,6 +1849,7 @@ return {
   get_version = get_version,
   http_client = http_client,
   grpc_client = grpc_client,
+  http2_client = http2_client,
   wait_until = wait_until,
   tcp_server = tcp_server,
   udp_server = udp_server,
@@ -1793,6 +1860,8 @@ return {
   proxy_client = proxy_client,
   proxy_client_grpc = proxy_client_grpc,
   proxy_client_grpcs = proxy_client_grpcs,
+  proxy_client_h2c = proxy_client_h2c,
+  proxy_client_h2 = proxy_client_h2,
   admin_client = admin_client,
   proxy_ssl_client = proxy_ssl_client,
   admin_ssl_client = admin_ssl_client,
