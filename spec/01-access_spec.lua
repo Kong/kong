@@ -34,7 +34,19 @@ local mock_fn_six = [[
     end
 ]]
 
+local mock_fn_seven = [[
+  local utils = require "pl.utils"
 
+  ngx.req.read_body()
+  filename = ngx.req.get_body_data()
+
+  local count = tonumber(utils.readfile(filename) or 0)
+  count = count + 1
+  utils.writefile(filename, tostring(count))
+]]
+
+-- same as 7, but with upvalue format
+local mock_fn_eight = "return function() \n" .. mock_fn_seven .. "\n end"
 
 describe("Plugin: serverless-functions", function()
   it("priority of plugins", function()
@@ -89,6 +101,16 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
         hosts   = { "six." .. plugin_name .. ".com" },
       }
 
+      local route7 = bp.routes:insert {
+        service = { id = service.id },
+        hosts   = { "seven." .. plugin_name .. ".com" },
+      }
+
+      local route8 = bp.routes:insert {
+        service = { id = service.id },
+        hosts   = { "eight." .. plugin_name .. ".com" },
+      }
+
       bp.plugins:insert {
         name    = plugin_name,
         route   = { id = route1.id },
@@ -129,21 +151,43 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
         },
       }
 
+      bp.plugins:insert {
+        name    = plugin_name,
+        route   = { id = route7.id },
+        config  = {
+          functions = { mock_fn_seven }
+        },
+      }
+
+      bp.plugins:insert {
+        name    = plugin_name,
+        route   = { id = route8.id },
+        config  = {
+          functions = { mock_fn_eight }
+        },
+      }
+
       assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
+    end)
 
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
       client = helpers.proxy_client()
       admin_client = helpers.admin_client()
     end)
 
-    teardown(function()
+    after_each(function()
       if client and admin_client then
         client:close()
         admin_client:close()
       end
-      helpers.stop_kong()
     end)
+
 
     describe("request termination", function()
       it("using ngx.exit()", function()
@@ -212,6 +256,86 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
         local body = assert.res_status(400, res)
         assert.same("Bad request", body)
       end)
+    end)
+
+    describe("invocation count", function()
+
+      local filename
+
+      local get_count = function()
+        return tonumber(require("pl.utils").readfile(filename))
+      end
+
+      before_each(function()
+        filename = helpers.test_conf.prefix .. "/test_count"
+        assert(require("pl.utils").writefile(filename, "0"))
+      end)
+
+      after_each(function()
+        os.remove(filename)
+      end)
+
+      it("once on initialization", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "seven." .. plugin_name .. ".com",
+            ["Content-Length"] = #filename
+          },
+          body = filename,
+        })
+        assert.equal(1, get_count())
+      end)
+
+      it("on repeated calls", function()
+        for i = 1, 10 do
+          local res = assert(client:send {
+            method = "POST",
+            path = "/status/200",
+            headers = {
+              ["Host"] = "seven." .. plugin_name .. ".com",
+              ["Content-Length"] = #filename
+            },
+            body = filename,
+          })
+          res:read_body()
+        end
+
+        assert.equal(10, get_count())
+      end)
+
+      it("once on initialization, with upvalues", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "eight." .. plugin_name .. ".com",
+            ["Content-Length"] = #filename
+          },
+          body = filename,
+        })
+        assert.equal(1, get_count())
+      end)
+
+      it("on repeated calls, with upvalues", function()
+        for i = 1, 10 do
+          local res = assert(client:send {
+            method = "POST",
+            path = "/status/200",
+            headers = {
+              ["Host"] = "eight." .. plugin_name .. ".com",
+              ["Content-Length"] = #filename
+            },
+            body = filename,
+          })
+          res:read_body()
+        end
+
+        assert.equal(10, get_count())
+      end)
+
+
     end)
   end)
 
