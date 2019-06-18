@@ -112,7 +112,7 @@ describe("reports", function()
         assert.matches("database=cassandra", res, nil, true)
       end)
 
-      it("off", function()
+      pending("off", function() -- XXX EE: enable when dbless is on
         local conf = assert(conf_loader(nil, {
           database = "off",
         }))

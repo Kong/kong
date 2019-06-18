@@ -10,7 +10,8 @@ local _M = {}
 _M.STRATEGIES   = {
   ["postgres"]  = true,
   ["cassandra"] = true,
-  ["off"] = true,
+  -- XXX EE no dbless for now in enterprise
+  -- ["off"] = true,
 }
 
 
@@ -88,4 +89,3 @@ end
 
 
 return _M
-

@@ -50,7 +50,7 @@ env:
     - KONG_TEST_DATABASE=postgres TEST_SUITE=integration
     - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2 TEST_SUITE=integration
     - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=integration
-    - KONG_TEST_DATABASE=off TEST_SUITE=dbless
+    # - KONG_TEST_DATABASE=off TEST_SUITE=dbless # XXX EE no dbless in enterprise
     - KONG_TEST_DATABASE=postgres TEST_SUITE=plugins
     - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2 TEST_SUITE=plugins
     - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=plugins
