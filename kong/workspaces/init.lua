@@ -53,6 +53,7 @@ local unique_accross_ws = {
   workspace_entities = true,
   snis = true,
 }
+_M.unique_accross_ws = unique_accross_ws
 
 
 local function map(f, t)

@@ -694,6 +694,15 @@ do
     return self.connector:run_api_migrations(opts)
   end
 
+  function DB:run_core_entity_migrations(opts)
+    local ok, err = self.connector:connect_migrations()
+    if not ok then
+      return nil, prefix_err(self, err)
+    end
+
+    return self.connector:migrate_core_entities(opts)
+  end
+
 
   --[[
   function DB:load_pending_migrations(migrations)

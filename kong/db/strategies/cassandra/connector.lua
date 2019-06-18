@@ -799,6 +799,54 @@ do
   end
 
 
+  function CassandraConnector:escape(literal, type)
+    local null = ngx.null
+    if literal == nil or literal == null then
+      return cassandra.null
+    end
+
+    if type == "string" then
+      return cassandra.text(literal)
+    end
+
+    if type == "boolean" then
+      return cassandra.boolean(literal)
+    end
+
+    if type == "integer" then
+      return cassandra.int(literal)
+    end
+
+    if type == "timestamp" then
+      return cassandra.timestamp(literal * 1000)
+    end
+
+    if type == "uuid" then
+      return cassandra.uuid(literal)
+    end
+
+    if type == "counter" then
+      return cassandra.counter(literal)
+    end
+
+    if type == "array" then
+      local t = {}
+
+      for i = 1, #literal do
+        if literal[i] == nil or literal[i] == null then
+          t[i] = cassandra.null
+        else
+          t[i] = cassandra.text(literal[i])
+        end
+      end
+
+      return cassandra.list(t)
+    end
+
+    return self:escape_literal(literal)
+  end
+
+
   function CassandraConnector:run_api_migrations(opts)
     local conn = self:get_stored_connection()
     if not conn then
@@ -1087,47 +1135,7 @@ do
       }
     end
 
-    local escape = function(literal, type)
-      if literal == nil or literal == null then
-        return cassandra.null
-      end
-
-      if type == "string" then
-        return cassandra.text(literal)
-      end
-
-      if type == "boolean" then
-        return cassandra.boolean(literal)
-      end
-
-      if type == "integer" then
-        return cassandra.int(literal)
-      end
-
-      if type == "timestamp" then
-        return cassandra.timestamp(literal * 1000)
-      end
-
-      if type == "uuid" then
-        return cassandra.uuid(literal)
-      end
-
-      if type == "array" then
-        local t = {}
-
-        for i = 1, #literal do
-          if literal[i] == nil or literal[i] == null then
-            t[i] = cassandra.null
-          else
-            t[i] = cassandra.text(literal[i])
-          end
-        end
-
-        return cassandra.list(t)
-      end
-
-      return self:escape_literal(literal)
-    end
+    local escape = function(literal, type) return self:escape(literal, type) end
 
     local force
     if opts then
@@ -1701,6 +1709,12 @@ do
     res.is_034 = true
 
     return res
+  end
+
+
+  function CassandraConnector:migrate_core_entities(opts)
+    local migrate_core_entities = require "kong.enterprise_edition.db.migrations.migrate_core_entities"
+    return migrate_core_entities(self, "cassandra", opts)
   end
 end
 

@@ -1502,6 +1502,12 @@ function _mt:is_034()
 end
 
 
+function _mt:migrate_core_entities(opts)
+  local migrate_core_entities = require "kong.enterprise_edition.db.migrations.migrate_core_entities"
+  return migrate_core_entities(self, "postgres", opts)
+end
+
+
 local _M = {}
 
 

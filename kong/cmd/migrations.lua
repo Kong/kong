@@ -27,6 +27,9 @@ The available commands are:
   migrate-apis                      Migrates API entities to Routes and
                                     Services.
 
+  migrate-community-to-enterprise   Migrates CE entities to EE on the default
+                                    workspace
+
 Options:
  -y,--yes                           Assume "yes" to prompts and run
                                     non-interactively.
@@ -39,6 +42,9 @@ Options:
                                     With 'migrate-apis' command, it also forces
                                     migration of APIs that have custom plugins
                                     applied, and which are otherwise skipped.
+
+                                    With 'migrate-community-to-enterprise' it
+                                    disables the workspace entities check.
 
  --db-timeout     (default 60)      Timeout, in seconds, for all database
                                     operations (including schema consensus for
@@ -160,6 +166,26 @@ local function execute(args)
       force = args.force,
     })
 
+  elseif args.command == "migrate-community-to-enterprise" then
+    if not args.yes then
+      if not tty.isatty() then
+        error("not a tty: invoke 'reset' non-interactively with the --yes flag")
+      end
+
+      if not confirm_prompt("Are you sure? This operation is irreversible." ..
+                          " Confirm you have a backup of your production data") then
+        log("cancelled")
+        return
+      end
+    end
+
+    local _, err = migrations_utils.migrate_core_entities(schema_state, db, {
+      ttl = args.lock_timeout,
+      force = args.force,
+      conf = args.conf,
+    })
+    if err then error(err) end
+
   else
     error("unreachable")
   end
@@ -175,6 +201,7 @@ return {
     finish = true,
     list = true,
     reset = true,
-    ["migrate-apis"] = true
+    ["migrate-apis"] = true,
+    ["migrate-community-to-enterprise"] = true,
   }
 }

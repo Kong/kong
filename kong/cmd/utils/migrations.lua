@@ -310,6 +310,35 @@ local function migrate_apis(schema_state, db, opts)
 end
 
 
+local function migrate_core_entities(schema_state, db, opts)
+
+  print_state(schema_state)
+
+  if schema_state.new_migrations then
+    error("database has pending migrations; run 'kong migrations up'")
+  elseif schema_state.pending_migrations then
+    error("database has pending migrations; run 'kong migrations finish'")
+  elseif schema_state.needs_bootstrap then
+    error("cannot run migrate-community-to-enterprise on a non-bootstrapped " ..
+          "database")
+  end
+
+
+  local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
+    assert(db:run_core_entity_migrations(opts))
+  end)
+  if err then
+    error(err)
+  end
+
+  if not ok then
+    log(NOT_LEADER_MSG)
+  end
+
+  return ok
+end
+
+
 return {
   up = up,
   reset = reset,
@@ -317,4 +346,5 @@ return {
   bootstrap = bootstrap,
   print_state = print_state,
   migrate_apis = migrate_apis,
+  migrate_core_entities = migrate_core_entities,
 }
