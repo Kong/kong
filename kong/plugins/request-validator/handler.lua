@@ -1,12 +1,13 @@
 local BasePlugin = require "kong.plugins.base_plugin"
-local cjson = require "cjson.safe"
+local cjson = require("cjson.safe").new()
 
 
 local json_decode = cjson.decode
 local ngx_req_read_body = ngx.req.read_body
 local ngx_req_get_body_data = ngx.req.get_body_data
-local json_decode_array_with_array_mt = cjson.decode_array_with_array_mt
 
+
+cjson.decode_array_with_array_mt(true)
 
 
 local validator_cache = setmetatable({}, {
@@ -32,9 +33,7 @@ local function get_req_body_json()
   end
 
   -- try to decode body data as json
-  json_decode_array_with_array_mt(true)
   local body, err = json_decode(body_data)
-  json_decode_array_with_array_mt(false)
   if err then
     return nil, "request body is not valid JSON"
   end
