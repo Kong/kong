@@ -5,7 +5,7 @@
 -- @module kong.request
 
 
-local cjson = require "cjson.safe"
+local cjson = require "cjson.safe".new()
 local multipart = require "multipart"
 local phase_checker = require "kong.pdk.private.phases"
 
@@ -22,6 +22,9 @@ local check_not_phase = phase_checker.check_not
 
 
 local PHASES = phase_checker.phases
+
+
+cjson.decode_array_with_array_mt(true)
 
 
 local function new(self)
@@ -635,9 +638,7 @@ local function new(self)
         return nil, err, CONTENT_TYPE_JSON
       end
 
-      cjson.decode_array_with_array_mt(true)
       local json = cjson.decode(body)
-      cjson.decode_array_with_array_mt(false)
       if type(json) ~= "table" then
         return nil, "invalid json body", CONTENT_TYPE_JSON
       end
