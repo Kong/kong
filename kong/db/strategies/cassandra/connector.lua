@@ -175,6 +175,15 @@ function CassandraConnector.new(kong_config)
     cluster_options.lb_policy = policy.new(kong_config.cassandra_local_datacenter)
   end
 
+  local serial_consistency
+
+  if string.find(kong_config.cassandra_lb_policy, "DCAware", nil, true) then
+    serial_consistency = cassandra.consistencies.local_serial
+
+  else
+    serial_consistency = cassandra.consistencies.serial
+  end
+
   local cluster, err = Cluster.new(cluster_options)
   if not cluster then
     return nil, err
@@ -188,7 +197,7 @@ function CassandraConnector.new(kong_config)
         cassandra.consistencies[kong_config.cassandra_consistency:lower()],
       read_consistency =
         cassandra.consistencies[kong_config.cassandra_consistency:lower()],
-      serial_consistency = cassandra.consistencies.serial, -- TODO: or local_serial
+      serial_consistency = serial_consistency,
     },
     connection = nil, -- created by connect()
   }
