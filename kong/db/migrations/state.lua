@@ -72,8 +72,12 @@ local function load_subsystems(db, plugin_names)
   local dir_path, n = string.gsub(pl_path.abspath(core_path),
                                   "core" .. pl_path.sep .. "init%.lua$", "")
   if n ~= 1 then
-    return nil, prefix_err(db, "failed to substitute migrations path in "
-                           .. dir_path)
+    dir_path, n = string.gsub(pl_path.abspath(core_path),
+                              "core" .. pl_path.sep .. "init%.ljbc$", "")
+    if n ~= 1 then
+      return nil, prefix_err(db, "failed to substitute migrations path in "
+                             .. dir_path)
+    end
   end
 
   local dirs = pl_dir.getdirectories(dir_path)
@@ -83,7 +87,11 @@ local function load_subsystems(db, plugin_names)
       local name = pl_path.basename(dir)
       local namespace = fmt("%s.%s", namespace, name)
       local filepath = dir .. pl_path.sep .. "init.lua"
-      local index = assert(loadfile(filepath))
+      local index = loadfile(filepath)
+      if not index then
+        filepath = dir .. pl_path.sep .. "init.ljbc"
+        index = assert(loadfile(filepath))
+      end
 
       local mig_idx = index()
       if type(mig_idx) ~= "table" then

@@ -480,10 +480,11 @@ function _M.update_token(admin, params)
   end
 
   admin.rbac_user.user_token = params.token
-  local check_result = kong.db.rbac_users.schema.check(admin.rbac_user)
 
+  local check_result, err = kong.db.rbac_users.schema:validate(admin.rbac_user)
   if not check_result then
-    return nil, check_result
+    local err_t = kong.db.errors:schema_violation(err)
+    return nil, err_t
   end
 
   local ident = rbac.get_token_ident(params.token)

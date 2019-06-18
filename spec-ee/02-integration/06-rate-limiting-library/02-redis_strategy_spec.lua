@@ -1,5 +1,7 @@
 local redis_strategy = require "kong.tools.public.rate-limiting.strategies.redis"
 local redis = require "resty.redis"
+local helpers = require "spec.helpers"
+
 
 require"resty.dns.client".init(nil)
 
@@ -24,7 +26,7 @@ describe("rate-limiting: Redis strategy", function()
                             mock_namespace
 
   local redis_opts = {
-    host = "127.0.0.1",
+    host = helpers.redis_host,
     port = 6379,
     database = 0,
   }

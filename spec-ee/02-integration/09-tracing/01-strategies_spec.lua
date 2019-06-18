@@ -508,7 +508,7 @@ describe("tracing [#" .. strategy .. "]", function()
       end
     end)
 
-    it("writes traces to an HTTP server", function()
+    pending("writes traces to an HTTP server", function()
       local thread = helpers.http_server(HTTP_PORT)
 
       local res = assert(proxy_client:send({

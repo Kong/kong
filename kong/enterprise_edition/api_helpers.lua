@@ -136,6 +136,8 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
     return kong.response.exit(401, { message = "Unauthorized" })
   end
 
+  admin.rbac_user = rbac_user
+
   -- sets self.workspace_entities, ngx.ctx.workspaces, and self.consumer
   _M.attach_consumer_and_workspaces(self, consumer_id)
 

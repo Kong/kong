@@ -1,5 +1,6 @@
 local utils = require "kong.tools.utils"
 local pl_stringx   = require "pl.stringx"
+local cassandra = require "cassandra"
 
 local kong         = kong
 local fmt          = string.format
@@ -185,29 +186,35 @@ local function migrate_legacy_admins(connector, coordinator)
       if not consumer[1] then
         return true
       end
-      -- gsub requires a string
+
       if not consumer[1].custom_id then
-        consumer[1].custom_id = ''
+        consumer[1].custom_id = cassandra.null
+      else
+        string.gsub(consumer[1].custom_id, "^[a-zA-Z0-9-_~.]*:", "")
       end
 
       if not consumer[1].username then
-        consumer[1].username = ''
+        consumer[1].username = cassandra.null
+      else
+        string.gsub(consumer[1].username, "^[a-zA-Z0-9-_~.]*:", "")
       end
 
-      local ok, err = connector:query(
-        fmt("INSERT INTO admins(id, created_at, updated_at, consumer_id, rbac_user_id, email, status, username, custom_id) " ..
-          "VALUES(%s, '%s', '%s', %s, %s, '%s', %s, '%s', '%s')",
-          utils.uuid(),
-          consumer[1].created_at,
-          consumer[1].created_at,
-          map_result[i].consumer_id,
-          map_result[i].user_id,
-          consumer[1].email,
+      if not consumer[1].email then
+        consumer[1].email = cassandra.null
+      end
+
+      local ok, err = connector:query("INSERT INTO admins(id, created_at, updated_at, consumer_id, rbac_user_id, status, username, custom_id, email)" ..
+          "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", {
+          cassandra.uuid(utils.uuid()),
+          cassandra.timestamp(consumer[1].created_at),
+          cassandra.timestamp(consumer[1].created_at),
+          cassandra.uuid(map_result[i].consumer_id),
+          cassandra.uuid(map_result[i].user_id),
           consumer[1].status,
-          string.gsub(consumer[1].username, "^[a-zA-Z0-9-_~.]*:", ""),
-          string.gsub(consumer[1].custom_id, "^[a-zA-Z0-9-_~.]*:", "")
-        )
-      )
+          consumer[1].username,
+          consumer[1].custom_id,
+          consumer[1].email
+      })
       if not ok then
         return nil, err
       end
