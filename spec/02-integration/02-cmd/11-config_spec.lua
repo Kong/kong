@@ -66,6 +66,7 @@ describe("kong config", function()
     ]])
 
     finally(function()
+      helpers.stop_kong()
       os.remove(filename)
       os.remove(dns_hostsfile)
     end)
