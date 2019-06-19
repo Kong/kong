@@ -13,7 +13,7 @@ return {
     { id = typedefs.uuid, },
     { created_at     = typedefs.auto_timestamp_s },
     { cert           = typedefs.certificate { required = true }, },
-    { key            = typedefs.key         { required = true }, },
+    { key            = typedefs.key, },
     { tags           = typedefs.tags },
   },
 
