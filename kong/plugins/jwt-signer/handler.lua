@@ -413,7 +413,8 @@ function JwtSignerHandler:access(conf)
                   if introspection_expiry then
                     if time() > (introspection_expiry + introspection_leeway) then
                       ins(logs.introspection_expired)
-                      return unauthorized(realm, "invalid_token", errs.introspection_expired, logs.introspection_expired)
+                      return unauthorized(realm, "invalid_token", errs.introspection_expired,
+                                          logs.introspection_expired)
                     end
 
                   else
