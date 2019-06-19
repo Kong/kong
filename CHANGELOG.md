@@ -3,7 +3,7 @@
 ### Fixed
 
 - Fix finding consumer by custom id
-
+- Fix runtime error on unexpected function, kong.log.error -> kong.log.err
 
 ## v1.0.0
 

@@ -239,7 +239,7 @@ end
 
 local function unexpected(realm, err, desc, real_error)
   if real_error then
-    log.error(real_error)
+    log.err(real_error)
   end
 
   header["WWW-Authenticate"] = fmt('Bearer realm="%s", error="%s", error_description="%s"',
