@@ -38,22 +38,22 @@ local function init_worker()
     local old_entity = data.old_entity
     if old_entity then
       if old_entity.custom_id and old_entity.custom_id ~= null and old_entity.custom_id ~= "" then
-        kong.cache:invalidate(kong.db.consumers:cache_key("custom_id", old_entity.custom_id))
+        kong.cache:invalidate_local(kong.db.consumers:cache_key("custom_id", old_entity.custom_id))
       end
 
       if old_entity.username and old_entity.username ~= null and old_entity.username ~= "" then
-        kong.cache:invalidate(kong.db.consumers:cache_key("username", old_entity.username))
+        kong.cache:invalidate_local(kong.db.consumers:cache_key("username", old_entity.username))
       end
     end
 
     local entity = data.entity
     if entity then
       if entity.custom_id and entity.custom_id ~= null and entity.custom_id ~= "" then
-        kong.cache:invalidate(kong.db.consumers:cache_key("custom_id", entity.custom_id))
+        kong.cache:invalidate_local(kong.db.consumers:cache_key("custom_id", entity.custom_id))
       end
 
       if entity.username and entity.username ~= null and entity.username ~= "" then
-        kong.cache:invalidate(kong.db.consumers:cache_key("username", entity.username))
+        kong.cache:invalidate_local(kong.db.consumers:cache_key("username", entity.username))
       end
     end
   end, "crud", "consumers")
@@ -386,7 +386,7 @@ local function introspect(endpoint, opaque_token, hint, authorization, args, cac
 
       local exp = res[2]
       if exp and now > exp then
-        kong.cache:invalidate(cache_key)
+        kong.cache:invalidate_local(cache_key)
         return introspect_uri(endpoint, opaque_token, hint, authorization, args_table or args, timeout)
       end
 

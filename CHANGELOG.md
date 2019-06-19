@@ -1,3 +1,9 @@
+## v1.0.2 (Upcoming)
+
+### Changed
+
+- Invalidation now happen locally, not cluster wide. Each node invalidates on their own.
+
 ## v1.0.1
 
 ### Fixed
