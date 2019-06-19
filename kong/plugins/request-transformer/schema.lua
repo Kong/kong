@@ -22,7 +22,6 @@ end
 
 local function validate_headers(pair, validate_value)
   local name, value = pair:match("^([^:]+):*(.-)$")
-  print("validating header: " .. name .. ": " .. value)
   if validate_header_name(name) == nil then
     return nil, string.format("'%s' is not a valid header", tostring(name))
   end
