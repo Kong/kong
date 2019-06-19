@@ -1,4 +1,3 @@
-local api_helpers = require "kong.api.api_helpers"
 local singletons  = require "kong.singletons"
 local reports     = require "kong.reports"
 local utils       = require "kong.tools.utils"
@@ -142,13 +141,6 @@ return {
 
       return parent()
     end
-  },
-
-  ["/routes/:routes/service"] = {
-    PATCH = function(self, _, _, parent)
-      api_helpers.resolve_url_params(self)
-      return parent()
-    end,
   },
 
   ["/routes/:routes/plugins"] = {
