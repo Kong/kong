@@ -1,3 +1,10 @@
+## v1.0.1 (Upcoming)
+
+### Fixed
+
+- Fix finding consumer by custom id
+
+
 ## v1.0.0
 
 ### Changed

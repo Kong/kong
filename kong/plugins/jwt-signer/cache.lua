@@ -226,7 +226,7 @@ local function load_consumer_db(subject, by)
   elseif by == "username" then
     result, err = kong.db.consumers:select_by_username(subject)
   elseif by == "custom_id" then
-    result, err = kong.db.consumers.select_by_custom_id(subject)
+    result, err = kong.db.consumers:select_by_custom_id(subject)
   else
     return nil, "consumer cannot be loaded by " .. by
   end
