@@ -9,12 +9,19 @@ pipeline {
   }
   environment {
     BINTRAY = credentials('bintray')
-    GITHUB = credentials('github')
+    GITHUB = credentials('GITHUB_TOKEN')
   }
   stages {
     stage('prepare') {
+
       steps {
-        sh 'git clone https://github.com/Kong/kong-gojira /tmp/gojira'
+        // checkout([$class: 'GitSCM',
+        //          userRemoteConfigs: [[url: 'git@github.com:Kong/kong-gojira.git',
+        //          credentialsId: '9fa48fe4-92fe-41cc-a15d-8e6d411bdfb6']]
+        // ])
+        sh 'rm -fr /tmp/gojira'
+        sh 'git clone https://$GITHUB:@github.com/Kong/kong-gojira.git /tmp/gojira || true'
+        sh 'ls -las /tmp'
       }
     }
     stage('all') {
@@ -23,10 +30,21 @@ pipeline {
         GOJIRA='/tmp/gojira/gojira.sh'
       }
       steps {
+        sh '$GOJIRA down -k .'
         sh '$GOJIRA up -k ./'
-        sh '$GOJIRA run make dev -k .'
-        sh '$GOJIRA run make lint -k .'
-        sh '$GOJIRA down -k ./'
+        sh 'sed -i "442,443 s/stdin_open: true/stdin_open: false/" /tmp/gojira/docker/docker-compose.yml.sh'
+        sh 'sed -i "442,443 s/tty: true/tty: true/" /tmp/gojira/docker/docker-compose.yml.sh'
+        sh 'sed -e "442,443 s/kong bash -l -i/-T kong bash -l/" $GOJIRA'
+        sh 'sed -i "442,443 s/kong bash -l -i/-T kong bash -l/" $GOJIRA'
+        sh '$GOJIRA run ls -k . -v'
+        sh '$GOJIRA run make dev -k . -v'
+        sh '$GOJIRA run make test -k . -v'
+        sh '$GOJIRA run make test-integration -k . -v'
+        sh '$GOJIRA run make test-plugins -k . -v'
+        sh '$GOJIRA run make test-ee -k . -v'
+        sh '$GOJIRA run make test-integration-ee -k . -v'
+        sh '$GOJIRA run make test-plugins-ee -k . -v'
+        sh '$GOJIRA down -k .'
       }
     }
   }
