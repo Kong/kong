@@ -45,7 +45,7 @@ end
 
 local RequestValidator = BasePlugin:extend()
 RequestValidator.PRIORITY = 200
-RequestValidator.VERSION = "0.1.0"
+RequestValidator.VERSION = "0.2.0"
 
 
 function RequestValidator:new()
