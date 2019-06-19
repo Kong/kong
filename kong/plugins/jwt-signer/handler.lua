@@ -765,7 +765,7 @@ end
 
 
 JwtSignerHandler.PRIORITY = 999
-JwtSignerHandler.VERSION  = "1.0.0"
+JwtSignerHandler.VERSION  = "1.0.1"
 
 
 return JwtSignerHandler

@@ -1,4 +1,4 @@
-## v1.0.1 (Upcoming)
+## v1.0.1
 
 ### Fixed
 
