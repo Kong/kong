@@ -104,6 +104,7 @@ do
       payload                        = "%s payload is invalid",
       missing                        = "%s was not found",
       no_header                      = "%s cannot be found because the name of the header was not specified",
+      trusting                       = "%s skipping expiry and scopes checks as introspection is trusted",
       expiring                       = "%s expiry verification",
       expired                        = "%s is expired",
       expiry                         = "%s expiry is mandatory",
@@ -582,7 +583,11 @@ function JwtSignerHandler:access(conf)
     if payload then
       local expiry
 
-      if enable_introspection and not trust_introspection then
+      if enable_introspection and trust_introspection then
+        log(logs.trusting)
+        ins(logs.trusting)
+
+      else
         local verify_expiry = args.get_conf_arg(config.verify_expiry)
         if verify_expiry then
           log(logs.expiring)
