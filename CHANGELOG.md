@@ -1,4 +1,4 @@
-## v1.0.2 (Upcoming)
+## v1.0.2
 
 ### Changed
 
