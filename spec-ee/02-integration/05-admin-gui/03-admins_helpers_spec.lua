@@ -6,6 +6,7 @@ local basicauth_crypto = require "kong.plugins.basic-auth.crypto"
 local workspaces = require "kong.workspaces"
 local singletons = require "kong.singletons"
 local bcrypt = require "bcrypt"
+local cjson = require "cjson"
 
 local cache = {
   get = function(self, x, y, f, ...) return f(...) end,
@@ -571,6 +572,34 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("Token reset successfully", res.body.message)
         assert.equal(200, res.code)
         assert.not_equal(admin.rbac_user.user_token, params.token)
+      end)
+      it("update_token - successful unhashed token", function()
+        local admin = db.admins:insert({
+          username = "kong_admin",
+          email = "test@konghq.com",
+          status = 4,
+        })
+
+        -- make this look like the bootstrap user
+        local rbac_user = db.rbac_users:update(
+          {
+            id = admin.rbac_user.id
+          },
+          {
+            user_token = "foo",
+            user_token_ident = cjson.null
+          }
+        )
+
+        admin.rbac_user = rbac_user
+        local user_token = "my-new-token" .. utils.uuid()
+        local params = {
+          token = user_token
+        }
+
+        local res = assert(admins_helpers.update_token(admin, params))
+        assert.equal("Token reset successfully", res.body.message)
+        assert.equal(200, res.code)
       end)
       it("update_token - cannot reuse an existing token", function()
         local admin = db.admins:insert({

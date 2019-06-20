@@ -480,14 +480,13 @@ function _M.update_token(admin, params)
   end
 
   admin.rbac_user.user_token = params.token
+  admin.rbac_user.user_token_ident = rbac.get_token_ident(params.token)
 
   local check_result, err = kong.db.rbac_users.schema:validate(admin.rbac_user)
   if not check_result then
     local err_t = kong.db.errors:schema_violation(err)
     return nil, err_t
   end
-
-  local ident = rbac.get_token_ident(params.token)
 
   local _, err = workspaces.run_with_ws_scope(
     {},
@@ -496,7 +495,7 @@ function _M.update_token(admin, params)
     { id = admin.rbac_user.id },
     {
       user_token = admin.rbac_user.user_token,
-      user_token_ident = ident
+      user_token_ident = admin.rbac_user.user_token_ident
     }
   )
 
