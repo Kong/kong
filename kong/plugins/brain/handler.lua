@@ -54,7 +54,7 @@ function BrainHandler:body_filter(conf)
     end
     -- catch unauth error
     if not ctx.brain then
-      return { status = 401, message = "No API key found in request" }
+      return { status = 403, message = "No API key found in request" }
     end
   end
 end
