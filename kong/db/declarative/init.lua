@@ -243,10 +243,13 @@ local function remove_nulls(tbl)
 end
 
 
+local function nil_fn()
+  return nil
+end
+
+
 local function post_upstream_crud_delete_events()
-  local upstreams = kong.cache:get("upstreams|list", nil, function()
-    return nil
-  end)
+  local upstreams = kong.cache:get("upstreams|list", nil, nil_fn)
   if upstreams then
     for _, id in ipairs(upstreams) do
       local _, err = kong.worker_events.post("crud", "upstreams", {

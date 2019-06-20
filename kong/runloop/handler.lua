@@ -1042,8 +1042,8 @@ return {
         local redirect_status_code = route.https_redirect_status_code or 426
 
         if redirect_status_code == 426 then
-          ngx.header["connection"] = "Upgrade"
-          ngx.header["upgrade"]    = "TLS/1.2, HTTP/1.1"
+          header["Connection"] = "Upgrade"
+          header["Upgrade"]    = "TLS/1.2, HTTP/1.1"
           return kong.response.exit(426, { message = "Please use HTTPS protocol" })
         end
 
@@ -1051,7 +1051,7 @@ return {
           redirect_status_code == 302 or
           redirect_status_code == 307 or
           redirect_status_code == 308 then
-          ngx.header["Location"] = "https://" .. forwarded_host .. var.request_uri
+          header["Location"] = "https://" .. forwarded_host .. var.request_uri
           return kong.response.exit(redirect_status_code)
         end
       end
@@ -1348,7 +1348,8 @@ return {
         end
       end
 
-      if var.upstream_http_upgrade then
+      if var.upstream_http_upgrade and
+         var.upstream_http_upgrade ~= var.upstream_upgrade then
         header["Upgrade"] = nil
       end
 

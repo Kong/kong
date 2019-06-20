@@ -628,7 +628,10 @@ Schema.entity_checkers = {
     required_fields = { ["if_field"] = true },
     fn = function(entity, arg, schema, errors)
       local if_value = get_field(entity, arg.if_field)
-      local then_value = get_field(entity, arg.then_field) or null
+      local then_value = get_field(entity, arg.then_field)
+      if then_value == nil then
+        then_value = null
+      end
 
       setmetatable(arg.if_match, {
         __index = get_schema_field(schema, arg.if_field)
@@ -1305,14 +1308,14 @@ local Set_mt = {
 
 
 --- Sets (or replaces) metatable of an array:
--- 1. array is a proper sequence, but empty, `cjson.empty_array_mt`
+-- 1. array is a proper sequence, `cjson.array_mt`
 --    will be used as a metatable of the returned array.
 -- 2. otherwise no modifications are made to input parameter.
 -- @param array The table containing an array for which to apply the metatable.
 -- @return input table (with metatable, see above)
 local function make_array(array)
-  if is_sequence(array) and #array == 0 then
-    return setmetatable(array, cjson.empty_array_mt)
+  if is_sequence(array) then
+    return setmetatable(array, cjson.array_mt)
   end
 
   return array
@@ -1320,7 +1323,7 @@ end
 
 
 --- Sets (or replaces) metatable of a set and removes duplicates:
--- 1. set is a proper sequence, but empty, `cjson.empty_array_mt`
+-- 1. set is a proper sequence, but empty, `cjson.array_mt`
 --    will be used as a metatable of the returned set.
 -- 2. set a proper sequence, and has values, `Set_mt`
 --    will be used as a metatable of the returned set.
@@ -1335,7 +1338,7 @@ local function make_set(set)
   local count = #set
 
   if count == 0 then
-    return setmetatable(set, cjson.empty_array_mt)
+    return setmetatable(set, cjson.array_mt)
   end
 
   local o = {}
