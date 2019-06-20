@@ -342,8 +342,9 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong(nil, true)
       end)
 
-      after_each(function()
+      before_each(function()
         os.execute("echo '' > " .. FILE_LOG_PATH)
+        os.execute("chmod 0777 " .. FILE_LOG_PATH)
       end)
 
       it("execute a log plugin", function()
@@ -665,6 +666,8 @@ for _, strategy in helpers.each_strategy() do
 
       before_each(function()
         proxy_client = helpers.proxy_client()
+        os.execute("echo '' > " .. FILE_LOG_PATH)
+        os.execute("chmod 0777 " .. FILE_LOG_PATH)
       end)
 
 
