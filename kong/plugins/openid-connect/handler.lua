@@ -774,11 +774,7 @@ local function decode_basic_auth(basic_auth)
 end
 
 
-local function get_credentials(args, auth_methods, credential_type, usr_arg, pwd_arg)
-  if not auth_methods[credential_type] then
-    return
-  end
-
+local function get_credentials(args, credential_type, usr_arg, pwd_arg)
   local password_param_type = args.get_conf_arg(credential_type .. "_param_type", PARAM_TYPES_ALL)
 
   for _, location in ipairs(password_param_type) do
@@ -1197,7 +1193,9 @@ function OICHandler:access(conf)
   if not session_present then
     local hide_credentials = args.get_conf_arg("hide_credentials", false)
 
-    log("session was not found")
+    if auth_methods.session then
+      log("session was not found")
+    end
 
     -- bearer token authentication
     if auth_methods.bearer or auth_methods.introspection or auth_methods.kong_oauth2 then
@@ -1216,6 +1214,7 @@ function OICHandler:access(conf)
           bearer_token = args.get_header("access_token")
           if bearer_token then
             if hide_credentials then
+              args.clear_header("access-token")
               args.clear_header("access_token")
             end
             break
@@ -1224,6 +1223,7 @@ function OICHandler:access(conf)
           bearer_token = args.get_header("x_access_token")
           if bearer_token then
             if hide_credentials then
+              args.clear_header("x-access-token")
               args.clear_header("x_access_token")
             end
             break
@@ -1273,8 +1273,8 @@ function OICHandler:access(conf)
           log("trying to find id token")
 
           local id_token, loc = args.get_req_arg(
-            id_token_param_name,
-            args.get_conf_arg("id_token_param_type", PARAM_TYPES_ALL)
+              id_token_param_name,
+              args.get_conf_arg("id_token_param_type", PARAM_TYPES_ALL)
           )
 
           if id_token then
@@ -1313,8 +1313,8 @@ function OICHandler:access(conf)
           log("trying to find refresh token")
 
           local refresh_token, loc = args.get_req_arg(
-            refresh_token_param_name,
-            args.get_conf_arg("refresh_token_param_type", PARAM_TYPES_ALL)
+              refresh_token_param_name,
+              args.get_conf_arg("refresh_token_param_type", PARAM_TYPES_ALL)
           )
 
           if loc == "header" then
@@ -1356,84 +1356,94 @@ function OICHandler:access(conf)
       end
 
       if not token_endpoint_args then
-        log("trying to find credentials for client credentials or password grants")
-
-        local usr, pwd, loc1 = get_credentials(args, auth_methods, "password",           "username",  "password")
-        local cid, sec, loc2 = get_credentials(args, auth_methods, "client_credentials", "client_id", "client_secret")
-
-        if usr and pwd and cid and sec then
-          log("found credentials and will try both password and client credentials grants")
-
-          token_endpoint_args = {
-            {
-              username         = usr,
-              password         = pwd,
-              grant_type       = "password",
-              ignore_signature = ignore_signature.password,
-            },
-            {
-              client_id        = cid,
-              client_secret    = sec,
-              grant_type       = "client_credentials",
-              ignore_signature = ignore_signature.client_credentials,
-            },
-          }
-
-        elseif usr and pwd then
-          log("found credentials for password grant")
-
-          token_endpoint_args = {
-            {
-              username         = usr,
-              password         = pwd,
-              grant_type       = "password",
-              ignore_signature = ignore_signature.password,
-            },
-          }
-
-        elseif cid and sec then
-          log("found credentials for client credentials grant")
-
-          token_endpoint_args = {
-            {
-              client_id        = cid,
-              client_secret    = sec,
-              grant_type       = "client_credentials",
-              ignore_signature = ignore_signature.client_credentials,
-            },
-          }
-
-        else
-          log("credentials for client credentials or password grants were not found")
-        end
-
-        if token_endpoint_args and hide_credentials then
-          if loc1 == "header" or loc2 == "header" then
-            args.clear_header("Authorization", "X")
-            args.clear_header("Grant-Type",    "X")
+        if auth_methods.password or auth_methods.client_credentials then
+          local usr, pwd, loc1
+          if auth_methods.password then
+            log("trying to find credentials for password grant")
+            usr, pwd, loc1 = get_credentials(args, "password", "username",  "password")
           end
 
-          if loc1 then
-            if loc1 == "query" then
-              args.clear_uri_arg("username", "password", "grant_type")
+          local cid, sec, loc2
+          if auth_methods.client_credentials then
+            log("trying to find credentials for client credentials grant")
+            cid, sec, loc2 = get_credentials(args, "client_credentials", "client_id", "client_secret")
+          end
 
-            elseif loc1 == "post" then
-              args.clear_post_arg("username", "password", "grant_type")
+          if usr and pwd and cid and sec then
+            log("found credentials and will try both password and client credentials grants")
 
-            elseif loc1 == "json" then
-              args.clear_json_arg("username", "password", "grant_type")
+            token_endpoint_args = {
+              {
+                username         = usr,
+                password         = pwd,
+                grant_type       = "password",
+                ignore_signature = ignore_signature.password,
+              },
+              {
+                client_id        = cid,
+                client_secret    = sec,
+                grant_type       = "client_credentials",
+                ignore_signature = ignore_signature.client_credentials,
+              },
+            }
+
+          elseif usr and pwd then
+            log("found credentials for password grant")
+
+            token_endpoint_args = {
+              {
+                username         = usr,
+                password         = pwd,
+                grant_type       = "password",
+                ignore_signature = ignore_signature.password,
+              },
+            }
+
+          elseif cid and sec then
+            log("found credentials for client credentials grant")
+
+            token_endpoint_args = {
+              {
+                client_id        = cid,
+                client_secret    = sec,
+                grant_type       = "client_credentials",
+                ignore_signature = ignore_signature.client_credentials,
+              },
+            }
+
+          else
+            log("credentials for client credentials or password grants were not found")
+          end
+
+          if token_endpoint_args and hide_credentials then
+            if loc1 == "header" or loc2 == "header" then
+              args.clear_header("Authorization", "X")
+              args.clear_header("Grant-Type",    "X")
+              args.clear_header("Grant_Type",    "X")
             end
-          end
 
-          if loc2 then
-            if loc2 == "query" then
-              args.clear_uri_arg("client_id", "client_secret", "grant_type")
+            if loc1 then
+              if loc1 == "query" then
+                args.clear_uri_arg("username", "password", "grant_type")
 
-            elseif loc2 == "post" then
-              args.clear_post_arg("client_id", "client_secret", "grant_type")
+              elseif loc1 == "post" then
+                args.clear_post_arg("username", "password", "grant_type")
 
-            elseif loc2 == "json" then
-              args.clear_json_arg("client_id", "client_secret", "grant_type")
+              elseif loc1 == "json" then
+                args.clear_json_arg("username", "password", "grant_type")
+              end
+            end
+
+            if loc2 then
+              if loc2 == "query" then
+                args.clear_uri_arg("client_id", "client_secret", "grant_type")
+
+              elseif loc2 == "post" then
+                args.clear_post_arg("client_id", "client_secret", "grant_type")
+
+              elseif loc2 == "json" then
+                args.clear_json_arg("client_id", "client_secret", "grant_type")
+              end
             end
           end
         end
