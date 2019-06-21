@@ -52,7 +52,7 @@ end
 
 
 local function cache_invalidate(key)
-  return kong.cache:invalidate(key)
+  return kong.cache:invalidate_local(key)
 end
 
 

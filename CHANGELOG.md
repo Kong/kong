@@ -1,12 +1,18 @@
+## v1.2.3 (Upcoming)
+
+- Change invalidations to do local invalidation instead of cluster-wide invalidation.
+
 ## v1.2.2
 
 - Fix with a workaround an issue of current EE 0.35 calling `endpoints.page_collection` on
   `:8001/openid-connect/issuers`.
 
+
 ## v1.2.1
 
 - Change more reentrant migrations (not a real issue, but for future)
 - Remove developer status/type check from plugin EBB-56 
+
 
 ## v1.2.0
 
