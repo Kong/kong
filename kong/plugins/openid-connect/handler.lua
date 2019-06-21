@@ -1685,7 +1685,7 @@ function OICHandler:access(conf)
 
     ttl = {
       now = now,
-      ttl = ttl_default,
+      default_ttl = ttl_default,
       min_ttl = ttl_min,
       max_ttl = ttl_max,
       neg_ttl = ttl_neg,
@@ -1694,10 +1694,10 @@ function OICHandler:access(conf)
   end
 
   local exp_default
-  if ttl.ttl == 0 then
+  if ttl.default_ttl == 0 then
     exp_default = 0
   else
-    exp_default = ttl.now + ttl.ttl
+    exp_default = ttl.now + ttl.default_ttl
   end
 
   local tokens_encoded = session_data.tokens
@@ -1990,7 +1990,7 @@ function OICHandler:access(conf)
         end
       end
 
-      ttl.ttl = ttl_new
+      ttl.default_ttl = ttl_new
     end
   end
 
@@ -2102,6 +2102,25 @@ function OICHandler:access(conf)
     tokens_encoded = tokens_refreshed
 
     exp = get_exp(tokens_decoded.access_token, tokens_encoded, ttl.now, exp_default)
+
+    if exp > 0 then
+      local ttl_new = exp - ttl.now
+      if ttl_new > 0 then
+        if ttl.max_ttl and ttl.max_ttl > 0 then
+          if ttl_new > ttl.max_ttl then
+            ttl_new = ttl.max_ttl
+          end
+        end
+
+        if ttl.min_ttl and ttl.min_ttl > 0 then
+          if ttl_new < ttl.min_ttl then
+            ttl_new = ttl.min_ttl
+          end
+        end
+
+        ttl.default_ttl = ttl_new
+      end
+    end
 
     if auth_methods.session then
       session.data = {

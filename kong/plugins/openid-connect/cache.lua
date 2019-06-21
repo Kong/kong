@@ -79,9 +79,18 @@ local function get_expiry_and_cache_ttl(token, ttl)
 
   local exp
   local cache_ttl
-  if not expires_in or expires_in < 0 then
+  if not expires_in then
     exp = 0
-    cache_ttl = ttl.ttl
+    cache_ttl = ttl.default_ttl
+
+  elseif expires_in < 0 then
+    exp = ttl.now + expires_in
+
+    if ttl.min_ttl and ttl.min_ttl > 0 and expires_in < ttl.min_ttl then
+      cache_ttl = ttl.min_ttl
+    else
+      cache_ttl = ttl.default_ttl
+    end
 
   elseif expires_in == 0 then
     exp = 0
@@ -612,7 +621,7 @@ function introspection.load(oic, access_token, endpoint, hint, headers, args, tt
     end
 
     local exp = res[1]
-    if exp > 0 and exp < ttl.now then
+    if exp ~= 0 and exp < ttl.now then
       cache_invalidate("oic:" .. key)
       res, err = introspection_load(oic, access_token, endpoint, hint, headers, args, ttl)
     end
@@ -703,7 +712,7 @@ function tokens.load(oic, args, ttl, use_cache, flush)
     end
 
     local exp = res[1]
-    if exp < ttl.now then
+    if exp ~= 0 and exp < ttl.now then
       cache_invalidate("oic:" .. key)
       res, err = tokens_load(oic, args, ttl)
     end
@@ -850,5 +859,5 @@ return {
   tokens         = tokens,
   token_exchange = token_exchange,
   userinfo       = userinfo,
-  version        = "1.2.2",
+  version        = "1.2.3",
 }
