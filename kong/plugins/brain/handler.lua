@@ -48,7 +48,14 @@ function BrainHandler:body_filter(conf)
     local chunk = ngx.arg[1]
     local res_body = ctx.brain and ctx.brain.res_body or ""
     res_body = res_body .. (chunk or "")
-    ctx.brain.res_body = res_body
+
+    if ctx.brain then
+      ctx.brain.res_body = res_body
+    end
+    -- catch unauth error
+    if not ctx.brain then
+      return { status = 403, message = "No API key found in request" }
+    end
   end
 end
 
