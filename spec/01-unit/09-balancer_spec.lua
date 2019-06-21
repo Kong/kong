@@ -452,17 +452,18 @@ describe("Balancer", function()
         { host = "localhost", port = 1111, health = false },
       }
       for _, t in ipairs(tests) do
-        assert(balancer.post_health(upstream_ph, t.host, t.port, t.health))
+        assert(balancer.post_health(upstream_ph, t.host, nil, t.port, t.health))
         local health_info = assert(balancer.get_upstream_health("ph"))
         local response = t.health and "HEALTHY" or "UNHEALTHY"
-        assert.same(response, health_info[t.host .. ":" .. t.port])
+        assert.same(response,
+                    health_info[t.host .. ":" .. t.port].addresses[1].health)
       end
     end)
 
     it("requires hostname if that was used in the Target", function()
-      local ok, err = balancer.post_health(upstream_ph, "127.0.0.1", 1111, true)
+      local ok, err = balancer.post_health(upstream_ph, "127.0.0.1", nil, 1111, true)
       assert.falsy(ok)
-      assert.match(err, "target not found for 127.0.0.1:1111")
+      assert.match(err, "No host found by: '127.0.0.1:1111'")
     end)
 
     it("fails if upstream/balancer doesn't exist", function()

@@ -250,9 +250,22 @@ function _TARGETS:page_for_upstream_with_health(upstream_pk, ...)
     -- Note that lua-resty-dns-client does retry by itself,
     -- meaning that if DNS is down and it eventually resumes working, the
     -- library will issue the callback and the target will change state.
-    target.health = health_info
-                   and (health_info[target.target] or "DNS_ERROR")
-                   or  "HEALTHCHECKS_OFF"
+    if health_info[target.target] ~= nil and
+      #health_info[target.target].addresses > 0 then
+      target.health = "UNHEALTHY"
+      -- If any of the target addresses are healthy, then the target is
+      -- considered healthy.
+      for _, address in ipairs(health_info[target.target].addresses) do
+        if address.health == "HEALTHY" then
+          target.health = "HEALTHY"
+          break
+        end
+
+      end
+    else
+      target.health = "DNS_ERROR"
+    end
+    target.data = health_info[target.target]
   end
 
   return targets, nil, nil, next_offset
@@ -273,11 +286,22 @@ function _TARGETS:select_by_upstream_filter(upstream_pk, filter, options)
 end
 
 
-function _TARGETS:post_health(upstream, target, is_healthy)
-  local addr = utils.normalize_ip(target.target)
-  local ip   = utils.format_host(addr.host)
-  local port = addr.port
-  local _, err = balancer.post_health(upstream, ip, port, is_healthy)
+function _TARGETS:post_health(upstream, target, address, is_healthy)
+  local host_addr = utils.normalize_ip(target.target)
+  local hostname = utils.format_host(host_addr.host)
+  local ip
+  local port
+
+  if address ~= nil then
+    local addr = utils.normalize_ip(address)
+    ip = addr.host
+    port = addr.port
+  else
+    ip = nil
+    port = host_addr.port
+  end
+
+  local _, err = balancer.post_health(upstream, hostname, ip, port, is_healthy)
   if err then
     return nil, err
   end
