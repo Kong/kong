@@ -842,25 +842,15 @@ end
 -- Update health status and broadcast to workers
 -- @param upstream a table with upstream data: must have `name` and `id`
 -- @param hostname target hostname
+-- @param ip target entry. if nil updates all entries
 -- @param port target port
 -- @param is_healthy boolean: true if healthy, false if unhealthy
 -- @return true if posting event was successful, nil+error otherwise
-local function post_health(upstream, hostname, port, is_healthy)
+local function post_health(upstream, hostname, ip, port, is_healthy)
 
   local balancer = balancers[upstream.id]
   if not balancer then
     return nil, "Upstream " .. tostring(upstream.name) .. " has no balancer"
-  end
-
-  local ip
-  for weight, addr, host in balancer:addressIter() do
-    if weight > 0 and hostname == host.hostname and port == addr.port then
-      ip = addr.ip
-      break
-    end
-  end
-  if not ip then
-    return nil, "target not found for " .. hostname .. ":" .. port
   end
 
   local healthchecker = healthcheckers[balancer]
@@ -868,7 +858,11 @@ local function post_health(upstream, hostname, port, is_healthy)
     return nil, "no healthchecker found for " .. tostring(upstream.name)
   end
 
-  return healthchecker:set_target_status(ip, port, is_healthy)
+  if ip then
+    return balancer:setPeerStatus(is_healthy, ip, port, hostname)
+  end
+
+  return balancer:setHostStatus(is_healthy, hostname, port)
 end
 
 
@@ -942,17 +936,17 @@ local function get_upstream_health(upstream_id)
   end
 
   local health_info = {}
-
-  for weight, addr, host in balancer:addressIter() do
-    if weight > 0 then
-      local health
+  local hosts = balancer.hosts
+  for _, host in ipairs(hosts) do
+    local key = host.hostname .. ":" .. host.port
+    health_info[key] = host:getStatus()
+    for _, address in ipairs(health_info[key].addresses) do
       if using_hc then
-        health = healthchecker:get_target_status(addr.ip, addr.port)
-                 and "HEALTHY" or "UNHEALTHY"
+        address.health = address.healthy and "HEALTHY" or "UNHEALTHY"
       else
-        health = "HEALTHCHECKS_OFF"
+        address.health = "HEALTHCHECKS_OFF"
       end
-      health_info[host.hostname .. ":" .. addr.port] = health
+      address.healthy = nil
     end
   end
 
