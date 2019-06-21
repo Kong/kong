@@ -74,7 +74,18 @@ return {
   ["/openid-connect/issuers/:oic_issuers"] = {
     schema = issuers_schema,
     methods = {
-      GET = endpoints.get_entity_endpoint(issuers_schema),
+      GET = function(self, db)
+        local entity, _, err_t = endpoints.select_entity(self, db, issuers_schema)
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+
+        if not entity then
+          return kong.response.exit(404, { message = "Not found" })
+        end
+
+        return kong.response.exit(200, issuer(entity))
+      end,
       DELETE = endpoints.delete_entity_endpoint(issuers_schema),
     },
   },

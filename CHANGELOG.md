@@ -1,6 +1,8 @@
 ## v1.2.3 (Upcoming)
 
 - Change invalidations to do local invalidation instead of cluster-wide invalidation.
+- Fix OpenID Connect admin api to properly call cleanup function on entity endpoint.
+
 
 ## v1.2.2
 
