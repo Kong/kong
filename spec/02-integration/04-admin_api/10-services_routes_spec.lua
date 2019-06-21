@@ -383,10 +383,10 @@ for _, strategy in helpers.each_strategy() do
           return function()
             local service, route
             with_current_ws(nil, function()
-              service = db.services:insert({
+              service = assert(db.services:insert({
                 protocol = "http",
                 host     = "service.com",
-              }, db)
+              }))
 
               route = db.routes:insert({
                 protocol = "http",
