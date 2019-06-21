@@ -773,12 +773,12 @@ for _, strategy in helpers.each_strategy() do
               assert.equals('Unauthorized: Developer status: PENDING', json.message)
             end)
 
-            it("returns 403 with invalid password ", function()
+            it("returns 401 with invalid password ", function()
               local res = authenticate(portal_api_client, {
                 ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:weirdo"),
               })
 
-              local body = assert.res_status(403, res)
+              local body = assert.res_status(401, res)
               local json = cjson.decode(body)
               assert.equals("Invalid authentication credentials", json.message)
 
@@ -803,7 +803,7 @@ for _, strategy in helpers.each_strategy() do
                 ["Authorization"] = "Basic " .. ngx.encode_base64("derp:kong"),
               })
 
-              local body = assert.res_status(403, res)
+              local body = assert.res_status(401, res)
               local json = cjson.decode(body)
               assert.equals("Invalid authentication credentials", json.message)
 
@@ -1276,7 +1276,7 @@ for _, strategy in helpers.each_strategy() do
                 ["Authorization"] = "Basic " .. ngx.encode_base64("kongkong@konghq.com:wowza"),
               })
 
-              local body = assert.res_status(403, res)
+              local body = assert.res_status(401, res)
               local json = cjson.decode(body)
               assert.equals("Invalid authentication credentials", json.message)
 
@@ -1656,7 +1656,7 @@ for _, strategy in helpers.each_strategy() do
 
               cookie = res.headers["Set-Cookie"]
               assert.is_nil(cookie)
-              assert.res_status(403, res)
+              assert.res_status(401, res)
 
               -- new password auths
               cookie = authenticate(portal_api_client, {
@@ -1832,7 +1832,7 @@ for _, strategy in helpers.each_strategy() do
                 ["Authorization"] = "Basic " .. ngx.encode_base64("changeme@konghq.com:pancakes"),
               })
 
-              assert.res_status(403, res)
+              assert.res_status(401, res)
               cookie = res.headers["Set-Cookie"]
               assert.is_nil(cookie)
 
@@ -2422,7 +2422,7 @@ for _, strategy in helpers.each_strategy() do
                 ["apikey"] = "kong",
               })
 
-              local body = assert.res_status(403, res)
+              local body = assert.res_status(401, res)
               local json = cjson.decode(body)
               assert.same('Invalid authentication credentials', json.message)
             end)
@@ -2432,7 +2432,7 @@ for _, strategy in helpers.each_strategy() do
                 ["apikey"] = "nope",
               })
 
-              local body = assert.res_status(403, res)
+              local body = assert.res_status(401, res)
               local json = cjson.decode(body)
               assert.equals("Invalid authentication credentials", json.message)
 
@@ -2911,7 +2911,7 @@ for _, strategy in helpers.each_strategy() do
                 ["apikey"] = "wowza",
               })
 
-              local body = assert.res_status(403, res)
+              local body = assert.res_status(401, res)
               local json = cjson.decode(body)
               assert.equals("Invalid authentication credentials", json.message)
 
@@ -3293,7 +3293,7 @@ for _, strategy in helpers.each_strategy() do
 
               cookie = res.headers["Set-Cookie"]
               assert.is_nil(cookie)
-              assert.res_status(403, res)
+              assert.res_status(401, res)
 
               -- new key auths
               cookie = authenticate(portal_api_client, {
