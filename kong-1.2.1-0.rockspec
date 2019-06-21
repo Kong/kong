@@ -144,6 +144,7 @@ build = {
     ["kong.db.schema.entities.cluster_ca"] = "kong/db/schema/entities/cluster_ca.lua",
     ["kong.db.schema.entities.consumers"] = "kong/db/schema/entities/consumers.lua",
     ["kong.db.schema.entities.routes"] = "kong/db/schema/entities/routes.lua",
+    ["kong.db.schema.entities.routes_subschemas"] = "kong/db/schema/entities/routes_subschemas.lua",
     ["kong.db.schema.entities.services"] = "kong/db/schema/entities/services.lua",
     ["kong.db.schema.entities.certificates"] = "kong/db/schema/entities/certificates.lua",
     ["kong.db.schema.entities.snis"] = "kong/db/schema/entities/snis.lua",

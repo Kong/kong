@@ -1083,6 +1083,31 @@ describe("schema", function()
         }, errors)
       end)
 
+      it("fails if subschema doesn't exist", function()
+        local Test = Schema.new({
+          name = "test",
+          subschema_key = "protocols",
+          fields = {
+            { protocols = { type = "array", elements = { type = "string", one_of = { "p1", "p2" }}, } },
+          }
+        })
+        local ok, errors = Test:validate({
+          protocols = { "p1" },
+        })
+        assert.falsy(ok)
+        assert.same({
+          ["protocols"] = "unknown type: p1",
+        }, errors)
+
+        local ok, errors = Test:validate({
+          protocols = { "p2" },
+        })
+        assert.falsy(ok)
+        assert.same({
+          ["protocols"] = "unknown type: p2",
+        }, errors)
+      end)
+
       it("ignores missing non-required abstract fields", function()
         local Test = Schema.new({
           name = "test",

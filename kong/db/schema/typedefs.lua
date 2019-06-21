@@ -394,6 +394,133 @@ typedefs.protocols_http = Schema.define {
   elements = { type = "string", one_of = http_protocols },
 }
 
+
+-- routes typedefs
+-- common for routes and routes subschemas
+
+local function validate_host_with_wildcards(host)
+  local no_wildcards = string.gsub(host, "%*", "abc")
+  return typedefs.host.custom_validator(no_wildcards)
+end
+
+local function validate_path_with_regexes(path)
+
+
+  local ok, err, err_code = typedefs.path.custom_validator(path)
+
+  if ok or err_code ~= "rfc3986" then
+    return ok, err, err_code
+  end
+
+  -- URI contains characters outside of the reserved list of RFC 3986:
+  -- the value will be interpreted as a regex by the router; but is it a
+  -- valid one? Let's dry-run it with the same options as our router.
+  local _, _, err = ngx.re.find("", path, "aj")
+  if err then
+    return nil,
+           string.format("invalid regex: '%s' (PCRE returned: %s)",
+                         path, err)
+  end
+
+  return true
+end
+
+
+typedefs.sources = Schema.define {
+  type = "set",
+  elements = {
+    type = "record",
+    fields = {
+      { ip = typedefs.ip_or_cidr },
+      { port = typedefs.port },
+    },
+    entity_checks = {
+      { at_least_one_of = { "ip", "port" } }
+    },
+  },
+}
+
+typedefs.no_sources = Schema.define(typedefs.sources { eq = null })
+
+typedefs.destinations = Schema.define {
+  type = "set",
+  elements = {
+    type = "record",
+    fields = {
+      { ip = typedefs.ip_or_cidr },
+      { port = typedefs.port },
+    },
+    entity_checks = {
+      { at_least_one_of = { "ip", "port" } }
+    },
+  },
+}
+
+typedefs.no_destinations = Schema.define(typedefs.destinations { eq = null })
+
+typedefs.methods = Schema.define {
+  type = "set",
+  elements = typedefs.http_method,
+}
+
+typedefs.no_methods = Schema.define(typedefs.methods { eq = null })
+
+typedefs.hosts = Schema.define {
+  type = "array",
+  elements = {
+    type = "string",
+    match_all = {
+      {
+        pattern = "^[^*]*%*?[^*]*$",
+        err = "invalid wildcard: must have at most one wildcard",
+      },
+    },
+    match_any = {
+      patterns = { "^%*%.", "%.%*$", "^[^*]*$" },
+      err = "invalid wildcard: must be placed at leftmost or rightmost label",
+    },
+    custom_validator = validate_host_with_wildcards,
+  }
+}
+
+typedefs.no_hosts = Schema.define(typedefs.hosts { eq = null })
+
+typedefs.paths = Schema.define {
+  type = "array",
+  elements = typedefs.path {
+    custom_validator = validate_path_with_regexes,
+    match_none = {
+      {
+        pattern = "//",
+        err = "must not have empty segments"
+      },
+    },
+  }
+}
+
+typedefs.no_paths = Schema.define(typedefs.paths { eq = null })
+
+typedefs.headers = Schema.define {
+  type = "map",
+  keys = {
+    type = "string",
+    match_none = {
+      {
+        pattern = "[Hh][Oo][Ss][Tt]",
+        err = "cannot contain 'host' header, which must be specified in the 'hosts' attribute",
+      },
+    },
+  },
+  values = {
+    type = "array",
+    elements = {
+      type = "string",
+    },
+  },
+}
+
+typedefs.no_headers = Schema.define(typedefs.headers { eq = null } )
+
 setmetatable(typedefs, {
   __index = function(_, k)
     error("schema typedef error: definition " .. k .. " does not exist", 2)

@@ -202,11 +202,11 @@ for _, strategy in helpers.each_strategy() do
                 name    = "schema violation",
                 message = unindent([[
                   schema violation
-                  (must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http')
+                  (must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https')
                 ]], true, true),
                 fields  = {
                   ["@entity"] = {
-                    "must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http'",
+                    "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https'",
                   }
                 }
               }, cjson.decode(body))
@@ -228,7 +228,7 @@ for _, strategy in helpers.each_strategy() do
                 ]], true, true),
                 fields  = {
                   ["@entity"] = {
-                    "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https'",
+                    "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https'"
                   }
                 }
               }, cjson.decode(body))
@@ -237,7 +237,7 @@ for _, strategy in helpers.each_strategy() do
               res = client:post("/routes", {
                 body = {
                   methods   = { "GET" },
-                  protocols = { "foo" },
+                  protocols = { "foo", "http" },
                 },
                 headers = { ["Content-Type"] = content_type }
               })
@@ -256,7 +256,7 @@ for _, strategy in helpers.each_strategy() do
               res = client:post("/routes", {
                 body = {
                   methods   = { "GET" },
-                  protocols = { "foo" },
+                  protocols = { "foo", "http" },
                   service = { name = [[\o/]] },
                 },
                 headers = { ["Content-Type"] = content_type }
@@ -734,11 +734,11 @@ for _, strategy in helpers.each_strategy() do
                   name    = "schema violation",
                   message = unindent([[
                   schema violation
-                  (must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http')
-                  ]], true, true),
+                  (must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https')
+                ]], true, true),
                   fields  = {
                     ["@entity"] = {
-                      "must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http'",
+                      "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https'"
                     }
                   }
                 }, cjson.decode(body))
@@ -747,7 +747,7 @@ for _, strategy in helpers.each_strategy() do
                 res = client:put("/routes/" .. utils.uuid(), {
                   body = {
                     methods   = { "GET" },
-                    protocols = { "foo" },
+                    protocols = { "foo", "http" },
                   },
                   headers = { ["Content-Type"] = content_type }
                 })
