@@ -1,8 +1,8 @@
-## v1.2.3 (Upcoming)
+## v1.2.3
 
 - Change invalidations to do local invalidation instead of cluster-wide invalidation
-- Fix OpenID Connect admin api to properly call cleanup function on entity endpoint
-- Fix `hide_credentials` not clearing X-Access-Token header
+- Fix admin api to properly call cleanup function on entity endpoint
+- Fix `hide_credentials` not clearing `X-Access-Token header
 - Chore debug logging to not log about disabled authentication methods 
 - Chore TTL code and fix some edge cases
 
