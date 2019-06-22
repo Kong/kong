@@ -7,6 +7,8 @@ return {
     name = "hmacauth_credentials",
     endpoint_key = "username",
     cache_key = { "username" },
+    admin_api_name = "hmac-auths",
+    admin_api_nested_name = "hmac-auth",
     fields = {
       { id = typedefs.uuid },
       { created_at = typedefs.auto_timestamp_s },
