@@ -16,6 +16,8 @@ return {
     primary_key = { "id" },
     cache_key = { "key" },
     endpoint_key = "key",
+    admin_api_name = "jwts",
+    admin_api_nested_name = "jwt",
     fields = {
       { id = typedefs.uuid },
       { created_at = typedefs.auto_timestamp_s },

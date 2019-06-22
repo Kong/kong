@@ -35,16 +35,17 @@ end
 
 local admin_api_as_db = {}
 
-for name, _ in pairs(helpers.db.daos) do
+for name, dao in pairs(helpers.db.daos) do
+  local admin_api_name = dao.schema.admin_api_name or name
   admin_api_as_db[name] = {
     insert = function(_, tbl)
-      return api_send("POST", "/" .. name, tbl)
+      return api_send("POST", "/" .. admin_api_name, tbl)
     end,
     remove = function(_, tbl)
-      return api_send("DELETE", "/" .. name .. "/" .. tbl.id)
+      return api_send("DELETE", "/" .. admin_api_name .. "/" .. tbl.id)
     end,
     update = function(_, id, tbl)
-      return api_send("PATCH", "/" .. name .. "/" .. id, tbl)
+      return api_send("PATCH", "/" .. admin_api_name .. "/" .. id, tbl)
     end,
   }
 end

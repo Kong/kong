@@ -8,6 +8,8 @@ return {
     primary_key = { "id" },
     cache_key = { "username" },
     endpoint_key = "username",
+    admin_api_name = "basic-auths",
+    admin_api_nested_name = "basic-auth",
     fields = {
       { id = typedefs.uuid },
       { created_at = typedefs.auto_timestamp_s },
