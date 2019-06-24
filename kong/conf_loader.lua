@@ -43,12 +43,31 @@ local HEADER_KEY_TO_NAME = {
 }
 
 
-local DYNAMIC_KEY_PREFIXES = {
-  ["nginx_http_directives"] = "nginx_http_",
-  ["nginx_proxy_directives"] = "nginx_proxy_",
-  ["nginx_stream_directives"] = "nginx_stream_",
-  ["nginx_sproxy_directives"] = "nginx_sproxy_",
-  ["nginx_admin_directives"] = "nginx_admin_",
+local DYNAMIC_KEY_NAMESPACES = {
+  {
+    injected_conf_name = "nginx_http_upstream_directives",
+    prefix = "nginx_http_upstream_",
+  },
+  {
+    injected_conf_name = "nginx_http_directives",
+    prefix = "nginx_http_",
+  },
+  {
+    injected_conf_name = "nginx_stream_directives",
+    prefix = "nginx_stream_",
+  },
+  {
+    injected_conf_name = "nginx_proxy_directives",
+    prefix = "nginx_proxy_", -- TODO: nginx_http_proxy
+  },
+  {
+    injected_conf_name = "nginx_sproxy_directives",
+    prefix = "nginx_sproxy_", -- TODO: nginx_stream_proxy
+  },
+  {
+    injected_conf_name = "nginx_admin_directives",
+    prefix = "nginx_admin_", -- TODO: nginx_http_admin (optional)
+  },
 }
 
 
@@ -99,7 +118,21 @@ local CONF_INFERENCES = {
   db_cache_warmup_entities = { typ = "array" },
   nginx_user = { typ = "string" },
   nginx_worker_processes = { typ = "string" },
-  upstream_keepalive = { typ = "number" },
+  upstream_keepalive = { -- TODO: remove since deprecated in 1.3
+    typ = "number",
+    deprecated = {
+      replacement = "nginx_http_upstream_keepalive",
+      alias = function(conf)
+        -- called before check_and_infer(), must parse ourselves
+        if tonumber(conf.upstream_keepalive) == 0 then
+          conf.nginx_http_upstream_keepalive = "NONE"
+
+        elseif conf.nginx_http_upstream_keepalive == nil then
+          conf.nginx_http_upstream_keepalive = tostring(conf.upstream_keepalive)
+        end
+      end,
+    }
+  },
   headers = { typ = "array" },
   trusted_ips = { typ = "array" },
   real_ip_header = { typ = "string" },
@@ -499,16 +532,23 @@ local function check_and_infer(conf)
 end
 
 
-local function overrides(k, default_v, file_conf, arg_conf)
+local function overrides(k, default_v, opts, file_conf, arg_conf)
+  opts = opts or {}
+
   local value -- definitive value for this property
 
   -- default values have lowest priority
 
-  if file_conf and file_conf[k] == nil then
+  if file_conf and file_conf[k] == nil and not opts.no_defaults then
     -- PL will ignore empty strings, so we need a placeholder (NONE)
     value = default_v == "NONE" and "" or default_v
+
   else
     value = file_conf[k] -- given conf values have middle priority
+  end
+
+  if opts.defaults_only then
+    return value, k
   end
 
   -- environment variables have higher priority
@@ -629,20 +669,40 @@ local function parse_listeners(values, flags)
 end
 
 
-local function parse_nginx_directives(dyn_key_prefix, conf)
+local function parse_nginx_directives(dyn_namespace, conf, injected_in_namespace)
   conf = conf or {}
   local directives = {}
 
   for k, v in pairs(conf) do
-    if type(k) == "string" then
-      local directive = string.match(k, dyn_key_prefix .. "(.+)")
+    if type(k) == "string" and not injected_in_namespace[k] then
+      local directive = string.match(k, dyn_namespace.prefix .. "(.+)")
       if directive then
-        table.insert(directives, { name = directive, value = v })
+        if v ~= "NONE" then
+          table.insert(directives, { name = directive, value = v })
+        end
+
+        injected_in_namespace[k] = true
       end
     end
   end
 
   return directives
+end
+
+
+local function deprecated_properties(conf, opts)
+  for property_name, v_schema in pairs(CONF_INFERENCES) do
+    local deprecated = v_schema.deprecated
+
+    if deprecated and conf[property_name] ~= nil then
+      if not opts.from_kong_env then
+        log.warn("the '%s' configuration property is deprecated, use " ..
+                 "'%s' instead", property_name, v_schema.deprecated.replacement)
+      end
+
+      v_schema.deprecated.alias(conf)
+    end
+  end
 end
 
 
@@ -655,7 +715,9 @@ end
 -- @param[type=string] path (optional) Path to a configuration file.
 -- @param[type=table] custom_conf A key/value table with the highest precedence.
 -- @treturn table A table holding a valid configuration.
-local function load(path, custom_conf)
+local function load(path, custom_conf, opts)
+  opts = opts or {}
+
   ------------------------
   -- Default configuration
   ------------------------
@@ -725,11 +787,11 @@ local function load(path, custom_conf)
     -- find dynamic keys that need to be loaded
     local dynamic_keys = {}
 
-    local function find_dynamic_keys(dyn_key_prefix, t)
+    local function find_dynamic_keys(dyn_prefix, t)
       t = t or {}
 
       for k, v in pairs(t) do
-        local directive = string.match(k, "(" .. dyn_key_prefix .. ".+)")
+        local directive = string.match(k, "(" .. dyn_prefix .. ".+)")
         if directive then
           dynamic_keys[directive] = true
           t[k] = tostring(v)
@@ -755,19 +817,29 @@ local function load(path, custom_conf)
       end
     end
 
-    for _, dyn_key_prefix in pairs(DYNAMIC_KEY_PREFIXES) do
-      find_dynamic_keys(dyn_key_prefix, custom_conf)
-      find_dynamic_keys(dyn_key_prefix, kong_env_vars)
-      find_dynamic_keys(dyn_key_prefix, from_file_conf)
+    for _, dyn_namespace in ipairs(DYNAMIC_KEY_NAMESPACES) do
+      find_dynamic_keys(dyn_namespace.prefix, defaults) -- tostring() defaults
+      find_dynamic_keys(dyn_namespace.prefix, custom_conf)
+      find_dynamic_keys(dyn_namespace.prefix, kong_env_vars)
+      find_dynamic_keys(dyn_namespace.prefix, from_file_conf)
     end
 
     -- union (add dynamic keys to `defaults` to prevent removal of the keys
     -- during the intersection that happens later)
-    defaults = tablex.merge(defaults, dynamic_keys, true)
+    defaults = tablex.merge(dynamic_keys, defaults, true)
   end
 
-  -- merge default conf with file conf, ENV variables and arg conf (with precedence)
-  local conf = tablex.pairmap(overrides, defaults, from_file_conf, custom_conf)
+  -- merge file conf, ENV variables, and arg conf (with precedence)
+  local user_conf = tablex.pairmap(overrides, defaults,
+                                   { no_defaults = true },
+                                   from_file_conf, custom_conf)
+
+  deprecated_properties(user_conf, opts)
+
+  -- merge user_conf with defaults
+  local conf = tablex.pairmap(overrides, defaults,
+                              { defaults_only = true },
+                              user_conf)
 
   -- validation
   local ok, err, errors = check_and_infer(conf)
@@ -777,10 +849,18 @@ local function load(path, custom_conf)
 
   conf = tablex.merge(conf, defaults) -- intersection (remove extraneous properties)
 
-  -- nginx directives from conf
-  for directives_block, dyn_key_prefix in pairs(DYNAMIC_KEY_PREFIXES) do
-    local directives = parse_nginx_directives(dyn_key_prefix, conf)
-    conf[directives_block] = setmetatable(directives, _nop_tostring_mt)
+  do
+    local injected_in_namespace = {}
+
+    -- nginx directives from conf
+    for _, dyn_namespace in ipairs(DYNAMIC_KEY_NAMESPACES) do
+      injected_in_namespace[dyn_namespace.injected_conf_name] = true
+
+      local directives = parse_nginx_directives(dyn_namespace, conf,
+                                                injected_in_namespace)
+      conf[dyn_namespace.injected_conf_name] = setmetatable(directives,
+                                                            _nop_tostring_mt)
+    end
   end
 
   do

@@ -279,7 +279,7 @@ function Kong.init()
 
   -- retrieve kong_config
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
-  local config = assert(conf_loader(conf_path))
+  local config = assert(conf_loader(conf_path, nil, { from_kong_env = true }))
 
   -- Set up default ssl client context
   local default_client_ssl_ctx
