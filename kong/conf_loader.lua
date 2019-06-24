@@ -637,10 +637,6 @@ local function parse_nginx_directives(dyn_key_prefix, conf)
     if type(k) == "string" then
       local directive = string.match(k, dyn_key_prefix .. "(.+)")
       if directive then
-        if tonumber(v) then
-          v = string.format("%q", v)
-        end
-
         table.insert(directives, { name = directive, value = v })
       end
     end

@@ -234,9 +234,9 @@ describe("Configuration loader", function()
         plugins = "off",
       }))
       assert.True(search_directive(conf.nginx_http_directives,
-                                   "variables_hash_bucket_size", '"128"'))
+                                   "variables_hash_bucket_size", "128"))
       assert.True(search_directive(conf.nginx_stream_directives,
-                                   "variables_hash_bucket_size", '"128"'))
+                                   "variables_hash_bucket_size", "128"))
 
       assert.True(search_directive(conf.nginx_http_directives,
                                    "lua_shared_dict", "custom_cache 5m"))
@@ -259,7 +259,7 @@ describe("Configuration loader", function()
       assert.is_nil(err)
 
       assert.True(search_directive(conf.nginx_http_directives,
-                  "max_pending_timers", [["4096"]]))
+                  "max_pending_timers", "4096"))
     end)
 
     it("accepts flexible config values with precedence", function()
@@ -275,9 +275,9 @@ describe("Configuration loader", function()
       }))
 
       assert.True(search_directive(conf.nginx_http_directives,
-                                   "variables_hash_bucket_size", '"256"'))
+                                   "variables_hash_bucket_size", "256"))
       assert.True(search_directive(conf.nginx_stream_directives,
-                                   "variables_hash_bucket_size", '"256"'))
+                                   "variables_hash_bucket_size", "256"))
 
       assert.True(search_directive(conf.nginx_http_directives,
                                    "lua_shared_dict", "custom_cache 2m"))
