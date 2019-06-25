@@ -365,6 +365,24 @@ describe("kong start/stop #" .. strategy, function()
           dict .. " [SIZE];' directive is defined.", err, nil, true)
       end
     end)
+    it("ensures lua-resty-core is loaded", function()
+        finally(function()
+          helpers.stop_kong()
+        end)
+
+        local ok, err = helpers.start_kong({
+          prefix = helpers.test_conf.prefix,
+          database = helpers.test_conf.database,
+          pg_database = helpers.test_conf.pg_database,
+          cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+          nginx_http_lua_load_resty_core = "off",
+        })
+        assert.falsy(ok)
+        assert.matches(helpers.unindent([[
+          lua-resty-core must be loaded; make sure 'lua_load_resty_core'
+          is not disabled.
+        ]], nil, true), err, nil, true)
+    end)
 
     if strategy == "cassandra" then
       it("errors when cassandra contact points cannot be resolved", function()

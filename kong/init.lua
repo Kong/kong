@@ -25,7 +25,11 @@
 -- ==========
 
 pcall(require, "luarocks.loader")
-require "resty.core"
+
+assert(package.loaded["resty.core"], "lua-resty-core must be loaded; make " ..
+                                     "sure 'lua_load_resty_core' is not "..
+                                     "disabled.")
+
 local constants = require "kong.constants"
 
 do
