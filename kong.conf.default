@@ -233,7 +233,6 @@
                                  #
                                  # See http://nginx.org/en/docs/ngx_core_module.html#daemon.
 
-
 #mem_cache_size = 128m           # Size of the in-memory cache for database
                                  # entities. The accepted units are `k` and
                                  # `m`, with a minimum recommended value of
@@ -436,7 +435,6 @@
 # declarative configuration file, which can be specified through the
 # `declarative_config` property, or via the Admin API using the `/config`
 # endpoint.
-#
 
 #database = postgres             # Determines which of PostgreSQL or Cassandra
                                  # this node will use as its datastore.
@@ -520,8 +518,6 @@
 
 #cassandra_password =            # Password when using the
                                  # `PasswordAuthenticator` scheme.
-
-
 
 #cassandra_lb_policy = RequestRoundRobin  # Load balancing policy to use when
                                           # distributing queries across your
