@@ -25,7 +25,9 @@ RateLimitingHandler.VERSION = "2.0.0"
 local function get_identifier(conf)
   local identifier
 
-  if conf.limit_by == "consumer" then
+  if conf.limit_by == "service" then
+    identifier = ""
+  elseif conf.limit_by == "consumer" then
     identifier = (kong.client.get_consumer() or
                   kong.client.get_credential() or
                   EMPTY).id
