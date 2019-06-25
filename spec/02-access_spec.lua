@@ -86,6 +86,9 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
+    local route20 = bp.routes:insert({
+      hosts = { "test20.com" }
+    })
 
     bp.plugins:insert {
       route = { id = route1.id },
@@ -307,6 +310,20 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       }
     }
 
+    bp.plugins:insert {
+      route = { id = route20.id },
+      name = "request-transformer",
+      config = {
+        http_method = "POST",
+        add = {
+          headers = {
+            "Content-Type:application/json"
+          },
+          body = { "body:somecontent" }
+        },
+      }
+    }
+
     assert(helpers.start_kong({
       database = strategy,
       plugins = "bundled, request-transformer",
@@ -358,6 +375,22 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.equal("GET", json.vars.request_method)
       assert.equal("world", json.uri_args.hello)
       assert.equal("marco", json.uri_args.name)
+    end)
+    it("changes the HTTP method from GET to POST and adds JSON body", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "test20.com",
+        }
+      })
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.request(r).has.jsonbody()
+      assert.equal("POST", json.vars.request_method)
+      assert.is_nil(json.post_data.error)
+      local header_content_type = assert.request(r).has.header("Content-Type")
+      assert.equals("application/json", header_content_type)
     end)
   end)
   describe("remove", function()

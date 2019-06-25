@@ -260,8 +260,11 @@ local function transform_json_body(conf, body, content_length)
   local removed, renamed, replaced, added, appended = false, false, false, false, false
   local content_length = (body and #body) or 0
   local parameters = parse_json(body)
-  if parameters == nil and content_length > 0 then
-    return false, nil
+  if parameters == nil then
+    if content_length > 0 then
+      return false, nil
+    end
+    parameters = {}
   end
 
   if content_length > 0 and #conf.remove.body > 0 then
@@ -484,8 +487,8 @@ function _M.execute(conf)
   clear_environment()
   transform_uri(conf)
   transform_method(conf)
-  transform_body(conf)
   transform_headers(conf)
+  transform_body(conf)
   transform_querystrings(conf)
 end
 
