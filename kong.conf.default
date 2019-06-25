@@ -480,6 +480,19 @@
                                  # to open a new connection.
                                  # See http://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive
 
+#nginx_http_upstream_keepalive_requests = 100
+                                 # Sets the maximum number of requests that can
+                                 # be served through one keepalive connection.
+                                 # After the maximum number of requests is
+                                 # made, the connection is closed.
+                                 # See http://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive_requests
+
+#nginx_http_upstream_keepalive_timeout = 60s
+                                 # Sets a timeout during which an idle
+                                 # keepalive connection to an upstream server
+                                 # will stay open.
+                                 # See http://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive_timeout
+
 #------------------------------------------------------------------------------
 # DATASTORE
 #------------------------------------------------------------------------------
