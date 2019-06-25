@@ -684,6 +684,64 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    describe(fmt("#flaky Plugin: rate-limiting (access - global for service) with policy: %s [#%s]", policy, strategy), function()
+      local bp
+      local db
+
+      lazy_setup(function()
+        helpers.kill_all()
+        flush_redis()
+        bp, db = helpers.get_db_utils(strategy)
+
+        -- global plugin (not attached to route, service or consumer)
+        bp.rate_limiting_plugins:insert({
+          config = {
+            limit_by       = "service",
+            policy         = policy,
+            minute         = 6,
+            fault_tolerant = false,
+            redis_host     = REDIS_HOST,
+            redis_port     = REDIS_PORT,
+            redis_password = REDIS_PASSWORD,
+            redis_database = REDIS_DATABASE,
+          }
+        })
+
+        for i = 1, 6 do
+          bp.routes:insert({ hosts = { fmt("test%d.com", i) } })
+        end
+
+        assert(helpers.start_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+      end)
+
+      lazy_teardown(function()
+        helpers.kill_all()
+        assert(db:truncate())
+      end)
+
+      it("blocks if exceeding limit", function()
+        for i = 1, 6 do
+          local res = GET("/status/200", {
+            headers = { Host = fmt("test%d.com", i) },
+          }, 200)
+
+          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
+          assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+        end
+
+        -- Additonal request, while limit is 6/minute
+        local _, body = GET("/status/200", {
+          headers = { Host = "test1.com" },
+        }, 429)
+
+        local json = cjson.decode(body)
+        assert.same({ message = "API rate limit exceeded" }, json)
+      end)
+    end)
+
     describe(fmt("#flaky Plugin: rate-limiting (access - global) with policy: %s [#%s]", policy, strategy), function()
       local bp
       local db
