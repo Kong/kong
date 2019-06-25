@@ -39,8 +39,8 @@ return {
           { year = { type = "number", gt = 0 }, },
           { limit_by = {
               type = "string",
-              default = "consumer",
-              one_of = { "consumer", "credential", "ip" },
+              default = "service",
+              one_of = { "consumer", "credential", "ip", "service" },
           }, },
           { policy = {
               type = "string",
