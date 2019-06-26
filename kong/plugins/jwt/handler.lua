@@ -14,7 +14,7 @@ local JwtHandler = {}
 
 
 JwtHandler.PRIORITY = 1005
-JwtHandler.VERSION = "0.2.1"
+JwtHandler.VERSION = "2.0.0"
 
 
 --- Retrieve a JWT in a request.
@@ -49,13 +49,13 @@ local function retrieve_token(conf)
       end
       local iterator, iter_err = re_gmatch(token_header, "\\s*[Bb]earer\\s+(.+)")
       if not iterator then
-        ngx.log(ngx.ERR, "[jwt]: ", iter_err)
+        kong.log.err(iter_err)
         break
       end
 
       local m, err = iterator()
       if err then
-        ngx.log(ngx.ERR, "[jwt]: ", err)
+        kong.log.err(err)
         break
       end
 
