@@ -10,6 +10,7 @@ pipeline {
   environment {
     BINTRAY = credentials('bintray')
     GITHUB = credentials('GITHUB_TOKEN')
+    GOJIRA='/tmp/gojira/gojira.sh'
   }
   stages {
     stage('prepare') {
@@ -20,10 +21,32 @@ pipeline {
         sh 'ls -las /tmp'
       }
     }
-    stage('all') {
+
+    stage('cassandra all') {
       environment {
+        KONG_TEST_DATABASE='cassandra'
         TEST_SUITE='lint'
-        GOJIRA='/tmp/gojira/gojira.sh'
+      }
+      steps {
+        sh '$GOJIRA down -k .'
+        sh '$GOJIRA up -k ./ --cassandra'
+        sh 'sed -i "442,443 s/stdin_open: true/stdin_open: false/" /tmp/gojira/docker/docker-compose.yml.sh'
+        sh 'sed -i "442,443 s/tty: true/tty: true/" /tmp/gojira/docker/docker-compose.yml.sh'
+        sh 'sed -e "442,443 s/kong bash -l -i/-T kong bash -l/" $GOJIRA'
+        sh 'sed -i "442,443 s/kong bash -l -i/-T kong bash -l/" $GOJIRA'
+        sh '$GOJIRA run ls -k . -v'
+        sh '$GOJIRA run make dev -k . -v'
+        // sh '$GOJIRA compose exec -T -e TEST_SUITE=pdk kong bash -l .ci/run_tests.sh -k . -v'
+        sh '$GOJIRA compose exec -T -e TEST_SUITE=plugins kong bash -l .ci/run_tests.sh -k . -v'
+        sh '$GOJIRA compose exec -T -e TEST_SUITE=plugins-ee kong bash -l .ci/run_tests.sh -k . -v'
+        sh '$GOJIRA compose exec -T -e TEST_SUITE=integration kong bash -l .ci/run_tests.sh -k . -v'
+        sh '$GOJIRA compose exec -T -e TEST_SUITE=integration-ee kong bash -l .ci/run_tests.sh -k . -v'
+        sh '$GOJIRA down -k . --cassandra'
+      }
+    }
+    stage('postgres all') {
+      environment {
+        KONG_TEST_DATABASE='postgres'
       }
       steps {
         sh '$GOJIRA down -k .'
@@ -39,11 +62,6 @@ pipeline {
         sh '$GOJIRA compose exec -T -e TEST_SUITE=plugins-ee kong bash -l .ci/run_tests.sh -k . -v'
         sh '$GOJIRA compose exec -T -e TEST_SUITE=integration kong bash -l .ci/run_tests.sh -k . -v'
         sh '$GOJIRA compose exec -T -e TEST_SUITE=integration-ee kong bash -l .ci/run_tests.sh -k . -v'
-        // sh '$GOJIRA run make test-integration -k . -v'
-        // sh '$GOJIRA run make test-plugins -k . -v'
-        // sh '$GOJIRA run make test-ee -k . -v'
-        // sh '$GOJIRA run make test-integration-ee -k . -v'
-        // sh '$GOJIRA run make test-plugins-ee -k . -v'
         sh '$GOJIRA down -k .'
       }
     }
