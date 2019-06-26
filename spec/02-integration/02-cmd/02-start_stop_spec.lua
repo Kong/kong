@@ -157,7 +157,7 @@ describe("kong start/stop #" .. strategy, function()
     end)
   end)
 
-  describe("/etc/hosts resolving in CLI", function()
+  describe("#flaky /etc/hosts resolving in CLI", function()
     it("resolves #cassandra hostname", function()
       assert(helpers.kong_exec("start --vv --run-migrations --conf " .. helpers.test_conf_path, {
         cassandra_contact_points = "localhost",

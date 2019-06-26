@@ -18,7 +18,6 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy, {
-        "apis",
         "routes",
         "services",
         "plugins",
@@ -343,7 +342,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       before_each(function()
-        os.execute("echo '' > " .. FILE_LOG_PATH)
+        os.execute("echo -n '' > " .. FILE_LOG_PATH)
         os.execute("chmod 0777 " .. FILE_LOG_PATH)
       end)
 
@@ -666,7 +665,7 @@ for _, strategy in helpers.each_strategy() do
 
       before_each(function()
         proxy_client = helpers.proxy_client()
-        os.execute("echo '' > " .. FILE_LOG_PATH)
+        os.execute("echo -n '' > " .. FILE_LOG_PATH)
         os.execute("chmod 0777 " .. FILE_LOG_PATH)
       end)
 
