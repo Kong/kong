@@ -183,7 +183,7 @@ local function populate_healthchecker(hc, balancer)
         -- Get existing health status which may have been initialized
         -- with data from another worker, and apply to the new balancer.
         local tgt_status = hc:get_target_status(ipaddr, port)
-        balancer:setPeerStatus(tgt_status, ipaddr, port, hostname)
+        balancer:setAddressStatus(tgt_status, ipaddr, port, hostname)
 
       else
         log(ERR, "[healthchecks] failed adding target: ", err)
@@ -206,9 +206,9 @@ do
 
     ------------------------------------------------------------------------------
     -- Callback function that informs the healthchecker when targets are added
-    -- or removed to a balancer.
+    -- or removed to a balancer and when targets health status change.
     -- @param balancer the ring balancer object that triggers this callback.
-    -- @param action "added" or "removed"
+    -- @param action "added", "removed", or "health"
     -- @param address balancer address object
     -- @param ip string
     -- @param port number
@@ -224,8 +224,18 @@ do
       elseif action == "removed" then
         local ok, err = healthchecker:remove_target(ip, port)
         if not ok then
-          log(ERR, "[healthchecks] failed adding a target: ", err)
+          log(ERR, "[healthchecks] failed removing a target: ", err)
         end
+
+      elseif action == "health" then
+        local balancer_status
+        if address then
+          balancer_status = "HEALTHY"
+        else
+          balancer_status = "UNHEALTHY"
+        end
+        log(WARN, "[healthchecks] balancer ", healthchecker.name,
+            " reported health status changed to ", balancer_status)
 
       else
         log(WARN, "[healthchecks] unknown status from balancer: ",
@@ -248,7 +258,7 @@ do
         end
 
         local ok, err
-        ok, err = balancer:setPeerStatus(status, tgt.ip, tgt.port, tgt.hostname)
+        ok, err = balancer:setAddressStatus(status, tgt.ip, tgt.port, tgt.hostname)
 
         local health = status and "healthy" or "unhealthy"
         for _, subscriber in ipairs(healthcheck_subscribers) do
@@ -807,7 +817,8 @@ local function execute(target, ctx)
     ip, port, hostname, handle = balancer:getPeer(dns_cache_only,
                                           target.balancer_handle,
                                           hash_value)
-    if not ip and port == "No peers are available" then
+    if not ip and
+      (port == "No peers are available" or port == "Balancer is unhealthy") then
       return nil, "failure to get a peer from the ring-balancer", 503
     end
     target.hash_value = hash_value
@@ -859,7 +870,7 @@ local function post_health(upstream, hostname, ip, port, is_healthy)
   end
 
   if ip then
-    return balancer:setPeerStatus(is_healthy, ip, port, hostname)
+    return balancer:setAddressStatus(is_healthy, ip, port, hostname)
   end
 
   return balancer:setHostStatus(is_healthy, hostname, port)

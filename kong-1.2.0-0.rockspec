@@ -30,7 +30,7 @@ dependencies = {
   "luaossl == 20190612",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
-  "lua-resty-dns-client == 3.0.2",
+  "lua-resty-dns-client == 4.0.0",
   "lua-resty-worker-events == 0.3.3",
   "lua-resty-mediador == 0.1.2",
   "lua-resty-healthcheck == 0.6.2",
