@@ -11,6 +11,7 @@ pipeline {
     BINTRAY = credentials('bintray')
     GITHUB = credentials('GITHUB_TOKEN')
     GOJIRA='/tmp/gojira/gojira.sh'
+    GOJIRA_USE_SNAPSHOT='1'
   }
   stages {
     stage('prepare') {
@@ -19,6 +20,18 @@ pipeline {
         sh 'rm -fr /tmp/gojira'
         sh 'git clone https://$GITHUB:@github.com/Kong/kong-gojira.git /tmp/gojira || true'
         sh 'ls -las /tmp'
+        sh '$GOJIRA down -k .'
+        sh '$GOJIRA up -k ./ --cassandra'
+        sh 'sed -i "442,443 s/stdin_open: true/stdin_open: false/" /tmp/gojira/docker/docker-compose.yml.sh'
+        sh 'sed -i "442,443 s/tty: true/tty: true/" /tmp/gojira/docker/docker-compose.yml.sh'
+        sh 'sed -e "442,443 s/kong bash -l -i/-T kong bash -l/" $GOJIRA'
+        sh 'sed -i "442,443 s/kong bash -l -i/-T kong bash -l/" $GOJIRA'
+        sh 'sed -i "472,473 s/kong bash -l -i -c/-T kong bash -l -c/" $GOJIRA'
+        sh 'sed -e "472,473 s/kong bash -l -i -c/-T kong bash -l -c/" $GOJIRA'
+        sh '$GOJIRA run ls -k . -v'
+        sh '$GOJIRA run make dev -k . -v'
+        sh '$GOJIRA snapshot -k ./'
+        sh '$GOJIRA down -k .'
       }
     }
 
@@ -28,15 +41,9 @@ pipeline {
         TEST_SUITE='lint'
       }
       steps {
-        sh '$GOJIRA down -k .'
-        sh '$GOJIRA up -k ./ --cassandra'
-        sh 'sed -i "442,443 s/stdin_open: true/stdin_open: false/" /tmp/gojira/docker/docker-compose.yml.sh'
-        sh 'sed -i "442,443 s/tty: true/tty: true/" /tmp/gojira/docker/docker-compose.yml.sh'
-        sh 'sed -e "442,443 s/kong bash -l -i/-T kong bash -l/" $GOJIRA'
-        sh 'sed -i "442,443 s/kong bash -l -i/-T kong bash -l/" $GOJIRA'
-        sh '$GOJIRA run ls -k . -v'
-        sh '$GOJIRA run make dev -k . -v'
         // sh '$GOJIRA compose exec -T -e TEST_SUITE=pdk kong bash -l .ci/run_tests.sh -k . -v'
+        sh '$GOJIRA up -k ./ --cassandra'
+        sh 'sleep 30'
         sh '$GOJIRA compose exec -T -e TEST_SUITE=plugins kong bash -l .ci/run_tests.sh -k . -v'
         sh '$GOJIRA compose exec -T -e TEST_SUITE=plugins-ee kong bash -l .ci/run_tests.sh -k . -v'
         sh '$GOJIRA compose exec -T -e TEST_SUITE=integration kong bash -l .ci/run_tests.sh -k . -v'
@@ -64,6 +71,11 @@ pipeline {
         sh '$GOJIRA compose exec -T -e TEST_SUITE=integration-ee kong bash -l .ci/run_tests.sh -k . -v'
         sh '$GOJIRA down -k .'
       }
+    }
+  }
+  post {
+    cleanup {
+      sh '$GOJIRA down -k .'
     }
   }
 }
