@@ -49,12 +49,18 @@ for _, strategy in helpers.each_strategy() do
 
         assert.matches("^/audit/requests", json.next)
 
-        res = assert.res_status(200, admin_client:send({
-          path = "/audit/requests",
-          query = {size = 2, offset = json.offset}
-        }))
-        json = cjson.decode(res)
+        local offset = json.offset
+        helpers.wait_until(function()
+          ngx.sleep(1)
+          res = assert.res_status(200, admin_client:send({
+            path = "/audit/requests",
+            query = {size = 2, offset = offset}
+          }))
+          json = cjson.decode(res)
+          return 1 == #json.data
+        end, 5)
         assert.same(1, #json.data)
+
       end)
     end)
 
