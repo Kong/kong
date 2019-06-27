@@ -339,7 +339,7 @@ end
 
 local function migrate_core_entities(schema_state, db, opts)
 
-  print_state(schema_state)
+  check_state(schema_state)
 
   if schema_state.new_migrations then
     error("database has pending migrations; run 'kong migrations up'")
