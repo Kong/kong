@@ -100,7 +100,7 @@ describe("redis schema", function()
     })
 
     assert.is_falsy(ok)
-    assert.same("Invalid Redis Sentinel address: 127.0.0.1", err.sentinel_addresses)
+    assert.same("Invalid Redis host address: 127.0.0.1", err.sentinel_addresses)
 
     local ok, err = Redis:validate_insert({
       sentinel_addresses = { "127.0.0.1:12345", "127.0.0.2" },
@@ -109,7 +109,7 @@ describe("redis schema", function()
     })
 
     assert.is_falsy(ok)
-    assert.same("Invalid Redis Sentinel address: 127.0.0.2", err.sentinel_addresses)
+    assert.same("Invalid Redis host address: 127.0.0.2", err.sentinel_addresses)
 
   end)
 end)

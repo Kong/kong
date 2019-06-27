@@ -2,6 +2,7 @@
 -- features, such as Sentinel compatibility.
 
 local redis_connector = require "resty.redis.connector"
+local redis_cluster   = require "resty.rediscluster"
 local typedefs        = require "kong.db.schema.typedefs"
 local utils           = require "kong.tools.utils"
 local redis           = require "resty.redis"
@@ -23,13 +24,18 @@ local function is_redis_sentinel(redis)
   return is_sentinel and true or false
 end
 
+local function is_redis_cluster(redis)
+  return redis.cluster_addresses and true or false
+end
 
-local function validate_sentinel_addresses(addresses)
+_M.is_redis_cluster = is_redis_cluster
+
+local function validate_addresses(addresses)
   for _, address in ipairs(addresses) do
     local parts = utils.split(address, ":")
 
     if not (#parts == 2 and tonumber(parts[2])) then
-      return false, "Invalid Redis Sentinel address: " .. address
+      return false, "Invalid Redis host address: " .. address
     end
   end
 
@@ -48,7 +54,8 @@ _M.config_schema = {
     { database = { type = "integer", default = 0 } },
     { sentinel_master = { type = "string", } },
     { sentinel_role = { type = "string", one_of = { "master", "slave", "any" }, } },
-    { sentinel_addresses = { type = "array", elements = { type = "string" }, len_min = 1, custom_validator =  validate_sentinel_addresses } },
+    { sentinel_addresses = { type = "array", elements = { type = "string" }, len_min = 1, custom_validator =  validate_addresses } },
+    { cluster_addresses = { type = "array", elements = { type = "string" }, len_min = 1, custom_validator =  validate_addresses } },
   },
 
   entity_checks = {
@@ -68,17 +75,17 @@ _M.config_schema = {
 }
 
 
--- Parse addresses from a string in the "host1:port1,host2:port2" format to a
--- table in the {{host = "host1", port = port1}, {host = "host2", port = port2}}
+-- Parse addresses from a string in the "ip1:port1,ip2:port2" format to a
+-- table in the {{[ip_field_name] = "ip1", port = port1}, {[ip_field_name] = "ip2", port = port2}}
 -- format
-local function parse_sentinel_addresses(addresses)
+local function parse_addresses(addresses, ip_field_name)
   local parsed_addresses = {}
 
   for i = 1, #addresses do
     local address = addresses[i]
     local parts = utils.split(address, ":")
 
-    local parsed_address = { host = parts[1], port = tonumber(parts[2]) }
+    local parsed_address = { [ip_field_name] = parts[1], port = tonumber(parts[2]) }
     parsed_addresses[#parsed_addresses + 1] = parsed_address
   end
 
@@ -88,9 +95,12 @@ end
 
 -- Perform any needed Redis configuration; e.g., parse Sentinel addresses
 function _M.init_conf(conf)
-  if is_redis_sentinel(conf) then
+  if is_redis_cluster(conf) then
+    conf.parsed_cluster_addresses =
+      parse_addresses(conf.cluster_addresses, "ip")
+  elseif is_redis_sentinel(conf) then
     conf.parsed_sentinel_addresses =
-      parse_sentinel_addresses(conf.sentinel_addresses)
+      parse_addresses(conf.sentinel_addresses, "host")
   end
 end
 
@@ -117,7 +127,21 @@ end
 function _M.connection(conf)
   local red
 
-  if conf.sentinel_master then
+  if is_redis_cluster(conf) then
+    -- creating client for redis cluster
+    local err
+    red, err = redis_cluster:new({
+      dict_name = "kong_locks",
+      name = "redis-cluster",
+      serv_list = conf.parsed_cluster_addresses,
+      auth = conf.password,
+    })
+    if err then
+      log(ERR, "failed to connect to redis cluster: ", err)
+      return nil
+    end
+  elseif conf.sentinel_master then
+    -- creating client for redis sentinel
     local rc = redis_connector.new()
     rc:set_connect_timeout(conf.timeout)
 
@@ -133,10 +157,8 @@ function _M.connection(conf)
       log(ERR, "failed to connect to redis sentinel: ", err)
       return nil
     end
-
   else
-    -- regular redis, no sentinel
-
+    -- regular redis
     red = redis:new()
     red:set_timeout(conf.redis_timeout)
 

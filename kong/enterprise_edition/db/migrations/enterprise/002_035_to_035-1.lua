@@ -1,6 +1,8 @@
 local fmt = string.format
 local created_ts = math.floor(ngx.now()) * 1000
 
+local log = require "kong.cmd.utils.log"
+
 -- fixing snis implies:
 -- for each sni in snis table
 --   get its name
@@ -319,39 +321,40 @@ return {
             end
 
             if not workspace_entity then
-              return nil, "not able to fetch workspace relation for SNI: " .. sni.name
-            end
+              log.warn("not able to fetch workspace relation for SNI: " .. sni.name)
+            else
 
-            -- get workspace, just get first one
-            local workspace = workspaces_map[workspace_entity.workspace_id]
-            if not workspace then
-              return nil, "not able to fetch workspace for SNI: " .. sni.name
-            end
+              -- get workspace, just get first one
+              local workspace = workspaces_map[workspace_entity.workspace_id]
+              if not workspace then
+                return nil, "not able to fetch workspace for SNI: " .. sni.name
+              end
 
-            -- update name ws:name in snis table
-           --[[ local _, err = connector:query(fmt("update snis set name = '%s:%s' where partition = 'snis' and id = %s;", workspace.name, sni.name, sni.id))
-            if err then
-              return nil, err
-            end]]
-            -- insert unique fields (name, id) in workspace_entities XXX is name still unique??
-            local _, err = connector:query(fmt("insert into workspace_entities" ..
-              "(workspace_name, workspace_id, entity_id, entity_type, unique_field_name, unique_field_value)" ..
-              " values('%s', %s, '%s', 'snis', 'id', '%s');", workspace.name, workspace.id, sni.id, sni.id))
-            if err then
-              return nil, err
-            end
+              -- update name ws:name in snis table
+              --[[ local _, err = connector:query(fmt("update snis set name = '%s:%s' where partition = 'snis' and id = %s;", workspace.name, sni.name, sni.id))
+              if err then
+                return nil, err
+              end]]
+              -- insert unique fields (name, id) in workspace_entities XXX is name still unique??
+              local _, err = connector:query(fmt("insert into workspace_entities" ..
+                "(workspace_name, workspace_id, entity_id, entity_type, unique_field_name, unique_field_value)" ..
+                " values('%s', %s, '%s', 'snis', 'id', '%s');", workspace.name, workspace.id, sni.id, sni.id))
+              if err then
+                return nil, err
+              end
 
-            local _, err = connector:query(fmt("insert into workspace_entities" ..
-              "(workspace_name, workspace_id, entity_id, entity_type, unique_field_name, unique_field_value)" ..
-              " values('%s', %s, '%s', 'snis', 'name', '%s');", workspace.name, workspace.id, sni.id, sni.name))
-            if err then
-              return nil, err
-            end
+              local _, err = connector:query(fmt("insert into workspace_entities" ..
+                "(workspace_name, workspace_id, entity_id, entity_type, unique_field_name, unique_field_value)" ..
+                " values('%s', %s, '%s', 'snis', 'name', '%s');", workspace.name, workspace.id, sni.id, sni.name))
+              if err then
+                return nil, err
+              end
 
-            --clean up old ssl_servers_name
-            local _, err = connector:query(fmt("delete from workspace_entities where workspace_id = %s and entity_id = '%s' and unique_field_name = 'name';", workspace.id, sni.name))
-            if err then
-              return nil, err
+              --clean up old ssl_servers_name
+              local _, err = connector:query(fmt("delete from workspace_entities where workspace_id = %s and entity_id = '%s' and unique_field_name = 'name';", workspace.id, sni.name))
+              if err then
+                return nil, err
+              end
             end
           end
         end
