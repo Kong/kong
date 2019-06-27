@@ -35,47 +35,54 @@ pipeline {
       }
     }
 
-    stage('cassandra all') {
-      environment {
-        KONG_TEST_DATABASE='cassandra'
-        TEST_SUITE='lint'
-      }
-      steps {
-        // sh '$GOJIRA compose exec -T -e TEST_SUITE=pdk kong bash -l .ci/run_tests.sh -k . -v'
-        sh '$GOJIRA up -k ./ --cassandra'
-        sh 'sleep 30'
-        sh '$GOJIRA compose exec -T -e TEST_SUITE=plugins kong bash -l .ci/run_tests.sh -k . -v'
-        sh '$GOJIRA compose exec -T -e TEST_SUITE=plugins-ee kong bash -l .ci/run_tests.sh -k . -v'
-        sh '$GOJIRA compose exec -T -e TEST_SUITE=integration kong bash -l .ci/run_tests.sh -k . -v'
-        sh '$GOJIRA compose exec -T -e TEST_SUITE=integration-ee kong bash -l .ci/run_tests.sh -k . -v'
-        sh '$GOJIRA down -k . --cassandra'
-      }
-    }
-    stage('postgres all') {
-      environment {
-        KONG_TEST_DATABASE='postgres'
-      }
-      steps {
-        sh '$GOJIRA down -k .'
-        sh '$GOJIRA up -k ./'
-        sh 'sed -i "442,443 s/stdin_open: true/stdin_open: false/" /tmp/gojira/docker/docker-compose.yml.sh'
-        sh 'sed -i "442,443 s/tty: true/tty: true/" /tmp/gojira/docker/docker-compose.yml.sh'
-        sh 'sed -e "442,443 s/kong bash -l -i/-T kong bash -l/" $GOJIRA'
-        sh 'sed -i "442,443 s/kong bash -l -i/-T kong bash -l/" $GOJIRA'
-        sh '$GOJIRA run ls -k . -v'
-        sh '$GOJIRA run make dev -k . -v'
-        // sh '$GOJIRA compose exec -T -e TEST_SUITE=pdk kong bash -l .ci/run_tests.sh -k . -v'
-        sh '$GOJIRA compose exec -T -e TEST_SUITE=plugins kong bash -l .ci/run_tests.sh -k . -v'
-        sh '$GOJIRA compose exec -T -e TEST_SUITE=plugins-ee kong bash -l .ci/run_tests.sh -k . -v'
-        sh '$GOJIRA compose exec -T -e TEST_SUITE=integration kong bash -l .ci/run_tests.sh -k . -v'
-        sh '$GOJIRA compose exec -T -e TEST_SUITE=integration-ee kong bash -l .ci/run_tests.sh -k . -v'
-        sh '$GOJIRA down -k .'
+    stage('tests'){
+      parallel {
+        stage('cassandra all') {
+          environment {
+            KONG_TEST_DATABASE='cassandra'
+            TEST_SUITE='lint'
+            JENKINS_PROJECT='cassandra-${BUILD_NUMBER}'
+          }
+          steps {
+            // sh '$GOJIRA compose exec -T -e TEST_SUITE=pdk kong bash -l .ci/run_tests.sh -k . -v'
+            sh '$GOJIRA up -k ./ --cassandra -p $JENKINS_PROJECT'
+            sh 'sleep 30'
+            sh '$GOJIRA compose exec -T -e TEST_SUITE=plugins kong bash -l .ci/run_tests.sh -k . -v -p $JENKINS_PROJECT'
+            sh '$GOJIRA compose exec -T -e TEST_SUITE=plugins-ee kong bash -l .ci/run_tests.sh -k . -v -p $JENKINS_PROJECT'
+            sh '$GOJIRA compose exec -T -e TEST_SUITE=integration kong bash -l .ci/run_tests.sh -k . -v -p $JENKINS_PROJECT'
+            sh '$GOJIRA compose exec -T -e TEST_SUITE=integration-ee kong bash -l .ci/run_tests.sh -k . -v -p $JENKINS_PROJECT'
+            sh '$GOJIRA down -k . --cassandra -p $JENKINS_PROJECT'
+          }
+        }
+        stage('postgres all') {
+          environment {
+            KONG_TEST_DATABASE='postgres'
+            JENKINS_PROJECT='postgres-${BUILD_NUMBER}'
+          }
+          steps {
+            sh '$GOJIRA down -k . -p $JENKINS_PROJECT'
+            sh '$GOJIRA up -k ./ -p $JENKINS_PROJECT'
+            sh 'sed -i "442,443 s/stdin_open: true/stdin_open: false/" /tmp/gojira/docker/docker-compose.yml.sh'
+            sh 'sed -i "442,443 s/tty: true/tty: true/" /tmp/gojira/docker/docker-compose.yml.sh'
+            sh 'sed -e "442,443 s/kong bash -l -i/-T kong bash -l/" $GOJIRA'
+            sh 'sed -i "442,443 s/kong bash -l -i/-T kong bash -l/" $GOJIRA'
+            sh '$GOJIRA run ls -k . -v -p $JENKINS_PROJECT'
+            sh '$GOJIRA run make dev -k . -v -p $JENKINS_PROJECT'
+            // sh '$GOJIRA compose exec -T -e TEST_SUITE=pdk kong bash -l .ci/run_tests.sh -k . -v'
+            sh '$GOJIRA compose exec -T -e TEST_SUITE=plugins kong bash -l .ci/run_tests.sh -k . -v -p $JENKINS_PROJECT'
+            sh '$GOJIRA compose exec -T -e TEST_SUITE=plugins-ee kong bash -l .ci/run_tests.sh -k . -v -p $JENKINS_PROJECT'
+            sh '$GOJIRA compose exec -T -e TEST_SUITE=integration kong bash -l .ci/run_tests.sh -k . -v -p $JENKINS_PROJECT'
+            sh '$GOJIRA compose exec -T -e TEST_SUITE=integration-ee kong bash -l .ci/run_tests.sh -k . -v -p $JENKINS_PROJECT'
+            sh '$GOJIRA down -k . -p $JENKINS_PROJECT'
+          }
+        }
       }
     }
   }
   post {
     cleanup {
-      sh '$GOJIRA down -k .'
+      sh '$GOJIRA down -k . -p postgres-${BUILD_NUMBER}'
+      sh '$GOJIRA down -k . -p cassandra-${BUILD_NUMBER}'
     }
   }
 }
