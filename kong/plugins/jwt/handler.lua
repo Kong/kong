@@ -9,12 +9,16 @@ local ipairs = ipairs
 local tostring = tostring
 local re_gmatch = ngx.re.gmatch
 
+local consts = {
+  JWT_CLAIM_HEADER_PREFIX = "X-Jwt-Claim"
+}
+
 
 local JwtHandler = {}
 
 
 JwtHandler.PRIORITY = 1005
-JwtHandler.VERSION = "2.0.0"
+JwtHandler.VERSION = "2.0.1"
 
 
 --- Retrieve a JWT in a request.
@@ -122,6 +126,15 @@ local function set_consumer(consumer, credential, token)
   end
 end
 
+-- set header keys from claims
+local function set_headers(conf, claims)
+  local set_header = kong.service.request.set_header
+  for _, v in ipairs(conf.headers_to_set) do
+    if claims[v] then
+      set_header(consts.JWT_CLAIM_HEADER_PREFIX.."-"..v, claims[v])
+    end
+  end
+end
 
 local function do_authentication(conf)
   local token, err = retrieve_token(conf)
@@ -224,6 +237,8 @@ local function do_authentication(conf)
   end
 
   set_consumer(consumer, jwt_secret, token)
+
+  set_headers(conf, claims)
 
   return true
 end

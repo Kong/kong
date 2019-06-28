@@ -27,6 +27,11 @@ return {
                 type = "string",
                 one_of = { "exp", "nbf" },
           }, }, },
+          { headers_to_set = {
+              type = "set",
+              elements = {
+                type = "string"
+          }, }, },
           { anonymous = { type = "string", uuid = true, legacy = true }, },
           { run_on_preflight = { type = "boolean", default = true }, },
           { maximum_expiration = {
