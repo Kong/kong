@@ -1,3 +1,10 @@
+## 1.0.1
+
+### Changed
+
+* Forward X-Forwarded-* headers
+
+
 ## 1.0.0
 
 ### Changed
