@@ -220,6 +220,7 @@ function declarative.load_into_db(dc_table)
 
       primary_key = schema:extract_pk_values(entity)
 
+      ngx.ctx.workspaces = { kong.db.workspaces:select_by_name("default") }
       ok, err, err_t = kong.db[schema.name]:upsert(primary_key, entity)
       if not ok then
         return nil, err, err_t
