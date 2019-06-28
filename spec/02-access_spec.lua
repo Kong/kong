@@ -216,6 +216,156 @@ for _, strategy in helpers.each_strategy() do
       assert.matches("failed to connect to proxy: ", err_log, nil, true)
     end)
 
+    describe("forwards X-Forwarded-* headers upstream", function()
+      describe("non-trusted client", function()
+        lazy_setup(function()
+          if client then
+            client:close()
+          end
+          helpers.stop_kong(nil, true, true)
+
+          assert(helpers.start_kong({
+            database = strategy,
+            plugins = "forward-proxy",
+            nginx_conf = "spec/fixtures/custom_nginx.template",
+            trusted_ips = "",
+          }))
+
+          client = helpers.proxy_client()
+        end)
+
+        lazy_teardown(function()
+          if client then
+            client:close()
+          end
+          helpers.stop_kong(nil, true, true)
+
+          assert(helpers.start_kong({
+            database = strategy,
+            plugins = "forward-proxy",
+            nginx_conf     = "spec/fixtures/custom_nginx.template",
+          }))
+
+          client = helpers.proxy_client()
+        end)
+
+        it("no client X-Forwarded-* headers", function()
+          local res = assert(client:send {
+            method  = "GET",
+            path    = "/request",
+            headers = {
+              host = "service-1.com",
+            },
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("service-1.com", json.headers["x-forwarded-host"])
+          assert.equal("9000", json.headers["x-forwarded-port"])
+          assert.equal("http", json.headers["x-forwarded-proto"])
+          assert.equal("127.0.0.1", json.headers["x-forwarded-for"])
+          assert.equal("127.0.0.1", json.headers["x-real-ip"])
+        end)
+
+        it("with client X-Forwarded-* headers", function()
+          local res = assert(client:send {
+            method  = "GET",
+            path    = "/request",
+            headers = {
+              host = "service-1.com",
+              ["X-Real-IP"] = "10.0.0.1",
+              ["X-Forwarded-For"] = "10.0.0.1",
+              ["X-Forwarded-Host"] = "example.com",
+              ["X-Forwarded-Proto"] = "https",
+              ["X-Forwarded-Port"] = "443",
+            },
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("service-1.com", json.headers["x-forwarded-host"])
+          assert.equal("9000", json.headers["x-forwarded-port"])
+          assert.equal("http", json.headers["x-forwarded-proto"])
+          assert.equal("10.0.0.1, 127.0.0.1", json.headers["x-forwarded-for"])
+          assert.equal("127.0.0.1", json.headers["x-real-ip"])
+        end)
+      end)
+
+      describe("trusted client", function()
+        lazy_setup(function()
+          if client then
+            client:close()
+          end
+          helpers.stop_kong(nil, true, true)
+
+          assert(helpers.start_kong({
+            database = strategy,
+            plugins = "forward-proxy",
+            nginx_conf = "spec/fixtures/custom_nginx.template",
+            trusted_ips = "127.0.0.1,::1",
+          }))
+
+          client = helpers.proxy_client()
+        end)
+
+        lazy_teardown(function()
+          if client then
+            client:close()
+          end
+          helpers.stop_kong(nil, true, true)
+
+          assert(helpers.start_kong({
+            database = strategy,
+            plugins = "forward-proxy",
+            nginx_conf     = "spec/fixtures/custom_nginx.template",
+          }))
+
+          client = helpers.proxy_client()
+        end)
+
+        it("no client X-Forwarded-* headers", function()
+          local res = assert(client:send {
+            method  = "GET",
+            path    = "/request",
+            headers = {
+              host = "service-1.com",
+            },
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("service-1.com", json.headers["x-forwarded-host"])
+          assert.equal("9000", json.headers["x-forwarded-port"])
+          assert.equal("http", json.headers["x-forwarded-proto"])
+          assert.equal("127.0.0.1", json.headers["x-forwarded-for"])
+          assert.equal("127.0.0.1", json.headers["x-real-ip"])
+        end)
+
+        it("with client X-Forwarded-* headers", function()
+          local res = assert(client:send {
+            method  = "GET",
+            path    = "/request",
+            headers = {
+              host = "service-1.com",
+              ["X-Real-IP"] = "10.0.0.1",
+              ["X-Forwarded-For"] = "10.0.0.1",
+              ["X-Forwarded-Host"] = "example.com",
+              ["X-Forwarded-Proto"] = "https",
+              ["X-Forwarded-Port"] = "443",
+            },
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("example.com", json.headers["x-forwarded-host"])
+          assert.equal("443", json.headers["x-forwarded-port"])
+          assert.equal("https", json.headers["x-forwarded-proto"])
+          assert.equal("10.0.0.1, 127.0.0.1", json.headers["x-forwarded-for"])
+          assert.equal("10.0.0.1", json.headers["x-real-ip"])
+        end)
+      end)
+    end)
+
     describe("displays Kong core headers:", function()
       for _, s in ipairs({ "Proxy", "Upstream" }) do
         local name = string.format("X-Kong-%s-Latency", s)

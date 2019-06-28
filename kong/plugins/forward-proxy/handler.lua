@@ -9,6 +9,7 @@ local ngx                 = ngx
 local ERR                 = ngx.ERR
 local log                 = ngx.log
 local ngx_req_get_headers = ngx.req.get_headers
+local ngx_req_set_header  = ngx.req.set_header
 local ngx_req_get_method  = ngx.req.get_method
 local ngx_req_read_body    = ngx.req.read_body
 local ngx_req_get_body    = ngx.req.get_body_data
@@ -70,6 +71,53 @@ local function simulate_access_after(ctx)
 end
 
 
+-- Borrowed from Kong 0.34-1 kong/runloop/handler.lua module
+local function simulate_access_before()
+  local var = ngx.var
+  local realip_remote_addr = var.realip_remote_addr
+
+  local forwarded_proto
+  local forwarded_host
+  local forwarded_port
+  local forwarded_for
+
+  -- X-Forwarded-* Headers Parsing
+  --
+  -- We could use $proxy_add_x_forwarded_for, but it does not work properly
+  -- with the realip module. The realip module overrides $remote_addr and it
+  -- is okay for us to use it in case no X-Forwarded-For header was present.
+  -- But in case it was given, we will append the $realip_remote_addr that
+  -- contains the IP that was originally in $remote_addr before realip
+  -- module overrode that (aka the client that connected us).
+
+  local trusted_ip = kong.ip.is_trusted(realip_remote_addr)
+  if trusted_ip then
+    forwarded_proto = var.http_x_forwarded_proto or var.scheme
+    forwarded_host  = var.http_x_forwarded_host  or var.host
+    forwarded_port  = var.http_x_forwarded_port  or var.server_port
+
+  else
+    forwarded_proto = var.scheme
+    forwarded_host  = var.host
+    forwarded_port  = var.server_port
+  end
+
+  local http_x_forwarded_for = var.http_x_forwarded_for
+  if http_x_forwarded_for then
+    forwarded_for = http_x_forwarded_for .. ", " .. realip_remote_addr
+
+  else
+    forwarded_for = var.remote_addr
+  end
+
+  ngx_req_set_header("X-Real-IP", var.remote_addr)
+  ngx_req_set_header("X-Forwarded-For", forwarded_for)
+  ngx_req_set_header("X-Forwarded-Proto", forwarded_proto)
+  ngx_req_set_header("X-Forwarded-Host", forwarded_host)
+  ngx_req_set_header("X-Forwarded-Port", forwarded_port)
+end
+
+
 function ForwardProxyHandler:access(conf)
   ForwardProxyHandler.super.access(self)
 
@@ -79,6 +127,7 @@ function ForwardProxyHandler:access(conf)
   local ctx = ngx.ctx
   local var = ngx.var
 
+  simulate_access_before()
   simulate_access_after(ctx)
 
   local addr = ctx.balancer_address
