@@ -76,6 +76,17 @@ pipeline {
             sh '$GOJIRA down -k . -p $JENKINS_PROJECT'
           }
         }
+        stage('pdk') {
+          environment {
+            KONG_TEST_DATABASE='postgres'
+            JENKINS_PROJECT='pdk-${BUILD_NUMBER}'
+          }
+          steps {
+            sh 'true'
+            // sh '$GOJIRA up -k ./ -p $JENKINS_PROJECT'
+            // sh '$GOJIRA compose exec -T -e TEST_SUITE=pdk kong bash -l .ci/run_tests.sh -k . -v'
+          }
+        }
       }
     }
   }
