@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [1.2.1](#121)
 - [1.2.0](#120)
 - [1.1.2](#112)
 - [1.1.1](#111)
@@ -26,6 +27,55 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+## [1.2.1]
+
+> Released on 2019/06/26
+
+This is a patch release in the 1.2 series, and as such, strictly contains
+bugfixes. There are no new features nor breaking changes.
+
+### Fixes
+
+##### Core
+
+- Fix an issue preventing WebSocket connections from being established by
+  clients. This issue was introduced in Kong 1.1.2, and would incorrectly clear
+  the `Upgrade` response header.
+  [#4719](https://github.com/Kong/kong/pull/4719)
+- Fix a memory usage growth issue in the `/config` endpoint when configuring
+  Upstream entities. This issue was mostly observed by users of the [Kong
+  Ingress Controller](https://github.com/Kong/kubernetes-ingress-controller).
+  [#4733](https://github.com/Kong/kong/pull/4733)
+- Cassandra: ensure serial consistency is `LOCAL_SERIAL` when a
+  datacenter-aware load balancing policy is in use. This fixes unavailability
+  exceptions sometimes experienced when connecting to a multi-datacenter
+  cluster with cross-datacenter connectivity issues.
+  [#4734](https://github.com/Kong/kong/pull/4734)
+- Schemas: fix an issue in the schema validator that would not allow specifying
+  `false` in some schema rules, such a `{ type = "boolean", eq = false }`.
+  [#4708](https://github.com/Kong/kong/pull/4708)
+  [#4727](https://github.com/Kong/kong/pull/4727)
+- Fix an underlying issue with regards to database entities cache keys
+  generation.
+  [#4717](https://github.com/Kong/kong/pull/4717)
+
+##### Configuration
+
+- Ensure the `cassandra_local_datacenter` configuration property is specified
+  when a datacenter-aware Cassandra load balancing policy is in use.
+  [#4734](https://github.com/Kong/kong/pull/4734)
+
+##### Plugins
+
+- request-transformer: fix an issue that would prevent adding a body to
+  requests without one.
+  [Kong/kong-plugin-request-transformer#4](https://github.com/Kong/kong-plugin-request-transformer/pull/4)
+- kubernetes-sidecar-injector: fix an issue causing mutating webhook calls to
+  fail.
+  [Kong/kubernetes-sidecar-injector#9](https://github.com/Kong/kubernetes-sidecar-injector/pull/9)
+
+[Back to TOC](#table-of-contents)
 
 ## [1.2.0]
 
@@ -3782,6 +3832,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[1.2.1]: https://github.com/Kong/kong/compare/1.2.0...1.2.1
 [1.2.0]: https://github.com/Kong/kong/compare/1.1.2...1.2.0
 [1.1.2]: https://github.com/Kong/kong/compare/1.1.1...1.1.2
 [1.1.1]: https://github.com/Kong/kong/compare/1.1.0...1.1.1
