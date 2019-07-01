@@ -3,15 +3,16 @@
 -- https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
 
 
-local public_utils = require "kong.tools.public"
-
-
 local EMPTY = {}
 
 local ngx_req_get_headers  = ngx.req.get_headers
 local ngx_req_get_uri_args = ngx.req.get_uri_args
 local ngx_encode_base64    = ngx.encode_base64
 local ngx_req_read_body    = ngx.req.read_body
+local ngx_req_get_body_data= ngx.req.get_body_data
+local ngx_req_get_body_file= ngx.req.get_body_file
+local ngx_log              = ngx.log
+local ERR                  = ngx.ERR
 
 
 return function(ctx)
@@ -57,17 +58,21 @@ return function(ctx)
   end
 
   -- prepare body
-  local isBase64Encoded = false
-  local body
+  local body, isBase64Encoded
   do
     ngx_req_read_body()
-
-    local _, err_code
-    _, err_code, body = public_utils.get_body_info()
-    if err_code == public_utils.req_body_errors.unknown_ct then
-      -- don't know what this body MIME type is, base64 it just in case
-      body = ngx_encode_base64(body)
-      isBase64Encoded = true
+    body = ngx_req_get_body_data()
+    if not body then
+      if ngx_req_get_body_file() then
+        ngx_log(ERR, "request body was buffered to disk, too large")
+      end
+    else
+      if body ~= "" then
+        body = ngx_encode_base64(body)
+        isBase64Encoded = true
+      else
+        isBase64Encoded = false
+      end
     end
   end
 
