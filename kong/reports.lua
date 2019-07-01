@@ -41,6 +41,8 @@ do
     _buffer[#_buffer + 1] = k .. "=" .. v
   end
 
+  _buffer[#_buffer + 1] = "prd=" .. meta._NAME
+
   _buffer_immutable_idx = #_buffer -- max idx for immutable slots
 end
 
