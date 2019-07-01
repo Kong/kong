@@ -17,6 +17,7 @@ pipeline {
     stage('prepare') {
 
       steps {
+        sh 'env'
         sh 'rm -fr /tmp/gojira'
         sh 'git clone https://$GITHUB:@github.com/Kong/kong-gojira.git /tmp/gojira || true'
         sh 'ls -las /tmp'
