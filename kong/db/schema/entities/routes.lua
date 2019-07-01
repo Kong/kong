@@ -43,6 +43,11 @@ return {
                          len_min  = 1,
                          required = true,
                          elements = typedefs.protocol,
+                         mutually_exclusive_subsets = {
+                           { "http", "https" },
+                           { "tcp", "tls" },
+                           { "grpc", "grpcs" },
+                         },
                          default  = { "http", "https" }, -- TODO: different default depending on service's scheme
                        }, },
     { methods        = { type = "set",

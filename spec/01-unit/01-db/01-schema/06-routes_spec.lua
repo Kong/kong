@@ -117,6 +117,23 @@ describe("routes schema", function()
     assert.truthy(errs["protocols"])
   end)
 
+  it("conflicting protocols produces error", function()
+    local protocols_tests = {
+      { {"http", "tcp"}, "('http', 'https'), ('tcp', 'tls')" },
+      { {"http", "tls"}, "('http', 'https'), ('tcp', 'tls')" },
+      { {"https", "tcp"}, "('http', 'https'), ('tcp', 'tls')" },
+      { {"https", "tls"}, "('http', 'https'), ('tcp', 'tls')" },
+    }
+
+    for _, test in ipairs(protocols_tests) do
+      local route = Routes:process_auto_fields({ protocols = test[1] }, "insert")
+      local ok, errs = Routes:validate(route)
+      assert.falsy(ok)
+      assert.truthy(errs["protocols"])
+      assert.same(("these sets are mutually exclusive: %s"):format(test[2]), errs["protocols"])
+    end
+  end)
+
   it("invalid https_redirect_status_code produces error", function()
 
     local route = Routes:process_auto_fields({ protocols = { "http" },

@@ -53,6 +53,7 @@ local validators = {
   { timestamp = { type = "boolean" }, },
   { uuid = { type = "boolean" }, },
   { custom_validator = { type = "function" }, },
+  { mutually_exclusive_subsets = { type = "array", elements = { type = "array", elements = { type = "string" } } } },
 }
 
 -- Other field attributes, that do not correspond to validators

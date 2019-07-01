@@ -499,6 +499,36 @@ describe("schema", function()
       end
     end)
 
+    it("validates mutually exclusive set values", function()
+      local Test = Schema.new({
+        fields = {
+          { f = {
+            type = "array",
+            elements = { type = "string", one_of = {"v1", "v2", "v3", "v4"} },
+            mutually_exclusive_subsets = { {"v1", "v3"}, {"v2", "v4"} },
+          }}
+        }
+      })
+
+      local tests = {
+        -- valid
+        {"truthy", {}},
+        {"truthy", {"v1"}},
+        {"truthy", {"v2"}},
+        {"truthy", {"v1", "v3"}},
+        {"truthy", {"v2", "v4"}},
+        -- invalid
+        {"falsy", {"v1", "v2"}},
+        {"falsy", {"v1", "v4"}},
+        {"falsy", {"v3", "v2"}},
+        {"falsy", {"v3", "v4"}},
+      }
+
+      for _, test in ipairs(tests) do
+        assert[test[1]](Test:validate({ f = test[2] }))
+      end
+    end)
+
     it("ensures an array is a table", function()
       local Test = Schema.new({
         fields = {
