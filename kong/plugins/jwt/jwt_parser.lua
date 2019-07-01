@@ -299,6 +299,16 @@ local registered_claims = {
         return "token expired"
       end
     end
+  },
+  jti = {
+    type = "string",
+    check = function(jti)
+      local ttl, err, value = kong.cache:probe(jti)
+      if ttl then
+        return "duplicate request"
+      end
+      kong.cache:get(jti, nil, function(key) return key end, jti)
+    end
   }
 }
 
