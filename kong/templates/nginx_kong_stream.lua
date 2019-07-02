@@ -38,11 +38,6 @@ init_by_lua_block {
         end,
     })
 
-    -- XXX: lua-resty-core doesn't load the ffi regex module in the stream
-    -- subsystem. The code it binds is part of the http module. However
-    -- without it we can't use regex during the init phase.
-    require "resty.core.regex"
-
     Kong = require 'kong'
     Kong.init()
 }

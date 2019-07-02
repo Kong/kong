@@ -25,7 +25,11 @@
 -- ==========
 
 pcall(require, "luarocks.loader")
-require "resty.core"
+
+assert(package.loaded["resty.core"], "lua-resty-core must be loaded; make " ..
+                                     "sure 'lua_load_resty_core' is not "..
+                                     "disabled.")
+
 local constants = require "kong.constants"
 
 do
@@ -279,7 +283,7 @@ function Kong.init()
 
   -- retrieve kong_config
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
-  local config = assert(conf_loader(conf_path))
+  local config = assert(conf_loader(conf_path, nil, { from_kong_env = true }))
 
   -- Set up default ssl client context
   local default_client_ssl_ctx

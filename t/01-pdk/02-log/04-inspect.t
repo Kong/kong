@@ -27,7 +27,7 @@ GET /t
 hello = "world"
 --- no_error_log
 [error]
-[warn]
+[crit]
 
 
 
@@ -53,7 +53,7 @@ GET /t
 qr/\[kong\] content_by_lua\(nginx\.conf:\d+\):my_func:6 \{/
 --- no_error_log
 [error]
-[warn]
+[crit]
 
 
 
@@ -236,4 +236,4 @@ GET /t
 hello = "world"
 --- no_error_log
 [error]
-[warn]
+[crit]

@@ -17,8 +17,6 @@ local MOCK_UPSTREAM_SSL_PORT = 15556
 local MOCK_UPSTREAM_STREAM_PORT = 15557
 local MOCK_UPSTREAM_STREAM_SSL_PORT = 15558
 
-require("resty.core")
-
 local consumers_schema_def = require "kong.db.schema.entities.consumers"
 local services_schema_def = require "kong.db.schema.entities.services"
 local plugins_schema_def = require "kong.db.schema.entities.plugins"
@@ -303,21 +301,32 @@ end
 -- when it times out.
 -- @usage -- wait 10 seconds for a file "myfilename" to appear
 -- helpers.wait_until(function() return file_exist("myfilename") end, 10)
-local function wait_until(f, timeout)
+local function wait_until(f, timeout, step)
   if type(f) ~= "function" then
     error("arg #1 must be a function", 2)
+  end
+
+  if timeout ~= nil and type(timeout) ~= "number" then
+    error("arg #2 must be a number", 2)
+  end
+
+  if step ~= nil and type(step) ~= "number" then
+    error("arg #3 must be a number", 2)
   end
 
   ngx.update_time()
 
   timeout = timeout or 5
+  step = step or 0.05
+
   local tstart = ngx.time()
   local texp = tstart + timeout
   local ok, res, err
 
   repeat
     ok, res, err = pcall(f)
-    ngx.sleep(0.05)
+    ngx.sleep(step)
+    ngx.update_time()
   until not ok or res or ngx.time() >= texp
 
   if not ok then

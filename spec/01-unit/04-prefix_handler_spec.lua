@@ -133,13 +133,6 @@ describe("NGINX conf compiler", function()
       assert.matches("listen 127.0.0.1:9001;", kong_nginx_conf, nil, true)
       assert.matches("listen 127.0.0.1:8444 ssl http2;", kong_nginx_conf, nil, true)
     end)
-    it("disables upstream keepalive", function()
-      local conf = assert(conf_loader(helpers.test_conf_path, {
-        upstream_keepalive = 0,
-      }))
-      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
-      assert.not_matches("keepalive %d+;", kong_nginx_conf)
-    end)
     it("enables proxy_protocol", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         proxy_listen = "0.0.0.0:9000 proxy_protocol",
@@ -390,6 +383,32 @@ describe("NGINX conf compiler", function()
         local nginx_conf = prefix_handler.compile_kong_conf(conf)
         assert.matches("large_client_header_buffers%s+4 24k;", nginx_conf)
       end)
+
+      it("injects nginx_http_upstream_* directives", function()
+        local conf = assert(conf_loader(nil, {
+          nginx_http_upstream_keepalive = "120",
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("keepalive 120;", nginx_conf, nil, true)
+      end)
+
+      it("does not inject directives if value is 'NONE'", function()
+        local conf = assert(conf_loader(nil, {
+          nginx_http_upstream_keepalive = "NONE",
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.not_matches("keepalive %d+;", nginx_conf)
+      end)
+
+      describe("default injected NGINX directives", function()
+        it("configures default http upstream{} block directives", function()
+          local conf = assert(conf_loader())
+          local nginx_conf = prefix_handler.compile_kong_conf(conf)
+          assert.matches("keepalive 60;", nginx_conf, nil, true)
+          assert.matches("keepalive_requests 100;", nginx_conf, nil, true)
+          assert.matches("keepalive_timeout 60s;", nginx_conf, nil, true)
+        end)
+      end)
     end)
   end)
 
@@ -593,6 +612,169 @@ describe("NGINX conf compiler", function()
         assert.is_nil(ok)
         assert.matches("failed to compile nginx config template: .* " ..
                        "attempt to index global 't' %(a nil value%)", err)
+      end)
+    end)
+
+    describe("nginx_* injected directives aliases", function()
+      -- Aliases maintained for pre-established Nginx directives specified
+      -- as Kong config properties
+
+      describe("'upstream_keepalive'", function()
+
+        describe("1.2 Nginx template", function()
+          local templ_fixture = "spec/fixtures/1.2_custom_nginx.template"
+
+          it("compiles", function()
+            assert(prefix_handler.prepare_prefix(tmp_config, templ_fixture))
+            assert.truthy(exists(tmp_config.nginx_conf))
+
+            local contents = helpers.file.read(tmp_config.nginx_conf)
+            assert.matches("# This is the Kong 1.2 default template", contents,
+                           nil, true)
+            assert.matches("daemon on;", contents, nil, true)
+            assert.matches("listen 0.0.0.0:9000;", contents, nil, true)
+            assert.matches("keepalive 60;", contents, nil, true)
+          end)
+
+          it("'upstream_keepalive = 0' disables keepalive", function()
+            local conf = assert(conf_loader(helpers.test_conf_path, {
+              prefix = tmp_config.prefix,
+              upstream_keepalive = 0,
+            }))
+
+            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
+            assert.truthy(exists(conf.nginx_conf))
+
+            local contents = helpers.file.read(tmp_config.nginx_conf)
+            assert.matches("# This is the Kong 1.2 default template", contents,
+                           nil, true)
+            assert.not_matches("keepalive %d+;", contents)
+
+            local conf = assert(conf_loader(helpers.test_conf_path, {
+              prefix = tmp_config.prefix,
+              nginx_http_upstream_keepalive = "120", -- not used by template
+              upstream_keepalive = 0,
+            }))
+
+            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
+            assert.truthy(exists(conf.nginx_conf))
+
+            local contents = helpers.file.read(tmp_config.nginx_conf)
+            assert.matches("# This is the Kong 1.2 default template", contents,
+                           nil, true)
+            assert.not_matches("keepalive %d+;", contents)
+          end)
+
+          it("'upstream_keepalive' also sets keepalive if specified", function()
+            local conf = assert(conf_loader(helpers.test_conf_path, {
+              prefix = tmp_config.prefix,
+              nginx_http_upstream_keepalive = "NONE", -- not used by template
+              upstream_keepalive = 60,
+            }))
+
+            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
+            assert.truthy(exists(conf.nginx_conf))
+
+            local contents = helpers.file.read(tmp_config.nginx_conf)
+            assert.matches("# This is the Kong 1.2 default template", contents,
+                           nil, true)
+            assert.matches("keepalive 60;", contents, nil, true)
+
+            local conf = assert(conf_loader(helpers.test_conf_path, {
+              prefix = tmp_config.prefix,
+              nginx_http_upstream_keepalive = "120", -- not used by template
+              upstream_keepalive = 60,
+            }))
+
+            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
+            assert.truthy(exists(conf.nginx_conf))
+
+            local contents = helpers.file.read(tmp_config.nginx_conf)
+            assert.matches("# This is the Kong 1.2 default template", contents,
+                           nil, true)
+            assert.matches("keepalive 60;", contents, nil, true)
+          end)
+        end)
+
+        describe("latest Nginx template", function()
+          local templ_fixture = "spec/fixtures/custom_nginx.template"
+
+          it("'upstream_keepalive = 0' has highest precedence", function()
+            local conf = assert(conf_loader(helpers.test_conf_path, {
+              prefix = tmp_config.prefix,
+              upstream_keepalive = 0,
+            }))
+
+            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
+            assert.truthy(exists(conf.nginx_conf))
+
+            local contents = helpers.file.read(tmp_config.nginx_conf)
+            assert.not_matches("keepalive %d+;", contents)
+
+            local conf = assert(conf_loader(helpers.test_conf_path, {
+              prefix = tmp_config.prefix,
+              nginx_http_upstream_keepalive = "120",
+              upstream_keepalive = 0,
+            }))
+
+            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
+            assert.truthy(exists(conf.nginx_conf))
+
+            local contents = helpers.file.read(tmp_config.nginx_conf)
+            assert.not_matches("keepalive %d+;", contents)
+          end)
+
+          it("'nginx_http_upstream_keepalive' has second highest precedence", function()
+            local conf = assert(conf_loader(helpers.test_conf_path, {
+              prefix = tmp_config.prefix,
+              nginx_http_upstream_keepalive = "120",
+              upstream_keepalive = 60,
+            }))
+
+            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
+            assert.truthy(exists(conf.nginx_conf))
+
+            local contents = helpers.file.read(tmp_config.nginx_conf)
+            assert.matches("keepalive 120;", contents, nil, true)
+
+            local conf = assert(conf_loader(helpers.test_conf_path, {
+              prefix = tmp_config.prefix,
+              nginx_http_upstream_keepalive = "60",
+              upstream_keepalive = 120,
+            }))
+
+            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
+            assert.truthy(exists(conf.nginx_conf))
+
+            local contents = helpers.file.read(tmp_config.nginx_conf)
+            assert.matches("keepalive 60;", contents, nil, true)
+          end)
+
+          it("'upstream_keepalive' has lowest precedence", function()
+            local conf = assert(conf_loader(helpers.test_conf_path, {
+              prefix = tmp_config.prefix,
+              upstream_keepalive = 120,
+            }))
+
+            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
+            assert.truthy(exists(conf.nginx_conf))
+
+            local contents = helpers.file.read(tmp_config.nginx_conf)
+            assert.matches("keepalive 120;", contents, nil, true)
+
+            local conf = assert(conf_loader(helpers.test_conf_path, {
+              prefix = tmp_config.prefix,
+              upstream_keepalive = 120,
+            }))
+
+            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
+            assert.truthy(exists(conf.nginx_conf))
+
+            local contents = helpers.file.read(tmp_config.nginx_conf)
+            assert.matches("keepalive 120;", contents, nil, true)
+          end)
+
+        end)
       end)
     end)
   end)

@@ -72,8 +72,10 @@ upstream kong_upstream {
     balancer_by_lua_block {
         Kong.balancer()
     }
-> if upstream_keepalive > 0 then
-    keepalive ${{UPSTREAM_KEEPALIVE}};
+
+# injected nginx_http_upstream_* directives
+> for _, el in ipairs(nginx_http_upstream_directives) do
+    $(el.name) $(el.value);
 > end
 }
 
