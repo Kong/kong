@@ -2087,6 +2087,8 @@ function _M.new(connector, schema, errors)
 
     local page_first_by_tags_statement
     local page_next_by_tags_statement
+    local page_first_by_tags_statement_ws
+    local page_next_by_tags_statement_ws
 
     for cond, op in pairs({["_and"] = "@>", ["_or"] = "&&"}) do
 
@@ -2109,6 +2111,28 @@ function _M.new(connector, schema, errors)
           "ORDER BY ",  pk_escaped, "\n",
           "   LIMIT $", argc_next, ";"
         }
+
+        page_first_by_tags_statement_ws = concat {
+          "  SELECT ",  select_expressions, "\n",
+      " FROM workspace_entities ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped ,
+      " ON ( unique_field_name = '", primary_key[1] ,  "' AND ws_e.workspace_id in ( $0 ) and ws_e.entity_id = ", table_name_escaped, ".id::varchar )\n",
+          "   WHERE tags ", op, " $1\n",
+          "     AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
+          "ORDER BY ",  pk_escaped, "\n",
+          "   LIMIT $2;";
+        }
+
+        page_next_by_tags_statement_ws = concat {
+          "  SELECT ",  select_expressions, "\n",
+      " FROM workspace_entities ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped ,
+      " ON ( unique_field_name = '", primary_key[1] ,  "' AND ws_e.workspace_id in ( $0 ) and ws_e.entity_id = ", table_name_escaped, ".id::varchar )\n",
+          "   WHERE tags ", op, " $1\n",
+          "     AND (", pk_escaped, ") > (", pk_placeholders, ")\n",
+          "     AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
+          "ORDER BY ",  pk_escaped, "\n",
+          "   LIMIT $", argc_next, ";"
+        }
+
       else
         page_first_by_tags_statement = concat {
           "  SELECT ",  select_expressions, "\n",
@@ -2126,9 +2150,41 @@ function _M.new(connector, schema, errors)
           "ORDER BY ",  pk_escaped, "\n",
           "   LIMIT $", argc_next, ";"
         }
+        page_first_by_tags_statement_ws = concat {
+          "  SELECT ",  select_expressions, "\n",
+      " FROM workspace_entities ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped ,
+      " ON ( unique_field_name = '", primary_key[1] ,  "' AND ws_e.workspace_id in ( $0 ) and ws_e.entity_id = ", table_name_escaped, ".id::varchar )\n",
+          "   WHERE tags ", op, " $1\n",
+          "ORDER BY ",  pk_escaped, "\n",
+          "   LIMIT $2;";
+        }
+
+        page_next_by_tags_statement_ws = concat {
+          "  SELECT ",  select_expressions, "\n",
+          " FROM workspace_entities ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped ,
+          " ON ( unique_field_name = '", primary_key[1] ,  "' AND ws_e.workspace_id in ( $0 ) and ws_e.entity_id = ", table_name_escaped, ".id::varchar )\n",
+          "   WHERE tags ", op, " $1\n",
+          "     AND (", pk_escaped, ") > (", pk_placeholders, ")\n",
+          "ORDER BY ",  pk_escaped, "\n",
+          "   LIMIT $", argc_next, ";"
+        }
       end
 
       local statement_name = "page_by_tags"
+
+      statements[statement_name .. cond .. "_first_ws"] = {
+        argn = argn_first,
+        argc = argc_first,
+        argv = argv_first,
+        make = compile_ws(concat({ table_name, statement_name, "first_ws" }, "_"), page_first_by_tags_statement_ws),
+      }
+
+      statements[statement_name .. cond .. "_next_ws"] = {
+        argn = argn_next,
+        argc = argc_next,
+        argv = argv_next,
+        make = compile_ws(concat({ table_name, statement_name, "next_ws" }, "_"), page_next_by_tags_statement_ws)
+      }
 
       statements[statement_name .. cond .. "_first"] = {
         argn = argn_first,
