@@ -270,6 +270,47 @@ do
     end
   end
 
+  local function compare_keys(a, b)
+    local ta = type(a)
+    if ta == type(b) then
+      return a < b
+    end
+    return ta == "number" -- numbers go first, then the rest of keys (usually strings)
+  end
+
+
+  -- Recursively URL escape and format key and value
+  -- Handles nested arrays and tables
+  local function recursive_encode_args(parent_key, value, raw, no_array_indexes, query)
+    local sub_keys = {}
+    for sk in pairs(value) do
+      sub_keys[#sub_keys + 1] = sk
+    end
+    sort(sub_keys, compare_keys)
+
+    local sub_value, next_sub_key
+    for _, sub_key in ipairs(sub_keys) do
+      sub_value = value[sub_key]
+
+      if type(sub_key) == "number" then
+        if no_array_indexes then
+          next_sub_key = parent_key .. "[]"
+        else
+          next_sub_key = ("%s[%s]"):format(parent_key, tostring(sub_key))
+        end
+      else
+        next_sub_key = ("%s.%s"):format(parent_key, tostring(sub_key))
+      end
+
+      if type(sub_value) == "table" then
+        recursive_encode_args(next_sub_key, sub_value, raw, no_array_indexes, query)
+      else
+        query[#query+1] = encode_args_value(next_sub_key, sub_value, raw)
+      end
+    end
+  end
+
+
   --- Encode a Lua table to a querystring
   -- Tries to mimic ngx_lua's `ngx.encode_args`, but has differences:
   -- * It percent-encodes querystring values.
@@ -277,6 +318,10 @@ do
   -- * It encodes arrays like Lapis instead of like ngx.encode_args to allow interacting with Lapis
   -- * It encodes ngx.null as empty strings
   -- * It encodes true and false as "true" and "false"
+  -- * It is capable of encoding nested data structures:
+  --   * An array access is encoded as `arr[1]`
+  --   * A struct access is encoded as `struct.field`
+  --   * Nested structures can use both: `arr[1].field[3]`
   -- @see https://github.com/Mashape/kong/issues/749
   -- @param[type=table] args A key/value table containing the query args to encode.
   -- @param[type=boolean] raw If true, will not percent-encode any key/value and will ignore special boolean rules.
@@ -292,29 +337,12 @@ do
       keys[#keys+1] = k
     end
 
-    sort(keys)
+    sort(keys, compare_keys)
 
     for _, key in ipairs(keys) do
       local value = args[key]
       if type(value) == "table" then
-        for sub_key, sub_value in pairs(value) do
-          if no_array_indexes then
-            query[#query+1] = encode_args_value(key, sub_value, raw)
-
-          else
-            if type(sub_key) == "number" then
-              query[#query+1] = encode_args_value(("%s[%s]")
-                                  :format(key, tostring(sub_key)), sub_value,
-                                          raw)
-
-            else
-              query[#query+1] = encode_args_value(("%s.%s")
-                                  :format(key, tostring(sub_key)), sub_value,
-                                          raw)
-
-            end
-          end
-        end
+        recursive_encode_args(key, value, raw, no_array_indexes, query)
       elseif value == ngx.null then
         query[#query+1] = encode_args_value(key, "")
       elseif  value ~= nil or raw then
