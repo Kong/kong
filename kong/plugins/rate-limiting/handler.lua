@@ -35,11 +35,9 @@ local function get_identifier(conf)
   elseif conf.limit_by == "credential" then
     identifier = (kong.client.get_credential() or
                   EMPTY).id
-  elseif conf.limit_by == "ip" then
-    identifier = kong.client.get_forwarded_ip()
   end
 
-  return identifier
+  return identifier or kong.client.get_forwarded_ip()
 end
 
 
