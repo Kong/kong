@@ -2,7 +2,7 @@ local typedefs = require "kong.db.schema.typedefs"
 
 
 return {
-  name = "brain",
+  name = "collector",
   fields = {
     { consumer = typedefs.no_consumer },
     { run_on = typedefs.run_on_first },
@@ -18,7 +18,7 @@ return {
           { log_bodies = { type = "boolean", default = false } },
           { service_token = { type = "string", default = 'default' } },
           { connection_timeout = { type = "number", default = 30 } },
-          { host = { type = "string", required = true, default = "collector.brain.kong.com" } },
+          { host = { type = "string", required = true, default = "collector.com" } },
           { port = { type = "number", required = true, default = 443 } },
           { https = { type = "boolean", default = true } },
           { https_verify = { type = "boolean", default = false } },
