@@ -58,7 +58,7 @@ for _, strategy in helpers.each_strategy() do
           }))
           json = cjson.decode(res)
           return 1 == #json.data
-        end, 5)
+        end, 10)
         assert.same(1, #json.data)
 
       end)
