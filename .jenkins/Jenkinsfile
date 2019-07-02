@@ -17,7 +17,6 @@ pipeline {
     stage('prepare') {
 
       steps {
-        sh 'env'
         sh 'rm -fr /tmp/gojira'
         sh 'git clone https://$GITHUB:@github.com/Kong/kong-gojira.git /tmp/gojira || true'
         sh 'ls -las /tmp'
@@ -42,10 +41,10 @@ pipeline {
           environment {
             KONG_TEST_DATABASE='cassandra'
             TEST_SUITE='lint'
-            JENKINS_PROJECT='cassandra-${BUILD_NUMBER}'
           }
           steps {
             // sh '$GOJIRA compose exec -T -e TEST_SUITE=pdk kong bash -l .ci/run_tests.sh -k . -v'
+            sh 'export JENKINS_PROJECT="cassandra-${BUILD_NUMBER}"'
             sh '$GOJIRA up -k ./ --cassandra -p $JENKINS_PROJECT'
             sh 'sleep 30'
             sh '$GOJIRA compose exec -T -e TEST_SUITE=plugins kong bash -l .ci/run_tests.sh -k . -v -p $JENKINS_PROJECT'
@@ -61,6 +60,7 @@ pipeline {
             JENKINS_PROJECT='postgres-${BUILD_NUMBER}'
           }
           steps {
+            sh 'export JENKINS_PROJECT="cassandra-${BUILD_NUMBER}"'
             sh '$GOJIRA down -k . -p $JENKINS_PROJECT'
             sh '$GOJIRA up -k ./ -p $JENKINS_PROJECT'
             sh 'sed -i "442,443 s/stdin_open: true/stdin_open: false/" /tmp/gojira/docker/docker-compose.yml.sh'
@@ -80,9 +80,9 @@ pipeline {
         stage('pdk') {
           environment {
             KONG_TEST_DATABASE='postgres'
-            JENKINS_PROJECT='pdk-${BUILD_NUMBER}'
           }
           steps {
+            sh 'export JENKINS_PROJECT="cassandra-${BUILD_NUMBER}"'
             sh 'true'
             // sh '$GOJIRA up -k ./ -p $JENKINS_PROJECT'
             // sh '$GOJIRA compose exec -T -e TEST_SUITE=pdk kong bash -l .ci/run_tests.sh -k . -v'
