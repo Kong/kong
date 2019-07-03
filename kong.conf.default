@@ -579,9 +579,24 @@
 
 #cassandra_keyspace = kong       # The keyspace to use in your cluster.
 
-#cassandra_consistency = ONE     # Consistency setting to use when reading/
-                                 # writing to the Cassandra cluster.
-                                 #
+#cassandra_consistency_proxy = read:ONE, write:ONE  # Consistency setting to
+                                                    # use when reading/writing
+                                                    # to the Cassandra cluster
+                                                    # on proxy.
+                                                    #
+#cassandra_consistency_admin = read:ONE, write:ONE  # Consistency setting to
+                                                    # use when reading/writing
+                                                    # to the Cassandra cluster
+                                                    # on admin API.
+                                                    #
+                                                    #
+                                                    # Note: If you want to
+                                                    # specify same consistency
+                                                    # for both reads and writes
+                                                    # you can just specify the
+                                                    # consistency as a single
+                                                    # value, e.g. ONE
+
 #cassandra_timeout = 5000        # Defines the timeout (in ms) for reading
                                  # and writing.
 
