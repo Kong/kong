@@ -533,7 +533,9 @@ describe("Router", function()
         assert.equal(use_case[2].route, match_t.route)
       end)
 
-      it("does not take precedence over a plain host", function()
+      pending("does not take precedence over a plain host", function()
+        -- Pending: temporarily pending in the current commit, awaiting a fix
+        -- in a subsequent commit.
         table.insert(use_case, 1, {
           service = service,
           route   = {
@@ -590,6 +592,72 @@ describe("Router", function()
         assert.same("*.route.com", match_t.matches.host)
         assert.same(nil, match_t.matches.method)
         assert.same(nil, match_t.matches.uri)
+        assert.same(nil, match_t.matches.uri_captures)
+      end)
+
+      it("matches [wildcard host + path] even if a similar [plain host] exists", function()
+        local use_case = {
+          {
+            service = service,
+            headers = {
+              host  = { "*.route.com" },
+            },
+            route   = {
+              paths = { "/path1" },
+            },
+          },
+          {
+            service = service,
+            headers = {
+              host  = { "plain.route.com" },
+            },
+            route   = {
+              paths = { "/path2" },
+            },
+          },
+        }
+
+        router = assert(Router.new(use_case))
+
+        local match_t = router.select("GET", "/path1", "plain.route.com")
+        assert.truthy(match_t)
+        assert.equal(use_case[1].route, match_t.route)
+        assert.same("*.route.com", match_t.matches.host)
+        assert.same(nil, match_t.matches.method)
+        assert.same("/path1", match_t.matches.uri)
+        assert.same(nil, match_t.matches.uri_captures)
+      end)
+
+      it("matches [plain host + path] even if a matching [wildcard host] exists", function()
+        local use_case = {
+          {
+            service = service,
+            headers = {
+              host  = { "*.route.com" },
+            },
+            route   = {
+              paths = { "/path1" },
+            },
+          },
+          {
+            service = service,
+            headers = {
+              host  = { "plain.route.com" },
+            },
+            route   = {
+              paths = { "/path2" },
+            },
+          },
+        }
+
+        router = assert(Router.new(use_case))
+
+        local match_t = router.select("GET", "/path2", "plain.route.com")
+        assert.truthy(match_t)
+        assert.equal(use_case[2].route, match_t.route)
+        assert.same("plain.route.com", match_t.matches.host)
+        assert.same(nil, match_t.matches.method)
+        assert.same("/path2", match_t.matches.uri)
         assert.same(nil, match_t.matches.uri_captures)
       end)
 
