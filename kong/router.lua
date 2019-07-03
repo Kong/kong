@@ -778,7 +778,7 @@ end
 do
   local reducers = {
     [MATCH_RULES.HOST] = function(category, ctx)
-      return category.routes_by_hosts[ctx.hits.host]
+      return category.routes_by_hosts[ctx.hits.host or ctx.req_host]
     end,
 
     [MATCH_RULES.URI] = function(category, ctx)
