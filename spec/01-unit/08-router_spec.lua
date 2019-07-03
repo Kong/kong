@@ -493,6 +493,74 @@ describe("Router", function()
         assert.same([[/route/persons/\d+/profile]], match_t.matches.uri)
         assert.same(nil, match_t.matches.uri_captures)
       end)
+
+      it("matches a [uri regex] even if a [uri] got an exact match", function()
+        local use_case = {
+          {
+            service = service,
+            route   = {
+              paths = { "/route/fixture" },
+            },
+          },
+          {
+            service = service,
+            route   = {
+              paths = { "/route/(fixture)" },
+            },
+          },
+        }
+
+        local router = assert(Router.new(use_case))
+
+        local match_t = router.select("GET", "/route/fixture", "domain.org")
+        assert.truthy(match_t)
+        assert.equal(use_case[2].route, match_t.route)
+        assert.same(nil, match_t.matches.host)
+        assert.same(nil, match_t.matches.method)
+        assert.same("/route/(fixture)", match_t.matches.uri)
+      end)
+
+      it("matches a [uri regex + host] even if a [prefix uri] got a match", function()
+        local use_case = {
+          {
+            service = service,
+            route   = {
+              paths = { "/pat" },
+            },
+            headers = {
+              host  = { "route.com" },
+            },
+          },
+          {
+            service = service,
+            route   = {
+              paths = { "/path" },
+              methods = { "POST" },
+            },
+            headers = {
+              host  = { "route.com" },
+            },
+          },
+          {
+            service = service,
+            route   = {
+              paths = { "/(path)" },
+            },
+            headers = {
+              host  = { "route.com" },
+            },
+          },
+        }
+
+        local router = assert(Router.new(use_case))
+
+        local match_t = router.select("GET", "/path", "route.com")
+        assert.truthy(match_t)
+        assert.equal(use_case[3].route, match_t.route)
+        assert.same("route.com", match_t.matches.host)
+        assert.same(nil, match_t.matches.method)
+        assert.same("/(path)", match_t.matches.uri)
+      end)
     end)
 
     describe("[wildcard host]", function()
@@ -533,9 +601,7 @@ describe("Router", function()
         assert.equal(use_case[2].route, match_t.route)
       end)
 
-      pending("does not take precedence over a plain host", function()
-        -- Pending: temporarily pending in the current commit, awaiting a fix
-        -- in a subsequent commit.
+      it("does not take precedence over a plain host", function()
         table.insert(use_case, 1, {
           service = service,
           route   = {
