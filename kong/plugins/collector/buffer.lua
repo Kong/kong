@@ -19,7 +19,7 @@
 -- this module. When the collector cannot be reached, the retry delay is
 -- increased by n_try^2, up to 60s.
 
-local alf_serializer = require "kong.plugins.brain.alf"
+local alf_serializer = require "kong.plugins.collector.alf"
 local http = require "resty.http"
 
 local setmetatable = setmetatable
@@ -56,7 +56,7 @@ local function get_now()
 end
 
 local function log(lvl, ...)
-  ngx_log(lvl, "[brain] ", ...)
+  ngx_log(lvl, "[collector] ", ...)
 end
 
 local _delayed_flush, _send
@@ -116,7 +116,7 @@ _send = function(premature, self, to_send)
   local ok, err = client:connect(self.host, self.port)
   if not ok then
     retry = true
-    log(ERR, "could not connect to brain collector: ", err)
+    log(ERR, "could not connect to collector: ", err)
   else
     if self.https then
       local ok, err = client:ssl_handshake(false, self.host, self.https_verify)

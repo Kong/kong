@@ -93,14 +93,14 @@ luassert:register("assertion", "contains", contains,
                   "assertion.contains.positive",
                   "assertion.contains.negative")
 
-local alf_serializer = require "kong.plugins.brain.alf"
+local alf_serializer = require "kong.plugins.collector.alf"
 
 -- since our module caches ngx's global functions, this is a
 -- hacky utility to reload it, allowing us to send different
 -- input sets to the serializer.
 local function reload_alf_serializer()
-  package.loaded["kong.plugins.brain.alf"] = nil
-  alf_serializer = require "kong.plugins.brain.alf"
+  package.loaded["kong.plugins.collector.alf"] = nil
+  alf_serializer = require "kong.plugins.collector.alf"
 end
 
 ---------------------------

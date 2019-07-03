@@ -1,11 +1,11 @@
--- brain plugin handler.
+-- collector plugin handler.
 -- Buffers request/response bodies if asked so in the plugin's config.
 -- Caches the server's address to avoid further syscalls.
 --
 -- Maintains one ALF Buffer per Brain plugin per worker.
 
 local BasePlugin = require "kong.plugins.base_plugin"
-local Buffer = require "kong.plugins.brain.buffer"
+local Buffer = require "kong.plugins.collector.buffer"
 
 local read_body = ngx.req.read_body
 local get_body_data = ngx.req.get_body_data
@@ -20,7 +20,7 @@ BrainHandler.PRIORITY = 3
 BrainHandler.VERSION = "1.0.0"
 
 function BrainHandler:new()
-  BrainHandler.super.new(self, "brain")
+  BrainHandler.super.new(self, "collector")
   if string.match(kong.version, "enterprise") then
     allowed_to_run = true
   else
@@ -38,7 +38,7 @@ function BrainHandler:access(conf)
 
     if conf.log_bodies then
       read_body()
-      ngx.ctx.brain = {req_body = get_body_data()}
+      ngx.ctx.collector = {req_body = get_body_data()}
     end
   else
     kong.log.err("This plugin is intended to work with only Kong Enterprise.")
@@ -57,14 +57,14 @@ function BrainHandler:body_filter(conf)
 
     if conf.log_bodies then
       local chunk = ngx.arg[1]
-      local res_body = ctx.brain and ctx.brain.res_body or ""
+      local res_body = ctx.collector and ctx.collector.res_body or ""
       res_body = res_body .. (chunk or "")
 
-      if ctx.brain then
-        ctx.brain.res_body = res_body
+      if ctx.collector then
+        ctx.collector.res_body = res_body
       end
       -- catch unauth error
-      if not ctx.brain then
+      if not ctx.collector then
         return { status = 403, message = "No API key found in request" }
       end
     end
@@ -107,9 +107,9 @@ function BrainHandler:log(conf)
     if ctx.proxy_cache_hit then
       req_body = ctx.proxy_cache_hit.req.body
       res_body = ctx.proxy_cache_hit.res.body
-    elseif ctx.brain then
-      req_body = ctx.brain.req_body
-      res_body = ctx.brain.res_body
+    elseif ctx.collector then
+      req_body = ctx.collector.req_body
+      res_body = ctx.collector.res_body
     end
 
     buf:add_entry(ngx, req_body, res_body)

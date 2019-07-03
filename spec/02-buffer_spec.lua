@@ -75,11 +75,11 @@ local _ngx = {
 
 local function reload_buffer()
   package.loaded["spec.ngx"] = nil
-  package.loaded["kong.plugins.brain.buffer"] = nil
+  package.loaded["kong.plugins.collector.buffer"] = nil
 
   _G.ngx = _ngx
   _G.kong = _kong
-  Buffer = require "kong.plugins.brain.buffer"
+  Buffer = require "kong.plugins.collector.buffer"
 end
 
 describe("ALF Buffer", function()
@@ -96,7 +96,7 @@ describe("ALF Buffer", function()
       connection_timeout = 30,
       flush_timeout      = 2,
       queue_size         = 1000,
-      host               = "brain.kong.com",
+      host               = "collector.kong.com",
       port               = 443,
     }
 

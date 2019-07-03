@@ -44,7 +44,7 @@ local http_version = ngx.req.http_version
 local _M = {
   _VERSION = "2.0.0",
   _ALF_VERSION = "1.1.0",
-  _ALF_CREATOR = "brain-agent-kong"
+  _ALF_CREATOR = "collector-agent-kong"
 }
 
 local _mt = {
