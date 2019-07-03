@@ -19,15 +19,24 @@ pipeline {
       steps {
         sh 'rm -fr /tmp/gojira'
         sh 'git clone https://$GITHUB:@github.com/Kong/kong-gojira.git /tmp/gojira || true'
-        sh 'ls -las /tmp'
-        sh '$GOJIRA down -k .'
-        sh '$GOJIRA up -k ./ --cassandra'
-        // sh 'sed -i "442,443 s/kong bash -l -i/-T kong bash -l/" $GOJIRA'
-        // sh 'sed -i "472,473 s/kong bash -l -i -c/-T kong bash -l -c/" $GOJIRA'
-        sh '$GOJIRA run ls -k . -v'
-        sh '$GOJIRA run make dev -k . -v'
-        sh '$GOJIRA snapshot -k ./'
-        sh '$GOJIRA down -k .'
+        sh '$GOJIRA up       -k . --alone'
+        sh '$GOJIRA run      -k . make dev'
+        sh '$GOJIRA snapshot -k .'
+        sh '$GOJIRA down     -k .'
+      }
+    }
+
+    stage('lint and unit') {
+      environment {
+        TEST_SUITE='lint'
+        JENKINS_PROJECT='lint-unit-${BUILD_NUMBER}'
+      }
+      steps {
+        sh '$GOJIRA up   -k . -p $JENKINS_PROJECT'
+        sh '$GOJIRA run  -k . -p $JENKINS_PROJECT luacheck -q .'
+        sh '$GOJIRA run  -k . -p $JENKINS_PROJECT bin/busted -- -v -o gtest --exclude-tags=flaky,ipv6 spec/01-unit'
+        sh '$GOJIRA run  -k . -p $JENKINS_PROJECT bin/busted -- -v -o gtest --exclude-tags=flaky,ipv6 spec-ee/01-unit'
+        sh '$GOJIRA down -k . -p $JENKINS_PROJECT'
       }
     }
 
@@ -35,18 +44,25 @@ pipeline {
       parallel {
         stage('cassandra all') {
           environment {
-            KONG_TEST_DATABASE='cassandra'
             TEST_SUITE='lint'
+            KONG_TEST_DATABASE='cassandra'
+            JENKINS_PROJECT='cassandra-${BUILD_NUMBER}'
           }
           steps {
-            sh 'export JENKINS_PROJECT="cassandra-${BUILD_NUMBER}"'
-            sh '$GOJIRA up -k ./ --cassandra -p $JENKINS_PROJECT'
-            sh 'sleep 30'
-            sh '$GOJIRA compose exec -T -e TEST_SUITE=plugins kong bash -l .ci/run_tests.sh -k . -v -p $JENKINS_PROJECT'
-            sh '$GOJIRA compose exec -T -e TEST_SUITE=plugins-ee kong bash -l .ci/run_tests.sh -k . -v -p $JENKINS_PROJECT'
-            sh '$GOJIRA compose exec -T -e TEST_SUITE=integration kong bash -l .ci/run_tests.sh -k . -v -p $JENKINS_PROJECT'
-            sh '$GOJIRA compose exec -T -e TEST_SUITE=integration-ee kong bash -l .ci/run_tests.sh -k . -v -p $JENKINS_PROJECT'
-            sh '$GOJIRA down -k . --cassandra -p $JENKINS_PROJECT'
+            sh '$GOJIRA up   -k . -p $JENKINS_PROJECT --cassandra'
+            sh '''
+                iid=$($GOJIRA compose -k . -p ${JENKINS_PROJECT} ps -q db)
+                for i in {0..60}; do
+                    [[ ! -z $(docker inspect $iid | grep healthy) ]] && break
+                    sleep 1
+                done
+                [[ $i -lt 60 ]] || false
+            '''
+            sh '$GOJIRA run  -k . -p $JENKINS_PROJECT TEST_SUITE=plugins        .ci/run_tests.sh'
+            sh '$GOJIRA run  -k . -p $JENKINS_PROJECT TEST_SUITE=plugins-ee     .ci/run_tests.sh'
+            sh '$GOJIRA run  -k . -p $JENKINS_PROJECT TEST_SUITE=integration    .ci/run_tests.sh'
+            sh '$GOJIRA run  -k . -p $JENKINS_PROJECT TEST_SUITE=integration-ee .ci/run_tests.sh'
+            sh '$GOJIRA down -k . -p $JENKINS_PROJECT --cassandra'
           }
         }
         stage('postgres all') {
@@ -55,16 +71,20 @@ pipeline {
             JENKINS_PROJECT='postgres-${BUILD_NUMBER}'
           }
           steps {
-            sh 'export JENKINS_PROJECT="cassandra-${BUILD_NUMBER}"'
-            sh '$GOJIRA down -k . -p $JENKINS_PROJECT'
-            sh '$GOJIRA up -k ./ -p $JENKINS_PROJECT'
-            sh '$GOJIRA run ls -k . -v -p $JENKINS_PROJECT'
-            sh '$GOJIRA run make dev -k . -v -p $JENKINS_PROJECT'
-            sh '$GOJIRA compose exec -T -e TEST_SUITE=plugins kong bash -l .ci/run_tests.sh -k . -v -p $JENKINS_PROJECT'
-            sh '$GOJIRA compose exec -T -e TEST_SUITE=plugins-ee kong bash -l .ci/run_tests.sh -k . -v -p $JENKINS_PROJECT'
-            sh '$GOJIRA compose exec -T -e TEST_SUITE=integration kong bash -l .ci/run_tests.sh -k . -v -p $JENKINS_PROJECT'
-            sh '$GOJIRA compose exec -T -e TEST_SUITE=integration-ee kong bash -l .ci/run_tests.sh -k . -v -p $JENKINS_PROJECT'
-            sh '$GOJIRA down -k . -p $JENKINS_PROJECT'
+            sh '$GOJIRA up   -k . -p $JENKINS_PROJECT --postgres'
+            sh '''
+                iid=$($GOJIRA compose -k . -p ${JENKINS_PROJECT} ps -q db)
+                for i in {0..60}; do
+                    [[ ! -z $(docker inspect $iid | grep healthy) ]] && break
+                    sleep 1
+                done
+                [[ $i -lt 60 ]] || false
+            '''
+            sh '$GOJIRA run  -k . -p $JENKINS_PROJECT TEST_SUITE=plugins        .ci/run_tests.sh'
+            sh '$GOJIRA run  -k . -p $JENKINS_PROJECT TEST_SUITE=plugins-ee     .ci/run_tests.sh'
+            sh '$GOJIRA run  -k . -p $JENKINS_PROJECT TEST_SUITE=integration    .ci/run_tests.sh'
+            sh '$GOJIRA run  -k . -p $JENKINS_PROJECT TEST_SUITE=integration-ee .ci/run_tests.sh'
+            sh '$GOJIRA down -k . -p $JENKINS_PROJECT --postgres'
           }
         }
         stage('pdk') {
@@ -82,9 +102,10 @@ pipeline {
   }
   post {
     cleanup {
-      sh '$GOJIRA down -k . -p postgres-${BUILD_NUMBER}'
-      sh '$GOJIRA down -k . -p cassandra-${BUILD_NUMBER}'
-      sh '$GOJIRA down -k . -p pdk-${BUILD_NUMBER}'
+      sh '$GOJIRA down -k . -p lint-unit-${BUILD_NUMBER}'
+      sh '$GOJIRA down -k . -p postgres-${BUILD_NUMBER}     --postgres'
+      sh '$GOJIRA down -k . -p cassandra-${BUILD_NUMBER}    --cassandra'
+      sh '$GOJIRA down -k . -p pdk-${BUILD_NUMBER}          --alone'
     }
   }
 }
