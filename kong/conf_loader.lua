@@ -260,7 +260,7 @@ local _nop_tostring_mt = {
 
 -- Validate properties (type/enum/custom) and infer their type.
 -- @param[type=table] conf The configuration table to treat.
-local function check_and_infer(conf)
+local function check_and_infer(conf, opts)
   local errors = {}
 
   for k, value in pairs(conf) do
@@ -350,7 +350,7 @@ local function check_and_infer(conf)
 
     -- cache settings check
 
-    if conf.db_update_propagation == 0 then
+    if opts.starting and conf.db_update_propagation == 0 then
       log.warn("You are using Cassandra but your 'db_update_propagation' " ..
                "setting is set to '0' (default). Due to the distributed "  ..
                "nature of Cassandra, you should increase this value.")
@@ -695,7 +695,7 @@ local function deprecated_properties(conf, opts)
     local deprecated = v_schema.deprecated
 
     if deprecated and conf[property_name] ~= nil then
-      if not opts.from_kong_env then
+      if opts.starting and not opts.from_kong_env then
         log.warn("the '%s' configuration property is deprecated, use " ..
                  "'%s' instead", property_name, v_schema.deprecated.replacement)
       end
@@ -842,7 +842,7 @@ local function load(path, custom_conf, opts)
                               user_conf)
 
   -- validation
-  local ok, err, errors = check_and_infer(conf)
+  local ok, err, errors = check_and_infer(conf, opts)
   if not ok then
     return nil, err, errors
   end
