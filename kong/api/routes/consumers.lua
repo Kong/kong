@@ -23,7 +23,14 @@ return {
     --]] EE
 
     GET = function(self, db, helpers, parent)
+      local next_url = {}
+      local next_page = null
       local args = self.args.uri
+
+      if args.tags then
+        table.insert(next_url,
+          "tags=" .. (type(args.tags) == "table" and args.tags[1] or args.tags))
+      end
 
       -- Search by custom_id: /consumers?custom_id=xxx
       if args.custom_id then
@@ -55,11 +62,12 @@ return {
         return endpoints.handle_error(err_t)
       end
 
-      local next_page
       if offset then
-        next_page = fmt("/consumers?offset=%s", escape_uri(offset))
-      else
-        next_page = ngx.null
+        table.insert(next_url, fmt("offset=%s", escape_uri(offset)))
+      end
+
+      if next(next_url) then
+        next_page = "/consumers?" .. table.concat(next_url, "&")
       end
 
       setmetatable(data, cjson.empty_array_mt)
