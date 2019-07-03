@@ -69,13 +69,12 @@ pipeline {
         }
         stage('pdk') {
           environment {
-            KONG_TEST_DATABASE='postgres'
+            JENKINS_PROJECT='pdk-${BUILD_NUMBER}'
           }
           steps {
-            sh 'export JENKINS_PROJECT="cassandra-${BUILD_NUMBER}"'
-            sh 'true'
-            // sh '$GOJIRA up -k ./ -p $JENKINS_PROJECT'
-            // sh '$GOJIRA compose exec -T -e TEST_SUITE=pdk kong bash -l .ci/run_tests.sh -k . -v'
+            sh '$GOJIRA up   -k . -p $JENKINS_PROJECT --alone'
+            sh '$GOJIRA run  -k . -p $JENKINS_PROJECT TEST_SUITE=pdk JOBS=2 .ci/run_tests.sh'
+            sh '$GOJIRA down -k . -p $JENKINS_PROJECT'
           }
         }
       }
@@ -85,6 +84,7 @@ pipeline {
     cleanup {
       sh '$GOJIRA down -k . -p postgres-${BUILD_NUMBER}'
       sh '$GOJIRA down -k . -p cassandra-${BUILD_NUMBER}'
+      sh '$GOJIRA down -k . -p pdk-${BUILD_NUMBER}'
     }
   }
 }
