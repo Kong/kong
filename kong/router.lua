@@ -572,8 +572,24 @@ do
       local host = route_t.hosts[ctx.hits.host or ctx.req_host]
       if host then
         ctx.matches.host = host
-
         return true
+      end
+
+      for i = 1, #route_t.hosts do
+        local host_t = route_t.hosts[i]
+
+        if host_t.wildcard then
+          local from, _, err = re_find(ctx.req_host, host_t.regex, "ajo")
+          if err then
+            log(ERR, "could not evaluate wildcard host regex: ", err)
+            return
+          end
+
+          if from then
+            ctx.matches.host = host_t.value
+            return true
+          end
+        end
       end
     end,
 
