@@ -30,7 +30,6 @@ local sub          = string.sub
 local find         = string.find
 local lower        = string.lower
 local fmt          = string.format
-local sort         = table.sort
 local ngx          = ngx
 local arg          = ngx.arg
 local var          = ngx.var
@@ -608,19 +607,6 @@ do
         routes[i] = r
       end
     end
-
-    sort(routes, function(r1, r2)
-      r1, r2 = r1.route, r2.route
-
-      local rp1 = r1.regex_priority or 0
-      local rp2 = r2.regex_priority or 0
-
-      if rp1 == rp2 then
-        return r1.created_at < r2.created_at
-      end
-
-      return rp1 > rp2
-    end)
 
     local new_router, err = Router.new(routes)
     if not new_router then
