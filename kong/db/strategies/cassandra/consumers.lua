@@ -25,12 +25,12 @@ end
 
 
 local CQL_TYPE =  [[
-  SELECT id, username, custom_id, created_at
+  SELECT id, username, custom_id, created_at, tags
   FROM consumers WHERE type = ? ALLOW FILTERING
 ]]
 
 local CQL_TYPE_TOKEN =  [[
-  SELECT id, username, custom_id, created_at
+  SELECT id, username, custom_id, created_at, tags
   FROM consumers WHERE type = ? and
   TOKEN(id) > TOKEN(?) LIMIT ? ALLOW FILTERING
 ]]
