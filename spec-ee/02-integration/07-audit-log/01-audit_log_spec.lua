@@ -161,7 +161,7 @@ for _, strategy in helpers.each_strategy() do
             end)
           end)
 
-          it("CREATE on proxy side", function()
+          it("#flaky CREATE on proxy side", function()
             -- oauth2 plugin creates entities on the proxy side; use it to assert
             -- that audit log creates an object log on the proxy path
 
@@ -717,7 +717,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("audit log entries", function()
-      it("are generated with an adjacent signature", function()
+      it("#flaky are generated with an adjacent signature", function()
         local res = assert(admin_client:send({
           path = "/",
         }))
