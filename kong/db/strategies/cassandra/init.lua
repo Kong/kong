@@ -1156,13 +1156,10 @@ do
     end
 
     -- XXX EE
-    -- local ws_scope = get_workspaces()
-    -- if #ws_scope > 0 and workspaceable[self.schema.name]  then
-    --   return self:page_ws(ws_scope, size, offset, cql, args, is_partitioned, foreign_key)
-    -- end
-
-    -- opts.page_size = size
-    -- opts.paging_state = offset
+    local ws_scope = get_workspaces()
+    if #ws_scope > 0 and workspaceable[self.schema.name]  then
+      return self:page_ws(ws_scope, opts.page_size, opts.paging_state, cql, args, is_partitioned, foreign_key)
+    end
 
     local rows, err_t, next_offset = execute_page(self, cql, args, offset, opts)
 
