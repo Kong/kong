@@ -94,24 +94,24 @@ function _M.logout(conf)
         break
       end
     end
+
     if logout then
       logout = false
 
       local logout_query_arg = conf.logout_query_arg
       if logout_query_arg then
-        local uri_args = kong.request.get_query()
-        if uri_args[logout_query_arg] then
+        if kong.request.get_query_arg(logout_query_arg) then
           logout = true
         end
       end
 
       if logout then
         kong.log.debug("logout by query argument")
+
       else
         local logout_post_arg = conf.logout_post_arg
         if logout_post_arg then
-          ngx.req.read_body()
-          local post_args = ngx.req.get_post_args()
+          local post_args = kong.request.get_body()
           if post_args[logout_post_arg] then
             logout = true
           end
