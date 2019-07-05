@@ -13,9 +13,9 @@ return {
 
       DO $$
       BEGIN
-        IF (SELECT to_regclass('session_sessions_expires_idx')) IS NULL THEN
-          CREATE INDEX session_sessions_expires_idx ON sessions (expires);
-        END IF;
+        CREATE INDEX IF NOT EXISTS "session_sessions_expires_idx" ON "sessions" ("expires");
+      EXCEPTION WHEN UNDEFINED_COLUMN THEN
+        -- Do nothing, accept existing state
       END$$;
     ]],
   },
