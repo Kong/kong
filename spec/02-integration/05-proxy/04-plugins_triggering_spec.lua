@@ -2408,20 +2408,17 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
     end)
+  end)
 
-    describe("plugin's init_worker", function()
+  describe("plugin's init_worker", function()
+    local bp, db
       describe("[pre-configured]", function()
         lazy_setup(function()
           if proxy_client then
             proxy_client:close()
           end
 
-          helpers.stop_kong()
-
-          db:truncate("routes")
-          db:truncate("services")
-          db:truncate("plugins")
-
+          bp, db = helpers.get_db_utils()
           -- never used as the plugins short-circuit
           local service = assert(bp.services:insert {
             name = "mock-service",
@@ -2492,10 +2489,7 @@ for _, strategy in helpers.each_strategy() do
 
             helpers.stop_kong()
 
-            db:truncate("routes")
-            db:truncate("services")
-            db:truncate("plugins")
-
+            bp = helpers.get_db_utils()
             -- never used as the plugins short-circuit
             local service = assert(bp.services:insert {
               name = "mock-service",
@@ -2565,6 +2559,5 @@ for _, strategy in helpers.each_strategy() do
           end)
         end)
       end
-    end)
   end)
 end
