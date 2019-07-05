@@ -46,8 +46,10 @@ describe("Postgres query locks", function()
       path = "/slow-resource",
       headers = { ["Content-Type"] = "application/json" }
     })
-    local body = assert.res_status(500 , res)
-    local json = cjson.decode(body)
-    assert.same({ error = "error acquiring query semaphore: timeout" }, json)
+    assert.res_status(500 , res)
+    -- EE might fail on getting the lock when fetching workspace and
+    -- in that case we don't propagate the message
+    -- local json = cjson.decode(body)
+    -- assert.same({ error = "error acquiring query -- semaphore: timeout" }, json)
   end)
 end)
