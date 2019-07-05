@@ -1,8 +1,9 @@
-local BasePlugin = require "kong.plugins.base_plugin"
 local access = require "kong.plugins.session.access"
 local session = require "kong.plugins.session.session"
 
+
 local kong = kong
+
 
 local KongSessionHandler = {
   PRIORITY = 1900,
