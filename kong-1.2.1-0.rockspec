@@ -44,7 +44,7 @@ dependencies = {
   "kong-prometheus-plugin ~> 0.4",
   "kong-proxy-cache-plugin ~> 1.2",
   "kong-plugin-request-transformer ~> 1.2",
-  "kong-plugin-session ~> 2.0",
+  "kong-plugin-session ~> 2.1",
 }
 build = {
   type = "builtin",
