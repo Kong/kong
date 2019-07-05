@@ -1,5 +1,9 @@
+local storage = require "kong.plugins.session.storage.kong"
 local session = require "resty.session"
+
+
 local kong = kong
+local ipairs = ipairs
 
 
 local _M = {}
@@ -37,7 +41,7 @@ function _M.open_session(conf)
     -- after "cookie_discard" period.
     opts.strategy = "regenerate"
     s = session.new(opts)
-    s.storage = require("kong.plugins.session.storage.kong").new(s)
+    s.storage = storage.new(s)
     s:open()
   else
     opts.storage = conf.storage
