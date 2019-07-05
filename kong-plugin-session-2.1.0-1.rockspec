@@ -1,12 +1,12 @@
 package = "kong-plugin-session"
 
-version = "2.0.0-1"
+version = "2.1.0-1"
 
 supported_platforms = {"linux", "macosx"}
 
 source = {
   url = "git://github.com/Kong/kong-plugin-session",
-  tag = "2.0.0"
+  tag = "2.1.0"
 }
 
 description = {
