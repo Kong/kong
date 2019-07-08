@@ -91,18 +91,28 @@ function _M:init_router()
 end
 
 
-function _M:get_query(uri, method, args, headers)
-  -- At the moment, we only match based on method and uri
-  -- args.uri and args.post get merged into uri args that can be used for
-  -- templating the graphql query
+function _M:get_query()
   local service_id = ngx.ctx.service.id
 
   if not self.routers[service_id] then
     return kong.response.exit(404, { message = "Not Found" })
   end
 
+  -- At the moment, we only match based on method and uri
+  -- args.uri and args.post get merged into uri args that can be used for
+  -- templating the graphql query
+  local uri        = ngx.var.upstream_uri
+  local headers    = req_get_headers()
+  local method     = req_get_method()
+  local _args      = load_arguments()
+
+  local args = tx_union(_args.uri, _args.post)
+
   local match, auto_args = self.routers[service_id]:resolve(uri)
-  return format(match[method], tx_union(args, auto_args))
+
+  args = tx_union(args, auto_args)
+
+  return format(match[method], args), args
 end
 
 
@@ -113,19 +123,13 @@ function _M:access(conf)
     self:init_router()
   end
 
-  local uri     = ngx.var.upstream_uri
-  local headers = req_get_headers()
-  local method  = req_get_method()
-  local args    = load_arguments()
-
-  local query = self:get_query(uri, method, tx_union(args.uri, args.post),
-                               headers)
+  local query, variables = self:get_query()
 
   req_set_method = "POST"
   ngx.var.upstream_uri = "/graphql"
   req_read_body()
   req_set_header("Content-Type", "application/json")
-  req_set_body_data(cjson_encode({ query = query }))
+  req_set_body_data(cjson_encode({ query = query, variables = variables }))
 end
 
 
