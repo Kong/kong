@@ -1211,6 +1211,20 @@ do
     return entities, nil, nil
   end
 
+  local function matches_ws(self, row)
+    local table_name = self.schema.name
+    local ws_scope = get_workspaces() -- XXX check that we are in a wspaced entity
+
+    local ws_entities_map, err = workspace_entities_map(ws_scope, table_name)
+    if err then
+      error(err)
+    end
+
+    local res = ws_entities_map[row.entity_id]
+    return res
+  end
+
+
   local function query_page_for_tags(self, size, offset, tags, cond)
     -- TODO: if we don't sort, we can have a performance guidance to user
     -- to "always put tags with less entity at the front of query"
@@ -1279,7 +1293,7 @@ do
             end
           end
 
-          if not duplicated then
+          if not duplicated and matches_ws(self, row) then
             current_entity_count = current_entity_count + 1
             current_entity_ids[current_entity_count] = row.entity_id
           end
@@ -1320,8 +1334,10 @@ do
           clear_tab(current_entity_ids)
           current_entity_count = 0
           for i, row in ipairs(rows) do
-            current_entity_ids[i] = row.entity_id
-            current_entity_count = current_entity_count + 1
+            if matches_ws(self, row) then
+              current_entity_ids[i] = row.entity_id
+              current_entity_count = current_entity_count + 1
+            end
           end
         end
       end
