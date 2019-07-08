@@ -3,7 +3,7 @@ return {
     up = [[
       CREATE TABLE IF NOT EXISTS "degraphql_routes" (
         "id"                UUID                        PRIMARY KEY,
-        "service_id"        UUID                        REFERENCES "services" ("id"),
+        "service_id"        UUID                        REFERENCES "services" ("id") ON DELETE CASCADE,
         "methods"           TEXT[],
         "uri"               TEXT,
         "query"             TEXT,
