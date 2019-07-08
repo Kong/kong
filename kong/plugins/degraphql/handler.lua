@@ -49,9 +49,19 @@ end
 -- semaphores and stuff
 function _M:init_worker()
   _M.super.init_worker(self)
+  self:init_router()
   kong.worker_events.register(function(data)
     self:init_router()
   end, "crud", "degraphql_routes")
+end
+
+
+function default_router()
+  local router = Router()
+  router.default_route = function()
+    return kong.response.exit(404, { message = "Not Found" })
+  end
+  return router
 end
 
 
@@ -59,30 +69,25 @@ end
 -- semaphores and stuff
 function _M:init_router()
 
-  self.router = nil
+  local routers = {}
 
-  local router = Router()
-  local routes, err = kong.db.degraphql_routes:select_all()
+  for route, err in kong.db.degraphql_routes:each(1000) do
+    if not routers[route.service.id] then
+      routers[route.service.id] = default_router()
+      Router()
+    end
 
-  for _, route in ipairs(routes) do
-    ngx.log(ngx.ERR, [[self:]], require("inspect")(route))
-    local query = route.query
-    local uri = route.uri
-    router:add_route(route.uri, function(args)
-    end)
-  end
-
-  router.default_route = function()
-    return kong.response.exit(404, { message = "Not Found" })
+    routers[route.service.id]:add_route(route.uri, function(args)
       local r = {}
       for _, method in ipairs(route.methods) do
         r[method] = route.query
       end
 
       return r, args
+    end)
   end
 
-  self.router = router
+  self.routers = routers
 end
 
 
@@ -90,7 +95,13 @@ function _M:get_query(uri, method, args, headers)
   -- At the moment, we only match based on method and uri
   -- args.uri and args.post get merged into uri args that can be used for
   -- templating the graphql query
-  local match, auto_args = self.router:resolve(uri)
+  local service_id = ngx.ctx.service.id
+
+  if not self.routers[service_id] then
+    return kong.response.exit(404, { message = "Not Found" })
+  end
+
+  local match, auto_args = self.routers[service_id]:resolve(uri)
   return format(match[method], tx_union(args, auto_args))
 end
 
@@ -109,8 +120,6 @@ function _M:access(conf)
 
   local query = self:get_query(uri, method, tx_union(args.uri, args.post),
                                headers)
-
-  ngx.log(ngx.ERR, [[Matched:]], require("inspect")({uri, query}))
 
   req_set_method = "POST"
   ngx.var.upstream_uri = "/graphql"
