@@ -1107,6 +1107,69 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    describe("[snis] for gRPCs connections", function()
+      local routes
+      local grpcs_proxy_ssl_client
+
+      lazy_setup(function()
+        routes = insert_routes(bp, {
+          {
+            protocols = { "grpcs" },
+            snis = { "grpcs_1.test" },
+            service = {
+              name = "grpcs_1",
+              url = "grpcs://localhost:15003",
+            },
+          },
+          {
+            protocols = { "grpcs" },
+            snis = { "grpcs_2.test" },
+            service = {
+              name = "grpcs_2",
+              url = "grpcs://localhost:15003",
+            },
+          },
+        })
+      end)
+
+      lazy_teardown(function()
+        remove_routes(strategy, routes)
+      end)
+
+      it("matches a Route based on its 'snis' attribute", function()
+        grpcs_proxy_ssl_client = helpers.proxy_client_grpcs("grpcs_1.test")
+
+        local ok, resp = assert(grpcs_proxy_ssl_client({
+          service = "hello.HelloService.SayHello",
+          body = {
+            greeting = "world!"
+          },
+          opts = {
+            ["-H"] = "'kong-debug: 1'",
+            ["-v"] = true, -- verbose so we get response headers
+          }
+        }))
+        assert.truthy(ok)
+        assert.truthy(resp)
+        assert.matches("kong-service-name: grpcs_1", resp, nil, true)
+
+        grpcs_proxy_ssl_client = helpers.proxy_client_grpcs("grpcs_2.test")
+        local ok, resp = assert(grpcs_proxy_ssl_client({
+          service = "hello.HelloService.SayHello",
+          body = {
+            greeting = "world!"
+          },
+          opts = {
+            ["-H"] = "'kong-debug: 1'",
+            ["-v"] = true, -- verbose so we get response headers
+          }
+        }))
+        assert.truthy(ok)
+        assert.truthy(resp)
+        assert.matches("kong-service-name: grpcs_2", resp, nil, true)
+      end)
+    end)
+
     describe("[paths] + [methods]", function()
       local routes
 

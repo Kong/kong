@@ -216,7 +216,7 @@ for _, strategy in helpers.each_strategy() do
                 body = {
                   protocols = { "https" },
                 },
-                headers = { ["Content-Type"] = content_type }
+                headers = { ["content-type"] = content_type }
               })
               body = assert.res_status(400, res)
               assert.same({
@@ -229,6 +229,28 @@ for _, strategy in helpers.each_strategy() do
                 fields  = {
                   ["@entity"] = {
                     "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https'"
+                  }
+                }
+              }, cjson.decode(body))
+
+              -- Missing grpc/grpcs params
+              local res = client:post("/routes", {
+                body = {
+                  protocols = {"grpc", "grpcs"},
+                },
+                headers = { ["Content-Type"] = content_type }
+              })
+              local body = assert.res_status(400, res)
+              assert.same({
+                code    = Errors.codes.SCHEMA_VIOLATION,
+                name    = "schema violation",
+                message = unindent([[
+                  schema violation
+                  (must set one of 'methods', 'hosts', 'paths', 'snis' when 'protocols' is 'grpcs')
+                ]], true, true),
+                fields  = {
+                  ["@entity"] = {
+                    "must set one of 'methods', 'hosts', 'paths', 'snis' when 'protocols' is 'grpcs'",
                   }
                 }
               }, cjson.decode(body))

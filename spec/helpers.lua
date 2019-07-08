@@ -1784,18 +1784,18 @@ end
 
 --- returns a pre-configured `grpc_client` for the Kong proxy port.
 -- @name proxy_client_grpc
-local function proxy_client_grpc()
-  local proxy_ip = get_proxy_ip(false, true)
-  local proxy_port = get_proxy_port(false, true)
+local function proxy_client_grpc(host, port)
+  local proxy_ip = host or get_proxy_ip(false, true)
+  local proxy_port = port or get_proxy_port(false, true)
   assert(proxy_ip, "No http-proxy found in the configuration")
   return grpc_client(proxy_ip, proxy_port, {["-plaintext"] = true})
 end
 
 --- returns a pre-configured `grpc_client` for the Kong SSL proxy port.
 -- @name proxy_client_grpcs
-local function proxy_client_grpcs()
-  local proxy_ip = get_proxy_ip(true, true)
-  local proxy_port = get_proxy_port(true, true)
+local function proxy_client_grpcs(host, port)
+  local proxy_ip = host or get_proxy_ip(true, true)
+  local proxy_port = port or get_proxy_port(true, true)
   assert(proxy_ip, "No https-proxy found in the configuration")
   return grpc_client(proxy_ip, proxy_port, {["-insecure"] = true})
 end

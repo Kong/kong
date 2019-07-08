@@ -983,18 +983,20 @@ describe("routes schema", function()
         end
       end)
 
-      it("accepts valid SNIs for https Routes", function()
-        for _, sni in ipairs({ "example.org", "www.example.org" }) do
-          local route = Routes:process_auto_fields({
-            protocols = { "https" },
-            snis = { sni },
-            service = s,
-          }, "insert")
-          local ok, errs = Routes:validate(route)
-          assert.is_nil(errs)
-          assert.truthy(ok)
-        end
-      end)
+      for _, protocol in ipairs {"https", "grpcs"} do
+        it("accepts valid SNIs for " .. protocol .. " Routes", function()
+          for _, sni in ipairs({ "example.org", "www.example.org" }) do
+            local route = Routes:process_auto_fields({
+              protocols = { protocol },
+              snis = { sni },
+              service = s,
+            }, "insert")
+            local ok, errs = Routes:validate(route)
+            assert.is_nil(errs)
+            assert.truthy(ok)
+          end
+        end)
+      end
 
       it("rejects invalid SNIs", function()
         for _, sni in ipairs({ "127.0.0.1", "example.org:80" }) do
@@ -1025,7 +1027,7 @@ describe("routes schema", function()
         assert.falsy(ok)
         assert.same({
           ["@entity"] = {
-            "'snis' can only be set when 'protocols' is 'https' or 'tls'",
+            "'snis' can only be set when 'protocols' is 'grpcs', 'https' or 'tls'",
           },
           snis = "length must be 0",
         }, errs)

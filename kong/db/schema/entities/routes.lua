@@ -44,10 +44,10 @@ return {
 
   entity_checks = {
     { conditional = { if_field = "protocols",
-                      if_match = { elements = { type = "string", not_one_of = { "https", "tls" }}},
+                      if_match = { elements = { type = "string", not_one_of = { "grpcs", "https", "tls" }}},
                       then_field = "snis",
                       then_match = { len_eq = 0 },
-                      then_err = "'snis' can only be set when 'protocols' is 'https' or 'tls'",
+                      then_err = "'snis' can only be set when 'protocols' is 'grpcs', 'https' or 'tls'",
                     }},
                   }
 }

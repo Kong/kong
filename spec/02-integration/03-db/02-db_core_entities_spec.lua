@@ -866,13 +866,13 @@ for _, strategy in helpers.each_strategy() do
               strategy    = strategy,
               message  = unindent([[
                 3 schema violations
-                ('snis' can only be set when 'protocols' is 'https' or 'tls';
+                ('snis' can only be set when 'protocols' is 'grpcs', 'https' or 'tls';
                 must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http';
                 snis: length must be 0)
               ]], true, true),
               fields   = {
                 ["@entity"] = {
-                  "'snis' can only be set when 'protocols' is 'https' or 'tls'",
+                  "'snis' can only be set when 'protocols' is 'grpcs', 'https' or 'tls'",
                   "must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http'",
                 },
                 ["snis"] = "length must be 0",
