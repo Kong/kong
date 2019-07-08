@@ -69,12 +69,17 @@ function _M:init_router()
     local query = route.query
     local uri = route.uri
     router:add_route(route.uri, function(args)
-      return { [route.method] = query } , args
     end)
   end
 
   router.default_route = function()
     return kong.response.exit(404, { message = "Not Found" })
+      local r = {}
+      for _, method in ipairs(route.methods) do
+        r[method] = route.query
+      end
+
+      return r, args
   end
 
   self.router = router

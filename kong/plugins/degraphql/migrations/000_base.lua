@@ -4,7 +4,7 @@ return {
       CREATE TABLE IF NOT EXISTS "degraphql_routes" (
         "id"                UUID                        PRIMARY KEY,
         "service_id"        UUID                        REFERENCES "services" ("id"),
-        "method"            TEXT,
+        "methods"           TEXT[],
         "uri"               TEXT,
         "query"             TEXT,
         "created_at"        TIMESTAMP WITH TIME ZONE,

@@ -9,7 +9,8 @@ return {
     fields = {
       { id = typedefs.uuid },
       { service = { type = "foreign", reference = "services" } },
-      { method = typedefs.http_method { required = true, default = "GET" } },
+      { methods = { type = "set", elements = typedefs.http_method,
+                    default = { "GET" } } },
       { uri = { type = "string", required = true } },
       { query = { type = "string", required = true } },
       { created_at = typedefs.auto_timestamp_s },
