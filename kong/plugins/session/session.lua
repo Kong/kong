@@ -83,11 +83,10 @@ end
 --- Determine is incoming request is trying to logout
 -- @return boolean should logout of the session?
 function _M.logout(conf)
-  local logout = false
-
   local logout_methods = conf.logout_methods
   if logout_methods then
     local request_method = kong.request.get_method()
+    local logout
     for _, logout_method in ipairs(logout_methods) do
       if logout_method == request_method then
         logout = true
@@ -95,36 +94,29 @@ function _M.logout(conf)
       end
     end
 
-    if logout then
-      logout = false
+    if not logout then
+      return false
+    end
 
-      local logout_query_arg = conf.logout_query_arg
-      if logout_query_arg then
-        if kong.request.get_query_arg(logout_query_arg) then
-          logout = true
-        end
-      end
-
-      if logout then
+    local logout_query_arg = conf.logout_query_arg
+    if logout_query_arg then
+      if kong.request.get_query_arg(logout_query_arg) then
         kong.log.debug("logout by query argument")
+        return true
+      end
+    end
 
-      else
-        local logout_post_arg = conf.logout_post_arg
-        if logout_post_arg then
-          local post_args = kong.request.get_body()
-          if post_args[logout_post_arg] then
-            logout = true
-          end
-
-          if logout then
-            kong.log.debug("logout by post argument")
-          end
-        end
+    local logout_post_arg = conf.logout_post_arg
+    if logout_post_arg then
+      local post_args = kong.request.get_body()
+      if post_args and post_args[logout_post_arg] then
+        kong.log.debug("logout by post argument")
+        return true
       end
     end
   end
 
-  return logout
+  return false
 end
 
 

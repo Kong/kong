@@ -1,106 +1,80 @@
-local helpers = require "spec.helpers"
-local session = require "kong.plugins.session.session"
-local phases = require "kong.pdk.private.phases"
+local function mock(method)
+  _G.kong = {
+    request = {
+      get_method = function() return method end,
+      get_query_arg = function() return true end,
+      get_body = function() return { session_logout = true } end,
+    },
+    log = {
+      debug = function() end
+    }
+  }
+
+  return require "kong.plugins.session.session"
+end
 
 describe("Plugin: Session - session.lua", function()
-  local old_ngx
-
+  local old_kong
   before_each(function()
-    kong.ctx.core.phase = phases.phases.request
-
-    old_ngx = {
-      get_phase = function()end,
-      req = {
-        read_body = function()end
-      },
-      log = function() end,
-      DEBUG = 1
-    }
-    _G.ngx = old_ngx
+    old_kong = _G.kong
   end)
 
   after_each(function()
-    _G.ngx = old_ngx
+    _G.kong = old_kong
+    package.loaded["kong.plugins.session.session"] = nil
   end)
 
-
   it("logs out with GET request", function()
-    kong.request.get_query = function() return {["session_logout"] = true} end
-    kong.request.get_method = function() return "GET" end
-
+    local session = mock("GET")
     local conf = {
-      logout_methods = {"GET", "POST"},
+      logout_methods = { "GET", "POST" },
       logout_query_arg = "session_logout"
     }
-
     assert.truthy(session.logout(conf))
   end)
 
   it("logs out with POST request with body", function()
-    ngx.req.get_post_args = function()
-      return {["session_logout"] = true}
-    end
-    ngx.req.read_body = function() end
-    kong.request.get_method = function() return "POST" end
-
+    local session = mock("POST")
     local conf = {
-      logout_methods = {"POST"},
+      logout_methods = { "POST" },
       logout_post_arg = "session_logout"
     }
-
     assert.truthy(session.logout(conf))
   end)
 
   it("logs out with DELETE request with body", function()
-    ngx.req.get_post_args = function()
-      return {["session_logout"] = true}
-    end
-    ngx.req.read_body = function() end
-    kong.request.get_method = function() return "DELETE" end
-
+    local session = mock("DELETE")
     local conf = {
-      logout_methods = {"DELETE"},
+      logout_methods = { "DELETE" },
       logout_post_arg = "session_logout"
     }
-
     assert.truthy(session.logout(conf))
   end)
 
   it("logs out with DELETE request with query params", function()
-    kong.request.get_query = function() return {["session_logout"] = true} end
-    kong.request.get_method = function() return "DELETE" end
-
+    local session = mock("DELETE")
     local conf = {
-      logout_methods = {"DELETE"},
+      logout_methods = { "DELETE" },
       logout_query_arg = "session_logout"
     }
-
     assert.truthy(session.logout(conf))
   end)
 
   it("does not logout with GET requests when method is not allowed", function()
-    kong.request.get_query = function() return {["session_logout"] = true} end
-    kong.request.get_method = function() return "GET" end
-
+    local session = mock("GET")
     local conf = {
-      logout_methods = {"DELETE"},
+      logout_methods = { "DELETE" },
       logout_query_arg = "session_logout"
     }
-
     assert.falsy(session.logout(conf))
   end)
 
   it("does not logout with POST requests when method is not allowed", function()
-    ngx.req.get_post_args = function()
-      return {["session_logout"] = true}
-    end
-    kong.request.get_method = function() return "POST" end
-
+    local session = mock("POST")
     local conf = {
-      logout_methods = {"DELETE"},
+      logout_methods = { "DELETE" },
       logout_post_arg = "session_logout"
     }
-
     assert.falsy(session.logout(conf))
   end)
 end)
