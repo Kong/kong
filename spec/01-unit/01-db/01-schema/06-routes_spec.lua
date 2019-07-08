@@ -1103,4 +1103,81 @@ describe("routes schema", function()
       }
     }, errs)
   end)
+
+  it("errors if methods attribute is set on grpc/grpcs", function()
+    local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
+    local route = Routes:process_auto_fields({
+      methods = "GET",
+      protocols = { "grpc" },
+      service = s,
+    }, "insert")
+    local ok, errs = Routes:validate(route)
+    assert.falsy(ok)
+    assert.same({
+      methods = "cannot set 'methods' when 'protocols' is 'grpc' or 'grpcs'"
+    }, errs)
+
+    route = Routes:process_auto_fields({
+      methods = "GET",
+      protocols = { "grpcs" },
+      service = s,
+    }, "insert")
+    ok, errs = Routes:validate(route)
+    assert.falsy(ok)
+    assert.same({
+      methods = "cannot set 'methods' when 'protocols' is 'grpc' or 'grpcs'"
+    }, errs)
+  end)
+
+  it("errors if methods attribute is set on grpc/grpcs", function()
+    local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
+    local route = Routes:process_auto_fields({
+      methods = "GET",
+      protocols = { "grpc" },
+      service = s,
+    }, "insert")
+    local ok, errs = Routes:validate(route)
+    assert.falsy(ok)
+    assert.same({
+      methods = "cannot set 'methods' when 'protocols' is 'grpc' or 'grpcs'"
+    }, errs)
+
+    route = Routes:process_auto_fields({
+      methods = "GET",
+      protocols = { "grpcs" },
+      service = s,
+    }, "insert")
+    ok, errs = Routes:validate(route)
+    assert.falsy(ok)
+    assert.same({
+      methods = "cannot set 'methods' when 'protocols' is 'grpc' or 'grpcs'"
+    }, errs)
+  end)
+
+  it("errors if strip_path is set on grpc/grpcs", function()
+    local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
+    local route = Routes:process_auto_fields({
+      hosts = { "foo.grpc.com" },
+      protocols = { "grpc" },
+      strip_path = true,
+      service = s,
+    }, "insert")
+    local ok, errs = Routes:validate(route)
+    assert.falsy(ok)
+    assert.same({
+      strip_path = "cannot set 'strip_path' when 'protocols' is 'grpc' or 'grpcs'"
+    }, errs)
+
+    route = Routes:process_auto_fields({
+      hosts = { "foo.grpc.com" },
+      protocols = { "grpcs" },
+      strip_path = true,
+      service = s,
+    }, "insert")
+    ok, errs = Routes:validate(route)
+    assert.falsy(ok)
+    assert.same({
+      strip_path = "cannot set 'strip_path' when 'protocols' is 'grpc' or 'grpcs'"
+    }, errs)
+  end)
 end)
