@@ -687,7 +687,9 @@ for _, strategy in helpers.each_strategy() do
     setup(function()
       db = select(2, helpers.get_db_utils(strategy))
 
+      os.execute("rm -f ./spec/fixtures/key.pem")
       os.execute("openssl genrsa -out ./spec/fixtures/key.pem 2048 2>/dev/null")
+      os.execute("chmod 0777 ./spec/fixtures/key.pem")
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -717,7 +719,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("audit log entries", function()
-      it("#flaky are generated with an adjacent signature", function()
+      it("are generated with an adjacent signature", function()
         local res = assert(admin_client:send({
           path = "/",
         }))
