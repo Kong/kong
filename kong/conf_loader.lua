@@ -357,32 +357,30 @@ local function check_and_infer(conf)
   local is_dc_aware =
     string.find(conf.cassandra_lb_policy, "DCAware", nil, true) ~= nil
 
-  if is_cassandra then
-    if is_dc_aware and not conf.cassandra_local_datacenter then
-      errors[#errors + 1] = "must specify 'cassandra_local_datacenter' when " ..
-                            conf.cassandra_lb_policy .. " policy is in use"
+  if is_dc_aware and not conf.cassandra_local_datacenter then
+    errors[#errors + 1] = "must specify 'cassandra_local_datacenter' when " ..
+                          conf.cassandra_lb_policy .. " policy is in use"
+  end
+
+  for _, contact_point in ipairs(conf.cassandra_contact_points) do
+    local endpoint, err = utils.normalize_ip(contact_point)
+    if not endpoint then
+      errors[#errors + 1] = fmt("bad cassandra contact point '%s': %s",
+                                contact_point, err)
+
+    elseif endpoint.port then
+      errors[#errors + 1] = fmt("bad cassandra contact point '%s': %s",
+                                contact_point,
+                                "port must be specified in cassandra_port")
     end
+  end
 
-    for _, contact_point in ipairs(conf.cassandra_contact_points) do
-      local endpoint, err = utils.normalize_ip(contact_point)
-      if not endpoint then
-        errors[#errors + 1] = fmt("bad cassandra contact point '%s': %s",
-                                  contact_point, err)
+  -- cache settings check
 
-      elseif endpoint.port then
-        errors[#errors + 1] = fmt("bad cassandra contact point '%s': %s",
-                                  contact_point,
-                                  "port must be specified in cassandra_port")
-      end
-    end
-
-    -- cache settings check
-
-    if conf.db_update_propagation == 0 then
-      log.warn("You are using Cassandra but your 'db_update_propagation' " ..
-               "setting is set to '0' (default). Due to the distributed "  ..
-               "nature of Cassandra, you should increase this value.")
-    end
+  if is_cassandra and conf.db_update_propagation == 0 then
+    log.warn("You are using Cassandra but your 'db_update_propagation' " ..
+             "setting is set to '0' (default). Due to the distributed "  ..
+             "nature of Cassandra, you should increase this value.")
   end
 
   for _, name in ipairs({
@@ -394,13 +392,11 @@ local function check_and_infer(conf)
     local option = conf[name]
     local number_of_values = option and #option or 0
     if number_of_values > 2 then
-      if is_cassandra then
-        errors[#errors + 1] = fmt("%s has an invalid value: '%s' (%s)", name,
-                                  concat(option, ", "),
-                                  "specify at most two values, e.g. " ..
-                                  "'read:ONE, write:ONE', or just one " ..
-                                  "for both e.g. 'QUORUM'")
-      end
+      errors[#errors + 1] = fmt("%s has an invalid value: '%s' (%s)", name,
+                                concat(option, ", "),
+                                "specify at most two values, e.g. " ..
+                                "'read:ONE, write:ONE', or just one " ..
+                                "for both e.g. 'QUORUM'")
 
     elseif number_of_values == 2 then
       read_consistency = CASSANDRA_READ_CONSISTENCY[option[1]] or
@@ -409,7 +405,11 @@ local function check_and_infer(conf)
       write_consistency = CASSANDRA_WRITE_CONSISTENCY[option[1]] or
                           CASSANDRA_WRITE_CONSISTENCY[option[2]]
 
-      if not read_consistency or not write_consistency and is_cassandra then
+      if read_consistency and write_consistency then
+        option.read  = read_consistency:lower()
+        option.write = write_consistency:lower()
+
+      else
         errors[#errors + 1] = fmt("%s has an invalid value: '%s' (read:%s, " ..
                                   "write:%s)", name, concat(option, ", "),
                                   concat(CASSANDRA_CONSISTENCY, ", read:"),
@@ -425,57 +425,45 @@ local function check_and_infer(conf)
         end
       end
 
-      if not found then
-        if is_cassandra then
-          errors[#errors + 1] = fmt("%s has an invalid value: '%s' (%s)", name,
-                                    option[1],
-                                    concat(CASSANDRA_CONSISTENCY, ", "))
-        end
+      if found then
+        read_consistency  = option[1]
+        write_consistency = read_consistency
+
+        option.read  = read_consistency:lower()
+        option.write = write_consistency:lower()
 
       else
-        read_consistency  = option[1]
-        write_consistency = option[1]
+        errors[#errors + 1] = fmt("%s has an invalid value: '%s' (%s)", name,
+                                  option[1],
+                                  concat(CASSANDRA_CONSISTENCY, ", "))
       end
     end
 
-    if not read_consistency then
-      read_consistency = conf.cassandra_consistency
-    end
-
-    if not write_consistency then
-      write_consistency = conf.cassandra_consistency
-    end
-
-    if read_consistency and write_consistency then
-      if is_cassandra and is_dc_aware then
-        local suggestion
-        if read_consistency == "QUORUM" or
-           read_consistency  == "ONE" then
-          if write_consistency == "QUORUM" or
-             write_consistency == "ONE" then
-            suggestion = fmt("read:LOCAL_%s, write:LOCAL_%s",
-                             read_consistency, write_consistency)
-          else
-            suggestion = fmt("read:LOCAL_%s, write:%s",
-                             read_consistency, write_consistency)
-          end
-        elseif write_consistency == "QUORUM" or
-               write_consistency == "ONE" then
-          suggestion = fmt("read:%s, write:LOCAL_%s",
+    if is_cassandra and is_dc_aware then
+      local suggestion
+      if read_consistency == "QUORUM" or
+         read_consistency  == "ONE" then
+        if write_consistency == "QUORUM" or
+           write_consistency == "ONE" then
+          suggestion = fmt("read:LOCAL_%s, write:LOCAL_%s",
+                           read_consistency, write_consistency)
+        else
+          suggestion = fmt("read:LOCAL_%s, write:%s",
                            read_consistency, write_consistency)
         end
-
-        if suggestion then
-          log.warn("Cassandra is configured to use a data center aware "  ..
-                   "load balancing strategy '%s' while the consistency "  ..
-                   "of '%s' is set to '%s'. It is recommended to change " ..
-                   "it to '%s'.", conf.cassandra_lb_policy, name,
-                   concat(option, ", "), suggestion)
-        end
+      elseif write_consistency == "QUORUM" or
+             write_consistency == "ONE" then
+        suggestion = fmt("read:%s, write:LOCAL_%s",
+                         read_consistency, write_consistency)
       end
 
-      option.read  = read_consistency:lower()
-      option.write = write_consistency:lower()
+      if suggestion then
+        log.warn("Cassandra is configured to use a data center aware "  ..
+                 "load balancing strategy '%s' while the consistency "  ..
+                 "of '%s' is set to '%s'. It is recommended to change " ..
+                 "it to '%s'.", conf.cassandra_lb_policy, name,
+                 concat(option, ", "), suggestion)
+      end
     end
   end
 
