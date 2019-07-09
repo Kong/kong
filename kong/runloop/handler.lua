@@ -236,7 +236,7 @@ local function register_events()
     log(DEBUG, "[events] SSL cert updated, invalidating cached certificates")
     local certificate = data.entity
 
-    for sni, err in db.snis:each_for_certificate({ id = certificate.id }, 1000) do
+    for sni, err in db.snis:each_for_certificate({ id = certificate.id }) do
       if err then
         log(ERR, "[events] could not find associated snis for certificate: ",
           err)
@@ -497,7 +497,7 @@ do
   local function build_services_init_cache(db)
     local services_init_cache = {}
 
-    for service, err in db.services:each(1000) do
+    for service, err in db.services:each() do
       if err then
         return nil, err
       end
@@ -574,7 +574,7 @@ do
       end
     end
 
-    for route, err in db.routes:each(1000) do
+    for route, err in db.routes:each() do
       if err then
         return nil, "could not load routes: " .. err
       end

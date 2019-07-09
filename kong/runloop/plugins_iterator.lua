@@ -315,7 +315,7 @@ function PluginsIterator.new(version)
     }
   end
 
-  for plugin, err in kong.db.plugins:each(1000) do
+  for plugin, err in kong.db.plugins:each() do
     if err then
       return nil, err
     end

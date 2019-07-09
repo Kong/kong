@@ -122,7 +122,7 @@ function Plugins:check_db_against_config(plugin_set)
   local in_db_plugins = {}
   ngx_log(ngx_DEBUG, "Discovering used plugins")
 
-  for row, err in self:each(1000) do
+  for row, err in self:each() do
     if err then
       return nil, tostring(err)
     end

@@ -31,7 +31,7 @@ local function clean_history(self, upstream_pk)
   local cleanup_factor = 0.1
 
   --cleaning up history, check if it's necessary...
-  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, 1000)
+  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk)
   if not targets then
     return nil, err, err_t
   end
@@ -150,11 +150,11 @@ end
 -- including entries that have been since overriden, and those
 -- with weight=0 (i.e. the "raw" representation of targets in
 -- the database)
-function _TARGETS:select_by_upstream_raw(upstream_pk, ...)
+function _TARGETS:select_by_upstream_raw(upstream_pk, options)
   local targets = {}
 
   -- Note that each_for_upstream is not overridden, so it returns "raw".
-  for target, err, err_t in self:each_for_upstream(upstream_pk, ...) do
+  for target, err, err_t in self:each_for_upstream(upstream_pk, nil, options) do
     if not target then
       return nil, err, err_t
     end
@@ -175,7 +175,7 @@ function _TARGETS:page_for_upstream(upstream_pk, size, offset, options)
   -- extract the page requested by the user.
 
   -- Read all targets; this returns the target history sorted chronologically
-  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, 1000, options)
+  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, options)
   if not targets then
     return nil, err, err_t
   end
@@ -275,7 +275,7 @@ end
 
 
 function _TARGETS:select_by_upstream_filter(upstream_pk, filter, options)
-  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, 1000, options)
+  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, options)
   if not targets then
     return nil, err, err_t
   end

@@ -123,7 +123,7 @@ do
     log(DEBUG, "fetching targets for upstream: ", tostring(upstream_id))
 
     local target_history, err, err_t =
-      singletons.db.targets:select_by_upstream_raw({ id = upstream_id }, 1000)
+      singletons.db.targets:select_by_upstream_raw({ id = upstream_id })
 
     if not target_history then
       return nil, err, err_t
@@ -505,7 +505,7 @@ do
   local function load_upstreams_dict_into_memory()
     local upstreams_dict = {}
     -- build a dictionary, indexed by the upstream name
-    for up, err in singletons.db.upstreams:each(1000) do
+    for up, err in singletons.db.upstreams:each() do
       if err then
         log(CRIT, "could not obtain list of upstreams: ", err)
         return nil
