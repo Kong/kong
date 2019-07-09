@@ -46,10 +46,10 @@ pipeline {
           environment {
             TEST_SUITE='lint'
             KONG_TEST_DATABASE='cassandra'
-            JENKINS_PROJECT='cassandra-${BUILD_NUMBER}'
+            JENKINS_PROJECT='${KONG_TEST_DATABASE}-${BUILD_NUMBER}'
           }
           steps {
-            sh '$GOJIRA up   -k . -p $JENKINS_PROJECT --cassandra'
+            sh '$GOJIRA up   -k . -p $JENKINS_PROJECT --$KONG_TEST_DATABASE'
             sh '''
                 iid=$($GOJIRA compose -k . -p ${JENKINS_PROJECT} ps -q db)
                 for i in {0..60}; do
@@ -62,16 +62,16 @@ pipeline {
             sh '$GOJIRA run  -k . -p $JENKINS_PROJECT TEST_SUITE=plugins-ee     .ci/run_tests.sh'
             sh '$GOJIRA run  -k . -p $JENKINS_PROJECT TEST_SUITE=integration    .ci/run_tests.sh'
             sh '$GOJIRA run  -k . -p $JENKINS_PROJECT TEST_SUITE=integration-ee .ci/run_tests.sh'
-            sh '$GOJIRA down -k . -p $JENKINS_PROJECT --cassandra'
+            sh '$GOJIRA down -k . -p $JENKINS_PROJECT --$KONG_TEST_DATABASE'
           }
         }
         stage('postgres all') {
           environment {
             KONG_TEST_DATABASE='postgres'
-            JENKINS_PROJECT='postgres-${BUILD_NUMBER}'
+            JENKINS_PROJECT='${KONG_TEST_DATABASE}-${BUILD_NUMBER}'
           }
           steps {
-            sh '$GOJIRA up   -k . -p $JENKINS_PROJECT --postgres'
+            sh '$GOJIRA up   -k . -p $JENKINS_PROJECT --$KONG_TEST_DATABASE'
             sh '''
                 iid=$($GOJIRA compose -k . -p ${JENKINS_PROJECT} ps -q db)
                 for i in {0..60}; do
@@ -84,7 +84,7 @@ pipeline {
             sh '$GOJIRA run  -k . -p $JENKINS_PROJECT TEST_SUITE=plugins-ee     .ci/run_tests.sh'
             sh '$GOJIRA run  -k . -p $JENKINS_PROJECT TEST_SUITE=integration    .ci/run_tests.sh'
             sh '$GOJIRA run  -k . -p $JENKINS_PROJECT TEST_SUITE=integration-ee .ci/run_tests.sh'
-            sh '$GOJIRA down -k . -p $JENKINS_PROJECT --postgres'
+            sh '$GOJIRA down -k . -p $JENKINS_PROJECT --$KONG_TEST_DATABASE'
           }
         }
         stage('pdk') {
