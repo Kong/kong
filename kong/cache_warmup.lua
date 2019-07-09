@@ -50,7 +50,7 @@ local function cache_warmup_single_entity(dao)
     host_count = 0
   end
 
-  for entity, err in dao:each(1000) do
+  for entity, err in dao:each() do
     if err then
       return nil, err
     end
