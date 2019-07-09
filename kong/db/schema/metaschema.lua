@@ -375,6 +375,13 @@ local MetaSchema = Schema.new({
       }
     },
     {
+      db_export = {
+        type = "boolean",
+        nilable = true,
+        default = true,
+      }
+    },
+    {
       subschema_key = {
         type = "string",
         nilable = true,
