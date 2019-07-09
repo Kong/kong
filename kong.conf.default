@@ -583,12 +583,10 @@
                                                     # use when reading/writing
                                                     # to the Cassandra cluster
                                                     # on proxy.
-                                                    #
 #cassandra_consistency_admin = read:ONE, write:ONE  # Consistency setting to
                                                     # use when reading/writing
                                                     # to the Cassandra cluster
                                                     # on admin API.
-                                                    #
                                                     #
                                                     # Note: If you want to
                                                     # specify same consistency

@@ -442,7 +442,7 @@ local function check_and_infer(conf, opts)
     end
 
     if not read_consistency then
-      read_consistency  = conf.cassandra_consistency
+      read_consistency = conf.cassandra_consistency
     end
 
     if not write_consistency then
