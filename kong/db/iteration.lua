@@ -15,7 +15,7 @@ end
 
 local function page_iterator(pager, size, options)
   local page = 1
-  size = size or 100
+  size = size or 1000
   local i, rows, err, offset = 0, pager(size, nil, options)
 
   return function()

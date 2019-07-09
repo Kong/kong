@@ -19,7 +19,7 @@ local CURRENT_AT_KEY         = "cluster_events:at"
 
 
 local MIN_EVENT_TTL_IN_DB = 60 * 60 -- 1 hour
-local PAGE_SIZE           = 100
+local PAGE_SIZE           = 1000
 
 
 local _init

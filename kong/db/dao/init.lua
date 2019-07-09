@@ -391,7 +391,7 @@ local function find_cascade_delete_entities(self, entity)
 
     local dao = self.db.daos[constraint.schema.name]
     local method = "each_for_" .. constraint.field_name
-    for row, err in dao[method](dao, pk, 1000) do
+    for row, err in dao[method](dao, pk) do
       if not row then
         log(ERR, "[db] failed to traverse entities for cascade-delete: ", err)
         break
@@ -499,7 +499,7 @@ local function generate_foreign_key_methods(schema)
           end
 
         else
-          size = 100
+          size = 1000
         end
 
         if options ~= nil then
@@ -814,7 +814,7 @@ function DAO:each(size, options)
     end
 
   else
-    size = 100
+    size = 1000
   end
 
   if options ~= nil then

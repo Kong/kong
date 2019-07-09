@@ -1465,7 +1465,7 @@ do
         local pager = function(size, offset)
           return strategy[method](strategy, primary_key, size, offset)
         end
-        for row, err in iteration.by_row(self, pager, 1000) do
+        for row, err in iteration.by_row(self, pager) do
           if err then
             return nil, self.errors:database_error("could not gather " ..
                                                    "associated entities " ..
