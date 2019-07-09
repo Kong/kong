@@ -421,6 +421,7 @@ local function check_and_infer(conf, opts)
       for _, name in ipairs(CASSANDRA_CONSISTENCY) do
         if name == option[1] then
           found = true
+          break
         end
       end
 
