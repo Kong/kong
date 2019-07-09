@@ -18,12 +18,9 @@ local function execute(args)
     args.prefix = conf.prefix
   end
 
-  log.enable()
+  pcall(stop.execute, args, { quiet = true })
 
-  local ok = pcall(stop.execute, args, { quiet = true })
-  if not ok then
-    log.enable()
-  end
+  log.enable()
 
   -- ensure Nginx stopped
   local texp = ngx.time() + 5 -- 5s

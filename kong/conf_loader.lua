@@ -286,7 +286,7 @@ local _nop_tostring_mt = {
 
 -- Validate properties (type/enum/custom) and infer their type.
 -- @param[type=table] conf The configuration table to treat.
-local function check_and_infer(conf, opts)
+local function check_and_infer(conf)
   local errors = {}
 
   for k, value in pairs(conf) do
@@ -378,7 +378,7 @@ local function check_and_infer(conf, opts)
 
     -- cache settings check
 
-    if opts.starting and conf.db_update_propagation == 0 then
+    if conf.db_update_propagation == 0 then
       log.warn("You are using Cassandra but your 'db_update_propagation' " ..
                "setting is set to '0' (default). Due to the distributed "  ..
                "nature of Cassandra, you should increase this value.")
@@ -447,7 +447,7 @@ local function check_and_infer(conf, opts)
     end
 
     if read_consistency and write_consistency then
-      if opts.starting and is_cassandra and is_dc_aware then
+      if is_cassandra and is_dc_aware then
         local suggestion
         if read_consistency == "QUORUM" or
            read_consistency  == "ONE" then
@@ -964,7 +964,16 @@ local function load(path, custom_conf, opts)
                               user_conf)
 
   -- validation
-  local ok, err, errors = check_and_infer(conf, opts)
+  if not opts.starting then
+    log.disable()
+  end
+
+  local ok, err, errors = check_and_infer(conf)
+
+  if not opts.starting then
+    log.enable()
+  end
+
   if not ok then
     return nil, err, errors
   end
