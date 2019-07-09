@@ -143,14 +143,12 @@ local CONF_INFERENCES = {
     deprecated = {
       replacement = "nginx_http_upstream_keepalive",
       alias = function(conf)
-        if conf.upstream_keepalive then
-          -- called before check_and_infer(), must parse ourselves
-          if tonumber(conf.upstream_keepalive) == 0 then
-            conf.nginx_http_upstream_keepalive = "NONE"
+        -- called before check_and_infer(), must parse ourselves
+        if tonumber(conf.upstream_keepalive) == 0 then
+          conf.nginx_http_upstream_keepalive = "NONE"
 
-          elseif conf.nginx_http_upstream_keepalive == nil then
-            conf.nginx_http_upstream_keepalive = tostring(conf.upstream_keepalive)
-          end
+        elseif conf.nginx_http_upstream_keepalive == nil then
+          conf.nginx_http_upstream_keepalive = tostring(conf.upstream_keepalive)
         end
       end,
     }
@@ -189,16 +187,14 @@ local CONF_INFERENCES = {
     deprecated = {
       replacement = "cassandra_consistency_proxy and cassandra_consistency_admin",
       alias = function(conf)
-        if conf.cassandra_consistency then
-          if conf.cassandra_consistency_proxy == nil then
-            conf.cassandra_consistency_proxy = conf.cassandra_consistency
-          end
-
-          if conf.cassandra_consistency_admin == nil then
-            conf.cassandra_consistency_admin = conf.cassandra_consistency
-          end
+        if conf.cassandra_consistency_proxy == nil then
+          conf.cassandra_consistency_proxy = conf.cassandra_consistency
         end
-      end,
+
+        if conf.cassandra_consistency_admin == nil then
+          conf.cassandra_consistency_admin = conf.cassandra_consistency
+        end
+      end
     }
   },
   cassandra_consistency_proxy = { typ = "array" },
