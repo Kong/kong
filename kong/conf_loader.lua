@@ -439,31 +439,17 @@ local function check_and_infer(conf)
       end
     end
 
-    if is_cassandra and is_dc_aware then
-      local suggestion
-      if read_consistency == "QUORUM" or
-         read_consistency  == "ONE" then
-        if write_consistency == "QUORUM" or
-           write_consistency == "ONE" then
-          suggestion = fmt("read:LOCAL_%s, write:LOCAL_%s",
-                           read_consistency, write_consistency)
-        else
-          suggestion = fmt("read:LOCAL_%s, write:%s",
-                           read_consistency, write_consistency)
-        end
-      elseif write_consistency == "QUORUM" or
-             write_consistency == "ONE" then
-        suggestion = fmt("read:%s, write:LOCAL_%s",
-                         read_consistency, write_consistency)
-      end
-
-      if suggestion then
-        log.warn("Cassandra is configured to use a data center aware "  ..
-                 "load balancing strategy '%s' while the consistency "  ..
-                 "of '%s' is set to '%s'. It is recommended to change " ..
-                 "it to '%s'.", conf.cassandra_lb_policy, name,
-                 concat(option, ", "), suggestion)
-      end
+    if is_cassandra and is_dc_aware and ((
+      read_consistency ~= "LOCAL_QUORUM"  and read_consistency ~= "LOCAL_ONE"
+    ) or (
+      write_consistency ~= "LOCAL_QUORUM" and write_consistency ~= "LOCAL_ONE"
+    )) then
+      log.warn("Cassandra is configured to use a data center aware load "    ..
+               "balancing strategy '%s' while the consistency of '%s' is "   ..
+               "set to '%s'. It is recommended to use 'LOCAL_QUORUM' or "    ..
+               "'LOCAL_ONE' when specifying read/write consistency in such " ..
+               "scenario.", conf.cassandra_lb_policy, name,
+               concat(option, ", "))
     end
   end
 

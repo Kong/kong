@@ -514,14 +514,16 @@ describe("kong start/stop #" .. strategy, function()
             [warn] Cassandra is configured to use a data center aware load balancing
             strategy 'RequestDCAwareRoundRobin' while the consistency of
             'cassandra_consistency_proxy' is set to 'read:ONE, write:ONE'.
-            It is recommended to change it to 'read:LOCAL_ONE, write:LOCAL_ONE'.
+            It is recommended to use 'LOCAL_QUORUM' or 'LOCAL_ONE' when specifying
+            read/write consistency in such scenario.
           ]], nil, true), stderr, nil, true)
 
           assert.matches(u([[
             [warn] Cassandra is configured to use a data center aware load balancing
             strategy 'RequestDCAwareRoundRobin' while the consistency of
-            'cassandra_consistency_admin' is set to 'read:ONE, write:ONE'. It is
-            recommended to change it to 'read:LOCAL_ONE, write:LOCAL_ONE'.
+            'cassandra_consistency_admin' is set to 'read:ONE, write:ONE'.
+            It is recommended to use 'LOCAL_QUORUM' or 'LOCAL_ONE' when specifying
+            read/write consistency in such scenario.
           ]], nil, true), stderr, nil, true)
 
           local _, stderr, stdout = assert(helpers.kong_exec("stop", opts))
