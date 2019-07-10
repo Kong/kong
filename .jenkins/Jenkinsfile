@@ -29,7 +29,7 @@ pipeline {
     stage('lint and unit') {
       environment {
         TEST_SUITE='lint'
-        JENKINS_PROJECT='lint-unit-${BUILD_NUMBER}'
+        JENKINS_PROJECT="lint-unit-${BUILD_NUMBER}"
       }
       steps {
         sh '$GOJIRA up   -k . -p $JENKINS_PROJECT'
@@ -46,7 +46,7 @@ pipeline {
           environment {
             TEST_SUITE='lint'
             KONG_TEST_DATABASE='cassandra'
-            JENKINS_PROJECT='${KONG_TEST_DATABASE}-${BUILD_NUMBER}'
+            JENKINS_PROJECT="${KONG_TEST_DATABASE}-${BUILD_NUMBER}"
           }
           steps {
             sh '$GOJIRA up   -k . -p $JENKINS_PROJECT --$KONG_TEST_DATABASE'
@@ -68,7 +68,7 @@ pipeline {
         stage('postgres all') {
           environment {
             KONG_TEST_DATABASE='postgres'
-            JENKINS_PROJECT='${KONG_TEST_DATABASE}-${BUILD_NUMBER}'
+            JENKINS_PROJECT="${KONG_TEST_DATABASE}-${BUILD_NUMBER}"
           }
           steps {
             sh '$GOJIRA up   -k . -p $JENKINS_PROJECT --$KONG_TEST_DATABASE'
@@ -89,7 +89,7 @@ pipeline {
         }
         stage('pdk') {
           environment {
-            JENKINS_PROJECT='pdk-${BUILD_NUMBER}'
+            JENKINS_PROJECT="pdk-${BUILD_NUMBER}"
           }
           steps {
             sh '$GOJIRA up   -k . -p $JENKINS_PROJECT --alone'
