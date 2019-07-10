@@ -691,6 +691,39 @@ for _, strategy in helpers.each_strategy() do
       assert.equals("HEALTHY", health.data[1].data.addresses[1].health)
     end)
 
+    it("a target that has healthchecks disabled", function()
+      -- configure healthchecks
+      begin_testcase_setup(strategy, bp)
+      local upstream_name, upstream_id = add_upstream(bp, {
+        healthchecks = healthchecks_config {
+          passive = {
+            unhealthy = {
+              http_failures = 0,
+              tcp_failures = 0,
+              timeouts = 0,
+            },
+          },
+          active = {
+            healthy = {
+              interval = 0,
+            },
+            unhealthy = {
+              interval = 0,
+            },
+          },
+        }
+      })
+      add_target(bp, upstream_id, "multiple-ips.test", 80)
+      add_api(bp, upstream_name)
+      end_testcase_setup(strategy, bp)
+      local health = get_upstream_health(upstream_name)
+      assert.is.table(health)
+      assert.is.table(health.data)
+      assert.is.table(health.data[1])
+      assert.equals("HEALTHCHECKS_OFF", health.data[1].health)
+      assert.equals("HEALTHCHECKS_OFF", health.data[1].data.addresses[1].health)
+    end)
+
   end)
 
   describe("Ring-balancer #" .. strategy, function()

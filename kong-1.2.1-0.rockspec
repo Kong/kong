@@ -33,7 +33,7 @@ dependencies = {
   "lua-resty-dns-client == 4.0.0",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-mediador == 0.1.2",
-  "lua-resty-healthcheck == 0.6.2",
+  "lua-resty-healthcheck == 1.0.0",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.0",
   -- external Kong plugins

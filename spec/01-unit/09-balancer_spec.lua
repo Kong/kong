@@ -492,17 +492,20 @@ describe("Balancer", function()
       address = {
         ip = "127.0.0.1",
         port = 1111,
+        host = {hostname = "localhost"},
       }}, 429)
     my_balancer.report_http_status({
       address = {
         ip = "127.0.0.1",
         port = 1111,
+        host = {hostname = "localhost"},
       }}, 200)
     balancer.unsubscribe_from_healthcheck_events(cb)
     my_balancer.report_http_status({
       address = {
         ip = "127.0.0.1",
         port = 1111,
+        host = {hostname = "localhost"},
       }}, 429)
     hc:stop()
     assert.same({

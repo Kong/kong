@@ -381,8 +381,6 @@ describe("Admin API #" .. strategy, function()
               for j = 1, #res.data[i].data.addresses do
                 assert.equal(health, res.data[i].data.addresses[j].health)
               end
-
-            else
               assert.equal(health, res.data[i].health)
             end
           end
