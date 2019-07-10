@@ -1,3 +1,6 @@
+local constants = require "kong.constants"
+
+
 local ngx_debug = ngx.config.debug
 local DEBUG     = ngx.DEBUG
 local ERR       = ngx.ERR
@@ -19,7 +22,7 @@ local CURRENT_AT_KEY         = "cluster_events:at"
 
 
 local MIN_EVENT_TTL_IN_DB = 60 * 60 -- 1 hour
-local PAGE_SIZE           = 1000
+local PAGE_SIZE           = constants.DEFAULT_CLUSTER_EVENTS_PAGE_SIZE
 
 
 local _init

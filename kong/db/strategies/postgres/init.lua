@@ -1,3 +1,4 @@
+local constants     = require "kong.constants"
 local arrays        = require "pgmoon.arrays"
 local json          = require "pgmoon.json"
 local cjson         = require "cjson"
@@ -562,6 +563,8 @@ end
 
 
 local function page(self, size, token, foreign_key, foreign_entity_name, options)
+  size = size or constants.DEFAULT_PAGE_SIZE
+
   local limit = size + 1
 
   local statement_name
