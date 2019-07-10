@@ -1,12 +1,14 @@
 local utils  = require "kong.tools.utils"
-local pgmoon = require "pgmoon"
 
 
 local max          = math.max
 local fmt          = string.format
 local null         = ngx.null
 local concat       = table.concat
+local tonumber     = tonumber
 local setmetatable = setmetatable
+
+
 local new_tab
 do
   local ok
@@ -18,29 +20,53 @@ end
 
 
 local INSERT_QUERY = [[
-INSERT INTO cluster_events(id, node_id, at, nbf, expire_at, channel, data)
- VALUES(%s, %s, to_timestamp(%f), to_timestamp(%s), to_timestamp(%s), %s, %s)
+INSERT INTO cluster_events (
+  "id",
+  "node_id",
+  "at",
+  "nbf",
+  "expire_at",
+  "channel",
+  "data"
+) VALUES (
+  %s,
+  %s,
+  TO_TIMESTAMP(%s) AT TIME ZONE 'UTC',
+  TO_TIMESTAMP(%s) AT TIME ZONE 'UTC',
+  TO_TIMESTAMP(%s) AT TIME ZONE 'UTC',
+  %s,
+  %s
+)
 ]]
 
+
 local SELECT_INTERVAL_QUERY = [[
-SELECT id, node_id, channel, data,
-       extract(epoch from at) as at,
-       extract(epoch from nbf) as nbf
-FROM cluster_events
-WHERE channel IN (%s)
-  AND at >  to_timestamp(%f)
-  AND at <= to_timestamp(%f)
+  SELECT "id",
+         "node_id",
+         "channel",
+         "data",
+         EXTRACT(EPOCH FROM "at"  AT TIME ZONE 'UTC') AS "at",
+         EXTRACT(EPOCH FROM "nbf" AT TIME ZONE 'UTC') AS "nbf"
+    FROM "cluster_events"
+   WHERE "channel" IN (%s)
+     AND "at" >  TO_TIMESTAMP(%s) AT TIME ZONE 'UTC'
+     AND "at" <= TO_TIMESTAMP(%s) AT TIME ZONE 'UTC'
+ORDER BY "at"
+   LIMIT %s
+  OFFSET %s
 ]]
 
 
 local _M = {}
+
+
 local mt = { __index = _M }
 
 
 function _M.new(db, page_size, event_ttl)
   local self  = {
-    db        = db.connector,
-    --page_size = page_size,
+    connector = db.connector,
+    page_size = page_size,
     event_ttl = event_ttl,
   }
 
@@ -55,20 +81,23 @@ end
 
 function _M:insert(node_id, channel, at, data, nbf)
   local expire_at = max(at + self.event_ttl, at)
+  expire_at = self.connector:escape_literal(tonumber(fmt("%.3f", expire_at)))
 
   if not nbf then
     nbf = "NULL"
+  else
+    nbf = self.connector:escape_literal(tonumber(fmt("%.3f", nbf)))
   end
 
-  local pg_id      = pgmoon.Postgres.escape_literal(nil, utils.uuid())
-  local pg_node_id = pgmoon.Postgres.escape_literal(nil, node_id)
-  local pg_channel = pgmoon.Postgres.escape_literal(nil, channel)
-  local pg_data    = pgmoon.Postgres.escape_literal(nil, data)
+  local pg_id      = self.connector:escape_literal(utils.uuid())
+  local pg_node_id = self.connector:escape_literal(node_id)
+  local pg_channel = self.connector:escape_literal(channel)
+  local pg_data    = self.connector:escape_literal(data)
 
   local q = fmt(INSERT_QUERY, pg_id, pg_node_id, at, nbf, expire_at,
                 pg_channel, pg_data)
 
-  local res, err = self.db:query(q)
+  local res, err = self.connector:query(q)
   if not res then
     return nil, "could not insert invalidation row: " .. err
   end
@@ -79,36 +108,37 @@ end
 
 function _M:select_interval(channels, min_at, max_at)
   local n_chans = #channels
-  local pg_channels = new_tab(n_chans, 0)
+  local p_chans = new_tab(n_chans, 0)
+  local p_minat = self.connector:escape_literal(tonumber(fmt("%.3f", min_at)))
+  local p_maxat = self.connector:escape_literal(tonumber(fmt("%.3f", max_at)))
 
   for i = 1, n_chans do
-    pg_channels[i] = pgmoon.Postgres.escape_literal(nil, channels[i])
+    p_chans[i] = self.connector:escape_literal(channels[i])
   end
 
-  local q = fmt(SELECT_INTERVAL_QUERY, concat(pg_channels, ","), min_at,
-                max_at)
+  local query_template = fmt(SELECT_INTERVAL_QUERY,
+                             concat(p_chans, ", "),
+                             p_minat,
+                             p_maxat,
+                             self.page_size,
+                             "%s")
 
-  local ran
+  local page = 0
 
-  -- TODO: implement pagination for this strategy as
-  -- well.
-  --
-  -- we need to behave like lua-cassandra's iteration:
-  -- provide an iterator that enters the loop, with a
-  -- page = 0 argument if there is no first page, and a
-  -- page = 1 argument with the fetched rows elsewise
+  return function()
+    local offset = page * self.page_size
+    local q = fmt(query_template, offset)
 
-  return function(_, p_rows)
-    if ran then
-      return nil
-    end
-
-    local res, err = self.db:query(q)
+    local res, err = self.connector:query(q)
     if not res then
       return nil, err
     end
 
     local len = #res
+    if len == 0 then
+      return nil
+    end
+
     for i = 1, len do
       local row = res[i]
       if row.nbf == null then
@@ -116,9 +146,7 @@ function _M:select_interval(channels, min_at, max_at)
       end
     end
 
-    local page = len > 0 and 1 or 0
-
-    ran = true
+    page = page + 1
 
     return res, err, page
   end
@@ -126,7 +154,7 @@ end
 
 
 function _M:truncate_events()
-  return self.db:query("TRUNCATE cluster_events")
+  return self.connector:query("TRUNCATE cluster_events")
 end
 
 
