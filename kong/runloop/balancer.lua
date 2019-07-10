@@ -193,7 +193,7 @@ local function populate_healthchecker(hc, balancer)
       if ok then
         -- Get existing health status which may have been initialized
         -- with data from another worker, and apply to the new balancer.
-        local tgt_status = hc:get_target_status(ipaddr, port)
+        local tgt_status = hc:get_target_status(ipaddr, port, hostname)
         balancer:setAddressStatus(tgt_status, ipaddr, port, hostname)
 
       else
@@ -233,7 +233,7 @@ do
         end
 
       elseif action == "removed" then
-        local ok, err = healthchecker:remove_target(ip, port)
+        local ok, err = healthchecker:remove_target(ip, port, hostname)
         if not ok then
           log(ERR, "[healthchecks] failed removing a target: ", err)
         end
@@ -245,7 +245,7 @@ do
         else
           balancer_status = "UNHEALTHY"
         end
-        log(WARN, "[healthchecks] balancer ", healthchecker.name,
+        log(DEBUG, "[healthchecks] balancer ", healthchecker.name,
             " reported health status changed to ", balancer_status)
 
       else
@@ -291,7 +291,8 @@ do
 
       balancer.report_http_status = function(handle, status)
         local ip, port = handle.address.ip, handle.address.port
-        local _, err = hc:report_http_status(ip, port, status, "passive")
+        local hostname = handle.address.host and handle.address.host.hostname or nil
+        local _, err = hc:report_http_status(ip, port, hostname, status, "passive")
         if err then
           log(ERR, "[healthchecks] failed reporting status: ", err)
         end
@@ -299,7 +300,8 @@ do
 
       balancer.report_tcp_failure = function(handle)
         local ip, port = handle.address.ip, handle.address.port
-        local _, err = hc:report_tcp_failure(ip, port, nil, "passive")
+        local hostname = handle.address.host and handle.address.host.hostname or nil
+        local _, err = hc:report_tcp_failure(ip, port, hostname, nil, "passive")
         if err then
           log(ERR, "[healthchecks] failed reporting status: ", err)
         end
@@ -307,7 +309,8 @@ do
 
       balancer.report_timeout = function(handle)
         local ip, port = handle.address.ip, handle.address.port
-        local _, err = hc:report_timeout(ip, port, "passive")
+        local hostname = handle.address.host and handle.address.host.hostname or nil
+        local _, err = hc:report_timeout(ip, port, hostname, "passive")
         if err then
           log(ERR, "[healthchecks] failed reporting status: ", err)
         end

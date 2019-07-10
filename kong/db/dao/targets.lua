@@ -252,13 +252,15 @@ function _TARGETS:page_for_upstream_with_health(upstream_pk, ...)
     -- library will issue the callback and the target will change state.
     if health_info[target.target] ~= nil and
       #health_info[target.target].addresses > 0 then
-      target.health = "UNHEALTHY"
+      target.health = "HEALTHCHECKS_OFF"
       -- If any of the target addresses are healthy, then the target is
       -- considered healthy.
       for _, address in ipairs(health_info[target.target].addresses) do
         if address.health == "HEALTHY" then
           target.health = "HEALTHY"
           break
+        elseif address.health == "UNHEALTHY" then
+          target.health = "UNHEALTHY"
         end
 
       end
