@@ -63,7 +63,7 @@ build = {
     ["kong.globalpatches"] = "kong/globalpatches.lua",
     ["kong.error_handlers"] = "kong/error_handlers.lua",
 
-    ["kong.cluster_events"] = "kong/cluster_events.lua",
+    ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",
     ["kong.cluster_events.strategies.off"] = "kong/cluster_events/strategies/off.lua",
