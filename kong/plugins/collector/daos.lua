@@ -1,8 +1,8 @@
 local typedefs = require "kong.db.schema.typedefs"
 
 return {
-  brain_service_maps = {
-    name = "brain_service_maps",
+  service_maps = {
+    name = "service_maps",
     primary_key = { "id" },
     endpoint_key = "singleton",
     generate_admin_api = true,
