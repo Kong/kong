@@ -1,4 +1,5 @@
-local declarative_config = require("kong.db.schema.others.declarative_config")
+local declarative_config = require "kong.db.schema.others.declarative_config"
+local constants = require "kong.constants"
 
 
 local kong = kong
@@ -85,6 +86,8 @@ end
 
 
 local function page_for_key(self, key, size, offset, options)
+  size = size or constants.DEFAULT_PAGE_SIZE
+
   if offset then
     local token = decode_base64(offset)
     if not token then

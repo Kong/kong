@@ -1,5 +1,6 @@
 local cjson = require "cjson"
 local iteration = require "kong.db.iteration"
+local constants = require "kong.constants"
 
 
 local setmetatable = setmetatable
@@ -46,10 +47,12 @@ end
 
 
 local function validate_size_value(size)
+  local max = constants.MAX_PAGE_SIZE
+
   if floor(size) ~= size or
            size < 1 or
-           size > 1000 then
-    return nil, "size must be an integer between 1 and 1000"
+           size > max then
+    return nil, "size must be an integer between 1 and " .. max
   end
 
   return true
@@ -461,7 +464,7 @@ local function generate_foreign_key_methods(schema)
           end
 
         else
-          size = 100
+          size = constants.DEFAULT_PAGE_SIZE
         end
 
         if options ~= nil then
@@ -508,7 +511,7 @@ local function generate_foreign_key_methods(schema)
           end
 
         else
-          size = 1000
+          size = constants.DEFAULT_ITERATION_SIZE
         end
 
         if options ~= nil then
@@ -780,7 +783,7 @@ function DAO:page(size, offset, options)
     end
 
   else
-    size = 100
+    size = constants.DEFAULT_PAGE_SIZE
   end
 
   if options ~= nil then
@@ -823,7 +826,7 @@ function DAO:each(size, options)
     end
 
   else
-    size = 1000
+    size = constants.DEFAULT_ITERATION_SIZE
   end
 
   if options ~= nil then
