@@ -101,23 +101,28 @@ return {
     { custom_entity_check = {
       field_sources = { "config" },
       fn = function(entity)
-        if entity.config.strategy == "memory" then
-          local ok, err = check_shdict(entity.config.dictionary_name)
+        local config = entity.config
+
+        if config.strategy == "memory" then
+          local ok, err = check_shdict(config.dictionary_name)
           if not ok then
             return nil, err
           end
+
+        elseif config.strategy == "redis" then
+          if config.redis.host == ngx.null and
+             config.redis.sentinel_addresses == ngx.null and
+             config.redis.cluster_addresses == ngx.null then
+            return nil, "No redis config provided"
+          end
         end
 
-        if #entity.config.window_size ~= #entity.config.limit then
+        if #config.window_size ~= #config.limit then
           return nil, "You must provide the same number of windows and limits"
         end
 
         return true
       end
-    }},
-    {conditional_at_least_one_of = {
-      if_field = "config.strategy", if_match = { eq = "redis" },
-      then_at_least_one_of = {"config.redis.host", "config.redis.sentinel_master"},
     }},
   },
 }

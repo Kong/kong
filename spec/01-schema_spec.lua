@@ -71,17 +71,32 @@ describe("rate-limiting-advanced schema", function()
 
     assert.is_nil(err)
     assert.is_truthy(ok)
+
+    local ok, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      sync_rate = 10,
+      strategy = "redis",
+      redis = {
+        cluster_addresses = { "127.0.0.1:26379" }
+      },
+    }, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
   end)
 
   it("errors with a missing/incomplete redis config", function()
-    local ok = v({
+    local ok, err = v({
       window_size = { 60 },
       limit = { 10 },
       sync_rate = 10,
       strategy = "redis",
     }, rate_limiting_schema)
 
+    local err_msg = { "No redis config provided" }
     assert.is_falsy(ok)
+    assert.same(err_msg, err["@entity"])
 
     local ok, err = v({
       window_size = { 60 },
@@ -96,7 +111,7 @@ describe("rate-limiting-advanced schema", function()
     assert.is_falsy(ok)
     assert.is_truthy(err.config.redis["@entity"])
 
-    ok = v({
+    local ok = v({
       window_size = { 60 },
       limit = { 10 },
       sync_rate = 10,
@@ -107,7 +122,6 @@ describe("rate-limiting-advanced schema", function()
     }, rate_limiting_schema)
 
     assert.is_falsy(ok)
-
   end)
 
   it("accepts a hide_client_headers config", function ()
