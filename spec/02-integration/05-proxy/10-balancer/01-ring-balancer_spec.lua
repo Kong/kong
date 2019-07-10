@@ -189,6 +189,7 @@ local add_upstream
 local patch_upstream
 local get_upstream
 local get_upstream_health
+local post_target_address_health
 local get_router_version
 local add_target
 local add_api
@@ -255,6 +256,11 @@ do
     if status == 200 then
       return body
     end
+  end
+
+  post_target_address_health = function(upstream_id, target_id, address, mode, forced_port)
+    local path = "/upstreams/" .. upstream_id .. "/targets/" .. target_id .. "/" .. address .. "/" .. mode
+    return api_send("POST", path, {}, forced_port)
   end
 
   get_router_version = function(forced_port)
@@ -453,6 +459,26 @@ for _, strategy in helpers.each_strategy() do
         address = "127.0.0.1",
       }
 
+      fixtures.dns_mock:A {
+        name = "multiple-ips.test",
+        address = "127.0.0.1",
+      }
+      fixtures.dns_mock:A {
+        name = "multiple-ips.test",
+        address = "127.0.0.2",
+      }
+
+      fixtures.dns_mock:SRV {
+        name = "srv-changes-port.test",
+        target = "a-changes-port.test",
+        port = 90,  -- port should fail to connect
+      }
+
+      fixtures.dns_mock:A {
+        name = "a-changes-port.test",
+        address = "127.0.0.3",
+      }
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -506,6 +532,122 @@ for _, strategy in helpers.each_strategy() do
       assert.is.table(health.data)
       assert.is.table(health.data[1])
       assert.equals("UNHEALTHY", health.data[1].health)
+    end)
+
+    it("a target that resolves to 2 IPs reports health separately", function()
+
+      -- configure healthchecks
+      begin_testcase_setup(strategy, bp)
+      local upstream_name, upstream_id = add_upstream(bp, {
+        healthchecks = healthchecks_config {
+          passive = {
+            unhealthy = {
+              tcp_failures = 1,
+            }
+          }
+        }
+      })
+      -- the following port will not be used, will be overwritten by
+      -- the mocked SRV record.
+      add_target(bp, upstream_id, "multiple-ips.test", 80)
+      local api_host = add_api(bp, upstream_name)
+      end_testcase_setup(strategy, bp)
+
+      -- we do not set up servers, since we want the connection to get refused
+      -- Go hit the api with requests, 1x round the balancer
+      local oks, fails, last_status = client_requests(SLOTS, api_host)
+      assert.same(0, oks)
+      assert.same(10, fails)
+      assert.same(503, last_status)
+
+      local health = get_upstream_health(upstream_name)
+      assert.is.table(health)
+      assert.is.table(health.data)
+      assert.is.table(health.data[1])
+      assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
+      assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
+      assert.equals("UNHEALTHY", health.data[1].health)
+      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+      assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
+
+      local status = post_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "healthy")
+      assert.same(204, status)
+
+      health = get_upstream_health(upstream_name)
+      assert.is.table(health)
+      assert.is.table(health.data)
+      assert.is.table(health.data[1])
+      assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
+      assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
+      assert.equals("HEALTHY", health.data[1].health)
+      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+      assert.equals("HEALTHY", health.data[1].data.addresses[2].health)
+
+      local status = post_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "unhealthy")
+      assert.same(204, status)
+
+      health = get_upstream_health(upstream_name)
+      assert.is.table(health)
+      assert.is.table(health.data)
+      assert.is.table(health.data[1])
+      assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
+      assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
+      assert.equals("UNHEALTHY", health.data[1].health)
+      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+      assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
+
+    end)
+
+    it("a target that resolves to an SRV record that changes port", function()
+
+      -- configure healthchecks
+      begin_testcase_setup(strategy, bp)
+      local upstream_name, upstream_id = add_upstream(bp, {
+        healthchecks = healthchecks_config {
+          passive = {
+            unhealthy = {
+              tcp_failures = 1,
+            }
+          }
+        }
+      })
+      -- the following port will not be used, will be overwritten by
+      -- the mocked SRV record.
+      add_target(bp, upstream_id, "srv-changes-port.test", 80)
+      local api_host = add_api(bp, upstream_name)
+      end_testcase_setup(strategy, bp)
+
+      -- we do not set up servers, since we want the connection to get refused
+      -- Go hit the api with requests, 1x round the balancer
+      local oks, fails, last_status = client_requests(SLOTS, api_host)
+      assert.same(0, oks)
+      assert.same(10, fails)
+      assert.same(503, last_status)
+
+      local health = get_upstream_health(upstream_name)
+      assert.is.table(health)
+      assert.is.table(health.data)
+      assert.is.table(health.data[1])
+
+      assert.same("a-changes-port.test", health.data[1].data.addresses[1].ip)
+      assert.same(90, health.data[1].data.addresses[1].port)
+
+      assert.equals("UNHEALTHY", health.data[1].health)
+      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+
+      local status = post_target_address_health(upstream_id, "srv-changes-port.test:80", "a-changes-port.test:90", "healthy")
+      assert.same(204, status)
+
+      health = get_upstream_health(upstream_name)
+      assert.is.table(health)
+      assert.is.table(health.data)
+      assert.is.table(health.data[1])
+
+      assert.same("a-changes-port.test", health.data[1].data.addresses[1].ip)
+      assert.same(90, health.data[1].data.addresses[1].port)
+
+      assert.equals("HEALTHY", health.data[1].health)
+      assert.equals("HEALTHY", health.data[1].data.addresses[1].health)
     end)
 
   end)
