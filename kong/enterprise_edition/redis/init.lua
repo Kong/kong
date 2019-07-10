@@ -66,6 +66,18 @@ _M.config_schema = {
       },
     },
     {
+      mutually_exclusive_sets = {
+        set1 = { "sentinel_master", "sentinel_role", "sentinel_addresses" },
+        set2 = { "cluster_addresses" },
+      },
+    },
+    {
+      mutually_exclusive_sets = {
+        set1 = { "cluster_addresses" },
+        set2 = { "host", "port" },
+      },
+    },
+    {
       mutually_required = { "sentinel_master", "sentinel_role", "sentinel_addresses" },
     },
     {
