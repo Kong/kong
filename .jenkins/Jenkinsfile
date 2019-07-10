@@ -32,7 +32,15 @@ pipeline {
         JENKINS_PROJECT="lint-unit-${BUILD_NUMBER}"
       }
       steps {
-        sh '$GOJIRA up   -k . -p $JENKINS_PROJECT'
+        sh '$GOJIRA up   -k . -p $JENKINS_PROJECT -v /kong/servroot -v /kong/servroot1 -v /kong/servroot2 -v /kong/servroot3'
+        sh '''
+            iid=$($GOJIRA compose -k . -p ${JENKINS_PROJECT} ps -q db)
+            for i in {0..60}; do
+                [[ ! -z $(docker inspect $iid | grep healthy) ]] && break
+                sleep 1
+            done
+            [[ $i -lt 60 ]] || false
+        '''
         sh '$GOJIRA run  -k . -p $JENKINS_PROJECT luacheck -q .'
         sh '$GOJIRA run  -k . -p $JENKINS_PROJECT bin/busted -- -v -o gtest --exclude-tags=flaky,ipv6 spec/01-unit'
         sh '$GOJIRA run  -k . -p $JENKINS_PROJECT bin/busted -- -v -o gtest --exclude-tags=flaky,ipv6 spec-ee/01-unit'
@@ -49,7 +57,7 @@ pipeline {
             JENKINS_PROJECT="${KONG_TEST_DATABASE}-${BUILD_NUMBER}"
           }
           steps {
-            sh '$GOJIRA up   -k . -p $JENKINS_PROJECT --$KONG_TEST_DATABASE'
+            sh '$GOJIRA up   -k . -p $JENKINS_PROJECT --$KONG_TEST_DATABASE -v /kong/servroot -v /kong/servroot1 -v /kong/servroot2 -v /kong/servroot3'
             sh '''
                 iid=$($GOJIRA compose -k . -p ${JENKINS_PROJECT} ps -q db)
                 for i in {0..60}; do
@@ -71,7 +79,7 @@ pipeline {
             JENKINS_PROJECT="${KONG_TEST_DATABASE}-${BUILD_NUMBER}"
           }
           steps {
-            sh '$GOJIRA up   -k . -p $JENKINS_PROJECT --$KONG_TEST_DATABASE'
+            sh '$GOJIRA up   -k . -p $JENKINS_PROJECT --$KONG_TEST_DATABASE -v /kong/servroot -v /kong/servroot1 -v /kong/servroot2 -v /kong/servroot3'
             sh '''
                 iid=$($GOJIRA compose -k . -p ${JENKINS_PROJECT} ps -q db)
                 for i in {0..60}; do
