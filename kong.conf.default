@@ -203,11 +203,11 @@
 # for a description of the formats that Kong might accept in stream_listen.
 
 #admin_api_uri =         # Hierarchical part of a URI which is composed
-                         # optionally of a host, port, and path at which your
-                         # Admin interface API accepts HTTP or HTTPS traffic.
-                         # When this config is disabled, the gui will use the
-                         # window protocol + host and append the resolved
-                         # admin_gui_listen HTTP/HTTPS port.
+                         # optionally of a host, port, and path at which the
+                         # Admin API accepts HTTP or HTTPS traffic. When
+                         # this config is disabled, Kong Manager will
+                         # use the window protocol + host and append the
+                         # resolved admin_listen HTTP/HTTPS port.
 
 #admin_listen = 127.0.0.1:8001, 127.0.0.1:8444 ssl
                          # Comma-separated list of addresses and ports on
@@ -727,25 +727,27 @@
                                       # attempt to authenticate the RBAC user.
 
 #------------------------------------------------------------------------------
-# ADMIN GUI
+# KONG MANAGER
+#
+# The admin gui for Kong Enterprise
 #------------------------------------------------------------------------------
 
 #admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
-                        # Admin GUI Listeners
+                        # Kong Manager Listeners
                         #
                         # Comma-separated list of addresses and ports on which
-                        # Kong will expose the Admin GUI. This web application
+                        # Kong will expose Kong Manager. This web application
                         # lets you configure and manage Kong, and therefore
-                        # should be kept private and secured.
+                        # should be kept secured.
                         #
                         # Suffixes can be specified for each pair, similarly to
                         # the `admin_listen` directive.
 
 #admin_gui_url =
-                        # Admin GUI URL
+                        # Kong Manager URL
                         #
                         # Here you may provide the lookup, or balancer,
-                        # address for your admin application.
+                        # address for Kong Manager.
                         #
                         # Accepted format (items in parenthesis are optional):
                         #
@@ -759,7 +761,7 @@
                         #
                         # By default:
                         #
-                        #  The application will use the window request host and
+                        #  Kong Manager will use the window request host and
                         #  append the resolved listener port depending on the
                         #  requested protocol.
 
@@ -775,32 +777,32 @@
                         # Alters the layout Admin GUI (JSON)
 
 #admin_gui_access_log = logs/admin_gui_access.log
-                        # Admin GUI Access Logs
+                        # Kong Manager Access Logs
                         #
-                        # Here you can set an absolute or relative path for the
-                        # Admin GUI access logs. When the path is relative,
+                        # Here you can set an absolute or relative path for Kong
+                        # Manager access logs. When the path is relative,
                         # logs are placed in the `prefix` location.
                         #
                         # Setting this value to `off` disables access logs
-                        # for the Admin GUI.
+                        # for Kong Manager.
 
 #admin_gui_error_log = logs/admin_gui_error.log
-                        # Admin GUI Error Logs
+                        # Kong Manager Error Logs
                         #
-                        # Here you can set an absolute or relative path for your
-                        # Portal API access logs. When the path is relative,
+                        # Here you can set an absolute or relative path for Kong
+                        # Manager access logs. When the path is relative,
                         # logs are placed in the `prefix` location.
                         #
                         # Setting this value to `off` disables error logs for
-                        # the Admin GUI.
+                        # Kong Manager.
                         #
                         # Granularity can be adjusted through the `log_level`
                         # directive.
 
 #admin_gui_auth =
-                        # Admin GUI Authentication Plugin Name
+                        # Kong Manager Authentication Plugin Name
                         #
-                        # Here you may secure access to the Admin GUI by
+                        # Here you may secure access to Kong Manager by
                         # specifying an authentication plugin to use.
                         #
                         # Supported Plugins:
@@ -812,7 +814,7 @@
                         # openid-connect        | OpenID Connect Authentication
 
 #admin_gui_auth_conf =
-                        # Admin GUI Authentication Plugin Config (JSON)
+                        # Kong Manager Authentication Plugin Config (JSON)
                         #
                         # Here you may specify the configuration for the
                         # authentication plugin you have chosen.
@@ -825,7 +827,7 @@
                         #  admin_gui_auth_conf = { "hide_credentials": true }
 
 #admin_gui_session_conf =
-                        # Session Plugin Config (JSON)
+                        # Kong Manager Session Config (JSON)
                         #
                         # Here you may specify the configuration for the
                         # Session plugin as used by Kong Manager.
@@ -1126,7 +1128,7 @@
                         #
                         #  portal_auth_conf = { "hide_credentials": true }
 
-#portal_session_conf =  # Portal Session Plugin Config (JSON)
+#portal_session_conf =  # Portal Session Config (JSON)
                         #
                         # Here you may specify the configuration for the
                         # Session plugin as used by Kong Portal.
