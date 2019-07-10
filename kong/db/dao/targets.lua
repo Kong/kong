@@ -1,4 +1,5 @@
 local singletons = require "kong.singletons"
+local constants = require "kong.constants"
 local balancer = require "kong.runloop.balancer"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
@@ -206,7 +207,7 @@ function _TARGETS:page_for_upstream(upstream_pk, size, offset, options)
 
   -- Extract the requested page
   local page = setmetatable({}, cjson.array_mt)
-  size = min(size or 100, 1000)
+  size = min(size or constants.DEFAULT_PAGE_SIZE, constants.MAX_PAGE_SIZE)
   offset = offset or 0
   for i = 1 + offset, size + offset do
     local target = all_active_targets[i]

@@ -1,3 +1,4 @@
+local constants = require "kong.constants"
 local utils  = require "kong.tools.utils"
 
 
@@ -66,7 +67,7 @@ local mt = { __index = _M }
 function _M.new(db, page_size, event_ttl)
   local self  = {
     connector = db.connector,
-    page_size = page_size,
+    page_size = page_size or constants.DEFAULT_CLUSTER_EVENTS_PAGE_SIZE,
     event_ttl = event_ttl,
   }
 

@@ -143,4 +143,8 @@ return {
   PROTOCOLS = protocols,
   PROTOCOLS_WITH_SUBSYSTEM = protocols_with_subsystem,
   GRPC_PROXY_MODES = grpc_proxy_modes,
+  DEFAULT_ITERATION_SIZE = 1000,
+  DEFAULT_PAGE_SIZE = 100,
+  DEFAULT_CLUSTER_EVENTS_PAGE_SIZE = 1000,
+  MAX_PAGE_SIZE = 1000,
 }
