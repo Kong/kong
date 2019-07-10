@@ -12,7 +12,32 @@ local _log_prefix = "[admin-smtp] "
 
 
 local templates = {
-  invite = {
+  invite_login = {
+    subject = "You're invited to Kong Manager",
+    html = [[
+      <p>
+      You're receiving this email because your Kong administrator has added you
+      as a user of Kong Manager.
+      </p>
+      <p>
+      Kong Manager simplifies API management by allowing you to configure your
+      services and view performance metrics of your Kong cluster.
+      </p>
+      <p>
+      Click the following link to <a href="%s">login</a>.
+      </p>
+      <p>
+      <br>
+
+      Username: %s<br><br><br>
+      </p>
+      <p>
+      For more information about what you can do with Kong Manager,
+      check out our <a href="%s">docs</a>.
+      </p>
+    ]],
+  },
+  invite_register = {
     subject = "You're invited to Kong Manager",
     html = [[
       <p>
@@ -93,9 +118,22 @@ function _M.new(conf)
   return setmetatable(self, mt)
 end
 
+
+function _M:invite_template()
+  -- 3rd party providers store credentials, so no need to register with kong
+  if self.kong_conf.admin_gui_auth == 'basic-auth' then
+    return self.templates.invite_register
+  end
+
+  return self.templates.invite_login
+end
+
+
 function _M:register_url(email, jwt, username)
-  return fmt("%s/register?email=%s&username=%s&token=%s",
-    self.admin_gui_url, ngx.escape_uri(email), ngx.escape_uri(username), ngx.escape_uri(jwt))
+  return fmt("%s/register?email=%s&username=%s",
+             self.admin_gui_url, ngx.escape_uri(email),
+             ngx.escape_uri(username)) .. (jwt and fmt("&token=%s",
+                                          ngx.escape_uri(jwt) or '') or '')
 end
 
 function _M:invite(recipients, jwt)
@@ -108,7 +146,7 @@ function _M:invite(recipients, jwt)
     return nil, {code = 501, message = "admin_gui_auth is disabled"}
   end
 
-  local template = self.templates.invite
+  local template = self:invite_template()
 
   local options = {
     from = kong_conf.admin_emails_from,
