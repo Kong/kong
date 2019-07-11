@@ -216,22 +216,26 @@ local function get_subject_names_from_cert(x509)
   -- per RFC 6125, check subject alternate names first
   -- before falling back to common name
 
-  local names = new_tab(1, 0)
+  local names = new_tab(4, 0)
   local names_n = 0
 
   local subj_alt = x509:getSubjectAlt()
 
-  for t, val in pairs(subj_alt) do
-    names_n = names_n + 1
-    names[names_n] = val
+  if subj_alt then
+    for t, val in pairs(subj_alt) do
+      names_n = names_n + 1
+      names[names_n] = val
+    end
   end
 
   local subj = x509:getSubject()
 
-  for _, entry in ipairs(subj:all()) do
-    if entry.id == "2.5.4.3" then -- common name
-      names_n = names_n + 1
-      names[names_n] = entry.blob
+  if subj then
+    for _, entry in ipairs(subj:all()) do
+      if entry.id == "2.5.4.3" then -- common name
+        names_n = names_n + 1
+        names[names_n] = entry.blob
+      end
     end
   end
 

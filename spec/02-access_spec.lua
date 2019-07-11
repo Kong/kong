@@ -163,7 +163,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("valid certificate", function()
-      it("returns HTTP 495 on https request if certificate validation failed", function()
+      it("returns HTTP 200 on https request if certificate validation passed", function()
         local res = assert(mtls_client:send {
           method  = "GET",
           path    = "/example_client",
@@ -173,6 +173,15 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("foo@example.com", json.headers["X-Consumer-Username"])
         assert.equal(consumer.id, json.headers["X-Consumer-Id"])
         assert.equal("consumer-id-2", json.headers["X-Consumer-Custom-Id"])
+      end)
+
+      it("returns HTTP 495 on https request if certificate validation passed", function()
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/no_san_client",
+        })
+        local body = assert.res_status(495, res)
+        local json = cjson.decode(body)
       end)
     end)
 

@@ -266,6 +266,15 @@ http {
 
             proxy_pass https://127.0.0.1:9443/get;
         }
+
+        location = /no_san_client {
+            proxy_ssl_certificate ../spec-ee/03-plugins/20-mtls-auth/fixtures/no_san.crt;
+            proxy_ssl_certificate_key ../spec-ee/03-plugins/20-mtls-auth/fixtures/no_san.key;
+            proxy_ssl_name example.com;
+            proxy_set_header Host example.com;
+
+            proxy_pass https://127.0.0.1:9443/get;
+        }
     }
 
     server {
