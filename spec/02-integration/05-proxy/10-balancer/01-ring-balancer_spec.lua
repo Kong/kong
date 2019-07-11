@@ -1318,45 +1318,54 @@ for _, strategy in helpers.each_strategy() do
               end
             end)
 
-            it("#only perform active health checks on a target that resolves to multiple addresses -- automatic recovery #" .. protocol, function()
+            it("perform active health checks on a target that resolves to multiple addresses -- automatic recovery #" .. protocol, function()
+              local hosts = {}
+
+              local dns_mock_filename = helpers.test_conf.prefix .. "/dns_mock_records.lua"
+              finally(function()
+                os.remove(dns_mock_filename)
+              end)
+
+              local fixtures = {
+                dns_mock = helpers.dns_mock.new()
+              }
+
+              for i = 1, 3 do
+                hosts[i] = {
+                  hostname = "multiple-hosts-" .. i .. ".test",
+                  port1 = gen_port(),
+                  port2 = gen_port(),
+                }
+                fixtures.dns_mock:SRV {
+                  name = hosts[i].hostname,
+                  target = localhost,
+                  port = hosts[i].port1,
+                }
+                fixtures.dns_mock:SRV {
+                  name = hosts[i].hostname,
+                  target = localhost,
+                  port = hosts[i].port2,
+                }
+              end
+
+              -- restart Kong
+              begin_testcase_setup_update(strategy, bp)
+              helpers.restart_kong({
+                database = strategy,
+                nginx_conf = "spec/fixtures/custom_nginx.template",
+                lua_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
+                db_update_frequency = 0.1,
+                stream_listen = "0.0.0.0:9100",
+                plugins = "bundled,fail-once-auth",
+              }, nil, fixtures)
+              end_testcase_setup(strategy, bp)
+              ngx.sleep(0.5)
+
               for nchecks = 1, 3 do
 
-                local port1 = gen_port()
-                local port2 = gen_port()
-
-                local dns_mock_filename = helpers.test_conf.prefix .. "/dns_mock_records.lua"
-                finally(function()
-                  os.remove(dns_mock_filename)
-                end)
-
-                local fixtures = {
-                  dns_mock = helpers.dns_mock.new()
-                }
-
-                local hostname = "multiple-hosts.test"
-                fixtures.dns_mock:SRV {
-                  name = hostname,
-                  target = localhost,
-                  port = port1,
-                }
-                fixtures.dns_mock:SRV {
-                  name = hostname,
-                  target = localhost,
-                  port = port2,
-                }
-
-                -- restart Kong
-                begin_testcase_setup_update(strategy, bp)
-                helpers.restart_kong({
-                  database   = strategy,
-                  nginx_conf = "spec/fixtures/custom_nginx.template",
-                  lua_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
-                  db_update_frequency = 0.1,
-                  stream_listen = "0.0.0.0:9100",
-                  plugins = "bundled,fail-once-auth",
-                }, nil, fixtures)
-                end_testcase_setup(strategy, bp)
-                ngx.sleep(1)
+                local port1 = hosts[nchecks].port1
+                local port2 = hosts[nchecks].port2
+                local hostname = hosts[nchecks].hostname
 
                 -- setup target servers:
                 -- server2 will only respond for part of the test,
@@ -1385,7 +1394,7 @@ for _, strategy in helpers.each_strategy() do
                     }
                   }
                 })
-                add_target(bp, upstream_id, "multiple-hosts.test", port1) -- port gets overridden at DNS resolution
+                add_target(bp, upstream_id, hostname, port1) -- port gets overridden at DNS resolution
                 local api_host = add_api(bp, upstream_name, {
                   service_protocol = protocol
                 })
@@ -1398,7 +1407,7 @@ for _, strategy in helpers.each_strategy() do
                 -- server2 goes unhealthy
                 direct_request(localhost, port2, "/unhealthy", protocol, hostname)
                 -- Wait until healthchecker detects
-                poll_wait_address_health(upstream_id, "multiple-hosts.test", port1, localhost, port2, "UNHEALTHY")
+                poll_wait_address_health(upstream_id, hostname, port1, localhost, port2, "UNHEALTHY")
 
                 -- 2) server1 takes all requests
                 do
@@ -1410,7 +1419,7 @@ for _, strategy in helpers.each_strategy() do
                 -- server2 goes healthy again
                 direct_request(localhost, port2, "/healthy", protocol, hostname)
                 -- Give time for healthchecker to detect
-                poll_wait_address_health(upstream_id, "multiple-hosts.test", port1, localhost, port2, "HEALTHY")
+                poll_wait_address_health(upstream_id, hostname, port1, localhost, port2, "HEALTHY")
 
                 -- 3) server1 and server2 take requests again
                 do
