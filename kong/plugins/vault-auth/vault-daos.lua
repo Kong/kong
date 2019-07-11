@@ -9,7 +9,7 @@ return {
   fields = {
     { access_token    = { type = "string", auto = true }, },
     { secret_token    = { type = "string", auto = true }, },
-    { consumer        = { type = "foreign", reference = "consumers", required = true, } },
+    { consumer        = { type = "foreign", reference = "consumers", required = true, on_delete = ngx.null } },
     { created_at      = typedefs.auto_timestamp_s },
     { ttl             = { type = "integer", } },
   },
