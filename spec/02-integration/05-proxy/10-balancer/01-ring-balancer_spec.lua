@@ -1442,6 +1442,125 @@ for _, strategy in helpers.each_strategy() do
                 assert.are.equal(0, fails)
               end
             end)
+
+            it("perform active health checks on targets that resolve to the same IP -- automatic recovery #" .. protocol, function()
+              local dns_mock_filename = helpers.test_conf.prefix .. "/dns_mock_records.lua"
+              finally(function()
+                os.remove(dns_mock_filename)
+              end)
+
+              local fixtures = {
+                dns_mock = helpers.dns_mock.new()
+              }
+
+              fixtures.dns_mock:A {
+                name = "target1.test",
+                address = "127.0.0.1",
+              }
+              fixtures.dns_mock:A {
+                name = "target2.test",
+                address = "127.0.0.1",
+              }
+
+              -- restart Kong
+              begin_testcase_setup_update(strategy, bp)
+              helpers.restart_kong({
+                database = strategy,
+                nginx_conf = "spec/fixtures/custom_nginx.template",
+                lua_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
+                db_update_frequency = 0.1,
+                stream_listen = "0.0.0.0:9100",
+                plugins = "bundled,fail-once-auth",
+              }, nil, fixtures)
+              end_testcase_setup(strategy, bp)
+              ngx.sleep(1)
+
+              for nchecks = 1, 3 do
+
+                local port1 = gen_port()
+                local hostname = localhost
+
+                -- setup target servers:
+                -- server2 will only respond for part of the test,
+                -- then server1 will take over.
+                local target1_oks = SLOTS * 2
+                local target2_oks = SLOTS
+                local counts = {
+                  ["target1.test"] = { target1_oks },
+                  ["target2.test"] = { target2_oks },
+                }
+                local server1 = http_server(localhost, port1, counts, nil, protocol)
+
+                -- configure healthchecks
+                begin_testcase_setup(strategy, bp)
+                local upstream_name, upstream_id = add_upstream(bp, {
+                  healthchecks = healthchecks_config {
+                    active = {
+                      type = protocol,
+                      http_path = "/status",
+                      https_verify_certificate = (protocol == "https" and localhost == "localhost"),
+                      healthy = {
+                        interval = HEALTHCHECK_INTERVAL,
+                        successes = nchecks,
+                      },
+                      unhealthy = {
+                        interval = HEALTHCHECK_INTERVAL,
+                        http_failures = nchecks,
+                      },
+                    }
+                  }
+                })
+                add_target(bp, upstream_id, "target1.test", port1)
+                add_target(bp, upstream_id, "target2.test", port1)
+                local api_host = add_api(bp, upstream_name, {
+                  service_protocol = protocol
+                })
+
+                end_testcase_setup(strategy, bp)
+
+                -- 1) target1 and target2 take requests
+                local oks, fails = client_requests(SLOTS, api_host)
+
+                -- target2 goes unhealthy
+                direct_request(localhost, port1, "/unhealthy", protocol, "target2.test")
+                -- Wait until healthchecker detects
+                poll_wait_health(upstream_id, "target2.test", port1, "UNHEALTHY")
+
+                -- 2) target1 takes all requests
+                do
+                  local o, f = client_requests(SLOTS, api_host)
+                  oks = oks + o
+                  fails = fails + f
+                end
+
+                -- target2 goes healthy again
+                direct_request(localhost, port1, "/healthy", protocol, "target2.test")
+                -- Give time for healthchecker to detect
+                poll_wait_health(upstream_id, "target2.test", port1, "HEALTHY")
+
+                -- 3) server1 and server2 take requests again
+                do
+                  local o, f = client_requests(SLOTS, api_host)
+                  oks = oks + o
+                  fails = fails + f
+                end
+
+                -- collect server results; hitcount
+                local target1_results = direct_request(localhost, port1, "/results", protocol, "target1.test")
+                local target2_results = direct_request(localhost, port1, "/results", protocol, "target2.test")
+
+                server1:done(hostname)
+
+                -- verify
+                assert.are.equal(SLOTS * 2, target1_results.ok_responses)
+                assert.are.equal(SLOTS, target2_results.ok_responses)
+                assert.are.equal(0, target1_results.fail_responses)
+                assert.are.equal(0, target2_results.fail_responses)
+
+                assert.are.equal(SLOTS * 3, oks)
+                assert.are.equal(0, fails)
+              end
+            end)
           end
 
           it("#flaky #db perform active health checks -- automatic recovery #stream", function()
