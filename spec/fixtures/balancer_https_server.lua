@@ -9,9 +9,9 @@ local socket = require("socket")
 local hard_timeout = ngx.now() + 300
 
 local protocol = assert(arg[1])
-local host = assert(arg[2])
+local host_or_ip = assert(arg[2])
 local port = assert(arg[3])
-local counts = assert(cjson.decode(arg[4]))
+local total_counts = assert(cjson.decode(arg[4]))
 local TEST_LOG = arg[5] == "true"
 
 local TIMEOUT = -1 -- luacheck: ignore
@@ -29,19 +29,6 @@ local function test_log(...) -- luacheck: ignore
 end
 
 
-local total_reqs = 0
-for _, c in pairs(counts) do
-  total_reqs = total_reqs + (c < 0 and 1 or c)
-end
-
-local handshake_done = false
-local fail_responses = 0
-local ok_responses = 0
-local reply_200 = true
-local healthy = true
-local n_checks = 0
-local n_reqs = 0
-
 local ssl_params = {
   mode = "server",
   protocol = "any",
@@ -51,6 +38,7 @@ local ssl_params = {
   options = "all",
 }
 
+
 -- luasocket-based mock for http-only tests
 -- not a real HTTP server, but runs faster
 local sleep = socket.sleep
@@ -58,6 +46,7 @@ local httpserver = {
   listen = function(opts)
     local server = {}
     local sskt
+    server.host_or_ip = opts.host_or_ip
     server.close = function()
       server.quit = true
     end
@@ -84,30 +73,45 @@ local httpserver = {
             end
           end
 
-          local first, err = cskt:receive("*l")
-          if first then
-            opts.onstream(server, {
-              get_path = function()
-                return (first:match("(/[^%s]*)"))
-              end,
-              send_response = function(_, status, body)
-                local r = status == 200 and "OK" or "Internal Server Error"
-                local resp = {
-                  "HTTP/1.1 " .. status .. " " .. r,
-                  "Connection: Close",
-                }
-                if body then
-                  table.insert(resp, "Content-length: " .. #body)
-                end
-                table.insert(resp, "")
-                if body then
-                  table.insert(resp, body)
-                end
-                table.insert(resp, "")
-                test_log(table.concat(resp, "\r\n"))
-                cskt:send(table.concat(resp, "\r\n"))
-              end,
-            })
+          local headers = {}
+          local path
+          while true do
+            local line = cskt:receive("*l")
+            if not path then
+              path = line:match("(/[^%s]*)")
+
+            elseif line and not line:match("^%s*$") then
+              local k, v = line:match("^%s*([^%s]+)%s*:%s*(.-)%s*$")
+              headers[k:lower()] = v
+
+            else
+              opts.onstream(server, {
+                get_path = function()
+                  return path
+                end,
+                get_header = function(_, k)
+                  return headers[k]
+                end,
+                send_response = function(_, status, body)
+                  local r = status == 200 and "OK" or "Internal Server Error"
+                  local resp = {
+                    "HTTP/1.1 " .. status .. " " .. r,
+                    "Connection: Close",
+                  }
+                  if body then
+                    table.insert(resp, "Content-length: " .. #body)
+                  end
+                  table.insert(resp, "")
+                  if body then
+                    table.insert(resp, body)
+                  end
+                  table.insert(resp, "")
+                  test_log(table.concat(resp, "\r\n"))
+                  cskt:send(table.concat(resp, "\r\n"))
+                end,
+              })
+              break
+            end
           end
           cskt:close()
           if err and err ~= "closed" then
@@ -118,7 +122,7 @@ local httpserver = {
       end
       sskt:close()
     end
-    local socket_fn = host:match(":") and socket.tcp6 or socket.tcp
+    local socket_fn = host_or_ip:match(":") and socket.tcp6 or socket.tcp
     sskt = assert(socket_fn())
     assert(sskt:settimeout(0.1))
     assert(sskt:setoption('reuseaddr', true))
@@ -127,23 +131,40 @@ local httpserver = {
     return server
   end,
 }
-local get_path = function(stream)
-  return stream:get_path()
-end
-local send_response = function(stream, response, body)
-  return stream:send_response(response, body)
+
+
+local handshake_done = false
+local host_data = {}
+
+
+local function get_host_data(host)
+  if not host_data[host] then
+    host_data[host] = {
+      fail_responses = 0,
+      ok_responses = 0,
+      reply_200 = true,
+      healthy = true,
+      n_checks = 0,
+      n_reqs = 0,
+    }
+  end
+  return host_data[host]
 end
 
+
 local server = httpserver.listen({
-  host = host:gsub("[%]%[]", ""),
+  host_or_ip = host_or_ip:gsub("[%]%[]", ""),
   port = port,
   reuseaddr = true,
-  v6only = host:match(":") ~= nil,
+  v6only = host_or_ip:match(":") ~= nil,
   onstream = function(self, stream)
-    local path = get_path(stream)
+    local host = (stream:get_header("host") or self.host_or_ip):gsub(":[0-9]+$", "")
+    local path = stream:get_path()
     local status = 200
     local shutdown = false
     local body
+
+    local data = get_host_data(host)
 
     if path == "/handshake" then
       handshake_done = true
@@ -151,28 +172,37 @@ local server = httpserver.listen({
     elseif path == "/shutdown" then
       shutdown = true
       body = cjson.encode({
-        ok_responses = ok_responses,
-        fail_responses = fail_responses,
-        n_checks = n_checks,
+        ok_responses = data.ok_responses,
+        fail_responses = data.fail_responses,
+        n_checks = data.n_checks,
+      })
+
+    elseif path == "/results" then
+      body = cjson.encode({
+        ok_responses = data.ok_responses,
+        fail_responses = data.fail_responses,
+        n_checks = data.n_checks,
       })
 
     elseif path == "/status" then
-      status = healthy and 200 or 500
-      n_checks = n_checks + 1
+      status = data.healthy and 200 or 500
+      data.n_checks = data.n_checks + 1
 
     elseif path == "/healthy" then
-      healthy = true
+      data.healthy = true
 
     elseif path == "/unhealthy" then
-      healthy = false
+      data.healthy = false
 
     elseif handshake_done then
-      n_reqs = n_reqs + 1
-      test_log("nreqs ", n_reqs, " of ", total_reqs)
+      data.n_reqs = data.n_reqs + 1
+      test_log("nreqs ", data.n_reqs)
+
+      local counts = total_counts[1] and total_counts or total_counts[host]
 
       while counts[1] == 0 do
         table.remove(counts, 1)
-        reply_200 = not reply_200
+        data.reply_200 = not data.reply_200
       end
       if not counts[1] then
         error(host .. ":" .. port .. ": unexpected request")
@@ -183,18 +213,18 @@ local server = httpserver.listen({
       elseif counts[1] > 0 then
         counts[1] = counts[1] - 1
       end
-      status = reply_200 and 200 or 500
+      status = data.reply_200 and 200 or 500
       if status == 200 then
-        ok_responses = ok_responses + 1
+        data.ok_responses = data.ok_responses + 1
       else
-        fail_responses = fail_responses + 1
+        data.fail_responses = data.fail_responses + 1
       end
 
     else
       error("got a request before handshake was complete")
     end
 
-    send_response(stream, status, body)
+    stream:send_response(status, body)
 
     if shutdown then
       self:close()
