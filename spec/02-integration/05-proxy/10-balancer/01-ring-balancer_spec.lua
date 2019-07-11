@@ -56,7 +56,7 @@ local TEST_LOG = false -- extra verbose logging of test server
 local TIMEOUT = -1  -- marker for timeouts in http_server
 
 
-local function direct_request(host, port, path, protocol)
+local function direct_request(host, port, path, protocol, host_header)
   local pok, client = pcall(helpers.http_client, host, port)
   if not pok then
     return nil, "pcall: " .. client .. " : " .. host ..":"..port
@@ -72,7 +72,7 @@ local function direct_request(host, port, path, protocol)
   local res, err = client:send {
     method = "GET",
     path = path,
-    headers = { ["Host"] = "whatever" }
+    headers = { ["Host"] = host_header or host }
   }
   local body = res and res:read_body()
   client:close()
@@ -119,7 +119,7 @@ local function http_server(host, port, counts, test_log, protocol)
   local cmd = "resty --errlog-level error " .. -- silence _G write guard warns
               "spec/fixtures/balancer_https_server.lua " ..
               protocol .. " " .. host .. " " .. port ..
-              " \"" .. cjson.encode(counts) .. "\" " ..
+              " \"" .. cjson.encode(counts):gsub('"', '\\"') .. "\" " ..
               (test_log or "") .. " &"
   os.execute(cmd)
 
@@ -131,8 +131,8 @@ local function http_server(host, port, counts, test_log, protocol)
   until (ngx.now() > hard_timeout) or not err
 
   local server = {}
-  server.done = function()
-    local body = direct_request(host, port, "/shutdown", protocol)
+  server.done = function(_, host_header)
+    local body = direct_request(host, port, "/shutdown", protocol, host_header)
     if body then
       local tbl = assert(cjson.decode(body))
       return true, tbl.ok_responses, tbl.fail_responses, tbl.n_checks
@@ -1333,13 +1333,14 @@ for _, strategy in helpers.each_strategy() do
                   dns_mock = helpers.dns_mock.new()
                 }
 
+                local hostname = "multiple-hosts.test"
                 fixtures.dns_mock:SRV {
-                  name = "multiple-hosts.test",
+                  name = hostname,
                   target = localhost,
                   port = port1,
                 }
                 fixtures.dns_mock:SRV {
-                  name = "multiple-hosts.test",
+                  name = hostname,
                   target = localhost,
                   port = port2,
                 }
@@ -1395,7 +1396,7 @@ for _, strategy in helpers.each_strategy() do
                 local oks, fails = client_requests(SLOTS, api_host)
 
                 -- server2 goes unhealthy
-                direct_request(localhost, port2, "/unhealthy", protocol)
+                direct_request(localhost, port2, "/unhealthy", protocol, hostname)
                 -- Wait until healthchecker detects
                 poll_wait_address_health(upstream_id, "multiple-hosts.test", port1, localhost, port2, "UNHEALTHY")
 
@@ -1407,7 +1408,7 @@ for _, strategy in helpers.each_strategy() do
                 end
 
                 -- server2 goes healthy again
-                direct_request(localhost, port2, "/healthy", protocol)
+                direct_request(localhost, port2, "/healthy", protocol, hostname)
                 -- Give time for healthchecker to detect
                 poll_wait_address_health(upstream_id, "multiple-hosts.test", port1, localhost, port2, "HEALTHY")
 
@@ -1419,8 +1420,8 @@ for _, strategy in helpers.each_strategy() do
                 end
 
                 -- collect server results; hitcount
-                local _, ok1, fail1 = server1:done()
-                local _, ok2, fail2 = server2:done()
+                local _, ok1, fail1 = server1:done(hostname)
+                local _, ok2, fail2 = server2:done(hostname)
 
                 -- verify
                 assert.are.equal(SLOTS * 2, ok1)
