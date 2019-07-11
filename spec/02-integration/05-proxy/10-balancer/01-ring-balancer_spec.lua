@@ -324,21 +324,52 @@ do
 end
 
 
-local function poll_wait_health(upstream_id, host, port, value, admin_port)
-  local hard_timeout = ngx.now() + 10
-  while ngx.now() < hard_timeout do
-    local health = get_upstream_health(upstream_id, admin_port)
-    if health then
-      for _, d in ipairs(health.data) do
-        if d.target == host .. ":" .. port and d.health == value then
-          return
+local poll_wait_health
+local poll_wait_address_health
+do
+  local function poll_wait(upstream_id, host, port, admin_port, fn)
+    local hard_timeout = ngx.now() + 10
+    while ngx.now() < hard_timeout do
+      local health = get_upstream_health(upstream_id, admin_port)
+      if health then
+        for _, d in ipairs(health.data) do
+          if d.target == host .. ":" .. port and fn(d) then
+            return true
+          end
         end
       end
+      ngx.sleep(0.1) -- poll-wait
     end
-    ngx.sleep(0.1) -- poll-wait
+    return false
   end
-  assert(false, "timed out waiting for " .. host .. ":" .. port .. " in " ..
-                upstream_id .. " to become " .. value)
+
+  poll_wait_health = function(upstream_id, host, port, value, admin_port)
+    local ok = poll_wait(upstream_id, host, port, admin_port, function(d)
+      return d.health == value
+    end)
+    if ok then
+      return true
+    end
+    assert(false, "timed out waiting for " .. host .. ":" .. port .. " in " ..
+                  upstream_id .. " to become " .. value)
+  end
+
+  poll_wait_address_health = function(upstream_id, host, port, address_host, address_port, value)
+    local ok = poll_wait(upstream_id, host, port, nil, function(d)
+      for _, ad in ipairs(d.data.addresses) do
+        if ad.ip == address_host
+        and ad.port == address_port
+        and ad.health == value then
+          return true
+        end
+      end
+    end)
+    if ok then
+      return true
+    end
+    assert(false, "timed out waiting for " .. address_host .. ":" .. address_port .. " in " ..
+                  upstream_id .. " to become " .. value)
+  end
 end
 
 
@@ -1202,7 +1233,7 @@ for _, strategy in helpers.each_strategy() do
             end
           end)
 
-          for _, protocol in ipairs({"http"}) do
+          for _, protocol in ipairs({"http", "https"}) do
             it("perform active health checks -- automatic recovery #" .. protocol, function()
               for nchecks = 1, 3 do
 
@@ -1263,6 +1294,121 @@ for _, strategy in helpers.each_strategy() do
                 direct_request(localhost, port2, "/healthy", protocol)
                 -- Give time for healthchecker to detect
                 poll_wait_health(upstream_id, localhost, port2, "HEALTHY")
+
+                -- 3) server1 and server2 take requests again
+                do
+                  local o, f = client_requests(SLOTS, api_host)
+                  oks = oks + o
+                  fails = fails + f
+                end
+
+                -- collect server results; hitcount
+                local _, ok1, fail1 = server1:done()
+                local _, ok2, fail2 = server2:done()
+
+                -- verify
+                assert.are.equal(SLOTS * 2, ok1)
+                assert.are.equal(SLOTS, ok2)
+                assert.are.equal(0, fail1)
+                assert.are.equal(0, fail2)
+
+                assert.are.equal(SLOTS * 3, oks)
+                assert.are.equal(0, fails)
+              end
+            end)
+
+            it("#only perform active health checks on a target that resolves to multiple addresses -- automatic recovery #" .. protocol, function()
+              for nchecks = 1, 3 do
+
+                local port1 = gen_port()
+                local port2 = gen_port()
+
+                local dns_mock_filename = helpers.test_conf.prefix .. "/dns_mock_records.lua"
+                finally(function()
+                  os.remove(dns_mock_filename)
+                end)
+
+                local fixtures = {
+                  dns_mock = helpers.dns_mock.new()
+                }
+
+                fixtures.dns_mock:SRV {
+                  name = "multiple-hosts.test",
+                  target = localhost,
+                  port = port1,
+                }
+                fixtures.dns_mock:SRV {
+                  name = "multiple-hosts.test",
+                  target = localhost,
+                  port = port2,
+                }
+
+                -- restart Kong
+                begin_testcase_setup_update(strategy, bp)
+                helpers.restart_kong({
+                  database   = strategy,
+                  nginx_conf = "spec/fixtures/custom_nginx.template",
+                  lua_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
+                  db_update_frequency = 0.1,
+                  stream_listen = "0.0.0.0:9100",
+                  plugins = "bundled,fail-once-auth",
+                }, nil, fixtures)
+                end_testcase_setup(strategy, bp)
+                ngx.sleep(1)
+
+                -- setup target servers:
+                -- server2 will only respond for part of the test,
+                -- then server1 will take over.
+                local server1_oks = SLOTS * 2
+                local server2_oks = SLOTS
+                local server1 = http_server(localhost, port1, { server1_oks }, nil, protocol)
+                local server2 = http_server(localhost, port2, { server2_oks }, nil, protocol)
+
+                -- configure healthchecks
+                begin_testcase_setup(strategy, bp)
+                local upstream_name, upstream_id = add_upstream(bp, {
+                  healthchecks = healthchecks_config {
+                    active = {
+                      type = protocol,
+                      http_path = "/status",
+                      https_verify_certificate = (protocol == "https" and localhost == "localhost"),
+                      healthy = {
+                        interval = HEALTHCHECK_INTERVAL,
+                        successes = nchecks,
+                      },
+                      unhealthy = {
+                        interval = HEALTHCHECK_INTERVAL,
+                        http_failures = nchecks,
+                      },
+                    }
+                  }
+                })
+                add_target(bp, upstream_id, "multiple-hosts.test", port1) -- port gets overridden at DNS resolution
+                local api_host = add_api(bp, upstream_name, {
+                  service_protocol = protocol
+                })
+
+                end_testcase_setup(strategy, bp)
+
+                -- 1) server1 and server2 take requests
+                local oks, fails = client_requests(SLOTS, api_host)
+
+                -- server2 goes unhealthy
+                direct_request(localhost, port2, "/unhealthy", protocol)
+                -- Wait until healthchecker detects
+                poll_wait_address_health(upstream_id, "multiple-hosts.test", port1, localhost, port2, "UNHEALTHY")
+
+                -- 2) server1 takes all requests
+                do
+                  local o, f = client_requests(SLOTS, api_host)
+                  oks = oks + o
+                  fails = fails + f
+                end
+
+                -- server2 goes healthy again
+                direct_request(localhost, port2, "/healthy", protocol)
+                -- Give time for healthchecker to detect
+                poll_wait_address_health(upstream_id, "multiple-hosts.test", port1, localhost, port2, "HEALTHY")
 
                 -- 3) server1 and server2 take requests again
                 do

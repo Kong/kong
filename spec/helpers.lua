@@ -1625,9 +1625,9 @@ end
 
 
 -- Restart Kong, reusing declarative config when using database=off
-local function restart_kong(env, tables)
+local function restart_kong(env, tables, fixtures)
   stop_kong(env.prefix, true, true)
-  return start_kong(env, tables, true)
+  return start_kong(env, tables, true, fixtures)
 end
 
 
