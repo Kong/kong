@@ -276,26 +276,67 @@ for _, strategy in helpers.each_strategy() do
             assert.same({ message = "Invalid authentication credentials" }, json)
           end)
 
-          -- lua-multipart doesn't currently handle duplicates in the same method
-          -- that json/form-urlencoded handlers do
-          local test = type == "multipart/form-data" and pending or it
-          test("handles duplicated key", function()
-            local res = assert(proxy_client:send {
-              method  = "POST",
-              path    = "/status/200",
-              headers = {
-                ["Host"]         = "key-auth5.com",
-                ["Content-Type"] = type,
-              },
-              body = {
-                apikey = { "kong", "kong" },
-              },
-              no_array_indexes = true,
-            })
-            local body = assert.res_status(401, res)
-            local json = cjson.decode(body)
-            assert.same({ message = "Duplicate API key found" }, json)
-          end)
+          -- lua-multipart doesn't currently handle duplicates at all.
+          -- form-url encoded client will encode duplicated keys as apikey[1]=kong&apikey[2]=kong
+          if type == "application/json" then
+            it("handles duplicated key", function()
+              local res = assert(proxy_client:send {
+                method  = "POST",
+                path    = "/status/200",
+                headers = {
+                  ["Host"]         = "key-auth5.com",
+                  ["Content-Type"] = type,
+                },
+                body = {
+                  apikey = { "kong", "kong" },
+                },
+              })
+              local body = assert.res_status(401, res)
+              local json = cjson.decode(body)
+              assert.same({ message = "Duplicate API key found" }, json)
+            end)
+          end
+
+          if type == "application/x-www-form-urlencoded" then
+            it("handles duplicated key", function()
+              local res = proxy_client:post("/status/200", {
+                body = "apikey=kong&apikey=kong",
+                headers = {
+                  ["Host"]         = "key-auth5.com",
+                  ["Content-Type"] = type,
+                },
+              })
+              local body = assert.res_status(401, res)
+              local json = cjson.decode(body)
+              assert.same({ message = "Duplicate API key found" }, json)
+            end)
+
+            it("does not identify apikey[] as api keys", function()
+              local res = proxy_client:post("/status/200", {
+                body = "apikey[]=kong&apikey[]=kong",
+                headers = {
+                  ["Host"]         = "key-auth5.com",
+                  ["Content-Type"] = type,
+                },
+              })
+              local body = assert.res_status(401, res)
+              local json = cjson.decode(body)
+              assert.same({ message = "No API key found in request" }, json)
+            end)
+
+            it("does not identify apikey[1] as api keys", function()
+              local res = proxy_client:post("/status/200", {
+                body = "apikey[1]=kong&apikey[1]=kong",
+                headers = {
+                  ["Host"]         = "key-auth5.com",
+                  ["Content-Type"] = type,
+                },
+              })
+              local body = assert.res_status(401, res)
+              local json = cjson.decode(body)
+              assert.same({ message = "No API key found in request" }, json)
+            end)
+          end
         end)
       end
     end)
