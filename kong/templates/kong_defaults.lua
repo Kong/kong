@@ -44,6 +44,7 @@ portal_auth_conf = NONE
 portal_token_exp = 21600
 portal_session_conf =
 
+portal_email_verification = false
 portal_invite_email = true
 portal_access_request_email = true
 portal_approved_email = true

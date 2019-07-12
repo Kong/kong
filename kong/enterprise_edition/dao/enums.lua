@@ -3,11 +3,12 @@ local _M = {}
 
 _M.CONSUMERS = {
   STATUS = {
-    APPROVED = 0,
-    PENDING  = 1,
-    REJECTED = 2,
-    REVOKED  = 3,
-    INVITED  = 4,
+    APPROVED   = 0,
+    PENDING    = 1,
+    REJECTED   = 2,
+    REVOKED    = 3,
+    INVITED    = 4,
+    UNVERIFIED = 5,
   },
   TYPE = {
     PROXY     = 0,

@@ -105,7 +105,7 @@ function _Developers:update_by_email(developer_email, entity, options)
     dao_helpers.update_developer(self, developer, entity, options)
 
   if not developer then
-    ngx.log(ngx.DEBUG, err, err_t)
+    ngx.log(ngx.DEBUG, err)
     return nil, err, err_t
   end
 

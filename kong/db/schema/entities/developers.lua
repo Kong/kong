@@ -21,7 +21,7 @@ local email = Schema.define {
 }
 
 
-local developer_status = Schema.define { type = "integer", between = { 0, 4 }, default = 4 }
+local developer_status = Schema.define { type = "integer", between = { 0, 5 }, default = 5 }
 
 
 return {

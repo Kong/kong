@@ -1152,8 +1152,18 @@
 
 #portal_token_exp = 21600
                         # Duration in seconds for the expiration of portal
-                        # reset token.
+                        # login reset/account validation token.
                         # Default `21600` (6 hours)
+
+#portal_email_verification = off
+                        # Portal Developer Email Verification.
+                        #
+                        # When enabled Developers will recieve an email upon
+                        # registration to verify their account.  Developers will
+                        # not be able to use the Developer Portal untill they
+                        # verify their account.
+                        #
+                        # Note: SMTP must be turned on in order to use this feature.
 
 #------------------------------------------------------------------------------
 # DEFAULT PORTAL SMTP CONFIGURATION

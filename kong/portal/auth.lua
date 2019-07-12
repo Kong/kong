@@ -47,6 +47,19 @@ local auth_plugins = {
   },
 }
 
+
+local function get_oidc_developer_status()
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local auto_approve = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
+
+  if auto_approve then
+    return enums.CONSUMERS.STATUS.APPROVED
+  end
+
+  return enums.CONSUMERS.STATUS.PENDING
+end
+
+
 local function get_conf_arg(conf, name, default)
   local value = conf[name]
   if value ~= nil and value ~= "" then
@@ -74,7 +87,7 @@ local function check_oidc_session()
   return true
 end
 
-local function get_developer()
+local function get_developer(self)
   local consumer = ngx.ctx.authenticated_consumer
   if not consumer or consumer.type ~= DEVELOPER_TYPE then
     return nil, "Unauthorized"
@@ -90,6 +103,21 @@ local function get_developer()
   end
 
   local status = developer.status
+
+  -- normalize status if OIDC enabled and developer UNVERIFIED
+  if self.plugin.name == "openid-connect" and
+     status == enums.CONSUMERS.STATUS.UNVERIFIED then
+      developer, err = kong.db.developers:update({ id = developer.id }, {
+        status = get_oidc_developer_status()
+      })
+
+      if err then
+        return nil, err
+      end
+
+      status = developer.status
+  end
+
   if status ~= enums.CONSUMERS.STATUS.APPROVED then
     local status_label = enums.CONSUMERS.STATUS_LABELS[developer.status]
     return nil, "Unauthorized: Developer status: " .. status_label
@@ -181,7 +209,7 @@ function _M.login(self, db, helpers)
     end
   end
 
-  local developer, err = get_developer()
+  local developer, err = get_developer(self)
   if err then
     if ngx.ctx.authenticated_session then
       ngx.ctx.authenticated_session:destroy()
@@ -239,7 +267,7 @@ function _M.authenticate_api_session(self, db, helpers)
     return kong.response.exit(500, UNEXPECTED_ERR)
   end
 
-  local developer, err = get_developer()
+  local developer, err = get_developer(self)
   if err then
     if ngx.ctx.authenticated_session then
       ngx.ctx.authenticated_session:destroy()
@@ -316,7 +344,7 @@ function _M.authenticate_gui_session(self, db, helpers)
     return kong.response.exit(500, UNEXPECTED_ERR)
   end
 
-  local developer = get_developer()
+  local developer = get_developer(self)
 
   if not developer then
     if ngx.ctx.authenticated_session then

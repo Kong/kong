@@ -501,13 +501,29 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("required field missing", message["full_name"])
             end)
 
+            it("returns a 400 if status is included in the request", function()
+              local res = register_developer(portal_api_client, {
+                email = "noob@konghq.com",
+                password = "iheartkong",
+                meta = "{\"full_name\":\"I Like Turtles\"}",
+                status = enums.CONSUMERS.STATUS.APPROVED,
+              })
+
+              local body = assert.res_status(400, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.fields.status
+
+              assert.equal("invalid field", message)
+            end)
+
+
             it("registers a developer and set status to pending", function()
               local res = register_developer(portal_api_client, {
                 email = "noob@konghq.com",
                 password = "iheartkong",
                 meta = "{\"full_name\":\"I Like Turtles\"}",
-              }
-            )
+              })
+
               local body = assert.res_status(200, res)
               local resp_body_json = cjson.decode(body)
               local developer = resp_body_json.developer
