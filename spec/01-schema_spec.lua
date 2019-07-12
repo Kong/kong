@@ -112,6 +112,16 @@ describe("proxy-cache schema", function()
 
     assert.is_nil(err)
     assert.is_truthy(entity)
+
+    local ok, err = v({
+      strategy = "redis",
+      redis = {
+        cluster_addresses = { "127.0.0.1:26379" }
+      },
+    }, proxy_cache_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
   end)
 
   it("errors with a missing redis config", function()

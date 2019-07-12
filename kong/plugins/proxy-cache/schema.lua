@@ -96,7 +96,9 @@ return {
           end
 
         elseif entity.config.strategy == "redis" then
-          if config.redis.host == ngx.null and config.redis.sentinel_addresses == ngx.null then
+          if config.redis.host == ngx.null
+             and config.redis.sentinel_addresses == ngx.null
+             and config.redis.cluster_addresses == ngx.null then 
             return nil, "No redis config provided"
           end
         end
