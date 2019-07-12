@@ -80,6 +80,35 @@ for _, strategy in helpers.each_strategy() do
           end
         end)
 
+        it_content_types("creates a route #grpc", function(content_type)
+          return function()
+            if content_type == "multipart/form-data" then
+              -- the client doesn't play well with this
+              return
+            end
+
+            local res = client:post("/routes", {
+              body = {
+                protocols = { "grpc", "grpcs" },
+                hosts     = { "my.route.com" },
+                service   = bp.services:insert(),
+              },
+              headers = { ["Content-Type"] = content_type }
+            })
+            local body = assert.res_status(201, res)
+            local json = cjson.decode(body)
+            assert.same({ "my.route.com" }, json.hosts)
+            assert.is_number(json.created_at)
+            assert.is_number(json.regex_priority)
+            assert.is_string(json.id)
+            assert.equals(cjson.null, json.name)
+            assert.equals(cjson.null, json.paths)
+            assert.False(json.preserve_host)
+            assert.False(json.strip_path)
+            assert.same({ "grpc", "grpcs" }, json.protocols)
+          end
+        end)
+
         it_content_types("creates a route without service", function(content_type)
           return function()
             if content_type == "multipart/form-data" then
@@ -105,6 +134,35 @@ for _, strategy in helpers.each_strategy() do
             assert.equals(cjson.null, json.service)
             assert.False(json.preserve_host)
             assert.True(json.strip_path)
+          end
+        end)
+
+        it_content_types("creates a route without service #grpc", function(content_type)
+          return function()
+            if content_type == "multipart/form-data" then
+              -- the client doesn't play well with this
+              return
+            end
+
+            local res = client:post("/routes", {
+              body = {
+                protocols = { "grpc", "grpcs" },
+                hosts     = { "my.route.com" },
+              },
+              headers = { ["Content-Type"] = content_type }
+            })
+            local body = assert.res_status(201, res)
+            local json = cjson.decode(body)
+            assert.same({ "my.route.com" }, json.hosts)
+            assert.is_number(json.created_at)
+            assert.is_number(json.regex_priority)
+            assert.is_string(json.id)
+            assert.equals(cjson.null, json.name)
+            assert.equals(cjson.null, json.paths)
+            assert.equals(cjson.null, json.service)
+            assert.False(json.preserve_host)
+            assert.False(json.strip_path)
+            assert.same({ "grpc", "grpcs" }, json.protocols)
           end
         end)
 
@@ -141,6 +199,38 @@ for _, strategy in helpers.each_strategy() do
           end
         end)
 
+        it_content_types("creates a complex route #grpc", function(content_type)
+          return function()
+            if content_type == "multipart/form-data" then
+              -- the client doesn't play well with this
+              return
+            end
+
+            local s = bp.services:insert()
+            local res = client:post("/routes", {
+              body    = {
+                protocols = { "grpc", "grpcs" },
+                hosts     = { "foo.api.com", "bar.api.com" },
+                paths     = { "/foo", "/bar" },
+                service   = { id = s.id },
+              },
+              headers = { ["Content-Type"] = content_type }
+            })
+
+            -- TODO: For some reason the body which arrives to the server is
+            -- incorrectly parsed on this test: self.params.methods is the string
+            -- "PATCH" instead of an array, for example. I could not find the
+            -- cause
+
+            local body = assert.res_status(201, res)
+            local json = cjson.decode(body)
+            assert.same({ "foo.api.com", "bar.api.com" }, json.hosts)
+            assert.same({ "/foo","/bar" }, json.paths)
+            assert.same(s.id, json.service.id)
+            assert.same({ "grpc", "grpcs"}, json.protocols)
+          end
+        end)
+
         it_content_types("creates a complex route by referencing a service by name", function(content_type, name)
           return function()
             if content_type == "multipart/form-data" then
@@ -171,6 +261,38 @@ for _, strategy in helpers.each_strategy() do
             assert.same({ "/foo","/bar" }, json.paths)
             assert.same({ "GET", "POST", "PATCH" }, json.methods)
             assert.same(s.id, json.service.id)
+          end
+        end)
+
+        it_content_types("creates a complex route by referencing a service by name #grpc", function(content_type, name)
+          return function()
+            if content_type == "multipart/form-data" then
+              -- the client doesn't play well with this
+              return
+            end
+
+            local s = bp.named_services:insert()
+            local res = client:post("/routes", {
+              body    = {
+                protocols = { "grpc", "grpcs" },
+                hosts     = { "foo.api.com", "bar.api.com" },
+                paths     = { "/foo", "/bar" },
+                service   = { name = s.name },
+              },
+              headers = { ["Content-Type"] = content_type }
+            })
+
+            -- TODO: For some reason the body which arrives to the server is
+            -- incorrectly parsed on this test: self.params.methods is the string
+            -- "PATCH" instead of an array, for example. I could not find the
+            -- cause
+
+            local body = assert.res_status(201, res)
+            local json = cjson.decode(body)
+            assert.same({ "foo.api.com", "bar.api.com" }, json.hosts)
+            assert.same({ "/foo","/bar" }, json.paths)
+            assert.same(s.id, json.service.id)
+            assert.same({ "grpc", "grpcs"}, json.protocols)
           end
         end)
 
@@ -229,28 +351,6 @@ for _, strategy in helpers.each_strategy() do
                 fields  = {
                   ["@entity"] = {
                     "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https'"
-                  }
-                }
-              }, cjson.decode(body))
-
-              -- Missing grpc/grpcs params
-              local res = client:post("/routes", {
-                body = {
-                  protocols = {"grpc", "grpcs"},
-                },
-                headers = { ["Content-Type"] = content_type }
-              })
-              local body = assert.res_status(400, res)
-              assert.same({
-                code    = Errors.codes.SCHEMA_VIOLATION,
-                name    = "schema violation",
-                message = unindent([[
-                  schema violation
-                  (must set one of 'methods', 'hosts', 'paths', 'snis' when 'protocols' is 'grpcs')
-                ]], true, true),
-                fields  = {
-                  ["@entity"] = {
-                    "must set one of 'methods', 'hosts', 'paths', 'snis' when 'protocols' is 'grpcs'",
                   }
                 }
               }, cjson.decode(body))
@@ -803,6 +903,78 @@ for _, strategy in helpers.each_strategy() do
                   fields  = {
                     regex_priority = "expected an integer"
                   },
+                }, cjson.decode(body))
+              end
+            end)
+
+            it_content_types("handles invalid input #grpc", function(content_type)
+              return function()
+                if content_type == "multipart/form-data" then
+                  -- the client doesn't play well with this
+                  return
+                end
+
+                -- Missing grpc/grpcs routing attributes
+                local res = client:post("/routes", {
+                  body = {
+                    protocols = { "grpc", "grpcs" },
+                  },
+                  headers = { ["Content-Type"] = content_type }
+                })
+                local body = assert.res_status(400, res)
+                assert.same({
+                  code    = Errors.codes.SCHEMA_VIOLATION,
+                  name    = "schema violation",
+                  message = unindent([[
+                  schema violation
+                  (must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'grpcs')
+                  ]], true, true),
+                  fields  = {
+                    ["@entity"] = {
+                      "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'grpcs'",
+                    }
+                  }
+                }, cjson.decode(body))
+
+                -- Doesn't accept 'strip_path' attribute
+                local res = client:post("/routes", {
+                  body = {
+                    protocols = { "grpc", "grpcs" },
+                    paths = { "/" },
+                    strip_path = true,
+                  },
+                  headers = { ["Content-Type"] = content_type }
+                })
+                local body = assert.res_status(400, res)
+                assert.same({
+                  code    = Errors.codes.SCHEMA_VIOLATION,
+                  name    = "schema violation",
+                  message = unindent([[
+                  schema violation (strip_path: cannot set 'strip_path' when 'protocols' is 'grpc' or 'grpcs')
+                  ]], true, true),
+                  fields  = {
+                    strip_path = "cannot set 'strip_path' when 'protocols' is 'grpc' or 'grpcs'",
+                  }
+                }, cjson.decode(body))
+
+                -- Doesn't accept 'methods' attribute
+                local res = client:post("/routes", {
+                  body = {
+                    protocols = { "grpc", "grpcs" },
+                    methods = { "GET" }
+                  },
+                  headers = { ["Content-Type"] = content_type }
+                })
+                local body = assert.res_status(400, res)
+                assert.same({
+                  code    = Errors.codes.SCHEMA_VIOLATION,
+                  name    = "schema violation",
+                  message = unindent([[
+                  schema violation (methods: cannot set 'methods' when 'protocols' is 'grpc' or 'grpcs')
+                  ]], true, true),
+                  fields  = {
+                    methods = "cannot set 'methods' when 'protocols' is 'grpc' or 'grpcs'",
+                  }
                 }, cjson.decode(body))
               end
             end)
