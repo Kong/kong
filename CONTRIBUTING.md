@@ -35,14 +35,14 @@ Consult the Table of Contents below, and jump to the desired section.
 
 If you are a Kong Enterprise customer, contact the Enterprise Support channels
 by opening an Enterprise support ticket on
-[https://support.konghq.com](https://support.konghq.com/).
+[support](https://support.konghq.com/).
 
 If you are experiencing a P1 issue, please call the [24/7 Enterprise Support
 phone line](https://support.konghq.com/hc/en-us/articles/115004921808-Telephone-Support)
 for immediate assistance, as published in the Customer Success Reference Guide.
 
 If you are interested in becoming a Kong Enterprise customer, please visit
-https://konghq.com/kong-enterprise-edition/ or contact us at
+[https://konghq.com/kong-enterprise-edition/](https://konghq.com/kong-enterprise-edition/) or contact us at
 [sales@konghq.com](mailto:sales@konghq.com).
 
 [Back to TOC](#table-of-contents)
@@ -107,7 +107,7 @@ make without coding:
 - Reporting a bug (see the [report bugs](#where-to-report-bugs) section)
 - Helping other members of the community on the support channels
 - Fixing a typo in the code
-- Fixing a typo in the documentation at https://docs.konghq.com (see
+- Fixing a typo in the documentation at [https://docs.konghq.com](https://docs.konghq.com) (see
   the [documentation contribution](#improving-the-documentation) section)
 - Providing your feedback on the proposed features and designs
 - Reviewing Pull Requests
@@ -271,7 +271,7 @@ Here is a template of what your commit message should look like:
 <BLANK LINE>
 <footer>
 ```
-
+[Back to TOC](#table-of-contents)
 
 ##### Type
 
@@ -293,6 +293,7 @@ accepted types are:
   considered part of a refactor, build process updates, dependency bumps, or
   auxiliary tools and libraries updates (LuaRocks, Travis-ci, etc...).
 
+[Back to TOC](#table-of-contents)
 
 ##### Scope
 
@@ -316,6 +317,7 @@ it is at your discretion, but here are some of the most frequent ones:
 - `*`: When the change affects too many parts of the codebase at once (this
   should be rare and avoided)
 
+[Back to TOC](#table-of-contents)
 
 ##### Subject
 
@@ -326,6 +328,7 @@ written so that:
 - It is **not** capitalized: "fix typo", and not "Fix typo"
 - It does **not** include a period. :smile:
 
+[Back to TOC](#table-of-contents)
 
 ##### Body
 
@@ -336,6 +339,7 @@ motivation, the chosen implementation, and justify it.
 As previously mentioned, lines in the commit messages should not exceed 72
 characters.
 
+[Back to TOC](#table-of-contents)
 
 ##### Footer
 
@@ -889,3 +893,6 @@ end
 ```
 
 [Back to code style TOC](#table-of-contents---code-style)
+[Back to TOC](#table-of-contents)
+
+##Thank You
