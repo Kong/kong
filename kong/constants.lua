@@ -96,6 +96,7 @@ return {
     "plugins",
     "cluster_ca",
     "tags",
+    "ca_certificates",
   },
   RATELIMIT = {
     PERIODS = {
