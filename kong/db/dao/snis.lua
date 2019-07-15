@@ -18,31 +18,6 @@ local function invalidate_cache(self, old_entity, err, err_t)
 end
 
 
-local function check_private_key_exists(self, sni)
-  if not sni.certificate or not sni.certificate.id then
-    -- just let validator do its job
-    return true
-  end
-
-  local cert, err, err_t = self.db.certificates:select({
-    id = sni.certificate.id,
-  })
-  if not cert then
-    return nil, err, err_t
-  end
-
-  if not cert.key then
-    local err_t = self.errors:schema_violation({
-      certificate = "cannot be used by SNI because specified Certificate" ..
-                    " does not have the 'key' attribute set",
-    })
-    return nil, tostring(err_t), err_t
-  end
-
-  return true
-end
-
-
 local _SNIs = {}
 
 
@@ -154,13 +129,7 @@ end
 
 -- invalidates the *old* name when updating it to a new name
 function _SNIs:update(pk, entity, options)
-  local ok, err, err_t = check_private_key_exists(self, entity)
-  if not ok then
-    return nil, err, err_t
-  end
-
-  local _
-  _, err, err_t = invalidate_cache(self, self:select(pk))
+  local _, err, err_t = invalidate_cache(self, self:select(pk))
   if err then
     return nil, err, err_t
   end
@@ -171,13 +140,7 @@ end
 
 -- invalidates the *old* name when updating it to a new name
 function _SNIs:update_by_name(name, entity, options)
-  local ok, err, err_t = check_private_key_exists(self, entity)
-  if not ok then
-    return nil, err, err_t
-  end
-
-  local _
-  _, err, err_t = invalidate_cache(self, self:select_by_name(name))
+  local _, err, err_t = invalidate_cache(self, self:select_by_name(name))
   if err then
     return nil, err, err_t
   end
@@ -188,13 +151,7 @@ end
 
 -- invalidates the *old* name when updating it to a new name
 function _SNIs:upsert(pk, entity, options)
-  local ok, err, err_t = check_private_key_exists(self, entity)
-  if not ok then
-    return nil, err, err_t
-  end
-
-  local _
-  _, err, err_t = invalidate_cache(self, self:select(pk))
+  local _, err, err_t = invalidate_cache(self, self:select(pk))
   if err then
     return nil, err, err_t
   end
@@ -205,28 +162,12 @@ end
 
 -- invalidates the *old* name when updating it to a new name
 function _SNIs:upsert_by_name(name, entity, options)
-  local ok, err, err_t = check_private_key_exists(self, entity)
-  if not ok then
-    return nil, err, err_t
-  end
-
-  local _
-  _, err, err_t = invalidate_cache(self, self:select_by_name(name))
+  local _, err, err_t = invalidate_cache(self, self:select_by_name(name))
   if err then
     return nil, err, err_t
   end
 
   return self.super.upsert_by_name(self, name, entity, options)
-end
-
-
-function _SNIs:insert(entity, options)
-  local ok, err, err_t = check_private_key_exists(self, entity)
-  if not ok then
-    return nil, err, err_t
-  end
-
-  return self.super.insert(self, entity, options)
 end
 
 
