@@ -122,6 +122,26 @@ server {
     $(el.name) $(el.value);
 > end
 
+    rewrite_by_lua_block {
+        Kong.rewrite()
+    }
+
+    access_by_lua_block {
+        Kong.access()
+    }
+
+    header_filter_by_lua_block {
+        Kong.header_filter()
+    }
+
+    body_filter_by_lua_block {
+        Kong.body_filter()
+    }
+
+    log_by_lua_block {
+        Kong.log()
+    }
+
     location / {
         default_type                     '';
 
@@ -138,14 +158,6 @@ server {
         set $upstream_x_forwarded_port   '';
         set $kong_proxy_mode             'http';
 
-        rewrite_by_lua_block {
-            Kong.rewrite()
-        }
-
-        access_by_lua_block {
-            Kong.access()
-        }
-
         proxy_http_version 1.1;
         proxy_set_header   TE                $upstream_te;
         proxy_set_header   Host              $upstream_host;
@@ -160,27 +172,10 @@ server {
         proxy_pass_header  Date;
         proxy_ssl_name     $upstream_host;
         proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
-
-        header_filter_by_lua_block {
-            Kong.header_filter()
-        }
-
-        body_filter_by_lua_block {
-            Kong.body_filter()
-        }
-
-        log_by_lua_block {
-            Kong.log()
-        }
     }
 
     location @grpc {
         internal;
-        rewrite_by_lua_block       { Kong.rewrite() }
-        access_by_lua_block        { Kong.access() }
-        header_filter_by_lua_block { Kong.header_filter() }
-        body_filter_by_lua_block   { Kong.body_filter() }
-        log_by_lua_block           { Kong.log() }
 
         set $kong_proxy_mode       'grpc';
         grpc_pass grpc://kong_upstream;
@@ -188,11 +183,6 @@ server {
 
     location @grpcs {
         internal;
-        rewrite_by_lua_block       { Kong.rewrite() }
-        access_by_lua_block        { Kong.access() }
-        header_filter_by_lua_block { Kong.header_filter() }
-        body_filter_by_lua_block   { Kong.body_filter() }
-        log_by_lua_block           { Kong.log() }
 
         set $kong_proxy_mode       'grpcs';
         grpc_pass grpcs://kong_upstream;
@@ -202,20 +192,12 @@ server {
         internal;
         uninitialized_variable_warn off;
 
+        rewrite_by_lua_block {;}
+
+        access_by_lua_block {;}
+
         content_by_lua_block {
             Kong.handle_error()
-        }
-
-        header_filter_by_lua_block {
-            Kong.header_filter()
-        }
-
-        body_filter_by_lua_block {
-            Kong.body_filter()
-        }
-
-        log_by_lua_block {
-            Kong.log()
         }
     }
 }
