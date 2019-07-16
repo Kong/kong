@@ -1,3 +1,9 @@
+## 1.0.1
+
+### Fixed
+
+- Fix entity check blocking with the `redis.cluster_addresses` parameter
+
 ## 1.0.0
 
 ### Changed
