@@ -1004,9 +1004,11 @@ return {
         return kong.response.exit(404, { message = "no Route matched with those values" })
       end
 
+      local http_version   = ngx.req.http_version()
       local scheme         = var.scheme
       local host           = var.host
       local port           = tonumber(var.server_port, 10)
+      local content_type   = var.content_type
 
       local route          = match_t.route
       local service        = match_t.service
@@ -1045,9 +1047,10 @@ return {
         local redirect_status_code = route.https_redirect_status_code or 426
 
         if redirect_status_code == 426 then
-          header["Connection"] = "Upgrade"
-          header["Upgrade"]    = "TLS/1.2, HTTP/1.1"
-          return kong.response.exit(426, { message = "Please use HTTPS protocol" })
+          return kong.response.exit(426, { message = "Please use HTTPS protocol" }, {
+            ["Connection"] = "Upgrade",
+            ["Upgrade"]    = "TLS/1.2, HTTP/1.1",
+          })
         end
 
         if redirect_status_code == 301 or
@@ -1057,6 +1060,33 @@ return {
           header["Location"] = "https://" .. forwarded_host .. var.request_uri
           return kong.response.exit(redirect_status_code)
         end
+      end
+
+      -- mismatch: non-http/2 request matched grpc route
+      if (protocols and (protocols.grpc or protocols.grpcs) and http_version ~= 2 and
+        (content_type and sub(content_type, 1, #"application/grpc") == "application/grpc"))
+      then
+        return kong.response.exit(426, { message = "Please use HTTP2 protocol" }, {
+          ["connection"] = "Upgrade",
+          ["upgrade"]    = "HTTP/2",
+        })
+      end
+
+      -- mismatch: non-grpc request matched grpc route
+      if (protocols and (protocols.grpc or protocols.grpcs) and
+        (not content_type or sub(content_type, 1, #"application/grpc") ~= "application/grpc"))
+      then
+        return kong.response.exit(415, { message = "Non-gRPC request matched gRPC route" })
+      end
+
+      -- mismatch: grpc request matched grpcs route
+      if (protocols and protocols.grpcs and not protocols.grpc and
+        forwarded_proto ~= "https")
+      then
+        return kong.response.exit(200, nil, {
+          ["grpc-status"] = 1,
+          ["grpc-message"] = "gRPC request matched gRPCs route",
+        })
       end
 
       if not service then
