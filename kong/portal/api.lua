@@ -31,17 +31,6 @@ local auth_plugins = {
   ["openid-connect"] = { name = "openid-connect" },
 }
 
-local function get_developer_status()
-  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-  local auto_approve = workspaces.retrieve_ws_config(PORTAL_AUTO_APPROVE, workspace)
-
-  if auto_approve then
-    return enums.CONSUMERS.STATUS.APPROVED
-  end
-
-  return enums.CONSUMERS.STATUS.PENDING
-end
-
 
 local function get_workspace()
   return ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
@@ -179,7 +168,11 @@ return {
 
   ["/register"] = {
     POST = function(self, db, helpers)
-      self.params.status = get_developer_status()
+      if self.params.status then
+        return kong.response.exit(400, {
+          fields = { status = "invalid field" },
+        })
+      end
 
       local developer, _, err_t = db.developers:insert(self.params)
       if not developer then
@@ -207,7 +200,198 @@ return {
         res.email = email
       end
 
+      if developer.status == enums.CONSUMERS.STATUS.UNVERIFIED and
+         singletons.configuration.portal_email_verification then
+
+        local workspace = workspaces.get_workspace()
+        local token_ttl = workspaces.retrieve_ws_config(PORTAL_TOKEN_EXP, workspace)
+        local jwt, err = secrets.create(developer.consumer, ngx.var.remote_addr, token_ttl)
+        if not jwt then
+          return endpoints.handle_error(err)
+        end
+
+        -- Email user with reset jwt included
+        local portal_emails = portal_smtp_client.new()
+        local email, err = portal_emails:account_verification_email(developer.email, jwt)
+        if err then
+          return endpoints.handle_error(err)
+        end
+
+        res.email = email
+      end
+
       return kong.response.exit(200, res)
+    end,
+  },
+
+  ["/verify-account"] = {
+    POST = function(self, db, helpers)
+      if not singletons.configuration.portal_email_verification then
+        return kong.response.exit(404)
+      end
+
+      auth.validate_auth_plugin(self, db, helpers)
+      ee_api.validate_jwt(self, db, helpers)
+
+      local consumer, _, err_t = db.consumers:select({ id = self.consumer_id },
+                                                          { skip_rbac = true })
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not consumer then
+        return kong.response.exit(204, { message = "Not found" })
+      end
+
+      local developer = db.developers:select_by_email(consumer.username)
+      if not developer then
+        return kong.response.exit(204)
+      end
+
+      if developer.status ~= enums.CONSUMERS.STATUS.UNVERIFIED then
+        return kong.response.exit(204)
+      end
+
+      local workspace = get_workspace()
+      local auto_approve = workspaces.retrieve_ws_config(PORTAL_AUTO_APPROVE, workspace)
+
+      local status = enums.CONSUMERS.STATUS.PENDING
+      if auto_approve then
+        status = enums.CONSUMERS.STATUS.APPROVED
+      end
+
+      local ok, _, err_t = db.developers:update_by_email(consumer.username, {
+        status = status
+      })
+
+      if not ok then
+        return endpoints.handle_error(err_t)
+      end
+
+      -- Mark the token secret as consumed
+      local ok, err = secrets.consume_secret(self.reset_secret_id)
+      if not ok then
+        return endpoints.handle_error(err)
+      end
+
+      -- Email user with reset success confirmation
+      local portal_emails = portal_smtp_client.new()
+
+      local err
+      if auto_approve then
+        _, err = portal_emails:account_verification_success_approved(consumer.username)
+      else
+        _, err = portal_emails:account_verification_success_pending(consumer.username)
+      end
+
+      if err then
+        return endpoints.handle_error(err)
+      end
+
+      return kong.response.exit(200)
+    end,
+  },
+
+  ["/resend-account-verification"] = {
+    POST = function(self, db, helpers)
+      if not singletons.configuration.portal_email_verification then
+        return kong.response.exit(404)
+      end
+
+      if not self.params.email then
+        return kong.response.exit(400, { message = "Email is required" })
+      end
+
+      local consumer, _, err_t = db.consumers:select_by_username(self.params.email,
+                                                                 { skip_rbac = true })
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not consumer then
+        return kong.response.exit(204)
+      end
+
+      local developer, _, err_t = db.developers:select_by_email(consumer.username)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not developer then
+        return kong.response.exit(204)
+      end
+
+      if developer.status ~= enums.CONSUMERS.STATUS.UNVERIFIED then
+        return kong.response.exit(204)
+      end
+
+      -- -- Invalidate pending account verifications
+      local ok, err = secrets.invalidate_pending_resets(consumer)
+      if not ok then
+        return endpoints.handle_error(err)
+      end
+
+      local workspace = workspaces.get_workspace()
+      local token_ttl = workspaces.retrieve_ws_config(PORTAL_TOKEN_EXP, workspace)
+      local jwt, err = secrets.create(developer.consumer, ngx.var.remote_addr, token_ttl)
+      if not jwt then
+        return endpoints.handle_error(err)
+      end
+
+      local portal_emails = portal_smtp_client.new()
+      local _, err = portal_emails:account_verification_email(developer.email, jwt)
+      if err then
+        return endpoints.handle_error(err)
+      end
+
+      return kong.response.exit(204)
+    end,
+  },
+
+  ["/invalidate-account-verification"] = {
+    POST = function(self, db, helpers)
+      if not singletons.configuration.portal_email_verification then
+        return kong.response.exit(404)
+      end
+
+      auth.validate_auth_plugin(self, db, helpers)
+      ee_api.validate_jwt(self, db, helpers)
+
+      local consumer, _, err_t = db.consumers:select({ id = self.consumer_id },
+                                                          { skip_rbac = true })
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not consumer then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      local developer, _, err_t = db.developers:select_by_email(consumer.username)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not developer then
+        return kong.response.exit(204)
+      end
+
+      if developer.status ~= enums.CONSUMERS.STATUS.UNVERIFIED then
+        return kong.response.exit(204)
+      end
+
+      -- Invalidate pending account verifications
+      local ok, err = secrets.invalidate_pending_resets(consumer)
+      if not ok then
+        return endpoints.handle_error(err)
+      end
+
+      local ok, _, err_t = db.developers:delete({ id = developer.id })
+      if not ok then
+        return endpoints.handle_error(err_t)
+      end
+
+      return kong.response.exit(204)
     end,
   },
 

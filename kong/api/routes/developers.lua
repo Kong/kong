@@ -1,10 +1,13 @@
 local constants    = require "kong.constants"
+local singletons   = require "kong.singletons"
+local workspaces   = require "kong.workspaces"
 local utils        = require "kong.tools.utils"
 local endpoints    = require "kong.api.endpoints"
-local workspaces   = require "kong.workspaces"
 local portal_smtp_client = require "kong.portal.emails"
 local crud_helpers = require "kong.portal.crud_helpers"
-local enums = require "kong.enterprise_edition.dao.enums"
+local enums   = require "kong.enterprise_edition.dao.enums"
+local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
+
 local cjson = require "cjson"
 
 local kong = kong
@@ -55,7 +58,8 @@ end
 
 local function get_developer_status()
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-  local auto_approve = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
+  local auto_approve = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE,
+                                                     workspace)
 
   if auto_approve then
     return enums.CONSUMERS.STATUS.APPROVED
@@ -103,6 +107,46 @@ return {
       local developer, _, err_t = db.developers:insert(self.params)
       if not developer then
         return endpoints.handle_error(err_t)
+      end
+
+      if developer.status == enums.CONSUMERS.STATUS.PENDING then
+        local portal_emails = portal_smtp_client.new()
+        -- if name does not exist, we use the email for email template
+        local name_or_email = developer.meta.full_name or developer.email
+        local _, err = portal_emails:access_request(developer.email,
+                                                    name_or_email)
+        if err then
+          if err.code then
+            return kong.response.exit(err.code, { message = err.message })
+          end
+
+          return endpoints.handle_error(err)
+        end
+      end
+
+      if developer.status == enums.CONSUMERS.STATUS.UNVERIFIED and 
+         singletons.configuration.portal_email_verification then
+
+        local workspace = workspaces.get_workspace()
+        local token_ttl =
+          workspaces.retrieve_ws_config(ws_constants.PORTAL_TOKEN_EXP,
+                                        workspace)
+
+        local jwt, err = secrets.create(developer.consumer, ngx.var.remote_addr,
+                                        token_ttl)
+
+        if not jwt then
+          return endpoints.handle_error(err)
+        end
+
+        -- Email user with reset jwt included
+        local portal_emails = portal_smtp_client.new()
+        local _, err = portal_emails:account_verification_email(developer.email,
+                                                                jwt)
+
+        if err then
+          return endpoints.handle_error(err)
+        end
       end
 
       return kong.response.exit(200, developer)

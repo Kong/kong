@@ -263,6 +263,7 @@ local CONF_INFERENCES = {
   portal_auth_conf = {typ = "string"},
   portal_token_exp = {typ = "number"},
   portal_auto_approve = {typ = "boolean"},
+  portal_email_verification = {typ = "boolean"},
   portal_invite_email = {typ = "boolean"},
   portal_access_request_email = {typ = "boolean"},
   portal_approved_email = {typ = "boolean"},

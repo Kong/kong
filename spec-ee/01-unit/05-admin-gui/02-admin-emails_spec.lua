@@ -80,5 +80,22 @@ describe("ee admin emails", function()
       assert.equal("recipient does not have username or email", err.message)
       assert.spy(admin_emails.client.send).was_called(0)
     end)
+
+    it("should use registration template when using kong as identity provider", function()
+      conf.admin_gui_auth = 'basic-auth'
+      admin_emails = emails.new(conf)
+
+      assert.equal(admin_emails.templates.invite_register, admin_emails:invite_template())
+    end)
+
+    it("should use login template when using third party identity provider", function()
+      conf.admin_gui_auth = 'ldap-auth-advanced'
+      admin_emails = emails.new(conf)
+      assert.equal(admin_emails.templates.invite_login, admin_emails:invite_template())
+
+      conf.admin_gui_auth = 'openid-connect'
+      admin_emails = emails.new(conf)
+      assert.equal(admin_emails.templates.invite_login, admin_emails:invite_template())
+    end)
   end)
 end)

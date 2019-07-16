@@ -8,13 +8,17 @@ local ee_helpers  = require "spec-ee.helpers"
 local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
 
 
-local function configure_portal()
-  singletons.db.workspaces:upsert_by_name("default", {
-    name = "default",
+local function configure_portal(config)
+  if not config then
     config = {
       portal = true,
       portal_auth = "basic-auth",
     }
+  end
+
+  singletons.db.workspaces:upsert_by_name("default", {
+    name = "default",
+    config = config
   })
 end
 
@@ -105,13 +109,13 @@ describe("Admin API - Developer Portal - " .. strategy, function()
       it("filters by developer status", function()
         assert(db.developers:insert {
           email = "developer-pending@dog.com",
-          status = enums.CONSUMERS.STATUS.PENDING,
+          status = enums.CONSUMERS.STATUS.APPROVED,
           meta = '{"full_name":"Pending Name"}',
         })
 
         local res = assert(client:send {
           method = "GET",
-          path = "/developers?status=" .. enums.CONSUMERS.STATUS.PENDING
+          path = "/developers?status=" .. enums.CONSUMERS.STATUS.APPROVED
         })
         res = assert.res_status(200, res)
         local json = cjson.decode(res)
@@ -290,6 +294,32 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         local fields = resp_body_json.fields
 
         assert.equal("already exists with value 'fancypants@konghq.com'", fields.email)
+      end)
+
+      it("returns 400 if patch a verified developer to type 'UNVERIFIED'", function()
+        local developer3 = assert(db.developers:insert {
+          email = "fancypants2@konghq.com",
+          password = "mowmow",
+          status = 0,
+          meta = "{\"full_name\":\"Old Gregg\"}"
+        })
+
+        local res = assert(client:send {
+          method = "PATCH",
+          body = {
+            status = 5,
+          },
+          path = "/developers/".. developer3.email,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(400, res)
+        local resp_body_json = cjson.decode(body)
+        local fields = resp_body_json.fields
+
+        assert.equal("cannot update developer to status UNVERIFIED", fields.status)
       end)
 
       it("updates the developer meta with valid meta", function()

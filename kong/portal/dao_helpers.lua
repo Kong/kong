@@ -26,6 +26,23 @@ local auth_plugins = {
 }
 
 
+local function get_developer_status()
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local auto_approve = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
+  local auth_type = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+
+  if singletons.configuration.portal_email_verification and auth_type ~= "openid-connect" then
+    return enums.CONSUMERS.STATUS.UNVERIFIED
+  end
+
+  if auto_approve then
+    return enums.CONSUMERS.STATUS.APPROVED
+  end
+
+  return enums.CONSUMERS.STATUS.PENDING
+end
+
+
 local function rollback_on_create(entities)
   local _, err
 
@@ -77,6 +94,10 @@ local function build_developer_data(entity, consumer)
   data.password = nil
   data.key = nil
   data.consumer = { id = consumer.id }
+
+  if not entity.status then
+    data.status = get_developer_status()
+  end
 
   return data
 end
@@ -357,7 +378,7 @@ local function create_developer(self, entity, options)
     local ok, err = enterprise_utils.validate_email(entity.email)
     if not ok then
       local code = Errors.codes.SCHEMA_VIOLATION
-      local err_t = { code = code, fields = { email = err, }, }
+      local err_t = { code = code, fields = { email = err } }
       return nil, err, err_t
     end
   end
@@ -376,7 +397,7 @@ local function create_developer(self, entity, options)
   if not consumer then
     local code = Errors.codes.UNIQUE_VIOLATION
     local err = "developer insert: could not create consumer mapping for " .. entity.email
-    local err_t = { code = code, fields = { email = "developer already exists with email: " .. entity.email }, }
+    local err_t = { code = code, fields = { email = "developer already exists with email: " .. entity.email } }
     return nil, err, err_t
   end
 
@@ -438,12 +459,25 @@ end
 
 local function update_developer(self, developer, entity, options)
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+
+  -- developer cannot update to type UNVERIFIED
+  if entity.status and
+     entity.status == enums.CONSUMERS.STATUS.UNVERIFIED and
+     developer.status ~= enums.CONSUMERS.STATUS.UNVERIFIED then
+
+      local code = Errors.codes.SCHEMA_VIOLATION
+      local messege = "cannot update developer to status UNVERIFIED"
+      local err = "developer update: " .. messege
+      local err_t = { code = code, fields = { status = messege } }
+      return nil, err, err_t
+  end
+
   -- validate developer meta field against portal extra fields
   if entity.meta then
     local ok, err = validate_incoming_developer_meta(workspace, entity)
     if not ok then
       local code = Errors.codes.SCHEMA_VIOLATION
-      local err_t = { code = code, fields = { meta = err,}, }
+      local err_t = { code = code, fields = { meta = err } }
       local err = "developer update: error in validating developer meta fields "
       return nil, err, err_t
     end
@@ -456,7 +490,7 @@ local function update_developer(self, developer, entity, options)
     local ok, err = enterprise_utils.validate_email(entity.email)
     if not ok then
       local code = Errors.codes.SCHEMA_VIOLATION
-      local err_t = { code = code, fields = { email = err, }, }
+      local err_t = { code = code, fields = { email = err } }
       local err = "developer update: " .. err
       return nil, err, err_t
     end
@@ -498,7 +532,7 @@ local function update_developer(self, developer, entity, options)
       if not ok then
         local code = Errors.codes.UNIQUE_VIOLATION
         local err = "developer update: could not update consumer mapping for " .. developer.email
-        local err_t = { code = code, fields = { ["email"] = "already exists with value '" .. entity.email .. "'" }, }
+        local err_t = { code = code, fields = { ["email"] = "already exists with value '" .. entity.email .. "'" } }
         return nil, err, err_t
       end
 
@@ -537,7 +571,7 @@ local function update_developer(self, developer, entity, options)
 
         local ok = self.db.credentials:update(
           { id = credential.id },
-          { credential_data = cjson.encode(credential), },
+          { credential_data = cjson.encode(credential) },
           { skip_rbac = true }
         )
 
