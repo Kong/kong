@@ -28,11 +28,17 @@ return {
         -- Do nothing, accept existing state
       END$$;
 
-
-
       DO $$
       BEGIN
         ALTER TABLE IF EXISTS ONLY "routes" ADD "headers" JSONB;
+      EXCEPTION WHEN DUPLICATE_COLUMN THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "services" ADD "client_certificate_id" UUID REFERENCES "certificates" ("id");
       EXCEPTION WHEN DUPLICATE_COLUMN THEN
         -- Do nothing, accept existing state
       END;
@@ -55,9 +61,8 @@ return {
         PRIMARY KEY (partition, id)
       );
 
-
-
       ALTER TABLE routes ADD headers map<text,frozen<set<text>>>;
+      ALTER TABLE services ADD client_certificate_id uuid;
     ]],
   },
 }

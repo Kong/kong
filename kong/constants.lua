@@ -87,9 +87,9 @@ return {
   -- schemas of dependencies need to be loaded first.
   CORE_ENTITIES = {
     "consumers",
+    "certificates",
     "services",
     "routes",
-    "certificates",
     "snis",
     "upstreams",
     "targets",

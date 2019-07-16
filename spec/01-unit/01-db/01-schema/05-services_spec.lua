@@ -1,8 +1,9 @@
 local Schema = require "kong.db.schema"
 local services = require "kong.db.schema.entities.services"
+local certificates = require "kong.db.schema.entities.certificates"
 
-
-local Services = Schema.new(services)
+assert(Schema.new(certificates))
+local Services = assert(Schema.new(services))
 
 
 describe("services", function()

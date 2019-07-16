@@ -677,36 +677,60 @@ do
 end
 
 
-local function balancer_prepare(ctx, scheme, host_type, host, port,
-                                service, route)
-  local balancer_data = {
-    scheme         = scheme,    -- scheme for balancer: http, https
-    type           = host_type, -- type of 'host': ipv4, ipv6, name
-    host           = host,      -- target host per `upstream_url`
-    port           = port,      -- final target port
-    try_count      = 0,         -- retry counter
-    tries          = {},        -- stores info per try
-    ssl_ctx        = kong.default_client_ssl_ctx, -- SSL_CTX* to use
-    -- ip          = nil,       -- final target IP address
-    -- balancer    = nil,       -- the balancer object, if any
-    -- hostname    = nil,       -- hostname of the final target IP
-    -- hash_cookie = nil,       -- if Upstream sets hash_on_cookie
-    -- balancer_handle = nil,   -- balancer handle for the current connection
-  }
+local balancer_prepare
+do
+  local get_certificate = certificate.get_certificate
 
-  do
-    local s = service or EMPTY_T
+  function balancer_prepare(ctx, scheme, host_type, host, port,
+                            service, route)
+    local balancer_data = {
+      scheme         = scheme,    -- scheme for balancer: http, https
+      type           = host_type, -- type of 'host': ipv4, ipv6, name
+      host           = host,      -- target host per `upstream_url`
+      port           = port,      -- final target port
+      try_count      = 0,         -- retry counter
+      tries          = {},        -- stores info per try
+      ssl_ctx        = kong.default_client_ssl_ctx, -- SSL_CTX* to use
+      -- ip          = nil,       -- final target IP address
+      -- balancer    = nil,       -- the balancer object, if any
+      -- hostname    = nil,       -- hostname of the final target IP
+      -- hash_cookie = nil,       -- if Upstream sets hash_on_cookie
+      -- balancer_handle = nil,   -- balancer handle for the current connection
+    }
 
-    balancer_data.retries         = s.retries         or 5
-    balancer_data.connect_timeout = s.connect_timeout or 60000
-    balancer_data.send_timeout    = s.write_timeout   or 60000
-    balancer_data.read_timeout    = s.read_timeout    or 60000
+    do
+      local s = service or EMPTY_T
+
+      balancer_data.retries         = s.retries         or 5
+      balancer_data.connect_timeout = s.connect_timeout or 60000
+      balancer_data.send_timeout    = s.write_timeout   or 60000
+      balancer_data.read_timeout    = s.read_timeout    or 60000
+    end
+
+    ctx.service          = service
+    ctx.route            = route
+    ctx.balancer_data    = balancer_data
+    ctx.balancer_address = balancer_data -- for plugin backward compatibility
+
+    if service then
+      local client_certificate = service.client_certificate
+      if client_certificate then
+        local cert, err = get_certificate(client_certificate)
+        if not cert then
+          log(ERR, "unable to fetch upstream client TLS certificate ",
+                   client_certificate.id, ": ", err)
+          return
+        end
+
+        local res
+        res, err = kong.service.set_tls_cert_key(cert.cert, cert.key)
+        if not res then
+          log(ERR, "unable to apply upstream client TLS certificate ",
+                   client_certificate.id, ": ", err)
+        end
+      end
+    end
   end
-
-  ctx.service          = service
-  ctx.route            = route
-  ctx.balancer_data    = balancer_data
-  ctx.balancer_address = balancer_data -- for plugin backward compatibility
 end
 
 
