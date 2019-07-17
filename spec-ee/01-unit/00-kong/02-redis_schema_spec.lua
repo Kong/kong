@@ -87,8 +87,8 @@ describe("redis schema", function()
     })
 
     assert.is_falsy(ok)
-    assert.same("'sentinel_master', 'sentinel_role', 'sentinel_addresses'" ..
-                " must not be set with 'host'", err["@entity"][1])
+    assert.same("these sets are mutually exclusive: ('sentinel_master'," ..
+      " 'sentinel_role', 'sentinel_addresses'), ('host')", err["@entity"][1])
 
     local ok, err = Redis:validate_insert({
       sentinel_addresses = { "127.0.0.1:26379" },
@@ -98,8 +98,8 @@ describe("redis schema", function()
     })
 
     assert.is_falsy(ok)
-    assert.same("'sentinel_master', 'sentinel_role', 'sentinel_addresses'" ..
-                " must not be set with 'port'", err["@entity"][1])
+    assert.same("these sets are mutually exclusive: ('sentinel_master'," ..
+      " 'sentinel_role', 'sentinel_addresses'), ('port')", err["@entity"][1])
 
     local ok, err = Redis:validate_insert({
       sentinel_addresses = { "127.0.0.1" },
@@ -136,8 +136,8 @@ describe("redis schema", function()
     })
 
     assert.is_falsy(ok)
-    assert.same("'cluster_addresses' must not be set with 'host', 'port'",
-                err["@entity"][1])
+    assert.same("these sets are mutually exclusive: ('cluster_addresses')," ..
+      " ('host', 'port')", err["@entity"][1])
 
     local ok, err = Redis:validate_insert({
       cluster_addresses = { "127.0.0.1" },
@@ -154,7 +154,7 @@ describe("redis schema", function()
     })
 
     assert.is_falsy(ok)
-    assert.same("'sentinel_master', 'sentinel_role', 'sentinel_addresses'" ..
-                " must not be set with 'cluster_addresses'", err["@entity"][1])
+    assert.same("these sets are mutually exclusive: ('sentinel_master'," ..
+      " 'sentinel_role', 'sentinel_addresses'), ('cluster_addresses')", err["@entity"][1])
   end)
 end)
