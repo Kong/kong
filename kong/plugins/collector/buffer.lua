@@ -250,7 +250,7 @@ end
 function _M:add_entry(...)
   local ok, err = self.cur_alf:add_entry(...)
   if not ok then
-    log(ERR, "could not add entry to ALF: ", err)
+    log(DEBUG, "could not add entry to ALF: ", err)
     return ok, err
   end
 
