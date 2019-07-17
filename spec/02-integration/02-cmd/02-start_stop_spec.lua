@@ -109,7 +109,7 @@ describe("kong start/stop #" .. strategy, function()
       local _, _, stdout = assert(helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path))
       assert.matches("admin_listen.*anonymous_reports.*cassandra_ssl.*prefix.*", stdout)
     end)
-    it("#flaky does not print sensitive settings in config", function()
+    it("does not print sensitive settings in config", function()
       local _, _, stdout = assert(helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path, {
         pg_password = "do not print",
         cassandra_password = "do not print",
@@ -140,7 +140,15 @@ describe("kong start/stop #" .. strategy, function()
     local templ_fixture = "spec/fixtures/custom_nginx.template"
 
     it("accept a custom Nginx configuration", function()
+      -- XXX: the previous test leaves the prefix in a wrong state that
+      -- makes consecutive tests fail. Adding the following prefix
+      -- "reset" fixes it but adding those as finally step of the
+      -- problematic one doesn't
+      helpers.clean_prefix()
+      helpers.prepare_prefix()
+
       assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path .. " --nginx-conf " .. templ_fixture))
+
       assert.truthy(helpers.path.exists(helpers.test_conf.nginx_conf))
 
       local contents = helpers.file.read(helpers.test_conf.nginx_conf)
