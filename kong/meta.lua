@@ -2,9 +2,9 @@ local ee_meta = require "kong.enterprise_edition.meta"
 
 local version = setmetatable({
   major = 1,
-  minor = 0,
-  patch = 3,
-  --suffix = ""
+  minor = 2,
+  patch = 0,
+  suffix = "rc2",
 }, {
   __tostring = function(t)
     return string.format("%d.%d.%d%s", t.major, t.minor, t.patch,

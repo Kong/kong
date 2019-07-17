@@ -9,7 +9,9 @@ local Errors = require "kong.db.errors"
 
 local MigrationSchema = Schema.new(Migration)
 
+
 local fmt = string.format
+local max = math.max
 
 
 local function prefix_err(db, err)
@@ -26,6 +28,11 @@ local Migrations_mt = {
   __tostring = function(t)
     local subsystems = {}
 
+    local max_length = 0
+    for _, subsys in ipairs(t) do
+      max_length = max(max_length, #subsys.subsystem)
+    end
+
     for _, subsys in ipairs(t) do
       local names = {}
 
@@ -33,8 +40,8 @@ local Migrations_mt = {
         table.insert(names, migration.name)
       end
 
-      table.insert(subsystems, fmt("%s: %s", subsys.subsystem,
-                                             table.concat(names, ", ")))
+      table.insert(subsystems, fmt("%" .. max_length .. "s: %s",
+                                   subsys.subsystem, table.concat(names, ", ")))
     end
 
     return table.concat(subsystems, "\n")
@@ -254,7 +261,7 @@ function State.load(db)
     return nil, prefix_err(db, err)
   end
 
-  local rows, err = db.connector:schema_migrations()
+  local rows, err = db.connector:schema_migrations(subsystems)
   if err then
     db.connector:close()
     return nil, prefix_err(db, "failed to check schema state: " .. err)

@@ -54,6 +54,7 @@ for _, strategy in helpers.each_strategy() do
             preserve_host   = false,
             strip_path      = true,
             service         = route.service,
+            https_redirect_status_code = 426,
           }, route)
 
           local ws = db.workspaces:select_by_name("default")
@@ -105,6 +106,7 @@ for _, strategy in helpers.each_strategy() do
               preserve_host   = false,
               strip_path      = true,
               service         = route.service,
+              https_redirect_status_code = 426,
             }, route)
 
             -- validate relationship
@@ -247,6 +249,7 @@ for _, strategy in helpers.each_strategy() do
               strip_path      = route.strip_path,
               preserve_host   = route.preserve_host,
               service         = route.service,
+              https_redirect_status_code = 426,
             }, new_route)
           end, db)
         end)
@@ -290,6 +293,7 @@ for _, strategy in helpers.each_strategy() do
               strip_path      = route.strip_path,
               preserve_host   = route.preserve_host,
               service         = route.service,
+              https_redirect_status_code = 426,
             }, new_route)
 
             local new_route, err, err_t = db.routes:update({ id = route.id }, {
@@ -1006,6 +1010,7 @@ for _, strategy in helpers.each_strategy() do
             service          = {
               id = service.id
             },
+            https_redirect_status_code = 426,
           }, route)
 
           local route_in_db, err, err_t = db.routes:select({ id = route.id })

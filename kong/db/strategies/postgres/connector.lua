@@ -3,6 +3,7 @@ local pgmoon       = require "pgmoon"
 local arrays       = require "pgmoon.arrays"
 local stringx      = require "pl.stringx"
 local split_prefix   = require "kong.workspaces".split_prefix
+local semaphore    = require "ngx.semaphore"
 
 
 local setmetatable = setmetatable
@@ -121,6 +122,61 @@ local function iterator(rows)
 end
 
 
+local function get_table_names(self, excluded)
+  local i = 0
+  local table_names = {}
+  for row, err in self:iterate(SQL_INFORMATION_SCHEMA_TABLES) do
+    if err then
+      return nil, err
+    end
+
+    if not excluded or not excluded[row.table_name] then
+      i = i + 1
+      table_names[i] = self:escape_identifier(row.table_name)
+    end
+  end
+
+  return table_names
+end
+
+
+local function reset_schema(self)
+  local table_names, err = get_table_names(self)
+  if not table_names then
+    return nil, err
+  end
+
+  local drop_tables
+  if #table_names == 0 then
+    drop_tables = ""
+  else
+    drop_tables = concat {
+      "    DROP TABLE IF EXISTS ", concat(table_names, ", "), " CASCADE;\n"
+    }
+  end
+
+  local schema = self:escape_identifier(self.config.schema)
+  local ok, err = self:query(concat {
+    "BEGIN;\n",
+    "  DO $$\n",
+    "  BEGIN\n",
+    "    DROP SCHEMA IF EXISTS ", schema, " CASCADE;\n",
+    "    CREATE SCHEMA IF NOT EXISTS ", schema, " AUTHORIZATION CURRENT_USER;\n",
+    "    GRANT ALL ON SCHEMA ", schema ," TO CURRENT_USER;\n",
+    "  EXCEPTION WHEN insufficient_privilege THEN\n", drop_tables,
+    "  END;\n",
+    "  $$;\n",
+    "    SET SCHEMA ",  self:escape_literal(self.config.schema), ";\n",
+    "COMMIT;",  })
+
+  if not ok then
+    return nil, err
+  end
+
+  return true
+end
+
+
 local setkeepalive
 
 
@@ -199,7 +255,9 @@ setkeepalive = function(connection)
 end
 
 
-local _mt = {}
+local _mt = {
+  reset = reset_schema
+}
 
 
 _mt.__index = _mt
@@ -309,6 +367,7 @@ function _mt:infos()
   return {
     strategy = "PostgreSQL",
     db_name  = self.config.database,
+    db_schema = self.config.schema,
     db_desc  = "database",
     db_ver   = db_ver or "unknown",
   }
@@ -373,8 +432,51 @@ function _mt:setkeepalive()
 end
 
 
+function _mt:acquire_query_semaphore_resource()
+  if not self.sem then
+    return true
+  end
+
+  do
+    local phase = get_phase()
+    if phase == "init" or phase == "init_worker" then
+      return true
+    end
+  end
+
+  local ok, err = self.sem:wait(self.config.sem_timeout)
+  if not ok then
+    return nil, err
+  end
+
+  return true
+end
+
+
+function _mt:release_query_semaphore_resource()
+  if not self.sem then
+    return true
+  end
+
+  do
+    local phase = get_phase()
+    if phase == "init" or phase == "init_worker" then
+      return true
+    end
+  end
+
+  self.sem:post()
+end
+
+
 function _mt:query(sql)
   local res, err, partial, num_queries
+
+  local ok
+  ok, err = self:acquire_query_semaphore_resource()
+  if not ok then
+    return nil, "error acquiring query semaphore: " .. err
+  end
 
   local conn = self:get_stored_connection()
   if conn then
@@ -384,6 +486,7 @@ function _mt:query(sql)
     local connection
     connection, err = connect(self.config)
     if not connection then
+      self:release_query_semaphore_resource()
       return nil, err
     end
 
@@ -391,6 +494,8 @@ function _mt:query(sql)
 
     setkeepalive(connection)
   end
+
+  self:release_query_semaphore_resource()
 
   if res then
     return res, nil, partial, num_queries or err
@@ -422,38 +527,13 @@ function _mt:iterate(sql)
 end
 
 
-function _mt:reset()
-  local schema = self:escape_identifier(self.config.schema)
-  local user = self:escape_identifier(self.config.user)
-
-  local ok, err = self:query(concat {
-    "BEGIN;\n",
-    "  DROP SCHEMA IF EXISTS ", schema ," CASCADE;\n",
-    "  CREATE SCHEMA IF NOT EXISTS ", schema, " AUTHORIZATION ", user, ";\n",
-    "  GRANT ALL ON SCHEMA ", schema ," TO ", user, ";\n",
-    "COMMIT;",
-  })
-
-  if not ok then
+function _mt:truncate()
+  local table_names, err = get_table_names(self, PROTECTED_TABLES)
+  if not table_names then
     return nil, err
   end
 
-  return true
-end
-
-
-function _mt:truncate()
-  local i, table_names = 0, {}
-
-  for row in self:iterate(SQL_INFORMATION_SCHEMA_TABLES) do
-    local table_name = row.table_name
-    if not PROTECTED_TABLES[table_name] then
-      i = i + 1
-      table_names[i] = self:escape_identifier(table_name)
-    end
-  end
-
-  if i == 0 then
+  if #table_names == 0 then
     return true
   end
 
@@ -485,7 +565,7 @@ end
 
 
 function _mt:setup_locks(_, _)
-  logger.verbose("creating 'locks' table if not existing...")
+  logger.debug("creating 'locks' table if not existing...")
 
   local ok, err = self:query([[
 BEGIN;
@@ -501,7 +581,7 @@ COMMIT;]])
     return nil, err
   end
 
-  logger.verbose("successfully created 'locks' table")
+  logger.debug("successfully created 'locks' table")
 
   return true
 end
@@ -562,9 +642,10 @@ end
 
 function _mt:remove_lock(key, owner)
   local sql = concat {
-    "DELETE FROM locks\n",
-    "      WHERE key   = ", self:escape_literal(key), "\n",
-         "   AND owner = ", self:escape_literal(owner), ";"
+    "DELETE\n",
+    "  FROM ", self:escape_identifier("locks"), "\n",
+    " WHERE ", self:escape_identifier("key"), "   = ", self:escape_literal(key), "\n",
+    "   AND ", self:escape_identifier("owner"), " = ", self:escape_literal(owner), ";"
   }
 
   local res, err = self:query(sql)
@@ -582,16 +663,21 @@ function _mt:schema_migrations()
     error("no connection")
   end
 
-  local has_schema_meta_table
-  for row in self:iterate(SQL_INFORMATION_SCHEMA_TABLES) do
-    local table_name = row.table_name
-    if table_name == "schema_meta" then
-      has_schema_meta_table = true
+  local table_names, err = get_table_names(self)
+  if not table_names then
+    return nil, err
+  end
+
+  local schema_meta_table_name = self:escape_identifier("schema_meta")
+  local schema_meta_table_exists
+  for _, table_name in ipairs(table_names) do
+    if table_name == schema_meta_table_name then
+      schema_meta_table_exists = true
       break
     end
   end
 
-  if not has_schema_meta_table then
+  if not schema_meta_table_exists then
     -- database, but no schema_meta: needs bootstrap
     return nil
   end
@@ -624,9 +710,34 @@ function _mt:schema_bootstrap(kong_config, default_locks_ttl)
     error("no connection")
   end
 
+  -- create schema if not exists
+
+  logger.debug("creating '%s' schema if not existing...", self.config.schema)
+
+  local schema = self:escape_identifier(self.config.schema)
+  local ok, err = self:query(concat {
+    "BEGIN;\n",
+    "  DO $$\n",
+    "  BEGIN\n",
+    "    CREATE SCHEMA IF NOT EXISTS ", schema, " AUTHORIZATION CURRENT_USER;\n",
+    "    GRANT ALL ON SCHEMA ", schema ," TO CURRENT_USER;\n",
+    "  EXCEPTION WHEN insufficient_privilege THEN\n",
+    "    -- Do nothing, perhaps the schema has been created already\n",
+    "  END;\n",
+    "  $$;\n",
+    "  SET SCHEMA ",  self:escape_literal(self.config.schema), ";\n",
+    "COMMIT;",
+  })
+
+  if not ok then
+    return nil, err
+  end
+
+  logger.debug("successfully created '%s' schema", self.config.schema)
+
   -- create schema meta table if not exists
 
-  logger.verbose("creating 'schema_meta' table if not existing...")
+  logger.debug("creating 'schema_meta' table if not existing...")
 
   local res, err = self:query([[
     CREATE TABLE IF NOT EXISTS schema_meta (
@@ -643,7 +754,7 @@ function _mt:schema_bootstrap(kong_config, default_locks_ttl)
     return nil, err
   end
 
-  logger.verbose("successfully created 'schema_meta' table")
+  logger.debug("successfully created 'schema_meta' table")
 
   local ok
   ok, err = self:setup_locks(default_locks_ttl, true)
@@ -661,23 +772,9 @@ function _mt:schema_reset()
     error("no connection")
   end
 
-  local schema = self:escape_identifier(self.config.schema)
-  local user = self:escape_identifier(self.config.user)
-
-  local ok, err = self:query(concat {
-    "BEGIN;\n",
-    "  DROP SCHEMA IF EXISTS ", schema, " CASCADE;\n",
-    "  CREATE SCHEMA IF NOT EXISTS ", schema, " AUTHORIZATION ", user, ";\n",
-    "  GRANT ALL ON SCHEMA ", schema ," TO ", user, ";\n",
-    "COMMIT;",
-  })
-
-  if not ok then
-    return nil, err
+  return reset_schema(self)
   end
 
-  return true
-end
 
 function _mt:run_api_migrations(opts)
   local conn = self:get_stored_connection()
@@ -1519,18 +1616,31 @@ function _M.new(kong_config)
     user       = kong_config.pg_user,
     password   = kong_config.pg_password,
     database   = kong_config.pg_database,
-    schema     = "",
+    schema      = kong_config.pg_schema or "",
     ssl        = kong_config.pg_ssl,
     ssl_verify = kong_config.pg_ssl_verify,
     cafile     = kong_config.lua_ssl_trusted_certificate,
+    sem_max     = kong_config.pg_max_concurrent_queries or 0,
+    sem_timeout = kong_config.pg_semaphore_timeout or 60,
   }
 
   local db = pgmoon.new(config)
+
+  local sem
+  if config.sem_max > 0 then
+    local err
+    sem, err = semaphore.new(config.sem_max)
+    if not sem then
+      ngx.log(ngx.CRIT, "failed creating the PostgreSQL connector semaphore: ",
+                        err)
+    end
+  end
 
   return setmetatable({
     config            = config,
     escape_identifier = db.escape_identifier,
     escape_literal    = db.escape_literal,
+    sem               = sem,
   }, _mt)
 end
 

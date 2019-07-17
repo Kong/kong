@@ -23,6 +23,9 @@ local consumers_schema_def = require "kong.db.schema.entities.consumers"
 local services_schema_def = require "kong.db.schema.entities.services"
 local plugins_schema_def = require "kong.db.schema.entities.plugins"
 local routes_schema_def = require "kong.db.schema.entities.routes"
+local prefix_handler = require "kong.cmd.utils.prefix_handler"
+local dc_blueprints = require "spec.fixtures.dc_blueprints"
+local declarative = require "kong.db.declarative"
 local conf_loader = require "kong.conf_loader"
 local kong_global = require "kong.global"
 local Blueprints = require "spec.fixtures.blueprints"
@@ -30,6 +33,7 @@ local pl_stringx = require "pl.stringx"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
+local version = require "version"
 local pl_dir = require "pl.dir"
 local pl_Set = require "pl.Set"
 local Schema = require "kong.db.schema"
@@ -81,7 +85,7 @@ end
 --
 -- will return: "hello world\nfoo bar"
 local function unindent(str, concat_newlines, spaced_newlines)
-  str = string.match(str, "^%s*(%S.-%S*)%s*$")
+  str = string.match(str, "(.-%S*)%s*$")
   if not str then
     return ""
   end
@@ -90,6 +94,7 @@ local function unindent(str, concat_newlines, spaced_newlines)
   local prefix = ""
   local len
 
+  str = str:match("^%s") and "\n" .. str or str
   for pref in str:gmatch("\n(%s+)") do
     len = #prefix
 
@@ -102,7 +107,7 @@ local function unindent(str, concat_newlines, spaced_newlines)
   local repl = concat_newlines and "" or "\n"
   repl = spaced_newlines and " " or repl
 
-  return (str:gsub("\n" .. prefix, repl):gsub("\n$", "")):gsub("\\r", "\r")
+  return (str:gsub("^\n%s*", ""):gsub("\n" .. prefix, repl):gsub("\n$", ""):gsub("\\r", "\r"))
 end
 
 ---------------
@@ -117,6 +122,8 @@ local db = assert(DB.new(conf))
 assert(db:init_connector())
 db.plugins:load_plugin_schemas(conf.loaded_plugins)
 local blueprints = assert(Blueprints.new(db))
+local dcbp
+local config_yml
 
 kong.db = db
 
@@ -216,13 +223,17 @@ local function get_db_utils(strategy, tables, plugins)
   end
 
   db:truncate("plugins")
-  local loaded_plugins = assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
+  assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
 
   -- XXX EE
   singletons.invoke_plugin = invoke_plugin.new {
-    loaded_plugins = loaded_plugins,
+    loaded_plugins = db.plugins:get_handlers(),
     kong_global = kong_global,
   }
+
+  -- cleanup the tags table, since it will be hacky and
+  -- not necessary to implement "truncate trigger" in Cassandra
+  db:truncate("tags")
 
   -- cleanup new DB tables
   if not tables then
@@ -240,7 +251,15 @@ local function get_db_utils(strategy, tables, plugins)
   end
 
   -- blueprints
-  local bp = assert(Blueprints.new(db))
+  local bp
+  if strategy ~= "off" then
+    bp = assert(Blueprints.new(db))
+    dcbp = nil
+  else
+    bp = assert(dc_blueprints.new(db))
+    bp.cluster_ca:insert()
+    dcbp = bp
+  end
 
   if plugins then
     for _, plugin in ipairs(plugins) do
@@ -250,7 +269,20 @@ local function get_db_utils(strategy, tables, plugins)
 
   local workspaces = require "kong.workspaces"
   ngx.ctx.workspaces = { workspaces.upsert_default(db) }
+  _G.kong.db = db
+
   return bp, db
+end
+
+
+local function get_cache(db)
+  local worker_events = assert(kong_global.init_worker_events())
+  local cluster_events = assert(kong_global.init_cluster_events(conf, db))
+  local cache = assert(kong_global.init_cache(conf,
+                                              cluster_events,
+                                              worker_events
+                                              ))
+  return cache
 end
 
 -----------------
@@ -483,12 +515,12 @@ end
 
 --- returns a pre-configured `http_client` for the Kong SSL proxy port.
 -- @name proxy_ssl_client
-local function proxy_ssl_client(timeout)
+local function proxy_ssl_client(timeout, sni)
   local proxy_ip = get_proxy_ip(true)
   local proxy_port = get_proxy_port(true)
   assert(proxy_ip, "No https-proxy found in the configuration")
   local client = http_client(proxy_ip, proxy_port, timeout)
-  assert(client:ssl_handshake())
+  assert(client:ssl_handshake(nil, sni, false)) -- explicit no-verify
   return client
 end
 
@@ -535,7 +567,7 @@ end
 -- @param `port`    The port where the server will be listening to
 -- @param `opts     A table of options defining the server's behavior
 -- @return `thread` A thread object
-local function tcp_server(port, opts, ...)
+local function tcp_server(port, opts)
   local threads = require "llthreads2.ex"
   opts = opts or {}
   local thread = threads.new({
@@ -543,14 +575,17 @@ local function tcp_server(port, opts, ...)
       local socket = require "socket"
       local server = assert(socket.tcp())
       server:settimeout(360)
-      assert(server:setoption('reuseaddr', true))
+      assert(server:setoption("reuseaddr", true))
       assert(server:bind("*", port))
       assert(server:listen())
       local line
-      for _ = 1, (opts.requests or 1) do
+      local oks, fails = 0, 0
+      local handshake_done = false
+      local n = opts.requests or 1
+      for _ = 1, n + 1 do
         local client = assert(server:accept())
 
-        if opts.tls then
+        if opts.tls and handshake_done then
           local ssl = require "ssl"
           local params = {
             mode = "server",
@@ -563,18 +598,69 @@ local function tcp_server(port, opts, ...)
           client:dohandshake()
         end
 
-        line = assert(client:receive())
+        local err
+        line, err = client:receive()
+        if err == "closed" then
+          fails = fails + 1
+
+        else
+          if not handshake_done then
+            assert(line == "\\START")
+            client:send("\\OK\n")
+            handshake_done = true
+
+          else
+            if line == "@DIE@" then
+              client:send(string.format("%d:%d\n", oks, fails))
+              client:close()
+              break
+            end
+
+            oks = oks + 1
+
         client:send((opts.prefix or "") .. line .. "\n")
+          end
+
         client:close()
+      end
       end
       server:close()
       return line
     end
   }, port, opts)
 
-  local thr = thread:start(...)
-  ngx.sleep(0.01)
+  local thr = thread:start()
+
+  -- not necessary for correctness because we do the handshake,
+  -- but avoids harmless "connection error" messages in the wait loop
+  -- in case the client is ready before the server below.
+  ngx.sleep(0.001)
+
+  local sock = ngx.socket.tcp()
+  sock:settimeout(0.01)
+  while true do
+    if sock:connect("localhost", port) then
+      sock:send("\\START\n")
+      local ok = sock:receive()
+      sock:close()
+      if ok == "\\OK" then
+        break
+      end
+    end
+  end
+  sock:close()
+
   return thr
+end
+
+local function kill_tcp_server(port)
+  local sock = ngx.socket.tcp()
+  assert(sock:connect("localhost", port))
+  assert(sock:send("@DIE@\n"))
+  local str = assert(sock:receive())
+  assert(sock:close())
+  local oks, fails = str:match("(%d+):(%d+)")
+  return tonumber(oks), tonumber(fails)
 end
 
 --- Starts a HTTP server.
@@ -1075,6 +1161,28 @@ luassert:register("assertion", "formparam", req_form_param,
                   "assertion.req_form_param.negative",
                   "assertion.req_form_param.positive")
 
+---
+-- Adds an assertion to ensure a value is greater than another.
+-- @name is_gt
+local function is_gt(state, arguments)
+  local expected = arguments[1]
+  local value = arguments[2]
+
+  arguments[1] = value
+  arguments[2] = expected
+
+  return value > expected
+end
+say:set("assertion.gt.negative", [[
+Given value (%s) should be greater than expected value (%s)
+]])
+say:set("assertion.gt.positive", [[
+Given value (%s) should not be greater than expected value (%s)
+]])
+luassert:register("assertion", "gt", is_gt,
+                  "assertion.gt.negative",
+                  "assertion.gt.positive")
+
 --- Assertion to check whether a CN is matched in an SSL cert.
 -- @param expected The CN value
 -- @param cert The cert
@@ -1105,6 +1213,156 @@ Got instead:
 luassert:register("assertion", "cn", assert_cn,
                   "assertion.cn.negative",
                   "assertion.cn.positive")
+
+
+
+local dns_mock = {}
+do
+  dns_mock.__index = dns_mock
+  dns_mock.__tostring = function(self)
+    -- fill array to prevent json encoding errors
+    for i = 1, 33 do
+      self[i] = self[i] or true
+    end
+    local json = assert(cjson.encode(self))
+    return json
+  end
+
+
+  local TYPE_A, TYPE_AAAA, TYPE_CNAME, TYPE_SRV = 1, 28, 5, 33
+
+
+  --- Creates a new DNS mocks.
+  function dns_mock.new()
+    return setmetatable({}, dns_mock)
+  end
+
+  --- Adds an SRV record to the DNS mock.
+  -- Fields name, target, port are required. Other fields get defaults:
+  -- weight (20), ttl (600), priority (20)
+  function dns_mock:SRV(rec)
+    if self == dns_mock then
+      error("can't operate omn the class, you must create an instance", 2)
+    end
+    if getmetatable(self or {}) ~= dns_mock then
+      error("SRV method must be called using the colon notation", 2)
+    end
+    assert(rec, "Missing record parameter")
+    local name = assert(rec.name, "No name field in SRV record")
+
+    self[TYPE_SRV] = self[TYPE_SRV] or {}
+    local query_answer = self[TYPE_SRV][name]
+    if not query_answer then
+      query_answer = {}
+      self[TYPE_SRV][name] = query_answer
+    end
+
+    table.insert(query_answer, {
+      type = TYPE_SRV,
+      name = name,
+      target = assert(rec.target, "No target field in SRV record"),
+      port = assert(rec.port, "No port field in SRV record"),
+      weight = rec.weight or 10,
+      ttl = rec.ttl or 600,
+      priority = rec.priority or 20,
+      class = rec.class or 1
+    })
+    return true
+  end
+
+
+  --- Adds an A record to the DNS mock.
+  -- Fields name, address are required. Other fields get defaults:
+  -- ttl (600)
+  function dns_mock:A(rec)
+    if self == dns_mock then
+      error("can't operate omn the class, you must create an instance", 2)
+    end
+    if getmetatable(self or {}) ~= dns_mock then
+      error("A method must be called using the colon notation", 2)
+    end
+    assert(rec, "Missing record parameter")
+    local name = assert(rec.name, "No name field in A record")
+
+    self[TYPE_A] = self[TYPE_A] or {}
+    local query_answer = self[TYPE_A][name]
+    if not query_answer then
+      query_answer = {}
+      self[TYPE_A][name] = query_answer
+    end
+
+    table.insert(query_answer, {
+      type = TYPE_A,
+      name = name,
+      address = assert(rec.address, "No address field in A record"),
+      ttl = rec.ttl or 600,
+      class = rec.class or 1
+    })
+    return true
+  end
+
+
+  --- Adds an AAAA record to the DNS mock.
+  -- Fields name, address are required. Other fields get defaults:
+  -- ttl (600)
+  function dns_mock:AAAA(rec)
+    if self == dns_mock then
+      error("can't operate omn the class, you must create an instance", 2)
+    end
+    if getmetatable(self or {}) ~= dns_mock then
+      error("AAAA method must be called using the colon notation", 2)
+    end
+    assert(rec, "Missing record parameter")
+    local name = assert(rec.name, "No name field in AAAA record")
+
+    self[TYPE_AAAA] = self[TYPE_AAAA] or {}
+    local query_answer = self[TYPE_AAAA][name]
+    if not query_answer then
+      query_answer = {}
+      self[TYPE_AAAA][name] = query_answer
+    end
+
+    table.insert(query_answer, {
+      type = TYPE_AAAA,
+      name = name,
+      address = assert(rec.address, "No address field in AAAA record"),
+      ttl = rec.ttl or 600,
+      class = rec.class or 1
+    })
+    return true
+  end
+
+
+  --- Adds an CNAME record to the DNS mock.
+  -- Fields name, cname are required. Other fields get defaults:
+  -- ttl (600)
+  function dns_mock:CNAME(rec)
+    if self == dns_mock then
+      error("can't operate omn the class, you must create an instance", 2)
+    end
+    if getmetatable(self or {}) ~= dns_mock then
+      error("CNAME method must be called using the colon notation", 2)
+    end
+    assert(rec, "Missing record parameter")
+    local name = assert(rec.name, "No name field in CNAME record")
+
+    self[TYPE_CNAME] = self[TYPE_CNAME] or {}
+    local query_answer = self[TYPE_CNAME][name]
+    if not query_answer then
+      query_answer = {}
+      self[TYPE_CNAME][name] = query_answer
+    end
+
+    table.insert(query_answer, {
+      type = TYPE_CNAME,
+      name = name,
+      cname = assert(rec.cname, "No cname field in CNAME record"),
+      ttl = rec.ttl or 600,
+      class = rec.class or 1
+    })
+    return true
+  end
+end
 
 ----------------
 -- Shell helpers
@@ -1288,6 +1546,141 @@ local function validate_plugin_config_schema(config, schema_def)
 end
 
 
+--- Return the actual Kong version the tests are running against.
+-- See [version.lua](https://github.com/kong/version.lua) for the format. This is mostly useful for testing plugins
+-- that should work with multiple Kong versions.
+-- @return a `version`
+-- @usage
+-- local version = require 'version'
+-- if helpers.get_version() < version("0.15.0") then
+--   -- do something
+-- end
+local function get_version()
+  return version(select(3, assert(kong_exec("version"))))
+end
+
+
+local function render_fixtures(conf, env, prefix, fixtures)
+
+  if fixtures and (fixtures.http_mock or fixtures.stream_mock) then
+    -- prepare the prefix so we get the full config in the
+    -- hidden `.kong_env` file, including test specified env vars etc
+    assert(kong_exec("prepare --conf " .. conf, env))
+    local render_config = assert(conf_loader(prefix .. "/.kong_env"))
+
+    for _, mocktype in ipairs { "http_mock", "stream_mock" } do
+
+      for filename, contents in pairs(fixtures[mocktype] or {}) do
+        -- render the file using the full configuration
+        contents = assert(prefix_handler.compile_conf(render_config, contents))
+
+        -- write file to prefix
+        filename = prefix .. "/" .. filename .. "." .. mocktype
+        assert(pl_utils.writefile(filename, contents))
+      end
+    end
+  end
+
+  if fixtures and fixtures.dns_mock then
+    -- write the mock records to the prefix
+    assert(getmetatable(fixtures.dns_mock) == dns_mock,
+           "expected dns_mock to be of a helpers.dns_mock class")
+    assert(pl_utils.writefile(prefix .. "/dns_mock_records.json",
+                              tostring(fixtures.dns_mock)))
+
+    -- add the mock resolver to the path to ensure the records are loaded
+    local path
+    local key = "lua_package_path"
+    path, key = lookup(env, key) -- case insensitive lookup
+
+    -- if no existing path setting then end with double semi-colons
+    env[key] = "spec/fixtures/mocks/lua-resty-dns/?.lua;" .. (path or ";")
+  end
+
+  return true
+end
+
+local function start_kong(env, tables, preserve_prefix, fixtures)
+  if tables ~= nil and type(tables) ~= "table" then
+    error("arg #2 must be a list of tables to truncate")
+  end
+  env = env or {}
+  local prefix = env.prefix or conf.prefix
+  if not preserve_prefix then
+    local ok, err = prepare_prefix(prefix)
+    if not ok then return nil, err end
+  end
+
+  truncate_tables(db, tables)
+
+  local nginx_conf = ""
+  if env.nginx_conf then
+    nginx_conf = " --nginx-conf " .. env.nginx_conf
+  end
+
+  if dcbp and not env.declarative_config then
+    if not config_yml then
+      config_yml = prefix .. "/config.yml"
+      local cfg = dcbp.done()
+      local ok, err = declarative.to_yaml_file(cfg, config_yml)
+      if not ok then
+        return nil, err
+      end
+    end
+    env = utils.deep_copy(env)
+    env.declarative_config = config_yml
+  end
+
+  assert(render_fixtures(TEST_CONF_PATH .. nginx_conf, env, prefix, fixtures))
+
+  return kong_exec("start --conf " .. TEST_CONF_PATH .. nginx_conf, env)
+end
+
+
+local function stop_kong(prefix, preserve_prefix, preserve_dc)
+  prefix = prefix or conf.prefix
+
+  local running_conf = get_running_conf(prefix)
+  if not running_conf then return end
+
+  local ok, err = kong_exec("stop --prefix " .. prefix)
+
+  wait_pid(running_conf.nginx_pid)
+
+  if not preserve_prefix then
+    clean_prefix(prefix)
+  end
+
+  if not preserve_dc then
+    config_yml = nil
+  end
+  ngx.ctx.workspaces = nil
+
+  return ok, err
+end
+
+
+-- Restart Kong, reusing declarative config when using database=off
+local function restart_kong(env, tables)
+  stop_kong(env.prefix, true, true)
+  return start_kong(env, tables, true)
+end
+
+
+local function make_yaml_file(content, filename)
+  if not filename then
+    filename = os.tmpname()
+    os.rename(filename, filename .. ".yml")
+    filename = filename .. ".yml"
+  end
+  local fd = assert(io.open(filename, "w"))
+  assert(fd:write(unindent(content)))
+  assert(fd:write("\n")) -- ensure last line ends in newline
+  assert(fd:close())
+  return filename
+end
+
+
 ----------
 -- Exposed
 ----------
@@ -1303,6 +1696,7 @@ return {
   db = db,
   blueprints = blueprints,
   get_db_utils = get_db_utils,
+  get_cache = get_cache,
   bootstrap_database = bootstrap_database,
   bin_path = BIN_PATH,
   test_conf = conf,
@@ -1328,11 +1722,14 @@ return {
 
   -- Kong testing helpers
   execute = exec,
+  dns_mock = dns_mock,
   kong_exec = kong_exec,
+  get_version = get_version,
   http_client = http_client,
   wait_until = wait_until,
   tcp_server = tcp_server,
   udp_server = udp_server,
+  kill_tcp_server = kill_tcp_server,
   http_server = http_server,
   get_proxy_ip = get_proxy_ip,
   get_proxy_port = get_proxy_port,
@@ -1351,40 +1748,11 @@ return {
   openresty_ver_num = openresty_ver_num(),
   unindent = unindent,
 
-  start_kong = function(env, tables)
-    if tables ~= nil and type(tables) ~= "table" then
-      error("arg #2 must be a list of tables to truncate")
-    end
-    env = env or {}
-    local ok, err = prepare_prefix(env.prefix)
-    if not ok then return nil, err end
+  -- launching Kong subprocesses
+  start_kong = start_kong,
+  stop_kong = stop_kong,
+  restart_kong = restart_kong,
 
-    truncate_tables(db, tables)
-
-    local nginx_conf = ""
-    if env.nginx_conf then
-      nginx_conf = " --nginx-conf " .. env.nginx_conf
-    end
-
-    return kong_exec("start --conf " .. TEST_CONF_PATH .. nginx_conf, env)
-  end,
-  stop_kong = function(prefix, preserve_prefix)
-    prefix = prefix or conf.prefix
-
-    local running_conf = get_running_conf(prefix)
-    if not running_conf then return end
-
-    local ok, err = kong_exec("stop --prefix " .. prefix)
-
-    wait_pid(running_conf.nginx_pid)
-
-    if not preserve_prefix then
-      clean_prefix(prefix)
-    end
-    ngx.ctx.workspaces = nil
-
-    return ok, err
-  end,
   -- Only use in CLI tests from spec/02-integration/01-cmd
   kill_all = function(prefix, timeout)
     local kill = require "kong.cmd.utils.kill"
@@ -1414,4 +1782,5 @@ return {
   unsetenv = function(env)
     return ffi.C.unsetenv(env) == 0
   end,
+  make_yaml_file = make_yaml_file,
 }

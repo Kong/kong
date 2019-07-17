@@ -1,4 +1,3 @@
-local BasePlugin = require "kong.plugins.base_plugin"
 local rules = require "kong.plugins.bot-detection.rules"
 local strip = require("kong.tools.utils").strip
 local lrucache = require "resty.lrucache"
@@ -6,10 +5,10 @@ local lrucache = require "resty.lrucache"
 local ipairs = ipairs
 local re_find = ngx.re.find
 
-local BotDetectionHandler = BasePlugin:extend()
+local BotDetectionHandler = {}
 
 BotDetectionHandler.PRIORITY = 2500
-BotDetectionHandler.VERSION = "1.0.0"
+BotDetectionHandler.VERSION = "2.0.0"
 
 local BAD_REQUEST = 400
 local FORBIDDEN = 403
@@ -62,13 +61,7 @@ local function examine_agent(user_agent, conf)
   return MATCH_EMPTY
 end
 
-function BotDetectionHandler:new()
-  BotDetectionHandler.super.new(self, "bot-detection")
-end
-
 function BotDetectionHandler:access(conf)
-  BotDetectionHandler.super.access(self)
-
   local user_agent, err = get_user_agent()
   if err then
     return kong.response.exit(BAD_REQUEST, { message = err })

@@ -65,6 +65,11 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err_t)
           assert.is_nil(err)
 
+          db.routes:insert({
+            service = { id = service.id },
+            hosts = { "route_" .. tostring(i) .. ".test" }
+          })
+
           services[i] = service
 
           plugins[i] = assert(db.plugins:insert({

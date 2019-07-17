@@ -30,7 +30,13 @@ lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
 lua_shared_dict kong                5m;
 lua_shared_dict kong_db_cache       ${{MEM_CACHE_SIZE}};
+> if database == "off" then
+lua_shared_dict kong_db_cache_2     ${{MEM_CACHE_SIZE}};
+> end
 lua_shared_dict kong_db_cache_miss 12m;
+> if database == "off" then
+lua_shared_dict kong_db_cache_miss_2 12m;
+> end
 lua_shared_dict kong_locks          8m;
 lua_shared_dict kong_process_events 5m;
 lua_shared_dict kong_cluster_events 5m;
@@ -124,6 +130,7 @@ server {
         default_type                     '';
 
         set $ctx_ref                     '';
+        set $upstream_te                 '';
         set $upstream_host               '';
         set $upstream_upgrade            '';
         set $upstream_connection         '';
@@ -144,6 +151,7 @@ server {
         }
 
         proxy_http_version 1.1;
+        proxy_set_header   TE                $upstream_te;
         proxy_set_header   Host              $upstream_host;
         proxy_set_header   Upgrade           $upstream_upgrade;
         proxy_set_header   Connection        $upstream_connection;

@@ -7,70 +7,58 @@ require("spec.helpers") -- add spec/fixtures/custom_plugins to package.path
 describe("kong.db.dao.plugins", function()
   local self
 
-  lazy_setup(function()
+  before_each(function()
     assert(Entity.new(require("kong.db.schema.entities.services")))
     assert(Entity.new(require("kong.db.schema.entities.routes")))
     assert(Entity.new(require("kong.db.schema.entities.consumers")))
     local schema = assert(Entity.new(require("kong.db.schema.entities.plugins")))
 
+    local errors = Errors.new("mock")
     self = {
       schema = schema,
-      errors = Errors.new("mock"),
-      db = {},
+      errors = errors,
+      db = {
+        errors = errors,
+      },
     }
   end)
 
-  describe("load_plugin_schemas", function()
+  describe("load_plugin_schemas and get_handlers", function()
 
-    it("loads valid plugin schemas", function()
-      local schemas, err = Plugins.load_plugin_schemas(self, {
+    it("loads valid plugin schemas and sets the plugin handlers", function()
+      local ok, err = Plugins.load_plugin_schemas(self, {
         ["key-auth"] = true,
         ["basic-auth"] = true,
       })
+      assert.is_truthy(ok)
       assert.is_nil(err)
 
-      table.sort(schemas, function(a, b)
-        return a.name < b.name
-      end)
+      local handlers, err = Plugins.get_handlers(self)
+      assert.is_nil(err)
+      assert.is_table(handlers)
 
-      assert.same({
-        {
-          handler = { _name = "basic-auth" },
-          name = "basic-auth",
-        },
-        {
-          handler = { _name = "key-auth" },
-          name = "key-auth",
-        },
-      }, schemas)
+      assert.equal("basic-auth", handlers[2].name)
+      assert.equal("key-auth", handlers[1].name)
+
+      for i = 1, #handlers do
+        assert.is_number(handlers[i].handler.PRIORITY)
+        assert.matches("%d%.%d%.%d", handlers[i].handler.VERSION)
+        assert.is_function(handlers[i].handler.access)
+      end
     end)
 
-    it("reports invalid plugin schemas", function()
-      local s = spy.on(kong.log, "warn")
-
-      local schemas, err = Plugins.load_plugin_schemas(self, {
+    it("fails on invalid plugin schemas", function()
+      local ok, err = Plugins.load_plugin_schemas(self, {
         ["key-auth"] = true,
         ["invalid-schema"] = true,
       })
 
-      assert.spy(s).was_called(1)
-      mock.revert(kong.log)
+      assert.is_nil(ok)
+      assert.match("error loading plugin schemas: on plugin 'invalid-schema'", err, 1, true)
 
-      table.sort(schemas, function(a, b)
-        return a.name < b.name
-      end)
-
-      assert.is_nil(err)
-      assert.same({
-        {
-          handler = { _name = "invalid-schema" },
-          name = "invalid-schema",
-        },
-        {
-          handler = { _name = "key-auth" },
-          name = "key-auth",
-        },
-      }, schemas)
+      local handlers, err = Plugins.get_handlers(self)
+      assert.is_nil(handlers)
+      assert.is_string(err)
     end)
 
   end)

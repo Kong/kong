@@ -27,8 +27,8 @@ end
 
 
 local function clean_history(self, upstream_pk)
-  -- when to cleanup: invalid-entries > (valid-ones * cleanup_factor)
-  local cleanup_factor = 10
+  -- when to cleanup: when less than 10 percent of the entries are valid
+  local cleanup_factor = 0.1
 
   --cleaning up history, check if it's necessary...
   local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, 1000)
@@ -37,18 +37,21 @@ local function clean_history(self, upstream_pk)
   end
 
   -- do clean up
-  local cleaned = {}
+  local seen = {}
   local delete = {}
 
-  for _, entry in ipairs(targets) do
-    if cleaned[entry.target] then
+  -- Read the history in reverse order, to obtain the most
+  -- recent state of each target.
+  for i = #targets, 1, -1 do
+    local entry = targets[i]
+
+    if seen[entry.target] then
       -- we got a newer entry for this target than this, so this one can go
       delete[#delete+1] = entry
 
     else
-      -- haven't got this one, so this is the last one for this target
-      cleaned[entry.target] = true
-      cleaned[#cleaned+1] = entry
+      -- haven't got this one, so this is the current state for this target
+      seen[entry.target] = true
       if entry.weight == 0 then
         delete[#delete+1] = entry
       end
@@ -56,9 +59,7 @@ local function clean_history(self, upstream_pk)
   end
 
   -- do we need to cleanup?
-  -- either nothing left, or when 10x more outdated than active entries
-  if (#cleaned == 0 and #delete > 0) or
-     (#delete >= (math.max(#cleaned,1)*cleanup_factor)) then
+  if #delete > #targets * (1 - cleanup_factor) then
 
     ngx.log(ngx.NOTICE, "[Target DAO] Starting cleanup of target table for upstream ",
                tostring(upstream_pk.id))
@@ -99,9 +100,12 @@ function _TARGETS:insert(entity)
     entity.target = formatted_target
   end
 
-  clean_history(self, entity.upstream)
+  local row, err, err_t = self.super.insert(self, entity)
+  if row then
+    clean_history(self, entity.upstream)
+  end
 
-  return self.super.insert(self, entity)
+  return row, err, err_t
 end
 
 

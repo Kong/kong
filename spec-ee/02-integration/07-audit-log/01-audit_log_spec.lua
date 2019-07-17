@@ -161,7 +161,7 @@ for _, strategy in helpers.each_strategy() do
             end)
           end)
 
-          it("CREATE on proxy side", function()
+          it("#flaky CREATE on proxy side", function()
             -- oauth2 plugin creates entities on the proxy side; use it to assert
             -- that audit log creates an object log on the proxy path
 
@@ -687,7 +687,9 @@ for _, strategy in helpers.each_strategy() do
     setup(function()
       db = select(2, helpers.get_db_utils(strategy))
 
+      os.execute("rm -f ./spec/fixtures/key.pem")
       os.execute("openssl genrsa -out ./spec/fixtures/key.pem 2048 2>/dev/null")
+      os.execute("chmod 0777 ./spec/fixtures/key.pem")
 
       assert(helpers.start_kong({
         database   = strategy,

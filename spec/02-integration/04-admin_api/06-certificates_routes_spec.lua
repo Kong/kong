@@ -355,7 +355,7 @@ describe("Admin API: #" .. strategy, function()
         assert.same({ "example.com" }, json.snis)
         json.snis = nil
 
-        local in_db = assert(db.certificates:select({ id = id }))
+        local in_db = assert(db.certificates:select({ id = id }, { nulls = true }))
         assert.same(json, in_db)
       end)
 
@@ -376,7 +376,7 @@ describe("Admin API: #" .. strategy, function()
         assert.same({ "example.com", "new-sni.com" }, json.snis)
         json.snis = nil
 
-        local in_db = assert(db.certificates:select({ id = json.id }))
+        local in_db = assert(db.certificates:select({ id = json.id }, { nulls = true }))
         assert.same(json, in_db)
       end)
 
@@ -394,7 +394,7 @@ describe("Admin API: #" .. strategy, function()
 
         json.snis = nil
 
-        local in_db = assert(db.certificates:select({ id = certificate.id }))
+        local in_db = assert(db.certificates:select({ id = certificate.id }, { nulls = true }))
         assert.same(json, in_db)
       end)
 
@@ -967,6 +967,79 @@ describe("Admin API: #" .. strategy, function()
       })
     end)
 
+    describe("wildcard snis", function()
+      lazy_setup(function()
+        assert(db:truncate("certificates"))
+        assert(db:truncate("snis"))
+
+        certificate = bp.certificates:insert()
+      end)
+
+      describe("POST", function()
+        it("creates with prefix wildcard", function()
+          local res = client:post("/snis", {
+            body = {
+              name = "*.wildcard.com",
+              certificate = { id = certificate.id },
+            },
+            headers = { ["Content-Type"] = "application/json" },
+          })
+
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("*.wildcard.com", json.name)
+          assert.equal(certificate.id, json.certificate.id)
+        end)
+
+        it("creates with suffix wildcard", function()
+          local res = client:post("/snis", {
+            body = {
+              name = "wildcard.*",
+              certificate = { id = certificate.id },
+            },
+            headers = { ["Content-Type"] = "application/json" },
+          })
+
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("wildcard.*", json.name)
+          assert.equal(certificate.id, json.certificate.id)
+        end)
+
+        it("rejects invalid SNIs", function()
+          local res = client:post("/snis", {
+            body = {
+              name = "*.wildcard.*",
+              certificate = { id = certificate.id },
+            },
+            headers = { ["Content-Type"] = "application/json" },
+          })
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.equal("only one wildcard must be specified", json.fields.name)
+        end)
+      end)
+
+      describe("GET", function()
+        lazy_setup(function()
+          assert(db:truncate("snis"))
+        end)
+
+        it("retrieves a wildcard SNI using the name", function()
+          bp.snis:insert({
+            name = "*.wildcard.com",
+            certificate = { id = certificate.id },
+          })
+
+          local res = client:get("/snis/%2A.wildcard.com")
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("*.wildcard.com", json.name)
+        end)
+      end)
+    end)
+
     describe("GET", function()
       it("retrieves a sni using the name", function()
         local res  = client:get("/snis/foo.com")
@@ -998,7 +1071,7 @@ describe("Admin API: #" .. strategy, function()
         local json = cjson.decode(body)
         assert.same("created.com", json.name)
 
-        local in_db = assert(db.snis:select({ id = id }))
+        local in_db = assert(db.snis:select({ id = id }, { nulls = true }))
         assert.same(json, in_db)
       end)
 
@@ -1015,7 +1088,7 @@ describe("Admin API: #" .. strategy, function()
         local json = cjson.decode(body)
         assert.same("updated.com", json.name)
 
-        local in_db = assert(db.snis:select({ id = sni.id }))
+        local in_db = assert(db.snis:select({ id = sni.id }, { nulls = true }))
         assert.same(json, in_db)
       end)
 

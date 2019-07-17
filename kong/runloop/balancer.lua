@@ -302,12 +302,9 @@ do
 
       -- Do not run active healthchecks in `stream` module
       local checks = upstream.healthchecks
-      if ngx.config.subsystem == "stream"
-         and (checks.active.healthy.interval ~= 0
-              or checks.active.unhealthy.interval ~= 0)
+      if (ngx.config.subsystem == "stream" and checks.active.type ~= "tcp")
+         or (ngx.config.subsystem == "http" and checks.active.type == "tcp")
       then
-        log(ngx.INFO, "[healthchecks] disabling active healthchecks in ",
-                      "stream module")
         checks = pl_tablex.deepcopy(checks)
         checks.active.healthy.interval = 0
         checks.active.unhealthy.interval = 0
@@ -473,21 +470,19 @@ end
 local get_all_upstreams
 local get_all_upstreams_as_list
 do
-  ------------------------------------------------------------------------------
-  -- Implements a simple dictionary with all upstream-ids indexed
-  -- by their name.
-  -- @return The upstreams dictionary, a map with upstream names as string keys
-  -- and upstream entity tables as values, or nil+error
-  -- XXX EE merge: make this workspace-aware (use the workspaces argument passsed
-  -- to this function)
   local function load_upstreams_dict_into_memory(workspaces)
     local upstreams_dict = {}
 
     local old_ws = ngx.ctx.workspaces
     ngx.ctx.workspaces = workspaces
 
-    for up in singletons.db.upstreams:each() do
-    -- build a dictionary, indexed by the upstream name
+    for up, err in singletons.db.upstreams:each(1000) do
+      -- build a dictionary, indexed by the upstream name
+      if err then
+        log(CRIT, "could not obtain list of upstreams: ", err)
+        return nil
+      end
+
       upstreams_dict[up.name] = up.id
     end
 
@@ -496,20 +491,19 @@ do
   end
   _load_upstreams_dict_into_memory = load_upstreams_dict_into_memory
 
-
   ------------------------------------------------------------------------------
-  -- Finds and returns an upstream entity. This function covers
-  -- caching, invalidation, db access, et al.
-  -- @param upstream_name string.
-  -- @return upstream table, or `false` if not found, or nil+error
+  -- Implements a simple dictionary with all upstream-ids indexed
+  -- by their name.
+  -- @return The upstreams dictionary (a map with upstream names as string keys
+  -- and upstream entity tables as values), or nil+error
   get_all_upstreams = function(workspaces)
-     workspaces = workspaces or ngx.ctx.workspaces
+    workspaces = workspaces or ngx.ctx.workspaces
 
     -- for access phase
     local upstreams_dict = {}
     for _, workspace in ipairs(workspaces) do
       local upstreams_dict, err = singletons.cache:get("balancer:upstreams:" .. workspace.id , nil,
-                                                       load_upstreams_dict_into_memory, {workspace})
+        load_upstreams_dict_into_memory, {workspace})
       if err then
         return nil, err
       end
@@ -519,7 +513,7 @@ do
       end
     end
 
-    return upstreams_dict
+    return upstreams_dict or {}
   end
 
   get_all_upstreams_as_list = function()
@@ -543,7 +537,6 @@ do
     return upstream_list
   end
 end
-
 
 ------------------------------------------------------------------------------
 -- Finds and returns an upstream entity. This function covers
@@ -768,7 +761,7 @@ end
 local function init()
   local upstreams, err = get_all_upstreams_as_list()
   if not upstreams then
-    log(CRIT, "failed loading initial list of upstreams: " .. err)
+    log(CRIT, "failed loading initial list of upstreams: ", err)
     return
   end
 
@@ -870,7 +863,7 @@ local function execute(target, ctx)
     trace:finish()
     hostname = target.host
     if not ip then
-      log(ERR, "[dns] ", port, ". Tried: ", tostring(try_list))
+      log(ERR, "DNS resolution failed: ", port, ". Tried: ", tostring(try_list))
       if port == "dns server error: 3 name error" or
          port == "dns client error: 101 empty record received" then
         return nil, "name resolution failed", 503

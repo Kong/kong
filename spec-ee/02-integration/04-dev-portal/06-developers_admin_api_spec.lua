@@ -219,7 +219,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           }
         })
 
-        local body = assert.res_status(403, res)
+        local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.equals("Invalid authentication credentials", json.message)
 

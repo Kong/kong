@@ -1,5 +1,4 @@
 local constants = require "kong.constants"
-local BasePlugin = require "kong.plugins.base_plugin"
 
 
 local kong = kong
@@ -9,16 +8,11 @@ local type = type
 local _realm = 'Key realm="' .. _KONG._NAME .. '"'
 
 
-local KeyAuthHandler = BasePlugin:extend()
+local KeyAuthHandler = {}
 
 
 KeyAuthHandler.PRIORITY = 1003
-KeyAuthHandler.VERSION = "1.0.0"
-
-
-function KeyAuthHandler:new()
-  KeyAuthHandler.super.new(self, "key-auth")
-end
+KeyAuthHandler.VERSION = "2.0.0"
 
 
 local function load_credential(key)
@@ -143,7 +137,7 @@ local function do_authentication(conf)
   end
 
   -- this request is missing an API key, HTTP 401
-  if not key then
+  if not key or key == "" then
     kong.response.set_header("WWW-Authenticate", _realm)
     return nil, { status = 401, message = "No API key found in request" }
   end
@@ -160,9 +154,9 @@ local function do_authentication(conf)
     return kong.response.exit(500, "An unexpected error occurred")
   end
 
-  -- no credential in DB, for this key, it is invalid, HTTP 403
+  -- no credential in DB, for this key, it is invalid, HTTP 401
   if not credential then
-    return nil, { status = 403, message = "Invalid authentication credentials" }
+    return nil, { status = 401, message = "Invalid authentication credentials" }
   end
 
   -----------------------------------------
@@ -186,8 +180,6 @@ end
 
 
 function KeyAuthHandler:access(conf)
-  KeyAuthHandler.super.access(self)
-
   -- check if preflight request and whether it should be authenticated
   if not conf.run_on_preflight and kong.request.get_method() == "OPTIONS" then
     return

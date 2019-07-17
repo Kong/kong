@@ -29,9 +29,9 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "keyauth2.test" },
       }
 
-      consumer = bp.consumers:insert {
+      consumer = bp.consumers:insert({
         username = "bob"
-      }
+      }, { nulls = true })
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -297,7 +297,7 @@ for _, strategy in helpers.each_strategy() do
         assert.response(res).has.status(400)
         local body = assert.response(res).has.jsonbody()
         assert.equal("bad header name 'hello\\world', allowed characters are A-Z, a-z, 0-9, '_', and '-'",
-                     body.fields.config.key_names)
+                     body.fields.config.key_names[1])
       end)
       it("succeeds with valid key_names", function()
         local key_name = "hello-world"

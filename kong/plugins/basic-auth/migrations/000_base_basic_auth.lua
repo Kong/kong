@@ -9,7 +9,12 @@ return {
         "password"     TEXT
       );
 
-      CREATE INDEX IF NOT EXISTS "basicauth_consumer_id_idx" ON "basicauth_credentials" ("consumer_id");
+      DO $$
+      BEGIN
+        CREATE INDEX IF NOT EXISTS "basicauth_consumer_id_idx" ON "basicauth_credentials" ("consumer_id");
+      EXCEPTION WHEN UNDEFINED_COLUMN THEN
+        -- Do nothing, accept existing state
+      END$$;
     ]],
   },
 

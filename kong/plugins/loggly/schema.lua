@@ -9,6 +9,7 @@ local severity = {
 return {
   name = "loggly",
   fields = {
+    { protocols = typedefs.protocols_http },
     { config = {
         type = "record",
         fields = {

@@ -8,7 +8,12 @@ return {
         "key"          TEXT                         UNIQUE
       );
 
-      CREATE INDEX IF NOT EXISTS "keyauth_consumer_idx" ON "keyauth_credentials" ("consumer_id");
+      DO $$
+      BEGIN
+        CREATE INDEX IF NOT EXISTS "keyauth_consumer_idx" ON "keyauth_credentials" ("consumer_id");
+      EXCEPTION WHEN UNDEFINED_COLUMN THEN
+        -- Do nothing, accept existing state
+      END$$;
     ]],
   },
 

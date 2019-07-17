@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use Test::Nginx::Socket::Lua::Stream;
 use t::Util;
 
 $ENV{TEST_NGINX_NXSOCK} ||= html_dir();
@@ -215,7 +216,48 @@ port: 1234
 
 
 
-=== TEST 8: client.get_forwarded_port() returns client port from last hop with X-Real-IP not having port when not trusted
+=== TEST 8: client.get_forwarded_port() returns client port with proxy_protocol when trusted (stream)
+--- stream_config eval
+qq{
+    server {
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock proxy_protocol;
+
+        set_real_ip_from 0.0.0.0/0;
+        set_real_ip_from ::/0;
+        set_real_ip_from unix:;
+
+        content_by_lua_block {
+            require "resty.core"
+
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            ngx.say("port: ", pdk.client.get_forwarded_port())
+        }
+    }
+}
+--- stream_server_config
+    content_by_lua_block {
+        local sock = ngx.socket.tcp()
+        sock:connect("unix:$TEST_NGINX_NXSOCK/nginx.sock")
+
+        local request = "PROXY TCP4 10.0.0.1 " ..
+                        ngx.var.server_addr    .. " " ..
+                        1234                   .. " " ..
+                        ngx.var.server_port    .. "\r\n" ..
+                        "Hello!\r\n"
+
+        sock:send(request)
+        ngx.print(sock:receive())
+    }
+--- stream_response chop
+port: 1234
+--- no_error_log
+[error]
+
+
+
+=== TEST 9: client.get_forwarded_port() returns client port from last hop with X-Real-IP not having port when not trusted
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -239,7 +281,7 @@ port: \d+
 
 
 
-=== TEST 9: client.get_forwarded_port() returns client port from last hop with X-Forwarded-For not having port when not trusted
+=== TEST 10: client.get_forwarded_port() returns client port from last hop with X-Forwarded-For not having port when not trusted
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -263,7 +305,7 @@ port: \d+
 
 
 
-=== TEST 10: client.get_forwarded_port() returns client port from last hop with X-Real-IP with port when not trusted
+=== TEST 11: client.get_forwarded_port() returns client port from last hop with X-Real-IP with port when not trusted
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -289,7 +331,7 @@ port: \d+
 
 
 
-=== TEST 11: client.get_forwarded_port() returns client port from last hop with X-Forwarded-For with port when not trusted
+=== TEST 12: client.get_forwarded_port() returns client port from last hop with X-Forwarded-For with port when not trusted
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -315,7 +357,7 @@ port: \d+
 
 
 
-=== TEST 12: client.get_forwarded_port() returns client port from last hop with proxy_protocol when not trusted
+=== TEST 13: client.get_forwarded_port() returns client port from last hop with proxy_protocol when not trusted
 --- http_config eval
 qq{
     $t::Util::HttpConfig
@@ -355,6 +397,43 @@ qq{
 --- request
 GET /t
 --- response_body
+port: nil
+--- no_error_log
+[error]
+
+
+
+=== TEST 14: client.get_forwarded_port() returns client port from last hop with proxy_protocol when not trusted (stream)
+--- stream_config eval
+qq{
+    server {
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock proxy_protocol;
+
+        content_by_lua_block {
+            require "resty.core"
+
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            ngx.say("port: ", pdk.client.get_forwarded_port())
+        }
+    }
+}
+--- stream_server_config
+    content_by_lua_block {
+        local sock = ngx.socket.tcp()
+        sock:connect("unix:$TEST_NGINX_NXSOCK/nginx.sock")
+
+        local request = "PROXY TCP4 10.0.0.1 " ..
+                        ngx.var.server_addr    .. " " ..
+                        1234                   .. " " ..
+                        ngx.var.server_port    .. "\r\n" ..
+                        "Hello!\r\n"
+
+        sock:send(request)
+        ngx.print(sock:receive())
+    }
+--- stream_response chop
 port: nil
 --- no_error_log
 [error]

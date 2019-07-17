@@ -55,6 +55,14 @@ for _, strategy in helpers.each_strategy() do
             username = "proxybob",
           })
 
+          assert(bp.consumers:insert {
+            username = "proxybob2",
+          })
+
+          assert(bp.consumers:insert {
+            username = "proxybob3",
+          })
+
           developer = assert(bp.consumers:insert {
             username = "developerbob",
             custom_id = "1337",
@@ -79,6 +87,19 @@ for _, strategy in helpers.each_strategy() do
             type = enums.CONSUMERS.TYPE.DEVELOPER
           }, foo_ws))
         end)
+
+        it("paginates only through PROXY consumers", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/consumers?size=2",
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.equals(2, #json.data)
+          assert.not_nil(json.next)
+        end)
+
         it("returns only consumers of type PROXY", function()
           local res = assert(client:send {
             method = "GET",
@@ -88,8 +109,9 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
-          assert.equal(proxy.id, json.data[1].id)
-          assert.equal(1, #json.data)
+          assert.equal(3, #json.data)
+          local ids = require("pl.tablex").map(function(x) return x.id end, json.data)
+          assert.contains(proxy.id, ids)
 
           local res = assert(client:send {
             method = "GET",

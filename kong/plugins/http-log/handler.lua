@@ -1,85 +1,177 @@
 local basic_serializer = require "kong.plugins.log-serializers.basic"
-local BasePlugin = require "kong.plugins.base_plugin"
-local LuaProducer = require "kong.plugins.log-buffering.lua_producer"
-local JSONProducer = require "kong.plugins.log-buffering.json_producer"
-local Sender = require "kong.plugins.http-log.sender"
-local Buffer = require "kong.plugins.log-buffering.buffer"
+local BatchQueue = require "kong.tools.batch_queue"
 local cjson = require "cjson"
+local url = require "socket.url"
+local http = require "resty.http"
 
 
 local cjson_encode = cjson.encode
-local ERR = ngx.ERR
+local ngx_encode_base64 = ngx.encode_base64
+local table_concat = table.concat
+local fmt = string.format
 
 
-local HttpLogHandler = BasePlugin:extend()
+local HttpLogHandler = {}
 
 
 HttpLogHandler.PRIORITY = 12
-HttpLogHandler.VERSION = "1.0.0"
+HttpLogHandler.VERSION = "2.0.0"
 
 
-local buffers = {} -- buffers per-route
+local queues = {} -- one queue per unique plugin config
+
+local parsed_urls_cache = {}
 
 
--- Only provide `name` when deriving from this class. Not when initializing an instance.
-function HttpLogHandler:new(name)
-  name = name or "http-log"
-  HttpLogHandler.super.new(self, name)
+-- Parse host url.
+-- @param `url` host url
+-- @return `parsed_url` a table with host details:
+-- scheme, host, port, path, query, userinfo
+local function parse_url(host_url)
+  local parsed_url = parsed_urls_cache[host_url]
 
-  self.ngx_log = ngx.log
---  self.ngx_log = function(lvl, ...)
---    ngx_log(lvl, "[", name, "] ", ...)
---  end
+  if parsed_url then
+    return parsed_url
+  end
 
-  self.name = name
+  parsed_url = url.parse(host_url)
+  if not parsed_url.port then
+    if parsed_url.scheme == "http" then
+      parsed_url.port = 80
+    elseif parsed_url.scheme == "https" then
+      parsed_url.port = 443
+    end
+  end
+  if not parsed_url.path then
+    parsed_url.path = "/"
+  end
+
+  parsed_urls_cache[host_url] = parsed_url
+
+  return parsed_url
 end
 
 
--- serializes context data into an html message body.
--- @param `ngx` The context table for the request being logged
--- @param `conf` plugin configuration table, holds http endpoint details
--- @return html body as string
-function HttpLogHandler:serialize(ngx, conf)
-  return cjson_encode(basic_serializer.serialize(ngx))
+-- Sends the provided payload (a string) to the configured plugin host
+-- @return true if everything was sent correctly, falsy if error
+-- @return error message if there was an error
+local function send_payload(self, conf, payload)
+  local method = conf.method
+  local timeout = conf.timeout
+  local keepalive = conf.keepalive
+  local content_type = conf.content_type
+  local http_endpoint = conf.http_endpoint
+
+  local ok, err
+  local parsed_url = parse_url(http_endpoint)
+  local host = parsed_url.host
+  local port = tonumber(parsed_url.port)
+
+  local httpc = http.new()
+  httpc:set_timeout(timeout)
+  ok, err = httpc:connect(host, port)
+  if not ok then
+    return nil, "failed to connect to " .. host .. ":" .. tostring(port) .. ": " .. err
+  end
+
+  if parsed_url.scheme == "https" then
+    local _, err = httpc:ssl_handshake(true, host, false)
+    if err then
+      return nil, "failed to do SSL handshake with " ..
+                  host .. ":" .. tostring(port) .. ": " .. err
+    end
+  end
+
+  local res, err = httpc:request({
+    method = method,
+    path = parsed_url.path,
+    query = parsed_url.query,
+    headers = {
+      ["Host"] = parsed_url.host,
+      ["Content-Type"] = content_type,
+      ["Content-Length"] = #payload,
+      ["Authorization"] = parsed_url.userinfo and (
+        "Basic " .. ngx_encode_base64(parsed_url.userinfo)
+      ),
+    },
+    body = payload,
+  })
+  if not res then
+    return nil, "failed request to " .. host .. ":" .. tostring(port) .. ": " .. err
+  end
+
+  -- always read response body, even if we discard it without using it on success
+  local response_body = res:read_body()
+  local success = res.status < 400
+  local err_msg
+
+  if not success then
+    err_msg = "request to " .. host .. ":" .. tostring(port) ..
+              " returned status code " .. tostring(res.status) .. " and body " ..
+              response_body
+  end
+
+  ok, err = httpc:set_keepalive(keepalive)
+  if not ok then
+    -- the batch might already be processed at this point, so not being able to set the keepalive
+    -- will not return false (the batch might not need to be reprocessed)
+    kong.log.err("failed keepalive for ", host, ":", tostring(port), ": ", err)
+  end
+
+  return success, err_msg
+end
+
+
+local function json_array_concat(entries)
+  return "[" .. table_concat(entries, ",") .. "]"
+end
+
+
+local function get_queue_id(conf)
+  return fmt("%s:%s:%s:%s:%s:%s",
+             conf.http_endpoint,
+             conf.method,
+             conf.content_type,
+             conf.timeout,
+             conf.keepalive,
+             conf.retry_count,
+             conf.queue_size,
+             conf.flush_timeout)
 end
 
 
 function HttpLogHandler:log(conf)
-  HttpLogHandler.super.log(self)
+  local entry = cjson_encode(basic_serializer.serialize(ngx))
 
-  local route_id = conf.route_id or "global"
-  local buf = buffers[route_id]
-  if not buf then
-
-    if conf.queue_size == nil then
-      conf.queue_size = 1
+  local queue_id = get_queue_id(conf)
+  local q = queues[queue_id]
+  if not q then
+    -- batch_max_size <==> conf.queue_size
+    local batch_max_size = conf.queue_size or 1
+    local process = function(entries)
+      local payload = batch_max_size == 1
+                      and entries[1]
+                      or  json_array_concat(entries)
+      return send_payload(self, conf, payload)
     end
 
-    -- base delay between batched sends
-    conf.send_delay = 0
-
-    local buffer_producer
-    -- If using a queue, produce messages into a JSON array,
-    -- otherwise keep it as a 1-entry Lua array which will
-    -- result in a backward-compatible single-object HTTP request.
-    if conf.queue_size > 1 then
-      buffer_producer = JSONProducer.new(true)
-    else
-      buffer_producer = LuaProducer.new()
-    end
+    local opts = {
+      retry_count    = conf.retry_count,
+      flush_timeout  = conf.flush_timeout,
+      batch_max_size = batch_max_size,
+      process_delay  = 0,
+    }
 
     local err
-    buf, err = Buffer.new(self.name, conf, buffer_producer, Sender.new(conf, self.ngx_log), self.ngx_log)
-    if not buf then
-      self.ngx_log(ERR, "could not create buffer: ", err)
+    q, err = BatchQueue.new(process, opts)
+    if not q then
+      kong.log.err("could not create queue: ", err)
       return
     end
-    buffers[route_id] = buf
+    queues[queue_id] = q
   end
 
-  -- This can be simplified if we don't expect third-party plugins to
-  -- "subclass" this plugin.
-  buf:add_entry(self:serialize(ngx, conf))
+  q:add(entry)
 end
 
 return HttpLogHandler

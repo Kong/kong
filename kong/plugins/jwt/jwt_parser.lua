@@ -154,10 +154,6 @@ local function decode_token(token)
     return nil, "invalid JSON"
   end
 
-  if header.typ and header.typ:upper() ~= "JWT" then
-    return nil, "invalid typ"
-  end
-
   if not header.alg or type(header.alg) ~= "string" or not alg_verify[header.alg] then
     return nil, "invalid alg"
   end

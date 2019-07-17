@@ -30,7 +30,10 @@ end
 
 describe("Admin API listeners", function()
   before_each(function()
-    helpers.get_db_utils(nil, {})
+    helpers.get_db_utils(nil, {
+      "routes",
+      "services",
+    })
   end)
 
   after_each(function()

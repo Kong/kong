@@ -1,3 +1,4 @@
+local cluster_ca_tools = require "kong.tools.cluster_ca"
 local ssl_fixtures = require "spec.fixtures.ssl"
 local utils = require "kong.tools.utils"
 
@@ -38,6 +39,15 @@ end
 
 function Blueprint:remove(overrides, options)
   local entity, err = self.dao:remove({ id = overrides.id }, options)
+  if err then
+    error(err, 2)
+  end
+  return entity
+end
+
+
+function Blueprint:update(id, overrides, options)
+  local entity, err = self.dao:update(id, overrides, options)
   if err then
     error(err, 2)
   end
@@ -89,7 +99,7 @@ function _M.new(db)
   local sni_seq = new_sequence("server-name-%d")
   res.snis = new_blueprint(db.snis, function(overrides)
     return {
-      name        = sni_seq:next(),
+      name        = overrides.name or sni_seq:next(),
       certificate = overrides.certificate or res.certificates:insert(),
     }
   end)
@@ -361,7 +371,18 @@ function _M.new(db)
       name = rbac_roles_seq:next(),
     }
   end)
+
+  res.cluster_ca = new_blueprint(db.cluster_ca, function()
+    local ca_key = cluster_ca_tools.new_key()
+    local ca_cert = cluster_ca_tools.new_ca(ca_key)
+    return {
+      key = ca_key:toPEM("private"),
+      cert = ca_cert:toPEM(),
+    }
+  end)
+
   return res
 end
+
 
 return _M

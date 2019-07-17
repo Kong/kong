@@ -23,7 +23,9 @@ events {
 }
 
 http {
+> if #proxy_listeners > 0 or #admin_listeners > 0 then
     include 'nginx-kong.conf';
+> end
 }
 
 > if #stream_listeners > 0 then

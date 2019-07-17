@@ -91,4 +91,148 @@ describe("kong.db [#postgres] connector", function()
       }, infos)
     end)
   end)
+
+  describe(":query() semaphore", function()
+    describe("max 1", function()
+      -- connector in a new scope
+      local connector
+
+      setup(function()
+        local new_config = {
+          pg_database = "kong",
+          pg_max_concurrent_queries = 1,
+          pg_semaphore_timeout = 1,
+        }
+
+        connector = require "kong.db.strategies.postgres.connector".new(new_config)
+
+        connector.get_stored_connection = function()
+          return {
+            query = function(_, s) ngx.sleep(s) end
+          }
+        end
+      end)
+
+      it("functions as a mutex", function()
+        local errors = {}
+
+        local co1 = ngx.thread.spawn(function()
+          local _, err = connector:query(0.001)
+          if err then
+            table.insert(errors, err)
+          end
+        end)
+
+        local co2 = ngx.thread.spawn(function()
+          local _, err = connector:query(0.001)
+          if err then
+            table.insert(errors, err)
+          end
+        end)
+
+        ngx.thread.wait(co2)
+        ngx.thread.wait(co1)
+
+        assert.same(0, #errors)
+      end)
+
+      it("times out failing to acquire a lock", function()
+        local errors = {}
+
+        local co1 = ngx.thread.spawn(function()
+          local _, err = connector:query(1)
+          if err then
+            table.insert(errors, err)
+          end
+        end)
+
+        local co2 = ngx.thread.spawn(function()
+          local _, err = connector:query(0.1)
+          if err then
+            table.insert(errors, err)
+          end
+        end)
+
+        ngx.thread.wait(co2)
+        ngx.thread.wait(co1)
+
+        assert.same(1, #errors)
+      end)
+    end)
+
+    describe("max more than 1", function()
+      -- connector in a new scope
+      local connector
+
+      setup(function()
+        local new_config = {
+          pg_database = "kong",
+          pg_max_concurrent_queries = 2,
+          pg_semaphore_timeout = 0.1,
+        }
+
+        connector = require "kong.db.strategies.postgres.connector".new(new_config)
+
+        connector.get_stored_connection = function()
+          return {
+            query = function(_, s) ngx.sleep(s) end
+          }
+        end
+      end)
+
+      it("allows multiple functions to run concurrently", function()
+        local errors = {}
+
+        local co1 = ngx.thread.spawn(function()
+          local _, err = connector:query(0.001)
+          if err then
+            table.insert(errors, err)
+          end
+        end)
+
+        local co2 = ngx.thread.spawn(function()
+          local _, err = connector:query(0.001)
+          if err then
+            table.insert(errors, err)
+          end
+        end)
+
+        ngx.thread.wait(co2)
+        ngx.thread.wait(co1)
+
+        assert.same(0, #errors)
+      end)
+
+      it("times out failing to acquire a lock", function()
+        local errors = {}
+
+        local co1 = ngx.thread.spawn(function()
+          local _, err = connector:query(1)
+          if err then
+            table.insert(errors, err)
+          end
+        end)
+
+        local co2 = ngx.thread.spawn(function()
+          local _, err = connector:query(0.1)
+          if err then
+            table.insert(errors, err)
+          end
+        end)
+
+        local co3 = ngx.thread.spawn(function()
+          local _, err = connector:query(0.1)
+          if err then
+            table.insert(errors, err)
+          end
+        end)
+
+        ngx.thread.wait(co3)
+        ngx.thread.wait(co2)
+        ngx.thread.wait(co1)
+
+        assert.same(1, #errors)
+      end)
+    end)
+  end)
 end)

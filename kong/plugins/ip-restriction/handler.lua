@@ -1,4 +1,3 @@
-local BasePlugin = require "kong.plugins.base_plugin"
 local iputils = require "resty.iputils"
 
 
@@ -9,10 +8,10 @@ local FORBIDDEN = 403
 local cache = {}
 
 
-local IpRestrictionHandler = BasePlugin:extend()
+local IpRestrictionHandler = {}
 
 IpRestrictionHandler.PRIORITY = 990
-IpRestrictionHandler.VERSION = "1.0.0"
+IpRestrictionHandler.VERSION = "2.0.0"
 
 local function cidr_cache(cidr_tab)
   local cidr_tab_len = #cidr_tab
@@ -43,12 +42,7 @@ local function cidr_cache(cidr_tab)
   return parsed_cidrs
 end
 
-function IpRestrictionHandler:new()
-  IpRestrictionHandler.super.new(self, "ip-restriction")
-end
-
 function IpRestrictionHandler:init_worker()
-  IpRestrictionHandler.super.init_worker(self)
   local ok, err = iputils.enable_lrucache()
   if not ok then
     kong.log.err("could not enable lrucache: ", err)
@@ -56,7 +50,6 @@ function IpRestrictionHandler:init_worker()
 end
 
 function IpRestrictionHandler:access(conf)
-  IpRestrictionHandler.super.access(self)
   local block = false
   local binary_remote_addr = ngx.var.binary_remote_addr
 

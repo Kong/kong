@@ -75,6 +75,12 @@ return function(options)
       function SharedDict:new()
         return setmetatable({data = {}}, {__index = self})
       end
+      function SharedDict:capacity()
+        return 0
+      end
+      function SharedDict:free_space()
+        return 0
+      end
       function SharedDict:get(key)
         return self.data[key] and self.data[key].value, nil
       end
@@ -282,14 +288,16 @@ return function(options)
 
     local function resolve_connect(f, sock, host, port, opts)
       if sub(host, 1, 5) ~= "unix:" then
+        local try_list
         local t = tracing.trace("connect.toip", {
           host = host,
           traceback = debug.traceback(),
         })
-        host, port = toip(host, port)
+        host, port, try_list = toip(host, port)
         t:finish()
         if not host then
-          return nil, "[toip() name lookup failed]: " .. tostring(port)
+          return nil, "[cosocket] DNS resolution failed: " .. tostring(port) ..
+                      ". Tried: " .. tostring(try_list)
         end
       end
 
@@ -333,4 +341,3 @@ return function(options)
     toip = require("resty.dns.client").toip  -- this will load utils and penlight modules for example
   end
 end
-

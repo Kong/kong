@@ -14,6 +14,7 @@ return {
     { created_at     = typedefs.auto_timestamp_s },
     { cert           = typedefs.certificate { required = true }, },
     { key            = typedefs.key, },
+    { tags           = typedefs.tags },
   },
 
   entity_checks = {
