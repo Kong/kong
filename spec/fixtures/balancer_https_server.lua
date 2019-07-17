@@ -76,8 +76,11 @@ local httpserver = {
           local headers = {}
           local path
           while true do
-            local line = cskt:receive("*l")
-            if not path then
+            local line, err = cskt:receive("*l")
+            if err and err == "closed" then
+              break
+
+            elseif not path then
               path = line:match("(/[^%s]*)")
 
             elseif line and not line:match("^%s*$") then

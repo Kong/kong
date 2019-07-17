@@ -196,6 +196,7 @@ local add_target
 local add_api
 local patch_api
 local gen_port
+local gen_multi_host
 do
   local gen_sym
   do
@@ -277,6 +278,14 @@ do
     gen_port = function()
       port = port + 1
       return port
+    end
+  end
+
+  do
+    local host_num = 0
+    gen_multi_host = function()
+      host_num = host_num + 1
+      return "multiple-hosts-" .. tostring(host_num) .. ".test"
     end
   end
 
@@ -1332,7 +1341,7 @@ for _, strategy in helpers.each_strategy() do
 
               for i = 1, 3 do
                 hosts[i] = {
-                  hostname = "multiple-hosts-" .. i .. ".test",
+                  hostname = gen_multi_host(),
                   port1 = gen_port(),
                   port2 = gen_port(),
                 }
@@ -1382,7 +1391,7 @@ for _, strategy in helpers.each_strategy() do
                     active = {
                       type = protocol,
                       http_path = "/status",
-                      https_verify_certificate = (protocol == "https" and localhost == "localhost"),
+                      https_verify_certificate = (protocol == "https" and hostname == "localhost"),
                       healthy = {
                         interval = HEALTHCHECK_INTERVAL,
                         successes = nchecks,
@@ -1498,7 +1507,7 @@ for _, strategy in helpers.each_strategy() do
                     active = {
                       type = protocol,
                       http_path = "/status",
-                      https_verify_certificate = (protocol == "https" and localhost == "localhost"),
+                      https_verify_certificate = false,
                       healthy = {
                         interval = HEALTHCHECK_INTERVAL,
                         successes = nchecks,
@@ -1546,8 +1555,17 @@ for _, strategy in helpers.each_strategy() do
                 end
 
                 -- collect server results; hitcount
-                local target1_results = direct_request(localhost, port1, "/results", protocol, "target1.test")
-                local target2_results = direct_request(localhost, port1, "/results", protocol, "target2.test")
+                local results1 = direct_request(localhost, port1, "/results", protocol, "target1.test")
+                local results2 = direct_request(localhost, port1, "/results", protocol, "target2.test")
+
+                local target1_results
+                local target2_results
+                if results1 then
+                  target1_results = assert(cjson.decode(results1))
+                end
+                if results2 then
+                  target2_results = assert(cjson.decode(results2))
+                end
 
                 server1:done(hostname)
 
