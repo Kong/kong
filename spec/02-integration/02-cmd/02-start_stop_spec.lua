@@ -109,7 +109,7 @@ describe("kong start/stop #" .. strategy, function()
       local _, _, stdout = assert(helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path))
       assert.matches("admin_listen.*anonymous_reports.*cassandra_ssl.*prefix.*", stdout)
     end)
-    it("does not print sensitive settings in config", function()
+    it("#flaky does not print sensitive settings in config", function()
       local _, _, stdout = assert(helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path, {
         pg_password = "do not print",
         cassandra_password = "do not print",
