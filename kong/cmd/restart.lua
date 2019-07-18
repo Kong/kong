@@ -20,10 +20,7 @@ local function execute(args)
 
   log.enable()
 
-  local ok = pcall(stop.execute, args, { quiet = true })
-  if not ok then
-    log.enable()
-  end
+  pcall(stop.execute, args, { quiet = true })
 
   -- ensure Nginx stopped
   local texp = ngx.time() + 5 -- 5s
