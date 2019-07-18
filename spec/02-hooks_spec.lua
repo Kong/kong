@@ -55,6 +55,7 @@ for _ , strategy in helpers.each_strategy() do
       })
       assert.res_status(201 , res)
     end)
+
     teardown(function()
       if admin_client then
         admin_client:close()

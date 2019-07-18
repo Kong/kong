@@ -26,6 +26,13 @@ local ngx_log = ngx.log
 local ERR = ngx.ERR
 local WARN = ngx.WARN
 
+local consumer_by_fields = {
+  "username",
+  "client_id",
+}
+
+local CONSUMER_BY_DEFAULT = consumer_by_fields[1]
+
 function OAuth2Introspection:new()
   OAuth2Introspection.super.new(self, "oauth2-introspection")
 end
@@ -224,11 +231,14 @@ local function do_authentication(conf)
   end
 
   -- Associate username with Kong consumer
+  local consumer_by = conf.consumer_by or CONSUMER_BY_DEFAULT
+
   local credential_obj = credential.res
-  if credential_obj and credential_obj.username then
-    cache_key = consumers_username_key(credential_obj.username)
+  if credential_obj and credential_obj[consumer_by] then
+    cache_key = consumers_username_key(credential_obj[consumer_by])
     local consumer, err = cache:get(cache_key, nil, load_consumer,
-                                           credential_obj.username)
+                                           credential_obj[consumer_by])
+
     if err then
       return false, {status = 500, message = err}
     end
@@ -322,5 +332,7 @@ OAuth2Introspection.PRIORITY = 1700
 OAuth2Introspection.VERSION = "0.3.2"
 OAuth2Introspection.consumers_username_key = consumers_username_key
 OAuth2Introspection.consumers_id_key = consumers_id_key
+OAuth2Introspection.consumer_by_fields = consumer_by_fields
+OAuth2Introspection.CONSUMER_BY_DEFAULT = CONSUMER_BY_DEFAULT
 
 return OAuth2Introspection

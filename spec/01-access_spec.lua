@@ -6,9 +6,10 @@ for _ , strategy in helpers.each_strategy() do
   local introspection_url = string.format("http://%s/introspect" ,
     helpers.test_conf.proxy_listen[1])
 
-  describe("Plugin: basic-auth (access)" , function()
+  describe("Plugin: oauth2-introspection (access)" , function()
     local client , admin_client
-    setup(function()
+
+    lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, nil, {"introspection-endpoint",
                                                       "oauth2-introspection"})
 
@@ -31,6 +32,21 @@ for _ , strategy in helpers.each_strategy() do
         }
       })
 
+      local route1_cid = assert(bp.routes:insert {
+        name = "route-1cid",
+        hosts = { "introspection_client_id.com" },
+      })
+      assert(bp.plugins:insert {
+        name = "oauth2-introspection",
+        route = { id = route1_cid.id },
+        config = {
+          introspection_url = introspection_url,
+          authorization_value = "hello",
+          consumer_by = "client_id",
+          ttl = 1
+        }
+      })
+
       local route2 = assert(bp.routes:insert {
         name = "route-2",
         hosts = { "introspection2.com" },
@@ -48,6 +64,10 @@ for _ , strategy in helpers.each_strategy() do
       assert(bp.consumers:insert {
         username = "bob"
       })
+      assert(bp.consumers:insert {
+        username = "kongsumer",
+      })
+
       local consumer = assert(bp.consumers:insert {
         username = "limited-bob"
       })
@@ -129,14 +149,15 @@ for _ , strategy in helpers.each_strategy() do
       })
       assert.res_status(201 , res)
     end)
-    teardown(function()
+
+    lazy_teardown(function()
       if admin_client then
         admin_client:close()
       end
       if client then
         client:close()
       end
-      helpers.stop_kong()
+      assert(helpers.stop_kong())
     end)
 
     describe("Introspection Endpoint Mock" , function()
@@ -184,6 +205,7 @@ for _ , strategy in helpers.each_strategy() do
         assert.equal("invalid_request" , json.error)
         assert.equal("The access token is missing" , json.error_description)
       end)
+
       it("invalid access_token" , function()
         local res = assert(client:send {
           method = "GET",
@@ -212,6 +234,7 @@ for _ , strategy in helpers.each_strategy() do
 
         assert.res_status(200 , res)
       end)
+
       it("validates a token in the body" , function()
         local res = assert(client:send {
           method = "POST",
@@ -225,6 +248,7 @@ for _ , strategy in helpers.each_strategy() do
 
         assert.res_status(200 , res)
       end)
+
       it("validates a token in the header" , function()
         local res = assert(client:send {
           method = "POST",
@@ -241,7 +265,7 @@ for _ , strategy in helpers.each_strategy() do
       end)
 
       describe("Consumer" , function()
-        it("associates a consumer" , function()
+        it("associates a consumer by oauth2 username" , function()
           local res = assert(client:send {
             method = "GET",
             path = "/request?access_token=valid_consumer",
@@ -255,6 +279,22 @@ for _ , strategy in helpers.each_strategy() do
           assert.is_string(body.headers["x-consumer-id"])
           assert.is_nil(res.headers["x-ratelimit-limit-minute"])
         end)
+
+        it("associated a consumer by oauth2 client_id", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/request?access_token=valid_consumer_client_id",
+            headers = {
+              ["Host"] = "introspection_client_id.com",
+            }
+          })
+
+          local body = cjson.decode(assert.res_status(200 , res))
+          assert.equal("kongsumer" , body.headers["x-consumer-username"])
+          assert.is_string(body.headers["x-consumer-id"])
+          assert.is_nil(res.headers["x-ratelimit-limit-minute"])
+        end)
+
         it("invokes other consumer-specific plugins" , function()
           local res = assert(client:send {
             method = "GET",
@@ -292,6 +332,7 @@ for _ , strategy in helpers.each_strategy() do
           assert.equal("some_iat" , body.headers["x-credential-iat"])
         end)
       end)
+
       describe("hide credentials" , function()
         it("appends upstream headers" , function()
           local res = assert(client:send {
