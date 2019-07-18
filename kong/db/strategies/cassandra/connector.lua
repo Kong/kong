@@ -387,18 +387,14 @@ function CassandraConnector:query(query, args, opts, operation)
     opts = {}
   end
 
-  if not opts.consistency then
-    if operation == "write" then
-      opts.consistency = self.opts.write_consistency
+  if operation == "write" then
+    opts.consistency = self.opts.write_consistency
 
-    else
-      opts.consistency = self.opts.read_consistency
-    end
+  else
+    opts.consistency = self.opts.read_consistency
   end
 
-  if not opts.serial_consistency then
-    opts.serial_consistency = self.opts.serial_consistency
-  end
+  opts.serial_consistency = self.opts.serial_consistency
 
   local conn = self:get_stored_connection()
 
@@ -452,22 +448,16 @@ function CassandraConnector:batch(query_args, opts, operation, logged)
     opts = {}
   end
 
-  if not opts.consistency then
-    if operation == "write" then
-      opts.consistency = self.opts.write_consistency
+  if operation == "write" then
+    opts.consistency = self.opts.write_consistency
 
-    else
-      opts.consistency = self.opts.read_consistency
-    end
+  else
+    opts.consistency = self.opts.read_consistency
   end
 
-  if not opts.serial_consistency then
-    opts.serial_consistency = self.opts.serial_consistency
-  end
+  opts.serial_consistency = self.opts.serial_consistency
 
-  if logged ~= nil then
-    opts.logged = logged
-  end
+  opts.logged = logged
 
   local conn = self:get_stored_connection()
 
