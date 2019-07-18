@@ -14,7 +14,7 @@ local function execute(args)
 
   local conf = assert(conf_loader(args.conf, {
     prefix = args.prefix
-  }, { starting = true }))
+  }))
 
   conf.pg_timeout = args.db_timeout -- connect + send + read
 

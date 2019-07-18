@@ -450,106 +450,19 @@ describe("kong start/stop #" .. strategy, function()
       local u = helpers.unindent
 
       it("'upstream_keepalive'", function()
-        local opts = {
+        local _, stderr, stdout = assert(helpers.kong_exec("start", {
           prefix = helpers.test_conf.prefix,
           database = helpers.test_conf.database,
           pg_database = helpers.test_conf.pg_database,
           cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
           upstream_keepalive = 0,
-        }
-
-        local _, stderr, stdout = assert(helpers.kong_exec("start", opts))
+        }))
         assert.matches("Kong started", stdout, nil, true)
         assert.matches(u([[
           [warn] the 'upstream_keepalive' configuration property is deprecated,
           use 'nginx_http_upstream_keepalive' instead
         ]], nil, true), stderr, nil, true)
-
-        local _, stderr, stdout = assert(helpers.kong_exec("stop", opts))
-        assert.matches("Kong stopped", stdout, nil, true)
-        assert.equal("", stderr)
       end)
-
-      if strategy == "cassandra" then
-        it("'cassandra_consistency'", function()
-          local opts = {
-            prefix = helpers.test_conf.prefix,
-            database = strategy,
-            cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
-            cassandra_consistency = "ONE",
-          }
-
-          local _, stderr, stdout = assert(helpers.kong_exec("start", opts))
-          assert.matches("Kong started", stdout, nil, true)
-          assert.matches(u([[
-            [warn] the 'cassandra_consistency' configuration property is deprecated,
-            use 'cassandra_consistency_proxy and cassandra_consistency_admin' instead
-          ]], nil, true), stderr, nil, true)
-
-          local _, stderr, stdout = assert(helpers.kong_exec("stop", opts))
-          assert.matches("Kong stopped", stdout, nil, true)
-          assert.equal("", stderr)
-        end)
-      end
-    end)
-  end)
-
-  describe("misconfiguration", function()
-    describe("prints a warning to stderr", function()
-      local u = helpers.unindent
-
-      if strategy == "cassandra" then
-        it("'cassandra_lb_policy'", function()
-          local opts = {
-            prefix = helpers.test_conf.prefix,
-            database = strategy,
-            cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
-            cassandra_local_datacenter = "local",
-            cassandra_lb_policy = "RequestDCAwareRoundRobin",
-          }
-
-          local _, stderr, stdout = assert(helpers.kong_exec("start", opts))
-          assert.matches("Kong started", stdout, nil, true)
-          assert.matches(u([[
-            [warn] Cassandra is configured to use a data center aware load balancing
-            strategy 'RequestDCAwareRoundRobin' while the consistency of
-            'cassandra_consistency_proxy' is set to 'read:ONE, write:ONE'.
-            It is recommended to change it to 'read:LOCAL_ONE, write:LOCAL_ONE'.
-          ]], nil, true), stderr, nil, true)
-
-          assert.matches(u([[
-            [warn] Cassandra is configured to use a data center aware load balancing
-            strategy 'RequestDCAwareRoundRobin' while the consistency of
-            'cassandra_consistency_admin' is set to 'read:ONE, write:ONE'. It is
-            recommended to change it to 'read:LOCAL_ONE, write:LOCAL_ONE'.
-          ]], nil, true), stderr, nil, true)
-
-          local _, stderr, stdout = assert(helpers.kong_exec("stop", opts))
-          assert.matches("Kong stopped", stdout, nil, true)
-          assert.equal("", stderr)
-        end)
-
-        it("'db_update_propagation'", function()
-          local opts = {
-            prefix = helpers.test_conf.prefix,
-            database = strategy,
-            cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
-            db_update_propagation = 0,
-          }
-
-          local _, stderr, stdout = assert(helpers.kong_exec("start", opts))
-          assert.matches("Kong started", stdout, nil, true)
-          assert.matches(u([[
-            You are using Cassandra but your 'db_update_propagation'
-            setting is set to '0' (default). Due to the distributed
-            nature of Cassandra, you should increase this value.
-          ]], nil, true), stderr, nil, true)
-
-          local _, stderr, stdout = assert(helpers.kong_exec("stop", opts))
-          assert.matches("Kong stopped", stdout, nil, true)
-          assert.equal("", stderr)
-        end)
-      end
     end)
   end)
 end)

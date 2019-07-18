@@ -468,67 +468,6 @@ describe("Configuration loader", function()
                  .. " THREE, LOCAL_ONE)", err)
       assert.is_nil(conf)
 
-      conf, err = conf_loader(nil, {
-        database = "cassandra",
-        cassandra_consistency_proxy = "FOUR"
-      })
-      assert.equal("cassandra_consistency_proxy has an invalid value: 'FOUR'"
-                 .. " (ALL, EACH_QUORUM, QUORUM, LOCAL_QUORUM, ONE, TWO,"
-                 .. " THREE, LOCAL_ONE)", err)
-      assert.is_nil(conf)
-
-      conf, err = conf_loader(nil, {
-        database = "cassandra",
-        cassandra_consistency_admin = "FOUR"
-      })
-      assert.equal("cassandra_consistency_admin has an invalid value: 'FOUR'"
-                 .. " (ALL, EACH_QUORUM, QUORUM, LOCAL_QUORUM, ONE, TWO,"
-                 .. " THREE, LOCAL_ONE)", err)
-      assert.is_nil(conf)
-
-      conf, err = conf_loader(nil, {
-        database = "cassandra",
-        cassandra_consistency_proxy = "read:ONE, write:FOUR"
-      })
-      assert.equal("cassandra_consistency_proxy has an invalid value:"
-                 .. " 'read:ONE, write:FOUR' (read:ALL, read:EACH_QUORUM,"
-                 .. " read:QUORUM, read:LOCAL_QUORUM, read:ONE, read:TWO,"
-                 .. " read:THREE, read:LOCAL_ONE, write:ALL,"
-                 .. " write:EACH_QUORUM, write:QUORUM, write:LOCAL_QUORUM,"
-                 .. " write:ONE, write:TWO, write:THREE, write:LOCAL_ONE)", err)
-      assert.is_nil(conf)
-
-      conf, err = conf_loader(nil, {
-        database = "cassandra",
-        cassandra_consistency_admin = "read:ONE, write:FOUR"
-      })
-      assert.equal("cassandra_consistency_admin has an invalid value:"
-                 .. " 'read:ONE, write:FOUR' (read:ALL, read:EACH_QUORUM,"
-                 .. " read:QUORUM, read:LOCAL_QUORUM, read:ONE, read:TWO,"
-                 .. " read:THREE, read:LOCAL_ONE, write:ALL,"
-                 .. " write:EACH_QUORUM, write:QUORUM, write:LOCAL_QUORUM,"
-                 .. " write:ONE, write:TWO, write:THREE, write:LOCAL_ONE)", err)
-      assert.is_nil(conf)
-
-      conf, err = conf_loader(nil, {
-        database = "cassandra",
-        cassandra_consistency_proxy = "read:ONE, write:FOUR, read:QUORUM"
-      })
-      assert.equal("cassandra_consistency_proxy has an invalid value:"
-                 .. " 'read:ONE, write:FOUR, read:QUORUM' (specify at most two"
-                 .. " values, e.g. 'read:ONE, write:ONE', or just one for both"
-                 .. " e.g. 'QUORUM')", err)
-      assert.is_nil(conf)
-
-      conf, err = conf_loader(nil, {
-        database = "cassandra",
-        cassandra_consistency_admin = "read:ONE, write:FOUR, read:QUORUM"
-      })
-      assert.equal("cassandra_consistency_admin has an invalid value:"
-                 .. " 'read:ONE, write:FOUR, read:QUORUM' (specify at most two"
-                 .. " values, e.g. 'read:ONE, write:ONE', or just one for both"
-                 .. " e.g. 'QUORUM')", err)
-      assert.is_nil(conf)
     end)
     it("enforces listen addresses format", function()
       local conf, err = conf_loader(nil, {

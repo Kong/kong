@@ -4,9 +4,6 @@ local Cluster   = require "resty.cassandra.cluster"
 local pl_stringx = require "pl.stringx"
 
 
-local get_phase = ngx.get_phase
-
-
 local CassandraConnector   = {}
 CassandraConnector.__index = CassandraConnector
 
@@ -196,14 +193,10 @@ function CassandraConnector.new(kong_config)
     cluster    = cluster,
     keyspace   = cluster_options.keyspace,
     opts       = {
-      write_consistency_proxy =
-        cassandra.consistencies[kong_config.cassandra_consistency_proxy.write],
-      read_consistency_proxy =
-        cassandra.consistencies[kong_config.cassandra_consistency_proxy.read],
-      write_consistency_admin =
-        cassandra.consistencies[kong_config.cassandra_consistency_admin.write],
-      read_consistency_admin =
-        cassandra.consistencies[kong_config.cassandra_consistency_admin.read],
+      write_consistency =
+        cassandra.consistencies[kong_config.cassandra_consistency:lower()],
+      read_consistency =
+        cassandra.consistencies[kong_config.cassandra_consistency:lower()],
       serial_consistency = serial_consistency,
     },
     connection = nil, -- created by connect()
@@ -394,26 +387,14 @@ function CassandraConnector:query(query, args, opts, operation)
     opts = {}
   end
 
-  if not opts.consistency then
-    if operation == "write" then
-      if get_phase() == "content" then
-        opts.consistency = self.opts.write_consistency_admin
-      else
-        opts.consistency = self.opts.write_consistency_proxy
-      end
+  if operation == "write" then
+    opts.consistency = self.opts.write_consistency
 
-    else
-      if get_phase() == "content" then
-        opts.consistency = self.opts.read_consistency_admin
-      else
-        opts.consistency = self.opts.read_consistency_proxy
-      end
-    end
+  else
+    opts.consistency = self.opts.read_consistency
   end
 
-  if not opts.serial_consistency then
-    opts.serial_consistency = self.opts.serial_consistency
-  end
+  opts.serial_consistency = self.opts.serial_consistency
 
   local conn = self:get_stored_connection()
 
@@ -467,30 +448,16 @@ function CassandraConnector:batch(query_args, opts, operation, logged)
     opts = {}
   end
 
-  if not opts.consistency then
-    if operation == "write" then
-      if get_phase() == "content" then
-        opts.consistency = self.opts.write_consistency_admin
-      else
-        opts.consistency = self.opts.write_consistency_proxy
-      end
+  if operation == "write" then
+    opts.consistency = self.opts.write_consistency
 
-    else
-      if get_phase() == "content" then
-        opts.consistency = self.opts.read_consistency_admin
-      else
-        opts.consistency = self.opts.read_consistency_proxy
-      end
-    end
+  else
+    opts.consistency = self.opts.read_consistency
   end
 
-  if not opts.serial_consistency then
-    opts.serial_consistency = self.opts.serial_consistency
-  end
+  opts.serial_consistency = self.opts.serial_consistency
 
-  if logged ~= nil then
-    opts.logged = logged
-  end
+  opts.logged = logged
 
   local conn = self:get_stored_connection()
 
