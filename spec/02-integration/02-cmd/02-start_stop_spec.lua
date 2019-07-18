@@ -450,24 +450,18 @@ describe("kong start/stop #" .. strategy, function()
       local u = helpers.unindent
 
       it("'upstream_keepalive'", function()
-        local opts = {
+        local _, stderr, stdout = assert(helpers.kong_exec("start", {
           prefix = helpers.test_conf.prefix,
           database = helpers.test_conf.database,
           pg_database = helpers.test_conf.pg_database,
           cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
           upstream_keepalive = 0,
-        }
-
-        local _, stderr, stdout = assert(helpers.kong_exec("start", opts))
+        }))
         assert.matches("Kong started", stdout, nil, true)
         assert.matches(u([[
           [warn] the 'upstream_keepalive' configuration property is deprecated,
           use 'nginx_http_upstream_keepalive' instead
         ]], nil, true), stderr, nil, true)
-
-        local _, stderr, stdout = assert(helpers.kong_exec("stop", opts))
-        assert.matches("Kong stopped", stdout, nil, true)
-        assert.equal("", stderr)
       end)
     end)
   end)
