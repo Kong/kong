@@ -1088,6 +1088,54 @@ describe("Router", function()
         assert.truthy(route_t)
         assert.equal(use_case[2].route, route_t.route)
       end)
+
+      it("more [headers] has priority over longer [paths]", function()
+        local use_case = {
+          {
+            service = service,
+            route   = {
+              headers = {
+                version = { "v1" },
+              },
+              paths = { "/my-route/hello" },
+            },
+          },
+          {
+            service = service,
+            route   = {
+              headers = {
+                version = { "v1" },
+                location = { "us-east" },
+              },
+              paths = { "/my-route" },
+            },
+          },
+        }
+
+        local router = assert(Router.new(use_case))
+
+        local match_t = router.select("GET", "/my-route/hello", "domain.org",
+                                      nil, nil, nil, nil, nil, {
+                                        version = "v1",
+                                        location = "us-east",
+                                      })
+        assert.truthy(match_t)
+        assert.equal(use_case[2].route, match_t.route)
+        assert.same("/my-route", match_t.matches.uri)
+        assert.same({ version = "v1", location = "us-east" },
+                    match_t.matches.headers)
+
+        local match_t = router.select("GET", "/my-route/hello/world",
+                                      "domain.org", nil, nil, nil, nil, nil, {
+                                        version = "v1",
+                                        location = "us-east",
+                                      })
+        assert.truthy(match_t)
+        assert.equal(use_case[2].route, match_t.route)
+        assert.same("/my-route", match_t.matches.uri)
+        assert.same({ version = "v1", location = "us-east" },
+                    match_t.matches.headers)
+      end)
     end)
 
     describe("misses", function()

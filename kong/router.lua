@@ -72,6 +72,16 @@ local MATCH_RULES = {
   DST             = 0x00000001,
 }
 
+local SORTED_MATCH_RULES = {}
+
+for _, v in pairs(MATCH_RULES) do
+  insert(SORTED_MATCH_RULES, v)
+end
+
+sort(SORTED_MATCH_RULES, function(a, b)
+  return a > b
+end)
+
 local MATCH_SUBRULES = {
   HAS_REGEX_URI    = 0x01,
   PLAIN_HOSTS_ONLY = 0x02,
@@ -851,7 +861,7 @@ do
 
     local reducers_set = {}
 
-    for _, bit_match_rule in pairs(MATCH_RULES) do
+    for _, bit_match_rule in ipairs(SORTED_MATCH_RULES) do
       if band(bit_category, bit_match_rule) ~= 0 then
         reducers_set[#reducers_set + 1] = reducers[bit_match_rule]
       end
