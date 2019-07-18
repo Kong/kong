@@ -27,9 +27,7 @@ local use_case = {
   {
     service = service,
     route   = {
-    },
-    headers = {
-      host  = {
+      hosts = {
         "domain-1.org",
         "domain-2.org"
       },
@@ -60,9 +58,7 @@ local use_case = {
       paths = {
         "/route-4"
       },
-    },
-    headers = {
-      host  = {
+      hosts = {
         "domain-1.org",
         "domain-2.org"
       },
@@ -72,16 +68,14 @@ local use_case = {
   {
     service = service,
     route   = {
+      hosts = {
+        "domain-1.org",
+        "domain-2.org"
+      },
       methods = {
         "POST",
         "PUT",
         "PATCH"
-      },
-    },
-    headers = {
-      host  = {
-        "domain-1.org",
-        "domain-2.org"
       },
     },
   },
@@ -103,6 +97,10 @@ local use_case = {
   {
     service = service,
     route   = {
+      hosts = {
+        "domain-with-uri-1.org",
+        "domain-with-uri-2.org"
+      },
       methods = {
         "POST",
         "PUT",
@@ -110,12 +108,6 @@ local use_case = {
       },
       paths   = {
         "/my-route-uri"
-      },
-    },
-    headers = {
-      host = {
-        "domain-with-uri-1.org",
-        "domain-with-uri-2.org"
       },
     },
   },
@@ -131,11 +123,11 @@ local use_case = {
   {
     service = service,
     route = {
-    },
-    headers = {
-      location = {
-        "my-location-1",
-        "my-location-2",
+      headers = {
+        location = {
+          "my-location-1",
+          "my-location-2",
+        },
       },
     },
   },
@@ -143,14 +135,14 @@ local use_case = {
   {
     service = service,
     route = {
-    },
-    headers = {
-      location = {
-        "my-location-1",
-      },
-      version = {
-        "v1",
-        "v2",
+      headers = {
+        location = {
+          "my-location-1",
+        },
+        version = {
+          "v1",
+          "v2",
+        },
       },
     },
   },
@@ -158,14 +150,14 @@ local use_case = {
   {
     service = service,
     route   = {
+      headers = {
+        location = {
+          "my-location-1",
+          "my-location-2",
+        },
+      },
       paths = {
         "/headers-uri"
-      },
-    },
-    headers = {
-      location = {
-        "my-location-1",
-        "my-location-2",
       },
     },
   },
@@ -173,6 +165,16 @@ local use_case = {
   {
     service = service,
     route   = {
+      hosts = {
+        "domain-with-headers-1.org",
+        "domain-with-headers-2.org"
+      },
+      headers = {
+        location = {
+          "my-location-1",
+          "my-location-2",
+        },
+      },
       methods = {
         "POST",
         "PUT",
@@ -180,16 +182,6 @@ local use_case = {
       },
       paths   = {
         "/headers-host-uri-method"
-      },
-    },
-    headers = {
-      host  = {
-        "domain-with-headers-1.org",
-        "domain-with-headers-2.org"
-      },
-      location = {
-        "my-location-1",
-        "my-location-2",
       },
     },
   },
@@ -229,7 +221,7 @@ describe("Router", function()
       local match_t = router.select("GET", "/", "domain-1.org")
       assert.truthy(match_t)
       assert.equal(use_case[1].route, match_t.route)
-      assert.same(use_case[1].headers.host[1], match_t.matches.host)
+      assert.same(use_case[1].route.hosts[1], match_t.matches.host)
       assert.same(nil, match_t.matches.method)
       assert.same(nil, match_t.matches.uri)
       assert.same(nil, match_t.matches.uri_captures)
@@ -240,7 +232,7 @@ describe("Router", function()
       local match_t = router.select("GET", "/", "domain-1.org:123")
       assert.truthy(match_t)
       assert.equal(use_case[1].route, match_t.route)
-      assert.same(use_case[1].headers.host[1], match_t.matches.host)
+      assert.same(use_case[1].route.hosts[1], match_t.matches.host)
       assert.same(nil, match_t.matches.method)
       assert.same(nil, match_t.matches.uri)
       assert.same(nil, match_t.matches.uri_captures)
@@ -285,7 +277,7 @@ describe("Router", function()
       local match_t = router.select("GET", "/route-4", "domain-1.org")
       assert.truthy(match_t)
       assert.equal(use_case[4].route, match_t.route)
-      assert.same(use_case[4].headers.host[1], match_t.matches.host)
+      assert.same(use_case[4].route.hosts[1], match_t.matches.host)
       assert.same(nil, match_t.matches.method)
       assert.same(use_case[4].route.paths[1], match_t.matches.uri)
       assert.same(nil, match_t.matches.uri_captures)
@@ -296,7 +288,7 @@ describe("Router", function()
       local match_t = router.select("POST", "/", "domain-1.org")
       assert.truthy(match_t)
       assert.equal(use_case[5].route, match_t.route)
-      assert.same(use_case[5].headers.host[1], match_t.matches.host)
+      assert.same(use_case[5].route.hosts[1], match_t.matches.host)
       assert.same(use_case[5].route.methods[1], match_t.matches.method)
       assert.same(nil, match_t.matches.uri)
       assert.same(nil, match_t.matches.uri_captures)
@@ -319,7 +311,7 @@ describe("Router", function()
                                     "domain-with-uri-2.org")
       assert.truthy(match_t)
       assert.equal(use_case[7].route, match_t.route)
-      assert.same(use_case[7].headers.host[2], match_t.matches.host)
+      assert.same(use_case[7].route.hosts[2], match_t.matches.host)
       assert.same(use_case[7].route.methods[2], match_t.matches.method)
       assert.same(use_case[7].route.paths[1], match_t.matches.uri)
       assert.same(nil, match_t.matches.uri_captures)
@@ -440,11 +432,11 @@ describe("Router", function()
                                     })
       assert.truthy(match_t)
       assert.same(use_case[12].route, match_t.route)
-      assert.same(use_case[12].headers.host[1], match_t.matches.host)
+      assert.same(use_case[12].route.hosts[1], match_t.matches.host)
       assert.same(use_case[12].route.methods[2], match_t.matches.method)
       assert.same(use_case[12].route.paths[1], match_t.matches.uri)
       assert.same(nil, match_t.matches.uri_captures)
-      assert.same(use_case[12].headers.location[2],
+      assert.same(use_case[12].route.headers.location[2],
                   match_t.matches.headers.location)
     end)
 
@@ -550,19 +542,15 @@ describe("Router", function()
           {
             service = service,
             route   = {
+              hosts = { "domain.org" },
               paths = { "/my-route" },
-            },
-            headers = {
-              host  = { "domain.org" },
             },
           },
           {
             service = service,
             route   = {
+              hosts = { "domain.org" },
               paths = { "/my-route/hello" },
-            },
-            headers = {
-              host  = { "domain.org" },
             },
           },
         }
@@ -597,10 +585,8 @@ describe("Router", function()
           {
             service = service,
             route   = {
+              hosts  = { "example.com" },
               paths = { "/my-route" },
-            },
-            headers = {
-              host  = { "example.com" },
             },
           },
         }
@@ -725,29 +711,23 @@ describe("Router", function()
           {
             service = service,
             route   = {
+              hosts = { "route.com" },
               paths = { "/pat" },
-            },
-            headers = {
-              host  = { "route.com" },
             },
           },
           {
             service = service,
             route   = {
+              hosts = { "route.com" },
               paths = { "/path" },
               methods = { "POST" },
             },
-            headers = {
-              host  = { "route.com" },
-            },
           },
           {
             service = service,
             route   = {
+              hosts = { "route.com" },
               paths = { "/(path)" },
-            },
-            headers = {
-              host  = { "route.com" },
             },
           },
         }
@@ -768,17 +748,13 @@ describe("Router", function()
         {
           service = service,
           route   = {
-          },
-          headers = {
-            host  = { "*.route.com" },
+            hosts = { "*.route.com" },
           },
         },
         {
           service = service,
           route   = {
-          },
-          headers = {
-            host  = { "route.*" },
+            hosts = { "route.*" },
           },
         },
       }
@@ -789,7 +765,7 @@ describe("Router", function()
         local match_t = router.select("GET", "/", "foo.route.com", "domain.org")
         assert.truthy(match_t)
         assert.equal(use_case[1].route, match_t.route)
-        assert.same(use_case[1].headers.host[1], match_t.matches.host)
+        assert.same(use_case[1].route.hosts[1], match_t.matches.host)
         assert.same(nil, match_t.matches.method)
         assert.same(nil, match_t.matches.uri)
         assert.same(nil, match_t.matches.uri_captures)
@@ -805,18 +781,14 @@ describe("Router", function()
         table.insert(use_case, 1, {
           service = service,
           route   = {
-          },
-          headers = {
-            host  = { "plain.route.com" },
+            hosts = { "plain.route.com" },
           },
         })
 
         table.insert(use_case, {
           service = service,
           route   = {
-          },
-          headers = {
-            host  = { "route.com" },
+            hosts = { "route.com" },
           },
         })
 
@@ -865,19 +837,15 @@ describe("Router", function()
         local use_case = {
           {
             service = service,
-            headers = {
-              host  = { "*.route.com" },
-            },
             route   = {
+              hosts = { "*.route.com" },
               paths = { "/path1" },
             },
           },
           {
             service = service,
-            headers = {
-              host  = { "plain.route.com" },
-            },
             route   = {
+              hosts = { "plain.route.com" },
               paths = { "/path2" },
             },
           },
@@ -898,19 +866,15 @@ describe("Router", function()
         local use_case = {
           {
             service = service,
-            headers = {
-              host  = { "*.route.com" },
-            },
             route   = {
+              hosts = { "*.route.com" },
               paths = { "/path1" },
             },
           },
           {
             service = service,
-            headers = {
-              host  = { "plain.route.com" },
-            },
             route   = {
+              hosts = { "plain.route.com" },
               paths = { "/path2" },
             },
           },
@@ -936,11 +900,9 @@ describe("Router", function()
         table.insert(use_case, {
           service   = service,
           route     = {
+            hosts   = { "*.domain.com", "example.com" },
             paths   = { "/path" },
             methods = { "GET", "TRACE" },
-          },
-          headers   = {
-            host    = { "*.domain.com", "example.com" },
           },
         })
 
@@ -968,19 +930,15 @@ describe("Router", function()
           {
             service = service,
             route   = {
+              hosts = { "*.example.com" },
               paths = { [[/users/\d+/profile]] },
-            },
-            headers = {
-              host  = { "*.example.com" },
             },
           },
           {
             service = service,
             route   = {
+              hosts = { "*.example.com" },
               paths = { [[/users]] },
-            },
-            headers = {
-              host  = { "*.example.com" },
             },
           },
         }
@@ -1003,19 +961,21 @@ describe("Router", function()
         local use_case = {
           {
             service = service,
-            route = {},
-            headers = {
-              version = { "v1", "v2" },
-              user_agent = { "foo", "bar" },
+            route = {
+              headers = {
+                version = { "v1", "v2" },
+                user_agent = { "foo", "bar" },
+              },
             },
           },
           {
             service = service,
-            route = {},
-            headers = {
-              version = { "v1", "v2" },
-              user_agent = { "foo", "bar" },
-              location = { "east", "west" },
+            route = {
+              headers = {
+                version = { "v1", "v2" },
+                user_agent = { "foo", "bar" },
+                location = { "east", "west" },
+              },
             },
           }
         }
@@ -1037,17 +997,17 @@ describe("Router", function()
           {
             service = service,
             route = {
-            },
-            headers = {
-              ["USER_AGENT"] = { "foo", "bar" },
+              headers = {
+                ["USER_AGENT"] = { "foo", "bar" },
+              },
             },
           },
           {
             service = service,
             route = {
-            },
-            headers = {
-              user_agent = { "baz" },
+              headers = {
+                user_agent = { "baz" },
+              },
             },
           }
         }
@@ -1076,17 +1036,17 @@ describe("Router", function()
           {
             service = service,
             route = {
-            },
-            headers = {
-              user_agent = { "foo", "bar" },
+              headers = {
+                user_agent = { "foo", "bar" },
+              },
             },
           },
           {
             service = service,
             route = {
-            },
-            headers = {
-              user_agent = { "BAZ" },
+              headers = {
+                user_agent = { "BAZ" },
+              },
             },
           }
         }
@@ -1129,19 +1089,15 @@ describe("Router", function()
           {
             service = service,
             route   = {
+              hosts = { "host1.com" },
               paths = { "/v1/path" },
-            },
-            headers = {
-              host  = { "host1.com" },
             },
           },
           {
             service = service,
             route   = {
+              hosts = { "host2.com" },
               paths = { "/" },
-            },
-            headers = {
-              host  = { "host2.com" },
             },
           },
         }
@@ -1161,19 +1117,15 @@ describe("Router", function()
           {
             service   = service,
             route     = {
+              hosts   = { "host.*" },
               methods = { "GET" },
-            },
-            headers   = {
-              host    = { "host.*" },
             },
           },
           {
             service   = service,
             route     = {
+              hosts   = { "host.*" },
               methods = { "POST" },
-            },
-            headers   = {
-              host    = { "host.*" },
             },
           },
         }
@@ -1251,11 +1203,9 @@ describe("Router", function()
             },
           },
           {
-            service    = service,
-            route      = {
-            },
-            headers    = {
-              ["Host"] = { "domain.*" },
+            service = service,
+            route   = {
+              hosts = { "domain.*" },
             },
           },
         }
@@ -1346,10 +1296,8 @@ describe("Router", function()
             table.insert(use_case, {
               service = service,
               route   = {
+                hosts = { "domain.org" },
                 paths = { "/my-uri" },
-              },
-              headers = {
-                host  = { "domain.org" },
               },
             })
           end
@@ -1357,10 +1305,8 @@ describe("Router", function()
           table.insert(use_case, {
             service = service,
             route   = {
+              hosts = { "domain.org" },
               paths = { "/my-target-uri" },
-            },
-            headers = {
-              host  = { "domain.org" },
             },
           })
         end)
@@ -1525,9 +1471,7 @@ describe("Router", function()
             benchmark_use_cases[i] = {
               service = service,
               route   = {
-              },
-              headers = {
-                host  = { "domain-" .. i .. ".org" },
+                hosts = { "domain-" .. i .. ".org" },
               },
             }
           end
@@ -1559,10 +1503,8 @@ describe("Router", function()
             benchmark_use_cases[i] = {
               service = service,
               route   = {
+                hosts = { "domain-" .. n .. ".org" },
                 paths = { "/my-route-" .. n },
-              },
-              headers = {
-                host  = { "domain-" .. n .. ".org" },
               },
             }
           end
@@ -1571,11 +1513,9 @@ describe("Router", function()
           benchmark_use_cases[n] = {
             service   = service,
             route     = {
+              hosts   = { "domain-" .. n .. ".org" },
               methods = { "POST" },
               paths   = { "/my-route-" .. n },
-            },
-            headers   = {
-              host    = { "domain-" .. n .. ".org" },
             },
           }
 
@@ -1604,9 +1544,9 @@ describe("Router", function()
               benchmark_use_cases[i] = {
                 service = service,
                 route   = {
-                },
-                headers = {
-                  location  = { "somewhere-" .. i },
+                  headers = {
+                    location  = { "somewhere-" .. i },
+                  },
                 },
               }
             end
@@ -1638,9 +1578,9 @@ describe("Router", function()
               benchmark_use_cases[i] = {
                 service = service,
                 route   = {
-                },
-                headers = {
-                  ["key-" .. i]  = { "somewhere" },
+                  headers = {
+                    ["key-" .. i]  = { "somewhere" },
+                  },
                 },
               }
             end
@@ -1676,10 +1616,8 @@ describe("Router", function()
             benchmark_use_cases[i] = {
               service = service,
               route   = {
+                hosts = { "domain.org" },
                 paths = { "/my-route-" .. n },
-              },
-              headers = {
-                host  = { "domain.org" },
               },
             }
           end
@@ -1689,10 +1627,8 @@ describe("Router", function()
           benchmark_use_cases[n] = {
             service = service,
             route   = {
+              hosts = { "domain.org" },
               paths = { "/my-real-route" },
-            },
-            headers = {
-              host  = { "domain.org" },
             },
           }
 
@@ -1724,11 +1660,11 @@ describe("Router", function()
             benchmark_use_cases[i] = {
               service = service,
               route   = {
+                hosts = { "domain-" .. n .. ".org" },
                 paths = { "/my-route-" .. n },
-              },
-              headers = {
-                host  = { "domain-" .. n .. ".org" },
-                location = { "somewhere-" .. n },
+                headers = {
+                  location = { "somewhere-" .. n },
+                },
               },
             }
           end
@@ -1737,12 +1673,12 @@ describe("Router", function()
           benchmark_use_cases[n] = {
             service   = service,
             route     = {
+              hosts   = { "domain-" .. n .. ".org" },
+              headers = {
+                location = { "somewhere-" .. n },
+              },
               methods = { "POST" },
               paths   = { "/my-route-" .. n },
-            },
-            headers   = {
-              host    = { "domain-" .. n .. ".org" },
-              location = { "somewhere-" .. n },
             },
           }
 
@@ -1897,29 +1833,25 @@ describe("Router", function()
         {
           service   = service,
           route     = {
+            hosts   = { "host.com" },
             methods = { "GET" },
             paths   = { "/my-route" },
           },
-          headers   = {
-            host    = { "host.com" },
-          },
         },
         {
           service   = service,
           route     = {
+            hosts   = { "host.com" },
             paths   = { "/my-route" },
           },
-          headers   = {
-            host    = { "host.com" },
-          },
         },
         {
           service   = service,
           route     = {
-          },
-          headers   = {
-            host    = { "*.host.com" },
-            location = { "my-location-1", "my-location-2" },
+            hosts   = { "*.host.com" },
+            headers = {
+              location = { "my-location-1", "my-location-2" },
+            },
           },
         },
         {
@@ -2330,9 +2262,7 @@ describe("Router", function()
           },
           route           = {
             preserve_host = true,
-          },
-          headers         = {
-            host          = { "preserve.com" },
+            hosts         = { "preserve.com" },
           },
         },
         -- use the route's upstream_url's Host
@@ -2344,9 +2274,7 @@ describe("Router", function()
           },
           route           = {
             preserve_host = false,
-          },
-          headers         = {
-            host          = { "discard.com" },
+            hosts         = { "discard.com" },
           },
         },
       }
@@ -2573,11 +2501,9 @@ describe("Router", function()
               },
               route        = {
                 strip_path = args[5],
-                paths      = { args[2] },
-              },
-              headers      = {
                 -- only add the header is no path is provided
-                host       = args[2] == nil and nil or { "localbin-" .. i .. ".com" },
+                hosts      = args[2] == nil and nil or { "localbin-" .. i .. ".com" },
+                paths      = { args[2] },
               },
             }
           }
@@ -2623,11 +2549,9 @@ describe("Router", function()
                 },
                 route        = {
                   strip_path = args[5],
-                  paths      = { make_a_regex(args[2]) },
-                },
-                headers      = {
                   -- only add the header is no path is provided
-                  host       = args[2] == nil and nil or { "localbin-" .. i .. ".com" },
+                  hosts      = args[2] == nil and nil or { "localbin-" .. i .. ".com" },
+                  paths      = { make_a_regex(args[2]) },
                 },
               }
             }

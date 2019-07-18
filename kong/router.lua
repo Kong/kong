@@ -166,7 +166,8 @@ local protocol_subsystem = {
 local function marshall_route(r)
   local route        = r.route
   local service      = r.service
-  local headers      = r.headers
+  local hosts        = route.hosts
+  local headers      = route.headers
   local paths        = route.paths
   local methods      = route.methods
   local snis         = route.snis
@@ -178,7 +179,9 @@ local function marshall_route(r)
     protocol = service.protocol
   end
 
-  if not (headers or methods or paths or snis or sources or destinations) then
+  if not (hosts or headers or methods or paths or snis or sources
+          or destinations)
+  then
     return nil, "could not categorize route"
   end
 
@@ -203,6 +206,58 @@ local function marshall_route(r)
   }
 
 
+  -- hosts
+
+
+  if hosts then
+    if type(hosts) ~= "table" then
+      return nil, "hosts field must be a table"
+    end
+
+    local has_host_wildcard
+    local has_host_plain
+
+    for _, host in ipairs(hosts) do
+      if type(host) ~= "string" then
+        return nil, "hosts values must be strings"
+      end
+
+      if find(host, "*", nil, true) then
+        -- wildcard host matching
+        has_host_wildcard = true
+
+        local wildcard_host_regex = host:gsub("%.", "\\.")
+                                        :gsub("%*", ".+") .. "$"
+        insert(route_t.hosts, {
+          wildcard = true,
+          value    = host,
+          regex    = wildcard_host_regex,
+        })
+
+      else
+        -- plain host matching
+        has_host_plain = true
+
+        route_t.hosts[host] = host
+
+        insert(route_t.hosts, {
+          value = host,
+        })
+      end
+    end
+
+    if has_host_plain or has_host_wildcard then
+      route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.HOST)
+      route_t.match_weight = route_t.match_weight + 1
+    end
+
+    if not has_host_wildcard then
+      route_t.submatch_weight = bor(route_t.submatch_weight,
+                                    MATCH_SUBRULES.PLAIN_HOSTS_ONLY)
+    end
+  end
+
+
   -- headers
 
 
@@ -211,44 +266,17 @@ local function marshall_route(r)
       return nil, "headers field must be a table"
     end
 
-    local has_host_wildcard
-    local has_host_plain
     local has_header_plain
 
     for header_name, header_values in pairs(headers) do
       if type(header_values) ~= "table" then
-        return nil, "header values must be a table for header '" .. header_name .. "'"
+        return nil, "header values must be a table for header '" ..
+                    header_name .. "'"
       end
 
       header_name = lower(header_name)
 
-      if header_name == "host" then
-        for _, header_value in ipairs(header_values) do
-          if find(header_value, "*", nil, true) then
-            -- wildcard host matching
-            has_host_wildcard = true
-
-            local wildcard_host_regex = header_value:gsub("%.", "\\.")
-                                                    :gsub("%*", ".+") .. "$"
-            insert(route_t.hosts, {
-              wildcard = true,
-              value    = header_value,
-              regex    = wildcard_host_regex,
-            })
-
-          else
-            -- plain host matching
-            has_host_plain = true
-
-            route_t.hosts[header_value] = header_value
-
-            insert(route_t.hosts, {
-              value = header_value,
-            })
-          end
-        end
-
-      else
+      if header_name ~= "host" then
         -- plain header matching
         has_header_plain = true
 
@@ -264,19 +292,9 @@ local function marshall_route(r)
       end
     end
 
-    if has_host_plain or has_host_wildcard then
-      route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.HOST)
-      route_t.match_weight = route_t.match_weight + 1
-    end
-
     if has_header_plain then
       route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.HEADER)
       route_t.match_weight = route_t.match_weight + 1
-    end
-
-    if not has_host_wildcard then
-      route_t.submatch_weight = bor(route_t.submatch_weight,
-                                    MATCH_SUBRULES.PLAIN_HOSTS_ONLY)
     end
   end
 

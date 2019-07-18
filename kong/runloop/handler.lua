@@ -589,20 +589,6 @@ do
           service = service,
         }
 
-        local service_subsystem
-        if service then
-          service_subsystem = SUBSYSTEMS[service.protocol]
-        else
-          service_subsystem = subsystem
-        end
-
-        if service_subsystem == "http" and route.hosts then
-          -- TODO: headers should probably be moved to route
-          r.headers = {
-            host = route.hosts,
-          }
-        end
-
         i = i + 1
         routes[i] = r
       end
