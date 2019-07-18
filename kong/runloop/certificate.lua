@@ -119,15 +119,15 @@ local function fetch_sni(sni, i)
 end
 
 
-local function fetch_certificate(pkey, sni_name)
-  local certificate, err = singletons.db.certificates:select(pkey)
+local function fetch_certificate(pk, sni_name)
+  local certificate, err = singletons.db.certificates:select(pk)
   if err then
     if sni_name then
       return nil, "failed to fetch certificate for '" .. sni_name .. "' SNI: " ..
                   err
     end
 
-    return "failed to fetch certificate " .. pkey.id
+    return nil, "failed to fetch certificate " .. pk.id
   end
 
   if not certificate then
@@ -135,7 +135,7 @@ local function fetch_certificate(pkey, sni_name)
       return nil, "no SSL certificate configured for sni: " .. sni_name
     end
 
-    return nil, "certificate " .. pkey.id .. " not found"
+    return nil, "certificate " .. pk.id .. " not found"
   end
 
   return certificate
@@ -155,10 +155,10 @@ local function init()
 end
 
 
-local function get_certificate(pkey, sni_name)
-  return kong.cache:get("certificates:" .. pkey.id,
+local function get_certificate(pk, sni_name)
+  return kong.cache:get("certificates:" .. pk.id,
                         get_certificate_opts, fetch_certificate,
-                        pkey, sni_name)
+                        pk, sni_name)
 end
 
 
