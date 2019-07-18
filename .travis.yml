@@ -29,6 +29,7 @@ env:
     - DOWNLOAD_ROOT=$HOME/download-root
     - INSTALL_CACHE=$HOME/install-cache
     - OPENRESTY_PATCHES_BRANCH=master
+    - KONG_NGINX_MODULE_BRANCH=master
     - KONG_TEST_PG_DATABASE=travis
     - KONG_TEST_PG_USER=postgres
     - JOBS=2

@@ -25,6 +25,7 @@ kong-ngx-build \
     --prefix $INSTALL_ROOT \
     --openresty $OPENRESTY \
     --openresty-patches $OPENRESTY_PATCHES_BRANCH \
+    --kong-nginx-module $KONG_NGINX_MODULE_BRANCH \
     --luarocks $LUAROCKS \
     --openssl $OPENSSL \
     -j $JOBS
