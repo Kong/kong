@@ -4,9 +4,6 @@ local Cluster   = require "resty.cassandra.cluster"
 local pl_stringx = require "pl.stringx"
 
 
-local get_phase = ngx.get_phase
-
-
 local CassandraConnector   = {}
 CassandraConnector.__index = CassandraConnector
 
@@ -196,14 +193,10 @@ function CassandraConnector.new(kong_config)
     cluster    = cluster,
     keyspace   = cluster_options.keyspace,
     opts       = {
-      write_consistency_proxy =
-        cassandra.consistencies[kong_config.cassandra_consistency_proxy.write],
-      read_consistency_proxy =
-        cassandra.consistencies[kong_config.cassandra_consistency_proxy.read],
-      write_consistency_admin =
-        cassandra.consistencies[kong_config.cassandra_consistency_admin.write],
-      read_consistency_admin =
-        cassandra.consistencies[kong_config.cassandra_consistency_admin.read],
+      write_consistency =
+        cassandra.consistencies[kong_config.cassandra_consistency:lower()],
+      read_consistency =
+        cassandra.consistencies[kong_config.cassandra_consistency:lower()],
       serial_consistency = serial_consistency,
     },
     connection = nil, -- created by connect()
@@ -396,18 +389,10 @@ function CassandraConnector:query(query, args, opts, operation)
 
   if not opts.consistency then
     if operation == "write" then
-      if get_phase() == "content" then
-        opts.consistency = self.opts.write_consistency_admin
-      else
-        opts.consistency = self.opts.write_consistency_proxy
-      end
+      opts.consistency = self.opts.write_consistency
 
     else
-      if get_phase() == "content" then
-        opts.consistency = self.opts.read_consistency_admin
-      else
-        opts.consistency = self.opts.read_consistency_proxy
-      end
+      opts.consistency = self.opts.read_consistency
     end
   end
 
@@ -469,18 +454,10 @@ function CassandraConnector:batch(query_args, opts, operation, logged)
 
   if not opts.consistency then
     if operation == "write" then
-      if get_phase() == "content" then
-        opts.consistency = self.opts.write_consistency_admin
-      else
-        opts.consistency = self.opts.write_consistency_proxy
-      end
+      opts.consistency = self.opts.write_consistency
 
     else
-      if get_phase() == "content" then
-        opts.consistency = self.opts.read_consistency_admin
-      else
-        opts.consistency = self.opts.read_consistency_proxy
-      end
+      opts.consistency = self.opts.read_consistency
     end
   end
 

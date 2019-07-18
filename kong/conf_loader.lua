@@ -94,26 +94,6 @@ local PREFIX_PATHS = {
 }
 
 
-local CASSANDRA_CONSISTENCY = {
-  "ALL",
-  "EACH_QUORUM",
-  "QUORUM",
-  "LOCAL_QUORUM",
-  "ONE",
-  "TWO",
-  "THREE",
-  "LOCAL_ONE",
-}
-
-local CASSANDRA_READ_CONSISTENCY = {}
-local CASSANDRA_WRITE_CONSISTENCY = {}
-
-for _, consistency in ipairs(CASSANDRA_CONSISTENCY) do
-  CASSANDRA_READ_CONSISTENCY["read:" .. consistency] = consistency
-  CASSANDRA_WRITE_CONSISTENCY["write:" .. consistency] = consistency
-end
-
-
 -- By default, all properties in the configuration are considered to
 -- be strings/numbers, but if we want to forcefully infer their type, specify it
 -- in this table.
@@ -143,14 +123,12 @@ local CONF_INFERENCES = {
     deprecated = {
       replacement = "nginx_http_upstream_keepalive",
       alias = function(conf)
-        if conf.upstream_keepalive then
-          -- called before check_and_infer(), must parse ourselves
-          if tonumber(conf.upstream_keepalive) == 0 then
-            conf.nginx_http_upstream_keepalive = "NONE"
+        -- called before check_and_infer(), must parse ourselves
+        if tonumber(conf.upstream_keepalive) == 0 then
+          conf.nginx_http_upstream_keepalive = "NONE"
 
-          elseif conf.nginx_http_upstream_keepalive == nil then
-            conf.nginx_http_upstream_keepalive = tostring(conf.upstream_keepalive)
-          end
+        elseif conf.nginx_http_upstream_keepalive == nil then
+          conf.nginx_http_upstream_keepalive = tostring(conf.upstream_keepalive)
         end
       end,
     }
@@ -184,25 +162,17 @@ local CONF_INFERENCES = {
   cassandra_timeout = { typ = "number" },
   cassandra_ssl = { typ = "boolean" },
   cassandra_ssl_verify = { typ = "boolean" },
-  cassandra_consistency = {
-    enum = CASSANDRA_CONSISTENCY,
-    deprecated = {
-      replacement = "cassandra_consistency_proxy and cassandra_consistency_admin",
-      alias = function(conf)
-        if conf.cassandra_consistency then
-          if conf.cassandra_consistency_proxy == nil then
-            conf.cassandra_consistency_proxy = conf.cassandra_consistency
-          end
-
-          if conf.cassandra_consistency_admin == nil then
-            conf.cassandra_consistency_admin = conf.cassandra_consistency
-          end
-        end
-      end,
-    }
-  },
-  cassandra_consistency_proxy = { typ = "array" },
-  cassandra_consistency_admin = { typ = "array" },
+  cassandra_consistency = { enum = {
+                              "ALL",
+                              "EACH_QUORUM",
+                              "QUORUM",
+                              "LOCAL_QUORUM",
+                              "ONE",
+                              "TWO",
+                              "THREE",
+                              "LOCAL_ONE",
+                            }
+                          },
   cassandra_lb_policy = { enum = {
                             "RoundRobin",
                             "RequestRoundRobin",
@@ -357,12 +327,10 @@ local function check_and_infer(conf, opts)
   -- custom validations
   ---------------------
 
-  local is_cassandra = conf.database == "cassandra"
-  local is_dc_aware =
-    string.find(conf.cassandra_lb_policy, "DCAware", nil, true) ~= nil
-
-  if is_cassandra then
-    if is_dc_aware and not conf.cassandra_local_datacenter then
+  if conf.database == "cassandra" then
+    if string.find(conf.cassandra_lb_policy, "DCAware", nil, true)
+       and not conf.cassandra_local_datacenter
+    then
       errors[#errors + 1] = "must specify 'cassandra_local_datacenter' when " ..
                             conf.cassandra_lb_policy .. " policy is in use"
     end
@@ -386,99 +354,6 @@ local function check_and_infer(conf, opts)
       log.warn("You are using Cassandra but your 'db_update_propagation' " ..
                "setting is set to '0' (default). Due to the distributed "  ..
                "nature of Cassandra, you should increase this value.")
-    end
-  end
-
-  for _, name in ipairs({
-    "cassandra_consistency_proxy",
-    "cassandra_consistency_admin"
-  }) do
-    local read_consistency
-    local write_consistency
-    local option = conf[name]
-    local number_of_values = option and #option or 0
-    if number_of_values > 2 then
-      if is_cassandra then
-        errors[#errors + 1] = fmt("%s has an invalid value: '%s' (%s)", name,
-                                  concat(option, ", "),
-                                  "specify at most two values, e.g. " ..
-                                  "'read:ONE, write:ONE', or just one " ..
-                                  "for both e.g. 'QUORUM'")
-      end
-
-    elseif number_of_values == 2 then
-      read_consistency = CASSANDRA_READ_CONSISTENCY[option[1]] or
-                         CASSANDRA_READ_CONSISTENCY[option[2]]
-
-      write_consistency = CASSANDRA_WRITE_CONSISTENCY[option[1]] or
-                          CASSANDRA_WRITE_CONSISTENCY[option[2]]
-
-      if not read_consistency or not write_consistency and is_cassandra then
-        errors[#errors + 1] = fmt("%s has an invalid value: '%s' (read:%s, " ..
-                                  "write:%s)", name, concat(option, ", "),
-                                  concat(CASSANDRA_CONSISTENCY, ", read:"),
-                                  concat(CASSANDRA_CONSISTENCY, ", write:"))
-      end
-
-    elseif number_of_values == 1 then
-      local found
-      for _, name in ipairs(CASSANDRA_CONSISTENCY) do
-        if name == option[1] then
-          found = true
-        end
-      end
-
-      if not found then
-        if is_cassandra then
-          errors[#errors + 1] = fmt("%s has an invalid value: '%s' (%s)", name,
-                                    option[1],
-                                    concat(CASSANDRA_CONSISTENCY, ", "))
-        end
-
-      else
-        read_consistency  = option[1]
-        write_consistency = option[1]
-      end
-    end
-
-    if not read_consistency then
-      read_consistency  = conf.cassandra_consistency
-    end
-
-    if not write_consistency then
-      write_consistency = conf.cassandra_consistency
-    end
-
-    if read_consistency and write_consistency then
-      if opts.starting and is_cassandra and is_dc_aware then
-        local suggestion
-        if read_consistency == "QUORUM" or
-           read_consistency  == "ONE" then
-          if write_consistency == "QUORUM" or
-             write_consistency == "ONE" then
-            suggestion = fmt("read:LOCAL_%s, write:LOCAL_%s",
-                             read_consistency, write_consistency)
-          else
-            suggestion = fmt("read:LOCAL_%s, write:%s",
-                             read_consistency, write_consistency)
-          end
-        elseif write_consistency == "QUORUM" or
-               write_consistency == "ONE" then
-          suggestion = fmt("read:%s, write:LOCAL_%s",
-                           read_consistency, write_consistency)
-        end
-
-        if suggestion then
-          log.warn("Cassandra is configured to use a data center aware "  ..
-                   "load balancing strategy '%s' while the consistency "  ..
-                   "of '%s' is set to '%s'. It is recommended to change " ..
-                   "it to '%s'.", conf.cassandra_lb_policy, name,
-                   concat(option, ", "), suggestion)
-        end
-      end
-
-      option.read  = read_consistency:lower()
-      option.write = write_consistency:lower()
     end
   end
 

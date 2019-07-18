@@ -662,57 +662,6 @@ for _, strategy in helpers.each_strategy() do
       assert.equal(any, opts.serial_consistency)
     end)
 
-    cassandra_only("does support different write and read consistency configration options", function()
-      local quorum = require "cassandra".consistencies.quorum
-      local three = require "cassandra".consistencies.three
-
-      local conf = utils.deep_copy(helpers.test_conf)
-
-      conf.cassandra_contact_points = { "localhost" }
-      conf.cassandra_consistency_proxy = {
-        "read:QUORUM",
-        "write:THREE",
-        read  = "quorum",
-        write = "three",
-      }
-
-      local db, err = DB.new(conf, strategy)
-      assert.is_nil(err)
-      assert.is_table(db)
-
-      assert(db:init_connector())
-
-      local conn, err = db:connect()
-      assert.is_nil(err)
-      assert.is_table(conn)
-
-      local queries = {
-        { "DELETE FROM plugins WHERE id=00000000-0000-0000-0000-000000000000" },
-        { "DELETE FROM plugins WHERE id=00000000-0000-0000-0000-000000000000" }
-      }
-
-      local opts = {}
-      db.connector:query(queries[1][1], nil, opts, "write")
-      assert.equal(three, opts.consistency)
-
-      local opts = {}
-      db.connector:batch(queries, opts, "write")
-      assert.equal(three, opts.consistency)
-
-      local queries = {
-        { "SELECT id FROM plugins WHERE id=00000000-0000-0000-0000-000000000000" },
-        { "SELECT id FROM plugins WHERE id=00000000-0000-0000-0000-000000000000" },
-      }
-
-      local opts = {}
-      db.connector:query(queries[1][1], nil, opts, "read")
-      assert.equal(quorum, opts.consistency)
-
-      local opts = {}
-      db.connector:batch(queries, opts, "read")
-      assert.equal(quorum, opts.consistency)
-    end)
-
     cassandra_only("turns on logged batches when requested", function()
       local conf = utils.deep_copy(helpers.test_conf)
 
