@@ -354,11 +354,11 @@ for _, strategy in helpers.each_strategy() do
             strategy = strategy,
             message  = unindent([[
               schema violation
-              (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http')
+              (must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http')
             ]], true, true),
             fields   = {
               ["@entity"] = {
-                "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'",
+                "must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http'",
               }
             },
 
@@ -378,11 +378,11 @@ for _, strategy in helpers.each_strategy() do
             strategy = strategy,
             message  = unindent([[
               schema violation
-              (must set one of 'methods', 'hosts', 'paths', 'snis' when 'protocols' is 'https')
+              (must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https')
             ]], true, true),
             fields   = {
               ["@entity"] = {
-                "must set one of 'methods', 'hosts', 'paths', 'snis' when 'protocols' is 'https'",
+                "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https'",
               }
             },
 
@@ -509,6 +509,7 @@ for _, strategy in helpers.each_strategy() do
             name            = ngx.null,
             methods         = ngx.null,
             hosts           = { "example.com" },
+            headers         = ngx.null,
             paths           = ngx.null,
             snis            = ngx.null,
             sources         = ngx.null,
@@ -526,6 +527,7 @@ for _, strategy in helpers.each_strategy() do
           local route, err, err_t = db.routes:insert({
             protocols       = { "http" },
             hosts           = { "example.com" },
+            headers         = { location = { "somewhere" } },
             paths           = { "/example" },
             regex_priority  = 3,
             strip_path      = true,
@@ -547,6 +549,7 @@ for _, strategy in helpers.each_strategy() do
             name            = ngx.null,
             methods         = ngx.null,
             hosts           = { "example.com" },
+            headers         = { location = { "somewhere" } },
             paths           = { "/example" },
             snis            = ngx.null,
             sources         = ngx.null,
@@ -584,6 +587,7 @@ for _, strategy in helpers.each_strategy() do
             name            = ngx.null,
             methods         = ngx.null,
             hosts           = { "example.com" },
+            headers         = ngx.null,
             paths           = { "/example" },
             snis            = ngx.null,
             sources         = ngx.null,
@@ -833,11 +837,11 @@ for _, strategy in helpers.each_strategy() do
               strategy    = strategy,
               message  = unindent([[
                 schema violation
-                (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http')
+                (must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http')
               ]], true, true),
               fields   = {
                 ["@entity"] = {
-                  "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'",
+                  "must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http'",
                 }
               },
             }, err_t)
@@ -862,13 +866,13 @@ for _, strategy in helpers.each_strategy() do
               strategy    = strategy,
               message  = unindent([[
                 3 schema violations
-                (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http';
+                (must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http';
                 'snis' can only be set when 'protocols' is 'https' or 'tls';
                 snis: length must be 0)
               ]], true, true),
               fields   = {
                 ["@entity"] = {
-                  "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'",
+                  "must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http'",
                   "'snis' can only be set when 'protocols' is 'https' or 'tls'",
                 },
                 ["snis"] = "length must be 0",
@@ -916,11 +920,11 @@ for _, strategy in helpers.each_strategy() do
               strategy    = strategy,
               message  = unindent([[
                 schema violation
-                (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http')
+                (must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http')
               ]], true, true),
               fields   = {
                 ["@entity"] = {
-                  "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'",
+                  "must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http'",
                 }
               },
             }, err_t)
@@ -1517,6 +1521,7 @@ for _, strategy in helpers.each_strategy() do
           name             = ngx.null,
           methods          = ngx.null,
           hosts            = { "example.com" },
+          headers          = ngx.null,
           paths            = ngx.null,
           snis             = ngx.null,
           sources          = ngx.null,

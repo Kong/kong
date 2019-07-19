@@ -9,6 +9,8 @@ return {
       END;
       $$;
 
+
+
       CREATE TABLE IF NOT EXISTS "ca_certificates" (
         "id"          UUID                       PRIMARY KEY,
         "created_at"  TIMESTAMP WITH TIME ZONE   DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
@@ -25,12 +27,24 @@ return {
       EXCEPTION WHEN UNDEFINED_COLUMN OR UNDEFINED_TABLE THEN
         -- Do nothing, accept existing state
       END$$;
+
+
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "routes" ADD "headers" JSONB;
+      EXCEPTION WHEN DUPLICATE_COLUMN THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
     ]],
   },
 
   cassandra = {
     up = [[
       ALTER TABLE upstreams ADD algorithm text;
+
+
 
       CREATE TABLE IF NOT EXISTS ca_certificates(
         partition text,
@@ -40,6 +54,10 @@ return {
         tags set<text>,
         PRIMARY KEY (partition, id)
       );
+
+
+
+      ALTER TABLE routes ADD headers map<text,frozen<set<text>>>;
     ]],
   },
 }

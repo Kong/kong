@@ -64,6 +64,23 @@ return {
                            custom_validator = validate_host_with_wildcards,
                          }
                        }, },
+    { headers        = { type = "map",
+                         keys = {
+                           type = "string",
+                           match_none = {
+                             {
+                               pattern = "[Hh][Oo][Ss][Tt]",
+                               err = "cannot contain 'host' header, which must be specified in the 'hosts' attribute",
+                             },
+                           },
+                         },
+                         values = {
+                           type = "array",
+                           elements = {
+                             type = "string",
+                           },
+                         },
+                       }, },
     { paths          = { type = "array",
                          elements = typedefs.path {
                            custom_validator = validate_path_with_regexes,
@@ -114,10 +131,10 @@ return {
   entity_checks = {
     { conditional_at_least_one_of = { if_field = "protocols",
                                       if_match = { contains = "http" },
-                                      then_at_least_one_of = { "methods", "hosts", "paths" },
+                                      then_at_least_one_of = { "methods", "hosts", "headers", "paths" },
                                       then_err = "must set one of %s when 'protocols' is 'http'",
                                       else_match = { contains = "https" },
-                                      else_then_at_least_one_of = { "methods", "hosts", "paths", "snis" },
+                                      else_then_at_least_one_of = { "methods", "hosts", "headers", "paths", "snis" },
                                       else_then_err = "must set one of %s when 'protocols' is 'https'",
                                     }},
     { conditional_at_least_one_of = { if_field = "protocols",
@@ -131,6 +148,12 @@ return {
                       then_field = "hosts",
                       then_match = { len_eq = 0 },
                       then_err = "cannot set 'hosts' when 'protocols' is 'tcp' or 'tls'",
+                    }},
+    { conditional = { if_field = "protocols",
+                      if_match = { elements = { type = "string", one_of = { "tcp", "tls" }}},
+                      then_field = "headers",
+                      then_match = { len_eq = 0 },
+                      then_err = "cannot set 'headers' when 'protocols' is 'tcp' or 'tls'",
                     }},
     { conditional = { if_field = "protocols",
                       if_match = { elements = { type = "string", one_of = { "tcp", "tls" }}},

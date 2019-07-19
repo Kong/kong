@@ -21,6 +21,7 @@ describe("routes schema", function()
       protocols      = { "http" },
       methods        = { "GET", "POST" },
       hosts          = { "example.com" },
+      headers        = { location = { "location-1" } },
       paths          = { "/ovo" },
       regex_priority = 1,
       strip_path     = false,
@@ -78,13 +79,14 @@ describe("routes schema", function()
     assert.truthy(errs["methods"])
   end)
 
-  it("missing method, host, path & service produces error", function()
+  it("missing method, host, headers, path & service produces error", function()
     local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
     local tests = {
       { 1,    { protocols = { "http" },                                }, {} },
       { true, { protocols = { "http" }, service = s, methods = {"GET"} }, {"hosts", "paths"} },
       { true, { protocols = { "http" }, service = s, hosts = {"x.y"} },   {"methods", "paths"} },
-      { true, { protocols = { "http" }, service = s, paths = {"/foo"} },     {"methods", "hosts"} },
+      { true, { protocols = { "http" }, service = s, paths = {"/foo"} },  {"methods", "hosts"} },
+      { true, { protocols = { "http" }, service = s, headers = { location = { "location-1" } } }, {"methods", "hosts", "paths"} },
     }
     for i, test in ipairs(tests) do
       test[2] = Routes:process_auto_fields(test[2], "insert")
@@ -140,6 +142,7 @@ describe("routes schema", function()
     assert.same({ "http" },    route.protocols)
     assert.same(ngx.null,      route.methods)
     assert.same(ngx.null,      route.hosts)
+    assert.same(ngx.null,      route.headers)
     assert.same({ "/foo" },    route.paths)
     assert.same(0,             route.regex_priority)
     assert.same(true,          route.strip_path)
@@ -490,6 +493,64 @@ describe("routes schema", function()
         assert.is_nil(err)
         assert.is_true(ok)
       end
+    end)
+  end)
+
+  describe("headers attribute", function()
+    -- refusals
+    it("key must be a string", function()
+      local route = {
+        headers = { false },
+      }
+
+      local ok, err = Routes:validate(route)
+      assert.falsy(ok)
+      assert.equal("expected a string", err.headers)
+    end)
+
+    it("cannot contain 'host' key", function()
+      local values = { "host", "Host", "HoSt" }
+
+      for _, v in ipairs(values) do
+        local route = {
+          headers = { [v] = { "example.com" } },
+        }
+
+        local ok, err = Routes:validate(route)
+        assert.falsy(ok)
+        assert.equal("cannot contain 'host' header, which must be specified " ..
+                     "in the 'hosts' attribute", err.headers)
+      end
+    end)
+
+    it("value must be an array", function()
+      local route = {
+        headers = { location = true },
+      }
+
+      local ok, err = Routes:validate(route)
+      assert.falsy(ok)
+      assert.equal("expected an array", err.headers)
+    end)
+
+    it("values must be a string", function()
+      local route = {
+        headers = { location = { true } },
+      }
+
+      local ok, err = Routes:validate(route)
+      assert.falsy(ok)
+      assert.equal("expected a string", err.headers[1])
+    end)
+
+    it("values must be non-empty string", function()
+      local route = {
+        headers = { location = { "" } },
+      }
+
+      local ok, err = Routes:validate(route)
+      assert.falsy(ok)
+      assert.equal("length must be at least 1", err.headers[1])
     end)
   end)
 
@@ -952,7 +1013,7 @@ describe("routes schema", function()
     assert.falsy(ok)
     assert.same({
       ["@entity"] = {
-        "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'"
+        "must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http'"
       }
     }, errs)
 
@@ -964,7 +1025,7 @@ describe("routes schema", function()
     assert.falsy(ok)
     assert.same({
       ["@entity"] = {
-        "must set one of 'methods', 'hosts', 'paths', 'snis' when 'protocols' is 'https'"
+        "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https'"
       }
     }, errs)
   end)
