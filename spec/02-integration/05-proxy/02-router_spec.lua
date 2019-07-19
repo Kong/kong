@@ -889,6 +889,224 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    describe("[headers]", function()
+      local routes
+
+      after_each(function()
+        remove_routes(strategy, routes)
+      end)
+
+      it("matches by header", function()
+        routes = insert_routes(bp, {
+          {
+            headers = { version = { "v1", "v2" } },
+          },
+          {
+            headers = { version = { "v3" } },
+          },
+        })
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            ["Host"]       = "domain.org",
+            ["version"]    = "v1",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+
+        assert.equal(routes[1].id,           res.headers["kong-route-id"])
+        assert.equal(routes[1].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[1].service.name, res.headers["kong-service-name"])
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            ["Host"]       = "domain.org",
+            ["version"]    = "v3",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+
+        assert.equal(routes[2].id,           res.headers["kong-route-id"])
+        assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[2].service.name, res.headers["kong-service-name"])
+      end)
+
+      it("matches headers in a case-insensitive way", function()
+        routes = insert_routes(bp, {
+          {
+            headers = { Version = { "v1", "v2" } },
+          },
+          {
+            headers = { version = { "V3" } },
+          },
+        })
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            ["Host"]       = "domain.org",
+            ["version"]    = "v1",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+
+        assert.equal(routes[1].id,           res.headers["kong-route-id"])
+        assert.equal(routes[1].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[1].service.name, res.headers["kong-service-name"])
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            ["Host"]       = "domain.org",
+            ["Version"]    = "v3",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+
+        assert.equal(routes[2].id,           res.headers["kong-route-id"])
+        assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[2].service.name, res.headers["kong-service-name"])
+      end)
+
+      it("prioritizes Routes with more headers", function()
+        routes = insert_routes(bp, {
+          {
+            headers = {
+              version = { "v1", "v2" },
+            },
+          },
+          {
+            headers = {
+              version = { "v3" },
+              location = { "us-east" },
+            },
+          },
+          {
+            headers = {
+              version = { "v3" },
+            },
+          },
+        })
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            ["Host"]       = "domain.org",
+            ["version"]    = "v3",
+            ["location"]   = "us-east",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+
+        assert.equal(routes[2].id,           res.headers["kong-route-id"])
+        assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[2].service.name, res.headers["kong-service-name"])
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            ["Host"]       = "domain.org",
+            ["version"]    = "v3",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+
+        assert.equal(routes[3].id,           res.headers["kong-route-id"])
+        assert.equal(routes[3].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[3].service.name, res.headers["kong-service-name"])
+      end)
+    end)
+
+    describe("[paths] + [headers]", function()
+      local routes
+
+      lazy_setup(function()
+        routes = insert_routes(bp, {
+          {
+            strip_path = true,
+            headers = {
+              version = { "v1", "v2" },
+            },
+            paths = { "/root" },
+          },
+          {
+            strip_path = true,
+            headers = {
+              version = { "v1", "v2" },
+            },
+            paths = { "/root/fixture" },
+          },
+          {
+            strip_path = true,
+            headers = {
+              version = { "v1", "v2" },
+              location = { "us-east" },
+            },
+            paths = { "/root" },
+          },
+        })
+      end)
+
+      lazy_teardown(function()
+        remove_routes(strategy, routes)
+      end)
+
+      it("prioritizes Routes with more headers", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/root/fixture/get",
+          headers = {
+            ["version"]    = "v2",
+            ["location"]   = "us-east",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(404, res)
+
+        assert.equal(routes[3].id,           res.headers["kong-route-id"])
+        assert.equal(routes[3].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[3].service.name, res.headers["kong-service-name"])
+      end)
+
+      it("prioritizes longer paths if same number of headers", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/root/fixture/get",
+          headers = {
+            ["version"]    = "v2",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+
+        assert.equal(routes[2].id,           res.headers["kong-route-id"])
+        assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[2].service.name, res.headers["kong-service-name"])
+      end)
+    end)
+
     describe("[paths] + [methods]", function()
       local routes
 
