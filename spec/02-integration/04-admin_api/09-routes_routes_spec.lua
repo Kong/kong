@@ -61,6 +61,7 @@ for _, strategy in helpers.each_strategy() do
               body = {
                 protocols = { "http" },
                 hosts     = { "my.route.com" },
+                headers   = { location = { "my-location" } },
                 service   = bp.services:insert(),
               },
               headers = { ["Content-Type"] = content_type }
@@ -68,6 +69,7 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(201, res)
             local json = cjson.decode(body)
             assert.same({ "my.route.com" }, json.hosts)
+            assert.same({ location = { "my-location" } }, json.headers)
             assert.is_number(json.created_at)
             assert.is_number(json.regex_priority)
             assert.is_string(json.id)
@@ -200,11 +202,11 @@ for _, strategy in helpers.each_strategy() do
                 name    = "schema violation",
                 message = unindent([[
                   schema violation
-                  (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http')
+                  (must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http')
                 ]], true, true),
                 fields  = {
                   ["@entity"] = {
-                    "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'",
+                    "must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http'",
                   }
                 }
               }, cjson.decode(body))
@@ -222,11 +224,11 @@ for _, strategy in helpers.each_strategy() do
                 name    = "schema violation",
                 message = unindent([[
                   schema violation
-                  (must set one of 'methods', 'hosts', 'paths', 'snis' when 'protocols' is 'https')
+                  (must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https')
                 ]], true, true),
                 fields  = {
                   ["@entity"] = {
-                    "must set one of 'methods', 'hosts', 'paths', 'snis' when 'protocols' is 'https'",
+                    "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https'",
                   }
                 }
               }, cjson.decode(body))
@@ -732,11 +734,11 @@ for _, strategy in helpers.each_strategy() do
                   name    = "schema violation",
                   message = unindent([[
                   schema violation
-                  (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http')
+                  (must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http')
                   ]], true, true),
                   fields  = {
                     ["@entity"] = {
-                      "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'",
+                      "must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http'",
                     }
                   }
                 }, cjson.decode(body))

@@ -416,7 +416,7 @@ describe("declarative config: validate", function()
                 ["routes"] = {
                   {
                     ["@entity"] = {
-                      "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'",
+                      "must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http'",
                     }
                   }
                 }
