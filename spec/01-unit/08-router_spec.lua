@@ -1325,29 +1325,6 @@ describe("Router", function()
         end)
       end)
 
-      it("does not incorrectly match another route which has a longer [uri]", function()
-        local use_case = {
-          {
-            service = service,
-            route   = {
-              paths = { "/a", "/bbbbbbb" },
-            },
-          },
-          {
-            service = service,
-            route   = {
-              paths = { "/a/bb" },
-            },
-          },
-        }
-
-        local router = assert(Router.new(use_case))
-
-        local route_t = router.select("GET", "/a/bb/foobar", "domain.org")
-        assert.truthy(route_t)
-        assert.equal(use_case[2].route, route_t.route)
-      end)
-
       it("more [headers] has priority over longer [paths]", function()
         local use_case = {
           {
