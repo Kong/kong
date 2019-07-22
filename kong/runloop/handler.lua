@@ -168,15 +168,15 @@ local function register_events()
       data.operation)
 
     -- crud:routes
-    local _, err = worker_events.post_local("crud", entity_channel, data)
-    if err then
+    local ok, err = worker_events.post_local("crud", entity_channel, data)
+    if not ok then
       log(ERR, "[events] could not broadcast crud event: ", err)
       return
     end
 
     -- crud:routes:create
-    _, err = worker_events.post_local("crud", entity_operation_channel, data)
-    if err then
+    ok, err = worker_events.post_local("crud", entity_operation_channel, data)
+    if not ok then
       log(ERR, "[events] could not broadcast crud event: ", err)
       return
     end
@@ -256,18 +256,18 @@ local function register_events()
     local operation = data.operation
     local target = data.entity
     -- => to worker_events node handler
-    local _, err = worker_events.post("balancer", "targets", {
+    local ok, err = worker_events.post("balancer", "targets", {
         operation = data.operation,
         entity = data.entity,
       })
-    if err then
+    if not ok then
       log(ERR, "failed broadcasting target ",
         operation, " to workers: ", err)
     end
     -- => to cluster_events handler
     local key = fmt("%s:%s", operation, target.upstream.id)
-    _, err = cluster_events:broadcast("balancer:targets", key)
-    if err then
+    ok, err = cluster_events:broadcast("balancer:targets", key)
+    if not ok then
       log(ERR, "failed broadcasting target ", operation, " to cluster: ", err)
     end
   end, "crud", "targets")
@@ -287,13 +287,13 @@ local function register_events()
   cluster_events:subscribe("balancer:targets", function(data)
     local operation, key = unpack(utils.split(data, ":"))
     -- => to worker_events node handler
-    local _, err = worker_events.post("balancer", "targets", {
+    local ok, err = worker_events.post("balancer", "targets", {
         operation = operation,
         entity = {
           upstream = { id = key },
         }
       })
-    if err then
+    if not ok then
       log(ERR, "failed broadcasting target ", operation, " to workers: ", err)
     end
   end)
@@ -320,11 +320,11 @@ local function register_events()
     local operation = data.operation
     local upstream = data.entity
     -- => to worker_events node handler
-    local _, err = worker_events.post("balancer", "upstreams", {
+    local ok, err = worker_events.post("balancer", "upstreams", {
         operation = data.operation,
         entity = data.entity,
       })
-    if err then
+    if not ok then
       log(ERR, "failed broadcasting upstream ",
         operation, " to workers: ", err)
     end
@@ -350,14 +350,14 @@ local function register_events()
   cluster_events:subscribe("balancer:upstreams", function(data)
     local operation, id, name = unpack(utils.split(data, ":"))
     -- => to worker_events node handler
-    local _, err = worker_events.post("balancer", "upstreams", {
+    local ok, err = worker_events.post("balancer", "upstreams", {
         operation = operation,
         entity = {
           id = id,
           name = name,
         }
       })
-    if err then
+    if not ok then
       log(ERR, "failed broadcasting upstream ", operation, " to workers: ", err)
     end
   end)
