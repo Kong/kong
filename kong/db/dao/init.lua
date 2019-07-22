@@ -898,6 +898,9 @@ function DAO:truncate()
 end
 
 
+-- XXX: Deprecated. This function has very bad performance for big
+-- tables as it doesn't ensure filtering using indices.  Use find,
+-- select_by, each, or the other new DAO functions when possible.
 function DAO:select_all(fields, options)
   fields = fields or {}
   local schema = self.schema
