@@ -138,6 +138,13 @@ local function make_introspection_request(conf, access_token)
     headers["X-Request-Path"] = kong.request.get_path()
   end
 
+  local custom_headers = conf.custom_introspection_headers
+  if custom_headers then
+    for header, value in pairs(custom_headers) do
+      headers[header:gsub("_", "-")] = value
+    end
+  end
+
   local res, err = client:request {
     method = "POST",
     path = path,

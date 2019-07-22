@@ -31,9 +31,10 @@ return {
         { keepalive = { type = "integer", default = 60000 } },
         { introspect_request = { type = "boolean", default = false, required = true } },
         { hide_credentials = { type = "boolean", default = false } },
-        { run_on_preflight = {type = "boolean", default = true} },
-        { anonymous = {type = "string", len_min = 0, default = "", custom_validator = check_user } },
-        { consumer_by = {type = "string", default = CONSUMER_BY_DEFAULT, one_of = consumer_by_fields, required = true } },
+        { run_on_preflight = { type = "boolean", default = true } },
+        { anonymous = { type = "string", len_min = 0, default = "", custom_validator = check_user } },
+        { consumer_by = { type = "string", default = CONSUMER_BY_DEFAULT, one_of = consumer_by_fields, required = true } },
+        { custom_introspection_headers = {type = "map", keys = { type = "string" }, values = { type = "string" }, default = {}, required = true } },
       }}
     },
   },
