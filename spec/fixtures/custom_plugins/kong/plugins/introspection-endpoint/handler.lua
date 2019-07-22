@@ -43,7 +43,10 @@ function IntrospectionEndpointHandler:access(conf)
                    "aud":"some_aud",
                    "iss":"some_iss",
                    "exp":"some_exp",
-                   "iat":"some_iat"}]])
+                   "iat":"some_iat",
+                   "foo":"bar",
+                   "bar":"baz",
+                   "baz":"baaz"}]])
       else
         ngx.say([[{"active":true}]])
       end

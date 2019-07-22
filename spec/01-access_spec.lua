@@ -127,6 +127,21 @@ for _ , strategy in helpers.each_strategy() do
         }
       })
 
+      local route6 = assert(bp.routes:insert {
+        name = "route-6",
+        hosts = { "introspection6.com" },
+      })
+      assert(bp.plugins:insert {
+        name = "oauth2-introspection",
+        route = { id = route6.id },
+        config = {
+          introspection_url = introspection_url,
+          authorization_value = "hello",
+          custom_claims_forward = { "foo", "bar" },
+          ttl = 1,
+        }
+      })
+
       assert(helpers.start_kong({
         database = strategy,
         plugins = "bundled,introspection-endpoint,oauth2-introspection",
@@ -330,6 +345,52 @@ for _ , strategy in helpers.each_strategy() do
           assert.equal("some_iss" , body.headers["x-credential-iss"])
           assert.equal("some_exp" , body.headers["x-credential-exp"])
           assert.equal("some_iat" , body.headers["x-credential-iat"])
+        end)
+
+        it("appends custom upstream headers" , function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/request?access_token=valid_complex",
+            headers = {
+              ["Host"] = "introspection6.com"
+            }
+          })
+
+          local body = cjson.decode(assert.res_status(200 , res))
+          assert.equal("valid_complex", body.uri_args.access_token)
+          assert.equal("some_client_id", body.headers["x-credential-client-id"])
+          assert.equal("some_username", body.headers["x-credential-username"])
+          assert.equal("some_scope", body.headers["x-credential-scope"])
+          assert.equal("some_sub", body.headers["x-credential-sub"])
+          assert.equal("some_aud", body.headers["x-credential-aud"])
+          assert.equal("some_iss", body.headers["x-credential-iss"])
+          assert.equal("some_exp", body.headers["x-credential-exp"])
+          assert.equal("some_iat", body.headers["x-credential-iat"])
+          assert.equal("bar", body.headers["x-credential-foo"])
+          assert.equal("baz", body.headers["x-credential-bar"])
+        end)
+
+        it("skips appending unconfigured custom upstream headers" , function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/request?access_token=valid_complex",
+            headers = {
+              ["Host"] = "introspection6.com"
+            }
+          })
+
+          local body = cjson.decode(assert.res_status(200 , res))
+          assert.equal("valid_complex", body.uri_args.access_token)
+          assert.equal("some_client_id", body.headers["x-credential-client-id"])
+          assert.equal("some_username", body.headers["x-credential-username"])
+          assert.equal("some_scope", body.headers["x-credential-scope"])
+          assert.equal("some_sub", body.headers["x-credential-sub"])
+          assert.equal("some_aud", body.headers["x-credential-aud"])
+          assert.equal("some_iss", body.headers["x-credential-iss"])
+          assert.equal("some_exp", body.headers["x-credential-exp"])
+          assert.equal("some_iat", body.headers["x-credential-iat"])
+          assert.equal("bar", body.headers["x-credential-foo"])
+          assert.Nil(body.headers["x-credential-baz"])
         end)
       end)
 

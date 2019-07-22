@@ -289,6 +289,12 @@ local function do_authentication(conf)
   ngx_set_header("x-credential-iss", credential_obj.iss)
   ngx_set_header("x-credential-jti", credential_obj.jti)
   ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- in case of auth plugins concatenation
+
+  -- Set custom claims as upstream headers
+  for _, claim in ipairs(conf.custom_claims_forward or {}) do
+    ngx_set_header("x-credential-" .. claim:gsub("_", "-"), credential_obj[claim])
+  end
+
   return true
 end
 

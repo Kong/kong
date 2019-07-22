@@ -35,6 +35,7 @@ return {
         { anonymous = { type = "string", len_min = 0, default = "", custom_validator = check_user } },
         { consumer_by = { type = "string", default = CONSUMER_BY_DEFAULT, one_of = consumer_by_fields, required = true } },
         { custom_introspection_headers = {type = "map", keys = { type = "string" }, values = { type = "string" }, default = {}, required = true } },
+        { custom_claims_forward = {type = "set", elements = { type = "string" }, default = {}, required = true } },
       }}
     },
   },
