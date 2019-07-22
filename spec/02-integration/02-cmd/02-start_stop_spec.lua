@@ -63,7 +63,7 @@ describe("kong start/stop #" .. strategy, function()
       assert(helpers.kong_exec("start", {
         prefix = helpers.test_conf.prefix,
         database = strategy,
-        cassandra_contact_points = "localhost",
+        cassandra_contact_points = os.getenv("KONG_CASSANDRA_CONTACT_POINTS") or "localhost",
         cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
       }))
       assert(helpers.kong_exec("stop", {

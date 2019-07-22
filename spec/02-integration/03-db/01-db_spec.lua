@@ -205,7 +205,7 @@ for _, strategy in helpers.each_strategy() do
     cassandra_only("provided Cassandra contact points resolve DNS", function()
       local conf = utils.deep_copy(helpers.test_conf)
 
-      conf.cassandra_contact_points = { "localhost" }
+      conf.cassandra_contact_points = { os.getenv("KONG_CASSANDRA_CONTACT_POINTS") or "localhost" }
 
       local db, err = DB.new(conf, strategy)
       assert.is_nil(err)
