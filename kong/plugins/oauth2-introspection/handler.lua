@@ -127,6 +127,17 @@ local function make_introspection_request(conf, access_token)
     end
   end
 
+  local headers = {
+    ["Content-Type"] = "application/x-www-form-urlencoded",
+    Accept = "application/json",
+    Authorization = conf.authorization_value
+  }
+
+  if conf.introspect_request then -- include info about the current request
+    headers["X-Request-Http-Method"] = kong.request.get_method()
+    headers["X-Request-Path"] = kong.request.get_path()
+  end
+
   local res, err = client:request {
     method = "POST",
     path = path,
@@ -134,11 +145,7 @@ local function make_introspection_request(conf, access_token)
       token = access_token,
       token_type_hint = conf.token_type_hint
     }),
-    headers = {
-      ["Content-Type"] = "application/x-www-form-urlencoded",
-      Accept = "application/json",
-      Authorization = conf.authorization_value
-    }
+    headers = headers,
   }
   if not res then
     return false, err

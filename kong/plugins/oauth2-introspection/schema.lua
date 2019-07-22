@@ -29,6 +29,7 @@ return {
         { authorization_value = { type = "string", required = true } },
         { timeout = { type = "integer", default = 10000 } },
         { keepalive = { type = "integer", default = 60000 } },
+        { introspect_request = { type = "boolean", default = false, required = true } },
         { hide_credentials = { type = "boolean", default = false } },
         { run_on_preflight = {type = "boolean", default = true} },
         { anonymous = {type = "string", len_min = 0, default = "", custom_validator = check_user } },
