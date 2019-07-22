@@ -189,8 +189,17 @@ local function load_credential(conf, access_token)
   return { res = credential }
 end
 
-local function load_consumer(username)
-  return kong.db.consumers:select_by_username(username)
+local function load_consumer(key, consumer_by)
+  local consumer_field = consumer_by == "client_id" and "custom_id"
+                                         or "username"
+
+  local consumer, err = kong.db.consumers["select_by_" .. consumer_field](kong.db.consumers, key)
+  if err then
+    kong.log.err("error fetching consumer: ", err)
+    return nil, err
+  end
+
+  return consumer
 end
 
 local function load_consumer_mem(consumer_id, anonymous)
@@ -251,7 +260,8 @@ local function do_authentication(conf)
   if credential_obj and credential_obj[consumer_by] then
     cache_key = consumers_username_key(credential_obj[consumer_by])
     local consumer, err = cache:get(cache_key, nil, load_consumer,
-                                           credential_obj[consumer_by])
+                                           credential_obj[consumer_by],
+                                           consumer_by)
 
     if err then
       return false, {status = 500, message = err}

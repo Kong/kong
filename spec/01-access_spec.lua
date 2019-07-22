@@ -65,7 +65,7 @@ for _ , strategy in helpers.each_strategy() do
         username = "bob"
       })
       assert(bp.consumers:insert {
-        username = "kongsumer",
+        custom_id = "kongsumer",
       })
 
       local consumer = assert(bp.consumers:insert {
@@ -295,7 +295,7 @@ for _ , strategy in helpers.each_strategy() do
           assert.is_nil(res.headers["x-ratelimit-limit-minute"])
         end)
 
-        it("associated a consumer by oauth2 client_id", function()
+        it("associates oauth2 client_id to consumer custom_id", function()
           local res = assert(client:send {
             method = "GET",
             path = "/request?access_token=valid_consumer_client_id",
@@ -305,7 +305,7 @@ for _ , strategy in helpers.each_strategy() do
           })
 
           local body = cjson.decode(assert.res_status(200 , res))
-          assert.equal("kongsumer" , body.headers["x-consumer-username"])
+          assert.equal("kongsumer" , body.headers["x-consumer-custom-id"])
           assert.is_string(body.headers["x-consumer-id"])
           assert.is_nil(res.headers["x-ratelimit-limit-minute"])
         end)
