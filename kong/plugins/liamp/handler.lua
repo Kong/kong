@@ -200,7 +200,7 @@ function AWSLambdaHandler:access(conf)
   local upstream_body = new_tab(0, 6)
 
   if conf.awsgateway_compatible then
-    upstream_body = aws_serializer()
+    upstream_body = aws_serializer(ngx.ctx, conf)
 
   elseif conf.forward_request_body or
          conf.forward_request_headers or

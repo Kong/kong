@@ -114,6 +114,10 @@ return {
     proxy_url = {
       type = "string"
     },
+    skip_large_bodies = {
+      type = "boolean",
+      default = true,
+    },
   },
   self_check = function(schema, plugin_t, dao, is_update)
     if (plugin_t.aws_key or "") == "" then

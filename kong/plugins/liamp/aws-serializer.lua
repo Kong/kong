@@ -15,7 +15,7 @@ local ngx_log              = ngx.log
 local ERR                  = ngx.ERR
 
 
-return function(ctx)
+return function(ctx, config)
   ctx = ctx or ngx.ctx
   local var = ngx.var
 
@@ -63,16 +63,23 @@ return function(ctx)
     ngx_req_read_body()
     body = ngx_req_get_body_data()
     if not body then
-      if ngx_req_get_body_file() then
-        ngx_log(ERR, "request body was buffered to disk, too large")
+      local body_filepath = ngx_req_get_body_file()
+      if body_filepath then
+        if config.skip_large_bodies then
+          ngx_log(ERR, "request body was buffered to disk, too large")
+        else
+          local file = io.open(body_filepath, "rb")
+          body = file:read("*all")
+          file:close()
+        end
       end
+    end
+
+    if body ~= "" then
+      body = ngx_encode_base64(body)
+      isBase64Encoded = true
     else
-      if body ~= "" then
-        body = ngx_encode_base64(body)
-        isBase64Encoded = true
-      else
-        isBase64Encoded = false
-      end
+      isBase64Encoded = false
     end
   end
 
