@@ -37,6 +37,17 @@ local non_nullable_schema_definition = {
   }
 }
 
+local optional_cache_key_fields_schema = {
+  name = "Foo",
+  primary_key = { "a" },
+  cache_key = { "b", "u" },
+  fields = {
+    { a = { type = "number" }, },
+    { b = { type = "string" }, },
+    { u = { type = "string" }, },
+  },
+}
+
 local mock_db = {}
 
 
@@ -129,10 +140,37 @@ describe("DAO", function()
       -- mock strategy
       local data
       local strategy = {
+        select = function()
+          return data
+        end,
         update = function(_, _, value)
           -- no defaults pre-applied before partial update
           assert(value.b == nil)
-          assert(value.r == nil or value.r.f2 == nil)
+          data = utils.deep_merge(data, value)
+          return data
+        end,
+      }
+
+      local dao = DAO.new(mock_db, schema, strategy, errors)
+
+      data = { a = 42, b = nil, u = nil, r = nil }
+      local row, err = dao:update({ a = 43 }, { u = "foo" })
+      assert.falsy(err)
+      assert.same({ a = 42, b = "hello", u = "foo" }, row)
+    end)
+
+    it("does not pre-apply defaults on record fields if field is nullable in schema", function()
+      local schema = assert(Schema.new(nullable_schema_definition))
+
+      -- mock strategy
+      local data
+      local strategy = {
+        select = function()
+          return data
+        end,
+        update = function(_, _, value)
+          -- no defaults pre-applied before partial update
+          assert(value.r.f2 == nil)
           data = utils.deep_merge(data, value)
           return data
         end,
@@ -152,6 +190,9 @@ describe("DAO", function()
       -- mock strategy
       local data
       local strategy = {
+        select = function()
+          return data
+        end,
         update = function(_, _, value)
           -- no defaults pre-applied before partial update
           assert(value.b == nil)
@@ -199,10 +240,10 @@ describe("DAO", function()
       -- mock strategy
       local data
       local strategy = {
+        select = function()
+          return data
+        end,
         update = function(_, _, value)
-          -- no defaults pre-applied before partial update
-          assert(value.b == nil)
-          assert(value.r == nil or value.r.f2 == nil)
           data = utils.deep_merge(data, value)
           return data
         end,
@@ -269,6 +310,9 @@ describe("DAO", function()
       -- mock strategy
       local data
       local strategy = {
+        select = function()
+          return data
+        end,
         update = function(_, _, value)
           data = utils.deep_merge(data, value)
           return data
@@ -289,6 +333,9 @@ describe("DAO", function()
       -- mock strategy
       local data
       local strategy = {
+        select = function()
+          return data
+        end,
         update = function(_, _, value)
           data = utils.deep_merge(data, value)
           return data
@@ -297,7 +344,7 @@ describe("DAO", function()
 
       local dao = DAO.new(mock_db, schema, strategy, errors)
 
-      data = { a = 42, b = null, u = null, r = nil }
+      data = { a = 42, b = nil, u = null, r = nil }
       local row, err = dao:update({ a = 43 }, { u = "foo", r = { f1 = 10 } }, { nulls = true })
       assert.falsy(err)
       assert.same({ a = 42, b = "hello", u = "foo", r = { f1 = 10, f2 = "world" } }, row)
@@ -309,6 +356,9 @@ describe("DAO", function()
       -- mock strategy
       local data
       local strategy = {
+        select = function()
+          return data
+        end,
         update = function(_, _, value)
           data = utils.deep_merge(data, value)
           return data
@@ -317,7 +367,7 @@ describe("DAO", function()
 
       local dao = DAO.new(mock_db, schema, strategy, errors)
 
-      data = { a = 42, b = null, u = null, r = null }
+      data = { a = 42, b = null, u = nil, r = nil }
       local row, err = dao:update({ a = 43 }, { u = "foo", r = { f1 = 10 } }, { nulls = true })
       assert.falsy(err)
       assert.same({ a = 42, b = null, u = "foo", r = { f1 = 10, f2 = "world" } }, row)
@@ -329,6 +379,9 @@ describe("DAO", function()
       -- mock strategy
       local data
       local strategy = {
+        select = function()
+          return data
+        end,
         update = function(_, _, value)
           data = utils.deep_merge(data, value)
           return data
@@ -345,4 +398,25 @@ describe("DAO", function()
     end)
   end)
 
+  describe("cache_key", function()
+
+    it("converts null in composite cache_key to empty string", function()
+      local schema = assert(Schema.new(optional_cache_key_fields_schema))
+      local dao = DAO.new(mock_db, schema, {}, errors)
+
+      -- setting u as an explicit null
+      local data = { a = 42, b = "foo", u = null }
+      local cache_key = dao:cache_key(data)
+      assert.equals("Foo:foo::::", cache_key)
+    end)
+
+    it("converts nil in composite cache_key to empty string", function()
+      local schema = assert(Schema.new(optional_cache_key_fields_schema))
+      local dao = DAO.new(mock_db, schema, {}, errors)
+
+      local data = { a = 42, b = "foo", u = nil }
+      local cache_key = dao:cache_key(data)
+      assert.equals("Foo:foo::::", cache_key)
+    end)
+  end)
 end)

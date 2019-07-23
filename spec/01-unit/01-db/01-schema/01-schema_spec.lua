@@ -121,6 +121,29 @@ describe("schema", function()
       assert.falsy(Test:validate({ a_number = "wat" }))
     end)
 
+    it("'eq' accepts false", function()
+      local Test = Schema.new({
+        fields = {
+          { a_boolean = { type = "boolean", eq = false } }
+        }
+      })
+      assert.truthy(Test:validate({ a_boolean = false }))
+      assert.falsy(Test:validate({ a_boolean = true }))
+      assert.falsy(Test:validate({ a_boolean = "false" }))
+    end)
+
+    it("'eq' accepts null", function()
+      local Test = Schema.new({
+        fields = {
+          { a_boolean = { type = "boolean", eq = ngx.null } }
+        }
+      })
+      assert.truthy(Test:validate({ a_boolean = ngx.null }))
+      -- null means unset, so not passing a value matches it
+      assert.truthy(Test:validate({ a_boolean = nil }))
+      assert.falsy(Test:validate({ a_boolean = "null" }))
+    end)
+
     it("forces a value with 'gt'", function()
       local Test = Schema.new({
         fields = {
@@ -1350,6 +1373,30 @@ describe("schema", function()
       end)
 
       describe("conditional", function()
+        it("can check on false", function()
+          local Test = Schema.new({
+            fields = {
+              { a = { type = "boolean" }, },
+              { b = { type = "boolean" }, },
+            },
+            entity_checks = {
+              { conditional = { if_field = "a",
+                                if_match = { eq = true },
+                                then_field = "b",
+                                then_match = { eq = false },
+                                then_err = "can't have a and b at the same time", }
+              },
+            }
+          })
+
+          assert.truthy(Test:validate_insert({ a = true, b = false }))
+          local ok, errs = Test:validate_insert({ a = true, b = true })
+          assert.falsy(ok)
+          assert.same({
+            "can't have a and b at the same time"
+          }, errs["@entity"])
+        end)
+
         it("supports a custom error message", function()
           local Test = Schema.new({
             fields = {
@@ -2434,7 +2481,21 @@ describe("schema", function()
       assert.equals(5.5, tbl.fingers)
     end)
 
-    it("adds cjson.empty_array_mt on empty array and set fields", function()
+    it("adds cjson.array_mt on non-empty array fields", function()
+      local Test = Schema.new({
+        fields = {
+          { arr = { type = "array", elements = { type = "string" } } },
+        },
+      })
+
+      local tbl = Test:process_auto_fields({
+        arr = { "hello" },
+      }, "insert")
+
+      assert.same(cjson.array_mt, getmetatable(tbl.arr))
+    end)
+
+    it("adds cjson.array_mt on empty array and set fields", function()
       local Test = Schema.new({
         fields = {
           { arr = { type = "array", elements = { type = "string" } } },
@@ -2447,11 +2508,11 @@ describe("schema", function()
         set = {}
       }, "insert")
 
-      assert.same(cjson.empty_array_mt, getmetatable(tbl.arr))
-      assert.same(cjson.empty_array_mt, getmetatable(tbl.set))
+      assert.same(cjson.array_mt, getmetatable(tbl.arr))
+      assert.same(cjson.array_mt, getmetatable(tbl.set))
     end)
 
-    it("adds cjson.empty_array_mt on empty array and set fields", function()
+    it("adds cjson.array_mt on empty array and set fields", function()
       local Test = Schema.new({
         fields = {
           { arr = { type = "array", elements = { type = "string" } } },
@@ -2465,8 +2526,8 @@ describe("schema", function()
           set = {}
         }, operation)
 
-        assert.same(cjson.empty_array_mt, getmetatable(tbl.arr))
-        assert.same(cjson.empty_array_mt, getmetatable(tbl.set))
+        assert.same(cjson.array_mt, getmetatable(tbl.arr))
+        assert.same(cjson.array_mt, getmetatable(tbl.set))
       end
     end)
 
@@ -2491,26 +2552,39 @@ describe("schema", function()
       end
     end)
 
-    it("does not add a helper metatable to arrays or maps", function()
+    it("does not add a helper metatable to maps", function()
       local Test = Schema.new({
         fields = {
-          { arr = { type = "array", elements = { type = "string" } } },
           { map = { type = "map", keys = { type = "string" }, values = { type = "boolean" } } },
         },
       })
 
       for _, operation in pairs{ "insert", "update", "select", "delete" } do
         local tbl = Test:process_auto_fields({
-          arr = { "http", "https" },
           map = { http = true },
         }, operation)
 
-        assert.is_nil(getmetatable(tbl.arr))
         assert.is_nil(getmetatable(tbl.map))
-        assert.is_equal("http", tbl.arr[1])
-        assert.is_nil(tbl.arr.http)
         assert.is_true(tbl.map.http)
         assert.is_nil(tbl.map.https)
+      end
+    end)
+
+    it("does add array_mt metatable to arrays", function()
+      local Test = Schema.new({
+        fields = {
+          { arr = { type = "array", elements = { type = "string" } } },
+        },
+      })
+
+      for _, operation in pairs{ "insert", "update", "select", "delete" } do
+        local tbl = Test:process_auto_fields({
+          arr = { "http", "https" },
+        }, operation)
+
+        assert.is_equal(cjson.array_mt, getmetatable(tbl.arr))
+        assert.is_equal("http", tbl.arr[1])
+        assert.is_nil(tbl.arr.http)
       end
     end)
 

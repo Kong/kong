@@ -56,7 +56,7 @@ local TEST_LOG = false -- extra verbose logging of test server
 local TIMEOUT = -1  -- marker for timeouts in http_server
 
 
-local function direct_request(host, port, path)
+local function direct_request(host, port, path, protocol)
   local pok, client = pcall(helpers.http_client, host, port)
   if not pok then
     return nil, "pcall: " .. client .. " : " .. host ..":"..port
@@ -64,16 +64,22 @@ local function direct_request(host, port, path)
   if not client then
     return nil, "client"
   end
-  local _, err = client:send {
+
+  if protocol == "https" then
+    assert(client:ssl_handshake())
+  end
+
+  local res, err = client:send {
     method = "GET",
     path = path,
     headers = { ["Host"] = "whatever" }
   }
+  local body = res and res:read_body()
   client:close()
   if err then
     return nil, err
   end
-  return true
+  return body
 end
 
 
@@ -105,229 +111,49 @@ end
 -- @param test_log (optional, default fals) Produce detailed logs
 -- @return Returns the number of succesful and failure responses.
 local function http_server(host, port, counts, test_log, protocol)
-
   -- This is a "hard limit" for the execution of tests that launch
   -- the custom http_server
   local hard_timeout = ngx.now() + 300
+  protocol = protocol or "http"
 
-  local threads = require "llthreads2.ex"
-  local thread = threads.new({
-    function(hard_timeout, host, port, counts, TEST_LOG, protocol) -- luacheck: ignore
-      local TIMEOUT = -1 -- luacheck: ignore
-
-      local function test_log(...) -- luacheck: ignore
-        if not TEST_LOG then
-          return
-        end
-
-        local t = {"server on port ", port, ": ", ...}
-        for i, v in ipairs(t) do
-          t[i] = tostring(v)
-        end
-        print(table.concat(t))
-      end
-
-      local total_reqs = 0
-      for _, c in pairs(counts) do
-        total_reqs = total_reqs + (c < 0 and 1 or c)
-      end
-
-      local handshake_done = false
-      local fail_responses = 0
-      local ok_responses = 0
-      local reply_200 = true
-      local healthy = true
-      local n_checks = 0
-      local n_reqs = 0
-
-      local httpserver, get_path, send_response, sleep, sslctx
-      if protocol == "https" then
-        -- lua-http server for http+https tests
-        local cqueues = require "cqueues"
-        sleep = cqueues.sleep
-        httpserver = require "http.server"
-        local openssl_pkey = require "openssl.pkey"
-        local openssl_x509 = require "openssl.x509"
-        get_path = function(stream)
-          local headers = assert(stream:get_headers(60))
-          return headers:get(":path")
-        end
-        local httpheaders = require "http.headers"
-        send_response = function(stream, response)
-          local rh = httpheaders.new()
-          rh:upsert(":status", tostring(response))
-          rh:upsert("connection", "close")
-          assert(stream:write_headers(rh, false))
-        end
-        sslctx = require("http.tls").new_server_context()
-        local fd = io.open("spec/fixtures/kong_spec.key", "r")
-        local pktext = fd:read("*a")
-        fd:close()
-        local pk = assert(openssl_pkey.new(pktext))
-        assert(sslctx:setPrivateKey(pk))
-        fd = io.open("spec/fixtures/kong_spec.crt", "r")
-        local certtext = fd:read("*a")
-        fd:close()
-        local cert = assert(openssl_x509.new(certtext))
-        assert(sslctx:setCertificate(cert))
-      else
-        -- luasocket-based mock for http-only tests
-        -- not a real HTTP server, but runs faster
-        local socket = require "socket"
-        sleep = socket.sleep
-        httpserver = {
-          listen = function(opts)
-            local server = {}
-            local sskt
-            server.close = function()
-              server.quit = true
-            end
-            server.loop = function(self)
-              while not self.quit do
-                local cskt, err = sskt:accept()
-                if socket.gettime() > hard_timeout then
-                  if cskt then
-                  cskt:close()
-                  end
-                  break
-                elseif err ~= "timeout" then
-                  if err then
-                    sskt:close()
-                    error(err)
-                  end
-                  local first, err = cskt:receive("*l")
-                  if first then
-                    opts.onstream(server, {
-                      get_path = function()
-                        return (first:match("(/[^%s]*)"))
-                      end,
-                      send_response = function(_, response)
-                        local r = response == 200 and "OK" or "Internal Server Error"
-                        cskt:send("HTTP/1.1 " .. response .. " " .. r ..
-                                  "\r\nConnection: close\r\n\r\n")
-                      end,
-                    })
-                  end
-                  cskt:close()
-                  if err and err ~= "closed" then
-                    sskt:close()
-                    error(err)
-                  end
-                end
-              end
-              sskt:close()
-            end
-            local socket_fn = host:match(":") and socket.tcp6 or socket.tcp
-            sskt = assert(socket_fn())
-            assert(sskt:settimeout(0.1))
-            assert(sskt:setoption('reuseaddr', true))
-            assert(sskt:bind("*", opts.port))
-            assert(sskt:listen())
-            return server
-          end,
-        }
-        get_path = function(stream)
-          return stream:get_path()
-        end
-        send_response = function(stream, response)
-          return stream:send_response(response)
-        end
-      end
-
-      local server = httpserver.listen({
-        host = host:gsub("[%]%[]", ""),
-        port = port,
-        reuseaddr = true,
-        v6only = host:match(":") ~= nil,
-        ctx = sslctx,
-        onstream = function(self, stream)
-          local path = get_path(stream)
-          local response = 200
-          local shutdown = false
-
-          if path == "/handshake" then
-            handshake_done = true
-
-          elseif path == "/shutdown" then
-            shutdown = true
-
-          elseif path == "/status" then
-            response = healthy and 200 or 500
-            n_checks = n_checks + 1
-
-          elseif path == "/healthy" then
-            healthy = true
-
-          elseif path == "/unhealthy" then
-            healthy = false
-
-          elseif handshake_done then
-            n_reqs = n_reqs + 1
-            test_log("nreqs ", n_reqs, " of ", total_reqs)
-
-            while counts[1] == 0 do
-              table.remove(counts, 1)
-              reply_200 = not reply_200
-            end
-            if not counts[1] then
-              error(host .. ":" .. port .. ": unexpected request")
-            end
-            if counts[1] == TIMEOUT then
-              counts[1] = 0
-              sleep(0.2)
-            elseif counts[1] > 0 then
-              counts[1] = counts[1] - 1
-            end
-            response = reply_200 and 200 or 500
-            if response == 200 then
-              ok_responses = ok_responses + 1
-            else
-              fail_responses = fail_responses + 1
-            end
-
-          else
-            error("got a request before handshake was complete")
-          end
-
-          send_response(stream, response)
-
-          if shutdown then
-            self:close()
-          end
-        end,
-      })
-      test_log("starting")
-      server:loop()
-      test_log("stopped")
-      return ok_responses, fail_responses, n_checks
-    end
-  }, hard_timeout, host, port, counts, test_log or TEST_LOG, protocol)
-
-  local server = thread:start()
+  local cmd = "resty spec/fixtures/balancer_https_server.lua " ..
+              protocol .. " " .. host .. " " .. port ..
+              " \"" .. cjson.encode(counts) .. "\" " ..
+              (test_log or "") .. " &"
+  os.execute(cmd)
 
   repeat
-    local _, err = direct_request(host, port, "/handshake")
+    local _, err = direct_request(host, port, "/handshake", protocol)
     if err then
       ngx.sleep(0.01) -- poll-wait
     end
   until (ngx.now() > hard_timeout) or not err
 
-  server.done = function(self)
-    direct_request(host, port, "/shutdown")
-    return self:join()
+  local server = {}
+  server.done = function()
+    local body = direct_request(host, port, "/shutdown", protocol)
+    if body then
+      local tbl = assert(cjson.decode(body))
+      return true, tbl.ok_responses, tbl.fail_responses, tbl.n_checks
+    end
   end
 
   return server
 end
 
 
-local function client_requests(n, host_or_headers, proxy_host, proxy_port)
+local function client_requests(n, host_or_headers, proxy_host, proxy_port, protocol)
   local oks, fails = 0, 0
   local last_status
   for _ = 1, n do
     local client = (proxy_host and proxy_port)
                    and helpers.http_client(proxy_host, proxy_port)
                    or  helpers.proxy_client()
+
+    if protocol == "https" then
+      assert(client:ssl_handshake())
+    end
+
     local res = client:send {
       method = "GET",
       path = "/",
@@ -457,25 +283,28 @@ do
     return port
   end
 
-  add_api = function(bp, upstream_name, read_timeout, write_timeout, connect_timeout, retries, protocol)
+  add_api = function(bp, upstream_name, opts)
+    opts = opts or {}
     local route_id = utils.uuid()
     local service_id = utils.uuid()
     local route_host = gen_sym("host")
+    local sproto = opts.service_protocol or opts.route_protocol or "http"
+    local rproto = opts.route_protocol or "http"
     bp.services:insert({
       id = service_id,
-      url = (protocol or "http") .. "://" .. upstream_name .. ":" .. (protocol == "tcp" and 9100 or 80),
-      read_timeout = read_timeout,
-      write_timeout = write_timeout,
-      connect_timeout = connect_timeout,
-      retries = retries,
-      protocol = protocol,
+      url = sproto .. "://" .. upstream_name .. ":" .. (rproto == "tcp" and 9100 or 80),
+      read_timeout = opts.read_timeout,
+      write_timeout = opts.write_timeout,
+      connect_timeout = opts.connect_timeout,
+      retries = opts.retries,
+      protocol = sproto,
     })
     bp.routes:insert({
       id = route_id,
       service = { id = service_id },
-      protocols = { protocol or "http" },
-      hosts = protocol ~= "tcp" and { route_host } or nil,
-      destinations = (protocol == "tcp") and {{ port = 9100 }} or nil,
+      protocols = { rproto },
+      hosts = rproto ~= "tcp" and { route_host } or nil,
+      destinations = (rproto == "tcp") and {{ port = 9100 }} or nil,
     })
     return route_host, service_id, route_id
   end
@@ -1267,14 +1096,17 @@ for _, strategy in helpers.each_strategy() do
                 })
                 add_target(bp, upstream_id, localhost, port1)
                 add_target(bp, upstream_id, localhost, port2)
-                local api_host = add_api(bp, upstream_name)
+                local api_host = add_api(bp, upstream_name, {
+                  service_protocol = protocol
+                })
+
                 end_testcase_setup(strategy, bp)
 
                 -- 1) server1 and server2 take requests
                 local oks, fails = client_requests(SLOTS, api_host)
 
                 -- server2 goes unhealthy
-                direct_request(localhost, port2, "/unhealthy")
+                direct_request(localhost, port2, "/unhealthy", protocol)
                 -- Wait until healthchecker detects
                 poll_wait_health(upstream_id, localhost, port2, "UNHEALTHY")
 
@@ -1286,7 +1118,7 @@ for _, strategy in helpers.each_strategy() do
                 end
 
                 -- server2 goes healthy again
-                direct_request(localhost, port2, "/healthy")
+                direct_request(localhost, port2, "/healthy", protocol)
                 -- Give time for healthchecker to detect
                 poll_wait_health(upstream_id, localhost, port2, "HEALTHY")
 
@@ -1622,7 +1454,10 @@ for _, strategy in helpers.each_strategy() do
             })
             local port1 = add_target(bp, upstream_id, localhost)
             local port2 = add_target(bp, upstream_id, localhost)
-            local api_host = add_api(bp, upstream_name, 50, 50)
+            local api_host = add_api(bp, upstream_name, {
+              read_timeout = 50,
+              write_timeout = 50,
+            })
             end_testcase_setup(strategy, bp)
 
             -- setup target servers:
@@ -1681,7 +1516,11 @@ for _, strategy in helpers.each_strategy() do
             })
             local port1 = add_target(bp, upstream_id, localhost)
             local port2 = add_target(bp, upstream_id, localhost)
-            local _, service_id, route_id = add_api(bp, upstream_name, 50, 50, nil, nil, "tcp")
+            local _, service_id, route_id = add_api(bp, upstream_name, {
+              read_timeout = 50,
+              write_timeout = 50,
+              route_protocol = "tcp",
+            })
             end_testcase_setup(strategy, bp)
 
             finally(function()
@@ -1738,7 +1577,10 @@ for _, strategy in helpers.each_strategy() do
               }
             })
             local port1 = add_target(bp, upstream_id, localhost)
-            local api_host, service_id = add_api(bp, upstream_name, 10, nil, nil, 0)
+            local api_host, service_id = add_api(bp, upstream_name, {
+              read_timeout = 10,
+              retries = 0,
+            })
             end_testcase_setup(strategy, bp)
 
             local server1 = http_server(localhost, port1, {
