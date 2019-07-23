@@ -1,4 +1,5 @@
 local redis  = require "kong.enterprise_edition.redis"
+local typedefs = require "kong.db.schema.typedefs"
 
 
 local function check_shdict(name)
@@ -18,7 +19,7 @@ return {
         fields = {
           { identifier = {
             type = "string",
-            one_of = { "ip", "credential", "consumer", "service" },
+            one_of = { "ip", "credential", "consumer", "service", "header" },
             default = "consumer",
             required = true,
           }},
@@ -64,6 +65,7 @@ return {
             type = "boolean",
             default = false,
           }},
+          { header_name = typedefs.header_name, },
           { redis = redis.config_schema},
         },
       },
@@ -119,6 +121,12 @@ return {
 
         if #config.window_size ~= #config.limit then
           return nil, "You must provide the same number of windows and limits"
+        end
+
+        if config.identifier == "header" then
+          if config.header_name == ngx.null then
+            return nil, "No header name provided"
+          end
         end
 
         return true

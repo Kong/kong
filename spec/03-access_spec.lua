@@ -300,6 +300,33 @@ for i, policy in ipairs({"cluster", "redis"}) do
         }
       })
 
+      local route12 = assert(bp.routes:insert {
+        name = "route-12",
+        hosts = { "test12.com" },
+      })
+      assert(bp.plugins:insert {
+        name = "key-auth",
+        route = { id = route12.id },
+      })
+      assert(bp.plugins:insert {
+        name = "rate-limiting-advanced",
+        route = { id = route12.id },
+        config = {
+          identifier = "header",
+          header_name = "x-email-address",
+          strategy = policy,
+          window_size = { MOCK_RATE },
+          limit = { 6 },
+          sync_rate = 10,
+          redis = {
+            host = REDIS_HOST,
+            port = REDIS_PORT,
+            database = REDIS_DATABASE,
+            password = REDIS_PASSWORD,
+          }
+        }
+      })
+
       assert(helpers.start_kong{
         plugins = "rate-limiting-advanced,key-auth",
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -638,8 +665,8 @@ for i, policy in ipairs({"cluster", "redis"}) do
           local json = cjson.decode(body)
           assert.same({ message = "API rate limit exceeded" }, json)
 
-          -- consumer1 should still be able to make request as
-          -- limit is set by consumer not IP
+          -- consumer1 should not be able to make request as
+          -- limit is set by IP
           local res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/get?apikey=apikey122",
@@ -684,6 +711,97 @@ for i, policy in ipairs({"cluster", "redis"}) do
             }
           })
           assert.res_status(200, res)
+        end)
+      end)
+      describe("set to `header` + customers use the same headers", function()
+        it("should block consumer1 when consumer2 breach limit", function()
+          for i = 1, 6 do
+            local res = assert(helpers.proxy_client():send {
+              method = "GET",
+              path = "/get?apikey=apikey123",
+              headers = {
+                ["Host"] = "test12.com",
+                ["x-email-address"] = "test1@example.com",
+              }
+            })
+
+             local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.are.same(consumer2.id, json.headers["x-consumer-id"])
+            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
+            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-3"]))
+          end
+
+           -- Additonal request, while limit is 6/window, for consumer2
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/get?apikey=apikey123",
+            headers = {
+              ["Host"] = "test12.com",
+              ["x-email-address"] = "test1@example.com",
+            }
+          })
+          local body = assert.res_status(429, res)
+          local json = cjson.decode(body)
+          assert.same({ message = "API rate limit exceeded" }, json)
+
+           -- consumer1 should not be able to make request as limit is set by
+          -- header and both consumers use the same header values
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/get?apikey=apikey122",
+            headers = {
+              ["Host"] = "test12.com",
+              ["x-email-address"] = "test1@example.com",
+            }
+          })
+          assert.res_status(429, res)
+        end)
+      end)
+      describe("set to `header` + customers use different headers", function()
+        it("should not block consumer1 when consumer2 breach limit", function()
+          for i = 1, 6 do
+            local res = assert(helpers.proxy_client():send {
+              method = "GET",
+              path = "/get?apikey=apikey123",
+              headers = {
+                ["Host"] = "test12.com",
+                ["x-email-address"] = "test2@example.com"
+              }
+            })
+
+             local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.are.same(consumer2.id, json.headers["x-consumer-id"])
+            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
+            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-3"]))
+          end
+
+           -- Additonal request, while limit is 6/window, for consumer2
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/get?apikey=apikey123",
+            headers = {
+              ["Host"] = "test12.com",
+              ["x-email-address"] = "test2@example.com",
+            }
+          })
+          local body = assert.res_status(429, res)
+          local json = cjson.decode(body)
+          assert.same({ message = "API rate limit exceeded" }, json)
+
+           -- consumer1 should still be able to make request as limit is set by -- header and both consumers use different header values
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/get?apikey=apikey122",
+            headers = {
+              ["Host"] = "test12.com",
+              ["x-email-address"] = "test3@example.com",
+            }
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.are.same(consumer1.id, json.headers["x-consumer-id"])
         end)
       end)
     end)

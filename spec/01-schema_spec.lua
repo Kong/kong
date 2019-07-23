@@ -9,8 +9,8 @@ describe("rate-limiting-advanced schema", function()
       sync_rate = 10,
     }, rate_limiting_schema)
 
-    assert.is_nil(err)
     assert.is_truthy(ok)
+    assert.is_nil(err)
   end)
 
   it("accepts a config with a custom identifier", function()
@@ -23,6 +23,31 @@ describe("rate-limiting-advanced schema", function()
 
     assert.is_nil(err)
     assert.is_truthy(ok)
+  end)
+
+  it("accepts a config with a header identifier", function()
+    local ok, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      identifier = "header",
+      sync_rate = 10,
+      header_name = "X-Email-Address",
+    }, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+  end)
+
+  it ("errors with a `header` identifier without a `header_name`", function()
+    local ok, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      identifier = "header",
+      sync_rate = 10,
+    }, rate_limiting_schema)
+
+    assert.is_falsy(ok)
+    assert.same({ "No header name provided" }, err["@entity"])
   end)
 
   it("casts window_size and window_limit values to numbers", function()
@@ -54,7 +79,7 @@ describe("rate-limiting-advanced schema", function()
     }, rate_limiting_schema)
 
     assert.is_falsy(ok)
-    assert.same("expected a number", err.config.limit)
+    assert.same({ "expected a number" }, err.config.limit)
   end)
 
   it("accepts a redis config", function()
@@ -94,9 +119,8 @@ describe("rate-limiting-advanced schema", function()
       strategy = "redis",
     }, rate_limiting_schema)
 
-    local err_msg = { "No redis config provided" }
     assert.is_falsy(ok)
-    assert.same(err_msg, err["@entity"])
+    assert.same({ "No redis config provided" }, err["@entity"])
 
     local ok, err = v({
       window_size = { 60 },

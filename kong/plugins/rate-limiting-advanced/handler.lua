@@ -32,22 +32,25 @@ local human_window_size_lookup = {
 
 
 local id_lookup = {
-  ip = function()
+  ip = function(conf)
     return ngx.var.remote_addr
   end,
-  credential = function()
+  credential = function(conf)
     return ngx.ctx.authenticated_credential and
            ngx.ctx.authenticated_credential.id
   end,
-  consumer = function()
+  consumer = function(conf)
     -- try the consumer, fall back to credential
     return ngx.ctx.authenticated_consumer and
            ngx.ctx.authenticated_consumer.id or
            ngx.ctx.authenticated_credential and
            ngx.ctx.authenticated_credential.id
   end,
-  service = function()
+  service = function(conf)
     return ngx.ctx.service.id
+  end,
+  header = function(conf)
+    return kong.request.get_header(conf.header_name)
   end,
 }
 
@@ -207,7 +210,7 @@ function NewRLHandler:init_worker()
 end
 
 function NewRLHandler:access(conf)
-  local key = id_lookup[conf.identifier]()
+  local key = id_lookup[conf.identifier](conf)
 
   -- legacy logic, if authenticated consumer or credential is not found
   -- use the IP
