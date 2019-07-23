@@ -73,9 +73,9 @@ stages:
   - test
   - name: deploy
     if: tag =~ 0. || type == cron || branch = master
-  - functional tests
-  # - Deploy daily build
-  - Release
+  # - functional tests
+  # # - Deploy daily build
+  # - Release
 
 jobs:
   include:
