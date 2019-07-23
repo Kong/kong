@@ -4,7 +4,7 @@ local http = require "resty.http"
 local function statuses(host)
   local client = http.new()
 
-  local ok, err = client:connect(host, 5000)
+  local ok = client:connect(host, 5000)
     if not ok then
 	  return kong.response.exit(501, { message = "Host", host, " is not up." })
     end
@@ -15,7 +15,7 @@ local function statuses(host)
   }
 
   if not res then
-		-- collector isn't up yet
+    -- collector isn't up yet
     return kong.response.exit(500, { message = err })
   else
 	return kong.response.exit(200, res:read_body())
@@ -26,7 +26,7 @@ end
 return {
   ["/collector/:collector_id/status"] = {
     GET = function(self, db)
-      local row, err =  kong.db.plugins:select( { id = self.params.collector_id } )
+      local row =  kong.db.plugins:select( { id = self.params.collector_id } )
 
 	  if not row then
 	    return kong.response.exit(404, { message = "No configuration found." })
