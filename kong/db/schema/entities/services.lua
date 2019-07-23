@@ -38,6 +38,10 @@ return {
                       if_match = { one_of = { "tcp", "tls" }},
                       then_field = "path",
                       then_match = { eq = ngx.null }}},
+    { conditional = { if_field = "protocol",
+                      if_match = { ne = "https" },
+                      then_field = "client_certificate",
+                      then_match = { eq = ngx.null }}},
   },
 
   shorthands = {

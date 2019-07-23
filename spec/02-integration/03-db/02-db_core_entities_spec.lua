@@ -1049,7 +1049,7 @@ for _, strategy in helpers.each_strategy() do
         it("creates a Service with user-specified values", function()
           local service, err, err_t = db.services:insert({
             name               = "example_service",
-            protocol           = "http",
+            protocol           = "https",
             host               = "example.com",
             port               = 443,
             path               = "/foo",
@@ -1072,7 +1072,7 @@ for _, strategy in helpers.each_strategy() do
             created_at         = service.created_at,
             updated_at         = service.updated_at,
             name               = "example_service",
-            protocol           = "http",
+            protocol           = "https",
             host               = "example.com",
             port               = 443,
             path               = "/foo",
@@ -1149,7 +1149,7 @@ for _, strategy in helpers.each_strategy() do
           -- insert 2
           local service, _, err_t = db.services:insert {
             name = "cc_test",
-            protocol = "http",
+            protocol = "https",
             host = "example.com",
             client_certificate = { id = "123e4567-e89b-12d3-a456-426655440000" },
           }
@@ -1158,12 +1158,33 @@ for _, strategy in helpers.each_strategy() do
             code     = Errors.codes.FOREIGN_KEY_VIOLATION,
             message  = "the foreign key '{id=\"123e4567-e89b-12d3-a456-426655440000\"}' does not reference an existing 'certificates' entity.",
             strategy = strategy,
-            name     = 'foreign key violation',
+            name     = "foreign key violation",
             fields   = {
               client_certificate = {
                 id = "123e4567-e89b-12d3-a456-426655440000",
               },
             }
+          }, err_t)
+        end)
+
+        it("cannot create assign client_certificate when protocol is not https", function()
+          -- insert 2
+          local service, _, err_t = db.services:insert {
+            name = "cc_test",
+            protocol = "http",
+            host = "example.com",
+            client_certificate = { id = "123e4567-e89b-12d3-a456-426655440000" },
+          }
+          assert.is_nil(service)
+          assert.same({
+            code     = Errors.codes.SCHEMA_VIOLATION,
+            message  = "2 schema violations (failed conditional validation given value of field 'protocol'; client_certificate: value must be null)",
+            strategy = strategy,
+            name     = "schema violation",
+            fields   = {
+              ["@entity"] = { "failed conditional validation given value of field 'protocol'", },
+              client_certificate = 'value must be null',
+            },
           }, err_t)
         end)
       end)
