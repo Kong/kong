@@ -10,7 +10,7 @@ BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/openresty-build-tools
 
 mkdir -p $BUILD_TOOLS_DOWNLOAD
 
-wget -O $BUILD_TOOLS_DOWNLOAD/kong-ngx-build https://raw.githubusercontent.com/Kong/openresty-build-tools/master/kong-ngx-build
+wget -O $BUILD_TOOLS_DOWNLOAD/kong-ngx-build https://raw.githubusercontent.com/Kong/openresty-build-tools/$BUILD_TOOLS/kong-ngx-build
 chmod +x $BUILD_TOOLS_DOWNLOAD/kong-ngx-build
 
 export PATH=$BUILD_TOOLS_DOWNLOAD:$PATH
