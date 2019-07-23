@@ -23,13 +23,11 @@ KONG_BUILD_TOOLS ?= `grep KONG_BUILD_TOOLS .requirements | awk -F"=" '{print $$2
 KONG_VERSION ?= `cat kong-*.rockspec | grep tag | awk '{print $$3}' | sed 's/"//g'`
 
 setup-release:
-	if cd kong-build-tools; \
-	then git pull; \
-	else git clone https://github.com/Kong/kong-build-tools.git; fi
+	-rm -rf kong-build-tools; \
+	git clone https://github.com/Kong/kong-build-tools.git; fi
 	cd kong-build-tools; \
-	git fetch; \
-	git reset --hard origin/$(KONG_BUILD_TOOLS); \
-	make setup_tests
+	git reset --hard $(KONG_BUILD_TOOLS); \
+	./.ci/setup_ci.sh
 
 functional_tests: setup-release
 	cd kong-build-tools; \
