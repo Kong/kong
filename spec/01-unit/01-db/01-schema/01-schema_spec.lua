@@ -144,6 +144,128 @@ describe("schema", function()
       assert.falsy(Test:validate({ a_boolean = "null" }))
     end)
 
+    it("'eq' returns custom error message for null value", function()
+      local Test = Schema.new({
+        fields = {
+          { a_null_array = {
+            type = "array",
+            elements = { type = "string" },
+            eq = ngx.null,
+            err = "cannot set value for this field",
+          }}
+        }
+      })
+
+      assert.truthy(Test:validate({ a_null_array = ngx.null }))
+      local ok, err = Test:validate({ a_null_array = { "foo" }})
+      assert.falsy(ok)
+      assert.same("cannot set value for this field", err.a_null_array)
+    end)
+
+    it("'eq' returns default error message if no custom message is given", function()
+      local Test = Schema.new({
+        fields = {
+          { a_null_array = {
+            type = "array",
+            elements = { type = "string" },
+            eq = ngx.null,
+          }}
+        }
+      })
+
+      assert.truthy(Test:validate({ a_null_array = ngx.null }))
+      local ok, err = Test:validate({ a_null_array = { "foo" }})
+      assert.falsy(ok)
+      assert.same("value must be null", err.a_null_array)
+    end)
+
+    it("'eq' returns custom error message for non-null values", function()
+      local Test = Schema.new({
+        fields = {
+          { a_field = {
+            type = "string",
+            eq = "foo",
+            err = "can only set this field to 'foo'",
+          }}
+        }
+      })
+
+      assert.falsy(Test:validate({ a_field = ngx.null }))
+      local ok, err = Test:validate({ a_field = "bar" })
+      assert.falsy(ok)
+      assert.same("can only set this field to 'foo'", err.a_field)
+    end)
+
+    it("'ne' returns custom error message for null value", function()
+      local Test = Schema.new({
+        fields = {
+          { a_null_array = {
+            type = "array",
+            elements = { type = "string" },
+            ne = ngx.null,
+            err = "cannot set this field to null",
+          }}
+        }
+      })
+
+      assert.truthy(Test:validate({ a_null_array = { "foo" }}))
+      local ok, err = assert.falsy(Test:validate({ a_null_array = ngx.null }))
+      assert.falsy(ok)
+      assert.same("cannot set this field to null", err.a_null_array)
+    end)
+
+    it("'ne' returns custom error message for non-null values", function()
+      local Test = Schema.new({
+        fields = {
+          { a_field = {
+            type = "string",
+            ne = "foo",
+            err = "cannot set this field to 'foo'",
+          }}
+        }
+      })
+
+      assert.truthy(Test:validate({ a_field = ngx.null }))
+      local ok, err = Test:validate({ a_field = "foo" })
+      assert.falsy(ok)
+      assert.same("cannot set this field to 'foo'", err.a_field)
+    end)
+
+    it("'ne' returns default error message if no custom message is given", function()
+      local Test = Schema.new({
+        fields = {
+          { a_field = {
+            type = "string",
+            ne = "foo",
+          }}
+        }
+      })
+
+      assert.truthy(Test:validate({ a_field = ngx.null }))
+      local ok, err = Test:validate({ a_field = "foo" })
+      assert.falsy(ok)
+      assert.same("value must not be foo", err.a_field)
+    end)
+
+
+
+    it("'eq' returns default error message if no custom message is given", function()
+      local Test = Schema.new({
+        fields = {
+          { a_null_array = {
+            type = "array",
+            elements = { type = "string" },
+            eq = ngx.null,
+          }}
+        }
+      })
+
+      assert.truthy(Test:validate({ a_null_array = ngx.null }))
+      local ok, err = Test:validate({ a_null_array = { "foo" }})
+      assert.falsy(ok)
+      assert.same("value must be null", err.a_null_array)
+    end)
+
     it("forces a value with 'gt'", function()
       local Test = Schema.new({
         fields = {
@@ -494,6 +616,36 @@ describe("schema", function()
         -- no dashes
         { "falsy", "cbb297c0a956486dad1df9b42df9465a" },
       }
+      for _, test in ipairs(tests) do
+        assert[test[1]](Test:validate({ f = test[2] }))
+      end
+    end)
+
+    it("validates mutually exclusive set values", function()
+      local Test = Schema.new({
+        fields = {
+          { f = {
+            type = "array",
+            elements = { type = "string", one_of = {"v1", "v2", "v3", "v4"} },
+            mutually_exclusive_subsets = { {"v1", "v3"}, {"v2", "v4"} },
+          }}
+        }
+      })
+
+      local tests = {
+        -- valid
+        {"truthy", {}},
+        {"truthy", {"v1"}},
+        {"truthy", {"v2"}},
+        {"truthy", {"v1", "v3"}},
+        {"truthy", {"v2", "v4"}},
+        -- invalid
+        {"falsy", {"v1", "v2"}},
+        {"falsy", {"v1", "v4"}},
+        {"falsy", {"v3", "v2"}},
+        {"falsy", {"v3", "v4"}},
+      }
+
       for _, test in ipairs(tests) do
         assert[test[1]](Test:validate({ f = test[2] }))
       end
@@ -928,6 +1080,31 @@ describe("schema", function()
         assert.falsy(ok)
         assert.same({
           ["name"] = "unknown type: my_invalid_subschema",
+        }, errors)
+      end)
+
+      it("fails if subschema doesn't exist", function()
+        local Test = Schema.new({
+          name = "test",
+          subschema_key = "protocols",
+          fields = {
+            { protocols = { type = "array", elements = { type = "string", one_of = { "p1", "p2" }}, } },
+          }
+        })
+        local ok, errors = Test:validate({
+          protocols = { "p1" },
+        })
+        assert.falsy(ok)
+        assert.same({
+          ["protocols"] = "unknown type: p1",
+        }, errors)
+
+        local ok, errors = Test:validate({
+          protocols = { "p2" },
+        })
+        assert.falsy(ok)
+        assert.same({
+          ["protocols"] = "unknown type: p2",
         }, errors)
       end)
 

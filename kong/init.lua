@@ -88,6 +88,7 @@ local migrations_utils = require "kong.cmd.utils.migrations"
 
 local kong             = kong
 local ngx              = ngx
+local var              = ngx.var
 local header           = ngx.header
 local ngx_log          = ngx.log
 local ngx_ERR          = ngx.ERR
@@ -110,6 +111,8 @@ local set_more_tries   = ngx_balancer.set_more_tries
 local ffi = require "ffi"
 local cast = ffi.cast
 local voidpp = ffi.typeof("void**")
+
+local GRPC_PROXY_MODES = constants.GRPC_PROXY_MODES
 
 local TLS_SCHEMES = {
   https = true,
@@ -615,6 +618,13 @@ function Kong.balancer()
 end
 
 function Kong.rewrite()
+  if GRPC_PROXY_MODES[var.kong_proxy_mode] then
+    kong_resty_ctx.apply_ref() -- if kong_proxy_mode is gRPC, this is executing
+    kong_resty_ctx.stash_ref() -- after an internal redirect. Restore (and restash)
+                               -- context to avoid re-executing phases
+    return
+  end
+
   kong_resty_ctx.stash_ref()
   kong_global.set_phase(kong, PHASES.rewrite)
 

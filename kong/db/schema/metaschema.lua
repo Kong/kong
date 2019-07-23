@@ -53,6 +53,7 @@ local validators = {
   { timestamp = { type = "boolean" }, },
   { uuid = { type = "boolean" }, },
   { custom_validator = { type = "function" }, },
+  { mutually_exclusive_subsets = { type = "array", elements = { type = "array", elements = { type = "string" } } } },
 }
 
 -- Other field attributes, that do not correspond to validators
@@ -68,6 +69,7 @@ local field_schema = {
   { generate_admin_api = { type = "boolean" }, },
   { legacy = { type = "boolean" }, },
   { immutable = { type = "boolean" }, },
+  { err = { type = "string" } },
 }
 
 for _, field in ipairs(validators) do
@@ -202,7 +204,7 @@ local meta_errors = {
   CACHE_KEY_UNIQUE = "a field used as a single cache key must be unique",
   TTL_RESERVED = "ttl is a reserved field name when ttl is enabled",
   SUBSCHEMA_KEY = "value must be a field name",
-  SUBSCHEMA_KEY_STRING = "must be a string field",
+  SUBSCHEMA_KEY_TYPE = "must be a string or set field",
 }
 
 
@@ -492,8 +494,8 @@ local MetaSchema = Schema.new({
         local k = next(item)
         local field = item[k]
         if schema.subschema_key == k then
-          if field.type ~= "string" then
-            errors["subschema_key"] = meta_errors.SUBSCHEMA_KEY_STRING
+          if field.type ~= "string" and field.type ~= "set" then
+            errors["subschema_key"] = meta_errors.SUBSCHEMA_KEY_TYPE
           end
           found = true
           break

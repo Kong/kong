@@ -512,6 +512,21 @@ local function flatten(self, input)
 end
 
 
+local function load_entity_subschemas(entity_name, entity)
+  local ok, subschemas = utils.load_module_if_exists("kong.db.schema.entities." .. entity_name .. "_subschemas")
+  if ok then
+    for name, subschema in pairs(subschemas) do
+      local ok, err = entity:new_subschema(name, subschema)
+      if not ok then
+        return nil, ("error initializing schema for %s: %s"):format(entity_name, err)
+      end
+    end
+  end
+
+  return true
+end
+
+
 function DeclarativeConfig.load(plugin_set)
   if not core_entities then
     -- a copy of constants.CORE_ENTITIES without "tags"
@@ -531,6 +546,9 @@ function DeclarativeConfig.load(plugin_set)
       local mod = require("kong.db.schema.entities." .. entity)
       local definition = utils.deep_copy(mod, false)
       all_schemas[entity] = Entity.new(definition)
+
+      -- load core entities subschemas
+      assert(load_entity_subschemas(entity, all_schemas[entity]))
     end
   end
 

@@ -1,17 +1,18 @@
-OS := $(shell uname)
+OS := $(shell uname | awk '{print tolower($$0)}')
+MACHINE := $(shell uname -m)
 
 DEV_ROCKS = "busted 2.0.rc13" "luacheck 0.20.0" "lua-llthreads2 0.1.5"
 WIN_SCRIPTS = "bin/busted" "bin/kong"
 BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
 
-ifeq ($(OS), Darwin)
+ifeq ($(OS), darwin)
 OPENSSL_DIR ?= /usr/local/opt/openssl
 else
 OPENSSL_DIR ?= /usr
 endif
 
-.PHONY: install remove dependencies dev \
+.PHONY: install remove dependencies grpcurl dev \
 	lint test test-integration test-plugins test-all fix-windows
 
 KONG_GMP_VERSION ?= `grep KONG_GMP_VERSION .requirements | awk -F"=" '{print $$2}'`
@@ -64,7 +65,12 @@ dependencies:
 	  fi \
 	done;
 
-dev: remove install dependencies
+grpcurl:
+	@curl -s -S -L \
+		https://github.com/fullstorydev/grpcurl/releases/download/v1.3.0/grpcurl_1.3.0_$(OS)_$(MACHINE).tar.gz | tar xz -C bin;
+	@rm bin/LICENSE
+
+dev: remove install dependencies grpcurl
 
 lint:
 	@luacheck -q .

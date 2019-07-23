@@ -1,11 +1,17 @@
 local routes = require "kong.db.schema.entities.routes"
+local routes_subschemas = require "kong.db.schema.entities.routes_subschemas"
 local services = require "kong.db.schema.entities.services"
 local Schema = require "kong.db.schema"
 local certificates = require "kong.db.schema.entities.certificates"
+local Entity       = require "kong.db.schema.entity"
 
 assert(Schema.new(certificates))
 assert(Schema.new(services))
-local Routes = assert(Schema.new(routes))
+local Routes = assert(Entity.new(routes))
+
+for name, subschema in pairs(routes_subschemas) do
+  Routes:new_subschema(name, subschema)
+end
 
 
 describe("routes schema", function()
@@ -117,6 +123,23 @@ describe("routes schema", function()
     assert.truthy(errs["protocols"])
   end)
 
+  it("conflicting protocols produces error", function()
+    local protocols_tests = {
+      { {"http", "tcp"}, "('http', 'https'), ('tcp', 'tls')" },
+      { {"http", "tls"}, "('http', 'https'), ('tcp', 'tls')" },
+      { {"https", "tcp"}, "('http', 'https'), ('tcp', 'tls')" },
+      { {"https", "tls"}, "('http', 'https'), ('tcp', 'tls')" },
+    }
+
+    for _, test in ipairs(protocols_tests) do
+      local route = Routes:process_auto_fields({ protocols = test[1] }, "insert")
+      local ok, errs = Routes:validate(route)
+      assert.falsy(ok)
+      assert.truthy(errs["protocols"])
+      assert.same(("these sets are mutually exclusive: %s"):format(test[2]), errs["protocols"])
+    end
+  end)
+
   it("invalid https_redirect_status_code produces error", function()
 
     local route = Routes:process_auto_fields({ protocols = { "http" },
@@ -177,6 +200,7 @@ describe("routes schema", function()
     it("must be a string", function()
       local route = {
         paths = { false },
+        protocols = {"http"}
       }
 
       local ok, err = Routes:validate(route)
@@ -187,6 +211,7 @@ describe("routes schema", function()
     it("must be a non-empty string", function()
       local route = {
         paths = { "" },
+        protocols = { "http" },
       }
 
       local ok, err = Routes:validate(route)
@@ -197,6 +222,7 @@ describe("routes schema", function()
     it("must start with /", function()
       local route = {
         paths = { "foo" },
+        protocols = { "http" },
       }
 
       local ok, err = Routes:validate(route)
@@ -210,7 +236,8 @@ describe("routes schema", function()
           "/foo//bar",
           "/foo/bar//",
           "//foo/bar",
-        }
+        },
+        protocols = { "http" },
       }
 
       local ok, err = Routes:validate(route)
@@ -230,6 +257,7 @@ describe("routes schema", function()
       for i = 1, #invalid_paths do
         local route = {
           paths = { invalid_paths[i] },
+          protocols = { "http" },
         }
 
         local ok, err = Routes:validate(route)
@@ -255,6 +283,7 @@ describe("routes schema", function()
       for i = 1, #invalid_paths do
         local route = {
           paths = { invalid_paths[i] },
+          protocols = { "http" },
         }
 
         local ok, err = Routes:validate(route)
@@ -331,6 +360,7 @@ describe("routes schema", function()
     it("must be a string", function()
       local route = {
         hosts = { false },
+        protocols = { "http" },
       }
 
       local ok, err = Routes:validate(route)
@@ -341,6 +371,7 @@ describe("routes schema", function()
     it("must be a non-empty string", function()
       local route = {
         hosts = { "" },
+        protocols = { "http" },
       }
 
       local ok, err = Routes:validate(route)
@@ -365,6 +396,7 @@ describe("routes schema", function()
       for i = 1, #invalid_hosts do
         local route = {
           hosts = { invalid_hosts[i] },
+          protocols = { "http" },
         }
 
         local ok, err = Routes:validate(route)
@@ -375,7 +407,8 @@ describe("routes schema", function()
 
     it("rejects values with a valid port", function()
       local route = {
-        hosts = { "example.com:80" }
+        hosts = { "example.com:80" },
+        protocols = { "http" },
       }
 
       local ok, err = Routes:validate(route)
@@ -385,7 +418,8 @@ describe("routes schema", function()
 
     it("rejects values with an invalid port", function()
       local route = {
-        hosts = { "example.com:1000000" }
+        hosts = { "example.com:1000000" },
+        protocols = { "http" },
       }
 
       local ok, err = Routes:validate(route)
@@ -403,6 +437,7 @@ describe("routes schema", function()
       for i = 1, #invalid_hosts do
         local route = {
           hosts = { invalid_hosts[i] },
+          protocols = { "http" },
         }
 
         local ok, err = Routes:validate(route)
@@ -422,6 +457,7 @@ describe("routes schema", function()
       for i = 1, #invalid_hosts do
         local route = {
           hosts = { invalid_hosts[i] },
+          protocols = { "http" },
         }
 
         local ok, err = Routes:validate(route)
@@ -502,6 +538,7 @@ describe("routes schema", function()
     it("key must be a string", function()
       local route = {
         headers = { false },
+        protocols = { "http" },
       }
 
       local ok, err = Routes:validate(route)
@@ -515,6 +552,7 @@ describe("routes schema", function()
       for _, v in ipairs(values) do
         local route = {
           headers = { [v] = { "example.com" } },
+          protocols = { "http" },
         }
 
         local ok, err = Routes:validate(route)
@@ -527,6 +565,7 @@ describe("routes schema", function()
     it("value must be an array", function()
       local route = {
         headers = { location = true },
+        protocols = { "http" },
       }
 
       local ok, err = Routes:validate(route)
@@ -537,6 +576,7 @@ describe("routes schema", function()
     it("values must be a string", function()
       local route = {
         headers = { location = { true } },
+        protocols = { "http" },
       }
 
       local ok, err = Routes:validate(route)
@@ -547,6 +587,7 @@ describe("routes schema", function()
     it("values must be non-empty string", function()
       local route = {
         headers = { location = { "" } },
+        protocols = { "http" },
       }
 
       local ok, err = Routes:validate(route)
@@ -560,6 +601,7 @@ describe("routes schema", function()
     it("must be a string", function()
       local route = {
         methods = { false },
+        protocols = { "http" },
       }
 
       local ok, err = Routes:validate(route)
@@ -570,6 +612,7 @@ describe("routes schema", function()
     it("must be a non-empty string", function()
       local route = {
         methods = { "" },
+        protocols = { "http" },
       }
 
       local ok, err = Routes:validate(route)
@@ -586,6 +629,7 @@ describe("routes schema", function()
       for i = 1, #invalid_methods do
         local route = {
           methods = { invalid_methods[i] },
+          protocols = { "http" },
         }
 
         local ok, err = Routes:validate(route)
@@ -598,6 +642,7 @@ describe("routes schema", function()
     it("rejects non-uppercased values", function()
       local route = {
         methods = { "get" },
+        protocols = { "http" },
       }
 
       local ok, err = Routes:validate(route)
@@ -634,6 +679,7 @@ describe("routes schema", function()
     it("must be a string", function()
       local route = {
         name = false,
+        protocols = {"http"}
       }
 
       local ok, err = Routes:validate(route)
@@ -644,6 +690,7 @@ describe("routes schema", function()
     it("must be a non-empty string", function()
       local route = {
         name = "",
+        protocols = {"http"}
       }
 
       local ok, err = Routes:validate(route)
@@ -662,6 +709,7 @@ describe("routes schema", function()
       for i = 1, #invalid_names do
         local route = {
           name = invalid_names[i],
+          protocols = {"http"}
         }
 
         local ok, err = Routes:validate(route)
@@ -740,8 +788,7 @@ describe("routes schema", function()
         local ok, errs = Routes:validate(route)
         assert.falsy(ok)
         assert.same({
-          ["@entity"] = { "cannot set 'paths' when 'protocols' is 'tcp' or 'tls'" },
-          paths = "length must be 0",
+          paths = "cannot set 'paths' when 'protocols' is 'tcp' or 'tls'",
         }, errs)
       end
     end)
@@ -758,8 +805,7 @@ describe("routes schema", function()
         local ok, errs = Routes:validate(route)
         assert.falsy(ok)
         assert.same({
-          ["@entity"] = { "cannot set 'methods' when 'protocols' is 'tcp' or 'tls'" },
-          methods = "length must be 0",
+          methods = "cannot set 'methods' when 'protocols' is 'tcp' or 'tls'",
         }, errs)
       end
     end)
@@ -937,18 +983,20 @@ describe("routes schema", function()
         end
       end)
 
-      it("accepts valid SNIs for https Routes", function()
-        for _, sni in ipairs({ "example.org", "www.example.org" }) do
-          local route = Routes:process_auto_fields({
-            protocols = { "https" },
-            snis = { sni },
-            service = s,
-          }, "insert")
-          local ok, errs = Routes:validate(route)
-          assert.is_nil(errs)
-          assert.truthy(ok)
-        end
-      end)
+      for _, protocol in ipairs {"https", "grpcs"} do
+        it("accepts valid SNIs for " .. protocol .. " Routes", function()
+          for _, sni in ipairs({ "example.org", "www.example.org" }) do
+            local route = Routes:process_auto_fields({
+              protocols = { protocol },
+              snis = { sni },
+              service = s,
+            }, "insert")
+            local ok, errs = Routes:validate(route)
+            assert.is_nil(errs)
+            assert.truthy(ok)
+          end
+        end)
+      end
 
       it("rejects invalid SNIs", function()
         for _, sni in ipairs({ "127.0.0.1", "example.org:80" }) do
@@ -979,7 +1027,7 @@ describe("routes schema", function()
         assert.falsy(ok)
         assert.same({
           ["@entity"] = {
-            "'snis' can only be set when 'protocols' is 'https' or 'tls'",
+            "'snis' can only be set when 'protocols' is 'grpcs', 'https' or 'tls'",
           },
           snis = "length must be 0",
         }, errs)
@@ -1028,6 +1076,110 @@ describe("routes schema", function()
       ["@entity"] = {
         "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https'"
       }
+    }, errs)
+  end)
+
+  it("errors if no L7 matching attribute set", function()
+    local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
+    local route = Routes:process_auto_fields({
+      protocols = { "grpc" },
+      service = s,
+    }, "insert")
+    local ok, errs = Routes:validate(route)
+    assert.falsy(ok)
+    assert.same({
+      ["@entity"] = {
+        "must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'grpc'"
+      }
+    }, errs)
+
+    route = Routes:process_auto_fields({
+      protocols = { "grpcs" },
+      service = s,
+    }, "insert")
+    ok, errs = Routes:validate(route)
+    assert.falsy(ok)
+    assert.same({
+      ["@entity"] = {
+        "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'grpcs'"
+      }
+    }, errs)
+  end)
+
+  it("errors if methods attribute is set on grpc/grpcs", function()
+    local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
+    local route = Routes:process_auto_fields({
+      methods = "GET",
+      protocols = { "grpc" },
+      service = s,
+    }, "insert")
+    local ok, errs = Routes:validate(route)
+    assert.falsy(ok)
+    assert.same({
+      methods = "cannot set 'methods' when 'protocols' is 'grpc' or 'grpcs'"
+    }, errs)
+
+    route = Routes:process_auto_fields({
+      methods = "GET",
+      protocols = { "grpcs" },
+      service = s,
+    }, "insert")
+    ok, errs = Routes:validate(route)
+    assert.falsy(ok)
+    assert.same({
+      methods = "cannot set 'methods' when 'protocols' is 'grpc' or 'grpcs'"
+    }, errs)
+  end)
+
+  it("errors if methods attribute is set on grpc/grpcs", function()
+    local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
+    local route = Routes:process_auto_fields({
+      methods = "GET",
+      protocols = { "grpc" },
+      service = s,
+    }, "insert")
+    local ok, errs = Routes:validate(route)
+    assert.falsy(ok)
+    assert.same({
+      methods = "cannot set 'methods' when 'protocols' is 'grpc' or 'grpcs'"
+    }, errs)
+
+    route = Routes:process_auto_fields({
+      methods = "GET",
+      protocols = { "grpcs" },
+      service = s,
+    }, "insert")
+    ok, errs = Routes:validate(route)
+    assert.falsy(ok)
+    assert.same({
+      methods = "cannot set 'methods' when 'protocols' is 'grpc' or 'grpcs'"
+    }, errs)
+  end)
+
+  it("errors if strip_path is set on grpc/grpcs", function()
+    local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
+    local route = Routes:process_auto_fields({
+      hosts = { "foo.grpc.com" },
+      protocols = { "grpc" },
+      strip_path = true,
+      service = s,
+    }, "insert")
+    local ok, errs = Routes:validate(route)
+    assert.falsy(ok)
+    assert.same({
+      strip_path = "cannot set 'strip_path' when 'protocols' is 'grpc' or 'grpcs'"
+    }, errs)
+
+    route = Routes:process_auto_fields({
+      hosts = { "foo.grpc.com" },
+      protocols = { "grpcs" },
+      strip_path = true,
+      service = s,
+    }, "insert")
+    ok, errs = Routes:validate(route)
+    assert.falsy(ok)
+    assert.same({
+      strip_path = "cannot set 'strip_path' when 'protocols' is 'grpc' or 'grpcs'"
     }, errs)
   end)
 end)

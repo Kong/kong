@@ -58,6 +58,7 @@ local ERROR        = ngx.ERROR
 
 
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
+local GRPC_PROXY_MODES = constants.GRPC_PROXY_MODES
 local EMPTY_T = {}
 local TTL_ZERO = { ttl = 0 }
 
@@ -988,6 +989,12 @@ return {
       -- router for Routes/Services
       local router = get_updated_router()
 
+      -- if there is a gRPC service in the context, don't re-execute the pre-access
+      -- phase handler - it has been executed before the internal redirect
+      if ctx.service and GRPC_PROXY_MODES[ctx.service.protocol] then
+        return
+      end
+
       -- routing request
 
       ctx.KONG_ACCESS_START = get_now()
@@ -997,9 +1004,11 @@ return {
         return kong.response.exit(404, { message = "no Route matched with those values" })
       end
 
+      local http_version   = ngx.req.http_version()
       local scheme         = var.scheme
       local host           = var.host
       local port           = tonumber(var.server_port, 10)
+      local content_type   = var.content_type
 
       local route          = match_t.route
       local service        = match_t.service
@@ -1038,9 +1047,10 @@ return {
         local redirect_status_code = route.https_redirect_status_code or 426
 
         if redirect_status_code == 426 then
-          header["Connection"] = "Upgrade"
-          header["Upgrade"]    = "TLS/1.2, HTTP/1.1"
-          return kong.response.exit(426, { message = "Please use HTTPS protocol" })
+          return kong.response.exit(426, { message = "Please use HTTPS protocol" }, {
+            ["Connection"] = "Upgrade",
+            ["Upgrade"]    = "TLS/1.2, HTTP/1.1",
+          })
         end
 
         if redirect_status_code == 301 or
@@ -1050,6 +1060,33 @@ return {
           header["Location"] = "https://" .. forwarded_host .. var.request_uri
           return kong.response.exit(redirect_status_code)
         end
+      end
+
+      -- mismatch: non-http/2 request matched grpc route
+      if (protocols and (protocols.grpc or protocols.grpcs) and http_version ~= 2 and
+        (content_type and sub(content_type, 1, #"application/grpc") == "application/grpc"))
+      then
+        return kong.response.exit(426, { message = "Please use HTTP2 protocol" }, {
+          ["connection"] = "Upgrade",
+          ["upgrade"]    = "HTTP/2",
+        })
+      end
+
+      -- mismatch: non-grpc request matched grpc route
+      if (protocols and (protocols.grpc or protocols.grpcs) and
+        (not content_type or sub(content_type, 1, #"application/grpc") ~= "application/grpc"))
+      then
+        return kong.response.exit(415, { message = "Non-gRPC request matched gRPC route" })
+      end
+
+      -- mismatch: grpc request matched grpcs route
+      if (protocols and protocols.grpcs and not protocols.grpc and
+        forwarded_proto ~= "https")
+      then
+        return kong.response.exit(200, nil, {
+          ["grpc-status"] = 1,
+          ["grpc-message"] = "gRPC request matched gRPCs route",
+        })
       end
 
       if not service then
@@ -1189,6 +1226,17 @@ return {
       var.upstream_x_forwarded_proto = forwarded_proto
       var.upstream_x_forwarded_host  = forwarded_host
       var.upstream_x_forwarded_port  = forwarded_port
+
+      -- At this point, the router and `balancer_setup_stage1` have been
+      -- executed; detect requests that need to be redirected from `proxy_pass`
+      -- to `grpc_pass`. After redirection, this function will return early
+      if var.kong_proxy_mode ~= "grpc" and service and service.protocol == "grpc" then
+        return ngx.exec("@grpc")
+      end
+
+      if var.kong_proxy_mode ~= "grpcs" and service and service.protocol == "grpcs" then
+        return ngx.exec("@grpcs")
+      end
     end,
     -- Only executed if the `router` module found a route and allows nginx to proxy it.
     after = function(ctx)

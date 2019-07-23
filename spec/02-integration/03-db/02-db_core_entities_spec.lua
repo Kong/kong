@@ -354,11 +354,11 @@ for _, strategy in helpers.each_strategy() do
             strategy = strategy,
             message  = unindent([[
               schema violation
-              (must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http')
+              (must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https')
             ]], true, true),
             fields   = {
               ["@entity"] = {
-                "must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http'",
+                "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https'",
               }
             },
 
@@ -646,6 +646,127 @@ for _, strategy in helpers.each_strategy() do
           end)
         end)
 
+        describe("#grpc", function()
+          it("creates a Route with 'hosts'", function()
+            local route, err, err_t = db.routes:insert({
+              protocols = { "grpc", "grpcs" },
+              hosts     = { "example.com" },
+              service   = bp.services:insert(),
+            })
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.is_table(route)
+            assert.same({ "example.com" }, route.hosts)
+          end)
+
+          it("creates a Route with 'paths'", function()
+            local route, err, err_t = db.routes:insert({
+              protocols = { "grpc", "grpcs" },
+              paths     = { "/Service1/Method1" },
+              service   = bp.services:insert(),
+            })
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.is_table(route)
+            assert.same({ "/Service1/Method1" }, route.paths)
+          end)
+
+          it("'strip_path' is 'false'", function()
+            local route, err, err_t = db.routes:insert({
+              protocols = { "grpc", "grpcs" },
+              paths     = { "/Service1/Method1" },
+              service   = bp.services:insert(),
+            })
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.is_table(route)
+            assert.same(false, route.strip_path)
+          end)
+
+          it("refuses creating Route with 'methods' attribute", function()
+            local route, err, err_t = db.routes:insert({
+              protocols  = { "grpc", "grpcs" },
+              strip_path = true,
+              paths = { "/" },
+              service    = bp.services:insert(),
+            })
+            assert.is_nil(route)
+            local message  = "schema violation (strip_path: cannot set 'strip_path' when 'protocols' is 'grpc' or 'grpcs')"
+            assert.equal(fmt("[%s] %s", strategy, message), err)
+            assert.same({
+              code        = Errors.codes.SCHEMA_VIOLATION,
+              name        = "schema violation",
+              message     = message,
+              strategy    = strategy,
+              fields      = {
+                strip_path = "cannot set 'strip_path' when 'protocols' is 'grpc' or 'grpcs'"
+              }
+            }, err_t)
+          end)
+
+          it("refuses creating Route with 'methods' attribute", function()
+            local route, err, err_t = db.routes:insert({
+              protocols = { "grpc", "grpcs" },
+              methods   = { "PATCH" },
+              service   = bp.services:insert(),
+            })
+            assert.is_nil(route)
+            local message  = "schema violation (methods: cannot set 'methods' when 'protocols' is 'grpc' or 'grpcs')"
+            assert.equal(fmt("[%s] %s", strategy, message), err)
+            assert.same({
+              code        = Errors.codes.SCHEMA_VIOLATION,
+              name        = "schema violation",
+              message     = message,
+              strategy    = strategy,
+              fields      = {
+                methods = "cannot set 'methods' when 'protocols' is 'grpc' or 'grpcs'"
+              }
+            }, err_t)
+          end)
+
+          it("refuses creating Route with 'sources' attribute", function()
+            local route, err, err_t = db.routes:insert({
+              protocols = { "grpc", "grpcs" },
+              sources = { { ip = "127.0.0.1" } },
+              paths = { "/" },
+              service   = bp.services:insert(),
+            })
+            assert.is_nil(route)
+            local message  = "schema violation (sources: cannot set 'sources' when 'protocols' is 'grpc' or 'grpcs')"
+            assert.equal(fmt("[%s] %s", strategy, message), err)
+            assert.same({
+              code        = Errors.codes.SCHEMA_VIOLATION,
+              name        = "schema violation",
+              message     = message,
+              strategy    = strategy,
+              fields      = {
+                sources = "cannot set 'sources' when 'protocols' is 'grpc' or 'grpcs'",
+              }
+            }, err_t)
+          end)
+
+          it("refuses creating Route with 'destinations' attribute", function()
+            local route, err, err_t = db.routes:insert({
+              protocols = { "grpc", "grpcs" },
+              destinations = { { ip = "127.0.0.1" } },
+              paths = { "/" },
+              service   = bp.services:insert(),
+            })
+            assert.is_nil(route)
+            local message  = "schema violation (destinations: cannot set 'destinations' when 'protocols' is 'grpc' or 'grpcs')"
+            assert.equal(fmt("[%s] %s", strategy, message), err)
+            assert.same({
+              code        = Errors.codes.SCHEMA_VIOLATION,
+              name        = "schema violation",
+              message     = message,
+              strategy    = strategy,
+              fields      = {
+                destinations = "cannot set 'destinations' when 'protocols' is 'grpc' or 'grpcs'",
+              }
+            }, err_t)
+          end)
+        end)
+
         pending("cannot create a Route with an existing PK", function()
           -- TODO: the uuid type is `auto` for now, so cannot be overidden for
           -- such a test.
@@ -837,11 +958,11 @@ for _, strategy in helpers.each_strategy() do
               strategy    = strategy,
               message  = unindent([[
                 schema violation
-                (must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http')
+                (must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https')
               ]], true, true),
               fields   = {
                 ["@entity"] = {
-                  "must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http'",
+                  "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https'",
                 }
               },
             }, err_t)
@@ -866,14 +987,14 @@ for _, strategy in helpers.each_strategy() do
               strategy    = strategy,
               message  = unindent([[
                 3 schema violations
-                (must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http';
-                'snis' can only be set when 'protocols' is 'https' or 'tls';
+                ('snis' can only be set when 'protocols' is 'grpcs', 'https' or 'tls';
+                must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http';
                 snis: length must be 0)
               ]], true, true),
               fields   = {
                 ["@entity"] = {
+                  "'snis' can only be set when 'protocols' is 'grpcs', 'https' or 'tls'",
                   "must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http'",
-                  "'snis' can only be set when 'protocols' is 'https' or 'tls'",
                 },
                 ["snis"] = "length must be 0",
               },
@@ -920,11 +1041,11 @@ for _, strategy in helpers.each_strategy() do
               strategy    = strategy,
               message  = unindent([[
                 schema violation
-                (must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http')
+                (must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https')
               ]], true, true),
               fields   = {
                 ["@entity"] = {
-                  "must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http'",
+                  "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https'",
                 }
               },
             }, err_t)

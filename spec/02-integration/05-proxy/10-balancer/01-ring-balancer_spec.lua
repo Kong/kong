@@ -109,7 +109,7 @@ end
 -- @param counts Array of response counts to give,
 -- odd entries are 200s, event entries are 500s
 -- @param test_log (optional, default fals) Produce detailed logs
--- @return Returns the number of succesful and failure responses.
+-- @return Returns the number of successful and failure responses.
 local function http_server(host, port, counts, test_log, protocol)
   -- This is a "hard limit" for the execution of tests that launch
   -- the custom http_server
@@ -306,6 +306,7 @@ do
     local route_host = gen_sym("host")
     local sproto = opts.service_protocol or opts.route_protocol or "http"
     local rproto = opts.route_protocol or "http"
+
     bp.services:insert({
       id = service_id,
       url = sproto .. "://" .. upstream_name .. ":" .. (rproto == "tcp" and 9100 or 80),
@@ -866,6 +867,27 @@ for _, strategy in helpers.each_strategy() do
             local _, server_oks, server_fails = server:done()
             assert.same(1, server_oks)
             assert.same(0, server_fails)
+          end)
+
+          it("created via the API are functional #grpc", function()
+            begin_testcase_setup(strategy, bp)
+            local upstream_name, upstream_id = add_upstream(bp)
+            add_target(bp, upstream_id, localhost, 15002)
+            local api_host = add_api(bp, upstream_name, {
+              service_protocol = "grpc",
+              route_protocol = "grpc",
+            })
+            end_testcase_setup(strategy, bp)
+
+            local grpc_client = helpers.proxy_client_grpc()
+            local ok, resp = grpc_client({
+              service = "hello.HelloService.SayHello",
+              opts = {
+                ["-authority"] = api_host,
+              }
+            })
+            assert.Truthy(ok)
+            assert.Truthy(resp)
           end)
 
           -- #db == disabled for database=off, because it tests
