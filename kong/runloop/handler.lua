@@ -1393,7 +1393,7 @@ return {
       end
 
       if var.upstream_http_upgrade and
-         var.upstream_http_upgrade ~= var.upstream_upgrade then
+         lower(var.upstream_http_upgrade) ~= lower(var.upstream_upgrade) then
         header["Upgrade"] = nil
       end
 

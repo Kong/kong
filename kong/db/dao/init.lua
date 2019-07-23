@@ -532,11 +532,11 @@ local function generate_foreign_key_methods(schema)
 
         local strategy = self.strategy
 
-        local pager = function(size, offset)
+        local pager = function(size, offset, options)
           return strategy[page_method_name](strategy, foreign_key, size, offset, options)
         end
 
-        return iteration.by_row(self, pager, size)
+        return iteration.by_row(self, pager, size, options)
       end
 
     elseif field.unique or schema.endpoint_key == name then
