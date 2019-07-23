@@ -60,8 +60,8 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }, nil, nil, fixtures))
 
-      proxy_client = assert(helpers.proxy_client(10000))
-      admin_client = assert(helpers.admin_client(10000))
+      proxy_client = assert(helpers.proxy_client())
+      admin_client = assert(helpers.admin_client())
     end)
 
     lazy_teardown(function()
