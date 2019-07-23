@@ -4025,6 +4025,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[1.3.0]: https://github.com/Kong/kong/compare/1.2.1...1.3.0
 [1.2.1]: https://github.com/Kong/kong/compare/1.2.0...1.2.1
 [1.2.0]: https://github.com/Kong/kong/compare/1.1.2...1.2.0
 [1.1.2]: https://github.com/Kong/kong/compare/1.1.1...1.1.2
