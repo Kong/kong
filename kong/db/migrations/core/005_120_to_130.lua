@@ -28,6 +28,8 @@ return {
         -- Do nothing, accept existing state
       END$$;
 
+
+
       DO $$
       BEGIN
         ALTER TABLE IF EXISTS ONLY "routes" ADD "headers" JSONB;
@@ -35,6 +37,8 @@ return {
         -- Do nothing, accept existing state
       END;
       $$;
+
+
 
       DO $$
       BEGIN
@@ -68,9 +72,13 @@ return {
         PRIMARY KEY (partition, id)
       );
 
-      ALTER TABLE routes ADD headers map<text,frozen<set<text>>>;
-      ALTER TABLE services ADD client_certificate_id uuid;
 
+
+      ALTER TABLE routes ADD headers map<text,frozen<set<text>>>;
+
+
+
+      ALTER TABLE services ADD client_certificate_id uuid;
       CREATE INDEX IF NOT EXISTS services_client_certificate_id_idx ON services(client_certificate_id);
     ]],
   },
