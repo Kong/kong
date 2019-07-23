@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [1.3.0](#130)
 - [1.2.1](#121)
 - [1.2.0](#120)
 - [1.1.2](#112)
@@ -27,6 +28,198 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+## [1.3.0]
+
+> Released on 2019/07/23
+
+### Additions
+
+##### Dependencies
+- From this version on, the new
+  [lua-kong-nginx-module](https://github.com/Kong/lua-kong-nginx-module)
+  Nginx module is **required** to be build into OpenResty for Kong
+  to function properly. This new module allows Kong to interact with
+  the underlying C code and supports new features such as mutual TLS
+  authentication.
+  [openresty-build-tools/#26](https://github.com/Kong/openresty-build-tools/pull/26)
+
+##### Configuration
+- :fireworks: Dynamically injecting Nginx directives without a custom template!
+  Kong now supports injecting arbitrary directives into it's `nginx.conf` file
+  through the new family of `nginx_http_<directive>`, `nginx_proxy_<directive>`,
+  `nginx_http_upstream_<directive>`, `nginx_admin_<directive>` and
+  `nginx_sproxy_<directive>` configuration options. This new capability should
+  allow most users who are currently running Kong with a custom template to
+  migrate off it. Note that just like any Kong configuration, those can
+  be overwritten with environment variables when capitalized and prefixed
+  with `KONG_`. To **not** inject a directive that may default be injected
+  by Kong, set the configuration value to `"NONE"`.
+  (e.g. `nginx_http_upstream_keepalive = NONE` prevents the creation of
+  upstream keepalive pools.
+  [#4382](https://github.com/Kong/kong/pull/4382)
+- Because of dynamic directive injection, `upstream_keepalive` is deprecated.
+  An alias exists to point it to the new configuration
+  `nginx_http_upstream_keepalive` but user is advised to change it to the
+  new name when able. This directive is injected by default, meaning
+  upstream keepalive will default be enabled.
+  [#4382](https://github.com/Kong/kong/pull/4382)
+- Kong now make uses of the upstream [keepalive\_requests](https://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive_requests)
+  and upstream [keepalive\_timeout](https://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive_timeout)
+  directives that was available
+  in OpenResty 1.15.8.1. These directives are set with the default
+  value of `100` requests and `60` seconds respectively. They can be changed with
+  the dynamic directive injection capability as mentioned above.
+  The corresponding configuration names are
+  `nginx_http_upstream_keepalive_requests` and
+  `nginx_http_upstream_keepalive_timeout`.
+  [#4382](https://github.com/Kong/kong/pull/4382)
+- New listen flags has been added to support granular control over
+  Nginx listen configuration without customized templates. Specifically:
+  `proxy_listen` and `admin_listen` now supports new flags `deferred`,
+  `bind` and `reuseport`. `stream_listen` now supports new flags
+  `bind` and `reuseport`.
+  [#4692](https://github.com/Kong/kong/pull/4692)
+
+##### CLI
+- :fireworks: `kong config db_export` has been added to the CLI. It allows
+  admin to export configurations from Kong's database and generate a YAML
+  file that can be used for running Kong in declarative config (DB-less) mode,
+  or as a backup and imported back to Kong later using `kong config db_import`.
+[#4809](https://github.com/Kong/kong/pull/4809)
+
+##### Core
+- :fireworks: The long requested native gRPC proxying support has been added
+  to Kong!
+  New protocol types `grpc` and `grpcs` which corresponds to gRPC over h2c and
+  gRPC over h2 has been added to the Service and Route core entity.
+  When a incoming HTTP/2 request matches a route and service with those
+  new protocol, the request will be handled by [ngx\_http\_grpc\_module](https://nginx.org/en/docs/http/ngx_http_grpc_module.html)
+  and passed to the upstream according to the gRPC protocol specifications.
+  :warning: Not all Kong plugins are supported with gRPC requests yet.
+  For 1.3.0, only logging and observability plugins are supported.
+  [#4801](https://github.com/Kong/kong/pull/4801)
+- :fireworks: Mutual TLS handshake with upstream services has been included in
+  this version of Kong.
+  This allows admin to specify a certificate/key pair via the newly added
+  `client_certificate` property on the Service core entity. Kong will then
+  use the certificate to establish it's identity the upstream service
+  while TLS handshaking.
+  [#4800](https://github.com/Kong/kong/pull/4800)
+- :fireworks: Route by any request header. Kong router now gets the ability to
+  match Routes by any request header (not only the Host header). As a result,
+  the Route core entity has new attribute `headers`, which can contain one or
+  more pairs of header name and associated values.
+  [#4758](https://github.com/Kong/kong/pull/4758)
+- :fireworks: New least connection balancer method has been added. A new
+  field `algorithm` has been added to the Upstream core entity that can be
+  set to either `"consistent"` (the default) or `"least-connections"`.
+  [#4528](https://github.com/Kong/kong/pull/4528)
+- A new core entity "CA Certificates" has been introduced, and can be accessed
+  through the new `/ca_certificates` endpoint. This entity
+  will be used as CA trust store for Kong. Certificates stored inside this
+  entity need not have it's private key present.
+  [#4798](https://github.com/Kong/kong/pull/4798)
+- The balancer healthchecker now uses IP + Port + Hostname combo when sotring
+  upstream health information. Previously only IP + Port was used. This means
+  that different virtual hosts running on the same IP + Port will be treated
+  differently in regard to their health status. New endpoint was also added
+  for setting upstream target's health status using admin API.
+  [#4792](https://github.com/Kong/kong/pull/4792)
+
+##### Admin API
+- API endpoints now support more levels of nesting for ease of access.
+  For example: `/services/:services/routes/:routes` would be a valid API
+  endpoint in this version.
+  [#4713](https://github.com/Kong/kong/pull/4713)
+- API payload now accepts deeply nested data structures in url-encoded form.
+  Previously it was not possible to specify them without sending the payload
+  as JSON.
+  [#4768](https://github.com/Kong/kong/pull/4768)
+
+##### Plugins
+- :fireworks: The new [Session plugin](https://github.com/Kong/kong-plugin-session)
+  has been added and is bundled with Kong. Now admins can implement session
+  authentications for their services with Kong.
+  [#4685](https://github.com/Kong/kong/pull/4685)
+- New `ldaps` property has been added to `ldap-auth` plugin's configuration.
+  It allows `ldap-auth` plugin to TLS handshake with the LDAP server directly
+  without going through a plain-text to "STARTTLS" upgrade, which
+  improves compatibility.
+  [#4743](https://github.com/Kong/kong/pull/4743)
+- The JWT authentication plugin now supports customized header names. The
+  new `header_names` plugin configuration attribute was added that accepts
+  an array of header names the JWT plugin should use when authentication the
+  client. This defaults to `{ "Authorization" }`.
+  [#4757](https://github.com/Kong/kong/pull/4757)
+
+### Changes
+
+##### Dependencies
+
+- The minimum required OpenResty version has been bumped to `1.15.8.1`.
+  Kong's [openresty-patches](https://github.com/kong/openresty-patches)
+  must still be applied (those patches are already bundled with our official
+  distribution packages) for Kong to work properly.
+  The new OpenResty brings many new features that Kong leverages:
+  1. Kong uses the new [ngx\_http\_grpc\_module](https://nginx.org/en/docs/http/ngx_http_grpc_module.html)
+     to implement it's gRPC proxying support.
+  2. Kong have support of the new [keepalive\_requests](https://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive_requests)
+     directive. It's default value is `100`.
+  3. Kong have support of the new [keepalive\_timeout](http://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive_timeout)
+     directive. It's default value is `60s`.
+  4. OpenResty `1.15.8.1` added ARM64 architecture support. With it, Kong now
+     officially supports running on ARM64 as well. ARM64 artifact will be
+     part of official Kong release from now on.
+  5. OpenResty `1.15.8.1` brings better performance when handling incoming
+     requests.
+  6. The LuaJIT GC64 mode is enabled by default in OpenResty `1.15.8.1`,
+     which raised LuaJIT GC-mamaged VM limit from *2 GB* to *128 TB*.
+     In addition, GC64 mode should also result in more predictable GC
+     performance for LuaJIT.
+  [#4382](https://github.com/Kong/kong/pull/4382)
+- Bumped [kong-lapis](https://github.com/Kong/lapis) to `1.7.0.1`.
+  [#4684](https://github.com/Kong/kong/pull/4684)
+- Bumped [luaossl](https://github.com/wahern/luaossl) to `20190612`.
+  [#4735](https://github.com/Kong/kong/pull/4735)
+
+##### Plugins
+- Bumped [kong-plugin-azure-functions](https://github.com/Kong/kong-plugin-azure-functions) to `0.4`.
+  [#4699](https://github.com/Kong/kong/pull/4699)
+- Bumped [kong-plugin-kubernetes-sidecar-injector](https://github.com/Kong/kong-plugin-kubernetes-sidecar-injector) to `0.2`.
+  [#4699](https://github.com/Kong/kong/pull/4699)
+- Bumped [kong-plugin-serverless-functions](https://github.com/Kong/kong-plugin-serverless-functions) to `0.3`.
+  [#4699](https://github.com/Kong/kong/pull/4699)
+- Bumped [kong-prometheus-plugin](https://github.com/Kong/kong-prometheus-plugin) to `0.4`.
+  [#4699](https://github.com/Kong/kong/pull/4699)
+
+### Fixes
+
+##### CLI
+- Fixed an issue if admin ran `kong restart` and Kong was not running,
+  logging would be turned off.
+  [#4772](https://github.com/Kong/kong/pull/4772)
+- Fixed an issue that warning regarding Kong using deprecated config value
+  warnings being shown even when admin is stopping Kong. This ensures such
+  warnings are only shown if admin tries to `start` or `restart` Kong.
+  [#4772](https://github.com/Kong/kong/pull/4772)
+
+##### Core
+- :warning: Fixed a bug in router that when wildcard host name and plain host name
+  that are also matches the wildcard host name co-exists, router may
+  incorrectly fail to match against the wildcard route. For example:
+  If route 1 is `*.example.com/path1` and route 2 is `plain.example.com/path2`,
+  then a request of `plain.example.com/path1` previously failed to match
+  any of the routes. After the fix it will correctly match to route 1.
+  [#4775](https://github.com/Kong/kong/pull/4775)
+- :warning: Fixed a bug in router that regex paths are not prioritized compared
+  to plain paths. For example:
+  If route 1 is `example.com/pat` and route 2 is in regex form
+  `example.com/(path1)`, then a request of `example.com/path` would incorrectly
+  match route 1 previously. After the fix it will correctly match to route 2.
+  [#4775](https://github.com/Kong/kong/pull/4775)
+
+[Back to TOC](#table-of-contents)
 
 ## [1.2.1]
 
