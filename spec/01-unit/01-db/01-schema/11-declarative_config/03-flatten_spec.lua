@@ -1110,6 +1110,44 @@ describe("declarative config: flatten", function()
         end)
       end)
     end)
+    describe("upstream:", function()
+      it("identical targets", function()
+        local config = assert(lyaml.load([[
+          _format_version: '1.1'
+          upstreams:
+          - name: first-upstream
+            targets:
+            - target: 127.0.0.1:6661
+              weight: 1
+          - name: second-upstream
+            targets:
+            - target: 127.0.0.1:6661
+              weight: 1
+        ]]))
+        config = DeclarativeConfig:flatten(config)
+        assert.same({
+          targets = {
+            {
+              created_at = 1234567890,
+              id = "UUID",
+              tags = null,
+              target = '127.0.0.1:6661',
+              upstream = { id = 'UUID' },
+              weight = 1,
+            },
+            {
+              created_at = 1234567890,
+              id = "UUID",
+              tags = null,
+              target = '127.0.0.1:6661',
+              upstream = { id = 'UUID' },
+              weight = 1,
+            },
+          },
+
+        }, idempotent({targets = config.targets}))
+      end)
+    end)
   end)
 
   describe("custom entities", function()
