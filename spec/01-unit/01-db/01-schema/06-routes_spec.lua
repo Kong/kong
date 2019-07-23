@@ -1,8 +1,9 @@
 local routes = require "kong.db.schema.entities.routes"
 local services = require "kong.db.schema.entities.services"
 local Schema = require "kong.db.schema"
+local certificates = require "kong.db.schema.entities.certificates"
 
-
+assert(Schema.new(certificates))
 assert(Schema.new(services))
 local Routes = assert(Schema.new(routes))
 
