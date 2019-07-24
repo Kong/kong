@@ -19,6 +19,10 @@ local BrainHandler = BasePlugin:extend()
 BrainHandler.PRIORITY = 3
 BrainHandler.VERSION = "1.0.0"
 
+local function get_buffer_id(conf)
+    return string.format("%s:%s:%s", conf.host, conf.port, conf.https)
+end
+
 function BrainHandler:new()
   BrainHandler.super.new(self, "collector")
   if string.match(kong.version, "enterprise") then
@@ -84,9 +88,9 @@ function BrainHandler:log(conf)
       _server_addr = ctx.proxy_cache_hit.server_addr
     end
 
-    local route_id = conf.route_id or conf.api_id or conf.service_id
+    local buffer_id = get_buffer_id(conf)
 
-    local buf = _alf_buffers[route_id]
+    local buf = _alf_buffers[buffer_id]
     if not buf then
       local err
       conf.server_addr = _server_addr
@@ -95,7 +99,7 @@ function BrainHandler:log(conf)
         ngx.log(ngx.ERR, "could not create ALF buffer: ", err)
         return
       end
-      _alf_buffers[route_id] = buf
+      _alf_buffers[buffer_id] = buf
     end
 
     local req_body, res_body
