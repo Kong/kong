@@ -56,7 +56,6 @@ local unpack      = unpack
 local ERR         = ngx.ERR
 local INFO         = ngx.INFO
 local WARN        = ngx.WARN
-local CRIT         = ngx.CRIT
 local DEBUG       = ngx.DEBUG
 local ERROR        = ngx.ERROR
 
