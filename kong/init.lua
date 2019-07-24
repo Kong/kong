@@ -176,10 +176,6 @@ local function execute_cache_warmup(kong_config)
     end
   end
 
-  -- XXX EE
-  -- singletons.configured_plugins = map
-  -- XXX EE/
-
   return true
 end
 
