@@ -1462,7 +1462,7 @@ end
 function DAO:rows_to_entities(rows, options)
   local count = #rows
   if count == 0 then
-    return setmetatable(rows, cjson.empty_array_mt)
+    return setmetatable(rows, cjson.array_mt)
   end
 
   local entities = new_tab(count, 0)
@@ -1476,7 +1476,7 @@ function DAO:rows_to_entities(rows, options)
     entities[i] = entity
   end
 
-  return entities
+  return setmetatable(entities, cjson.array_mt)
 end
 
 
@@ -1555,13 +1555,11 @@ function DAO:cache_key(key, arg2, arg3, arg4, arg5, skip_ws)
   for _, name in ipairs(source) do
     local field = self.schema.fields[name]
     local value = key[name]
-    if field.type == "foreign" then
+    if value == null or value == nil then
+      value = ""
+    elseif field.type == "foreign" then
       -- FIXME extract foreign key, do not assume `id`
-      if value == null or value == nil then
-        value = ""
-      else
-        value = value.id
-      end
+      value = value.id
     end
     values[i] = tostring(value)
     i = i + 1

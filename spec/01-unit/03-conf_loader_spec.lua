@@ -809,13 +809,16 @@ describe("Configuration loader", function()
       local conf = assert(conf_loader(helpers.test_conf_path))
       assert.equal("postgres", conf.database)
     end)
-    it("requires cassandra_local_datacenter if DCAwareRoundRobin is in use", function()
-      local conf, err = conf_loader(nil, {
-        database            = "cassandra",
-        cassandra_lb_policy = "DCAwareRoundRobin"
-      })
-      assert.is_nil(conf)
-      assert.equal("must specify 'cassandra_local_datacenter' when DCAwareRoundRobin policy is in use", err)
+    it("requires cassandra_local_datacenter if DCAware LB policy is in use", function()
+      for _, policy in ipairs({ "DCAwareRoundRobin", "RequestDCAwareRoundRobin" }) do
+        local conf, err = conf_loader(nil, {
+          database            = "cassandra",
+          cassandra_lb_policy = policy,
+        })
+        assert.is_nil(conf)
+        assert.equal("must specify 'cassandra_local_datacenter' when " ..
+                     policy .. " policy is in use", err)
+      end
     end)
     it("honors path if provided even if a default file exists", function()
       conf_loader.add_default_path("spec/fixtures/to-strip.conf")
@@ -844,7 +847,7 @@ describe("Configuration loader", function()
 
     it("rejects a pg_max_concurrent_queries with a decimal", function()
       local conf, err = conf_loader(nil, {
-        pg_max_concurrent_queries = 0.1
+        pg_max_concurrent_queries = 0.1,
       })
       assert.is_nil(conf)
       assert.equal("pg_max_concurrent_queries must be an integer greater than 0", err)
@@ -858,11 +861,12 @@ describe("Configuration loader", function()
       assert.equal("pg_semaphore_timeout must be greater than 0", err)
     end)
 
-    it("accepts a pg_semaphore_timeout with a decimal", function()
-      local _, err = conf_loader(nil, {
-        pg_semaphore_timeout = 0.1
+    it("rejects a pg_semaphore_timeout with a decimal", function()
+      local conf, err = conf_loader(nil, {
+        pg_semaphore_timeout = 0.1,
       })
-      assert.is_nil(err)
+      assert.is_nil(conf)
+      assert.equal("pg_semaphore_timeout must be an integer greater than 0", err)
     end)
   end)
 

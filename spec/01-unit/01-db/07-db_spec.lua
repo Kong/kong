@@ -16,8 +16,8 @@ local function setup_it_block()
             schema_migrations = function()
               return {}
             end,
-            is_014 = function()
-              return { is_014 = false }
+            is_034 = function()
+              return { is_034 = false }
             end,
             close = function()
             end,
@@ -40,6 +40,8 @@ describe("DB", function()
       setup_it_block()
 
       local DB = require("kong.db")
+      _G.kong = { db = DB, configuration = { audit_log_record_ttl = 123 }}
+
 
       local kong_config = {
         loaded_plugins = {},

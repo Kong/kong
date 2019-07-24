@@ -406,11 +406,11 @@ local function check_and_infer(conf)
   ---------------------
 
   if conf.database == "cassandra" then
-    if conf.cassandra_lb_policy == "DCAwareRoundRobin"
+    if string.find(conf.cassandra_lb_policy, "DCAware", nil, true)
        and not conf.cassandra_local_datacenter
     then
       errors[#errors + 1] = "must specify 'cassandra_local_datacenter' when " ..
-                          "DCAwareRoundRobin policy is in use"
+                            conf.cassandra_lb_policy .. " policy is in use"
     end
 
     for _, contact_point in ipairs(conf.cassandra_contact_points) do
@@ -671,6 +671,10 @@ local function check_and_infer(conf)
 
   if conf.pg_semaphore_timeout < 0 then
     errors[#errors + 1] = "pg_semaphore_timeout must be greater than 0"
+  end
+
+  if conf.pg_semaphore_timeout ~= math.floor(conf.pg_semaphore_timeout) then
+    errors[#errors + 1] = "pg_semaphore_timeout must be an integer greater than 0"
   end
 
   return #errors == 0, errors[1], errors

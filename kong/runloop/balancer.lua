@@ -32,14 +32,14 @@ local _load_targets_into_memory
 --==============================================================================
 
 
--- table holding our balancer objects, indexed by upstream name
+-- table holding our balancer objects, indexed by upstream id
 local balancers = {}
 
 
 -- objects whose lifetimes are bound to that of a balancer
-local healthcheckers = setmetatable({}, { __mode = "k" })
-local healthchecker_callbacks = setmetatable({}, { __mode = "k" })
-local target_histories = setmetatable({}, { __mode = "k" })
+local healthcheckers = {}
+local healthchecker_callbacks = {}
+local target_histories = {}
 
 
 -- health check API callbacks to be called on healthcheck events
@@ -61,6 +61,17 @@ local healthcheck_subscribers = {}
 --
 -- Distinction between 1 and 2 makes it possible to invalidate individual
 -- upstreams, instead of all at once forcing to rebuild all balancers
+
+
+local function set_balancer(upstream_id, balancer)
+  local prev = balancers[upstream_id]
+  if prev then
+    healthcheckers[prev] = nil
+    healthchecker_callbacks[prev] = nil
+    target_histories[prev] = nil
+  end
+  balancers[upstream_id] = balancer
+end
 
 
 local function stop_healthchecker(balancer)
@@ -398,7 +409,7 @@ do
 
     -- only make the new balancer available for other requests after it
     -- is fully set up.
-    balancers[upstream.id] = balancer
+    set_balancer(upstream.id, balancer)
 
     creating[upstream.id] = nil
 
@@ -664,7 +675,7 @@ local function on_upstream_event(operation, upstream_data, workspaces)
     end
 
     if operation == "delete" then
-      balancers[upstream_id] = nil
+      set_balancer(upstream_id, nil)
 
     else
       local upstream = get_upstream_by_id(upstream_id)
