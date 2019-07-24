@@ -72,10 +72,14 @@ local function build_router_without(excluded_route)
 
   table.sort(routes, function(r1, r2)
     r1, r2 = r1.route, r2.route
-    if r1.regex_priority == r2.regex_priority then
+
+    local rp1 = r1.regex_priority or 0
+    local rp2 = r2.regex_priority or 0
+
+    if rp1 == rp2 then
       return r1.created_at < r2.created_at
     end
-    return r1.regex_priority > r2.regex_priority
+    return rp1 > rp2
   end)
 
   local router, err = Router.new(routes)
