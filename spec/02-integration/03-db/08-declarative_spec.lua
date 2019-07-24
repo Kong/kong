@@ -161,6 +161,13 @@ for _, strategy in helpers.each_strategy() do
     describe("export_from_db", function()
       it("exports base and custom entities with associations", function()
 
+        -- Add a basicauth_credential to make sure it is not exported
+        db.basicauth_credentials:insert({
+          username = "some_username",
+          password = "secret",
+          consumer = { id = consumer_def.id },
+        })
+
         local fake_file = {
           buffer = {},
           write = function(self, str)
@@ -173,7 +180,7 @@ for _, strategy in helpers.each_strategy() do
         local exported_str = table.concat(fake_file.buffer)
         local yaml = lyaml.load(exported_str)
 
-        -- ensure tags and cluster_ca are not being exported
+        -- ensure tags, cluster_ca & basicauth_credentials are not being exported
         local toplevel_keys = {}
         for k in pairs(yaml) do
           toplevel_keys[#toplevel_keys + 1] = k
