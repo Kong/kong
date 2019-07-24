@@ -252,6 +252,54 @@ for i, policy in ipairs({"cluster", "redis"}) do
         }
       })
 
+      local route10 = assert(bp.routes:insert {
+        name = "route-10",
+        hosts = { "test10.com" },
+      })
+
+      assert(bp.plugins:insert {
+        name = "rate-limiting-advanced",
+        route = { id = route10.id },
+        config = {
+          strategy = policy,
+          identifier = "service",
+          window_size = { MOCK_RATE },
+          window_type = "fixed",
+          limit = { 6 },
+          sync_rate = 10,
+          redis = {
+            host = REDIS_HOST,
+            port = REDIS_PORT,
+            database = REDIS_DATABASE,
+            password = REDIS_PASSWORD,
+          },
+        }
+      })
+
+      local route11 = assert(bp.routes:insert {
+        name = "route-11",
+        hosts = { "test11.com" },
+      })
+
+      assert(bp.plugins:insert {
+        name = "rate-limiting-advanced",
+        route = { id = route11.id },
+        config = {
+          strategy = policy,
+          identifier = "service",
+          window_size = { MOCK_RATE },
+          window_type = "fixed",
+          limit = { 6 },
+          sync_rate = 10,
+          redis = {
+            host = REDIS_HOST,
+            port = REDIS_PORT,
+            database = REDIS_DATABASE,
+            password = REDIS_PASSWORD,
+          },
+        }
+      })
+
       assert(helpers.start_kong{
         plugins = "rate-limiting-advanced,key-auth",
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -600,6 +648,42 @@ for i, policy in ipairs({"cluster", "redis"}) do
             }
           })
           assert.res_status(429, res)
+        end)
+      end)
+      describe("set to `#service`", function()
+        it("should be global to service, and independent between services", function()
+          for i = 1, 6 do
+            local res = assert(helpers.proxy_client():send {
+              method = "GET",
+              path = "/get",
+              headers = {
+                ["Host"] = "test10.com"
+              }
+            })
+            assert.res_status(200, res)
+          end
+
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/get",
+            headers = {
+              ["Host"] = "test10.com"
+            }
+          })
+          local body = assert.res_status(429, res)
+          local json = cjson.decode(body)
+          assert.same({ message = "API rate limit exceeded" }, json)
+
+          -- service11 should still be able to make request as
+          -- limit is set by service
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/get",
+            headers = {
+              ["Host"] = "test11.com"
+            }
+          })
+          assert.res_status(200, res)
         end)
       end)
     end)

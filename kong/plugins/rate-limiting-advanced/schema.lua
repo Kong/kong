@@ -18,7 +18,7 @@ return {
         fields = {
           { identifier = {
             type = "string",
-            one_of = { "ip", "credential", "consumer" },
+            one_of = { "ip", "credential", "consumer", "service" },
             default = "consumer",
             required = true,
           }},

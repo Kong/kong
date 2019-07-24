@@ -45,7 +45,10 @@ local id_lookup = {
            ngx.ctx.authenticated_consumer.id or
            ngx.ctx.authenticated_credential and
            ngx.ctx.authenticated_credential.id
-  end
+  end,
+  service = function()
+    return ngx.ctx.service.id
+  end,
 }
 
 
