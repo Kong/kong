@@ -1,15 +1,15 @@
 --- Copyright 2019 Kong Inc.
+local plugin_iterator = require "kong.runloop.handler".get_plugins_iterator
 
 
 local _M = {}
 
 
-local singletons = require("kong.singletons")
 local kong = kong
 
 
 function _M.execute()
-  if singletons.configured_plugins["mtls-auth"] then
+  if plugin_iterator().map["mtls-auth"] then
     -- TODO: improve detection of ennoblement once we have DAO functions
     -- to filter plugin configurations based on plugin name
 
