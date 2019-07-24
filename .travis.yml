@@ -25,12 +25,13 @@ addons:
 
 env:
   global:
+    - BUILD_TOOLS=1ea15bc
     - LUAROCKS=3.1.3
     - OPENSSL=1.1.1c
     - OPENRESTY_BASE=1.13.6.2
     - OPENRESTY_LATEST=1.13.6.2
     - OPENRESTY=$OPENRESTY_BASE
-    - KONG_NGINX_MODULE=0.0.3
+    - KONG_NGINX_MODULE=master
     - DOWNLOAD_CACHE=$HOME/download-cache
     - DOWNLOAD_ROOT=$HOME/download-root
     - INSTALL_CACHE=$HOME/install-cache

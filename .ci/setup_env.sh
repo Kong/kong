@@ -10,22 +10,27 @@ BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/openresty-build-tools
 
 mkdir -p $BUILD_TOOLS_DOWNLOAD
 
-wget -O $BUILD_TOOLS_DOWNLOAD/kong-ngx-build https://raw.githubusercontent.com/Kong/openresty-build-tools/master/kong-ngx-build
+wget -O $BUILD_TOOLS_DOWNLOAD/kong-ngx-build https://raw.githubusercontent.com/Kong/openresty-build-tools/$BUILD_TOOLS/kong-ngx-build
 chmod +x $BUILD_TOOLS_DOWNLOAD/kong-ngx-build
 
 export PATH=$BUILD_TOOLS_DOWNLOAD:$PATH
-
-KONG_NGINX_MODULE_DOWNLOAD=$DOWNLOAD_CACHE/lua-kong-nginx-module-$KONG_NGINX_MODULE
-if [ ! "$(ls -A $KONG_NGINX_MODULE_DOWNLOAD)" ]; then
-    git clone -q -b $KONG_NGINX_MODULE https://$GITHUB_TOKEN@github.com/Kong/lua-kong-nginx-module.git $KONG_NGINX_MODULE_DOWNLOAD
-fi
 
 #--------
 # Install
 #--------
 INSTALL_ROOT=$INSTALL_CACHE/$DEPS_HASH
 
-kong-ngx-build -p $INSTALL_ROOT --work $DOWNLOAD_ROOT --openresty $OPENRESTY --openssl $OPENSSL --luarocks $LUAROCKS -j $JOBS --add-module $KONG_NGINX_MODULE_DOWNLOAD
+BUILD_FLAGS=(
+  "--prefix $INSTALL_ROOT"
+  "--work $DOWNLOAD_ROOT"
+  "--openresty $OPENRESTY"
+  "--openssl $OPENSSL"
+  "--luarocks $LUAROCKS"
+  "--kong-nginx-module $KONG_NGINX_MODULE"
+  "-j $JOBS"
+)
+
+kong-ngx-build "${BUILD_FLAGS[@]}" || exit 1
 
 OPENSSL_INSTALL=$INSTALL_ROOT/openssl
 OPENRESTY_INSTALL=$INSTALL_ROOT/openresty
@@ -36,8 +41,6 @@ export OPENSSL_DIR=$OPENSSL_INSTALL # for LuaSec install
 export PATH=$OPENSSL_INSTALL/bin:$OPENRESTY_INSTALL/nginx/sbin:$OPENRESTY_INSTALL/bin:$LUAROCKS_INSTALL/bin:$PATH
 export LD_LIBRARY_PATH=$OPENSSL_INSTALL/lib:$LD_LIBRARY_PATH # for openssl's CLI invoked in the test suite
 
-
-make -C $KONG_NGINX_MODULE_DOWNLOAD LUA_LIB_DIR=${OPENRESTY_INSTALL}/lualib install
 
 eval `luarocks path`
 
