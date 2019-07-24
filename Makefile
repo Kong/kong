@@ -8,8 +8,10 @@ TEST_CMD ?= bin/busted $(BUSTED_ARGS)
 
 ifeq ($(OS), darwin)
 OPENSSL_DIR ?= /usr/local/opt/openssl
+GRPCURL_OS ?= osx
 else
 OPENSSL_DIR ?= /usr
+GRPCURL_OS ?= $(OS)
 endif
 
 .PHONY: install remove dependencies grpcurl dev \
@@ -67,7 +69,7 @@ dependencies:
 
 grpcurl:
 	@curl -s -S -L \
-		https://github.com/fullstorydev/grpcurl/releases/download/v1.3.0/grpcurl_1.3.0_$(OS)_$(MACHINE).tar.gz | tar xz -C bin;
+		https://github.com/fullstorydev/grpcurl/releases/download/v1.3.0/grpcurl_1.3.0_$(GRPCURL_OS)_$(MACHINE).tar.gz | tar xz -C bin;
 	@rm bin/LICENSE
 
 dev: remove install dependencies grpcurl
