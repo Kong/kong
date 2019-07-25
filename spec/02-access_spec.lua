@@ -55,7 +55,7 @@ for _, strategy in helpers.each_strategy() do
         "services",
         "plugins",
         "consumers",
-        "certificates",
+        "ca_certificates",
         "mtls_auth_credentials",
       }, { "mtls-auth", })
 
@@ -82,14 +82,14 @@ for _, strategy in helpers.each_strategy() do
         service = { id = service.id, },
       }
 
-      ca_cert = assert(db.certificates:insert({
+      ca_cert = assert(db.ca_certificates:insert({
         cert = CA,
       }))
 
       plugin = assert(bp.plugins:insert {
         name = "mtls-auth",
         route = { id = route.id },
-        config = { certificate_authorities = { ca_cert.id }, },
+        config = { ca_certificates = { ca_cert.id, }, },
       })
 
       assert(helpers.start_kong({
@@ -125,7 +125,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("Unauthorized", function()
-      it("returns HTTP 496 on non-https request", function()
+      it("returns HTTP 401 on non-https request", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/get",
@@ -133,12 +133,12 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "example.com"
           }
         })
-        local body = assert.res_status(496, res)
+        local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "No required TLS certificate was sent" }, json)
       end)
 
-      it("returns HTTP 496 on https request if mutual TLS was not completed", function()
+      it("returns HTTP 401 on https request if mutual TLS was not completed", function()
         local res = assert(proxy_ssl_client:send {
           method  = "GET",
           path    = "/get",
@@ -146,17 +146,17 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "example.com"
           }
         })
-        local body = assert.res_status(496, res)
+        local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "No required TLS certificate was sent" }, json)
       end)
 
-      it("returns HTTP 495 on https request if certificate validation failed", function()
+      it("returns HTTP 401 on https request if certificate validation failed", function()
         local res = assert(mtls_client:send {
           method  = "GET",
           path    = "/bad_client",
         })
-        local body = assert.res_status(495, res)
+        local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "TLS certificate failed verification" }, json)
       end)
@@ -175,12 +175,12 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("consumer-id-2", json.headers["X-Consumer-Custom-Id"])
       end)
 
-      it("returns HTTP 495 on https request if certificate validation passed", function()
+      it("returns HTTP 401 on https request if certificate validation passed", function()
         local res = assert(mtls_client:send {
           method  = "GET",
           path    = "/no_san_client",
         })
-        local body = assert.res_status(495, res)
+        local body = assert.res_status(401, res)
         local json = cjson.decode(body)
       end)
     end)

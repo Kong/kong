@@ -19,7 +19,7 @@ for _, strategy in helpers.each_strategy() do
         "services",
         "plugins",
         "consumers",
-        "certificates",
+        "ca_certificates",
         "mtls_auth_credentials",
       }, { "mtls-auth", })
 
@@ -35,9 +35,7 @@ for _, strategy in helpers.each_strategy() do
         username = "bob"
       }, { nulls = true })
 
-      ca = bp.certificates:insert({
-        key = cjson.null,
-      })
+      ca = bp.ca_certificates:insert()
 
       assert(helpers.start_kong({
         plugins = "bundled,mtls-auth",
@@ -272,15 +270,6 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("DELETE", function()
-        it("deletes a credential", function()
-          local res = assert(admin_client:send {
-            method  = "DELETE",
-            path    = "/consumers/bob/mtls-auth/" .. credential.id,
-          })
-
-          assert.res_status(204, res)
-        end)
-
         describe("errors", function()
           it("returns 400 on invalid input", function()
             local res = assert(admin_client:send {
@@ -299,13 +288,86 @@ for _, strategy in helpers.each_strategy() do
             })
             assert.res_status(404, res)
           end)
+        end)
 
+        it("deletes a credential and consumer is still there", function()
+          local res = assert(admin_client:send {
+            method  = "DELETE",
+            path    = "/consumers/bob/mtls-auth/" .. credential.id,
+          })
+
+          assert.res_status(204, res)
+
+          res = assert(admin_client:send {
+            method  = "GET",
+            path    = "/consumers/bob"
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal(json.username, "bob")
+        end)
+
+        it("deletes the certificate cascades to the credential", function()
+          local tmp_ca = bp.ca_certificates:insert()
+
+          assert(db:truncate("mtls_auth_credentials"))
+          local cred_id = assert(db.mtls_auth_credentials:insert {
+            consumer = { id = consumer.id },
+            subject_name = "cascade.delete.test",
+            ca_certificate = { id = tmp_ca.id, },
+          }).id
+
+          assert(db.mtls_auth_credentials:select({ id = cred_id, }))
+
+          res = assert(admin_client:send {
+            method  = "DELETE",
+            path    = "/ca_certificates/" .. tmp_ca.id,
+          })
+
+          assert.res_status(204, res)
+
+          local res = assert(admin_client:send {
+            method  = "GET",
+            path    = "/consumers/bob/mtls-auth"
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same({ ["next"] = ngx.null, data = {}, }, json)
+
+          local cred = db.mtls_auth_credentials:select({ id = cred_id, })
+          assert.is_nil(cred)
+        end)
+
+        it("deletes the consumer cascades to the credential", function()
+          assert(db:truncate("mtls_auth_credentials"))
+          local cred_id = assert(db.mtls_auth_credentials:insert {
+            consumer = { id = consumer.id },
+            subject_name = "cascade.delete.test",
+          }).id
+
+          assert(db.mtls_auth_credentials:select({ id = cred_id, }))
+
+          res = assert(admin_client:send {
+            method  = "DELETE",
+            path    = "/consumers/bob",
+          })
+
+          assert.res_status(204, res)
+
+          local res = assert(admin_client:send {
+            method  = "GET",
+            path    = "/consumers/bob/mtls-auth"
+          })
+          assert.res_status(404, res)
+
+          local cred = db.mtls_auth_credentials:select({ id = cred_id, })
+          assert.is_nil(cred)
         end)
       end)
     end)
 
     describe("/plugins for route", function()
-      it("fails with no certificate_authority", function()
+      it("fails with no ca_certificates", function()
         local res = assert(admin_client:send {
           method  = "POST",
           path    = "/plugins",
@@ -319,10 +381,10 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
-        assert.same({ certificate_authorities = "required field missing" }, json.fields.config)
+        assert.same({ ca_certificates = "required field missing" }, json.fields.config)
       end)
 
-      it("succeeds with valid certificate_authority", function()
+      it("succeeds with valid ca_certificates", function()
         local res = assert(admin_client:send {
           method  = "POST",
           path    = "/plugins",
@@ -330,7 +392,7 @@ for _, strategy in helpers.each_strategy() do
             route = { id = route2.id },
             name       = "mtls-auth",
             config     = {
-              certificate_authorities = { ca.id, },
+              ca_certificates = { ca.id, },
             },
           },
           headers = {
@@ -339,7 +401,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
-        assert.same({ ca.id, }, json.config.certificate_authorities)
+        assert.same({ ca.id, }, json.config.ca_certificates)
       end)
     end)
 
@@ -349,12 +411,17 @@ for _, strategy in helpers.each_strategy() do
       describe("GET", function()
         lazy_setup(function()
           db:truncate("mtls_auth_credentials")
+          db:truncate("consumers")
+
+          consumer = bp.consumers:insert({
+            username = "bob"
+          }, { nulls = true })
 
           for i = 1, 3 do
-            db.mtls_auth_credentials:insert {
+            assert(db.mtls_auth_credentials:insert {
               consumer = { id = consumer.id },
               subject_name = "foo" .. i,
-            }
+            })
           end
 
           consumer2 = bp.consumers:insert {
@@ -362,10 +429,10 @@ for _, strategy in helpers.each_strategy() do
           }
 
           for i = 1, 3 do
-            db.mtls_auth_credentials:insert {
+            assert(db.mtls_auth_credentials:insert {
               consumer = { id = consumer2.id },
               subject_name = "bar" .. i,
-            }
+            })
           end
         end)
 

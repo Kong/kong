@@ -20,7 +20,7 @@ return {
             required = false,
             default = { "username", "custom_id" },
           }, },
-          { certificate_authorities = {
+          { ca_certificates = {
             type = "array",
             required = true,
             elements = { type = "string", uuid = true, },
