@@ -54,6 +54,61 @@ local function iter(config_array)
   end, config_array, 0
 end
 
+-- XXX Use proper kong caching, initialize it on init_worker etc
+local transform_function_cache = setmetatable({}, { __mode = "k" })
+local function get_transform_functions(config)
+  local functions = transform_function_cache[config]
+  if not functions then
+    -- first call, go compile the functions
+    functions = {}
+    for _, fn_str in ipairs(config.transform.functions) do
+      local func1 = loadstring(fn_str)    -- load it
+      local _, func2 = pcall(func1)       -- run it
+      if type(func2) ~= "function" then
+        -- old style (0.1.0), without upvalues
+        table_insert(functions, func1)
+      else
+        -- this is a new function (0.2.0+), with upvalues
+        table_insert(functions, func2)
+
+        -- the first call to func1 above only initialized it, so run again
+        func2()
+      end
+    end
+
+    transform_function_cache[config] = functions
+  end
+
+  return ipairs(functions)
+end
+
+-- key defaults to nil
+local function transform_data(data, transform_function, key)
+  if (type(data) == "table") then
+    -- Try to do a global match transform
+    -- XXX: Better list detection?
+    local data_iterator
+    if data[1] then
+      -- it's a list
+      data_iterator = ipairs
+    else
+      data_iterator = pairs
+    end
+
+    local new_data = {}
+
+    for k, v in data_iterator(data) do
+      local nk, thing = transform_data(v, transform_function, k)
+      new_data[nk] = thing
+    end
+
+    data = new_data
+  end
+
+  return transform_function(key, data)
+end
+
+
 function _M.is_json_body(content_type)
   return content_type and find(lower(content_type), "application/json", nil, true)
 end
@@ -131,6 +186,16 @@ function _M.transform_json_body(conf, buffered_data, resp_code)
 
     if filtered then
       json_body = filtered_json_body
+    end
+  end
+
+  -- perform arbitrary transformations on a json
+  if not skip_transform(resp_code, conf.transform.if_status) then
+    for _, fn in get_transform_functions(conf) do
+      local err, data = transform_data(json_body, fn, nil)
+      if not err then
+        json_body = data
+      end
     end
   end
 

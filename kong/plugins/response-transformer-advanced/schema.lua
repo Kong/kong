@@ -25,6 +25,30 @@ local function validate_status(entry)
 end
 
 
+local function validate_function(fun)
+  local func1, err = loadstring(fun)
+  if err then
+    return false, "Error parsing function: " .. err
+  end
+
+  local success, func2 = pcall(func1)
+
+  if not success or func2 == nil then
+    -- the code IS the handler function
+    return true
+  end
+
+  -- the code RETURNED the handler function
+  if type(func2) == "function" then
+    return true
+  end
+
+  -- the code returned something unknown
+  return false, "Bad return value from function, expected function type, got "
+                .. type(func2)
+end
+
+
 local strings_array = {
   type = "array",
   default = {},
@@ -43,6 +67,12 @@ local status_array = {
   type = "array",
   default = {},
   elements = { type = "string", custom_validator = validate_status },
+}
+
+local functions_array = {
+  type = "array",
+  default = {},
+  elements = { type = "string", custom_validator = validate_function }
 }
 
 
@@ -83,6 +113,9 @@ return {
         fields = {
           { json = strings_set },
       }}},
-
+      { transform = { type = "record", fields = {
+          { functions = functions_array },
+          { if_status = status_array },
+      }}},
   }}}},
 }

@@ -104,7 +104,10 @@ describe("Plugin: response-transformer-advanced", function()
         },
         append   = {
           json   = {}
-        }
+        },
+        transform = {
+          functions = {},
+        },
       }
 
       it("skips filter transform if response status doesn't match", function()
@@ -140,6 +143,98 @@ describe("Plugin: response-transformer-advanced", function()
         local body = body_transformer.transform_json_body(conf_skip, json, 200)
         local body_json = cjson.decode(body)
         assert.same({p2 = "v1"}, body_json)
+      end)
+    end)
+
+    describe("transform", function()
+      local transform_function = [[
+        return function (key, data)
+          if key and key == "quantity" then
+            key = "inventory"
+            if data <= 0 then
+              data = "none"
+            elseif data >= 1 and data <= 10 then
+              data = "small"
+            elseif data > 10 and data <= 50 then
+              data = "medium"
+            else
+              data = "large"
+            end
+          end
+
+          return key, data
+        end
+      ]]
+
+      local conf = {
+        remove   = {
+          json   = {}
+        },
+        replace  = {
+          json   = {},
+        },
+        add      = {
+          json   = {}
+        },
+        append   = {
+          json   = {}
+        },
+        whitelist = {
+          json   = {},
+        },
+        transform = {
+          functions = { transform_function },
+        },
+      }
+
+      it("performs arbitrary transformations on body #transform", function()
+        local json = [[
+          {
+            "something": {
+              "deeply": {
+                "nested": {
+                  "array": [
+                    { "name": "hats", "quantity": 0 },
+                    { "name": "t-shirts", "quantity": 10 },
+                    { "name": "swag", "quantity": 40 },
+                    { "name": "hoodies", "quantity": 9001 }
+                  ],
+                  "or_by_key": {
+                    "hats": { "quantity": 0 },
+                    "t-shirts": { "quantity": 10 },
+                    "swag": { "quantity": 40 },
+                    "hoodies": { "quantity": 9001 }
+                  }
+                }
+              }
+            }
+          }
+        ]]
+
+        local expected = {
+          something = {
+            deeply = {
+              nested = {
+                array = {
+                  { name = "hats", inventory = "none" },
+                  { name = "t-shirts", inventory = "small" },
+                  { name = "swag", inventory = "medium" },
+                  { name = "hoodies", inventory = "large" },
+                },
+                ["or_by_key"] = {
+                  ["hats"] = { inventory = "none" },
+                  ["t-shirts"] = { inventory = "small" },
+                  ["swag"] = { inventory = "medium" },
+                  ["hoodies"] = { inventory = "large" },
+                }
+              }
+            }
+          }
+        }
+
+        local body = body_transformer.transform_json_body(conf, json, 200)
+        local body_json = cjson.decode(body)
+        assert.same(expected, body_json)
       end)
     end)
 
@@ -239,7 +334,10 @@ describe("Plugin: response-transformer-advanced", function()
         },
         append   = {
           json   = {}
-        }
+        },
+        transform = {
+          functions = {},
+        },
       }
       local original_body = [[{"p1" : "v1", "p2" : "v1"}]]
       local body = body_transformer.transform_json_body(conf, original_body, 200)
