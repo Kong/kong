@@ -51,7 +51,7 @@ local function load_cas(ca_ids)
   for i, ca_id in ipairs(ca_ids) do
     key.id = ca_id
 
-    local obj, err = kong.db.certificates:select(key)
+    local obj, err = kong.db.ca_certificates:select(key)
     if not obj then
       return nil, err
     end
@@ -253,7 +253,7 @@ local function do_authentication(conf)
   if err then
     if err == "connection is not TLS or TLS support for Nginx not enabled" then
       -- request is cleartext, no certificate can possibly be present
-      return nil, 496, "No required TLS certificate was sent"
+      return nil, "No required TLS certificate was sent"
     end
 
     kong.log.err(err)
@@ -262,7 +262,7 @@ local function do_authentication(conf)
 
   if not pem then
     -- client failed to provide certificate while handshaking
-    return nil, 496, "No required TLS certificate was sent"
+    return nil, "No required TLS certificate was sent"
   end
 
   local chain = new_tab(2, 0)
@@ -303,7 +303,7 @@ local function do_authentication(conf)
     end
   end
 
-  local ca_ids = conf.certificate_authorities
+  local ca_ids = conf.ca_certificates
 
   local trust_table, err = kong.cache:get(ca_ids_cache_key(ca_ids), cache_opts,
                                           load_cas, ca_ids)
@@ -364,7 +364,7 @@ local function do_authentication(conf)
 
   kong.log.err(chain_or_err)
 
-  return nil, 495, "TLS certificate failed verification"
+  return nil, "TLS certificate failed verification"
 end
 
 
@@ -389,7 +389,7 @@ function _M.execute(conf)
     return
   end
 
-  local res, status, message = do_authentication(conf)
+  local res, message = do_authentication(conf)
   if not res then
     -- failed authentication
     if conf.anonymous then
@@ -403,7 +403,7 @@ function _M.execute(conf)
       set_consumer(consumer, nil)
 
     else
-      return kong.response.exit(status, { message = message })
+      return kong.response.exit(401, { message = message })
     end
   end
 end
