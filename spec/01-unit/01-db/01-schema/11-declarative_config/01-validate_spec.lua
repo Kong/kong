@@ -123,6 +123,22 @@ describe("declarative config: validate", function()
     end)
   end)
 
+  describe("_workspace", function()
+    local fmt = string.format
+    local function validate_conf(yml)
+      local config = assert(lyaml.load(fmt([[
+          _format_version: "1.1"
+          %s
+        ]], yml)))
+      return DeclarativeConfig:validate(config)
+    end
+
+    it("accepts a name", function()
+      assert.truthy(validate_conf("_workspace: foo"))
+      assert.falsy(validate_conf("_workspace: f#oo"))
+    end)
+  end)
+
   describe("core entities", function()
     describe("services:", function()
       it("accepts an empty list", function()

@@ -12,6 +12,12 @@ return [[
 
 _format_version: "1.1"
 
+# A kong config file has an associated workspace. By default,
+# "default" workspace is used but can be changed via the metadata
+# field _workspace
+
+# _workspace: workspace-foo
+
 # Each Kong entity (core entity or custom entity introduced by a plugin)
 # can be listed in the top-level as an array of objects:
 

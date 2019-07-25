@@ -69,7 +69,7 @@ local function execute(args)
       error("expected a declarative configuration file; see `kong config --help`")
     end
 
-    local dc_table, err, _, vers = dc:parse_file(filename, accepted_formats)
+    local dc_table, err, _, vers, _, workspace = dc:parse_file(filename, accepted_formats)
     if not dc_table then
       error("Failed parsing:\n" .. err)
     end
@@ -86,8 +86,7 @@ local function execute(args)
       assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
 
       _G.kong.db = db
-
-      local ok, err = declarative.load_into_db(dc_table)
+      local ok, err = declarative.load_into_db(dc_table, workspace)
       if not ok then
         error("Failed importing:\n" .. err)
       end

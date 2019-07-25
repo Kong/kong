@@ -5,6 +5,7 @@ local Entity = require("kong.db.schema.entity")
 local Schema = require("kong.db.schema")
 local constants = require("kong.constants")
 local plugin_loader = require("kong.db.schema.plugin_loader")
+local typedefs = require("kong.db.schema.typedefs")
 
 
 local null = ngx.null
@@ -71,6 +72,11 @@ local function add_extra_attributes(fields, opts)
   if opts._ignore then
     table.insert(fields, {
       _ignore = { type = "array", elements = { type = "any" } },
+    })
+  end
+  if opts._workspace then
+    table.insert(fields, {
+      _workspace = typedefs.name { default = "default" } ,
     })
   end
 end
@@ -194,6 +200,7 @@ local function build_fields(entities)
   add_extra_attributes(fields, {
     _comment = true,
     _ignore = true,
+    _workspace = true,
   })
 
   local records = add_top_level_entities(fields, entities)

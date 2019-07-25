@@ -159,7 +159,7 @@ function Config:parse_table(dc_table, hash)
     hash = md5(cjson.encode(dc_table))
   end
 
-  return entities, nil, nil, dc_table._format_version, hash
+  return entities, nil, nil, dc_table._format_version, hash, dc_table._workspace
 end
 
 
@@ -198,8 +198,31 @@ function declarative.to_yaml_file(entities, filename)
   return true
 end
 
+local function find_or_create_current_workspace(name)
+  name = name or "default"
 
-function declarative.load_into_db(dc_table)
+  local workspace, err, err_t = kong.db.workspaces:select_by_name(name, {
+    name = name
+  })
+  if err then
+    return nil, err, err_t
+  end
+
+  if not workspace then
+    workspace, err, err_t = kong.db.workspaces:upsert_by_name(name, {
+      name = name
+    })
+    if err then
+      return nil, err, err_t
+    end
+  end
+
+  ngx.ctx.workspaces = { workspace }
+  return true
+end
+
+
+function declarative.load_into_db(dc_table, workspace)
   assert(type(dc_table) == "table")
 
   local schemas = {}
@@ -211,6 +234,11 @@ function declarative.load_into_db(dc_table)
     return nil, err
   end
 
+  local _, err, err_t = find_or_create_current_workspace(workspace)
+  if err then
+    return nil, err, err_t
+  end
+
   local schema, primary_key, ok, err, err_t
   for i = 1, #sorted_schemas do
     schema = sorted_schemas[i]
@@ -220,7 +248,6 @@ function declarative.load_into_db(dc_table)
 
       primary_key = schema:extract_pk_values(entity)
 
-      ngx.ctx.workspaces = { kong.db.workspaces:select_by_name("default") }
       ok, err, err_t = kong.db[schema.name]:upsert(primary_key, entity)
       if not ok then
         return nil, err, err_t
