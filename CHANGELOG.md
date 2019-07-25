@@ -1,3 +1,21 @@
+## 1.3.1
+
+### Changed
+
+- Use the Kong PDK instead of the Nginx API
+
+## 1.2.1
+
+### Added
+
+- Add rate limits by an arbitrary header
+
+## 1.1.1
+
+### Added
+
+- Add rate limits by service (global)
+
 ## 1.0.1
 
 ### Fixed
