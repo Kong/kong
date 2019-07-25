@@ -24,6 +24,9 @@ describe("Plugin: response-transformer-advanced", function()
         whitelist    = {
           json = {}
         },
+        transform = {
+          functions = {}
+        }
       }
       it("all the headers", function()
         local ngx_headers = {h1 = "value1", h2 = {"value2a", "value2b"}}
@@ -193,6 +196,9 @@ describe("Plugin: response-transformer-advanced", function()
           whitelist    = {
             json = {}
           },
+          transform = {
+            functions = {},
+          },
         }
         it("sets content-length nil if application/json passed", function()
           local ngx_headers = {[CONTENT_LENGTH] = "100", ["content-type"] = "application/json"}
@@ -236,6 +242,9 @@ describe("Plugin: response-transformer-advanced", function()
           },
           whitelist    = {
             json = {}
+          },
+          transform = {
+            functions = {},
           },
         }
         it("sets content-length nil if application/json passed", function()
@@ -281,6 +290,9 @@ describe("Plugin: response-transformer-advanced", function()
           whitelist    = {
             json = {}
           },
+          transform = {
+            functions = {},
+          }
         }
         it("set content-length nil if application/json passed", function()
           local ngx_headers = {[CONTENT_LENGTH] = "100", ["content-type"] = "application/json"}
@@ -324,6 +336,9 @@ describe("Plugin: response-transformer-advanced", function()
           },
           whitelist    = {
             json = {}
+          },
+          transform = {
+            functions = {},
           },
         }
         it("set content-length nil if application/json passed", function()

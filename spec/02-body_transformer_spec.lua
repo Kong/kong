@@ -20,6 +20,9 @@ describe("Plugin: response-transformer-advanced", function()
         whitelist    = {
           json = {}
         },
+        transform = {
+          functions = {}
+        },
       }
       it("parameter", function()
         local json = [[{"p2":"v1"}]]
@@ -51,6 +54,9 @@ describe("Plugin: response-transformer-advanced", function()
         },
         whitelist    = {
           json = {}
+        },
+        transform = {
+          functions = {}
         },
       }
       it("new key:value if key does not exists", function()
@@ -90,6 +96,9 @@ describe("Plugin: response-transformer-advanced", function()
         whitelist    = {
           json = {}
         },
+        transform = {
+          functions = {}
+        },
       }
       it("parameter", function()
         local json = [[{"p1" : "v1", "p2" : "v1"}]]
@@ -114,6 +123,9 @@ describe("Plugin: response-transformer-advanced", function()
         },
         whitelist    = {
           json = {}
+        },
+        transform = {
+          functions = {}
         },
       }
       it("parameter if it exists", function()
@@ -152,6 +164,9 @@ describe("Plugin: response-transformer-advanced", function()
         },
         whitelist  = {
           json = {}
+        },
+        transform = {
+          functions = {}
         },
       }
       it("combination", function()
@@ -225,6 +240,9 @@ describe("Plugin: response-transformer-advanced", function()
         },
         whitelist  = {
           json = {}
+        },
+        transform = {
+          functions = {}
         },
       }
       local body = [[

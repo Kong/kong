@@ -21,6 +21,9 @@ describe("Plugin: response-transformer-advanced", function()
         whitelist   = {
           json   = {},
         },
+        transform = {
+          functions = {},
+        },
       }
 
       it("skips 'add' transform if response status doesn't match", function()
@@ -49,6 +52,9 @@ describe("Plugin: response-transformer-advanced", function()
         whitelist   = {
           json   = {},
         },
+        transform = {
+          functions = {},
+        },
       }
 
       it("skips append transform if response status doesn't match", function()
@@ -76,6 +82,9 @@ describe("Plugin: response-transformer-advanced", function()
         },
         whitelist   = {
           json   = {}
+        },
+        transform = {
+          functions = {},
         },
       }
 
@@ -135,6 +144,9 @@ describe("Plugin: response-transformer-advanced", function()
         },
         whitelist   = {
           json   = {},
+        },
+        transform = {
+          functions = {},
         },
       }
 
@@ -258,6 +270,9 @@ describe("Plugin: response-transformer-advanced", function()
         },
         whitelist   = {
           json   = {}
+        },
+        transform = {
+          functions = {},
         },
       }
 
