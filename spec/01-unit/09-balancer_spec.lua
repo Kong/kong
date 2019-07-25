@@ -71,15 +71,15 @@ describe("Balancer", function()
     passive_hc.passive.unhealthy.http_failures = 1
 
     UPSTREAMS_FIXTURES = {
-      [1] = { id = "a", name = "mashape", slots = 10, healthchecks = hc_defaults, algorithm = "consistent" },
-      [2] = { id = "b", name = "kong",    slots = 10, healthchecks = hc_defaults, algorithm = "consistent" },
-      [3] = { id = "c", name = "gelato",  slots = 20, healthchecks = hc_defaults, algorithm = "consistent" },
-      [4] = { id = "d", name = "galileo", slots = 20, healthchecks = hc_defaults, algorithm = "consistent" },
-      [5] = { id = "e", name = "upstream_e", slots = 10, healthchecks = hc_defaults, algorithm = "consistent" },
-      [6] = { id = "f", name = "upstream_f", slots = 10, healthchecks = hc_defaults, algorithm = "consistent" },
-      [7] = { id = "hc", name = "upstream_hc", slots = 10, healthchecks = passive_hc, algorithm = "consistent" },
-      [8] = { id = "ph", name = "upstream_ph", slots = 10, healthchecks = passive_hc, algorithm = "consistent" },
-      [9] = { id = "ote", name = "upstream_ote", slots = 10, healthchecks = hc_defaults, algorithm = "consistent" },
+      [1] = { id = "a", name = "mashape", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
+      [2] = { id = "b", name = "kong",    slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
+      [3] = { id = "c", name = "gelato",  slots = 20, healthchecks = hc_defaults, algorithm = "round-robin" },
+      [4] = { id = "d", name = "galileo", slots = 20, healthchecks = hc_defaults, algorithm = "round-robin" },
+      [5] = { id = "e", name = "upstream_e", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
+      [6] = { id = "f", name = "upstream_f", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
+      [7] = { id = "hc", name = "upstream_hc", slots = 10, healthchecks = passive_hc, algorithm = "round-robin" },
+      [8] = { id = "ph", name = "upstream_ph", slots = 10, healthchecks = passive_hc, algorithm = "round-robin" },
+      [9] = { id = "ote", name = "upstream_ote", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
     }
     upstream_hc = UPSTREAMS_FIXTURES[7]
     upstream_ph = UPSTREAMS_FIXTURES[8]

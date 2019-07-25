@@ -207,8 +207,9 @@ end
 local create_balancer
 do
   local balancer_types = {
-    ["consistent"] = require("resty.dns.balancer.ring"),
+    ["consistent-hashing"] = require("resty.dns.balancer.ring"),
     ["least-connections"] = require("resty.dns.balancer.least_connections"),
+    ["round-robin"] = require("resty.dns.balancer.ring"),
   }
 
   local create_healthchecker
@@ -677,7 +678,7 @@ end
 -- @return integer value or nil if there is no hash to calculate
 local create_hash = function(upstream, ctx)
   local hash_on = upstream.hash_on
-  if hash_on == "none" then
+  if hash_on == "none" or hash_on == nil or hash_on == ngx.null then
     return -- not hashing, exit fast
   end
 
