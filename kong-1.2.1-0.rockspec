@@ -256,6 +256,7 @@ build = {
     ["kong.db.schema.entities.audit_objects"] = "kong/db/schema/entities/audit_objects.lua",
     ["kong.db.schema.entities.audit_requests"] = "kong/db/schema/entities/audit_requests.lua",
     ["kong.db.schema.entities.tags"] = "kong/db/schema/entities/tags.lua",
+    ["kong.db.schema.entities.ca_certificates"] = "kong/db/schema/entities/ca_certificates.lua",
     ["kong.db.schema.others.migrations"] = "kong/db/schema/others/migrations.lua",
     ["kong.db.schema.others.declarative_config"] = "kong/db/schema/others/declarative_config.lua",
     ["kong.db.schema.entity"] = "kong/db/schema/entity.lua",

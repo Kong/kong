@@ -32,8 +32,8 @@ local plugins = {
   "pre-function",
   "post-function",
   "prometheus",
-  "session",
   "proxy-cache",
+  "session",
 }
 
 local plugin_map = {}
@@ -96,6 +96,7 @@ return {
     "plugins",
     "cluster_ca",
     "tags",
+    "ca_certificates",
     -- ENTERPRISE
     "files",
     "developers",
