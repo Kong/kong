@@ -55,6 +55,38 @@ return {
         -- Do nothing, accept existing state
       END$$;
     ]],
+    teardown = function(connector)
+      assert(connector:connect_migrations())
+      for upstream, err in connector:iterate([[SELECT * FROM "upstreams";]]) do
+        if err then
+          return nil, err
+        end
+
+        if type(upstream.algorithm) == "string" and #upstream.algorithm > 0 then
+          goto continue
+        end
+
+        local algorithm
+        if upstream.hash_on == "none" then
+          algorithm = "round-robin"
+        else
+          algorithm = "consistent-hashing"
+        end
+        local update_query = string.format([[
+          UPDATE "upstreams"
+          SET "algorithm" = '%s'
+          WHERE "id" = '%s';
+        ]], algorithm, upstream.id)
+
+        local _, err = connector:query(update_query)
+        if err then
+          return nil, err
+        end
+
+        ::continue::
+      end
+    end,
+
   },
 
   cassandra = {
@@ -81,5 +113,45 @@ return {
       ALTER TABLE services ADD client_certificate_id uuid;
       CREATE INDEX IF NOT EXISTS services_client_certificate_id_idx ON services(client_certificate_id);
     ]],
+    teardown = function(connector)
+      local cassandra = require "cassandra"
+      local coordinator = assert(connector:connect_migrations())
+
+      for rows, err in coordinator:iterate([[SELECT * FROM upstreams;]]) do
+        if err then
+          return nil, err
+        end
+
+        for i = 1, #rows do
+          local upstream = rows[i]
+          if type(upstream.algorithm) == "string" and #upstream.algorithm > 0 then
+            goto continue
+          end
+
+          local algorithm
+          if upstream.hash_on == "none" then
+            algorithm = "round-robin"
+          else
+            algorithm = "consistent-hashing"
+          end
+
+          local _, err = connector:query([[
+            UPDATE upstreams
+            SET algorithm = ?
+            WHERE id = ?
+          ]], {
+            algorithm,
+            cassandra.uuid(upstream.id),
+          })
+          if err then
+            return nil, err
+          end
+
+          ::continue::
+        end
+
+      end
+    end,
+
   },
 }

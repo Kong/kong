@@ -1,6 +1,7 @@
 local Schema = require "kong.db.schema"
 local typedefs = require "kong.db.schema.typedefs"
 local utils = require "kong.tools.utils"
+local null = ngx.null
 
 
 local validate_name = function(name)
@@ -155,8 +156,8 @@ local r =  {
     { created_at = typedefs.auto_timestamp_s },
     { name = { type = "string", required = true, unique = true, custom_validator = validate_name }, },
     { algorithm = { type = "string",
-        default = "consistent",
-        one_of = { "consistent", "least-connections" },
+        default = "round-robin",
+        one_of = { "consistent-hashing", "least-connections", "round-robin" },
     }, },
     { hash_on = hash_on },
     { hash_fallback = hash_on },
@@ -216,6 +217,45 @@ local r =  {
 
     -- different headers
     { distinct = { "hash_on_header", "hash_fallback_header" }, },
+  },
+
+  -- This is a hack to preserve backwards compatibility with regard to the
+  -- behavior of the hash_on field, and have it take place both in the Admin API
+  -- and via declarative configuration.
+  shorthands = {
+    { algorithm = function(value)
+        if value == "least-connections" then
+          return {
+            algorithm = value,
+            hash_on = null,
+          }
+        else
+          return {
+            algorithm = value,
+          }
+        end
+      end
+    },
+    -- Then, if hash_on is set to some non-null value, adjust the algorithm
+    -- field accordingly.
+    { hash_on = function(value)
+        if value == null then
+          return {
+            hash_on = "none"
+          }
+        elseif value == "none" then
+          return {
+            hash_on = value,
+            algorithm = "round-robin",
+          }
+        else
+          return {
+            hash_on = value,
+            algorithm = "consistent-hashing",
+          }
+        end
+      end
+    },
   },
 }
 
