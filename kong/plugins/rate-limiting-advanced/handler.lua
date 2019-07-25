@@ -33,21 +33,21 @@ local human_window_size_lookup = {
 
 local id_lookup = {
   ip = function(conf)
-    return ngx.var.remote_addr
+    return kong.client.get_forwarded_ip()
   end,
   credential = function(conf)
-    return ngx.ctx.authenticated_credential and
-           ngx.ctx.authenticated_credential.id
+    return kong.client.get_credential() and
+           kong.client.get_credential().id
   end,
   consumer = function(conf)
     -- try the consumer, fall back to credential
-    return ngx.ctx.authenticated_consumer and
-           ngx.ctx.authenticated_consumer.id or
-           ngx.ctx.authenticated_credential and
-           ngx.ctx.authenticated_credential.id
+    return kong.client.get_consumer() and
+           kong.client.get_consumer().id or
+           kong.client.get_credential() and
+           kong.client.get_credential().id
   end,
   service = function(conf)
-    return ngx.ctx.service.id
+    return kong.service.id
   end,
   header = function(conf)
     return kong.request.get_header(conf.header_name)
@@ -56,7 +56,7 @@ local id_lookup = {
 
 
 local function new_namespace(config, init_timer)
-  ngx.log(ngx.DEBUG, "attempting to add namespace ", config.namespace)
+  kong.log.debug("attempting to add namespace ", config.namespace)
 
   local ok, err = pcall(function()
     local strategy = config.strategy == "cluster" and
@@ -69,18 +69,18 @@ local function new_namespace(config, init_timer)
     local dict_name = config.dictionary_name
     if dict_name == nil then
       dict_name = schema.fields.dictionary_name.default
-      ngx.log(ngx.WARN, "[rate-limiting-advanced] no shared dictionary was specified.",
+      kong.log.warn("[rate-limiting-advanced] no shared dictionary was specified.",
         " Trying the default value '", dict_name, "'...")
     end
 
     -- if dictionary name was passed but doesn't exist, fallback to kong
     if ngx.shared[dict_name] == nil then
-      ngx.log(ngx.NOTICE, "[rate-limiting-advanced] specified shared dictionary '", dict_name,
+      kong.log.notice("[rate-limiting-advanced] specified shared dictionary '", dict_name,
         "' doesn't exist. Falling back to the 'kong' shared dictionary")
       dict_name = "kong"
     end
 
-    ngx.log(ngx.NOTICE, "[rate-limiting-advanced] using shared dictionary '"
+    kong.log.notice("[rate-limiting-advanced] using shared dictionary '"
                          .. dict_name .. "'")
 
     ratelimiting.new({
@@ -103,7 +103,7 @@ local function new_namespace(config, init_timer)
     if init_timer and config.sync_rate > 0 then
       local rate = config.sync_rate
       local when = rate - (ngx.now() - (math.floor(ngx.now() / rate) * rate))
-      ngx.log(ngx.DEBUG, "initial sync in ", when, " seconds")
+      kong.log.debug("initial sync in ", when, " seconds")
       ngx.timer.at(when, ratelimiting.sync, config.namespace)
 
       -- run the fetch from a timer because it uses cosockets
@@ -112,7 +112,7 @@ local function new_namespace(config, init_timer)
     end
 
   else
-    ngx.log(ngx.ERR, "err in creating new ratelimit namespace: ",
+    kong.log.err("err in creating new ratelimit namespace: ",
                      err)
     ret = false
   end
@@ -134,7 +134,7 @@ function NewRLHandler:init_worker()
     name = "rate-limiting-advanced",
   })
   if err then
-    ngx.log(ngx.ERR, "err in fetching plugins: ", err)
+    kong.log.err("err in fetching plugins: ", err)
   end
 
   local namespaces = {}
@@ -170,7 +170,7 @@ function NewRLHandler:init_worker()
   -- namespace config. we do not initiate a new fetch/sync recurring
   -- timer as it's already running in the background
   worker_events.register(function(config)
-    ngx.log(ngx.DEBUG, "clear and reset ", config.namespace)
+    kong.log.debug("clear and reset ", config.namespace)
 
     -- if the previous config did not have a background timer,
     -- we need to start one
@@ -190,7 +190,7 @@ function NewRLHandler:init_worker()
         ratelimiting.config[config.namespace].kill = true
 
       else
-        ngx.log(ngx.WARN, "did not find namespace ", config.namespace, " to kill")
+        kong.log.warn("did not find namespace ", config.namespace, " to kill")
       end
     end
   end, "rl", "update")
@@ -204,7 +204,7 @@ function NewRLHandler:init_worker()
       ratelimiting.config[config.namespace].kill = true
 
     else
-      ngx.log(ngx.WARN, "did not find namespace ", config.namespace, " to kill")
+      kong.log.warn("did not find namespace ", config.namespace, " to kill")
     end
   end, "rl", "delete")
 end
