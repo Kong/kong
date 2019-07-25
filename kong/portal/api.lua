@@ -288,7 +288,7 @@ return {
         return endpoints.handle_error(err)
       end
 
-      return kong.response.exit(200)
+      return kong.response.exit(200, { status = status })
     end,
   },
 

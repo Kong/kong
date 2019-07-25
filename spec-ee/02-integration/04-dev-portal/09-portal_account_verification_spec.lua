@@ -230,7 +230,8 @@ for _, strategy in helpers.each_strategy() do
         })
 
         assert.equals(200, res.status)
-
+        local resp_body_json = cjson.decode(res.body)
+        assert.equals(0, resp_body_json.status)
         local developer = db.developers:select({ id = unverified_developer.id })
         assert.equals(0, developer.status)
       end)
