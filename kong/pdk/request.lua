@@ -237,14 +237,14 @@ local function new(self)
 
   ---
   -- Returns the HTTP version used by the client in the request as a Lua
-  -- number, returning values such as `"1.1"` and `"2.0."`, or `nil` for
+  -- number, returning values such as `1`, `1.1`, `2.0`, or `nil` for
   -- unrecognized values.
   --
   -- @function kong.request.get_http_version
   -- @phases rewrite, access, header_filter, body_filter, log, admin_api
-  -- @treturn string|nil the http version
+  -- @treturn number|nil the http version
   -- @usage
-  -- kong.request.get_http_version() -- "1.1"
+  -- kong.request.get_http_version() -- 1.1
   function _REQUEST.get_http_version()
     check_phase(PHASES.request)
 
