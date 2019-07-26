@@ -245,7 +245,7 @@ do
         else
           balancer_status = "UNHEALTHY"
         end
-        log(DEBUG, "[healthchecks] balancer ", healthchecker.name,
+        log(WARN, "[healthchecks] balancer ", healthchecker.name,
             " reported health status changed to ", balancer_status)
 
       else
