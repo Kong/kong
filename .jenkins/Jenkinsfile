@@ -17,7 +17,6 @@ pipeline {
     stage('prepare') {
 
       steps {
-        sh 'rm -fr /tmp/gojira'
         sh 'git clone https://$GITHUB:@github.com/Kong/kong-gojira.git /tmp/gojira || true'
         sh '$GOJIRA up       -k . --alone'
         sh '$GOJIRA run      -k . make dev'
