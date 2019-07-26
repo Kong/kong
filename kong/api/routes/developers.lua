@@ -112,7 +112,7 @@ return {
       if developer.status == enums.CONSUMERS.STATUS.PENDING then
         local portal_emails = portal_smtp_client.new()
         -- if name does not exist, we use the email for email template
-        local name_or_email = developer.meta.full_name or developer.email
+        local name_or_email = developer.meta and developer.meta.full_name or developer.email
         local _, err = portal_emails:access_request(developer.email,
                                                     name_or_email)
         if err then

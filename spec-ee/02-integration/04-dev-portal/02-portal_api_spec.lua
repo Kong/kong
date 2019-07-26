@@ -516,7 +516,6 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("invalid field", message)
             end)
 
-
             it("registers a developer and set status to pending", function()
               local res = register_developer(portal_api_client, {
                 email = "noob@konghq.com",
@@ -550,6 +549,25 @@ for _, strategy in helpers.each_strategy() do
               }
 
               assert.same(expected_email_res, resp_body_json.email)
+            end)
+
+            describe("no meta fields", function()
+              setup(function()
+                configure_portal(db, {
+                  portal = true,
+                  portal_auth = "basic-auth",
+                  portal_developer_meta_fields = "[]",
+                })
+              end)
+
+              it("can register a developer with no meta fields", function()
+                local res = register_developer(portal_api_client, {
+                  email = "noobz@konghq.com",
+                  password = "iheartkong",
+                })
+  
+                assert.res_status(200, res)
+              end)
             end)
           end)
         end)
