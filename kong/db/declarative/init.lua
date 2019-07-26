@@ -1,5 +1,6 @@
 local declarative_config = require "kong.db.schema.others.declarative_config"
 local topological_sort = require "kong.db.schema.topological_sort"
+local DEFAULT_WORKSPACE = require "kong.workspaces".DEFAULT_WORKSPACE
 local pl_file = require "pl.file"
 local lyaml = require "lyaml"
 local cjson = require "cjson.safe"
@@ -199,7 +200,7 @@ function declarative.to_yaml_file(entities, filename)
 end
 
 local function find_or_create_current_workspace(name)
-  name = name or "default"
+  name = name or DEFAULT_WORKSPACE
 
   local workspace, err, err_t = kong.db.workspaces:select_by_name(name, {
     name = name
