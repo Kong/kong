@@ -247,7 +247,6 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(404, res_1)
 
         wait_for_propagation()
-        wait_for_propagation()
 
         local res_2 = assert(proxy_client_2:send {
           method  = "GET",
