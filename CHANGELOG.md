@@ -32,8 +32,7 @@
 
 > Released on 2019/06/26
 
-This is a patch release in the 1.2 series, and as such, strictly contains
-bugfixes. There are no new features nor breaking changes.
+This is a patch release for the 1.2 series, and as such, strictly focuses on fixing bugs. There are no new features nor breaking changes.
 
 ### Fixes
 
