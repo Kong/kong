@@ -163,7 +163,7 @@ for _, strategy in helpers.each_strategy() do
             end)
           end)
 
-          it("#flaky CREATE on proxy side", function()
+          it("CREATE on proxy side", function()
             -- oauth2 plugin creates entities on the proxy side; use it to assert
             -- that audit log creates an object log on the proxy path
 
@@ -187,6 +187,10 @@ for _, strategy in helpers.each_strategy() do
                 scopes = { "email", "profile", "user.email" },
               },
             })
+            ngx.sleep(1) -- XXX the plugin is not set and doesn't
+                         -- capture the /oauth2/authorize route if we
+                         -- don't wait a bit.
+
             local res = assert(proxy_ssl_client:send {
               method  = "POST",
               path    = "/oauth2/authorize",
