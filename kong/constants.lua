@@ -1,3 +1,5 @@
+local ee_constants = require "kong.enterprise_edition.distributions_constants"
+
 local plugins = {
   "jwt",
   "acl",
@@ -35,6 +37,10 @@ local plugins = {
   "proxy-cache",
   "session",
 }
+
+for _, plugin in ipairs(ee_constants.plugins) do
+  table.insert(plugins, plugin)
+end
 
 local plugin_map = {}
 for i = 1, #plugins do
