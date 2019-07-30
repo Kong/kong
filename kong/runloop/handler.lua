@@ -765,14 +765,15 @@ local function set_init_versions_in_cache()
     return "init"
   end)
   if not ok then
-    return nil, "could not set router version in cache: " .. tostring(err)
+    return nil, "failed to set router version in cache: " .. tostring(err)
   end
 
   local ok, err = kong.cache:get("plugins_iterator:version", TTL_ZERO, function()
     return "init"
   end)
   if not ok then
-    return nil, "could not set plugins iterator version in cache: " .. tostring(err)
+    return nil, "failed to set plugins iterator version in cache: " ..
+                tostring(err)
   end
 
   return true
