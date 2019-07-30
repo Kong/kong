@@ -43,15 +43,13 @@ to be expected in the future.
 
 Additionally, this release includes several highly-requested features such as
 support for upstream **mutual TLS**, **header-based routing** (not only
-`Host`), and **database export**, and **configurable upstream keepalive
+`Host`), **database export**, and **configurable upstream keepalive
 timeouts**.
 
 As a release candidate, we discourage the use of 1.3.0rc1 in production
 environments, but we strongly encourage testers to give it a try and give us
-your feedback! This forum is a great way to ask questions or post feedback, and
-the GitHub issues are still the de facto place for bug reports.
-
-We thank in advance all of the testers for this release candidate!
+!our feedback. We thank in advance all of the testers of this release
+candidate!
 
 ### Changes
 
@@ -194,10 +192,10 @@ repository will allow you to do both easily.
 
 ##### Plugins
 
-- :fireworks: **Newly open-sourced plugin**: the [session
-  plugin](https://github.com/Kong/kong-plugin-session) (previously only
-  available in Enterprise) is now bundled in Kong. It can be used to manage
-  browser sessions for APIs proxied and authenticated by Kong.
+- :fireworks: **New bundled plugin**: the [session
+  plugin](https://github.com/Kong/kong-plugin-session) is now bundled in Kong.
+  It can be used to manage browser sessions for APIs proxied and authenticated
+  by Kong.
   [#4685](https://github.com/Kong/kong/pull/4685)
 - ldap-auth: A new `config.ldaps` property allows configuring the plugin to
   connect to the LDAP server via TLS. It provides LDAPS support instead of only
