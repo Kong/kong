@@ -27,8 +27,8 @@ local function get_schema(fields)
 end
 
 
-function _M.generate(plugin_conf)
-  local schema, err = get_schema(plugin_conf.body_schema)
+function _M.generate(conf_schema)
+  local schema, err = get_schema(conf_schema)
   if err then
     return false, err
   end
@@ -44,8 +44,8 @@ function _M.generate(plugin_conf)
 end
 
 
-function _M.validate(entity)
-  local schema, err = get_schema(entity.config.body_schema)
+function _M.validate(conf_schema)
+  local schema, err = get_schema(conf_schema)
   if err then
     return false, err
   end

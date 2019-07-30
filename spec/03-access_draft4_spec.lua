@@ -108,7 +108,7 @@ for _, strategy in helpers.each_strategy()do
       for _, schema in ipairs(invalid_schemas) do
         it("errors with invalid schemas", function()
           local plugin = add_plugin(admin_client, {body_schema = schema}, 400)
-          assert.same("Not a valid JSONschema draft 4 schema:", plugin.fields["@entity"][1]:sub(1, 38))
+          assert.same("not a valid JSONschema draft 4 schema:", plugin.fields["@entity"][1]:sub(1, 38))
         end)
       end
 
@@ -213,6 +213,70 @@ for _, strategy in helpers.each_strategy()do
         })
         local json = cjson.decode(assert.res_status(400, res))
         assert.same("request body doesn't conform to schema", json.message)
+      end)
+
+      it("validates parameters with version draft4", function()
+        local schema = [[
+            {
+              "properties": {
+                "f1": {
+                  "type": "string"
+                },
+                "r1" : {
+                  "type": "object",
+                  "properties": {
+                    "rf1": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [ "rf1" ]
+                }
+              },
+              "required": [ "f1", "r1" ]
+            }
+        ]]
+
+        local param_schema = {
+          {
+            name = "x-kong-name",
+            ["in"] = "header",
+            required = true,
+            schema = '{"type": "array", "items": {"type": "integer"}}',
+            style = "simple",
+            explode = false,
+          }
+        }
+
+        add_plugin(admin_client, {body_schema = schema, parameter_schema = param_schema}, 201)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["x-kong-name"] = "1,2,3",
+          },
+          body = {
+            f1 = "value!",
+            r1 = {
+              rf1 = false,
+            }
+          }
+        })
+        assert.res_status(200, res)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["x-kong-name"] = "a,b,c",
+          },
+          body = {
+            f1 = "abc"
+          }
+        })
+        assert.res_status(400, res)
       end)
 
     end)
