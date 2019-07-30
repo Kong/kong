@@ -11,6 +11,7 @@ return {
 					{ sample_ratio = { type = "number",
 					                   default = 0.001,
 					                   between = { 0, 1 } } },
+					{ include_credential = { type = "boolean", required = true, default = true } },
 				},
 		}, },
 	},
