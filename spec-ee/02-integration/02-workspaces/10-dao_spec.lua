@@ -8,7 +8,7 @@ for _, strategy in helpers.each_strategy() do
     local bp, db
     -- workspaces objects
     local s1
-    local w1, w1s1
+    local w1, w2, w1s1, w2s1
 
     local sort_by_name
 
@@ -25,6 +25,10 @@ for _, strategy in helpers.each_strategy() do
       w1s1 = bp.services:insert_ws({ name = "w1s1" }, w1)
       bp.routes:insert({ name = "w1r1", paths = { "/" }, service = s1 })
       bp.consumers:insert_ws({ username = "w1c1" }, w1)
+
+      -- W2 workspace
+      w2 = bp.workspaces:insert({ name = "w2" })
+      w2s1 = bp.services:insert_ws({ name = "w2s1" }, w2)
 
       -- sorting function
       sort_by_name = function(a, b)
@@ -44,7 +48,7 @@ for _, strategy in helpers.each_strategy() do
           table.insert(rows, row)
         end
         
-        assert.same(2, #rows)  
+        assert.same(3, #rows)  
       end)
       
       describe("select_all():", function()
@@ -69,6 +73,20 @@ for _, strategy in helpers.each_strategy() do
 
           res = run_ws({ w1 }, function()
             return db.services:select({ id = s1.id })   
+          end)
+          assert.is_nil(res)
+        end)
+
+        it("returns service [w2s1] for workspaces [w1, w2] and nil for workspace [w1]", function()
+          local res
+
+          res = run_ws({ w1, w2 }, function()
+            return db.services:select({ id = w2s1.id })
+          end)
+          assert.same(w2s1, res)
+
+          res = run_ws({ w1 }, function()
+            return db.services:select({ id = w2s1.id })
           end)
           assert.is_nil(res)
         end)
