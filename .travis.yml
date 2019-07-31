@@ -61,5 +61,5 @@ jobs:
         - make setup-kong-build-tools
         - pushd kong-build-tools && make setup-ci && popd
         - make nightly-release
-      env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=trusty KONG_PACKAGE_NAME=${PWD##*/}-$TRAVIS_BRANCH KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
+      env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=trusty KONG_PACKAGE_NAME=${PWD##*/}-chutchinson KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=chutchinson
 
