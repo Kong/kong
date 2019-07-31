@@ -31,10 +31,6 @@ setup-kong-build-tools:
 	cd kong-build-tools; \
 	git reset --hard $(KONG_BUILD_TOOLS); \
 
-setup-travis-ci: setup-kong-build-tools
-	./kong-build-tools/.ci/setup_ci.sh
-	./kong-build-tools/.ci/setup_kind.sh
-
 functional-tests: setup-kong-build-tools
 	cd kong-build-tools; \
 	export KONG_SOURCE_LOCATION=`pwd`/../ && \
