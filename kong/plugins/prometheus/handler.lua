@@ -6,6 +6,9 @@ local kong = kong
 local timer_at = ngx.timer.at
 
 
+prometheus.init()
+
+
 local function log(premature, message)
   if premature then
     return
@@ -19,11 +22,6 @@ local PrometheusHandler = {
   PRIORITY = 13,
   VERSION  = "0.4.0",
 }
-
-
-function PrometheusHandler:new()
-  return prometheus.init()
-end
 
 
 function PrometheusHandler:log(_)
