@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [0.4.1](#041---20190801)
 - [0.4.0](#040---20190605)
 - [0.3.4](#034---20181217)
 - [0.3.3](#033---20181214)
@@ -8,6 +9,11 @@
 - [0.3.0](#030---20181015)
 - [0.2.0](#020---20180924)
 - [0.1.0](#010---20180615)
+
+##  [0.4.1] - 2019/08/01
+
+- Fix issue where the plugin's shared dictionary would not be properly
+initialized
 
 ##  [0.4.0] - 2019/06/05
 
@@ -55,6 +61,7 @@
 
 - Initial release of Prometheus plugin for Kong.
 
+[0.4.1]: https://github.com/Kong/kong-plugin-prometheus/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.3.4...0.4.0
 [0.3.4]: https://github.com/Kong/kong-plugin-prometheus/compare/0.3.3...0.3.4
 [0.3.3]: https://github.com/Kong/kong-plugin-prometheus/compare/0.3.2...0.3.3
