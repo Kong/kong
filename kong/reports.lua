@@ -311,6 +311,24 @@ local function report_cached_entity(entity)
   end
 end
 
+local function add_entity_reports()
+  local shm = ngx.shared
+
+  local reported_entities = {
+    a = "apis",
+    r = "routes",
+    c = "consumers",
+    s = "services",
+  }
+
+  for k, v in pairs(reported_entities) do
+    add_ping_value(k, function()
+      return shm["kong_reports_" .. v] and
+        #shm["kong_reports_" .. v]:get_keys(70000)
+    end)
+  end
+end
+
 
 return {
   -- plugin handler
@@ -349,4 +367,5 @@ return {
   send = send_report,
   retrieve_redis_version = retrieve_redis_version,
   report_cached_entity = report_cached_entity,
+  add_entity_reports = add_entity_reports,
 }

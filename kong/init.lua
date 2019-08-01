@@ -186,51 +186,6 @@ end
 local Kong = {}
 
 
--- XXX EE this has been refactored into get_loaded_plugins that gets
--- called from update_plugins_iterator which gets updated every X
--- seconds, so we better not create the lambdas for reported entities
--- every X seconds and find a better way.
-
-
--- local function sort_plugins_for_execution(kong_conf,
--- db, plugin_list) -- sort plugins by order of execution
--- table.sort(plugin_list, function(a, b) local priority_a =
--- a.handler.PRIORITY or 0 local priority_b = b.handler.PRIORITY or 0
--- return priority_a > priority_b end)
-
---   -- add reports plugin if not disabled
---   if kong_conf.anonymous_reports then
---     local reports = require "kong.reports"
-
---     reports.add_ping_value("database", kong_conf.database)
---     reports.add_ping_value("database_version", db.infos.db_ver)
-
---     reports.toggle(true)
-
---     local shm = ngx.shared
-
---     local reported_entities = {
---       a = "apis",
---       r = "routes",
---       c = "consumers",
---       s = "services",
---     }
-
---     for k, v in pairs(reported_entities) do
---       reports.add_ping_value(k, function()
---         return shm["kong_reports_" .. v] and
---           #shm["kong_reports_" .. v]:get_keys(70000)
---       end)
---     end
-
---     plugin_list[#plugin_list+1] = {
---       name = "reports",
---       handler = reports,
---     }
---   end
--- end
--- XXX EE/
-
 local function flush_delayed_response(ctx)
   ctx.delay_response = false
 
@@ -405,6 +360,7 @@ function Kong.init()
 
   if config.anonymous_reports then
     reports.add_ping_value("rbac_enforced", singletons.configuration.rbac ~= "off")
+    reports.add_entity_reports()
   end
   kong.vitals = vitals.new {
       db             = db,
