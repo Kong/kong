@@ -137,15 +137,17 @@ function NewRLHandler:init_worker()
     kong.log.err("err in fetching plugins: ", err)
   end
 
-  local namespaces = {}
-  for i = 1, #plugins do
-    local namespace = plugins[i].config.namespace
+  if plugins then
+    local namespaces = {}
+    for i = 1, #plugins do
+      local namespace = plugins[i].config.namespace
 
-    if not namespaces[namespace] then
-      local ret = new_namespace(plugins[i].config, true)
+      if not namespaces[namespace] then
+        local ret = new_namespace(plugins[i].config, true)
 
-      if ret then
-        namespaces[namespace] = true
+        if ret then
+          namespaces[namespace] = true
+        end
       end
     end
   end
