@@ -166,7 +166,9 @@ describe("Plugin: proxy-cache", function()
       local body = assert.res_status(400, res)
       local json_body = cjson.decode(body)
       assert.same("expected an integer",
-                   json_body.fields.config.response_code)
+                   json_body.fields.config.response_code[1])
+      assert.same("expected an integer",
+                   json_body.fields.config.response_code[2])
     end)
     it("errors if response_code has float value", function()
       local res = assert(admin_client:send {
@@ -192,7 +194,7 @@ describe("Plugin: proxy-cache", function()
       local body = assert.res_status(400, res)
       local json_body = cjson.decode(body)
       assert.same("value should be between 100 and 900",
-                   json_body.fields.config.response_code)
+                   json_body.fields.config.response_code[1])
     end)
   end)
   describe("(API)", function()

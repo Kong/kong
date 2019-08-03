@@ -47,7 +47,7 @@ describe("proxy-cache schema", function()
       response_code = { 99 },
     }, proxy_cache_schema)
 
-    assert.same("value should be between 100 and 900", err.config.response_code)
+    assert.same("value should be between 100 and 900", err.config.response_code[1])
     assert.is_falsy(entity)
   end)
 
@@ -77,7 +77,8 @@ describe("proxy-cache schema", function()
       response_code = {true, "alo", 123},
     }, proxy_cache_schema)
 
-    assert.same("expected an integer", err.config.response_code)
+    assert.same("expected an integer", err.config.response_code[1])
+    assert.same("expected an integer", err.config.response_code[2])
     assert.is_falsy(entity)
   end)
 
@@ -87,7 +88,7 @@ describe("proxy-cache schema", function()
       response_code = {123.5},
     }, proxy_cache_schema)
 
-    assert.same("expected an integer", err.config.response_code)
+    assert.same("expected an integer", err.config.response_code[1])
     assert.is_falsy(entity)
   end)
 
