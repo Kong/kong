@@ -300,6 +300,7 @@ function NewRLHandler:access(conf)
     }, { ["Content-Type"] = "application/json" })
   end
 
+
   if not self.gql_schema then -- Get upstream schema if needed
     local service = ngx.ctx.service
     local schema_ok, schema_res = introspect_upstream_schema(service)
@@ -315,7 +316,7 @@ function NewRLHandler:access(conf)
 
   local query_ast = res
   for cost_dec, _ in kong.db.gql_ratelimiting_cost_decoration:each(100) do
-    query_ast:decorate_data(cost_dec.type_path, self.gql_schema, {
+    query_ast:decorate_data({ cost_dec.type_path }, self.gql_schema, {
       add_arguments = cost_dec.add_arguments,
       add_constant = cost_dec.add_constant,
       mul_arguments = cost_dec.mul_arguments,

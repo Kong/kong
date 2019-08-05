@@ -5,7 +5,7 @@ local cost_decoration_schema = kong.db.gql_ratelimiting_cost_decoration.schema
 
 
 return {
-    ["/costs"] = {
+    ["/gql-rate-limiting/costs"] = {
         schema = cost_decoration_schema,
         methods = {
             GET = endpoints.get_collection_endpoint(cost_decoration_schema),
