@@ -53,7 +53,11 @@ local function load_cas(ca_ids)
 
     local obj, err = kong.db.ca_certificates:select(key)
     if not obj then
-      return nil, err
+      if err then
+        return nil, err
+      end
+
+      return nil, "CA Certificate '" .. tostring(ca_id) .. "' does not exist"
     end
 
     cas[i] = obj

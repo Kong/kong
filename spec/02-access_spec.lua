@@ -1,4 +1,5 @@
 local helpers = require "spec.helpers"
+local pl_file = require "pl.file"
 local cjson   = require "cjson"
 local meta    = require "kong.meta"
 local utils   = require "kong.tools.utils"
@@ -307,6 +308,45 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(500, res)
+      end)
+    end)
+
+    describe("errors", function()
+      lazy_setup(function()
+        local res = assert(admin_client:send({
+          method  = "PUT",
+          path    = "/plugins/" .. plugin.id,
+          body    = {
+            config = { ca_certificates = { '00000000-0000-0000-0000-000000000000', }, },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        }))
+        assert.res_status(200, res)
+      end)
+
+      it("errors when CA doesn't exist", function()
+        local res = assert(admin_client:send({
+          method  = "PATCH",
+          path    = "/plugins/" .. plugin.id,
+          body    = {
+            config = { ca_certificates = { '00000000-0000-0000-0000-000000000000', }, },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        }))
+        assert.res_status(200, res)
+
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/example_client",
+        })
+        assert.res_status(500, res)
+
+        local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
+        assert.matches("CA Certificate '00000000-0000-0000-0000-000000000000' does not exist", err_log, nil, true)
       end)
     end)
   end)
