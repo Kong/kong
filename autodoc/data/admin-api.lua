@@ -1059,7 +1059,7 @@ return {
             The `data` field of the response contains an array of Target objects.
             The health for each Target is returned in its `health` field:
 
-            * If a Target fails to be activated in the ring balancer due to DNS issues,
+            * If a Target fails to be activated in the balancer due to DNS issues,
               its status displays as `DNS_ERROR`.
             * When [health checks][healthchecks] are not enabled in the Upstream
               configuration, the health status for active Targets is displayed as
@@ -1067,7 +1067,7 @@ return {
             * When health checks are enabled and the Target is determined to be healthy,
               either automatically or [manually](#set-target-as-healthy),
               its status is displayed as `HEALTHY`. This means that this Target is
-              currently included in this Upstream's load balancer ring.
+              currently included in this Upstream's load balancer execution.
             * When a Target has been disabled by either active or passive health checks
               (circuit breakers) or [manually](#set-target-as-unhealthy),
               its status is displayed as `UNHEALTHY`. The load balancer is not directing
@@ -1258,7 +1258,8 @@ return {
           title = [[Set target as healthy]],
           description = [[
             Set the current health status of a target in the load balancer to "healthy"
-            in the entire Kong cluster.
+            in the entire Kong cluster. This sets the "healthy" status to all addresses
+            resolved by this target.
 
             This endpoint can be used to manually re-enable a target that was previously
             disabled by the upstream's [health checker][healthchecks]. Upstreams only
@@ -1289,12 +1290,12 @@ return {
           title = [[Set target as unhealthy]],
           description = [[
             Set the current health status of a target in the load balancer to "unhealthy"
-            in the entire Kong cluster.
+            in the entire Kong cluster. This sets the "unhealthy" status to all addresses
+            resolved by this target.
 
             This endpoint can be used to manually disable a target and have it stop
             responding to requests. Upstreams only forward requests to healthy nodes, so
-            this call tells Kong to start skipping this target in the ring-balancer
-            algorithm.
+            this call tells Kong to start skipping this target.
 
             This call resets the health counters of the health checkers running in all
             workers of the Kong node, and broadcasts a cluster-wide message so that the
@@ -1303,7 +1304,75 @@ return {
             [Active health checks][active] continue to execute for unhealthy
             targets. Note that if active health checks are enabled and the probe detects
             that the target is actually healthy, it will automatically re-enable it again.
-            To permanently remove a target from the ring-balancer, you should [delete a
+            To permanently remove a target from the balancer, you should [delete a
+            target](#delete-target) instead.
+          ]],
+          endpoint = [[
+            <div class="endpoint post">/upstreams/{upstream name or id}/targets/{target or id}/unhealthy</div>
+
+            Attributes | Description
+            ---:| ---
+            `upstream name or id`<br>**required** | The unique identifier **or** the name of the upstream.
+            `target or id`<br>**required** | The host/port combination element of the target to set as unhealthy, or the `id` of an existing target entry.
+          ]],
+          response = [[
+            ```
+            HTTP 204 No Content
+            ```
+          ]],
+        }
+      },
+      ["/upstreams/:upstreams/targets/:targets/:address/healthy"] = {
+        POST = {
+          title = [[Set target address as healthy]],
+          description = [[
+            Set the current health status of an individual address resolved by a target
+            in the load balancer to "healthy" in the entire Kong cluster.
+
+            This endpoint can be used to manually re-enable an address resolved by a
+            target that was previously disabled by the upstream's [health checker][healthchecks].
+            Upstreams only forward requests to healthy nodes, so this call tells Kong
+            to start using this address again.
+
+            This resets the health counters of the health checkers running in all workers
+            of the Kong node, and broadcasts a cluster-wide message so that the "healthy"
+            status is propagated to the whole Kong cluster.
+          ]],
+          endpoint = [[
+            <div class="endpoint post">/upstreams/{upstream name or id}/targets/{target or id}/{address}/healthy</div>
+
+            Attributes | Description
+            ---:| ---
+            `upstream name or id`<br>**required** | The unique identifier **or** the name of the upstream.
+            `target or id`<br>**required** | The host/port combination element of the target to set as healthy, or the `id` of an existing target entry.
+            `address`<br>**required** | The host/port combination element of the address to set as healthy.
+          ]],
+          response = [[
+            ```
+            HTTP 204 No Content
+            ```
+          ]],
+        }
+      },
+      ["/upstreams/:upstreams/targets/:targets/:address/unhealthy"] = {
+        POST = {
+          title = [[Set target address as unhealthy]],
+          description = [[
+            Set the current health status of an individual address resolved by a target
+            in the load balancer to "unhealthy" in the entire Kong cluster.
+
+            This endpoint can be used to manually disable an address and have it stop
+            responding to requests. Upstreams only forward requests to healthy nodes, so
+            this call tells Kong to start skipping this address.
+
+            This call resets the health counters of the health checkers running in all
+            workers of the Kong node, and broadcasts a cluster-wide message so that the
+            "unhealthy" status is propagated to the whole Kong cluster.
+
+            [Active health checks][active] continue to execute for unhealthy
+            addresses. Note that if active health checks are enabled and the probe detects
+            that the address is actually healthy, it will automatically re-enable it again.
+            To permanently remove a target from the balancer, you should [delete a
             target](#delete-target) instead.
           ]],
           endpoint = [[
