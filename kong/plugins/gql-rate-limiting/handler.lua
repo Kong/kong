@@ -1,8 +1,11 @@
 -- Copyright (C) Kong Inc.
 
 local BasePlugin   = require "kong.plugins.base_plugin"
+local GqlSchema    = require "kong.gql.schema"
+local build_ast    = require "kong.gql.query.build_ast"
 local ratelimiting = require "kong.tools.public.rate-limiting"
-local schema       = require "kong.plugins.rate-limiting-advanced.schema"
+local schema       = require "kong.plugins.gql-rate-limiting.schema"
+local cost         = require "kong.plugins.gql-rate-limiting.cost"
 
 
 local kong     = kong
@@ -119,13 +122,14 @@ function NewRLHandler:new()
   NewRLHandler.super.new(self, "new-rl")
 end
 
+
 function NewRLHandler:init_worker()
   local worker_events = kong.worker_events
 
   -- to start with, load existing plugins and create the
   -- namespaces/sync timers
   local plugins, err = kong.db.plugins:select_all({
-    name = "rate-limiting-advanced",
+    name = "gql-rate-limiting",
   })
   if err then
     ngx.log(ngx.ERR, "err in fetching plugins: ", err)
@@ -147,7 +151,7 @@ function NewRLHandler:init_worker()
   -- event handlers to update recurring sync timers
 
   -- catch any plugins update and forward config data to each worker
-  worker_events.register(function(data)
+  worker_events.register(function(data) -- TODO: Plugin name changed, adjust?
     if data.entity.name == "rate-limiting-advanced" then
       worker_events.post("rl", data.operation, data.entity.config)
     end
@@ -201,7 +205,12 @@ function NewRLHandler:init_worker()
       ngx.log(ngx.WARN, "did not find namespace ", config.namespace, " to kill")
     end
   end, "rl", "delete")
+
+
+  -- TODO: introspect upstream schema
+  self.gql_schema = nil
 end
+
 
 function NewRLHandler:access(conf)
   local key = id_lookup[conf.identifier]()
@@ -225,6 +234,32 @@ function NewRLHandler:access(conf)
     new_namespace(conf, true)
   end
 
+  -- Introspecting query body to obtain GraphQL document and calculate its cost
+  local body = kong.request.get_body()
+  local gql_docstring = body.query
+
+  local ok, res = pcall(build_ast, gql_docstring)
+  if not ok then
+    kong.log.err(res)
+    return kong.response.exit(400, {
+      err = '[GqlBaseErr]: internal parsing',
+      message = res
+    }, { ['Content-Type'] = 'application/json' })
+  end
+
+  local query_ast = res
+  for cost_dec, _ in kong.db.gql_ratelimiting_cost_decoration:each(100) do
+    query_ast:decorate_data(cost_dec.type_path, self.gql_schema, {
+      add_arguments = cost_dec.add_arguments,
+      add_constant = cost_dec.add_constant,
+      mul_arguments = cost_dec.mul_arguments,
+      mul_constant = cost_dec.mul_constant
+    })
+  end
+
+  local query_cost = cost(query_ast)
+
+
   for i = 1, #conf.window_size do
     local window_size = tonumber(conf.window_size[i])
     local limit       = tonumber(conf.limit[i])
@@ -237,7 +272,8 @@ function NewRLHandler:access(conf)
       rate = ratelimiting.sliding_window(key, window_size, nil, conf.namespace)
 
     else
-      rate = ratelimiting.increment(key, window_size, 1, conf.namespace,
+      -- TODO: Substituted 1 for query cost here
+      rate = ratelimiting.increment(key, window_size, query_cost, conf.namespace,
                                     conf.window_type == "fixed" and 0 or nil)
     end
 
@@ -259,5 +295,6 @@ function NewRLHandler:access(conf)
     return kong.response.exit(429, { message = "API rate limit exceeded" })
   end
 end
+
 
 return NewRLHandler
