@@ -8,15 +8,15 @@ local function calculate_cost(ast, node)
     local total_add = ast:get_data(node, "add_constant") or 1
     local total_mul = ast:get_data(node, "mul_constant") or 1
 
-    local a_iter = ast:get_data(node, "add_arguments") or {}
-    for _, add_arg in ipairs(a_iter) do
+    local a_lst = ast:get_data(node, "add_arguments") or {}
+    for _, add_arg in ipairs(a_lst) do
         if ast:get_argument(node, add_arg) ~= nil then
             total_add = total_add + ast:get_argument(node, add_arg)
         end
     end
 
-    local m_iter = ast:get_data(node, "mul_arguments") or {}
-    for _, mul_arg in ipairs(m_iter) do
+    local m_lst = ast:get_data(node, "mul_arguments") or {}
+    for _, mul_arg in ipairs(m_lst) do
         if ast:get_argument(node, mul_arg) ~= nil then
             total_mul = total_mul * ast:get_argument(node, mul_arg)
         end
