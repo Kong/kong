@@ -696,8 +696,9 @@ local function prepare_foreign_key_endpoints(data, entity_infos, entity)
   local edata = einfo.data
 
   for fname, finfo in each_field(einfo.schema.fields) do
-    if finfo.type == "foreign" and not (data.known.nodoc_entities[finfo.reference]) then
-      local foreigns = to_plural(fname)
+    local foreigns = finfo.reference
+
+    if finfo.type == "foreign" and not data.known.nodoc_entities[foreigns] then
       local feinfo = entity_infos[foreigns]
       local fedata = feinfo.data
       local subs = gen_template_subs_table(einfo.data, entity, einfo.schema, fedata, foreigns)
