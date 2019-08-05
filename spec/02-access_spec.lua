@@ -4,6 +4,8 @@ local pl_file = require "pl.file"
 describe("Plugin: prometheus (access)", function()
   local proxy_client
   local admin_client
+  local proxy_client_grpc
+  local proxy_client_grpcs
 
   setup(function()
     local bp = helpers.get_db_utils()
@@ -22,6 +24,28 @@ describe("Plugin: prometheus (access)", function()
       service = service,
     }
 
+    local grpc_service = bp.services:insert {
+      name = "mock-grpc-service",
+      url = "grpc://localhost:15002",
+    }
+
+    bp.routes:insert {
+      protocols = { "grpc" },
+      hosts = { "grpc" },
+      service = grpc_service,
+    }
+
+    local grpcs_service = bp.services:insert {
+      name = "mock-grpcs-service",
+      url = "grpcs://localhost:15003",
+    }
+
+    bp.routes:insert {
+      protocols = { "grpcs" },
+      hosts = { "grpcs" },
+      service = grpcs_service,
+    }
+
     bp.plugins:insert {
       name = "prometheus"
     }
@@ -32,6 +56,8 @@ describe("Plugin: prometheus (access)", function()
     })
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()
+    proxy_client_grpc = helpers.proxy_client_grpc()
+    proxy_client_grpcs = helpers.proxy_client_grpcs()
   end)
 
   teardown(function()
@@ -77,6 +103,46 @@ describe("Plugin: prometheus (access)", function()
     })
     body = assert.res_status(200, res)
     assert.matches('kong_http_status{code="400",service="mock-service"} 1', body, nil, true)
+  end)
+
+  it("increments the count for proxied grpc requests", function()
+    local ok, resp = proxy_client_grpc({
+      service = "hello.HelloService.SayHello",
+      body = {
+        greeting = "world!"
+      },
+      opts = {
+        ["-authority"] = "grpc",
+      }
+    })
+    assert.truthy(ok)
+    assert.truthy(resp)
+
+    local res = assert(admin_client:send {
+      method  = "GET",
+      path    = "/metrics",
+    })
+    local body = assert.res_status(200, res)
+    assert.matches('kong_http_status{code="200",service="mock-grpc-service"} 1', body, nil, true)
+
+    ok, resp = proxy_client_grpcs({
+      service = "hello.HelloService.SayHello",
+      body = {
+        greeting = "world!"
+      },
+      opts = {
+        ["-authority"] = "grpcs",
+      }
+    })
+    assert.truthy(ok)
+    assert.truthy(resp)
+
+    res = assert(admin_client:send {
+      method  = "GET",
+      path    = "/metrics",
+    })
+    body = assert.res_status(200, res)
+    assert.matches('kong_http_status{code="200",service="mock-grpcs-service"} 1', body, nil, true)
   end)
 
   it("does not log error if no service was matched", function()
