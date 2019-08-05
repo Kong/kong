@@ -1,8 +1,6 @@
 local constants = require "kong.constants"
 local utils = require "kong.tools.utils"
 local DAO = require "kong.db.dao"
--- XXX EE: load_plugin_schemas used to do much more.
--- local MetaSchema = require "kong.db.schema.metaschema"
 local wokspaces = require "kong.workspaces"
 local tracing = require "kong.tracing"
 local plugin_loader = require "kong.db.schema.plugin_loader"

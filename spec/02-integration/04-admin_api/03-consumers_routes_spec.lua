@@ -672,11 +672,6 @@ describe("Admin API (#" .. strategy .. "): ", function()
             assert.same({
               code = Errors.codes.UNIQUE_VIOLATION,
               name = "unique constraint violation",
-              -- XXX EE: one of the two messages
-              -- message = [[UNIQUE violation detected on '{consumer={id="]] ..
-              --   consumer.id .. [["},api=null,service=null,]] ..
-              --   [[name="rewriter",route=null}']],
-
               message = [[UNIQUE violation detected on '{service=null,]] ..
                         [[name="rewriter",route=null,consumer={id="]] ..
                         consumer.id .. [["}}']],

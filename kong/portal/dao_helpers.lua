@@ -14,7 +14,7 @@ local log = ngx.log
 local ERR = ngx.ERR
 local null = ngx.null
 local _log_prefix = "[developers] "
-local helpers = {} -- XXX EE remove this
+local helpers = {}
 local ws_constants = constants.WORKSPACE_CONFIG
 
 local PORTAL_PREFIX = constants.PORTAL_PREFIX

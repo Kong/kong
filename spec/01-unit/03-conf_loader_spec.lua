@@ -82,7 +82,9 @@ describe("Configuration loader", function()
     }))
     assert.is_not_nil(conf.loaded_plugins)
     -- this is to account for ee_conf_loader adding required "cors" and "session" plugin
-    assert.same(4, tablex.size(conf.loaded_plugins)) -- XXX EE: check why it went from 6 to 4.
+    assert.same(4, tablex.size(conf.loaded_plugins))
+    assert.True(conf.loaded_plugins["cors"])
+    assert.True(conf.loaded_plugins["session"])
     assert.True(conf.loaded_plugins["foo"])
     assert.True(conf.loaded_plugins["bar"])
   end)
@@ -452,7 +454,6 @@ describe("Configuration loader", function()
       local conf, err = conf_loader(nil, {
         database = "mysql"
       })
-      -- XXX EE assert.equal("database has an invalid value: 'mysql' (postgres, cassandra, off)", err)
       assert.equal("database has an invalid value: 'mysql' (postgres, cassandra)", err)
       assert.is_nil(conf)
 

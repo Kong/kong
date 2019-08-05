@@ -76,7 +76,7 @@ local PREFIX_PATHS = {
   admin_ssl_cert_key_default = {"ssl", "admin-kong-default.key"}
   ;
 
-  -- XXX EE code [[
+  -- EE code [[
   nginx_portal_api_acc_logs = {"logs", "portal_api_access.log"}
   ;
   admin_gui_ssl_cert_default = {"ssl", "admin-gui-kong-default.crt"},

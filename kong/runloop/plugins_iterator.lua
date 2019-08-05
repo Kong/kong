@@ -76,8 +76,6 @@ local function load_plugin_from_db(key)
 end
 
 
---- XXX EE load_plugin_into_memory_global_scope and
---- load_plugin_into_memory_ws are EE only
 -- TODO relying on `select_by_cache_key_migrating` is likely not the best
 -- alternative here; for one, it might (will?) be removed in a future release;
 -- second, it can likely be optimized for our purposes here (fetching a plugin
@@ -219,13 +217,6 @@ local function load_configuration(ctx,
   local plugin, err = load_plugin_into_memory_ws(ctx, key)
   trace:finish()
 
-  -- XXX EE: core code follows
-  -- local plugin, err = kong.cache:get(key,
-  --                                    nil,
-  --                                    load_plugin_from_db,
-  --                                    key)
-  -- XXX EE: core code above
-
   if err then
     ctx.delay_response = false
     ngx.log(ngx.ERR, tostring(err))
@@ -233,16 +224,6 @@ local function load_configuration(ctx,
   end
 
   if not plugin or not plugin.enabled then
-    -- check for internal plugins
-    --[[local cfg = singletons.internal_proxies:get_plugin_config(route_id,
-                                                              service_id,
-                                                              consumer_id,
-                                                              plugin_name,
-                                                              api_id)
-
-    if cfg then
-      return cfg
-    end]]
     return
   end
 
@@ -382,24 +363,18 @@ local function get_next(self)
 
   local ctx = self.ctx
 
-  ctx.plugins_for_request = ctx.plugins_for_request or {}
   if MUST_LOAD_CONFIGURATION_IN_PHASES[self.phase] then
     local combos = self.iterator.combos[plugin.name]
     if combos then
       local cfg = load_configuration_through_combos(ctx, combos, plugin)
       if cfg then
-        ctx.plugins_for_request = ctx.plugins_for_request or {}
-        ctx.plugins_for_request[plugin.name] = cfg -- XXX EE
         ctx.plugins[plugin.name] = cfg
       end
     end
-
-    -- filter non-specific plugins out for internal services
-    --ctx.plugins_for_request = singletons.internal_proxies:filter_pluginsservice_id, ctx.plugins_for_request)
   end
 
   -- return the plugin configuration
-  local plugin_configuration = ctx.plugins_for_request[plugin.name]
+  local plugin_configuration = ctx.plugins[plugin.name]
   if plugin_configuration then
 
     -- when workspace scope not empty return plugin
@@ -409,7 +384,7 @@ local function get_next(self)
     if ctx.workspaces then
       if plugin_configuration.workspace then
 
-        -- XXX EE:
+        -- Added in EE:
         local phase = self.iterator.phases[self.phase]
         if phase and phase[plugin.name]
         and (ctx.plugins[plugin.name] or self.phase == "init_worker") then
@@ -424,7 +399,7 @@ local function get_next(self)
       return get_next(self)
     end
 
-    -- XXX EE:
+    -- Added in EE:
     local phase = self.iterator.phases[self.phase]
     if phase and phase[plugin.name]
     and (ctx.plugins[plugin.name] or self.phase == "init_worker") then
