@@ -274,6 +274,20 @@ end
 
 --------------------------------------------------------------------------------
 
+local function assert_data(value, description)
+  if value == nil then
+    error("\n\n" ..
+          "****************************************\n" ..
+          "Missing " .. description .. "\n" ..
+          "-- please document it in autodoc/data/admin-api.lua\n" ..
+          "****************************************\n", 2)
+  end
+
+  return value
+end
+
+--------------------------------------------------------------------------------
+
 local function gen_kind(finfo, field_data)
   if field_data.kind then
     return "<br>*"  .. field_data.kind .. "*"
@@ -319,8 +333,8 @@ end
 
 local function write_field(outfd, fname, finfo, fullname, field_data, entity_name)
   local kind = gen_kind(finfo, field_data)
-  local description = assert(field_data.description,
-                             "Missing description for " .. entity_name .. "." .. fullname)
+  local description = assert_data(field_data.description,
+                                  "description for " .. entity_name .. "." .. fullname)
                       :gsub("%s+", " ")
   local defaults = gen_defaults(finfo)
   local notation = gen_notation(fname, finfo, field_data)
@@ -398,7 +412,7 @@ local function write_entity_templates(outfd, entity, entity_data)
   local schema = assert(require("kong.db.schema.entities." .. entity))
   local singular = to_singular(entity)
 
-  assert(entity_data.fields, "Missing autodoc fields entry for " .. entity)
+  assert_data(entity_data.fields, "'fields' entry for " .. entity)
 
   outfd:write(singular .. "_body: |\n")
   outfd:write("    Attributes | Description\n")
@@ -458,7 +472,7 @@ local function section(outfd, title, content)
 end
 
 local function write_endpoint(outfd, endpoint, ep_data, methods)
-  assert(ep_data, "Missing autodoc data for endpoint " .. endpoint)
+  assert_data(ep_data, "data for endpoint " .. endpoint)
   if ep_data.done or ep_data.skip then
     return
   end
@@ -471,7 +485,7 @@ local function write_endpoint(outfd, endpoint, ep_data, methods)
 
     local meth_data = ep_data[method]
     if meth_data then
-      assert(meth_data.title, "Missing autodoc info for " .. method .. " " .. endpoint)
+      assert_data(meth_data.title, "info for " .. method .. " " .. endpoint)
       write_title(outfd, 3, meth_data.title)
       section(outfd, nil, meth_data.description)
       local fk_endpoints = meth_data.fk_endpoints or {}
@@ -504,7 +518,7 @@ end
 
 
 local function write_general_section(outfd, filename, all_endpoints, name, data_general)
-  local file_data = assert(data_general[name], "Missing autodoc data for " .. filename)
+  local file_data = assert_data(data_general[name], "data for " .. filename)
 
   if file_data.skip == true then
     return
@@ -512,8 +526,8 @@ local function write_general_section(outfd, filename, all_endpoints, name, data_
 
   write_title(outfd, 2, file_data.title)
 
-  assert(file_data.description,
-         "Missing autodoc general description for " .. filename)
+  assert_data(file_data.description,
+              "'description' field for " .. filename)
 
   outfd:write(unindent(file_data.description))
   outfd:write("\n\n")
@@ -570,9 +584,9 @@ do
       return
     end
     local meth_data = get_or_create(ep_data, method)
-    assert(templates, "Missing autodoc templates definition for " .. endpoint)
+    assert_data(templates, "templates definition for " .. endpoint)
     local meth_tpls = templates[method]
-    assert(meth_tpls, "Missing autodoc templates definition for " .. method .. " " .. endpoint)
+    assert_data(meth_tpls, "templates definition for " .. method .. " " .. endpoint)
     adjust_for_method(subs, method)
 
     for _, k in ipairs(template_keys) do
@@ -591,18 +605,18 @@ do
 end
 
 local function gen_fk_endpoint(edata, templates, subs, parent_endpoint, method, has_ek)
-  local ep_data = assert(edata[parent_endpoint],
-                         "Expected entity data to exist for endpoint " .. parent_endpoint)
+  local ep_data = assert_data(edata[parent_endpoint],
+                              "entity data for endpoint " .. parent_endpoint)
   local meth_data = assert(ep_data[method]) -- get_or_create(ep_data, method)
-  assert(templates, "Missing autodoc templates definition for " .. parent_endpoint)
+  assert_data(templates, "templates definition for " .. parent_endpoint)
   local meth_tpls = templates[method]
-  assert(meth_tpls, "Missing autodoc templates definition for " .. method .. " " .. parent_endpoint)
+  assert_data(meth_tpls, "templates definition for " .. method .. " " .. parent_endpoint)
   local tk = has_ek and "fk_endpoint_w_ek" or "fk_endpoint"
   local tpl = meth_tpls[tk] or templates[tk]
-  assert(tpl, "Missing autodoc " .. tk .. " template for " .. method .. " " .. parent_endpoint)
+  assert_data(tpl, tk .. " template for " .. method .. " " .. parent_endpoint)
   adjust_for_method(subs, method)
 
-  assert(meth_data.title)
+  assert_data(meth_data.title, "'title' field for " .. method .. " " .. parent_endpoint)
   local fk_endpoints = get_or_create(meth_data, "fk_endpoints")
   table.insert(fk_endpoints, render(tpl, subs))
 end
@@ -633,8 +647,8 @@ end
 local function prepare_entity(data, plural, entity_data)
   local out = {}
 
-  assert(entity_data.description,
-         "Missing autodoc entity description for " .. plural)
+  assert_data(entity_data.description,
+              "'description' field for " .. plural)
 
   local schema = assert(loadfile(KONG_PATH .. "/" .. entity_to_schema_path(plural)))()
   local subs = gen_template_subs_table(entity_data, plural, schema)
@@ -781,14 +795,14 @@ local function write_admin_api(filename, data, title)
   outfd:write("---\n")
   outfd:write("title: " .. utils.titleize(title) .. "\n\n")
   for _, entity in ipairs(data.known.entities) do
-    local entity_data = assert(data.entities[entity],
-                               "Missing autodoc entity data for " .. entity)
+    local entity_data = assert_data(data.entities[entity],
+                                    "entity data for " .. entity)
 
     write_entity_templates(outfd, entity, entity_data)
   end
   outfd:write("\n---\n")
 
-  for _, ipart in ipairs(assert(data.intro, "Missing intro string in data.lua")) do
+  for _, ipart in ipairs(assert_data(data.intro, "intro string")) do
     outfd:write("\n")
     write_title(outfd, 2, ipart.title)
     outfd:write(unindent(ipart.text))
@@ -825,17 +839,15 @@ local function write_admin_api(filename, data, title)
   for _, info in ipairs(entity_infos) do
     for endpoint, handler in pairs(info.mod) do
       if handler ~= Endpoints.not_found then
-        assert(all_endpoints[endpoint],
-               "Missing autodoc data for implemented endpoint " ..
-               endpoint .. " -- did you document it in data.lua?")
-        assert(all_endpoints[endpoint].done
-               or all_endpoints[endpoint].skip,
-               "Expected done mark in autodoc endpoint " .. endpoint)
+        assert_data(all_endpoints[endpoint],
+                    "data for implemented endpoint " .. endpoint)
+        assert_data(all_endpoints[endpoint].done or all_endpoints[endpoint].skip,
+                    "done or skip mark in endpoint " .. endpoint)
       end
     end
   end
 
-  outfd:write(unindent(assert(data.footer, "Missing footer string in data.lua")))
+  outfd:write(unindent(assert_data(data.footer, "footer string")))
 
   outfd:close()
 
