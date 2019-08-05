@@ -500,6 +500,18 @@ return {
         them) offers a powerful routing mechanism with which it is possible to define
         fine-grained entry-points in Kong leading to different upstream services of
         your infrastructure.
+
+        You need at least one matching rule that applies to the protocol being matched
+        by the Route. Depending on the protocols configured to be matched by the Route
+        (as defined with the `protocols` field), this means that at least one of the
+        following attributes must be set:
+
+        * For `http`, at least one of `methods`, `hosts`, `headers` or `paths`;
+        * For `https`, at least one of `methods`, `hosts`, `headers`, `paths` or `snis`;
+        * For `tcp`, at least one of `sources` or `destinations`;
+        * For `tls`, at least one of `sources`, `destinations` or `snis`;
+        * For `grpc`, at least one of `hosts`, `headers` or `paths`;
+        * For `grpcs`, at least one of `hosts`, `headers`, `paths` or `snis`.
       ]],
       fields = {
         id = { skip = true },
@@ -531,7 +543,6 @@ return {
           kind = "semi-optional",
           description = [[
             A list of HTTP methods that match this Route.
-            When using `http` or `https` protocols, at least one of `hosts`, `paths`, or `methods` must be set.
           ]],
           examples = { {"GET", "POST"}, nil },
           skip_in_example = true, -- hack so we get HTTP fields in the first example and Stream fields in the second
@@ -540,7 +551,6 @@ return {
           kind = "semi-optional",
           description = [[
             A list of domain names that match this Route.
-            When using `http` or `https` protocols, at least one of `hosts`, `paths`, or `methods` must be set.
           ]],
           examples = { {"example.com", "foo.test"}, nil },
           skip_in_example = true, -- hack so we get HTTP fields in the first example and Stream fields in the second
@@ -549,7 +559,16 @@ return {
           kind = "semi-optional",
           description = [[
             A list of paths that match this Route.
-            When using `http` or `https` protocols, at least one of `hosts`, `paths`, or `methods` must be set.
+          ]],
+          examples = { {"/foo", "/bar"}, nil },
+          skip_in_example = true, -- hack so we get HTTP fields in the first example and Stream fields in the second
+        },
+        headers = {
+          kind = "semi-optional",
+          description = [[
+            A list of headers that will cause this Route to match if present in the request.
+            The `Host` header cannot be used with this attribute: hosts should be specified
+            using the `hosts` attribute.
           ]],
           examples = { {"/foo", "/bar"}, nil },
           skip_in_example = true, -- hack so we get HTTP fields in the first example and Stream fields in the second
@@ -558,7 +577,6 @@ return {
           kind = "semi-optional",
           description = [[
             A list of SNIs that match this Route when using stream routing.
-            When using `tcp` or `tls` protocols, at least one of `snis`, `sources`, or `destinations` must be set.
           ]],
           examples = { nil, {"foo.test", "example.com"} },
           skip_in_example = true, -- hack so we get HTTP fields in the first example and Stream fields in the second
@@ -568,7 +586,6 @@ return {
           description = [[
             A list of IP sources of incoming connections that match this Route when using stream routing.
             Each entry is an object with fields "ip" (optionally in CIDR range notation) and/or "port".
-            When using `tcp` or `tls` protocols, at least one of `snis`, `sources`, or `destinations` must be set.
           ]],
           examples = { nil, {{ip = "10.1.0.0/16", port = 1234}, {ip = "10.2.2.2"}, {port = 9123}} },
           skip_in_example = true, -- hack so we get HTTP fields in the first example and Stream fields in the second
@@ -578,7 +595,6 @@ return {
           description = [[
             A list of IP destinations of incoming connections that match this Route when using stream routing.
             Each entry is an object with fields "ip" (optionally in CIDR range notation) and/or "port".
-            When using `tcp` or `tls` protocols, at least one of `snis`, `sources`, or `destinations` must be set.
           ]],
           examples = { nil, {{ip = "10.1.0.0/16", port = 1234}, {ip = "10.2.2.2"}, {port = 9123}} },
           skip_in_example = true, -- hack so we get HTTP fields in the first example and Stream fields in the second
