@@ -408,6 +408,11 @@ return {
         Service. See the [Proxy Reference][proxy-reference] for a detailed explanation
         of how Kong proxies traffic.
       ]],
+
+      ["/services/:services/client_certificate"] = {
+        endpoint = false,
+      },
+
       fields = {
         id = { skip = true },
         created_at = { skip = true },
