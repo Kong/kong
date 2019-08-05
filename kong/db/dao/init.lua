@@ -1279,9 +1279,6 @@ function DAO:upsert(primary_key, entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  -- XXX EE. is it a refactor?
-  -- local entity_to_upsert, err = self.schema:process_auto_fields(entity, "upsert")
-
   local entity_to_upsert, err, err_t = check_upsert(self, entity, options)
   if not entity_to_upsert then
     return nil, err, err_t
