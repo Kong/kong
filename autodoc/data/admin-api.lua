@@ -456,6 +456,12 @@ return {
             for transmitting a request to the upstream server.
           ]]
         },
+        client_certificate = {
+          description = [[
+            Certificate to be used as client certificate while TLS handshaking
+            to the upstream server.
+          ]],
+        },
         tags = {
           description = [[
             An optional set of strings associated with the Service, for grouping and filtering.
