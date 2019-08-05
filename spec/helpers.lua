@@ -490,7 +490,7 @@ local function proxy_client(timeout)
   local proxy_ip = get_proxy_ip(false)
   local proxy_port = get_proxy_port(false)
   assert(proxy_ip, "No http-proxy found in the configuration")
-  return http_client(proxy_ip, proxy_port, timeout)
+  return http_client(proxy_ip, proxy_port, timeout or 60000)
 end
 
 --- returns a pre-configured `http_client` for the Kong SSL proxy port.
@@ -499,7 +499,7 @@ local function proxy_ssl_client(timeout, sni)
   local proxy_ip = get_proxy_ip(true)
   local proxy_port = get_proxy_port(true)
   assert(proxy_ip, "No https-proxy found in the configuration")
-  local client = http_client(proxy_ip, proxy_port, timeout)
+  local client = http_client(proxy_ip, proxy_port, timeout or 60000)
   assert(client:ssl_handshake(nil, sni, false)) -- explicit no-verify
   return client
 end
@@ -515,7 +515,7 @@ local function admin_client(timeout, forced_port)
     end
   end
   assert(admin_ip, "No http-admin found in the configuration")
-  return http_client(admin_ip, forced_port or admin_port, timeout)
+  return http_client(admin_ip, forced_port or admin_port, timeout or 60000)
 end
 
 --- returns a pre-configured `http_client` for the Kong admin SSL port.
@@ -529,7 +529,7 @@ local function admin_ssl_client(timeout)
     end
   end
   assert(admin_ip, "No https-admin found in the configuration")
-  local client = http_client(admin_ip, admin_port, timeout)
+  local client = http_client(admin_ip, admin_port, timeout or 60000)
   assert(client:ssl_handshake())
   return client
 end
