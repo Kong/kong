@@ -1091,6 +1091,7 @@ return {
         created_at = { skip = true },
         ["name"] = { description = [[This is a hostname, which must be equal to the `host` of a Service.]] },
         ["slots"] = { description = [[The number of slots in the loadbalancer algorithm (`10`-`65536`).]] },
+        ["algorithm"] = { description = [[Which load balancing algorithm to use. One of: `round-robin`, `consistent-hashing`, or `least-connections`.]] },
         ["hash_on"] = { description = [[What to use as hashing input: `none` (resulting in a weighted-round-robin scheme with no hashing), `consumer`, `ip`, `header`, or `cookie`.]] },
         ["hash_fallback"] = { description = [[What to use as hashing input if the primary `hash_on` does not return a hash (eg. header is missing, or no consumer identified). One of: `none`, `consumer`, `ip`, `header`, or `cookie`. Not available if `hash_on` is set to `cookie`.]] },
         ["hash_on_header"] = { kind = "semi-optional", skip_in_example = true, description = [[The header name to take the value from as hash input. Only required when `hash_on` is set to `header`.]] },
