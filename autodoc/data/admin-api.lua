@@ -25,6 +25,7 @@ return {
       "consumers",
       "plugins",
       "certificates",
+      "ca_certificates",
       "snis",
       "upstreams",
       "targets",
@@ -900,12 +901,16 @@ return {
         encrypted requests, or for use as a trusted CA store when validating peer certificate of
         client/service. Certificates are optionally associated with SNI objects to
         tie a cert/key pair to one or more hostnames.
+
+        If intermediate certificates are required in addition to the main
+        certificate, they should be concatenated together into one string according to
+        the following order: main certificate on the top, followed by any intermediates.
       ]],
       fields = {
         id = { skip = true },
         created_at = { skip = true },
         cert = {
-          description = [[PEM-encoded public certificate of the SSL key pair.]],
+          description = [[PEM-encoded public certificate chain of the SSL key pair.]],
           example = "-----BEGIN CERTIFICATE-----...",
         },
         key = {
@@ -935,6 +940,32 @@ return {
         } },
       },
 
+    },
+
+    ca_certificates = {
+      entity_title = "CA Certificate",
+      entity_title_plural = "CA Certificates",
+      description = [[
+        A CA certificate object represents a trusted CA. These objects are used by Kong to
+        verify the validity of a client or server certificate.
+      ]],
+      fields = {
+        id = { skip = true },
+        created_at = { skip = true },
+        cert = {
+          description = [[PEM-encoded public certificate of the CA.]],
+          example = "-----BEGIN CERTIFICATE-----...",
+        },
+        tags = {
+          description = [[
+            An optional set of strings associated with the Certificate, for grouping and filtering.
+          ]],
+          examples = {
+            { "user-level", "low-priority" },
+            { "admin", "high-priority", "critical" }
+          },
+        },
+      },
     },
 
     snis = {
