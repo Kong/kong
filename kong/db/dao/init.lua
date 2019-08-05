@@ -534,7 +534,6 @@ local function generate_foreign_key_methods(schema)
         return entities, nil, nil, new_offset
       end
 
-      -- XXX EE: add new logic for workspaces here
       local each_method_name = "each_for_" .. name
       methods[each_method_name] = function(self, foreign_key, size, options)
         validate_foreign_key_type(foreign_key)
@@ -696,7 +695,6 @@ local function generate_foreign_key_methods(schema)
         return row
       end
 
-      -- XXX EE: add new logic for workspaces here
       methods["upsert_by_" .. name] = function(self, unique_value, entity, options)
         validate_unique_type(unique_value, name, field)
         validate_entity_type(entity)
@@ -1251,7 +1249,6 @@ function DAO:update(primary_key, entity, options)
 end
 
 
--- XXX EE add workspaces
 function DAO:upsert(primary_key, entity, options)
   validate_primary_key_type(primary_key)
   validate_entity_type(entity)
