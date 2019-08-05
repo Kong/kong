@@ -673,7 +673,8 @@ local function prepare_entity(data, plural, entity_data)
   end
 
   local filename = "kong/api/routes/" .. plural .. ".lua"
-  local mod = assert(loadfile(KONG_PATH .. "/" .. filename))()
+  local modtbl = loadfile(KONG_PATH .. "/" .. filename)
+  local mod = modtbl and modtbl() or {}
 
   local collection_endpoint = "/" .. plural
   gen_endpoint(entity_data, data.collection_templates, subs, collection_endpoint, "GET")
