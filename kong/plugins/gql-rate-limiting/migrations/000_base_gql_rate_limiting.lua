@@ -1,5 +1,5 @@
 return {
-    postgresql = { -- TODO: Breaking Error. Reference route_id, service_id, or consumer_id
+    postgres = { -- TODO: Breaking Error. Reference route_id, service_id, or consumer_id
         up = [[
             CREATE TABLE IF NOT EXISTS "gql_ratelimiting_cost_decoration" (
                 "id"                         UUID                           PRIMARY KEY,
@@ -14,5 +14,7 @@ return {
     },
 
     -- TODO: Add schema for Cassandra
-    cassandra = {}
+    cassandra = {
+        up = [[]]
+    }
 }

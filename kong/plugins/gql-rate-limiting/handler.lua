@@ -6,12 +6,13 @@ local build_ast    = require "kong.gql.query.build_ast"
 local ratelimiting = require "kong.tools.public.rate-limiting"
 local schema       = require "kong.plugins.gql-rate-limiting.schema"
 local cost         = require "kong.plugins.gql-rate-limiting.cost"
+local http         = require "resty.http"
+local cjson        = require "cjson.safe"
 
 
 local kong     = kong
 local max      = math.max
 local tonumber = tonumber
-
 
 local NewRLHandler = BasePlugin:extend()
 
@@ -206,9 +207,61 @@ function NewRLHandler:init_worker()
     end
   end, "rl", "delete")
 
+end
 
-  -- TODO: introspect upstream schema
-  self.gql_schema = nil
+
+local function introspect_upstream_schema(service)
+  local host = service.host
+  local port = service.port
+  local path = service.path
+  local protocol = service.protocol
+  local headers = {
+    ["Content-Type"] = "application/json"
+  }
+
+  local httpc = http.new()
+  local ok, c_err = httpc:connect(host, port)
+  if not ok then
+    kong.log("failed to connect to ", host, ":", tostring(port), ": ", c_err)
+    return nil, c_err
+  end
+
+  if protocol == "https" then
+    local _, h_err = httpc:ssl_handshake(true, host, false)
+    if h_err then
+      kong.log("failed to do SSL handshake with ",
+              host, ":", tostring(port), ": ", h_err)
+      return nil, h_err
+    end
+  end
+
+  local introspection_req_body = cjson.encode({ query = GqlSchema.TYPE_INTROSPECTION_QUERY })
+  kong.log("introspection request body: ", introspection_req_body)
+  local res, req_err = httpc:request {
+    method = "POST",
+    path = path,
+    body = introspection_req_body,
+    headers = headers
+  }
+
+  if not res then
+    kong.log("failed schema introspection request: ", req_err)
+    return nil, req_err
+  end
+
+  local status = res.status
+  local body = res:read_body()
+  local json = cjson.decode(body)
+  local json_data = json["data"]
+
+  kong.log("Schema Data from upstream server: ", json)
+  if status ~= 200 then
+    kong.log("failed response from upstream server")
+    return nil, { status = status, body = body }
+  end
+
+  local gql_schema = GqlSchema.deserialize_json_data(json_data)
+  return true, gql_schema
 end
 
 
@@ -242,10 +295,23 @@ function NewRLHandler:access(conf)
   if not ok then
     kong.log.err(res)
     return kong.response.exit(400, {
-      err = '[GqlBaseErr]: internal parsing',
+      err = "[GqlBaseErr]: internal parsing",
       message = res
-    }, { ['Content-Type'] = 'application/json' })
+    }, { ["Content-Type"] = "application/json" })
   end
+
+  if not self.gql_schema then -- Get upstream schema if needed
+    local service = ngx.ctx.service
+    local schema_ok, schema_res = introspect_upstream_schema(service)
+    if not schema_ok then
+      return kong.response.exit(400, {
+        message = "Failed to introspect upstream schema"
+      })
+    end
+
+    self.gql_schema = schema_res
+  end
+
 
   local query_ast = res
   for cost_dec, _ in kong.db.gql_ratelimiting_cost_decoration:each(100) do
@@ -259,7 +325,6 @@ function NewRLHandler:access(conf)
 
   local query_cost = cost(query_ast)
 
-
   for i = 1, #conf.window_size do
     local window_size = tonumber(conf.window_size[i])
     local limit       = tonumber(conf.limit[i])
@@ -271,8 +336,7 @@ function NewRLHandler:access(conf)
     if deny then
       rate = ratelimiting.sliding_window(key, window_size, nil, conf.namespace)
 
-    else
-      -- TODO: Substituted 1 for query cost here
+    else -- Increment cost window by computed cost of query
       rate = ratelimiting.increment(key, window_size, query_cost, conf.namespace,
                                     conf.window_type == "fixed" and 0 or nil)
     end
@@ -282,6 +346,7 @@ function NewRLHandler:access(conf)
     local window_name = human_window_size_lookup[window_size] or window_size
 
     if not conf.hide_client_headers then
+      ngx.header["X-Gql-Query-Cost"] = query_cost
       ngx.header[RATELIMIT_LIMIT .. "-" .. window_name] = limit
       ngx.header[RATELIMIT_REMAINING .. "-" .. window_name] = max(limit - rate, 0)
     end
