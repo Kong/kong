@@ -354,7 +354,7 @@ local poll_wait_health
 local poll_wait_address_health
 do
   local function poll_wait(upstream_id, host, port, admin_port, fn)
-    local hard_timeout = ngx.now() + 10
+    local hard_timeout = ngx.now() + 70
     while ngx.now() < hard_timeout do
       local health = get_upstream_health(upstream_id, admin_port)
       if health then
