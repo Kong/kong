@@ -9,26 +9,6 @@ local null = ngx.null
 local fmt = string.format
 
 
--- XXX EE check usage of those functions in old versions in EE. Many
--- changes went through this file.
--- local function select_upstream(db, upstream_id, opts)
---   local id = unescape_uri(upstream_id)
---   if utils.is_valid_uuid(id) then
---     return db.upstreams:select({ id = id }, opts)
---   end
-
---   return db.upstreams:select_by_name(id, opts)
--- end
-
-
--- local function select_target(db, upstream, target_id, opts)
---   local id = unescape_uri(target_id)
---   local filter = utils.is_valid_uuid(id) and { id = id } or { target = id }
-
---   return db.targets:select_by_upstream_filter({ id = upstream.id }, filter, opts)
--- end
-
-
 -- XXX merge: previous post_health implementation added an `id` field in the
 -- broadcast packet, so routes with the same name in different workspaces would
 -- not interfere with each other
