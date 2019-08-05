@@ -14,5 +14,8 @@ kong*.yml
 luacov.*
 /doc
 
+# autodoc
+autodoc/output
+
 kong-build-tools
 bin/grpcurl
