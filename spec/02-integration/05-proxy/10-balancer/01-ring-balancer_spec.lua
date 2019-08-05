@@ -1483,6 +1483,12 @@ for _, strategy in helpers.each_strategy() do
 
                 end_testcase_setup(strategy, bp)
 
+                -- ensure it's healthy at the beginning of the test
+                direct_request(localhost, port1, "/healthy", protocol)
+                direct_request(localhost, port2, "/healthy", protocol)
+                poll_wait_health(upstream_id, localhost, port1, "HEALTHY")
+                poll_wait_health(upstream_id, localhost, port2, "HEALTHY")
+
                 -- 1) server1 and server2 take requests
                 local oks, fails = client_requests(SLOTS, api_host)
 
