@@ -294,9 +294,7 @@ return {
           })
 
           if err_t then
-            return endpoints.handle_error(err_t) -- XXX EE: 400 vs
-                                                 -- 409. primary key
-                                                 -- validation failed
+            return endpoints.handle_error(err_t)
           end
         end
 
