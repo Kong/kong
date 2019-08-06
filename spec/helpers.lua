@@ -217,10 +217,6 @@ local function get_db_utils(strategy, tables, plugins)
     local database = conf.database
     conf.database = strategy
     conf.database = database
-
-    -- XXX EE
-    kong.db = db
-    singletons.db = db
   end
 
   db:truncate("plugins")
