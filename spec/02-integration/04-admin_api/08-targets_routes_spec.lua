@@ -22,7 +22,7 @@ end
 
 for _, strategy in helpers.each_strategy() do
 
-describe("Admin API #" .. strategy, function()
+describe("#flaky Admin API #" .. strategy, function()
   local bp
   local db
   local client
