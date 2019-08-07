@@ -24,17 +24,12 @@ local CREATE_VITALS_STATS_SECONDS = [[
 -- (so that we don't drop current or next table)
 -- NOTE: Can't use string.format here because it interprets the
 -- LIKE matcher (%) as an invalid string interpolation symbol
-local SELECT_PREVIOUS_VITALS_STATS_SECONDS = [[
-    select table_name from information_schema.tables
-     where table_schema = 'public'
-       and table_name like 'vitals_stats_seconds_%'
-       and table_name < '?'
-       order by table_name desc]]
-
 local DROP_PREVIOUS_VITALS_STATS_SECONDS = "DROP TABLE IF EXISTS %s"
 
 local TABLE_NAMES_FOR_SELECT = [[
-    SELECT tablename FROM pg_tables WHERE tablename IN ('%s', '%s')
+    SELECT tablename
+    FROM pg_tables
+    WHERE tablename IN ('%s', '%s') and schemaname = current_schema()
     ORDER BY tablename DESC
 ]]
 
@@ -184,6 +179,14 @@ end
 
 -- drop tables we aren't currently querying from
 function _M:drop_previous_table()
+
+  local SELECT_PREVIOUS_VITALS_STATS_SECONDS = [[
+    select table_name from information_schema.tables
+     where table_schema = current_schema()
+       and table_name like 'vitals_stats_seconds_%'
+       and table_name < '?'
+       order by table_name desc]]
+
   -- the oldest table name we query from is two rotation intervals ago.
   -- this could become dynamic if rotation interval and retention period diverge.
   local timestamp = time() - (2 * self.rotation_interval)

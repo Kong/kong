@@ -3,11 +3,10 @@ local helpers       = require "spec.helpers"
 local ngx_time      = ngx.time
 local fmt           = string.format
 
-
 local function drop_vitals_seconds_tables(db)
   local query = [[
   select table_name from information_schema.tables
-   where table_schema = 'public'
+   where table_schema = current_schema()
      and table_name like 'vitals_stats_seconds_%'
   ]]
 
@@ -18,15 +17,15 @@ local function drop_vitals_seconds_tables(db)
   end
 end
 
-
 for _, strategy in helpers.each_strategy({"postgres"}) do
-  describe("Postgres table_rotater", function()
+  describe("Postgres table_rotater using a 'public' schema", function()
     local rotater
     local db, _
     local snapshot
 
 
     setup(function()
+      helpers.test_conf.pg_schema = "public"
       _, db, _ = helpers.get_db_utils(strategy)
       db = db.connector
 
@@ -47,6 +46,11 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
     after_each(function()
       snapshot:revert()
+    end)
+
+
+    teardown(function()
+      drop_vitals_seconds_tables(db)
     end)
 
 
@@ -191,6 +195,60 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         }
 
         assert.same(expected, res)
+      end)
+
+      it("drops old tables using a 'custom' schema", function()
+        helpers.test_conf.pg_schema = "custom"
+
+        local _, db, _ = helpers.get_db_utils("postgres")
+        db = db.connector
+
+        local opts = {
+          connector         = db,
+          rotation_interval = 3600,
+        }
+
+        local rotater = table_rotater.new(opts)
+        rotater:init()
+
+        local now = ngx_time()
+        local current_ts = now - (now % 3600)
+
+        -- one table we can drop,
+        -- two we are currently querying,
+        -- one for the upcoming inserts
+        local table_names = {
+          "vitals_stats_seconds_" .. tostring(current_ts - 7200),
+          "vitals_stats_seconds_" .. tostring(current_ts - 3600),
+          "vitals_stats_seconds_" .. tostring(current_ts),
+          "vitals_stats_seconds_" .. tostring(current_ts + 3600),
+        }
+
+        for _, v in ipairs(table_names) do
+          assert(db:query("create table if not exists " .. v ..
+              " (like vitals_stats_seconds including defaults including constraints including indexes)"))
+        end
+
+        rotater:drop_previous_table()
+
+        local query = "select table_name from information_schema.tables " ..
+            "where table_schema = 'custom' and table_name in ('" ..
+            table_names[1] .. "', '" ..
+            table_names[2] .. "', '" ..
+            table_names[3] .. "', '" ..
+            table_names[4] .. "') " ..
+            "order by table_name"
+
+        local res, _ = db:query(query)
+        local expected = {
+          { table_name = table_names[2] },
+          { table_name = table_names[3] },
+          { table_name = table_names[4] },
+        }
+
+        assert.same(expected, res)
+
+        drop_vitals_seconds_tables(db)
       end)
     end)
   end)

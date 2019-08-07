@@ -186,7 +186,7 @@ function _M.dynamic_table_names(db)
 
   -- capture the dynamically-created tables
   local query = [[select table_name from information_schema.tables
-      where table_schema = 'public' and table_name like 'vitals_stats_seconds_%']]
+      where table_schema = current_schema() and table_name like 'vitals_stats_seconds_%']]
 
   local result, err = db.connector:query(query)
   if not result then
