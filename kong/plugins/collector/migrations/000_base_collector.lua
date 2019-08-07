@@ -2,10 +2,9 @@ return {
   postgres = {
     up = [[
       CREATE TABLE IF NOT EXISTS service_maps (
-        id UUID NOT NULL PRIMARY KEY,
+        id TEXT NOT NULL PRIMARY KEY,
         created_at TIMESTAMP WITHOUT TIME ZONE,
-        service_map TEXT,
-        singleton TEXT UNIQUE
+        service_map TEXT
       );
     ]],
   },
@@ -13,10 +12,9 @@ return {
   cassandra = {
     up = [[
       CREATE TABLE IF NOT EXISTS service_maps (
-        id uuid PRIMARY KEY,
+        id text PRIMARY KEY,
         created_at timestamp,
         service_map text,
-        singleton text,
       );
     ]],
   },

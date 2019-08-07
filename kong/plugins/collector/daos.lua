@@ -4,11 +4,9 @@ return {
   service_maps = {
     name = "service_maps",
     primary_key = { "id" },
-    endpoint_key = "singleton",
-    generate_admin_api = true,
+    generate_admin_api = false,
     fields = {
-      { id = typedefs.uuid },
-      { singleton = { type = "string", default = "singleton", eq = "singleton", } },
+      { id = { type = "string", unique = true, reference = "workspaces" } },
       { created_at = typedefs.auto_timestamp_s },
       { service_map = { type = "string", required = true } },
     },
