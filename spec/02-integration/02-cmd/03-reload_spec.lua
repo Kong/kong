@@ -378,6 +378,106 @@ describe("kong reload #" .. strategy, function()
 
       return "my-service" == json.data[1].name
     end)
+
+    it("change target loaded from declarative_config", function()
+      local yaml_file = helpers.make_yaml_file [[
+        _format_version: "1.1"
+        services:
+        - name: my-service
+          url: http://127.0.0.1:15555
+          routes:
+          - name: example-route
+            hosts:
+            - example.test
+        upstreams:
+        - name: my-upstream
+          targets:
+          - target: 127.0.0.1:15555
+            weight: 100
+      ]]
+
+      local pok, admin_client
+
+      finally(function()
+        os.remove(yaml_file)
+        helpers.stop_kong(helpers.test_conf.prefix, true)
+        if admin_client then
+          admin_client:close()
+        end
+      end)
+
+      assert(helpers.start_kong({
+        database = "off",
+        declarative_config = yaml_file,
+        nginx_worker_processes = 1,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+
+      helpers.wait_until(function()
+        pok, admin_client = pcall(helpers.admin_client)
+        if not pok then
+          return false
+        end
+
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/services",
+        })
+        assert.res_status(200, res)
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same(1, #json.data)
+        assert.same(ngx.null, json.next)
+
+        admin_client:close()
+
+        return "my-service" == json.data[1].name
+      end, 10)
+
+      -- rewrite YAML file
+      helpers.make_yaml_file([[
+        _format_version: "1.1"
+        services:
+        - name: my-service
+          url: http://127.0.0.1:15555
+          routes:
+          - name: example-route
+            hosts:
+            - example.test
+        upstreams:
+        - name: my-upstream
+          targets:
+          - target: 127.0.0.1:15556
+            weight: 100
+      ]], yaml_file)
+
+      assert(kong_reload("reload --prefix " .. helpers.test_conf.prefix))
+
+      helpers.wait_until(function()
+        pok, admin_client = pcall(helpers.admin_client)
+        if not pok then
+          return false
+        end
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/upstreams/my-upstream/health",
+        })
+        -- A 404 status may indicate that my-upstream is being recreated, so we
+        -- should wait until timeout before failing this test
+        if res.status == 404 then
+          return false
+        end
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        admin_client:close()
+
+        return "127.0.0.1:15556" == json.data[1].target and
+               "HEALTHCHECKS_OFF" == json.data[1].health
+      end, 10)
+    end)
   end
 
   describe("errors", function()
