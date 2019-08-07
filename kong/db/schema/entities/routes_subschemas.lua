@@ -51,10 +51,10 @@ local grpc_subschema = {
   entity_checks = {
     { conditional_at_least_one_of = { if_field = "protocols",
                                       if_match = { contains = "grpcs" },
-                                      then_at_least_one_of = { "methods", "hosts", "headers", "paths", "snis" },
+                                      then_at_least_one_of = { "hosts", "headers", "paths", "snis" },
                                       then_err = "must set one of %s when 'protocols' is 'grpcs'",
                                       else_match = { contains = "grpc" },
-                                      else_then_at_least_one_of = { "methods", "hosts", "headers", "paths" },
+                                      else_then_at_least_one_of = { "hosts", "headers", "paths" },
                                       else_then_err = "must set one of %s when 'protocols' is 'grpc'",
                                     }},
   },

@@ -708,6 +708,7 @@ for _, strategy in helpers.each_strategy() do
             local route, err, err_t = db.routes:insert({
               protocols = { "grpc", "grpcs" },
               methods   = { "PATCH" },
+              paths     = { "/foo", "/bar" },
               service   = bp.services:insert(),
             })
             assert.is_nil(route)
