@@ -379,6 +379,11 @@ do
     return nil, "timeout"
   end
 
+  local function invalidate_upstream_caches(upstream_id)
+    singletons.cache:invalidate_local("balancer:upstreams:" .. upstream_id)
+    singletons.cache:invalidate_local("balancer:targets:" .. upstream_id)
+  end
+
   ------------------------------------------------------------------------------
   -- @param upstream (table) A db.upstreams entity
   -- @param recreate (boolean, optional) create new balancer even if one exists
@@ -409,6 +414,8 @@ do
     if not balancer then
       return nil, err
     end
+
+    invalidate_upstream_caches(upstream.id)
 
     target_histories[balancer] = {}
 
