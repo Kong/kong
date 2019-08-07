@@ -274,9 +274,24 @@ do
   end
 
   do
+    local os_name
+    do
+      local pd = io.popen("uname -s")
+      os_name = pd:read("*l")
+      pd:close()
+    end
+    local function port_in_use(port)
+      if os_name ~= "Linux" then
+        return false
+      end
+      return os.execute("netstat -n | grep -w " .. port)
+    end
+
     local port = FIRST_PORT
     gen_port = function()
-      port = port + 1
+      repeat
+        port = port + 1
+      until not port_in_use(port)
       return port
     end
   end
