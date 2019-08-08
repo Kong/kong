@@ -1234,7 +1234,7 @@ for _, strategy in helpers.each_strategy() do
             assert.same(SLOTS, ok2)
           end)
 
-          it("perform active health checks -- can detect before any proxy traffic", function()
+          it("#flaky perform active health checks -- can detect before any proxy traffic", function()
 
             local nfails = 2
             local requests = SLOTS * 2 -- go round the balancer twice

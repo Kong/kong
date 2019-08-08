@@ -51,7 +51,7 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      it("#flaky no Accept header uses error_default_type", function()
+      it("no Accept header uses error_default_type", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/",
@@ -68,7 +68,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(html_message, body)
       end)
 
-      it("#flaky HEAD request does not return a body", function()
+      it("HEAD request does not return a body", function()
         local res = assert(proxy_client:send {
           method  = "HEAD",
           path    = "/",
