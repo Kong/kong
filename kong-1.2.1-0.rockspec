@@ -228,6 +228,8 @@ build = {
     ["kong.plugins.oauth2.access"] = "kong/plugins/oauth2/access.lua",
     ["kong.plugins.oauth2.schema"] = "kong/plugins/oauth2/schema.lua",
     ["kong.plugins.oauth2.daos"] = "kong/plugins/oauth2/daos.lua",
+    ["kong.plugins.oauth2.crypto"] = "kong/plugins/oauth2/crypto.lua",
+    ["kong.plugins.oauth2.oauth2_credentials"] = "kong/plugins/oauth2/oauth2_credentials.lua",
 
 
     ["kong.plugins.log-serializers.basic"] = "kong/plugins/log-serializers/basic.lua",

@@ -2,6 +2,7 @@ local url = require "socket.url"
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
+local crypto = require "kong.plugins.oauth2.crypto"
 
 
 local kong = kong
@@ -407,7 +408,16 @@ local function issue_token(conf)
       end
     end
 
-    if client and client.client_secret ~= client_secret then
+    local is_valid_client = false
+    if client then
+      is_valid_client = client.client_secret == client_secret
+      local hashed_secret, salt = string.match(client.client_secret, "s256|(%w+)|(%w+)")
+      if hashed_secret and salt then
+        is_valid_client = crypto.validate(client_secret, hashed_secret, salt)
+      end
+    end
+
+    if client and not is_valid_client then
       response_params = {
         [ERROR] = "invalid_client",
         error_description = "Invalid client authentication"

@@ -16,6 +16,7 @@ end
 
 
 local oauth2_credentials = {
+  dao = "kong.plugins.oauth2.oauth2_credentials",
   primary_key = { "id" },
   name = "oauth2_credentials",
   cache_key = { "client_id" },

@@ -192,7 +192,7 @@ for _, strategy in helpers.each_strategy() do
         redirect_uris = { "http://foo.com" },
       })
       assert.equals("oauth2 credential", c.name)
-      assert.equals("secret", c.client_secret)
+      assert.matches("s256|%w+|%w+", c.client_secret)
       assert.matches(UUID_PATTERN, c.id)
     end)
 
