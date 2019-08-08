@@ -71,7 +71,7 @@ describe("Plugin: request-transformer-advanced (API) [#" .. strategy .. "]", fun
         local body = assert.response(res).has.status(400)
         local json = cjson.decode(body)
         local msg = "key 'just_a_key' has no value"
-        local expected = { config = { add = { headers = msg } } }
+        local expected = { config = { add = { headers = { msg } } } }
         assert.same(expected, json["fields"])
       end)
       it("replace fails with missing colons for key/value separation", function()
@@ -93,7 +93,7 @@ describe("Plugin: request-transformer-advanced (API) [#" .. strategy .. "]", fun
         local body = assert.response(res).has.status(400)
         local json = cjson.decode(body)
         local msg = "key 'just_a_key' has no value"
-        local expected = { config = { replace = { headers = msg } } }
+        local expected = { config = { replace = { headers = { msg } } } }
         assert.same(expected, json["fields"])
       end)
       it("append fails with missing colons for key/value separation", function()
@@ -115,7 +115,7 @@ describe("Plugin: request-transformer-advanced (API) [#" .. strategy .. "]", fun
         local body = assert.response(res).has.status(400)
         local json = cjson.decode(body)
         local msg = "key 'just_a_key' has no value"
-        local expected = { config = { append = { headers = msg } } }
+        local expected = { config = { append = { headers = { msg } } } }
         assert.same(expected, json["fields"])
       end)
     end)

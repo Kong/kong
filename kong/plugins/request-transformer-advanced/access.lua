@@ -233,7 +233,7 @@ end
 
 local function transform_querystrings(conf)
 
-  if not (#conf.remove.querystring > 0 or #conf.rename.querystring or
+  if not (#conf.remove.querystring > 0 or #conf.rename.querystring > 0 or
           #conf.replace.querystring > 0 or #conf.add.querystring > 0 or
           #conf.append.querystring > 0) then
     return
