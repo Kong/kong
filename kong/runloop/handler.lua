@@ -119,111 +119,113 @@ end
 
 
 local function register_events()
-      -- initialize local local_events hooks
+  -- initialize local local_events hooks
   local db             = kong.db
   local cache          = kong.cache
   local worker_events  = kong.worker_events
   local cluster_events = kong.cluster_events
 
 
-      -- events dispatcher
+  -- events dispatcher
 
-      worker_events.register(function(data)
-        if not data.schema then
-          log(ERR, "[events] missing schema in crud subscriber")
-          return
-        end
+  worker_events.register(function(data)
+    if not data.schema then
+      log(ERR, "[events] missing schema in crud subscriber")
+      return
+    end
 
-        local workspaces, err = db.workspaces:select_all(nil, {skip_rbac = true})
-        if err then
-          log(ngx.ERR, "[events] could not fetch workspaces: ", err)
-        end
+    local workspaces, err = db.workspaces:select_all(nil, {skip_rbac = true})
+    if err then
+      log(ngx.ERR, "[events] could not fetch workspaces: ", err)
+    end
 
-        if not data.entity then
-          log(ERR, "[events] missing entity in crud subscriber")
-          return
-        end
+    if not data.entity then
+      log(ERR, "[events] missing entity in crud subscriber")
+      return
+    end
 
-        -- invalidate this entity anywhere it is cached if it has a
-        -- caching key
+    -- invalidate this entity anywhere it is cached if it has a
+    -- caching key
 
-        local cache_key = db[data.schema.name]:cache_key(data.entity, nil, nil, nil, nil, true)
+    local cache_key = db[data.schema.name]:cache_key(data.entity, nil, nil,
+                                                     nil, nil, true)
 
-        if cache_key then
-          cache:invalidate(cache_key, workspaces)
-        end
+    if cache_key then
+      cache:invalidate(cache_key, workspaces)
+    end
 
-        -- if we had an update, but the cache key was part of what was updated,
-        -- we need to invalidate the previous entity as well
+    -- if we had an update, but the cache key was part of what was updated,
+    -- we need to invalidate the previous entity as well
 
-        if data.old_entity then
-          cache_key = db[data.schema.name]:cache_key(data.old_entity, nil, nil, nil, nil, true)
-          if cache_key then
-            cache:invalidate(cache_key, workspaces)
-          end
-        end
+    if data.old_entity then
+      cache_key = db[data.schema.name]:cache_key(data.old_entity, nil, nil,
+                                                 nil, nil, true)
+      if cache_key then
+        cache:invalidate(cache_key, workspaces)
+      end
+    end
 
-        if not data.operation then
+    if not data.operation then
       log(ERR, "[events] missing operation in crud subscriber")
-          return
-        end
+      return
+    end
 
-        -- public worker events propagation
+    -- public worker events propagation
 
-        local entity_channel           = data.schema.table or data.schema.name
-        local entity_operation_channel = fmt("%s:%s", entity_channel,
-                                             data.operation)
+    local entity_channel           = data.schema.table or data.schema.name
+    local entity_operation_channel = fmt("%s:%s", entity_channel,
+                                         data.operation)
 
-        -- crud:routes
-        local _, err = worker_events.post_local("crud", entity_channel, data)
-        if err then
+    -- crud:routes
+    local _, err = worker_events.post_local("crud", entity_channel, data)
+    if err then
       log(ERR, "[events] could not broadcast crud event: ", err)
-          return
-        end
+      return
+    end
 
-        -- crud:routes:create
-        _, err = worker_events.post_local("crud", entity_operation_channel, data)
-        if err then
+    -- crud:routes:create
+    _, err = worker_events.post_local("crud", entity_operation_channel, data)
+    if err then
       log(ERR, "[events] could not broadcast crud event: ", err)
-          return
-        end
-      end, "dao:crud")
+      return
+    end
+  end, "dao:crud")
 
 
-      -- local events (same worker)
+  -- local events (same worker)
 
 
-      worker_events.register(function()
-        log(DEBUG, "[events] Route updated, invalidating router")
-        cache:invalidate("router:version")
-      end, "crud", "routes")
+  worker_events.register(function()
+    log(DEBUG, "[events] Route updated, invalidating router")
+    cache:invalidate("router:version")
+  end, "crud", "routes")
 
 
-      worker_events.register(function(data)
-        if data.operation ~= "create" and
-           data.operation ~= "delete"
-        then
-          -- no need to rebuild the router if we just added a Service
-          -- since no Route is pointing to that Service yet.
-          -- ditto for deletion: if a Service if being deleted, it is
-          -- only allowed because no Route is pointing to it anymore.
-          log(DEBUG, "[events] Service updated, invalidating router")
-          cache:invalidate("router:version")
-        end
-      end, "crud", "services")
+  worker_events.register(function(data)
+    if data.operation ~= "create" and
+        data.operation ~= "delete"
+    then
+      -- no need to rebuild the router if we just added a Service
+      -- since no Route is pointing to that Service yet.
+      -- ditto for deletion: if a Service if being deleted, it is
+      -- only allowed because no Route is pointing to it anymore.
+      log(DEBUG, "[events] Service updated, invalidating router")
+      cache:invalidate("router:version")
+    end
+  end, "crud", "services")
 
 
-      worker_events.register(function(data)
+  worker_events.register(function(data)
     log(DEBUG, "[events] Plugin updated, invalidating plugins iterator")
     cache:invalidate("plugins_iterator:version")
-      end, "crud", "plugins")
+  end, "crud", "plugins")
 
 
-      -- SSL certs / SNIs invalidations
+  -- SSL certs / SNIs invalidations
 
 
-      worker_events.register(function(data)
-        log(DEBUG, "[events] SNI updated, invalidating cached certificates")
+  worker_events.register(function(data)
+    log(DEBUG, "[events] SNI updated, invalidating cached certificates")
     local sni = data.old_entity or data.entity
     local sni_wild_pref, sni_wild_suf = certificate.produce_wild_snis(sni.name)
     cache:invalidate("snis:" .. sni.name)
@@ -235,181 +237,183 @@ local function register_events()
     if sni_wild_suf then
       cache:invalidate("snis:" .. sni_wild_suf)
     end
-      end, "crud", "snis")
+  end, "crud", "snis")
 
 
-      worker_events.register(function(data)
-        log(DEBUG, "[events] SSL cert updated, invalidating cached certificates")
-        local certificate = data.entity
+  worker_events.register(function(data)
+    log(DEBUG, "[events] SSL cert updated, invalidating cached certificates")
+    local certificate = data.entity
 
     for sni, err in db.snis:each_for_certificate({ id = certificate.id }, 1000) do
-          if err then
-            log(ERR, "[events] could not find associated snis for certificate: ",
-                     err)
-            break
-          end
+      if err then
+        log(ERR, "[events] could not find associated snis for certificate: ",
+                  err)
+        break
+      end
 
       local cache_key = "certificates:" .. sni.certificate.id
       cache:invalidate(cache_key)
-        end
-      end, "crud", "certificates")
+    end
+  end, "crud", "certificates")
 
 
-      -- target updates
+  -- target updates
 
 
-      -- worker_events local handler: event received from DAO
-      worker_events.register(function(data)
-        local operation = data.operation
-        local target = data.entity
-        -- => to worker_events node handler
+  -- worker_events local handler: event received from DAO
+  worker_events.register(function(data)
+    local operation = data.operation
+    local target = data.entity
+    -- => to worker_events node handler
     local _, err = worker_events.post("balancer", "targets", {
-          operation = data.operation,
-          entity = data.entity,
-        })
+      operation = data.operation,
+      entity = data.entity,
+    })
     if err then
-          log(ERR, "failed broadcasting target ",
-              operation, " to workers: ", err)
-        end
-        -- => to cluster_events handler
-        local key = fmt("%s:%s", operation, target.upstream.id)
+      log(ERR, "failed broadcasting target ",
+          operation, " to workers: ", err)
+    end
+    -- => to cluster_events handler
+    local key = fmt("%s:%s", operation, target.upstream.id)
     _, err = cluster_events:broadcast("balancer:targets", key)
     if err then
-          log(ERR, "failed broadcasting target ", operation, " to cluster: ", err)
-        end
-      end, "crud", "targets")
+      log(ERR, "failed broadcasting target ", operation, " to cluster: ", err)
+    end
+  end, "crud", "targets")
 
 
-      -- worker_events node handler
-      worker_events.register(function(data)
-        local operation = data.operation
-        local target = data.entity
+  -- worker_events node handler
+  worker_events.register(function(data)
+    local operation = data.operation
+    local target = data.entity
 
-        -- => to balancer update
-        workspaces.run_with_ws_scope({}, balancer.on_target_event,
-                                     operation, target)
-      end, "balancer", "targets")
+    -- => to balancer update
+    workspaces.run_with_ws_scope({}, balancer.on_target_event,
+                                  operation, target)
+  end, "balancer", "targets")
 
 
-      -- cluster_events handler
-      cluster_events:subscribe("balancer:targets", function(data)
-        local operation, key = unpack(utils.split(data, ":"))
-        -- => to worker_events node handler
+  -- cluster_events handler
+  cluster_events:subscribe("balancer:targets", function(data)
+    local operation, key = unpack(utils.split(data, ":"))
+    -- => to worker_events node handler
     local _, err = worker_events.post("balancer", "targets", {
-          operation = operation,
-          entity = {
-            upstream = { id = key },
-          }
-        })
+      operation = operation,
+      entity = {
+        upstream = { id = key },
+      }
+    })
     if err then
-          log(ERR, "failed broadcasting target ", operation, " to workers: ", err)
-        end
-      end)
+      log(ERR, "failed broadcasting target ", operation, " to workers: ", err)
+    end
+  end)
 
 
-      -- manual health updates
-      cluster_events:subscribe("balancer:post_health", function(data)
-        local pattern = "([^|]+)|([^|]+)|([^|]+)|([^|]+)|(.*)"
-        local ip, port, health, id, name = data:match(pattern)
-        port = tonumber(port)
-        local upstream = { id = id, name = name }
+  -- manual health updates
+  cluster_events:subscribe("balancer:post_health", function(data)
+    local pattern = "([^|]+)|([^|]+)|([^|]+)|([^|]+)|(.*)"
+    local ip, port, health, id, name = data:match(pattern)
+    port = tonumber(port)
+    local upstream = { id = id, name = name }
     local _, err = balancer.post_health(upstream, ip, port, health == "1")
     if err then
-          log(ERR, "failed posting health of ", name, " to workers: ", err)
-        end
-      end)
+      log(ERR, "failed posting health of ", name, " to workers: ", err)
+    end
+  end)
 
 
-      -- upstream updates
+  -- upstream updates
 
 
-      -- worker_events local handler: event received from DAO
-      worker_events.register(function(data)
-        local operation = data.operation
-        local upstream = data.entity
-        -- => to worker_events node handler
+  -- worker_events local handler: event received from DAO
+  worker_events.register(function(data)
+    local operation = data.operation
+    local upstream = data.entity
+    -- => to worker_events node handler
     local _, err = worker_events.post("balancer", "upstreams", {
-          operation = data.operation,
-          entity = data.entity,
-        })
+      operation = data.operation,
+      entity = data.entity,
+    })
     if err then
-          log(ERR, "failed broadcasting upstream ",
-              operation, " to workers: ", err)
-        end
-        -- => to cluster_events handler
-        local key = fmt("%s:%s:%s", operation, upstream.id, upstream.name)
+      log(ERR, "failed broadcasting upstream ",
+          operation, " to workers: ", err)
+    end
+    -- => to cluster_events handler
+    local key = fmt("%s:%s:%s", operation, upstream.id, upstream.name)
     local ok, err = cluster_events:broadcast("balancer:upstreams", key)
-        if not ok then
-          log(ERR, "failed broadcasting upstream ", operation, " to cluster: ", err)
-        end
-      end, "crud", "upstreams")
+    if not ok then
+      log(ERR, "failed broadcasting upstream ", operation, " to cluster: ", err)
+    end
+  end, "crud", "upstreams")
 
 
-      -- worker_events node handler
-      worker_events.register(function(data)
-        local operation = data.operation
-        local upstream = data.entity
+  -- worker_events node handler
+  worker_events.register(function(data)
+    local operation = data.operation
+    local upstream = data.entity
 
-        local workspace_list, err = db.workspaces:select_all(nil, {skip_rbac = true})
-        if err then
-          log(ngx.ERR, "[events] could not fetch workspaces: ", err)
-          return
-        end
+    local workspace_list, err = db.workspaces:select_all(nil, {skip_rbac = true})
+    if err then
+      log(ngx.ERR, "[events] could not fetch workspaces: ", err)
+      return
+    end
 
-        -- => to balancer update
-        workspaces.run_with_ws_scope({}, balancer.on_upstream_event, operation,
-                                     upstream, workspace_list)
-      end, "balancer", "upstreams")
-
-
-      cluster_events:subscribe("balancer:upstreams", function(data)
-        local operation, id, name = unpack(utils.split(data, ":"))
-        -- => to worker_events node handler
-        local _, err = worker_events.post("balancer", "upstreams", {
-          operation = operation,
-          entity = {
-            id = id,
-            name = name,
-          }
-        })
-        if err then
-          log(ERR, "failed broadcasting upstream ", operation, " to workers: ", err)
-        end
-      end)
+    -- => to balancer update
+    workspaces.run_with_ws_scope({}, balancer.on_upstream_event, operation,
+                                  upstream, workspace_list)
+  end, "balancer", "upstreams")
 
 
-      worker_events.register(function(data)
-        log(DEBUG, "[events] workspace_entites updated, invalidating API workspace scope")
-        local target = data.entity
-        if target.entity_type == "apis" or target.entity_type == "routes" then
-          local ws_scope_key = fmt("apis_ws_resolution:%s", target.entity_id)
-          cache:invalidate(ws_scope_key)
-        end
-      end, "crud", "workspace_entities")
+  cluster_events:subscribe("balancer:upstreams", function(data)
+    local operation, id, name = unpack(utils.split(data, ":"))
+    -- => to worker_events node handler
+    local _, err = worker_events.post("balancer", "upstreams", {
+      operation = operation,
+      entity = {
+        id = id,
+        name = name,
+      }
+    })
+    if err then
+      log(ERR, "failed broadcasting upstream ", operation, " to workers: ", err)
+    end
+  end)
 
-      -- initialize balancers for active healthchecks
-      ngx.timer.at(0, function()
-        workspaces.run_with_ws_scope({}, balancer.init)
-      end)
 
-      if singletons.configuration.audit_log then
-        log(DEBUG, "register audit log events handler")
-        local audit_log = require "kong.enterprise_edition.audit_log"
-        worker_events.register(audit_log.dao_audit_handler, "dao:crud")
-      end
+  worker_events.register(function(data)
+    log(DEBUG, "[events] workspace_entites updated, invalidating API workspace scope")
+    local target = data.entity
+    if target.entity_type == "apis" or target.entity_type == "routes" then
+      local ws_scope_key = fmt("apis_ws_resolution:%s", target.entity_id)
+      cache:invalidate(ws_scope_key)
+    end
+  end, "crud", "workspace_entities")
 
-      -- rbac token ident cache handling
-      worker_events.register(function(data)
-        singletons.cache:invalidate("rbac_user_token_ident:" ..
-                                    data.entity.user_token_ident)
+  -- initialize balancers for active healthchecks
+  ngx.timer.at(0, function()
+    workspaces.run_with_ws_scope({}, balancer.init)
+  end)
 
-        -- clear a patched ident range cache, if appropriate
-        -- this might be nil if we in-place upgrade a pt token
-        if data.old_entity and data.old_entity.user_token_ident then
-          singletons.cache:invalidate("rbac_user_token_ident:" ..
-                                      data.old_entity.user_token_ident)
-        end
-      end, "crud", "rbac_users")
+  if singletons.configuration.audit_log then
+    log(DEBUG, "register audit log events handler")
+    local audit_log = require "kong.enterprise_edition.audit_log"
+    worker_events.register(audit_log.dao_audit_handler, "dao:crud")
+  end
+
+  -- rbac token ident cache handling
+  worker_events.register(function(data)
+    singletons.cache:invalidate("rbac_user_token_ident:" ..
+                                data.entity.user_token_ident)
+
+    -- clear a patched ident range cache, if appropriate
+    -- this might be nil if we in-place upgrade a pt token
+    if data.old_entity and data.old_entity.user_token_ident then
+      singletons.cache:invalidate("rbac_user_token_ident:" ..
+                                  data.old_entity.user_token_ident)
+    end
+  end, "crud", "rbac_users")
+
+
   -- declarative config updates
 
 
@@ -418,8 +422,6 @@ local function register_events()
       cache:flip()
     end, "declarative", "flip_config")
   end
-
-
 end
 
 
