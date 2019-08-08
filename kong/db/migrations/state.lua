@@ -143,8 +143,12 @@ local function load_subsystems(db, plugin_names)
   local dir_path, n = string.gsub(pl_path.abspath(ee_path),
     "enterprise" .. pl_path.sep .. "init%.lua$", "")
   if n ~= 1 then
-    return nil, prefix_err(db, "failed to substitute migrations path in "
-      .. dir_path)
+    dir_path, n = string.gsub(pl_path.abspath(ee_path),
+      "enterprise" .. pl_path.sep .. "init%.ljbc$", "")
+    if n ~= 1 then
+      return nil, prefix_err(db, "failed to substitute migrations path in "
+        .. dir_path)
+    end
   end
 
   local dirs = pl_dir.getdirectories(dir_path)
