@@ -611,11 +611,10 @@ Content-Length: 19
 === TEST 23: response.exit() does not send body with gRPC
 --- http_config eval: $t::Util::HttpConfig
 --- config
-    set $kong_proxy_mode 'grpc';
-
     location = /t {
         default_type 'text/test';
         access_by_lua_block {
+            ngx.req.http_version = function() return "2" end
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
@@ -624,6 +623,8 @@ Content-Length: 19
     }
 --- request
 GET /t
+--- more_headers
+Content-Type: application/grpc
 --- error_code: 200
 --- response_headers_like
 Content-Length: 0
@@ -634,11 +635,9 @@ grpc-message: hello
 
 
 
-=== TEST 24: response.exit() does sends body with gRPC when asked
+=== TEST 24: response.exit() does send body with gRPC when asked
 --- http_config eval: $t::Util::HttpConfig
 --- config
-    set $kong_proxy_mode 'grpc';
-
     location = /t {
         default_type 'text/test';
         access_by_lua_block {

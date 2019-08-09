@@ -14,7 +14,6 @@
 
 local cjson = require "cjson.safe"
 local meta = require "kong.meta"
-local constants = require "kong.constants"
 local checks = require "kong.pdk.private.checks"
 local phase_checker = require "kong.pdk.private.phases"
 
@@ -35,7 +34,6 @@ local check_phase = phase_checker.check
 
 
 local PHASES = phase_checker.phases
-local GRPC_PROXY_MODES = constants.GRPC_PROXY_MODES
 
 
 local header_body_log = phase_checker.new(PHASES.header_filter,
@@ -508,8 +506,6 @@ local function new(self, major_version)
     if res_ctype then
       is_grpc = find(res_ctype, CONTENT_TYPE_GRPC, 1, true) == 1
       is_grpc_output = is_grpc
-    elseif GRPC_PROXY_MODES[ngx.var.kong_proxy_mode] then
-      is_grpc = true
     elseif req_ctype then
       is_grpc = find(req_ctype, CONTENT_TYPE_GRPC, 1, true) == 1
                   and ngx.req.http_version() == "2"
