@@ -25,13 +25,13 @@ local type = type
 local find = string.find
 local error = error
 local pairs = pairs
-local insert = table.insert
 local coroutine = coroutine
 local normalize_header = checks.normalize_header
 local normalize_multi_header = checks.normalize_multi_header
 local validate_header = checks.validate_header
 local validate_headers = checks.validate_headers
 local check_phase = phase_checker.check
+local add_header = require("ngx.resp").add_header
 
 
 local PHASES = phase_checker.phases
@@ -382,14 +382,7 @@ local function new(self, major_version)
 
     validate_header(name, value)
 
-    local new_value = _RESPONSE.get_headers()[name]
-    if type(new_value) ~= "table" then
-      new_value = { new_value }
-    end
-
-    insert(new_value, normalize_header(value))
-
-    ngx.header[name] = new_value
+    add_header(name, normalize_header(value))
   end
 
 
