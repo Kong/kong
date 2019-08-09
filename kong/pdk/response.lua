@@ -557,9 +557,11 @@ local function new(self, major_version)
         ngx.header[CONTENT_LENGTH_NAME] = 0
         ngx.header[GRPC_MESSAGE_NAME] = body
 
+        ngx.print() -- avoid default content
+
       else
         ngx.header[CONTENT_LENGTH_NAME] = #body
-        if grpc_status then
+        if grpc_status and not ngx.header[GRPC_MESSAGE_NAME] then
           ngx.header[GRPC_MESSAGE_NAME] = GRPC_MESSAGES[grpc_status]
         end
 
@@ -568,8 +570,12 @@ local function new(self, major_version)
 
     else
       ngx.header[CONTENT_LENGTH_NAME] = 0
-      if grpc_status then
+      if grpc_status and not ngx.header[GRPC_MESSAGE_NAME] then
         ngx.header[GRPC_MESSAGE_NAME] = GRPC_MESSAGES[grpc_status]
+      end
+
+      if is_grpc then
+        ngx.print() -- avoid default content
       end
     end
 
