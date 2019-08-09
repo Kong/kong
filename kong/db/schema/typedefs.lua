@@ -506,7 +506,7 @@ typedefs.headers = Schema.define {
     type = "string",
     match_none = {
       {
-        pattern = "[Hh][Oo][Ss][Tt]",
+        pattern = "^[Hh][Oo][Ss][Tt]$",
         err = "cannot contain 'host' header, which must be specified in the 'hosts' attribute",
       },
     },
