@@ -31,7 +31,10 @@ local normalize_multi_header = checks.normalize_multi_header
 local validate_header = checks.validate_header
 local validate_headers = checks.validate_headers
 local check_phase = phase_checker.check
-local add_header = require("ngx.resp").add_header
+local add_header
+if ngx and ngx.config.subsystem == "http" then
+  add_header = require("ngx.resp").add_header
+end
 
 
 local PHASES = phase_checker.phases
@@ -374,6 +377,9 @@ local function new(self, major_version)
   -- kong.response.add_header("Cache-Control", "no-cache")
   -- kong.response.add_header("Cache-Control", "no-store")
   function _RESPONSE.add_header(name, value)
+    -- stream subsystem would been stopped by the phase checker below
+    -- therefore the nil reference to add_header will never have chance
+    -- to show
     check_phase(rewrite_access_header)
 
     if ngx.headers_sent then
