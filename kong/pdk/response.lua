@@ -532,10 +532,16 @@ local function new(self, major_version)
     local json
     if type(body) == "table" then
       if is_grpc then
-        if type(body.message) == "string" then
+        if is_grpc_output then
+          error("table body encoding with gRPC is not supported", 2)
+
+        elseif type(body.message) == "string" then
           body = body.message
+
         else
-          body = nil -- grpc table encoding not supported currently
+          self.log.warn("body was removed because table body encoding with " ..
+                        "gRPC is not supported")
+          body = nil
         end
 
       else
