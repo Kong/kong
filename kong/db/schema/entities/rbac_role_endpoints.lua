@@ -3,6 +3,7 @@ local typedefs = require "kong.db.schema.typedefs"
 
 return {
   name = "rbac_role_endpoints",
+  dao = "kong.db.dao.rbac_role_endpoints",
   generate_admin_api = false,
   primary_key = { "role", "workspace", "endpoint" },
   fields = {

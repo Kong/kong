@@ -364,6 +364,77 @@ end
 _M.get_user_roles = get_user_roles
 
 
+-- allows setting several roles simultaneously, minimizing database accesses
+-- @returns true if the new roles were set successfully
+-- @returns nil, errors_str, errors_array if there was 1 or more errors
+local function set_user_roles(db, user, new_role_names)
+  local existing_roles, err = get_user_roles(db, user)
+  if err then
+    return nil, err, { err }
+  end
+
+  local user_pk = { id = user.id }
+  local errors = {}
+
+  -- Insert new roles if they are not already inserted
+  local existing_hash = {}
+  for i = 1, #existing_roles do
+    if not existing_roles[i].is_default then
+      existing_hash[existing_roles[i].name] = true
+    end
+  end
+  for i = 1, #new_role_names do
+    local new_role_name = new_role_names[i]
+
+    if not existing_hash[new_role_name] then
+      local role = db.rbac_roles:select_by_name(new_role_name)
+      if role then
+        local ok, err = db.rbac_user_roles:insert({
+          user = user_pk ,
+          role = { id = role.id },
+        })
+        if not ok then
+          errors[#errors + 1] = "Error while inserting role: " .. err .. "."
+        end
+      else
+        errors[#errors + 1] = "The given role could not be found by name: " ..
+                              new_role_name
+      end
+    end
+  end
+
+  -- Delete existing roles if they are not in the new list of roles
+  local new_hash = {}
+  for i = 1, #new_role_names do
+    new_hash[new_role_names[i]] = true
+  end
+  for i = 1, #existing_roles do
+    if not existing_roles[i].is_default then
+      local existing_role_name = existing_roles[i].name
+      if not new_hash[existing_role_name] then
+        local ok, err = db.rbac_user_roles:delete({
+          user = user_pk ,
+          role = { id = existing_roles[i].id },
+        })
+        if not ok then
+          errors[#errors + 1] = "Error while deleting role: " .. err .. "."
+        end
+      end
+    end
+  end
+
+  local cache_key = db.rbac_user_roles:cache_key(user.id)
+  kong.cache:invalidate(cache_key)
+
+  if #errors > 0 then
+    return nil, table.concat(errors, ", "), errors
+  end
+
+  return true
+end
+_M.set_user_roles = set_user_roles
+
+
 local function get_role_users(db, role)
   return entity_relationships(db, role, "role", "user", "rbac_user_roles")
 end

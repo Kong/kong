@@ -23,6 +23,7 @@ vitals_tsdb_address = NONE
 vitals_prometheus_scrape_interval = 5
 
 portal = off
+portal_is_legacy = on
 portal_gui_listen = 0.0.0.0:8003, 0.0.0.0:8446 ssl
 portal_gui_protocol = http
 portal_gui_host = 127.0.0.1:8003

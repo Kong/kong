@@ -1,4 +1,4 @@
-local renderer   = require "kong.portal.renderer"
+local renderer   = require "kong.portal.legacy_renderer"
 
 describe("portal_renderer", function()
   local snapshot
@@ -256,7 +256,7 @@ describe("portal_renderer", function()
     it("should handle single namespaced path", function()
       og_path = 'cat'
       extension = ''
-  
+
       path, extension = renderer.get_next_route(og_path, extension)
       assert.equal('', path)
       assert.equal('cat', extension)

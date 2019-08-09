@@ -287,7 +287,7 @@ function _M.authenticate_gui_session(self, db, helpers)
                                                     workspace)
 
   if portal_auth == nil or portal_auth == '' then
-    self.developer = {}
+    self.developer = { skip_portal_rbac = true }
     return
   end
 
@@ -297,7 +297,7 @@ function _M.authenticate_gui_session(self, db, helpers)
                           kong.configuration.admin_gui_auth)
 
     rbac.validate_user(self.rbac_user)
-    self.developer = {}
+    self.developer = { skip_portal_rbac = true }
 
     return
   end

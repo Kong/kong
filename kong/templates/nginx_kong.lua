@@ -313,11 +313,32 @@ server {
     gzip on;
     gzip_types text/plain text/css application/json application/javascript;
 
+    location ^~ /legacy {
+        root portal;
+
+        header_filter_by_lua_block {
+            ngx.header["server"] = nil
+        }
+
+        expires 90d;
+        add_header Cache-Control 'public';
+        add_header X-Frame-Options 'sameorigin';
+        add_header X-XSS-Protection '1; mode=block';
+        add_header X-Content-Type-Options 'nosniff';
+        etag off;
+    }
+
     location ~* \.(jpg|jpeg|png|gif|ico|css|ttf|js)$ {
         root portal;
 
         header_filter_by_lua_block {
             ngx.header["server"] = nil
+        }
+
+        content_by_lua_block {
+            Kong.serve_portal_gui({
+                acah = "Content-Type",
+            })
         }
 
         expires 90d;
@@ -347,9 +368,6 @@ server {
         add_header Access-Control-Allow-Headers 'Content-Type';
         add_header Access-Control-Allow-Origin '*';
         etag off;
-
-        access_log logs/portal_gui_access.log;
-        error_log logs/portal_gui_error.log;
     }
 
     location /robots.txt {

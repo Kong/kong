@@ -16,7 +16,7 @@ local function find_file(db, file_pk)
     return db.files:select({ id = file_pk })
   end
 
-  return db.files:select_by_name(file_pk)
+  return db.files:select_by_path(file_pk)
 end
 
 
@@ -83,6 +83,6 @@ return {
   ["/files/:files"] = {
     before = function(self, db, helpers)
       crud_helpers.exit_if_portal_disabled()
-    end
+    end,
   },
 }

@@ -173,7 +173,7 @@ for _, strategy in helpers.each_strategy() do
         })
         cookie = assert.response(res).has.header("Set-Cookie")
 
-        auth_page_pair = assert(db.files:insert {
+        auth_page_pair = assert(db.legacy_files:insert {
           name = "page_pair",
           auth = true,
           type = "page",
@@ -182,7 +182,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        unauth_page_pair = assert(db.files:insert {
+        unauth_page_pair = assert(db.legacy_files:insert {
           name = "unauthenticated/page_pair",
           auth = false,
           type = "page",
@@ -191,7 +191,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        auth_page_solo = assert(db.files:insert {
+        auth_page_solo = assert(db.legacy_files:insert {
           name = "auth_page_solo",
           auth = true,
           type = "page",
@@ -200,7 +200,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        unauth_page_solo = assert(db.files:insert {
+        unauth_page_solo = assert(db.legacy_files:insert {
           name = "unauthenticated/unauth_page_solo",
           auth = false,
           type = "page",
@@ -209,7 +209,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        login_page = assert(db.files:insert {
+        login_page = assert(db.legacy_files:insert {
           name = "unauthenticated/login",
           auth = false,
           type = "page",
@@ -218,7 +218,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        not_found_page = assert(db.files:insert {
+        not_found_page = assert(db.legacy_files:insert {
           name = "unauthenticated/404",
           auth = false,
           type = "page",
@@ -227,7 +227,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        namespaced_index_page = assert(db.files:insert {
+        namespaced_index_page = assert(db.legacy_files:insert {
           name = "documentation/index",
           auth = true,
           type = "page",
@@ -236,7 +236,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        namespaced_page = assert(db.files:insert {
+        namespaced_page = assert(db.legacy_files:insert {
           name = "documentation/page",
           auth = true,
           type = "page",
@@ -247,7 +247,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       lazy_teardown(function()
-        db:truncate("files")
+        db:truncate("legacy_files")
       end)
 
       describe("unauthenticated user", function()
@@ -644,7 +644,7 @@ for _, strategy in helpers.each_strategy() do
 
         cookie = assert.response(res).has.header("Set-Cookie")
 
-        auth_page_pair = assert(db.files:insert {
+        auth_page_pair = assert(db.legacy_files:insert {
           name = "page_pair",
           auth = true,
           type = "page",
@@ -656,7 +656,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        unauth_page_pair = assert(db.files:insert {
+        unauth_page_pair = assert(db.legacy_files:insert {
           name = "unauthenticated/page_pair",
           auth = false,
           type = "page",
@@ -668,7 +668,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        auth_partial = assert(db.files:insert {
+        auth_partial = assert(db.legacy_files:insert {
           name = "partial",
           auth = true,
           type = "partial",
@@ -677,7 +677,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        unauth_partial = assert(db.files:insert {
+        unauth_partial = assert(db.legacy_files:insert {
           name = "unauthenticated/partial",
           auth = false,
           type = "partial",
@@ -686,7 +686,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        nested_partial_parent = assert(db.files:insert {
+        nested_partial_parent = assert(db.legacy_files:insert {
           name = "nested_partial_parent",
           auth = true,
           type = "partial",
@@ -696,7 +696,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        nested_partial_child = assert(db.files:insert {
+        nested_partial_child = assert(db.legacy_files:insert {
           name = "nested_partial_child",
           auth = true,
           type = "partial",
@@ -705,7 +705,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        infinite_loop_page = assert(db.files:insert {
+        infinite_loop_page = assert(db.legacy_files:insert {
           name = "infinite_loop_page",
           auth = true,
           type = "page",
@@ -715,7 +715,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        infinite_loop_partial = assert(db.files:insert {
+        infinite_loop_partial = assert(db.legacy_files:insert {
           name = "infinite_loop_partial",
           auth = true,
           type = "partial",
@@ -725,7 +725,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        formatting_page = assert(db.files:insert {
+        formatting_page = assert(db.legacy_files:insert {
           name = "formatting_page",
           auth = true,
           type = "page",
@@ -743,7 +743,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        block_syntax_partial = assert(db.files:insert {
+        block_syntax_partial = assert(db.legacy_files:insert {
           name = "block_syntax_partial",
           auth = true,
           type = "partial",
@@ -752,7 +752,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        strange_spacing_partial = assert(db.files:insert {
+        strange_spacing_partial = assert(db.legacy_files:insert {
           name = "strange_spacing_partial",
           auth = true,
           type = "partial",
@@ -761,7 +761,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        partial_with_argument = assert(db.files:insert {
+        partial_with_argument = assert(db.legacy_files:insert {
           name = "partial_with_argument",
           auth = true,
           type = "partial",
@@ -770,7 +770,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        improper_format_partial = assert(db.files:insert {
+        improper_format_partial = assert(db.legacy_files:insert {
           name = "improper_format_partial",
           auth = true,
           type = "partial",
@@ -781,7 +781,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       lazy_teardown(function()
-        db:truncate("files")
+        db:truncate("legacy_files")
       end)
 
       describe("authenticated user", function()
@@ -911,7 +911,7 @@ for _, strategy in helpers.each_strategy() do
         })
         cookie = assert.response(res).has.header("Set-Cookie")
 
-        auth_root_spec_loader = assert(db.files:insert {
+        auth_root_spec_loader = assert(db.legacy_files:insert {
           name = "loader",
           auth = true,
           type = "page",
@@ -920,7 +920,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        unauth_root_spec_loader = assert(db.files:insert {
+        unauth_root_spec_loader = assert(db.legacy_files:insert {
           name = "unauthenticated/loader",
           auth = false,
           type = "page",
@@ -929,7 +929,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        auth_nested_spec_loader = assert(db.files:insert {
+        auth_nested_spec_loader = assert(db.legacy_files:insert {
           name = "abc/loader",
           auth = true,
           type = "page",
@@ -938,7 +938,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        unauth_nested_spec_loader = assert(db.files:insert {
+        unauth_nested_spec_loader = assert(db.legacy_files:insert {
           name = "unauthenticated/xyz/loader",
           auth = false,
           type = "page",
@@ -947,7 +947,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        auth_spec1 = assert(db.files:insert {
+        auth_spec1 = assert(db.legacy_files:insert {
           name = "auth_spec1",
           auth = true,
           type = "spec",
@@ -956,7 +956,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        auth_spec2 = assert(db.files:insert {
+        auth_spec2 = assert(db.legacy_files:insert {
           name = "auth_spec2",
           auth = true,
           type = "spec",
@@ -965,7 +965,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        unauth_spec1 = assert(db.files:insert {
+        unauth_spec1 = assert(db.legacy_files:insert {
           name = "unauthenticated/unauth_spec1",
           auth = false,
           type = "spec",
@@ -974,7 +974,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        unauth_spec2 = assert(db.files:insert {
+        unauth_spec2 = assert(db.legacy_files:insert {
           name = "unauthenticated/unauth_spec2",
           auth = false,
           type = "spec",
@@ -983,7 +983,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        auth_nested_spec = assert(db.files:insert {
+        auth_nested_spec = assert(db.legacy_files:insert {
           name = "doggos/auth_nested_spec",
           auth = true,
           type = "spec",
@@ -992,7 +992,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        unauth_nested_spec = assert(db.files:insert {
+        unauth_nested_spec = assert(db.legacy_files:insert {
           name = "unauthenticated/floofs/unauth_nested_spec",
           auth = false,
           type = "spec",
@@ -1001,7 +1001,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        spec_with_spaces = assert(db.files:insert {
+        spec_with_spaces = assert(db.legacy_files:insert {
           name = "spec with spaces",
           auth = true,
           type = "spec",
@@ -1010,7 +1010,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        login_page = assert(db.files:insert {
+        login_page = assert(db.legacy_files:insert {
           name = "unauthenticated/login",
           auth = false,
           type = "page",
@@ -1021,7 +1021,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       lazy_teardown(function()
-        db:truncate("files")
+        db:truncate("legacy_files")
       end)
 
       describe("authenticated user", function()
@@ -1403,7 +1403,7 @@ for _, strategy in helpers.each_strategy() do
         })
         cookie = assert.response(res).has.header("Set-Cookie")
 
-        assert(db.files:insert {
+        assert(db.legacy_files:insert {
           name = "page_pair",
           auth = true,
           type = "page",
@@ -1412,7 +1412,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        assert(db.files:insert {
+        assert(db.legacy_files:insert {
           name = "unauthenticated/page_pair",
           auth = false,
           type = "page",
@@ -1421,7 +1421,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        assert(db.files:insert {
+        assert(db.legacy_files:insert {
           name = "auth_page_solo",
           auth = true,
           type = "page",
@@ -1430,7 +1430,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        assert(db.files:insert {
+        assert(db.legacy_files:insert {
           name = "unauthenticated/unauth_page_solo",
           auth = false,
           type = "page",
@@ -1439,7 +1439,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        assert(db.files:insert {
+        assert(db.legacy_files:insert {
           name = "documentation/index",
           auth = true,
           type = "page",
@@ -1448,7 +1448,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        assert(db.files:insert {
+        assert(db.legacy_files:insert {
           name = "unauthenticated/documentation/index",
           auth = true,
           type = "page",
@@ -1457,7 +1457,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        assert(db.files:insert {
+        assert(db.legacy_files:insert {
           name = "specs/loader",
           auth = true,
           type = "page",
@@ -1466,7 +1466,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        assert(db.files:insert {
+        assert(db.legacy_files:insert {
           name = "spec_page",
           auth = true,
           type = "spec",
@@ -1475,7 +1475,7 @@ for _, strategy in helpers.each_strategy() do
           ]]
         })
 
-        assert(db.files:insert {
+        assert(db.legacy_files:insert {
           name = "unauthenticated/spec_page",
           auth = false,
           type = "spec",
@@ -1521,7 +1521,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       lazy_teardown(function()
-        db:truncate("files")
+        db:truncate("legacy_files")
       end)
 
       describe("authenticated user", function()

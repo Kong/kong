@@ -6,7 +6,9 @@ local workspaces  = require "kong.workspaces"
 local responses   = {} -- XXX EE: remove this placeholder
 local gui_helpers = require "kong.portal.gui_helpers"
 local EtluaWidget = require("lapis.etlua").EtluaWidget
-
+local constants = require "kong.constants"
+local ws_constants = constants.WORKSPACE_CONFIG
+local renderer = require "kong.portal.renderer"
 
 local kong = kong
 
@@ -14,23 +16,46 @@ local kong = kong
 local app = lapis.Application()
 
 
+local function is_legacy()
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  return workspaces.retrieve_ws_config(ws_constants.PORTAL_IS_LEGACY, workspace)
+end
+
+
 local function sitemap_handler(self)
   local config = kong.configuration
+  if (is_legacy()) then
+    app:enable("etlua")
+    app.layout = EtluaWidget:load(pl_file.read(config.prefix .. "/portal/views/sitemap.etlua"))
+    gui_helpers.prepare_sitemap(self)
+  end
+end
 
-  app.layout = EtluaWidget:load(pl_file.read(config.prefix .. "/portal/views/sitemap.etlua"))
-  gui_helpers.prepare_sitemap(self)
+
+local function asset_handler(self)
+  renderer.set_render_ctx(self)
+  local asset = renderer.compile_asset()
+
+  if asset then
+    return kong.response.exit(200, asset)
+  end
 end
 
 
 local function index_handler(self)
-  local config = kong.configuration
+  if (is_legacy()) then
+    app:enable("etlua")
+    local config = kong.configuration
+    app.layout = EtluaWidget:load(pl_file.read(config.prefix .. "/portal/views/index.etlua"))
+    gui_helpers.prepare_index(self)
+    return
+  end
 
-  app.layout = EtluaWidget:load(pl_file.read(config.prefix .. "/portal/views/index.etlua"))
-  gui_helpers.prepare_index(self)
+  renderer.set_render_ctx(self)
+  local view = renderer.compile_layout()
+
+  return kong.response.exit(200, view)
 end
-
-
-app:enable("etlua")
 
 
 app:before_filter(function(self)
@@ -84,6 +109,7 @@ end)
 app:match("/sitemap.xml", sitemap_handler)
 app:match("/:workspace_name/sitemap.xml", sitemap_handler)
 
+app:match("/:workspace_name/assets/*", asset_handler)
 
 app:match("/:workspace_name(/*)", index_handler)
 app:match("/", index_handler)

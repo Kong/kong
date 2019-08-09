@@ -422,6 +422,45 @@ local function register_events()
       cache:flip()
     end, "declarative", "flip_config")
   end
+
+
+  -- portal router events
+
+
+  worker_events.register(function(data)
+    local _, err = worker_events.post("portal", "router", {
+      operation = data.operation,
+      entity = data.entity,
+      workspace = workspaces.get_workspace(),
+    })
+
+    if err then
+      log(ERR, "[events] could not broadcast portal router event: ", err)
+      return
+    end
+  end, "crud", "files")
+
+  
+  worker_events.register(function(data)
+    local operation = data.operation
+    local file = data.entity
+    local workspace = data.workspace
+    local portal_router = singletons.portal_router
+    local cb
+
+    if file.path and file.path == "router.conf.yaml" then
+      if operation == "create" or operation == "update" then
+        cb = portal_router.set_custom_router
+        workspaces.run_with_ws_scope({ workspace }, cb, file)
+      elseif operation == "delete" then
+        cb = portal_router.delete_custom_router
+        workspaces.run_with_ws_scope({ workspace }, cb, file)
+      end
+    elseif operation ~= "read" and file then
+      cb = portal_router.set_route_ctx_by_file
+      workspaces.run_with_ws_scope({ workspace }, cb, file)
+    end
+  end, "portal", "router")
 end
 
 
@@ -899,7 +938,7 @@ return {
 
         if kong.configuration.database == "postgres" then
           rebuild_timeout = kong.configuration.pg_timeout / 1000
-      end
+        end
 
         ROUTER_SYNC_OPTS = {
           name = "router",

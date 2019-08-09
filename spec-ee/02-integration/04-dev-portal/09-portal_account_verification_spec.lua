@@ -277,7 +277,7 @@ for _, strategy in helpers.each_strategy() do
           password = "wowza",
           meta = "{\"full_name\":\"1337\"}",
         })
-        
+
         assert.equals(200, res.status)
         local resp_body_json = cjson.decode(res.body)
         unverified_developer = resp_body_json.developer
@@ -439,7 +439,7 @@ for _, strategy in helpers.each_strategy() do
           password = "wowza",
           meta = "{\"full_name\":\"1337\"}",
         })
-        
+
         assert.equals(200, res.status)
         local resp_body_json = cjson.decode(res.body)
         unverified_developer = resp_body_json.developer

@@ -52,6 +52,7 @@ local config_schema = {
     { portal_developer_meta_fields = { type  = "string" , default =
       "[{\"label\":\"Full Name\",\"title\":\"full_name\",\"validator\":{\"required\":true,\"type\":\"string\"}}]"} },
     { portal_session_conf = { type = "string" } },
+    { portal_is_legacy = { type = "boolean" } },
   }
 }
 

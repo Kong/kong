@@ -39,6 +39,7 @@ return {
     { status         = developer_status },
     { consumer       = { type = "foreign", reference = "consumers", }, },
     { meta           = { type = "string" }, },
+    { rbac_user      = { type = "foreign", reference = "rbac_users" }, },
   },
-} 
+}
 

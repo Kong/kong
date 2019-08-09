@@ -6,7 +6,8 @@ local singletons = require "kong.singletons"
 local auth       = require "kong.portal.auth"
 local workspaces = require "kong.workspaces"
 local enums      = require "kong.enterprise_edition.dao.enums"
-
+local utils      = require "kong.tools.utils"
+local rbac       = require "kong.rbac"
 local enterprise_utils = require "kong.enterprise_edition.utils"
 local MetaSchema   = require "kong.db.schema.metaschema"
 local log = ngx.log
@@ -15,6 +16,10 @@ local null = ngx.null
 local _log_prefix = "[developers] "
 local helpers = {} -- XXX EE remove this
 local ws_constants = constants.WORKSPACE_CONFIG
+
+local PORTAL_PREFIX = constants.PORTAL_PREFIX
+-- Adds % in front of "special characters" such as -
+local ESCAPED_PORTAL_PREFIX = PORTAL_PREFIX:gsub("([^%w])", "%%%1")
 
 local auth_plugins = {
   ["basic-auth"] = { name = "basic-auth", dao = "basicauth_credentials", },
@@ -40,6 +45,98 @@ local function get_developer_status()
   end
 
   return enums.CONSUMERS.STATUS.PENDING
+end
+
+
+local function remove_portal_prefix(str)
+  return string.gsub(str, "^" .. ESCAPED_PORTAL_PREFIX, "")
+end
+
+
+local function extract_roles(developer)
+  local roles = developer.roles
+  developer.roles = nil
+  if type(roles) == "table" then
+    setmetatable(roles, cjson.array_mt)
+    table.sort(roles)
+  end
+  return roles
+end
+
+
+local function get_roles(developer)
+  local roles = setmetatable({}, cjson.array_mt)
+  if not developer.rbac_user then
+    return roles
+  end
+
+  local existing_roles, err = rbac.get_user_roles(kong.db, developer.rbac_user)
+  if err then
+    return nil, err
+  end
+
+  for i = 1, #existing_roles do
+    if not existing_roles[i].is_default then
+      roles[#roles + 1] = remove_portal_prefix(existing_roles[i].name)
+    end
+  end
+
+  table.sort(roles)
+
+  return roles
+end
+
+
+local set_roles
+do
+  local function create_rbac_user(developer)
+    local rbac_user, err, err_t = kong.db.rbac_users:insert({
+      name = PORTAL_PREFIX .. developer.id,
+      user_token = utils.random_string(),
+      comment = "Portal user for developer " .. developer.id,
+    })
+    if not rbac_user then
+      return nil, err, err_t
+    end
+
+    local ok, err, err_t = kong.db.developers:update({ id = developer.id },
+                                                     { rbac_user = { id = rbac_user.id } })
+    if not ok then
+      return nil, err, err_t
+    end
+
+    return rbac_user
+  end
+
+
+  set_roles = function(developer, new_role_names)
+    if not new_role_names then
+      return true
+    end
+
+    local rbac_user = developer.rbac_user
+    if not rbac_user then
+      local err, err_t
+      rbac_user, err, err_t = create_rbac_user(developer)
+      if not rbac_user then
+        return nil, err, err_t
+      end
+      developer.rbac_user = { id = rbac_user.id }
+    end
+
+    local prefixed_role_names = {}
+    for i = 1, #new_role_names do
+      prefixed_role_names[i] = PORTAL_PREFIX .. new_role_names[i]
+    end
+
+    local ok, _, errors = rbac.set_user_roles(kong.db, rbac_user, prefixed_role_names)
+    if not ok then
+      local err_t = Errors:schema_violation({ ["@entity"] = errors })
+      return nil, tostring(err_t), err_t
+    end
+
+    return true
+  end
 end
 
 
@@ -373,6 +470,8 @@ end
 local function create_developer(self, entity, options)
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
 
+  local roles = extract_roles(entity)
+
   if entity.email then
     -- validate email
     local ok, err = enterprise_utils.validate_email(entity.email)
@@ -445,13 +544,20 @@ local function create_developer(self, entity, options)
 
   -- create developer
   local developer_data = build_developer_data(entity, consumer)
-  local developer, err, err_t = self.super.insert(self, developer_data, options)
+  local developer = self.super.insert(self, developer_data, options)
   if not developer then
     rollback_on_create({ consumer = consumer })
     local err = "developer insert: could not create developer " .. entity.email
     local err_t = { code = Errors.codes.DATABASE_ERROR }
     return nil, err, err_t
   end
+
+  local ok, err, err_t = set_roles(developer, roles)
+  if not ok then
+    return nil, err, err_t
+  end
+
+  developer.roles = roles
 
   return developer, err, err_t
 end
@@ -585,13 +691,29 @@ local function update_developer(self, developer, entity, options)
     end
   end
 
-  return self.super.update(self, { id = developer.id }, entity, options)
+  local roles = extract_roles(entity)
+
+  local updated, err, err_t =
+    self.super.update(self, { id = developer.id }, entity, options)
+  if not updated then
+    return nil, err, err_t
+  end
+
+  local ok, err, err_t = set_roles(updated, roles)
+  if not ok then
+    return nil, err, err_t
+  end
+
+  updated.roles = roles
+
+  return updated
 end
 
 
 return {
   create_developer = create_developer,
   update_developer = update_developer,
+  get_roles = get_roles,
   set_portal_auth_conf = set_portal_auth_conf,
   set_portal_developer_meta_fields = set_portal_developer_meta_fields,
   set_portal_session_conf = set_portal_session_conf,

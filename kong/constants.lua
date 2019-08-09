@@ -105,7 +105,7 @@ return {
     "ca_certificates",
     -- ENTERPRISE
     "files",
-    "developers",
+    "legacy_files",
     "workspaces",
     "workspace_entities",
     "workspace_entity_counters",
@@ -119,6 +119,7 @@ return {
     "rbac_role_entities",
     "rbac_role_endpoints",
     "admins",
+    "developers",
   },
   RATELIMIT = {
     PERIODS = {
@@ -159,6 +160,7 @@ return {
   },
   PROTOCOLS = protocols,
   PROTOCOLS_WITH_SUBSYSTEM = protocols_with_subsystem,
+  PORTAL_PREFIX = "portal-",
   WORKSPACE_CONFIG = {
     PORTAL = "portal",
     PORTAL_AUTH = "portal_auth",
@@ -175,5 +177,6 @@ return {
     PORTAL_SESSION_CONF = "portal_session_conf",
     PORTAL_CORS_ORIGINS = "portal_cors_origins",
     PORTAL_DEVELOPER_META_FIELDS = "portal_developer_meta_fields",
+    PORTAL_IS_LEGACY = "portal_is_legacy"
   }
 }

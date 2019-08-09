@@ -47,6 +47,7 @@ local DB = require "kong.db"
 local singletons = require "kong.singletons"
 local ffi = require "ffi"
 local invoke_plugin = require "kong.enterprise_edition.invoke_plugin"
+local portal_router = require "kong.portal.router"
 
 ffi.cdef[[
 int setenv(const char *name, const char *value, int overwrite);
@@ -234,6 +235,9 @@ local function get_db_utils(strategy, tables, plugins)
   -- cleanup the tags table, since it will be hacky and
   -- not necessary to implement "truncate trigger" in Cassandra
   db:truncate("tags")
+
+  -- initialize portal router
+  singletons.portal_router = portal_router.new(db)
 
   -- cleanup new DB tables
   if not tables then

@@ -88,6 +88,7 @@ local ee = require "kong.enterprise_edition"
 local portal_auth = require "kong.portal.auth"
 local portal_emails = require "kong.portal.emails"
 local admin_emails = require "kong.enterprise_edition.admin.emails"
+local portal_router = require "kong.portal.router"
 local invoke_plugin = require "kong.enterprise_edition.invoke_plugin"
 
 local kong             = kong
@@ -350,6 +351,7 @@ function Kong.init()
   singletons.internal_proxies = internal_proxies.new()
   singletons.portal_emails = portal_emails.new(config)
   singletons.admin_emails = admin_emails.new(config)
+  singletons.portal_router = portal_router.new(db)
 
   local reports = require "kong.reports"
   local l = kong.license and
@@ -855,5 +857,10 @@ function Kong.serve_portal_gui()
   return lapis.serve("kong.portal.gui")
 end
 
+function Kong.serve_portal_assets()
+  kong_global.set_phase(kong, PHASES.admin_api)
+
+   return lapis.serve("kong.portal.gui")
+end
 
 return Kong

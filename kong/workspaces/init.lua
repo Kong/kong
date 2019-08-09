@@ -972,6 +972,11 @@ function _M.build_ws_portal_gui_url(config, workspace)
 end
 
 
+function _M.build_ws_portal_api_url(config)
+  return config.portal_api_url or config.portal_api_listen
+end
+
+
 function _M.build_ws_portal_cors_origins(workspace)
   -- portal_cors_origins takes precedence
   local portal_cors_origins = _M.retrieve_ws_config("portal_cors_origins", workspace)

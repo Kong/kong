@@ -35,7 +35,7 @@ local DEFAULT_CONSUMER = {
 local function insert_files(db)
   for i = 1, 10 do
     local file_name = "file-" .. i
-    assert(db.files:insert({
+    assert(db.legacy_files:insert({
       name = file_name,
       contents = "i-" .. i,
       type = "partial",
@@ -43,7 +43,7 @@ local function insert_files(db)
     }))
 
     local file_page_name = "file-page" .. i
-    assert(db.files:insert({
+    assert(db.legacy_files:insert({
       name = file_page_name,
       contents = "i-" .. i,
       type = "page",
@@ -91,6 +91,7 @@ local function configure_portal(db, config)
   config = config or {
     portal = true,
     portal_auth = "basic-auth",
+    portal_is_legacy = true,
   }
 
   db.workspaces:upsert_by_name("default", {
@@ -314,15 +315,16 @@ for _, strategy in helpers.each_strategy() do
           db:truncate()
           configure_portal(db, {
             portal = true,
+            portal_is_legacy = true,
           })
-
-          insert_files(db)
 
           assert(helpers.start_kong({
             database   = strategy,
             portal     = true,
             enforce_rbac = rbac,
           }))
+
+          insert_files(db)
         end)
 
         lazy_teardown(function()

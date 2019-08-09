@@ -246,6 +246,7 @@ local CONF_INFERENCES = {
   admin_invitation_expiry = {typ = "number"},
 
   portal = {typ = "boolean"},
+  portal_is_legacy = {typ = "boolean"},
   portal_gui_listen = {typ = "array"},
   portal_gui_host = {typ = "string"},
   portal_gui_protocol = {typ = "string"},

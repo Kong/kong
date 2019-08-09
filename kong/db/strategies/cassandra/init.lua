@@ -54,6 +54,7 @@ local _M  = {
   CUSTOM_STRATEGIES = {
     plugins = require("kong.db.strategies.cassandra.plugins"),
     consumers = require("kong.db.strategies.cassandra.consumers"),
+    rbac_role_endpoints = require("kong.db.strategies.cassandra.rbac_role_endpoints"),
     -- rbac_users = require("kong.db.strategies.cassandra.rbac_users"),
   }
 }
