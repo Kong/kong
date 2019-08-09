@@ -3,7 +3,7 @@ use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use t::Util;
 
-plan tests => repeat_each() * (blocks() * 4) + 13;
+plan tests => repeat_each() * (blocks() * 4) + 9;
 
 run_tests();
 
@@ -913,5 +913,144 @@ Content-Length: 0
 grpc-status: 16
 grpc-message: Unauthenticated
 --- response_body chop
+--- no_error_log
+[error]
+
+
+
+=== TEST 34: response.exit() errors with grpc using table body with content-type specified (explicit)
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(401, {}, {
+                ["Content-Type"]  = "application/grpc"
+            })
+        }
+    }
+--- request
+GET /t
+--- error_code: 500
+--- error_log: table body encoding with gRPC is not supported
+
+
+
+=== TEST 35: response.exit() errors with grpc using table body with content-type specified (implicit)
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.set_header("Content-Type", "application/grpc")
+            pdk.response.exit(401, {})
+        }
+    }
+--- request
+GET /t
+--- error_code: 500
+--- error_log: table body encoding with gRPC is not supported
+
+
+
+=== TEST 36: response.exit() errors with grpc using special table body with content-type specified (explicit)
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(401, { message = "I am special" }, {
+                ["Content-Type"]  = "application/grpc"
+            })
+        }
+    }
+--- request
+GET /t
+--- error_code: 500
+--- error_log: table body encoding with gRPC is not supported
+
+
+
+=== TEST 37: response.exit() errors with grpc using special table body with content-type specified (implicit)
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.set_header("Content-Type", "application/grpc")
+            pdk.response.exit(401, { message = "I am special" })
+        }
+    }
+--- request
+GET /t
+--- error_code: 500
+--- error_log: table body encoding with gRPC is not supported
+
+
+
+=== TEST 38: response.exit() logs warning with grpc using table body without content-type specified
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            ngx.req.http_version = function() return "2" end
+
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(401, {})
+        }
+    }
+--- request
+GET /t
+--- more_headers
+Content-Type: application/grpc
+--- response_headers_like
+Content-Length: 0
+grpc-status: 16
+grpc-message: Unauthenticated
+--- response_body chop
+--- error_code: 401
+--- error_log: body was removed because table body encoding with gRPC is not supported
+
+
+
+=== TEST 39: response.exit() does not log warning with grpc using special table body without content-type specified
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            ngx.req.http_version = function() return "2" end
+
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(401, { message = "Hello" })
+        }
+    }
+--- request
+GET /t
+--- more_headers
+Content-Type: application/grpc
+--- response_headers_like
+Content-Length: 0
+grpc-status: 16
+grpc-message: Hello
+--- response_body chop
+--- error_code: 401
 --- no_error_log
 [error]
