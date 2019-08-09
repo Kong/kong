@@ -3,7 +3,8 @@ use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use t::Util;
 
-plan tests => repeat_each() * (blocks() * 4) + 9;
+
+plan tests => repeat_each() * (blocks() * 4) + 13;
 
 run_tests();
 
@@ -915,6 +916,7 @@ grpc-message: Unauthenticated
 --- response_body chop
 --- no_error_log
 [error]
+<<<<<<< HEAD
 
 
 
