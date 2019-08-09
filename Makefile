@@ -65,7 +65,6 @@ dependencies:
 	    luarocks install $$rock OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR); \
 	  fi \
 	done;
-	luarocks install luacheck 0.20.0
 
 dev: remove install dependencies
 
