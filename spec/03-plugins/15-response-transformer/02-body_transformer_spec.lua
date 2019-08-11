@@ -13,7 +13,7 @@ describe("Plugin: response-transformer", function()
           json   = {}
         },
         add      = {
-          json   = {"p1:v1", "p3:value:3", "p4:\"v1\""}
+          json   = {"p1:v1", "p3:value:3", "p4:\"v1\"", "p5:-1"}
         },
         append   = {
           json   = {}
@@ -23,13 +23,19 @@ describe("Plugin: response-transformer", function()
         local json = [[{"p2":"v1"}]]
         local body = body_transformer.transform_json_body(conf, json)
         local body_json = cjson.decode(body)
-        assert.same({p1 = "v1", p2 = "v1", p3 = "value:3", p4 = '"v1"'}, body_json)
+        assert.same({p1 = "v1", p2 = "v1", p3 = "value:3", p4 = '"v1"', p5 = -1}, body_json)
       end)
       it("add value in double quotes", function()
         local json = [[{"p2":"v1"}]]
         local body = body_transformer.transform_json_body(conf, json)
         local body_json = cjson.decode(body)
-        assert.same({p1 = "v1", p2 = "v1", p3 = "value:3", p4 = '"v1"'}, body_json)
+        assert.same({p1 = "v1", p2 = "v1", p3 = "value:3", p4 = '"v1"', p5 = -1}, body_json)
+      end)
+      it("add number", function()
+        local json = [[{"p2":-1}]]
+        local body = body_transformer.transform_json_body(conf, json)
+        local body_json = cjson.decode(body)
+        assert.same({p1 = "v1", p2 = -1, p3 = "value:3", p4 = '"v1"', p5 = -1}, body_json)
       end)
       it("preserves empty arrays", function()
         local json = [[{"p2":"v1", "a":[]}]]
@@ -52,26 +58,32 @@ describe("Plugin: response-transformer", function()
           json   = {}
         },
         append   = {
-          json   = {"p1:v1", "p3:\"v1\""}
+          json   = {"p1:v1", "p3:\"v1\"", "p4:-1"}
         },
       }
       it("new key:value if key does not exists", function()
         local json = [[{"p2":"v1"}]]
         local body = body_transformer.transform_json_body(conf, json)
         local body_json = cjson.decode(body)
-        assert.same({ p2 = "v1", p1 = {"v1"}, p3 = {'"v1"'}}, body_json)
+        assert.same({ p2 = "v1", p1 = {"v1"}, p3 = {'"v1"'}, p4 = {-1}}, body_json)
       end)
       it("value if key exists", function()
         local json = [[{"p1":"v2"}]]
         local body = body_transformer.transform_json_body(conf, json)
         local body_json = cjson.decode(body)
-        assert.same({ p1 = {"v2","v1"}, p3 = {'"v1"'}}, body_json)
+        assert.same({ p1 = {"v2","v1"}, p3 = {'"v1"'}, p4 = {-1}}, body_json)
       end)
       it("value in double quotes", function()
         local json = [[{"p3":"v2"}]]
         local body = body_transformer.transform_json_body(conf, json)
         local body_json = cjson.decode(body)
-        assert.same({p1 = {"v1"}, p3 = {"v2",'"v1"'}}, body_json)
+        assert.same({p1 = {"v1"}, p3 = {"v2",'"v1"'}, p4 = {-1}}, body_json)
+      end)
+      it("number", function()
+        local json = [[{"p4":"v2"}]]
+        local body = body_transformer.transform_json_body(conf, json)
+        local body_json = cjson.decode(body)
+        assert.same({p1 = {"v1"}, p3 = {'"v1"'}, p4={"v2", -1}}, body_json)
       end)
       it("preserves empty arrays", function()
         local json = [[{"p2":"v1", "a":[]}]]
@@ -117,7 +129,7 @@ describe("Plugin: response-transformer", function()
           json   = {}
         },
         replace  = {
-          json   = {"p1:v2", "p2:\"v2\""}
+          json   = {"p1:v2", "p2:\"v2\"", "p3:-1"}
         },
         add      = {
           json   = {}
@@ -150,6 +162,12 @@ describe("Plugin: response-transformer", function()
         local body_json = cjson.decode(body)
         assert.same({p1 = "v2", p2 = '"v2"', a = {}}, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
+      end)
+      it("number", function()
+        local json = [[{"p3" : "v1"}]]
+        local body = body_transformer.transform_json_body(conf, json)
+        local body_json = cjson.decode(body)
+        assert.same({p3 = -1}, body_json)
       end)
     end)
 

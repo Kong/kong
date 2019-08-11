@@ -19,6 +19,15 @@ local noop = function() end
 local _M = {}
 
 
+local function cast_value(value)
+  local num_v = tonumber(value)
+  if num_v == nil then
+    return value
+  end
+  return num_v
+end
+
+
 local function read_json_body(body)
   if body then
     return cjson.decode(body)
@@ -30,15 +39,15 @@ local function append_value(current_value, value)
   local current_value_type = type(current_value)
 
   if current_value_type  == "string" then
-    return {current_value, value }
+    return {current_value, cast_value(value) }
   end
 
   if current_value_type  == "table" then
-    insert(current_value, value)
+    insert(current_value, cast_value(value))
     return current_value
   end
 
-  return { value }
+  return { cast_value(value) }
 end
 
 
@@ -90,7 +99,7 @@ function _M.transform_json_body(conf, buffered_data)
 
     v = v and gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
     if json_body[name] and v then
-      json_body[name] = v
+      json_body[name] = cast_value(v)
     end
   end
 
@@ -103,8 +112,9 @@ function _M.transform_json_body(conf, buffered_data)
 
     v = v and gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
     if not json_body[name] and v then
-      json_body[name] = v
+      json_body[name] = cast_value(v)
     end
+
   end
 
   -- append new key:value or value to existing key
