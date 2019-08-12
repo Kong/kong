@@ -29,6 +29,7 @@ local conf_loader = require "kong.conf_loader"
 local kong_global = require "kong.global"
 local Blueprints = require "spec.fixtures.blueprints"
 local pl_stringx = require "pl.stringx"
+local constants = require "kong.constants"
 local pl_tablex = require "pl.tablex"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
@@ -748,6 +749,73 @@ local function udp_server(port, n, timeout)
   handshake:close()
 
   return thread
+end
+
+
+local function mock_reports_server()
+  local localhost = "127.0.0.1"
+  local threads = require "llthreads2.ex"
+  local server_port = constants.REPORTS.STATS_PORT
+
+  local thread = threads.new({
+    function(port, localhost)
+      local socket = require "socket"
+
+      local server = assert(socket.udp())
+      server:settimeout(1)
+      server:setoption("reuseaddr", true)
+      server:setsockname(localhost, port)
+      local data = {}
+      local started = false
+      while true do
+        local packet, recvip, recvport = server:receivefrom()
+        if packet then
+          if packet == "\\START" then
+            if not started then
+              started = true
+              server:sendto("\\OK", recvip, recvport)
+            end
+          elseif packet == "\\STOP" then
+            break
+          else
+            table.insert(data, packet)
+          end
+        end
+      end
+      server:close()
+      return data
+    end
+  }, server_port, localhost)
+  thread:start()
+
+  local handshake_skt = assert(ngx.socket.udp())
+  handshake_skt:setpeername(localhost, server_port)
+  handshake_skt:settimeout(0.1)
+
+  -- not necessary for correctness because we do the handshake,
+  -- but avoids harmless "connection error" messages in the wait loop
+  -- in case the client is ready before the server below.
+  ngx.sleep(0.05)
+
+  while true do
+    handshake_skt:send("\\START")
+    local ok = handshake_skt:receive()
+    if ok == "\\OK" then
+      break
+    end
+  end
+  handshake_skt:close()
+
+  return {
+    stop = function()
+      local skt = assert(ngx.socket.udp())
+      skt:setpeername(localhost, server_port)
+      skt:send("\\STOP")
+      skt:close()
+
+      return thread:join()
+    end
+  }
 end
 
 --------------------
@@ -1855,6 +1923,7 @@ return {
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
   http_server = http_server,
+  mock_reports_server = mock_reports_server,
   get_proxy_ip = get_proxy_ip,
   get_proxy_port = get_proxy_port,
   proxy_client = proxy_client,
