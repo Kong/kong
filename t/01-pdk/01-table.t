@@ -94,3 +94,56 @@ GET /t
 {y = "world"}
 --- no_error_log
 [error]
+
+
+
+=== TEST 4: table.new_cache()
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            local cache = pdk.table.new_cache(function(conf)
+                return conf
+            end)
+
+            local ok, err = pcall(function()
+                local x = cache[{}]
+            end)
+            assert(err:find("the value cannot be the same table", 1, true))
+
+            local ok, err = pcall(function()
+                local x = cache["hello"]
+            end)
+            assert(err:find("the key must be a table, got 'string'", 1, true))
+
+
+            local cache = pdk.table.new_cache(function(conf)
+                return {
+                    conf[1],
+                    "world"
+                }
+            end)
+
+            local conf = { "hello" }
+            local cached_conf = cache[conf]
+
+            ngx.say("hello: ", cached_conf[1])
+            ngx.say("world: ", cached_conf[2])
+
+            conf = nil
+            collectgarbage()
+            collectgarbage()
+            ngx.say("next: ", tostring(next(cache)))
+        }
+    }
+--- request
+GET /t
+--- response_body
+hello: hello
+world: world
+next: nil
+--- no_error_log
+[error]
