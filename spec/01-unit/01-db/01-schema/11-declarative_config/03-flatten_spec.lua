@@ -1166,6 +1166,7 @@ describe("declarative config: flatten", function()
           _format_version: "1.1"
           oauth2_credentials:
           - name: my-credential
+            consumer: foo
             redirect_uris:
             - https://example.com
           - name: another-credential
@@ -1180,6 +1181,9 @@ describe("declarative config: flatten", function()
             [1] = {
               [1] = "invalid reference 'consumer: foo' (no such entry in 'consumers')"
             },
+            [2] = {
+              [1] = "invalid reference 'consumer: foo' (no such entry in 'consumers')"
+            },
           }
         }, err)
       end)
@@ -1187,20 +1191,25 @@ describe("declarative config: flatten", function()
       it("accepts entities", function()
         local config = assert(lyaml.load([[
           _format_version: "1.1"
-          oauth2_credentials:
-          - name: my-credential
-            redirect_uris:
-            - https://example.com
-          - name: another-credential
-            redirect_uris:
-            - https://example.test
+          consumers:
+          - username: bob
+            oauth2_credentials:
+            - name: my-credential
+              redirect_uris:
+              - https://example.com
+            - name: another-credential
+              redirect_uris:
+              - https://example.test
         ]]))
         config = DeclarativeConfig:flatten(config)
+        config.consumers = nil
         assert.same({
           oauth2_credentials = { {
               client_id = "RANDOM",
-                    client_secret = "RANDOM",
-                          consumer = null,
+              client_secret = "RANDOM",
+              consumer = {
+                id = "UUID"
+              },
               created_at = 1234567890,
               id = "UUID",
               name = "another-credential",
@@ -1208,7 +1217,9 @@ describe("declarative config: flatten", function()
             }, {
               client_id = "RANDOM",
               client_secret = "RANDOM",
-              consumer = null,
+              consumer = {
+                id = "UUID",
+              },
               created_at = 1234567890,
               id = "UUID",
               name = "my-credential",
@@ -1291,18 +1302,24 @@ describe("declarative config: flatten", function()
         it("accepts an empty list", function()
           local config = assert(lyaml.load([[
             _format_version: "1.1"
+            consumers:
+            - username: bob
             oauth2_credentials:
             - name: my-credential
+              consumer: bob
               redirect_uris:
               - https://example.com
               oauth2_tokens:
           ]]))
           config = DeclarativeConfig:flatten(config)
+          config.consumers = nil
           assert.same({
             oauth2_credentials = { {
                 client_id = "RANDOM",
-                      client_secret = "RANDOM",
-                consumer = null,
+                client_secret = "RANDOM",
+                consumer = {
+                  id = "UUID"
+                },
                 created_at = 1234567890,
                 id = "UUID",
                 name = "my-credential",
@@ -1314,8 +1331,11 @@ describe("declarative config: flatten", function()
         it("accepts entities", function()
           local config = assert(lyaml.load([[
             _format_version: "1.1"
+            consumers:
+            - username: bob
             oauth2_credentials:
             - name: my-credential
+              consumer: bob
               redirect_uris:
               - https://example.com
               oauth2_tokens:
@@ -1324,12 +1344,15 @@ describe("declarative config: flatten", function()
               - expires_in: 10
                 scope: "foo"
           ]]))
-          config = DeclarativeConfig:flatten(config)
+          local config = DeclarativeConfig:flatten(config)
+          config.consumers = nil
           assert.same({
             oauth2_credentials = { {
                 client_id = "RANDOM",
                 client_secret = "RANDOM",
-                consumer = null,
+                consumer = {
+                  id = "UUID"
+                },
                 created_at = 1234567890,
                 id = "UUID",
                 name = "my-credential",

@@ -27,7 +27,11 @@ local hash_password = function(self, cred_id_or_username, cred)
     end
   end
 
-  cred.password = crypto.hash(cred.consumer.id, cred.password)
+  if cred.consumer then
+    cred.password = crypto.hash(cred.consumer.id, cred.password)
+  else
+    cred.password = crypto.hash(utils.uuid(), cred.password)
+  end
 
   return true
 end
