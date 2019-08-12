@@ -9,6 +9,7 @@ local timer_at = ngx.timer.at
 local ngx_log = ngx.log
 local concat = table.concat
 local tostring = tostring
+local lower = string.lower
 local pairs = pairs
 local type = type
 local WARN = ngx.WARN
@@ -18,6 +19,12 @@ local sub = string.sub
 local PING_INTERVAL = 3600
 local PING_KEY = "events:reports"
 local REQUEST_COUNT_KEY       = "events:requests"
+local HTTP_REQUEST_COUNT_KEY  = "events:requests:http"
+local HTTPS_REQUEST_COUNT_KEY = "events:requests:https"
+local GRPC_REQUEST_COUNT_KEY  = "events:requests:grpc"
+local GRPCS_REQUEST_COUNT_KEY = "events:requests:grpcs"
+local WS_REQUEST_COUNT_KEY    = "events:requests:ws"
+local WSS_REQUEST_COUNT_KEY   = "events:requests:wss"
 
 local _buffer = {}
 local _ping_infos = {}
@@ -192,12 +199,55 @@ local function incr_counter(key)
 end
 
 
+-- returns a string indicating the "kind" of the current request:
+-- "ws", "http", "https", "grpc", "grpcs"
+-- or nil + error message if the suffix could not be determined
+local function get_current_request_suffix()
+  local var = ngx.var
+  local proxy_mode = var.kong_proxy_mode
+
+  if proxy_mode == "grpc" or proxy_mode == "grpcs" then
+    return proxy_mode
+  end
+
+  local scheme = var.scheme
+  local http_upgrade = var.http_upgrade
+  if http_upgrade and lower(http_upgrade) == "websocket" then
+    if scheme == "http" then
+      return "ws"
+    elseif scheme == "https" then
+      return "wss"
+    end
+  end
+
+  if scheme == "http" or scheme == "https" then
+    return scheme
+  end
+
+  return nil, "unknown request scheme: " .. tostring(scheme)
+end
+
+
 local function send_ping(host, port)
   _ping_infos.unique_id = _unique_str
 
   _ping_infos.requests   = get_counter(REQUEST_COUNT_KEY)
+  _ping_infos.http_reqs  = get_counter(HTTP_REQUEST_COUNT_KEY)
+  _ping_infos.https_reqs = get_counter(HTTPS_REQUEST_COUNT_KEY)
+  _ping_infos.grpc_reqs  = get_counter(GRPC_REQUEST_COUNT_KEY)
+  _ping_infos.grpcs_reqs = get_counter(GRPCS_REQUEST_COUNT_KEY)
+  _ping_infos.ws_reqs    = get_counter(WS_REQUEST_COUNT_KEY)
+  _ping_infos.wss_reqs   = get_counter(WSS_REQUEST_COUNT_KEY)
+
   send_report("ping", _ping_infos, host, port)
+
   reset_counter(REQUEST_COUNT_KEY,       _ping_infos.requests)
+  reset_counter(HTTP_REQUEST_COUNT_KEY,  _ping_infos.http_reqs)
+  reset_counter(HTTPS_REQUEST_COUNT_KEY, _ping_infos.https_reqs)
+  reset_counter(GRPC_REQUEST_COUNT_KEY,  _ping_infos.grpc_reqs)
+  reset_counter(GRPCS_REQUEST_COUNT_KEY, _ping_infos.grpcs_reqs)
+  reset_counter(WS_REQUEST_COUNT_KEY,    _ping_infos.ws_reqs)
+  reset_counter(WSS_REQUEST_COUNT_KEY,   _ping_infos.wss_reqs)
 end
 
 
@@ -320,6 +370,11 @@ return {
     end
 
     incr_counter(REQUEST_COUNT_KEY)
+    local suffix, err = get_current_request_suffix()
+    if suffix then
+      incr_counter(REQUEST_COUNT_KEY .. ":" .. suffix)
+    else
+      log(WARN, err)
     end
   end,
 
