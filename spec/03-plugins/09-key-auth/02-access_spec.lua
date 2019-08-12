@@ -60,6 +60,14 @@ for _, strategy in helpers.each_strategy() do
         strip_path = true,
       }
 
+      local route8 = bp.routes:insert {
+        hosts = { "key-auth8.com" },
+      }
+
+      local route9 = bp.routes:insert {
+        hosts = { "key-auth9.com" },
+      }
+
       bp.plugins:insert {
         name     = "key-auth",
         route = { id = route1.id },
@@ -116,6 +124,22 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route7.id },
         config   = {
           run_on_preflight = false,
+        },
+      }
+
+      bp.plugins:insert {
+        name     = "key-auth",
+        route = { id = route8.id },
+        config = {
+          key_names = { "api_key", },
+        },
+      }
+
+      bp.plugins:insert {
+        name     = "key-auth",
+        route = { id = route9.id },
+        config = {
+          key_names = { "api-key", },
         },
       }
 
@@ -364,6 +388,56 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
+        assert.same({ message = "Invalid authentication credentials" }, json)
+      end)
+    end)
+
+    describe("underscores or hyphens in key headers", function()
+      it("authenticates valid credentials", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"]   = "key-auth8.com",
+            ["api_key"] = "kong"
+          }
+        })
+        assert.res_status(200, res)
+
+        res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"]   = "key-auth8.com",
+            ["api-key"] = "kong"
+          }
+        })
+        assert.res_status(200, res)
+      end)
+
+      it("returns 401 Unauthorized on invalid key", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"]   = "key-auth8.com",
+            ["api_key"] = "123"
+          }
+        })
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Invalid authentication credentials" }, json)
+
+        res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"]   = "key-auth8.com",
+            ["api-key"] = "123"
+          }
+        })
+        body = assert.res_status(401, res)
+        json = cjson.decode(body)
         assert.same({ message = "Invalid authentication credentials" }, json)
       end)
     end)
