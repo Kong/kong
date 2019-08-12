@@ -93,13 +93,16 @@ local strategies = function(connector)
 
       workspace_entity_ids = function()
         local res, err = connector:query([[
-          SELECT entity_id FROM workspace_entities;
+          SELECT entity_id, unique_field_name FROM workspace_entities;
         ]])
         if err then return nil, err end
         if not res then return {} end
         local ids = {}
         for i = 1, #res do
-          ids[res[i].entity_id] = true
+          if not ids[res[i].entity_id] then
+            ids[res[i].entity_id] = {}
+          end
+          ids[res[i].entity_id][res[i].unique_field_name] = true
         end
         return ids
       end,
@@ -136,6 +139,7 @@ local strategies = function(connector)
           pg_escape_literal(entity.id)
         )
       end,
+
       incr_workspace_counter = function(workspace, entity_type, count)
         return fmt([[
           INSERT INTO workspace_entity_counters (workspace_id, entity_type, count)
@@ -168,13 +172,16 @@ local strategies = function(connector)
 
       workspace_entity_ids = function()
         local res, err = connector:query([[
-          SELECT entity_id FROM workspace_entities;
+          SELECT entity_id, unique_field_name FROM workspace_entities;
         ]])
         if err then return nil, err end
         if not res then return {} end
         local ids = {}
         for i = 1, #res do
-          ids[res[i].entity_id] = true
+          if not ids[res[i].entity_id] then
+            ids[res[i].entity_id] = {}
+          end
+          ids[res[i].entity_id][res[i].unique_field_name] = true
         end
         return ids
       end,
@@ -269,6 +276,10 @@ local function migrate_core_entities(connector, strategy, opts)
   -- We need this for proper entity counts
   local ws_entity_map = queries.workspace_entity_ids()
 
+  local ws_entity_exists = function(entity_id, field)
+    return ws_entity_map[entity_id] and ws_entity_map[entity_id][field]
+  end
+
   local workspace_entities = {}
 
   local entity_log_counters = setmetatable({}, {
@@ -278,31 +289,45 @@ local function migrate_core_entities(connector, strategy, opts)
   for model, relation in pairs(entities) do
     -- Add workspace_entity for this model
     for row in queries.entities(model) do
-      if ws_entity_map[row[relation.primary_key]] then goto continue end
+      local update_counter = false
+      local entity_id = row[relation.primary_key]
+      local unique_field_name = relation.primary_key
 
       -- One entity per primary key
-      workspace_entities[#workspace_entities + 1] = {
-        id = row[relation.primary_key],
-        entity_type = model,
-        unique_field_name = relation.primary_key,
-        unique_field_value = row[relation.primary_key],
-        pk = true,
-      }
+      -- check if primary key relation of entity is already migrated
+      if not ws_entity_exists(entity_id, unique_field_name) then
+        workspace_entities[#workspace_entities + 1] = {
+          id = entity_id,
+          entity_type = model,
+          unique_field_name = unique_field_name,
+          unique_field_value = entity_id,
+          pk = true,
+        }
+        update_counter = true
+      end
 
       -- One entity per each unique key
-      for _, unique_key in ipairs(relation.unique_keys) do
-        workspace_entities[#workspace_entities + 1] = {
-          id = row[relation.primary_key],
-          entity_type = model,
-          unique_field_name = unique_key,
-          unique_field_value = row[unique_key],
-          pk = false,
-        }
-      end
-      entity_log_counters[model] = entity_log_counters[model] + 1
-      entity_log_counters.__all = entity_log_counters.__all + 1
+      for unique_key, _ in pairs(relation.unique_keys) do
+        local unique_field_val = row[unique_key]
 
-      ::continue::
+        -- check if unique keys relation of entity are already migrated 
+        if not ws_entity_exists(entity_id, unique_key) then
+          workspace_entities[#workspace_entities + 1] = {
+            id = entity_id,
+            entity_type = model,
+            unique_field_name = unique_key,
+            unique_field_value = unique_field_val,
+            pk = false,
+          }
+
+          update_counter = true
+        end
+      end
+
+      if update_counter then
+        entity_log_counters[model] = entity_log_counters[model] + 1
+        entity_log_counters.__all = entity_log_counters.__all + 1
+      end
     end
   end
 
