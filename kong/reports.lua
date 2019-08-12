@@ -17,8 +17,7 @@ local sub = string.sub
 
 local PING_INTERVAL = 3600
 local PING_KEY = "events:reports"
-local BUFFERED_REQUESTS_COUNT_KEYS = "events:requests"
-
+local REQUEST_COUNT_KEY       = "events:requests"
 
 local _buffer = {}
 local _ping_infos = {}
@@ -150,6 +149,58 @@ local function create_timer(...)
 end
 
 
+local function get_counter(key)
+  local count, err = kong_dict:get(key)
+  if err then
+    log(WARN, "could not get ", key, " from 'kong' shm: ", err)
+  end
+  return count or 0
+end
+
+-- For counter resetting we use `incr` instead of `set` because we want to
+-- preserve measurements which might get received while we send the
+-- report from worker A:
+--
+--                   Flow of Time
+--                       |||
+--                       VVV
+--
+--         Worker A       |     Worker B
+--                        |
+--   get_counter -> 100   |
+--                        |
+--                        |  <log phase> incr_counter(1) -> 101
+--                        |
+--   reset_counter(-100)  |
+--
+-- Final counter value after reset: 1 (correct, the worker B increment was preserved)
+-- `reset_counter` was set to 0 (with `kong_dict:set(key, 0)` we would lose the increment
+-- done by Worker B.
+local function reset_counter(key, amount)
+  local ok, err = kong_dict:incr(key, -amount, amount)
+  if not ok then
+    log(WARN, "could not reset ", key, " in 'kong' shm: ", err)
+  end
+end
+
+
+local function incr_counter(key)
+  local ok, err = kong_dict:incr(key, 1, 0)
+  if not ok then
+    log(WARN, "could not increment ", key, " in 'kong' shm: ", err)
+  end
+end
+
+
+local function send_ping(host, port)
+  _ping_infos.unique_id = _unique_str
+
+  _ping_infos.requests   = get_counter(REQUEST_COUNT_KEY)
+  send_report("ping", _ping_infos, host, port)
+  reset_counter(REQUEST_COUNT_KEY,       _ping_infos.requests)
+end
+
+
 local function ping_handler(premature)
   if premature then
     return
@@ -163,22 +214,7 @@ local function ping_handler(premature)
     return
   end
 
-  local n_requests, err = kong_dict:get(BUFFERED_REQUESTS_COUNT_KEYS)
-  if err then
-    log(WARN, "could not get buffered requests count from 'kong' shm: ", err)
-  elseif not n_requests then
-    n_requests = 0
-  end
-
-  _ping_infos.requests = n_requests
-  _ping_infos.unique_id = _unique_str
-
-  send_report("ping", _ping_infos)
-
-  local ok, err = kong_dict:incr(BUFFERED_REQUESTS_COUNT_KEYS, -n_requests, n_requests)
-  if not ok then
-    log(WARN, "could not reset buffered requests count in 'kong' shm: ", err)
-  end
+  send_ping()
 end
 
 
@@ -277,18 +313,13 @@ return {
   get_ping_value = function(k)
     return _ping_infos[k]
   end,
-  send_ping = function(host, port)
-    send_report("ping", _ping_infos, host, port)
-  end,
+  send_ping = send_ping,
   log = function()
     if not _enabled then
       return
     end
 
-    local ok, err = kong_dict:incr(BUFFERED_REQUESTS_COUNT_KEYS, 1, 0)
-    if not ok then
-      log(WARN, "could not increment buffered requests count in 'kong' shm: ",
-                err)
+    incr_counter(REQUEST_COUNT_KEY)
     end
   end,
 
