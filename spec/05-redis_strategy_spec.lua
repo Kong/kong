@@ -3,6 +3,8 @@ local redis_strategy = require "kong.plugins.proxy-cache.strategies.redis"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 
+local helpers = require "spec.helpers"
+
 require"resty.dns.client".init(nil)
 
 local REDIS_DB = 1
@@ -11,7 +13,7 @@ describe("proxy-cache: Redis strategy", function()
   local strategy, redis_client
 
   local redis_config = {
-    host = "127.0.0.1",
+    host = helpers.redis_host,
     port = 6379,
     database = REDIS_DB,
   }

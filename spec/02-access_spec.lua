@@ -6,7 +6,7 @@ local strategies = require("kong.plugins.proxy-cache.strategies")
 local TIMEOUT = 10 -- default timeout for non-memory strategies
 
 
-local REDIS_HOST = "127.0.0.1"
+local REDIS_HOST = helpers.redis_host
 local REDIS_PORT = 6379
 local REDIS_DATABASE = 1
 
