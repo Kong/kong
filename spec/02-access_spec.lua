@@ -89,6 +89,10 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
     local route20 = bp.routes:insert({
       hosts = { "test20.com" }
     })
+    local route21 = bp.routes:insert({
+      hosts = { "test21.com" }
+    })
+
 
     bp.plugins:insert {
       route = { id = route1.id },
@@ -323,6 +327,32 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
         },
       }
     }
+
+    do
+      -- 2 plugins:
+      -- pre-function: plugin to inject a shared value in the kong.ctx.shared table
+      -- transformer: pick up the injected value and add to the query string
+      bp.plugins:insert {
+        route = { id = route21.id },
+        name = "pre-function",
+        config = {
+          functions = {
+            [[
+              kong.ctx.shared.my_version = "1.2.3"
+            ]]
+          },
+        }
+      }
+      bp.plugins:insert {
+        route = { id = route21.id },
+        name = "request-transformer",
+        config = {
+          add = {
+            querystring = {"shared_param1:$(shared.my_version)"},
+          }
+        }
+      }
+    end
 
     assert(helpers.start_kong({
       database = strategy,
@@ -1570,6 +1600,9 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.equals("20", value)
     end)
   end)
+
+
+
   describe("request rewrite using template", function()
     it("template as querystring parameters on GET", function()
       local r = assert(client:send {
@@ -1751,6 +1784,18 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
         }
       })
       assert.response(r).has.status(500)
+    end)
+    it("can inject a value from 'kong.ctx.shared'", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/",
+        headers = {
+          host = "test21.com",
+        }
+      })
+      assert.response(r).has.status(200)
+      local value = assert.request(r).has.queryparam("shared_param1")
+      assert.equals("1.2.3", value)
     end)
   end)
 end)
