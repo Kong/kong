@@ -108,7 +108,7 @@ end
 
 local function get_redirect_uris(client_id)
   local client, err
-  if client_id then
+  if client_id and client_id ~= "" then
     local credential_cache_key = kong.db.oauth2_credentials:cache_key(client_id)
     client, err = kong.cache:get(credential_cache_key, nil,
                                  load_oauth2_credential_by_client_id,
