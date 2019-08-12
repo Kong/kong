@@ -18,12 +18,13 @@ local MATCH_WHITELIST = 1
 local MATCH_BLACKLIST = 2
 local MATCH_BOT       = 3
 
+local UA_CACHE_SIZE = 10 ^ 4
+
 
 -- per-worker cache of matched UAs
--- we use a weak table, index by the `conf` parameter, so once the plugin config
--- is GC'ed, the cache follows automatically
-local ua_caches = setmetatable({}, { __mode = "k" })
-local UA_CACHE_SIZE = 10 ^ 4
+local ua_caches = kong.table.new_cache(function(conf)
+  return lrucache.new(UA_CACHE_SIZE)
+end)
 
 local function get_user_agent()
   local user_agent = kong.request.get_headers()["user-agent"]
@@ -72,10 +73,6 @@ function BotDetectionHandler:access(conf)
   end
 
   local cache = ua_caches[conf]
-  if not cache then
-    cache = lrucache.new(UA_CACHE_SIZE)
-    ua_caches[conf] = cache
-  end
 
   local match  = cache:get(user_agent)
   if not match then

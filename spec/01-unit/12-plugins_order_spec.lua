@@ -12,6 +12,12 @@ describe("Plugins", function()
       plugins = "bundled",
     }))
 
+    _G.kong = _G.kong or {
+      table = {
+        new_cache = function() end
+      }
+    }
+
     plugins = {}
 
     for plugin in pairs(conf.loaded_plugins) do

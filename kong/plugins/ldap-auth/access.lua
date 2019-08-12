@@ -20,7 +20,14 @@ local AUTHORIZATION = "authorization"
 local PROXY_AUTHORIZATION = "proxy-authorization"
 
 
-local ldap_config_cache = setmetatable({}, { __mode = "k" })
+local ldap_config_cache = kong.table.new_cache(function(conf)
+  return md5(fmt("%s:%u:%s:%s:%u",
+                  lower(conf.ldap_host),
+                  conf.ldap_port,
+                  conf.base_dn,
+                  conf.attribute,
+                  conf.cache_ttl))
+end)
 
 
 local _M = {}
@@ -122,15 +129,6 @@ end
 
 
 local function cache_key(conf, username, password)
-  if not ldap_config_cache[conf] then
-    ldap_config_cache[conf] = md5(fmt("%s:%u:%s:%s:%u",
-                                      lower(conf.ldap_host),
-                                      conf.ldap_port,
-                                      conf.base_dn,
-                                      conf.attribute,
-                                      conf.cache_ttl))
-  end
-
   return fmt("ldap_auth_cache:%s:%s:%s", ldap_config_cache[conf],
              username, password)
 end

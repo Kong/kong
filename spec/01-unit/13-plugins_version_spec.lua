@@ -7,6 +7,12 @@ describe("Plugins", function()
   lazy_setup(function()
     local conf = assert(conf_loader())
 
+    _G.kong = _G.kong or {
+      table = {
+        new_cache = function() end
+      }
+    }
+
     plugins = {}
 
     for plugin in pairs(conf.loaded_plugins) do

@@ -20,11 +20,6 @@ CorsHandler.PRIORITY = 2000
 CorsHandler.VERSION = "2.0.0"
 
 
--- per-plugin cache of normalized origins for runtime comparison
-local mt_cache = { __mode = "k" }
-local config_cache = setmetatable({}, mt_cache)
-
-
 -- per-worker cache of parsed requests origins with 1000 slots
 local normalized_req_domains = lrucache.new(10e3)
 
@@ -51,6 +46,42 @@ local function normalize_origin(domain)
     host = parsed_obj.host,
   }
 end
+
+
+-- per-plugin cache of normalized origins for runtime comparison
+local config_cache = kong.table.new_cache(function(conf)
+  local cached_domains = {}
+
+  for _, entry in ipairs(conf.origins) do
+    local domain
+    local maybe_regex, _, err = re_find(entry, "[^A-Za-z0-9.:/-]", "jo")
+    if err then
+      kong.log.err("could not inspect origin for type: ", err)
+    end
+
+    if maybe_regex then
+      -- Kong 0.x did not anchor regexes:
+      -- Perform adjustments to support regexes
+      -- explicitly anchored by the user.
+      if entry:sub(-1) ~= "$" then
+        entry = entry .. "$"
+      end
+
+      if entry:sub(1, 1) == "^" then
+        entry = entry:sub(2)
+      end
+
+      domain = { regex = entry }
+
+    else
+      domain = normalize_origin(entry)
+    end
+
+    domain.by_host = not find(entry, ":", 1, true)
+    table.insert(cached_domains, domain)
+  end
+  return cached_domains
+end)
 
 
 local function configure_origin(conf)
@@ -87,40 +118,6 @@ local function configure_origin(conf)
   local req_origin = kong.request.get_header("origin")
   if req_origin then
     local cached_domains = config_cache[conf]
-    if not cached_domains then
-      cached_domains = {}
-
-      for _, entry in ipairs(conf.origins) do
-        local domain
-        local maybe_regex, _, err = re_find(entry, "[^A-Za-z0-9.:/-]", "jo")
-        if err then
-          kong.log.err("could not inspect origin for type: ", err)
-        end
-
-        if maybe_regex then
-          -- Kong 0.x did not anchor regexes:
-          -- Perform adjustments to support regexes
-          -- explicitly anchored by the user.
-          if entry:sub(-1) ~= "$" then
-            entry = entry .. "$"
-          end
-
-          if entry:sub(1, 1) == "^" then
-            entry = entry:sub(2)
-          end
-
-          domain = { regex = entry }
-
-        else
-          domain = normalize_origin(entry)
-        end
-
-        domain.by_host = not find(entry, ":", 1, true)
-        table.insert(cached_domains, domain)
-      end
-
-      config_cache[conf] = cached_domains
-    end
 
     local normalized_req_origin = normalized_req_domains:get(req_origin)
     if not normalized_req_origin then
