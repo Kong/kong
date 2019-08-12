@@ -22,34 +22,35 @@ RESTY_VERSION ?= `grep RESTY_VERSION .requirements | awk -F"=" '{print $$2}'`
 RESTY_LUAROCKS_VERSION ?= `grep RESTY_LUAROCKS_VERSION .requirements | awk -F"=" '{print $$2}'`
 RESTY_OPENSSL_VERSION ?= `grep RESTY_OPENSSL_VERSION .requirements | awk -F"=" '{print $$2}'`
 RESTY_PCRE_VERSION ?= `grep RESTY_PCRE_VERSION .requirements | awk -F"=" '{print $$2}'`
-KONG_BUILD_TOOLS ?= `grep KONG_BUILD_TOOLS .requirements | awk -F"=" '{print $$2}'`
+KONG_BUILD_TOOLS ?= '2.0.0'
 KONG_VERSION ?= `cat kong-*.rockspec | grep tag | awk '{print $$3}' | sed 's/"//g'`
 
-setup-release:
+setup-kong-build-tools:
 	-rm -rf kong-build-tools; \
 	git clone https://github.com/Kong/kong-build-tools.git; fi
 	cd kong-build-tools; \
 	git reset --hard $(KONG_BUILD_TOOLS); \
-	./.ci/setup_ci.sh
 
-functional_tests: setup-release
+functional-tests: setup-kong-build-tools
 	cd kong-build-tools; \
 	export KONG_SOURCE_LOCATION=`pwd`/../ && \
-	make package-kong && \
-	make test
+	$(MAKE) setup-build && \
+	$(MAKE) build-kong && \
+	$(MAKE) test
 
-nightly-release: setup-release
+nightly-release: setup-kong-build-tools
 	sed -i -e '/return string\.format/,/\"\")/c\return "$(KONG_VERSION)\"' kong/meta.lua && \
 	cd kong-build-tools; \
 	export KONG_SOURCE_LOCATION=`pwd`/../ && \
-	make package-kong && \
-	make release-kong
+	$(MAKE) setup-build && \
+	$(MAKE) build-kong && \
+	$(MAKE) release-kong
 
 release: setup-release
 	cd kong-build-tools; \
 	export KONG_SOURCE_LOCATION=`pwd`/../ && \
-	make package-kong && \
-	make release-kong
+	$(MAKE) package-kong && \
+	$(MAKE) release-kong
 
 install:
 	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR)
