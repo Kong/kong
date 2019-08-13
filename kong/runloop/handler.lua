@@ -877,7 +877,9 @@ return {
         balancer.init()
       end)
 
-      timer_every(1, function(premature)
+      local router_update_frequency = kong.configuration.router_update_frequency or 1
+
+      timer_every(router_update_frequency, function(premature)
         if premature then
           return
         end
@@ -892,7 +894,7 @@ return {
         end
       end)
 
-      timer_every(1, function(premature)
+      timer_every(router_update_frequency, function(premature)
         if premature then
           return
         end
