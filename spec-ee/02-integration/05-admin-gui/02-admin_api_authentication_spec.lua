@@ -69,10 +69,6 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-
-  if strategy == 'cassandra' then
-    return
-  end
   describe("Admin API authentication on #" .. strategy, function()
     lazy_setup(function()
       _, db, dao = helpers.get_db_utils(strategy)
