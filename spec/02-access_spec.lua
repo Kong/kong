@@ -467,6 +467,8 @@ for i, policy in ipairs({"memory", "redis"}) do
       assert.res_status(200, res)
       assert.same("Refresh", res.headers["X-Cache-Status"])
 
+      wait_until_key_in_cache(cache_key)
+
       res = assert(client:send {
         method = "GET",
         path = "/get",
@@ -474,6 +476,7 @@ for i, policy in ipairs({"memory", "redis"}) do
           host = "route-9.com",
         }
       })
+
 
       assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
@@ -1002,6 +1005,9 @@ for i, policy in ipairs({"memory", "redis"}) do
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
 
+        local cache_key = res.headers["X-Cache-Key"]
+        wait_until_key_in_cache(cache_key)
+
         res = assert(client:send {
           method = "GET",
           path = "/get",
@@ -1025,6 +1031,9 @@ for i, policy in ipairs({"memory", "redis"}) do
 
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
+
+        local cache_key = res.headers["X-Cache-Key"]
+        wait_until_key_in_cache(cache_key)
 
         res = assert(client:send {
           method = "GET",
@@ -1137,6 +1146,9 @@ for i, policy in ipairs({"memory", "redis"}) do
         assert.res_status(417, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
 
+        local cache_key = res.headers["X-Cache-Key"]
+        wait_until_key_in_cache(cache_key)
+
         res = assert(client:send {
           method = "GET",
           path = "/status/417",
@@ -1144,6 +1156,7 @@ for i, policy in ipairs({"memory", "redis"}) do
             host = "route-10.com",
           },
         })
+
 
         assert.res_status(417, res)
         assert.same("Hit", res.headers["X-Cache-Status"])
@@ -1212,6 +1225,9 @@ for i, policy in ipairs({"memory", "redis"}) do
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
         assert.matches("^%d+$", res.headers["X-Kong-Proxy-Latency"])
+
+        local cache_key = res.headers["X-Cache-Key"]
+        wait_until_key_in_cache(cache_key)
 
         res = assert(client:send {
           method = "GET",
