@@ -16,6 +16,7 @@ local MOCK_UPSTREAM_PORT = 15555
 local MOCK_UPSTREAM_SSL_PORT = 15556
 local MOCK_UPSTREAM_STREAM_PORT = 15557
 local MOCK_UPSTREAM_STREAM_SSL_PORT = 15558
+local BLACKHOLE_HOST = "10.255.255.255"
 
 require("resty.core")
 
@@ -1681,6 +1682,8 @@ return {
 
   mock_upstream_stream_port     = MOCK_UPSTREAM_STREAM_PORT,
   mock_upstream_stream_ssl_port = MOCK_UPSTREAM_STREAM_SSL_PORT,
+
+  blackhole_host = BLACKHOLE_HOST,
 
   -- Kong testing helpers
   execute = exec,
