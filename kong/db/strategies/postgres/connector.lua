@@ -28,6 +28,7 @@ local sub          = string.sub
 
 
 local WARN                          = ngx.WARN
+local ERR                           = ngx.ERR
 local SQL_INFORMATION_SCHEMA_TABLES = [[
 SELECT table_name
   FROM information_schema.tables
@@ -272,7 +273,7 @@ function _mt:init()
   local res, err = self:query("SHOW server_version_num;")
   local ver = tonumber(res and res[1] and res[1].server_version_num)
   if not ver then
-    return nil, "failed to retrieve server_version_num: " .. err
+    return nil, "failed to retrieve PostgreSQL server_version_num: " .. err
   end
 
   local major = floor(ver / 10000)
@@ -338,21 +339,26 @@ function _mt:init_worker(strategies)
         return
       end
 
-      local ok, _, _, num_queries = self:query(cleanup_statement)
+      local ok, err, _, num_queries = self:query(cleanup_statement)
       if not ok then
-        for i = num_queries + 1, cleanup_statements_count do
-          local statement = cleanup_statements[i]
-          local ok, err = self:query(statement)
-          if not ok then
-            if err then
-              log(WARN, "unable to clean expired rows from table '",
-                        sorted_strategies[i], "' on postgres database (",
-                        err, ")")
-            else
-              log(WARN, "unable to clean expired rows from table '",
-                        sorted_strategies[i], "' on postgres database")
+        if num_queries then
+          for i = num_queries + 1, cleanup_statements_count do
+            local statement = cleanup_statements[i]
+            local ok, err = self:query(statement)
+            if not ok then
+              if err then
+                log(WARN, "unable to clean expired rows from table '",
+                          sorted_strategies[i], "' on PostgreSQL database (",
+                          err, ")")
+              else
+                log(WARN, "unable to clean expired rows from table '",
+                          sorted_strategies[i], "' on PostgreSQL database")
+              end
             end
           end
+
+        else
+          log(ERR, "unable to clean expired rows from PostgreSQL database (", err, ")")
         end
       end
     end)
