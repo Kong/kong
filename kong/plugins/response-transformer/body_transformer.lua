@@ -1,4 +1,4 @@
-local cjson = require "cjson.safe"
+local cjson = require("cjson.safe").new()
 
 
 local insert = table.insert
@@ -8,6 +8,9 @@ local sub = string.sub
 local gsub = string.gsub
 local match = string.match
 local lower = string.lower
+
+
+cjson.decode_array_with_array_mt(true)
 
 
 local noop = function() end
