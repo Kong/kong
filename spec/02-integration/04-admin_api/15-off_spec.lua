@@ -440,6 +440,49 @@ describe("Admin API #off", function()
       assert.response(res).has.status(201)
     end)
 
+    it("can reload upstreams (regression test)", function()
+      local config = [[
+        _format_version: "1.1"
+        services:
+        - host: foo
+          routes:
+          - paths:
+            - "/"
+        upstreams:
+        - name: "foo"
+          targets:
+          - target: 10.20.30.40
+      ]]
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = config,
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+
+      client:close()
+      client = helpers.admin_client()
+
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = config,
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+    end)
+
     it("returns 304 if checking hash and configuration is identical", function()
       local res = assert(client:send {
         method = "POST",

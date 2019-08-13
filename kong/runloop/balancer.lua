@@ -134,7 +134,12 @@ do
       -- split `target` field into `name` and `port`
       local port
       target.name, port = string.match(target.target, "^(.-):(%d+)$")
-      target.port = tonumber(port)
+      if target.name and port then
+        target.port = tonumber(port)
+      else
+        target.name = target.target
+        target.port = 80
+      end
     end
 
     return target_history
