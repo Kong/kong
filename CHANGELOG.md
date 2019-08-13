@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [1.2.2](#122)
 - [1.2.1](#121)
 - [1.2.0](#120)
 - [1.1.2](#112)
@@ -27,6 +28,33 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+## [1.2.2]
+
+> Released on 2019/08/14
+
+:warning: This release includes patches to the NGINX core (1.13.6) fixing
+vulnerabilities in the HTTP/2 module (CVE-2019-9511 CVE-2019-9513
+CVE-2019-9516).
+
+This is a patch release in the 1.2 series, and as such, strictly contains
+bugfixes. There are no new features nor breaking changes.
+
+### Fixes
+
+##### Core
+
+- Case sentitivity fix when clearing the Upgrade header.
+  [#4779](https://github.com/kong/kong/issues/4779)
+
+### Performance
+
+##### Core
+
+- Speed up cascade deletes in Cassandra.
+  [#4770](https://github.com/kong/kong/pull/4770)
+
+[Back to TOC](#table-of-contents)
 
 ## [1.2.1]
 
@@ -3832,6 +3860,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[1.2.2]: https://github.com/Kong/kong/compare/1.2.1...1.2.2
 [1.2.1]: https://github.com/Kong/kong/compare/1.2.0...1.2.1
 [1.2.0]: https://github.com/Kong/kong/compare/1.1.2...1.2.0
 [1.1.2]: https://github.com/Kong/kong/compare/1.1.1...1.1.2
