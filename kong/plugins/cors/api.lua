@@ -1,0 +1,3 @@
+return {
+  DEFAULT_METHODS = { "HEAD", "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "TRACE", "CONNECT" }
+}

@@ -1,6 +1,6 @@
 local typedefs = require "kong.db.schema.typedefs"
 local is_regex = require("kong.db.schema").validators.is_regex
-
+local cors_api = require "kong.plugins.cors.api"
 
 local function validate_asterisk_or_regex(value)
   if value == "*" or is_regex(value) then
@@ -29,9 +29,10 @@ return {
           { exposed_headers = { type = "array", elements = { type = "string" }, }, },
           { methods = {
               type = "array",
+              default = cors_api.DEFAULT_METHODS,
               elements = {
                 type = "string",
-                one_of = { "HEAD", "GET", "POST", "PUT", "PATCH", "DELETE" },
+                one_of = cors_api.DEFAULT_METHODS,
           }, }, },
           { max_age = { type = "number" }, },
           { credentials = { type = "boolean", default = false }, },

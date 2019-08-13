@@ -275,6 +275,7 @@ build = {
     ["kong.plugins.response-transformer.header_transformer"] = "kong/plugins/response-transformer/header_transformer.lua",
     ["kong.plugins.response-transformer.schema"] = "kong/plugins/response-transformer/schema.lua",
 
+    ["kong.plugins.cors.api"] = "kong/plugins/cors/api.lua",
     ["kong.plugins.cors.handler"] = "kong/plugins/cors/handler.lua",
     ["kong.plugins.cors.schema"] = "kong/plugins/cors/schema.lua",
 

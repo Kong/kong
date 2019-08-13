@@ -1,7 +1,7 @@
 local schema_def = require "kong.plugins.cors.schema"
 local v = require("spec.helpers").validate_plugin_config_schema
 
-describe("cors schema", function()
+describe("origins in cors schema", function()
   it("validates '*'", function()
     local ok, err = v({ origins = { "*" } }, schema_def)
 
@@ -30,7 +30,27 @@ describe("cors schema", function()
 
       assert.falsy(ok)
       assert.equals("'invalid_**regex' is not a valid regex",
-                    err.config.origins[2])
+        err.config.origins[2])
     end)
   end)
+end)
+
+describe("methods in cors schema", function()
+  for _,method in ipairs({"HEAD", "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "TRACE", "CONNECT"}) do
+    it("should allow " .. method, function()
+      local ok, err = v({ methods = { method } }, schema_def)
+
+      assert.truthy(ok)
+      assert.falsy(err)
+    end)
+  end
+
+  it("should disallow non-existing ", function()
+    local ok, err = v({ methods = { "FAKE" } }, schema_def)
+
+    assert.falsy(ok)
+    assert.equals("expected one of: HEAD, GET, POST, PUT, PATCH, DELETE, OPTIONS, TRACE, CONNECT",
+      err.config.methods[1])
+  end)
+
 end)
