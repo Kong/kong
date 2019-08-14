@@ -1,59 +1,72 @@
-local http = require "resty.http"
+local backend = require "kong.plugins.collector.backend"
 
-local function statuses(host)
-  local client = http.new()
+local function backend_data()
+    local rows = kong.db.plugins:select_all({ name = "collector" })
+    return rows[1]
+end
 
-  local ok = client:connect(host, 5000)
-  if not ok then
-    return kong.response.exit(501, { message = "Host", host, " is not up." })
-  end
-
-  local res, err = client:request {
-    method = "GET",
-    path = "/status"
-  }
-
-  if not res then
-    -- collector isn't up yet
-    return kong.response.exit(500, { message = err })
-  else
-    return kong.response.exit(200, res:read_body())
-  end
-
+local function workspace_id_from_request(request)
+    local row = kong.db.workspaces:select_by_name(request.url_params.workspace_name)
+    return row.id
 end
 
 return {
-  ["/collector/:collector_id/status"] = {
+  ["/collector/status"] = {
     GET = function(self, db)
-      local row =  kong.db.plugins:select( { id = self.params.collector_id } )
+      local backend_data = backend_data()
+
+      if not backend_data then
+        return kong.response.exit(404, { message = "No configuration found." })
+      end
+
+      local res, err = backend.http_get(
+        backend_data.config.host,
+        backend_data.config.port,
+        backend_data.config.connection_timeout,
+        "/status"
+      )
+      if err then
+        error("communication with brain/immunity failed: " .. tostring(err))
+      else
+        return kong.response.exit(200, res:read_body())
+      end
+    end
+  },
+  ["/collector/alerts"] = {
+    GET = function(self, db)
+      local row =  backend_data()
 
       if not row then
         return kong.response.exit(404, { message = "No configuration found." })
       end
 
-      statuses(row.config.host)
-    end
-  },
-  ["/collector/configurations"] = {
-    GET = function(self, db)
-
-      local rows, err = kong.db.plugins:select_all( {name = "collector"} )
-
-      if not rows then
-        return kong.response.exit(500, { message = err })
+      local query = kong.request.get_raw_query()
+      local workspace_id = workspace_id_from_request(self)
+      if query then
+        query = query .. '&workspace_id=' .. workspace_id
+      else
+        query = 'workspace_id=' .. workspace_id
       end
 
-      if #rows > 0 then
-        return kong.response.exit(201, rows)
-      end
+      local res, err = backend.http_get(
+        row.config.host,
+        row.config.port,
+        row.config.connection_timeout,
+        "/alerts",
+        query
+      )
 
-      local message = "No routes or services found that are configured with collector plugin"
-      return kong.response.exit(404, { message =  message })
+      if err then
+        error("communication with brain/immunity failed: " .. tostring(err))
+      else
+        return kong.response.exit(200, res:read_body())
+      end
     end
   },
   ["/service_maps"] = {
     GET = function(self, db)
-      local service_map = kong.db.service_maps:select({ id = self.url_params.workspace_name })
+      local workspace_id = workspace_id_from_request(self)
+      local service_map = kong.db.service_maps:select({ workspace_id = workspace_id })
 
       if not service_map then
         return kong.response.exit(404, { message = "Not found" })
@@ -63,13 +76,14 @@ return {
     end,
 
     POST = function(self, db)
+      local workspace_id = workspace_id_from_request(self)
       local service_map, err = kong.db.service_maps:upsert(
-        { id = self.url_params.workspace_name },
+        { workspace_id = workspace_id },
         { service_map = self.params.service_map }
       )
 
-      if not service_map then
-        return kong.response.exit(500, err)
+      if err then
+        error("error while updating service map: " .. tostring(err))
       end
 
       return kong.response.exit(200, service_map)
