@@ -9,7 +9,9 @@ for _, strategy in helpers.each_strategy() do
   describe("Proxy errors Content-Type [#" .. strategy .. "]", function()
     local proxy_client
 
-    describe("set via error_default_type", function()
+    -- Marked as flaky because Travis DNS often made this request return 504 "name resolution failed"
+    -- instead of the expected 503
+    describe("#flaky set via error_default_type", function()
       lazy_setup(function()
         local bp = helpers.get_db_utils(strategy, {
           "routes",
@@ -50,6 +52,7 @@ for _, strategy in helpers.each_strategy() do
           proxy_client:close()
         end
       end)
+
 
       it("no Accept header uses error_default_type", function()
         local res = assert(proxy_client:send {
