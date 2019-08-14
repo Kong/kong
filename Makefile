@@ -13,12 +13,13 @@ endif
 
 .PHONY: install dev lint test test-integration test-plugins test-all fix-windows
 
+ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_GMP_VERSION ?= `grep KONG_GMP_VERSION .requirements | awk -F"=" '{print $$2}'`
 RESTY_VERSION ?= `grep RESTY_VERSION .requirements | awk -F"=" '{print $$2}'`
 RESTY_LUAROCKS_VERSION ?= `grep RESTY_LUAROCKS_VERSION .requirements | awk -F"=" '{print $$2}'`
 RESTY_OPENSSL_VERSION ?= `grep RESTY_OPENSSL_VERSION .requirements | awk -F"=" '{print $$2}'`
 RESTY_PCRE_VERSION ?= `grep RESTY_PCRE_VERSION .requirements | awk -F"=" '{print $$2}'`
-KONG_BUILD_TOOLS ?= `grep KONG_BUILD_TOOLS .requirements | awk -F"=" '{print $$2}'`
+KONG_BUILD_TOOLS ?= `grep KONG_BUILD_TOOLS $(ROOT_DIR)/.requirements | awk -F"=" '{print $$2}'`
 KONG_VERSION ?= `cat kong-*.rockspec | grep tag | awk '{print $$3}' | sed 's/"//g'`
 
 setup-release:
@@ -26,9 +27,15 @@ setup-release:
 	then git pull; \
 	else git clone https://github.com/Kong/kong-build-tools.git; fi
 	cd kong-build-tools; \
-	git reset --hard $$KONG_BUILD_TOOLS;
-	cd kong-build-tools; \
+	git fetch; \
+	git reset --hard $(KONG_BUILD_TOOLS); \
 	make setup_tests
+
+functional_tests: setup-release
+	cd kong-build-tools; \
+	export KONG_SOURCE_LOCATION=`pwd`/../ && \
+	make package-kong && \
+	make test
 
 nightly-release: setup-release
 	sed -i -e '/return string\.format/,/\"\")/c\return "$(KONG_VERSION)\"' kong/meta.lua && \
