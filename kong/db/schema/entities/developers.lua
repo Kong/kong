@@ -37,6 +37,7 @@ return {
     { updated_at     = typedefs.auto_timestamp_s },
     { email          = email },
     { status         = developer_status },
+    { custom_id      = { type = "string", unique = true }, },
     { consumer       = { type = "foreign", reference = "consumers", }, },
     { meta           = { type = "string" }, },
     { rbac_user      = { type = "foreign", reference = "rbac_users" }, },

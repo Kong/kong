@@ -180,6 +180,28 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         assert.equal("a@a.com", json.email)
         assert.same({ "red" }, json.roles)
       end)
+
+      it("creates a developer with custom_id", function()
+        local res = client:post("/developers", {
+          body = {
+            email = "b@b.com",
+            meta = '{"full_name":"a"}',
+            custom_id = "friendo",
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equals("b@b.com", json.email)
+        assert.equals("friendo", json.custom_id)
+
+        -- checking that consumer custom_id is set as well
+        local consumer = singletons.db.consumers:select({
+          id = json.consumer.id
+        })
+
+        assert.equals("friendo", consumer.custom_id)
+      end)
     end)
   end)
 
@@ -205,7 +227,8 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         password = "kong",
         meta = "{\"full_name\":\"I Like Turtles\"}",
         status = enums.CONSUMERS.STATUS.REJECTED,
-        roles = { "red" }
+        roles = { "red" },
+        custom_id = "special"
       }))
       configure_portal()
     end)
@@ -227,6 +250,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         assert.equals(developer.status, json.status)
         assert.is_table(developer.rbac_user)
         assert.same({ "red" }, json.roles)
+        assert.equals(developer.custom_id, json.custom_id)
       end)
     end)
 
@@ -238,13 +262,14 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         ))
       end)
 
-      it("updates the developer email, username, login credential & roles", function()
+      it("updates the developer email, username, login credential, roles, and custom_id", function()
         local res = assert(client:send {
           method = "PATCH",
           body = {
             email = "new_email@whodis.com",
             status = enums.CONSUMERS.STATUS.APPROVED,
             roles = { "green" },
+            custom_id = "radical",
           },
           path = "/developers/".. developer.id,
           headers = {
@@ -262,6 +287,8 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         assert.equals("new_email@whodis.com", resp_body_json.developer.email)
         assert.equals("new_email@whodis.com", consumer.username)
         assert.same({ "green" }, resp_body_json.developer.roles)
+        assert.equals("radical", resp_body_json.developer.custom_id)
+        assert.equals("radical", consumer.custom_id)
 
         -- old email fails to access portal api
         local res = assert(portal_api_client:send {
@@ -347,6 +374,33 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         local fields = resp_body_json.fields
 
         assert.equal("already exists with value 'fancypants@konghq.com'", fields.email)
+      end)
+
+      it("returns 409 if patched with a custom_id that already exists", function()
+
+        local developer2 = assert(db.developers:insert {
+          email = "someonenew@konghq.com",
+          password = "woof",
+          meta = "{\"full_name\":\"Scoopy Doo\"}",
+          custom_id = "ruh roh",
+        })
+
+        local res = assert(client:send {
+          method = "PATCH",
+          body = {
+            custom_id = developer2.custom_id,
+          },
+          path = "/developers/".. developer.id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(409, res)
+        local resp_body_json = cjson.decode(body)
+        local fields = resp_body_json.fields
+
+        assert.equal("already exists with value 'ruh roh'", fields.custom_id)
       end)
 
       it("returns 400 if patch a verified developer to type 'UNVERIFIED'", function()
