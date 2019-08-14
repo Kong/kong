@@ -17,6 +17,7 @@ local MOCK_UPSTREAM_SSL_PORT = 15556
 local MOCK_UPSTREAM_STREAM_PORT = 15557
 local MOCK_UPSTREAM_STREAM_SSL_PORT = 15558
 local MOCK_GRPC_UPSTREAM_PROTO_PATH = "./spec/fixtures/grpc/hello.proto"
+local BLACKHOLE_HOST = "10.255.255.255"
 
 local consumers_schema_def = require "kong.db.schema.entities.consumers"
 local services_schema_def = require "kong.db.schema.entities.services"
@@ -1841,6 +1842,8 @@ return {
   mock_grpc_upstream_proto_path = MOCK_GRPC_UPSTREAM_PROTO_PATH,
 
   redis_host = os.getenv("KONG_SPEC_REDIS_HOST") or "127.0.0.1",
+
+  blackhole_host = BLACKHOLE_HOST,
 
   -- Kong testing helpers
   execute = exec,

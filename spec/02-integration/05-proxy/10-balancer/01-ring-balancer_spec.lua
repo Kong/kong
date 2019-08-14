@@ -354,7 +354,7 @@ local poll_wait_health
 local poll_wait_address_health
 do
   local function poll_wait(upstream_id, host, port, admin_port, fn)
-    local hard_timeout = ngx.now() + 70
+      local hard_timeout = ngx.now() + 70
     while ngx.now() < hard_timeout do
       local health = get_upstream_health(upstream_id, admin_port)
       if health then
@@ -371,14 +371,14 @@ do
 
   poll_wait_health = function(upstream_id, host, port, value, admin_port)
     local ok = poll_wait(upstream_id, host, port, admin_port, function(d)
-      return d.health == value
+          return d.health == value
     end)
     if ok then
       return true
     end
     assert(false, "timed out waiting for " .. host .. ":" .. port .. " in " ..
-                  upstream_id .. " to become " .. value)
-  end
+                      upstream_id .. " to become " .. value)
+                        end
 
   poll_wait_address_health = function(upstream_id, host, port, address_host, address_port, value)
     local ok = poll_wait(upstream_id, host, port, nil, function(d)
@@ -394,7 +394,7 @@ do
       return true
     end
     assert(false, "timed out waiting for " .. address_host .. ":" .. address_port .. " in " ..
-                  upstream_id .. " to become " .. value)
+                      upstream_id .. " to become " .. value)
   end
 end
 
