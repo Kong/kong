@@ -24,6 +24,8 @@ local portal_conf_values = {
   "emails_reply_to",
 }
 
+local FALLBACK_404 = '<html><head><title>404 Not Found</title></head><body><h1>404 Not Found</h1><p>The page you are requesting cannot be found.</p></body></html>'
+
 
 template.caching(false)
 template.load = function(path)
@@ -248,8 +250,6 @@ local function set_render_ctx(self)
   local theme_config  = set_theme_config(portal_config.theme)
   local content       = set_content(route_config, developer, workspace, portal_config)
 
-  print(require('inspect')(content))
-
   singletons.render_ctx = {
     path      = path,
     route     = route,
@@ -264,6 +264,9 @@ end
 local function compile_layout()
   local ctx = singletons.render_ctx
   local layout = set_layout(ctx)
+  if not layout then
+    return FALLBACK_404
+  end
 
   return template.compile(layout)({
     base   = handler.new('base'),
