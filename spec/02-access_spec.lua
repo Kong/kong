@@ -86,6 +86,9 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
+    local route20 = bp.routes:insert({
+      hosts = { "test20.com" },
+    })
 
     bp.plugins:insert {
       route = { id = route1.id },
@@ -303,6 +306,22 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         add = {
           -- not inserting a value, but the `uri_captures` table itself to provoke a rendering error
           querystring = {[[q1:$(uri_captures)]]},
+        }
+      }
+    }
+
+    bp.plugins:insert {
+      route = { id = route20.id },
+      name = "request-transformer-advanced",
+      config = {
+        http_method = "POST",
+        add = {
+          headers = {
+            "Content-Type:application/json",
+          },
+          body = {
+            "key:$(query_params.name)"
+          }
         }
       }
     }
@@ -1563,6 +1582,21 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       assert.equals("a2", value[2])
       local value = assert.request(r).has.queryparam("q1")
       assert.equals("20", value)
+    end)
+    it("add GET queryparams into POST body without Content-Type", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        query = {
+          name = "q1"
+        },
+        headers = {
+          host = "test20.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      local params = assert.request(r).has.jsonbody().params
+      assert.equals("q1", params.key)
     end)
   end)
   describe("request rewrite using template", function()
