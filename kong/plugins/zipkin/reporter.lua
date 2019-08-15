@@ -11,8 +11,10 @@ local zipkin_reporter_mt = {
 
 local function new_zipkin_reporter(conf)
 	local http_endpoint = conf.http_endpoint
+	local default_service_name = conf.default_service_name
 	assert(type(http_endpoint) == "string", "invalid http endpoint")
 	return setmetatable({
+                default_service_name = default_service_name;
 		http_endpoint = http_endpoint;
 		pending_spans = {};
 		pending_spans_n = 0;
@@ -48,8 +50,15 @@ function zipkin_reporter_methods:report(span)
 				-- TODO: ip/port from ngx.var.server_name/ngx.var.server_port?
 			}
 		else
-			-- needs to be null; not the empty object
-			localEndpoint = cjson.null
+                        -- configurable override of the unknown-service-name spans
+                        if self.default_service_name then
+                                localEndpoint = {
+                                        serviceName = self.default_service_name;
+                                }
+                        -- needs to be null; not the empty object
+                        else
+                                localEndpoint = cjson.null
+                        end
 		end
 	end
 
