@@ -113,6 +113,19 @@ describe("Plugin: jwt (parser)", function()
       }, fixtures.es256_private_key, 'ES256')
       assert.truthy(token)
     end)
+
+    it("should properly encode using none", function()
+      local token = jwt_parser.encode({
+        sub = "5656565656",
+        name = "Jane Doe",
+        admin = true
+      }, "secret", "none")
+
+      assert.equal(u([[
+        eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJuYW1lIjoiSmFuZSBEb2UiLCJhZG1p
+        biI6dHJ1ZSwic3ViIjoiNTY1NjU2NTY1NiJ9.
+      ]], true), token)
+    end)
   end)
   describe("Decoding", function()
     it("throws an error if not given a string", function()

@@ -33,6 +33,7 @@ local decode_base64 = ngx.decode_base64
 
 --- Supported algorithms for signing tokens.
 local alg_sign = {
+  none = function(data, key) return "" end,
   HS256 = function(data, key) return openssl_hmac.new(key, "sha256"):final(data) end,
   HS384 = function(data, key) return openssl_hmac.new(key, "sha384"):final(data) end,
   HS512 = function(data, key) return openssl_hmac.new(key, "sha512"):final(data) end,
@@ -54,6 +55,7 @@ local alg_sign = {
 
 --- Supported algorithms for verifying tokens.
 local alg_verify = {
+  none = function(data, signature, key) return signature == "" end,
   HS256 = function(data, signature, key) return signature == alg_sign.HS256(data, key) end,
   HS384 = function(data, signature, key) return signature == alg_sign.HS384(data, key) end,
   HS512 = function(data, signature, key) return signature == alg_sign.HS512(data, key) end,

@@ -22,6 +22,7 @@ for _, strategy in helpers.each_strategy() do
     local rsa_jwt_secret_3
     local hs_jwt_secret_1
     local hs_jwt_secret_2
+    local none_jwt_secret
     local proxy_client
     local admin_client
 
@@ -53,6 +54,7 @@ for _, strategy in helpers.each_strategy() do
       local consumer6      = consumers:insert({ username = "jwt_tests_consumer_6" })
       local consumer7      = consumers:insert({ username = "jwt_tests_hs_consumer_7" })
       local consumer8      = consumers:insert({ username = "jwt_tests_hs_consumer_8" })
+      local consumer9      = consumers:insert({ username = "jwt_tests_none_consumer_9" })
       local anonymous_user = consumers:insert({ username = "no-body" })
 
       local plugins = bp.plugins
@@ -161,6 +163,11 @@ for _, strategy in helpers.each_strategy() do
         consumer       = { id = consumer8.id },
         algorithm     = "HS512",
         secret        = fixtures.hs512_secret
+      }
+
+      none_jwt_secret = bp.jwt_secrets:insert {
+        consumer      = { id = consumer9.id },
+        algorithm     = "none"
       }
 
       assert(helpers.start_kong {
@@ -607,6 +614,26 @@ for _, strategy in helpers.each_strategy() do
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal(authorization, body.headers.authorization)
         assert.equal("jwt_tests_hs_consumer_8", body.headers["x-consumer-username"])
+        assert.is_nil(body.headers["x-anonymous-consumer"])
+      end)
+    end)
+
+    describe("none", function()
+      it("proxies the request with token and consumer headers if it was verified", function()
+        PAYLOAD.iss = none_jwt_secret.key
+        local jwt = jwt_encoder.encode(PAYLOAD, "", "none")
+        local authorization = "Bearer " .. jwt
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Authorization"] = authorization,
+            ["Host"]          = "jwt1.com",
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.equal(authorization, body.headers.authorization)
+        assert.equal("jwt_tests_none_consumer_9", body.headers["x-consumer-username"])
         assert.is_nil(body.headers["x-anonymous-consumer"])
       end)
     end)
