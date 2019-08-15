@@ -1,8 +1,12 @@
-## 0.36
+## 0.35.1
 
 ### Fixed
 
 - Correct logic error when determining whether to transform querystring
+- Fix a bug where the code does not allow adding and appending a body
+parameter if there is no body in the POST request
+- Change the priorities for the transformations to allow the
+headers to be transformed before the body
 
 ## 0.35
 
