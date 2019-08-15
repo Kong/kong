@@ -440,6 +440,49 @@ describe("Admin API #off", function()
       assert.response(res).has.status(201)
     end)
 
+    it("can reload upstreams (regression test)", function()
+      local config = [[
+        _format_version: "1.1"
+        services:
+        - host: foo
+          routes:
+          - paths:
+            - "/"
+        upstreams:
+        - name: "foo"
+          targets:
+          - target: 10.20.30.40
+      ]]
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = config,
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+
+      client:close()
+      client = helpers.admin_client()
+
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = config,
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+    end)
+
     it("returns 304 if checking hash and configuration is identical", function()
       local res = assert(client:send {
         method = "POST",
@@ -516,6 +559,86 @@ describe("Admin API #off", function()
       assert.same({
         message = "expected a declarative configuration",
       }, json)
+    end)
+  end)
+
+  describe("/upstreams", function()
+    it("can set target health without port", function()
+      local config = [[
+        _format_version: "1.1"
+        services:
+        - host: foo
+          routes:
+          - paths:
+            - "/"
+        upstreams:
+        - name: "foo"
+          targets:
+          - target: 10.20.30.40
+      ]]
+
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = config,
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+
+      local res = assert(client:send {
+        method = "POST",
+        path = "/upstreams/foo/targets/c830b59e-59cc-5392-adfd-b414d13adfc4/10.20.30.40/unhealthy",
+      })
+
+      assert.response(res).has.status(204)
+
+      client:close()
+    end)
+
+    it("targets created missing ports listed with ports", function()
+      local config = [[
+        _format_version: "1.1"
+        services:
+        - host: foo
+          routes:
+          - paths:
+            - "/"
+        upstreams:
+        - name: "foo"
+          targets:
+          - target: 10.20.30.40
+          - target: 50.60.70.80:90
+      ]]
+
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = config,
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+
+      local res = assert(client:send {
+        method = "GET",
+        path = "/upstreams/foo/targets/all",
+      })
+
+      local body = assert.response(res).has.status(200)
+      local json = cjson.decode(body)
+      assert.same("10.20.30.40:8000", json.data[1].target)
+      assert.same("50.60.70.80:90", json.data[2].target)
+
+      client:close()
     end)
   end)
 end)
