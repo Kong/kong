@@ -297,6 +297,12 @@ function _M:init()
 
   self.node_id = node_id
 
+  -- init strategy, recording node id and hostname in db
+  local ok, err = self.strategy:init(node_id, utils.get_hostname())
+  if not ok then
+    return self:init_failed(nil, "failed to init vitals strategy " .. err)
+  end
+
   local delay = self.flush_interval
   local when  = delay - (ngx.now() - (math.floor(ngx.now() / delay) * delay))
   log(INFO, _log_prefix, "starting vitals timer (1) in ", when, " seconds")
@@ -306,12 +312,6 @@ function _M:init()
     self:reset_counters()
   else
     return self:init_failed(nil, "failed to start recurring vitals timer (1): " .. err)
-  end
-
-  -- init strategy, recording node id and hostname in db
-  local ok, err = self.strategy:init(node_id, utils.get_hostname())
-  if not ok then
-    return self:init_failed(nil, "failed to init vitals strategy " .. err)
   end
 
   self.initialized = true
