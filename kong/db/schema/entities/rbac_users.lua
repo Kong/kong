@@ -9,7 +9,6 @@ return {
   generate_admin_api = false,
   primary_key = { "id" },
   endpoint_key = "name",
-  cache_key = { "name" },
   workspaceable = true,
   fields = {
     { id             = typedefs.uuid, },
