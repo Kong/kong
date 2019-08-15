@@ -306,6 +306,10 @@ local function transform_json_body(conf, body, content_length)
     end
   end
 
+  if not parameters then
+    parameters = {}
+  end
+
   if #conf.add.body > 0 then
     for _, name, value in iter(conf.add.body) do
       if not parameters[name] then
@@ -316,9 +320,15 @@ local function transform_json_body(conf, body, content_length)
   end
 
   if #conf.append.body > 0 then
+    local old_value
+
     for _, name, value in iter(conf.append.body) do
-      local old_value = parameters[name]
-      parameters[name] = append_value(old_value, value)
+      if not parameters[name] then
+        parameters[name] = value
+      else
+        old_value = parameters[name]
+        parameters[name] = append_value(old_value, value)
+      end
       appended = true
     end
   end
@@ -515,8 +525,8 @@ function _M.execute(conf)
   clear_environment()
   transform_uri(conf)
   transform_method(conf)
-  transform_body(conf)
   transform_headers(conf)
+  transform_body(conf)
   transform_querystrings(conf)
 end
 

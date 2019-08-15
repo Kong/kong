@@ -1123,6 +1123,19 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       assert.equal("json (error)", json.post_data.kind)
       assert.is_not_nil(json.post_data.error)
     end)
+    it("does not fail if JSON body is empty in POST", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = "",
+        headers = {
+          host = "test1.com",
+          ["content-type"] = "application/json"
+        }
+      })
+      local params = assert.request(r).has.jsonbody().params
+      assert.equals("v1", params.p1)
+    end)
     it("new parameter on multipart POST", function()
       local r = assert(client:send {
         method = "POST",
@@ -1316,6 +1329,21 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       local json = assert.response(r).has.jsonbody()
       assert.equal("json (error)", json.post_data.kind)
       assert.is_not_nil(json.post_data.error)
+    end)
+    it("does not fail if body is empty in POST", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = "",
+        headers = {
+          host = "test6.com",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      local params = assert.request(r).has.jsonbody().params
+      assert.equals("v1", params.p1[1])
+      assert.equals("v2", params.p1[2])
     end)
     it("does not change or append value to parameter on multipart POST", function()
       local r = assert(client:send {
