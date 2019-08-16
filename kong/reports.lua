@@ -268,8 +268,7 @@ local function increment_counter(counter, entity)
     return
   end
 
-  if counter ~= "apis" and
-    counter ~= "routes" and
+  if counter ~= "routes" and
     counter ~= "services" and
     counter ~= "consumers" then
       return
@@ -288,10 +287,6 @@ end
 local function report_cached_entity(entity)
   if type(entity) ~= "table" then
     return
-  end
-
-  if entity.api then
-    increment_counter("apis", entity.api)
   end
 
   if entity.consumer_id then
@@ -315,7 +310,6 @@ local function add_entity_reports()
   local shm = ngx.shared
 
   local reported_entities = {
-    a = "apis",
     r = "routes",
     c = "consumers",
     s = "services",
