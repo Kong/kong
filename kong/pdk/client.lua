@@ -12,6 +12,7 @@ local phase_checker = require "kong.pdk.private.phases"
 
 
 local ngx = ngx
+local type = type
 local tonumber = tonumber
 local check_phase = phase_checker.check
 local check_not_phase = phase_checker.check_not
@@ -239,6 +240,50 @@ local function new(self)
     local is_tls = balancer_data and balancer_data.scheme == "tls" and balancer_data.ssl_ctx
 
     return is_tls and "tls" or "tcp"
+  end
+
+  ---
+  -- Returns a table of `authenticated_groups` of the currently authenticated
+  -- consumer.
+  -- @function kong.client.get_authenticated_groups
+  -- @phases access, header_filter, body_filter, log
+  -- @treturn table,nil|err
+  -- The table will have an array part to iterate over, and a hash part where each
+  -- group name is indexed by itself. Eg.
+  -- {
+  --   [1] = "users",
+  --   [2] = "admins",
+  --   users = "users",
+  --   admins = "admins",
+  -- }
+  -- @usage
+  -- local groups, err = kong.client.get_authenticated_groups()
+  -- if not err then
+  --   for i = 1, #groups_to_check do
+  --     if groups[i] == 'group1' then
+  --       return true
+  --     end
+  --   end
+  -- end
+  function _CLIENT.get_authenticated_groups()
+    check_phase(AUTH_AND_LATER)
+
+    local authenticated_groups = ngx.ctx.authenticated_groups
+    if authenticated_groups == nil then
+      return nil
+    end
+
+    if type(authenticated_groups) ~= "table" then
+      return nil, "invalid authenticated_groups, a table was expected"
+    end
+
+    local groups = {}
+    for i = 1, #authenticated_groups do
+      groups[i] = authenticated_groups[i]
+      groups[authenticated_groups[i]] = authenticated_groups[i]
+    end
+
+    return groups
   end
 
 

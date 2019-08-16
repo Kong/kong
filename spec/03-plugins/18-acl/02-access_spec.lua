@@ -135,7 +135,7 @@ for _, strategy in helpers.each_strategy() do
         name = "ctx-checker",
         route = { id = route2b.id },
         config = {
-          ctx_kind      = "kong.ctx.shared",
+          ctx_kind      = "ngx.ctx",
           ctx_set_field = "authenticated_groups",
           ctx_set_array = { "admin" },
         }
@@ -157,7 +157,7 @@ for _, strategy in helpers.each_strategy() do
         name = "ctx-checker",
         route = { id = route2c.id },
         config = {
-          ctx_kind      = "kong.ctx.shared",
+          ctx_kind      = "ngx.ctx",
           ctx_set_field = "authenticated_groups",
           ctx_set_array = { },
         }
@@ -197,7 +197,7 @@ for _, strategy in helpers.each_strategy() do
         name = "ctx-checker",
         route = { id = route3b.id },
         config = {
-          ctx_kind      = "kong.ctx.shared",
+          ctx_kind      = "ngx.ctx",
           ctx_set_field = "authenticated_groups",
           ctx_set_array = { },
         }
@@ -219,7 +219,7 @@ for _, strategy in helpers.each_strategy() do
         name = "ctx-checker",
         route = { id = route3c.id },
         config = {
-          ctx_kind      = "kong.ctx.shared",
+          ctx_kind      = "ngx.ctx",
           ctx_set_field = "authenticated_groups",
           ctx_set_array = { "admin" },
         }
@@ -259,7 +259,7 @@ for _, strategy in helpers.each_strategy() do
         name = "ctx-checker",
         route = { id = route4b.id },
         config = {
-          ctx_kind      = "kong.ctx.shared",
+          ctx_kind      = "ngx.ctx",
           ctx_set_field = "authenticated_groups",
           ctx_set_array = { "pro", "hello" },
         }
@@ -281,7 +281,7 @@ for _, strategy in helpers.each_strategy() do
         name = "ctx-checker",
         route = { id = route4c.id },
         config = {
-          ctx_kind      = "kong.ctx.shared",
+          ctx_kind      = "ngx.ctx",
           ctx_set_field = "authenticated_groups",
           ctx_set_array = { "free", "hello" },
         }
@@ -321,7 +321,7 @@ for _, strategy in helpers.each_strategy() do
         name = "ctx-checker",
         route = { id = route5b.id },
         config = {
-          ctx_kind      = "kong.ctx.shared",
+          ctx_kind      = "ngx.ctx",
           ctx_set_field = "authenticated_groups",
           ctx_set_array = { "pro", "hello" },
         }
@@ -343,7 +343,7 @@ for _, strategy in helpers.each_strategy() do
         name = "ctx-checker",
         route = { id = route5c.id },
         config = {
-          ctx_kind      = "kong.ctx.shared",
+          ctx_kind      = "ngx.ctx",
           ctx_set_field = "authenticated_groups",
           ctx_set_array = { "free", "hello" },
         }
@@ -383,7 +383,7 @@ for _, strategy in helpers.each_strategy() do
         name = "ctx-checker",
         route = { id = route6b.id },
         config = {
-          ctx_kind      = "kong.ctx.shared",
+          ctx_kind      = "ngx.ctx",
           ctx_set_field = "authenticated_groups",
           ctx_set_array = { "free", "hello" },
         }
@@ -405,7 +405,7 @@ for _, strategy in helpers.each_strategy() do
         name = "ctx-checker",
         route = { id = route6c.id },
         config = {
-          ctx_kind      = "kong.ctx.shared",
+          ctx_kind      = "ngx.ctx",
           ctx_set_field = "authenticated_groups",
           ctx_set_array = { "pro", "hello" },
         }
@@ -445,7 +445,7 @@ for _, strategy in helpers.each_strategy() do
         name = "ctx-checker",
         route = { id = route7b.id },
         config = {
-          ctx_kind      = "kong.ctx.shared",
+          ctx_kind      = "ngx.ctx",
           ctx_set_field = "authenticated_groups",
           ctx_set_array = { "free", "hello" },
         }
@@ -495,7 +495,7 @@ for _, strategy in helpers.each_strategy() do
         name = "ctx-checker",
         route = { id = route8b.id },
         config = {
-          ctx_kind      = "kong.ctx.shared",
+          ctx_kind      = "ngx.ctx",
           ctx_set_field = "authenticated_groups",
           ctx_set_array = { "anonymous" },
         }
@@ -537,7 +537,7 @@ for _, strategy in helpers.each_strategy() do
         name = "ctx-checker",
         route = { id = route9b.id },
         config = {
-          ctx_kind      = "kong.ctx.shared",
+          ctx_kind      = "ngx.ctx",
           ctx_set_field = "authenticated_groups",
           ctx_set_array = { "admin" },
         }
@@ -579,7 +579,7 @@ for _, strategy in helpers.each_strategy() do
         name = "ctx-checker",
         route = { id = route10b.id },
         config = {
-          ctx_kind      = "kong.ctx.shared",
+          ctx_kind      = "ngx.ctx",
           ctx_set_field = "authenticated_groups",
           ctx_set_array = { "admin" },
         }
@@ -610,7 +610,7 @@ for _, strategy in helpers.each_strategy() do
         name = "ctx-checker",
         route = { id = route11.id },
         config = {
-          ctx_kind      = "kong.ctx.shared",
+          ctx_kind      = "ngx.ctx",
           ctx_set_field = "authenticated_groups",
           ctx_set_array = { "admin" },
         }
@@ -641,7 +641,7 @@ for _, strategy in helpers.each_strategy() do
         name = "ctx-checker",
         route = { id = route12.id },
         config = {
-          ctx_kind      = "kong.ctx.shared",
+          ctx_kind      = "ngx.ctx",
           ctx_set_field = "authenticated_groups",
           ctx_set_array = { "anonymous" },
         }
@@ -672,7 +672,7 @@ for _, strategy in helpers.each_strategy() do
         name = "ctx-checker",
         route = { id = route13.id },
         config = {
-          ctx_kind      = "kong.ctx.shared",
+          ctx_kind      = "ngx.ctx",
           ctx_set_field = "authenticated_groups",
           ctx_set_array = { "admin" },
         }
@@ -1192,7 +1192,7 @@ for _, strategy in helpers.each_strategy() do
               name  = "ctx-checker",
               route = { id = json.id },
               config = {
-                ctx_kind      = "kong.ctx.shared",
+                ctx_kind      = "ngx.ctx",
                 ctx_set_field = "authenticated_groups",
                 ctx_set_array = { "admin" .. i },
               }

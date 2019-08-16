@@ -118,6 +118,17 @@ qq{
                 body_filter   = true,
                 log           = true,
                 admin_api     = "forced false",
+            }, {
+                method        = "get_authenticated_groups",
+                args          = {},
+                init_worker   = "forced false",
+                certificate   = "pending",
+                rewrite       = "forced false",
+                access        = true,
+                header_filter = true,
+                body_filter   = true,
+                log           = true,
+                admin_api     = "forced false",
             },
         }
 

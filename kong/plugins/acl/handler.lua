@@ -62,8 +62,13 @@ function ACLHandler:access(conf)
 
   -- get the consumer/credentials
   local consumer_id = groups.get_current_consumer_id()
+  local authenticated_groups, err
   if not consumer_id then
-    local authenticated_groups = groups.get_authenticated_groups()
+    authenticated_groups, err = kong.client.get_authenticated_groups()
+    if err then
+      kong.log.warn(err)
+    end
+
     if not authenticated_groups then
       kong.log.err("Cannot identify the consumer, add an authentication ",
                    "plugin to use the ACL plugin")
@@ -80,7 +85,10 @@ function ACLHandler:access(conf)
     local authenticated_groups
     if not kong.client.get_credential() then
       -- authenticated groups overrides anonymous groups
-      authenticated_groups = groups.get_authenticated_groups()
+      authenticated_groups, err = kong.client.get_authenticated_groups()
+      if err then
+        kong.log.warn(err)
+      end
     end
 
     if authenticated_groups then

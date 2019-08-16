@@ -124,45 +124,10 @@ local function get_current_consumer_id()
 end
 
 
---- Returns a table with all group names.
--- The table will have an array part to iterate over, and a hash part
--- where each group name is indexed by itself. Eg.
--- {
---   [1] = "users",
---   [2] = "admins",
---   users = "users",
---   admins = "admins",
--- }
--- If there are no authenticated_groups defined, it will return nil
--- @return table with groups or nil
-local function get_authenticated_groups()
-  local authenticated_groups = kong.ctx.shared.authenticated_groups
-  if type(authenticated_groups) ~= "table" then
-    authenticated_groups = ngx.ctx.authenticated_groups
-    if authenticated_groups == nil then
-      return nil
-    end
-
-    if type(authenticated_groups) ~= "table" then
-      kong.log.warn("invalid authenticated_groups, a table was expected")
-      return nil
-    end
-  end
-
-  local groups = {}
-  for i = 1, #authenticated_groups do
-    groups[i] = authenticated_groups[i]
-    groups[authenticated_groups[i]] = authenticated_groups[i]
-  end
-
-  return groups
-end
-
-
 --- checks whether a group-list is part of a given list of groups.
 -- @param groups_to_check (table) an array of group names.
 -- @param groups (table) list of groups (result from
--- `get_authenticated_groups`)
+-- `kong.client.get_authenticated_groups`)
 -- @return (boolean) whether the authenticated group is part of any of the
 -- groups.
 local function group_in_groups(groups_to_check, groups)
@@ -177,7 +142,6 @@ end
 return {
   get_current_consumer_id = get_current_consumer_id,
   get_consumer_groups = get_consumer_groups,
-  get_authenticated_groups = get_authenticated_groups,
   consumer_in_groups = consumer_in_groups,
   group_in_groups = group_in_groups,
 }
