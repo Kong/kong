@@ -5,7 +5,6 @@ local EMPTY = tablex.readonly {}
 
 
 local kong = kong
-local type = type
 local mt_cache = { __mode = "k" }
 local setmetatable = setmetatable
 local consumer_groups_cache = setmetatable({}, mt_cache)
