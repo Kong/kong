@@ -11,7 +11,7 @@ local BasePlugin = require "kong.plugins.base_plugin"
 local subsystem = ngx.config.subsystem
 
 local OpenTracingHandler = BasePlugin:extend()
-OpenTracingHandler.VERSION = "scm"
+OpenTracingHandler.VERSION = "0.1.3"
 
 -- We want to run first so that timestamps taken are at start of the phase
 -- also so that other plugins might be able to use our structures
