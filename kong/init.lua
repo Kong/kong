@@ -665,7 +665,10 @@ function Kong.balancer()
 end
 
 function Kong.rewrite()
-  log_init_worker_errors()
+  local is_https = ngx.var.https == "on"
+  if not is_https then
+    log_init_worker_errors()
+  end
 
   if GRPC_PROXY_MODES[var.kong_proxy_mode] then
     kong_resty_ctx.apply_ref() -- if kong_proxy_mode is gRPC, this is executing
@@ -683,7 +686,7 @@ function Kong.rewrite()
 
   -- On HTTPS requests, the plugins iterator is already updated in the ssl_certificate phase
   local plugins_iterator
-  if ngx.var.https == "on" then
+  if is_https then
     plugins_iterator = runloop.get_plugins_iterator()
   else
     plugins_iterator = runloop.get_updated_plugins_iterator()
