@@ -1,6 +1,10 @@
-UNRELEASED
+0.1.3 - 2019-08-16
 
   - Add support for stream subsystem (#30)
+  - Made sending credential optional with a new configuration
+    parameter `include_credential` (#37)
+  - Add possibility to override unknown service name with a new
+    configuration parameter `default_service_name` (#45)
 
 
 0.1.2 - 2019-01-18
