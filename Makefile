@@ -46,7 +46,7 @@ nightly-release: setup-kong-build-tools
 	$(MAKE) build-kong && \
 	$(MAKE) release-kong
 
-release: setup-release
+release: setup-kong-build-tools
 	cd kong-build-tools; \
 	export KONG_SOURCE_LOCATION=`pwd`/../ && \
 	$(MAKE) package-kong && \
