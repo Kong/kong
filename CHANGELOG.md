@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [1.0.4](#104)
 - [1.0.3](#103)
 - [1.0.2](#102)
 - [1.0.1](#101)
@@ -22,6 +23,20 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+## [1.0.4]
+
+ > Released on 2019/08/16
+
+:warning: This release includes patches to the NGINX core (1.13.6) fixing
+vulnerabilities in the HTTP/2 module (CVE-2019-9511 CVE-2019-9513
+CVE-2019-9516).
+
+This is a patch release in the 1.0 series aimed strictly at patching the NGINX
+vulnerability for HTTP/2 users. As such, it contains no other Kong fixes, new features
+or breaking changes.
+
+[Back to TOC](#table-of-contents)
 
 ## [1.0.3]
 
@@ -3389,6 +3404,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[1.0.4]: https://github.com/Kong/kong/compare/1.0.3...1.0.4
 [1.0.3]: https://github.com/Kong/kong/compare/1.0.2...1.0.3
 [1.0.2]: https://github.com/Kong/kong/compare/1.0.1...1.0.2
 [1.0.1]: https://github.com/Kong/kong/compare/1.0.0...1.0.1
