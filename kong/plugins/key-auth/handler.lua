@@ -151,7 +151,9 @@ local function do_authentication(conf)
                                     key)
   if err then
     kong.log.err(err)
-    return kong.response.exit(500, "An unexpected error occurred")
+    return kong.response.exit(500, {
+      message = "An unexpected error occurred"
+    })
   end
 
   -- no credential in DB, for this key, it is invalid, HTTP 401

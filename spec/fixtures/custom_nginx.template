@@ -14,6 +14,7 @@ events {}
 http {
 > if #proxy_listeners > 0 or #admin_listeners > 0 then
     charset UTF-8;
+    server_tokens off;
 
     error_log logs/error.log ${{LOG_LEVEL}};
 
