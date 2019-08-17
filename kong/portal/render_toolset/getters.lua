@@ -39,7 +39,7 @@ end
 
 
 local function select_kong_config()
-  return ee.prepare_portal(singletons.render_ctx.kong.config, singletons.configuration)
+  return ee.prepare_portal(singletons.render_ctx, singletons.configuration)
 end
 
 
