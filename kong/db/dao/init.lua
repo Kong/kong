@@ -1032,7 +1032,6 @@ end
 
 
 function DAO:update(primary_key, entity, options)
-  -- kong.log.inspect("DAO:Update", self.schema.name)
   validate_primary_key_type(primary_key)
   validate_entity_type(entity)
 
