@@ -403,13 +403,12 @@ for _, strategy in helpers.each_strategy() do
       describe("#Cache Key:", function()
         local cache_key, cookie
 
-        local function update_rbac_user(db,id)
+        local function update_rbac_user(db, id)
           workspaces.run_with_ws_scope({workspace}, function ()
-            assert(db.rbac_users:update({id = id}, {
+            local row = db.rbac_users:update({id = id}, {
               enabled = false
-            }))
-
-            print(require("pl.pretty").write(db.rbac_users:select{id = id}))
+            })
+            assert.is_not_true(row.enabled)
           end)
         end
 
