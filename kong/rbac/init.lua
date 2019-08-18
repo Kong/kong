@@ -193,6 +193,20 @@ local function user_can_manage_endpoints_from(rbac_ctx, workspace)
 end
 _M.user_can_manage_endpoints_from = user_can_manage_endpoints_from
 
+-- invalidate rbac_user cache
+-- rbac_user cache_key should be non-workspacable.
+local function invalidate_rbac_user_cache(id)
+  -- skip next lines in some tests where kong.cache is not available
+  if not kong.cache then
+    return true
+  end
+
+  local cache = kong.cache
+  local cache_key = kong.db.rbac_users:cache_key(id, '', '', '', '', '')
+  
+  cache:invalidate(cache_key)
+end
+_M.invalidate_rbac_user_cache = invalidate_rbac_user_cache
 
 local function retrieve_user(id)
   local user, err = kong.db.rbac_users:select({id = id}, {

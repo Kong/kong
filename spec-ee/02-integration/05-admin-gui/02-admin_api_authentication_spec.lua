@@ -403,7 +403,7 @@ for _, strategy in helpers.each_strategy() do
       describe("#Cache Key:", function()
         local cache_key, cookie
 
-        local function update_rbac_user(db,id)
+        local function update_rbac_user(db, id)
           workspaces.run_with_ws_scope({workspace}, function ()
             local row, err, err_t = db.rbac_users:update({id = id}, {
               comment = "user has been modified"

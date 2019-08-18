@@ -10,6 +10,8 @@ return {
   primary_key = { "id" },
   endpoint_key = "name",
   workspaceable = true,
+  dao = "kong.db.dao.rbac_users",
+  
   fields = {
     { id             = typedefs.uuid, },
     { created_at     = typedefs.auto_timestamp_s },
