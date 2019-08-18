@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local cjson = require "cjson"
 local ee_helpers = require "spec-ee.helpers"
 local workspaces = require "kong.workspaces"
 local utils = require "kong.tools.utils"
@@ -68,6 +67,8 @@ end
 
 for _, strategy in helpers.each_strategy() do
   describe("RBAC user cache on #" .. strategy, function()
+    local super_admin
+    
     lazy_setup(function()
       _, db, dao = helpers.get_db_utils(strategy)
       -- helpers.stop_kong()
