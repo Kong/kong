@@ -403,9 +403,9 @@ for _, strategy in helpers.each_strategy() do
       describe("#Cache Key:", function()
         local cache_key, cookie
 
-        local function update_rbac_user(db, id)
+        local function update_rbac_user(db, id, workspace)
           workspaces.run_with_ws_scope({workspace}, function ()
-            local row, err, err_t = db.rbac_users:update({id = id}, {
+            local row, err = db.rbac_users:update({id = id}, {
               comment = "user has been modified"
             })
             assert(row)
@@ -447,7 +447,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("rbac_user cache should be invalided after update", function()
-          update_rbac_user(db, super_admin.rbac_user.id)
+          update_rbac_user(db, super_admin.rbac_user.id, workspace)
           check_cache(404, cache_key)
         end)
       end)
