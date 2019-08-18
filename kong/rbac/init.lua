@@ -216,11 +216,8 @@ end
 
 local function get_user(id)
   local cache_key = kong.db.rbac_users:cache_key(id)
-  -- local ttl, err, value = kong.cache:probe(cache_key)
   local user, err = kong.cache:get(cache_key, nil, retrieve_user, id)
-
-  -- kong.log.inspect('get_user:', cache_key, value)
-
+  
   if err then
     return nil, err
   end
