@@ -443,12 +443,12 @@ for _, strategy in helpers.each_strategy() do
           })
 
           assert.res_status(200, res)
-          -- check_cache(200, cache_key)
+          check_cache(200, cache_key)
         end)
 
         it("rbac_user cache should be invalided after update", function()
           update_rbac_user(db, super_admin.rbac_user.id)
-          -- check_cache(404, cache_key)
+          check_cache(404, cache_key)
         end)
       end)
     end)

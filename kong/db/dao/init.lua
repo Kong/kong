@@ -950,6 +950,7 @@ do
 end
 
 function DAO:insert(entity, options)
+  -- kong.log.inspect("Dao:insert",self.schema)
   validate_entity_type(entity)
 
   if options ~= nil then
@@ -1032,7 +1033,7 @@ end
 
 
 function DAO:update(primary_key, entity, options)
-  kong.log.inspect("DAO:Update", self.schema.name)
+  -- kong.log.inspect("DAO:Update", self.schema.name)
   validate_primary_key_type(primary_key)
   validate_entity_type(entity)
 
@@ -1098,7 +1099,7 @@ function DAO:update(primary_key, entity, options)
 
   workspaces.remove_ws_prefix(self.schema.name, rbw_entity)
   self:post_crud_event("update", row, rbw_entity)
-  kong.log.inspect("DAO:Update", self.schema.name, row)
+  -- kong.log.inspect("DAO:Update", self.schema.name, row)
   return row
 end
 
