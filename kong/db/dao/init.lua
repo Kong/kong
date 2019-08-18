@@ -211,7 +211,6 @@ local function check_update(self, key, entity, options, name)
   if self.schema.cache_key and #self.schema.cache_key > 1 then
     entity_to_update.cache_key = self:cache_key(entity_to_update)
   end
-
   return entity_to_update, rbw_entity
 end
 
@@ -1033,6 +1032,7 @@ end
 
 
 function DAO:update(primary_key, entity, options)
+  kong.log.inspect("DAO:Update", self.schema.name)
   validate_primary_key_type(primary_key)
   validate_entity_type(entity)
 
@@ -1098,7 +1098,7 @@ function DAO:update(primary_key, entity, options)
 
   workspaces.remove_ws_prefix(self.schema.name, rbw_entity)
   self:post_crud_event("update", row, rbw_entity)
-
+  kong.log.inspect("DAO:Update", self.schema.name, row)
   return row
 end
 
