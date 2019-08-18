@@ -220,7 +220,6 @@ build = {
     ["kong.db.dao.targets"] = "kong/db/dao/targets.lua",
     ["kong.db.dao.plugins"] = "kong/db/dao/plugins.lua",
     ["kong.db.dao.workspaces"] = "kong/db/dao/workspaces.lua",
-    ["kong.db.dao.rbac_users"] = "kong/db/dao/rbac_users.lua",
     ["kong.db.schema"] = "kong/db/schema/init.lua",
     ["kong.db.schema.entities.admins"] = "kong/db/schema/entities/admins.lua",
     ["kong.db.schema.entities.cluster_ca"] = "kong/db/schema/entities/cluster_ca.lua",

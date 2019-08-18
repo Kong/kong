@@ -399,58 +399,6 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("test-ws-example.com", json.data[1].host)
         end)
       end)
-
-      describe("#Cache Key:", function()
-        local cache_key, cookie
-
-        local function update_rbac_user(db, id)
-          workspaces.run_with_ws_scope({}, function ()
-            local row, err = db.rbac_users:update({id = id}, {
-              comment = "user has been modified"
-            })
-            assert(row)
-
-            print(require("pl.pretty").write(row or err))
-          end)
-        end
-
-        local function check_cache(expected_status, cache_key)
-          local res = assert(client:send {
-            method = "GET",
-            path = "/cache/" .. cache_key,
-            headers = {
-              ["cookie"] = cookie,
-              ["Kong-Admin-User"] = super_admin.username,
-            },
-          })
-
-          assert.res_status(expected_status, res)
-        end
-
-        lazy_setup(function()
-          cookie = get_admin_cookie_basic_auth(client, super_admin.username, 'hunter1')
-          cache_key = db.rbac_users:cache_key(super_admin.rbac_user.id, '', '', '', '', true)
-        end)
-
-        it("rbac_user should be cached after a API call", function()
-          local res = assert(client:send {
-            method = "GET",
-            path = "/",
-            headers = {
-              ["cookie"] = cookie,
-              ["Kong-Admin-User"] = super_admin.username,
-            },
-          })
-
-          assert.res_status(200, res)
-          check_cache(200, cache_key)
-        end)
-
-        it("rbac_user cache should be invalided after update", function()
-          update_rbac_user(db, super_admin.rbac_user.id)
-          check_cache(404, cache_key)
-        end)
-      end)
     end)
 
     describe("key-auth authentication", function()

@@ -1099,7 +1099,7 @@ function DAO:update(primary_key, entity, options)
 
   workspaces.remove_ws_prefix(self.schema.name, rbw_entity)
   self:post_crud_event("update", row, rbw_entity)
-  -- kong.log.inspect("DAO:Update", self.schema.name, row)
+  kong.log.inspect("DAO:Update", self.schema.name, row)
   return row
 end
 
