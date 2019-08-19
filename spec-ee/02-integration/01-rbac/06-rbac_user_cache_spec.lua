@@ -1,3 +1,4 @@
+local cjson = require "cjson.safe"
 local helpers = require "spec.helpers"
 local ee_helpers = require "spec-ee.helpers"
 local workspaces = require "kong.workspaces"
@@ -116,12 +117,13 @@ for _, strategy in helpers.each_strategy() do
           },
         })
       
-        assert.res_status(expected_status, res)
+        local json = assert.res_status(expected_status, res)
+        local body = cjson.decode(json)
         
         if type(entity) ~= "table" then return end
 
         for key, field in pairs(entity) do
-          assert.equal(res[key], field)
+          assert.equal(body[key], field)
         end
       end
 
@@ -167,7 +169,8 @@ for _, strategy in helpers.each_strategy() do
         local comment = "user has been modified"
 
         update_rbac_user_comment(db, super_admin.rbac_user.id, comment)
-        check_cache(200, cache_key, {comment = comment})
+        helpers.wait_until(check_cache(200, cache_key, {comment = comment}), 10)
+        
       end)
     end)
   end)
