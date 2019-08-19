@@ -71,7 +71,6 @@ for _, strategy in helpers.each_strategy() do
     
     lazy_setup(function()
       _, db, dao = helpers.get_db_utils(strategy)
-      -- helpers.stop_kong()
       truncate_tables(db)
 
       assert(helpers.start_kong({
@@ -94,20 +93,20 @@ for _, strategy in helpers.each_strategy() do
     describe('#Cache Key:', function()
       local cache_key, cookie
 
-      local function update_rbac_user(db, id)
+      local function update_rbac_user_comment(db, id, str)
         workspaces.run_with_ws_scope({}, function ()
           assert(db.rbac_users:update({id = id},{
-            comment = "user has been modified"
+            comment = str
           }))
 
           assert.equal(
             db.rbac_users:select({id = id}).comment, 
-            "user has been modified"
+            str
           )
         end)
       end
       
-      local function check_cache(expected_status, cache_key)
+      local function check_cache(expected_status, cache_key, entity)
         local res = assert(client:send {
           method = "GET",
           path = "/cache/" .. cache_key,
@@ -117,7 +116,13 @@ for _, strategy in helpers.each_strategy() do
           },
         })
       
-        return assert.res_status(expected_status, res)
+        assert.res_status(expected_status, res)
+        
+        if entity ~= table then return end
+
+        for _, field in entity do
+          assert.equal(res.field, entity.field)
+        end
       end
 
       lazy_setup(function()
@@ -158,9 +163,11 @@ for _, strategy in helpers.each_strategy() do
         check_cache(200, cache_key)
       end)
 
-      it("rbac_user cache should be invalided after update", function()
-        update_rbac_user(db, super_admin.rbac_user.id)
-        check_cache(404, cache_key)
+      it("rbac_user cache should be update after update", function()
+        local comment = "user has been modified"
+
+        update_rbac_user_comment(db, super_admin.rbac_user.id, comment)
+        check_cache(200, cache_key, {comment = comment})
       end)
     end)
   end)
