@@ -397,7 +397,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe('#Cache Invalidation:', function()
-        local cache_key, cookie, cache_token 
+        local cache_key, cookie
         
         local function check_cache(expected_status, cache_key, entity)
           local res = assert(client:send {
@@ -428,44 +428,49 @@ for _, strategy in helpers.each_strategy() do
           cache_key = db.rbac_users:cache_key(super_admin.rbac_user.id, '', '', '', '', true)
         end)
 
-        it("rbac_user should be cached after a API call", function()
-          local res = assert(client:send {
-            method = "GET",
-            path = "/",
-            headers = {
-              ["cookie"] = cookie,
-              ["Kong-Admin-User"] = super_admin.username,
-            },
-          })
-  
-          assert.res_status(200, res)
-          cache_token = check_cache(200, cache_key).user_token
-        end)
-  
-        it("rbac_user cache should be updated when admin updates rbac token", function()
+        it("updates rbac_users cache when admin updates rbac token", function()
+          local cache_token, new_cache_token 
+
+          -- access "/" endpoint to triggers authentication.get_user()
+          -- rbac user should be cached
+          do
+            local res = assert(client:send {
+              method = "GET",
+              path = "/",
+              headers = {
+                ["cookie"] = cookie,
+                ["Kong-Admin-User"] = super_admin.username,
+              },
+            })
+    
+            assert.res_status(200, res)
+            cache_token = check_cache(200, cache_key).user_token
+          end
+
           -- updates rbac_user token via admin endpoint
           -- expects difference of user_token in cookie
           -- if cache has been invalidated 
           -- see 'rbac.get_user()'
-          local new_cache_token
-          local token = utils.uuid()
-          
-          local res = assert(client:send {
-            method = "PATCH",
-            path = "/admins/self/token",
-            headers = {
-              ["cookie"] = cookie,
-              ["Kong-Admin-User"] = super_admin.username,
-              ["Content-Type"] = "application/json"
-            },
-            body = {
-              token = token
-            }
-          })
+          do
+            local token = utils.uuid()
 
-          assert.res_status(200, res)
-          new_cache_token = check_cache(200, cache_key).user_token
-          assert.not_equal(cache_token, new_cache_token)
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/admins/self/token",
+              headers = {
+                ["cookie"] = cookie,
+                ["Kong-Admin-User"] = super_admin.username,
+                ["Content-Type"] = "application/json"
+              },
+              body = {
+                token = token
+              }
+            })
+
+            assert.res_status(200, res)
+            new_cache_token = check_cache(200, cache_key).user_token
+            assert.not_equal(cache_token, new_cache_token)
+          end
         end)
       end)
     end)
