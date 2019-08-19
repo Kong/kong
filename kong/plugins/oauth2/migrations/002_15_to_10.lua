@@ -37,11 +37,23 @@ return {
       assert(connector:query([[
         DROP INDEX IF EXISTS oauth2_authorization_codes_api_id_idx;
         DROP INDEX IF EXISTS oauth2_tokens_api_id_idx;
-
-
-        ALTER TABLE oauth2_authorization_codes DROP api_id;
-        ALTER TABLE oauth2_tokens DROP api_id;
       ]]))
+
+
+      local _, err = connector:query([[
+        ALTER TABLE oauth2_authorization_codes DROP api_id]])
+      if err and not (string.find(err, "Column .- was not found in table") or
+                      string.find(err, "[Ii]nvalid column name")           or
+                      string.find(err, "[Uu]ndefined column name")) then
+        return nil, err
+      end
+
+      _, err = connector:query("ALTER TABLE oauth2_tokens DROP api_id")
+      if err and not (string.find(err, "Column .- was not found in table") or
+                      string.find(err, "[Ii]nvalid column name")           or
+                      string.find(err, "[Uu]ndefined column name")) then
+        return nil, err
+      end
     end,
   },
 }

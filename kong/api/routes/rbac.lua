@@ -159,7 +159,7 @@ return {
     methods = {
       GET  =  function(self, db, helpers)
         local args = self.args.uri
-        local opts = endpoints.extract_options(args, "rbac_users", "select")
+        local opts = endpoints.extract_options(args, rbac_users.schema, "select")
         local size, err = endpoints.get_page_size(args)
         if err then
           return endpoints.handle_error(db.rbac_users.errors:invalid_size(err))
@@ -294,9 +294,7 @@ return {
           })
 
           if err_t then
-            return endpoints.handle_error(err_t) -- XXX EE: 400 vs
-                                                 -- 409. primary key
-                                                 -- validation failed
+            return endpoints.handle_error(err_t)
           end
         end
 
@@ -434,7 +432,6 @@ return {
       if self.params.entity_id ~= "*" then
         local _, err
         entity_type, _, err = api_helpers.resolve_entity_type(singletons.db,
-                                                              {},   -- XXX EE remove when old-dao is gone
                                                               self.params.entity_id)
         -- database error
         if entity_type == nil then

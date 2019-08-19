@@ -87,6 +87,9 @@ function _M.new(opts)
     elseif opts.db.strategy == "postgres" then
       db_strategy = require "kong.cluster_events.strategies.postgres"
 
+    elseif opts.db.strategy == "off" then
+      db_strategy = require "kong.cluster_events.strategies.off"
+
     else
       return error("no cluster_events strategy for " ..
                    opts.db.strategy)
@@ -109,6 +112,7 @@ function _M.new(opts)
     polling       = false,
     channels      = {},
     callbacks     = {},
+    use_polling   = strategy:should_use_polling(),
   }
 
   -- set current time (at)
@@ -184,7 +188,7 @@ function _M:subscribe(channel, cb, start_polling)
     start_polling = true
   end
 
-  if not self.polling and start_polling then
+  if not self.polling and start_polling and self.use_polling then
     -- start recurring polling timer
 
     local ok, err = timer_at(self.poll_interval, poll_handler, self)

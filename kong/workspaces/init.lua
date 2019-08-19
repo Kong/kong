@@ -225,8 +225,8 @@ function _M.fetch_workspace(ws_name)
 
   return _M.run_with_ws_scope(
     {},
-    singletons.db.workspaces.select_by_name,
-    singletons.db.workspaces,
+    kong.db.workspaces.select_by_name,
+    kong.db.workspaces,
     ws_name
   )
 end
@@ -251,7 +251,7 @@ do
     if constraints and constraints.unique_keys and next(constraints.unique_keys) then
       for k, _ in pairs(constraints.unique_keys) do
         if not constraints.primary_keys[k] and entity[k] then
-          local _, err = add_entity_relation_db(singletons.db.workspace_entities,
+          local _, err = add_entity_relation_db(kong.db.workspace_entities,
                                                 workspace,
                                                 entity[constraints.primary_key],
                                                 table_name,
@@ -264,8 +264,8 @@ do
       end
     end
 
-    inc_counter(singletons.db, workspace.id, table_name, entity, 1);
-    local _, err = add_entity_relation_db(singletons.db.workspace_entities, workspace,
+    inc_counter(kong.db, workspace.id, table_name, entity, 1);
+    local _, err = add_entity_relation_db(kong.db.workspace_entities, workspace,
                                           entity[constraints.primary_key],
                                           table_name, constraints.primary_key,
                                           entity[constraints.primary_key])
@@ -276,7 +276,7 @@ end
 
 
 function _M.delete_entity_relation(table_name, entity)
-  local db = singletons.db
+  local db = kong.db
 
   local constraints = workspaceable_relations[table_name]
   if not constraints then
@@ -302,7 +302,7 @@ function _M.delete_entity_relation(table_name, entity)
     end
 
     if not seen[row.workspace_id] then
-      inc_counter(singletons.db, row.workspace_id, table_name, entity, -1);
+      inc_counter(kong.db, row.workspace_id, table_name, entity, -1);
       seen[row.workspace_id] = true
     end
   end
@@ -314,7 +314,7 @@ function _M.update_entity_relation(table_name, entity)
   local constraints = workspaceable_relations[table_name]
   if constraints and constraints.unique_keys then
     for k, _ in pairs(constraints.unique_keys) do
-      local res, err = singletons.db.workspace_entities:select_all({
+      local res, err = kong.db.workspace_entities:select_all({
         entity_id = entity[constraints.primary_key],
         unique_field_name = k,
       })
@@ -329,7 +329,7 @@ function _M.update_entity_relation(table_name, entity)
             workspace_id = row.workspace_id,
             unique_field_name = row.unique_field_name,
           }
-          local _, err =  singletons.db.workspace_entities:update(pk, {
+          local _, err =  kong.db.workspace_entities:update(pk, {
             unique_field_value = entity[k]
           })
           if err then
@@ -343,7 +343,7 @@ end
 
 
 local function find_entity_by_unique_field(params)
-  local rows, err = singletons.db.workspace_entities:select_all(params)
+  local rows, err = kong.db.workspace_entities:select_all(params)
   if err then
     return nil, err
   end
@@ -354,7 +354,7 @@ end
 _M.find_entity_by_unique_field = find_entity_by_unique_field
 
 local function find_workspaces_by_entity(params)
-  local rows, err = singletons.db.workspace_entities:select_all(params)
+  local rows, err = kong.db.workspace_entities:select_all(params)
   if err then
     return nil, err
   end
@@ -374,7 +374,7 @@ _M.match_route = match_route
 local function entity_workspace_ids(entity)
   local old_wss = ngx.ctx.workspaces
   ngx.ctx.workspaces = nil
-  local ws_rels = singletons.db.workspace_entities:select_all({entity_id = entity.id})
+  local ws_rels = kong.db.workspace_entities:select_all({entity_id = entity.id})
   ngx.ctx.workspaces = old_wss
   return map(function(x) return x.workspace_id end, ws_rels)
 end
@@ -566,7 +566,7 @@ local function load_workspace_scope(ctx, route)
   local old_wss = ctx.workspaces
   ctx.workspaces = {}
 
-  local rows, err = singletons.db.workspace_entities:select_all({
+  local rows, err = kong.db.workspace_entities:select_all({
     entity_id  = route.id,
     unique_field_name = "id",
     unique_field_value = route.id,
@@ -599,7 +599,7 @@ local function load_user_workspace_scope(ctx, name)
   local old_wss = ctx.workspaces
 
   ctx.workspaces = {}
-  local rows, err = singletons.db.workspace_entities:select_all({
+  local rows, err = kong.db.workspace_entities:select_all({
     entity_type  = "rbac_users",
     unique_field_name = "name",
     unique_field_value = name,
@@ -624,7 +624,7 @@ end
 -- given an entity ID, look up its entity collection name;
 -- it is only called if the user does not pass in an entity_type
 function _M.resolve_entity_type(entity_id)
-  local rows, err = singletons.db.workspace_entities:select_all({
+  local rows, err = kong.db.workspace_entities:select_all({
       entity_id = entity_id
   })
   if err then
@@ -636,7 +636,7 @@ function _M.resolve_entity_type(entity_id)
 
   local entity_type = rows[1].entity_type
 
-  local row, err = singletons.db[entity_type]:select({
+  local row, err = kong.db[entity_type]:select({
     [workspaceable_relations[entity_type].primary_key] = entity_id,
   }, {skip_rbac = true})
   if err then
@@ -666,7 +666,7 @@ local function load_entity_map(ws_scope, table_name)
   for _, ws in ipairs(ws_scope) do
     local primary_key = workspaceable_relations[table_name].primary_key
 
-    local ws_entities, err = singletons.db.workspace_entities:select_all({
+    local ws_entities, err = kong.db.workspace_entities:select_all({
       workspace_id = ws.id,
       entity_type = table_name,
       unique_field_name = primary_key,
@@ -837,21 +837,30 @@ function _M.validate_pk_exist(table_name, params, constraints, workspace)
     return true
   end
 
-  local workspace = workspace or get_workspaces()[1]
-  if not workspace then
+  -- if workspace is passed along to this function add it to the 
+  -- list if not then retrieve a list of workspaces and use it instead
+  local workspaces = workspace and { workspace } or get_workspaces() 
+  if not workspaces or #workspaces < 1 then
     return true
   end
 
-  local row, err = find_entity_by_unique_field({
-    workspace_id = workspace.id,
-    entity_id = params[constraints.primary_key]
-  })
+  local row, err
+  for _, workspace in ipairs(workspaces) do
+    row, err = find_entity_by_unique_field({
+      workspace_id = workspace.id,
+      entity_id = params[constraints.primary_key]
+    })
 
-  if err then
-    return false, err
+    if err then
+      return false, err
+    end
+
+    if row then
+      return true 
+    end
   end
 
-  return row and true
+  return false
 end
 
 
@@ -960,6 +969,11 @@ function _M.build_ws_portal_gui_url(config, workspace)
   end
 
   return config.portal_gui_protocol .. '://' .. config.portal_gui_host .. '/' .. workspace.name
+end
+
+
+function _M.build_ws_portal_api_url(config)
+  return config.portal_api_url or config.portal_api_listen
 end
 
 

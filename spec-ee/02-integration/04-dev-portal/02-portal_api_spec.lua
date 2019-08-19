@@ -35,7 +35,7 @@ local DEFAULT_CONSUMER = {
 local function insert_files(db)
   for i = 1, 10 do
     local file_name = "file-" .. i
-    assert(db.files:insert({
+    assert(db.legacy_files:insert({
       name = file_name,
       contents = "i-" .. i,
       type = "partial",
@@ -43,7 +43,7 @@ local function insert_files(db)
     }))
 
     local file_page_name = "file-page" .. i
-    assert(db.files:insert({
+    assert(db.legacy_files:insert({
       name = file_page_name,
       contents = "i-" .. i,
       type = "page",
@@ -91,6 +91,7 @@ local function configure_portal(db, config)
   config = config or {
     portal = true,
     portal_auth = "basic-auth",
+    portal_is_legacy = true,
   }
 
   db.workspaces:upsert_by_name("default", {
@@ -314,15 +315,16 @@ for _, strategy in helpers.each_strategy() do
           db:truncate()
           configure_portal(db, {
             portal = true,
+            portal_is_legacy = true,
           })
-
-          insert_files(db)
 
           assert(helpers.start_kong({
             database   = strategy,
             portal     = true,
             enforce_rbac = rbac,
           }))
+
+          insert_files(db)
         end)
 
         lazy_teardown(function()
@@ -501,13 +503,28 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("required field missing", message["full_name"])
             end)
 
+            it("returns a 400 if status is included in the request", function()
+              local res = register_developer(portal_api_client, {
+                email = "noob@konghq.com",
+                password = "iheartkong",
+                meta = "{\"full_name\":\"I Like Turtles\"}",
+                status = enums.CONSUMERS.STATUS.APPROVED,
+              })
+
+              local body = assert.res_status(400, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.fields.status
+
+              assert.equal("invalid field", message)
+            end)
+
             it("registers a developer and set status to pending", function()
               local res = register_developer(portal_api_client, {
                 email = "noob@konghq.com",
                 password = "iheartkong",
                 meta = "{\"full_name\":\"I Like Turtles\"}",
-              }
-            )
+              })
+
               local body = assert.res_status(200, res)
               local resp_body_json = cjson.decode(body)
               local developer = resp_body_json.developer
@@ -534,6 +551,25 @@ for _, strategy in helpers.each_strategy() do
               }
 
               assert.same(expected_email_res, resp_body_json.email)
+            end)
+
+            describe("no meta fields", function()
+              setup(function()
+                configure_portal(db, {
+                  portal = true,
+                  portal_auth = "basic-auth",
+                  portal_developer_meta_fields = "[]",
+                })
+              end)
+
+              it("can register a developer with no meta fields", function()
+                local res = register_developer(portal_api_client, {
+                  email = "noobz@konghq.com",
+                  password = "iheartkong",
+                })
+  
+                assert.res_status(200, res)
+              end)
             end)
           end)
         end)
@@ -773,12 +809,12 @@ for _, strategy in helpers.each_strategy() do
               assert.equals('Unauthorized: Developer status: PENDING', json.message)
             end)
 
-            it("returns 403 with invalid password ", function()
+            it("returns 401 with invalid password ", function()
               local res = authenticate(portal_api_client, {
                 ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:weirdo"),
               })
 
-              local body = assert.res_status(403, res)
+              local body = assert.res_status(401, res)
               local json = cjson.decode(body)
               assert.equals("Invalid authentication credentials", json.message)
 
@@ -803,7 +839,7 @@ for _, strategy in helpers.each_strategy() do
                 ["Authorization"] = "Basic " .. ngx.encode_base64("derp:kong"),
               })
 
-              local body = assert.res_status(403, res)
+              local body = assert.res_status(401, res)
               local json = cjson.decode(body)
               assert.equals("Invalid authentication credentials", json.message)
 
@@ -1276,7 +1312,7 @@ for _, strategy in helpers.each_strategy() do
                 ["Authorization"] = "Basic " .. ngx.encode_base64("kongkong@konghq.com:wowza"),
               })
 
-              local body = assert.res_status(403, res)
+              local body = assert.res_status(401, res)
               local json = cjson.decode(body)
               assert.equals("Invalid authentication credentials", json.message)
 
@@ -1656,7 +1692,7 @@ for _, strategy in helpers.each_strategy() do
 
               cookie = res.headers["Set-Cookie"]
               assert.is_nil(cookie)
-              assert.res_status(403, res)
+              assert.res_status(401, res)
 
               -- new password auths
               cookie = authenticate(portal_api_client, {
@@ -1832,7 +1868,7 @@ for _, strategy in helpers.each_strategy() do
                 ["Authorization"] = "Basic " .. ngx.encode_base64("changeme@konghq.com:pancakes"),
               })
 
-              assert.res_status(403, res)
+              assert.res_status(401, res)
               cookie = res.headers["Set-Cookie"]
               assert.is_nil(cookie)
 
@@ -2422,7 +2458,7 @@ for _, strategy in helpers.each_strategy() do
                 ["apikey"] = "kong",
               })
 
-              local body = assert.res_status(403, res)
+              local body = assert.res_status(401, res)
               local json = cjson.decode(body)
               assert.same('Invalid authentication credentials', json.message)
             end)
@@ -2432,7 +2468,7 @@ for _, strategy in helpers.each_strategy() do
                 ["apikey"] = "nope",
               })
 
-              local body = assert.res_status(403, res)
+              local body = assert.res_status(401, res)
               local json = cjson.decode(body)
               assert.equals("Invalid authentication credentials", json.message)
 
@@ -2911,7 +2947,7 @@ for _, strategy in helpers.each_strategy() do
                 ["apikey"] = "wowza",
               })
 
-              local body = assert.res_status(403, res)
+              local body = assert.res_status(401, res)
               local json = cjson.decode(body)
               assert.equals("Invalid authentication credentials", json.message)
 
@@ -3293,7 +3329,7 @@ for _, strategy in helpers.each_strategy() do
 
               cookie = res.headers["Set-Cookie"]
               assert.is_nil(cookie)
-              assert.res_status(403, res)
+              assert.res_status(401, res)
 
               -- new key auths
               cookie = authenticate(portal_api_client, {

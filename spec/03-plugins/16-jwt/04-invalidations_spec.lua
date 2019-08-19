@@ -128,7 +128,7 @@ for _, strategy in helpers.each_strategy() do
             ["Host"]          = "jwt.com"
           }
         })
-        assert.res_status(403, res)
+        assert.res_status(401, res)
       end)
       it("should invalidate when JWT Auth Credential entity is updated", function()
         -- It should work
@@ -151,7 +151,7 @@ for _, strategy in helpers.each_strategy() do
             ["Host"]          = "jwt.com"
           }
         })
-        assert.res_status(403, res)
+        assert.res_status(401, res)
 
         -- Check that cache is populated
         local cache_key = db.jwt_secrets:cache_key("key123")
@@ -213,7 +213,7 @@ for _, strategy in helpers.each_strategy() do
             ["Host"]          = "jwt.com"
           }
         })
-        assert.res_status(403, res)
+        assert.res_status(401, res)
       end)
     end)
     describe("Consumer entity invalidation", function()
@@ -263,7 +263,7 @@ for _, strategy in helpers.each_strategy() do
             ["Host"]          = "jwt.com"
           }
         })
-        assert.res_status(403, res)
+        assert.res_status(401, res)
       end)
     end)
   end)

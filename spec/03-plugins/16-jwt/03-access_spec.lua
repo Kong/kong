@@ -215,7 +215,7 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.same({ message = "No mandatory 'iss' in claims" }, json)
       end)
-      it("returns 403 Forbidden if the iss does not match a credential", function()
+      it("returns 401 Unauthorized if the iss does not match a credential", function()
         PAYLOAD.iss = "123456789"
         local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
         local authorization = "Bearer " .. jwt
@@ -227,11 +227,11 @@ for _, strategy in helpers.each_strategy() do
             ["Host"]          = "jwt1.com",
           }
         })
-        local body = assert.res_status(403, res)
+        local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "No credentials found for given 'iss'" }, json)
       end)
-      it("returns 403 Forbidden if the signature is invalid", function()
+      it("returns 401 Unauthorized if the signature is invalid", function()
         PAYLOAD.iss = jwt_secret.key
         local jwt = jwt_encoder.encode(PAYLOAD, "foo")
         local authorization = "Bearer " .. jwt
@@ -243,11 +243,11 @@ for _, strategy in helpers.each_strategy() do
             ["Host"]          = "jwt1.com",
           }
         })
-        local body = assert.res_status(403, res)
+        local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "Invalid signature" }, json)
       end)
-      it("returns 403 Forbidden if the alg does not match the credential", function()
+      it("returns 401 Unauthorized if the alg does not match the credential", function()
         local header = {typ = "JWT", alg = 'RS256'}
         local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret, 'HS256', header)
         local authorization = "Bearer " .. jwt
@@ -259,7 +259,7 @@ for _, strategy in helpers.each_strategy() do
             ["Host"]          = "jwt1.com",
           }
         })
-        local body = assert.res_status(403, res)
+        local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "Invalid algorithm" }, json)
       end)
@@ -284,7 +284,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         assert.equal([[{"message":"Unauthorized"}]], body)
       end)
-      it("returns 403 if the token exceeds the maximum allowed expiration limit", function()
+      it("returns 401 if the token exceeds the maximum allowed expiration limit", function()
         local payload = {
           iss = jwt_secret.key,
           exp = os.time() + 3600,
@@ -298,7 +298,7 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "jwt11.com"
           }
         })
-        local body = assert.res_status(403, res)
+        local body = assert.res_status(401, res)
         assert.equal('{"exp":"exceeds maximum allowed expiration"}', body)
       end)
       it("accepts a JWT token within the maximum allowed expiration limit", function()
@@ -423,7 +423,7 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
       end)
-      it("returns 403 if the JWT found in the cookie does not match a credential", function()
+      it("returns 401 if the JWT found in the cookie does not match a credential", function()
         PAYLOAD.iss = "incorrect-issuer"
         local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
         local res = assert(proxy_client:send {
@@ -434,7 +434,7 @@ for _, strategy in helpers.each_strategy() do
             ["Cookie"] = "silly=" .. jwt .. "; path=/;domain=.jwt9.com",
           }
         })
-        local body = assert.res_status(403, res)
+        local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "No credentials found for given 'iss'" }, json)
       end)

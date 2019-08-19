@@ -63,6 +63,13 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    describe("get_version()", function()
+      it("gets the version of Kong running", function()
+        local meta = require 'kong.meta'
+        local version = require 'version'
+        assert.equal(version(meta._VERSION), helpers.get_version())
+      end)
+    end)
 
     describe("wait_until()", function()
       it("does not errors out if thing happens", function()

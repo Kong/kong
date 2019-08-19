@@ -54,6 +54,7 @@ local _M  = {
   CUSTOM_STRATEGIES = {
     plugins = require("kong.db.strategies.cassandra.plugins"),
     consumers = require("kong.db.strategies.cassandra.consumers"),
+    rbac_role_endpoints = require("kong.db.strategies.cassandra.rbac_role_endpoints"),
     -- rbac_users = require("kong.db.strategies.cassandra.rbac_users"),
   }
 }
@@ -127,7 +128,7 @@ local function build_queries(self)
   local select_bind_args = new_tab(n_pk, 0)
   for _, field_name in self.each_pk_field() do
     if schema.fields[field_name].type == "foreign"  then
-      field_name = field_name .. "_id"
+      field_name = field_name .. "_" .. schema.fields[field_name].schema.primary_key[1]
     end
 
     insert(select_bind_args, field_name .. " = ?")
@@ -147,6 +148,14 @@ local function build_queries(self)
 
       insert_ttl = fmt([[
         INSERT INTO %s (partition, %s) VALUES ('%s', %s) IF NOT EXISTS USING TTL %s
+      ]], schema.name, insert_columns, schema.name, insert_bind_args, "%u"),
+
+      insert_no_transaction = fmt([[
+        INSERT INTO %s (partition, %s) VALUES ('%s', %s)
+      ]], schema.name, insert_columns, schema.name, insert_bind_args),
+
+      insert_no_transaction_ttl = fmt([[
+        INSERT INTO %s (partition, %s) VALUES ('%s', %s) USING TTL %s
       ]], schema.name, insert_columns, schema.name, insert_bind_args, "%u"),
 
       select = fmt([[
@@ -170,6 +179,18 @@ local function build_queries(self)
       select_with_filter = fmt([[
         SELECT %s FROM %s WHERE partition = '%s' AND %s
       ]], select_columns, schema.name, schema.name, "%s"),
+
+      select_tags_cond_and_first_tag = fmt([[
+        SELECT entity_id FROM tags WHERE entity_name = '%s' AND tag = ?
+      ]], schema.name),
+
+      select_tags_cond_and_next_tags = fmt([[
+        SELECT entity_id FROM tags WHERE entity_name = '%s' AND tag = ? AND entity_id IN ?
+      ]], schema.name),
+
+      select_tags_cond_or = fmt([[
+        SELECT tag, entity_id, other_tags FROM tags WHERE entity_name = '%s' AND tag IN ?
+      ]], schema.name),
 
       update = fmt([[
         UPDATE %s SET %s WHERE partition = '%s' AND %s IF EXISTS
@@ -202,6 +223,14 @@ local function build_queries(self)
       INSERT INTO %s (%s) VALUES (%s) IF NOT EXISTS USING TTL %s
     ]], schema.name, insert_columns, insert_bind_args, "%u"),
 
+    insert_no_transaction = fmt([[
+      INSERT INTO %s (%s) VALUES (%s)
+    ]], schema.name, insert_columns, insert_bind_args),
+
+    insert_no_transaction_ttl = fmt([[
+      INSERT INTO %s ( %s) VALUES (%s) USING TTL %s
+    ]], schema.name, insert_columns, insert_bind_args, "%u"),
+
     -- might raise a "you must enable ALLOW FILTERING" error
     select = fmt([[
       SELECT %s FROM %s WHERE %s
@@ -226,6 +255,18 @@ local function build_queries(self)
     select_with_filter = fmt([[
       SELECT %s FROM %s WHERE %s
     ]], select_columns, schema.name, "%s"),
+
+    select_tags_cond_and_first_tag = fmt([[
+      SELECT entity_id FROM tags WHERE entity_name = '%s' AND tag = ?
+    ]], schema.name),
+
+    select_tags_cond_and_next_tags = fmt([[
+      SELECT entity_id FROM tags WHERE entity_name = '%s' AND tag = ? AND entity_id IN ?
+    ]], schema.name),
+
+    select_tags_cond_or = fmt([[
+      SELECT tag, entity_id, other_tags FROM tags WHERE entity_name = '%s' AND tag IN ?
+    ]], schema.name),
 
     update = fmt([[
       UPDATE %s SET %s WHERE %s IF EXISTS
@@ -311,7 +352,7 @@ local function serialize_arg(field, arg)
     local t = {}
 
     for k, v in pairs(arg) do
-      t[k] = serialize_arg(field.elements, arg[k])
+      t[k] = serialize_arg(field.values, arg[k])
     end
 
     serialized_arg = cassandra.map(t)
@@ -320,7 +361,9 @@ local function serialize_arg(field, arg)
     serialized_arg = cassandra.text(cjson.encode(arg))
 
   elseif field.type == "foreign" then
-    serialized_arg = cassandra.uuid(arg.id)
+    local fk_pk = field.schema.primary_key[1]
+    local fk_field = field.schema.fields[fk_pk]
+    serialized_arg = serialize_arg(fk_field, arg[fk_pk])
 
   else
     error("[cassandra strategy] don't know how to serialize field")
@@ -394,6 +437,124 @@ local function foreign_pk_exists(self, field_name, field, foreign_pk)
   end
 
   return true
+end
+
+local function set_difference(old_set, new_set)
+  local new_set_hash = new_tab(0, #new_set)
+  for _, elem in ipairs(new_set) do
+    new_set_hash[elem] = true
+  end
+
+  local old_set_hash = new_tab(0, #old_set)
+  for _, elem in ipairs(old_set) do
+    old_set_hash[elem] = true
+  end
+
+  local elem_to_add = {}
+  local elem_to_delete = {}
+  local elem_not_changed = {}
+
+  for _, elem in ipairs(new_set) do
+    if not old_set_hash[elem] then
+      insert(elem_to_add, elem)
+    end
+  end
+
+  for _, elem in ipairs(old_set) do
+    if not new_set_hash[elem] then
+      insert(elem_to_delete, elem)
+    else
+      insert(elem_not_changed, elem)
+    end
+  end
+
+  return elem_to_add, elem_to_delete, elem_not_changed
+end
+
+-- Calculate the difference of current tags and updated tags of an entity
+-- return the cql to execute, and error if any
+--
+-- Note: this follows an innevitable "read-before-write" pattern in
+-- our Cassandra strategy. While unfortunate, this pattern is made
+-- necessary for Kong to behave in a database-agnostic fashion between
+-- its supported RDBMs and Cassandra. This pattern is judged acceptable
+-- given the relatively low number of expected writes (more or less at
+-- a human pace), and mitigated by the introduction of different levels
+-- of consistency for read vs. write queries, as well as the linearizable
+-- consistency of lightweight transactions (IF [NOT] EXISTS).
+local function build_tags_cql(self, primary_key, schema, new_tags, ttl, read_before_write)
+  local tags_to_add, tags_to_delete, tags_not_changed
+
+  new_tags = (not new_tags or new_tags == null) and {} or new_tags
+
+  if read_before_write then
+    local strategy = _M.new(self.connector, schema,
+                            self.errors)
+    local row, err_t = strategy:select(primary_key)
+    if err_t then
+      return nil, err_t
+    end
+
+    if row and row['tags'] and row['tags'] ~= null then
+      tags_to_add, tags_to_delete, tags_not_changed = set_difference(row['tags'], new_tags)
+    else
+      tags_to_add = new_tags
+      tags_to_delete = {}
+      tags_not_changed = {}
+    end
+  else
+    tags_to_add = new_tags
+    tags_to_delete = {}
+    tags_not_changed = {}
+  end
+
+  if #tags_to_add == 0 and #tags_to_delete == 0 then
+    return nil, nil
+  end
+  -- Note: here we assume tags column only exists
+  -- with those entities use id as their primary key
+  local entity_id = primary_key['id']
+  local cqls = {}
+  local update_cql = "UPDATE tags SET other_tags=? WHERE tag=? AND entity_name=? AND entity_id=?"
+  if ttl then
+    update_cql = update_cql .. fmt(" USING TTL %u", ttl)
+  end
+  for _, tag in ipairs(tags_not_changed) do
+    insert(cqls,
+      {
+        update_cql,
+        { cassandra.set(new_tags), cassandra.text(tag), cassandra.text(schema.name), cassandra.text(entity_id) }
+      }
+    )
+  end
+
+  local insert_cql = "INSERT INTO tags (tag, entity_name, entity_id, other_tags) VALUES (?, ?, ?, ?)"
+  if ttl then
+    insert_cql = insert_cql .. fmt(" USING TTL %u", ttl)
+  end
+  for _, tag in ipairs(tags_to_add) do
+    insert(cqls,
+      {
+        insert_cql,
+        { cassandra.text(tag), cassandra.text(schema.name), cassandra.text(entity_id), cassandra.set(new_tags) }
+      }
+    )
+  end
+
+  local delete_cql = "DELETE FROM tags WHERE tag=? AND entity_name=? and entity_id=?"
+  if ttl then
+    delete_cql = delete_cql .. fmt(" USING TTL %u", ttl)
+  end
+  for _, tag in ipairs(tags_to_delete) do
+    insert(cqls,
+      {
+        delete_cql,
+        { cassandra.text(tag), cassandra.text(schema.name), cassandra.text(entity_id) }
+      }
+    )
+  end
+
+  return cqls, nil
 end
 
 
@@ -677,9 +838,30 @@ function _mt:insert(entity, options)
   local composite_cache_key = schema.cache_key and #schema.cache_key > 1
   local primary_key
 
+  local cql_batch
+  local batch_mode
+
+  local mode = 'insert'
+
+  if schema.fields.tags then
+    primary_key = schema:extract_pk_values(entity)
+    local err_t
+    cql_batch, err_t = build_tags_cql(self, primary_key, schema, entity["tags"], ttl, false)
+    if err_t then
+      return nil, err_t
+    end
+
+    if cql_batch then
+      -- Batch with conditions cannot span multiple tables
+      -- Note this will also disables the APPLIED_COLUMN check
+      mode = 'insert_no_transaction'
+      batch_mode = true
+    end
+  end
+
   local cql, err
   if ttl then
-    cql, err = get_query(self, "insert_ttl")
+    cql, err = get_query(self, mode .. "_ttl")
     if err then
       return nil, err
     end
@@ -687,7 +869,7 @@ function _mt:insert(entity, options)
     cql = fmt(cql, ttl)
 
   else
-    cql, err = get_query(self, "insert")
+    cql, err = get_query(self, mode)
     if err then
       return nil, err
     end
@@ -742,15 +924,23 @@ function _mt:insert(entity, options)
 
   -- execute query
 
-  local res, err = self.connector:query(cql, args, nil, "write")
+  local res, err
+  if batch_mode then
+    -- insert the cql to current entity table at first position
+    insert(cql_batch, 1, {cql, args})
+    res, err = self.connector:batch(cql_batch, nil, "write", true)
+  else
+    res, err = self.connector:query(cql, args, nil, "write")
+  end
+
   if not res then
     return nil, self.errors:database_error("could not execute insertion query: "
                                            .. err)
   end
 
   -- check for linearizable consistency (Paxos)
-
-  if res[1][APPLIED_COLUMN] == false then
+  -- in batch_mode, we currently don't know the APPLIED_COLUMN
+  if not batch_mode and res[1][APPLIED_COLUMN] == false then
     -- lightweight transaction (IF NOT EXISTS) failed,
     -- retrieve PK values for the PK violation error
     primary_key = primary_key or schema:extract_pk_values(entity)
@@ -920,31 +1110,41 @@ end
 do
   local opts = new_tab(0, 2)
 
-
-  function _mt:page(size, offset, options, foreign_key, foreign_key_db_columns)
-    if offset then
-      local offset_decoded = decode_base64(offset)
-      if not offset_decoded then
-        return nil, self.errors:invalid_offset(offset, "bad base64 encoding")
+  local function execute_page(self, cql, args, offset, opts)
+    local rows, err = self.connector:query(cql, args, opts, "read")
+    if not rows then
+      if err:match("Invalid value for the paging state") then
+        return nil, self.errors:invalid_offset(offset, err)
       end
-
-      offset = offset_decoded
+      return nil, self.errors:database_error("could not execute page query: "
+                                              .. err)
     end
 
+    local next_offset
+    if rows.meta and rows.meta.paging_state then
+      next_offset = rows.meta.paging_state
+      end
+
+    rows.meta = nil
+    rows.type = nil
+
+    return rows, nil, next_offset
+    end
+
+  local function query_page(self, offset, foreign_key, foreign_key_db_columns)
     local cql
     local args
     local err
 
-    local is_partitioned = false
     if not foreign_key then
-      cql, err, is_partitioned = get_query(self, "select_page")
+      cql, err = get_query(self, "select_page")
       if err then
         return nil, err
       end
 
     elseif foreign_key and foreign_key_db_columns then
       args = new_tab(#foreign_key_db_columns, 0)
-      cql, err, is_partitioned = get_query(self, "select_with_filter")
+      cql, err = get_query(self, "select_with_filter")
       if err then
         return nil, err
       end
@@ -956,36 +1156,252 @@ do
       error("should provide both of: foreign_key, foreign_key_db_columns", 2)
     end
 
+    -- XXX EE
     local ws_scope = get_workspaces()
     if #ws_scope > 0 and workspaceable[self.schema.name]  then
-      return self:page_ws(ws_scope, size, offset, cql, args, is_partitioned, foreign_key)
+      return self:page_ws(ws_scope, opts.page_size, opts.paging_state, cql, args, is_partitioned(self), foreign_key)
     end
 
-    opts.page_size = size
-    opts.paging_state = offset
+    local rows, err_t, next_offset = execute_page(self, cql, args, offset, opts)
 
-    local rows, err = self.connector:query(cql, args, opts, "read")
-    if not rows then
-      if err:match("Invalid value for the paging state") then
-        return nil, self.errors:invalid_offset(offset, err)
-      end
-      return nil, self.errors:database_error("could not execute page query: "
-                                             .. err)
+    if err_t then
+      return nil, err_t
     end
 
     for i = 1, #rows do
       rows[i] = self:deserialize_row(rows[i])
     end
 
-    local next_offset
-    if rows.meta and rows.meta.paging_state then
-      next_offset = encode_base64(rows.meta.paging_state)
+    return rows, nil, next_offset and encode_base64(next_offset)
+  end
+
+  --[[
+  Define the max rounds of queries we will send when filtering entity with
+  tags
+  For each "round" with AND we send queries at max to the number of tags provided and
+  filter in Lua land with entities with all tags provided; for OR we send one request
+  each round.
+  Depending on the distribution of tags attached to entity, it might be possible
+  that number of tags attached with one tag and doesn't has others is larger
+  than the page size provided. In such case, we limit the "rounds" of such
+  filtering and thus limit the total number of queries we send per paging
+  request to be at most (number of tags) * PAGING_MAX_QUERY_ROUNDS
+  Note the number here may not suite all conditions. If the paging request
+  returns too less results, this limit can be bumped up. To archieve less
+  latency for the Admin paging API, this limit can be decreased.
+  ]]--
+  local PAGING_MAX_QUERY_ROUNDS = 20
+
+  -- helper function used in query_page_for_tags to translate
+  -- a row with entity_id with an entity
+  local function dereference_rows(self, entity_ids, entity_count)
+    if not entity_ids then
+      return {}, nil, nil
+    end
+    entity_count = entity_count or #entity_ids
+    local entities = new_tab(entity_count, 0)
+    -- TODO: send one query using IN
+    for i, row in ipairs(entity_ids) do
+      -- TODO: pk name id is hardcoded
+      local entity, err, err_t = self:select{ id = row.entity_id }
+      if err then
+        return nil, err, err_t
+      end
+      entities[i] = entity
+    end
+    return entities, nil, nil
+  end
+
+  local function matches_ws(self, row)
+    local table_name = self.schema.name
+    local ws_scope = get_workspaces() -- XXX check that we are in a wspaced entity
+
+    local ws_entities_map, err = workspace_entities_map(ws_scope, table_name)
+    if err then
+      error(err)
     end
 
-    rows.meta = nil
-    rows.type = nil
+    local res = ws_entities_map[row.entity_id]
+    return res
+  end
 
-    return rows, nil, next_offset
+
+  local function query_page_for_tags(self, size, offset, tags, cond)
+    -- TODO: if we don't sort, we can have a performance guidance to user
+    -- to "always put tags with less entity at the front of query"
+    table.sort(tags)
+
+    local tags_count = #tags
+    -- merge the condition of only one tags to be "and" condition
+    local cond_or = cond == "or" and tags_count > 1
+
+    local cql
+    local args
+
+    local next_offset = opts.paging_state
+
+    local tags_hash = new_tab(0, tags_count)
+    local cond_and_cql_first, cond_and_cql_next
+
+    if cond_or then
+      cql = get_query(self, "select_tags_cond_or")
+      args = { cassandra.list(tags) }
+      for _, tag in ipairs(tags) do
+        tags_hash[tag] = true
+      end
+    else
+      cond_and_cql_first = get_query(self, "select_tags_cond_and_first_tag")
+      cond_and_cql_next = get_query(self, "select_tags_cond_and_next_tags")
+    end
+
+    -- the entity_ids to return
+    local entity_ids = new_tab(size, 0)
+    local entity_count = 0
+
+    -- a temporary table for current query
+    local current_entity_ids = new_tab(size, 0)
+
+
+    local rows, err_t
+
+    for _=1, PAGING_MAX_QUERY_ROUNDS, 1 do
+      local current_next_offset
+      local current_entity_count = 0
+
+      if cond_or then
+        rows, err_t, next_offset = execute_page(self, cql, args, offset, opts)
+        if err_t then
+          return nil, err_t, nil
+        end
+
+        clear_tab(current_entity_ids)
+
+        for _, row in ipairs(rows) do
+          local row_tag = row.tag
+          local duplicated = false
+          for _, attached_tag in ipairs(row.other_tags) do
+            -- To ensure we don't add same entity_id twice (during current
+            -- admin api request or across different requests), we only add
+            -- entity_id when it first appears in the result set.
+            -- That means we don't add current row if row.tag
+            -- 1. is a matching tag towards provided tags (that means this
+            --    entity_id can potentially be duplicated), and
+            -- 2. is not the alphabetically smallest tag among all its tags
+            --    (as in row.other_tags)
+            if tags_hash[attached_tag] and attached_tag < row_tag then
+              duplicated = true
+              break
+            end
+          end
+
+          if not duplicated and matches_ws(self, row) then
+            current_entity_count = current_entity_count + 1
+            current_entity_ids[current_entity_count] = row.entity_id
+          end
+        end
+      else
+        for i=1, #tags, 1 do
+          local tag = tags[i]
+
+          if i == 1 then
+            opts.paging_state = next_offset
+            cql = cond_and_cql_first
+            -- TODO: cache me
+            args = { cassandra.text(tag) }
+          else
+            opts.paging_state = nil
+            cql = cond_and_cql_next
+            -- TODO: cache me
+            args = { cassandra.text(tag), cassandra.list(current_entity_ids) }
+          end
+
+          rows, err_t, current_next_offset = execute_page(self, cql, args, nil, opts)
+
+          if err_t then
+            return nil, err_t, nil
+          end
+
+
+          if i == 1 then
+            next_offset = current_next_offset
+          end
+
+          -- No rows left, stop filtering
+          if not rows or #rows == 0 then
+            current_entity_count = 0
+            break
+          end
+
+          clear_tab(current_entity_ids)
+          current_entity_count = 0
+          for i, row in ipairs(rows) do
+            if matches_ws(self, row) then
+              current_entity_ids[i] = row.entity_id
+              current_entity_count = current_entity_count + 1
+            end
+          end
+        end
+      end
+
+      if current_entity_count > 0 then
+        for i=1, current_entity_count do
+          entity_count = entity_count + 1
+          entity_ids[entity_count] = { entity_id = current_entity_ids[i] }
+          if entity_count >= size then
+            -- shouldn't be "larger than" actually
+            break
+          end
+        end
+
+        if entity_count < size then
+          -- next time we only read what we left
+          -- to return a row with length of `size`
+          opts.page_size = size - entity_count
+        end
+      end
+
+      -- break the loop either we read enough rows
+      -- or no more data available in the datastore
+      if entity_count >= size or not next_offset then
+        break
+      end
+    end
+
+    local entities, err_t = dereference_rows(self, entity_ids, entity_count)
+
+    if err_t then
+      return nil, err_t, nil
+    end
+
+    if next_offset and entity_count < size then
+      -- Note: don't cache ngx.log so we can test in 02-intergration/07-tags_spec.lua
+      ngx.log(ngx.WARN, "maximum ", PAGING_MAX_QUERY_ROUNDS, " rounds exceeded ",
+              "without retrieving required size of rows, ",
+              "consider lower the sparsity of tags, or increase the paging size per request"
+      )
+    end
+
+    return entities, nil, next_offset and encode_base64(next_offset)
+  end
+
+  function _mt:page(size, offset, options, foreign_key, foreign_key_db_columns)
+    if offset then
+      local offset_decoded = decode_base64(offset)
+      if not offset_decoded then
+        return nil, self.errors:invalid_offset(offset, "bad base64 encoding")
+      end
+
+      offset = offset_decoded
+    end
+
+    opts.page_size = size
+    opts.paging_state = offset
+
+    if options and options.tags then
+      return query_page_for_tags(self, size, offset, options.tags, options.tags_cond)
+    end
+
+    return query_page(self, offset, foreign_key, foreign_key_db_columns)
   end
 end
 
@@ -996,12 +1412,32 @@ do
     local ttl = schema.ttl and options and options.ttl
     local composite_cache_key = schema.cache_key and #schema.cache_key > 1
 
+    local cql_batch
+    local batch_mode
+
+    if schema.fields.tags then
+      local err_t
+      cql_batch, err_t = build_tags_cql(self, primary_key, schema, entity["tags"], ttl, true)
+      if err_t then
+        return nil, err_t
+      end
+
+      if cql_batch then
+        -- Batch with conditions cannot span multiple tables
+        -- Note this will also disables the APPLIED_COLUMN check
+        mode = 'upsert'
+        batch_mode = true
+      end
+    end
+
+
     local query_name
     if ttl then
       query_name = mode .. "_ttl"
     else
       query_name = mode
     end
+
 
     local cql, err = get_query(self, query_name)
     if err then
@@ -1078,14 +1514,21 @@ do
     end
 
     -- execute query
+    local res, err
+    if batch_mode then
+      -- insert the cql to current entity table at first position
+      insert(cql_batch, 1, {cql, args})
+      res, err = self.connector:batch(cql_batch, nil, "write", true)
+    else
+      res, err = self.connector:query(cql, args, nil, "write")
+    end
 
-    local res, err = self.connector:query(cql, args, nil, "write")
     if not res then
       return nil, self.errors:database_error("could not execute update query: "
                                              .. err)
     end
 
-    if mode == "update" and res[1][APPLIED_COLUMN] == false then
+    if not batch_mode and mode == "update" and res[1][APPLIED_COLUMN] == false then
       return nil, self.errors:not_found(primary_key)
     end
 
@@ -1248,9 +1691,21 @@ do
       args[i] = serialize_arg(field, primary_key[field_name])
     end
 
-    -- execute query
+    local cql_batch, err_t = build_tags_cql(self, primary_key, self.schema, {}, nil, true)
+    if err_t then
+      return nil, err_t
+    end
 
-    local res, err = self.connector:query(cql, args, nil, "write")
+    -- execute query
+    local res, err
+    if cql_batch then
+      insert(cql_batch, 1, {cql, args} )
+      res, err = self.connector:batch(cql_batch, nil, "write", true)
+    else
+      res, err = self.connector:query(cql, args, nil, "write")
+    end
+
+
     if not res then
       return nil, self.errors:database_error("could not execute deletion query: "
                                              .. err)

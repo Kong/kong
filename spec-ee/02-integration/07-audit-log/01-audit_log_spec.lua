@@ -1,7 +1,9 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local admin_api = require "spec.fixtures.admin_api"
+local pl_file = require "pl.file"
 
+local fmt = string.format
 
 local function fetch_all(dao)
   local rows = {}
@@ -185,6 +187,10 @@ for _, strategy in helpers.each_strategy() do
                 scopes = { "email", "profile", "user.email" },
               },
             })
+            ngx.sleep(1) -- XXX the plugin is not set and doesn't
+                         -- capture the /oauth2/authorize route if we
+                         -- don't wait a bit.
+
             local res = assert(proxy_ssl_client:send {
               method  = "POST",
               path    = "/oauth2/authorize",
@@ -683,24 +689,28 @@ for _, strategy in helpers.each_strategy() do
 
   describe("audit_log signing_key with #" .. strategy, function()
     local db, admin_client, proxy_client
+    local key_file = "./spec/fixtures/key.pem"
 
     setup(function()
       db = select(2, helpers.get_db_utils(strategy))
 
-      os.execute("openssl genrsa -out ./spec/fixtures/key.pem 2048 2>/dev/null")
+      os.execute(fmt("rm -f %s", key_file))
+      os.execute(fmt("openssl genrsa -out %s 2048 2>/dev/null", key_file))
+      os.execute(fmt("chmod 0777 %s", key_file))
 
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         audit_log  = "on",
-        audit_log_signing_key = "./spec/fixtures/key.pem",
+        audit_log_signing_key = key_file,
       }))
     end)
 
     teardown(function()
       helpers.stop_kong(nil, true)
 
-      os.execute("rm -f ./spec/fixtures/key.pem")
+      pl_file.delete(key_file)
+
     end)
 
     before_each(function()

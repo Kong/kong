@@ -2,6 +2,8 @@
 local meta = require "kong.meta"
 local PDK = require "kong.pdk"
 local phase_checker = require "kong.pdk.private.phases"
+local kong_cache = require "kong.cache"
+local kong_cluster_events = require "kong.cluster_events"
 
 
 local type = type
@@ -115,6 +117,61 @@ do
 
     log_facilities.core = self.log
   end
+
+
+  function _GLOBAL.init_worker_events()
+    -- Note: worker_events will not work correctly if required at the top of the file.
+    --       It must be required right here, inside the init function
+    local worker_events = require "resty.worker.events"
+
+    local ok, err = worker_events.configure {
+      shm = "kong_process_events", -- defined by "lua_shared_dict"
+      timeout = 5,            -- life time of event data in shm
+      interval = 1,           -- poll interval (seconds)
+
+      wait_interval = 0.010,  -- wait before retry fetching event data
+      wait_max = 0.5,         -- max wait time before discarding event
+    }
+    if not ok then
+      return nil, err
+    end
+
+    return worker_events
+  end
+
+
+  function _GLOBAL.init_cluster_events(kong_config, db)
+    return kong_cluster_events.new({
+      db                      = db,
+      poll_interval           = kong_config.db_update_frequency,
+      poll_offset             = kong_config.db_update_propagation,
+    })
+  end
+
+
+  function _GLOBAL.init_cache(kong_config, cluster_events, worker_events)
+    local db_cache_ttl = kong_config.db_cache_ttl
+    local cache_pages = 1
+    if kong_config.database == "off" then
+      db_cache_ttl = 0
+      cache_pages = 2
+    end
+
+    return kong_cache.new {
+      cluster_events    = cluster_events,
+      worker_events     = worker_events,
+      propagation_delay = kong_config.db_update_propagation,
+      ttl               = db_cache_ttl,
+      neg_ttl           = db_cache_ttl,
+      resurrect_ttl     = kong_config.resurrect_ttl,
+      cache_pages       = cache_pages,
+      resty_lock_opts   = {
+        exptime = 10,
+        timeout = 5,
+      },
+    }
+  end
+
 end
 
 

@@ -6,6 +6,8 @@ local kong = kong
 local req = ngx.req
 local exit = ngx.exit
 local error = error
+local tostring = tostring
+local init_worker_called = false
 
 
 local ShortCircuitHandler = BasePlugin:extend()
@@ -19,11 +21,18 @@ function ShortCircuitHandler:new()
 end
 
 
+function ShortCircuitHandler:init_worker()
+  init_worker_called = true
+end
+
+
 function ShortCircuitHandler:access(conf)
   ShortCircuitHandler.super.access(self)
   return kong.response.exit(conf.status, {
     status  = conf.status,
     message = conf.message
+  }, {
+    ["Kong-Init-Worker-Called"] = tostring(init_worker_called),
   })
 end
 

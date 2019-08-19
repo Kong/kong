@@ -1,5 +1,4 @@
 -- Copyright (C) Kong Inc.
-local BasePlugin = require "kong.plugins.base_plugin"
 local aws_v4 = require "kong.plugins.aws-lambda.v4"
 local http = require "resty.http"
 local cjson = require "cjson.safe"
@@ -78,17 +77,10 @@ local function extract_proxy_response(content)
 end
 
 
-local AWSLambdaHandler = BasePlugin:extend()
-
-
-function AWSLambdaHandler:new()
-  AWSLambdaHandler.super.new(self, "aws-lambda")
-end
+local AWSLambdaHandler = {}
 
 
 function AWSLambdaHandler:access(conf)
-  AWSLambdaHandler.super.access(self)
-
   local upstream_body = kong.table.new(0, 6)
   local var = ngx.var
 
@@ -250,7 +242,7 @@ end
 
 
 AWSLambdaHandler.PRIORITY = 750
-AWSLambdaHandler.VERSION = "1.0.0"
+AWSLambdaHandler.VERSION = "2.0.0"
 
 
 return AWSLambdaHandler

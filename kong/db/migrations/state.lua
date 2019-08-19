@@ -9,7 +9,9 @@ local Errors = require "kong.db.errors"
 
 local MigrationSchema = Schema.new(Migration)
 
+
 local fmt = string.format
+local max = math.max
 
 
 local function prefix_err(db, err)
@@ -26,6 +28,11 @@ local Migrations_mt = {
   __tostring = function(t)
     local subsystems = {}
 
+    local max_length = 0
+    for _, subsys in ipairs(t) do
+      max_length = max(max_length, #subsys.subsystem)
+    end
+
     for _, subsys in ipairs(t) do
       local names = {}
 
@@ -33,8 +40,8 @@ local Migrations_mt = {
         table.insert(names, migration.name)
       end
 
-      table.insert(subsystems, fmt("%s: %s", subsys.subsystem,
-                                             table.concat(names, ", ")))
+      table.insert(subsystems, fmt("%" .. max_length .. "s: %s",
+                                   subsys.subsystem, table.concat(names, ", ")))
     end
 
     return table.concat(subsystems, "\n")
@@ -136,8 +143,12 @@ local function load_subsystems(db, plugin_names)
   local dir_path, n = string.gsub(pl_path.abspath(ee_path),
     "enterprise" .. pl_path.sep .. "init%.lua$", "")
   if n ~= 1 then
-    return nil, prefix_err(db, "failed to substitute migrations path in "
-      .. dir_path)
+    dir_path, n = string.gsub(pl_path.abspath(ee_path),
+      "enterprise" .. pl_path.sep .. "init%.ljbc$", "")
+    if n ~= 1 then
+      return nil, prefix_err(db, "failed to substitute migrations path in "
+        .. dir_path)
+    end
   end
 
   local dirs = pl_dir.getdirectories(dir_path)
@@ -254,7 +265,7 @@ function State.load(db)
     return nil, prefix_err(db, err)
   end
 
-  local rows, err = db.connector:schema_migrations()
+  local rows, err = db.connector:schema_migrations(subsystems)
   if err then
     db.connector:close()
     return nil, prefix_err(db, "failed to check schema state: " .. err)

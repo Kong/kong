@@ -1171,5 +1171,32 @@ describe("(#" .. strategy .. ")", function()
       assert.same({'create', 'read'}, res)
     end)
   end)
+
+  describe("RbacRoleEndpoints", function()
+    setup(function()
+      db:truncate("rbac_role_endpoints")
+    end)
+
+    describe(":all_by_endpoint", function()
+      it("returns the permissions for a given endpoint and workspace, and not the others", function()
+        local role = bp.rbac_roles:insert()
+        local p1 = kong.db.rbac_role_endpoints:insert({
+          role = { id = role.id },
+          workspace = "foo",
+          actions = 0x01,
+          endpoint = "/foo"
+        })
+        -- p2 should not appear, since endpoint is "/bar"
+        kong.db.rbac_role_endpoints:insert({
+          role = { id = role.id },
+          workspace = "foo",
+          actions = 0x01,
+          endpoint = "/bar"
+        })
+        local res = kong.db.rbac_role_endpoints:all_by_endpoint("/foo", "foo")
+        assert.same({ p1 }, res)
+      end)
+    end)
+  end)
 end)
 end

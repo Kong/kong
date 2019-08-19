@@ -1059,7 +1059,7 @@ for _, strategy in helpers.each_strategy() do
             }
           })
 
-          assert.res_status(403, res)
+          assert.res_status(401, res)
         end)
       end)
     end)

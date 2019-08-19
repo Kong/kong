@@ -30,7 +30,13 @@ lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
 lua_shared_dict kong                5m;
 lua_shared_dict kong_db_cache       ${{MEM_CACHE_SIZE}};
+> if database == "off" then
+lua_shared_dict kong_db_cache_2     ${{MEM_CACHE_SIZE}};
+> end
 lua_shared_dict kong_db_cache_miss 12m;
+> if database == "off" then
+lua_shared_dict kong_db_cache_miss_2 12m;
+> end
 lua_shared_dict kong_locks          8m;
 lua_shared_dict kong_process_events 5m;
 lua_shared_dict kong_cluster_events 5m;
@@ -124,6 +130,7 @@ server {
         default_type                     '';
 
         set $ctx_ref                     '';
+        set $upstream_te                 '';
         set $upstream_host               '';
         set $upstream_upgrade            '';
         set $upstream_connection         '';
@@ -144,6 +151,7 @@ server {
         }
 
         proxy_http_version 1.1;
+        proxy_set_header   TE                $upstream_te;
         proxy_set_header   Host              $upstream_host;
         proxy_set_header   Upgrade           $upstream_upgrade;
         proxy_set_header   Connection        $upstream_connection;
@@ -305,11 +313,32 @@ server {
     gzip on;
     gzip_types text/plain text/css application/json application/javascript;
 
+    location ^~ /legacy {
+        root portal;
+
+        header_filter_by_lua_block {
+            ngx.header["server"] = nil
+        }
+
+        expires 90d;
+        add_header Cache-Control 'public';
+        add_header X-Frame-Options 'sameorigin';
+        add_header X-XSS-Protection '1; mode=block';
+        add_header X-Content-Type-Options 'nosniff';
+        etag off;
+    }
+
     location ~* \.(jpg|jpeg|png|gif|ico|css|ttf|js)$ {
         root portal;
 
         header_filter_by_lua_block {
             ngx.header["server"] = nil
+        }
+
+        content_by_lua_block {
+            Kong.serve_portal_gui({
+                acah = "Content-Type",
+            })
         }
 
         expires 90d;
@@ -339,9 +368,6 @@ server {
         add_header Access-Control-Allow-Headers 'Content-Type';
         add_header Access-Control-Allow-Origin '*';
         etag off;
-
-        access_log logs/portal_gui_access.log;
-        error_log logs/portal_gui_error.log;
     }
 
     location /robots.txt {

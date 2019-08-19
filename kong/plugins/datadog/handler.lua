@@ -1,4 +1,3 @@
-local BasePlugin       = require "kong.plugins.base_plugin"
 local basic_serializer = require "kong.plugins.log-serializers.basic"
 local statsd_logger    = require "kong.plugins.datadog.statsd_logger"
 
@@ -11,9 +10,9 @@ local string_format = string.format
 local NGX_ERR       = ngx.ERR
 
 
-local DatadogHandler    = BasePlugin:extend()
+local DatadogHandler    = {}
 DatadogHandler.PRIORITY = 10
-DatadogHandler.VERSION = "1.0.0"
+DatadogHandler.VERSION = "2.0.0"
 
 
 local get_consumer_id = {
@@ -135,13 +134,7 @@ local function log(premature, conf, message)
 end
 
 
-function DatadogHandler:new()
-  DatadogHandler.super.new(self, "datadog")
-end
-
 function DatadogHandler:log(conf)
-  DatadogHandler.super.log(self)
-
   if not ngx.ctx.service then
     return
   end

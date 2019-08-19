@@ -2,8 +2,8 @@ local cjson   = require "cjson"
 local pl_stringx  = require "pl.stringx"
 local workspaces  = require "kong.workspaces"
 local singletons  = require "kong.singletons"
-local renderer    = require "kong.portal.renderer"
 local ee          = require "kong.enterprise_edition"
+local legacy_renderer = require "kong.portal.legacy_renderer"
 
 
 local kong = kong
@@ -19,7 +19,7 @@ end
 
 
 function _M.prepare_index(self)
-  local page, partials, spec = renderer.compile_assets(self)
+  local page, partials, spec = legacy_renderer.compile_assets(self)
   self.page = cjson.encode(page)
   self.spec = cjson.encode(spec)
   self.partials = cjson.encode(partials)
@@ -28,7 +28,7 @@ end
 
 
 function _M.prepare_sitemap(self)
-  local pages = renderer.compile_sitemap(self)
+  local pages = legacy_renderer.compile_sitemap(self)
   self.xml_urlset = pages
 end
 

@@ -190,13 +190,13 @@ local function migrate_legacy_admins(connector, coordinator)
       if not consumer[1].custom_id then
         consumer[1].custom_id = cassandra.null
       else
-        string.gsub(consumer[1].custom_id, "^[a-zA-Z0-9-_~.]*:", "")
+        consumer[1].custom_id = string.gsub(consumer[1].custom_id, "^[a-zA-Z0-9-_~.]*:", "")
       end
 
       if not consumer[1].username then
         consumer[1].username = cassandra.null
       else
-        string.gsub(consumer[1].username, "^[a-zA-Z0-9-_~.]*:", "")
+        consumer[1].username = string.gsub(consumer[1].username, "^[a-zA-Z0-9-_~.]*:", "")
       end
 
       if not consumer[1].email then

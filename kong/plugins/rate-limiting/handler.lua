@@ -1,6 +1,5 @@
 -- Copyright (C) Kong Inc.
 local policies = require "kong.plugins.rate-limiting.policies"
-local BasePlugin = require "kong.plugins.base_plugin"
 
 
 local kong = kong
@@ -16,11 +15,11 @@ local EMPTY = {}
 local RATELIMIT_LIMIT = "X-RateLimit-Limit"
 local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
 
-local RateLimitingHandler = BasePlugin:extend()
+local RateLimitingHandler = {}
 
 
 RateLimitingHandler.PRIORITY = 901
-RateLimitingHandler.VERSION = "1.0.0"
+RateLimitingHandler.VERSION = "2.0.0"
 
 
 local function get_identifier(conf)
@@ -77,14 +76,7 @@ local function increment(premature, conf, ...)
 end
 
 
-function RateLimitingHandler:new()
-  RateLimitingHandler.super.new(self, "rate-limiting")
-end
-
-
 function RateLimitingHandler:access(conf)
-  RateLimitingHandler.super.access(self)
-
   local current_timestamp = time() * 1000
 
   -- Consumer is identified by ip address or authenticated_credential id
@@ -143,8 +135,6 @@ end
 
 
 function RateLimitingHandler:header_filter(_)
-  RateLimitingHandler.super.header_filter(self)
-
   local headers = kong.ctx.plugin.headers
   if headers then
     kong.response.set_headers(headers)

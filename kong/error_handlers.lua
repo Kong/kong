@@ -57,7 +57,7 @@ return function(ngx)
   end
 
   local status = ngx.status
-  message = BODIES["s" .. status] and BODIES["s" .. status] or format(BODIES.default, status)
+  message = BODIES["s" .. status] or format(BODIES.default, status)
 
   if singletons.configuration.enabled_headers[constants.HEADERS.SERVER] then
     ngx.header[constants.HEADERS.SERVER] = SERVER_HEADER

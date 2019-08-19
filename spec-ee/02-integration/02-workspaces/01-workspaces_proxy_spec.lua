@@ -181,7 +181,7 @@ for _, strategy in helpers.each_strategy() do
             ["apikey"] = "default:kong",
           }
         })
-        assert.res_status(403, res)
+        assert.res_status(401, res)
       end)
       it("cache added for plugin in default workspace", function()
         local cache_key = db.plugins:cache_key("key-auth",
@@ -505,14 +505,13 @@ for _, strategy in helpers.each_strategy() do
 
     before_each(function()
       proxy_client = helpers.proxy_client()
+      pl_file.delete(FILE_LOG_PATH_DEFAULT)
+      pl_file.delete(FILE_LOG_PATH_FOO)
+      pl_file.delete(FILE_LOG_PATH)
     end)
 
 
     after_each(function()
-      pl_file.delete(FILE_LOG_PATH_DEFAULT)
-      pl_file.delete(FILE_LOG_PATH_FOO)
-      pl_file.delete(FILE_LOG_PATH)
-
       if proxy_client then
         proxy_client:close()
       end
@@ -723,6 +722,8 @@ for _, strategy in helpers.each_strategy() do
 
     before_each(function()
       proxy_client = helpers.proxy_client()
+      pl_file.delete(FILE_LOG_PATH_DEFAULT)
+      pl_file.delete(FILE_LOG_PATH_FOO)
     end)
 
 

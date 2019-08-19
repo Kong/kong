@@ -34,6 +34,11 @@ function _M.new(db, page_size, event_ttl)
 end
 
 
+function _M.should_use_polling()
+  return true
+end
+
+
 function _M:insert(node_id, channel, at, data, nbf)
   local c_nbf
   if nbf then

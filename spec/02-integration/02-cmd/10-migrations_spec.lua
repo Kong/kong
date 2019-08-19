@@ -51,7 +51,7 @@ for _, strategy in helpers.each_strategy() do
       assert.match("No such command for migrations: invalid", stderr, 1, true)
     end)
 
-    describe("reset", function()
+    describe("#db reset", function()
       it("cannot run non-interactively without --yes", function()
         local cmd = string.format(helpers.unindent [[
           echo y | %s KONG_DATABASE=%s %s migrations reset --v
@@ -98,14 +98,22 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("bootstrap", function()
-      it("runs and bootstraps the database", function()
+      it("#db runs and bootstraps the database", function()
         run_kong("migrations reset --yes")
         local code, stdout = run_kong("migrations bootstrap")
         assert.same(0, code)
         assert.match("\nmigrating core", stdout, 1, true)
         assert.match("\n" .. nr_migrations .. " migration", stdout, 1, true)
-        assert.match("\ndatabase is up-to-date\n", stdout, 1, true)
+        assert.match("\nDatabase is up-to-date\n", stdout, 1, true)
       end)
+
+      if strategy == "off" then
+        it("always reports as bootstrapped", function()
+          local code, stdout = run_kong("migrations bootstrap")
+          assert.same(0, code)
+          assert.match("Database already bootstrapped", stdout, 1, true)
+        end)
+      end
 
       it("does not bootstrap twice", function()
         local code = run_kong("migrations bootstrap")
@@ -113,7 +121,7 @@ for _, strategy in helpers.each_strategy() do
         local stdout
         code, stdout = run_kong("migrations bootstrap")
         assert.same(0, code)
-        assert.match("database already bootstrapped", stdout, 1, true)
+        assert.match("Database already bootstrapped", stdout, 1, true)
       end)
 
       pending("-q suppresses all output", function()
@@ -125,13 +133,13 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("list", function()
-      it("fails if not bootstrapped", function()
+      it("#db fails if not bootstrapped", function()
         local code = run_kong("migrations reset --yes")
         assert.same(0, code)
         local stdout
         code, stdout = run_kong("migrations list")
         assert.same(3, code)
-        assert.match("database needs bootstrapping", stdout, 1, true)
+        assert.match("Database needs bootstrapping; run 'kong migrations bootstrap'", stdout, 1, true)
       end)
 
       it("lists migrations if bootstrapped", function()
@@ -141,7 +149,10 @@ for _, strategy in helpers.each_strategy() do
         assert.same(0, code)
         local stdout
         code, stdout = run_kong("migrations list")
+        assert.same(0, code)
+        assert.match("Executed migrations:", stdout, 1, true)
 
+        if strategy ~= "off" then
         local db = init_db()
         -- valid CQL and SQL; don't expect to go over one page in CQL here
         local rows = db.connector:query([[SELECT * FROM schema_meta;]])
@@ -150,20 +161,25 @@ for _, strategy in helpers.each_strategy() do
           n = n + #row.executed
         end
         assert.same(nr_migrations, n)
-
-        assert.same(0, code)
-        assert.match("executed migrations:", stdout, 1, true)
+        end
       end)
 
-      it("lists pending migrations if any", function()
+      it("#db lists pending migrations if any", function()
         run_kong("migrations bootstrap")
         local code, stdout = run_kong("migrations list", {
           plugins = "with-migrations",
         })
         assert.same(5, code)
-        assert.match("database has new migrations available:\n" ..
-                     "session: 000_base_session\n" ..
-                     "with-migrations: 000_base_with_migrations, 001_14_to_15",
+        -- assert.match("database has new migrations available:\n" ..
+        --              "session: 000_base_session\n" ..
+        --              "with-migrations: 000_base_with_migrations, 001_14_to_15",
+        assert.match("Executed migrations:\n" ..
+                     "      core: 000_base\n" ..
+                     "enterprise: 000_base\n\n" ..
+                     "New migrations available:\n" ..
+                     "        session: 000_base_session\n" ..
+                     "with-migrations: 000_base_with_migrations, 001_14_to_15\n\n" ..
+                     "Run 'kong migrations up' to proceed",
                      stdout, 1, true)
       end)
 
@@ -176,7 +192,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("up", function()
-      it("performs first phase of migration", function()
+      it("#db performs first phase of migration", function()
         run_kong("migrations reset --yes")
         local code = run_kong("migrations bootstrap")
         assert.same(0, code)
@@ -192,7 +208,7 @@ for _, strategy in helpers.each_strategy() do
 
         code, stdout = run_kong("migrations up")
         assert.same(0, code)
-        assert.match("database is already up-to-date", stdout, 1, true)
+        assert.match("Database is already up-to-date", stdout, 1, true)
 
         local db = init_db()
         -- valid CQL and SQL; don't expect to go over one page in CQL here
@@ -208,6 +224,14 @@ for _, strategy in helpers.each_strategy() do
         assert.same(1, pending)
       end)
 
+      if strategy == "off" then
+        it("always reports as up-to-date", function()
+          local code, stdout = run_kong("migrations up")
+          assert.same(0, code)
+          assert.match("Database is already up-to-date", stdout, 1, true)
+        end)
+      end
+
       pending("-q suppresses all output", function()
         local code, stdout, stderr = run_kong("migrations up -q")
         assert.same(0, code)
@@ -217,7 +241,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("finish", function()
-      it("performs second phase of migration", function()
+      it("#db performs second phase of migration", function()
         run_kong("migrations reset --yes")
         run_kong("migrations bootstrap")
 
@@ -236,7 +260,7 @@ for _, strategy in helpers.each_strategy() do
 
         code, stdout = run_kong("migrations finish")
         assert.same(0, code)
-        assert.match("no pending migrations to finish", stdout, 1, true)
+        assert.match("No pending migrations to finish", stdout, 1, true)
 
         local db = init_db()
         -- valid CQL and SQL; don't expect to go over one page in CQL here
@@ -251,6 +275,14 @@ for _, strategy in helpers.each_strategy() do
         assert.same(nr_migrations + 3, executed)
         assert.same(0, pending)
       end)
+
+      if strategy == "off" then
+        it("always reports as done", function()
+          local code, stdout = run_kong("migrations finish")
+          assert.same(0, code)
+          assert.match("No pending migrations to finish", stdout, 1, true)
+        end)
+      end
 
       pending("-q suppresses all output", function()
         local code, stdout, stderr = run_kong("migrations finish -q")

@@ -6,6 +6,79 @@ local meta    = require "kong.meta"
 local server_tokens = meta._SERVER_TOKENS
 
 
+local fixtures = {
+  http_mock = {
+    lambda_plugin = [[
+
+      server {
+          server_name mock_aws_lambda;
+          listen 10001 ssl;
+
+          ssl_certificate ${{SSL_CERT}};
+          ssl_certificate_key ${{SSL_CERT_KEY}};
+          ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+
+          location ~ "/2015-03-31/functions/(?:[^/])*/invocations" {
+              content_by_lua_block {
+                local function x()
+                  local function say(res, status)
+                    ngx.header["x-amzn-RequestId"] = "foo"
+
+                    if string.match(ngx.var.uri, "functionWithUnhandledError") then
+                      ngx.header["X-Amz-Function-Error"] = "Unhandled"
+                    end
+
+                    ngx.status = status
+
+                    if string.match(ngx.var.uri, "functionWithBadJSON") then
+                      local badRes = "{\"foo\":\"bar\""
+                      ngx.header["Content-Length"] = #badRes + 1
+                      ngx.say(badRes)
+
+                    elseif string.match(ngx.var.uri, "functionWithNoResponse") then
+                      ngx.header["Content-Length"] = 0
+
+                    elseif type(res) == 'string' then
+                      ngx.header["Content-Length"] = #res + 1
+                      ngx.say(res)
+
+                    else
+                      ngx.req.discard_body()
+                      ngx.header['Content-Length'] = 0
+                    end
+
+                    ngx.exit(0)
+                  end
+
+                  ngx.sleep(.2) -- mock some network latency
+
+                  local invocation_type = ngx.var.http_x_amz_invocation_type
+                  if invocation_type == 'Event' then
+                    say(nil, 202)
+
+                  elseif invocation_type == 'DryRun' then
+                    say(nil, 204)
+                  end
+
+                  local qargs = ngx.req.get_uri_args()
+                  ngx.req.read_body()
+                  local args = require("cjson").decode(ngx.req.get_body_data())
+
+                  say(ngx.req.get_body_data(), 200)
+                end
+                local ok, err = pcall(x)
+                if not ok then
+                  ngx.log(ngx.ERR, "Mock error: ", err)
+                end
+              }
+          }
+      }
+
+    ]]
+  },
+}
+
+
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: AWS Lambda (access) [#" .. strategy .. "]", function()
     local proxy_client
@@ -100,6 +173,12 @@ for _, strategy in helpers.each_strategy() do
         hosts       = { "lambda13.com" },
         protocols   = { "http", "https" },
         service     = service12,
+      }
+
+      local route14 = bp.routes:insert {
+        hosts       = { "lambda14.com" },
+        protocols   = { "http", "https" },
+        service     = ngx.null,
       }
 
       bp.plugins:insert {
@@ -275,10 +354,22 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
-      assert(helpers.start_kong{
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route = { id = route14.id },
+        config   = {
+          port          = 10001,
+          aws_key       = "mock-key",
+          aws_secret    = "mock-secret",
+          aws_region    = "us-east-1",
+          function_name = "kongLambdaTest",
+        },
+      }
+
+      assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
-      })
+      }, nil, nil, fixtures))
     end)
 
     before_each(function()
@@ -770,6 +861,21 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(502, res)
         local b = assert.response(res).has.jsonbody()
         assert.equal("Bad Gateway", b.message)
+      end)
+
+      it("invokes a Lambda function with GET using serviceless route", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+          headers = {
+            ["Host"] = "lambda14.com"
+          }
+        })
+        assert.res_status(200, res)
+        local body = assert.response(res).has.jsonbody()
+        assert.is_string(res.headers["x-amzn-RequestId"])
+        assert.equal("some_value1", body.key1)
+        assert.is_nil(res.headers["X-Amz-Function-Error"])
       end)
     end)
   end)

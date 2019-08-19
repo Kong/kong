@@ -4,6 +4,7 @@ local pl_stringx = require "pl.stringx"
 local constants = require "kong.constants"
 local pl_pretty = require "pl.pretty"
 local pl_config = require "pl.config"
+local http_tls = require "http.tls"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local tablex = require "pl.tablex"
@@ -12,12 +13,18 @@ local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local env = require "kong.cmd.utils.env"
 local ip = require "resty.mediador.ip"
-local ciphers = require "kong.tools.ciphers"
 local ee_conf_loader = require "kong.enterprise_edition.conf_loader"
 
 
 local fmt = string.format
 local concat = table.concat
+
+
+local cipher_suites = {
+  modern = http_tls.modern_cipher_list,
+  intermediate = http_tls.intermediate_cipher_list,
+  old = http_tls.old_cipher_list,
+}
 
 
 local DEFAULT_PATHS = {
@@ -41,6 +48,8 @@ local HEADER_KEY_TO_NAME = {
 local DYNAMIC_KEY_PREFIXES = {
   ["nginx_http_directives"] = "nginx_http_",
   ["nginx_proxy_directives"] = "nginx_proxy_",
+  ["nginx_stream_directives"] = "nginx_stream_",
+  ["nginx_sproxy_directives"] = "nginx_sproxy_",
   ["nginx_admin_directives"] = "nginx_admin_",
 }
 
@@ -67,7 +76,7 @@ local PREFIX_PATHS = {
   admin_ssl_cert_key_default = {"ssl", "admin-kong-default.key"}
   ;
 
-  -- XXX EE code [[
+  -- EE code [[
   nginx_portal_api_acc_logs = {"logs", "portal_api_access.log"}
   ;
   admin_gui_ssl_cert_default = {"ssl", "admin-gui-kong-default.crt"},
@@ -103,6 +112,7 @@ local CONF_INFERENCES = {
   db_update_propagation = {  typ = "number"  },
   db_cache_ttl = {  typ = "number"  },
   db_resurrect_ttl = {  typ = "number"  },
+  db_cache_warmup_entities = { typ = "array" },
   nginx_user = { typ = "string" },
   nginx_worker_processes = { typ = "string" },
   upstream_keepalive = { typ = "number" },
@@ -120,12 +130,14 @@ local CONF_INFERENCES = {
                          }
                        },
 
-  database = { enum = { "postgres", "cassandra" }  },
+  database = { enum = { "postgres", "cassandra"}  },  -- XXX EE , "off" is disabled in enterprise
   pg_port = { typ = "number" },
   pg_timeout = { typ = "number" },
   pg_password = { typ = "string" },
   pg_ssl = { typ = "boolean" },
   pg_ssl_verify = { typ = "boolean" },
+  pg_max_concurrent_queries = { typ = "number" },
+  pg_semaphore_timeout = { typ = "number" },
 
   cassandra_contact_points = { typ = "array" },
   cassandra_port = { typ = "number" },
@@ -169,6 +181,7 @@ local CONF_INFERENCES = {
   dns_not_found_ttl = { typ = "number" },
   dns_error_ttl = { typ = "number" },
   dns_no_sync = { typ = "boolean" },
+  router_consistency = { enum = { "strict", "eventual" } },
 
   client_ssl = { typ = "boolean" },
 
@@ -233,6 +246,7 @@ local CONF_INFERENCES = {
   admin_invitation_expiry = {typ = "number"},
 
   portal = {typ = "boolean"},
+  portal_is_legacy = {typ = "boolean"},
   portal_gui_listen = {typ = "array"},
   portal_gui_host = {typ = "string"},
   portal_gui_protocol = {typ = "string"},
@@ -250,6 +264,7 @@ local CONF_INFERENCES = {
   portal_auth_conf = {typ = "string"},
   portal_token_exp = {typ = "number"},
   portal_auto_approve = {typ = "boolean"},
+  portal_email_verification = {typ = "boolean"},
   portal_invite_email = {typ = "boolean"},
   portal_access_request_email = {typ = "boolean"},
   portal_approved_email = {typ = "boolean"},
@@ -392,11 +407,11 @@ local function check_and_infer(conf)
   ---------------------
 
   if conf.database == "cassandra" then
-    if conf.cassandra_lb_policy == "DCAwareRoundRobin"
+    if string.find(conf.cassandra_lb_policy, "DCAware", nil, true)
        and not conf.cassandra_local_datacenter
     then
       errors[#errors + 1] = "must specify 'cassandra_local_datacenter' when " ..
-                          "DCAwareRoundRobin policy is in use"
+                            conf.cassandra_lb_policy .. " policy is in use"
     end
 
     for _, contact_point in ipairs(conf.cassandra_contact_points) do
@@ -548,11 +563,11 @@ local function check_and_infer(conf)
   end
 
   if conf.ssl_cipher_suite ~= "custom" then
-    local pok, perr = pcall(function()
-      conf.ssl_ciphers = ciphers(conf.ssl_cipher_suite)
-    end)
-    if not pok then
-      errors[#errors + 1] = perr
+    local list = cipher_suites[conf.ssl_cipher_suite]
+    if list then
+      conf.ssl_ciphers = list
+    else
+      errors[#errors + 1] = "Undefined cipher suite " .. tostring(conf.ssl_cipher_suite)
     end
   end
 
@@ -600,7 +615,7 @@ local function check_and_infer(conf)
 
   -- checking the trusted ips
   for _, address in ipairs(conf.trusted_ips) do
-    if not ip.valid(address) and not address == "unix:" then
+    if not ip.valid(address) and address ~= "unix:" then
       errors[#errors + 1] = "trusted_ips must be a comma separated list in " ..
                             "the form of IPv4 or IPv6 address or CIDR "      ..
                             "block or 'unix:', got '" .. address .. "'"
@@ -645,6 +660,22 @@ local function check_and_infer(conf)
         errors[#errors + 1] = "failed to parse authority (" .. err .. ")"
       end
     end
+  end
+
+  if conf.pg_max_concurrent_queries < 0 then
+    errors[#errors + 1] = "pg_max_concurrent_queries must be greater than 0"
+  end
+
+  if conf.pg_max_concurrent_queries ~= math.floor(conf.pg_max_concurrent_queries) then
+    errors[#errors + 1] = "pg_max_concurrent_queries must be an integer greater than 0"
+  end
+
+  if conf.pg_semaphore_timeout < 0 then
+    errors[#errors + 1] = "pg_semaphore_timeout must be greater than 0"
+  end
+
+  if conf.pg_semaphore_timeout ~= math.floor(conf.pg_semaphore_timeout) then
+    errors[#errors + 1] = "pg_semaphore_timeout must be an integer greater than 0"
   end
 
   return #errors == 0, errors[1], errors
@@ -734,6 +765,10 @@ local function parse_listeners(values, flags)
   local list = {}
   local usage = "must be of form: [off] | <ip>:<port> [" ..
                 concat(flags, "] [") .. "], [... next entry ...]"
+
+  if #values == 0 then
+    return nil, usage
+  end
 
   if pl_stringx.strip(values[1]) == "off" then
     return list

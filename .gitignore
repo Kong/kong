@@ -14,3 +14,5 @@ kong*.yml
 # luacov
 luacov.*
 /doc
+
+kong-build-tools

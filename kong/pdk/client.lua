@@ -7,6 +7,7 @@
 -- @module kong.client
 
 
+local utils = require "kong.tools.utils"
 local phase_checker = require "kong.pdk.private.phases"
 
 
@@ -196,6 +197,48 @@ local function new(self)
     local ctx = ngx.ctx
     ctx.authenticated_consumer = consumer
     ctx.authenticated_credential = credential
+  end
+
+
+  ---
+  -- Returns the protocol matched by the current route (`"http"`, `"https"`, `"tcp"` or
+  -- `"tls"`), or `nil`, if no route has been matched, which can happen when dealing with
+  -- erroneous requests.
+  -- @function kong.client.get_protocol
+  -- @phases access, header_filter, body_filter, log
+  -- @tparam [opt] allow_terminated boolean. If set, the `X-Forwarded-Proto` header will be checked when checking for https
+  -- @treturn string|nil `"http"`, `"https"`, `"tcp"`, `"tls"` or `nil`
+  -- @treturn nil|err nil if success, or error message if failure
+  -- @usage
+  -- kong.client.get_protocol() -- "http"
+  function _CLIENT.get_protocol(allow_terminated)
+    check_phase(AUTH_AND_LATER)
+
+    local route = ngx.ctx.route
+    if not route then
+      return nil, "No active route found"
+    end
+
+    local protocols = route.protocols
+    if #protocols == 1 then
+      return protocols[1]
+    end
+
+    if ngx.config.subsystem == "http" then
+      local is_trusted = kong.ip.is_trusted(kong.client.get_ip())
+      local is_https, err = utils.check_https(is_trusted, allow_terminated)
+      if err then
+        return nil, err
+      end
+
+      return is_https and "https" or "http"
+    end
+    -- else subsystem is stream
+
+    local balancer_data = ngx.ctx.balancer_data
+    local is_tls = balancer_data and balancer_data.scheme == "tls" and balancer_data.ssl_ctx
+
+    return is_tls and "tls" or "tcp"
   end
 
 

@@ -4,55 +4,28 @@ local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local fmt           = string.format
 local workspaces = require "kong.workspaces"
-local unpack        = unpack
+local re_sub = ngx.re.sub
 
 
 local Consumers = {}
 
 local sql_templates = {
-  page_by_type_first = [[
-  SELECT id, username, custom_id, extract('epoch' from created_at at time zone 'UTC') as created_at
+  page_by_type = [[
+  SELECT id, username, custom_id, tags, extract('epoch' from created_at at time zone 'UTC') as created_at
     FROM consumers
     WHERE type = %s
     ORDER BY id
     LIMIT %s;]],
-  page_by_type_next  = [[
-  SELECT id, username, custom_id, extract('epoch' from created_at at time zone 'UTC') as created_at
-    FROM consumers
-    WHERE id >= %s AND type = %s
-    ORDER BY id
-    LIMIT %s;]],
-
-  page_by_type_first_ws  = [[
-    SELECT id, username, custom_id, extract('epoch' from created_at at time zone 'UTC') as created_at
-    FROM workspace_entities ws_e INNER JOIN consumers c
-    ON ( unique_field_name = 'id' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = c.id::varchar )
-    WHERE type = %s ORDER BY id LIMIT %s;
-  ]],
-
-  page_by_type_next_ws  = [[
-    SELECT id, username, custom_id, extract('epoch' from created_at at time zone 'UTC') as created_at
-    FROM workspace_entities ws_e INNER JOIN consumers c
-    ON ( unique_field_name = 'id' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = c.id::varchar )
-    WHERE id >= %s AND type = %s ORDER BY id LIMIT %s;
-  ]],
 }
 
 
 function Consumers:page_by_type(type, size, token, options)
   local limit = size + 1
-  local sql
-  local args
-  local ws_suffix = ""
-
-  -- maybe validate type
   local type_literal = self:escape_literal(type)
-
   local ws_list = workspaces.ws_scope_as_list(self.schema.name)
-  if ws_list then
-    ws_suffix = "_ws"
-  end
+  local sql = sql_templates.page_by_type
 
+  -- support next page
   if token then
     local token_decoded = decode_base64(token)
     if not token_decoded then
@@ -65,34 +38,42 @@ function Consumers:page_by_type(type, size, token, options)
     end
 
     local id_delimiter = self:escape_literal(token_decoded)
-
-    sql = sql_templates["page_by_type_next" .. ws_suffix]
-    args = { id_delimiter, type_literal, limit }
-  else
-    sql = sql_templates["page_by_type_first" .. ws_suffix]
-    args = { type_literal, limit  }
+    sql = re_sub(sql, "\\bWHERE\\b", "WHERE id >= ".. id_delimiter .. " AND ", "o")
   end
 
+
+  -- maybe add workspaces to the query
   if ws_list then
-    sql = fmt(sql, ws_list, unpack(args))
-  else
-    sql = fmt(sql, unpack(args))
+    local joined_consumers = [[
+    FROM workspace_entities ws_e INNER JOIN consumers c
+    ON ( unique_field_name = 'id' AND ws_e.workspace_id in ( %s ) and ws_e.entity_id = c.id::varchar )
+]]
+    sql = re_sub(sql, "\\bFROM consumers\\b", fmt(joined_consumers, ws_list), "o")
   end
 
-    local res, err = self.connector:query(sql)
-    if not res then
-      return nil, self.errors:database_error(err)
-    end
-
-    local offset
-    if res[limit] then
-      offset = cjson.encode(res[limit].id)
-      offset = encode_base64(offset, true)
-      res[limit] = nil
-    end
-
-    return res, nil, offset
+  -- maybe add tags to the query
+  local tags = options.tags
+  if tags and options.tags_cond == "or" then
+    sql = re_sub(sql, "\\bWHERE\\b", "WHERE tags && " .. self:escape_literal(tags, "tags") .. " AND ", "o")
+  elseif tags then -- "and" is the default
+    sql = re_sub(sql, "\\bWHERE\\b", "WHERE tags @> ".. self:escape_literal(tags, "tags") .. " AND " , "o")
   end
+
+  sql = fmt(sql, type_literal, limit)
+  local res, err = self.connector:query(sql)
+  if not res then
+    return nil, self.errors:database_error(err)
+  end
+
+  local offset
+  if res[limit] then
+    offset = cjson.encode(res[limit].id)
+    offset = encode_base64(offset, true)
+    res[limit] = nil
+  end
+
+  return res, nil, offset
+end
 
 
 return Consumers

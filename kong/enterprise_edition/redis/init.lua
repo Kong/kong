@@ -66,6 +66,18 @@ _M.config_schema = {
       },
     },
     {
+      mutually_exclusive_sets = {
+        set1 = { "sentinel_master", "sentinel_role", "sentinel_addresses" },
+        set2 = { "cluster_addresses" },
+      },
+    },
+    {
+      mutually_exclusive_sets = {
+        set1 = { "cluster_addresses" },
+        set2 = { "host", "port" },
+      },
+    },
+    {
       mutually_required = { "sentinel_master", "sentinel_role", "sentinel_addresses" },
     },
     {
@@ -96,7 +108,7 @@ end
 -- Perform any needed Redis configuration; e.g., parse Sentinel addresses
 function _M.init_conf(conf)
   if is_redis_cluster(conf) then
-    conf.parsed_cluster_addresses = 
+    conf.parsed_cluster_addresses =
       parse_addresses(conf.cluster_addresses, "ip")
   elseif is_redis_sentinel(conf) then
     conf.parsed_sentinel_addresses =

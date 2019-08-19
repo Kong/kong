@@ -121,6 +121,29 @@ describe("schema", function()
       assert.falsy(Test:validate({ a_number = "wat" }))
     end)
 
+    it("'eq' accepts false", function()
+      local Test = Schema.new({
+        fields = {
+          { a_boolean = { type = "boolean", eq = false } }
+        }
+      })
+      assert.truthy(Test:validate({ a_boolean = false }))
+      assert.falsy(Test:validate({ a_boolean = true }))
+      assert.falsy(Test:validate({ a_boolean = "false" }))
+    end)
+
+    it("'eq' accepts null", function()
+      local Test = Schema.new({
+        fields = {
+          { a_boolean = { type = "boolean", eq = ngx.null } }
+        }
+      })
+      assert.truthy(Test:validate({ a_boolean = ngx.null }))
+      -- null means unset, so not passing a value matches it
+      assert.truthy(Test:validate({ a_boolean = nil }))
+      assert.falsy(Test:validate({ a_boolean = "null" }))
+    end)
+
     it("forces a value with 'gt'", function()
       local Test = Schema.new({
         fields = {
@@ -486,15 +509,6 @@ describe("schema", function()
       assert.falsy(Test:validate({ f = "foo" }))
     end)
 
-    it("requires an array schema to have `elements`", function()
-      local Test = Schema.new({
-        fields = {
-          { f = { type = "array" } }
-        }
-      })
-      assert.falsy(Test:validate({ f = {} }))
-    end)
-
     it("validates array elements", function()
       local Test = Schema.new({
         fields = {
@@ -516,7 +530,8 @@ describe("schema", function()
               type = "array",
               elements = {
                 type = "string",
-                one_of = { "foo", "bar", "baz" }
+                one_of = { "foo", "bar", "baz" },
+                not_one_of = { "forbidden", "also_forbidden" },
               }
             }
           }
@@ -527,6 +542,8 @@ describe("schema", function()
       assert.truthy(Test:validate({ f = {"baz", "foo"} }))
       assert.falsy(Test:validate({ f = {"hello"} }))
       assert.falsy(Test:validate({ f = {"foo", "hello", "foo"} }))
+      assert.falsy(Test:validate({ f = {"baz", "foo", "forbidden"} }))
+      assert.falsy(Test:validate({ f = {"baz", "foo", "also_forbidden"} }))
     end)
 
     it("ensures a set is a table", function()
@@ -537,15 +554,6 @@ describe("schema", function()
       })
       assert.truthy(Test:validate({ f = {} }))
       assert.falsy(Test:validate({ f = "foo" }))
-    end)
-
-    it("requires an set schema to have `elements`", function()
-      local Test = Schema.new({
-        fields = {
-          { f = { type = "set" } }
-        }
-      })
-      assert.falsy(Test:validate({ f = {} }))
     end)
 
     it("validates set elements", function()
@@ -588,33 +596,6 @@ describe("schema", function()
       })
       assert.truthy(Test:validate({ f = {} }))
       assert.falsy(Test:validate({ f = "foo" }))
-    end)
-
-    it("fails with a map without `keys` and `values`", function()
-      local Test = Schema.new({
-        fields = {
-          { f = { type = "map" } }
-        }
-      })
-      assert.falsy(Test:validate({ f = {} }))
-    end)
-
-    it("fails with a map without `values`", function()
-      local Test = Schema.new({
-        fields = {
-          { f = { type = "map", keys = { type = "string" } } }
-        }
-      })
-      assert.falsy(Test:validate({ f = {} }))
-    end)
-
-    it("fails with a map without `keys`", function()
-      local Test = Schema.new({
-        fields = {
-          { f = { type = "map", values = { type = "string" } } }
-        }
-      })
-      assert.falsy(Test:validate({ f = {} }))
     end)
 
     it("accepts a map with `keys` and `values`", function()
@@ -669,13 +650,7 @@ describe("schema", function()
       assert.falsy(Test:validate({ f = "foo" }))
     end)
 
-    it("requires a record to have `fields`", function()
-      local Test = Schema.new({
-        fields = {
-          { f = { type = "record" } }
-        }
-      })
-      assert.falsy(Test:validate({ f = {} }))
+    it("accepts a record with empty `fields`", function()
       local Test = Schema.new({
         fields = {
           {
@@ -985,7 +960,7 @@ describe("schema", function()
             { config = { type = "record", abstract = true, } },
           }
         })
-        Test:new_subschema("my_subschema", {
+        assert(Test:new_subschema("my_subschema", {
           fields = {
             { config = {
                 type = "record",
@@ -995,7 +970,7 @@ describe("schema", function()
                 }
             } }
           }
-        })
+        }))
         assert.truthy(Test:validate({
           name = "my_subschema",
           config = {
@@ -1032,7 +1007,7 @@ describe("schema", function()
             { bla = { type = "integer", abstract = true, } },
           }
         })
-        Test:new_subschema("my_subschema", {
+        assert(Test:new_subschema("my_subschema", {
           fields = {
             { config = {
                 type = "record",
@@ -1042,7 +1017,7 @@ describe("schema", function()
                 }
             } }
           }
-        })
+        }))
         assert.truthy(Test:validate({
           name = "my_subschema",
           config = {
@@ -1066,7 +1041,7 @@ describe("schema", function()
             } },
           }
         })
-        Test:new_subschema("my_subschema", {
+        local ok, err = Test:new_subschema("my_subschema", {
           fields = {
             { config = {
                 type = "record",
@@ -1078,18 +1053,8 @@ describe("schema", function()
             { new_field = { type = "string", required = true, } },
           }
         })
-
-        local ok, errors = Test:validate({
-          name = "my_subschema",
-          config = {
-            foo = 123,
-          },
-          new_field = "blah",
-        })
         assert.falsy(ok)
-        assert.same({
-          new_field = "unknown field",
-        }, errors)
+        assert.matches("new_field: cannot create a new field", err, 1, true)
       end)
 
       it("fails when trying to use an abstract field (incomplete subschema)", function()
@@ -1102,7 +1067,7 @@ describe("schema", function()
             { bla = { type = "integer", abstract = true, } },
           }
         })
-        Test:new_subschema("my_subschema", {
+        assert(Test:new_subschema("my_subschema", {
           fields = {
             { config = {
                 type = "record",
@@ -1112,7 +1077,7 @@ describe("schema", function()
                 }
             } }
           }
-        })
+        }))
         local ok, errors = Test:validate({
           name = "my_subschema",
           config = {
@@ -1137,7 +1102,7 @@ describe("schema", function()
             { config = { type = "record", abstract = true, } },
           }
         })
-        Test:new_subschema("my_subschema", {
+        assert(Test:new_subschema("my_subschema", {
           fields = {
             { config = {
                 type = "record",
@@ -1147,7 +1112,7 @@ describe("schema", function()
                 }
             } }
           }
-        })
+        }))
         local ok, errors = Test:validate({
           name = "my_subschema",
           bla = 4.5,
@@ -1174,17 +1139,17 @@ describe("schema", function()
             { consumer = { type = "string", } },
           }
         })
-        Test:new_subschema("length_5", {
+        assert(Test:new_subschema("length_5", {
           fields = {
             { consumer = {
                 type = "string",
                 len_eq = 5,
             } }
           }
-        })
-        Test:new_subschema("no_restrictions", {
+        }))
+        assert(Test:new_subschema("no_restrictions", {
           fields = {}
-        })
+        }))
 
         local ok, errors = Test:validate({
           name = "length_5",
@@ -1218,32 +1183,15 @@ describe("schema", function()
             { consumer = { type = "string", } },
           }
         })
-        Test:new_subschema("length_5", {
+        local ok, err = Test:new_subschema("length_5", {
           fields = {
             { consumer = {
                 type = "integer",
             } }
           }
         })
-        Test:new_subschema("no_restrictions", {
-          fields = {}
-        })
-
-        local ok, errors = Test:validate({
-          name = "length_5",
-          consumer = "aaaaa",
-        })
         assert.falsy(ok)
-        assert.same({
-          consumer = "error in schema definition: cannot change type in a specialized field",
-        }, errors)
-
-        ok = Test:validate({
-          name = "no_restrictions",
-          consumer = "aaa",
-        })
-        assert.truthy(ok)
-
+        assert.matches("consumer: cannot change type in a specialized field", err, 1, true)
       end)
 
       it("a specialized field can force a value using 'eq'", function()
@@ -1263,14 +1211,14 @@ describe("schema", function()
             { consumer = { type = "foreign", reference = "mock_consumers" } },
           }
         }))
-        Test:new_subschema("no_consumer", {
+        assert(Test:new_subschema("no_consumer", {
           fields = {
             { consumer = { type = "foreign", reference = "mock_consumers", eq = ngx.null } }
           }
-        })
-        Test:new_subschema("no_restrictions", {
+        }))
+        assert(Test:new_subschema("no_restrictions", {
           fields = {}
-        })
+        }))
 
         local ok, errors = Test:validate({
           name = "no_consumer",
@@ -1425,6 +1373,30 @@ describe("schema", function()
       end)
 
       describe("conditional", function()
+        it("can check on false", function()
+          local Test = Schema.new({
+            fields = {
+              { a = { type = "boolean" }, },
+              { b = { type = "boolean" }, },
+            },
+            entity_checks = {
+              { conditional = { if_field = "a",
+                                if_match = { eq = true },
+                                then_field = "b",
+                                then_match = { eq = false },
+                                then_err = "can't have a and b at the same time", }
+              },
+            }
+          })
+
+          assert.truthy(Test:validate_insert({ a = true, b = false }))
+          local ok, errs = Test:validate_insert({ a = true, b = true })
+          assert.falsy(ok)
+          assert.same({
+            "can't have a and b at the same time"
+          }, errs["@entity"])
+        end)
+
         it("supports a custom error message", function()
           local Test = Schema.new({
             fields = {
@@ -1651,7 +1623,12 @@ describe("schema", function()
     it("test conditional checks", function()
       local Test = Schema.new({
         fields = {
-          { policy = { type = "string", one_of = { "redis", "bla" } } },
+          { policy = {
+              type = "string",
+              one_of = { "redis", "bla" },
+              not_one_of = { "cluster" },
+            }
+          },
           { redis_host = { type = "string" } },
           { redis_port = { type = "number" } },
         },
@@ -1685,6 +1662,9 @@ describe("schema", function()
       assert.falsy(Test:validate_update({
         policy = "redis",
       }))
+      assert.falsy(Test:validate_update({
+        policy = "cluster",
+      }))
     end)
 
     it("test mutually required checks", function()
@@ -1704,7 +1684,7 @@ describe("schema", function()
         a1 = "foo"
       })
       assert.is_falsy(ok)
-      assert.match("All or none of 'a1', 'a3' must be set. Only 'a1' found", err["@entity"][1])
+      assert.match("all or none of these fields must be set: 'a1', 'a3'", err["@entity"][1])
 
       ok, err = Test:validate_update({
         a2 = "foo"
@@ -1733,7 +1713,7 @@ describe("schema", function()
         a5 = "bla",
       })
       assert.is_falsy(ok)
-      assert.match("'a1' must not be set with 'a5'", err["@entity"][1])
+      assert.same("these sets are mutually exclusive: ('a1'), ('a5')", err["@entity"][1])
 
       ok, err = Test:validate_update({
         a1 = "foo",
@@ -1746,7 +1726,75 @@ describe("schema", function()
         a5 = "bla",
       })
       assert.is_falsy(ok)
-      assert.match("'a3' must not be set with 'a5'", err["@entity"][1])
+      assert.same("these sets are mutually exclusive: ('a3'), ('a5')", err["@entity"][1])
+
+      ok, err = Test:validate_update({
+        a5 = "foo",
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+    end)
+
+    it("test mutually required checks", function()
+      local Test = Schema.new({
+        fields = {
+          { a1 = { type = "string" } },
+          { a2 = { type = "string" } },
+          { a3 = { type = "string" } },
+        },
+        entity_checks = {
+          { mutually_required = { "a2" } },
+          { mutually_required = { "a1", "a3" } },
+        }
+      })
+
+      local ok, err = Test:validate_update({
+        a1 = "foo"
+      })
+      assert.is_falsy(ok)
+      assert.match("all or none of these fields must be set: 'a1', 'a3'", err["@entity"][1])
+
+      ok, err = Test:validate_update({
+        a2 = "foo"
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+    end)
+
+    it("test mutually exclusive checks", function()
+      local Test = Schema.new({
+        fields = {
+          { a1 = { type = "string" } },
+          { a2 = { type = "string" } },
+          { a3 = { type = "string" } },
+          { a4 = { type = "string" } },
+          { a5 = { type = "string" } },
+        },
+        entity_checks = {
+          { mutually_exclusive_sets = { set1 = {"a3"}, set2 = {"a5"}} },
+          { mutually_exclusive_sets = { set1 = {"a1", "a2"}, set2 = {"a4", "a5"}} },
+        }
+      })
+
+      local ok, err = Test:validate_update({
+        a1 = "foo",
+        a5 = "bla",
+      })
+      assert.is_falsy(ok)
+      assert.same("these sets are mutually exclusive: ('a1'), ('a5')", err["@entity"][1])
+
+      ok, err = Test:validate_update({
+        a1 = "foo",
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      ok, err = Test:validate_update({
+        a3 = "foo",
+        a5 = "bla",
+      })
+      assert.is_falsy(ok)
+      assert.same("these sets are mutually exclusive: ('a3'), ('a5')", err["@entity"][1])
 
       ok, err = Test:validate_update({
         a5 = "foo",
@@ -1759,7 +1807,7 @@ describe("schema", function()
       local Test = Schema.new({
         fields = {
           { redis_host = { type = "string" } },
-          { a_set = { type = "set", elements = { type = "string", one_of = { "foo", "bar" } } } },
+          { a_set = { type = "set", elements = { type = "string", one_of = { "foo", "bar" }, not_one_of = { "forbidden", "also_forbidden" } } } },
         },
         entity_checks = {
           { conditional = { if_field = "a_set",
@@ -1788,6 +1836,13 @@ describe("schema", function()
       })
       assert.truthy(ok)
       assert.is_nil(err)
+
+      ok, err = Test:validate_update({
+        a_set = { "forbidden" },
+        redis_host = "host_foo",
+      })
+      assert.falsy(ok)
+      assert.same("must not be one of: forbidden, also_forbidden", err.a_set[1])
     end)
 
     it("test custom entity checks", function()
@@ -2426,7 +2481,21 @@ describe("schema", function()
       assert.equals(5.5, tbl.fingers)
     end)
 
-    it("adds cjson.empty_array_mt on empty array and set fields", function()
+    it("adds cjson.array_mt on non-empty array fields", function()
+      local Test = Schema.new({
+        fields = {
+          { arr = { type = "array", elements = { type = "string" } } },
+        },
+      })
+
+      local tbl = Test:process_auto_fields({
+        arr = { "hello" },
+      }, "insert")
+
+      assert.same(cjson.array_mt, getmetatable(tbl.arr))
+    end)
+
+    it("adds cjson.array_mt on empty array and set fields", function()
       local Test = Schema.new({
         fields = {
           { arr = { type = "array", elements = { type = "string" } } },
@@ -2439,11 +2508,11 @@ describe("schema", function()
         set = {}
       }, "insert")
 
-      assert.same(cjson.empty_array_mt, getmetatable(tbl.arr))
-      assert.same(cjson.empty_array_mt, getmetatable(tbl.set))
+      assert.same(cjson.array_mt, getmetatable(tbl.arr))
+      assert.same(cjson.array_mt, getmetatable(tbl.set))
     end)
 
-    it("adds cjson.empty_array_mt on empty array and set fields", function()
+    it("adds cjson.array_mt on empty array and set fields", function()
       local Test = Schema.new({
         fields = {
           { arr = { type = "array", elements = { type = "string" } } },
@@ -2457,8 +2526,8 @@ describe("schema", function()
           set = {}
         }, operation)
 
-        assert.same(cjson.empty_array_mt, getmetatable(tbl.arr))
-        assert.same(cjson.empty_array_mt, getmetatable(tbl.set))
+        assert.same(cjson.array_mt, getmetatable(tbl.arr))
+        assert.same(cjson.array_mt, getmetatable(tbl.set))
       end
     end)
 
@@ -2483,27 +2552,119 @@ describe("schema", function()
       end
     end)
 
-    it("does not add a helper metatable to arrays or maps", function()
+    it("does not add a helper metatable to maps", function()
       local Test = Schema.new({
         fields = {
-          { arr = { type = "array", elements = { type = "string" } } },
           { map = { type = "map", keys = { type = "string" }, values = { type = "boolean" } } },
         },
       })
 
       for _, operation in pairs{ "insert", "update", "select", "delete" } do
         local tbl = Test:process_auto_fields({
-          arr = { "http", "https" },
           map = { http = true },
         }, operation)
 
-        assert.is_nil(getmetatable(tbl.arr))
         assert.is_nil(getmetatable(tbl.map))
-        assert.is_equal("http", tbl.arr[1])
-        assert.is_nil(tbl.arr.http)
         assert.is_true(tbl.map.http)
         assert.is_nil(tbl.map.https)
       end
+    end)
+
+    it("does add array_mt metatable to arrays", function()
+      local Test = Schema.new({
+        fields = {
+          { arr = { type = "array", elements = { type = "string" } } },
+        },
+      })
+
+      for _, operation in pairs{ "insert", "update", "select", "delete" } do
+        local tbl = Test:process_auto_fields({
+          arr = { "http", "https" },
+        }, operation)
+
+        assert.is_equal(cjson.array_mt, getmetatable(tbl.arr))
+        assert.is_equal("http", tbl.arr[1])
+        assert.is_nil(tbl.arr.http)
+      end
+    end)
+
+    it("sets 'read_before_write' to true when updating field type record", function()
+      local Test = Schema.new({
+        name = "test",
+        fields = {
+          { config = { type = "record", fields = { foo = { type = "string" } } } },
+        }
+      })
+
+      for _, operation in pairs{ "insert", "update", "select", "delete" } do
+        local assertion = assert.falsy
+
+        if operation == "update" then
+          assertion = assert.truthy
+        end
+
+        local _, _, process_auto_fields = Test:process_auto_fields({
+          config = {
+            foo = "dog"
+          }
+        }, operation)
+
+        assertion(process_auto_fields)
+      end
+    end)
+
+    it("sets 'read_before_write' to false when not updating field type record", function()
+      local Test = Schema.new({
+        name = "test",
+        fields = {
+          { config = { type = "record", fields = { foo = { type = "string" } } } },
+          { name = { type = "string" } }
+        }
+      })
+
+      for _, operation in pairs{ "insert", "update", "select", "delete" } do
+        local assertion = assert.falsy
+
+        local _, _, process_auto_fields = Test:process_auto_fields({
+          name = "cat"
+        }, operation)
+
+        assertion(process_auto_fields)
+      end
+    end)
+
+    it("correctly flags check_immutable_fields when immutable present in schema", function()
+      local test_schema = {
+        name = "test",
+
+        fields = {
+          { name = { type = "string",  immutable = true }, },
+        },
+      }
+      local test_entity = { name = "bob" }
+
+      local TestEntities = Schema.new(test_schema)
+      local _, _, _, check_immutable_fields =
+        TestEntities:process_auto_fields(test_entity, "update")
+
+      assert.truthy(check_immutable_fields)
+    end)
+
+    it("correctly flags check_immutable_fields when immutable absent from schema", function()
+      local test_schema = {
+        name = "test",
+
+        fields = {
+          { name = { type = "string" }, },
+        },
+      }
+      local test_entity = { name = "bob" }
+
+      local TestEntities = Schema.new(test_schema)
+      local _, _, _, check_immutable_fields =
+        TestEntities:process_auto_fields(test_entity, "update")
+
+      assert.falsy(check_immutable_fields)
     end)
 
     describe("in subschemas", function()
@@ -2516,7 +2677,7 @@ describe("schema", function()
             { config = { type = "record", abstract = true } },
           }
         })
-        Test:new_subschema("my_subschema", {
+        assert(Test:new_subschema("my_subschema", {
           fields = {
             { config = {
                 type = "record",
@@ -2526,7 +2687,7 @@ describe("schema", function()
                 default = { foo = "bla" }
              } }
           }
-        })
+        }))
 
         local input = {
           name = "my_subschema",
@@ -2553,6 +2714,206 @@ describe("schema", function()
 
       end)
     end)
+  end)
 
+  describe("merge_values", function()
+    it("should correctly merge records", function()
+      local Test = Schema.new({
+        name = "test", fields = {
+          { config = {
+              type = "record",
+              fields = {
+                foo = { type = "string" },
+                bar = { type = "string" }
+              }
+            }
+          },
+          { name = { type = "string" }
+        }}
+      })
+
+      local old_values = {
+        name = "test",
+        config = { foo = "dog", bar = "cat" },
+      }
+
+      local new_values = {
+        name = "test",
+        config = { foo = "pig" },
+      }
+
+      local expected_values = {
+        name = "test",
+        config = { foo = "pig", bar = "cat" }
+      }
+
+      local values = Test:merge_values(new_values, old_values)
+
+      assert.equals(values.config.foo, expected_values.config.foo)
+      assert.equals(values.config.bar, expected_values.config.bar)
+    end)
+  end)
+
+  describe("validate_immutable_fields", function()
+    it("returns ok when immutable unset in schema fields", function()
+      local test_schema = {
+        name = "test",
+
+        fields = {
+          { name = { type = "string" }, },
+        },
+      }
+      local entity_to_update = { name = "test1" }
+      local db_entity = { name = "test2" }
+
+      local TestEntities = Schema.new(test_schema)
+      local ok, _ = TestEntities:validate_immutable_fields(entity_to_update, db_entity)
+
+      assert.truthy(ok)
+    end)
+
+    it("returns errors when immutable set incoming field being updated", function()
+      local test_schema = {
+        name = "test",
+
+        fields = {
+          { name = { type = "string", immutable = true }, },
+          { address = { type = "string", immutable = true }, },
+          { email = { type = "string" }, },
+        },
+      }
+      local entity_to_update = { name = "test1", address = "a", email = "a@thing.com" }
+      local db_entity = { name = "test2", address = "b", email = "b@thing.com" }
+
+      local TestEntities = Schema.new(test_schema)
+      local ok, errors = TestEntities:validate_immutable_fields(entity_to_update, db_entity)
+
+      assert.falsy(ok)
+      assert.equals(errors.name, 'immutable field cannot be updated')
+      assert.equals(errors.address, 'immutable field cannot be updated')
+      assert.falsy(errors.email)
+    end)
+
+    it("returns ok when immutable set incoming field being updated and value is same", function()
+      local test_schema = {
+        name = "test",
+
+        fields = {
+          { name = { type = "string", immutable = true }, },
+        },
+      }
+      local entity_to_update = { name = "test1" }
+      local db_entity = { name = "test1" }
+
+      local TestEntities = Schema.new(test_schema)
+      local ok, _ = TestEntities:validate_immutable_fields(entity_to_update, db_entity)
+
+      assert.truthy(ok)
+    end)
+
+    it("can assess if set type immutable fields are similar", function()
+      local test_schema = {
+        name = "test",
+
+        fields = {
+          { table = { type = "set", immutable = true }, },
+        },
+      }
+
+      local entity_to_update = { table = { dog = "hello", cat = { bat = "hello", }, }, }
+      local db_entity = { table = { dog = "hello", cat = { bat = "hello", }, }, }
+      local TestEntities = Schema.new(test_schema)
+      local ok, _ = TestEntities:validate_immutable_fields(entity_to_update, db_entity)
+
+      assert.truthy(ok)
+    end)
+
+    it("can assess if foriegn type immutable fields are similar", function()
+      local test_schema = {
+        name = "test",
+
+        fields = {
+          { entity = { type = "foriegn", immutable = true }, },
+        },
+      }
+
+      local entity_to_update = { entity = { id = '1' }, }
+      local db_entity = { entity = { id = '1' }, }
+      local TestEntities = Schema.new(test_schema)
+      local ok, _ = TestEntities:validate_immutable_fields(entity_to_update, db_entity)
+
+      assert.truthy(ok)
+    end)
+
+    it("can assess if array type immutable fields are similar", function()
+      local test_schema = {
+        name = "test",
+
+        fields = {
+          { list = { type = "array", immutable = true }, },
+        },
+      }
+
+      local entity_to_update = { 'dog', 'bat', 'cat', }
+      local db_entity = { 'bat', 'cat', 'dog', }
+      local TestEntities = Schema.new(test_schema)
+      local ok, _ = TestEntities:validate_immutable_fields(entity_to_update, db_entity)
+
+      assert.truthy(ok)
+    end)
+
+    it("can assess if set type immutable fields are not similar", function()
+      local test_schema = {
+        name = "test",
+
+        fields = {
+          { table = { type = "set", immutable = true }, },
+        },
+      }
+
+      local entity_to_update = { table = { dog = "hello", cat = { bat = "hello", }, }, }
+      local db_entity = { table = { dog = "hello", cat = { bat = "goodbye", }, }, }
+      local TestEntities = Schema.new(test_schema)
+      local ok, err = TestEntities:validate_immutable_fields(entity_to_update, db_entity)
+
+      assert.falsy(ok)
+      assert.equals(err.table, 'immutable field cannot be updated')
+    end)
+
+    it("can assess if foriegn type immutable fields are not similar", function()
+      local test_schema = {
+        name = "test",
+
+        fields = {
+          { entity = { type = "foriegn", immutable = true }, },
+        },
+      }
+
+      local entity_to_update = { entity = { id = '1' }, }
+      local db_entity = { entity = { id = '2' }, }
+      local TestEntities = Schema.new(test_schema)
+      local ok, err = TestEntities:validate_immutable_fields(entity_to_update, db_entity)
+
+      assert.falsy(ok)
+      assert.equals(err.entity, 'immutable field cannot be updated')
+    end)
+
+    it("can assess if array type immutable fields are not similar", function()
+      local test_schema = {
+        name = "test",
+
+        fields = {
+          { list = { type = "array", immutable = true }, },
+        },
+      }
+
+      local entity_to_update = { list = { 'dog', 'bat', 'cat', }, }
+      local db_entity = { list = { 'bat', 'cat', 'rat', }, }
+      local TestEntities = Schema.new(test_schema)
+      local ok, err = TestEntities:validate_immutable_fields(entity_to_update, db_entity)
+
+      assert.falsy(ok)
+      assert.equals(err.list, 'immutable field cannot be updated')
+    end)
   end)
 end)

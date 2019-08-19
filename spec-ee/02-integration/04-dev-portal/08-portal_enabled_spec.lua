@@ -82,7 +82,7 @@ for _, strategy in helpers.each_strategy() do
           status = enums.CONSUMERS.STATUS.APPROVED,
         })
 
-        file = assert(db.files:insert {
+        file = assert(db.legacy_files:insert {
           name = "file",
           contents = "cool",
           type = "page"

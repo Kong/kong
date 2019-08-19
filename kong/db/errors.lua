@@ -12,6 +12,7 @@ local pairs        = pairs
 local ipairs       = ipairs
 local tostring     = tostring
 local setmetatable = setmetatable
+local getmetatable = getmetatable
 local concat       = table.concat
 local sort         = table.sort
 
@@ -38,7 +39,9 @@ local ERRORS            = {
   INVALID_SIZE          =  9,  -- page(size, offset) is invalid
   INVALID_UNIQUE        =  10, -- unique field value is invalid
   INVALID_OPTIONS       =  11, -- invalid options given
-  RBAC_ERROR            =  99, -- forbidden operation (HTTP 403)
+  OPERATION_UNSUPPORTED   = 12, -- operation is not supported with this strategy
+  FOREIGN_KEYS_UNRESOLVED = 13, -- foreign key(s) could not be resolved
+  DECLARATIVE_CONFIG      = 14, -- error parsing declarative configuration
 }
 
 
@@ -57,8 +60,22 @@ local ERRORS_NAMES               = {
   [ERRORS.INVALID_SIZE]          = "invalid size",
   [ERRORS.INVALID_UNIQUE]        = "invalid unique %s",
   [ERRORS.INVALID_OPTIONS]       = "invalid options",
-  [ERRORS.RBAC_ERROR]            = "unauthorized access",
+  [ERRORS.OPERATION_UNSUPPORTED]   = "operation unsupported",
+  [ERRORS.FOREIGN_KEYS_UNRESOLVED] = "foreign keys unresolved",
+  [ERRORS.DECLARATIVE_CONFIG]      = "invalid declarative configuration",
 }
+
+local function add_ee_error(name, code, message)
+  if ERRORS_NAMES[code] then
+    error("already used code " .. code)
+  end
+
+  ERRORS[name] = code
+  ERRORS_NAMES[code] = message
+end
+
+add_ee_error("RBAC_ERROR", 99, "unauthorized access") -- Forbidden operation (403)
+
 
 
 -- err_t metatable definition
@@ -284,6 +301,48 @@ function _M:foreign_key_violation_restricted(parent_name, child_name)
 end
 
 
+function _M:foreign_keys_unresolved(errors)
+  if type(errors) ~= "table" then
+    error("errors must be a table", 2)
+  end
+
+  local buf = {}
+  local len = 0
+
+  for _, field_name in ipairs(sorted_keys(errors)) do
+    local field_errors = errors[field_name]
+    if type(field_errors) == "table" then
+      for _, sub_field in ipairs(sorted_keys(field_errors)) do
+        len = len + 1
+        local value = field_errors[sub_field]
+        if type(value) == "table" then
+          value = fmt("the foreign key cannot be resolved with '%s' for an existing '%s' entity",
+                      pl_pretty({ [value.name] = value.value }, ""), value.parent)
+        end
+        field_errors[sub_field] = value
+        buf[len] = fmt("%s.%s: %s", field_name, sub_field, value)
+      end
+
+    else
+      len = len + 1
+      buf[len] = fmt("%s: %s", field_name, field_errors)
+    end
+  end
+
+  local message
+
+  if len == 1 then
+    message = fmt("foreign key unresolved (%s)", buf[1])
+
+  else
+    message = fmt("%d foreign keys unresolved (%s)",
+      len, concat(buf, "; "))
+  end
+
+  return new_err_t(self, ERRORS.FOREIGN_KEYS_UNRESOLVED, message, errors)
+end
+
+
 function _M:unique_violation(unique_key)
   if type(unique_key) ~= "table" then
     error("unique_key must be a table", 2)
@@ -416,6 +475,27 @@ function _M:invalid_options(errors)
   end
 
   return new_err_t(self, ERRORS.INVALID_OPTIONS, message, errors)
+end
+
+
+function _M:operation_unsupported(err)
+  if type(err) ~= "string" then
+    error("err must be a string", 2)
+  end
+
+  return new_err_t(self, ERRORS.OPERATION_UNSUPPORTED, err)
+end
+
+
+function _M:declarative_config(err_t)
+  if type(err_t) ~= "table" then
+    error("err_t must be a table", 2)
+  end
+
+  local message = fmt("declarative config is invalid: %s",
+                      pl_pretty(err_t, ""))
+
+  return new_err_t(self, ERRORS.DECLARATIVE_CONFIG, message, err_t)
 end
 
 

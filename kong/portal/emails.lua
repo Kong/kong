@@ -69,7 +69,7 @@ local base_conf = {
         This link will expire in %s.
       </p>
       <p>
-      If you didn't make this request, keep your account secure by clicking the link above to change your password.
+        If you didn't make this request, keep your account secure by clicking the link above to change your password.
       </p>
     ]],
   },
@@ -86,6 +86,56 @@ local base_conf = {
         Click the link below to sign in with your new credentials.
         <br>
         <a href="%s/login">%s/login</a>
+      </p>
+    ]],
+  },
+
+  portal_account_verification_email = {
+    name = "Developer Portal Account Verification",
+    subject = "Developer Portal Account Verification (%s)",
+    html = [[
+      <p>Hello Developer!</p>
+      <p>
+        Please click the link below to verify your Developer Portal account at %s.
+      </p>
+      </p>
+        <a href="%s/account/verify?token=%s&email=%s">verify account</a>
+      </p>
+      <p>
+        If you didn't make this request, please click the link below to invalidate this request.
+      </p>
+      </p>
+        <a href="%s/account/invalidate-verification?token=%s&email=%s">invalidate validation request</a>
+      </p>
+    ]],
+  },
+
+  portal_account_verification_success_approved_email = {
+    name = "Developer Portal Account Verification Success",
+    subject = "Developer Portal account verification success (%s)",
+    html = [[
+      <p>Hello Developer,</p>
+      <p>
+        We are emailing you to let you know that your Developer Portal account at <a href="%s">%s</a> has been verified.
+      </p>
+      <p>
+        Click the link below to Sign in.
+        <br>
+        <a href="%s/login">%s/login</a>
+      </p>
+    ]],
+  },
+
+  portal_account_verification_success_pending_email = {
+    name = "Developer Portal Account Verification Success",
+    subject = "Developer Portal account verification success (%s)",
+    html = [[
+      <p>Hello Developer,</p>
+      <p>
+        We are emailing you to let you know that your Developer Portal account at <a href="%s">%s</a> has been verified.
+      </p>
+      <p>
+        Your account is still pending approval.  You will receive another email when your account has been approved.
       </p>
     ]],
   }
@@ -227,6 +277,64 @@ function _M:password_reset_success(recipient)
   local portal_emails_from = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_reset_success_email
+  local options = {
+    from = portal_emails_from,
+    reply_to = portal_emails_reply_to,
+    subject = fmt(conf.subject, portal_gui_url),
+    html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url, portal_gui_url),
+  }
+
+  local res = self.client:send({recipient}, options)
+  return smtp_client.handle_res(res)
+end
+
+function _M:account_verification_email(recipient, token)
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+
+  local portal_gui_url = workspaces.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_emails_from = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
+  local portal_emails_reply_to = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
+  local conf = self.conf.portal_account_verification_email
+  local options = {
+    from = portal_emails_from,
+    reply_to = portal_emails_reply_to,
+    subject = fmt(conf.subject, portal_gui_url),
+    html = fmt(conf.html, portal_gui_url,
+      portal_gui_url, token, recipient,
+      portal_gui_url, token,
+      portal_gui_url, token, recipient,
+      portal_gui_url, token),
+  }
+
+  local res = self.client:send({recipient}, options)
+  return smtp_client.handle_res(res)
+end
+
+function _M:account_verification_success_approved(recipient, token)
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+
+  local portal_gui_url = workspaces.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_emails_from = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
+  local portal_emails_reply_to = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
+  local conf = self.conf.portal_account_verification_success_approved_email
+  local options = {
+    from = portal_emails_from,
+    reply_to = portal_emails_reply_to,
+    subject = fmt(conf.subject, portal_gui_url),
+    html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url, portal_gui_url),
+  }
+
+  local res = self.client:send({recipient}, options)
+  return smtp_client.handle_res(res)
+end
+
+function _M:account_verification_success_pending(recipient)
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+
+  local portal_gui_url = workspaces.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_emails_from = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
+  local portal_emails_reply_to = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
+  local conf = self.conf.portal_account_verification_success_pending_email
   local options = {
     from = portal_emails_from,
     reply_to = portal_emails_reply_to,

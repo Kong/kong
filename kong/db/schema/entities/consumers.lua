@@ -14,6 +14,7 @@ return {
     { username       = { type = "string",  unique = true }, },
     { custom_id      = { type = "string",  unique = true }, },
     { type           = ee_typedefs.consumer_type { required = true } },
+    { tags           = typedefs.tags },
   },
 
   entity_checks = {

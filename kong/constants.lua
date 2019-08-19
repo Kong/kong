@@ -1,3 +1,5 @@
+local ee_constants = require "kong.enterprise_edition.distributions_constants"
+
 local plugins = {
   "jwt",
   "acl",
@@ -27,12 +29,18 @@ local plugins = {
   "request-termination",
   -- external plugins
   "azure-functions",
+  "kubernetes-sidecar-injector",
   "zipkin",
   "pre-function",
   "post-function",
   "prometheus",
+  "proxy-cache",
   "session",
 }
+
+for _, plugin in ipairs(ee_constants.plugins) do
+  table.insert(plugins, plugin)
+end
 
 local plugin_map = {}
 for i = 1, #plugins do
@@ -74,11 +82,44 @@ return {
     RATELIMIT_LIMIT = "X-RateLimit-Limit",
     RATELIMIT_REMAINING = "X-RateLimit-Remaining",
     CONSUMER_GROUPS = "X-Consumer-Groups",
+    AUTHENTICATED_GROUPS = "X-Authenticated-Groups",
     FORWARDED_HOST = "X-Forwarded-Host",
     FORWARDED_PREFIX = "X-Forwarded-Prefix",
     ANONYMOUS = "X-Anonymous-Consumer",
     VIA = "Via",
     SERVER = "Server"
+  },
+  -- Notice that the order in which they are listed is important:
+  -- schemas of dependencies need to be loaded first.
+  CORE_ENTITIES = {
+    "consumers",
+    "services",
+    "routes",
+    "certificates",
+    "snis",
+    "upstreams",
+    "targets",
+    "plugins",
+    "cluster_ca",
+    "tags",
+    "ca_certificates",
+    -- ENTERPRISE
+    "files",
+    "legacy_files",
+    "workspaces",
+    "workspace_entities",
+    "workspace_entity_counters",
+    "consumer_reset_secrets",
+    "credentials",
+    "audit_requests",
+    "audit_objects",
+    "rbac_users",
+    "rbac_roles",
+    "rbac_user_roles",
+    "rbac_role_entities",
+    "rbac_role_endpoints",
+    "admins",
+    "developers",
   },
   RATELIMIT = {
     PERIODS = {
@@ -119,6 +160,7 @@ return {
   },
   PROTOCOLS = protocols,
   PROTOCOLS_WITH_SUBSYSTEM = protocols_with_subsystem,
+  PORTAL_PREFIX = "portal-",
   WORKSPACE_CONFIG = {
     PORTAL = "portal",
     PORTAL_AUTH = "portal_auth",
@@ -135,5 +177,6 @@ return {
     PORTAL_SESSION_CONF = "portal_session_conf",
     PORTAL_CORS_ORIGINS = "portal_cors_origins",
     PORTAL_DEVELOPER_META_FIELDS = "portal_developer_meta_fields",
+    PORTAL_IS_LEGACY = "portal_is_legacy"
   }
 }

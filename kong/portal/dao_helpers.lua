@@ -6,15 +6,20 @@ local singletons = require "kong.singletons"
 local auth       = require "kong.portal.auth"
 local workspaces = require "kong.workspaces"
 local enums      = require "kong.enterprise_edition.dao.enums"
-
+local utils      = require "kong.tools.utils"
+local rbac       = require "kong.rbac"
 local enterprise_utils = require "kong.enterprise_edition.utils"
 local MetaSchema   = require "kong.db.schema.metaschema"
 local log = ngx.log
 local ERR = ngx.ERR
 local null = ngx.null
 local _log_prefix = "[developers] "
-local helpers = {} -- XXX EE remove this
+local helpers = {}
 local ws_constants = constants.WORKSPACE_CONFIG
+
+local PORTAL_PREFIX = constants.PORTAL_PREFIX
+-- Adds % in front of "special characters" such as -
+local ESCAPED_PORTAL_PREFIX = PORTAL_PREFIX:gsub("([^%w])", "%%%1")
 
 local auth_plugins = {
   ["basic-auth"] = { name = "basic-auth", dao = "basicauth_credentials", },
@@ -24,6 +29,115 @@ local auth_plugins = {
   ["jwt"] =        { name = "jwt",        dao = "jwt_secrets" },
   ["key-auth"] =   { name = "key-auth",   dao = "keyauth_credentials" },
 }
+
+
+local function get_developer_status()
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local auto_approve = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
+  local auth_type = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+
+  if singletons.configuration.portal_email_verification and auth_type ~= "openid-connect" then
+    return enums.CONSUMERS.STATUS.UNVERIFIED
+  end
+
+  if auto_approve then
+    return enums.CONSUMERS.STATUS.APPROVED
+  end
+
+  return enums.CONSUMERS.STATUS.PENDING
+end
+
+
+local function remove_portal_prefix(str)
+  return string.gsub(str, "^" .. ESCAPED_PORTAL_PREFIX, "")
+end
+
+
+local function extract_roles(developer)
+  local roles = developer.roles
+  developer.roles = nil
+  if type(roles) == "table" then
+    setmetatable(roles, cjson.array_mt)
+    table.sort(roles)
+  end
+  return roles
+end
+
+
+local function get_roles(developer)
+  local roles = setmetatable({}, cjson.array_mt)
+  if not developer.rbac_user then
+    return roles
+  end
+
+  local existing_roles, err = rbac.get_user_roles(kong.db, developer.rbac_user)
+  if err then
+    return nil, err
+  end
+
+  for i = 1, #existing_roles do
+    if not existing_roles[i].is_default then
+      roles[#roles + 1] = remove_portal_prefix(existing_roles[i].name)
+    end
+  end
+
+  table.sort(roles)
+
+  return roles
+end
+
+
+local set_roles
+do
+  local function create_rbac_user(developer)
+    local rbac_user, err, err_t = kong.db.rbac_users:insert({
+      name = PORTAL_PREFIX .. developer.id,
+      user_token = utils.random_string(),
+      comment = "Portal user for developer " .. developer.id,
+    })
+    if not rbac_user then
+      return nil, err, err_t
+    end
+
+    local ok, err, err_t = kong.db.developers:update({ id = developer.id },
+                                                     { rbac_user = { id = rbac_user.id } })
+    if not ok then
+      return nil, err, err_t
+    end
+
+    return rbac_user
+  end
+
+
+  set_roles = function(developer, new_role_names)
+    if not new_role_names then
+      return true
+    end
+
+    local rbac_user = developer.rbac_user
+    if not rbac_user then
+      local err, err_t
+      rbac_user, err, err_t = create_rbac_user(developer)
+      if not rbac_user then
+        return nil, err, err_t
+      end
+      developer.rbac_user = { id = rbac_user.id }
+    end
+
+    local prefixed_role_names = {}
+    for i = 1, #new_role_names do
+      prefixed_role_names[i] = PORTAL_PREFIX .. new_role_names[i]
+    end
+
+    local ok, _, errors = rbac.set_user_roles(kong.db, rbac_user, prefixed_role_names)
+    if not ok then
+      local err_t = Errors:schema_violation({ ["@entity"] = errors })
+      return nil, tostring(err_t), err_t
+    end
+
+    return true
+  end
+end
 
 
 local function rollback_on_create(entities)
@@ -78,6 +192,10 @@ local function build_developer_data(entity, consumer)
   data.key = nil
   data.consumer = { id = consumer.id }
 
+  if not entity.status then
+    data.status = get_developer_status()
+  end
+
   return data
 end
 
@@ -85,6 +203,7 @@ end
 local function create_consumer(entity)
   return singletons.db.consumers:insert({
     username = entity.email,
+    custom_id = entity.custom_id,
     type = enums.CONSUMERS.TYPE.DEVELOPER,
   })
 end
@@ -352,12 +471,14 @@ end
 local function create_developer(self, entity, options)
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
 
+  local roles = extract_roles(entity)
+
   if entity.email then
     -- validate email
     local ok, err = enterprise_utils.validate_email(entity.email)
     if not ok then
       local code = Errors.codes.SCHEMA_VIOLATION
-      local err_t = { code = code, fields = { email = err, }, }
+      local err_t = { code = code, fields = { email = err } }
       return nil, err, err_t
     end
   end
@@ -376,7 +497,7 @@ local function create_developer(self, entity, options)
   if not consumer then
     local code = Errors.codes.UNIQUE_VIOLATION
     local err = "developer insert: could not create consumer mapping for " .. entity.email
-    local err_t = { code = code, fields = { email = "developer already exists with email: " .. entity.email }, }
+    local err_t = { code = code, fields = { email = "developer already exists with email: " .. entity.email } }
     return nil, err, err_t
   end
 
@@ -424,7 +545,7 @@ local function create_developer(self, entity, options)
 
   -- create developer
   local developer_data = build_developer_data(entity, consumer)
-  local developer, err, err_t = self.super.insert(self, developer_data, options)
+  local developer = self.super.insert(self, developer_data, options)
   if not developer then
     rollback_on_create({ consumer = consumer })
     local err = "developer insert: could not create developer " .. entity.email
@@ -432,19 +553,62 @@ local function create_developer(self, entity, options)
     return nil, err, err_t
   end
 
+  local ok, err, err_t = set_roles(developer, roles)
+  if not ok then
+    return nil, err, err_t
+  end
+
+  developer.roles = roles
+
   return developer, err, err_t
 end
 
 
 local function update_developer(self, developer, entity, options)
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local consumer = self.db.consumers:select({ id = developer.consumer.id })
+
+  -- developer cannot update to type UNVERIFIED
+  if entity.status and
+     entity.status == enums.CONSUMERS.STATUS.UNVERIFIED and
+     developer.status ~= enums.CONSUMERS.STATUS.UNVERIFIED then
+
+      local code = Errors.codes.SCHEMA_VIOLATION
+      local messege = "cannot update developer to status UNVERIFIED"
+      local err = "developer update: " .. messege
+      local err_t = { code = code, fields = { status = messege } }
+      return nil, err, err_t
+  end
+
   -- validate developer meta field against portal extra fields
   if entity.meta then
     local ok, err = validate_incoming_developer_meta(workspace, entity)
     if not ok then
       local code = Errors.codes.SCHEMA_VIOLATION
-      local err_t = { code = code, fields = { meta = err,}, }
+      local err_t = { code = code, fields = { meta = err } }
       local err = "developer update: error in validating developer meta fields "
+      return nil, err, err_t
+    end
+  end
+
+  -- check if custom_id is being updated
+  -- TODO: (Devx) Better handle errors, could be invalid value
+  if entity.custom_id and entity.custom_id ~= developer.custom_id then
+    if not consumer then
+      local code = Errors.codes.DATABASE_ERROR
+      local err = "developer update: could not find consumer mapping for " .. developer.email
+      local err_t = { code = code }
+      return nil, err, err_t
+    end
+
+    local ok = self.db.consumers:update(
+      { id = consumer.id },
+      { custom_id = entity.custom_id }
+    )
+    if not ok then
+      local code = Errors.codes.UNIQUE_VIOLATION
+      local err = "developer update: could not update consumer mapping for " .. developer.email
+      local err_t = { code = code, fields = { ["custom_id"] = "already exists with value '" .. entity.custom_id .. "'" } }
       return nil, err, err_t
     end
   end
@@ -456,12 +620,13 @@ local function update_developer(self, developer, entity, options)
     local ok, err = enterprise_utils.validate_email(entity.email)
     if not ok then
       local code = Errors.codes.SCHEMA_VIOLATION
-      local err_t = { code = code, fields = { email = err, }, }
+      local err_t = { code = code, fields = { email = err } }
       local err = "developer update: " .. err
       return nil, err, err_t
     end
 
     -- retrieve portal auth plugin type
+    -- TODO: Determine whether this need to be applied to `self`
     self.portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
     if not self.portal_auth or self.portal_auth == "" then
       local code = Errors.codes.DATABASE_ERROR
@@ -481,7 +646,6 @@ local function update_developer(self, developer, entity, options)
       end
 
       -- find developers consumer
-      local consumer = self.db.consumers:select({ id = developer.consumer.id })
       if not consumer then
         local code = Errors.codes.DATABASE_ERROR
         local err = "developer update: could not find consumer mapping for " .. developer.email
@@ -498,7 +662,7 @@ local function update_developer(self, developer, entity, options)
       if not ok then
         local code = Errors.codes.UNIQUE_VIOLATION
         local err = "developer update: could not update consumer mapping for " .. developer.email
-        local err_t = { code = code, fields = { ["email"] = "already exists with value '" .. entity.email .. "'" }, }
+        local err_t = { code = code, fields = { ["email"] = "already exists with value '" .. entity.email .. "'" } }
         return nil, err, err_t
       end
 
@@ -537,7 +701,7 @@ local function update_developer(self, developer, entity, options)
 
         local ok = self.db.credentials:update(
           { id = credential.id },
-          { credential_data = cjson.encode(credential), },
+          { credential_data = cjson.encode(credential) },
           { skip_rbac = true }
         )
 
@@ -551,13 +715,29 @@ local function update_developer(self, developer, entity, options)
     end
   end
 
-  return self.super.update(self, { id = developer.id }, entity, options)
+  local roles = extract_roles(entity)
+
+  local updated, err, err_t =
+    self.super.update(self, { id = developer.id }, entity, options)
+  if not updated then
+    return nil, err, err_t
+  end
+
+  local ok, err, err_t = set_roles(updated, roles)
+  if not ok then
+    return nil, err, err_t
+  end
+
+  updated.roles = roles
+
+  return updated
 end
 
 
 return {
   create_developer = create_developer,
   update_developer = update_developer,
+  get_roles = get_roles,
   set_portal_auth_conf = set_portal_auth_conf,
   set_portal_developer_meta_fields = set_portal_developer_meta_fields,
   set_portal_session_conf = set_portal_session_conf,

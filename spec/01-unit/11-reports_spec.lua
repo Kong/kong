@@ -9,6 +9,11 @@ describe("reports", function()
     lazy_setup(function()
       reports.toggle(true)
     end)
+
+    lazy_teardown(function()
+      package.loaded["kong.reports"] = nil
+    end)
+
     it("sends report over UDP", function()
       local thread = helpers.udp_server(8189)
 
@@ -37,6 +42,7 @@ describe("reports", function()
       assert.matches("foobar=" .. cjson.encode({ foo = "bar" }), res, nil, true)
       assert.matches("bazbat=" .. cjson.encode({ baz = "bat" }), res, nil, true)
     end)
+
     it("doesn't send if not enabled", function()
       reports.toggle(false)
 
@@ -51,6 +57,7 @@ describe("reports", function()
       assert.is_nil(res)
       assert.equal("timeout", err)
     end)
+
     it("accepts custom immutable items", function()
       reports.toggle(true)
 
@@ -66,6 +73,226 @@ describe("reports", function()
       assert.matches("imm1=fooval", res)
       assert.matches("imm2=barval", res)
       assert.matches("k1=bazval", res)
+    end)
+  end)
+
+  describe("configure_ping()", function()
+    local conf_loader = require "kong.conf_loader"
+
+    before_each(function()
+      package.loaded["kong.reports"] = nil
+      reports = require "kong.reports"
+      reports.toggle(true)
+    end)
+
+    describe("sends 'database'", function()
+      it("postgres", function()
+        local conf = assert(conf_loader(nil, {
+          database = "postgres",
+        }))
+        reports.configure_ping(conf)
+
+        local thread = helpers.udp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert._matches("database=postgres", res, nil, true)
+      end)
+
+      it("cassandra", function()
+        local conf = assert(conf_loader(nil, {
+          database = "cassandra",
+        }))
+        reports.configure_ping(conf)
+
+        local thread = helpers.udp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert.matches("database=cassandra", res, nil, true)
+      end)
+
+      pending("off", function() -- XXX EE: enable when dbless is on
+        local conf = assert(conf_loader(nil, {
+          database = "off",
+        }))
+        reports.configure_ping(conf)
+
+        local thread = helpers.udp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert.matches("database=off", res, nil, true)
+      end)
+    end)
+
+    describe("sends '_admin' for 'admin_listen'", function()
+      it("off", function()
+        local conf = assert(conf_loader(nil, {
+          admin_listen = "off",
+        }))
+        reports.configure_ping(conf)
+
+        local thread = helpers.udp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert.matches("_admin=0", res, nil, true)
+      end)
+
+      it("on", function()
+        local conf = assert(conf_loader(nil, {
+          admin_listen = "127.0.0.1:8001",
+        }))
+        reports.configure_ping(conf)
+
+        local thread = helpers.udp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert.matches("_admin=1", res, nil, true)
+      end)
+    end)
+
+    describe("sends '_proxy' for 'proxy_listen'", function()
+      it("off", function()
+        local conf = assert(conf_loader(nil, {
+          proxy_listen = "off",
+        }))
+        reports.configure_ping(conf)
+
+        local thread = helpers.udp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert.matches("_proxy=0", res, nil, true)
+      end)
+
+      it("on", function()
+        local conf = assert(conf_loader(nil, {
+          proxy_listen = "127.0.0.1:8000",
+        }))
+        reports.configure_ping(conf)
+
+        local thread = helpers.udp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert.matches("_proxy=1", res, nil, true)
+      end)
+    end)
+
+    describe("sends '_stream' for 'stream_listen'", function()
+      it("off", function()
+        local conf = assert(conf_loader(nil, {
+          stream_listen = "off",
+        }))
+        reports.configure_ping(conf)
+
+        local thread = helpers.udp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert.matches("_stream=0", res, nil, true)
+      end)
+
+      it("on", function()
+        local conf = assert(conf_loader(nil, {
+          stream_listen = "127.0.0.1:8000",
+        }))
+        reports.configure_ping(conf)
+
+        local thread = helpers.udp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert.matches("_stream=1", res, nil, true)
+      end)
+    end)
+
+    describe("sends '_orig' for 'origins'", function()
+      it("off", function()
+        local conf = assert(conf_loader(nil, {
+          origins = ""
+        }))
+        reports.configure_ping(conf)
+
+        local thread = helpers.udp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert.matches("_orig=0", res, nil, true)
+      end)
+
+      it("on", function()
+        local conf = assert(conf_loader(nil, {
+          origins = "http://localhost:8000=http://localhost:9000",
+        }))
+        reports.configure_ping(conf)
+
+        local thread = helpers.udp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert.matches("_orig=1", res, nil, true)
+      end)
+    end)
+
+    describe("sends '_tip' for 'transparent'", function()
+      it("not specified", function()
+        local conf = assert(conf_loader(nil, {
+          stream_listen = "127.0.0.1:9000",
+        }))
+        reports.configure_ping(conf)
+
+        local thread = helpers.udp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert.matches("_tip=0", res, nil, true)
+      end)
+
+      it("specified in 'stream_listen'", function()
+        local conf = assert(conf_loader(nil, {
+          stream_listen = "127.0.0.1:8000 transparent",
+        }))
+        reports.configure_ping(conf)
+
+        local thread = helpers.udp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert.matches("_tip=1", res, nil, true)
+      end)
+
+      it("specified in 'proxy_listen'", function()
+        local conf = assert(conf_loader(nil, {
+          proxy_listen = "127.0.0.1:8000 transparent",
+        }))
+        reports.configure_ping(conf)
+
+        local thread = helpers.udp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert.matches("_tip=1", res, nil, true)
+      end)
+    end)
+
+    it("default configuration ping contents", function()
+        local conf = assert(conf_loader())
+        reports.configure_ping(conf)
+
+        local thread = helpers.udp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert.matches("database=postgres", res, nil, true)
+        assert.matches("_admin=1", res, nil, true)
+        assert.matches("_proxy=1", res, nil, true)
+        assert.matches("_stream=0", res, nil, true)
+        assert.matches("_orig=0", res, nil, true)
+        assert.matches("_tip=0", res, nil, true)
     end)
   end)
 

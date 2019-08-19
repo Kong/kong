@@ -46,7 +46,8 @@ local validators = {
   { match_none = match_list },
   { match_any = match_any_list },
   { starts_with = { type = "string" }, },
-  { one_of = { type = "array", elements = { type = "string" } }, },
+  { one_of = { type = "array", elements = { type = "any" } }, },
+  { not_one_of = { type = "array", elements = { type = "any" } }, },
   { contains = { type = "any" }, },
   { is_regex = { type = "boolean" }, },
   { timestamp = { type = "boolean" }, },
@@ -66,6 +67,7 @@ local field_schema = {
   { abstract = { type = "boolean" }, },
   { generate_admin_api = { type = "boolean" }, },
   { legacy = { type = "boolean" }, },
+  { immutable = { type = "boolean" }, },
 }
 
 for _, field in ipairs(validators) do
@@ -168,6 +170,18 @@ local entity_checks_schema = {
     entity_checks = {
       { only_one_of = tablex.keys(Schema.entity_checkers) }
     }
+  },
+  nilable = true,
+}
+
+local shorthands_array = {
+  type = "array",
+  elements = {
+    type = "map",
+    keys = { type = "string" },
+    values = { type = "function" },
+    required = true,
+    len_eq = 1,
   },
   nilable = true,
 }
@@ -398,6 +412,9 @@ local MetaSchema = Schema.new({
       entity_checks = entity_checks_schema,
     },
     {
+      shorthands = shorthands_array,
+    },
+    {
       check = {
         type = "function",
         nilable = true
@@ -525,6 +542,9 @@ MetaSchema.MetaSubSchema = Schema.new({
     },
     {
       entity_checks = entity_checks_schema,
+    },
+    {
+      shorthands = shorthands_array,
     },
     {
       check = {

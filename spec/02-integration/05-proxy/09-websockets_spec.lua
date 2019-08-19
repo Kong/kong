@@ -29,7 +29,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong()
+      helpers.stop_kong(nil, true)
     end)
 
     local function open_socket(uri)
@@ -37,6 +37,59 @@ for _, strategy in helpers.each_strategy() do
       assert(wc:connect(uri))
       return wc
     end
+
+    local function check_headers(host, port)
+      local is_kong = (host == helpers.get_proxy_ip(false) and
+                       port == helpers.get_proxy_port(false)) or
+                      (host == helpers.get_proxy_ip(true) and
+                       port == helpers.get_proxy_port(true))
+
+      local encode_base64 = ngx.encode_base64
+      local rand = math.random
+      local char = string.char
+      local sock = assert(ngx.socket.tcp())
+      local path = is_kong and "/up-ws" or "/ws"
+
+      assert(sock:connect(host, port))
+
+      local bytes = char(rand(256) - 1, rand(256) - 1, rand(256) - 1,
+                         rand(256) - 1, rand(256) - 1, rand(256) - 1,
+                         rand(256) - 1, rand(256) - 1, rand(256) - 1,
+                         rand(256) - 1, rand(256) - 1, rand(256) - 1,
+                         rand(256) - 1, rand(256) - 1, rand(256) - 1,
+                         rand(256) - 1)
+
+      local key = encode_base64(bytes)
+      local req = "GET " .. path .. " HTTP/1.1\r\nUpgrade: websocket\r\nHost: "
+        .. host .. ":" .. port
+        .. "\r\nSec-WebSocket-Key: " .. key
+        .. "\r\nSec-WebSocket-Version: 13"
+        .. "\r\nConnection: Upgrade\r\n\r\n"
+
+      assert(sock:send(req))
+
+      local header_reader = sock:receiveuntil("\r\n\r\n")
+      local header = assert(header_reader())
+      assert(sock:close())
+
+      assert.equal(true, string.find(header, "HTTP/1.1 101 Switching Protocols") ~= nil, 1, true)
+      assert.equal(true, string.find(header, "Connection: upgrade") ~= nil, 1, true)
+      assert.equal(true, string.find(header, "Upgrade: websocket") ~= nil, 1, true)
+
+      if is_kong then
+        assert.equal(true, string.find(header, "Via: kong") ~= nil, 1, true)
+      end
+    end
+
+    describe("headers", function()
+      it("returns correct headers on handshake without Kong", function()
+        check_headers("127.0.0.1", "15555")
+      end)
+
+      it("returns correct headers on handshake with Kong", function()
+        check_headers(helpers.get_proxy_ip(false), helpers.get_proxy_port(false))
+      end)
+    end)
 
     describe("text", function()
       local function send_text_and_get_echo(uri)

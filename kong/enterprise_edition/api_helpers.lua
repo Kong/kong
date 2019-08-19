@@ -265,7 +265,7 @@ end
 
 -- given an entity uuid, look up its entity collection name;
 -- it is only called if the user does not pass in an entity_type
-function _M.resolve_entity_type(new_dao, old_dao, entity_id)
+function _M.resolve_entity_type(db, entity_id)
 
   -- the workspaces module has a function that does a similar search in
   -- a constant number of db calls, but is restricted to workspaceable
@@ -277,7 +277,7 @@ function _M.resolve_entity_type(new_dao, old_dao, entity_id)
   end
 
   -- search in all of new dao
-  for name, dao in pairs(new_dao.daos) do
+  for name, dao in pairs(db.daos) do
     local pk_name = dao.schema.primary_key[1]
     if dao.schema.fields[pk_name].uuid then
       local row = dao:select({

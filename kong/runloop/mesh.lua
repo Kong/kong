@@ -82,6 +82,12 @@ local function init()
     if not ca_row and err == nil then
       -- No CA cert in DB, we are the first cluster member to start
 
+      if kong.db.strategy == "off" then
+        ngx.log(ngx.WARN, "no cluster_ca in declarative configuration: ",
+                          "cannot use node in mesh mode")
+        return
+      end
+
       -- Generate a CA
       local candidate_ca_key = cluster_ca_tools.new_key()
       local candidate_ca_cert = cluster_ca_tools.new_ca(candidate_ca_key)
@@ -193,7 +199,7 @@ end
 
 local function rewrite(ctx)
   local ssl = getssl()
-  if ssl and ssl:getAlpnSelected() == mesh_alpn then
+  if ssl and mesh_alpn and ssl:getAlpnSelected() == mesh_alpn then
     if ctx.is_service_mesh_request then
       ngx.log(ngx.ERR, "already service mesh; circular routing?")
       return ngx.exit(500)

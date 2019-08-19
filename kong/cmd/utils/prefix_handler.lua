@@ -422,6 +422,7 @@ end
 
 return {
   prepare_prefix = prepare_prefix,
+  compile_conf = compile_conf,
   compile_kong_conf = compile_kong_conf,
   compile_kong_stream_conf = compile_kong_stream_conf,
   compile_nginx_conf = compile_nginx_conf,

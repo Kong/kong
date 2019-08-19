@@ -339,7 +339,6 @@ describe("Admin API RBAC with #" .. strategy, function()
 
         assert.equal("alice", json.name)
         assert.matches("%$2b%$09%$", json.user_token)
-        -- assert.is_nil(json.comment) -- XXX EE: now endpoints return json nulls
         assert.is_true(utils.is_valid_uuid(json.id))
         assert.is_false(json.enabled)
       end)

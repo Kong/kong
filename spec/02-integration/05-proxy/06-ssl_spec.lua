@@ -14,7 +14,6 @@ end
 
 for _, strategy in helpers.each_strategy() do
   describe("SSL [#" .. strategy .. "]", function()
-    local admin_client
     local proxy_client
     local https_client
 
@@ -23,6 +22,7 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "certificates",
+        "snis",
       })
 
       db:truncate()
@@ -91,26 +91,100 @@ for _, strategy in helpers.each_strategy() do
         preserve_host = false,
       }
 
+      local service7 = bp.services:insert {
+        name     = "service-7",
+        protocol = helpers.mock_upstream_ssl_protocol,
+        host     = helpers.mock_upstream_hostname,
+        port     = helpers.mock_upstream_ssl_port,
+      }
+
+      bp.routes:insert {
+        protocols     = { "https" },
+        hosts         = { "example.com" },
+        paths         = { "/redirect-301" },
+        https_redirect_status_code = 301,
+        service       = service7,
+        preserve_host = false,
+      }
+
+      local service8 = bp.services:insert {
+        name     = "service-8",
+        protocol = helpers.mock_upstream_ssl_protocol,
+        host     = helpers.mock_upstream_hostname,
+        port     = helpers.mock_upstream_ssl_port,
+      }
+
+      bp.routes:insert {
+        protocols     = { "https" },
+        hosts         = { "example.com" },
+        paths         = { "/redirect-302" },
+        https_redirect_status_code = 302,
+        service       = service8,
+        preserve_host = false,
+      }
+
+      local cert = bp.certificates:insert {
+          cert  = ssl_fixtures.cert,
+          key   = ssl_fixtures.key,
+      }
+
+      bp.snis:insert {
+        name = "example.com",
+        certificate = cert,
+      }
+
+      bp.snis:insert {
+        name = "ssl1.com",
+        certificate = cert,
+      }
+
+      -- wildcard tests
+
+      local certificate_alt = bp.certificates:insert {
+        cert = ssl_fixtures.cert_alt,
+        key = ssl_fixtures.key_alt,
+      }
+
+      local certificate_alt_alt = bp.certificates:insert {
+        cert = ssl_fixtures.cert_alt_alt,
+        key = ssl_fixtures.key_alt_alt,
+      }
+
+      bp.snis:insert {
+        name = "*.wildcard.com",
+        certificate = certificate_alt,
+      }
+
+      bp.snis:insert {
+        name = "wildcard.*",
+        certificate = certificate_alt,
+      }
+
+      bp.snis:insert {
+        name = "wildcard.org",
+        certificate = certificate_alt_alt,
+      }
+
+      bp.snis:insert {
+        name = "test.wildcard.*",
+        certificate = certificate_alt_alt,
+      }
+
+      bp.snis:insert {
+        name = "*.www.wildcard.com",
+        certificate = certificate_alt_alt,
+      }
+
+      -- /wildcard tests
+
       assert(helpers.start_kong {
         database    = strategy,
         nginx_conf  = "spec/fixtures/custom_nginx.template",
         trusted_ips = "127.0.0.1",
       })
 
-      admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
       https_client = helpers.proxy_ssl_client()
-
-      assert(admin_client:send {
-        method  = "POST",
-        path    = "/certificates",
-        body    = {
-          cert  = ssl_fixtures.cert,
-          key   = ssl_fixtures.key,
-          snis  = { "example.com", "ssl1.com" },
-        },
-        headers = { ["Content-Type"] = "application/json" },
-      })
     end)
 
     lazy_teardown(function()
@@ -143,6 +217,38 @@ for _, strategy in helpers.each_strategy() do
         cert = get_cert("example.com")
         assert.cn("ssl-example.com", cert)
       end)
+
+      describe("wildcard sni", function()
+        it("matches *.wildcard.com (prefix)", function()
+          local cert = get_cert("test.wildcard.com")
+          assert.matches("CN%s*=%s*ssl%-alt%.com", cert)
+        end)
+
+        it("matches wildcard.* (suffix)", function()
+          local cert = get_cert("wildcard.eu")
+          assert.matches("CN%s*=%s*ssl%-alt%.com", cert)
+        end)
+
+        it("respects matching priorities (exact first)", function()
+          local cert = get_cert("wildcard.org")
+          assert.matches("CN%s*=%s*ssl%-alt%-alt%.com", cert)
+        end)
+
+        it("respects matching priorities (prefix second)", function()
+          local cert = get_cert("test.wildcard.com")
+          assert.matches("CN%s*=%s*ssl%-alt%.com", cert)
+        end)
+
+        it("respects matching priorities (suffix third)", function()
+          local cert = get_cert("test.wildcard.org")
+          assert.matches("CN%s*=%s*ssl%-alt%-alt%.com", cert)
+        end)
+
+        it("matches *.www.wildcard.com", function()
+          local cert = get_cert("test.www.wildcard.com")
+          assert.matches("CN%s*=%s*ssl%-alt%-alt%.com", cert)
+        end)
+      end)
     end)
 
     describe("SSL termination", function()
@@ -162,11 +268,35 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("TLS/1.2, HTTP/1.1", res.headers.upgrade)
       end)
 
+      it("returns 301 when route has https_redirect_status_code set to 301", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/redirect-301",
+          headers = {
+            ["Host"] = "example.com",
+          }
+        })
+
+        assert.res_status(301, res)
+        assert.equal("https://example.com/redirect-301", res.headers.location)
+      end)
+
+      it("returns 302 when route has https_redirect_status_code set to 302", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/redirect-302?foo=bar",
+          headers = {
+            ["Host"] = "example.com",
+          }
+        })
+
+        assert.res_status(302, res)
+        assert.equal("https://example.com/redirect-302?foo=bar", res.headers.location)
+      end)
+
       describe("from not trusted_ip", function()
         lazy_setup(function()
-          helpers.stop_kong(nil, nil, true)
-
-          assert(helpers.start_kong {
+          assert(helpers.restart_kong {
             database    = strategy,
             nginx_conf  = "spec/fixtures/custom_nginx.template",
             trusted_ips = nil,
@@ -190,9 +320,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("from trusted_ip", function()
         lazy_setup(function()
-          helpers.stop_kong(nil, nil, true)
-
-          assert(helpers.start_kong {
+          assert(helpers.restart_kong {
             database    = strategy,
             nginx_conf  = "spec/fixtures/custom_nginx.template",
             trusted_ips = "127.0.0.1",
@@ -232,10 +360,11 @@ for _, strategy in helpers.each_strategy() do
         -- restart kong and use a new client to simulate a connection from an
         -- untrusted ip
         lazy_setup(function()
-          assert(helpers.kong_exec("restart -c " .. helpers.test_conf_path, {
+          assert(helpers.restart_kong {
             database = strategy,
+            nginx_conf  = "spec/fixtures/custom_nginx.template",
             trusted_ips = "1.2.3.4", -- explicitly trust an IP that is not us
-          }))
+          })
 
           client = helpers.proxy_client()
         end)
@@ -259,10 +388,10 @@ for _, strategy in helpers.each_strategy() do
       local https_client_sni
 
       before_each(function()
-        assert(helpers.kong_exec("restart --conf " .. helpers.test_conf_path ..
-                                 " --nginx-conf spec/fixtures/custom_nginx.template", {
+        assert(helpers.restart_kong {
           database = strategy,
-        }))
+          nginx_conf  = "spec/fixtures/custom_nginx.template",
+        })
 
         https_client_sni = helpers.proxy_ssl_client()
       end)

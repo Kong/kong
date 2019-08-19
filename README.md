@@ -2,6 +2,7 @@
 
 [![Build Status][badge-travis-image]][badge-travis-url]
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/Kong/kong/blob/master/LICENSE)
+[![Twitter](https://img.shields.io/twitter/follow/thekonginc.svg?style=social&label=Follow)](https://twitter.com/intent/follow?screen_name=thekonginc)
 
 :monkey: [Master Preview Environment](http://master.kong-ee.previewer.konghq.com:8002/dashboard)
 
@@ -100,7 +101,7 @@ code, other repos are also under active development:
   for Kong.
 - [Kong CloudFormation](https://github.com/Kong/kong-dist-cloudformation):
   Kong in a 1-click deployment for AWS EC2
-- [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B014GHERVU): Kong AMI on
+- [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B06WP4TNKL): Kong AMI on
   the AWS Marketplace.
 - [Kong on Microsoft Azure](https://github.com/Kong/kong-dist-azure): Run Kong
   using Azure Resource Manager.
@@ -122,6 +123,11 @@ You can read more about writing your own plugins in the [Plugin Development
 Guide](https://docs.konghq.com/latest/plugin-development/), or browse an
 online version of Kong's source code documentation in the [Plugin Development
 Kit (PDK) Reference](https://docs.konghq.com/latest/pdk/).
+
+#### Docker
+
+You can use Docker / docker-compose and a mounted volume to develop Kong by
+following the instructions on [Kong/kong-build-tools](https://github.com/Kong/kong-build-tools#developing-kong).
 
 #### Vagrant
 
@@ -256,8 +262,8 @@ limitations under the License.
 [kong-logo]: https://konghq.com/wp-content/uploads/2018/05/kong-logo-github-readme.png
 [kong-benefits]: https://konghq.com/wp-content/uploads/2018/05/kong-benefits-github-readme.png
 [kong-nightly-master]: https://bintray.com/kong/kong-enterprise-edition-cloud-deb/ubuntu
-[badge-travis-url]: https://travis-ci.com/Kong/kong-ee/branches
-[badge-travis-image]: https://api.travis-ci.com/Kong/kong-ee.svg?token=BfzyBZDa3icGPsKGmBHb&branch=master
+[badge-travis-url]: https://travis-ci.org/Kong/kong-ee/branches
+[badge-travis-image]: https://api.travis-ci.org/Kong/kong-ee.svg?token=BfzyBZDa3icGPsKGmBHb&branch=master
 
 [busted]: https://github.com/Olivine-Labs/busted
 [luacheck]: https://github.com/mpeterv/luacheck

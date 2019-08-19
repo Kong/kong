@@ -69,10 +69,6 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-
-  if strategy == 'cassandra' then
-    return
-  end
   describe("Admin API authentication on #" .. strategy, function()
     lazy_setup(function()
       _, db, dao = helpers.get_db_utils(strategy)
@@ -209,7 +205,7 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(401, res)
         end)
 
-        it("returns 403 when authenticated with invalid password", function()
+        it("returns 401 when authenticated with invalid password", function()
           local res = assert(client:send {
             method = "GET",
             path = "/auth",
@@ -220,7 +216,7 @@ for _, strategy in helpers.each_strategy() do
             }
           })
 
-          assert.res_status(403, res)
+          assert.res_status(401, res)
         end)
 
         it("returns 401 when authenticated with mismatched user/credentials",
@@ -351,7 +347,7 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(200, res)
         end)
 
-        it("returns 403 when authenticated with invalid password", function()
+        it("returns 401 when authenticated with invalid password", function()
           local res = assert(client:send {
             method = "GET",
             path = "/auth",
@@ -362,7 +358,7 @@ for _, strategy in helpers.each_strategy() do
             }
           })
 
-          assert.res_status(403, res)
+          assert.res_status(401, res)
         end)
 
         it("returns 401 when authenticated with mismatched user/credentials",
@@ -473,7 +469,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("Welcome to kong", json.tagline)
         end)
 
-        it("returns 403 when authenticated with invalid password", function()
+        it("returns 401 when authenticated with invalid password", function()
           local res = assert(client:send {
             method = "GET",
             path = "/auth",
@@ -483,7 +479,7 @@ for _, strategy in helpers.each_strategy() do
             }
           })
 
-          assert.res_status(403, res)
+          assert.res_status(401, res)
         end)
 
         it("returns 401 when authenticated with mismatched user/credentials",

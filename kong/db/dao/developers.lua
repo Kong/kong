@@ -5,6 +5,7 @@ local workspaces = require "kong.workspaces"
 local dao_helpers = require "kong.portal.dao_helpers"
 local developers  = require "kong.db.schema.entities.developers"
 
+
 local ws_constants = constants.WORKSPACE_CONFIG
 
 
@@ -17,7 +18,16 @@ local function validate_insert(entity)
   developer.key = nil
   developer.password = nil
 
-  return Developers:validate_insert(developer)
+  local roles = developer.roles
+
+  developer.roles = nil
+  local res, err = Developers:validate_insert(developer)
+  if not res then
+    return nil, err
+  end
+
+  developer.roles = roles
+  return res
 end
 
 
@@ -27,6 +37,10 @@ end
 
 --   return Developers:validate_update(entity)
 -- end
+
+function _Developers:get_roles(entity)
+  return dao_helpers.get_roles(entity)
+end
 
 
 -- Creates an developer, and an associated consumer
@@ -105,7 +119,7 @@ function _Developers:update_by_email(developer_email, entity, options)
     dao_helpers.update_developer(self, developer, entity, options)
 
   if not developer then
-    ngx.log(ngx.DEBUG, err, err_t)
+    ngx.log(ngx.DEBUG, err)
     return nil, err, err_t
   end
 
@@ -134,6 +148,14 @@ function _Developers:delete(developer_pk, options)
 
     local _, err, err_t = self.db.credentials:delete({ id = row.id })
     if err then
+      return nil, err, err_t
+    end
+  end
+
+  local rbac_user_id = developer.rbac_user and developer.rbac_user.id
+  if rbac_user_id then
+    local ok, err, err_t = self.db.rbac_users:delete({ id = rbac_user_id })
+    if not ok then
       return nil, err, err_t
     end
   end

@@ -21,6 +21,6 @@ describe("Plugin: hmac-auth (schema)", function()
     local ok, err = v({ algorithms = { "sha1024" } }, schema_def)
     assert.is_falsy(ok)
     assert.equal("expected one of: hmac-sha1, hmac-sha256, hmac-sha384, hmac-sha512",
-                 err.config.algorithms)
+                 err.config.algorithms[1])
   end)
 end)

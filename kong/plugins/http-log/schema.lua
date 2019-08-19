@@ -3,9 +3,11 @@ local typedefs = require "kong.db.schema.typedefs"
 return {
   name = "http-log",
   fields = {
+    { protocols = typedefs.protocols_http },
     { config = {
         type = "record",
         fields = {
+          -- NOTE: any field added here must be also included in the handler's get_queue_id method
           { http_endpoint = typedefs.url({ required = true }) },
           { method = { type = "string", default = "POST", one_of = { "POST", "PUT", "PATCH" }, }, },
           { content_type = { type = "string", default = "application/json", one_of = { "application/json" }, }, },

@@ -23,6 +23,7 @@ local rbac       = require "kong.rbac"
 
 
 local workspaceable = workspaces.get_workspaceable_relations()
+local match        = string.match
 
 
 local ERR          = ngx.ERR
@@ -99,6 +100,16 @@ local function validate_foreign_key_type(foreign_key)
 end
 
 
+local function validate_foreign_key_is_single_primary_key(field)
+  if #field.schema.primary_key > 1 then
+    error("primary keys containing composite foreign keys " ..
+          "are currently not supported", 3)
+  end
+
+  return true
+end
+
+
 local function validate_unique_type(unique_value, name, field)
   if type(unique_value) ~= "table" and (field.type == "array"  or
                                         field.type == "set"    or
@@ -139,7 +150,7 @@ local function validate_options_value(options, schema, context)
        context ~= "update" and
        context ~= "upsert" then
       errors.ttl = fmt("option can only be used with inserts, updates and upserts, not with '%ss'",
-                       tostring(context))
+                       context)
 
     elseif floor(options.ttl) ~= options.ttl or
                  options.ttl < 0 or
@@ -153,6 +164,30 @@ local function validate_options_value(options, schema, context)
     errors.ttl = fmt("cannot be used with '%s'", schema.name)
   end
 
+  if schema.fields.tags and options.tags ~= nil then
+    if context ~= "select" then
+      errors.tags = fmt("option can only be used with selects and pages, not with '%ss'",
+                       tostring(context))
+    elseif type(options.tags) ~= "table" then
+      if not options.tags_cond then
+        -- If options.tags is not a table and options.tags_cond is nil at the same time
+        -- it means arguments.lua gets an invalid tags arg from the Admin API
+        errors.tags = "invalid filter syntax"
+      else
+        errors.tags = "must be a table"
+      end
+    elseif #options.tags > 5 then
+      errors.tags = "cannot query more than 5 tags"
+    elseif not match(concat(options.tags), "^[%w%.%-%_~]+$") then
+      errors.tags = "must only contain alphanumeric and '., -, _, ~' characters"
+    elseif #options.tags > 1 and options.tags_cond ~= "and" and options.tags_cond ~= "or" then
+      errors.tags_cond = "must be a either 'and' or 'or' when more than one tag is specified"
+    end
+
+  elseif schema.fields.tags == nil and options.tags ~= nil then
+    errors.tags = fmt("cannot be used with '%s'", schema.name)
+  end
+
   if next(errors) then
     return nil, errors
   end
@@ -161,8 +196,101 @@ local function validate_options_value(options, schema, context)
 end
 
 
+local function resolve_foreign(self, entity)
+  local errors = {}
+  local has_errors
+
+  for field_name, field in self.schema:each_field() do
+    local schema = field.schema
+    if field.type == "foreign" and schema.validate_primary_key then
+      local value = entity[field_name]
+      if value and value ~= null then
+        if not schema:validate_primary_key(value, true) then
+          local resolve_errors = {}
+          local has_resolve_errors
+          for unique_field_name, unique_field in schema:each_field() do
+            if unique_field.unique or unique_field.endpoint_key then
+              local unique_value = value[unique_field_name]
+              if unique_value and unique_value ~= null and
+                 schema:validate_field(unique_field, unique_value) then
+
+                local dao = self.db[schema.name]
+                local select = dao["select_by_" .. unique_field_name]
+                local foreign_entity, err, err_t = select(dao, unique_value)
+                if err_t then
+                  return nil, err, err_t
+                end
+
+                if foreign_entity then
+                  entity[field_name] = schema:extract_pk_values(foreign_entity)
+                  break
+                end
+
+                resolve_errors[unique_field_name] = {
+                  name   = unique_field_name,
+                  value  = unique_value,
+                  parent = schema.name,
+                }
+
+                has_resolve_errors = true
+              end
+            end
+          end
+
+          if has_resolve_errors then
+            errors[field_name] = resolve_errors
+            has_errors = true
+          end
+        end
+      end
+    end
+  end
+
+  if has_errors then
+    local err_t = self.errors:foreign_keys_unresolved(errors)
+    return nil, tostring(err_t), err_t
+  end
+
+  return true
+end
+
+
+local function check_insert(self, entity, options)
+  local entity_to_insert, err = self.schema:process_auto_fields(entity, "insert")
+  if not entity_to_insert then
+    local err_t = self.errors:schema_violation(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  local ok, err, err_t = resolve_foreign(self, entity_to_insert)
+  if not ok then
+    return nil, err, err_t
+  end
+
+  local ok, errors = self.schema:validate_insert(entity_to_insert)
+  if not ok then
+    local err_t = self.errors:schema_violation(errors)
+    return nil, tostring(err_t), err_t
+  end
+
+  if options ~= nil then
+    ok, errors = validate_options_value(options, self.schema, "insert")
+    if not ok then
+      local err_t = self.errors:invalid_options(errors)
+      return nil, tostring(err_t), err_t
+    end
+  end
+
+  if self.schema.cache_key and #self.schema.cache_key > 1 then
+    entity_to_insert.cache_key = self:cache_key(entity_to_insert)
+  end
+
+  return entity_to_insert
+end
+
+
 local function check_update(self, key, entity, options, name)
-  local entity_to_update, err, read_before_write =
+  local entity_to_update, err, read_before_write, check_immutable_fields =
     self.schema:process_auto_fields(entity, "update")
   if not entity_to_update then
     local err_t = self.errors:schema_violation(err)
@@ -181,6 +309,15 @@ local function check_update(self, key, entity, options, name)
       return nil, nil, err, err_t
     end
 
+    if rbw_entity and check_immutable_fields then
+      local ok, errors = self.schema:validate_immutable_fields(entity_to_update, rbw_entity)
+
+      if not ok then
+        local err_t = self.errors:schema_violation(errors)
+        return nil, nil, tostring(err_t), err_t
+      end
+    end
+
     if rbw_entity then
       entity_to_update = self.schema:merge_values(entity_to_update, rbw_entity)
     else
@@ -191,8 +328,12 @@ local function check_update(self, key, entity, options, name)
     end
   end
 
-
   workspaces.remove_ws_prefix(self.schema.name, entity_to_update)
+
+  local ok, err, err_t = resolve_foreign(self, entity_to_update)
+  if not ok then
+    return nil, err, err_t
+  end
 
   local ok, errors = self.schema:validate_update(entity_to_update)
   if not ok then
@@ -243,6 +384,47 @@ local function rbacced_iterator(iterator, self, options)
   end
 end
 
+local function check_upsert(self, entity, options, name, value)
+  local entity_to_upsert, err = self.schema:process_auto_fields(entity, "upsert")
+  if not entity_to_upsert then
+    local err_t = self.errors:schema_violation(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  if name then
+    entity_to_upsert[name] = value
+  end
+
+  local ok, err, err_t = resolve_foreign(self, entity_to_upsert)
+  if not ok then
+    return nil, err, err_t
+  end
+
+  local ok, errors = self.schema:validate_upsert(entity_to_upsert)
+  if not ok then
+    local err_t = self.errors:schema_violation(errors)
+    return nil, tostring(err_t), err_t
+  end
+
+  if name then
+    entity_to_upsert[name] = nil
+  end
+
+  if options ~= nil then
+    local ok, errors = validate_options_value(options, self.schema, "upsert")
+    if not ok then
+      local err_t = self.errors:invalid_options(errors)
+      return nil, tostring(err_t), err_t
+    end
+  end
+
+  if self.schema.cache_key and #self.schema.cache_key > 1 then
+    entity_to_upsert.cache_key = self:cache_key(entity_to_upsert)
+  end
+
+  return entity_to_upsert
+end
+
 
 local function find_cascade_delete_entities(self, entity)
   local constraints = self.schema:get_constraints()
@@ -271,9 +453,9 @@ local function find_cascade_delete_entities(self, entity)
 end
 
 
-local function propagate_cascade_delete_events(entries)
+local function propagate_cascade_delete_events(entries, options)
   for _, entry in ipairs(entries) do
-    entry.dao:post_crud_event("delete", entry.entity)
+    entry.dao:post_crud_event("delete", entry.entity, nil, options)
   end
 end
 
@@ -283,6 +465,8 @@ local function generate_foreign_key_methods(schema)
 
   for name, field in schema:each_field() do
     if field.type == "foreign" then
+      validate_foreign_key_is_single_primary_key(field)
+
       local page_method_name = "page_for_" .. name
       methods[page_method_name] = function(self, foreign_key, size, offset, options)
         validate_foreign_key_type(foreign_key)
@@ -350,7 +534,6 @@ local function generate_foreign_key_methods(schema)
         return entities, nil, nil, new_offset
       end
 
-      -- XXX EE: add new logic for workspaces here
       local each_method_name = "each_for_" .. name
       methods[each_method_name] = function(self, foreign_key, size, options)
         validate_foreign_key_type(foreign_key)
@@ -507,12 +690,11 @@ local function generate_foreign_key_methods(schema)
           return nil, err, err_t
         end
 
-        self:post_crud_event("update", row, rbw_entity)
+        self:post_crud_event("update", row, rbw_entity, options)
 
         return row
       end
 
-      -- XXX EE: add new logic for workspaces here
       methods["upsert_by_" .. name] = function(self, unique_value, entity, options)
         validate_unique_type(unique_value, name, field)
         validate_entity_type(entity)
@@ -539,30 +721,10 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        local entity_to_upsert, err = self.schema:process_auto_fields(entity, "upsert")
+        local entity_to_upsert, err, err_t = check_upsert(self, entity, options,
+                                                          name, unique_value)
         if not entity_to_upsert then
-          local err_t = self.errors:schema_violation(err)
-          return nil, tostring(err_t), err_t
-        end
-
-        entity_to_upsert[name] = unique_value
-        local errors
-        ok, errors = self.schema:validate_upsert(entity_to_upsert)
-        if not ok then
-          local err_t = self.errors:schema_violation(errors)
-          return nil, tostring(err_t), err_t
-        end
-        if self.schema.cache_key and #self.schema.cache_key > 1 then
-          entity_to_upsert.cache_key = self:cache_key(entity_to_upsert)
-        end
-        entity_to_upsert[name] = nil
-
-        if options ~= nil then
-          ok, errors = validate_options_value(options, schema, "upsert")
-          if not ok then
-            local err_t = self.errors:invalid_options(errors)
-            return nil, tostring(err_t), err_t
-          end
+          return nil, err, err_t
         end
 
         if not rbac.validate_entity_operation(entity_to_upsert, self.schema.name) then
@@ -607,7 +769,7 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        self:post_crud_event("update", row)
+        self:post_crud_event("update", row, nil, options)
 
         return row
       end
@@ -694,8 +856,8 @@ local function generate_foreign_key_methods(schema)
           "with Role: " .. err)
         end
 
-        self:post_crud_event("delete", entity)
-        propagate_cascade_delete_events(cascade_entries)
+        self:post_crud_event("delete", entity, nil, options)
+        propagate_cascade_delete_events(cascade_entries, nil, options)
 
         return true
       end
@@ -734,6 +896,9 @@ function DAO:truncate()
 end
 
 
+-- XXX: Deprecated. This function has very bad performance for big
+-- tables as it doesn't ensure filtering using indices.  Use find,
+-- select_by, each, or the other new DAO functions when possible.
 function DAO:select_all(fields, options)
   fields = fields or {}
   local schema = self.schema
@@ -957,28 +1122,9 @@ function DAO:insert(entity, options)
     validate_options_type(options)
   end
 
-  local entity_to_insert, err = self.schema:process_auto_fields(entity, "insert")
+  local entity_to_insert, err, err_t = check_insert(self, entity, options)
   if not entity_to_insert then
-    local err_t = self.errors:schema_violation(err)
-    return nil, tostring(err_t), err_t
-  end
-
-  local ok, errors = self.schema:validate_insert(entity_to_insert)
-  if not ok then
-    local err_t = self.errors:schema_violation(errors)
-    return nil, tostring(err_t), err_t
-  end
-
-  if options ~= nil then
-    ok, errors = validate_options_value(options, self.schema, "insert")
-    if not ok then
-      local err_t = self.errors:invalid_options(errors)
-      return nil, tostring(err_t), err_t
-    end
-  end
-
-  if self.schema.cache_key and #self.schema.cache_key > 1 then
-    entity_to_insert.cache_key = self:cache_key(entity_to_insert)
+    return nil, err, err_t
   end
 
   local workspace, err_t = workspaces.apply_unique_per_ws(self.schema.name, entity_to_insert,
@@ -1097,12 +1243,12 @@ function DAO:update(primary_key, entity, options)
   end
 
   workspaces.remove_ws_prefix(self.schema.name, rbw_entity)
-  self:post_crud_event("update", row, rbw_entity)
+  self:post_crud_event("update", row, rbw_entity, options)
+
   return row
 end
 
 
--- XXX EE add workspaces
 function DAO:upsert(primary_key, entity, options)
   validate_primary_key_type(primary_key)
   validate_entity_type(entity)
@@ -1130,28 +1276,9 @@ function DAO:upsert(primary_key, entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  local entity_to_upsert, err = self.schema:process_auto_fields(entity, "upsert")
+  local entity_to_upsert, err, err_t = check_upsert(self, entity, options)
   if not entity_to_upsert then
-    local err_t = self.errors:schema_violation(err)
-    return nil, tostring(err_t), err_t
-  end
-
-  ok, errors = self.schema:validate_upsert(entity_to_upsert)
-  if not ok then
-    local err_t = self.errors:schema_violation(errors)
-    return nil, tostring(err_t), err_t
-  end
-
-  if options ~= nil then
-    ok, errors = validate_options_value(options, self.schema, "upsert")
-    if not ok then
-      local err_t = self.errors:invalid_options(errors)
-      return nil, tostring(err_t), err_t
-    end
-  end
-
-  if self.schema.cache_key and #self.schema.cache_key > 1 then
-    entity_to_upsert.cache_key = self:cache_key(entity_to_upsert)
+    return nil, err, err_t
   end
 
   if not rbac.validate_entity_operation(primary_key, self.schema.name) then
@@ -1201,7 +1328,7 @@ function DAO:upsert(primary_key, entity, options)
     end
   end
 
-  self:post_crud_event("update", row)
+  self:post_crud_event("update", row, nil, options)
 
   return row
 end
@@ -1292,8 +1419,8 @@ function DAO:delete(primary_key, options)
       "could not delete entity relationship with Role: " .. err)
   end
 
-  self:post_crud_event("delete", entity)
-  propagate_cascade_delete_events(cascade_entries)
+  self:post_crud_event("delete", entity, nil, options)
+  propagate_cascade_delete_events(cascade_entries, options)
 
   return true
 end
@@ -1329,7 +1456,7 @@ end
 function DAO:rows_to_entities(rows, options)
   local count = #rows
   if count == 0 then
-    return setmetatable(rows, cjson.empty_array_mt)
+    return setmetatable(rows, cjson.array_mt)
   end
 
   local entities = new_tab(count, 0)
@@ -1343,7 +1470,7 @@ function DAO:rows_to_entities(rows, options)
     entities[i] = entity
   end
 
-  return entities
+  return setmetatable(entities, cjson.array_mt)
 end
 
 
@@ -1422,13 +1549,11 @@ function DAO:cache_key(key, arg2, arg3, arg4, arg5, skip_ws)
   for _, name in ipairs(source) do
     local field = self.schema.fields[name]
     local value = key[name]
-    if field.type == "foreign" then
+    if value == null or value == nil then
+      value = ""
+    elseif field.type == "foreign" then
       -- FIXME extract foreign key, do not assume `id`
-      if value == null or value == nil then
-        value = ""
-      else
-        value = value.id
-      end
+      value = value.id
     end
     values[i] = tostring(value)
     i = i + 1

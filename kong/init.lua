@@ -70,16 +70,17 @@ local openssl_x509 = require "openssl.x509"
 local runloop = require "kong.runloop.handler"
 local mesh = require "kong.runloop.mesh"
 local tracing = require "kong.tracing"
-local semaphore = require "ngx.semaphore"
 local singletons = require "kong.singletons"
-local kong_cache = require "kong.cache"
+local declarative = require "kong.db.declarative"
 local ngx_balancer = require "ngx.balancer"
 local kong_resty_ctx = require "kong.resty.ctx"
 local certificate = require "kong.runloop.certificate"
-local plugins_iterator = require "kong.runloop.plugins_iterator"
+local concurrency = require "kong.concurrency"
+local cache_warmup = require "kong.cache_warmup"
 local balancer_execute = require("kong.runloop.balancer").execute
-local kong_cluster_events = require "kong.cluster_events"
 local kong_error_handlers = require "kong.error_handlers"
+local migrations_utils = require "kong.cmd.utils.migrations"
+
 
 local internal_proxies = require "kong.enterprise_edition.proxies"
 local vitals = require "kong.vitals"
@@ -87,6 +88,7 @@ local ee = require "kong.enterprise_edition"
 local portal_auth = require "kong.portal.auth"
 local portal_emails = require "kong.portal.emails"
 local admin_emails = require "kong.enterprise_edition.admin.emails"
+local portal_router = require "kong.portal.router"
 local invoke_plugin = require "kong.enterprise_edition.invoke_plugin"
 
 local kong             = kong
@@ -109,6 +111,7 @@ local set_ssl_ctx      = ngx_balancer.set_ssl_ctx
 local set_timeouts     = ngx_balancer.set_timeouts
 local set_more_tries   = ngx_balancer.set_more_tries
 
+
 local ffi = require "ffi"
 local cast = ffi.cast
 local voidpp = ffi.typeof("void**")
@@ -118,128 +121,70 @@ local TLS_SCHEMES = {
   tls = true,
 }
 
-local PLUGINS_MAP_CACHE_OPTS = { ttl = 0 }
-
-local plugins_map_semaphore
-local plugins_map_version
-local loaded_plugins
+local declarative_entities
 local schema_state
 
-local function build_plugins_map(db, version)
-  local map = {}
 
-  for plugin, err in db.plugins:each(1000) do
-    if err then
+local reset_kong_shm
+do
+  local preserve_keys = {
+    "events:requests",
+    "kong:node_id",
+  }
+
+  reset_kong_shm = function()
+    local preserved = {}
+
+    for _, key in ipairs(preserve_keys) do
+      -- ignore errors
+      preserved[key] = ngx.shared.kong:get(key)
+    end
+
+    ngx.shared.kong:flush_all()
+    ngx.shared.kong:flush_expired(0)
+
+    for _, key in ipairs(preserve_keys) do
+      ngx.shared.kong:set(key, preserved[key])
+    end
+  end
+end
+
+
+local function execute_plugins_iterator(plugins_iterator, ctx, phase)
+  -- XXX EE: Check we don't update old_ws twice
+  local old_ws = ctx.workspaces
+  for plugin, configuration in plugins_iterator:iterate(ctx, phase) do
+    kong_global.set_named_ctx(kong, "plugin", configuration)
+    kong_global.set_namespaced_log(kong, plugin.name)
+
+    plugin.handler[phase](plugin.handler, configuration)
+
+    kong_global.reset_log(kong)
+    ctx.workspaces = old_ws
+  end
+end
+
+
+local function execute_cache_warmup(kong_config)
+  if kong_config.database == "off" then
+    return true
+  end
+
+  if ngx.worker.id() == 0 then
+    local ok, err = cache_warmup.execute(kong_config.db_cache_warmup_entities)
+    if not ok then
       return nil, err
     end
-
-    map[plugin.name] = true
-  end
-
-  if version then
-    plugins_map_version = version
-  end
-
-  singletons.configured_plugins = map
-
-  return true
-end
-
-local function plugins_map_wrapper()
-  local version, err = kong.cache:get("plugins_map:version",
-                                      PLUGINS_MAP_CACHE_OPTS, utils.uuid)
-  if err then
-    return nil, "failed to retrieve plugins map version: " .. err
-  end
-
-  if plugins_map_version ~= version then
-    local timeout = 60
-    if singletons.configuration.database == "cassandra" then
-      -- cassandra_timeout is defined in ms
-      timeout = singletons.configuration.cassandra_timeout / 1000
-
-    elseif singletons.configuration.database == "postgres" then
-      -- pg_timeout is defined in ms
-      timeout = singletons.configuration.pg_timeout / 1000
-    end
-
-    -- try to acquire the mutex (semaphore)
-    local ok, err = plugins_map_semaphore:wait(timeout)
-    if not ok then
-      return nil, "failed to acquire plugins map rebuild mutex: " .. err
-    end
-
-    -- we have the lock but we might not have needed it. check the
-    -- version again and rebuild if necessary
-    version, err = kong.cache:get("plugins_map:version",
-                                  PLUGINS_MAP_CACHE_OPTS, utils.uuid)
-    if err then
-      plugins_map_semaphore:post(1)
-      return nil, "failed to re-retrieve plugins map version: " .. err
-    end
-
-    if plugins_map_version ~= version then
-      -- we have the lock and we need to rebuild the map
-      ngx_log(ngx_DEBUG, "rebuilding plugins map")
-
-      local ok, err = build_plugins_map(kong.db, version)
-      if not ok then
-        plugins_map_semaphore:post(1)
-        return nil, "failed to rebuild plugins map: " .. err
-      end
-    end
-
-    plugins_map_semaphore:post(1)
   end
 
   return true
 end
+
 
 -- Kong public context handlers.
 -- @section kong_handlers
 
 local Kong = {}
-
-
-local function sort_plugins_for_execution(kong_conf, db, plugin_list)
-  -- sort plugins by order of execution
-  table.sort(plugin_list, function(a, b)
-    local priority_a = a.handler.PRIORITY or 0
-    local priority_b = b.handler.PRIORITY or 0
-    return priority_a > priority_b
-  end)
-
-  -- add reports plugin if not disabled
-  if kong_conf.anonymous_reports then
-    local reports = require "kong.reports"
-
-    reports.add_ping_value("database", kong_conf.database)
-    reports.add_ping_value("database_version", db.infos.db_ver)
-
-    reports.toggle(true)
-
-    local shm = ngx.shared
-
-    local reported_entities = {
-      a = "apis",
-      r = "routes",
-      c = "consumers",
-      s = "services",
-    }
-
-    for k, v in pairs(reported_entities) do
-      reports.add_ping_value(k, function()
-        return shm["kong_reports_" .. v] and
-          #shm["kong_reports_" .. v]:get_keys(70000)
-      end)
-    end
-
-    plugin_list[#plugin_list+1] = {
-      name = "reports",
-      handler = reports,
-    }
-  end
-end
 
 
 local function flush_delayed_response(ctx)
@@ -256,7 +201,79 @@ local function flush_delayed_response(ctx)
 end
 
 
+local function parse_declarative_config(kong_config)
+  if kong_config.database ~= "off" then
+    return {}
+  end
+
+  if not kong_config.declarative_config then
+    return {}
+  end
+
+  local dc = declarative.new_config(kong_config)
+  local entities, err = dc:parse_file(kong_config.declarative_config)
+  if not entities then
+    return nil, "error parsing declarative config file " ..
+                kong_config.declarative_config .. ":\n" .. err
+  end
+
+  return entities
+end
+
+
+local function load_declarative_config(kong_config, entities)
+  if kong_config.database ~= "off" then
+    return true
+  end
+
+  if not kong_config.declarative_config then
+    -- no configuration yet, just build empty plugins iterator
+    local ok, err = runloop.build_plugins_iterator(utils.uuid())
+    if not ok then
+      error("error building initial plugins iterator: " .. err)
+    end
+    return true
+  end
+
+  local opts = {
+    name = "declarative_config",
+  }
+  return concurrency.with_worker_mutex(opts, function()
+    local value = ngx.shared.kong:get("declarative_config:loaded")
+    if value then
+      return true
+    end
+
+    local ok, err = declarative.load_into_cache(entities)
+    if not ok then
+      return nil, err
+    end
+
+    kong.log.notice("declarative config loaded from ",
+                    kong_config.declarative_config)
+
+    ok, err = runloop.build_plugins_iterator(utils.uuid())
+    if not ok then
+      error("error building initial plugins iterator: " .. err)
+    end
+
+    assert(runloop.build_router("init"))
+
+    mesh.init()
+
+    ok, err = ngx.shared.kong:safe_set("declarative_config:loaded", true)
+    if not ok then
+      kong.log.warn("failed marking declarative_config as loaded: ", err)
+    end
+
+    return true
+  end)
+end
+
+
 function Kong.init()
+  reset_kong_shm()
+
   -- special math.randomseed from kong.globalpatches not taking any argument.
   -- Must only be called in the init or init_worker phases, to avoid
   -- duplicated seeds.
@@ -307,17 +324,19 @@ function Kong.init()
   assert(db:init_connector())
 
   schema_state = assert(db:schema_state())
-  if schema_state.needs_bootstrap then
-    error("database needs bootstrap; run 'kong migrations bootstrap'")
+  migrations_utils.check_state(schema_state, db)
 
-  elseif schema_state.new_migrations then
-    error("new migrations available; run 'kong migrations list'")
+  if schema_state.missing_migrations or schema_state.pending_migrations then
+    if schema_state.missing_migrations then
+      ngx_log(ngx_WARN, "database is missing some migrations:\n",
+                        schema_state.missing_migrations)
   end
-  --[[
+
   if schema_state.pending_migrations then
-    assert(db:load_pending_migrations(schema_state.pending_migrations))
+      ngx_log(ngx_WARN, "database has pending migrations:\n",
+                        schema_state.pending_migrations)
+    end
   end
-  --]]
 
   assert(db:connect())
   assert(db.plugins:check_db_against_config(config.loaded_plugins))
@@ -332,6 +351,7 @@ function Kong.init()
   singletons.internal_proxies = internal_proxies.new()
   singletons.portal_emails = portal_emails.new(config)
   singletons.admin_emails = admin_emails.new(config)
+  singletons.portal_router = portal_router.new(db)
 
   local reports = require "kong.reports"
   local l = kong.license and
@@ -342,6 +362,7 @@ function Kong.init()
 
   if config.anonymous_reports then
     reports.add_ping_value("rbac_enforced", singletons.configuration.rbac ~= "off")
+    reports.add_entity_reports()
   end
   kong.vitals = vitals.new {
       db             = db,
@@ -391,30 +412,34 @@ function Kong.init()
     certificate.init()
   end
 
+  if kong.configuration.database ~= "off" then
   mesh.init()
+  end
 
   -- Load plugins as late as possible so that everything is set up
-  loaded_plugins = assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
-  sort_plugins_for_execution(config, db, loaded_plugins)
+  assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
 
 
   singletons.invoke_plugin = invoke_plugin.new {
-    loaded_plugins = loaded_plugins,
+    loaded_plugins = db.plugins:get_handlers(),
     kong_global = kong_global,
   }
 
+  if kong.configuration.database == "off" then
   local err
-  plugins_map_semaphore, err = semaphore.new(1) -- 1 = treat this as a mutex
-  if not plugins_map_semaphore then
-    error("failed to create plugins map semaphore: " .. err)
+    declarative_entities, err = parse_declarative_config(kong.configuration)
+    if not declarative_entities then
+      error(err)
   end
 
-  local _, err = build_plugins_map(db, "init")
-  if err then
-    error("error building initial plugins map: ", err)
+  else
+    local ok, err = runloop.build_plugins_iterator("init")
+    if not ok then
+      error("error building initial plugins: " .. tostring(err))
   end
 
-  assert(runloop.build_router(db, "init"))
+    assert(runloop.build_router("init"))
+  end
 
   db:close()
 end
@@ -465,81 +490,37 @@ function Kong.init_worker()
     end
   end
 
-
-  -- init inter-worker events
-
-
-  local worker_events = require "resty.worker.events"
-
-
-  local ok, err = worker_events.configure {
-    shm = "kong_process_events", -- defined by "lua_shared_dict"
-    timeout = 5,            -- life time of event data in shm
-    interval = 1,           -- poll interval (seconds)
-
-    wait_interval = 0.010,  -- wait before retry fetching event data
-    wait_max = 0.5,         -- max wait time before discarding event
-  }
-  if not ok then
+  local worker_events, err = kong_global.init_worker_events()
+  if not worker_events then
     ngx_log(ngx_CRIT, "could not start inter-worker events: ", err)
     return
   end
+  kong.worker_events = worker_events
 
-
-  -- init cluster_events
-
-
-  local cluster_events, err = kong_cluster_events.new {
-    db                      = kong.db,
-    poll_interval           = kong.configuration.db_update_frequency,
-    poll_offset             = kong.configuration.db_update_propagation,
-  }
+  local cluster_events, err = kong_global.init_cluster_events(kong.configuration, kong.db)
   if not cluster_events then
     ngx_log(ngx_CRIT, "could not create cluster_events: ", err)
     return
   end
-
-
-  -- init cache
-
-
-  local cache, err = kong_cache.new {
-    cluster_events    = cluster_events,
-    worker_events     = worker_events,
-    propagation_delay = kong.configuration.db_update_propagation,
-    ttl               = kong.configuration.db_cache_ttl,
-    neg_ttl           = kong.configuration.db_cache_ttl,
-    resurrect_ttl     = kong.configuration.resurrect_ttl,
-    resty_lock_opts   = {
-      exptime = 10,
-      timeout = 5,
-    },
-  }
-  if not cache then
-    ngx_log(ngx_CRIT, "could not create kong cache: ", err)
-    return
-  end
-
-  local ok, err = cache:get("router:version", { ttl = 0 }, function()
-    return "init"
-  end)
-  if not ok then
-    ngx_log(ngx_CRIT, "could not set router version in cache: ", err)
-    return
-  end
-
-  local ok, err = cache:get("plugins_map:version", { ttl = 0 }, function()
-    return "init"
-  end)
-  if not ok then
-    ngx_log(ngx_CRIT, "could not set plugins map version in cache: ", err)
-    return
-  end
+  kong.cluster_events = cluster_events
 
   -- vitals functions require a timer, so must start in worker context
   local ok, err = kong.vitals:init()
   if not ok then
     ngx.log(ngx.CRIT, "could not initialize vitals: ", err)
+    return
+  end
+
+  local cache, err = kong_global.init_cache(kong.configuration, cluster_events, worker_events, kong.vitals)
+  if not cache then
+    ngx_log(ngx_CRIT, "could not create kong cache: ", err)
+    return
+  end
+  kong.cache = cache
+
+  ok, err = runloop.set_init_versions_in_cache()
+  if not ok then
+    ngx_log(ngx_CRIT, err)
     return
   end
 
@@ -549,25 +530,33 @@ function Kong.init_worker()
   singletons.cluster_events = cluster_events
   -- /LEGACY
 
-
-  kong.cache = cache
-  kong.worker_events = worker_events
-  kong.cluster_events = cluster_events
-
   kong.db:set_events_handler(worker_events)
 
+  ok, err = load_declarative_config(kong.configuration, declarative_entities)
+  if not ok then
+    ngx_log(ngx_CRIT, "error loading declarative config file: ", err)
+    return
+  end
+
+  ok, err = execute_cache_warmup(kong.configuration)
+  if not ok then
+    ngx_log(ngx_ERR, "could not warm up the DB cache: ", err)
+  end
 
   runloop.init_worker.before()
 
 
   -- run plugins init_worker context
+  ok, err = runloop.update_plugins_iterator()
+  if not ok then
+    ngx_log(ngx_CRIT, "error building plugins iterator: ", err)
+    return
+  end
 
-
-  for _, plugin in ipairs(loaded_plugins) do
+  local plugins_iterator = runloop.get_plugins_iterator()
+  for plugin, _ in plugins_iterator:iterate(nil, "init_worker") do
     kong_global.set_namespaced_log(kong, plugin.name)
-
     plugin.handler:init_worker()
-
     kong_global.reset_log(kong)
   end
 
@@ -577,25 +566,12 @@ end
 function Kong.ssl_certificate()
   kong_global.set_phase(kong, PHASES.certificate)
 
-  local ctx = ngx.ctx
+  local mock_ctx = {} -- ctx is not available in cert phase, use table instead
 
-  runloop.certificate.before(ctx)
+  runloop.certificate.before(mock_ctx)
 
-  local ok, err = plugins_map_wrapper()
-  if not ok then
-    ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
-    return ngx.exit(ngx.ERROR)
-  end
-
-  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              singletons.configured_plugins,
-                                              true) do
-
-    kong_global.set_namespaced_log(kong, plugin.name)
-    plugin.handler:certificate(plugin_conf)
-    kong_global.reset_log(kong)
-  end
-
+  local plugins_iterator = runloop.get_updated_plugins_iterator()
+  execute_plugins_iterator(plugins_iterator, mock_ctx, "certificate")
 end
 
 function Kong.balancer()
@@ -707,26 +683,15 @@ function Kong.rewrite()
 
   runloop.rewrite.before(ctx)
 
-  local ok, err = plugins_map_wrapper()
-  if not ok then
-    ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
-    return kong.response.exit(500, { message  = "An unexpected error occurred" })
+  -- On HTTPS requests, the plugins iterator is already updated in the ssl_certificate phase
+  local plugins_iterator
+  if ngx.var.https == "on" then
+    plugins_iterator = runloop.get_plugins_iterator()
+  else
+    plugins_iterator = runloop.get_updated_plugins_iterator()
   end
 
-  -- we're just using the iterator, as in this rewrite phase no consumer nor
-  -- route will have been identified, hence we'll just be executing the global
-  -- plugins
-  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              singletons.configured_plugins,
-                                              true) do
-
-    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-    kong_global.set_namespaced_log(kong, plugin.name)
-
-    plugin.handler:rewrite(plugin_conf)
-
-    kong_global.reset_log(kong)
-  end
+  execute_plugins_iterator(plugins_iterator, ctx, "rewrite")
 
   runloop.rewrite.after(ctx)
 end
@@ -738,22 +703,8 @@ function Kong.preread()
 
   runloop.preread.before(ctx)
 
-  local ok, err = plugins_map_wrapper()
-  if not ok then
-    ngx_log(ngx_CRIT, "could not ensure plugins map is up to date: ", err)
-    return ngx.exit(ngx.ERROR)
-  end
-
-  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              singletons.configured_plugins,
-                                              true) do
-    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-    kong_global.set_namespaced_log(kong, plugin.name)
-
-    plugin.handler:preread(plugin_conf)
-
-    kong_global.reset_log(kong)
-  end
+  local plugins_iterator = runloop.get_updated_plugins_iterator()
+  execute_plugins_iterator(plugins_iterator, ctx, "preread")
 
   runloop.preread.after(ctx)
 end
@@ -768,9 +719,8 @@ function Kong.access()
   ctx.delay_response = true
 
   local old_ws = ctx.workspaces
-  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              singletons.configured_plugins,
-                                              true) do
+  local plugins_iterator = runloop.get_plugins_iterator()
+  for plugin, plugin_conf in plugins_iterator:iterate(ctx, "access") do
     if not ctx.delayed_response then
       kong_global.set_named_ctx(kong, "plugin", plugin_conf)
       kong_global.set_namespaced_log(kong, plugin.name)
@@ -812,17 +762,8 @@ function Kong.header_filter()
 
   runloop.header_filter.before(ctx)
 
-  local old_ws = ctx.workspaces
-  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              singletons.configured_plugins) do
-    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-    kong_global.set_namespaced_log(kong, plugin.name)
-
-    plugin.handler:header_filter(plugin_conf)
-
-    kong_global.reset_log(kong)
-    ctx.workspaces = old_ws
-  end
+  local plugins_iterator = runloop.get_plugins_iterator()
+  execute_plugins_iterator(plugins_iterator, ctx, "header_filter")
 
   runloop.header_filter.after(ctx)
   ee.handlers.header_filter.after(ctx)
@@ -833,17 +774,8 @@ function Kong.body_filter()
 
   local ctx = ngx.ctx
 
-  local old_ws = ctx.workspaces
-  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              singletons.configured_plugins) do
-    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-    kong_global.set_namespaced_log(kong, plugin.name)
-
-    plugin.handler:body_filter(plugin_conf)
-
-    kong_global.reset_log(kong)
-    ctx.workspaces = old_ws
-  end
+  local plugins_iterator = runloop.get_plugins_iterator()
+  execute_plugins_iterator(plugins_iterator, ctx, "body_filter")
 
   runloop.body_filter.after(ctx)
 end
@@ -853,21 +785,8 @@ function Kong.log()
 
   local ctx = ngx.ctx
 
-  local old_ws = ctx.workspaces
-  -- for request with no matching route, ctx.plugins_for_request would be empty
-  -- and there would not be any workspace linked to request.
-  -- So we would need to reload the plugins(global) which apply to the request by
-  -- setting access_or_cert_ctx to true.
-  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins,
-                                              singletons.configured_plugins) do
-    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-    kong_global.set_namespaced_log(kong, plugin.name)
-
-    plugin.handler:log(plugin_conf)
-
-    kong_global.reset_log(kong)
-    ctx.workspaces = old_ws
-  end
+  local plugins_iterator = runloop.get_plugins_iterator()
+  execute_plugins_iterator(plugins_iterator, ctx, "log")
 
   runloop.log.after(ctx)
   ee.handlers.log.after(ctx, ngx.status)
@@ -881,9 +800,9 @@ function Kong.handle_error()
   ctx.KONG_UNEXPECTED = true
 
   local old_ws = ctx.workspaces
-  if not ctx.plugins_for_request then
-    for _ in plugins_iterator(ctx, loaded_plugins,
-                              singletons.configured_plugins, true) do
+  if not ctx.plugins then
+    local plugins_iterator = runloop.get_updated_plugins_iterator()
+    for _ in plugins_iterator:iterate(ctx, "content") do
       -- just build list of plugins
       ctx.workspaces = old_ws
     end
@@ -938,5 +857,10 @@ function Kong.serve_portal_gui()
   return lapis.serve("kong.portal.gui")
 end
 
+function Kong.serve_portal_assets()
+  kong_global.set_phase(kong, PHASES.admin_api)
+
+   return lapis.serve("kong.portal.gui")
+end
 
 return Kong

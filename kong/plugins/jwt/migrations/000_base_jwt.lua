@@ -11,8 +11,19 @@ return {
         "rsa_public_key"  TEXT
       );
 
-      CREATE INDEX IF NOT EXISTS "jwt_secrets_consumer_id" ON "jwt_secrets" ("consumer_id");
-      CREATE INDEX IF NOT EXISTS "jwt_secrets_secret"      ON "jwt_secrets" ("secret");
+      DO $$
+      BEGIN
+        CREATE INDEX IF NOT EXISTS "jwt_secrets_consumer_id" ON "jwt_secrets" ("consumer_id");
+      EXCEPTION WHEN UNDEFINED_COLUMN THEN
+        -- Do nothing, accept existing state
+      END$$;
+
+      DO $$
+      BEGIN
+        CREATE INDEX IF NOT EXISTS "jwt_secrets_secret" ON "jwt_secrets" ("secret");
+      EXCEPTION WHEN UNDEFINED_COLUMN THEN
+        -- Do nothing, accept existing state
+      END$$;
     ]],
   },
 

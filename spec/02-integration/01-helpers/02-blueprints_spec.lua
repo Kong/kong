@@ -16,10 +16,6 @@ for _, strategy in helpers.each_strategy() do
       assert(db.plugins:load_plugin_schemas(helpers.test_conf.loaded_plugins))
       assert(db:truncate())
       bp = assert(Blueprints.new(db))
-
-      -- XXX EE: This was in enterprise
-      -- bp, _, _ = helpers.get_db_utils(strategy)
-      -- singletons.db = db
     end)
 
     local service

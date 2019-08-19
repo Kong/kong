@@ -3,18 +3,25 @@ local helpers = require "spec.helpers"
 local singletons  = require "kong.singletons"
 local enums       = require "kong.enterprise_edition.dao.enums"
 local ee_helpers  = require "spec-ee.helpers"
+local constants   = require "kong.constants"
 
 
 local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
 
+local PORTAL_PREFIX = constants.PORTAL_PREFIX
 
-local function configure_portal()
-  singletons.db.workspaces:upsert_by_name("default", {
-    name = "default",
+
+local function configure_portal(config)
+  if not config then
     config = {
       portal = true,
       portal_auth = "basic-auth",
     }
+  end
+
+  singletons.db.workspaces:upsert_by_name("default", {
+    name = "default",
+    config = config
   })
 end
 
@@ -40,9 +47,9 @@ for _, strategy in helpers.each_strategy() do
 
 describe("Admin API - Developer Portal - " .. strategy, function()
   local client, portal_api_client
-  local db
+  local bp, db
 
-  _, db, _ = helpers.get_db_utils(strategy)
+  bp, db, _ = helpers.get_db_utils(strategy)
   -- do not run tests for cassandra < 3
   if strategy == "cassandra" and db.connector.major_version < 3 then
     return
@@ -105,13 +112,13 @@ describe("Admin API - Developer Portal - " .. strategy, function()
       it("filters by developer status", function()
         assert(db.developers:insert {
           email = "developer-pending@dog.com",
-          status = enums.CONSUMERS.STATUS.PENDING,
+          status = enums.CONSUMERS.STATUS.APPROVED,
           meta = '{"full_name":"Pending Name"}',
         })
 
         local res = assert(client:send {
           method = "GET",
-          path = "/developers?status=" .. enums.CONSUMERS.STATUS.PENDING
+          path = "/developers?status=" .. enums.CONSUMERS.STATUS.APPROVED
         })
         res = assert.res_status(200, res)
         local json = cjson.decode(res)
@@ -140,7 +147,61 @@ describe("Admin API - Developer Portal - " .. strategy, function()
     end)
 
     describe("POST", function ()
-      -- XXX DEVX: write post tests
+      lazy_setup(function()
+        local store = {}
+        kong.cache = {
+          get = function(_, key, _, f, ...)
+            store[key] = store[key] or f(...)
+            return store[key]
+          end,
+          invalidate = function(key)
+            store[key] = nil
+          end,
+        }
+        bp.rbac_roles:insert({ name = PORTAL_PREFIX .. "red" })
+        configure_portal()
+      end)
+
+      lazy_teardown(function()
+        assert(db:truncate())
+      end)
+
+      it("creates a developer with roles associated", function()
+        local res = client:post("/developers", {
+          body = {
+            email = "a@a.com",
+            meta = '{"full_name":"a"}',
+            roles = { "red" },
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal("a@a.com", json.email)
+        assert.same({ "red" }, json.roles)
+      end)
+
+      it("creates a developer with custom_id", function()
+        local res = client:post("/developers", {
+          body = {
+            email = "b@b.com",
+            meta = '{"full_name":"a"}',
+            custom_id = "friendo",
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equals("b@b.com", json.email)
+        assert.equals("friendo", json.custom_id)
+
+        -- checking that consumer custom_id is set as well
+        local consumer = singletons.db.consumers:select({
+          id = json.consumer.id
+        })
+
+        assert.equals("friendo", consumer.custom_id)
+      end)
     end)
   end)
 
@@ -148,12 +209,27 @@ describe("Admin API - Developer Portal - " .. strategy, function()
     local developer
 
     lazy_setup(function()
-      developer = assert(db.developers:insert {
+      local store = {}
+      kong.cache = {
+        get = function(_, key, _, f, ...)
+          store[key] = store[key] or f(...)
+          return store[key]
+        end,
+        invalidate = function(key)
+          store[key] = nil
+        end,
+      }
+
+      bp.rbac_roles:insert({ name = PORTAL_PREFIX .. "red" })
+      bp.rbac_roles:insert({ name = PORTAL_PREFIX .. "green" })
+      developer = assert(db.developers:insert({
         email = "gruce@konghq.com",
         password = "kong",
         meta = "{\"full_name\":\"I Like Turtles\"}",
         status = enums.CONSUMERS.STATUS.REJECTED,
-      })
+        roles = { "red" },
+        custom_id = "special"
+      }))
       configure_portal()
     end)
 
@@ -162,16 +238,19 @@ describe("Admin API - Developer Portal - " .. strategy, function()
     end)
 
     describe("GET", function()
-      it("fetches the developer", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/developers/".. developer.id,
-        })
+      it("fetches the developer and associated roles", function()
+        local res = client:get("/developers/gruce@konghq.com")
 
         local body = assert.res_status(200, res)
-        local resp_body_json = cjson.decode(body)
+        local json = cjson.decode(body)
 
-        assert.same(developer, resp_body_json)
+        assert.equals(developer.email, json.email)
+        assert.equals(developer.password, json.password)
+        assert.equals(developer.meta, json.meta)
+        assert.equals(developer.status, json.status)
+        assert.is_table(developer.rbac_user)
+        assert.same({ "red" }, json.roles)
+        assert.equals(developer.custom_id, json.custom_id)
       end)
     end)
 
@@ -183,12 +262,14 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         ))
       end)
 
-      it("updates the developer email, username, and login credential", function()
+      it("updates the developer email, username, login credential, roles, and custom_id", function()
         local res = assert(client:send {
           method = "PATCH",
           body = {
             email = "new_email@whodis.com",
             status = enums.CONSUMERS.STATUS.APPROVED,
+            roles = { "green" },
+            custom_id = "radical",
           },
           path = "/developers/".. developer.id,
           headers = {
@@ -205,6 +286,9 @@ describe("Admin API - Developer Portal - " .. strategy, function()
 
         assert.equals("new_email@whodis.com", resp_body_json.developer.email)
         assert.equals("new_email@whodis.com", consumer.username)
+        assert.same({ "green" }, resp_body_json.developer.roles)
+        assert.equals("radical", resp_body_json.developer.custom_id)
+        assert.equals("radical", consumer.custom_id)
 
         -- old email fails to access portal api
         local res = assert(portal_api_client:send {
@@ -215,7 +299,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           }
         })
 
-        local body = assert.res_status(403, res)
+        local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.equals("Invalid authentication credentials", json.message)
 
@@ -290,6 +374,59 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         local fields = resp_body_json.fields
 
         assert.equal("already exists with value 'fancypants@konghq.com'", fields.email)
+      end)
+
+      it("returns 409 if patched with a custom_id that already exists", function()
+
+        local developer2 = assert(db.developers:insert {
+          email = "someonenew@konghq.com",
+          password = "woof",
+          meta = "{\"full_name\":\"Scoopy Doo\"}",
+          custom_id = "ruh roh",
+        })
+
+        local res = assert(client:send {
+          method = "PATCH",
+          body = {
+            custom_id = developer2.custom_id,
+          },
+          path = "/developers/".. developer.id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(409, res)
+        local resp_body_json = cjson.decode(body)
+        local fields = resp_body_json.fields
+
+        assert.equal("already exists with value 'ruh roh'", fields.custom_id)
+      end)
+
+      it("returns 400 if patch a verified developer to type 'UNVERIFIED'", function()
+        local developer3 = assert(db.developers:insert {
+          email = "fancypants2@konghq.com",
+          password = "mowmow",
+          status = 0,
+          meta = "{\"full_name\":\"Old Gregg\"}"
+        })
+
+        local res = assert(client:send {
+          method = "PATCH",
+          body = {
+            status = 5,
+          },
+          path = "/developers/".. developer3.email,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(400, res)
+        local resp_body_json = cjson.decode(body)
+        local fields = resp_body_json.fields
+
+        assert.equal("cannot update developer to status UNVERIFIED", fields.status)
       end)
 
       it("updates the developer meta with valid meta", function()
@@ -1149,6 +1286,156 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           }
         })
         assert.res_status(204, res)
+      end)
+    end)
+  end)
+
+  describe("/developers/roles", function()
+    before_each(function()
+      assert(db:truncate("rbac_roles"))
+      assert(db:truncate("workspace_entities"))
+      configure_portal()
+    end)
+
+    describe("GET", function()
+      it("retrieves list of roles which are prefixed", function()
+        bp.rbac_roles:insert({ name = PORTAL_PREFIX .. "red" })
+        bp.rbac_roles:insert({ name = PORTAL_PREFIX .. "blue" })
+        bp.rbac_roles:insert({ name = PORTAL_PREFIX .. "green" })
+        bp.rbac_roles:insert({ name = "should_not_appear" })
+
+        local res = client:get("/developers/roles")
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equals(3, #json.data)
+        local names = {}
+        for i = 1, 3 do
+          names[i] = json.data[i].name
+        end
+        table.sort(names)
+        assert.same({ "blue", "green", "red" }, names)
+      end)
+    end)
+
+    describe("POST", function()
+      it("creates a new rbac role, prefixing it. The returned one is not prefixed, has no is_default, and has a permissions attribute", function()
+        local res = client:post("/developers/roles", {
+          body = { name = "red" },
+          headers = { ["content-type"] = "application/json" },
+        })
+        local body = assert.res_status(201, res)
+        local dev_role = cjson.decode(body)
+        assert.equals("red", dev_role.name)
+        assert.is_nil(dev_role.is_default)
+        assert.same({}, dev_role.permissions)
+
+        local res = client:get("/rbac/roles/" .. PORTAL_PREFIX .. "red")
+        local body = assert.res_status(200, res)
+        local rbac_role = cjson.decode(body)
+        assert.equals(PORTAL_PREFIX .. "red", rbac_role.name)
+        assert.is_false(rbac_role.is_default)
+        assert.is_nil(rbac_role.permissions)
+
+        assert.equals(dev_role.id, rbac_role.id)
+      end)
+    end)
+  end)
+
+  describe("#o /developers/roles/:role", function()
+    before_each(function()
+      assert(db:truncate("rbac_roles"))
+      assert(db:truncate("rbac_role_endpoints"))
+      assert(db:truncate("workspace_entities"))
+      configure_portal()
+    end)
+
+    describe("GET", function()
+      it("returns an existing rbac role, non-prefixed and without is_default, and with a permissions property", function()
+        local role = bp.rbac_roles:insert({ name = PORTAL_PREFIX .. "red" })
+
+        local res = client:get("/developers/roles/red")
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equals("red", json.name)
+        assert.same({}, json.permissions)
+        assert.is_nil(json.is_default)
+
+        assert(db.rbac_role_endpoints:insert({
+          role = { id = role.id },
+          workspace = "default",
+          endpoint = "/foo",
+          actions = 0x1,
+        }))
+
+        local res = client:get("/developers/roles/red")
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same({
+          default = {
+            ["/default/foo"] = {
+              actions = { "read" },
+              negative = false,
+            }
+          }
+        }, json.permissions)
+      end)
+      it("returns 404 on non-existing or unprefixed roles", function()
+        bp.rbac_roles:insert({ name = "rbac_role" })
+
+        local res = client:get("/developers/roles/foo")
+        assert.res_status(404, res)
+
+        local res = client:get("/developers/roles/rbac_role")
+        assert.res_status(404, res)
+      end)
+    end)
+
+    describe("PATCH", function()
+      it("updates an existing rbac role, non-prefixed and without is_default, and with permissions attribute", function()
+        local role = bp.rbac_roles:insert({ name = PORTAL_PREFIX .. "red" })
+        assert(db.rbac_role_endpoints:insert({
+          role = { id = role.id },
+          workspace = "default",
+          endpoint = "/foo",
+          actions = 0x1,
+        }))
+
+        local res = client:patch("/developers/roles/red", {
+          body = { comment = "hello" },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equals("hello", json.comment)
+        assert.is_nil(json.is_default)
+        assert.same({
+          default = {
+            ["/default/foo"] = {
+              actions = { "read" },
+              negative = false,
+            }
+          }
+        }, json.permissions)
+      end)
+      it("returns 404 on non-existing or unprefixed roles", function()
+        bp.rbac_roles:insert({ name = PORTAL_PREFIX .. "red" })
+
+        local res = client:patch("/developers/roles/foo")
+        assert.res_status(404, res)
+
+        local res = client:patch("/developers/roles/rbac_role")
+        assert.res_status(404, res)
+      end)
+    end)
+
+    describe("DELETE", function()
+      it("deletes an existing rbac role", function()
+        bp.rbac_roles:insert({ name = PORTAL_PREFIX .. "red" })
+        local res = client:delete("/developers/roles/red")
+        assert.res_status(204, res)
+
+        local res = client:get("/developers/roles/red")
+        assert.res_status(404, res)
       end)
     end)
   end)

@@ -1,4 +1,3 @@
-local api_helpers = require "kong.api.api_helpers"
 local singletons  = require "kong.singletons"
 local reports     = require "kong.reports"
 local utils       = require "kong.tools.utils"
@@ -20,24 +19,6 @@ end
 
 
 return {
-  ["/services"] = {
-    POST = function(self, _, _, parent)
-      api_helpers.resolve_url_params(self)
-      return parent()
-    end,
-  },
-
-  ["/services/:services"] = {
-    PUT = function(self, _, _, parent)
-      api_helpers.resolve_url_params(self)
-      return parent()
-    end,
-    PATCH = function(self, _, _, parent)
-      api_helpers.resolve_url_params(self)
-      return parent()
-    end,
-  },
-
   ["/services/:services/routes"] = {
     before = function(self, db, helpers)
       local old_wss = ngx.ctx.workspaces
@@ -67,6 +48,7 @@ return {
       return parent()
     end
   },
+
   ["/services/:services/plugins"] = {
     POST = function(_, _, _, parent)
       return parent(post_process)
