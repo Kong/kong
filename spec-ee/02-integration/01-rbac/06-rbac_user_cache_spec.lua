@@ -118,10 +118,10 @@ for _, strategy in helpers.each_strategy() do
       
         assert.res_status(expected_status, res)
         
-        if entity ~= table then return end
+        if type(entity) ~= "table" then return end
 
-        for _, field in entity do
-          assert.equal(res.field, entity.field)
+        for key, field in pairs(entity) do
+          assert.equal(res[key], field)
         end
       end
 
