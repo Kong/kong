@@ -193,6 +193,7 @@ local function user_can_manage_endpoints_from(rbac_ctx, workspace)
 end
 _M.user_can_manage_endpoints_from = user_can_manage_endpoints_from
 
+
 local function retrieve_user(id)
   local user, err = kong.db.rbac_users:select({id = id}, {
     skip_rbac = true,
@@ -217,7 +218,6 @@ end
 local function get_user(id)
   local cache_key = kong.db.rbac_users:cache_key(id)
   local user, err = kong.cache:get(cache_key, nil, retrieve_user, id)
-  
   if err then
     return nil, err
   end
