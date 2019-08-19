@@ -105,10 +105,11 @@ for _, strategy in helpers.each_strategy() do
         })
       
         local json = assert.res_status(expected_status, res)
-        local body = cjson.decode(json)
         
         if type(entity) ~= "table" then return end
 
+        local body = cjson.decode(json)
+        
         for key, field in pairs(entity) do
           assert.equal(body[key], field)
         end
@@ -153,6 +154,9 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("rbac_user cache should be update after update", function()
+        -- updates rbac_user token via admin endpoint
+        -- expects cookie expirted, if cache has been invalidated 
+        -- see 'rbac.get_user()'
         local token = utils.uuid()
         local res = assert(client:send {
           method = "PATCH",
