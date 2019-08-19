@@ -93,19 +93,6 @@ for _, strategy in helpers.each_strategy() do
 
     describe('#Cache Key:', function()
       local cache_key, cookie
-
-      local function update_rbac_user_comment(db, id, str)
-        workspaces.run_with_ws_scope({}, function ()
-          assert(db.rbac_users:update({id = id},{
-            comment = str
-          }))
-
-          assert.equal(
-            db.rbac_users:select({id = id}).comment, 
-            str
-          )
-        end)
-      end
       
       local function check_cache(expected_status, cache_key, entity)
         local res = assert(client:send {
