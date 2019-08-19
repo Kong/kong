@@ -1,13 +1,16 @@
 local utils = require "kong.tools.utils"
+local constants = require "kong.constants"
 local helpers = require "spec.helpers"
+local cjson = require "cjson"
+local lower = string.lower
 
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: Session (access) [#" .. strategy .. "]", function()
-    local client
+    local client, consumer
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, {
+      local bp, db = helpers.get_db_utils(strategy, {
         "plugins",
         "routes",
         "services",
@@ -22,6 +25,11 @@ for _, strategy in helpers.each_strategy() do
 
       local route2 = bp.routes:insert {
         paths    = {"/test2"},
+        hosts = {"httpbin.org"},
+      }
+
+      local route3 = bp.routes:insert {
+        paths    = {"/headers"},
         hosts = {"httpbin.org"},
       }
 
@@ -45,7 +53,15 @@ for _, strategy in helpers.each_strategy() do
         }
       })
 
-      local consumer = bp.consumers:insert { username = "coop", }
+      assert(bp.plugins:insert {
+        name = "session",
+        route = {
+          id = route3.id,
+        },
+      })
+
+      consumer = db.consumers:insert({username = "coop"})
+
       bp.keyauth_credentials:insert {
         key = "kong",
         consumer = {
@@ -68,6 +84,16 @@ for _, strategy in helpers.each_strategy() do
         name = "key-auth",
         route = {
           id = route2.id,
+        },
+        config = {
+          anonymous = anonymous.id
+        }
+      }
+
+      bp.plugins:insert {
+        name = "key-auth",
+        route = {
+          id = route3.id,
         },
         config = {
           anonymous = anonymous.id
@@ -161,6 +187,35 @@ for _, strategy in helpers.each_strategy() do
         request.headers.cookie = cookie
         res = assert(client:send(request))
         assert.response(res).has.status(200)
+      end)
+
+      it("consumer headers are set correctly on request", function()
+        local res, cookie
+        local request = {
+          method = "GET",
+          path = "/headers",
+          headers = { host = "httpbin.org", },
+        }
+
+        -- make a request with a valid key, grab the cookie for later
+        request.headers.apikey = "kong"
+        res = assert(client:send(request))
+        assert.response(res).has.status(200)
+
+        cookie = assert.response(res).has.header("Set-Cookie")
+
+        request.headers.apikey = nil
+        request.headers.cookie = cookie
+
+        res = assert(client:send(request))
+        assert.response(res).has.status(200)
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.equal(consumer.id, json.headers[lower(constants.HEADERS.CONSUMER_ID)])
+        assert.equal(consumer.username, json.headers[lower(constants.HEADERS.CONSUMER_USERNAME)])
+        assert.equal(nil, json.headers[constants.HEADERS.CONSUMER_CUSTOM_ID])
       end)
     end)
   end)
