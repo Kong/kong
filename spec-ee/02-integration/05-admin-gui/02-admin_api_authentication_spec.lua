@@ -397,7 +397,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe('#Cache Invalidation:', function()
-        local cache_key, cookie, hash_token
+        local cache_key, cookie, cache_token 
         
         local function check_cache(expected_status, cache_key, entity)
           local res = assert(client:send {
@@ -423,6 +423,8 @@ for _, strategy in helpers.each_strategy() do
   
         lazy_setup(function()
           cookie = get_admin_cookie_basic_auth(client, super_admin.username, 'hunter1')
+          
+          -- by default, rbac_user uses primary_key with no-workspace to generates cache_key
           cache_key = db.rbac_users:cache_key(super_admin.rbac_user.id, '', '', '', '', true)
         end)
 
@@ -437,7 +439,7 @@ for _, strategy in helpers.each_strategy() do
           })
   
           assert.res_status(200, res)
-          hash_token = check_cache(200, cache_key).user_token
+          cache_token = check_cache(200, cache_key).user_token
         end)
   
         it("rbac_user cache should be updated when admin updates rbac token", function()
@@ -445,7 +447,9 @@ for _, strategy in helpers.each_strategy() do
           -- expects difference of user_token in cookie
           -- if cache has been invalidated 
           -- see 'rbac.get_user()'
+          local new_cache_token
           local token = utils.uuid()
+          
           local res = assert(client:send {
             method = "PATCH",
             path = "/admins/self/token",
@@ -458,11 +462,10 @@ for _, strategy in helpers.each_strategy() do
               token = token
             }
           })
-          
-          local json = assert.res_status(200, res)
-          local new_hash_token = check_cache(200, cache_key).user_token
-          
-          assert.not_equal(hash_token, new_hash_token)
+
+          assert.res_status(200, res)
+          new_cache_token = check_cache(200, cache_key).user_token
+          assert.not_equal(cache_token, new_cache_token)
         end)
       end)
     end)
