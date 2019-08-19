@@ -123,7 +123,7 @@ for _, strategy in helpers.each_strategy() do
         if type(entity) ~= "table" then return end
 
         for key, field in pairs(entity) do
-          if body[key] ~= field then return false end
+          assert.equal(body[key], field)
         end
       end
 
@@ -166,12 +166,23 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("rbac_user cache should be update after update", function()
-        local comment = "user has been modified"
+        local token = utils.uuid()
+        local res = assert(client:send {
+          method = "PATCH",
+          path = "/admins/self/token",
+          headers = {
+            ["cookie"] = cookie,
+            ["Kong-Admin-User"] = super_admin.username,
+            ["Content-Type"] = "application/json"
+          },
+          body = {
+            user_token = token
+          }
+        })
 
-        update_rbac_user_comment(db, super_admin.rbac_user.id, comment)
-        helpers.wait_until(function()
-          return check_cache(200, cache_key, {comment = comment})
-        end, 10)
+        local json = assert.res_status(400, res)
+        local body = cjson.decode(json)
+        assert.equal("You must supply a new token", body.message)
       end)
     end)
   end)
