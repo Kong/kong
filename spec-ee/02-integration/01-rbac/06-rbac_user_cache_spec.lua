@@ -123,7 +123,7 @@ for _, strategy in helpers.each_strategy() do
         if type(entity) ~= "table" then return end
 
         for key, field in pairs(entity) do
-          assert.equal(body[key], field)
+          if body[key] ~= field then return false end
         end
       end
 
@@ -169,8 +169,9 @@ for _, strategy in helpers.each_strategy() do
         local comment = "user has been modified"
 
         update_rbac_user_comment(db, super_admin.rbac_user.id, comment)
-        helpers.wait_until(check_cache(200, cache_key, {comment = comment}), 10)
-        
+        helpers.wait_until(function()
+          return check_cache(200, cache_key, {comment = comment})
+        end, 10)
       end)
     end)
   end)
