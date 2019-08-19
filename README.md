@@ -71,12 +71,12 @@ transformations, and more through plugins.
   flexibility.
 - **Geo-Replicated**: Configs are always up-to-date across different regions.
 - **Failure Detection & Recovery**: Kong is unaffected if one of your Cassandra
-  nodes goes down.
+  nodes go down.
 - **Clustering**: All Kong nodes auto-join the cluster keeping their config
   updated across nodes.
 - **Scalability**: Distributed by nature, Kong scales horizontally by simply
   adding nodes.
-- **Performance**: Kong handles load with ease by scaling and using NGINX at
+- **Performance**: Kong handles the load with ease by scaling and using NGINX at
   the core.
 - **Plugins**: Extendable architecture for adding functionality to Kong and
   APIs.
@@ -102,22 +102,22 @@ code, other repos are also under active development:
 - [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B06WP4TNKL): Kong AMI on
   the AWS Marketplace.
 - [Kong on Microsoft Azure](https://github.com/Kong/kong-dist-azure): Run Kong
-  using Azure Resource Manager.
+  using the Azure Resource Manager.
 - [Kong on Heroku](https://github.com/heroku/heroku-kong): Deploy Kong on
   Heroku in one click.
 - [Kong and Instaclustr](https://www.instaclustr.com/solutions/managed-cassandra-for-kong/): Let
-  Instaclustr manage your Cassandra cluster.
+  Instaclustr manages your Cassandra cluster.
 - [Kubernetes Ingress Controller for Kong](https://github.com/Kong/kubernetes-ingress-controller):
   Use Kong for Kubernetes Ingress.
 - [Nightly Builds][kong-nightly-master]: Builds of the master branch available
-  every morning at about 9AM PST.
+  every morning at about 9 AM PST.
 
 ## Development
 
-If you are planning on developing on Kong, you'll need a development
+If you are planning on developing in Kong, you'll need a development
 installation. The `next` branch holds the latest unreleased source code.
 
-You can read more about writing your own plugins in the [Plugin Development
+You can read more about writing your plugins in the [Plugin Development
 Guide](https://docs.konghq.com/latest/plugin-development/), or browse an
 online version of Kong's source code documentation in the [Plugin Development
 Kit (PDK) Reference](https://docs.konghq.com/latest/pdk/).
