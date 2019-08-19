@@ -352,6 +352,7 @@ local function check_update(self, key, entity, options, name)
   if self.schema.cache_key and #self.schema.cache_key > 1 then
     entity_to_update.cache_key = self:cache_key(entity_to_update)
   end
+
   return entity_to_update, rbw_entity
 end
 
