@@ -395,6 +395,76 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("test-ws-example.com", json.data[1].host)
         end)
       end)
+
+      describe('#Cache Invalidation:', function()
+        local cache_key, cookie, hash_token
+        
+        local function check_cache(expected_status, cache_key, entity)
+          local res = assert(client:send {
+            method = "GET",
+            path = "/cache/" .. cache_key,
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = super_admin.username,
+            },
+          })
+        
+          local json = assert.res_status(expected_status, res)
+          local body = cjson.decode(json)
+  
+          if type(entity) ~= "table" then return body end
+  
+          for key, field in pairs(entity) do
+            assert.equal(body[key], field)
+          end
+  
+          return body
+        end
+  
+        lazy_setup(function()
+          cookie = get_admin_cookie_basic_auth(client, super_admin.username, 'hunter1')
+          cache_key = db.rbac_users:cache_key(super_admin.rbac_user.id, '', '', '', '', true)
+        end)
+
+        it("rbac_user should be cached after a API call", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = super_admin.username,
+            },
+          })
+  
+          assert.res_status(200, res)
+          hash_token = check_cache(200, cache_key).user_token
+        end)
+  
+        it("rbac_user cache should be updated when admin updates rbac token", function()
+          -- updates rbac_user token via admin endpoint
+          -- expects difference of user_token in cookie
+          -- if cache has been invalidated 
+          -- see 'rbac.get_user()'
+          local token = utils.uuid()
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/admins/self/token",
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = super_admin.username,
+              ["Content-Type"] = "application/json"
+            },
+            body = {
+              token = token
+            }
+          })
+          
+          local json = assert.res_status(200, res)
+          local new_hash_token = check_cache(200, cache_key).user_token
+          
+          assert.not_equal(hash_token, new_hash_token)
+        end)
+      end)
     end)
 
     describe("key-auth authentication", function()
