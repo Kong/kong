@@ -443,8 +443,6 @@ for _, strategy in helpers.each_strategy() do
 
   describe("Ring-balancer resolution #" .. strategy, function()
 
-    local dns_mock_filename = helpers.test_conf.prefix .. "/dns_mock_records.lua"
-
     lazy_setup(function()
       bp = get_db_utils_for_dc_and_admin_api(strategy, {
         "routes",
@@ -477,7 +475,6 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     lazy_teardown(function()
-      os.remove(dns_mock_filename)
       helpers.stop_kong()
     end)
 
