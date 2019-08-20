@@ -1,6 +1,7 @@
 local singletons   = require "kong.singletons"
 local ee           = require "kong.enterprise_edition"
 local workspaces   = require "kong.workspaces"
+local pl_string    = require "pl.stringx"
 
 
 local function select_all_files()
@@ -61,11 +62,16 @@ local function get_portal_urls()
   local conf = singletons.configuration
   local render_ctx = singletons.render_ctx
   local workspace = workspaces.get_workspace()
+  local workspace_gsub = "^/" .. workspace.name .. "/"
   local portal_gui_url = workspaces.build_ws_portal_gui_url(conf, workspace)
   local portal_api_url = workspaces.build_ws_portal_api_url(conf, workspace)
-  local current_url = portal_gui_url .. render_ctx.route
+  local current_path = string.gsub(render_ctx.route, workspace_gsub, "")
+  local current_url = portal_gui_url .. current_path
+  local current_breadcrumbs = pl_string.split(current_path, "/")
 
   return {
+    current_breadcrumbs = current_breadcrumbs,
+    current_path = current_path,
     current = current_url,
     api = portal_api_url,
     gui = portal_gui_url,
