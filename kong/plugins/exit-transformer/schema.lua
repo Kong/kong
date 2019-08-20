@@ -52,7 +52,7 @@ local status_array = {
 
 local functions_array = {
   type = "array",
-  default = {},
+  required = true,
   elements = { type = "string", custom_validator = validate_function }
 }
 
