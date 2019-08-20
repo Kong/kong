@@ -34,3 +34,25 @@ describe("origins in cors schema", function()
     end)
   end)
 end)
+
+
+describe("methods in cors schema", function()
+  for _, method in ipairs({ "HEAD", "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "TRACE", "CONNECT" }) do
+    it("should allow " .. method, function()
+      local ok, err = v({ methods = { method } }, schema_def)
+
+      assert.truthy(ok)
+      assert.falsy(err)
+    end)
+  end
+
+  describe("errors", function()
+    it("with invalid method", function()
+      local ok, err = v({ methods = { "FAKE" } }, schema_def)
+
+      assert.falsy(ok)
+      assert.equals("expected one of: GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS, TRACE, CONNECT",
+                    err.config.methods[1])
+    end)
+  end)
+end)

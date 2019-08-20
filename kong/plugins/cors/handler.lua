@@ -215,7 +215,8 @@ function CorsHandler:access(conf)
   end
 
   local methods = conf.methods and concat(conf.methods, ",")
-                  or "GET,HEAD,PUT,PATCH,POST,DELETE"
+                  or "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS,TRACE,CONNECT"
+
   set_header("Access-Control-Allow-Methods", methods)
 
   if conf.max_age then
