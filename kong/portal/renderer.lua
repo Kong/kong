@@ -85,22 +85,40 @@ local function set_asset(ctx)
 end
 
 
-local function set_layout(ctx)
-  local path    = ctx.path
-  local theme   = ctx.theme
+local function get_missing_layout(ctx)
+  local theme = ctx.theme
   local content = ctx.content
 
-  if content.layout then
-    path = content.layout
+  content.title = "Page Not Found"
+
+  return singletons.db.files:select_file_by_theme("layouts/404.html",
+                                                  theme.name)
+end
+
+
+local function set_layout(ctx)
+  local theme   = ctx.theme
+  local content = ctx.content
+  local path = content.layout
+
+  -- Missing
+  if not path then
+    return get_missing_layout(ctx)
   end
 
-  local layout = singletons.db.files:select_file_by_theme('layouts/' .. path .. '.html', theme.name)
+  -- Attempt to load layout with extension
+  local layout = singletons.db.files:select_file_by_theme('layouts/' .. path .. '.html',
+                                                          theme.name)
+
+  -- Attempt loading a layout without extension
   if not layout then
-    layout = singletons.db.files:select_file_by_theme('layouts/' .. path, theme.name)
+    layout = singletons.db.files:select_file_by_theme('layouts/' .. path,
+                                                      theme.name)
   end
 
+  -- Could not find layout by path return 404
   if not layout then
-    return singletons.db.files:select_file_by_theme("layouts/404.html", theme.name)
+    layout = get_missing_layout(ctx)
   end
 
   return layout
