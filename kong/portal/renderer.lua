@@ -243,16 +243,22 @@ local function set_theme_config(portal_theme_conf)
   end
 
   contents.name = theme_name
-  -- TODO: portal to theme overrides
 
-  -- if type(portal_theme_conf) == "table" then
-  --   if portal_theme_conf.colors then
+  if type(portal_theme_conf) == "table" then
+    if portal_theme_conf.colors then
+      contents.colors = contents.colors or {}
+      for k, v in pairs(portal_theme_conf.colors) do
+        contents.colors[k] = v
+      end
+    end
 
-  --   end
-  --   for k, v in pairs(theme_conf) do
-  --     contents[k] = v
-  --   end
-  -- end
+    if portal_theme_conf.fonts then
+      contents.fonts = contents.fonts or {}
+      for k, v in pairs(portal_theme_conf.fonts) do
+        contents.fonts[k] = v
+      end
+    end
+  end
 
   return contents
 end
