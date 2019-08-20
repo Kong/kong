@@ -229,6 +229,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("creates new cert when uuid does not exist", function()
+        db:truncate("ca_certificates")
+
         local res = client:put("/ca_certificates/123e4567-e89b-12d3-a456-426655440000", {
           body    = {
             cert = ssl_fixtures.cert_ca,

@@ -2,6 +2,7 @@ local Errors  = require "kong.db.errors"
 local utils   = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
+local ssl_fixtures = require "spec.fixtures.ssl"
 
 
 local fmt      = string.format
@@ -23,6 +24,7 @@ for _, strategy in helpers.each_strategy() do
         "upstreams",
         "targets",
         "certificates",
+        "ca_certificates",
         "snis",
       })
     end)
@@ -2157,6 +2159,32 @@ for _, strategy in helpers.each_strategy() do
           assert.equal('["example.org"]', json)
           assert.equal(cjson.array_mt, getmetatable(snis))
         end)
+      end)
+    end)
+
+    describe("CA Certificates", function()
+      it("cannot create a CA Certificate with an existing cert content", function()
+        -- insert 1
+        local _, _, err_t = db.ca_certificates:insert {
+          cert = ssl_fixtures.cert_ca,
+        }
+        assert.is_nil(err_t)
+
+        -- insert 2
+        local ca, _, err_t = db.ca_certificates:insert {
+          cert = ssl_fixtures.cert_ca,
+        }
+
+        assert.is_nil(ca)
+        assert.same({
+          code     = Errors.codes.UNIQUE_VIOLATION,
+          name     = "unique constraint violation",
+          message  = "UNIQUE violation detected on '{cert=[[" .. ssl_fixtures.cert_ca .. "]]}'",
+          strategy = strategy,
+          fields   = {
+            cert = ssl_fixtures.cert_ca,
+          }
+        }, err_t)
       end)
     end)
   end) -- kong.db [strategy]

@@ -14,7 +14,7 @@ return {
       CREATE TABLE IF NOT EXISTS "ca_certificates" (
         "id"          UUID                       PRIMARY KEY,
         "created_at"  TIMESTAMP WITH TIME ZONE   DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
-        "cert"        TEXT NOT NULL,
+        "cert"        TEXT NOT NULL              UNIQUE,
         "tags"        TEXT[]
       );
 
@@ -103,6 +103,8 @@ return {
         tags set<text>,
         PRIMARY KEY (partition, id)
       );
+
+      CREATE INDEX IF NOT EXISTS ca_certificates_cert_idx ON ca_certificates(cert);
 
 
 
