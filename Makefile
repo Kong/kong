@@ -17,23 +17,38 @@ endif
 .PHONY: install remove dependencies grpcurl dev \
 	lint test test-integration test-plugins test-all fix-windows
 
-KONG_GMP_VERSION ?= `grep KONG_GMP_VERSION .requirements | awk -F"=" '{print $$2}'`
-RESTY_VERSION ?= `grep RESTY_VERSION .requirements | awk -F"=" '{print $$2}'`
-RESTY_LUAROCKS_VERSION ?= `grep RESTY_LUAROCKS_VERSION .requirements | awk -F"=" '{print $$2}'`
-RESTY_OPENSSL_VERSION ?= `grep RESTY_OPENSSL_VERSION .requirements | awk -F"=" '{print $$2}'`
-RESTY_PCRE_VERSION ?= `grep RESTY_PCRE_VERSION .requirements | awk -F"=" '{print $$2}'`
-KONG_BUILD_TOOLS ?= '2.0.0'
+ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+KONG_GMP_VERSION ?= `grep KONG_GMP_VERSION $(ROOT_DIR)/.requirements | awk -F"=" '{print $$2}'`
+RESTY_VERSION ?= `grep RESTY_VERSION $(ROOT_DIR)/.requirements | awk -F"=" '{print $$2}'`
+RESTY_LUAROCKS_VERSION ?= `grep RESTY_LUAROCKS_VERSION $(ROOT_DIR)/.requirements | awk -F"=" '{print $$2}'`
+RESTY_OPENSSL_VERSION ?= `grep RESTY_OPENSSL_VERSION $(ROOT_DIR)/.requirements | awk -F"=" '{print $$2}'`
+RESTY_PCRE_VERSION ?= `grep RESTY_PCRE_VERSION $(ROOT_DIR)/.requirements | awk -F"=" '{print $$2}'`
+KONG_BUILD_TOOLS ?= `grep KONG_BUILD_TOOLS $(ROOT_DIR)/.requirements | awk -F"=" '{print $$2}'`
+KONG_NGINX_MODULE_BRANCH ?= `grep KONG_NGINX_MODULE_BRANCH $(ROOT_DIR)/.requirements | awk -F"=" '{print $$2}'`
+OPENRESTY_PATCHES_BRANCH ?= `grep KONG_NGINX_MODULE_BRANCH $(ROOT_DIR)/.requirements | awk -F"=" '{print $$2}'`
 KONG_VERSION ?= `cat kong-*.rockspec | grep tag | awk '{print $$3}' | sed 's/"//g'`
+KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
+
+setup-ci:
+	DOWNLOAD_ROOT=$(DOWNLOAD_ROOT) \
+	OPENRESTY_BUILD_TOOLS_VERSION=$(OPENRESTY_BUILD_TOOLS_VERSION) \
+	BUILD_TOOLS_DOWNLOAD=$(BUILD_TOOLS_DOWNLOAD) \
+	INSTALL_CACHE=$(INSTALL_CACHE) \
+	INSTALL_ROOT=$(INSTALL_ROOT) \
+	RESTY_VERSION=$(RESTY_VERSION) \
+	OPENRESTY_PATCHES_BRANCH=$(OPENRESTY_PATCHES_BRANCH) \
+	KONG_NGINX_MODULE_BRANCH=$(KONG_NGINX_MODULE_BRANCH) \
+	RESTY_LUAROCKS_VERSION=$(RESTY_LUAROCKS_VERSION) \
+	RESTY_OPENSSL_VERSION=$(RESTY_OPENSSL_VERSION) \
+	JOBS=$(JOBS) \
+	.ci/setup_env.sh
 
 setup-kong-build-tools:
-	-rm -rf kong-build-tools; \
-	git clone https://github.com/Kong/kong-build-tools.git; fi
-	cd kong-build-tools; \
-	git reset --hard $(KONG_BUILD_TOOLS); \
+	-rm -rf kong-build-tools
+	git clone --single-branch --branch $(KONG_BUILD_TOOLS) https://github.com/Kong/kong-build-tools.git
 
 functional-tests: setup-kong-build-tools
 	cd kong-build-tools; \
-	export KONG_SOURCE_LOCATION=`pwd`/../ && \
 	$(MAKE) setup-build && \
 	$(MAKE) build-kong && \
 	$(MAKE) test
@@ -41,15 +56,14 @@ functional-tests: setup-kong-build-tools
 nightly-release: setup-kong-build-tools
 	sed -i -e '/return string\.format/,/\"\")/c\return "$(KONG_VERSION)\"' kong/meta.lua && \
 	cd kong-build-tools; \
-	export KONG_SOURCE_LOCATION=`pwd`/../ && \
 	$(MAKE) setup-build && \
 	$(MAKE) build-kong && \
 	$(MAKE) release-kong
 
-release: setup-release
+release: setup-kong-build-tools
 	cd kong-build-tools; \
-	export KONG_SOURCE_LOCATION=`pwd`/../ && \
-	$(MAKE) package-kong && \
+	$(MAKE) setup-build && \
+	$(MAKE) build-kong && \
 	$(MAKE) release-kong
 
 install:

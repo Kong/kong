@@ -5,10 +5,10 @@
 # Download
 #---------
 
-DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml | md5sum | awk '{ print $1 }')
+DEPS_HASH=$(cat .requirements .ci/setup_env.sh | md5sum | awk '{ print $1 }')
 BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/openresty-build-tools
 
-git clone https://github.com/Kong/openresty-build-tools.git $DOWNLOAD_ROOT/openresty-build-tools
+git clone --single-branch --branch ${OPENRESTY_BUILD_TOOLS_VERSION:-master} https://github.com/Kong/openresty-build-tools.git $DOWNLOAD_ROOT/openresty-build-tools
 export PATH=$BUILD_TOOLS_DOWNLOAD:$PATH
 
 #--------
@@ -19,11 +19,11 @@ INSTALL_ROOT=$INSTALL_CACHE/$DEPS_HASH
 kong-ngx-build \
     --work $DOWNLOAD_ROOT \
     --prefix $INSTALL_ROOT \
-    --openresty $OPENRESTY \
+    --openresty $RESTY_VERSION \
     --openresty-patches $OPENRESTY_PATCHES_BRANCH \
     --kong-nginx-module $KONG_NGINX_MODULE_BRANCH \
-    --luarocks $LUAROCKS \
-    --openssl $OPENSSL \
+    --luarocks $RESTY_LUAROCKS_VERSION \
+    --openssl $RESTY_OPENSSL_VERSION \
     -j $JOBS
 
 OPENSSL_INSTALL=$INSTALL_ROOT/openssl
@@ -67,6 +67,11 @@ fi
 if [[ "$TEST_SUITE" =~ integration|dbless|plugins ]]; then
   docker run -d --name grpcbin -p 15002:9000 -p 15003:9001 moul/grpcbin
 fi
+
+ln -s $LUAROCKS_INSTALL/bin/luarocks ~/bin/luarocks
+ln -s $OPENRESTY_INSTALL/bin/resty ~/bin/resty
+ln -s $OPENSSL_INSTALL/bin/openssl ~/bin/openssl
+ln -s $OPENRESTY_INSTALL/nginx/sbin/nginx ~/bin/nginx
 
 nginx -V
 resty -V
