@@ -181,7 +181,10 @@ end
 
 
 function CorsHandler:access(conf)
-  if kong.request.get_method() ~= "OPTIONS" then
+  if kong.request.get_method() ~= "OPTIONS"
+     or not kong.request.get_header("Origin")
+     or not kong.request.get_header("Access-Control-Request-Method")
+  then
     return
   end
 

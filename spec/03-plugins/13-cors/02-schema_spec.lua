@@ -1,7 +1,7 @@
 local schema_def = require "kong.plugins.cors.schema"
 local v = require("spec.helpers").validate_plugin_config_schema
 
-describe("cors schema", function()
+describe("origins in cors schema", function()
   it("validates '*'", function()
     local ok, err = v({ origins = { "*" } }, schema_def)
 
