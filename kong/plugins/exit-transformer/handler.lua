@@ -6,12 +6,8 @@ local BasePlugin = require "kong.plugins.base_plugin"
 local PLUGIN_NAME    = require("kong.plugins.exit-transformer").PLUGIN_NAME
 local PLUGIN_VERSION = require("kong.plugins.exit-transformer").PLUGIN_VERSION
 
-local function request_id()
-  local ctx = ngx.ctx
-  if ctx.admin_api then
-    return ctx.admin_api.req_id
-  end
 
+local function request_id()
   local ok, res = pcall(function() return ngx.var.set_request_id end)
   if ok then
     return res
@@ -20,10 +16,9 @@ local function request_id()
   return utils.uuid()
 end
 
+
 local function get_conf()
-  -- If we use this function, instead of checking for something set on the
-  -- access phase, we can completely bypass kong exit responses, on both
-  -- ADMIN and PROXY sides. XXX: Do we want it?
+  -- Gets plugin configuration for the ctx, no matter the priority
   local ctx = ngx.ctx
   local plugins_iterator = runloop_handler.get_plugins_iterator()
   for plugin, plugin_conf in plugins_iterator:iterate(ctx, "access") do
@@ -34,8 +29,8 @@ local function get_conf()
   return nil
 end
 
--- XXX: Use proper cache, yadda yadda
--- Also, worker events yadda yadda :)
+
+-- XXX: Ideally use kong.cache, but functions cannot be serialized
 local transform_function_cache = setmetatable({}, { __mode = "k" })
 local function get_transform_functions(config)
   local functions = transform_function_cache[config]
@@ -77,29 +72,17 @@ end
 
 function _M:access(conf)
   _M.super.access(self)
-  kong.ctx._exit_transformer_conf = conf
-end
-
-
-function _M:enabled()
-  return kong.ctx._exit_transformer_conf ~= nil
 end
 
 
 function _M:exit(status, body, headers)
-
-  --
-  -- To completely hook into the exit function, including for ADMIN responses,
-  -- instead of enabled (access phase) check, just look for get_conf()
-  -- conf = get_conf()
-  --
-
-  if not self:enabled() then
+  -- Do not transform non proxy requests (ie: admin)
+  if not ngx.ctx.is_proxy_request then
     return status, body, headers
   end
 
-  conf = kong.ctx._exit_transformer_conf
-
+  -- Try to get plugin configuration for current context
+  conf = get_conf()
   if not conf then
     return status, body, headers
   end
@@ -107,11 +90,10 @@ function _M:exit(status, body, headers)
   -- Some customers want a request id on kong exit responses
   kong.ctx._exit_request_id = request_id()
 
+  -- Reduce on status, body, headers through transform functions
   for _, fn in get_transform_functions(conf) do
-    status, body, _headers = fn(status, body, headers)
+    status, body, headers = fn(status, body, headers)
   end
-
-  kong.ctx._exit_transformer_conf = nil
 
   return status, body, headers
 end
