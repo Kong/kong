@@ -399,7 +399,7 @@ for _, strategy in helpers.each_strategy() do
       describe('#Cache Invalidation:', function()
         local cache_key, cookie
         
-        local function check_cache(expected_status, cache_key, entity)
+        local function check_cache(expected_status, cache_key)
           local res = assert(client:send {
             method = "GET",
             path = "/cache/" .. cache_key,
