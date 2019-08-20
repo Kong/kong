@@ -73,6 +73,9 @@ ln -s $OPENRESTY_INSTALL/bin/resty ~/bin/resty
 ln -s $OPENSSL_INSTALL/bin/openssl ~/bin/openssl
 ln -s $OPENRESTY_INSTALL/nginx/sbin/nginx ~/bin/nginx
 
+luarocks install luacheck
+ln -s $LUAROCKS_INSTALL/bin/luacheck ~/bin/luacheck
+
 nginx -V
 resty -V
 luarocks --version
