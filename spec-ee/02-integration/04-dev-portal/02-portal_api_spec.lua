@@ -88,12 +88,6 @@ end
 
 
 local function configure_portal(db, config)
-  config = config or {
-    portal = true,
-    portal_auth = "basic-auth",
-    portal_is_legacy = true,
-  }
-
   db.workspaces:upsert_by_name("default", {
     name = "default",
     config = config,
@@ -130,7 +124,11 @@ for _, strategy in helpers.each_strategy() do
 
         lazy_setup(function()
           _, db, _ = helpers.get_db_utils(strategy)
-          configure_portal(db)
+          configure_portal(db, {
+            portal = true,
+            portal_auth = "basic-auth",
+            portal_is_legacy = true,
+          })
         end)
 
          after_each(function()
@@ -420,7 +418,11 @@ for _, strategy in helpers.each_strategy() do
               admin_gui_url = "http://localhost:8080",
             }))
 
-            configure_portal(db)
+            configure_portal(db, {
+              portal = true,
+              portal_auth = "basic-auth",
+              portal_is_legacy = true,
+            })
           end)
 
           lazy_teardown(function()
@@ -567,7 +569,7 @@ for _, strategy in helpers.each_strategy() do
                   email = "noobz@konghq.com",
                   password = "iheartkong",
                 })
-  
+
                 assert.res_status(200, res)
               end)
             end)
@@ -588,7 +590,10 @@ for _, strategy in helpers.each_strategy() do
               admin_gui_url = "http://localhost:8080",
             }))
 
-            configure_portal(db)
+            configure_portal(db, {
+              portal = true,
+              portal_auth = "key-auth",
+            })
           end)
 
           lazy_teardown(function()
@@ -645,8 +650,6 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("required field missing", message)
             end)
 
-            -- XXX DEVX
-            -- Enable these when meta validation is in place
             it("returns a 400 if meta is missing", function()
               local res = register_developer(portal_api_client, {
                 email = "gruce@konghq.com",
@@ -690,13 +693,28 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("unknown field", something_else)
             end)
 
+            it("returns a 400 if status is included in the request", function()
+              local res = register_developer(portal_api_client, {
+                email = "noob@konghq.com",
+                key = "iheartkong",
+                meta = "{\"full_name\":\"I Like Turtles\"}",
+                status = enums.CONSUMERS.STATUS.APPROVED,
+              })
+
+              local body = assert.res_status(400, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.fields.status
+
+              assert.equal("invalid field", message)
+            end)
+
             it("registers a developer and set status to pending", function()
               local res = register_developer(portal_api_client, {
                 email = "noob@konghq.com",
-                password = "iheartkong",
+                key = "iheartkong",
                 meta = "{\"full_name\":\"I Like Turtles\"}",
-              }
-            )
+              })
+
               local body = assert.res_status(200, res)
               local resp_body_json = cjson.decode(body)
               local developer = resp_body_json.developer
@@ -734,8 +752,6 @@ for _, strategy in helpers.each_strategy() do
         lazy_setup(function()
           helpers.stop_kong()
           assert(db:truncate())
-          configure_portal(db)
-          insert_files(db)
 
           assert(helpers.start_kong({
             database   = strategy,
@@ -746,6 +762,14 @@ for _, strategy in helpers.each_strategy() do
             portal_auto_approve = "off",
             admin_gui_url = "http://localhost:8080",
           }))
+
+          configure_portal(db, {
+            portal = true,
+            portal_auth = "basic-auth",
+            portal_auto_approve = false,
+          })
+
+          insert_files(db)
 
           portal_api_client = assert(ee_helpers.portal_api_client())
 
@@ -2401,8 +2425,6 @@ for _, strategy in helpers.each_strategy() do
         lazy_setup(function()
           helpers.stop_kong()
           assert(db:truncate())
-          configure_portal(db)
-          insert_files(db)
 
           assert(helpers.start_kong({
             database   = strategy,
@@ -2414,6 +2436,13 @@ for _, strategy in helpers.each_strategy() do
             admin_gui_url = "http://localhost:8080",
           }))
 
+          configure_portal(db, {
+            portal = true,
+            portal_auth = "key-auth",
+            portal_auto_approve = false,
+          })
+
+          insert_files(db)
 
           portal_api_client = assert(ee_helpers.portal_api_client())
 
@@ -2430,6 +2459,7 @@ for _, strategy in helpers.each_strategy() do
             portal_auth = "key-auth",
             portal_auto_approve = true,
           })
+
 
           local res = register_developer(portal_api_client, "key-auth")
           local body = assert.res_status(200, res)
@@ -2453,17 +2483,31 @@ for _, strategy in helpers.each_strategy() do
 
         describe("/auth [key-auth]", function()
           describe("GET", function()
-            it("returns 403 when consumer is not approved", function()
+            it("returns 401 when consumer is not approved", function()
               local res = authenticate(portal_api_client, {
                 ["apikey"] = "kong",
               })
 
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
-              assert.same('Invalid authentication credentials', json.message)
+              assert.same('Unauthorized: Developer status: PENDING', json.message)
+
+              local cookie = assert.response(res).has.header("Set-Cookie")
+
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/developer",
+                headers = {
+                  ["Cookie"] = cookie
+                },
+              })
+
+              local body = assert.res_status(401, res)
+              local json = cjson.decode(body)
+              assert.equals('Unauthorized: Developer status: PENDING', json.message)
             end)
 
-            it("returns 403 with invalid apikey ", function()
+            it("returns 401 with invalid apikey ", function()
               local res = authenticate(portal_api_client, {
                 ["apikey"] = "nope",
               })
@@ -3999,7 +4043,11 @@ for _, strategy in helpers.each_strategy() do
             admin_gui_url = "http://localhost:8080",
           }))
 
-          configure_portal(db)
+          configure_portal(db, {
+            portal = true,
+            portal_auth = "basic-auth",
+            portal_auto_approve = true,
+          })
           portal_api_client = assert(ee_helpers.portal_api_client())
 
           local res = register_developer(portal_api_client, "basic-auth")
@@ -4110,7 +4158,12 @@ for _, strategy in helpers.each_strategy() do
             admin_gui_url = "http://localhost:8080",
           }))
 
-          configure_portal(db)
+          configure_portal(db, {
+            portal = true,
+            portal_auth = "basic-auth",
+            portal_auto_approve = true,
+          })
+
           portal_api_client = assert(ee_helpers.portal_api_client())
 
           local res = register_developer(portal_api_client, "basic-auth")
