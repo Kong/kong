@@ -410,15 +410,8 @@ for _, strategy in helpers.each_strategy() do
           })
         
           local json = assert.res_status(expected_status, res)
-          local body = cjson.decode(json)
-  
-          if type(entity) ~= "table" then return body end
-  
-          for key, field in pairs(entity) do
-            assert.equal(body[key], field)
-          end
-  
-          return body
+
+          return cjson.decode(json)
         end
   
         lazy_setup(function()
