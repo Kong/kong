@@ -19,12 +19,23 @@ local noop = function() end
 local _M = {}
 
 
-local function cast_value(value)
-  local num_v = tonumber(value)
-  if num_v == nil then
+local function toboolean(value)
+  if value == "true" then
+    return true
+  else
+    return false
+  end
+end
+
+
+local function cast_value(value, value_type)
+  if value_type == "number" then
+    return tonumber(value)
+  elseif value_type == "boolean" then
+    return toboolean(value)
+  else
     return value
   end
-  return num_v
 end
 
 
@@ -39,17 +50,16 @@ local function append_value(current_value, value)
   local current_value_type = type(current_value)
 
   if current_value_type  == "string" then
-    return {current_value, cast_value(value) }
+    return {current_value, value }
   end
 
   if current_value_type  == "table" then
-    insert(current_value, cast_value(value))
+    insert(current_value, value)
     return current_value
   end
 
-  return { cast_value(value) }
+  return { value }
 end
-
 
 local function iter(config_array)
   if type(config_array) ~= "table" then
@@ -91,40 +101,58 @@ function _M.transform_json_body(conf, buffered_data)
   end
 
   -- replace key:value to body
-  for _, name, value in iter(conf.replace.json) do
+  for i, name, value in iter(conf.replace.json) do
     local v = cjson.encode(value)
     if v and sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
       v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
     end
 
     v = v and gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
+
+    if conf.replace.json_types then
+      local v_type = conf.replace.json_types[i]
+      v = cast_value(v, v_type)
+    end
+
     if json_body[name] and v then
-      json_body[name] = cast_value(v)
+      json_body[name] = v
     end
   end
 
   -- add new key:value to body
-  for _, name, value in iter(conf.add.json) do
+  for i, name, value in iter(conf.add.json) do
     local v = cjson.encode(value)
     if v and sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
       v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
     end
 
     v = v and gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
+
+    if conf.add.json_types then
+      local v_type = conf.add.json_types[i]
+      v = cast_value(v, v_type)
+    end
+
     if not json_body[name] and v then
-      json_body[name] = cast_value(v)
+      json_body[name] = v
     end
 
   end
 
   -- append new key:value or value to existing key
-  for _, name, value in iter(conf.append.json) do
+  for i, name, value in iter(conf.append.json) do
     local v = cjson.encode(value)
     if v and sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
       v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
     end
 
     v = v and gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
+
+    if conf.append.json_types then
+      local v_type = conf.append.json_types[i]
+      v = cast_value(v, v_type)
+    end
+
     if v then
       json_body[name] = append_value(json_body[name],v)
     end

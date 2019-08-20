@@ -7,13 +7,14 @@ describe("Plugin: response-transformer", function()
     describe("add", function()
       local conf = {
         remove   = {
-          json   = {}
+          json   = {},
         },
         replace  = {
           json   = {}
         },
         add      = {
-          json   = {"p1:v1", "p3:value:3", "p4:\"v1\"", "p5:-1"}
+          json   = {"p1:v1", "p3:value:3", "p4:\"v1\"", "p5:-1"},
+          json_types = {"string", "string", "string", "number"}
         },
         append   = {
           json   = {}
@@ -41,7 +42,7 @@ describe("Plugin: response-transformer", function()
         local json = [[{"p2":"v1", "a":[]}]]
         local body = body_transformer.transform_json_body(conf, json)
         local body_json = cjson.decode(body)
-        assert.same({p1 = "v1", p2 = "v1", p3 = "value:3", p4 = '"v1"', a = {}}, body_json)
+        assert.same({p1 = "v1", p2 = "v1", p3 = "value:3", p4 = '"v1"', p5 = -1, a = {}}, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
       end)
     end)
@@ -58,7 +59,8 @@ describe("Plugin: response-transformer", function()
           json   = {}
         },
         append   = {
-          json   = {"p1:v1", "p3:\"v1\"", "p4:-1"}
+          json   = {"p1:v1", "p3:\"v1\"", "p4:-1"},
+          json_types = {"string", "string", "number"}
         },
       }
       it("new key:value if key does not exists", function()
@@ -89,7 +91,7 @@ describe("Plugin: response-transformer", function()
         local json = [[{"p2":"v1", "a":[]}]]
         local body = body_transformer.transform_json_body(conf, json)
         local body_json = cjson.decode(body)
-        assert.same({ p2 = "v1", p1 = {"v1"}, p3 = {'"v1"'}, a = {} }, body_json)
+        assert.same({ p2 = "v1", p1 = {"v1"}, p3 = {'"v1"'}, p4 = {-1}, a = {} }, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
       end)
     end)
@@ -129,7 +131,8 @@ describe("Plugin: response-transformer", function()
           json   = {}
         },
         replace  = {
-          json   = {"p1:v2", "p2:\"v2\"", "p3:-1"}
+          json   = {"p1:v2", "p2:\"v2\"", "p3:-1"},
+          json_types = {"string", "string", "number"}
         },
         add      = {
           json   = {}
