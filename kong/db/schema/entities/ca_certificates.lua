@@ -8,7 +8,7 @@ return {
   fields = {
     { id = typedefs.uuid, },
     { created_at = typedefs.auto_timestamp_s },
-    { cert = typedefs.certificate { required = true }, },
+    { cert = typedefs.certificate { required = true, unique = true, }, },
     { tags = typedefs.tags },
   },
 
