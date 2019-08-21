@@ -162,6 +162,6 @@ Verify the three new containers are up and running with `docker ps` on a separat
     make dev
 ```
 
-Now run unit tests with `make test` and interation test with `make test-interation`.
+Now run unit tests with `make test` and integration test with `make test-integration`.
 
 Hack on!
