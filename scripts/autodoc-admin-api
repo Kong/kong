@@ -604,14 +604,43 @@ do
   end
 end
 
-local function gen_fk_endpoint(edata, templates, subs, parent_endpoint, method, has_ek)
+local function gen_fk_endpoint(edata, templates, subs, parent_endpoint, method, has_ek, has_fek, nested)
   local ep_data = assert_data(edata[parent_endpoint],
                               "entity data for endpoint " .. parent_endpoint)
-  local meth_data = assert(ep_data[method]) -- get_or_create(ep_data, method)
+
+  local meth_data
+  if nested then
+    meth_data = ep_data[method]
+    if not meth_data then
+      return
+    end
+  else
+    meth_data = assert(ep_data[method]) -- get_or_create(ep_data, method)
+  end
+
   assert_data(templates, "templates definition for " .. parent_endpoint)
   local meth_tpls = templates[method]
   assert_data(meth_tpls, "templates definition for " .. method .. " " .. parent_endpoint)
-  local tk = has_ek and "fk_endpoint_w_ek" or "fk_endpoint"
+  local tk
+  if nested then
+    if has_ek and has_fek then
+      tk = "nested_endpoint_w_eks"
+    elseif has_ek then
+      tk = "nested_endpoint_w_ek"
+    elseif has_fek then
+      tk = "nested_endpoint_w_fek"
+    else
+      tk = "nested_endpoint"
+    end
+
+  else
+    if has_ek then
+      tk = "fk_endpoint_w_ek"
+    else
+      tk = "fk_endpoint"
+    end
+  end
+
   local tpl = meth_tpls[tk] or templates[tk]
   assert_data(tpl, tk .. " template for " .. method .. " " .. parent_endpoint)
   adjust_for_method(subs, method)
@@ -620,6 +649,7 @@ local function gen_fk_endpoint(edata, templates, subs, parent_endpoint, method, 
   local fk_endpoints = get_or_create(meth_data, "fk_endpoints")
   table.insert(fk_endpoints, render(tpl, subs))
 end
+
 
 local function gen_template_subs_table(edata, plural, schema, fedata, fplural, fschema, fname)
   local api = edata.entity_url_collection_name or schema.admin_api_name or schema.name or plural
@@ -642,6 +672,7 @@ local function gen_template_subs_table(edata, plural, schema, fedata, fplural, f
     subs["foreign_entities"] = fedata.entity_lower_plural or fplural:lower()
     subs["foreign_entities_url"] = fapi
     subs["foreign_entity_url"] = fedata.entity_url_name or fname or fsingular
+    subs["foreign_endpoint_key"] = fedata.entity_endpoint_key or fschema.endpoint_key or "name"
   end
   return subs
 end
@@ -681,10 +712,12 @@ local function prepare_entity(data, entity_file, entity_data)
   local ename = schema.admin_api_name or schema.name
   local eapi = entity_data.admin_api_name or ename
 
+  -- e.g. /services
   local collection_endpoint = "/" .. eapi
   gen_endpoint(entity_data, data.collection_templates, subs, collection_endpoint, "GET")
   gen_endpoint(entity_data, data.collection_templates, subs, collection_endpoint, "POST")
 
+  -- e.g. /services/{name or id}
   local entity_endpoint = "/" .. eapi .. "/:" .. ename
   local has_ek = schema.endpoint_key ~= nil
   gen_endpoint(entity_data, data.entity_templates, subs, entity_endpoint, "GET", has_ek)
@@ -723,11 +756,12 @@ local function prepare_foreign_key_endpoints(data, entity_infos, entity)
       local fedata = feinfo.data
       local subs = gen_template_subs_table(einfo.data, entity, einfo.schema, fedata, foreigns, feinfo.schema, fname)
       local has_ek = einfo.schema.endpoint_key ~= nil
+      local has_fek = feinfo.schema.endpoint_key ~= nil
 
-      local function gen_fk_endpoints(parent_endpoint, endpoint, meths, templates, srcdata, dstdata)
+      local function gen_fk_endpoints(parent_endpoint, endpoint, meths, templates, srcdata, dstdata, nested)
         for _, method in ipairs(meths) do
           if not skip_fk_endpoint(edata, endpoint, method) then
-            gen_fk_endpoint(dstdata, templates, subs, parent_endpoint, method, has_ek)
+            gen_fk_endpoint(dstdata, templates, subs, parent_endpoint, method, has_ek, has_fek, nested)
             local ep_data = get_or_create(srcdata, endpoint)
             ep_data.done = true
           end
@@ -740,7 +774,7 @@ local function prepare_foreign_key_endpoints(data, entity_infos, entity)
       local fename = feinfo.schema.name
       local feapi  = feinfo.schema.admin_api_name       or fename
 
-      -- /services/example/routes
+      -- e.g. /services/{service name or id}/routes
       gen_fk_endpoints(
         "/" .. eapi,
         "/" .. feapi .. "/:" .. fename .. "/" .. enapi,
@@ -749,7 +783,16 @@ local function prepare_foreign_key_endpoints(data, entity_infos, entity)
         fedata, edata
       )
 
-      -- /routes/example/service
+      -- e.g. /services/{service name or id}/routes/{route name or id}
+      gen_fk_endpoints(
+        "/" .. eapi .. "/:" .. ename,
+        "/" .. feapi .. "/:" .. fename .. "/" .. enapi .. "/:" .. ename,
+        {"GET", "PUT", "PATCH", "DELETE"},
+        data.entity_templates,
+        fedata, edata, true
+      )
+
+      -- e.g. /routes/{route name or id}/service
       gen_fk_endpoints(
         "/" .. feapi .. "/:" .. fename,
         "/" .. eapi .. "/:" .. ename .. "/" .. fname,
@@ -757,6 +800,7 @@ local function prepare_foreign_key_endpoints(data, entity_infos, entity)
         data.entity_templates,
         edata, fedata
       )
+
     end
   end
 
