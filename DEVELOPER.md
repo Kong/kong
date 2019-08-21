@@ -49,7 +49,7 @@ Now try ssh dev on your host, you should be able to get into the guest directly
 
 Once you have a Linux development environment (either virtual or bare metal), the build is done in four separate steps:
 
-1. Prerequisite packages.  Mostly compilerls, tools and libraries needed to compile everything else.
+1. Prerequisite packages.  Mostly compilers, tools and libraries needed to compile everything else.
 1. OpenResty system, including Nginx, LuaJIT, PCRE, etc.
 1. Databases. Kong uses Posgres, Cassandra and Redis.  We have a handy setup with docker-compose to keep each on its container.
 1. Kong itself.
