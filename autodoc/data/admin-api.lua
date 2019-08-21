@@ -1527,11 +1527,11 @@ return {
     endpoint_w_ek = [[
       ##### ${Active_verb} ${Entity}
 
-      <div class="endpoint ${method}">/${entities_url}/{${endpoint_key} or id}</div>
+      <div class="endpoint ${method}">/${entities_url}/{${entity} ${endpoint_key} or id}</div>
 
       Attributes | Description
       ---:| ---
-      `${endpoint_key} or id`<br>**required** | The unique identifier **or** the ${endpoint_key} of the ${Entity} to ${active_verb}.
+      `${entity} ${endpoint_key} or id`<br>**required** | The unique identifier **or** the ${endpoint_key} of the ${Entity} to ${active_verb}.
     ]],
     fk_endpoint_w_ek = [[
       ##### ${Active_verb} ${ForeignEntity} Associated to a Specific ${Entity}
@@ -1559,6 +1559,46 @@ return {
       Attributes | Description
       ---:| ---
       `${entity} id`<br>**required** | The unique identifier of the ${Entity} associated to the ${ForeignEntity} to be ${passive_verb}.
+    ]],
+    nested_endpoint_w_eks = [[
+      ##### ${Active_verb} ${Entity} Associated to a Specific ${ForeignEntity}
+
+      <div class="endpoint ${method}">/${foreign_entities_url}/{${foreign_entity} ${foreign_endpoint_key} or id}/${entities_url}/{${entity} ${endpoint_key} or id}</div>
+
+      Attributes | Description
+      ---:| ---
+      `${foreign_entity} ${foreign_endpoint_key} or id`<br>**required** | The unique identifier **or** the ${foreign_endpoint_key} of the ${ForeignEntity} to ${active_verb}.
+      `${entity} ${endpoint_key} or id`<br>**required** | The unique identifier **or** the ${endpoint_key} of the ${Entity} to ${active_verb}.
+    ]],
+    nested_endpoint_w_ek = [[
+      ##### ${Active_verb} ${Entity} Associated to a Specific ${ForeignEntity}
+
+      <div class="endpoint ${method}">/${foreign_entities_url}/{${foreign_entity} id}/${entities_url}/{${entity} ${endpoint_key} or id}</div>
+
+      Attributes | Description
+      ---:| ---
+      `${foreign_entity} id`<br>**required** | The unique identifier of the ${ForeignEntity} to ${active_verb}.
+      `${entity} ${endpoint_key} or id`<br>**required** | The unique identifier **or** the ${endpoint_key} of the ${Entity} to ${active_verb}.
+    ]],
+    nested_endpoint_w_fek = [[
+      ##### ${Active_verb} ${Entity} Associated to a Specific ${ForeignEntity}
+
+      <div class="endpoint ${method}">/${foreign_entities_url}/{${foreign_entity} ${foreign_endpoint_key} or id}/${entities_url}/{${entity} id}</div>
+
+      Attributes | Description
+      ---:| ---
+      `${foreign_entity} ${foreign_endpoint_key} or id`<br>**required** | The unique identifier **or** the ${foreign_endpoint_key} of the ${ForeignEntity} to ${active_verb}.
+      `${entity} id`<br>**required** | The unique identifier of the ${Entity} to ${active_verb}.
+    ]],
+    nested_endpoint = [[
+      ##### ${Active_verb} ${Entity} Associated to a Specific ${ForeignEntity}
+
+      <div class="endpoint ${method}">/${foreign_entities_url}/{${foreign_entity} id}/${entities_url}/{${entity} id}</div>
+
+      Attributes | Description
+      ---:| ---
+      `${foreign_entity} id`<br>**required** | The unique identifier of the ${ForeignEntity} to ${active_verb}.
+      `${entity} id`<br>**required** | The unique identifier of the ${Entity} to ${active_verb}.
     ]],
     GET = {
       title = [[Retrieve ${Entity}]],
