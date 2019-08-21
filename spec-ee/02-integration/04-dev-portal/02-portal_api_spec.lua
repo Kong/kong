@@ -438,6 +438,19 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           describe("POST", function()
+            it("returns a 400 if password is missing", function()
+              local res = register_developer(portal_api_client, {
+                email = "noob@konghq.com",
+                meta = "{\"full_name\":\"I Like Turtles\"}",
+              })
+
+              local body = assert.res_status(400, res)
+              local resp_body_json = cjson.decode(body)
+              local password = resp_body_json.fields.password
+
+              assert.equal("password is required", password)
+            end)
+
             it("returns a 400 if email is invalid format", function()
               local res = register_developer(portal_api_client, {
                 email = "grucekonghq.com",
@@ -609,6 +622,19 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           describe("POST", function()
+            it("returns a 400 if key is missing", function()
+              local res = register_developer(portal_api_client, {
+                email = "noob@konghq.com",
+                meta = "{\"full_name\":\"I Like Turtles\"}",
+              })
+
+              local body = assert.res_status(400, res)
+              local resp_body_json = cjson.decode(body)
+              local key = resp_body_json.fields.key
+
+              assert.equal("key is required", key)
+            end)
+
             it("returns a 400 if email is invalid format", function()
               local res = register_developer(portal_api_client, {
                 email = "grucekonghq.com",

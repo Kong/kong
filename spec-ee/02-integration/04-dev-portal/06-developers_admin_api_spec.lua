@@ -90,6 +90,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           assert(db.developers:insert {
             email = "developer-" .. i .. "@dog.com",
             meta = '{"full_name":"Testy Mctesty Face"}',
+            password = "pw",
           })
         end
         configure_portal()
@@ -113,6 +114,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         assert(db.developers:insert {
           email = "developer-pending@dog.com",
           status = enums.CONSUMERS.STATUS.APPROVED,
+          password = "pw",
           meta = '{"full_name":"Pending Name"}',
         })
 
@@ -171,6 +173,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           body = {
             email = "a@a.com",
             meta = '{"full_name":"a"}',
+            password = "test",
             roles = { "red" },
           },
           headers = { ["Content-Type"] = "application/json" },
@@ -186,6 +189,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           body = {
             email = "b@b.com",
             meta = '{"full_name":"a"}',
+            password = "test",
             custom_id = "friendo",
           },
           headers = { ["Content-Type"] = "application/json" },

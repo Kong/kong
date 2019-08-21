@@ -156,17 +156,37 @@ local function build_cred_plugin_data(self, entity, consumer)
   local data
 
   if self.portal_auth == "basic-auth" then
+    if self.password == nil then
+      local err = "password is required"
+      return nil, err, {
+        code = Errors.codes.SCHEMA_VIOLATION,
+        fields = { password = err },
+      }
+    end
+
     data = {
       consumer = consumer,
       username = entity.email,
       password = self.password,
     }
-  end
 
-  if self.portal_auth == "key-auth" then
+  elseif self.portal_auth == "key-auth" then
+    if self.key == nil then
+      local err = "key is required"
+      return nil, err, {
+        code = Errors.codes.SCHEMA_VIOLATION,
+        fields = { key = err },
+      }
+    end
+
     data = {
       consumer = consumer,
       key = self.key,
+    }
+
+  else
+    return nil, "unknown auth type", {
+      code = Errors.codes.DATABASE_ERROR,
     }
   end
 
@@ -515,11 +535,9 @@ local function create_developer(self, entity, options)
     end
 
     -- generate credential data
-    local credential_plugin_data = build_cred_plugin_data(self, entity, consumer)
+    local credential_plugin_data, err, err_t = build_cred_plugin_data(self, entity, consumer)
     if credential_plugin_data == nil then
       rollback_on_create({ consumer = consumer })
-      local err = "developer insert: could not set credential plugin data for " .. entity.email
-      local err_t = { code = Errors.codes.DATABASE_ERROR }
       return nil, err, err_t
     end
 
