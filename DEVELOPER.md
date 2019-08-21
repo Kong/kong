@@ -14,7 +14,7 @@ To avoid long compilation times, give the VM plenty of RAM (8GB recommended) and
 
 ### Virtual Box setup
 
-You will need to setup port forwarding on VirtualBox in order to be able to ssh into the box. This can be done by:
+You will need to setup port forwarding on VirtualBox to be able to ssh into the box which can be done as follows:
 
 1. Select the virtual machine you want to use and click "Settings"
 1. Click "Network" tab
