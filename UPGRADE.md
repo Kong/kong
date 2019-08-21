@@ -91,6 +91,151 @@ repository will allow you to do both easily.
   [injected Nginx
   directives](https://konghq.com/blog/kong-ce-nginx-injected-directives/)
   feature added in Kong 0.14.0.
+- The Nginx configuration file has changed, which means that you need to update
+  it if you are using a custom template. Changes were made to address the
+  `upstream_keepalive` change, the new gRPC support, and to make `ssl_protocols`
+  load via injected directives. The changes are detailed in a diff
+  included below.
+
+<details>
+<summary><strong>Click here to see the Nginx configuration changes</strong></summary>
+<p>
+
+```diff
+diff --git a/kong/templates/nginx_kong.lua b/kong/templates/nginx_kong.lua
+index 761376a07..5a957a1b7 100644
+--- a/kong/templates/nginx_kong.lua
++++ b/kong/templates/nginx_kong.lua
+@@ -72,8 +72,10 @@ upstream kong_upstream {
+     balancer_by_lua_block {
+         Kong.balancer()
+     }
+-> if upstream_keepalive > 0 then
+-    keepalive ${{UPSTREAM_KEEPALIVE}};
++
++# injected nginx_http_upstream_* directives
++> for _, el in ipairs(nginx_http_upstream_directives) do
++    $(el.name) $(el.value);
+ > end
+ }
+
+@@ -93,7 +95,6 @@ server {
+ > if proxy_ssl_enabled then
+     ssl_certificate ${{SSL_CERT}};
+     ssl_certificate_key ${{SSL_CERT_KEY}};
+-    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+     ssl_certificate_by_lua_block {
+         Kong.ssl_certificate()
+     }
+@@ -120,6 +121,26 @@ server {
+     $(el.name) $(el.value);
+ > end
+
++    rewrite_by_lua_block {
++        Kong.rewrite()
++    }
++
++    access_by_lua_block {
++        Kong.access()
++    }
++
++    header_filter_by_lua_block {
++        Kong.header_filter()
++    }
++
++    body_filter_by_lua_block {
++        Kong.body_filter()
++    }
++
++    log_by_lua_block {
++        Kong.log()
++    }
++
+     location / {
+         default_type                     '';
+
+@@ -134,14 +155,7 @@ server {
+         set $upstream_x_forwarded_proto  '';
+         set $upstream_x_forwarded_host   '';
+         set $upstream_x_forwarded_port   '';
+-
+-        rewrite_by_lua_block {
+-            Kong.rewrite()
+-        }
+-
+-        access_by_lua_block {
+-            Kong.access()
+-        }
++        set $kong_proxy_mode             'http';
+
+         proxy_http_version 1.1;
+         proxy_set_header   TE                $upstream_te;
+@@ -157,38 +171,32 @@ server {
+         proxy_pass_header  Date;
+         proxy_ssl_name     $upstream_host;
+         proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
++    }
+
+-        header_filter_by_lua_block {
+-            Kong.header_filter()
+-        }
++    location @grpc {
++        internal;
+
+-        body_filter_by_lua_block {
+-            Kong.body_filter()
+-        }
++        set $kong_proxy_mode       'grpc';
++        grpc_pass grpc://kong_upstream;
++    }
+
+-        log_by_lua_block {
+-            Kong.log()
+-        }
++    location @grpcs {
++        internal;
++
++        set $kong_proxy_mode       'grpcs';
++        grpc_pass grpcs://kong_upstream;
+     }
+
+     location = /kong_error_handler {
+         internal;
+         uninitialized_variable_warn off;
+
+-        content_by_lua_block {
+-            Kong.handle_error()
+-        }
+-
+-        header_filter_by_lua_block {
+-            Kong.header_filter()
+-        }
++        rewrite_by_lua_block {;}
+
+-        body_filter_by_lua_block {
+-            Kong.body_filter()
+-        }
++        access_by_lua_block {;}
+
+-        log_by_lua_block {
+-            Kong.log()
++        content_by_lua_block {
++            Kong.handle_error()
+         }
+     }
+ }
+@@ -210,7 +218,6 @@ server {
+ > if admin_ssl_enabled then
+     ssl_certificate ${{ADMIN_SSL_CERT}};
+     ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
+-    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+
+     ssl_session_cache shared:SSL:10m;
+     ssl_session_timeout 10m;
+```
+
+</p>
+</details>
 
 #### 2. Suggested Upgrade Path
 
