@@ -6,6 +6,7 @@ local singletons = require "kong.singletons"
 local tablex     = require "pl.tablex"
 local api_helpers = require "kong.enterprise_edition.api_helpers"
 local workspaces = require "kong.workspaces"
+local constants = require "kong.constants"
 
 
 local kong       = kong
@@ -19,6 +20,10 @@ local rbac_roles          = kong.db.rbac_roles
 local rbac_role_entities  = kong.db.rbac_role_entities
 local rbac_role_endpoints = kong.db.rbac_role_endpoints
 local endpoints           = require "kong.api.endpoints"
+
+local PORTAL_PREFIX = constants.PORTAL_PREFIX
+local PORTAL_PREFIX_LEN = #PORTAL_PREFIX
+
 
 local function rbac_operation_allowed(kong_conf, rbac_ctx, current_ws, dest_ws)
   if kong_conf.rbac == "off" then
@@ -184,7 +189,11 @@ return {
             return endpoints.handle_error(err_t)
           end
 
-          if not admin then
+          -- filter developer rbac users
+          local prefix = string.sub(v.name, 1, PORTAL_PREFIX_LEN)
+          local developer = prefix == PORTAL_PREFIX
+
+          if not admin and not developer then
             table.insert(res, v)
           end
         end

@@ -104,11 +104,21 @@ describe("Admin API RBAC with #" .. strategy, function()
   lazy_setup(function()
     bp, db = helpers.get_db_utils(strategy)
 
-    bp.workspaces:insert({name = "mock-workspace"})
-
     assert(helpers.start_kong({
-      database = strategy
+      database = strategy,
+      portal = true,
+      portal_auth = "basic-auth",
+      portal_session_conf = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }",
     }))
+
+    bp.workspaces:insert({ name = "mock-workspace" })
+
+    bp.workspaces:insert({
+      name = "portal-enabled-workspace",
+      config =  {
+        portal = true,
+      },
+    })
   end)
 
   before_each(function()
@@ -117,8 +127,10 @@ describe("Admin API RBAC with #" .. strategy, function()
     db:truncate("rbac_roles")
     db:truncate("rbac_role_entities")
     db:truncate("rbac_role_endpoints")
+    db:truncate("developers")
     db:truncate("consumers")
     db:truncate("workspace_entities")
+    db:truncate("basicauth_credentials")
 
     if client then
       client:close()
@@ -467,6 +479,50 @@ describe("Admin API RBAC with #" .. strategy, function()
         local json = cjson.decode(body)
         for _, user in ipairs(json.data) do
           assert.not_equal(admin.rbac_user.id, user.id)
+        end
+      end)
+
+      it("filters out developers", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/portal-enabled-workspace/developers/roles",
+          body = {
+            name = "test_role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/portal-enabled-workspace/developers",
+          body = {
+            email = "test_dev@konghq.com",
+            password = "kong",
+            meta = "{\"full_name\":\"I Like Turtles\"}",
+            roles = { "test_role" }
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        local developer = json
+
+        local res = assert(client:send {
+          method = "GET",
+          path = "/portal-enabled-workspace/rbac/users"
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        for _, user in ipairs(json.data) do
+          assert.not_equal(developer.rbac_user.id, user.id)
         end
       end)
     end)

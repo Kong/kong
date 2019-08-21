@@ -160,7 +160,7 @@ return {
   },
   PROTOCOLS = protocols,
   PROTOCOLS_WITH_SUBSYSTEM = protocols_with_subsystem,
-  PORTAL_PREFIX = "portal-",
+  PORTAL_PREFIX = "__PORTAL-",
   WORKSPACE_CONFIG = {
     PORTAL = "portal",
     PORTAL_AUTH = "portal_auth",
