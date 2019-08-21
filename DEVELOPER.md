@@ -20,7 +20,7 @@ You will need to setup port forwarding on VirtualBox to be able to ssh into the 
 1. Click "Network" tab
 1. Click "Advanced" dropdown
 1. Click "Port Forwarding"
-1. Add a new rule in the popup. Only thing you will need is "Host Port" to be 22222 and "Guest Port" to be 22. Everything else can be left default (see screenshot below)
+1. Add a new rule in the popup. The only thing you will need is "Host Port" to be 22222 and "Guest Port" to be 22. Everything else can be left default (see screenshot below)
 1. Click "Ok"
 
 Now you should be able to ssh <your_name>@127.1 -p 22222 to get SSH prompt. But this requires us to type a long command and password every time we sign in. It is recommended you setup a public key and SSH alias to make this process simpler:
