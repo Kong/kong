@@ -621,37 +621,39 @@ local function gen_fk_endpoint(edata, templates, subs, parent_endpoint, method, 
   table.insert(fk_endpoints, render(tpl, subs))
 end
 
-local function gen_template_subs_table(edata, plural, schema, fedata, fplural)
+local function gen_template_subs_table(edata, plural, schema, fedata, fplural, fschema, fname)
+  local api = edata.entity_url_collection_name or schema.admin_api_name or schema.name or plural
   local singular = to_singular(plural)
   local subs = {
     ["Entity"] = edata.entity_title or utils.titleize(singular),
     ["Entities"] = edata.entity_title_plural or utils.titleize(plural),
     ["entity"] = edata.entity_lower or singular:lower(),
     ["entities"] = edata.entity_lower_plural or plural:lower(),
-    ["entities_url"] = edata.entity_url_collection_name or plural,
+    ["entities_url"] = api,
     ["entity_url"] = edata.entity_url_name or singular,
     ["endpoint_key"] = edata.entity_endpoint_key or schema.endpoint_key or "name",
   }
   if fedata then
+    local fapi = fedata.entity_url_collection_name or fschema.admin_api_name or fschema.name or fplural
     local fsingular = to_singular(fplural)
     subs["ForeignEntity"] = fedata.entity_title or utils.titleize(fsingular)
     subs["ForeignEntities"] = fedata.entity_title_plural or utils.titleize(fplural)
     subs["foreign_entity"] = fedata.entity_lower or fsingular:lower()
     subs["foreign_entities"] = fedata.entity_lower_plural or fplural:lower()
-    subs["foreign_entities_url"] = fedata.entity_url_collection_name or fplural
-    subs["foreign_entity_url"] = fedata.entity_url_name or fsingular
+    subs["foreign_entities_url"] = fapi
+    subs["foreign_entity_url"] = fedata.entity_url_name or fname or fsingular
   end
   return subs
 end
 
-local function prepare_entity(data, plural, entity_data)
+local function prepare_entity(data, entity_file, entity_data)
   local out = {}
 
   assert_data(entity_data.description,
-              "'description' field for " .. plural)
+              "'description' field for " .. entity_file)
 
-  local schema = assert(loadfile(KONG_PATH .. "/" .. entity_to_schema_path(plural)))()
-  local subs = gen_template_subs_table(entity_data, plural, schema)
+  local schema = assert(loadfile(KONG_PATH .. "/" .. entity_to_schema_path(entity_file)))()
+  local subs = gen_template_subs_table(entity_data, entity_file, schema)
 
   local title = entity_data.title or (subs.Entity .. " Object")
 
@@ -672,15 +674,18 @@ local function prepare_entity(data, plural, entity_data)
     table.insert(out, "\n\n")
   end
 
-  local filename = "kong/api/routes/" .. plural .. ".lua"
+  local filename = "kong/api/routes/" .. entity_file .. ".lua"
   local modtbl = loadfile(KONG_PATH .. "/" .. filename)
   local mod = modtbl and modtbl() or {}
 
-  local collection_endpoint = "/" .. plural
+  local ename = schema.admin_api_name or schema.name
+  local eapi = entity_data.admin_api_name or ename
+
+  local collection_endpoint = "/" .. eapi
   gen_endpoint(entity_data, data.collection_templates, subs, collection_endpoint, "GET")
   gen_endpoint(entity_data, data.collection_templates, subs, collection_endpoint, "POST")
 
-  local entity_endpoint = "/" .. plural .. "/:" .. plural
+  local entity_endpoint = "/" .. eapi .. "/:" .. ename
   local has_ek = schema.endpoint_key ~= nil
   gen_endpoint(entity_data, data.entity_templates, subs, entity_endpoint, "GET", has_ek)
   gen_endpoint(entity_data, data.entity_templates, subs, entity_endpoint, "PUT", has_ek)
@@ -689,7 +694,7 @@ local function prepare_entity(data, plural, entity_data)
 
   return {
     filename = filename,
-    entity = plural,
+    entity = entity_file,
     schema = schema,
     title = title,
     intro = table.concat(out),
@@ -716,7 +721,7 @@ local function prepare_foreign_key_endpoints(data, entity_infos, entity)
     if finfo.type == "foreign" and not data.known.nodoc_entities[foreigns] then
       local feinfo = entity_infos[foreigns]
       local fedata = feinfo.data
-      local subs = gen_template_subs_table(einfo.data, entity, einfo.schema, fedata, foreigns)
+      local subs = gen_template_subs_table(einfo.data, entity, einfo.schema, fedata, foreigns, feinfo.schema, fname)
       local has_ek = einfo.schema.endpoint_key ~= nil
 
       local function gen_fk_endpoints(parent_endpoint, endpoint, meths, templates, srcdata, dstdata)
@@ -729,16 +734,25 @@ local function prepare_foreign_key_endpoints(data, entity_infos, entity)
         end
       end
 
+      local ename  = einfo.schema.name
+      local eapi   = einfo.schema.admin_api_name        or ename
+      local enapi  = einfo.schema.admin_api_nested_name or eapi
+      local fename = feinfo.schema.name
+      local feapi  = feinfo.schema.admin_api_name       or fename
+
+      -- /services/example/routes
       gen_fk_endpoints(
-        "/" .. entity,
-        "/" .. foreigns .. "/:" .. foreigns .. "/" .. entity,
+        "/" .. eapi,
+        "/" .. feapi .. "/:" .. fename .. "/" .. enapi,
         {"GET", "POST"},
         data.collection_templates,
         fedata, edata
       )
+
+      -- /routes/example/service
       gen_fk_endpoints(
-        "/" .. foreigns .. "/:" .. foreigns,
-        "/" .. entity .. "/:" .. entity .. "/" .. fname,
+        "/" .. feapi .. "/:" .. fename,
+        "/" .. eapi .. "/:" .. ename .. "/" .. fname,
         {"GET", "PUT", "PATCH", "DELETE"},
         data.entity_templates,
         edata, fedata
