@@ -18,15 +18,17 @@ local constants    = require "kong.constants"
 local singletons   = require "kong.singletons"
 local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
-local ngx_re       = require "ngx.re"
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 
 
 local kong         = kong
+local type         = type
 local ipairs       = ipairs
 local tostring     = tostring
 local tonumber     = tonumber
 local sub          = string.sub
+local byte         = string.byte
+local gsub         = string.gsub
 local find         = string.find
 local lower        = string.lower
 local fmt          = string.format
@@ -41,7 +43,6 @@ local timer_at     = ngx.timer.at
 local timer_every  = ngx.timer.every
 local re_match     = ngx.re.match
 local re_find      = ngx.re.find
-local re_split     = ngx_re.split
 local update_time  = ngx.update_time
 local subsystem    = ngx.config.subsystem
 local start_time   = ngx.req.start_time
@@ -50,11 +51,13 @@ local starttls     = ngx.req.starttls -- luacheck: ignore
 local unpack       = unpack
 
 
-local ERR          = ngx.ERR
-local INFO         = ngx.INFO
-local WARN         = ngx.WARN
-local DEBUG        = ngx.DEBUG
-local ERROR        = ngx.ERROR
+local ERR   = ngx.ERR
+local INFO  = ngx.INFO
+local WARN  = ngx.WARN
+local DEBUG = ngx.DEBUG
+local ERROR = ngx.ERROR
+local COMMA = byte(",")
+local SPACE = byte(" ")
 
 
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
@@ -113,6 +116,67 @@ end
 local function get_now()
   update_time()
   return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
+end
+
+
+local function csv_iterator(s, b)
+  if b == -1 then
+    return
+  end
+
+  local e = find(s, ",", b, true)
+  local v
+  local l
+  if e then
+    if e == b then
+      return csv_iterator(s, b + 1) -- empty string
+    end
+    v = sub(s, b, e - 1)
+    l = e - b
+    b = e + 1
+
+  else
+    if b > 1 then
+      v = sub(s, b)
+    else
+      v = s
+    end
+
+    l = #v
+    b = -1 -- end iteration
+  end
+
+  if l == 1 and (byte(v) == SPACE or byte(v) == COMMA) then
+    return csv_iterator(s, b)
+  end
+
+  if byte(v, 1, 1) == SPACE then
+    v = gsub(v, "^%s+", "")
+  end
+
+  if byte(v, -1) == SPACE then
+    v = gsub(v, "%s+$", "")
+  end
+
+  if v == "" then
+    return csv_iterator(s, b)
+  end
+
+  return b, v
+end
+
+
+local function csv(s)
+  if type(s) ~= "string" or s == "" then
+    return csv_iterator, s, -1
+  end
+
+  s = lower(s)
+  if s == "close" or s == "upgrade" or s == "keep-alive" then
+    return csv_iterator, s, -1
+  end
+
+  return csv_iterator, s, 1
 end
 
 
@@ -1284,38 +1348,20 @@ return {
       end
 
       -- clear hop-by-hop request headers:
-      local connection = var.http_connection
-      if connection then
-        local header_names = re_split(connection .. ",", [[\s*,\s*]], "djo")
-        if header_names then
-          for i=1, #header_names do
-            if header_names[i] ~= "" then
-              local header_name = lower(header_names[i])
-              -- some of these are already handled by the proxy module,
-              -- proxy-authorization being an exception that is handled
-              -- below with special semantics.
-              if header_name ~= "close" and
-                 header_name ~= "upgrade" and
-                 header_name ~= "keep-alive" and
-                 header_name ~= "proxy-authorization" then
-                clear_header(header_names[i])
-              end
-            end
-          end
+      for _, header_name in csv(var.http_connection) do
+        -- some of these are already handled by the proxy module,
+        -- proxy-authorization being an exception that is handled
+        -- below with special semantics.
+        if header_name ~= "proxy-authorization" then
+          clear_header(header_name)
         end
       end
 
       -- add te header only when client requests trailers (proxy removes it)
-      local te = var.http_te
-      if te and te == ctx.http_te then
-        local te_values = re_split(te .. ",", [[\s*,\s*]], "djo")
-        if te_values then
-          for i=1, #te_values do
-            if te_values[i] ~= "" and lower(te_values[i]) == "trailers" then
-              var.upstream_te = "trailers"
-              break
-            end
-          end
+      for _, header_name in csv(var.http_te) do
+        if header_name == "trailers" then
+          var.upstream_te = "trailers"
+          break
         end
       end
 
@@ -1376,21 +1422,8 @@ return {
       ctx.KONG_HEADER_FILTER_STARTED_AT = now
 
       -- clear hop-by-hop response headers:
-      local connection = var.upstream_http_connection
-      if connection then
-        local header_names = re_split(connection .. ",", [[\s*,\s*]], "djo")
-        if header_names then
-          for i=1, #header_names do
-            if header_names[i] ~= "" then
-              local header_name = lower(header_names[i])
-              if header_name ~= "close" and
-                 header_name ~= "upgrade" and
-                 header_name ~= "keep-alive" then
-                header[header_names[i]] = nil
-              end
-            end
-          end
-        end
+      for _, header_name in csv(var.upstream_http_connection) do
+        header[header_name] = nil
       end
 
       if var.upstream_http_upgrade and
