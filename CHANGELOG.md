@@ -1,6 +1,6 @@
 # Table of Contents
 
-- [1.3.0rc2](#130rc2)
+- [1.3.0](#130)
 - [1.2.1](#121)
 - [1.2.0](#120)
 - [1.1.2](#112)
@@ -29,11 +29,10 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
-## [1.3.0rc2]
+## [1.3.0]
 
-> Released on 2019/07/24
+> Released on 2019/08/21
 
-This is the second release candidate for the Kong 1.3 series.
 Kong 1.3 is the first version to officially support **gRPC proxying**!
 
 Following our vision for Kong to proxy modern Web services protocols, we are
@@ -46,11 +45,6 @@ Additionally, this release includes several highly-requested features such as
 support for upstream **mutual TLS**, **header-based routing** (not only
 `Host`), **database export**, and **configurable upstream keepalive
 timeouts**.
-
-As a release candidate, we discourage the use of 1.3.0rc2 in production
-environments, but we strongly encourage testers to give it a try and give us
-!our feedback. We thank in advance all of the testers of this release
-candidate!
 
 ### Changes
 
@@ -215,6 +209,9 @@ repository will allow you to do both easily.
     - Functions can now have upvalues.
 - [prometheus](https://github.com/Kong/kong-plugin-prometheus): Bumped to
   0.4.1 for minor performance improvements.
+- cors: add OPTIONS, TRACE and CONNECT to default allowed methods
+  [#4899](https://github.com/Kong/kong/pull/4899)
+  Thanks to [@eshepelyuk](https://github.com/eshepelyuk) for the patch!
 
 ##### PDK
 
@@ -247,6 +244,9 @@ repository will allow you to do both easily.
 
 ##### Plugins
 
+- cors: ensure non-preflight OPTIONS requests can be proxied.
+  [#4899](https://github.com/Kong/kong/pull/4899)
+  Thanks to [@eshepelyuk](https://github.com/eshepelyuk) for the patch!
 - Consumer references in various plugin entities are now
   properly marked as required, avoiding credentials that map to no Consumer.
   [#4879](https://github.com/Kong/kong/pull/4879)
@@ -4082,7 +4082,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[1.3.0rc2]: https://github.com/Kong/kong/compare/1.2.1...1.3.0rc2
+[1.3.0]: https://github.com/Kong/kong/compare/1.2.1...1.3.0
 [1.2.1]: https://github.com/Kong/kong/compare/1.2.0...1.2.1
 [1.2.0]: https://github.com/Kong/kong/compare/1.1.2...1.2.0
 [1.1.2]: https://github.com/Kong/kong/compare/1.1.1...1.1.2
