@@ -28,7 +28,7 @@ Now you should be able to ssh <your_name>@127.1 -p 22222 to get SSH prompt. Howe
 1. On your host machine, generate a keypair for SSH into the guest: `ssh-keygen -t ed25519`.
 Just keep hitting Enter until the key is generated. You do not need a password for this key file since it is only used for SSH into your guest
 1. Type `cat .ssh/id_ed25519.pub` and copy the public key
-1. SSH into the guest using command above
+1. SSH into the guest using the command above
 1. Create the ssh config directory (if it doesn't exist) `$ mkdir -p .ssh`
 1. Edit the authorized keys list: `vim .ssh/authorized_keys`
 1. Paste in the content of .ssh/id_ed25519.pub
