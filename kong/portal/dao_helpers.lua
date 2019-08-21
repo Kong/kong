@@ -542,12 +542,24 @@ local function create_developer(self, entity, options)
     end
 
     -- create plugin credential
-    local plugin_cred = collection:insert(credential_plugin_data)
+    local plugin_cred, _, err_t = collection:insert(credential_plugin_data)
     if not plugin_cred then
       rollback_on_create({ consumer = consumer })
       local err = "developer insert: could not create plugin credential for " .. entity.email
-      local err_t = { code = Errors.codes.DATABASE_ERROR }
-      return nil, err, err_t
+      local res_err_t
+
+      -- suppress duplicate key-auth key error message
+      if err_t.code == Errors.codes.UNIQUE_VIOLATION and err_t.fields.key then
+        res_err_t = {
+          code = Errors.codes.SCHEMA_VIOLATION,
+          fields = { key = "invalid api key"} ,
+        }
+      else
+        -- all other errors
+        res_err_t = { code = Errors.codes.DATABASE_ERROR }
+      end
+
+      return nil, err, res_err_t
     end
 
     -- create credential reference

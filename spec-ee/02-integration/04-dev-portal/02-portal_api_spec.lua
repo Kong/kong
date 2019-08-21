@@ -734,6 +734,29 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("invalid field", message)
             end)
 
+            it("returns a 400 if key is already in use", function()
+              local res = register_developer(portal_api_client, {
+                email = "dev1@konghq.com",
+                key = "taken",
+                meta = "{\"full_name\":\"I Like Turtles\"}",
+              })
+
+              assert.res_status(200, res)
+
+              local res = register_developer(portal_api_client, {
+                email = "dev2@konghq.com",
+                key = "taken",
+                meta = "{\"full_name\":\"I Like Turtles\"}",
+              })
+
+              local body = assert.res_status(400, res)
+
+              local resp_body_json = cjson.decode(body)
+              local key = resp_body_json.fields.key
+
+              assert.equal("invalid api key", key)
+            end)
+
             it("registers a developer and set status to pending", function()
               local res = register_developer(portal_api_client, {
                 email = "noob@konghq.com",
