@@ -357,8 +357,8 @@ return {
       GET  = function(self, db, helpers, parent)
         local next_page = fmt("/rbac/roles")
         return endpoints.get_collection_endpoint(rbac_roles.schema)
-                                                (self, db, helpers, 
-                                                 post_process_actions_remove_default, 
+                                                (self, db, helpers,
+                                                 post_process_actions_remove_default,
                                                  next_page)
       end,
       POST = endpoints.post_collection_endpoint(rbac_roles.schema),
@@ -413,11 +413,11 @@ return {
     end,
     GET = function(self, db, helpers)
       local next_page = fmt("/rbac/roles/%s/entities", self.rbac_role.id)
-      return endpoints.get_collection_endpoint(rbac_role_entities.schema, 
-                                               rbac_roles.schema, 
+      return endpoints.get_collection_endpoint(rbac_role_entities.schema,
+                                               rbac_roles.schema,
                                                "role")
-                                              (self, db, helpers, 
-                                               post_process_actions, 
+                                              (self, db, helpers,
+                                               post_process_actions,
                                                next_page)
     end,
 
@@ -580,11 +580,11 @@ return {
 
       GET = function(self, db, helpers)
        local next_page = fmt("/rbac/roles/%s/endpoints", self.rbac_role.id)
-       return endpoints.get_collection_endpoint(rbac_role_endpoints.schema, 
-                                                rbac_roles.schema, 
+       return endpoints.get_collection_endpoint(rbac_role_endpoints.schema,
+                                                rbac_roles.schema,
                                                 "role")
-                                                (self, db, helpers, 
-                                                 post_process_actions, 
+                                                (self, db, helpers,
+                                                 post_process_actions,
                                                  next_page)
       end,
 
