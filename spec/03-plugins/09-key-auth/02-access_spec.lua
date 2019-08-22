@@ -753,7 +753,8 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("auto-expiring keys", function()
-      local ttl = 3
+      -- Give a bit of time to reduce test flakyness on slow setups
+      local ttl = 4
       local inserted_at
 
       lazy_setup(function()
@@ -816,7 +817,7 @@ for _, strategy in helpers.each_strategy() do
 
         ngx.update_time()
         local elapsed = ngx.now() - inserted_at
-        ngx.sleep(ttl - elapsed + 0.5) -- 0.5: jitter
+        ngx.sleep(ttl - elapsed + 1) -- 1: jitter
 
         res = assert(proxy_client:send {
           method  = "GET",
