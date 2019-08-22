@@ -119,7 +119,7 @@ These commands don't have to be performed as root, since all compilation is done
 After this task, we'd like to have the next steps use the built packages and for LuaRocks to install new packages inside this `build` directory.  For that, it's important to set the `$PATH` variable accordingly:
 
 ```
-    export PATH=$HOME/path/to/kong/openresty-build-tools/buildroot/openresty/bin:$HOME/path/to/kong/openresty-build-tools/buildroot/openresty/nginx/sbin:$HOME/path/to/kong/openresty-build-tools/buildroot/luarocks/bin:$PATH
+    export PATH=$HOME/path/to/kong/openresty-build-tools/build/openresty/bin:$HOME/path/to/kong/openresty-build-tools/build/openresty/nginx/sbin:$HOME/path/to/kong/openresty-build-tools/build/luarocks/bin:$PATH
 
     eval `luarocks path`
 ```
