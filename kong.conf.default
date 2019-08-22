@@ -842,6 +842,15 @@
                                  # for a short period of time after Routes and
                                  # Services updates.
 
+#router_update_frequency = 1     # Defines how often the router changes are
+                                 # checked with a background job. When a change
+                                 # is detected, a new router will be built. By
+                                 # default we check for changes every second.
+                                 # Raising this value will decrease the load on
+                                 # database servers and result in less jitter
+                                 # in proxy latency, with downside of longer
+                                 # converge time for router updates.
+
 #------------------------------------------------------------------------------
 # DEVELOPMENT & MISCELLANEOUS
 #------------------------------------------------------------------------------
