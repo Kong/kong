@@ -4,6 +4,9 @@ local inspect = require "inspect"
 local tablex = require "pl.tablex"
 
 
+local CORS_DEFAULT_METHODS = "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS,TRACE,CONNECT"
+
+
 local function sortedpairs(t)
   local ks = tablex.keys(t)
   table.sort(ks)
@@ -475,13 +478,14 @@ for _, strategy in helpers.each_strategy() do
               headers = {
                 ["Host"] = host,
                 ["Origin"] = origin,
+                ["Access-Control-Request-Method"] = "GET",
               }
             })
 
             assert.res_status(200, res)
 
             if accept then
-              assert.equal("GET,HEAD,PUT,PATCH,POST,DELETE", res.headers["Access-Control-Allow-Methods"])
+              assert.equal(CORS_DEFAULT_METHODS, res.headers["Access-Control-Allow-Methods"])
               assert.equal(accept == true and origin or accept, res.headers["Access-Control-Allow-Origin"])
               assert.is_nil(res.headers["Access-Control-Allow-Headers"])
               assert.is_nil(res.headers["Access-Control-Expose-Headers"])
@@ -499,12 +503,14 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "OPTIONS",
           headers = {
-            ["Host"] = "cors1.com"
+            ["Host"] = "cors1.com",
+            ["Origin"] = "origin1.com",
+            ["Access-Control-Request-Method"] = "GET",
           }
         })
         assert.res_status(200, res)
         assert.equal("0", res.headers["Content-Length"])
-        assert.equal("GET,HEAD,PUT,PATCH,POST,DELETE", res.headers["Access-Control-Allow-Methods"])
+        assert.equal(CORS_DEFAULT_METHODS, res.headers["Access-Control-Allow-Methods"])
         assert.equal("*", res.headers["Access-Control-Allow-Origin"])
         assert.is_nil(res.headers["Access-Control-Allow-Headers"])
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
@@ -513,7 +519,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Vary"])
       end)
 
-      it("gives * wildcard when origins is empty", function()
+      it("gives * wildcard when config.origins is empty", function()
         -- this test covers a regression introduced in 0.10.1, where
         -- the 'multiple_origins' migration would always insert a table
         -- (that might be empty) in the 'config.origins' field, and the
@@ -524,11 +530,13 @@ for _, strategy in helpers.each_strategy() do
           method  = "OPTIONS",
           headers = {
             ["Host"] = "cors-empty-origins.com",
+            ["Origin"] = "empty-origin.com",
+            ["Access-Control-Request-Method"] = "GET",
           }
         })
         assert.res_status(200, res)
         assert.equal("0", res.headers["Content-Length"])
-        assert.equal("GET,HEAD,PUT,PATCH,POST,DELETE", res.headers["Access-Control-Allow-Methods"])
+        assert.equal(CORS_DEFAULT_METHODS, res.headers["Access-Control-Allow-Methods"])
         assert.equal("*", res.headers["Access-Control-Allow-Origin"])
         assert.is_nil(res.headers["Access-Control-Allow-Headers"])
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
@@ -541,25 +549,29 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "OPTIONS",
           headers = {
-            ["Host"] = "cors5.com"
+            ["Host"] = "cors5.com",
+            ["Origin"] = "origin5.com",
+            ["Access-Control-Request-Method"] = "GET",
           }
         })
         assert.res_status(200, res)
         assert.equal("0", res.headers["Content-Length"])
-        assert.equal("GET,HEAD,PUT,PATCH,POST,DELETE", res.headers["Access-Control-Allow-Methods"])
-        assert.equal("*", res.headers["Access-Control-Allow-Origin"])
+        assert.equal(CORS_DEFAULT_METHODS, res.headers["Access-Control-Allow-Methods"])
+        assert.equal("origin5.com", res.headers["Access-Control-Allow-Origin"])
+        assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
+        assert.equal("Origin", res.headers["Vary"])
         assert.is_nil(res.headers["Access-Control-Allow-Headers"])
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
-        assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
-        assert.is_nil(res.headers["Vary"])
       end)
 
       it("accepts config options", function()
         local res = assert(proxy_client:send {
           method  = "OPTIONS",
           headers = {
-            ["Host"] = "cors2.com"
+            ["Host"] = "cors2.com",
+            ["Origin"] = "origin5.com",
+            ["Access-Control-Request-Method"] = "GET",
           }
         })
         assert.res_status(200, res)
@@ -591,7 +603,9 @@ for _, strategy in helpers.each_strategy() do
           method  = "OPTIONS",
           headers = {
             ["Host"]                           = "cors5.com",
+            ["Origin"]                         = "origin5.com",
             ["Access-Control-Request-Headers"] = "origin,accepts",
+            ["Access-Control-Request-Method"]  = "GET",
           }
         })
 
@@ -648,6 +662,26 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(200, res)
+        assert.equal("*", res.headers["Access-Control-Allow-Origin"])
+        assert.is_nil(res.headers["Access-Control-Allow-Methods"])
+        assert.is_nil(res.headers["Access-Control-Allow-Headers"])
+        assert.is_nil(res.headers["Access-Control-Expose-Headers"])
+        assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
+        assert.is_nil(res.headers["Access-Control-Max-Age"])
+        assert.is_nil(res.headers["Vary"])
+      end)
+
+      it("proxies a non-preflight OPTIONS request", function()
+        local res = assert(proxy_client:send {
+          method  = "OPTIONS",
+          path = "/anything",
+          headers = {
+            ["Host"] = "cors1.com"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("OPTIONS", json.vars.request_method)
         assert.equal("*", res.headers["Access-Control-Allow-Origin"])
         assert.is_nil(res.headers["Access-Control-Allow-Methods"])
         assert.is_nil(res.headers["Access-Control-Allow-Headers"])

@@ -834,6 +834,10 @@ local function load(path, custom_conf, opts)
                                    { no_defaults = true },
                                    from_file_conf, custom_conf)
 
+  if not opts.starting then
+    log.disable()
+  end
+
   deprecated_properties(user_conf, opts)
 
   -- merge user_conf with defaults
@@ -843,6 +847,11 @@ local function load(path, custom_conf, opts)
 
   -- validation
   local ok, err, errors = check_and_infer(conf)
+
+  if not opts.starting then
+    log.enable()
+  end
+
   if not ok then
     return nil, err, errors
   end

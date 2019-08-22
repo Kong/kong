@@ -354,7 +354,7 @@ local poll_wait_health
 local poll_wait_address_health
 do
   local function poll_wait(upstream_id, host, port, admin_port, fn)
-      local hard_timeout = ngx.now() + 70
+    local hard_timeout = ngx.now() + 70
     while ngx.now() < hard_timeout do
       local health = get_upstream_health(upstream_id, admin_port)
       if health then
@@ -491,8 +491,6 @@ for _, strategy in helpers.each_strategy() do
 
   describe("Ring-balancer resolution #" .. strategy, function()
 
-    local dns_mock_filename = helpers.test_conf.prefix .. "/dns_mock_records.lua"
-
     lazy_setup(function()
       bp = get_db_utils_for_dc_and_admin_api(strategy, {
         "routes",
@@ -545,7 +543,6 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     lazy_teardown(function()
-      os.remove(dns_mock_filename)
       helpers.stop_kong()
     end)
 
