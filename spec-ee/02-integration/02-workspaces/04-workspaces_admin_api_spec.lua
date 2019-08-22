@@ -358,6 +358,38 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
   end)
 
   describe("/workspaces/:workspace", function()
+    describe("PUT", function()
+      it("refuses to update the workspace name", function()
+        -- PUT should work as workspace `foo_put` not present
+        local res = assert(client:put("/default/workspaces/foo_put/", {
+          body = {
+            comment = "test PUT",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        }))
+
+        assert.res_status(200, res)
+
+        local res = assert(client:put("/workspaces/foo_put", {
+          body = {
+            name = "new_foo_put",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        }))
+
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+
+        assert.equals("Cannot rename a workspace", json.message)
+      end)
+
+
+    end)
+
     describe("PATCH", function()
       it("refuses to update the workspace name", function()
         assert(bp.workspaces:insert {

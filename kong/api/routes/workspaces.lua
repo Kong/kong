@@ -22,7 +22,7 @@ local function ensure_valid_workspace(self)
     return true
   end
 
-  if api_workspace.id == namespace_workspace.id then
+  if api_workspace and api_workspace.id == namespace_workspace.id then
     -- if called under a different workspace namespace and the api has
     -- a workspace parameter on its own, ensure we're asking for the
     -- same
@@ -62,13 +62,23 @@ return {
   ["/workspaces/:workspaces"] = {
     before = function(self, db)
       self.workspace = endpoints.select_entity(self, db, db["workspaces"].schema)
-      if not self.workspace then
-        return kong.response.exit(404, {message = "Not found"})
-      end
       ensure_valid_workspace(self)
     end,
 
     PATCH = function(self, _, _, parent)
+      if not self.workspace then
+        return kong.response.exit(404, {message = "Not found"})
+      end
+
+      -- disallow changing workspace name
+      if self.params.name and self.params.name ~= self.workspace.name then
+        return kong.response.exit(400, {message = "Cannot rename a workspace"})
+      end
+
+      return parent(portal_post_process)
+    end,
+
+    PUT = function(self, _, _, parent)
       -- disallow changing workspace name
       if self.params.name and self.params.name ~= self.workspace.name then
         return kong.response.exit(400, {message = "Cannot rename a workspace"})
@@ -80,6 +90,10 @@ return {
     -- XXX PORTAL: why wasn't there a post_process for portal on PUT?
 
     DELETE = function(self, db, _, parent)
+      if not self.workspace then
+        return kong.response.exit(404, {message = "Not found"})
+      end
+
       if self.workspace.name == workspaces.DEFAULT_WORKSPACE then
         return kong.response.exit(400, {message = "Cannot delete default workspace"})
       end
