@@ -925,6 +925,30 @@ describe("Configuration loader", function()
     end)
   end)
 
+  describe("router_update_frequency option", function()
+    it("is rejected with a zero", function()
+      local conf, err = conf_loader(nil, {
+        router_update_frequency = 0,
+      })
+      assert.is_nil(conf)
+      assert.equal("router_update_frequency must be greater than 0", err)
+    end)
+    it("is rejected with a negative number", function()
+      local conf, err = conf_loader(nil, {
+        router_update_frequency = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("router_update_frequency must be greater than 0", err)
+    end)
+    it("accepts decimal numbers", function()
+      local conf, err = conf_loader(nil, {
+        router_update_frequency = 0.01,
+      })
+      assert.equal(conf.router_update_frequency, 0.01)
+      assert.is_nil(err)
+    end)
+  end)
+
   describe("origins config option", function()
     it("rejects an invalid origins config option", function()
       local conf, err = conf_loader(nil, {
