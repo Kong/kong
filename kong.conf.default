@@ -130,6 +130,14 @@
                          # - `transparent` will cause kong to listen to, and
                          #   respond from, any and all IP addresses and ports
                          #   you configure in iptables.
+                         # - `deferred` instructs to use a deferred accept on
+                         #   Linux (the TCP_DEFER_ACCEPT socket option).
+                         # - `bind` instructs to make a separate bind() call
+                         #   for a given address:port pair.
+                         # - `reuseport` instructs to create an individual
+                         #   listening socket for each worker process
+                         #   allowing a kernel to distribute incoming
+                         #   connections between worker processes
                          #
                          # This value can be set to `off`, thus disabling
                          # the HTTP/HTTPS proxy port for this node.
@@ -165,6 +173,12 @@
                          # - `transparent` will cause kong to listen to, and
                          #   respond from, any and all IP addresses and ports
                          #   you configure in iptables.
+                         # - `bind` instructs to make a separate bind() call
+                         #   for a given address:port pair.
+                         # - `reuseport` instructs to create an individual
+                         #   listening socket for each worker process
+                         #   allowing a kernel to distribute incoming
+                         #   connections between worker processes
                          #
                          # **Note:** The `ssl` suffix is not supported,
                          # and each address/port will accept TCP with or
@@ -200,8 +214,19 @@
                          #   enabled.
                          # - `http2` will allow for clients to open HTTP/2
                          #   connections to Kong's proxy server.
-                         # - Finally, `proxy_protocol` will enable usage of the
+                         # - `proxy_protocol` will enable usage of the
                          #   PROXY protocol for a given address/port.
+                         # - `transparent` will cause kong to listen to, and
+                         #   respond from, any and all IP addresses and ports
+                         #   you configure in iptables.
+                         # - `deferred` instructs to use a deferred accept on
+                         #   Linux (the TCP_DEFER_ACCEPT socket option).
+                         # - `bind` instructs to make a separate bind() call
+                         #   for a given address:port pair.
+                         # - `reuseport` instructs to create an individual
+                         #   listening socket for each worker process
+                         #   allowing a kernel to distribute incoming
+                         #   connections between worker processes
                          #
                          # This value can be set to `off`, thus disabling
                          # the Admin interface for this node, enabling a
@@ -280,15 +305,6 @@
 
 #admin_ssl_cert_key =            # The absolute path to the SSL key for
                                  # `admin_listen` values with SSL enabled.
-
-#upstream_keepalive = 60         # Sets the maximum number of idle keepalive
-                                 # connections to upstream servers that are
-                                 # preserved in the cache of each worker
-                                 # process. When this number is exceeded, the
-                                 # least recently used connections are closed.
-                                 # A value of `0` will disable this behavior
-                                 # altogether, forcing each upstream request
-                                 # to open a new connection.
 
 #headers = server_tokens, latency_tokens
                                  # Comma-separated list of headers Kong should
@@ -412,6 +428,83 @@
                                   # Accepted values are `text/plain`,
                                   # `text/html`, `application/json`, and
                                   # `application/xml`.
+
+#------------------------------------------------------------------------------
+# NGINX injected directives
+#------------------------------------------------------------------------------
+
+# Nginx directives can be dynamically injected in the runtime nginx.conf file
+# without requiring a custom Nginx configuration template.
+#
+# All configuration properties respecting the naming scheme
+# `nginx_<namespace>_<directive>` will result in `<directive>` being injected in
+# the Nginx configuration block corresponding to the property's `<namespace>`.
+# Example:
+#   `nginx_proxy_large_client_header_buffers = 8 24k`
+#
+#   Will inject the following directive in Kong's proxy `server {}` block:
+#
+#   `large_client_header_buffers 8 24k;`
+#
+# The following namespaces are supported:
+#
+# - `nginx_http_<directive>`: Injects `<directive>` in Kong's `http {}` block.
+# - `nginx_proxy_<directive>`: Injects `<directive>` in Kong's proxy
+#   `server {}` block.
+# - `nginx_http_upstream_<directive>`: Injects `<directive>` in Kong's proxy
+#   `upstream {}` block.
+# - `nginx_admin_<directive>`: Injects `<directive>` in Kong's Admin API
+#   `server {}` block.
+# - `nginx_stream_<directive>`: Injects `<directive>` in Kong's stream module
+#   `stream {}` block (only effective if `stream_listen` is enabled).
+# - `nginx_sproxy_<directive>`: Injects `<directive>` in Kong's stream module
+#   `server {}` block (only effective if `stream_listen` is enabled).
+#
+# As with other configuration properties, Nginx directives can be injected via
+# environment variables when capitalized and prefixed with `KONG_`.
+# Example:
+#   `KONG_NGINX_HTTP_SSL_PROTOCOLS` -> `nginx_http_ssl_protocols`
+#
+#   Will inject the following directive in Kong's `http {}` block:
+#
+#   `ssl_protocols <value>;`
+#
+#   If different sets of protocols are desired between the proxy and Admin API
+#   server, you may specify `nginx_proxy_ssl_protocols` and/or
+#   `nginx_admin_ssl_protocols`, both of which taking precedence over the
+#   `http {}` block.
+
+#nginx_http_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
+                                 # Enables the specified protocols for
+                                 # client-side connections. The set of
+                                 # supported protocol versions also depends
+                                 # on the version of OpenSSL Kong was built
+                                 # with.
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_protocols
+
+#nginx_http_upstream_keepalive = 60
+                                 # Sets the maximum number of idle keepalive
+                                 # connections to upstream servers that are
+                                 # preserved in the cache of each worker
+                                 # process. When this number is exceeded, the
+                                 # least recently used connections are closed.
+                                 # A value of `NONE` will disable this behavior
+                                 # altogether, forcing each upstream request
+                                 # to open a new connection.
+                                 # See http://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive
+
+#nginx_http_upstream_keepalive_requests = 100
+                                 # Sets the maximum number of requests that can
+                                 # be served through one keepalive connection.
+                                 # After the maximum number of requests is
+                                 # made, the connection is closed.
+                                 # See http://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive_requests
+
+#nginx_http_upstream_keepalive_timeout = 60s
+                                 # Sets a timeout during which an idle
+                                 # keepalive connection to an upstream server
+                                 # will stay open.
+                                 # See http://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive_timeout
 
 #------------------------------------------------------------------------------
 # DATASTORE

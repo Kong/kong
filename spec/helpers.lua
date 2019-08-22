@@ -16,9 +16,8 @@ local MOCK_UPSTREAM_PORT = 15555
 local MOCK_UPSTREAM_SSL_PORT = 15556
 local MOCK_UPSTREAM_STREAM_PORT = 15557
 local MOCK_UPSTREAM_STREAM_SSL_PORT = 15558
+local MOCK_GRPC_UPSTREAM_PROTO_PATH = "./spec/fixtures/grpc/hello.proto"
 local BLACKHOLE_HOST = "10.255.255.255"
-
-require("resty.core")
 
 local consumers_schema_def = require "kong.db.schema.entities.consumers"
 local services_schema_def = require "kong.db.schema.entities.services"
@@ -31,6 +30,8 @@ local conf_loader = require "kong.conf_loader"
 local kong_global = require "kong.global"
 local Blueprints = require "spec.fixtures.blueprints"
 local pl_stringx = require "pl.stringx"
+local constants = require "kong.constants"
+local pl_tablex = require "pl.tablex"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
@@ -304,21 +305,32 @@ end
 -- when it times out.
 -- @usage -- wait 10 seconds for a file "myfilename" to appear
 -- helpers.wait_until(function() return file_exist("myfilename") end, 10)
-local function wait_until(f, timeout)
+local function wait_until(f, timeout, step)
   if type(f) ~= "function" then
     error("arg #1 must be a function", 2)
+  end
+
+  if timeout ~= nil and type(timeout) ~= "number" then
+    error("arg #2 must be a number", 2)
+  end
+
+  if step ~= nil and type(step) ~= "number" then
+    error("arg #3 must be a number", 2)
   end
 
   ngx.update_time()
 
   timeout = timeout or 5
+  step = step or 0.05
+
   local tstart = ngx.time()
   local texp = tstart + timeout
   local ok, res, err
 
   repeat
     ok, res, err = pcall(f)
-    ngx.sleep(0.05)
+    ngx.sleep(step)
+    ngx.update_time()
   until not ok or res or ngx.time() >= texp
 
   if not ok then
@@ -449,10 +461,11 @@ end
 
 --- Returns the proxy port.
 -- @param ssl (boolean) if `true` returns the ssl port
-local function get_proxy_port(ssl)
+local function get_proxy_port(ssl, http2)
   if ssl == nil then ssl = false end
+  if http2 == nil then http2 = false end
   for _, entry in ipairs(conf.proxy_listeners) do
-    if entry.ssl == ssl then
+    if entry.ssl == ssl and entry.http2 == http2 then
       return entry.port
     end
   end
@@ -461,10 +474,11 @@ end
 
 --- Returns the proxy ip.
 -- @param ssl (boolean) if `true` returns the ssl ip address
-local function get_proxy_ip(ssl)
+local function get_proxy_ip(ssl, http2)
   if ssl == nil then ssl = false end
+  if http2 == nil then http2 = false end
   for _, entry in ipairs(conf.proxy_listeners) do
-    if entry.ssl == ssl then
+    if entry.ssl == ssl and entry.http2 == http2 then
       return entry.ip
     end
   end
@@ -736,6 +750,73 @@ local function udp_server(port, n, timeout)
   handshake:close()
 
   return thread
+end
+
+
+local function mock_reports_server()
+  local localhost = "127.0.0.1"
+  local threads = require "llthreads2.ex"
+  local server_port = constants.REPORTS.STATS_PORT
+
+  local thread = threads.new({
+    function(port, localhost)
+      local socket = require "socket"
+
+      local server = assert(socket.udp())
+      server:settimeout(1)
+      server:setoption("reuseaddr", true)
+      server:setsockname(localhost, port)
+      local data = {}
+      local started = false
+      while true do
+        local packet, recvip, recvport = server:receivefrom()
+        if packet then
+          if packet == "\\START" then
+            if not started then
+              started = true
+              server:sendto("\\OK", recvip, recvport)
+            end
+          elseif packet == "\\STOP" then
+            break
+          else
+            table.insert(data, packet)
+          end
+        end
+      end
+      server:close()
+      return data
+    end
+  }, server_port, localhost)
+  thread:start()
+
+  local handshake_skt = assert(ngx.socket.udp())
+  handshake_skt:setpeername(localhost, server_port)
+  handshake_skt:settimeout(0.1)
+
+  -- not necessary for correctness because we do the handshake,
+  -- but avoids harmless "connection error" messages in the wait loop
+  -- in case the client is ready before the server below.
+  ngx.sleep(0.05)
+
+  while true do
+    handshake_skt:send("\\START")
+    local ok = handshake_skt:receive()
+    if ok == "\\OK" then
+      break
+    end
+  end
+  handshake_skt:close()
+
+  return {
+    stop = function()
+      local skt = assert(ngx.socket.udp())
+      skt:setpeername(localhost, server_port)
+      skt:send("\\STOP")
+      skt:close()
+
+      return thread:join()
+    end
+  }
 end
 
 --------------------
@@ -1189,7 +1270,7 @@ do
   dns_mock.__tostring = function(self)
     -- fill array to prevent json encoding errors
     for i = 1, 33 do
-      self[i] = self[i] or true
+      self[i] = self[i] or {}
     end
     local json = assert(cjson.encode(self))
     return json
@@ -1612,7 +1693,8 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc)
 
   wait_pid(running_conf.nginx_pid)
 
-  if not preserve_prefix then
+  -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
+  if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
     clean_prefix(prefix)
   end
 
@@ -1625,9 +1707,9 @@ end
 
 
 -- Restart Kong, reusing declarative config when using database=off
-local function restart_kong(env, tables)
+local function restart_kong(env, tables, fixtures)
   stop_kong(env.prefix, true, true)
-  return start_kong(env, tables, true)
+  return start_kong(env, tables, true, fixtures)
 end
 
 
@@ -1642,6 +1724,149 @@ local function make_yaml_file(content, filename)
   assert(fd:write("\n")) -- ensure last line ends in newline
   assert(fd:close())
   return filename
+end
+
+-- Generate grpcurl flags from a table of `flag-value`. If `value` is not a
+-- string, value is ignored and `flag` is passed as is.
+local function gen_grpcurl_opts(opts_t)
+  local opts_l = {}
+
+  for opt, val in pairs(opts_t) do
+    if val ~= false then
+      opts_l[#opts_l + 1] = opt .. " " .. (type(val) == "string" and val or "")
+    end
+  end
+
+  return table.concat(opts_l, " ")
+end
+
+
+--- Creates an HTTP/2 client, based on the lua-http library.
+-- @name http2_client
+-- @param host hostname to connect to
+-- @param port port to connect to
+-- @param tls boolean indicating whether to establish a tls session
+-- @return http2 client
+local function http2_client(host, port, tls)
+  local host = assert(host)
+  local port = assert(port)
+  tls = tls or false
+
+  local request = require "http.request"
+  local req = request.new_from_uri({
+    scheme = tls and "https" or "http",
+    host = host,
+    port = port,
+  })
+  req.version = 2
+  req.tls = tls
+
+  if tls then
+    local http_tls = require "http.tls"
+    local openssl_ctx = require "openssl.ssl.context"
+    local n_ctx = http_tls.new_client_context()
+    n_ctx:setVerify(openssl_ctx.VERIFY_NONE)
+    req.ctx = n_ctx
+  end
+
+  local meta = getmetatable(req) or {}
+
+  meta.__call = function(req, opts)
+    local headers = opts and opts.headers
+    local timeout = opts and opts.timeout
+
+    for k, v in pairs(headers or {}) do
+      req.headers:upsert(k, v)
+    end
+
+    local headers, stream = req:go(timeout)
+    local body = stream:get_body_as_string()
+    return body, headers
+  end
+
+  return setmetatable(req, meta)
+end
+
+--- returns a pre-configured cleartext `http2_client` for the Kong proxy port.
+-- @name proxy_client_h2c
+local function proxy_client_h2c()
+  local proxy_ip = get_proxy_ip(false, true)
+  local proxy_port = get_proxy_port(false, true)
+  assert(proxy_ip, "No http-proxy found in the configuration")
+  return http2_client(proxy_ip, proxy_port)
+end
+
+--- returns a pre-configured TLS `http2_client` for the Kong SSL proxy port.
+-- @name proxy_client_h2
+local function proxy_client_h2()
+  local proxy_ip = get_proxy_ip(true, true)
+  local proxy_port = get_proxy_port(true, true)
+  assert(proxy_ip, "No https-proxy found in the configuration")
+  return http2_client(proxy_ip, proxy_port, true)
+end
+
+
+--- Creates a gRPC client, based on the grpcurl CLI.
+-- @name grpc_client
+-- @param host hostname to connect to
+-- @param port port to connect to
+-- @param opts table with options supported by grpcurl
+-- @return grpc client
+local function grpc_client(host, port, opts)
+  local host = assert(host)
+  local port = assert(tostring(port))
+
+  opts = opts or {}
+  if not opts["-proto"] then
+    opts["-proto"] = MOCK_GRPC_UPSTREAM_PROTO_PATH
+  end
+
+  return setmetatable({
+    opts = opts,
+    cmd_template = string.format("bin/grpcurl %%s %s:%s %%s", host, port)
+
+  }, {
+    __call = function(t, args)
+      local service = assert(args.service)
+      local body = args.body
+
+      local t_body = type(body)
+      if t_body ~= "nil" then
+        if t_body == "table" then
+          body = cjson.encode(body)
+        end
+
+        args.opts["-d"] = string.format("'%s'", body)
+      end
+
+      local opts = gen_grpcurl_opts(pl_tablex.merge(t.opts, args.opts, true))
+      local ok, err, out = exec(string.format(t.cmd_template, opts, service))
+
+      if ok then
+        return ok, out
+      else
+        return nil, err
+      end
+    end
+  })
+end
+
+--- returns a pre-configured `grpc_client` for the Kong proxy port.
+-- @name proxy_client_grpc
+local function proxy_client_grpc(host, port)
+  local proxy_ip = host or get_proxy_ip(false, true)
+  local proxy_port = port or get_proxy_port(false, true)
+  assert(proxy_ip, "No http-proxy found in the configuration")
+  return grpc_client(proxy_ip, proxy_port, {["-plaintext"] = true})
+end
+
+--- returns a pre-configured `grpc_client` for the Kong SSL proxy port.
+-- @name proxy_client_grpcs
+local function proxy_client_grpcs(host, port)
+  local proxy_ip = host or get_proxy_ip(true, true)
+  local proxy_port = port or get_proxy_port(true, true)
+  assert(proxy_ip, "No https-proxy found in the configuration")
+  return grpc_client(proxy_ip, proxy_port, {["-insecure"] = true})
 end
 
 
@@ -1682,6 +1907,9 @@ return {
 
   mock_upstream_stream_port     = MOCK_UPSTREAM_STREAM_PORT,
   mock_upstream_stream_ssl_port = MOCK_UPSTREAM_STREAM_SSL_PORT,
+  mock_grpc_upstream_proto_path = MOCK_GRPC_UPSTREAM_PROTO_PATH,
+
+  redis_host = os.getenv("KONG_SPEC_REDIS_HOST") or "127.0.0.1",
 
   blackhole_host = BLACKHOLE_HOST,
 
@@ -1691,14 +1919,21 @@ return {
   kong_exec = kong_exec,
   get_version = get_version,
   http_client = http_client,
+  grpc_client = grpc_client,
+  http2_client = http2_client,
   wait_until = wait_until,
   tcp_server = tcp_server,
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
   http_server = http_server,
+  mock_reports_server = mock_reports_server,
   get_proxy_ip = get_proxy_ip,
   get_proxy_port = get_proxy_port,
   proxy_client = proxy_client,
+  proxy_client_grpc = proxy_client_grpc,
+  proxy_client_grpcs = proxy_client_grpcs,
+  proxy_client_h2c = proxy_client_h2c,
+  proxy_client_h2 = proxy_client_h2,
   admin_client = admin_client,
   proxy_ssl_client = proxy_ssl_client,
   admin_ssl_client = admin_ssl_client,

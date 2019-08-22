@@ -3,6 +3,7 @@ local bit = require "bit"
 
 local band = bit.band
 local fmt = string.format
+local ngx_get_phase = ngx.get_phase
 
 
 local PHASES = {
@@ -63,7 +64,12 @@ local function check_phase(accepted_phases)
 
   local current_phase = kong.ctx.core.phase
   if not current_phase then
-    error("no phase in kong.ctx.core.phase")
+    if ngx_get_phase() == "content" then
+      -- treat custom content blocks as the Admin API
+      current_phase = PHASES.admin_api
+    else
+      error("no phase in kong.ctx.core.phase")
+    end
   end
 
   if band(current_phase, accepted_phases) ~= 0 then

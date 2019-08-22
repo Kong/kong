@@ -6,10 +6,12 @@ return {
     name = "keyauth_credentials",
     endpoint_key = "key",
     cache_key = { "key" },
+    admin_api_name = "key-auths",
+    admin_api_nested_name = "key-auth",
     fields = {
       { id = typedefs.uuid },
       { created_at = typedefs.auto_timestamp_s },
-      { consumer = { type = "foreign", reference = "consumers", default = ngx.null, on_delete = "cascade", }, },
+      { consumer = { type = "foreign", reference = "consumers", required = true, on_delete = "cascade", }, },
       { key = { type = "string", required = false, unique = true, auto = true }, },
     },
   },

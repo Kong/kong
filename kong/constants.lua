@@ -33,6 +33,7 @@ local plugins = {
   "post-function",
   "prometheus",
   "proxy-cache",
+  "session",
 }
 
 local plugin_map = {}
@@ -51,13 +52,20 @@ local protocols_with_subsystem = {
   http = "http",
   https = "http",
   tcp = "stream",
-  tls = "stream"
+  tls = "stream",
+  grpc = "http",
+  grpcs = "http",
 }
 local protocols = {}
 for p,_ in pairs(protocols_with_subsystem) do
   protocols[#protocols + 1] = p
 end
 table.sort(protocols)
+
+local grpc_proxy_modes = {
+  grpc = true,
+  grpcs = true,
+}
 
 return {
   BUNDLED_PLUGINS = plugin_map,
@@ -86,15 +94,16 @@ return {
   -- schemas of dependencies need to be loaded first.
   CORE_ENTITIES = {
     "consumers",
+    "certificates",
     "services",
     "routes",
-    "certificates",
     "snis",
     "upstreams",
     "targets",
     "plugins",
     "cluster_ca",
     "tags",
+    "ca_certificates",
   },
   RATELIMIT = {
     PERIODS = {
@@ -133,4 +142,5 @@ return {
   },
   PROTOCOLS = protocols,
   PROTOCOLS_WITH_SUBSYSTEM = protocols_with_subsystem,
+  GRPC_PROXY_MODES = grpc_proxy_modes,
 }

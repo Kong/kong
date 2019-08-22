@@ -318,9 +318,11 @@ function _mt:init_worker(strategies)
 
     local sorted_strategies = graph:sort()
     local ttl_escaped = self:escape_identifier("ttl")
-    local cleanup_statement = {}
-    for i, table_name in ipairs(sorted_strategies) do
-      cleanup_statement[i] = concat {
+    local cleanup_statements = {}
+    local cleanup_statements_count = #sorted_strategies
+    for i = 1, cleanup_statements_count do
+      local table_name = sorted_strategies[i]
+      cleanup_statements[i] = concat {
         "  DELETE FROM ",
         self:escape_identifier(table_name),
         " WHERE ",
@@ -329,23 +331,28 @@ function _mt:init_worker(strategies)
       }
     end
 
-    cleanup_statement = concat({
-      "BEGIN;",
-      concat(cleanup_statement, "\n"),
-      "COMMIT;"
-    }, "\n")
+    local cleanup_statement = concat(cleanup_statements, "\n")
 
     return timer_every(60, function(premature)
       if premature then
         return
       end
 
-      local ok, err = self:query(cleanup_statement)
+      local ok, _, _, num_queries = self:query(cleanup_statement)
       if not ok then
-        if err then
-          log(WARN, "unable to clean expired rows from postgres database (", err, ")")
-        else
-          log(WARN, "unable to clean expired rows from postgres database")
+        for i = num_queries + 1, cleanup_statements_count do
+          local statement = cleanup_statements[i]
+          local ok, err = self:query(statement)
+          if not ok then
+            if err then
+              log(WARN, "unable to clean expired rows from table '",
+                        sorted_strategies[i], "' on postgres database (",
+                        err, ")")
+            else
+              log(WARN, "unable to clean expired rows from table '",
+                        sorted_strategies[i], "' on postgres database")
+            end
+          end
         end
       end
     end)

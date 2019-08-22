@@ -175,7 +175,11 @@ function _M.new(opts)
             end
           end,
           broadcast = function(channel, data)
-            opts.worker_events.post(channel_name, channel, data)
+            local ok, err = opts.worker_events.post(channel_name, channel, data)
+            if not ok then
+              log(ERR, "failed to post event '", channel_name, "', '",
+                       channel, "': ", err)
+            end
           end
         }
       })
