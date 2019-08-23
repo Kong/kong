@@ -52,6 +52,6 @@ GET /t
 --- request
 GET /t
 --- response_body chop
-{"groups":{}}
+{}
 --- no_error_log
 [error]
