@@ -38,6 +38,7 @@ local balancers = {}
 local healthcheckers = {}
 local healthchecker_callbacks = {}
 local target_histories = {}
+local upstream_ids = {}
 
 
 -- health check API callbacks to be called on healthcheck events
@@ -183,19 +184,19 @@ local function apply_history(rb, history, start)
 end
 
 
-local function populate_healthchecker(hc, balancer)
+local function populate_healthchecker(hc, balancer, upstream)
   for weight, addr, host in balancer:addressIter() do
     if weight > 0 then
       local ipaddr = addr.ip
       local port = addr.port
-      local hostname = host.hostname
-      local ok, err = hc:add_target(ipaddr, port, hostname)
+      local ok, err = hc:add_target(ipaddr, port, host.hostname, true,
+                                    upstream.host_header)
       if ok then
         -- Get existing health status which may have been initialized
         -- with data from another worker, and apply to the new balancer.
-        local tgt_status = hc:get_target_status(ipaddr, port, hostname)
+        local tgt_status = hc:get_target_status(ipaddr, port, host.hostname)
         if tgt_status ~= nil then
-          balancer:setAddressStatus(tgt_status, ipaddr, port, hostname)
+          balancer:setAddressStatus(tgt_status, ipaddr, port)
         end
 
       else
@@ -229,19 +230,8 @@ do
     -- @param hostname string
     local function ring_balancer_callback(balancer, action, address, ip, port, hostname)
       local healthchecker = healthcheckers[balancer]
-      if action == "added" then
-        local ok, err = healthchecker:add_target(ip, port, hostname)
-        if not ok then
-          log(ERR, "[healthchecks] failed adding a target: ", err)
-        end
 
-      elseif action == "removed" then
-        local ok, err = healthchecker:remove_target(ip, port, hostname)
-        if not ok then
-          log(ERR, "[healthchecks] failed removing a target: ", err)
-        end
-
-      elseif action == "health" then
+      if action == "health" then
         local balancer_status
         if address then
           balancer_status = "HEALTHY"
@@ -252,8 +242,27 @@ do
             " reported health status changed to ", balancer_status)
 
       else
-        log(WARN, "[healthchecks] unknown status from balancer: ",
-                  tostring(action))
+        local upstream_id = upstream_ids[balancer]
+        local upstream = get_upstream_by_id(upstream_id)
+
+        if action == "added" then
+          local ok, err = healthchecker:add_target(ip, port, hostname, true,
+                                                  upstream.host_header)
+          if not ok then
+            log(ERR, "[healthchecks] failed adding a target: ", err)
+          end
+
+        elseif action == "removed" then
+          local ok, err = healthchecker:remove_target(ip, port, hostname)
+          if not ok then
+            log(ERR, "[healthchecks] failed removing a target: ", err)
+          end
+
+        else
+          log(WARN, "[healthchecks] unknown status from balancer: ",
+                    tostring(action))
+        end
+
       end
     end
 
@@ -271,12 +280,13 @@ do
           return
         end
 
+        local hostname = tgt.hostname
         local ok, err
-        ok, err = balancer:setAddressStatus(status, tgt.ip, tgt.port, tgt.hostname)
+        ok, err = balancer:setAddressStatus(status, tgt.ip, tgt.port, hostname)
 
         local health = status and "healthy" or "unhealthy"
         for _, subscriber in ipairs(healthcheck_subscribers) do
-          subscriber(upstream_id, tgt.ip, tgt.port, tgt.hostname, health)
+          subscriber(upstream_id, tgt.ip, tgt.port, hostname, health)
         end
 
         if not ok then
@@ -349,7 +359,7 @@ do
         return nil, err
       end
 
-      populate_healthchecker(healthchecker, balancer)
+      populate_healthchecker(healthchecker, balancer, upstream)
 
       attach_healthchecker_to_balancer(healthchecker, balancer, upstream.id)
 
@@ -428,6 +438,8 @@ do
     end
 
     apply_history(balancer, history, start)
+
+    upstream_ids[balancer] = upstream.id
 
     create_healthchecker(balancer, upstream)
 
@@ -900,7 +912,11 @@ local function execute(target, ctx)
 
   target.ip = ip
   target.port = port
-  target.hostname = hostname
+  if upstream and upstream.host_header ~= nil then
+    target.hostname = upstream.host_header
+  else
+    target.hostname = hostname
+  end
   return true
 end
 
@@ -1046,6 +1062,7 @@ return {
   subscribe_to_healthcheck_events = subscribe_to_healthcheck_events,
   unsubscribe_from_healthcheck_events = unsubscribe_from_healthcheck_events,
   get_upstream_health = get_upstream_health,
+  get_upstream_by_id = get_upstream_by_id,
 
   -- ones below are exported for test purposes only
   _create_balancer = create_balancer,

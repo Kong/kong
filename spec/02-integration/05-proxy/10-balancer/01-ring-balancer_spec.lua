@@ -110,7 +110,7 @@ end
 -- odd entries are 200s, event entries are 500s
 -- @param test_log (optional, default fals) Produce detailed logs
 -- @return Returns the number of successful and failure responses.
-local function http_server(host, port, counts, test_log, protocol)
+local function http_server(host, port, counts, test_log, protocol, check_hostname)
   -- This is a "hard limit" for the execution of tests that launch
   -- the custom http_server
   local hard_timeout = ngx.now() + 300
@@ -120,7 +120,7 @@ local function http_server(host, port, counts, test_log, protocol)
               "spec/fixtures/balancer_https_server.lua " ..
               protocol .. " " .. host .. " " .. port ..
               " \"" .. cjson.encode(counts):gsub('"', '\\"') .. "\" " ..
-              (test_log or "") .. " &"
+              (test_log or "false") .. " ".. (check_hostname or "false") .. " &"
   os.execute(cmd)
 
   repeat
@@ -533,6 +533,14 @@ for _, strategy in helpers.each_strategy() do
         name = "a-changes-port.test",
         address = "127.0.0.3",
       }
+      fixtures.dns_mock:A {
+        name = "another.multiple-ips.test",
+        address = "127.0.0.1",
+      }
+      fixtures.dns_mock:A {
+        name = "another.multiple-ips.test",
+        address = "127.0.0.2",
+      }
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -618,6 +626,72 @@ for _, strategy in helpers.each_strategy() do
       assert.is.table(health)
       assert.is.table(health.data)
       assert.is.table(health.data[1])
+      assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
+      assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
+      assert.equals("UNHEALTHY", health.data[1].health)
+      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+      assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
+
+      local status = post_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "healthy")
+      assert.same(204, status)
+
+      health = get_upstream_health(upstream_name)
+      assert.is.table(health)
+      assert.is.table(health.data)
+      assert.is.table(health.data[1])
+      assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
+      assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
+      assert.equals("HEALTHY", health.data[1].health)
+      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+      assert.equals("HEALTHY", health.data[1].data.addresses[2].health)
+
+      local status = post_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "unhealthy")
+      assert.same(204, status)
+
+      health = get_upstream_health(upstream_name)
+      assert.is.table(health)
+      assert.is.table(health.data)
+      assert.is.table(health.data[1])
+      assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
+      assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
+      assert.equals("UNHEALTHY", health.data[1].health)
+      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+      assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
+
+    end)
+
+    it("a target that resolves to 2 IPs reports health separately (upstream with hostname set)", function()
+
+      -- configure healthchecks
+      begin_testcase_setup(strategy, bp)
+      local upstream_name, upstream_id = add_upstream(bp, {
+        host_header = "another.multiple-ips.test",
+        healthchecks = healthchecks_config {
+          passive = {
+            unhealthy = {
+              tcp_failures = 1,
+            }
+          }
+        }
+      })
+      -- the following port will not be used, will be overwritten by
+      -- the mocked SRV record.
+      add_target(bp, upstream_id, "multiple-ips.test", 80)
+      local api_host = add_api(bp, upstream_name)
+      end_testcase_setup(strategy, bp)
+
+      -- we do not set up servers, since we want the connection to get refused
+      -- Go hit the api with requests, 1x round the balancer
+      local oks, fails, last_status = client_requests(SLOTS, api_host)
+      assert.same(0, oks)
+      assert.same(10, fails)
+      assert.same(503, last_status)
+
+      local health = get_upstream_health(upstream_name)
+      assert.is.table(health)
+      assert.is.table(health.data)
+      assert.is.table(health.data[1])
+
       assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
       assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
       assert.equals("UNHEALTHY", health.data[1].health)
@@ -900,6 +974,43 @@ for _, strategy in helpers.each_strategy() do
             })
             assert.Truthy(ok)
             assert.Truthy(resp)
+          end)
+
+          it("properly set the host header", function()
+            begin_testcase_setup(strategy, bp)
+            local upstream_name, upstream_id = add_upstream(bp, { host_header = "localhost" })
+            local target_port = add_target(bp, upstream_id, localhost)
+            local api_host = add_api(bp, upstream_name)
+            end_testcase_setup(strategy, bp)
+
+            local server = http_server("localhost", target_port, { 5 }, "false", "http", "true")
+
+            local oks, fails, last_status = client_requests(5, api_host)
+            assert.same(200, last_status)
+            assert.same(5, oks)
+            assert.same(0, fails)
+
+            local _, server_oks, server_fails = server:done()
+            assert.same(5, server_oks)
+            assert.same(0, server_fails)
+          end)
+
+          it("fail with wrong host header", function()
+            begin_testcase_setup(strategy, bp)
+            local upstream_name, upstream_id = add_upstream(bp, { host_header = "localhost" })
+            local target_port = add_target(bp, upstream_id, "localhost")
+            local api_host = add_api(bp, upstream_name)
+            end_testcase_setup(strategy, bp)
+            local server = http_server("127.0.0.1", target_port, { 5 }, "false", "http", "true")
+            local oks, fails, last_status = client_requests(5, api_host)
+            assert.same(400, last_status)
+            assert.same(0, oks)
+            assert.same(5, fails)
+
+            -- oks and fails must be 0 as localhost should not receive any request
+            local _, server_oks, server_fails = server:done()
+            assert.same(0, server_oks)
+            assert.same(0, server_fails)
           end)
 
           -- #db == disabled for database=off, because it tests
@@ -1284,6 +1395,77 @@ for _, strategy in helpers.each_strategy() do
 
               -- Phase 2: server2 goes unhealthy
               direct_request(localhost, port2, "/unhealthy")
+
+              -- Give time for healthchecker to detect
+              poll_wait_health(upstream_id, localhost, port2, "UNHEALTHY")
+
+              -- Phase 3: server1 takes all requests
+              do
+                local p3oks, p3fails = client_requests(requests - (server2_oks * 2), api_host)
+                client_oks = client_oks + p3oks
+                client_fails = client_fails + p3fails
+              end
+
+              -- collect server results; hitcount
+              local _, ok1, fail1 = server1:done()
+              local _, ok2, fail2 = server2:done()
+
+              -- verify
+              assert.are.equal(requests - server2_oks, ok1)
+              assert.are.equal(server2_oks, ok2)
+              assert.are.equal(0, fail1)
+              assert.are.equal(0, fail2)
+
+              assert.are.equal(requests, client_oks)
+              assert.are.equal(0, client_fails)
+            end
+          end)
+
+          it("perform active health checks with upstream hostname", function()
+
+            for nfails = 1, 3 do
+
+              local requests = SLOTS * 2 -- go round the balancer twice
+              local port1 = gen_port()
+              local port2 = gen_port()
+
+              -- setup target servers:
+              -- server2 will only respond for part of the test,
+              -- then server1 will take over.
+              local server2_oks = math.floor(requests / 4)
+              local server1 = http_server("localhost", port1,
+                { requests - server2_oks }, "false", "http", "true")
+              local server2 = http_server("localhost", port2, { server2_oks },
+                "false", "http", "true")
+
+              -- configure healthchecks
+              begin_testcase_setup(strategy, bp)
+              local upstream_name, upstream_id = add_upstream(bp, {
+                host_header = "localhost",
+                healthchecks = healthchecks_config {
+                  active = {
+                    http_path = "/status",
+                    healthy = {
+                      interval = HEALTHCHECK_INTERVAL,
+                      successes = 1,
+                    },
+                    unhealthy = {
+                      interval = HEALTHCHECK_INTERVAL,
+                      http_failures = nfails,
+                    },
+                  }
+                }
+              })
+              add_target(bp, upstream_id, localhost, port1)
+              add_target(bp, upstream_id, localhost, port2)
+              local api_host = add_api(bp, upstream_name)
+              end_testcase_setup(strategy, bp)
+
+              -- Phase 1: server1 and server2 take requests
+              local client_oks, client_fails = client_requests(server2_oks * 2, api_host)
+
+              -- Phase 2: server2 goes unhealthy
+              direct_request("localhost", port2, "/unhealthy")
 
               -- Give time for healthchecker to detect
               poll_wait_health(upstream_id, localhost, port2, "UNHEALTHY")

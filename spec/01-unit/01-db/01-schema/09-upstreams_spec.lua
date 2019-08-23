@@ -216,6 +216,56 @@ describe("load upstreams", function()
     end)
   end)
 
+  describe("upstream attribute", function()
+    -- refusals
+    it("requires a valid hostname", function()
+      local ok, err = Upstreams:validate({
+        name = "host.test",
+        host_header = "ahostname:80" }
+      )
+      assert.falsy(ok)
+      assert.same({ host_header = "must not have a port" }, err)
+
+      ok, err = Upstreams:validate({
+        name = "host.test",
+        host_header = "http://ahostname.test" }
+      )
+      assert.falsy(ok)
+      assert.same({ host_header = "invalid value: http://ahostname.test" }, err)
+
+      ok, err = Upstreams:validate({
+        name = "host.test",
+        host_header = "ahostname-" }
+      )
+      assert.falsy(ok)
+      assert.same({ host_header = "invalid value: ahostname-" }, err)
+
+      ok, err = Upstreams:validate({
+        name = "host.test",
+        host_header = "a hostname" }
+      )
+      assert.falsy(ok)
+      assert.same({ host_header = "invalid value: a hostname" }, err)
+    end)
+
+    -- acceptance
+    it("accepts valid hostnames", function()
+      local ok, err = Upstreams:validate({
+        name = "host.test",
+        host_header = "ahostname" }
+      )
+      assert.truthy(ok)
+      assert.is_nil(err)
+
+      ok, err = Upstreams:validate({
+        name = "host.test",
+        host_header = "a.hostname.test" }
+      )
+      assert.truthy(ok)
+      assert.is_nil(err)
+    end)
+  end)
+
   describe("healthchecks attribute", function()
     -- refusals
     it("rejects invalid configurations", function()

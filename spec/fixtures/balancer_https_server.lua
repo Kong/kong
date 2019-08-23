@@ -13,8 +13,14 @@ local host_or_ip = assert(arg[2])
 local port = assert(arg[3])
 local total_counts = assert(cjson.decode(arg[4]))
 local TEST_LOG = arg[5] == "true"
+local check_hostname = arg[6] == "true"
 
 local TIMEOUT = -1 -- luacheck: ignore
+local status_messages = {
+  [200] = "OK",
+  [400] = "Bad Request",
+  [500] = "Internal Server Error",
+}
 
 local function test_log(...) -- luacheck: ignore
   if not TEST_LOG then
@@ -96,9 +102,8 @@ local httpserver = {
                   return headers[k]
                 end,
                 send_response = function(_, status, body)
-                  local r = status == 200 and "OK" or "Internal Server Error"
                   local resp = {
-                    "HTTP/1.1 " .. status .. " " .. r,
+                    "HTTP/1.1 " .. status .. " " .. status_messages[status],
                     "Connection: Close",
                   }
                   if body then
@@ -109,7 +114,6 @@ local httpserver = {
                     table.insert(resp, body)
                   end
                   table.insert(resp, "")
-                  test_log(table.concat(resp, "\r\n"))
                   cskt:send(table.concat(resp, "\r\n"))
                 end,
               })
@@ -161,6 +165,7 @@ local server = httpserver.listen({
   reuseaddr = true,
   v6only = host_or_ip:match(":") ~= nil,
   onstream = function(self, stream)
+    local header_host = stream:get_header("host"):gsub(":[0-9]+$", "")
     local host = (stream:get_header("host") or self.host_or_ip):gsub(":[0-9]+$", "")
     local path = stream:get_path()
     local status = 200
@@ -188,7 +193,12 @@ local server = httpserver.listen({
       })
 
     elseif path == "/status" then
-      status = data.healthy and 200 or 500
+      if not check_hostname or header_host == self.host_or_ip then
+        status = data.healthy and 200 or 500
+      else
+        test_log("hostname check fail in /status")
+        status = 400
+      end
       data.n_checks = data.n_checks + 1
 
     elseif path == "/healthy" then
@@ -201,22 +211,26 @@ local server = httpserver.listen({
       data.n_reqs = data.n_reqs + 1
       test_log("nreqs ", data.n_reqs)
 
-      local counts = total_counts[1] and total_counts or total_counts[host]
-
-      while counts[1] == 0 do
-        table.remove(counts, 1)
-        data.reply_200 = not data.reply_200
+      if not check_hostname or header_host == self.host_or_ip then
+        local counts = total_counts[1] and total_counts or total_counts[host]
+        while counts[1] == 0 do
+          table.remove(counts, 1)
+          data.reply_200 = not data.reply_200
+        end
+        if not counts[1] then
+          error(host .. ":" .. port .. ": unexpected request")
+        end
+        if counts[1] == TIMEOUT then
+          counts[1] = 0
+          sleep(0.2)
+        elseif counts[1] > 0 then
+          counts[1] = counts[1] - 1
+        end
+        status = data.reply_200 and 200 or 500
+      else
+        test_log("hostname check fail")
+        status = 400
       end
-      if not counts[1] then
-        error(host .. ":" .. port .. ": unexpected request")
-      end
-      if counts[1] == TIMEOUT then
-        counts[1] = 0
-        sleep(0.2)
-      elseif counts[1] > 0 then
-        counts[1] = counts[1] - 1
-      end
-      status = data.reply_200 and 200 or 500
       if status == 200 then
         data.ok_responses = data.ok_responses + 1
       else
