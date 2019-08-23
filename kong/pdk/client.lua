@@ -244,12 +244,12 @@ local function new(self)
 
   ---
   -- Returns a table of `authenticated_groups` of the currently authenticated
-  -- consumer.
+  -- consumer, or nil if groups is not set.
   -- @function kong.client.get_authenticated_groups
   -- @phases access, header_filter, body_filter, log
-  -- @treturn table,nil|err
-  -- The table will have an array part to iterate over, and a hash part where each
-  -- group name is indexed by itself. Eg.
+  -- @treturn table|nil
+  -- The table will have an array part to iterate over, and a hash part where
+  -- each group name is indexed by itself. Eg.
   -- {
   --   [1] = "users",
   --   [2] = "admins",
@@ -257,8 +257,8 @@ local function new(self)
   --   admins = "admins",
   -- }
   -- @usage
-  -- local groups, err = kong.client.get_authenticated_groups()
-  -- if not err then
+  -- local groups = kong.client.get_authenticated_groups()
+  -- if not groups then
   --   for i = 1, #groups_to_check do
   --     if groups[i] == 'group1' then
   --       return true
@@ -270,7 +270,7 @@ local function new(self)
 
     local authenticated_groups = ngx.ctx.authenticated_groups
     if authenticated_groups == nil then
-      return {}
+      return nil
     end
 
     assert(type(authenticated_groups) == "table",
