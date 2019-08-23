@@ -973,7 +973,7 @@ end
 
 
 function _M.build_ws_portal_api_url(config)
-  return config.portal_api_url or config.portal_api_listen
+  return config.portal_api_url
 end
 
 

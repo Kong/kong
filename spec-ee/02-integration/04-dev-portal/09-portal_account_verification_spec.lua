@@ -324,6 +324,7 @@ for _, strategy in helpers.each_strategy() do
           body = {
             email = "dog@cat.com",
             status = 0,
+            password = "test",
             meta = '{"full_name": "dog"}'
           },
           headers = {["Content-Type"] = "application/json"}

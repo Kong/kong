@@ -156,17 +156,37 @@ local function build_cred_plugin_data(self, entity, consumer)
   local data
 
   if self.portal_auth == "basic-auth" then
+    if self.password == nil then
+      local err = "password is required"
+      return nil, err, {
+        code = Errors.codes.SCHEMA_VIOLATION,
+        fields = { password = err },
+      }
+    end
+
     data = {
       consumer = consumer,
       username = entity.email,
       password = self.password,
     }
-  end
 
-  if self.portal_auth == "key-auth" then
+  elseif self.portal_auth == "key-auth" then
+    if self.key == nil then
+      local err = "key is required"
+      return nil, err, {
+        code = Errors.codes.SCHEMA_VIOLATION,
+        fields = { key = err },
+      }
+    end
+
     data = {
       consumer = consumer,
       key = self.key,
+    }
+
+  else
+    return nil, "unknown auth type", {
+      code = Errors.codes.DATABASE_ERROR,
     }
   end
 
@@ -203,6 +223,7 @@ end
 local function create_consumer(entity)
   return singletons.db.consumers:insert({
     username = entity.email,
+    custom_id = entity.custom_id,
     type = enums.CONSUMERS.TYPE.DEVELOPER,
   })
 end
@@ -514,21 +535,31 @@ local function create_developer(self, entity, options)
     end
 
     -- generate credential data
-    local credential_plugin_data = build_cred_plugin_data(self, entity, consumer)
+    local credential_plugin_data, err, err_t = build_cred_plugin_data(self, entity, consumer)
     if credential_plugin_data == nil then
       rollback_on_create({ consumer = consumer })
-      local err = "developer insert: could not set credential plugin data for " .. entity.email
-      local err_t = { code = Errors.codes.DATABASE_ERROR }
       return nil, err, err_t
     end
 
     -- create plugin credential
-    local plugin_cred = collection:insert(credential_plugin_data)
+    local plugin_cred, _, err_t = collection:insert(credential_plugin_data)
     if not plugin_cred then
       rollback_on_create({ consumer = consumer })
       local err = "developer insert: could not create plugin credential for " .. entity.email
-      local err_t = { code = Errors.codes.DATABASE_ERROR }
-      return nil, err, err_t
+      local res_err_t
+
+      -- suppress duplicate key-auth key error message
+      if err_t.code == Errors.codes.UNIQUE_VIOLATION and err_t.fields.key then
+        res_err_t = {
+          code = Errors.codes.SCHEMA_VIOLATION,
+          fields = { key = "invalid api key"} ,
+        }
+      else
+        -- all other errors
+        res_err_t = { code = Errors.codes.DATABASE_ERROR }
+      end
+
+      return nil, err, res_err_t
     end
 
     -- create credential reference
@@ -565,6 +596,7 @@ end
 
 local function update_developer(self, developer, entity, options)
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local consumer = self.db.consumers:select({ id = developer.consumer.id })
 
   -- developer cannot update to type UNVERIFIED
   if entity.status and
@@ -589,6 +621,28 @@ local function update_developer(self, developer, entity, options)
     end
   end
 
+  -- check if custom_id is being updated
+  -- TODO: (Devx) Better handle errors, could be invalid value
+  if entity.custom_id and entity.custom_id ~= developer.custom_id then
+    if not consumer then
+      local code = Errors.codes.DATABASE_ERROR
+      local err = "developer update: could not find consumer mapping for " .. developer.email
+      local err_t = { code = code }
+      return nil, err, err_t
+    end
+
+    local ok = self.db.consumers:update(
+      { id = consumer.id },
+      { custom_id = entity.custom_id }
+    )
+    if not ok then
+      local code = Errors.codes.UNIQUE_VIOLATION
+      local err = "developer update: could not update consumer mapping for " .. developer.email
+      local err_t = { code = code, fields = { ["custom_id"] = "already exists with value '" .. entity.custom_id .. "'" } }
+      return nil, err, err_t
+    end
+  end
+
   -- check if email is being updated
   if entity.email and entity.email ~= developer.email then
 
@@ -602,6 +656,7 @@ local function update_developer(self, developer, entity, options)
     end
 
     -- retrieve portal auth plugin type
+    -- TODO: Determine whether this need to be applied to `self`
     self.portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
     if not self.portal_auth or self.portal_auth == "" then
       local code = Errors.codes.DATABASE_ERROR
@@ -621,7 +676,6 @@ local function update_developer(self, developer, entity, options)
       end
 
       -- find developers consumer
-      local consumer = self.db.consumers:select({ id = developer.consumer.id })
       if not consumer then
         local code = Errors.codes.DATABASE_ERROR
         local err = "developer update: could not find consumer mapping for " .. developer.email

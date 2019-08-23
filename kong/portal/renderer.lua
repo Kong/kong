@@ -24,6 +24,8 @@ local portal_conf_values = {
   "emails_reply_to",
 }
 
+local FALLBACK_404 = '<html><head><title>404 Not Found</title></head><body><h1>404 Not Found</h1><p>The page you are requesting cannot be found.</p></body></html>'
+
 
 template.caching(false)
 template.load = function(path)
@@ -83,22 +85,40 @@ local function set_asset(ctx)
 end
 
 
-local function set_layout(ctx)
-  local path    = ctx.path
-  local theme   = ctx.theme
+local function get_missing_layout(ctx)
+  local theme = ctx.theme
   local content = ctx.content
 
-  if content.layout then
-    path = content.layout
+  content.title = "Page Not Found"
+
+  return singletons.db.files:select_file_by_theme("layouts/404.html",
+                                                  theme.name)
+end
+
+
+local function set_layout(ctx)
+  local theme   = ctx.theme
+  local content = ctx.content
+  local path = content.layout
+
+  -- Missing
+  if not path then
+    return get_missing_layout(ctx)
   end
 
-  local layout = singletons.db.files:select_file_by_theme('layouts/' .. path .. '.html', theme.name)
+  -- Attempt to load layout with extension
+  local layout = singletons.db.files:select_file_by_theme('layouts/' .. path .. '.html',
+                                                          theme.name)
+
+  -- Attempt loading a layout without extension
   if not layout then
-    layout = singletons.db.files:select_file_by_theme('layouts/' .. path, theme.name)
+    layout = singletons.db.files:select_file_by_theme('layouts/' .. path,
+                                                      theme.name)
   end
 
+  -- Could not find layout by path return 404
   if not layout then
-    return singletons.db.files:select_file_by_theme("layouts/404.html", theme.name)
+    layout = get_missing_layout(ctx)
   end
 
   return layout
@@ -223,16 +243,22 @@ local function set_theme_config(portal_theme_conf)
   end
 
   contents.name = theme_name
-  -- TODO: portal to theme overrides
 
-  -- if type(portal_theme_conf) == "table" then
-  --   if portal_theme_conf.colors then
+  if type(portal_theme_conf) == "table" then
+    if portal_theme_conf.colors then
+      contents.colors = contents.colors or {}
+      for k, v in pairs(portal_theme_conf.colors) do
+        contents.colors[k] = v
+      end
+    end
 
-  --   end
-  --   for k, v in pairs(theme_conf) do
-  --     contents[k] = v
-  --   end
-  -- end
+    if portal_theme_conf.fonts then
+      contents.fonts = contents.fonts or {}
+      for k, v in pairs(portal_theme_conf.fonts) do
+        contents.fonts[k] = v
+      end
+    end
+  end
 
   return contents
 end
@@ -248,8 +274,6 @@ local function set_render_ctx(self)
   local theme_config  = set_theme_config(portal_config.theme)
   local content       = set_content(route_config, developer, workspace, portal_config)
 
-  print(require('inspect')(content))
-
   singletons.render_ctx = {
     path      = path,
     route     = route,
@@ -264,6 +288,9 @@ end
 local function compile_layout()
   local ctx = singletons.render_ctx
   local layout = set_layout(ctx)
+  if not layout then
+    return FALLBACK_404
+  end
 
   return template.compile(layout)({
     base   = handler.new('base'),

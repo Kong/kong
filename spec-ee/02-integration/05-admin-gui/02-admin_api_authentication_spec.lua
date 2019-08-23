@@ -69,10 +69,6 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-
-  if strategy == 'cassandra' then
-    return
-  end
   describe("Admin API authentication on #" .. strategy, function()
     lazy_setup(function()
       _, db, dao = helpers.get_db_utils(strategy)
@@ -397,6 +393,78 @@ for _, strategy in helpers.each_strategy() do
 
           assert.equal(1, #json.data)
           assert.equal("test-ws-example.com", json.data[1].host)
+        end)
+      end)
+
+      describe('#Cache Invalidation:', function()
+        local cache_key, cookie
+
+        local function check_cache(expected_status, cache_key)
+          local res = assert(client:send {
+            method = "GET",
+            path = "/cache/" .. cache_key,
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = super_admin.username,
+            },
+          })
+
+          local json = assert.res_status(expected_status, res)
+
+          return cjson.decode(json)
+        end
+
+        lazy_setup(function()
+          cookie = get_admin_cookie_basic_auth(client, super_admin.username, 'hunter1')
+
+          -- by default, rbac_user uses primary_key with no-workspace to generates cache_key.
+          cache_key = db.rbac_users:cache_key(super_admin.rbac_user.id, '', '', '', '', true)
+        end)
+
+        it("updates rbac_users cache when admin updates rbac token", function()
+          local cache_token, new_cache_token
+
+          -- access "/" endpoint to trigger authentication process.
+          -- rbac user should be cached.
+          do
+            local res = assert(client:send {
+              method = "GET",
+              path = "/",
+              headers = {
+                ["cookie"] = cookie,
+                ["Kong-Admin-User"] = super_admin.username,
+              },
+            })
+
+            assert.res_status(200, res)
+            cache_token = check_cache(200, cache_key).user_token
+          end
+
+          -- updates rbac_user token via admin endpoint,
+          -- expects difference of user_token in cookie,
+          -- if cache has been invalidated.
+          -- see 'rbac.get_user()' and
+          -- 'cache invalidation' in 'runloop'.
+          do
+            local token = utils.uuid()
+
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/admins/self/token",
+              headers = {
+                ["cookie"] = cookie,
+                ["Kong-Admin-User"] = super_admin.username,
+                ["Content-Type"] = "application/json"
+              },
+              body = {
+                token = token
+              }
+            })
+
+            assert.res_status(200, res)
+            new_cache_token = check_cache(200, cache_key).user_token
+            assert.not_equal(cache_token, new_cache_token)
+          end
         end)
       end)
     end)

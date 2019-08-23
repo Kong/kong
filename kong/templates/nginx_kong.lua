@@ -44,7 +44,6 @@ lua_shared_dict kong_vitals_counters 50m;
 lua_shared_dict kong_vitals_lists   1m;
 lua_shared_dict kong_healthchecks   5m;
 lua_shared_dict kong_rate_limiting_counters 12m;
-lua_shared_dict kong_reports_apis            1m;
 lua_shared_dict kong_reports_consumers       10m;
 lua_shared_dict kong_reports_routes          1m;
 lua_shared_dict kong_reports_services        1m;

@@ -451,7 +451,7 @@ return {
       BEGIN
         IF not EXISTS (SELECT column_name
                FROM information_schema.columns
-               WHERE table_schema='public' and table_name='consumers' and column_name='type') THEN
+               WHERE table_schema=current_schema() and table_name='consumers' and column_name='type') THEN
           ALTER TABLE consumers
             ADD COLUMN type int NOT NULL DEFAULT 0,
             ADD COLUMN email text,

@@ -103,6 +103,7 @@ for _, strategy in helpers.each_strategy() do
         local dev = bp.developers:insert({
           email = "a@a.co" ,
           meta = '{"full_name":"x"}',
+          password = "test",
         })
         local file = assert(db.files:insert({ path = "content/foo.txt", contents = '{"stuff": "things"}' }))
         assert.is_falsy(permissions.can_read(dev, ws, file.path))
@@ -116,6 +117,7 @@ for _, strategy in helpers.each_strategy() do
         local dev = bp.developers:insert({
           email = "a@a.co" ,
           meta = '{"full_name":"x"}',
+          password = "test",
           roles = { "blue" },
         })
         local file = assert(db.files:insert({
@@ -133,6 +135,7 @@ for _, strategy in helpers.each_strategy() do
         local dev = bp.developers:insert({
           email = "a@a.co" ,
           meta = '{"full_name":"x"}',
+          password = "test",
           roles = { "red" },
         })
         local file = assert(db.files:insert({
