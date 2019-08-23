@@ -62,7 +62,7 @@ function ACLHandler:access(conf)
 
   -- get the consumer/credentials
   local consumer_id = groups.get_current_consumer_id()
-  local authenticated_groups, err
+  local authenticated_groups
   if not consumer_id then
     authenticated_groups = kong.client.get_authenticated_groups()
 
