@@ -357,6 +357,7 @@ build = {
     ["kong.plugins.basic-auth.handler"] = "kong/plugins/basic-auth/handler.lua",
     ["kong.plugins.basic-auth.access"] = "kong/plugins/basic-auth/access.lua",
     ["kong.plugins.basic-auth.schema"] = "kong/plugins/basic-auth/schema.lua",
+    ["kong.plugins.basic-auth.api"] = "kong/plugins/basic-auth/api.lua",
     ["kong.plugins.basic-auth.daos"] = "kong/plugins/basic-auth/daos.lua",
     ["kong.plugins.basic-auth.basicauth_credentials"] = "kong/plugins/basic-auth/basicauth_credentials.lua",
 
