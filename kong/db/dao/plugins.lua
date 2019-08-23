@@ -3,6 +3,7 @@ local utils = require "kong.tools.utils"
 local DAO = require "kong.db.dao"
 local plugin_loader = require "kong.db.schema.plugin_loader"
 local BasePlugin = require "kong.plugins.base_plugin"
+local go = require "kong.db.dao.plugins.go"
 
 
 local Plugins = {}
@@ -145,6 +146,9 @@ local function load_plugin_handler(plugin)
 
   local plugin_handler = "kong.plugins." .. plugin .. ".handler"
   local ok, handler = utils.load_module_if_exists(plugin_handler)
+  if not ok then
+    ok, handler = go.load_plugin(plugin)
+  end
   if not ok then
     return nil, plugin .. " plugin is enabled but not installed;\n" .. handler
   end

@@ -8,6 +8,7 @@ admin_error_log = logs/error.log
 status_access_log = off
 status_error_log = logs/status_error.log
 plugins = bundled
+go_plugins_dir = /usr/local/kong/
 anonymous_reports = on
 
 proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384

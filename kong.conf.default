@@ -115,6 +115,9 @@
                                  # cache (i.e. when the configured
                                  # `mem_cache_size`) is full.
 
+#go_plugins_dir = /usr/local/kong  # Directory for installing Kong plugins
+                                   # written in Go
+
 #anonymous_reports = on          # Send anonymous usage data such as error
                                  # stack traces to help improve Kong.
 

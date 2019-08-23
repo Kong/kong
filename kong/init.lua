@@ -372,9 +372,28 @@ function Kong.init()
     certificate.init()
   end
 
-  -- Load plugins as late as possible so that everything is set up
-  assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
+  db:close()
+end
 
+
+function Kong.init_worker()
+  kong_global.set_phase(kong, PHASES.init_worker)
+
+  -- special math.randomseed from kong.globalpatches not taking any argument.
+  -- Must only be called in the init or init_worker phases, to avoid
+  -- duplicated seeds.
+  math.randomseed()
+
+
+  -- init DB
+
+
+  -- Load plugins as late as possible so that everything is set up
+  assert(kong.db.plugins:load_plugin_schemas(kong.configuration.loaded_plugins))
+
+
+  -- FIXME moved to the worker thread because of Go address space initialization,
+  -- but causes errors in plugin declarations to be triggered too late
   if kong.configuration.database == "off" then
     local err
     declarative_entities, err = parse_declarative_config(kong.configuration)
@@ -390,21 +409,6 @@ function Kong.init()
 
     assert(runloop.build_router("init"))
   end
-
-  db:close()
-end
-
-
-function Kong.init_worker()
-  kong_global.set_phase(kong, PHASES.init_worker)
-
-  -- special math.randomseed from kong.globalpatches not taking any argument.
-  -- Must only be called in the init or init_worker phases, to avoid
-  -- duplicated seeds.
-  math.randomseed()
-
-
-  -- init DB
 
 
   local ok, err = kong.db:init_worker()

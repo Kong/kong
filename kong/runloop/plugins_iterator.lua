@@ -54,6 +54,7 @@ local function should_process_plugin(plugin)
 end
 
 
+local next_seq = 0
 
 -- Loads a plugin config from the datastore.
 -- @return plugin config table or an empty sentinel table in case of a db-miss
@@ -61,6 +62,11 @@ local function load_plugin_from_db(key)
   local row, err = kong.db.plugins:select_by_cache_key(key)
   if err then
     return nil, tostring(err)
+  end
+
+  if type(row) == 'table' then
+    row.__seq__ = next_seq
+    next_seq = next_seq + 1
   end
 
   return row
