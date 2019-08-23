@@ -65,6 +65,7 @@ Ubuntu:
     apt-get update
 
     apt-get install \
+        automake \
         build-essential \
         curl \
         docker \
