@@ -119,15 +119,23 @@ local function fetch_sni(sni, i)
 end
 
 
-local function fetch_certificate(sni)
-  local certificate, err = singletons.db.certificates:select(sni.certificate)
+local function fetch_certificate(pk, sni_name)
+  local certificate, err = singletons.db.certificates:select(pk)
   if err then
-    return nil, "failed to fetch certificate for '" .. sni.name .. "' SNI: " ..
-                err
+    if sni_name then
+      return nil, "failed to fetch certificate for '" .. sni_name .. "' SNI: " ..
+                  err
+    end
+
+    return nil, "failed to fetch certificate " .. pk.id
   end
 
   if not certificate then
-    return nil, "no SSL certificate configured for sni: " .. sni.name
+    if sni_name then
+      return nil, "no SSL certificate configured for sni: " .. sni_name
+    end
+
+    return nil, "certificate " .. pk.id .. " not found"
   end
 
   return certificate
@@ -147,13 +155,19 @@ local function init()
 end
 
 
+local function get_certificate(pk, sni_name)
+  return kong.cache:get("certificates:" .. pk.id,
+                        get_certificate_opts, fetch_certificate,
+                        pk, sni_name)
+end
+
+
 local function find_certificate(sni)
   if not sni then
     log(DEBUG, "no SNI provided by client, serving default SSL certificate")
     return default_cert_and_key
   end
 
-  local cert
   local sni_wild_pref, sni_wild_suf = produce_wild_snis(sni)
 
   local bulk = mlcache.new_bulk(3)
@@ -178,16 +192,7 @@ local function find_certificate(sni)
       log(ERR, "failed to fetch SNI: ", err)
 
     elseif sni then
-      local err
-      cert, err = kong.cache:get("certificates:" .. sni.certificate.id,
-                                 get_certificate_opts, fetch_certificate, sni)
-      if err then
-        return nil, err
-      end
-
-      if cert then
-        return cert
-      end
+      return get_certificate(sni.certificate, sni.name)
     end
   end
 
@@ -240,4 +245,5 @@ return {
   find_certificate = find_certificate,
   produce_wild_snis = produce_wild_snis,
   execute = execute,
+  get_certificate = get_certificate,
 }

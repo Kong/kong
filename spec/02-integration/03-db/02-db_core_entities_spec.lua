@@ -354,11 +354,11 @@ for _, strategy in helpers.each_strategy() do
             strategy = strategy,
             message  = unindent([[
               schema violation
-              (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http')
+              (must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https')
             ]], true, true),
             fields   = {
               ["@entity"] = {
-                "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'",
+                "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https'",
               }
             },
 
@@ -378,11 +378,11 @@ for _, strategy in helpers.each_strategy() do
             strategy = strategy,
             message  = unindent([[
               schema violation
-              (must set one of 'methods', 'hosts', 'paths', 'snis' when 'protocols' is 'https')
+              (must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https')
             ]], true, true),
             fields   = {
               ["@entity"] = {
-                "must set one of 'methods', 'hosts', 'paths', 'snis' when 'protocols' is 'https'",
+                "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https'",
               }
             },
 
@@ -509,6 +509,7 @@ for _, strategy in helpers.each_strategy() do
             name            = ngx.null,
             methods         = ngx.null,
             hosts           = { "example.com" },
+            headers         = ngx.null,
             paths           = ngx.null,
             snis            = ngx.null,
             sources         = ngx.null,
@@ -526,6 +527,7 @@ for _, strategy in helpers.each_strategy() do
           local route, err, err_t = db.routes:insert({
             protocols       = { "http" },
             hosts           = { "example.com" },
+            headers         = { location = { "somewhere" } },
             paths           = { "/example" },
             regex_priority  = 3,
             strip_path      = true,
@@ -547,6 +549,7 @@ for _, strategy in helpers.each_strategy() do
             name            = ngx.null,
             methods         = ngx.null,
             hosts           = { "example.com" },
+            headers         = { location = { "somewhere" } },
             paths           = { "/example" },
             snis            = ngx.null,
             sources         = ngx.null,
@@ -584,6 +587,7 @@ for _, strategy in helpers.each_strategy() do
             name            = ngx.null,
             methods         = ngx.null,
             hosts           = { "example.com" },
+            headers         = ngx.null,
             paths           = { "/example" },
             snis            = ngx.null,
             sources         = ngx.null,
@@ -639,6 +643,127 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.is_table(route)
+          end)
+        end)
+
+        describe("#grpc", function()
+          it("creates a Route with 'hosts'", function()
+            local route, err, err_t = db.routes:insert({
+              protocols = { "grpc", "grpcs" },
+              hosts     = { "example.com" },
+              service   = bp.services:insert(),
+            })
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.is_table(route)
+            assert.same({ "example.com" }, route.hosts)
+          end)
+
+          it("creates a Route with 'paths'", function()
+            local route, err, err_t = db.routes:insert({
+              protocols = { "grpc", "grpcs" },
+              paths     = { "/Service1/Method1" },
+              service   = bp.services:insert(),
+            })
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.is_table(route)
+            assert.same({ "/Service1/Method1" }, route.paths)
+          end)
+
+          it("'strip_path' is 'false'", function()
+            local route, err, err_t = db.routes:insert({
+              protocols = { "grpc", "grpcs" },
+              paths     = { "/Service1/Method1" },
+              service   = bp.services:insert(),
+            })
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.is_table(route)
+            assert.same(false, route.strip_path)
+          end)
+
+          it("refuses creating Route with 'methods' attribute", function()
+            local route, err, err_t = db.routes:insert({
+              protocols  = { "grpc", "grpcs" },
+              strip_path = true,
+              paths = { "/" },
+              service    = bp.services:insert(),
+            })
+            assert.is_nil(route)
+            local message  = "schema violation (strip_path: cannot set 'strip_path' when 'protocols' is 'grpc' or 'grpcs')"
+            assert.equal(fmt("[%s] %s", strategy, message), err)
+            assert.same({
+              code        = Errors.codes.SCHEMA_VIOLATION,
+              name        = "schema violation",
+              message     = message,
+              strategy    = strategy,
+              fields      = {
+                strip_path = "cannot set 'strip_path' when 'protocols' is 'grpc' or 'grpcs'"
+              }
+            }, err_t)
+          end)
+
+          it("refuses creating Route with 'methods' attribute", function()
+            local route, err, err_t = db.routes:insert({
+              protocols = { "grpc", "grpcs" },
+              methods   = { "PATCH" },
+              service   = bp.services:insert(),
+            })
+            assert.is_nil(route)
+            local message  = "schema violation (methods: cannot set 'methods' when 'protocols' is 'grpc' or 'grpcs')"
+            assert.equal(fmt("[%s] %s", strategy, message), err)
+            assert.same({
+              code        = Errors.codes.SCHEMA_VIOLATION,
+              name        = "schema violation",
+              message     = message,
+              strategy    = strategy,
+              fields      = {
+                methods = "cannot set 'methods' when 'protocols' is 'grpc' or 'grpcs'"
+              }
+            }, err_t)
+          end)
+
+          it("refuses creating Route with 'sources' attribute", function()
+            local route, err, err_t = db.routes:insert({
+              protocols = { "grpc", "grpcs" },
+              sources = { { ip = "127.0.0.1" } },
+              paths = { "/" },
+              service   = bp.services:insert(),
+            })
+            assert.is_nil(route)
+            local message  = "schema violation (sources: cannot set 'sources' when 'protocols' is 'grpc' or 'grpcs')"
+            assert.equal(fmt("[%s] %s", strategy, message), err)
+            assert.same({
+              code        = Errors.codes.SCHEMA_VIOLATION,
+              name        = "schema violation",
+              message     = message,
+              strategy    = strategy,
+              fields      = {
+                sources = "cannot set 'sources' when 'protocols' is 'grpc' or 'grpcs'",
+              }
+            }, err_t)
+          end)
+
+          it("refuses creating Route with 'destinations' attribute", function()
+            local route, err, err_t = db.routes:insert({
+              protocols = { "grpc", "grpcs" },
+              destinations = { { ip = "127.0.0.1" } },
+              paths = { "/" },
+              service   = bp.services:insert(),
+            })
+            assert.is_nil(route)
+            local message  = "schema violation (destinations: cannot set 'destinations' when 'protocols' is 'grpc' or 'grpcs')"
+            assert.equal(fmt("[%s] %s", strategy, message), err)
+            assert.same({
+              code        = Errors.codes.SCHEMA_VIOLATION,
+              name        = "schema violation",
+              message     = message,
+              strategy    = strategy,
+              fields      = {
+                destinations = "cannot set 'destinations' when 'protocols' is 'grpc' or 'grpcs'",
+              }
+            }, err_t)
           end)
         end)
 
@@ -833,11 +958,11 @@ for _, strategy in helpers.each_strategy() do
               strategy    = strategy,
               message  = unindent([[
                 schema violation
-                (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http')
+                (must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https')
               ]], true, true),
               fields   = {
                 ["@entity"] = {
-                  "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'",
+                  "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https'",
                 }
               },
             }, err_t)
@@ -862,14 +987,14 @@ for _, strategy in helpers.each_strategy() do
               strategy    = strategy,
               message  = unindent([[
                 3 schema violations
-                (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http';
-                'snis' can only be set when 'protocols' is 'https' or 'tls';
+                ('snis' can only be set when 'protocols' is 'grpcs', 'https' or 'tls';
+                must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http';
                 snis: length must be 0)
               ]], true, true),
               fields   = {
                 ["@entity"] = {
-                  "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'",
-                  "'snis' can only be set when 'protocols' is 'https' or 'tls'",
+                  "'snis' can only be set when 'protocols' is 'grpcs', 'https' or 'tls'",
+                  "must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http'",
                 },
                 ["snis"] = "length must be 0",
               },
@@ -916,11 +1041,11 @@ for _, strategy in helpers.each_strategy() do
               strategy    = strategy,
               message  = unindent([[
                 schema violation
-                (must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http')
+                (must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https')
               ]], true, true),
               fields   = {
                 ["@entity"] = {
-                  "must set one of 'methods', 'hosts', 'paths' when 'protocols' is 'http'",
+                  "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https'",
                 }
               },
             }, err_t)
@@ -980,6 +1105,12 @@ for _, strategy in helpers.each_strategy() do
     --]]
 
     describe("Services", function()
+      local certificate
+
+      lazy_setup(function()
+        certificate = assert(bp.certificates:insert())
+      end)
+
       describe(":insert()", function()
         -- no I/O
         it("errors on invalid arg", function()
@@ -1019,33 +1150,35 @@ for _, strategy in helpers.each_strategy() do
           assert.is_true(utils.is_valid_uuid(service.id))
 
           assert.same({
-            id              = service.id,
-            created_at      = service.created_at,
-            updated_at      = service.updated_at,
-            name            = ngx.null,
-            protocol        = "http",
-            host            = "example.com",
-            port            = 80,
-            path            = ngx.null,
-            connect_timeout = 60000,
-            write_timeout   = 60000,
-            read_timeout    = 60000,
-            retries         = 5,
-            tags            = ngx.null,
+            id                 = service.id,
+            created_at         = service.created_at,
+            updated_at         = service.updated_at,
+            name               = ngx.null,
+            protocol           = "http",
+            host               = "example.com",
+            port               = 80,
+            path               = ngx.null,
+            connect_timeout    = 60000,
+            write_timeout      = 60000,
+            read_timeout       = 60000,
+            retries            = 5,
+            tags               = ngx.null,
+            client_certificate = ngx.null,
           }, service)
         end)
 
         it("creates a Service with user-specified values", function()
           local service, err, err_t = db.services:insert({
-            name            = "example_service",
-            protocol        = "http",
-            host            = "example.com",
-            port            = 443,
-            path            = "/foo",
-            connect_timeout = 10000,
-            write_timeout   = 10000,
-            read_timeout    = 10000,
-            retries         = 6,
+            name               = "example_service",
+            protocol           = "https",
+            host               = "example.com",
+            port               = 443,
+            path               = "/foo",
+            connect_timeout    = 10000,
+            write_timeout      = 10000,
+            read_timeout       = 10000,
+            retries            = 6,
+            client_certificate = { id = certificate.id },
           })
           assert.is_nil(err_t)
           assert.is_nil(err)
@@ -1056,18 +1189,19 @@ for _, strategy in helpers.each_strategy() do
           assert.is_true(utils.is_valid_uuid(service.id))
 
           assert.same({
-            id              = service.id,
-            created_at      = service.created_at,
-            updated_at      = service.updated_at,
-            name            = "example_service",
-            protocol        = "http",
-            host            = "example.com",
-            port            = 443,
-            path            = "/foo",
-            connect_timeout = 10000,
-            write_timeout   = 10000,
-            read_timeout    = 10000,
-            retries         = 6,
+            id                 = service.id,
+            created_at         = service.created_at,
+            updated_at         = service.updated_at,
+            name               = "example_service",
+            protocol           = "https",
+            host               = "example.com",
+            port               = 443,
+            path               = "/foo",
+            connect_timeout    = 10000,
+            write_timeout      = 10000,
+            read_timeout       = 10000,
+            retries            = 6,
+            client_certificate = { id = certificate.id },
           }, service)
         end)
 
@@ -1129,6 +1263,49 @@ for _, strategy in helpers.each_strategy() do
             fields   = {
               name = "my_service_name",
             }
+          }, err_t)
+        end)
+
+        it("cannot create a Service with invalid client_certificate.id", function()
+          -- insert 2
+          local service, _, err_t = db.services:insert {
+            name = "cc_test",
+            protocol = "https",
+            host = "example.com",
+            client_certificate = { id = "123e4567-e89b-12d3-a456-426655440000" },
+          }
+          assert.is_nil(service)
+          assert.same({
+            code     = Errors.codes.FOREIGN_KEY_VIOLATION,
+            message  = "the foreign key '{id=\"123e4567-e89b-12d3-a456-426655440000\"}' does not reference an existing 'certificates' entity.",
+            strategy = strategy,
+            name     = "foreign key violation",
+            fields   = {
+              client_certificate = {
+                id = "123e4567-e89b-12d3-a456-426655440000",
+              },
+            }
+          }, err_t)
+        end)
+
+        it("cannot create assign client_certificate when protocol is not https", function()
+          -- insert 2
+          local service, _, err_t = db.services:insert {
+            name = "cc_test",
+            protocol = "http",
+            host = "example.com",
+            client_certificate = { id = "123e4567-e89b-12d3-a456-426655440000" },
+          }
+          assert.is_nil(service)
+          assert.same({
+            code     = Errors.codes.SCHEMA_VIOLATION,
+            message  = "2 schema violations (failed conditional validation given value of field 'protocol'; client_certificate: value must be null)",
+            strategy = strategy,
+            name     = "schema violation",
+            fields   = {
+              ["@entity"] = { "failed conditional validation given value of field 'protocol'", },
+              client_certificate = 'value must be null',
+            },
           }, err_t)
         end)
       end)
@@ -1517,6 +1694,7 @@ for _, strategy in helpers.each_strategy() do
           name             = ngx.null,
           methods          = ngx.null,
           hosts            = { "example.com" },
+          headers          = ngx.null,
           paths            = ngx.null,
           snis             = ngx.null,
           sources          = ngx.null,

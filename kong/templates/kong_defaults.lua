@@ -121,6 +121,10 @@ client_max_body_size = 0
 client_body_buffer_size = 8k
 error_default_type = text/plain
 
+nginx_http_upstream_keepalive = 60
+nginx_http_upstream_keepalive_requests = 100
+nginx_http_upstream_keepalive_timeout = 60s
+
 database = postgres
 pg_host = 127.0.0.1
 pg_port = 5432

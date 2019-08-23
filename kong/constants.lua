@@ -58,13 +58,20 @@ local protocols_with_subsystem = {
   http = "http",
   https = "http",
   tcp = "stream",
-  tls = "stream"
+  tls = "stream",
+  grpc = "http",
+  grpcs = "http",
 }
 local protocols = {}
 for p,_ in pairs(protocols_with_subsystem) do
   protocols[#protocols + 1] = p
 end
 table.sort(protocols)
+
+local grpc_proxy_modes = {
+  grpc = true,
+  grpcs = true,
+}
 
 return {
   BUNDLED_PLUGINS = plugin_map,
@@ -93,9 +100,9 @@ return {
   -- schemas of dependencies need to be loaded first.
   CORE_ENTITIES = {
     "consumers",
+    "certificates",
     "services",
     "routes",
-    "certificates",
     "snis",
     "upstreams",
     "targets",
@@ -178,5 +185,6 @@ return {
     PORTAL_CORS_ORIGINS = "portal_cors_origins",
     PORTAL_DEVELOPER_META_FIELDS = "portal_developer_meta_fields",
     PORTAL_IS_LEGACY = "portal_is_legacy"
-  }
+  },
+  GRPC_PROXY_MODES = grpc_proxy_modes,
 }

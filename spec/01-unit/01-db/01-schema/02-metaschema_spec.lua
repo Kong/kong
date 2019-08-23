@@ -428,6 +428,17 @@ describe("metaschema", function()
     assert.match("expected one of", err.fields[1].type)
   end)
 
+  it("accepts an 'err' field", function()
+    local s = {
+      name = "hello",
+      primary_key = { "foo" },
+      fields = {
+        { foo = { type = "array", elements = {type = "string"}, eq = ngx.null, err = "cannot set value" } }
+      }
+    }
+    assert.truthy(MetaSchema:validate(s))
+  end)
+
   describe("subschemas", function()
 
     it("supports declaring subschemas", function()

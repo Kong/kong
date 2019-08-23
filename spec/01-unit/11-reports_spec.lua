@@ -287,7 +287,7 @@ describe("reports", function()
         reports.send_ping("127.0.0.1", 8189)
 
         local _, res = assert(thread:join())
-        assert.matches("database=postgres", res, nil, true)
+        assert.matches("database=" .. helpers.test_conf.database, res, nil, true)
         assert.matches("_admin=1", res, nil, true)
         assert.matches("_proxy=1", res, nil, true)
         assert.matches("_stream=0", res, nil, true)

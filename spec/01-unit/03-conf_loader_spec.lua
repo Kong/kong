@@ -37,7 +37,8 @@ describe("Configuration loader", function()
     assert.is_nil(conf.nginx_user)
     assert.equal("1",            conf.nginx_worker_processes)
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
-    assert.same({"0.0.0.0:9000", "0.0.0.0:9443 ssl"}, conf.proxy_listen)
+    assert.same({"0.0.0.0:9000", "0.0.0.0:9443 ssl",
+                 "0.0.0.0:9002 http2", "0.0.0.0:9445 http2 ssl"}, conf.proxy_listen)
     assert.is_nil(getmetatable(conf))
   end)
   it("preserves default properties if not in given file", function()
@@ -55,7 +56,8 @@ describe("Configuration loader", function()
     assert.is_nil(conf.nginx_user)
     assert.equal("auto",           conf.nginx_worker_processes)
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
-    assert.same({"0.0.0.0:9000", "0.0.0.0:9443 ssl"}, conf.proxy_listen)
+    assert.same({"0.0.0.0:9000", "0.0.0.0:9443 ssl",
+                 "0.0.0.0:9002 http2", "0.0.0.0:9445 http2 ssl"}, conf.proxy_listen)
     assert.is_nil(getmetatable(conf))
   end)
   it("strips extraneous properties (not in defaults)", function()
@@ -237,9 +239,9 @@ describe("Configuration loader", function()
         plugins = "off",
       }))
       assert.True(search_directive(conf.nginx_http_directives,
-                                   "variables_hash_bucket_size", '"128"'))
+                                   "variables_hash_bucket_size", "128"))
       assert.True(search_directive(conf.nginx_stream_directives,
-                                   "variables_hash_bucket_size", '"128"'))
+                                   "variables_hash_bucket_size", "128"))
 
       assert.True(search_directive(conf.nginx_http_directives,
                                    "lua_shared_dict", "custom_cache 5m"))
@@ -262,7 +264,7 @@ describe("Configuration loader", function()
       assert.is_nil(err)
 
       assert.True(search_directive(conf.nginx_http_directives,
-                  "max_pending_timers", [["4096"]]))
+                  "max_pending_timers", "4096"))
     end)
 
     it("accepts flexible config values with precedence", function()
@@ -278,9 +280,9 @@ describe("Configuration loader", function()
       }))
 
       assert.True(search_directive(conf.nginx_http_directives,
-                                   "variables_hash_bucket_size", '"256"'))
+                                   "variables_hash_bucket_size", "256"))
       assert.True(search_directive(conf.nginx_stream_directives,
-                                   "variables_hash_bucket_size", '"256"'))
+                                   "variables_hash_bucket_size", "256"))
 
       assert.True(search_directive(conf.nginx_http_directives,
                                    "lua_shared_dict", "custom_cache 2m"))
@@ -477,26 +479,26 @@ describe("Configuration loader", function()
         admin_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent], [... next entry ...]", err)
+      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         proxy_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent], [... next entry ...]", err)
+      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport], [... next entry ...]", err)
     end)
     it("rejects empty string in listen addresses", function()
       local conf, err = conf_loader(nil, {
         admin_listen = ""
       })
       assert.is_nil(conf)
-      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent], [... next entry ...]", err)
+      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         proxy_listen = ""
       })
       assert.is_nil(conf)
-      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent], [... next entry ...]", err)
+      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport], [... next entry ...]", err)
     end)
     it("errors when dns_resolver is not a list in ipv4/6[:port] format", function()
       local conf, err = conf_loader(nil, {

@@ -17,7 +17,6 @@ local base = require "resty.core.base"
 
 local C = ffi.C
 local ngx = ngx
-local getfenv = getfenv
 local tonumber = tonumber
 local registry = debug.getregistry()
 
@@ -29,7 +28,7 @@ local _M = {}
 
 
 function _M.stash_ref()
-  local r = getfenv(0).__ngx_req
+  local r = base.get_request()
   if not r then
     ngx.log(ngx.WARN, "could not stash ngx.ctx ref: no request found")
     return
@@ -55,7 +54,7 @@ end
 
 
 function _M.apply_ref()
-  local r = getfenv(0).__ngx_req
+  local r = base.get_request()
   if not r then
     ngx.log(ngx.WARN, "could not apply ngx.ctx: no request found")
     return

@@ -2,9 +2,9 @@ local ee_meta = require "kong.enterprise_edition.meta"
 
 local version = setmetatable({
   major = 1,
-  minor = 2,
-  patch = 1,
-  --suffix = "",
+  minor = 3,
+  patch = 0,
+  suffix = "rc1",
 }, {
   __tostring = function(t)
     return string.format("%d.%d.%d%s", t.major, t.minor, t.patch,
@@ -24,6 +24,6 @@ return {
   -- third-party dependencies' required version, as they would be specified
   -- to lua-version's `set()` in the form {from, to}
   _DEPENDENCIES = {
-    nginx = {"1.13.6.2"},
+    nginx = {"1.15.8.1"},
   }
 }

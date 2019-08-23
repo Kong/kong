@@ -3,7 +3,7 @@ use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use t::Util;
 
-plan tests => repeat_each() * (blocks() * 4) - 8;
+plan tests => repeat_each() * (blocks() * 4) - 5;
 
 run_tests();
 
@@ -603,5 +603,61 @@ Content-Type: application/json; charset=utf-8
 Content-Length: 19
 --- response_body chop
 {"message":"hello"}
+--- no_error_log
+[error]
+
+
+
+=== TEST 23: response.exit() does not send body with gRPC
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    set $kong_proxy_mode 'grpc';
+
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(200, { message = "hello" })
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_headers_like
+Content-Length: 0
+grpc-status: 0
+grpc-message: hello
+--- no_error_log
+[error]
+
+
+
+=== TEST 24: response.exit() does sends body with gRPC when asked
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    set $kong_proxy_mode 'grpc';
+
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(200, { message = "hello" }, {
+                content_type = "application/grpc"
+            })
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_headers_like
+Content-Length: 5
+grpc-status: 0
+grpc-message: OK
+--- response_body chop
+hello
 --- no_error_log
 [error]

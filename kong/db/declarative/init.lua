@@ -11,6 +11,7 @@ local deepcopy = tablex.deepcopy
 local null = ngx.null
 local SHADOW = true
 local md5 = ngx.md5
+local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
 
 
 local declarative = {}
@@ -260,6 +261,60 @@ function declarative.load_into_db(dc_table, workspace)
 end
 
 
+function declarative.export_from_db(fd)
+  local schemas = {}
+  for _, dao in pairs(kong.db.daos) do
+    table.insert(schemas, dao.schema)
+  end
+  local sorted_schemas, err = topological_sort(schemas)
+  if not sorted_schemas then
+    return nil, err
+  end
+
+  fd:write(declarative.to_yaml_string({
+    _format_version = "1.1",
+  }))
+
+  for _, schema in ipairs(sorted_schemas) do
+    if schema.db_export == false then
+      goto continue
+    end
+
+    local name = schema.name
+    local fks = {}
+    for name, field in schema:each_field() do
+      if field.type == "foreign" then
+        table.insert(fks, name)
+      end
+    end
+
+    local first_row = true
+    for row, err in kong.db[name]:each() do
+      for _, fname in ipairs(fks) do
+        if type(row[fname]) == "table" then
+          local id = row[fname].id
+          if id ~= nil then
+            row[fname] = id
+          end
+        end
+      end
+
+      local yaml = declarative.to_yaml_string({ [name] = { row } })
+      if not first_row then
+        yaml = assert(yaml:match(REMOVE_FIRST_LINE_PATTERN))
+      end
+      first_row = false
+
+      fd:write(yaml)
+    end
+
+    ::continue::
+  end
+
+  return true
+end
+
+
 local function remove_nulls(tbl)
   for k,v in pairs(tbl) do
     if v == null then
@@ -281,14 +336,14 @@ local function post_upstream_crud_delete_events()
   local upstreams = kong.cache:get("upstreams|list", nil, nil_fn)
   if upstreams then
     for _, id in ipairs(upstreams) do
-      local _, err = kong.worker_events.post("crud", "upstreams", {
+      local ok = kong.worker_events.post("crud", "upstreams", {
         operation = "delete",
         entity = {
           id = id,
           name = "?", -- only used for error messages
         },
       })
-      if err then
+      if not ok then
         kong.log.err("failed posting invalidation event for upstream ", id)
       end
     end
@@ -297,11 +352,11 @@ end
 
 
 local function post_crud_create_event(entity_name, item)
-  local _, err = kong.worker_events.post("crud", entity_name, {
+  local ok = kong.worker_events.post("crud", entity_name, {
     operation = "create",
     entity = item,
   })
-  if err then
+  if not ok then
     kong.log.err("failed posting crud event for ", entity_name, " ", entity_name.id)
   end
 end
@@ -463,20 +518,19 @@ end
 function declarative.load_into_cache_with_events(entities, hash)
 
   -- ensure any previous update finished (we're flipped to the latest page)
-  local _, err = kong.worker_events.poll()
-  if err then
+  local ok, err = kong.worker_events.poll()
+  if not ok then
     return nil, err
   end
 
   post_upstream_crud_delete_events()
 
-  local ok
   ok, err = declarative.load_into_cache(entities, hash, SHADOW)
 
   if ok then
     ok, err = kong.worker_events.post("declarative", "flip_config", true)
-    if not ok then
-      return nil, "failed to flip declarative config cache pages: " .. err
+    if ok ~= "done" then
+      return nil, "failed to flip declarative config cache pages: " .. (err or ok)
     end
   end
 

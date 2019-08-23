@@ -227,8 +227,6 @@ qq{
         set_real_ip_from unix:;
 
         content_by_lua_block {
-            require "resty.core"
-
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
@@ -410,8 +408,6 @@ qq{
         listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock proxy_protocol;
 
         content_by_lua_block {
-            require "resty.core"
-
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 

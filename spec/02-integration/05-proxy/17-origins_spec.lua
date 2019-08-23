@@ -16,7 +16,7 @@ describe("origins config option", function()
       proxy_client:close()
     end
 
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   it("respects origins for overriding resolution", function()

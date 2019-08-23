@@ -171,7 +171,8 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       helpers.wait_until(function()
-        local client = assert(helpers.http_client(helpers.mock_upstream_host, helpers.mock_upstream_port))
+        local client = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                  helpers.mock_upstream_port))
         local res = assert(client:send {
           method  = "GET",
           path    = "/read_log/http",
@@ -181,9 +182,9 @@ for _, strategy in helpers.each_strategy() do
         })
         local raw = assert.res_status(200, res)
         local body = cjson.decode(raw)
-        if #body.log.entries == 1 then
-          local log_message = cjson.decode(body.log.entries[1].request.postData.text)
-          assert.same("127.0.0.1", log_message.client_ip)
+
+        if #body.entries == 1 then
+          assert.same("127.0.0.1", body.entries[1].client_ip)
           return true
         end
       end, 10)
@@ -200,7 +201,8 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       helpers.wait_until(function()
-        local client = assert(helpers.http_client(helpers.mock_upstream_host, helpers.mock_upstream_port))
+        local client = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                  helpers.mock_upstream_port))
         local res = assert(client:send {
           method  = "GET",
           path    = "/read_log/https",
@@ -210,9 +212,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local raw = assert.res_status(200, res)
         local body = cjson.decode(raw)
-        if #body.log.entries == 1 then
-          local log_message = cjson.decode(body.log.entries[1].request.postData.text)
-          assert.same("127.0.0.1", log_message.client_ip)
+        if #body.entries == 1 then
+          assert.same("127.0.0.1", body.entries[1].client_ip)
           return true
         end
       end, 10)
@@ -270,7 +271,8 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       helpers.wait_until(function()
-        local client = assert(helpers.http_client(helpers.mock_upstream_host, helpers.mock_upstream_port))
+        local client = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                  helpers.mock_upstream_port))
         local res = assert(client:send {
           method  = "GET",
           path    = "/read_log/basic_auth",
@@ -278,11 +280,13 @@ for _, strategy in helpers.each_strategy() do
             Accept = "application/json"
           }
         })
+
         local body = cjson.decode(assert.res_status(200, res))
-        if #body.log.entries == 1 then
-          for _, value in pairs(body.log.entries[1].request.headers) do
-            if value.name == "authorization" then
-              assert.same("Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk", value.value)
+
+        if #body.entries == 1 then
+          for name, value in pairs(body.entries[1].log_req_headers) do
+            if name == "authorization" then
+              assert.same("Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk", value)
               return true
             end
           end
@@ -290,7 +294,6 @@ for _, strategy in helpers.each_strategy() do
       end, 10)
     end)
   end)
-
 
   -- test both with a single worker for a deterministic test,
   -- and with multiple workers for a concurrency test
@@ -378,9 +381,10 @@ for _, strategy in helpers.each_strategy() do
 
 
       local function reset_log(logname)
-        local client = assert(helpers.http_client(helpers.mock_upstream_host, helpers.mock_upstream_port))
+        local client = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                  helpers.mock_upstream_port))
         assert(client:send {
-          method  = "GET",
+          method  = "DELETE",
           path    = "/reset_log/" .. logname,
           headers = {
             Accept = "application/json"
@@ -393,7 +397,11 @@ for _, strategy in helpers.each_strategy() do
       it("logs to HTTP with a buffer", function()
         reset_log("http_queue")
 
-        local n = 1000
+        local n = 100
+        if workers > 1 then
+          n = 500
+        end
+
         for i = 1, n do
           local client = helpers.proxy_client()
           local res = assert(client:send({
@@ -408,49 +416,33 @@ for _, strategy in helpers.each_strategy() do
         end
 
         helpers.wait_until(function()
-          local client = assert(helpers.http_client(helpers.mock_upstream_host, helpers.mock_upstream_port))
+          local client = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                    helpers.mock_upstream_port))
           local res = assert(client:send {
             method  = "GET",
-            path    = "/read_log/http_queue",
+            path    = "/count_log/http_queue",
             headers = {
               Accept = "application/json"
             }
           })
-          local raw = assert.res_status(200, res)
-          local body = cjson.decode(raw)
 
-          -- we only get an exact count with workers == 1
-          if workers == 1 and #body.log.entries ~= math.ceil(n / 5) then
-            return false
+          local count = assert.res_status(200, res)
+
+          if tonumber(count, 10) >= n then
+            return true
           end
-
-          local i = 0
-          for _, entry in ipairs(body.log.entries) do
-            local json = cjson.decode(entry.request.postData.text)
-
-            -- we only get an exact split with workers == 1
-            if workers == 1 and #json ~= 5 then
-              return false
-            end
-            for _, item in ipairs(json) do
-              assert.same("127.0.0.1", item.client_ip)
-
-              -- we only get a deterministic order with workers == 1
-              if workers == 1 then
-                assert.same(200 + ((i + 1) % 10), item.response.status)
-              end
-              i = i + 1
-            end
-          end
-          return i == n
-        end, 15)
+        end, 30)
       end)
 
       it("does not mix buffers", function()
         reset_log("http_queue")
         reset_log("http_queue2")
 
-        local n = 1000
+        local n = 100
+        if workers > 1 then
+          n = 500
+        end
+
         for i = 1, n do
           local client = helpers.proxy_client()
           local res = assert(client:send({
@@ -476,7 +468,8 @@ for _, strategy in helpers.each_strategy() do
         end
 
         helpers.wait_until(function()
-          local client = assert(helpers.http_client(helpers.mock_upstream_host, helpers.mock_upstream_port))
+          local client = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                    helpers.mock_upstream_port))
           local res = assert(client:send {
             method  = "GET",
             path    = "/read_log/http_queue",
@@ -487,7 +480,8 @@ for _, strategy in helpers.each_strategy() do
           local raw = assert.res_status(200, res)
           local body = cjson.decode(raw)
 
-          local client2 = assert(helpers.http_client(helpers.mock_upstream_host, helpers.mock_upstream_port))
+          local client2 = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                     helpers.mock_upstream_port))
           local res2 = assert(client2:send {
             method  = "GET",
             path    = "/read_log/http_queue2",
@@ -498,62 +492,42 @@ for _, strategy in helpers.each_strategy() do
           local raw2 = assert.res_status(200, res2)
           local body2 = cjson.decode(raw2)
 
-          -- we only get an exact count with workers == 1
-          if workers == 1 and #body.log.entries ~= math.ceil(n / 5) then
-            return false
-          end
-
-          -- we only get an exact count with workers == 1
-          if workers == 1 and #body2.log.entries ~= math.ceil(n / 5) then
+          if body.count < n or body2.count < n then
             return false
           end
 
           local i = 0
-          for _, entry in ipairs(body.log.entries) do
-            local json = cjson.decode(entry.request.postData.text)
+          for _, entry in ipairs(body.entries) do
+            assert.same("127.0.0.1", entry.client_ip)
 
-            -- we only get an exact split with workers == 1
-            if workers == 1 and #json ~= 5 then
-              return false
+            -- we only get a deterministic order with workers == 1
+            if workers == 1 then
+              assert.same(200 + ((i + 1) % 10), entry.response.status)
             end
-            for _, item in ipairs(json) do
-              assert.same("127.0.0.1", item.client_ip)
-
-              -- we only get a deterministic order with workers == 1
-              if workers == 1 then
-                assert.same(200 + ((i + 1) % 10), item.response.status)
-              end
-              i = i + 1
-            end
+            i = i + 1
           end
+
           if i ~= n then
             return false
           end
 
           local i = 0
-          for _, entry in ipairs(body2.log.entries) do
-            local json = cjson.decode(entry.request.postData.text)
+          for _, entry in ipairs(body2.entries) do
+            assert.same("127.0.0.1", entry.client_ip)
 
-            -- we only get an exact split with workers == 1
-            if workers == 1 and #json ~= 5 then
-              return false
+            -- we only get a deterministic order with workers == 1
+            if workers == 1 then
+              assert.same(300 + ((i + 1) % 10), entry.response.status)
             end
-            for _, item in ipairs(json) do
-              assert.same("127.0.0.1", item.client_ip)
-
-              -- we only get a deterministic order with workers == 1
-              if workers == 1 then
-                assert.same(300 + ((i + 1) % 10), item.response.status)
-              end
-              i = i + 1
-            end
+            i = i + 1
           end
+
           if i ~= n then
             return false
           end
 
           return true
-        end, 15)
+        end, 30)
       end)
     end)
 
@@ -608,7 +582,8 @@ for _, strategy in helpers.each_strategy() do
 
       --Assert that the plugin executed and has 1 log entry
       helpers.wait_until(function()
-        local client = assert(helpers.http_client(helpers.mock_upstream_host, helpers.mock_upstream_port))
+        local client = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                  helpers.mock_upstream_port))
         local res = assert(client:send {
           method  = "GET",
           path    = "/read_log/http",
@@ -618,9 +593,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local raw = assert.res_status(200, res)
         local body = cjson.decode(raw)
-        if #body.log.entries == 1 then
-          local log_message = cjson.decode(body.log.entries[1].request.postData.text)
-          assert.same("127.0.0.1", log_message.client_ip)
+        if #body.entries == 1 then
+          assert.same("127.0.0.1", body.entries[1].client_ip)
           return true
         end
       end, 10)

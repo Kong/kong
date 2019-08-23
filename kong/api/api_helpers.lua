@@ -1,11 +1,9 @@
-local pl_string = require "pl.stringx"
 local utils = require "kong.tools.utils"
 local tablex      = require "pl.tablex"
 local cjson = require "cjson"
 
 local type = type
 local pairs = pairs
-local remove = table.remove
 
 
 local _M = {}
@@ -17,6 +15,45 @@ local function parse_value(v)
   return type(v) == "table" and v.content or v -- Handle multipart
 end
 
+local NO_ARRAY_INDEX_MARK = {}
+
+-- given a string like "x[1].y", return an array of indices like {"x", 1, "y"}
+-- the path parameter is an output-only param. the keys are added to it in order
+local function key_to_path(key, path)
+  -- try to match an array access like x[1].
+  -- the left side of the [] is mandatory
+  -- the array index can be omitted (the key will look like x[]).
+  -- if that's the case we mark the path entry with a special key
+  local left, array_index = key:match("^(.+)%[(%d*)]$")
+  if left then
+    key_to_path(left, path)
+    path[#path + 1] = tonumber(array_index) or NO_ARRAY_INDEX_MARK
+    return path
+  end
+
+  -- if no match, try a hash access like x.y (both x and y are mandatory)
+  -- the left side of the dot is called left and the other side is right
+  local left, right = key:match("^(.+)%.(.+)$")
+  if left then
+    key_to_path(left, path)
+    key_to_path(right, path)
+    return path
+  end
+
+  -- if no match found, append the whole key to the path as a single string
+  path[#path + 1] = key
+  return path
+end
+
+-- when NO_ARRAY_INDEX is encountered, replace it with the length of the node being parsed
+local function transform_no_array_index_mark(path_entry, node)
+  if path_entry == NO_ARRAY_INDEX_MARK then
+    return #node + 1
+  end
+  return path_entry
+end
+
+
 -- Put nested keys in objects:
 -- Normalize dotted keys in objects.
 -- Example: {["key.value.sub"]=1234} becomes {key = {value = {sub=1234}}
@@ -24,25 +61,14 @@ end
 -- @return `normalized_object`
 function _M.normalize_nested_params(obj)
   local new_obj = {}
-
-  local function attach_dotted_key(keys, attach_to, value)
-    local current_key = keys[1]
-
-    if #keys > 1 then
-      if not attach_to[current_key] then
-        attach_to[current_key] = {}
-      end
-      remove(keys, 1)
-      attach_dotted_key(keys, attach_to[current_key], value)
-    else
-      attach_to[current_key] = value
-    end
-  end
+  local is_array
 
   for k, v in pairs(obj) do
+    is_array = false
     if type(v) == "table" then
       -- normalize arrays since Lapis parses ?key[1]=foo as {["1"]="foo"} instead of {"foo"}
       if utils.is_array(v) then
+        is_array = true
         local arr = {}
         for _, arr_v in pairs(v) do arr[#arr+1] = arr_v end
         v = arr
@@ -51,18 +77,37 @@ function _M.normalize_nested_params(obj)
       end
     end
 
-    -- normalize sub-keys with dot notation
-    if type(k) == "string" then
-      local keys = pl_string.split(k, ".")
-      if #keys > 1 then -- we have a key containing a dot
-        attach_dotted_key(keys, new_obj, parse_value(v))
+    v = parse_value(v)
 
-      else
-        new_obj[k] = parse_value(v) -- nothing special with that key, simply attaching the value
+    -- normalize sub-keys with hash or array accesses
+    if type(k) == "string" then
+      local path = key_to_path(k, {})
+      local path_len = #path
+      local node = new_obj
+      local prev = new_obj
+      local path_entry
+      -- create any missing tables when dealing with x.foo[1].y = "bar"
+      for i = 1, path_len - 1 do
+        path_entry = transform_no_array_index_mark(path[i], node)
+        node[path_entry] = node[path_entry] or {}
+        prev = node
+        node = node[path_entry]
       end
 
+      -- on the last item of the path (the "y" in the example above)
+      if path[path_len] == NO_ARRAY_INDEX_MARK and is_array then
+        -- edge case: we are assigning an array to a no-array index mark: x[] = {1,2,3}
+        -- on this case we backtrack one element (we use `prev` instead of `node`)
+        -- and we set it to the array (v)
+        -- this edge case is needed because Lapis builds params like that (flatten_params function)
+        prev[path_entry or k] = v
+      else
+        -- regular case: the last element is similar to the loop iteration.
+        -- instead of a table, we set the value (v) on the last element
+        node[transform_no_array_index_mark(path[path_len], node)] = v
+      end
     else
-      new_obj[k] = parse_value(v) -- nothing special with that key, simply attaching the value
+      new_obj[k] = v -- nothing special with that key, simply attaching the value
     end
   end
 

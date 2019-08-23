@@ -1,14 +1,18 @@
 local helpers = require "spec.helpers"
 local constants = require "kong.constants"
 local cjson = require "cjson"
+local lyaml = require "lyaml"
 
+
+local function sort_by_name(a, b)
+  return a.name < b.name
+end
 
 describe("kong config", function()
-  local db
+  local bp, db
 
   lazy_setup(function()
-    local _
-    _, db = helpers.get_db_utils(nil, {}) -- runs migrations
+    bp, db = helpers.get_db_utils(nil, {}) -- runs migrations
   end)
   after_each(function()
     helpers.kill_all()
@@ -296,5 +300,101 @@ describe("kong config", function()
     assert.equals(4, #json.data)
 
     assert(helpers.stop_kong())
+  end)
+
+  it("#db config db_export exports a yaml file", function()
+    assert(db.plugins:truncate())
+    assert(db.routes:truncate())
+    assert(db.services:truncate())
+    assert(db.consumers:truncate())
+    assert(db.acls:truncate())
+
+    local filename = os.tmpname()
+    os.remove(filename)
+    filename = filename .. ".yml"
+
+    -- starting kong just so the prefix is properly initialized
+    assert(helpers.start_kong())
+
+    local service1 = bp.services:insert({ name = "service1" })
+    local route1 = bp.routes:insert({ service = service1, methods = { "POST" }, name = "a" })
+    local plugin1 = bp.hmac_auth_plugins:insert({
+      service = service1,
+    })
+    local plugin2 = bp.key_auth_plugins:insert({
+      service = service1,
+    })
+
+    local service2 = bp.services:insert({ name = "service2" })
+    local route2 = bp.routes:insert({ service = service2, methods = { "GET" }, name = "b" })
+    local plugin3 = bp.tcp_log_plugins:insert({
+      service = service2,
+    })
+    local consumer = bp.consumers:insert()
+    local acls = bp.acls:insert({ consumer = consumer })
+
+    assert(helpers.kong_exec("config db_export " .. filename, {
+      prefix = helpers.test_conf.prefix,
+    }))
+
+    finally(function()
+      os.remove(filename)
+    end)
+
+    local f = assert(io.open(filename, "rb"))
+    local content = f:read("*all")
+    f:close()
+    local yaml = assert(lyaml.load(content))
+
+    local toplevel_keys = {}
+    for k in pairs(yaml) do
+      toplevel_keys[#toplevel_keys + 1] = k
+    end
+    table.sort(toplevel_keys)
+    assert.same({
+      "_format_version",
+      "acls",
+      "consumers",
+      "plugins",
+      "routes",
+      "services",
+    }, toplevel_keys)
+
+    assert.equals("1.1", yaml._format_version)
+
+    assert.equals(2, #yaml.services)
+    table.sort(yaml.services, sort_by_name)
+    assert.same(service1, yaml.services[1])
+    assert.same(service2, yaml.services[2])
+
+    assert.equals(2, #yaml.routes)
+    table.sort(yaml.routes, sort_by_name)
+    assert.equals(route1.id, yaml.routes[1].id)
+    assert.equals(route1.name, yaml.routes[1].name)
+    assert.equals(service1.id, yaml.routes[1].service)
+    assert.equals(route2.id, yaml.routes[2].id)
+    assert.equals(route2.name, yaml.routes[2].name)
+    assert.equals(service2.id, yaml.routes[2].service)
+
+    assert.equals(3, #yaml.plugins)
+    table.sort(yaml.plugins, sort_by_name)
+    assert.equals(plugin1.id, yaml.plugins[1].id)
+    assert.equals(plugin1.name, yaml.plugins[1].name)
+    assert.equals(service1.id, yaml.plugins[1].service)
+
+    assert.equals(plugin2.id, yaml.plugins[2].id)
+    assert.equals(plugin2.name, yaml.plugins[2].name)
+    assert.equals(service1.id, yaml.plugins[2].service)
+
+    assert.equals(plugin3.id, yaml.plugins[3].id)
+    assert.equals(plugin3.name, yaml.plugins[3].name)
+    assert.equals(service2.id, yaml.plugins[3].service)
+
+    assert.equals(1, #yaml.consumers)
+    assert.same(consumer, yaml.consumers[1])
+
+    assert.equals(1, #yaml.acls)
+    assert.equals(acls.group, yaml.acls[1].group)
+    assert.equals(consumer.id, yaml.acls[1].consumer)
   end)
 end)
