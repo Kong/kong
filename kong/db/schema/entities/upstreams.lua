@@ -43,9 +43,9 @@ local positive_int = Schema.define {
 }
 
 
-local positive_int_or_zero = Schema.define {
+local one_byte_integer = Schema.define {
   type = "integer",
-  between = { 0, 2 ^ 31 },
+  between = { 0, 255 },
 }
 
 
@@ -109,10 +109,10 @@ local types = {
   timeout = seconds,
   concurrency = positive_int,
   interval = seconds,
-  successes = positive_int_or_zero,
-  tcp_failures = positive_int_or_zero,
-  timeouts = positive_int_or_zero,
-  http_failures = positive_int_or_zero,
+  successes = one_byte_integer,
+  tcp_failures = one_byte_integer,
+  timeouts = one_byte_integer,
+  http_failures = one_byte_integer,
   http_path = typedefs.path,
   http_statuses = http_statuses,
   https_sni = typedefs.sni,
