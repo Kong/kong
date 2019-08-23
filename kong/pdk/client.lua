@@ -270,12 +270,11 @@ local function new(self)
 
     local authenticated_groups = ngx.ctx.authenticated_groups
     if authenticated_groups == nil then
-      return nil
+      return {}
     end
 
-    if type(authenticated_groups) ~= "table" then
-      return nil, "invalid authenticated_groups, a table was expected"
-    end
+    assert(type(authenticated_groups) == "table",
+           "invalid authenticated_groups, a table was expected")
 
     local groups = {}
     for i = 1, #authenticated_groups do
