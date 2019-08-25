@@ -121,9 +121,12 @@ After this task, we'd like to have the next steps use the built packages and for
 
 ```
     export PATH=$HOME/path/to/kong/openresty-build-tools/build/openresty/bin:$HOME/path/to/kong/openresty-build-tools/build/openresty/nginx/sbin:$HOME/path/to/kong/openresty-build-tools/build/luarocks/bin:$PATH
+    export OPENSSL_DIR=$HOME/path/to/kong/openresty-build-tools/build/openssl
 
     eval `luarocks path`
 ```
+
+The `$OPENSSL_DIR` variable is needed when compiling Kong, to make sure it uses the correct version of OpenSSL.
 
 You can add these lines to your `.profile` or `.bashrc` file.  Otherwise you could find yourself wondering where is everything!.
 
