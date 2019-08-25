@@ -471,9 +471,8 @@ end
 -- @param ssl (boolean) if `true` returns the ssl port
 local function get_proxy_port(ssl, http2)
   if ssl == nil then ssl = false end
-  if http2 == nil then http2 = false end
   for _, entry in ipairs(conf.proxy_listeners) do
-    if entry.ssl == ssl and entry.http2 == http2 then
+    if entry.ssl == ssl and (http2 == nil or entry.http2 == http2) then
       return entry.port
     end
   end
@@ -484,9 +483,8 @@ end
 -- @param ssl (boolean) if `true` returns the ssl ip address
 local function get_proxy_ip(ssl, http2)
   if ssl == nil then ssl = false end
-  if http2 == nil then http2 = false end
   for _, entry in ipairs(conf.proxy_listeners) do
-    if entry.ssl == ssl and entry.http2 == http2 then
+    if entry.ssl == ssl and (http2 == nil or entry.http2 == http2) then
       return entry.ip
     end
   end
@@ -505,8 +503,8 @@ end
 --- returns a pre-configured `http_client` for the Kong SSL proxy port.
 -- @name proxy_ssl_client
 local function proxy_ssl_client(timeout, sni)
-  local proxy_ip = get_proxy_ip(true)
-  local proxy_port = get_proxy_port(true)
+  local proxy_ip = get_proxy_ip(true, true)
+  local proxy_port = get_proxy_port(true, true)
   assert(proxy_ip, "No https-proxy found in the configuration")
   local client = http_client(proxy_ip, proxy_port, timeout or 60000)
   assert(client:ssl_handshake(nil, sni, false)) -- explicit no-verify
