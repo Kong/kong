@@ -214,7 +214,7 @@ function CorsHandler:access(conf)
     end
   end
 
-  local methods = conf.methods and concat(conf.methods, ",")
+  local methods = conf.methods and #conf.methods > 0 and concat(conf.methods, ",")
                   or "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS,TRACE,CONNECT"
 
   set_header("Access-Control-Allow-Methods", methods)
