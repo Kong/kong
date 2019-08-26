@@ -127,6 +127,10 @@ local function build_queries(self)
     return nil, err
   end
 
+  if schema.ttl == true then
+    select_columns = select_columns .. fmt(", TTL(%s) as ttl", self.ttl_field())
+  end
+
   if partitioned then
     return {
       insert = fmt([[
@@ -512,6 +516,7 @@ function _M.new(connector, schema, errors)
 
   local each_pk_field
   local each_non_pk_field
+  local ttl_field
 
   do
     local non_pk_fields = new_tab(n_fields - n_pk, 0)
@@ -547,6 +552,10 @@ function _M.new(connector, schema, errors)
     each_non_pk_field = function()
       return iter, non_pk_fields, 0
     end
+
+    ttl_field = function()
+      return schema.ttl and non_pk_fields[1] and non_pk_fields[1].field_name
+    end
   end
 
   -- self instanciation
@@ -557,6 +566,7 @@ function _M.new(connector, schema, errors)
     errors                  = errors,
     each_pk_field           = each_pk_field,
     each_non_pk_field       = each_non_pk_field,
+    ttl_field               = ttl_field,
     foreign_keys_db_columns = {},
     queries                 = nil,
   }

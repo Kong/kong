@@ -1325,6 +1325,13 @@ function _M.new(connector, schema, errors)
 
     upsert_expressions = concat(upsert_expressions, ", ")
 
+    select_expressions = concat {
+      select_expressions, ",",
+      "FLOOR(EXTRACT(EPOCH FROM (",
+        ttl_escaped, " AT TIME ZONE 'UTC' - CURRENT_TIMESTAMP AT TIME ZONE 'UTC'",
+      "))) AS ", ttl_escaped
+    }
+
     create_statement = concat {
       "CREATE TABLE IF NOT EXISTS ", table_name_escaped, " (\n",
       "  ",   concat(create_expressions, ",\n  "), "\n",
