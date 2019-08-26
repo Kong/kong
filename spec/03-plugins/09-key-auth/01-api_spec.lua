@@ -168,6 +168,31 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(3, #json.data)
         end)
       end)
+
+      describe("GET #ttl", function()
+        lazy_setup(function()
+          for i = 1, 3 do
+            bp.keyauth_credentials:insert({
+              consumer = { id = consumer.id },
+            }, { ttl = 10 })
+          end
+        end)
+        lazy_teardown(function()
+          db:truncate("keyauth_credentials")
+        end)
+        it("entries contain ttl when specified", function()
+          local res = assert(admin_client:send {
+            method  = "GET",
+            path    = "/consumers/bob/key-auth"
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.is_table(json.data)
+          for _, credential in ipairs(json.data) do
+            assert.not_nil(credential.ttl)
+          end
+        end)
+      end)
     end)
 
     describe("/consumers/:consumer/key-auth/:id", function()
@@ -213,6 +238,19 @@ for _, strategy in helpers.each_strategy() do
             path   = "/consumers/alice/key-auth/" .. credential.id
           })
           assert.res_status(404, res)
+        end)
+        it("key-auth credential contains #ttl", function()
+          local credential = bp.keyauth_credentials:insert({
+            consumer = { id = consumer.id },
+          }, { ttl = 10 })
+          local res = assert(admin_client:send {
+            method  = "GET",
+            path    = "/consumers/bob/key-auth/" .. credential.id
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal(credential.id, json.id)
+          assert.not_nil(json.ttl)
         end)
       end)
 
