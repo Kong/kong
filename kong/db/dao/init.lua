@@ -138,13 +138,7 @@ local function validate_options_value(options, schema, context)
   local errors = {}
 
   if schema.ttl == true and options.ttl ~= nil then
-    if context ~= "insert" and
-       context ~= "update" and
-       context ~= "upsert" then
-      errors.ttl = fmt("option can only be used with inserts, updates and upserts, not with '%ss'",
-                       context)
-
-    elseif floor(options.ttl) ~= options.ttl or
+    if floor(options.ttl) ~= options.ttl or
                  options.ttl < 0 or
                  options.ttl > 100000000 then
       -- a bit over three years maximum to make it more safe against
