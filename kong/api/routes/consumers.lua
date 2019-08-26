@@ -1,6 +1,7 @@
 local endpoints = require "kong.api.endpoints"
 local reports = require "kong.reports"
 local utils = require "kong.tools.utils"
+local cjson = require "cjson"
 
 
 local kong = kong
@@ -21,7 +22,7 @@ return {
         end
 
         return kong.response.exit(200, {
-          data = { consumer },
+          data = setmetatable({ consumer }, cjson.array_mt),
           next = null,
         })
       end
