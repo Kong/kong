@@ -365,7 +365,6 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
 
     local foreign_key = self.params[foreign_schema.name]
     local next_page = offset and fmt("/%s/%s/%s?offset=%s",
-                                     prefix_path or
                                      foreign_schema.admin_api_name or
                                      foreign_schema.name,
                                      foreign_key,

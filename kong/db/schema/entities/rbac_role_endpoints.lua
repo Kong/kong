@@ -5,6 +5,7 @@ return {
   name = "rbac_role_endpoints",
   dao = "kong.db.dao.rbac_role_endpoints",
   generate_admin_api = false,
+  admin_api_nested_name = "endpoints",
   primary_key = { "role", "workspace", "endpoint" },
   fields = {
     { role = { type = "foreign", required = true, reference = "rbac_roles", on_delete = "cascade" } },

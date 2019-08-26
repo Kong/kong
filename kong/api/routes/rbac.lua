@@ -364,11 +364,9 @@ return {
     schema = rbac_roles.schema,
     methods = {
       GET  = function(self, db, helpers, parent)
-        local next_page = fmt("/rbac/roles")
         return endpoints.get_collection_endpoint(rbac_roles.schema)
                                                 (self, db, helpers,
-                                                 post_process_actions_remove_default,
-                                                 next_page)
+                                                 post_process_actions_remove_default)
       end,
       POST = endpoints.post_collection_endpoint(rbac_roles.schema),
     }
@@ -421,13 +419,11 @@ return {
       find_current_role(self, db, helpers)
     end,
     GET = function(self, db, helpers)
-      local next_page = fmt("/rbac/roles/%s/entities", self.rbac_role.id)
       return endpoints.get_collection_endpoint(rbac_role_entities.schema,
                                                rbac_roles.schema,
                                                "role")
                                               (self, db, helpers,
-                                               post_process_actions,
-                                               next_page)
+                                               post_process_actions)
     end,
 
     POST = function(self, db, helpers)
@@ -588,13 +584,11 @@ return {
       end,
 
       GET = function(self, db, helpers)
-       local next_page = fmt("/rbac/roles/%s/endpoints", self.rbac_role.id)
        return endpoints.get_collection_endpoint(rbac_role_endpoints.schema,
                                                 rbac_roles.schema,
                                                 "role")
                                                 (self, db, helpers,
-                                                 post_process_actions,
-                                                 next_page)
+                                                 post_process_actions)
       end,
 
       POST = function(self, dao_factory, helpers)
