@@ -1,154 +1,401 @@
-# portal()
-* `portal` gives access to data relating to the current portal, this includes things like portal configuration, content, specs, and layouts.
----
-## :specs()
-- **description**
-  - returns an array of specification files contained within the current portal
-- **return type**
-  - _list_
-- **examples**
-```
-portal():specs():print()
 
-<!-- result -->
+
+# Kong Portal Lua API
+
+Kong Developer Portal supports writing templates using lua, we have abstracted away some concepts and replaced them with more familiar concepts, here we define those concepts, and the objects exposed to help build custom functionality / pages.
+
+## Globals
+
+- [`l`](#lkey-fallback) - Locale helper, first version, gets values from the currently active page.
+- [`each`](#eachlist_or_table) - Commonly used helper to iterate over lists / tables.
+- [`print`](#printany) - Commonly used helper to print lists / tables.
+
+## Objects
+
+- [`portal`](#portal) - The portal object refers to the current workspace portal being accessed.
+- [`page`](#page) - The page object refers to the currently active page, and it's contents.
+- [`user`](#user) - The user object represents the currently logged in developer accessing the Kong Portal.
+- [`theme`](#theme) - The theme object represents the currently active theme, and it's variables.
+- [`helpers`](#helpers) - Helper functions simplify common tasks or provide easy shortcuts to Kong Portal methods.
+
+## Terminology / Definitions
+
+- `list` - Also referred to commonly as an array (`[1, 2, 3]`) in lua is a table-like object (`{1, 2, 3}`). Lua list index starts at `1` not `0`. Values can be accessed by array notation (`list[1]`).
+- `table` - Also commonly-known-as an object or hashmap (`{1: 2}`) in lua looks like (`{1 = 2}`). Values can be accessed by array or dot notation (`table.one or table["one"]`).
+
+# `l(key, fallback)`
+
+#### Description
+
+> Returns the current translation by key from the currently active page.
+
+#### Return Type
+
+```lua
+string
+```
+
+#### Usage
+
+
+##### `content/en/example.txt`
+
+```yaml
+layout: example.html
+
+locale:
+  title: Welcome to {{portal.name}}
+  slogan: The best developer portal ever created.
+```
+
+##### `content/es/example.txt`
+
+```yaml
+layout: example.html
+
+locale:
+  title: Bienvenido a {{portal.name}}
+  slogan: El mejor portal para desarrolladores jamás creado.
+```
+
+##### `layouts/example.html`
+
+```hbs
+<h1>{* l("title", "Welcome to" .. portal.name) *}</h1>
+<p>{* l("slogan", "My amazing developer portal!") *}</p>
+<p>{* l("powered_by", "Powered by Kong.") *}</p>
+```
+
+##### Output when on `en/example`
+
+```html
+<h1>Welcome to Kong Portal</h1>
+<p>The best developer portal ever created.</p>
+<p>Powered by Kong.</p>
+```
+
+##### Output when on `es/example`
+
+```html
+<h1>Bienvenido a Kong Portal</h1>
+<p>El mejor portal para desarrolladores jamás creado.</p>
+<p>Powered by Kong.</p>
+```
+
+#### Notes
+
+- `l(...)` is a helper from the `page` object. It can be also accessed via `page.l`. However `page.l` does not support template interpolation (aka `{{portal.name}}` will not work.)
+
+# `each(list_or_table)`
+
+#### Description
+
+> Returns the appropriate iterator depending on what type of argument is passed.
+
+#### Return Type
+
+```lua
+Iterator
+```
+
+#### Usage
+
+##### Template (List)
+
+```hbs
+{% for index, value in each(table) do %}
+<ul>
+  <li>Index: {{index}}</li>
+  <li>Value: {{ print(value) }}</li>
+</ul>
+{% end %}
+```
+
+##### Template (Table)
+
+```hbs
+{% for key, value in each(table) do %}
+<ul>
+  <li>Key: {{key}}</li>
+  <li>Value: {{ print(value) }}</li>
+</ul>
+{% end %}
+```
+
+# `print(any)`
+
+#### Description
+
+> Returns stringified output of input value
+
+#### Return Type
+
+```lua
+string
+```
+
+#### Usage
+
+##### Template (Table)
+
+```hbs
+<pre>{{print(page)}}</pre>
+```
+
+# `portal`
+
+> `portal` gives access to data relating to the current portal, this includes things like portal configuration, content, specs, and layouts.
+
+---
+
+- [How To Access Config Values](#how-to-access-config-values)
+- [Portal Members](#portal-members)
+  - [`portal.workspace`](#portalworkspace)
+  - [`portal.url`](#portalurl)
+  - [`portal.api_url`](#portalapi_url)
+  - [`portal.auth`](#portalauth)
+  - [`portal.specs`](#portalspecs)
+  - [`portal.developer_meta_fields`](#portaldeveloper_meta_fields)
+
+---
+
+## How To Access Config Values
+
+You can access the current workspace's portal config directly on the `portal` object like so:
+
+```lua
+portal[config_key] or portal.config_key
+```
+
+For example `portal.auth` is a portal config value. You can find a list of config values by reading the portal section of `kong.conf`.
+
+### From `kong.conf`
+
+The portal only exposes config values that start with  `portal_`, and they can be access by removing the `portal_` prefix.
+
+> Some configuration values are modified or customized, these customizations are documented under the [Portal Members](#portal-members) section.
+
+## Portal Members
+
+### `portal.workspace`
+
+#### Description
+
+> Returns the current portal's workspace.
+
+#### Return Type
+
+```lua
+string
+```
+
+#### Usage
+
+##### Template
+
+```hbs
+{{portal.workspace}}
+```
+
+##### Output
+
+```html
+default
+```
+
+### `portal.url`
+
+#### Description
+
+> Returns the current portal's url with workspace.
+
+#### Return Type
+
+```lua
+string
+```
+
+#### Usage
+
+##### Template
+
+```hbs
+{{portal.url}}
+```
+
+##### Output
+
+```html
+http://127.0.0.1:8003/default
+```
+
+## `portal.api_url`
+
+#### Description
+
+> Returns the configuration value for `portal_api_url` with
+> the current workspace appended.
+
+#### Return Type
+
+```lua
+string or nil
+```
+
+#### Usage
+
+##### Template
+
+```hbs
+{{portal.api_url}}
+```
+
+##### Output when `portal_api_url = http://127.0.0.1:8004`
+
+```html
+http://127.0.0.1:8004/default
+```
+
+### `portal.auth`
+
+#### Description
+
+> Returns the current portal's authentication type.
+
+#### Return Type
+
+```lua
+string
+```
+
+#### Usage
+
+#### Printing Value
+
+###### Input
+
+```hbs
+{{portal.auth}}
+```
+
+###### Output when `portal_auth = basic-auth`
+
+```html
+basic-auth
+```
+
+#### Checking Authentication Enabled
+
+###### Input
+
+```hbs
+{% if portal.auth then %}
+  Authentication is enabled!
+{% end %}
+```
+
+###### Output when `portal_auth = basic-auth`
+
+```html
+Authentication is endabled!
+```
+
+### `portal.specs`
+
+#### Description
+
+Returns an array of specification files contained within the current portal
+
+#### Return type
+
+```lua
+array
+```
+
+#### Usage
+
+##### Viewing content value
+
+###### Template
+
+```hbs
+<pre>{{ print(portal.specs) }}</pre>
+```
+
+###### Output
+
+```lua
 {
   {
-    path = "content/example1_spec.json,
-    content = specification content here
+    "path" = "content/example1_spec.json",
+    "content" = "..."
   },
   {
-    path = "content/example2_spec.json,
-    content = specification content here
+    "path" = "content/documentation/example1_spec.json",
+    "content" = "..."
   },
   ...
 }
 ```
 
+##### Looping through values
 
-#### :specs():filter_by_path(_path_)
-- **description**
-  - returns a subset of specs, filtered by path as an argument
-- **arguments**
-  - _path_ - string used to filter specs by path (compares from left to right)
-- **return type**
-  - _list_
-- **examples**
-```
-<!-- specs stub data -->
-{
-  {
-    path = "content/a/b/c.json"
-    content = specification content here
-  },
-  {
-    path = "content/x/y/z.json"
-    content = specification content here
-  }
-}
+###### Template
 
-<!-- filter specs -->
-portal():specs():filter_by_path("content/a"):print()
-
-<!-- result: -->
-{
-  path = "content/a/b/c.json"
-  content = "specification content here"
-}
+```hbs
+{% for _, spec in each(portal.specs) %}
+  <li>{{spec.path}}</li>
+{% end %}
 ```
 
+###### Output
 
-#### :specs():filter_by_route(_path_)
-- **description**
-  - returns a subset of specs, filtered by route as an argument
-- **arguments**
-  - _path_ - string used to filter specs by route (compares from left to right)
-- **return type**
-  - _list_
-- **examples**
-```
-<!-- specs stub data -->
-{
-  {
-    route = "a/b/c",
-    path = "content/a/b/c.json",
-    content = specification content here
-  },
-  {
-    route = "x/y/z",
-    path = "content/x/y/z.json",
-    content = specification content here
-  }
-}
-
-<!-- filter specs -->
-portal():specs():filter_by_route("a/b"):print()
-
-<!-- result: -->
-{
-  route = "a/b/c",
-  path = "content/a/b/c.json"
-  content = "specification content here"
-}
+```hbs
+  <li>content/example1_spec.json</li>
+  <li>content/documentation/example1_spec.json</li>
 ```
 
-## :config()
-- **description**
-  - returns an array of specification files contained within the current portal
-- **return type**
-  - _table_
-- **examples**
-```
-<!-- config stub data -->
-{
-  theme = "default",
-  colors = {
-    primary = "green",
-    secondary = "blue",
-  }
-}
+##### Filter by path
 
-<!-- get config -->
-portal():config():print()
+###### Template
 
-<!-- result -->
-{
-  theme = "default",
-  colors = {
-    primary = "green",
-    secondary = "blue",
-  }
-}
-```
-```
-<!-- get specific config value example -->
-
-<!-- config stub data -->
-{
-  theme = "default",
-  colors = {
-    primary = "green",
-    secondary = "blue",
-  }
-}
-
-<!-- get config -->
-portal():config():val("colors.primary"):print()
-
-<!-- result -->
-"green"
+```hbs
+{% for _, spec in each(helpers.filter_by_path(portal.specs, "content/documentation")) %}
+  <li>{{spec.path}}</li>
+{% end %}
 ```
 
-#### :config():developer_meta_fields()
-- **description**
-  - returns an array of developer meta fields availabe/required by kong to register a developer
-- **return type**
-  - _list_ of registration fields
-- **examples**
-```
-<!-- get fields -->
-portal():config():developer_meta_fields()
+###### Output
 
-<!-- result -->
+```hbs
+  <li>content/documentation/example1_spec.json</li>
+```
+
+### `portal.developer_meta_fields`
+
+#### Description
+
+Returns an array of developer meta fields availabe/required by kong to register a developer
+
+#### Return Type
+
+```lua
+array
+```
+
+#### Usage
+
+##### Printing
+
+###### Template
+
+```hbs
+{{ print(portal.developer_meta_fields) }}
+```
+
+###### Output
+
+```lua
 {
   {
     label    = "Full Name",
@@ -156,499 +403,166 @@ portal():config():developer_meta_fields()
     type     = "text",
     required = true,
   },
-  {
-    label    = "Birthdate",
-    name     = "birthdate",
-    type     = "number",
-    required = true,
-  },
-  {
-    label    = "Favorite Color",
-    name     = "favorite_color",
-    type     = "text",
-    required = false,
-  },
+  ...
 }
 ```
 
+#### Looping
 
-# Base()
-* `base` methods are always included as chainable methods, and are dynamically included based off of the current type of return value at a given time (if the last method returns a string, the table, the `table` methods will be available).
+###### Template
+
+```hbs
+{% for i, field in each(portal.developer_meta_fields) do %}
+<ul>
+  <li>Label: {{field.label}}</li>
+  <li>Name: {{field.name}}</li>
+  <li>Type: {{field.type}}</li>
+  <li>Required: {{field.required}}</li>
+</ul>
+{% end %}
+```
+
+###### Output
+
+```html
+<ul>
+  <li>Label: Full Name</li>
+  <li>Name: full_name</li>
+  <li>Type: text</li>
+  <li>Required: true</li>
+</ul>
+...
+```
+
+# `page`
+
+> `page` gives access to data relating to the current page, this includes things like page url, path, breadcrumbs...
+
 ---
-## :table(_arg_)
-- **description**
-  - sets the chain context as table passed as an argument.
-- **arguments**
-  - _arg_ - list or table
-- **return type**
-  - _list_ or _table_
-- **examples**
-```
-<!-- table example -->
-base():table({ a = "dog", b = "cat", c = "bat" }):print()
 
-<!-- result -->
-{ a = "dog", b = "cat", c = "bat" }
-```
+- [How to access content values](#how-to-access-content-values)
+- [Page Members](#page-members)
+  - [`page.path`](#pagepath)
+  - [`page.url`](#pageurl)
+  - [`page.breadcrumbs`](#pagebreadcrumbs)
 
-```
-<!-- list example -->
-base():table({ "dog", "cat", "bat" }):print()
+---
 
-<!-- result -->
-{ "dog", "cat", "bat" }
+## How to access content values
+
+When you create a new content page, you are able to define key-values. Here you are going to learn how to access those values and a few interesting things.
+
+You can access the key-values you define directly on the `page` object like so:
+
+```lua
+page[key_name] or page.key_name
 ```
 
+You can also access nested keys like so:
 
-#### :filter(_callback_)
-- **description**
-  - iterates over a table of key value pairs, and filters based upon a the boolean result of a passed in callback
-- **arguments**
-  - _callback_ - function in which to filter table or list by.
-- **return type**
-  - _list_ or _table_
-- **examples**
-```
-<!-- table example -->
-base()
-  :table({ a = "dog", b = "cat", c = "bat" })
-  :filter(function(k, v)
-    return v == "dog"
-  end)
-  :print()
-
-<!-- result -->
-{ a = "dog" }
+```lua
+page.key_name.nested_key
 ```
 
-```
-<!-- list example -->
-base()
-  :table({ "dog", "cat", "bat" })
-  :filter(function(i, v)
-    return v == "dog"
-  end)
-  :print()
+> Be careful! Make sure that the `key_name` exists before accessing `nested_key` like so to avoid output errors:
+> ```hbs
+> {{page.key_name and page.key_name.nested_key}}
+> ```
 
-<!-- result -->
-{ "dog" }
-```
+## Page Members
 
+### `page.path`
 
-#### :sub(_first_idx_, _last_idx_)
-- **description**
-  - Extract a range from a table, like ‘string.sub’. If first or last are negative then they are relative to the end of the list eg. sub(t,-2) gives last 2 entries in a list, and sub(t,-4,-2) gives from -4th to -2nd
-- **arguments**
-  - _first_idx_ - index to begin slice
-  - _last_idx_ - index to end slice
-- **return type**
-  - _any_
-- **examples**
-```
-<!-- positive index example -->
-base()
-  :table({ "a", "b", "c", "d", "e" })
-  :sub(2, 4)
-  :print()
+#### Description
 
-<!-- result -->
-{ "b", "c", "d" }
+> Returns the current page's route / path.
+
+#### Return Type
+
+```lua
+string
 ```
 
-```
-<!-- negative index example -->
-base()
-  :table({ "a", "b", "c", "d", "e" })
-  :sub(-2, -1)
-  :print()
+#### Usage
 
-<!-- result -->
-{ "d", "e" }
+##### Template
+
+```hbs
+{{portal.path}}
 ```
 
-#### :keys()
-- **description**
-  - return all the keys of a table in arbitrary order
-- **return type**
-  - _list_
-- **examples**
-```
-<!-- table example -->
+##### Output given url is `http://127.0.0.1:8003/default/guides/getting-started`
 
-base()
-  :table({ x = "value_x", y = "value_y", z = "value_z" })
-  :keys()
-  :print()
-
-<!-- result -->
-{ "x", "y", "z" }
+```html
+guides/getting-started
 ```
 
+### `page.url`
 
-#### :values()
-- **description**
-  - return all the values of the table in arbitrary order
-- **return type**
-  - _list_
-- **examples**
-```
-<!-- table example -->
+#### Description
 
-base()
-  :table({ x = "value_x", y = "value_y", z = "value_z" })
-  :values()
-  :print()
+> Returns the current page's url
 
-<!-- result -->
-{ "value_x", "value_y", "value_z" }
+#### Return Type
+
+```lua
+string
 ```
 
+#### Usage
 
-#### :val(_key_)
-- **description**
-  - returns value based off of a passed key, or chain of keys
-- **arguments**
-  - _key_ - string representing a key, or string of keys (for nested values)
-- **return type**
-  - _any_
-- **examples**
-```
-<!-- non-nested example -->
-base()
-  :table({ x = "value_x", y = "value_y" })
-  :val("x")
-  :print()
+##### Template
 
-<!-- result -->
-"value_x"
-```
-```
-<!-- nested example -->
-base()
-  :table({
-    x = {
-      y = {
-        z = {
-          key = "value"
-        }
-      }
-    }
-  })
-  :val("x.y.z.key")
-  :print()
-
-<!-- result -->
-"value"
+```hbs
+{{portal.url}}
 ```
 
+##### Output given url is `http://127.0.0.1:8003/default/guides/getting-started`
 
-#### :idx(_i_)
-- **description**
-  - returns value based off of a passed idx
-- **arguments**
-  - _i_ - number representing an index
-- **return type**
-  - _any_
-- **examples**
-```
-<!-- non-nested example -->
-base()
-  :table({ "a", "b", "c" })
-  :val("a")
-  :print()
-
-<!-- result -->
-"a"
+```html
+http://127.0.0.1:8003/default/guides/getting-started
 ```
 
+### `page.breadcrumbs`
 
-#### :size()
-- **description**
-  - total number of elements in this table
-- **return type**
-  - _number_
-- **examples**
-```
-<!-- table example -->
+#### Description
 
-base()
-  :table({ x = "value_x", y = "value_y", z = "value_z" })
-  :size()
-  :print()
+> Returns the current page's breadcrumb collection
 
-<!-- result -->
-3
+#### Return Type
+
+```lua
+table[]
 ```
 
-```
-<!-- list example -->
+#### Item Properties
 
-base()
-  :table({ "x", "y", "z" })
-  :size()
-  :print()
+- `item.path` - Full path to item, no forward-slash prefix.
+- `item.display_name` - Formatted name
+- `item.is_first` - Is this the first item in the list?
+- `item.is_last` - Is this the last item in the list?
 
-<!-- result -->
-3
-```
+#### Usage
 
-#### :pairs()
-- **description**
-  - iterates over table or list within the context of a template
-- **return type**
-  - _any_
-- **examples**
-```
-<!-- table example -->
+##### Template
 
-{% for k, v in base():table({ x = "a", y = "b", z = "c" }):pairs() do %}
-  <p>{{k}}-{{v}}</p>\n
-{% end %}
-
-<!-- result -->
-<p>x-a</p>
-<p>y-b</p>
-<p>z-c</p>
-```
-```
-<!-- list example -->
-
-{% for i, v in  base():table({ "a", "b", "c" }):pairs() do %}
-  <p>{{i}}-{{v}}</p>\n
-{% end %}
-
-<!-- result -->
-<p>1-a</p>
-<p>2-b</p>
-<p>3-c</p>
+```hbs
+<div id="breadcrumbs">
+  <a href="">Home</a>
+  {% for i, crumb in each(page.breadcrumbs) do %}
+    {% if crumb.is_last then %}
+      / {{ crumb.display_name }}
+    {% else %}
+      / <a href="{{crumb.path}}">{{ crumb.display_name }}</a>
+    {% end %}
+  {% end %}
+</div>
 ```
 
+# `user`
 
-#### :sortv(_callback_)
-- **description**
-  - iterates over table or list after sorting by value
-- **arguments**
-  - _callback_ - Optional sort function that takes two arguments. Overrides default sorting implementation
-- **return type**
-  - _list_
-- **examples**
-```
-<!-- default example -->
+> TODO: document
 
-{% for k, v in base():table({ z = "c",  y = "b", x = "a"}):sortv() do %}
-  <p>{{k}}-{{v}}</p>\n
-{% end %}
+# `theme`
 
-<!-- result -->
-<p>x-a</p>
-<p>y-b</p>
-<p>z-c</p>
-```
-```
-<!-- example with arg -->
-
-{%
-  for i, v in  base():table({ z = "c",  y = "b", x = "a"}):sortv(function(a, b) 
-    return a > b
-  end) do
-%}
-
-  <p>{{i}}-{{v}}</p>\n
-{% end %}
-
-<!-- result -->
-<p>z-c</p>
-<p>y-b</p>
-<p>x-a</p>
-```
-
-
-#### :sortk(_callback_)
-- **description**
-  - iterates over table or list after sorting by key
-- **arguments**
-  - _callback_ - Optional sort function that takes two arguments. Overrides default sorting implementation
-- **return type**
-  - _list_
-- **examples**
-```
-<!-- default example -->
-
-{% for k, v in base():table({ z = "c",  y = "b", x = "a"}):sortk() do %}
-  <p>{{k}}-{{v}}</p>\n
-{% end %}
-
-<!-- result -->
-<p>x-a</p>
-<p>y-b</p>
-<p>z-c</p>
-```
-```
-<!-- example with arg -->
-
-{%
-  for i, v in  base():table({ z = "c",  y = "b", x = "a"}):sortk(function(a, b) 
-    return a > b
-  end) do
-%}
-
-  <p>{{i}}-{{v}}</p>\n
-{% end %}
-
-<!-- result -->
-<p>z-c</p>
-<p>y-b</p>
-<p>x-a</p>
-```
-
-```
-## :string()
-- **description**
-  - sets the chain context string passed as an argument
-- **return type**
-  - _string_
-- **examples**
-```
-<!-- table example -->
-base():string("dog"):print()
-
-<!-- result -->
-"dog"
-```
-
-#### :upper()
-- **description**
-  - changes lowercase characters in a string to uppercase
-- **return type**
-  - _string_
-- **examples**
-```
-base()
-  :string("dog")
-  :upper()
-  :print()
-
-<!-- result -->
-"DOG"
-```
-
-#### :lower()
-- **description**
-  - changes uppercase characters in a string to lowercase
-- **return type**
-  - _string_
-- **examples**
-```
-base()
-  :string("DOG")
-  :lower()
-  :print()
-
-<!-- result -->
-"dog"
-```
-
-#### :gsub(_s_, _r_, _[n]_)
-- **description**
-  - replaces all occurrences of a pattern in a string
-- **arguments**
-  - _s_ - string delimiter to be replaces
-  - _r_ - replacement string or function returning a string
-  - _n (optional) -_ number of occurances to replace
-- **return type**
-  - _string_
-- **examples**
-```
-<!-- replace all occurances -->
-base()
-  :string("moose")
-  :gsub("o", "V")
-  :print()
-
-<!-- result -->
-"mVVse"
-```
-```
-<!-- replace all set ammount of occurances -->
-base()
-  :string("moose")
-  :gsub("o", "V", 1)
-  :print()
-
-<!-- result -->
-"mVose"
-```
-```
-<!-- uses function to evaluate replacements -->
-base()
-  :string("moose")
-  :gsub("o", function(v)
-    return v .. "U"
-  end)
-  :print()
-
-<!-- result -->
-"moUoUse"
-```
-
-#### :len()
-- **description**
-  - returns the length of a string (number of characters)
-- **return type**
-  - _number_
-- **examples**
-```
-base()
-  :string("dog")
-  :len()
-  :print()
-
-<!-- result -->
-3
-```
-
-#### :reverse()
-- **description**
-  - reverses a string
-- **return type**
-  - _string_
-- **examples**
-```
-base()
-  :string("dog")
-  :reverse()
-  :print()
-
-<!-- result -->
-"god"
-```
-
-#### :split(_s_, _[n]_)
-- **description**
-  - split a string into a list of strings using a delimiter
-- **arguments**
-  - _s_ - string delimiter to be replaces
-  - _n (optional) -_ number of occurances to replace
-- **return type**
-  - _list_
-- **examples**
-```
-<!-- split by delimiter -->
-base()
-  :string("d.o.g")
-  :split(".")
-  :print()
-
-<!-- result -->
-'{ "d", "o", "g" }'
-```
-```
-<!-- split by delimiter with limit -->
-base()
-  :string("d.o.g")
-  :split(".", 2)
-  :print()
-
-<!-- result -->
-{ "d", "og" }
-```
+> TODO: document

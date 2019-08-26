@@ -1,6 +1,8 @@
 local lyaml      = require "lyaml"
 local cjson      = require "cjson.safe"
-local pl_stringx = require "pl.stringx"
+local tablex     = require "pl.tablex"
+local stringx    = require "pl.stringx"
+local inspect    = require "inspect"
 local file_helpers = require "kong.portal.file_helpers"
 
 local yaml_load   = lyaml.load
@@ -17,10 +19,10 @@ end
 
 
 local function get_file_attrs_by_path(path)
-  local split_path     = pl_stringx.split(path, "/")
+  local split_path     = stringx.split(path, "/")
   local full_filename  = table.remove(split_path)
   local base_path      = table.concat(split_path, "/")
-  local split_filename = pl_stringx.split(full_filename, '.')
+  local split_filename = stringx.split(full_filename, '.')
   local extension      = table.remove(split_filename)
   local filename       = split_filename[1]
 
@@ -62,8 +64,8 @@ local function get_route_from_path(path)
     route = path_attrs.base_path .. '/' .. path_attrs.filename
   end
 
-  if (pl_stringx.split(route, "content/")[2]) then
-    route = pl_stringx.split(route, "content/")[2]
+  if (stringx.split(route, "content/")[2]) then
+    route = stringx.split(route, "content/")[2]
   end
 
   if route == "content" then
@@ -99,9 +101,120 @@ local function parse_oas(oas_contents)
 end
 
 
+local function is_list(table)
+  for k, v in pairs(table) do
+    if type(k) ~= "number" then
+      return false
+    end
+  end
+
+  return true
+end
+
+
+local function each(items)
+  if is_list(items) then
+    return ipairs(items)
+  end
+
+  return pairs(items)
+end
+
+
+local function map(items, cb, ...)
+  if is_list(items) then
+    return tablex.imap(cb, items, ...)
+  end
+
+  return tablex.map(cb, items, ...)
+end
+
+
+local function table_insert(tbl, k, v)
+  tbl[k] = v
+end
+
+local function list_insert(tbl, k, v)
+  table.insert(tbl, v)
+end
+
+
+local function filter(items, cb, ...)
+  local filtered_items = {}
+  local iterator = pairs
+  local insert = table_insert
+
+  if is_list(items) then
+    iterator = ipairs
+    insert = list_insert
+  end
+
+  for k, v in iterator(items) do
+    if cb(k, v, ...) then
+      insert(filtered_items, k, v)
+    end
+  end
+
+  return filtered_items
+end
+
+
+local function is_spec(_, item)
+  local path_attrs = get_file_attrs_by_path(item.path)
+  local is_content = stringx.split(path_attrs.base_path, '/')[1] == "content"
+  local is_spec_extension =
+    path_attrs.extension == "json" or
+    path_attrs.extension == "yaml" or
+    path_attrs.extension == "yml"
+
+  if is_content and is_spec_extension then
+    return true
+  end
+
+  return false
+end
+
+
+local function parse_spec(v)
+  v.parsed = parse_oas(v.contents)
+  v.route  = get_route_from_path(v.path)
+  return v
+end
+
+
+local function filter_by_path(items, arg)
+  return filter(items, function(_, item)
+    local split_path = stringx.split(item.path, "/")
+    local arg_path = stringx.split(arg, "/")
+
+     for i, v in ipairs(arg_path) do
+      if v ~= split_path[i] then
+        return false
+      end
+    end
+
+     return true
+  end)
+end
+
+
 return {
   get_file_attrs_by_path = get_file_attrs_by_path,
   get_route_from_path    = get_route_from_path,
+  filter_by_path         = filter_by_path,
   parse_oas              = parse_oas,
+  parse_spec             = parse_spec,
+  is_spec                = is_spec,
+  is_list                = is_list,
+  tbl                    = tablex,
+  str                    = stringx,
+  each                   = each,
+  map                    = map,
+  filter                 = filter,
+  print                  = inspect,
+  table_insert           = table_insert,
+  list_insert            = list_insert,
+  json_decode            = cjson.decode,
+  json_encode            = cjson.encode,
 }
 

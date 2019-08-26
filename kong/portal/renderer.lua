@@ -292,14 +292,7 @@ local function compile_layout()
     return FALLBACK_404
   end
 
-  return template.compile(layout)({
-    base   = handler.new('base'),
-    kong   = handler.new('kong'),
-    user   = handler.new('user'),
-    page   = handler.new('page'),
-    theme  = handler.new('theme'),
-    portal = handler.new('portal'),
-  })
+  return template.compile(layout)(handler(template))
 end
 
 
@@ -311,13 +304,7 @@ local function compile_asset()
   end
 
   if string.find(asset.path, 'css', 1, true) then
-    return template.compile(asset)({
-      base   = handler.new('base'),
-      kong   = handler.new('kong'),
-      user   = handler.new('user'),
-      theme  = handler.new('theme'),
-      portal = handler.new('portal'),
-    })
+    return template.compile(asset)(handler(template))
   end
 
   return asset.contents

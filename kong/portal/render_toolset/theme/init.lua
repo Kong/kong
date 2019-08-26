@@ -1,33 +1,17 @@
-local Theme = {}
-local getters = require "kong.portal.render_toolset.getters"
+local helpers       = require "kong.portal.render_toolset.helpers"
+local singletons    = require "kong.singletons"
 
-function Theme:setup()
-  local ctx = getters.select_theme_config()
+return function()
+  local render_ctx = singletons.render_ctx
+  local theme = helpers.tbl.deepcopy(render_ctx.theme or {})
 
-  return self
-          :set_ctx(ctx)
-          :next()
+  theme.color = function(key)
+    return theme.colors[key]
+  end
+  
+  theme.font = function (key)
+    return theme.fonts[key]
+  end
+  
+  return theme
 end
-
-function Theme:colors(arg)
-  local ctx = self.ctx.colors
-  return self
-          :set_ctx(ctx)
-          :next()
-          :val(arg)
-          :next()
-end
-
-
-function Theme:fonts(arg)
-  local ctx = self.ctx.fonts
-
-  return self
-          :set_ctx(ctx)
-          :next()
-          :val(arg)
-          :next()
-end
-
-
-return Theme
