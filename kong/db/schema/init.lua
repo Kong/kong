@@ -1063,6 +1063,7 @@ validate_fields = function(self, input)
   for k, v in pairs(input) do
     local err
     local field = self.fields[tostring(k)]
+    local is_ttl = k == "ttl" and self.ttl
     if field and field.type == "self" then
       local pok
       pok, err, errors[k] = pcall(self.validate_field, self, input, v)
@@ -1070,6 +1071,8 @@ validate_fields = function(self, input)
         errors[k] = validation_errors.SCHEMA_CANNOT_VALIDATE
         kong.log.debug(errors[k], ": ", err)
       end
+    elseif is_ttl then
+      kong.log.debug("ignoring validation on ttl field")
     else
       field, err = resolve_field(self, k, field, subschema)
       if field then
@@ -1604,8 +1607,11 @@ function Schema:process_auto_fields(data, context, nulls)
 
   elseif context == "select" then
     for key in pairs(data) do
+      -- set non defined fields to nil, except meta fields (ttl) if enabled
       if not self.fields[key] then
-        data[key] = nil
+        if not self.ttl or key ~= "ttl" then
+          data[key] = nil
+        end
       end
     end
   end
