@@ -525,7 +525,7 @@ do
   -- @return The upstreams dictionary (a map with upstream names as string keys
   -- and upstream entity tables as values), or nil+error
   get_all_upstreams = function(workspaces)
-    workspaces = workspaces or ngx.ctx.workspaces
+    workspaces = workspaces or ngx.ctx.workspaces  -- XXX EE or {}
 
     -- for access phase
     local upstreams_dict = {}
