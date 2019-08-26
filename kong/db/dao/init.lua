@@ -151,10 +151,7 @@ local function validate_options_value(options, schema, context)
   end
 
   if schema.fields.tags and options.tags ~= nil then
-    if context ~= "select" then
-      errors.tags = fmt("option can only be used with selects and pages, not with '%ss'",
-                       tostring(context))
-    elseif type(options.tags) ~= "table" then
+    if type(options.tags) ~= "table" then
       if not options.tags_cond then
         -- If options.tags is not a table and options.tags_cond is nil at the same time
         -- it means arguments.lua gets an invalid tags arg from the Admin API
