@@ -58,7 +58,7 @@ end
 
 
 
-local route_transformer = {
+local plugin = {
   VERSION  = "0.1.0",
   PRIORITY = 800,
 }
@@ -94,7 +94,7 @@ local conf_cache = setmetatable({}, {
   end,
 })
 
-function route_transformer:access(conf)
+function plugin:access(conf)
   local funcs = conf_cache[conf] -- fetch cached compiled functions
 
   clear_environment()
@@ -104,4 +104,4 @@ function route_transformer:access(conf)
 end
 
 
-return route_transformer
+return plugin

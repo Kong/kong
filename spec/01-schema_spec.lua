@@ -1,11 +1,13 @@
-local route_transformer_schema = require "kong.plugins.route-transformer.schema"
+local plugin_name = "route-transformer-advanced"
+
+local route_transformer_schema = require("kong.plugins." .. plugin_name .. ".schema")
 local validate = require("spec.helpers").validate_plugin_config_schema
 
 local function validate_schema(config)
   return validate(config, route_transformer_schema)
 end
 
-describe("Plugin: route-transformer(schema)", function()
+describe("Plugin: " .. plugin_name .. "(schema)", function()
 
   it("validates config.path", function()
     local ok, err = validate_schema { path = "/my/path" }

@@ -1,7 +1,8 @@
+local plugin_name = "route-transformer-advanced"
 local helpers = require "spec.helpers"
 
 for _, strategy in helpers.each_strategy() do
-  describe("route-transformer [#" .. strategy .. "]", function()
+  describe(plugin_name .. " [#" .. strategy .. "]", function()
     local client
 
     lazy_setup(function()
@@ -9,7 +10,7 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
-      }, { "route-transformer"} )
+      }, { plugin_name } )
 
       local service1 = bp.services:insert{
         protocol = "http",
@@ -26,7 +27,7 @@ for _, strategy in helpers.each_strategy() do
         }
         bp.plugins:insert {
           route = { id = route1.id },
-          name = "route-transformer",
+          name = plugin_name,
           config = {
             path = "/request",
             host = helpers.mock_upstream_hostname,
@@ -59,7 +60,7 @@ for _, strategy in helpers.each_strategy() do
         }
         bp.plugins:insert {
           route = { id = route2.id },
-          name = "route-transformer",
+          name = plugin_name,
           config = {
             path = "$(shared.test_path)",
             port = "$(shared.test_port)",
@@ -76,7 +77,7 @@ for _, strategy in helpers.each_strategy() do
         }
         bp.plugins:insert {
           route = { id = route3.id },
-          name = "route-transformer",
+          name = plugin_name,
           config = {
             --path = "/request",
             host = helpers.mock_upstream_hostname,
@@ -88,7 +89,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database = strategy,
-        plugins = "bundled, route-transformer",
+        plugins = "bundled, " .. plugin_name,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)

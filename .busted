@@ -1,0 +1,11 @@
+return {
+  default = {
+    verbose = true,
+    output = "gtest",
+    -- coverage = true,  -- doesn't work with openresty
+    ROOT = {
+      "./spec/",
+      "/kong-plugin/spec/",
+    },
+  },
+}
