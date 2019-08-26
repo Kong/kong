@@ -20,6 +20,8 @@ return {
 
       DO $$
       BEGIN
+        DROP TRIGGER IF EXISTS ca_certificates_sync_tags_trigger
+          ON ca_certificates;
         CREATE TRIGGER ca_certificates_sync_tags_trigger
         AFTER INSERT OR UPDATE OF tags OR DELETE ON ca_certificates
         FOR EACH ROW
