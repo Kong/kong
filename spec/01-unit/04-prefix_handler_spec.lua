@@ -524,6 +524,13 @@ describe("NGINX conf compiler", function()
         pg_schema = "foo",
         prefix = tmp_config.prefix,
       }))
+
+      -- Workaround for random iteration of pairs in find_dynamic_keys
+      table.sort(conf.nginx_http_upstream_directives,
+        function(a, b) return a.name <= b.name end)
+      table.sort(in_prefix_kong_conf.nginx_http_upstream_directives,
+        function(a, b) return a.name <= b.name end)
+
       assert.same(conf, in_prefix_kong_conf)
     end)
     it("writes custom plugins in Kong conf", function()
@@ -794,4 +801,3 @@ describe("NGINX conf compiler", function()
     end)
   end)
 end)
-
