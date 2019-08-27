@@ -114,7 +114,7 @@ function _M.transform_json_body(conf, buffered_data)
       v = cast_value(v, v_type)
     end
 
-    if json_body[name] and v then
+    if json_body[name] and v ~= nil then
       json_body[name] = v
     end
   end
@@ -133,7 +133,7 @@ function _M.transform_json_body(conf, buffered_data)
       v = cast_value(v, v_type)
     end
 
-    if not json_body[name] and v then
+    if not json_body[name] and v ~= nil then
       json_body[name] = v
     end
 
@@ -153,7 +153,7 @@ function _M.transform_json_body(conf, buffered_data)
       v = cast_value(v, v_type)
     end
 
-    if v then
+    if v ~= nil then
       json_body[name] = append_value(json_body[name],v)
     end
   end
