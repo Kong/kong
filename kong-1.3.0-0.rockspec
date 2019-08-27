@@ -105,6 +105,7 @@ build = {
     ["kong.api.arguments"] = "kong/api/arguments.lua",
     ["kong.api.endpoints"] = "kong/api/endpoints.lua",
     ["kong.api.routes.kong"] = "kong/api/routes/kong.lua",
+    ["kong.api.routes.health"] = "kong/api/routes/health.lua",
     ["kong.api.routes.config"] = "kong/api/routes/config.lua",
     ["kong.api.routes.consumers"] = "kong/api/routes/consumers.lua",
     ["kong.api.routes.plugins"] = "kong/api/routes/plugins.lua",

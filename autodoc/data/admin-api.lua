@@ -13,6 +13,7 @@ return {
   known = {
     general_files = {
       "kong/api/routes/kong.lua",
+      "kong/api/routes/health.lua",
       "kong/api/routes/config.lua",
       "kong/api/routes/tags.lua",
     },
@@ -148,6 +149,10 @@ return {
           ]],
         },
       },
+    },
+    health = {
+      title = [[Health routes]],
+      description = "",
       ["/status"] = {
         GET = {
           title = [[Retrieve node status]],
