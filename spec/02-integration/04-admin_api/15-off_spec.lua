@@ -186,148 +186,51 @@ describe("Admin API #off", function()
   end)
 
   describe("/config", function()
-    it("accepts configuration as JSON body", function()
-      local res = assert(client:send {
-        method = "POST",
-        path = "/config",
-        body = {
-          _format_version = "1.1",
-          consumers = {
-            {
-              username = "bobby",
+    describe("POST", function()
+      it("accepts configuration as JSON body", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            _format_version = "1.1",
+            consumers = {
+              {
+                username = "bobby",
+              },
             },
           },
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
-
-      assert.response(res).has.status(201)
-    end)
-    it("accepts configuration as a JSON string", function()
-      local res = assert(client:send {
-        method = "POST",
-        path = "/config",
-        body = {
-          config = [[
-          {
-            "_format_version" : "1.1",
-            "consumers" : [
-              {
-                "username" : "bobby",
-              },
-            ],
-          }
-          ]],
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
-
-      assert.response(res).has.status(201)
-    end)
-
-    it("fails with 413 and preserves previous cache if config does not fit in cache", function()
-      local res = assert(client:send {
-        method = "POST",
-        path = "/config",
-        body = {
-          config = [[
-          {
-            "_format_version" : "1.1",
-            "consumers" : [
-              {
-                "username" : "previous",
-              },
-            ],
-          }
-          ]],
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
-
-      assert.response(res).has.status(201)
-
-      helpers.wait_until(function()
-        res = assert(client:send {
-          method = "GET",
-          path = "/consumers/previous",
           headers = {
             ["Content-Type"] = "application/json"
           }
         })
 
-        local body = res:read_body()
-        local json = cjson.decode(body)
-        if res.status == 200 and json.username == "previous" then
-          return true
-        end
-      end, WORKER_SYNC_TIMEOUT)
-
-      client:close()
-      client = assert(helpers.admin_client())
-
-      local consumers = {}
-      for i = 1, 20000 do
-        table.insert(consumers, [[
-          {
-            "username" : "bobby-]] .. i .. [[",
-          }
-        ]])
-      end
-      local config = [[
-      {
-        "_format_version" : "1.1",
-        "consumers" : [
-      ]] .. table.concat(consumers, ", ") .. [[
-        ]
-      }
-      ]]
-      res = assert(client:send {
-        method = "POST",
-        path = "/config",
-        body = {
-          config = config,
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
-
-      assert.response(res).has.status(413)
-
-      client:close()
-      client = assert(helpers.admin_client())
-
-      helpers.wait_until(function()
-        res = assert(client:send {
-          method = "GET",
-          path = "/consumers/previous",
+        assert.response(res).has.status(201)
+      end)
+      it("accepts configuration as a JSON string", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            {
+              "_format_version" : "1.1",
+              "consumers" : [
+                {
+                  "username" : "bobby",
+                },
+              ],
+            }
+            ]],
+          },
           headers = {
             ["Content-Type"] = "application/json"
           }
         })
 
-        local body = res:read_body()
-        local json = cjson.decode(body)
-        if res.status == 200 and json.username == "previous" then
-          return true
-        end
-      end, WORKER_SYNC_TIMEOUT)
+        assert.response(res).has.status(201)
+      end)
 
-    end)
-
-    it("succeeds with 200 and replaces previous cache if config fits in cache", function()
-      -- stress test to check for worker concurrency issues
-      for k = 1, 100 do
-        if client then
-          client:close()
-          client = helpers.admin_client()
-        end
+      it("fails with 413 and preserves previous cache if config does not fit in cache", function()
         local res = assert(client:send {
           method = "POST",
           path = "/config",
@@ -349,13 +252,31 @@ describe("Admin API #off", function()
         })
 
         assert.response(res).has.status(201)
+
+        helpers.wait_until(function()
+          res = assert(client:send {
+            method = "GET",
+            path = "/consumers/previous",
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+
+          local body = res:read_body()
+          local json = cjson.decode(body)
+          if res.status == 200 and json.username == "previous" then
+            return true
+          end
+        end, WORKER_SYNC_TIMEOUT)
+
         client:close()
+        client = assert(helpers.admin_client())
 
         local consumers = {}
-        for i = 1, 10 do
+        for i = 1, 20000 do
           table.insert(consumers, [[
             {
-              "username" : "bobby-]] .. k .. "-" .. i .. [[",
+              "username" : "bobby-]] .. i .. [[",
             }
           ]])
         end
@@ -367,9 +288,173 @@ describe("Admin API #off", function()
           ]
         }
         ]]
-
-        client = assert(helpers.admin_client())
         res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = config,
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        assert.response(res).has.status(413)
+
+        client:close()
+        client = assert(helpers.admin_client())
+
+        helpers.wait_until(function()
+          res = assert(client:send {
+            method = "GET",
+            path = "/consumers/previous",
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+
+          local body = res:read_body()
+          local json = cjson.decode(body)
+          if res.status == 200 and json.username == "previous" then
+            return true
+          end
+        end, WORKER_SYNC_TIMEOUT)
+
+      end)
+
+      it("succeeds with 200 and replaces previous cache if config fits in cache", function()
+        -- stress test to check for worker concurrency issues
+        for k = 1, 100 do
+          if client then
+            client:close()
+            client = helpers.admin_client()
+          end
+          local res = assert(client:send {
+            method = "POST",
+            path = "/config",
+            body = {
+              config = [[
+              {
+                "_format_version" : "1.1",
+                "consumers" : [
+                  {
+                    "username" : "previous",
+                  },
+                ],
+              }
+              ]],
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+
+          assert.response(res).has.status(201)
+          client:close()
+
+          local consumers = {}
+          for i = 1, 10 do
+            table.insert(consumers, [[
+              {
+                "username" : "bobby-]] .. k .. "-" .. i .. [[",
+              }
+            ]])
+          end
+          local config = [[
+          {
+            "_format_version" : "1.1",
+            "consumers" : [
+          ]] .. table.concat(consumers, ", ") .. [[
+            ]
+          }
+          ]]
+
+          client = assert(helpers.admin_client())
+          res = assert(client:send {
+            method = "POST",
+            path = "/config",
+            body = {
+              config = config,
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+
+          assert.response(res).has.status(201)
+
+          client:close()
+
+          helpers.wait_until(function()
+            client = assert(helpers.admin_client())
+            res = assert(client:send {
+              method = "GET",
+              path = "/consumers/previous",
+              headers = {
+                ["Content-Type"] = "application/json"
+              }
+            })
+            client:close()
+
+            return res.status == 404
+          end, WORKER_SYNC_TIMEOUT)
+
+          helpers.wait_until(function()
+            client = assert(helpers.admin_client())
+
+            res = assert(client:send {
+              method = "GET",
+              path = "/consumers/bobby-" .. k .. "-10",
+              headers = {
+                ["Content-Type"] = "application/json"
+              }
+            })
+            local body = res:read_body()
+            client:close()
+
+            if res.status ~= 200 then
+              return false
+            end
+
+            local json = cjson.decode(body)
+            return "bobby-" .. k .. "-10" == json.username
+          end, WORKER_SYNC_TIMEOUT)
+        end
+      end)
+
+      it("accepts configuration as a YAML string", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            _format_version: "1.1"
+            consumers:
+            - username: bobby
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        assert.response(res).has.status(201)
+      end)
+
+      it("can reload upstreams (regression test)", function()
+        local config = [[
+          _format_version: "1.1"
+          services:
+          - host: foo
+            routes:
+            - paths:
+              - "/"
+          upstreams:
+          - name: "foo"
+            targets:
+            - target: 10.20.30.40
+        ]]
+        local res = assert(client:send {
           method = "POST",
           path = "/config",
           body = {
@@ -383,182 +468,137 @@ describe("Admin API #off", function()
         assert.response(res).has.status(201)
 
         client:close()
+        client = helpers.admin_client()
 
-        helpers.wait_until(function()
-          client = assert(helpers.admin_client())
-          res = assert(client:send {
-            method = "GET",
-            path = "/consumers/previous",
-            headers = {
-              ["Content-Type"] = "application/json"
-            }
-          })
-          client:close()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = config,
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
 
-          return res.status == 404
-        end, WORKER_SYNC_TIMEOUT)
+        assert.response(res).has.status(201)
+      end)
 
-        helpers.wait_until(function()
-          client = assert(helpers.admin_client())
+      it("returns 304 if checking hash and configuration is identical", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config?check_hash=1",
+          body = {
+            config = [[
+            _format_version: "1.1"
+            consumers:
+            - username: bobby_tables
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
 
-          res = assert(client:send {
-            method = "GET",
-            path = "/consumers/bobby-" .. k .. "-10",
-            headers = {
-              ["Content-Type"] = "application/json"
-            }
-          })
-          local body = res:read_body()
-          client:close()
+        assert.response(res).has.status(201)
 
-          if res.status ~= 200 then
-            return false
-          end
+        client:close()
+        client = helpers.admin_client()
 
-          local json = cjson.decode(body)
-          return "bobby-" .. k .. "-10" == json.username
-        end, WORKER_SYNC_TIMEOUT)
-      end
+        res = assert(client:send {
+          method = "POST",
+          path = "/config?check_hash=1",
+          body = {
+            config = [[
+            _format_version: "1.1"
+            consumers:
+            - username: bobby_tables
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        assert.response(res).has.status(304)
+      end)
+
+      it("returns 400 on an invalid config string", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = "bobby tables",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        local body = assert.response(res).has.status(400)
+        local json = cjson.decode(body)
+        assert.same({
+          code = 14,
+          fields = {
+            error ="failed parsing declarative configuration: expected an object",
+          },
+          message = [[declarative config is invalid: ]] ..
+                    [[{error="failed parsing declarative configuration: ]] ..
+                    [[expected an object"}]],
+          name = "invalid declarative configuration",
+        }, json)
+      end)
+
+      it("returns 400 when given no input", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+        })
+
+        local body = assert.response(res).has.status(400)
+        local json = cjson.decode(body)
+        assert.same({
+          message = "expected a declarative configuration",
+        }, json)
+      end)
     end)
 
-    it("accepts configuration as a YAML string", function()
-      local res = assert(client:send {
-        method = "POST",
-        path = "/config",
-        body = {
-          config = [[
-          _format_version: "1.1"
-          consumers:
-          - username: bobby
-          ]],
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
+    describe("GET", function()
+      it("returns back the configuration", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            _format_version = "1.1",
+            consumers = {
+              {
+                username = "bobo",
+                id = "d885e256-1abe-5e24-80b6-8f68fe59ea8e",
+                created_at = 1566863706,
+              },
+            },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
 
-      assert.response(res).has.status(201)
-    end)
+        assert.response(res).has.status(201)
 
-    it("can reload upstreams (regression test)", function()
-      local config = [[
-        _format_version: "1.1"
-        services:
-        - host: foo
-          routes:
-          - paths:
-            - "/"
-        upstreams:
-        - name: "foo"
-          targets:
-          - target: 10.20.30.40
-      ]]
-      local res = assert(client:send {
-        method = "POST",
-        path = "/config",
-        body = {
-          config = config,
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
+        local res = assert(client:send {
+          method = "GET",
+          path = "/config",
+        })
 
-      assert.response(res).has.status(201)
-
-      client:close()
-      client = helpers.admin_client()
-
-      local res = assert(client:send {
-        method = "POST",
-        path = "/config",
-        body = {
-          config = config,
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
-
-      assert.response(res).has.status(201)
-    end)
-
-    it("returns 304 if checking hash and configuration is identical", function()
-      local res = assert(client:send {
-        method = "POST",
-        path = "/config?check_hash=1",
-        body = {
-          config = [[
-          _format_version: "1.1"
-          consumers:
-          - username: bobby_tables
-          ]],
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
-
-      assert.response(res).has.status(201)
-
-      client:close()
-      client = helpers.admin_client()
-
-      res = assert(client:send {
-        method = "POST",
-        path = "/config?check_hash=1",
-        body = {
-          config = [[
-          _format_version: "1.1"
-          consumers:
-          - username: bobby_tables
-          ]],
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
-
-      assert.response(res).has.status(304)
-    end)
-
-    it("returns 400 on an invalid config string", function()
-      local res = assert(client:send {
-        method = "POST",
-        path = "/config",
-        body = {
-          config = "bobby tables",
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
-
-      local body = assert.response(res).has.status(400)
-      local json = cjson.decode(body)
-      assert.same({
-        code = 14,
-        fields = {
-          error ="failed parsing declarative configuration: expected an object",
-        },
-        message = [[declarative config is invalid: ]] ..
-                  [[{error="failed parsing declarative configuration: ]] ..
-                  [[expected an object"}]],
-        name = "invalid declarative configuration",
-      }, json)
-    end)
-
-    it("returns 400 when given no input", function()
-      local res = assert(client:send {
-        method = "POST",
-        path = "/config",
-      })
-
-      local body = assert.response(res).has.status(400)
-      local json = cjson.decode(body)
-      assert.same({
-        message = "expected a declarative configuration",
-      }, json)
+        local body = assert.response(res).has.status(200)
+        local json = cjson.decode(body)
+        local expected_config = "_format_version: '1.1'\n" ..
+          "consumers:\n" ..
+          "- created_at: 1566863706\n" ..
+          "  username: bobo\n" ..
+          "  id: d885e256-1abe-5e24-80b6-8f68fe59ea8e\n"
+        assert.same(expected_config, json.config)
+      end)
     end)
   end)
 
