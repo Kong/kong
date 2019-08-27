@@ -824,7 +824,7 @@ function Kong.serve_admin_api(options)
 
     if ngx.req.get_method() == "OPTIONS" then
       header["Access-Control-Allow-Methods"] = options.acam or
-        "GET, HEAD, PATCH, POST, DELETE"
+        "GET, HEAD, PATCH, POST, PUT, DELETE"
       header["Access-Control-Allow-Headers"] = options.acah or "Content-Type"
 
       return ngx.exit(204)
