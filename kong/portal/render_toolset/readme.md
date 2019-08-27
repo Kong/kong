@@ -442,6 +442,7 @@ array
 
 - [How to access content values](#how-to-access-content-values)
 - [Page Members](#page-members)
+  - [`page.contents`](#pagecontents)
   - [`page.path`](#pagepath)
   - [`page.url`](#pageurl)
   - [`page.breadcrumbs`](#pagebreadcrumbs)
@@ -471,6 +472,26 @@ page.key_name.nested_key
 
 ## Page Members
 
+### `page.contents`
+
+#### Description
+
+> Returns the current page's variables clean of helpers. Allows the page contents to be JSON encoded. See below.
+
+#### Return Type
+
+```lua
+string
+```
+
+#### Usage
+
+##### Template
+
+```hbs
+<pre>{{ helpers.json_encode(page.contents) }}</pre>
+```
+
 ### `page.path`
 
 #### Description
@@ -488,7 +509,7 @@ string
 ##### Template
 
 ```hbs
-{{portal.path}}
+{{page.path}}
 ```
 
 ##### Output given url is `http://127.0.0.1:8003/default/guides/getting-started`
@@ -514,7 +535,7 @@ string
 ##### Template
 
 ```hbs
-{{portal.url}}
+{{page.url}}
 ```
 
 ##### Output given url is `http://127.0.0.1:8003/default/guides/getting-started`
@@ -566,3 +587,9 @@ table[]
 # `theme`
 
 > TODO: document
+
+# `helpers`
+
+> TODO: document
+
+- `

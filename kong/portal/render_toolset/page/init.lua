@@ -10,6 +10,11 @@ return function()
   local portal_gui_url = workspaces.build_ws_portal_gui_url(conf, workspace)
   local page = helpers.tbl.deepcopy(render_ctx.content or {})
 
+  -- Table containing only page content
+  -- Used for spec rendering
+  page.contents = render_ctx.content
+
+  -- Helper variables
   page.path = string.gsub(render_ctx.route, workspace_path_gsub, "")
   page.url = portal_gui_url .. "/" .. page.path
 

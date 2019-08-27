@@ -61,6 +61,13 @@ describe("page", function()
     assert.equals(page.sidebar.show, true)
   end)
 
+  describe('.contents', function()
+    it('contains page content variables', function()
+      assert.equals(page.contents.title, 'Hello World')
+      assert.equals(page.contents.path, nil)
+    end)
+  end)
+
   describe('.path', function()
     it('returns the currently active path', function()
       assert.equals(page.path, 'hello-world')
