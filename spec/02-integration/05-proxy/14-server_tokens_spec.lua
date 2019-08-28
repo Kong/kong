@@ -2,6 +2,7 @@ local meta = require "kong.meta"
 local helpers = require "spec.helpers"
 local constants = require "kong.constants"
 local cjson = require "cjson"
+local utils   = require "kong.tools.utils"
 
 
 local default_server_header = meta._SERVER_TOKENS
@@ -9,6 +10,10 @@ local default_server_header = meta._SERVER_TOKENS
 
 for _, strategy in helpers.each_strategy() do
 describe("headers [#" .. strategy .. "]", function()
+
+  local function stop()
+    helpers.stop_kong()
+  end
 
   describe("Server/Via", function()
     local proxy_client
@@ -32,6 +37,8 @@ describe("headers [#" .. strategy .. "]", function()
       bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
+      }, {
+        "error-generator",
       })
     end)
 
@@ -49,7 +56,7 @@ describe("headers [#" .. strategy .. "]", function()
 
       lazy_setup(start())
 
-      lazy_teardown(helpers.stop_kong)
+      lazy_teardown(stop)
 
       it("should return Kong 'Via' header but not change the 'Server' header when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -87,7 +94,7 @@ describe("headers [#" .. strategy .. "]", function()
         headers = "Via",
       })
 
-      lazy_teardown(helpers.stop_kong)
+      lazy_teardown(stop)
 
       it("should return Kong 'Via' header but not touch 'Server' header when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -125,7 +132,7 @@ describe("headers [#" .. strategy .. "]", function()
         headers = "Server",
       })
 
-      lazy_teardown(helpers.stop_kong)
+      lazy_teardown(stop)
 
       it("should not return Kong 'Via' header but not change the 'Server' header when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -163,7 +170,7 @@ describe("headers [#" .. strategy .. "]", function()
         headers = "server_tokens",
       })
 
-      lazy_teardown(helpers.stop_kong)
+      lazy_teardown(stop)
 
       it("should return Kong 'Via' header but not change the 'Server' header when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -201,7 +208,7 @@ describe("headers [#" .. strategy .. "]", function()
         headers = "off",
       })
 
-      lazy_teardown(helpers.stop_kong)
+      lazy_teardown(stop)
 
       it("should not return Kong 'Via' header but it should forward the 'Server' header when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -235,15 +242,54 @@ describe("headers [#" .. strategy .. "]", function()
     end)
   end)
 
-
   describe("X-Kong-Proxy-Latency/X-Kong-Upstream-Latency", function()
     local proxy_client
     local bp
+    local db
 
     local function start(config)
       return function()
         bp.routes:insert {
           hosts = { "headers-inspect.com" },
+        }
+
+        local service = bp.services:insert({
+          protocol = helpers.mock_upstream_protocol,
+          host     = helpers.mock_upstream_host,
+          port     = 1, -- wrong port
+        })
+
+        bp.routes:insert({
+          service = service,
+          hosts = { "502.test" }
+        })
+
+        bp.routes:insert {
+          hosts = { "error-rewrite.test" },
+        }
+
+        local access_error_route = bp.routes:insert {
+          hosts = { "error-access.test" },
+        }
+
+        bp.plugins:insert {
+          name = "error-generator",
+          route = { id = access_error_route.id },
+          config = {
+            access = true,
+          },
+        }
+
+        local header_filter_error_route = bp.routes:insert {
+          hosts = { "error-header-filter.test" },
+        }
+
+        bp.plugins:insert {
+          name = "error-generator",
+          route = { id = header_filter_error_route.id },
+          config = {
+            header_filter = true,
+          },
         }
 
         config = config or {}
@@ -255,12 +301,13 @@ describe("headers [#" .. strategy .. "]", function()
     end
 
     lazy_setup(function()
-      bp = helpers.get_db_utils(strategy, {
+      bp, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
+      }, {
+        "error-generator",
       })
     end)
-
 
     before_each(function()
       proxy_client = helpers.proxy_client()
@@ -275,8 +322,7 @@ describe("headers [#" .. strategy .. "]", function()
     describe("(with default configration values)", function()
 
       lazy_setup(start())
-
-      lazy_teardown(helpers.stop_kong)
+      lazy_teardown(stop)
 
       it("should be returned when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -306,6 +352,101 @@ describe("headers [#" .. strategy .. "]", function()
         assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
       end)
 
+      it("should be returned when response status code is included in error_page directive (error_page not executing)", function()
+        for _, code in ipairs({ 400, 404, 408, 411, 412, 413, 414, 417, 494, 500, 502, 503, 504 }) do
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/status/" .. code,
+            headers = {
+              host  = "headers-inspect.com",
+            }
+          })
+
+          assert.res_status(code, res)
+          assert.is_not_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
+          assert.is_not_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        end
+      end)
+
+      it("should be returned with 502 errors (error_page executing)", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            host  = "502.test",
+          }
+        })
+
+        assert.res_status(502, res)
+        assert.is_not_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
+        assert.is_not_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+      end)
+
+      -- Too painfull to get this to work with dbless (need to start new Kong process etc.)
+      if strategy ~= "off" then
+        it("should not be returned when plugin errors on rewrite phase", function()
+          local admin_client = helpers.admin_client()
+          local uuid = utils.uuid()
+          local res = assert(admin_client:send {
+            method = "PUT",
+            path = "/plugins/" .. uuid,
+            body = {
+              name = "error-generator",
+              config = {
+                rewrite = true,
+              }
+            },
+            headers = {["Content-Type"] = "application/json"}
+          })
+          assert.res_status(200, res)
+          admin_client:close()
+
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get",
+            headers = {
+              host  = "error-rewrite.test",
+            }
+          })
+
+          db.plugins:delete({ id = uuid })
+
+          assert.res_status(500, res)
+          assert.is_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
+          assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        end)
+      end
+
+      it("should not be returned when plugin errors on access phase", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            host  = "error-access.test",
+          }
+        })
+
+        assert.res_status(500, res)
+        assert.is_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+      end)
+
+
+      -- TODO: currently we don't handle errors from plugins on header_filter or body_filter.
+      pending("should be returned even when plugin errors on header filter phase", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            host  = "error-header-filter.test",
+          }
+        })
+
+        assert.res_status(500, res)
+        assert.is_not_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
+        assert.is_not_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+      end)
+
     end)
 
     describe("(with headers = latency_tokens)", function()
@@ -314,7 +455,7 @@ describe("headers [#" .. strategy .. "]", function()
         headers = "latency_tokens",
       })
 
-      lazy_teardown(helpers.stop_kong)
+      lazy_teardown(stop)
 
       it("should be returned when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -352,7 +493,7 @@ describe("headers [#" .. strategy .. "]", function()
         headers = "X-Kong-Upstream-Latency",
       })
 
-      lazy_teardown(helpers.stop_kong)
+      lazy_teardown(stop)
 
       it("should return 'X-Kong-Upstream-Latency' header but not 'X-Kong-Proxy-Latency' when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -390,7 +531,7 @@ describe("headers [#" .. strategy .. "]", function()
         headers = "X-Kong-Proxy-Latency",
       })
 
-      lazy_teardown(helpers.stop_kong)
+      lazy_teardown(stop)
 
       it("should return 'X-Kong-Proxy-Latency' header but not 'X-Kong-Upstream-Latency' when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -428,9 +569,7 @@ describe("headers [#" .. strategy .. "]", function()
         headers = "off",
       })
 
-      lazy_teardown(function()
-        helpers.stop_kong()
-      end)
+      lazy_teardown(stop)
 
       it("should not be returned when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -468,7 +607,7 @@ describe("headers [#" .. strategy .. "]", function()
         headers = "server_tokens, X-Kong-Proxy-Latency",
       })
 
-      lazy_teardown(helpers.stop_kong)
+      lazy_teardown(stop)
 
       it("should return Kong 'Via' and 'X-Kong-Proxy-Latency' header but not change the 'Server' header when request was proxied", function()
         local res = assert(proxy_client:send {
@@ -527,7 +666,7 @@ describe("headers [#" .. strategy .. "]", function()
         headers = "server_tokens, off, X-Kong-Proxy-Latency",
       })
 
-      lazy_teardown(helpers.stop_kong)
+      lazy_teardown(stop)
 
       it("should return Kong 'Via' and 'X-Kong-Proxy-Latency' header as 'off' will not take effect", function()
         local res = assert(proxy_client:send {
@@ -603,7 +742,7 @@ describe("headers [#" .. strategy .. "]", function()
         headers = "serVer_TokEns, x-kOng-pRoXy-lAtency"
       })
 
-      lazy_teardown(helpers.stop_kong)
+      lazy_teardown(stop)
 
       it("should return Kong 'Via' and 'X-Kong-Proxy-Latency' header", function()
         local res = assert(proxy_client:send {
