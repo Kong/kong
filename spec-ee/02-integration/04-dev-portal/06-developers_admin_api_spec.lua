@@ -1345,7 +1345,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
     end)
   end)
 
-  describe("#o /developers/roles/:role", function()
+  describe("/developers/roles/:role", function()
     before_each(function()
       assert(db:truncate("rbac_roles"))
       assert(db:truncate("rbac_role_endpoints"))
@@ -1405,12 +1405,13 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         }))
 
         local res = client:patch("/developers/roles/red", {
-          body = { comment = "hello" },
+          body = { comment = "hello", name = "blue" },
           headers = { ["Content-Type"] = "application/json" },
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equals("hello", json.comment)
+        assert.equals("blue", json.name)
         assert.is_nil(json.is_default)
         assert.same({
           default = {
@@ -1420,6 +1421,22 @@ describe("Admin API - Developer Portal - " .. strategy, function()
             }
           }
         }, json.permissions)
+
+        local res = client:get("/developers/roles/blue")
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equals("hello", json.comment)
+        assert.equals("blue", json.name)
+        assert.is_nil(json.is_default)
+        assert.same({
+          default = {
+            ["/default/foo"] = {
+              actions = { "read" },
+              negative = false,
+            }
+          }
+        }, json.permissions)
+
       end)
       it("returns 404 on non-existing or unprefixed roles", function()
         bp.rbac_roles:insert({ name = PORTAL_PREFIX .. "red" })

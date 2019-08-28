@@ -227,6 +227,10 @@ return {
       return get_role_endpoint(self, db, helpers, preprocess_role_with_permissions)
     end,
     PATCH = function(self, db, helpers)
+      if type(self.args.post.name) == "string" then
+        self.args.post.name = PORTAL_PREFIX .. self.args.post.name
+      end
+
       return patch_role_endpoint(self, db, helpers, preprocess_role_with_permissions)
     end,
     DELETE = delete_role_endpoint,
