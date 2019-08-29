@@ -450,14 +450,14 @@ local function register_events()
 
     if file.path and file.path == "router.conf.yaml" then
       if operation == "create" or operation == "update" then
-        cb = portal_router.set_custom_router
+        cb = portal_router.build
         workspaces.run_with_ws_scope({ workspace }, cb, file)
       elseif operation == "delete" then
-        cb = portal_router.delete_custom_router
-        workspaces.run_with_ws_scope({ workspace }, cb, file)
+        cb = portal_router.build
+        workspaces.run_with_ws_scope({ workspace }, cb)
       end
     elseif operation ~= "read" and file then
-      cb = portal_router.set_route_ctx_by_file
+      cb = portal_router.add_route_by_content_file
       workspaces.run_with_ws_scope({ workspace }, cb, file)
     end
   end, "portal", "router")

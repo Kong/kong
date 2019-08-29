@@ -29,7 +29,7 @@ describe("portal_router", function()
       snapshot:revert()
     end)
 
-    describe("set_route_ctx_by_file", function()
+    describe("add_route_by_content_file", function()
       it("can set files with 'content' prefix", function()
         stub(workspaces, "get_workspace").returns({
           name = "default",
@@ -38,6 +38,9 @@ describe("portal_router", function()
 
         local db = {
           files = {
+            each = function()
+              return pairs({})
+            end,
             select_all = function()
               return {}
             end,
@@ -48,19 +51,19 @@ describe("portal_router", function()
         }
 
         local router = router.new(db)
-        router.set_route_ctx_by_file({
+        router.add_route_by_content_file({
           path = "content/index.md",
           contents = "title: hello"
         })
-        router.set_route_ctx_by_file({
+        router.add_route_by_content_file({
           path = "content/documentation/index.md",
           contents = "title: hello"
         })
-        router.set_route_ctx_by_file({
+        router.add_route_by_content_file({
           path = "content/a.md",
           contents = "title: hello"
         })
-        router.set_route_ctx_by_file({
+        router.add_route_by_content_file({
           path = "content/about/index.md",
           contents = "title: hello"
         })
@@ -80,6 +83,9 @@ describe("portal_router", function()
 
         local db = {
           files = {
+            each = function()
+              return pairs({})
+            end,
             select_all = function()
               return {}
             end,
@@ -90,27 +96,27 @@ describe("portal_router", function()
         }
 
         local router = router.new(db)
-        router.set_route_ctx_by_file({
+        router.add_route_by_content_file({
           path = "/content/index.md",
           contents = "title: hello"
         })
-        router.set_route_ctx_by_file({
+        router.add_route_by_content_file({
           path = "dog/content/index.md",
           contents = "title: hello"
         })
-        router.set_route_ctx_by_file({
+        router.add_route_by_content_file({
           path = "themes/index.md",
           contents = "title: hello"
         })
-        router.set_route_ctx_by_file({
+        router.add_route_by_content_file({
           path = "contents/index.md",
           contents = "title: hello"
         })
-        router.set_route_ctx_by_file({
+        router.add_route_by_content_file({
           path = "asldkfjalskjdfasldkjfalksjfd",
           contents = "title: hello"
         })
-        router.set_route_ctx_by_file({
+        router.add_route_by_content_file({
           path = "$3@@@$%KDSK ksdfjkds",
           contents = "title: hello"
         })
@@ -130,6 +136,9 @@ describe("portal_router", function()
 
         local db = {
           files = {
+            each = function()
+              return pairs({})
+            end,
             select_all = function()
               return {}
             end,
@@ -142,7 +151,7 @@ describe("portal_router", function()
         local router = router.new(db)
 
         for i, v in ipairs(valid_extension_list) do
-          router.set_route_ctx_by_file({
+          router.add_route_by_content_file({
             path = "content/wut" .. tostring(i) .. "." .. v,
             contents = "title: hello"
           })
@@ -163,6 +172,9 @@ describe("portal_router", function()
 
         local db = {
           files = {
+            each = function()
+              return pairs({})
+            end,
             select_all = function()
               return {}
             end,
@@ -175,7 +187,7 @@ describe("portal_router", function()
         local router = router.new(db)
 
         for i, v in ipairs(invalid_extension_list) do
-          router.set_route_ctx_by_file({
+          router.add_route_by_content_file({
             path = "content/wut" .. tostring(i) .. "." .. v,
             contents = "title: hello"
           })
@@ -196,6 +208,9 @@ describe("portal_router", function()
 
         local db = {
           files = {
+            each = function()
+              return pairs({})
+            end,
             select_all = function()
               return {}
             end,
@@ -211,7 +226,7 @@ describe("portal_router", function()
           local idx = #valid_extension_list - (i - 1)
           local v = valid_extension_list[idx]
 
-          router.set_route_ctx_by_file({
+          router.add_route_by_content_file({
             path = "content/index." .. v,
             contents = "title: hello"
           })
@@ -233,6 +248,9 @@ describe("portal_router", function()
 
         local db = {
           files = {
+            each = function()
+              return pairs({})
+            end,
             select_all = function()
               return {}
             end,
@@ -245,7 +263,7 @@ describe("portal_router", function()
         local router = router.new(db)
 
         for i, v in ipairs(valid_extension_list) do
-          router.set_route_ctx_by_file({
+          router.add_route_by_content_file({
             path = "content/dog." .. v,
             contents = "title: hello"
           })
@@ -259,7 +277,7 @@ describe("portal_router", function()
         end
 
         for i, v in ipairs(valid_extension_list) do
-          router.set_route_ctx_by_file({
+          router.add_route_by_content_file({
             path = "content/dog/index." .. v,
             contents = "title: hello"
           })
@@ -281,6 +299,9 @@ describe("portal_router", function()
 
         local db = {
           files = {
+            each = function()
+              return pairs({})
+            end,
             select_all = function()
               return {}
             end,
@@ -303,7 +324,7 @@ describe("portal_router", function()
 
         local router = router.new(db)
 
-        router.set_route_ctx_by_file(file)
+        router.add_route_by_content_file(file)
 
         local ws_router = router.get_ws_router({
           name = 'default'
@@ -324,6 +345,9 @@ describe("portal_router", function()
 
         local db = {
           files = {
+            each = function()
+              return pairs({})
+            end,
             select_all = function()
               return {}
             end,
@@ -346,7 +370,7 @@ describe("portal_router", function()
 
         local router = router.new(db)
 
-        router.set_route_ctx_by_file(file)
+        router.add_route_by_content_file(file)
 
         local ws_router = router.get_ws_router({
           name = 'default'
@@ -367,6 +391,9 @@ describe("portal_router", function()
 
         local db = {
           files = {
+            each = function()
+              return pairs({})
+            end,
             select_all = function()
               return {}
             end,
@@ -387,7 +414,7 @@ describe("portal_router", function()
         }
 
         local router = router.new(db)
-        router.set_route_ctx_by_file(file)
+        router.add_route_by_content_file(file)
 
         local ws_router = router.get_ws_router({
           name = 'default'
@@ -406,6 +433,9 @@ describe("portal_router", function()
 
         local db = {
           files = {
+            each = function()
+              return pairs({})
+            end,
             select_all = function()
               return {}
             end,
@@ -417,7 +447,7 @@ describe("portal_router", function()
 
         local router = router.new(db)
 
-        router.set_route_ctx_by_file({
+        router.add_route_by_content_file({
           path = "content/index.html",
           contents =
             [[
@@ -426,7 +456,7 @@ describe("portal_router", function()
             ]]
         })
 
-        router.set_route_ctx_by_file({
+        router.add_route_by_content_file({
           path = "content/dogs.html",
           contents =
             [[
@@ -456,7 +486,7 @@ describe("portal_router", function()
       snapshot:revert()
     end)
 
-    describe("set_custom_router", function()
+    describe("build custom router", function()
       local db, router_files
 
       before_each(function()
@@ -491,6 +521,9 @@ describe("portal_router", function()
 
         db = {
           files = {
+            each = function()
+              return pairs({})
+            end,
             select_all = function()
               return {}
             end,
@@ -514,7 +547,7 @@ describe("portal_router", function()
       end)
     end)
 
-    describe("get_route_ctx_by_route", function()
+    describe("get_route", function()
       local db, router_files
 
       before_each(function()
@@ -549,6 +582,9 @@ describe("portal_router", function()
 
         db = {
           files = {
+            each = function()
+              return pairs({})
+            end,
             select_all = function()
               return {}
             end,
@@ -561,10 +597,9 @@ describe("portal_router", function()
 
       it("can get wildcard content based off incoming routes", function()
         local router = router.new(db)
-        local content1 = router.get_route_ctx_by_route("a/b/c")
-        local content2 = router.get_route_ctx_by_route("dogs/cats/bath")
-        local content3 = router.get_route_ctx_by_route("whatever")
-
+        local content1 = router.get("a/b/c")
+        local content2 = router.get("dogs/cats/bath")
+        local content3 = router.get("whatever")
 
         assert.equal("content/home/index.html", content1.path)
         assert.equal("content/home/index.html", content2.path)
@@ -573,15 +608,15 @@ describe("portal_router", function()
 
       it("can grab explicit content before wildcard", function()
         local router = router.new(db)
-        local content1 = router.get_route_ctx_by_route("/dogs/cats")
-        local content2 = router.get_route_ctx_by_route("/documentation/doc1")
+        local content1 = router.get("/dogs/cats")
+        local content2 = router.get("/documentation/doc1")
 
         assert.equal("content/dogs/cats/bats.md", content1.path)
         assert.equal("content/docs/1.json", content2.path)
       end)
     end)
 
-    describe("set_route_ctx_by_file", function()
+    describe("add_route_by_content_file", function()
       local router_files, db
 
       before_each(function()
@@ -616,6 +651,9 @@ describe("portal_router", function()
 
         db = {
           files = {
+            each = function()
+              return pairs({})
+            end,
             select_all = function()
               return {}
             end,
@@ -629,11 +667,11 @@ describe("portal_router", function()
       it("does not overwrite routes when static router set", function()
         local router = router.new(db)
 
-        router.set_route_ctx_by_file({
+        router.add_route_by_content_file({
           path = "dog.html",
           contents = [[dog: cat]]
         })
-        router.set_route_ctx_by_file({
+        router.add_route_by_content_file({
           path = "content/docs/1.html",
           contents = [[dog: cat]]
         })

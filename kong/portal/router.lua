@@ -72,6 +72,7 @@ local function build_route_item(file)
 end
 
 
+-- Iterates through file name possibilities by file extentsion priority.
 local function find_highest_priority_file_by_route(db, route)
   local file
   for _, v in ipairs(EXTENSION_LIST) do
@@ -97,23 +98,7 @@ local function find_highest_priority_file_by_route(db, route)
 end
 
 
-local function reset_route_ctx_by_file(db, ws_router, file)
-  local route = ts_helpers.get_route_from_path(file.path)
-  if not route then
-    return
-  end
-
-  local r_file = find_highest_priority_file_by_route(db, route)
-  if not r_file then
-    ws_router[route] = nil
-    return
-  end
-
-  ws_router[route] = build_route_item(r_file)
-end
-
-
-local function set_route_ctx_by_file(ws_router, file)
+local function assign_route_if_priority(ws_router, file)
   local route = ts_helpers.get_route_from_path(file.path)
   local is_priority = is_route_priority(ws_router, route, file.path)
   if route and is_priority then
@@ -127,26 +112,7 @@ local function set_route_ctx_by_file(ws_router, file)
 end
 
 
-local function get_route_ctx_by_route(ws_router, route)
-  if ws_router.static then
-    local route_ctx = ws_router[route]
-
-    if not route_ctx then
-      route_ctx = ws_router["/*"]
-    end
-
-    if not route then
-      route_ctx = {}
-    end
-
-    return route_ctx
-  end
-
-  return ws_router[route] or {}
-end
-
-
-local function set_custom_router(db, ws_router, router_conf)
+local function generate_router_by_conf(db, ws_router, router_conf)
   local custom_router = yaml_load(router_conf.contents)
   for route, path in pairs(custom_router) do
     local file = db.files:select_by_path(path)
@@ -159,16 +125,28 @@ local function set_custom_router(db, ws_router, router_conf)
 end
 
 
-local function rebuild_ws_router(db, ws_router)
-  local router_conf = db.files:select_by_path("router.conf.yaml")
-  if router_conf then
-    return set_custom_router(db, ws_router, router_conf)
+local function generate_router_by_files(db, ws_router)
+  for file in db.files:each() do
+    assign_route_if_priority(ws_router, file)
   end
 
-  local files = db.files:select_all()
-  for i, file in ipairs(files) do
-    reset_route_ctx_by_file(db, ws_router, file)
+  return ws_router
+end
+
+
+-- Re-evaluates current workspaces router either by reading
+-- a custom router via the "router.conf.yaml", or generating routes
+-- via a workspaces content files.
+local function rebuild_ws_router(db, ws_router, router_conf)
+  if not router_conf then
+    router_conf = db.files:select_by_path("router.conf.yaml")
   end
+
+  if not router_conf then
+    return generate_router_by_files(db, ws_router)
+  end
+
+  return generate_router_by_conf(db, ws_router, router_conf)
 end
 
 
@@ -178,59 +156,87 @@ return {
 
     return {
       find_highest_priority_file_by_route = find_highest_priority_file_by_route,
-      get_route_ctx_by_route = function(route)
-        local ws_router = get_ws_router(router)
-        if not ws_router or not next(ws_router) then
-          rebuild_ws_router(db, ws_router)
-        end
 
-        return get_route_ctx_by_route(ws_router, route)
+      -- Reads router.conf.yaml file and generates an in-memory router.
+      -- When a custom router is established it overwrites the previously
+      -- generated router.
+      build = function(custom_conf)
+        local ws_router = get_ws_router(router)
+
+        return rebuild_ws_router(db, ws_router, custom_conf)
       end,
 
-      set_route_ctx_by_file = function(file)
-        local ws_router = get_ws_router(router)
-        if not ws_router or not next(ws_router) then
-          rebuild_ws_router(db, ws_router)
-        end
-
-        if ws_router.static then
-          return
-        end
-
-        return set_route_ctx_by_file(ws_router, file)
-      end,
-
-      reset_route_ctx_by_file = function(file)
+      -- Retrieve a route object via route name.  If a wildcard route exists
+      -- the wildcard route will be returned.
+      get = function(route)
         local ws_router = get_ws_router(router)
         if not ws_router or not next(ws_router) then
           rebuild_ws_router(db, ws_router)
         end
 
         if ws_router.static then
+          local route_ctx = ws_router[route]
+      
+          if not route_ctx then
+            route_ctx = ws_router["/*"]
+          end
+      
+          if not route then
+            route_ctx = {}
+          end
+      
+          return route_ctx
+        end
+      
+        return ws_router[route] or {}
+      end,
+
+      -- Set route object via content file.  Route will not be set if the
+      -- passed content file is lower priority than a previously set file
+      -- under the same resolved route.
+      add_route_by_content_file = function(file)
+        local ws_router = get_ws_router(router)
+        if not ws_router or not next(ws_router) then
+          rebuild_ws_router(db, ws_router)
+        end
+
+        -- return early if router.conf.yaml is present
+        if ws_router.static then
           return
         end
 
-        return reset_route_ctx_by_file(db, ws_router, file)
+        assign_route_if_priority(ws_router, file)
       end,
 
-      set_custom_router = function(file)
-        -- XXX Linter complaining about reassignment of ws_router before accessing initial assignment
-        -- Not sure if we want empty table or call to get_ws_router?
-        -- local ws_router = get_ws_router(router)
-        local ws_router = {}
+      -- Re-evaluates route via the deleted file passed as an argument.
+      -- If a file exists that can fill the route it is generated.
+      -- If a replacement cannot be found the route remains unset.
+      remove_route_by_content_file = function(file)
+        local ws_router = get_ws_router(router)
+        if not ws_router or not next(ws_router) then
+          rebuild_ws_router(db, ws_router)
+        end
 
-        return set_custom_router(db, ws_router, file)
+        -- return early if router.conf.yaml is present
+        if ws_router.static then
+          return
+        end
+
+        local route = ts_helpers.get_route_from_path(file.path)
+        if not route then
+          return
+        end
+
+        local r_file = find_highest_priority_file_by_route(db, route)
+        if not r_file then
+          ws_router[route] = nil
+          return
+        end
+
+        ws_router[route] = build_route_item(r_file)
       end,
 
-      delete_custom_router = function()
-        -- XXX Linter complaining about reassignment of ws_router before accessing initial assignment
-        -- Not sure if we want empty table or call to get_ws_router?
-        -- local ws_router = get_ws_router(router)
-        local ws_router = {}
-
-        return rebuild_ws_router(db, ws_router)
-      end,
-
+      -- NOTE: get_ws_router exposed for use by tests only
       get_ws_router = function(workspace)
         local ws_router = get_ws_router(router)
         if not ws_router or not next(ws_router) then

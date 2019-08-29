@@ -73,7 +73,7 @@ local function set_route_config(path)
     path = "/" .. path
   end
 
-  return singletons.portal_router.get_route_ctx_by_route(path)
+  return singletons.portal_router.get(path)
 end
 
 
