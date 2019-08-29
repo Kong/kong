@@ -1,3 +1,9 @@
+## 1.3.2
+
+### Fixed
+
+- Fix issue preventing the plugin to be imported into the Kong database (db_import)
+
 ## 1.3.1
 
 ### Changed
