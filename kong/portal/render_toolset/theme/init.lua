@@ -1,7 +1,7 @@
 local helpers       = require "kong.portal.render_toolset.helpers"
 local singletons    = require "kong.singletons"
 
-local function get_val(attr)
+local function get_conf_attr_value(attr)
   local val
   if type(attr) ~= "table" then
     val = attr
@@ -14,27 +14,29 @@ local function get_val(attr)
   return val
 end
 
+local function map_conf_values(tbl)
+  tbl = tbl or {}
+  for key, value in pairs(tbl) do
+    tbl[key] = get_conf_attr_value(tbl[key])
+  end
+  return tbl
+end
+
+local function get_map_value_fn(tbl)
+  return function(key)
+    return tbl[key]
+  end
+end
+
 return function()
   local render_ctx = singletons.render_ctx
   local theme = helpers.tbl.deepcopy(render_ctx.theme or {})
 
-  theme.colors = theme.colors or {}
-  for k, color in pairs(theme.colors) do
-    theme.colors[k] = get_val(color)
-  end
+  theme.colors = map_conf_values(theme.colors)
+  theme.color = get_map_value_fn(theme.colors)
 
-  theme.fonts = theme.fonts or {}
-  for k, font in pairs(theme.fonts or {}) do
-    theme.fonts[k] = get_val(font)
-  end
+  theme.fonts = map_conf_values(theme.fonts)
+  theme.font = get_map_value_fn(theme.fonts)
 
-  theme.color = function(key)
-    return theme.colors[key]
-  end
-
-  theme.font = function (key)
-    return theme.fonts[key]
-  end
-  
   return theme
 end
