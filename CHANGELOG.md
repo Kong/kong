@@ -1,4 +1,4 @@
-## 0.35.2 (unreleased)
+## 0.35.2
 
 - added: render values from kong.ctx.shared
 
