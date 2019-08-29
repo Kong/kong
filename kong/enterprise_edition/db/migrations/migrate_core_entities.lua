@@ -152,6 +152,13 @@ local strategies = function(connector)
           pg_escape_literal(count)
         )
       end,
+
+      update_cache_key = function(entity_type, entity_id, cache_key)
+        return fmt([[ UPDATE %s SET cache_key = %s WHERE id = %s; ]],
+                   pg_escape_identifier(entity_type),
+                   pg_escape_literal(cache_key),
+                   pg_escape_literal(entity_id))
+      end,
     },
     cassandra = {
       default_workspace = function()
@@ -235,6 +242,7 @@ local strategies = function(connector)
           }
         }
       end,
+
       incr_workspace_counter = function(workspace, entity_type, count)
         return {
           [[ UPDATE workspace_entity_counters set
@@ -244,7 +252,23 @@ local strategies = function(connector)
             c_escape(entity_type, "string"),
           }
         }
-      end
+      end,
+
+      update_cache_key = function(entity_type, entity_id, cache_key)
+        local query = { [[ UPDATE %s SET cache_key = ? WHERE id = ? ]] }
+        if is_partitioned(entity_type) then
+          table.insert(query, fmt(" AND partition = '%s'", entity_type))
+        end
+        table.insert(query, ";")
+        query = table.concat(query)
+
+        return {
+          fmt(query, entity_type), {
+            c_escape(cache_key, "string"),
+            c_escape(entity_id, "uuid"),
+          }
+        }
+      end,
     }
   }
 end
@@ -282,13 +306,19 @@ local function migrate_core_entities(connector, strategy, opts)
 
   local workspace_entities = {}
 
+  -- Anything goes in here, different in scope to workspace_entities
+  local entity_fixes = {}
+
   local entity_log_counters = setmetatable({}, {
     __index = function() return 0 end
   })
 
   for model, relation in pairs(entities) do
-    -- Add workspace_entity for this model
+    local schema = db.daos[model].schema
+    local composite_cache_key = schema.cache_key and #schema.cache_key > 1
+
     for row in queries.entities(model) do
+      -- Add workspace_entity for this model
       local update_counter = false
       local entity_id = row[relation.primary_key]
       local unique_field_name = relation.primary_key
@@ -310,7 +340,7 @@ local function migrate_core_entities(connector, strategy, opts)
       for unique_key, _ in pairs(relation.unique_keys) do
         local unique_field_val = row[unique_key]
 
-        -- check if unique keys relation of entity are already migrated 
+        -- check if unique keys relation of entity are already migrated
         if not ws_entity_exists(entity_id, unique_key) then
           workspace_entities[#workspace_entities + 1] = {
             id = entity_id,
@@ -328,6 +358,30 @@ local function migrate_core_entities(connector, strategy, opts)
         entity_log_counters[model] = entity_log_counters[model] + 1
         entity_log_counters.__all = entity_log_counters.__all + 1
       end
+
+      -- Quick fixes here. Either something we missed on previous versions of
+      -- this migration script or cases not directly related to
+      -- workspace_entities. Or both!
+
+      -- Fix for including workspace_id on persisted cache_keys
+      if composite_cache_key then
+        -- Check if entity has core or ee cache_key
+        -- XXX: Any better idea besides counting separators?
+        --
+        -- 1. The only other idea I can think of is trying to match _any_
+        -- workspace on it (ie: has_workspace or not)
+        --
+        -- 2. The other possibility is trying to go for less granularity,
+        -- and write a query that updates all of them, but that will not
+        -- work for cassandra since we need to check string occurrence
+
+        local is_ee_cache_key = select(2, row.cache_key:gsub(':', ''))
+                             == select(2, db[model]:cache_key(entity_id):gsub(':', ''))
+        if not is_ee_cache_key then
+          local new_cache_key = row.cache_key .. ":" .. default_workspace.id
+          entity_fixes[#entity_fixes + 1] = queries.update_cache_key(model, entity_id, new_cache_key)
+        end
+      end
     end
   end
 
@@ -336,6 +390,10 @@ local function migrate_core_entities(connector, strategy, opts)
 
   for model, count in pairs(entity_log_counters) do
     log.verbose("%s: %d entities", model, count)
+  end
+
+  if #entity_fixes > 0 then
+    log("Also applying %d fixes", #entity_fixes)
   end
 
   local ws_counters = setmetatable({}, {
@@ -365,6 +423,10 @@ local function migrate_core_entities(connector, strategy, opts)
     end
   end
 
+  for _, fix in pairs(entity_fixes) do
+    buffer[#buffer + 1] = fix
+  end
+
   if strategy == "postgres" then
     for entity_type, count in pairs(ws_counters) do
       -- Update counts
@@ -389,8 +451,15 @@ local function migrate_core_entities(connector, strategy, opts)
     end
   end
 
-  log("Migrated %d entities to the %s workspace", entity_log_counters.__all,
-      DEFAULT_WORKSPACE)
+  if entity_log_counters.__all > 0 then
+    log("Migrated %d entities to the %s workspace", entity_log_counters.__all,
+        DEFAULT_WORKSPACE)
+  end
+
+  if #entity_fixes > 0 then
+    log("Applied %d fixes", #entity_fixes)
+  end
+
   return true, nil
 end
 
