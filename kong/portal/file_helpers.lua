@@ -51,17 +51,17 @@ end
 
 
 local function is_layout_path(path)
-  return to_bool(match(path, "^themes/%w+/layouts/"))
+  return to_bool(match(path, "^themes/[%w-]+/layouts/"))
 end
 
 
 local function is_partial_path(path)
-  return to_bool(match(path, "^themes/%w+/partials/"))
+  return to_bool(match(path, "^themes/[%w-]+/partials/"))
 end
 
 
 local function is_asset_path(path)
-  return to_bool(match(path, "^themes/%w+/assets/"))
+  return to_bool(match(path, "^themes/[%w-]+/assets/"))
 end
 
 

@@ -216,12 +216,13 @@ describe("file helpers", function()
     it("checks if path a layout path", function()
       local is_layout_path
       local paths = {
-        ["themes/mytheme/layouts/layout.html"] = true,
-        ["not/layouts/path.html"]              = false,
-        ["themes/mytheme/something.html"]      = false,
-        ["themes/mytheme/something/else.html"] = false,
-        ["themes/mytheme/layouts.html"]        = false,
-        ["nope/mytheme/layouts/layout.html"]   = false,
+        ["themes/mytheme/layouts/layout.html"]  = true,
+        ["themes/my-theme/layouts/layout.html"] = true,
+        ["not/layouts/path.html"]               = false,
+        ["themes/mytheme/something.html"]       = false,
+        ["themes/mytheme/something/else.html"]  = false,
+        ["themes/mytheme/layouts.html"]         = false,
+        ["nope/mytheme/layouts/layout.html"]    = false,
       }
 
       for k, v in pairs(paths) do
@@ -235,12 +236,13 @@ describe("file helpers", function()
     it("checks if path a partial path", function()
       local is_partial_path
       local paths = {
-        ["themes/mytheme/partials/partials.html"] = true,
-        ["not/partials/path.html"]                = false,
-        ["themes/mytheme/something.html"]         = false,
-        ["themes/mytheme/something/else.html"]    = false,
-        ["themes/mytheme/partials.html"]          = false,
-        ["nope/mytheme/partials/partial.html"]    = false,
+        ["themes/mytheme/partials/partials.html"]   = true,
+        ["themes/my-theme/partials/partials.html"]  = true,
+        ["not/partials/path.html"]                  = false,
+        ["themes/mytheme/something.html"]           = false,
+        ["themes/mytheme/something/else.html"]      = false,
+        ["themes/mytheme/partials.html"]            = false,
+        ["nope/mytheme/partials/partial.html"]      = false,
       }
 
       for k, v in pairs(paths) do
@@ -254,11 +256,12 @@ describe("file helpers", function()
     it("checks if path a asset path", function()
       local is_asset_path
       local paths = {
-        ["themes/mytheme/assets/asset.png"] = true,
-        ["not/assets/path.png"]                = false,
-        ["themes/mytheme/something.png"]         = false,
-        ["themes/mytheme/something/else.png"]    = false,
-        ["themes/mytheme/assets.pngs"]          = false,
+        ["themes/mytheme/assets/asset.png"]   = true,
+        ["themes/my-theme/assets/asset.png"]  = true,
+        ["not/assets/path.png"]               = false,
+        ["themes/mytheme/something.png"]      = false,
+        ["themes/mytheme/something/else.png"] = false,
+        ["themes/mytheme/assets.pngs"]        = false,
         ["nope/mytheme/assets/assets.png"]    = false,
       }
 
