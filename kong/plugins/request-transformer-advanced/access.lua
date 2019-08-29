@@ -78,6 +78,9 @@ local __meta_environment = {
       uri_captures = function(self)
         return (ngx.ctx.router_matches or EMPTY).uri_captures or EMPTY
       end,
+      shared = function(self)
+        return ((kong or EMPTY).ctx or EMPTY).shared or EMPTY
+      end,
     }
     local loader = lazy_loaders[key]
     if not loader then
@@ -103,6 +106,7 @@ local function clear_environment(conf)
   rawset(template_environment, "headers", nil)
   rawset(template_environment, "query_params", nil)
   rawset(template_environment, "uri_captures", nil)
+  rawset(template_environment, "shared", nil)
 end
 
 local function param_value(source_template, config_array)
