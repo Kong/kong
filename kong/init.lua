@@ -113,8 +113,6 @@ local ffi = require "ffi"
 local cast = ffi.cast
 local voidpp = ffi.typeof("void**")
 
-local GRPC_PROXY_MODES = constants.GRPC_PROXY_MODES
-
 local TLS_SCHEMES = {
   https = true,
   tls = true,
@@ -670,7 +668,7 @@ function Kong.rewrite()
     log_init_worker_errors()
   end
 
-  if GRPC_PROXY_MODES[var.kong_proxy_mode] then
+  if var.kong_proxy_mode == "grpc" then
     kong_resty_ctx.apply_ref() -- if kong_proxy_mode is gRPC, this is executing
     kong_resty_ctx.stash_ref() -- after an internal redirect. Restore (and restash)
                                -- context to avoid re-executing phases

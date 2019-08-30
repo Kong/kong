@@ -62,11 +62,6 @@ for p,_ in pairs(protocols_with_subsystem) do
 end
 table.sort(protocols)
 
-local grpc_proxy_modes = {
-  grpc = true,
-  grpcs = true,
-}
-
 return {
   BUNDLED_PLUGINS = plugin_map,
   DEPRECATED_PLUGINS = deprecated_plugin_map,
@@ -142,7 +137,6 @@ return {
   },
   PROTOCOLS = protocols,
   PROTOCOLS_WITH_SUBSYSTEM = protocols_with_subsystem,
-  GRPC_PROXY_MODES = grpc_proxy_modes,
   DEFAULT_ITERATION_SIZE = 1000,
   DEFAULT_PAGE_SIZE = 100,
   DEFAULT_CLUSTER_EVENTS_PAGE_SIZE = 1000,

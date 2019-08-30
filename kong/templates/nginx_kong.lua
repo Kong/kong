@@ -177,14 +177,14 @@ server {
     location @grpc {
         internal;
 
-        set $kong_proxy_mode       'grpc';
+        set $kong_proxy_mode  'grpc';
         grpc_pass grpc://kong_upstream;
     }
 
     location @grpcs {
         internal;
 
-        set $kong_proxy_mode       'grpcs';
+        set $kong_proxy_mode  'grpc';
         grpc_pass grpcs://kong_upstream;
     }
 
