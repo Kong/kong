@@ -1,4 +1,12 @@
 return {
   name = "reports-api",
-  fields = {},
+  fields = {
+    {
+      config = {
+        type = "record",
+        fields = {
+        }
+      }
+    }
+  }
 }
