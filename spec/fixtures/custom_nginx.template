@@ -160,6 +160,7 @@ http {
             set $upstream_x_forwarded_proto  '';
             set $upstream_x_forwarded_host   '';
             set $upstream_x_forwarded_port   '';
+            set $kong_proxy_mode             'http';
 
             proxy_http_version 1.1;
             proxy_set_header   Host              $upstream_host;
@@ -192,14 +193,14 @@ http {
         location @grpc {
             internal;
 
-            set $kong_proxy_mode       'grpc';
+            set $kong_proxy_mode  'grpc';
             grpc_pass grpc://kong_upstream;
         }
 
         location @grpcs {
             internal;
 
-            set $kong_proxy_mode       'grpcs';
+            set $kong_proxy_mode  'grpc';
             grpc_pass grpcs://kong_upstream;
         }
     }
