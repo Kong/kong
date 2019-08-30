@@ -1,6 +1,5 @@
 local BasePlugin   = require "kong.plugins.base_plugin"
 local constants    = require "kong.constants"
-local reports      = require "kong.reports"
 
 
 local kong         = kong
@@ -41,20 +40,7 @@ local loaded_plugins
 
 
 local function get_loaded_plugins()
-  local loaded = assert(kong.db.plugins:get_handlers())
-
-  if kong.configuration.anonymous_reports then
-    reports.configure_ping(kong.configuration)
-    reports.add_ping_value("database_version", kong.db.infos.db_ver)
-    reports.toggle(true)
-
-    loaded[#loaded + 1] = {
-      name = "reports",
-      handler = reports,
-    }
-  end
-
-  return loaded
+  return assert(kong.db.plugins:get_handlers())
 end
 
 

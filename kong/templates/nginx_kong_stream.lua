@@ -1,4 +1,8 @@
 return [[
+> if anonymous_reports then
+${{SYSLOG_REPORTS}}
+> end
+
 log_format basic '$remote_addr [$time_local] '
                  '$protocol $status $bytes_sent $bytes_received '
                  '$session_time';

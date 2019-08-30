@@ -4,6 +4,9 @@ local websocket_client = require "resty.websocket.client"
 local cjson = require "cjson"
 
 
+local MESSAGE = "echo, ping, pong. echo, ping, pong. echo, ping, pong.\n"
+
+
 local function websocket_send_text_and_get_echo(uri)
   local payload = { message = "hello websocket" }
   local wc = assert(websocket_client:new())
@@ -35,6 +38,21 @@ for _, strategy in helpers.each_strategy() do
       admin_client:close()
     end
 
+    local reports_send_stream_ping = function()
+      ngx.sleep(0.01) -- hand over the CPU so other threads can do work (processing the sent data)
+
+      local tcp = require "socket".tcp()
+      assert(tcp:connect(helpers.get_proxy_ip(false), 19001))
+
+      -- TODO: we need to get rid of the next line!
+      assert(tcp:send(MESSAGE))
+
+      local body = assert(tcp:receive("*a"))
+      assert.equal("ok", body)
+
+      tcp:close()
+    end
+
     lazy_setup(function()
       dns_hostsfile = assert(os.tmpname())
       local fd = assert(io.open(dns_hostsfile, "w"))
@@ -51,8 +69,9 @@ for _, strategy in helpers.each_strategy() do
 
       local bp = assert(helpers.get_db_utils(strategy, {
         "services",
-        "routes"
-      }))
+        "routes",
+        "plugins",
+      }, { "reports-api" }))
 
       local http_srv = assert(bp.services:insert {
         name = "mock-service",
@@ -63,6 +82,7 @@ for _, strategy in helpers.each_strategy() do
       bp.routes:insert({ service = http_srv,
                          protocols = { "http" },
                          hosts = { "http-service.test" } })
+
       bp.routes:insert({ service = http_srv,
                          protocols = { "https" },
                          hosts = { "https-service.test" } })
@@ -71,6 +91,7 @@ for _, strategy in helpers.each_strategy() do
         name = "grpc",
         url = "grpc://localhost:15002",
       })
+
       bp.routes:insert({
         service = grpc_srv,
         protocols = { "grpc" },
@@ -81,6 +102,7 @@ for _, strategy in helpers.each_strategy() do
         name = "grpcs",
         url = "grpcs://localhost:15003",
       })
+
       bp.routes:insert({
         service = grpcs_srv,
         protocols = { "grpcs" },
@@ -91,6 +113,7 @@ for _, strategy in helpers.each_strategy() do
         name = "ws",
         path = "/ws",
       })
+
       bp.routes:insert({
         service = ws_srv,
         protocols = { "http" },
@@ -98,12 +121,74 @@ for _, strategy in helpers.each_strategy() do
         strip_path = true,
       })
 
+      local tcp_srv = bp.services:insert({
+        name = "tcp",
+        host = helpers.mock_upstream_host,
+        port = helpers.mock_upstream_stream_port,
+        protocol = "tcp"
+      })
+
+      bp.routes:insert {
+        destinations = {
+          { port = 19000, },
+        },
+        protocols = {
+          "tcp",
+        },
+        service = tcp_srv,
+      }
+
+      local tls_srv = bp.services:insert({
+        name = "tls",
+        host = helpers.mock_upstream_host,
+        port = helpers.mock_upstream_stream_ssl_port,
+        protocol = "tls"
+      })
+
+      bp.routes:insert {
+        destinations = {
+          { port = 19443, },
+        },
+        protocols = {
+          "tls",
+        },
+        service = tls_srv,
+      }
+
+      local reports_srv = bp.services:insert({
+        name = "reports-srv",
+        host = helpers.mock_upstream_host,
+        port = helpers.mock_upstream_stream_port,
+        protocol = "tcp"
+      })
+
+      bp.routes:insert {
+        destinations = {
+          { port = 19001, },
+        },
+        protocols = {
+          "tcp",
+        },
+        service = reports_srv,
+      }
+
+      bp.plugins:insert({
+        name = "reports-api",
+        service = { id = reports_srv.id },
+        protocols = { "tcp" },
+        config = {}
+      })
+
       assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",
         database = strategy,
         dns_hostsfile = dns_hostsfile,
-        anonymous_reports = "on",
+        anonymous_reports = true,
         plugins = "reports-api",
+        stream_listen = helpers.get_proxy_ip(false) .. ":19000," ..
+                        helpers.get_proxy_ip(false) .. ":19001," ..
+                        helpers.get_proxy_ip(true)  .. ":19443",
+
       }))
 
     end)
@@ -121,12 +206,14 @@ for _, strategy in helpers.each_strategy() do
       assert.response(res).has_status(200)
 
       reports_send_ping()
-      local _, reports_data = assert(reports_server:stop())
 
+      local _, reports_data = assert(reports_server:stop())
       assert.same(1, #reports_data)
       assert.match("requests=1", reports_data[1])
       assert.match("http_reqs=1", reports_data[1])
       assert.match("https_reqs=0", reports_data[1])
+      assert.match("h2c_reqs=0", reports_data[1])
+      assert.match("h2_reqs=0", reports_data[1])
       assert.match("grpc_reqs=0", reports_data[1])
       assert.match("grpcs_reqs=0", reports_data[1])
       assert.match("ws_reqs=0", reports_data[1])
@@ -143,12 +230,14 @@ for _, strategy in helpers.each_strategy() do
       assert.response(res).has_status(200)
 
       reports_send_ping()
-      local _, reports_data = assert(reports_server:stop())
 
+      local _, reports_data = assert(reports_server:stop())
       assert.same(1, #reports_data)
       assert.match("requests=1", reports_data[1])
       assert.match("http_reqs=0", reports_data[1])
       assert.match("https_reqs=1", reports_data[1])
+      assert.match("h2c_reqs=0", reports_data[1])
+      assert.match("h2_reqs=0", reports_data[1])
       assert.match("grpc_reqs=0", reports_data[1])
       assert.match("grpcs_reqs=0", reports_data[1])
       assert.match("ws_reqs=0", reports_data[1])
@@ -156,6 +245,55 @@ for _, strategy in helpers.each_strategy() do
 
       proxy_ssl_client:close()
     end)
+
+    it("reports h2c requests", function()
+      local h2c_client = assert(helpers.proxy_client_h2c())
+      local body, headers = h2c_client({
+        headers = { [":authority"] = "http-service.test" }
+      })
+
+      assert.equal(200, tonumber(headers:get(":status")))
+      assert.is_not_nil(body)
+
+      reports_send_ping()
+
+      local _, reports_data = assert(reports_server:stop())
+      assert.same(1, #reports_data)
+      assert.match("requests=1", reports_data[1])
+      assert.match("http_reqs=0", reports_data[1])
+      assert.match("https_reqs=0", reports_data[1])
+      assert.match("h2c_reqs=1", reports_data[1])
+      assert.match("h2_reqs=0", reports_data[1])
+      assert.match("grpc_reqs=0", reports_data[1])
+      assert.match("grpcs_reqs=0", reports_data[1])
+      assert.match("ws_reqs=0", reports_data[1])
+      assert.match("wss_reqs=0", reports_data[1])
+    end)
+
+    it("reports h2 requests", function()
+      local h2_client = assert(helpers.proxy_client_h2())
+      local body, headers = h2_client({
+        headers = { [":authority"] = "https-service.test" }
+      })
+
+      assert.equal(200, tonumber(headers:get(":status")))
+      assert.is_not_nil(body)
+
+      reports_send_ping()
+
+      local _, reports_data = assert(reports_server:stop())
+      assert.same(1, #reports_data)
+      assert.match("requests=1", reports_data[1])
+      assert.match("http_reqs=0", reports_data[1])
+      assert.match("https_reqs=0", reports_data[1])
+      assert.match("h2c_reqs=0", reports_data[1])
+      assert.match("h2_reqs=1", reports_data[1])
+      assert.match("grpc_reqs=0", reports_data[1])
+      assert.match("grpcs_reqs=0", reports_data[1])
+      assert.match("ws_reqs=0", reports_data[1])
+      assert.match("wss_reqs=0", reports_data[1])
+    end)
+
 
     it("reports grpc requests", function()
       local grpc_client = helpers.proxy_client_grpc()
@@ -167,12 +305,14 @@ for _, strategy in helpers.each_strategy() do
       }))
 
       reports_send_ping()
-      local _, reports_data = assert(reports_server:stop())
 
+      local _, reports_data = assert(reports_server:stop())
       assert.same(1, #reports_data)
       assert.match("requests=1", reports_data[1])
       assert.match("http_reqs=0", reports_data[1])
       assert.match("https_reqs=0", reports_data[1])
+      assert.match("h2c_reqs=0", reports_data[1])
+      assert.match("h2_reqs=0", reports_data[1])
       assert.match("grpc_reqs=1", reports_data[1])
       assert.match("grpcs_reqs=0", reports_data[1])
       assert.match("ws_reqs=0", reports_data[1])
@@ -189,12 +329,14 @@ for _, strategy in helpers.each_strategy() do
       }))
 
       reports_send_ping()
-      local _, reports_data = assert(reports_server:stop())
 
+      local _, reports_data = assert(reports_server:stop())
       assert.same(1, #reports_data)
       assert.match("requests=1", reports_data[1])
       assert.match("http_reqs=0", reports_data[1])
       assert.match("https_reqs=0", reports_data[1])
+      assert.match("h2c_reqs=0", reports_data[1])
+      assert.match("h2_reqs=0", reports_data[1])
       assert.match("grpc_reqs=0", reports_data[1])
       assert.match("grpcs_reqs=1", reports_data[1])
       assert.match("ws_reqs=0", reports_data[1])
@@ -206,12 +348,14 @@ for _, strategy in helpers.each_strategy() do
                                        ":" .. helpers.get_proxy_port(false) .. "/up-ws")
 
       reports_send_ping()
-      local _, reports_data = assert(reports_server:stop())
 
+      local _, reports_data = assert(reports_server:stop())
       assert.same(1, #reports_data)
       assert.match("requests=1", reports_data[1])
       assert.match("http_reqs=0", reports_data[1])
       assert.match("https_reqs=0", reports_data[1])
+      assert.match("h2c_reqs=0", reports_data[1])
+      assert.match("h2_reqs=0", reports_data[1])
       assert.match("grpc_reqs=0", reports_data[1])
       assert.match("grpcs_reqs=0", reports_data[1])
       assert.match("ws_reqs=1", reports_data[1])
@@ -223,16 +367,73 @@ for _, strategy in helpers.each_strategy() do
                                        ":" .. helpers.get_proxy_port(true) .. "/up-ws")
 
       reports_send_ping()
-      local _, reports_data = assert(reports_server:stop())
 
+      local _, reports_data = assert(reports_server:stop())
       assert.same(1, #reports_data)
       assert.match("requests=1", reports_data[1])
       assert.match("http_reqs=0", reports_data[1])
       assert.match("https_reqs=0", reports_data[1])
+      assert.match("h2c_reqs=0", reports_data[1])
+      assert.match("h2_reqs=0", reports_data[1])
       assert.match("grpc_reqs=0", reports_data[1])
       assert.match("grpcs_reqs=0", reports_data[1])
       assert.match("ws_reqs=0", reports_data[1])
       assert.match("wss_reqs=1", reports_data[1])
+    end)
+
+    it("#stream reports tcp streams", function()
+      local tcp = require "socket".tcp()
+      assert(tcp:connect(helpers.get_proxy_ip(false), 19000))
+
+      -- TODO: we need to get rid of the next line!
+      assert(tcp:send(MESSAGE))
+
+      local body = assert(tcp:receive("*a"))
+      assert.equal(MESSAGE, body)
+
+      tcp:close()
+
+      reports_send_stream_ping()
+
+      local _, reports_data = assert(reports_server:stop())
+      assert.same(1, #reports_data)
+      assert.match("streams=1", reports_data[1])
+      assert.match("tcp_streams=1", reports_data[1])
+      assert.match("tls_streams=0", reports_data[1])
+    end)
+
+    it("#stream reports tls streams", function()
+      local tcp = require "socket".tcp()
+      local ssl = require("ssl")
+
+      assert(tcp:connect(helpers.get_proxy_ip(true), 19443))
+
+      tcp = ssl.wrap(tcp, {
+        mode     = "client",
+        verify   = "none",
+        protocol = "any",
+      })
+
+      -- TODO: should SNI really be mandatory?
+      tcp:sni("this-is-needed.test")
+
+      assert(tcp:dohandshake())
+
+      -- TODO: we need to get rid of the next line!
+      assert(tcp:send(MESSAGE))
+
+      local body = assert(tcp:receive("*a"))
+      assert.equal(MESSAGE, body)
+
+      tcp:close()
+
+      reports_send_stream_ping()
+
+      local _, reports_data = assert(reports_server:stop())
+      assert.same(1, #reports_data)
+      assert.match("streams=1", reports_data[1])
+      assert.match("tcp_streams=0", reports_data[1])
+      assert.match("tls_streams=1", reports_data[1])
     end)
   end)
 end
