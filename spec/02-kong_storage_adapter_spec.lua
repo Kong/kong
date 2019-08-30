@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
+local cjson = require "cjson"
 
 
 local function get_sid_from_cookie(cookie)
@@ -20,7 +21,7 @@ for _, strategy in helpers.each_strategy() do
         "services",
         "consumers",
         "keyauth_credentials",
-      })
+      }, { "ctx-checker" })
 
       local route1 = bp.routes:insert {
         paths    = {"/test1"},
@@ -30,6 +31,11 @@ for _, strategy in helpers.each_strategy() do
       local route2 = bp.routes:insert {
         paths    = {"/test2"},
         hosts = {"httpbin.org"}
+      }
+
+      local route3 = bp.routes:insert {
+        paths    = {"/headers"},
+        hosts = {"httpbin.org"},
       }
 
       assert(bp.plugins:insert {
@@ -55,6 +61,27 @@ for _, strategy in helpers.each_strategy() do
           cookie_lifetime = 604,
         }
       })
+
+      assert(bp.plugins:insert {
+        name = "session",
+        route = {
+          id = route3.id,
+        },
+        config = {
+          storage = "kong",
+          secret = "ultra top secret session",
+        }
+      })
+
+      bp.plugins:insert {
+        name = "ctx-checker",
+        route = { id = route3.id },
+        config = {
+          ctx_kind      = "ngx.ctx",
+          ctx_set_field = "authenticated_groups",
+          ctx_set_array = { "beatles", "ramones" },
+        }
+      }
 
       local consumer = bp.consumers:insert { username = "coop" }
       bp.keyauth_credentials:insert {
@@ -86,6 +113,16 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
+        name = "key-auth",
+        route = {
+          id = route3.id,
+        },
+        config = {
+          anonymous = anonymous.id
+        }
+      }
+
+      bp.plugins:insert {
         name = "request-termination",
         consumer = {
           id = anonymous.id,
@@ -97,7 +134,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       assert(helpers.start_kong {
-        plugins = "bundled, session",
+        plugins = "bundled, session, ctx-checker",
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       })
@@ -241,6 +278,34 @@ for _, strategy in helpers.each_strategy() do
         -- logged out, no sessions should be in the table, without errors
         assert.is_nil(found)
         assert.is_nil(err)
+      end)
+
+      it("stores authenticated_groups", function()
+        local res, cookie
+        local request = {
+          method = "GET",
+          path = "/headers",
+          headers = { host = "httpbin.org", },
+        }
+
+        res = assert(client:send(request))
+        assert.response(res).has.status(403)
+
+        -- make a request with a valid key, grab the cookie for later
+        request.headers.apikey = "kong"
+        res = assert(client:send(request))
+        assert.response(res).has.status(200)
+        cookie = assert.response(res).has.header("Set-Cookie")
+
+        ngx.sleep(2)
+
+        request.headers.apikey = nil
+        request.headers.cookie = cookie
+        res = assert(client:send(request))
+        assert.response(res).has.status(200)
+
+        local json = cjson.decode(assert.res_status(200, res))
+        assert.equal('beatles, ramones', json.headers['x-authenticated-groups'])
       end)
     end)
   end)

@@ -190,17 +190,25 @@ host, but can be overridden.
 
 ## Session Data Storage
 
-The session data can be stored in the cookie itself (encrypted) `storage=cookie`, or 
-inside [Kong](#-kong-storage-adapter). The session data stores two context
+The session data can be stored in the cookie itself (encrypted) `storage=cookie`
+, or inside [Kong](#-kong-storage-adapter). The session data these context 
 variables:
 
 ```
 ngx.ctx.authenticated_consumer.id
 ngx.ctx.authenticated_credential.id
+ngx.ctx.authenticated_groups
 ```
 
-The plugin also sets a `ngx.ctx.authenticated_session` for communication between the
-`access` and `header_filter` phases in the plugin.
+The plugin also sets a `ngx.ctx.authenticated_session` for communication between
+ the `access` and `header_filter` phases in the plugin.
+ 
+### Groups
+
+Authenticated groups are stored on `ngx.ctx.authenticated_groups` from other 
+authentication plugins and the session plugin will store them in the data of 
+the current session. Since the session plugin runs before authentication 
+plugins, it will also set `authenticated_groups` associated headers.
 
 ## 🦍 Kong Storage Adapter
 

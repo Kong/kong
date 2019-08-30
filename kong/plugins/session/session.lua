@@ -1,5 +1,6 @@
 local storage = require "kong.plugins.session.storage.kong"
 local session = require "resty.session"
+local cjson = require "cjson"
 
 
 local kong = kong
@@ -54,15 +55,15 @@ end
 
 --- Gets consumer id and credential id from the session data
 -- @param s - the session
--- @returns consumer_id, credential_id
+-- @returns consumer_id, credential_id, groups
 function _M.retrieve_session_data(s)
-  if not s then return nil, nil end
+  if not s then return nil, nil, nil end
 
   if s and not s.data then
-    return nil, nil
+    return nil, nil, nil
   end
 
-  return s.data[1], s.data[2]
+  return s.data[1], s.data[2], s.data[3]
 end
 
 
@@ -70,13 +71,16 @@ end
 -- @param s - the session
 -- @param consumer - the consumer id
 -- @param credential - the credential id or potentially just the consumer id
-function _M.store_session_data(s, consumer_id, credential_id)
+-- @param groups - table of authenticated_groups e.g. { "group1" }
+function _M.store_session_data(s, consumer_id, credential_id, groups)
   if not s then
     return
   end
 
   s.data[1] = consumer_id
   s.data[2] = credential_id
+  s.data[3] = groups
+
 end
 
 

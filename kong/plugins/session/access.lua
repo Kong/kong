@@ -14,7 +14,7 @@ local function load_consumer(consumer_id)
 end
 
 
-local function set_consumer(consumer, credential_id)
+local function authenticate(consumer, credential_id, groups)
   local set_header = kong.service.request.set_header
   local clear_header = kong.service.request.clear_header
 
@@ -29,6 +29,13 @@ local function set_consumer(consumer, credential_id)
     set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
   else
     clear_header(constants.HEADERS.CONSUMER_USERNAME)
+  end
+
+  if groups then
+    set_header(constants.HEADERS.AUTHENTICATED_GROUPS, table.concat(groups, ", "))
+    ngx.ctx.authenticated_groups = groups
+  else
+    clear_header(constants.HEADERS.AUTHENTICATED_GROUPS)
   end
 
   if credential_id then
@@ -59,7 +66,7 @@ function _M.execute(conf)
   end
 
 
-  local cid, credential = session.retrieve_session_data(s)
+  local cid, credential, groups = session.retrieve_session_data(s)
 
   local consumer_cache_key = kong.db.consumers:cache_key(cid)
   local consumer, err = kong.cache:get(consumer_cache_key, nil,
@@ -78,7 +85,7 @@ function _M.execute(conf)
 
   s:start()
 
-  set_consumer(consumer, credential)
+  authenticate(consumer, credential, groups)
 
   kong.ctx.shared.authenticated_session = s
 end

@@ -16,7 +16,7 @@ for _, strategy in helpers.each_strategy() do
         "services",
         "consumers",
         "keyauth_credentials"
-      })
+      }, { "ctx-checker" })
 
       local route1 = bp.routes:insert {
         paths    = {"/test1"},
@@ -31,6 +31,11 @@ for _, strategy in helpers.each_strategy() do
       local route3 = bp.routes:insert {
         paths    = {"/headers"},
         hosts = {"httpbin.org"},
+      }
+
+      local route4 = bp.routes:insert {
+        paths    = {"/headers"},
+        hosts = {"mockbin.org"},
       }
 
       assert(bp.plugins:insert {
@@ -59,6 +64,23 @@ for _, strategy in helpers.each_strategy() do
           id = route3.id,
         },
       })
+
+      assert(bp.plugins:insert {
+        name = "session",
+        route = {
+          id = route4.id,
+        },
+      })
+
+      bp.plugins:insert {
+        name = "ctx-checker",
+        route = { id = route4.id },
+        config = {
+          ctx_kind      = "ngx.ctx",
+          ctx_set_field = "authenticated_groups",
+          ctx_set_array = { "agents", "doubleagents" },
+        }
+      }
 
       consumer = db.consumers:insert({username = "coop"})
 
@@ -101,6 +123,16 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
+        name = "key-auth",
+        route = {
+          id = route4.id,
+        },
+        config = {
+          anonymous = anonymous.id
+        }
+      }
+
+      bp.plugins:insert {
         name = "request-termination",
         consumer = {
           id = anonymous.id,
@@ -112,7 +144,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       assert(helpers.start_kong {
-        plugins = "bundled, session",
+        plugins = "bundled, session, ctx-checker",
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       })
@@ -215,7 +247,35 @@ for _, strategy in helpers.each_strategy() do
 
         assert.equal(consumer.id, json.headers[lower(constants.HEADERS.CONSUMER_ID)])
         assert.equal(consumer.username, json.headers[lower(constants.HEADERS.CONSUMER_USERNAME)])
-        assert.equal(nil, json.headers[constants.HEADERS.CONSUMER_CUSTOM_ID])
+        assert.equal(nil, json.headers[lower(constants.HEADERS.CONSUMER_CUSTOM_ID)])
+        assert.equal(nil, json.headers[lower(constants.HEADERS.AUTHENTICATED_GROUPS)])
+      end)
+    end)
+
+    describe("authenticated_groups", function()
+      it("groups are retrieved from session and headers are set", function()
+        local res, cookie
+        local request = {
+          method = "GET",
+          path = "/headers",
+          headers = { host = "mockbin.org", },
+        }
+
+        -- make a request with a valid key, grab the cookie for later
+        request.headers.apikey = "kong"
+        res = assert(client:send(request))
+        assert.response(res).has.status(200)
+
+        cookie = assert.response(res).has.header("Set-Cookie")
+
+        request.headers.apikey = nil
+        request.headers.cookie = cookie
+
+        res = assert(client:send(request))
+        assert.response(res).has.status(200)
+
+        local json = cjson.decode(assert.res_status(200, res))
+        assert.equal('agents, doubleagents', json.headers[lower(constants.HEADERS.AUTHENTICATED_GROUPS)])
       end)
     end)
   end)
