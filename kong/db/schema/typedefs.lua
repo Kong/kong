@@ -7,8 +7,11 @@ local iputils = require "resty.iputils"
 local Schema = require("kong.db.schema")
 local socket_url = require("socket.url")
 local constants = require "kong.constants"
+local px = require "resty.mediador.proxy"
 
 
+local pairs = pairs
+local pcall = pcall
 local match = string.match
 local gsub = string.gsub
 local null = ngx.null
@@ -43,7 +46,18 @@ local function validate_ip(ip)
 end
 
 
-local function validate_cidr(ip)
+local function validate_ip_or_cidr(ip)
+  local pok, perr = pcall(px.compile, ip)
+
+  if pok and type(perr) == "function" then
+    return true
+  end
+
+  return nil, "invalid ip or cidr range: '" .. ip .. "'"
+end
+
+
+local function validate_cidr_v4(ip)
   local _, err = iputils.parse_cidr(ip)
 
   -- It's an error only if the second variable is a string
@@ -89,6 +103,39 @@ end
 
 
 local function validate_sni(host)
+  local res, err_or_port = utils.normalize_ip(host)
+  if type(err_or_port) == "string" and err_or_port ~= "invalid port number" then
+    return nil, "invalid value: " .. host
+  end
+
+  if res.type ~= "name" then
+    return nil, "must not be an IP"
+  end
+
+  if err_or_port == "invalid port number" or type(res.port) == "number" then
+    return nil, "must not have a port"
+  end
+
+  return true
+end
+
+
+local function validate_wildcard_host(host)
+  local idx = string.find(host, "*", nil, true)
+  if idx then
+    if idx ~= 1 and idx ~= #host then
+      return nil, "wildcard must be leftmost or rightmost character"
+    end
+
+    -- substitute wildcard for upcoming host normalization
+    local mock_host, count = string.gsub(host, "%*", "wildcard")
+    if count > 1 then
+      return nil, "only one wildcard must be specified"
+    end
+
+    host = mock_host
+  end
+
   local res, err_or_port = utils.normalize_ip(host)
   if type(err_or_port) == "string" and err_or_port ~= "invalid port number" then
     return nil, "invalid value: " .. host
@@ -168,17 +215,29 @@ typedefs.host = Schema.define {
 }
 
 
+typedefs.wildcard_host = Schema.define {
+  type = "string",
+  custom_validator = validate_wildcard_host,
+}
+
+
 typedefs.ip = Schema.define {
   type = "string",
   custom_validator = validate_ip,
 }
 
-
-typedefs.cidr = Schema.define {
+typedefs.ip_or_cidr = Schema.define {
   type = "string",
-  custom_validator = validate_cidr,
+  custom_validator = validate_ip_or_cidr,
 }
 
+typedefs.cidr_v4 = Schema.define {
+  type = "string",
+  custom_validator = validate_cidr_v4,
+}
+
+-- deprecated alias
+typedefs.cidr = typedefs.cidr_v4
 
 typedefs.port = Schema.define {
   type = "integer",
@@ -304,7 +363,7 @@ typedefs.run_on_first = Schema.define {
 
 typedefs.tag = Schema.define {
   type = "string",
-  required = true, 
+  required = true,
   match = "^[%w%.%-%_~]+$",
 }
 
@@ -334,6 +393,133 @@ typedefs.protocols_http = Schema.define {
   default = http_protocols,
   elements = { type = "string", one_of = http_protocols },
 }
+
+
+-- routes typedefs
+-- common for routes and routes subschemas
+
+local function validate_host_with_wildcards(host)
+  local no_wildcards = string.gsub(host, "%*", "abc")
+  return typedefs.host.custom_validator(no_wildcards)
+end
+
+local function validate_path_with_regexes(path)
+
+
+  local ok, err, err_code = typedefs.path.custom_validator(path)
+
+  if ok or err_code ~= "rfc3986" then
+    return ok, err, err_code
+  end
+
+  -- URI contains characters outside of the reserved list of RFC 3986:
+  -- the value will be interpreted as a regex by the router; but is it a
+  -- valid one? Let's dry-run it with the same options as our router.
+  local _, _, err = ngx.re.find("", path, "aj")
+  if err then
+    return nil,
+           string.format("invalid regex: '%s' (PCRE returned: %s)",
+                         path, err)
+  end
+
+  return true
+end
+
+
+typedefs.sources = Schema.define {
+  type = "set",
+  elements = {
+    type = "record",
+    fields = {
+      { ip = typedefs.ip_or_cidr },
+      { port = typedefs.port },
+    },
+    entity_checks = {
+      { at_least_one_of = { "ip", "port" } }
+    },
+  },
+}
+
+typedefs.no_sources = Schema.define(typedefs.sources { eq = null })
+
+typedefs.destinations = Schema.define {
+  type = "set",
+  elements = {
+    type = "record",
+    fields = {
+      { ip = typedefs.ip_or_cidr },
+      { port = typedefs.port },
+    },
+    entity_checks = {
+      { at_least_one_of = { "ip", "port" } }
+    },
+  },
+}
+
+typedefs.no_destinations = Schema.define(typedefs.destinations { eq = null })
+
+typedefs.methods = Schema.define {
+  type = "set",
+  elements = typedefs.http_method,
+}
+
+typedefs.no_methods = Schema.define(typedefs.methods { eq = null })
+
+typedefs.hosts = Schema.define {
+  type = "array",
+  elements = {
+    type = "string",
+    match_all = {
+      {
+        pattern = "^[^*]*%*?[^*]*$",
+        err = "invalid wildcard: must have at most one wildcard",
+      },
+    },
+    match_any = {
+      patterns = { "^%*%.", "%.%*$", "^[^*]*$" },
+      err = "invalid wildcard: must be placed at leftmost or rightmost label",
+    },
+    custom_validator = validate_host_with_wildcards,
+  }
+}
+
+typedefs.no_hosts = Schema.define(typedefs.hosts { eq = null })
+
+typedefs.paths = Schema.define {
+  type = "array",
+  elements = typedefs.path {
+    custom_validator = validate_path_with_regexes,
+    match_none = {
+      {
+        pattern = "//",
+        err = "must not have empty segments"
+      },
+    },
+  }
+}
+
+typedefs.no_paths = Schema.define(typedefs.paths { eq = null })
+
+typedefs.headers = Schema.define {
+  type = "map",
+  keys = {
+    type = "string",
+    match_none = {
+      {
+        pattern = "^[Hh][Oo][Ss][Tt]$",
+        err = "cannot contain 'host' header, which must be specified in the 'hosts' attribute",
+      },
+    },
+  },
+  values = {
+    type = "array",
+    elements = {
+      type = "string",
+    },
+  },
+}
+
+typedefs.no_headers = Schema.define(typedefs.headers { eq = null } )
 
 setmetatable(typedefs, {
   __index = function(_, k)

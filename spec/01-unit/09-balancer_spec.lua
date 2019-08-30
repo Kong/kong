@@ -71,15 +71,15 @@ describe("Balancer", function()
     passive_hc.passive.unhealthy.http_failures = 1
 
     UPSTREAMS_FIXTURES = {
-      [1] = { id = "a", name = "mashape", slots = 10, healthchecks = hc_defaults },
-      [2] = { id = "b", name = "kong",    slots = 10, healthchecks = hc_defaults },
-      [3] = { id = "c", name = "gelato",  slots = 20, healthchecks = hc_defaults },
-      [4] = { id = "d", name = "galileo", slots = 20, healthchecks = hc_defaults },
-      [5] = { id = "e", name = "upstream_e", slots = 10, healthchecks = hc_defaults },
-      [6] = { id = "f", name = "upstream_f", slots = 10, healthchecks = hc_defaults },
-      [7] = { id = "hc", name = "upstream_hc", slots = 10, healthchecks = passive_hc },
-      [8] = { id = "ph", name = "upstream_ph", slots = 10, healthchecks = passive_hc },
-      [9] = { id = "ote", name = "upstream_ote", slots = 10, healthchecks = hc_defaults },
+      [1] = { id = "a", name = "mashape", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
+      [2] = { id = "b", name = "kong",    slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
+      [3] = { id = "c", name = "gelato",  slots = 20, healthchecks = hc_defaults, algorithm = "round-robin" },
+      [4] = { id = "d", name = "galileo", slots = 20, healthchecks = hc_defaults, algorithm = "round-robin" },
+      [5] = { id = "e", name = "upstream_e", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
+      [6] = { id = "f", name = "upstream_f", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
+      [7] = { id = "hc", name = "upstream_hc", slots = 10, healthchecks = passive_hc, algorithm = "round-robin" },
+      [8] = { id = "ph", name = "upstream_ph", slots = 10, healthchecks = passive_hc, algorithm = "round-robin" },
+      [9] = { id = "ote", name = "upstream_ote", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
     }
     upstream_hc = UPSTREAMS_FIXTURES[7]
     upstream_ph = UPSTREAMS_FIXTURES[8]
@@ -291,6 +291,7 @@ describe("Balancer", function()
       local b1 = assert(balancer._create_balancer(UPSTREAMS_FIXTURES[1], true))
       local hc1 = balancer._get_healthchecker(b1)
       assert(hc1:stop())
+      local b1_target_history = balancer._get_target_history(b1)
       local b2 = assert(balancer._create_balancer(UPSTREAMS_FIXTURES[1], true))
       local hc2 = balancer._get_healthchecker(b2)
       assert(hc2:stop())
@@ -301,7 +302,7 @@ describe("Balancer", function()
         { name = "mashape.com", port = 80, order = "3000:a1", weight = 10 },
       }
       assert.not_same(b1, b2)
-      assert.same(target_history, balancer._get_target_history(b1))
+      assert.same(target_history, b1_target_history)
       assert.same(target_history, balancer._get_target_history(b2))
     end)
   end)
@@ -451,17 +452,18 @@ describe("Balancer", function()
         { host = "localhost", port = 1111, health = false },
       }
       for _, t in ipairs(tests) do
-        assert(balancer.post_health(upstream_ph, t.host, t.port, t.health))
+        assert(balancer.post_health(upstream_ph, t.host, nil, t.port, t.health))
         local health_info = assert(balancer.get_upstream_health("ph"))
         local response = t.health and "HEALTHY" or "UNHEALTHY"
-        assert.same(response, health_info[t.host .. ":" .. t.port])
+        assert.same(response,
+                    health_info[t.host .. ":" .. t.port].addresses[1].health)
       end
     end)
 
     it("requires hostname if that was used in the Target", function()
-      local ok, err = balancer.post_health(upstream_ph, "127.0.0.1", 1111, true)
+      local ok, err = balancer.post_health(upstream_ph, "127.0.0.1", nil, 1111, true)
       assert.falsy(ok)
-      assert.match(err, "target not found for 127.0.0.1:1111")
+      assert.match(err, "No host found by: '127.0.0.1:1111'")
     end)
 
     it("fails if upstream/balancer doesn't exist", function()
@@ -490,17 +492,20 @@ describe("Balancer", function()
       address = {
         ip = "127.0.0.1",
         port = 1111,
+        host = {hostname = "localhost"},
       }}, 429)
     my_balancer.report_http_status({
       address = {
         ip = "127.0.0.1",
         port = 1111,
+        host = {hostname = "localhost"},
       }}, 200)
     balancer.unsubscribe_from_healthcheck_events(cb)
     my_balancer.report_http_status({
       address = {
         ip = "127.0.0.1",
         port = 1111,
+        host = {hostname = "localhost"},
       }}, 429)
     hc:stop()
     assert.same({

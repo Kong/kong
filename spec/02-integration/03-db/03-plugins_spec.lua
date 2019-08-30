@@ -60,7 +60,7 @@ for _, strategy in helpers.each_strategy() do
               key_names = { "apikey" },
             },
             run_on = "first",
-            protocols = { "http", "https" },
+            protocols = { "grpc", "grpcs", "http", "https" },
             enabled = true,
             name = "key-auth",
             route = {
@@ -133,7 +133,7 @@ for _, strategy in helpers.each_strategy() do
               key_names = { "apikey" },
             },
             run_on = "first",
-            protocols = { "http", "https" },
+            protocols = { "grpc", "grpcs", "http", "https" },
             enabled = true,
             name = "key-auth",
             route = {
@@ -173,13 +173,13 @@ for _, strategy in helpers.each_strategy() do
     describe(":upsert()", function()
       it("returns an error when upserting mismatched plugins", function()
         local p, _, err_t = db.plugins:upsert({ id = global_plugin.id },
-                                              { route = { id = route.id } })
+                                              { route = { id = route.id }, protocols = { "http" } })
         assert.is_nil(p)
         assert.equals(err_t.fields.protocols, "must match the associated route's protocols")
 
 
         local p, _, err_t = db.plugins:upsert({ id = global_plugin.id },
-                                              { service = { id = service.id } })
+                                              { service = { id = service.id }, protocols = { "http" } })
         assert.is_nil(p)
         assert.equals(err_t.fields.protocols,
                       "must match the protocols of at least one route pointing to this Plugin's service")
@@ -187,6 +187,16 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe(":load_plugin_schemas()", function()
+      it("loads custom entities with specialized methods", function()
+        local ok, err = db.plugins:load_plugin_schemas({
+          ["plugin-with-custom-dao"] = true,
+        })
+        assert.truthy(ok)
+        assert.is_nil(err)
+
+        assert.same("I was implemented for " .. strategy, db.custom_dao:custom_method())
+      end)
+
       it("reports failure with missing plugins", function()
         local ok, err = db.plugins:load_plugin_schemas({
           ["missing"] = true,

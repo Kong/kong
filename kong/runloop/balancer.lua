@@ -30,14 +30,14 @@ local _load_targets_into_memory
 --==============================================================================
 
 
--- table holding our balancer objects, indexed by upstream name
+-- table holding our balancer objects, indexed by upstream id
 local balancers = {}
 
 
 -- objects whose lifetimes are bound to that of a balancer
-local healthcheckers = setmetatable({}, { __mode = "k" })
-local healthchecker_callbacks = setmetatable({}, { __mode = "k" })
-local target_histories = setmetatable({}, { __mode = "k" })
+local healthcheckers = {}
+local healthchecker_callbacks = {}
+local target_histories = {}
 
 
 -- health check API callbacks to be called on healthcheck events
@@ -59,6 +59,17 @@ local healthcheck_subscribers = {}
 --
 -- Distinction between 1 and 2 makes it possible to invalidate individual
 -- upstreams, instead of all at once forcing to rebuild all balancers
+
+
+local function set_balancer(upstream_id, balancer)
+  local prev = balancers[upstream_id]
+  if prev then
+    healthcheckers[prev] = nil
+    healthchecker_callbacks[prev] = nil
+    target_histories[prev] = nil
+  end
+  balancers[upstream_id] = balancer
+end
 
 
 local function stop_healthchecker(balancer)
@@ -182,8 +193,10 @@ local function populate_healthchecker(hc, balancer)
       if ok then
         -- Get existing health status which may have been initialized
         -- with data from another worker, and apply to the new balancer.
-        local tgt_status = hc:get_target_status(ipaddr, port)
-        balancer:setPeerStatus(tgt_status, ipaddr, port, hostname)
+        local tgt_status = hc:get_target_status(ipaddr, port, hostname)
+        if tgt_status ~= nil then
+          balancer:setAddressStatus(tgt_status, ipaddr, port, hostname)
+        end
 
       else
         log(ERR, "[healthchecks] failed adding target: ", err)
@@ -195,7 +208,11 @@ end
 
 local create_balancer
 do
-  local ring_balancer = require "resty.dns.balancer.ring"
+  local balancer_types = {
+    ["consistent-hashing"] = require("resty.dns.balancer.ring"),
+    ["least-connections"] = require("resty.dns.balancer.least_connections"),
+    ["round-robin"] = require("resty.dns.balancer.ring"),
+  }
 
   local create_healthchecker
   do
@@ -203,9 +220,9 @@ do
 
     ------------------------------------------------------------------------------
     -- Callback function that informs the healthchecker when targets are added
-    -- or removed to a balancer.
+    -- or removed to a balancer and when targets health status change.
     -- @param balancer the ring balancer object that triggers this callback.
-    -- @param action "added" or "removed"
+    -- @param action "added", "removed", or "health"
     -- @param address balancer address object
     -- @param ip string
     -- @param port number
@@ -219,10 +236,20 @@ do
         end
 
       elseif action == "removed" then
-        local ok, err = healthchecker:remove_target(ip, port)
+        local ok, err = healthchecker:remove_target(ip, port, hostname)
         if not ok then
-          log(ERR, "[healthchecks] failed adding a target: ", err)
+          log(ERR, "[healthchecks] failed removing a target: ", err)
         end
+
+      elseif action == "health" then
+        local balancer_status
+        if address then
+          balancer_status = "HEALTHY"
+        else
+          balancer_status = "UNHEALTHY"
+        end
+        log(WARN, "[healthchecks] balancer ", healthchecker.name,
+            " reported health status changed to ", balancer_status)
 
       else
         log(WARN, "[healthchecks] unknown status from balancer: ",
@@ -245,7 +272,7 @@ do
         end
 
         local ok, err
-        ok, err = balancer:setPeerStatus(status, tgt.ip, tgt.port, tgt.hostname)
+        ok, err = balancer:setAddressStatus(status, tgt.ip, tgt.port, tgt.hostname)
 
         local health = status and "healthy" or "unhealthy"
         for _, subscriber in ipairs(healthcheck_subscribers) do
@@ -267,7 +294,8 @@ do
 
       balancer.report_http_status = function(handle, status)
         local ip, port = handle.address.ip, handle.address.port
-        local _, err = hc:report_http_status(ip, port, status, "passive")
+        local hostname = handle.address.host and handle.address.host.hostname or nil
+        local _, err = hc:report_http_status(ip, port, hostname, status, "passive")
         if err then
           log(ERR, "[healthchecks] failed reporting status: ", err)
         end
@@ -275,7 +303,8 @@ do
 
       balancer.report_tcp_failure = function(handle)
         local ip, port = handle.address.ip, handle.address.port
-        local _, err = hc:report_tcp_failure(ip, port, nil, "passive")
+        local hostname = handle.address.host and handle.address.host.hostname or nil
+        local _, err = hc:report_tcp_failure(ip, port, hostname, nil, "passive")
         if err then
           log(ERR, "[healthchecks] failed reporting status: ", err)
         end
@@ -283,7 +312,8 @@ do
 
       balancer.report_timeout = function(handle)
         local ip, port = handle.address.ip, handle.address.port
-        local _, err = hc:report_timeout(ip, port, "passive")
+        local hostname = handle.address.host and handle.address.host.hostname or nil
+        local _, err = hc:report_timeout(ip, port, hostname, "passive")
         if err then
           log(ERR, "[healthchecks] failed reporting status: ", err)
         end
@@ -300,12 +330,9 @@ do
 
       -- Do not run active healthchecks in `stream` module
       local checks = upstream.healthchecks
-      if ngx.config.subsystem == "stream"
-         and (checks.active.healthy.interval ~= 0
-              or checks.active.unhealthy.interval ~= 0)
+      if (ngx.config.subsystem == "stream" and checks.active.type ~= "tcp")
+         or (ngx.config.subsystem == "http" and checks.active.type == "tcp")
       then
-        log(ngx.INFO, "[healthchecks] disabling active healthchecks in ",
-                      "stream module")
         checks = pl_tablex.deepcopy(checks)
         checks.active.healthy.interval = 0
         checks.active.unhealthy.interval = 0
@@ -374,10 +401,10 @@ do
 
     creating[upstream.id] = true
 
-    local balancer, err = ring_balancer.new({
-        wheelSize = upstream.slots,
-        dns = dns_client,
-      })
+    local balancer, err = balancer_types[upstream.algorithm].new({
+      wheelSize = upstream.slots,  -- will be ignored by least-connections
+      dns = dns_client,
+    })
 
     if not balancer then
       return nil, err
@@ -399,7 +426,7 @@ do
 
     -- only make the new balancer available for other requests after it
     -- is fully set up.
-    balancers[upstream.id] = balancer
+    set_balancer(upstream.id, balancer)
 
     creating[upstream.id] = nil
 
@@ -627,7 +654,7 @@ local function on_upstream_event(operation, upstream_data)
     end
 
     if operation == "delete" then
-      balancers[upstream_id] = nil
+      set_balancer(upstream_id, nil)
 
     else
       local upstream = get_upstream_by_id(upstream_id)
@@ -653,7 +680,7 @@ end
 -- @return integer value or nil if there is no hash to calculate
 local create_hash = function(upstream, ctx)
   local hash_on = upstream.hash_on
-  if hash_on == "none" then
+  if hash_on == "none" or hash_on == nil or hash_on == ngx.null then
     return -- not hashing, exit fast
   end
 
@@ -807,7 +834,8 @@ local function execute(target, ctx)
     ip, port, hostname, handle = balancer:getPeer(dns_cache_only,
                                           target.balancer_handle,
                                           hash_value)
-    if not ip and port == "No peers are available" then
+    if not ip and
+      (port == "No peers are available" or port == "Balancer is unhealthy") then
       return nil, "failure to get a peer from the ring-balancer", 503
     end
     target.hash_value = hash_value
@@ -819,7 +847,7 @@ local function execute(target, ctx)
     ip, port, try_list = toip(target.host, target.port, dns_cache_only)
     hostname = target.host
     if not ip then
-      log(ERR, "[dns] ", port, ". Tried: ", tostring(try_list))
+      log(ERR, "DNS resolution failed: ", port, ". Tried: ", tostring(try_list))
       if port == "dns server error: 3 name error" or
          port == "dns client error: 101 empty record received" then
         return nil, "name resolution failed", 503
@@ -842,25 +870,15 @@ end
 -- Update health status and broadcast to workers
 -- @param upstream a table with upstream data: must have `name` and `id`
 -- @param hostname target hostname
+-- @param ip target entry. if nil updates all entries
 -- @param port target port
 -- @param is_healthy boolean: true if healthy, false if unhealthy
 -- @return true if posting event was successful, nil+error otherwise
-local function post_health(upstream, hostname, port, is_healthy)
+local function post_health(upstream, hostname, ip, port, is_healthy)
 
   local balancer = balancers[upstream.id]
   if not balancer then
     return nil, "Upstream " .. tostring(upstream.name) .. " has no balancer"
-  end
-
-  local ip
-  for weight, addr, host in balancer:addressIter() do
-    if weight > 0 and hostname == host.hostname and port == addr.port then
-      ip = addr.ip
-      break
-    end
-  end
-  if not ip then
-    return nil, "target not found for " .. hostname .. ":" .. port
   end
 
   local healthchecker = healthcheckers[balancer]
@@ -868,7 +886,11 @@ local function post_health(upstream, hostname, port, is_healthy)
     return nil, "no healthchecker found for " .. tostring(upstream.name)
   end
 
-  return healthchecker:set_target_status(ip, port, is_healthy)
+  if ip then
+    return balancer:setAddressStatus(is_healthy, ip, port, hostname)
+  end
+
+  return balancer:setHostStatus(is_healthy, hostname, port)
 end
 
 
@@ -942,17 +964,17 @@ local function get_upstream_health(upstream_id)
   end
 
   local health_info = {}
-
-  for weight, addr, host in balancer:addressIter() do
-    if weight > 0 then
-      local health
+  local hosts = balancer.hosts
+  for _, host in ipairs(hosts) do
+    local key = host.hostname .. ":" .. host.port
+    health_info[key] = host:getStatus()
+    for _, address in ipairs(health_info[key].addresses) do
       if using_hc then
-        health = healthchecker:get_target_status(addr.ip, addr.port)
-                 and "HEALTHY" or "UNHEALTHY"
+        address.health = address.healthy and "HEALTHY" or "UNHEALTHY"
       else
-        health = "HEALTHCHECKS_OFF"
+        address.health = "HEALTHCHECKS_OFF"
       end
-      health_info[host.hostname .. ":" .. addr.port] = health
+      address.healthy = nil
     end
   end
 

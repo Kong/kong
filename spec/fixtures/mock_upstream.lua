@@ -296,47 +296,83 @@ local function serve_web_sockets()
 end
 
 
+local function get_logger()
+  local logger = ngx.shared.kong_mock_upstream_loggers
+  if not logger then
+    error("missing 'kong_mock_upstream_loggers' shm declaration")
+  end
+
+  return logger
+end
+
+
 local function store_log(logname)
   ngx.req.read_body()
-  local body = ngx.req.get_body_data()
-  local loggers = ngx.shared["kong_mock_upstream_loggers"]
-  if not loggers then
-    loggers = {}
-    ngx.shared["kong_mock_upstream_loggers"] = loggers
+
+  local raw_entries = ngx.req.get_body_data()
+  local logger = get_logger()
+
+  local entries = cjson.decode(raw_entries)
+  if #entries == 0 then
+    -- backwards-compatibility for `conf.queue_size == 1`
+    entries = { entries }
   end
-  loggers[logname] = loggers[logname] or {}
-  local headers = {}
-  for k, v in pairs(ngx.req.get_headers()) do
-    table.insert(headers, { name = k:lower(), value = v })
-  end
-  table.insert(loggers[logname], {
-    request = {
-      headers = headers,
-      postData = {
-        text = body,
-      }
+
+  local log_req_headers = ngx.req.get_headers()
+
+  for i = 1, #entries do
+    local store = {
+      entry = entries[i],
+      log_req_headers = log_req_headers,
     }
-  })
+
+    assert(logger:rpush(logname, cjson.encode(store)))
+    assert(logger:incr(logname .. "|count", 1, 0))
+  end
+
   ngx.status = 200
-  return send_default_json_response({
-    code = 200,
-  })
 end
 
 
 local function retrieve_log(logname)
-  local loggers = ngx.shared["kong_mock_upstream_loggers"]
-  if not loggers then
-    loggers = {}
-    ngx.shared["kong_mock_upstream_loggers"] = loggers
+  local logger = get_logger()
+  local len = logger:llen(logname)
+  local entries = {}
+
+  for i = 1, len do
+    local encoded_stored = assert(logger:lpop(logname))
+    local stored = cjson.decode(encoded_stored)
+    entries[i] = stored.entry
+    entries[i].log_req_headers = stored.log_req_headers
+    assert(logger:rpush(logname, encoded_stored))
   end
-  loggers[logname] = loggers[logname] or {}
+
+  local count, err = logger:get(logname .. "|count")
+  if err then
+    error(err)
+  end
+
   ngx.status = 200
   ngx.say(cjson.encode({
-    log = {
-      entries = loggers[logname],
-    }
+    entries = entries,
+    count = count,
   }))
+end
+
+
+local function count_log(logname)
+  local logger = get_logger()
+  local count = assert(logger:get(logname .. "|count"))
+
+  ngx.status = 200
+  ngx.say(count)
+end
+
+
+local function reset_log(logname)
+  local logger = get_logger()
+  logger:delete(logname)
+  logger:delete(logname .. "|count")
 end
 
 
@@ -349,4 +385,6 @@ return {
   serve_web_sockets           = serve_web_sockets,
   store_log                   = store_log,
   retrieve_log                = retrieve_log,
+  count_log                   = count_log,
+  reset_log                   = reset_log,
 }

@@ -2,6 +2,9 @@ local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
 local conf_loader = require "kong.conf_loader"
 local cjson = require "cjson"
+local api_helpers = require "kong.api.api_helpers"
+local Schema = require "kong.db.schema"
+local Errors = require "kong.db.errors"
 
 local sub = string.sub
 local find = string.find
@@ -10,11 +13,24 @@ local tonumber = tonumber
 local kong = kong
 local knode  = (kong and kong.node) and kong.node or
                require "kong.pdk.node".new()
+local errors = Errors.new()
 
 
 local tagline = "Welcome to " .. _KONG._NAME
 local version = _KONG._VERSION
 local lua_version = jit and jit.version or _VERSION
+
+
+local strip_foreign_schemas = function(fields)
+  for _, field in ipairs(fields) do
+    local fname = next(field)
+    local fdata = field[fname]
+    if fdata["type"] == "foreign" then
+      fdata.schema = nil
+    end
+  end
+end
+
 
 return {
   ["/"] = {
@@ -81,6 +97,29 @@ return {
   },
   ["/status"] = {
     GET = function(self, dao, helpers)
+      local query = self.req.params_get
+      local unit = "m"
+      local scale
+
+      if query then
+        if query.unit then
+          unit = query.unit
+        end
+
+        if query.scale then
+          scale = tonumber(query.scale)
+        end
+
+        -- validate unit and scale arguments
+
+        local pok, perr = pcall(utils.bytes_to_str, 0, unit, scale)
+        if not pok then
+          return kong.response.exit(400, { message = perr })
+        end
+      end
+
+      -- nginx stats
+
       local r = ngx.location.capture "/nginx_status"
       if r.status ~= 200 then
         kong.log.err(r.body)
@@ -91,6 +130,7 @@ return {
       local accepted, handled, total = select(3, find(r.body, "accepts handled requests\n (%d*) (%d*) (%d*)"))
 
       local status_response = {
+        memory = knode.get_memory_stats(unit, scale),
         server = {
           connections_active = tonumber(var.connections_active),
           connections_reading = tonumber(var.connections_reading),
@@ -113,10 +153,55 @@ return {
         status_response.database.reachable = false
       end
 
-      -- ignore error
-      kong.db:close()
+      kong.db:close() -- ignore errors
 
       return kong.response.exit(200, status_response)
     end
-  }
+  },
+  ["/schemas/:name"] = {
+    GET = function(self, db, helpers)
+      local entity = kong.db[self.params.name]
+      local schema = entity and entity.schema or nil
+      if not schema then
+        return kong.response.exit(404, { message = "No entity named '"
+                                      .. self.params.name .. "'" })
+      end
+      local copy = api_helpers.schema_to_jsonable(schema)
+      strip_foreign_schemas(copy.fields)
+      return kong.response.exit(200, copy)
+    end
+  },
+  ["/schemas/:db_entity_name/validate"] = {
+    POST = function(self, db, helpers)
+      local db_entity_name = self.params.db_entity_name
+      -- What happens when db_entity_name is a field name in the schema?
+      self.params.db_entity_name = nil
+      local entity = kong.db[db_entity_name]
+      local schema = entity and entity.schema or nil
+      if not schema then
+        return kong.response.exit(404, { message = "No entity named '"
+                                  .. db_entity_name .. "'" })
+      end
+      local schema = assert(Schema.new(schema))
+      local _, err_t = schema:validate(schema:process_auto_fields(
+                                        self.params, "insert"))
+      if err_t then
+        return kong.response.exit(400, errors:schema_violation(err_t))
+      end
+      return kong.response.exit(200, { message = "schema validation successful" })
+    end
+  },
+  ["/schemas/plugins/:name"] = {
+    GET = function(self, db, helpers)
+      local subschema = kong.db.plugins.schema.subschemas[self.params.name]
+      if not subschema then
+        return kong.response.exit(404, { message = "No plugin named '"
+                                  .. self.params.name .. "'" })
+      end
+
+      local copy = api_helpers.schema_to_jsonable(subschema)
+      strip_foreign_schemas(copy.fields)
+      return kong.response.exit(200, copy)
+    end
+  },
 }

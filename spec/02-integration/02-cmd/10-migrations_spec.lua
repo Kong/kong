@@ -103,14 +103,14 @@ for _, strategy in helpers.each_strategy() do
         assert.same(0, code)
         assert.match("\nmigrating core", stdout, 1, true)
         assert.match("\n" .. nr_migrations .. " migration", stdout, 1, true)
-        assert.match("\ndatabase is up-to-date\n", stdout, 1, true)
+        assert.match("\nDatabase is up-to-date\n", stdout, 1, true)
       end)
 
       if strategy == "off" then
         it("always reports as bootstrapped", function()
           local code, stdout = run_kong("migrations bootstrap")
           assert.same(0, code)
-          assert.match("database already bootstrapped", stdout, 1, true)
+          assert.match("Database already bootstrapped", stdout, 1, true)
         end)
       end
 
@@ -120,7 +120,7 @@ for _, strategy in helpers.each_strategy() do
         local stdout
         code, stdout = run_kong("migrations bootstrap")
         assert.same(0, code)
-        assert.match("database already bootstrapped", stdout, 1, true)
+        assert.match("Database already bootstrapped", stdout, 1, true)
       end)
 
       pending("-q suppresses all output", function()
@@ -138,7 +138,7 @@ for _, strategy in helpers.each_strategy() do
         local stdout
         code, stdout = run_kong("migrations list")
         assert.same(3, code)
-        assert.match("database needs bootstrapping", stdout, 1, true)
+        assert.match("Database needs bootstrapping; run 'kong migrations bootstrap'", stdout, 1, true)
       end)
 
       it("lists migrations if bootstrapped", function()
@@ -149,7 +149,7 @@ for _, strategy in helpers.each_strategy() do
         local stdout
         code, stdout = run_kong("migrations list")
         assert.same(0, code)
-        assert.match("executed migrations:", stdout, 1, true)
+        assert.match("Executed migrations:", stdout, 1, true)
 
         if strategy ~= "off" then
           local db = init_db()
@@ -169,8 +169,11 @@ for _, strategy in helpers.each_strategy() do
           plugins = "with-migrations",
         })
         assert.same(5, code)
-        assert.match("database has new migrations available:\n" ..
-                     "with-migrations: 000_base_with_migrations, 001_14_to_15",
+        assert.match("Executed migrations:\n" ..
+                     "core: 000_base\n\n" ..
+                     "New migrations available:\n" ..
+                     "with-migrations: 000_base_with_migrations, 001_14_to_15\n\n" ..
+                     "Run 'kong migrations up' to proceed",
                      stdout, 1, true)
       end)
 
@@ -199,7 +202,7 @@ for _, strategy in helpers.each_strategy() do
 
         code, stdout = run_kong("migrations up")
         assert.same(0, code)
-        assert.match("database is already up-to-date", stdout, 1, true)
+        assert.match("Database is already up-to-date", stdout, 1, true)
 
         local db = init_db()
         -- valid CQL and SQL; don't expect to go over one page in CQL here
@@ -219,7 +222,7 @@ for _, strategy in helpers.each_strategy() do
         it("always reports as up-to-date", function()
           local code, stdout = run_kong("migrations up")
           assert.same(0, code)
-          assert.match("database is already up-to-date", stdout, 1, true)
+          assert.match("Database is already up-to-date", stdout, 1, true)
         end)
       end
 
@@ -251,7 +254,7 @@ for _, strategy in helpers.each_strategy() do
 
         code, stdout = run_kong("migrations finish")
         assert.same(0, code)
-        assert.match("no pending migrations to finish", stdout, 1, true)
+        assert.match("No pending migrations to finish", stdout, 1, true)
 
         local db = init_db()
         -- valid CQL and SQL; don't expect to go over one page in CQL here
@@ -271,7 +274,7 @@ for _, strategy in helpers.each_strategy() do
         it("always reports as done", function()
           local code, stdout = run_kong("migrations finish")
           assert.same(0, code)
-          assert.match("no pending migrations to finish", stdout, 1, true)
+          assert.match("No pending migrations to finish", stdout, 1, true)
         end)
       end
 

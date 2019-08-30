@@ -266,21 +266,30 @@ describe("kong start/stop #" .. strategy, function()
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
-        -- get a connection, retry until kong starts
         helpers.wait_until(function()
-          local pok
-          pok, proxy_client = pcall(helpers.proxy_client)
-          return pok
-        end, 10)
+          -- get a connection, retry until kong starts
+          helpers.wait_until(function()
+            local pok
+            pok, proxy_client = pcall(helpers.proxy_client)
+            return pok
+          end, 10)
 
-        local res = assert(proxy_client:send {
-          method = "GET",
-          path = "/",
-          headers = {
-            host = "example.test",
-          }
-        })
-        assert.res_status(200, res)
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              host = "example.test",
+            }
+          })
+          local ok = res.status == 200
+
+          if proxy_client then
+            proxy_client:close()
+            proxy_client = nil
+          end
+
+          return ok
+        end, 10)
       end)
     end)
   end
@@ -356,6 +365,24 @@ describe("kong start/stop #" .. strategy, function()
           dict .. " [SIZE];' directive is defined.", err, nil, true)
       end
     end)
+    it("ensures lua-resty-core is loaded", function()
+        finally(function()
+          helpers.stop_kong()
+        end)
+
+        local ok, err = helpers.start_kong({
+          prefix = helpers.test_conf.prefix,
+          database = helpers.test_conf.database,
+          pg_database = helpers.test_conf.pg_database,
+          cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+          nginx_http_lua_load_resty_core = "off",
+        })
+        assert.falsy(ok)
+        assert.matches(helpers.unindent([[
+          lua-resty-core must be loaded; make sure 'lua_load_resty_core'
+          is not disabled.
+        ]], nil, true), err, nil, true)
+    end)
 
     if strategy == "cassandra" then
       it("errors when cassandra contact points cannot be resolved", function()
@@ -416,6 +443,33 @@ describe("kong start/stop #" .. strategy, function()
       end)
     end
 
+  end)
+
+  describe("deprecated properties", function()
+    describe("prints a warning to stderr", function()
+      local u = helpers.unindent
+
+      it("'upstream_keepalive'", function()
+        local opts = {
+          prefix = helpers.test_conf.prefix,
+          database = helpers.test_conf.database,
+          pg_database = helpers.test_conf.pg_database,
+          cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+          upstream_keepalive = 0,
+        }
+
+        local _, stderr, stdout = assert(helpers.kong_exec("start", opts))
+        assert.matches("Kong started", stdout, nil, true)
+        assert.matches(u([[
+          [warn] the 'upstream_keepalive' configuration property is deprecated,
+          use 'nginx_http_upstream_keepalive' instead
+        ]], nil, true), stderr, nil, true)
+
+        local _, stderr, stdout = assert(helpers.kong_exec("stop", opts))
+        assert.matches("Kong stopped", stdout, nil, true)
+        assert.equal("", stderr)
+      end)
+    end)
   end)
 end)
 

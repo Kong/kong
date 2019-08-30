@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+set -e
+
+if [ "$1" = "-h" ] || [ "$1" = "--help" ] || ! [ "$1" ]
+then
+   echo "Merge Kong's 'master' branch into the 'next' branch using this script:"
+   echo ""
+   echo "Usage:"
+   echo " Step 1) create the branch"
+   echo "    $0 create"
+   echo ""
+   echo " Step 2) submit the PR"
+   echo "    $0 submit"
+   echo ""
+   echo " Step 3) get approval for the PR -- do NOT merge it on Github!"
+   echo "    $0 approve"
+   echo ""
+   echo " Step 4) merge the PR using this script"
+   echo "    $0 merge"
+   echo ""
+   exit 0
+fi
+
+function red() {
+   echo -e "\033[1;31m$@\033[0m"
+}
+
+function die() {
+   red "*** $@"
+   echo
+   exit 1
+}
+
+if [ $(git status --untracked-files=no --porcelain | wc -l) != "0" ]
+then
+   die "Local tree is not clean, please commit or stash before running this."
+fi
+
+hub --version &> /dev/null || die "hub is not in PATH. Get it from https://github.com/github/hub"
+
+step="$1"
+today="$(date +'%Y-%m-%d')"
+branch="merge-master-into-next-$today"
+
+function browser() {
+   if which open &> /dev/null
+   then
+      open "$1" &
+   elif which xdg-open &> /dev/null
+   then
+      xdg-open "$1" &
+   elif which firefox &> /dev/null
+   then
+      firefox "$1" &
+   fi
+}
+
+case "$step" in
+   create)
+      if git show "$branch" &> /dev/null
+      then
+         echo "=============================="
+         echo "Merge branch already exists. To start from scratch, delete it with"
+         echo "   $0 delete"
+         echo "=============================="
+         die "Failed"
+      fi
+
+      git checkout master
+      git pull
+      git checkout next
+      git pull
+      git checkout -B "$branch"
+      git merge master -m "Merge branch 'master' into next"
+      ;;
+   submit)
+      git push --set-upstream origin "$branch"
+      hub pull-request -b next -h "$branch" -m "$(echo -e "Merge master into next ${today}\n\nPlease approve once CI passes, but DO NOT MERGE.")" -l "pr/do not merge"
+      ;;
+   approve)
+      prnum=$(hub pr list -h $branch | sed 's/^.*#\([0-9]*\).*$/\1/')
+      if ! [ "$prnum" ]
+      then
+         echo "=============================="
+         echo "PR for merge was not found. Make sure it was created and submitted with"
+         echo "   $0 create"
+         echo "   $0 submit"
+         echo "=============================="
+         die "Failed"
+      fi
+
+      echo "=============================="
+      echo "Please approve PR #$prnum once CI passes, but do $(red NOT) merge it on Github!"
+      echo "=============================="
+      echo
+      while true
+      do
+         echo "Type 'y' to open it in a browser window, or Ctrl-C to cancel."
+         read
+         if [ "$REPLY" = "y" ]
+         then
+            break
+         fi
+      done
+      browser https://github.com/Kong/kong/pull/$prnum
+      ;;
+   merge)
+      git checkout "$branch"
+      git pull
+      git checkout next
+      git reset --hard "$branch"
+      git push
+      git push --delete origin "$branch"
+      :
+      ;;
+   delete)
+      git checkout master
+      git branch -D "$branch"
+      ;;
+esac

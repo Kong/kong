@@ -18,6 +18,37 @@ local accepted_formats = {
 }
 
 
+local function db_export(filename, conf)
+  if pl_file.access_time(filename) then
+    error(filename .. " already exists. Will not overwrite it.")
+  end
+
+  _G.kong = kong_global.new()
+  kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
+
+  local db = assert(DB.new(conf))
+  assert(db:init_connector())
+  assert(db:connect())
+  assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
+
+  _G.kong.db = db
+
+  local fd, err = io.open(filename, "w")
+  if not fd then
+    return nil, err
+  end
+
+  local ok, err = declarative.export_from_db(fd)
+  if not ok then
+    error(err)
+  end
+
+  fd:close()
+
+  os.exit(0)
+end
+
+
 local function generate_init()
   if pl_file.access_time(INIT_FILE) then
     error(INIT_FILE .. " already exists in the current directory.\n" ..
@@ -29,34 +60,33 @@ end
 
 
 local function execute(args)
-  log.disable()
-  -- retrieve default prefix or use given one
-  local default_conf = assert(conf_loader(args.conf, {
-    prefix = args.prefix
-  }))
-  log.enable()
-
-  assert(pl_path.exists(default_conf.prefix),
-         "no such prefix: " .. default_conf.prefix)
-  assert(pl_path.exists(default_conf.kong_env),
-         "Kong is not running at " .. default_conf.prefix)
-
-  -- load <PREFIX>/kong.conf containing running node's config
-  local conf = assert(conf_loader(default_conf.kong_env))
-
   if args.command == "init" then
     generate_init()
     os.exit(0)
   end
 
-  if args.command == "db-import" then
-    args.command = "db_import"
+  log.disable()
+  -- retrieve default prefix or use given one
+  local conf = assert(conf_loader(args.conf, {
+    prefix = args.prefix
+  }))
+  log.enable()
+
+  if pl_path.exists(conf.kong_env) then
+    -- load <PREFIX>/kong.conf containing running node's config
+    conf = assert(conf_loader(conf.kong_env))
   end
+
+  args.command = args.command:gsub("%-", "_")
 
   if args.command == "db_import" and conf.database == "off" then
     error("'kong config db_import' only works with a database.\n" ..
           "When using database=off, reload your declarative configuration\n" ..
           "using the /config endpoint.")
+  end
+
+  if args.command == "db_export" and conf.database == "off" then
+    error("'kong config db_export' only works with a database.")
   end
 
   package.path = conf.lua_package_path .. ";" .. package.path
@@ -66,15 +96,19 @@ local function execute(args)
     error(err)
   end
 
+  if args.command == "db_export" then
+    return db_export(args[1] or "kong.yml", conf)
+  end
+
   if args.command == "db_import" or args.command == "parse" then
     local filename = args[1]
     if not filename then
       error("expected a declarative configuration file; see `kong config --help`")
     end
 
-    local dc_table, err_or_ver = dc:parse_file(filename, accepted_formats)
+    local dc_table, err, _, vers = dc:parse_file(filename, accepted_formats)
     if not dc_table then
-      error("Failed parsing:\n" .. err_or_ver)
+      error("Failed parsing:\n" .. err)
     end
 
     if args.command == "db_import" then
@@ -103,7 +137,7 @@ local function execute(args)
         kong_reports.configure_ping(conf)
         kong_reports.toggle(true)
 
-        local report = { decl_fmt_version = err_or_ver }
+        local report = { decl_fmt_version = vers }
         kong_reports.send("config-db-import", report)
       end
 
@@ -123,14 +157,17 @@ Usage: kong config COMMAND [OPTIONS]
 Use declarative configuration files with Kong.
 
 The available commands are:
-  init                          Generate an example config file to
-                                get you started.
+  init                                Generate an example config file to
+                                      get you started.
 
-  db_import <file>              Import a declarative config file into
-                                the Kong database.
+  db_import <file>                    Import a declarative config file into
+                                      the Kong database.
 
-  parse <file>                  Parse a declarative config file (check
-                                its syntax) but do not load it into Kong.
+  db_export <file>                    Export the Kong database into a
+                                      declarative config file.
+
+  parse <file>                        Parse a declarative config file (check
+                                      its syntax) but do not load it into Kong.
 
 Options:
  -c,--conf        (optional string)   Configuration file.
@@ -143,6 +180,7 @@ return {
   sub_commands = {
     init = true,
     db_import = true,
+    db_export = true,
     parse = true,
   },
 }

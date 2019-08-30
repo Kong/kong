@@ -16,19 +16,22 @@ local MOCK_UPSTREAM_PORT = 15555
 local MOCK_UPSTREAM_SSL_PORT = 15556
 local MOCK_UPSTREAM_STREAM_PORT = 15557
 local MOCK_UPSTREAM_STREAM_SSL_PORT = 15558
-
-require("resty.core")
+local MOCK_GRPC_UPSTREAM_PROTO_PATH = "./spec/fixtures/grpc/hello.proto"
+local BLACKHOLE_HOST = "10.255.255.255"
 
 local consumers_schema_def = require "kong.db.schema.entities.consumers"
 local services_schema_def = require "kong.db.schema.entities.services"
 local plugins_schema_def = require "kong.db.schema.entities.plugins"
 local routes_schema_def = require "kong.db.schema.entities.routes"
+local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local dc_blueprints = require "spec.fixtures.dc_blueprints"
 local declarative = require "kong.db.declarative"
 local conf_loader = require "kong.conf_loader"
 local kong_global = require "kong.global"
 local Blueprints = require "spec.fixtures.blueprints"
 local pl_stringx = require "pl.stringx"
+local constants = require "kong.constants"
+local pl_tablex = require "pl.tablex"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
@@ -36,6 +39,7 @@ local version = require "version"
 local pl_dir = require "pl.dir"
 local pl_Set = require "pl.Set"
 local Schema = require "kong.db.schema"
+local Entity = require "kong.db.schema.entity"
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local http = require "resty.http"
@@ -301,21 +305,32 @@ end
 -- when it times out.
 -- @usage -- wait 10 seconds for a file "myfilename" to appear
 -- helpers.wait_until(function() return file_exist("myfilename") end, 10)
-local function wait_until(f, timeout)
+local function wait_until(f, timeout, step)
   if type(f) ~= "function" then
     error("arg #1 must be a function", 2)
+  end
+
+  if timeout ~= nil and type(timeout) ~= "number" then
+    error("arg #2 must be a number", 2)
+  end
+
+  if step ~= nil and type(step) ~= "number" then
+    error("arg #3 must be a number", 2)
   end
 
   ngx.update_time()
 
   timeout = timeout or 5
+  step = step or 0.05
+
   local tstart = ngx.time()
   local texp = tstart + timeout
   local ok, res, err
 
   repeat
     ok, res, err = pcall(f)
-    ngx.sleep(0.05)
+    ngx.sleep(step)
+    ngx.update_time()
   until not ok or res or ngx.time() >= texp
 
   if not ok then
@@ -446,10 +461,11 @@ end
 
 --- Returns the proxy port.
 -- @param ssl (boolean) if `true` returns the ssl port
-local function get_proxy_port(ssl)
+local function get_proxy_port(ssl, http2)
   if ssl == nil then ssl = false end
+  if http2 == nil then http2 = false end
   for _, entry in ipairs(conf.proxy_listeners) do
-    if entry.ssl == ssl then
+    if entry.ssl == ssl and entry.http2 == http2 then
       return entry.port
     end
   end
@@ -458,10 +474,11 @@ end
 
 --- Returns the proxy ip.
 -- @param ssl (boolean) if `true` returns the ssl ip address
-local function get_proxy_ip(ssl)
+local function get_proxy_ip(ssl, http2)
   if ssl == nil then ssl = false end
+  if http2 == nil then http2 = false end
   for _, entry in ipairs(conf.proxy_listeners) do
-    if entry.ssl == ssl then
+    if entry.ssl == ssl and entry.http2 == http2 then
       return entry.ip
     end
   end
@@ -474,17 +491,17 @@ local function proxy_client(timeout)
   local proxy_ip = get_proxy_ip(false)
   local proxy_port = get_proxy_port(false)
   assert(proxy_ip, "No http-proxy found in the configuration")
-  return http_client(proxy_ip, proxy_port, timeout)
+  return http_client(proxy_ip, proxy_port, timeout or 60000)
 end
 
 --- returns a pre-configured `http_client` for the Kong SSL proxy port.
 -- @name proxy_ssl_client
-local function proxy_ssl_client(timeout)
+local function proxy_ssl_client(timeout, sni)
   local proxy_ip = get_proxy_ip(true)
   local proxy_port = get_proxy_port(true)
   assert(proxy_ip, "No https-proxy found in the configuration")
-  local client = http_client(proxy_ip, proxy_port, timeout)
-  assert(client:ssl_handshake())
+  local client = http_client(proxy_ip, proxy_port, timeout or 60000)
+  assert(client:ssl_handshake(nil, sni, false)) -- explicit no-verify
   return client
 end
 
@@ -499,7 +516,7 @@ local function admin_client(timeout, forced_port)
     end
   end
   assert(admin_ip, "No http-admin found in the configuration")
-  return http_client(admin_ip, forced_port or admin_port, timeout)
+  return http_client(admin_ip, forced_port or admin_port, timeout or 60000)
 end
 
 --- returns a pre-configured `http_client` for the Kong admin SSL port.
@@ -513,7 +530,7 @@ local function admin_ssl_client(timeout)
     end
   end
   assert(admin_ip, "No https-admin found in the configuration")
-  local client = http_client(admin_ip, admin_port, timeout)
+  local client = http_client(admin_ip, admin_port, timeout or 60000)
   assert(client:ssl_handshake())
   return client
 end
@@ -531,7 +548,7 @@ end
 -- @param `port`    The port where the server will be listening to
 -- @param `opts     A table of options defining the server's behavior
 -- @return `thread` A thread object
-local function tcp_server(port, opts, ...)
+local function tcp_server(port, opts)
   local threads = require "llthreads2.ex"
   opts = opts or {}
   local thread = threads.new({
@@ -539,14 +556,17 @@ local function tcp_server(port, opts, ...)
       local socket = require "socket"
       local server = assert(socket.tcp())
       server:settimeout(360)
-      assert(server:setoption('reuseaddr', true))
+      assert(server:setoption("reuseaddr", true))
       assert(server:bind("*", port))
       assert(server:listen())
       local line
-      for _ = 1, (opts.requests or 1) do
+      local oks, fails = 0, 0
+      local handshake_done = false
+      local n = opts.requests or 1
+      for _ = 1, n + 1 do
         local client = assert(server:accept())
 
-        if opts.tls then
+        if opts.tls and handshake_done then
           local ssl = require "ssl"
           local params = {
             mode = "server",
@@ -559,18 +579,69 @@ local function tcp_server(port, opts, ...)
           client:dohandshake()
         end
 
-        line = assert(client:receive())
-        client:send((opts.prefix or "") .. line .. "\n")
-        client:close()
+        local err
+        line, err = client:receive()
+        if err == "closed" then
+          fails = fails + 1
+
+        else
+          if not handshake_done then
+            assert(line == "\\START")
+            client:send("\\OK\n")
+            handshake_done = true
+
+          else
+            if line == "@DIE@" then
+              client:send(string.format("%d:%d\n", oks, fails))
+              client:close()
+              break
+            end
+
+            oks = oks + 1
+
+            client:send((opts.prefix or "") .. line .. "\n")
+          end
+
+          client:close()
+        end
       end
       server:close()
       return line
     end
   }, port, opts)
 
-  local thr = thread:start(...)
-  ngx.sleep(0.01)
+  local thr = thread:start()
+
+  -- not necessary for correctness because we do the handshake,
+  -- but avoids harmless "connection error" messages in the wait loop
+  -- in case the client is ready before the server below.
+  ngx.sleep(0.001)
+
+  local sock = ngx.socket.tcp()
+  sock:settimeout(0.01)
+  while true do
+    if sock:connect("localhost", port) then
+      sock:send("\\START\n")
+      local ok = sock:receive()
+      sock:close()
+      if ok == "\\OK" then
+        break
+      end
+    end
+  end
+  sock:close()
+
   return thr
+end
+
+local function kill_tcp_server(port)
+  local sock = ngx.socket.tcp()
+  assert(sock:connect("localhost", port))
+  assert(sock:send("@DIE@\n"))
+  local str = assert(sock:receive())
+  assert(sock:close())
+  local oks, fails = str:match("(%d+):(%d+)")
+  return tonumber(oks), tonumber(fails)
 end
 
 --- Starts a HTTP server.
@@ -679,6 +750,73 @@ local function udp_server(port, n, timeout)
   handshake:close()
 
   return thread
+end
+
+
+local function mock_reports_server()
+  local localhost = "127.0.0.1"
+  local threads = require "llthreads2.ex"
+  local server_port = constants.REPORTS.STATS_PORT
+
+  local thread = threads.new({
+    function(port, localhost)
+      local socket = require "socket"
+
+      local server = assert(socket.udp())
+      server:settimeout(1)
+      server:setoption("reuseaddr", true)
+      server:setsockname(localhost, port)
+      local data = {}
+      local started = false
+      while true do
+        local packet, recvip, recvport = server:receivefrom()
+        if packet then
+          if packet == "\\START" then
+            if not started then
+              started = true
+              server:sendto("\\OK", recvip, recvport)
+            end
+          elseif packet == "\\STOP" then
+            break
+          else
+            table.insert(data, packet)
+          end
+        end
+      end
+      server:close()
+      return data
+    end
+  }, server_port, localhost)
+  thread:start()
+
+  local handshake_skt = assert(ngx.socket.udp())
+  handshake_skt:setpeername(localhost, server_port)
+  handshake_skt:settimeout(0.1)
+
+  -- not necessary for correctness because we do the handshake,
+  -- but avoids harmless "connection error" messages in the wait loop
+  -- in case the client is ready before the server below.
+  ngx.sleep(0.05)
+
+  while true do
+    handshake_skt:send("\\START")
+    local ok = handshake_skt:receive()
+    if ok == "\\OK" then
+      break
+    end
+  end
+  handshake_skt:close()
+
+  return {
+    stop = function()
+      local skt = assert(ngx.socket.udp())
+      skt:setpeername(localhost, server_port)
+      skt:send("\\STOP")
+      skt:close()
+
+      return thread:join()
+    end
+  }
 end
 
 --------------------
@@ -1071,6 +1209,28 @@ luassert:register("assertion", "formparam", req_form_param,
                   "assertion.req_form_param.negative",
                   "assertion.req_form_param.positive")
 
+---
+-- Adds an assertion to ensure a value is greater than another.
+-- @name is_gt
+local function is_gt(state, arguments)
+  local expected = arguments[1]
+  local value = arguments[2]
+
+  arguments[1] = value
+  arguments[2] = expected
+
+  return value > expected
+end
+say:set("assertion.gt.negative", [[
+Given value (%s) should be greater than expected value (%s)
+]])
+say:set("assertion.gt.positive", [[
+Given value (%s) should not be greater than expected value (%s)
+]])
+luassert:register("assertion", "gt", is_gt,
+                  "assertion.gt.negative",
+                  "assertion.gt.positive")
+
 --- Assertion to check whether a CN is matched in an SSL cert.
 -- @param expected The CN value
 -- @param cert The cert
@@ -1101,6 +1261,156 @@ Got instead:
 luassert:register("assertion", "cn", assert_cn,
                   "assertion.cn.negative",
                   "assertion.cn.positive")
+
+
+
+local dns_mock = {}
+do
+  dns_mock.__index = dns_mock
+  dns_mock.__tostring = function(self)
+    -- fill array to prevent json encoding errors
+    for i = 1, 33 do
+      self[i] = self[i] or {}
+    end
+    local json = assert(cjson.encode(self))
+    return json
+  end
+
+
+  local TYPE_A, TYPE_AAAA, TYPE_CNAME, TYPE_SRV = 1, 28, 5, 33
+
+
+  --- Creates a new DNS mocks.
+  function dns_mock.new()
+    return setmetatable({}, dns_mock)
+  end
+
+  --- Adds an SRV record to the DNS mock.
+  -- Fields name, target, port are required. Other fields get defaults:
+  -- weight (20), ttl (600), priority (20)
+  function dns_mock:SRV(rec)
+    if self == dns_mock then
+      error("can't operate omn the class, you must create an instance", 2)
+    end
+    if getmetatable(self or {}) ~= dns_mock then
+      error("SRV method must be called using the colon notation", 2)
+    end
+    assert(rec, "Missing record parameter")
+    local name = assert(rec.name, "No name field in SRV record")
+
+    self[TYPE_SRV] = self[TYPE_SRV] or {}
+    local query_answer = self[TYPE_SRV][name]
+    if not query_answer then
+      query_answer = {}
+      self[TYPE_SRV][name] = query_answer
+    end
+
+    table.insert(query_answer, {
+      type = TYPE_SRV,
+      name = name,
+      target = assert(rec.target, "No target field in SRV record"),
+      port = assert(rec.port, "No port field in SRV record"),
+      weight = rec.weight or 10,
+      ttl = rec.ttl or 600,
+      priority = rec.priority or 20,
+      class = rec.class or 1
+    })
+    return true
+  end
+
+
+  --- Adds an A record to the DNS mock.
+  -- Fields name, address are required. Other fields get defaults:
+  -- ttl (600)
+  function dns_mock:A(rec)
+    if self == dns_mock then
+      error("can't operate omn the class, you must create an instance", 2)
+    end
+    if getmetatable(self or {}) ~= dns_mock then
+      error("A method must be called using the colon notation", 2)
+    end
+    assert(rec, "Missing record parameter")
+    local name = assert(rec.name, "No name field in A record")
+
+    self[TYPE_A] = self[TYPE_A] or {}
+    local query_answer = self[TYPE_A][name]
+    if not query_answer then
+      query_answer = {}
+      self[TYPE_A][name] = query_answer
+    end
+
+    table.insert(query_answer, {
+      type = TYPE_A,
+      name = name,
+      address = assert(rec.address, "No address field in A record"),
+      ttl = rec.ttl or 600,
+      class = rec.class or 1
+    })
+    return true
+  end
+
+
+  --- Adds an AAAA record to the DNS mock.
+  -- Fields name, address are required. Other fields get defaults:
+  -- ttl (600)
+  function dns_mock:AAAA(rec)
+    if self == dns_mock then
+      error("can't operate omn the class, you must create an instance", 2)
+    end
+    if getmetatable(self or {}) ~= dns_mock then
+      error("AAAA method must be called using the colon notation", 2)
+    end
+    assert(rec, "Missing record parameter")
+    local name = assert(rec.name, "No name field in AAAA record")
+
+    self[TYPE_AAAA] = self[TYPE_AAAA] or {}
+    local query_answer = self[TYPE_AAAA][name]
+    if not query_answer then
+      query_answer = {}
+      self[TYPE_AAAA][name] = query_answer
+    end
+
+    table.insert(query_answer, {
+      type = TYPE_AAAA,
+      name = name,
+      address = assert(rec.address, "No address field in AAAA record"),
+      ttl = rec.ttl or 600,
+      class = rec.class or 1
+    })
+    return true
+  end
+
+
+  --- Adds an CNAME record to the DNS mock.
+  -- Fields name, cname are required. Other fields get defaults:
+  -- ttl (600)
+  function dns_mock:CNAME(rec)
+    if self == dns_mock then
+      error("can't operate omn the class, you must create an instance", 2)
+    end
+    if getmetatable(self or {}) ~= dns_mock then
+      error("CNAME method must be called using the colon notation", 2)
+    end
+    assert(rec, "Missing record parameter")
+    local name = assert(rec.name, "No name field in CNAME record")
+
+    self[TYPE_CNAME] = self[TYPE_CNAME] or {}
+    local query_answer = self[TYPE_CNAME][name]
+    if not query_answer then
+      query_answer = {}
+      self[TYPE_CNAME][name] = query_answer
+    end
+
+    table.insert(query_answer, {
+      type = TYPE_CNAME,
+      name = name,
+      cname = assert(rec.cname, "No cname field in CNAME record"),
+      ttl = rec.ttl or 600,
+      class = rec.class or 1
+    })
+    return true
+  end
+end
 
 ----------------
 -- Shell helpers
@@ -1261,7 +1571,7 @@ Schema.new(consumers_schema_def)
 Schema.new(services_schema_def)
 Schema.new(routes_schema_def)
 
-local plugins_schema = assert(Schema.new(plugins_schema_def))
+local plugins_schema = assert(Entity.new(plugins_schema_def))
 
 local function validate_plugin_config_schema(config, schema_def)
   assert(plugins_schema:new_subschema(schema_def.name, schema_def))
@@ -1296,7 +1606,47 @@ local function get_version()
 end
 
 
-local function start_kong(env, tables, preserve_prefix)
+local function render_fixtures(conf, env, prefix, fixtures)
+
+  if fixtures and (fixtures.http_mock or fixtures.stream_mock) then
+    -- prepare the prefix so we get the full config in the
+    -- hidden `.kong_env` file, including test specified env vars etc
+    assert(kong_exec("prepare --conf " .. conf, env))
+    local render_config = assert(conf_loader(prefix .. "/.kong_env"))
+
+    for _, mocktype in ipairs { "http_mock", "stream_mock" } do
+
+      for filename, contents in pairs(fixtures[mocktype] or {}) do
+        -- render the file using the full configuration
+        contents = assert(prefix_handler.compile_conf(render_config, contents))
+
+        -- write file to prefix
+        filename = prefix .. "/" .. filename .. "." .. mocktype
+        assert(pl_utils.writefile(filename, contents))
+      end
+    end
+  end
+
+  if fixtures and fixtures.dns_mock then
+    -- write the mock records to the prefix
+    assert(getmetatable(fixtures.dns_mock) == dns_mock,
+           "expected dns_mock to be of a helpers.dns_mock class")
+    assert(pl_utils.writefile(prefix .. "/dns_mock_records.json",
+                              tostring(fixtures.dns_mock)))
+
+    -- add the mock resolver to the path to ensure the records are loaded
+    local path
+    local key = "lua_package_path"
+    path, key = lookup(env, key) -- case insensitive lookup
+
+    -- if no existing path setting then end with double semi-colons
+    env[key] = "spec/fixtures/mocks/lua-resty-dns/?.lua;" .. (path or ";")
+  end
+
+  return true
+end
+
+local function start_kong(env, tables, preserve_prefix, fixtures)
   if tables ~= nil and type(tables) ~= "table" then
     error("arg #2 must be a list of tables to truncate")
   end
@@ -1327,6 +1677,8 @@ local function start_kong(env, tables, preserve_prefix)
     env.declarative_config = config_yml
   end
 
+  assert(render_fixtures(TEST_CONF_PATH .. nginx_conf, env, prefix, fixtures))
+
   return kong_exec("start --conf " .. TEST_CONF_PATH .. nginx_conf, env)
 end
 
@@ -1341,7 +1693,8 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc)
 
   wait_pid(running_conf.nginx_pid)
 
-  if not preserve_prefix then
+  -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
+  if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
     clean_prefix(prefix)
   end
 
@@ -1354,21 +1707,166 @@ end
 
 
 -- Restart Kong, reusing declarative config when using database=off
-local function restart_kong(env, tables)
+local function restart_kong(env, tables, fixtures)
   stop_kong(env.prefix, true, true)
-  return start_kong(env, tables, true)
+  return start_kong(env, tables, true, fixtures)
 end
 
 
-local function make_yaml_file(content)
-  local filename = os.tmpname()
-  os.rename(filename, filename .. ".yml")
-  filename = filename .. ".yml"
+local function make_yaml_file(content, filename)
+  if not filename then
+    filename = os.tmpname()
+    os.rename(filename, filename .. ".yml")
+    filename = filename .. ".yml"
+  end
   local fd = assert(io.open(filename, "w"))
   assert(fd:write(unindent(content)))
   assert(fd:write("\n")) -- ensure last line ends in newline
   assert(fd:close())
   return filename
+end
+
+-- Generate grpcurl flags from a table of `flag-value`. If `value` is not a
+-- string, value is ignored and `flag` is passed as is.
+local function gen_grpcurl_opts(opts_t)
+  local opts_l = {}
+
+  for opt, val in pairs(opts_t) do
+    if val ~= false then
+      opts_l[#opts_l + 1] = opt .. " " .. (type(val) == "string" and val or "")
+    end
+  end
+
+  return table.concat(opts_l, " ")
+end
+
+
+--- Creates an HTTP/2 client, based on the lua-http library.
+-- @name http2_client
+-- @param host hostname to connect to
+-- @param port port to connect to
+-- @param tls boolean indicating whether to establish a tls session
+-- @return http2 client
+local function http2_client(host, port, tls)
+  local host = assert(host)
+  local port = assert(port)
+  tls = tls or false
+
+  local request = require "http.request"
+  local req = request.new_from_uri({
+    scheme = tls and "https" or "http",
+    host = host,
+    port = port,
+  })
+  req.version = 2
+  req.tls = tls
+
+  if tls then
+    local http_tls = require "http.tls"
+    local openssl_ctx = require "openssl.ssl.context"
+    local n_ctx = http_tls.new_client_context()
+    n_ctx:setVerify(openssl_ctx.VERIFY_NONE)
+    req.ctx = n_ctx
+  end
+
+  local meta = getmetatable(req) or {}
+
+  meta.__call = function(req, opts)
+    local headers = opts and opts.headers
+    local timeout = opts and opts.timeout
+
+    for k, v in pairs(headers or {}) do
+      req.headers:upsert(k, v)
+    end
+
+    local headers, stream = req:go(timeout)
+    local body = stream:get_body_as_string()
+    return body, headers
+  end
+
+  return setmetatable(req, meta)
+end
+
+--- returns a pre-configured cleartext `http2_client` for the Kong proxy port.
+-- @name proxy_client_h2c
+local function proxy_client_h2c()
+  local proxy_ip = get_proxy_ip(false, true)
+  local proxy_port = get_proxy_port(false, true)
+  assert(proxy_ip, "No http-proxy found in the configuration")
+  return http2_client(proxy_ip, proxy_port)
+end
+
+--- returns a pre-configured TLS `http2_client` for the Kong SSL proxy port.
+-- @name proxy_client_h2
+local function proxy_client_h2()
+  local proxy_ip = get_proxy_ip(true, true)
+  local proxy_port = get_proxy_port(true, true)
+  assert(proxy_ip, "No https-proxy found in the configuration")
+  return http2_client(proxy_ip, proxy_port, true)
+end
+
+
+--- Creates a gRPC client, based on the grpcurl CLI.
+-- @name grpc_client
+-- @param host hostname to connect to
+-- @param port port to connect to
+-- @param opts table with options supported by grpcurl
+-- @return grpc client
+local function grpc_client(host, port, opts)
+  local host = assert(host)
+  local port = assert(tostring(port))
+
+  opts = opts or {}
+  if not opts["-proto"] then
+    opts["-proto"] = MOCK_GRPC_UPSTREAM_PROTO_PATH
+  end
+
+  return setmetatable({
+    opts = opts,
+    cmd_template = string.format("bin/grpcurl %%s %s:%s %%s", host, port)
+
+  }, {
+    __call = function(t, args)
+      local service = assert(args.service)
+      local body = args.body
+
+      local t_body = type(body)
+      if t_body ~= "nil" then
+        if t_body == "table" then
+          body = cjson.encode(body)
+        end
+
+        args.opts["-d"] = string.format("'%s'", body)
+      end
+
+      local opts = gen_grpcurl_opts(pl_tablex.merge(t.opts, args.opts, true))
+      local ok, err, out = exec(string.format(t.cmd_template, opts, service))
+
+      if ok then
+        return ok, out
+      else
+        return nil, err
+      end
+    end
+  })
+end
+
+--- returns a pre-configured `grpc_client` for the Kong proxy port.
+-- @name proxy_client_grpc
+local function proxy_client_grpc(host, port)
+  local proxy_ip = host or get_proxy_ip(false, true)
+  local proxy_port = port or get_proxy_port(false, true)
+  assert(proxy_ip, "No http-proxy found in the configuration")
+  return grpc_client(proxy_ip, proxy_port, {["-plaintext"] = true})
+end
+
+--- returns a pre-configured `grpc_client` for the Kong SSL proxy port.
+-- @name proxy_client_grpcs
+local function proxy_client_grpcs(host, port)
+  local proxy_ip = host or get_proxy_ip(true, true)
+  local proxy_port = port or get_proxy_port(true, true)
+  assert(proxy_ip, "No https-proxy found in the configuration")
+  return grpc_client(proxy_ip, proxy_port, {["-insecure"] = true})
 end
 
 
@@ -1409,19 +1907,33 @@ return {
 
   mock_upstream_stream_port     = MOCK_UPSTREAM_STREAM_PORT,
   mock_upstream_stream_ssl_port = MOCK_UPSTREAM_STREAM_SSL_PORT,
+  mock_grpc_upstream_proto_path = MOCK_GRPC_UPSTREAM_PROTO_PATH,
+
+  redis_host = os.getenv("KONG_SPEC_REDIS_HOST") or "127.0.0.1",
+
+  blackhole_host = BLACKHOLE_HOST,
 
   -- Kong testing helpers
   execute = exec,
+  dns_mock = dns_mock,
   kong_exec = kong_exec,
   get_version = get_version,
   http_client = http_client,
+  grpc_client = grpc_client,
+  http2_client = http2_client,
   wait_until = wait_until,
   tcp_server = tcp_server,
   udp_server = udp_server,
+  kill_tcp_server = kill_tcp_server,
   http_server = http_server,
+  mock_reports_server = mock_reports_server,
   get_proxy_ip = get_proxy_ip,
   get_proxy_port = get_proxy_port,
   proxy_client = proxy_client,
+  proxy_client_grpc = proxy_client_grpc,
+  proxy_client_grpcs = proxy_client_grpcs,
+  proxy_client_h2c = proxy_client_h2c,
+  proxy_client_h2 = proxy_client_h2,
   admin_client = admin_client,
   proxy_ssl_client = proxy_ssl_client,
   admin_ssl_client = admin_ssl_client,

@@ -2,6 +2,7 @@ local constants = require "kong.constants"
 local utils = require "kong.tools.utils"
 local DAO = require "kong.db.dao"
 local plugin_loader = require "kong.db.schema.plugin_loader"
+local BasePlugin = require "kong.plugins.base_plugin"
 
 
 local Plugins = {}
@@ -14,6 +15,7 @@ local tostring = tostring
 local ngx_log = ngx.log
 local ngx_WARN = ngx.WARN
 local ngx_DEBUG = ngx.DEBUG
+
 
 
 local function has_a_common_protocol_with_route(plugin, route)
@@ -76,6 +78,11 @@ local function check_protocols_match(self, plugin)
 end
 
 
+local function sort_by_handler_priority(a, b)
+  return (a.handler.PRIORITY or 0) > (b.handler.PRIORITY or 0)
+end
+
+
 function Plugins:insert(entity, options)
   local ok, err, err_t = check_protocols_match(self, entity)
   if not ok then
@@ -86,7 +93,7 @@ end
 
 
 function Plugins:update(primary_key, entity, options)
-  local rbw_entity = self.strategy:select(primary_key, options) -- ignore errors
+  local rbw_entity = self.super.select(self, primary_key, options) -- ignore errors
   if rbw_entity then
     entity = self.schema:merge_values(entity, rbw_entity)
   end
@@ -100,10 +107,6 @@ end
 
 
 function Plugins:upsert(primary_key, entity, options)
-  local rbw_entity = self.strategy:select(primary_key, options) -- ignore errors
-  if rbw_entity then
-    entity = self.schema:merge_values(entity, rbw_entity)
-  end
   local ok, err, err_t = check_protocols_match(self, entity)
   if not ok then
     return nil, err, err_t
@@ -150,12 +153,39 @@ local function load_plugin_handler(plugin)
 end
 
 
-local function load_plugin_entity_strategy(schema, db)
+local function load_plugin_entity_strategy(schema, db, plugin)
   local Strategy = require(fmt("kong.db.strategies.%s", db.strategy))
   local strategy, err = Strategy.new(db.connector, schema, db.errors)
   if not strategy then
     return nil, err
   end
+
+  local custom_strat = fmt("kong.plugins.%s.strategies.%s.%s",
+                           plugin, db.strategy, schema.name)
+  local exists, mod = utils.load_module_if_exists(custom_strat)
+  if exists and mod then
+    local parent_mt = getmetatable(strategy)
+    local mt = {
+      __index = function(t, k)
+        -- explicit parent
+        if k == "super" then
+          return parent_mt
+        end
+
+        -- override
+        local f = mod[k]
+        if f then
+          return f
+        end
+
+        -- parent fallback
+        return parent_mt[k]
+      end
+    }
+
+    setmetatable(strategy, mt)
+  end
+
   db.strategies[schema.name] = strategy
 
   local dao, err = DAO.new(db, schema, strategy, db.errors)
@@ -174,12 +204,12 @@ local function plugin_entity_loader(db)
       return nil, err
     end
 
-    load_plugin_entity_strategy(schema, db)
+    load_plugin_entity_strategy(schema, db, plugin)
   end
 end
 
 
-local function load_plugin(self, plugin, plugin_list)
+local function load_plugin(self, plugin)
   local db = self.db
 
   if constants.DEPRECATED_PLUGINS[plugin] then
@@ -208,11 +238,6 @@ local function load_plugin(self, plugin, plugin_list)
 
   ngx_log(ngx_DEBUG, "Loading plugin: ", plugin)
 
-  plugin_list[#plugin_list+1] = {
-    name = plugin,
-    handler = handler(),
-  }
-
   if db.strategy then -- skip during tests
     local _, err = plugin_loader.load_entities(plugin, db.errors,
                                                plugin_entity_loader(db))
@@ -221,25 +246,38 @@ local function load_plugin(self, plugin, plugin_list)
     end
   end
 
-  return true
+  return handler
 end
 
 
---- Load subschemas for all configured plugins into the Plugins
--- entity, and produce a list of these plugins with their names
--- and initialized handlers.
+--- Load subschemas for all configured plugins into the Plugins entity. It has two side effects:
+--  * It makes the Plugin sub-schemas available for the rest of the application
+--  * It initializes the Plugin.
 -- @param plugin_set a set of plugin names.
--- @return an array of tables, or nil and an error message.
+-- @return true if success, or nil and an error message.
 function Plugins:load_plugin_schemas(plugin_set)
-  local plugin_list = {}
+  self.handlers = nil
+
+  local handlers = {}
   local errs
 
   -- load installed plugins
   for plugin in pairs(plugin_set) do
-    local ok, err = load_plugin(self, plugin, plugin_list)
-    if not ok then
+    local handler, err = load_plugin(self, plugin)
+
+    if handler then
+      if type(handler.is) == "function" and handler:is(BasePlugin) then
+        -- Backwards-compatibility for 0.x and 1.x plugins inheriting from the
+        -- BasePlugin class.
+        -- TODO: deprecate & remove
+        handler = handler()
+      end
+
+      handlers[plugin] = handler
+
+    else
       errs = errs or {}
-      table.insert(errs, "on plugin '" .. plugin .. "': " .. err)
+      table.insert(errs, "on plugin '" .. plugin .. "': " .. tostring(err))
     end
   end
 
@@ -247,7 +285,29 @@ function Plugins:load_plugin_schemas(plugin_set)
     return nil, "error loading plugin schemas: " .. table.concat(errs, "; ")
   end
 
-  return plugin_list
+  self.handlers = handlers
+
+  return true
+end
+
+
+-- Requires Plugins:load_plugin_schemas to be loaded first
+-- @return an array where each element has the format { name = "keyauth", handler = function() .. end }. Or nil, error
+function Plugins:get_handlers()
+  if not self.handlers then
+    return nil, "Please invoke Plugins:load_plugin_schemas() before invoking Plugins:get_plugin_handlers"
+  end
+
+  local list = {}
+  local len = 0
+  for name, handler in pairs(self.handlers) do
+    len = len + 1
+    list[len] = { name = name, handler = handler }
+  end
+
+  table.sort(list, sort_by_handler_priority)
+
+  return list
 end
 
 

@@ -1,8 +1,13 @@
 return {
   postgres = {
     up = [[
-      ALTER TABLE IF EXISTS ONLY "response_ratelimiting_metrics"
-        ALTER "period_date" TYPE TIMESTAMP WITH TIME ZONE USING "period_date" AT TIME ZONE 'UTC';
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "response_ratelimiting_metrics"
+          ALTER "period_date" TYPE TIMESTAMP WITH TIME ZONE USING "period_date" AT TIME ZONE 'UTC';
+      EXCEPTION WHEN UNDEFINED_COLUMN THEN
+        -- Do nothing, accept existing state
+      END$$;
     ]],
     teardown = function(connector)
       assert(connector:connect_migrations())

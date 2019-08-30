@@ -7,7 +7,7 @@ use Cwd qw(cwd);
 our $cwd = cwd();
 
 our $HttpConfig = <<_EOC_;
-    lua_package_path \'$cwd/?/init.lua;;\';
+    lua_package_path \'$cwd/?.lua;$cwd/?/init.lua;;\';
 
     init_by_lua_block {
         local log = ngx.log
@@ -23,8 +23,6 @@ our $HttpConfig = <<_EOC_;
             local v = require "jit.v"
             v.on(outfile)
         end
-
-        require "resty.core"
 
         if os.getenv("PDK_PHASE_CHECKS_LUACOV") == "1" then
             require("luacov.runner")("t/phase_checks.luacov")

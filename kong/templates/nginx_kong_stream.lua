@@ -7,7 +7,13 @@ lua_package_path '${{LUA_PACKAGE_PATH}};;';
 lua_package_cpath '${{LUA_PACKAGE_CPATH}};;';
 lua_shared_dict stream_kong                5m;
 lua_shared_dict stream_kong_db_cache       ${{MEM_CACHE_SIZE}};
-lua_shared_dict stream_kong_db_cache_miss 12m;
+> if database == "off" then
+lua_shared_dict stream_kong_db_cache_2     ${{MEM_CACHE_SIZE}};
+> end
+lua_shared_dict stream_kong_db_cache_miss   12m;
+> if database == "off" then
+lua_shared_dict stream_kong_db_cache_miss_2 12m;
+> end
 lua_shared_dict stream_kong_locks          8m;
 lua_shared_dict stream_kong_process_events 5m;
 lua_shared_dict stream_kong_cluster_events 5m;
@@ -31,11 +37,6 @@ init_by_lua_block {
             return shared["stream_"..k]
         end,
     })
-
-    -- XXX: lua-resty-core doesn't load the ffi regex module in the stream
-    -- subsystem. The code it binds is part of the http module. However
-    -- without it we can't use regex during the init phase.
-    require "resty.core.regex"
 
     Kong = require 'kong'
     Kong.init()

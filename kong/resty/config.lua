@@ -1,6 +1,5 @@
 local ffi = require "ffi"
 local openssl_ssl_context = require "openssl.ssl.context"
-require "resty.core.base" -- defines ngx_str_t
 
 
 local has_patch = false

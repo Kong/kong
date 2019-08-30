@@ -6,12 +6,18 @@ local function setup_it_block()
   -- keep track of created semaphores
   local semaphores = {}
 
+  local my_cache = {}
+
   mocker.setup(finally, {
 
     ngx = {
       log = function()
         -- avoid stdout output during test
       end,
+      timer = {
+        at = function() end,
+        every = function() end,
+      }
     },
 
     kong = {
@@ -22,6 +28,25 @@ local function setup_it_block()
       response = {
         exit = function() end,
       },
+      worker_events = {
+        register = function() end,
+      },
+      cluster_events = {
+        subscribe = function() end,
+      },
+      configuration = {
+        database = "dummy",
+        router_consistency = "strict",
+      },
+      db = {
+        strategy = "dummy",
+      },
+      cache = {
+        _cache = my_cache,
+        get = function(_, k)
+          return my_cache[k] or "1"
+        end
+      }
     },
 
     modules = {
@@ -35,11 +60,6 @@ local function setup_it_block()
         cluster_events = {
           subscribe = function() end,
         },
-        cache = {
-          get = function()
-            return "1"
-          end
-        }
       }},
 
       { "kong.runloop.balancer", {
@@ -75,6 +95,14 @@ local function setup_it_block()
   })
 end
 
+
+local mock_router = {
+  exec = function()
+    return nil
+  end
+}
+
+
 describe("runloop handler", function()
   describe("router rebuilds", function()
 
@@ -84,15 +112,18 @@ describe("runloop handler", function()
       local semaphores = require "ngx.semaphore"._semaphores
       local handler = require "kong.runloop.handler"
 
-      local check_router_rebuild_spy = spy.new(function()
+      local update_router_spy = spy.new(function()
         return nil, "error injected by test (feel free to ignore :) )"
       end)
 
-      handler._set_check_router_rebuild(check_router_rebuild_spy)
+      handler.init_worker.before({})
+
+      handler._set_router(mock_router)
+      handler._set_update_router(update_router_spy)
 
       handler.access.before({})
 
-      assert.spy(check_router_rebuild_spy).was_called(1)
+      assert.spy(update_router_spy).was_called(1)
 
       -- check semaphore
       assert.equal(1, semaphores[1].value)
@@ -104,19 +135,19 @@ describe("runloop handler", function()
       local semaphores = require "ngx.semaphore"._semaphores
       local handler = require "kong.runloop.handler"
 
-      local check_router_rebuild_spy = spy.new(function()
-        return handler.check_router_rebuild()
-      end)
+      handler.init_worker.before()
 
-      handler._set_check_router_rebuild(check_router_rebuild_spy)
+      local update_router_spy = spy.new(function() end)
+      handler._set_update_router(update_router_spy)
+      handler._set_router(mock_router)
 
+      -- call it once to create a semaphore
       handler.access.before({})
 
-      -- check semaphore
-      assert.equal(1, semaphores[1].value)
+      assert.spy(update_router_spy).was_called(1)
 
-      -- was called even if semaphore timed out on acquisition
-      assert.spy(check_router_rebuild_spy).was_called(1)
+      -- force a router rebuild
+      handler._set_router_version("old")
 
       -- cause failure to acquire semaphore
       semaphores[1].wait = function()
@@ -126,10 +157,103 @@ describe("runloop handler", function()
       handler.access.before({})
 
       -- was called even if semaphore timed out on acquisition
-      assert.spy(check_router_rebuild_spy).was_called(2)
+      assert.spy(update_router_spy).was_called(2)
 
       -- check semaphore
       assert.equal(1, semaphores[1].value)
+    end)
+
+    it("does not call update_router if router_consistency is eventual", function()
+      setup_it_block()
+
+      kong.configuration.router_consistency = "eventual"
+
+      local handler = require "kong.runloop.handler"
+
+      local update_router_spy = spy.new(function() end)
+      handler._set_update_router(update_router_spy)
+      handler._set_router(mock_router)
+
+      handler.init_worker.before()
+
+      handler.access.before({})
+
+      assert.spy(update_router_spy).was_called(0)
+      assert.equal(mock_router, handler._get_updated_router())
+    end)
+
+    it("calls build_router if router version changes and router_consistency is strict", function()
+      setup_it_block()
+
+      kong.configuration.router_consistency = "strict"
+
+      local handler = require "kong.runloop.handler"
+
+      local latest_router
+
+      local build_router_spy = spy.new(function()
+        handler._set_router_version(kong.cache:get("router:version"))
+        latest_router = {
+          exec = function()
+            return nil
+          end
+        }
+        handler._set_router(latest_router)
+      end)
+      handler._set_build_router(build_router_spy)
+
+      handler.init_worker.before()
+
+      handler.access.before({})
+
+      assert.spy(build_router_spy).was_called(1)
+      assert.equal(latest_router, handler._get_updated_router())
+
+      local saved_router = latest_router
+
+      kong.cache._cache["router:version"] = "new_version"
+
+      handler.access.before({})
+
+      assert.spy(build_router_spy).was_called(2)
+      assert.equal(latest_router, handler._get_updated_router())
+      assert.not_equal(saved_router, latest_router)
+    end)
+
+    it("does not call build_router if router version does not change and router_consistency is strict", function()
+      setup_it_block()
+
+      kong.configuration.router_consistency = "strict"
+
+      local handler = require "kong.runloop.handler"
+
+      local latest_router
+
+      local build_router_spy = spy.new(function()
+        handler._set_router_version(kong.cache:get("router:version"))
+        latest_router = {
+          exec = function()
+            return nil
+          end
+        }
+        handler._set_router(latest_router)
+      end)
+      handler._set_build_router(build_router_spy)
+      handler._set_router(mock_router)
+
+      handler.init_worker.before()
+
+      handler.access.before({})
+
+      assert.spy(build_router_spy).was_called(1)
+      assert.equal(latest_router, handler._get_updated_router())
+
+      local saved_router = latest_router
+
+      handler.access.before({})
+
+      assert.spy(build_router_spy).was_called(1)
+      assert.equal(saved_router, latest_router)
     end)
 
   end)

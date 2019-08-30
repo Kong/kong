@@ -1,6 +1,3 @@
-require("resty.core")
-
-
 local ran_before
 
 
@@ -14,9 +11,17 @@ return function(options)
   ran_before = true
 
 
-
   options = options or {}
   local meta = require "kong.meta"
+
+
+  if options.cli then
+    -- disable the _G write guard alert log introduced in OpenResty 1.15.8.1
+    -- when in CLI or when running tests in resty-cli
+    --local _G_mt = getmetatable(_G)
+    setmetatable(_G, nil)
+  end
+
 
   _G._KONG = {
     _NAME = meta._NAME,
@@ -72,6 +77,12 @@ return function(options)
       end
       function SharedDict:new()
         return setmetatable({data = {}}, {__index = self})
+      end
+      function SharedDict:capacity()
+        return 0
+      end
+      function SharedDict:free_space()
+        return 0
       end
       function SharedDict:get(key)
         return self.data[key] and self.data[key].value, nil
@@ -280,9 +291,11 @@ return function(options)
 
     local function resolve_connect(f, sock, host, port, opts)
       if sub(host, 1, 5) ~= "unix:" then
-        host, port = toip(host, port)
+        local try_list
+        host, port, try_list = toip(host, port)
         if not host then
-          return nil, "[toip() name lookup failed]: " .. tostring(port)
+          return nil, "[cosocket] DNS resolution failed: " .. tostring(port) ..
+                      ". Tried: " .. tostring(try_list)
         end
       end
 

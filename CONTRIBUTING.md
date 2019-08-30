@@ -28,7 +28,6 @@ Consult the Table of Contents below, and jump to the desired section.
   - [Contributor T-shirt](#contributor-t-shirt)
 - [Code style](#code-style)
 
-
 ## Where to seek for help?
 
 ### Enterprise Edition
@@ -46,7 +45,6 @@ https://konghq.com/kong-enterprise-edition/ or contact us at
 [sales@konghq.com](mailto:sales@konghq.com).
 
 [Back to TOC](#table-of-contents)
-
 
 ### Community Edition
 
@@ -68,7 +66,6 @@ more than willing to assist you on those channels!
 
 [Back to TOC](#table-of-contents)
 
-
 ## Where to report bugs?
 
 Feel free to [submit an issue](https://github.com/Kong/kong/issues/new) on
@@ -86,7 +83,6 @@ on how to best do so.
 
 [Back to TOC](#table-of-contents)
 
-
 ## Where to submit feature requests?
 
 You can [submit an issue](https://github.com/Kong/kong/issues/new) for feature
@@ -96,7 +92,6 @@ You are also welcome to propose patches adding new features. See the section
 on [Submitting a patch](#submitting-a-patch) for details.
 
 [Back to TOC](#table-of-contents)
-
 
 ## Contributing
 
@@ -117,7 +112,6 @@ patch](#submitting-a-patch) section.
 
 [Back to TOC](#table-of-contents)
 
-
 ### Improving the documentation
 
 The documentation hosted at https://docs.konghq.com is open source and built
@@ -129,7 +123,6 @@ The repository is also hosted on GitHub at:
 https://github.com/Kong/docs.konghq.com/
 
 [Back to TOC](#table-of-contents)
-
 
 ### Proposing a new plugin
 
@@ -204,7 +197,6 @@ not forget to include your name if you are an external contributor. :wink:
 
 [Back to TOC](#table-of-contents)
 
-
 #### Git branches
 
 We work on two branches: `master`, where non-breaking changes land, and `next`,
@@ -225,7 +217,6 @@ naming scheme when pushing your branch(es):
 - `docs/foo-bar` for updates to the README.md, this file, or similar documents
 
 [Back to TOC](#table-of-contents)
-
 
 #### Commit atomicity
 
@@ -250,7 +241,6 @@ also help you respect this mantra (see the below section).
 
 [Back to TOC](#table-of-contents)
 
-
 #### Commit message format
 
 To maintain a healthy Git history, we ask of you that you write your commit
@@ -272,7 +262,6 @@ Here is a template of what your commit message should look like:
 <footer>
 ```
 
-
 ##### Type
 
 The type of your commit indicates what type of change this commit is about. The
@@ -292,7 +281,6 @@ accepted types are:
 - **chore**: Maintenance changes related to code cleaning that isn't
   considered part of a refactor, build process updates, dependency bumps, or
   auxiliary tools and libraries updates (LuaRocks, Travis-ci, etc...).
-
 
 ##### Scope
 
@@ -316,7 +304,6 @@ it is at your discretion, but here are some of the most frequent ones:
 - `*`: When the change affects too many parts of the codebase at once (this
   should be rare and avoided)
 
-
 ##### Subject
 
 Your subject should contain a succinct description of the change. It should be
@@ -325,7 +312,6 @@ written so that:
 - It uses the present, imperative tense: "fix typo", and not "fixed" or "fixes"
 - It is **not** capitalized: "fix typo", and not "Fix typo"
 - It does **not** include a period. :smile:
-
 
 ##### Body
 
@@ -336,12 +322,10 @@ motivation, the chosen implementation, and justify it.
 As previously mentioned, lines in the commit messages should not exceed 72
 characters.
 
-
 ##### Footer
 
 The footer is the ideal place to link to related material about the change:
 related GitHub issues, Pull Requests, fixed bug reports, etc...
-
 
 ##### Examples
 
@@ -375,7 +359,6 @@ the case.
 
 [Back to TOC](#table-of-contents)
 
-
 #### Static linting
 
 As mentioned in the guidelines to submit a patch, the linter must succeed. We
@@ -393,7 +376,6 @@ $ luacheck .
 ```
 
 [Back to TOC](#table-of-contents)
-
 
 #### Writing tests
 
@@ -441,7 +423,6 @@ assert.same(t1, t2)
 ```
 
 [Back to TOC](#table-of-contents)
-
 
 #### Writing performant code
 
@@ -512,7 +493,6 @@ language you are using. :smile:
 
 [Back to TOC](#table-of-contents)
 
-
 ### Contributor T-shirt
 
 If your Pull Request to [Kong/kong](https://github.com/Kong/kong) was
@@ -527,7 +507,6 @@ Proudly wear your T-shirt and show it to us by tagging
 ![Kong Contributor T-shirt](https://konghq.com/wp-content/uploads/2018/04/100-contributor-t-shirt-1024x768.jpg)
 
 [Back to TOC](#table-of-contents)
-
 
 ## Code style
 
@@ -549,7 +528,6 @@ the recommended style are welcome!**
 
 [Back to TOC](#table-of-contents)
 
-
 ### Table of Contents - Code style
 
 - [Modules](#modules)
@@ -558,7 +536,6 @@ the recommended style are welcome!**
 - [Strings](#strings)
 - [Functions](#functions)
 - [Conditional expressions](#conditional-expressions)
-
 
 ### Modules
 
@@ -587,7 +564,6 @@ return _M
 
 [Back to code style TOC](#table-of-contents---code-style)
 
-
 ### Variables
 
 When naming a variable or function, **do** use snake_case:
@@ -611,7 +587,6 @@ local MAX_LEN = 100
 ```
 
 [Back to code style TOC](#table-of-contents---code-style)
-
 
 ### Tables
 
@@ -643,8 +618,28 @@ local t = { foo = "hello", bar = "world" }
 
 [Back to code style TOC](#table-of-contents---code-style)
 
-
 ### Strings
+
+**Do** favor the use of double quotes in all Lua code (plain files and
+`*_by_lua_block` directives):
+
+```lua
+-- bad
+local str = 'hello'
+
+-- good
+local str = "hello"
+```
+
+If a string contains double quotes, **do** favor long bracket strings:
+
+```lua
+-- bad
+local str = "message: \"hello\""
+
+-- good
+local str = [[message: "hello"]]
+```
 
 When using the concatenation operator, **do** insert spaces around it:
 
@@ -657,7 +652,6 @@ local str = "hello " .. "world"
 ```
 
 [Back to code style TOC](#table-of-contents---code-style)
-
 
 ### Functions
 
@@ -739,7 +733,6 @@ local str = string.format("SELECT * FROM users WHERE first_name = '%s'",
 ```
 
 [Back to code style TOC](#table-of-contents---code-style)
-
 
 ### Conditional expressions
 

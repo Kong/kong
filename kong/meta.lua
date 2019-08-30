@@ -1,6 +1,6 @@
 local version = setmetatable({
   major = 1,
-  minor = 1,
+  minor = 3,
   patch = 0,
   --suffix = "",
 }, {
@@ -18,6 +18,6 @@ return {
   -- third-party dependencies' required version, as they would be specified
   -- to lua-version's `set()` in the form {from, to}
   _DEPENDENCIES = {
-    nginx = {"1.13.6.2"},
+    nginx = {"1.15.8.1"},
   }
 }

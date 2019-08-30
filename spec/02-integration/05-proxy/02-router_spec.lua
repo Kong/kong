@@ -34,7 +34,7 @@ local function insert_routes(bp, routes)
     service = bp.named_services:insert(service)
     route.service = service
 
-    if not route.protocol then
+    if not route.protocols then
       route.protocols = { "http" }
     end
 
@@ -336,6 +336,211 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(routes[5].id,           res.headers["kong-route-id"])
         assert.equal(routes[5].service.id,   res.headers["kong-service-id"])
         assert.equal(routes[5].service.name, res.headers["kong-service-name"])
+      end)
+    end)
+
+    describe("use cases #grpc", function()
+      local routes
+      local service = {
+        url = "grpc://localhost:15002"
+      }
+
+      local proxy_client_grpc
+      local proxy_client_grpcs
+
+      lazy_setup(function()
+        routes = insert_routes(bp, {
+          {
+            protocols = { "grpc", "grpcs" },
+            hosts = { "grpc1" },
+            service = service,
+          },
+          {
+            protocols = { "grpc", "grpcs" },
+            hosts = { "grpc2" },
+            service = service,
+          },
+          {
+            protocols = { "grpc", "grpcs" },
+            paths = { "/hello.HelloService/SayHello" },
+            service = service,
+          },
+          {
+            protocols = { "grpc", "grpcs" },
+            paths = { "/hello.HelloService/LotsOfReplies" },
+            service = service,
+          },
+          {
+            protocols = { "grpc", "grpcs" },
+            hosts = { "*.grpc.com" },
+            service = service,
+          }
+        })
+
+        proxy_client_grpc = helpers.proxy_client_grpc()
+        proxy_client_grpcs = helpers.proxy_client_grpcs()
+      end)
+
+      lazy_teardown(function()
+        remove_routes(strategy, routes)
+      end)
+
+      it("restricts a route to its 'hosts' if specified", function()
+        local ok, resp = proxy_client_grpc({
+          service = "hello.HelloService.SayHello",
+          body = {
+            greeting = "world!"
+          },
+          opts = {
+            ["-v"] = true,
+            ["-H"] = "'kong-debug: 1'",
+            ["-authority"] = "grpc1",
+          }
+        })
+        assert.truthy(ok)
+        assert.truthy(resp)
+        assert.matches("kong-route-id: " .. routes[1].id, resp, nil, true)
+
+        ok, resp = proxy_client_grpc({
+          service = "hello.HelloService.SayHello",
+          body = {
+            greeting = "world!"
+          },
+          opts = {
+            ["-v"] = true,
+            ["-H"] = "'kong-debug: 1'",
+            ["-authority"] = "grpc2",
+          }
+        })
+        assert.truthy(ok)
+        assert.truthy(resp)
+        assert.matches("kong-route-id: " .. routes[2].id, resp, nil, true)
+      end)
+
+      it("restricts a route to its 'hosts' if specified (grpcs)", function()
+        local ok, resp = proxy_client_grpcs({
+          service = "hello.HelloService.SayHello",
+          body = {
+            greeting = "world!"
+          },
+          opts = {
+            ["-v"] = true,
+            ["-H"] = "'kong-debug: 1'",
+            ["-authority"] = "grpc1",
+          }
+        })
+        assert.truthy(ok)
+        assert.truthy(resp)
+        assert.matches("kong-route-id: " .. routes[1].id, resp, nil, true)
+
+        ok, resp = proxy_client_grpc({
+          service = "hello.HelloService.SayHello",
+          body = {
+            greeting = "world!"
+          },
+          opts = {
+            ["-v"] = true,
+            ["-H"] = "'kong-debug: 1'",
+            ["-authority"] = "grpc2",
+          }
+        })
+        assert.truthy(ok)
+        assert.truthy(resp)
+        assert.matches("kong-route-id: " .. routes[2].id, resp, nil, true)
+      end)
+
+      it("restricts a route to its wildcard 'hosts' if specified", function()
+        local ok, resp = proxy_client_grpc({
+          service = "hello.HelloService.SayHello",
+          body = {
+            greeting = "world!"
+          },
+          opts = {
+            ["-v"] = true,
+            ["-H"] = "'kong-debug: 1'",
+            ["-authority"] = "service1.grpc.com",
+          }
+        })
+        assert.truthy(ok)
+        assert.truthy(resp)
+        assert.matches("kong-route-id: " .. routes[5].id, resp, nil, true)
+      end)
+
+      it("restricts a route to its wildcard 'hosts' if specified (grpcs)", function()
+        local ok, resp = proxy_client_grpcs({
+          service = "hello.HelloService.SayHello",
+          body = {
+            greeting = "world!"
+          },
+          opts = {
+            ["-v"] = true,
+            ["-H"] = "'kong-debug: 1'",
+            ["-authority"] = "service1.grpc.com",
+          }
+        })
+        assert.truthy(ok)
+        assert.truthy(resp)
+        assert.matches("kong-route-id: " .. routes[5].id, resp, nil, true)
+      end)
+
+      it("restricts a route to its 'paths' if specified", function()
+        local ok, resp = proxy_client_grpc({
+          service = "hello.HelloService.SayHello",
+          body = {
+            greeting = "world!"
+          },
+          opts = {
+            ["-v"] = true,
+            ["-H"] = "'kong-debug: 1'",
+          }
+        })
+        assert.truthy(ok)
+        assert.truthy(resp)
+        assert.matches("kong-route-id: " .. routes[3].id, resp, nil, true)
+
+        ok, resp = proxy_client_grpcs({
+          service = "hello.HelloService.LotsOfReplies",
+          body = {
+            greeting = "world!"
+          },
+          opts = {
+            ["-v"] = true,
+            ["-H"] = "'kong-debug: 1'",
+          }
+        })
+        assert.truthy(ok)
+        assert.truthy(resp)
+        assert.matches("kong-route-id: " .. routes[4].id, resp, nil, true)
+      end)
+
+      it("restricts a route to its 'paths' if specified (grpcs)", function()
+        local ok, resp = proxy_client_grpcs({
+          service = "hello.HelloService.SayHello",
+          body = {
+            greeting = "world!"
+          },
+          opts = {
+            ["-v"] = true,
+            ["-H"] = "'kong-debug: 1'",
+          }
+        })
+        assert.truthy(ok)
+        assert.truthy(resp)
+        assert.matches("kong-route-id: " .. routes[3].id, resp, nil, true)
+
+        ok, resp = proxy_client_grpcs({
+          service = "hello.HelloService.LotsOfReplies",
+          body = {
+            greeting = "world!"
+          },
+          opts = {
+            ["-v"] = true,
+            ["-H"] = "'kong-debug: 1'",
+          }
+        })
+        assert.truthy(ok)
+        assert.truthy(resp)
+        assert.matches("kong-route-id: " .. routes[4].id, resp, nil, true)
       end)
     end)
 
@@ -713,7 +918,7 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-      describe(" = true", function()
+      describe("= true", function()
         it("forwards request Host", function()
           local res = assert(proxy_client:send {
             method  = "GET",
@@ -808,6 +1013,365 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(routes[2].id,           res.headers["kong-route-id"])
         assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
         assert.equal(routes[2].service.name, res.headers["kong-service-name"])
+      end)
+    end)
+
+    describe("[snis] for HTTPs connections", function()
+      local routes
+      local proxy_ssl_client
+
+      lazy_setup(function()
+        routes = insert_routes(bp, {
+          {
+            protocols = { "https" },
+            snis = { "www.example.org" },
+            service = {
+              name = "service_behind_www.example.org"
+            },
+          },
+          {
+            protocols = { "https" },
+            snis = { "example.org" },
+            service = {
+              name = "service_behind_example.org"
+            },
+          },
+        })
+      end)
+
+      lazy_teardown(function()
+        remove_routes(strategy, routes)
+      end)
+
+      after_each(function()
+        if proxy_ssl_client then
+          proxy_ssl_client:close()
+        end
+      end)
+
+      it("matches a Route based on its 'snis' attribute", function()
+        proxy_ssl_client = helpers.proxy_ssl_client(nil, "www.example.org")
+
+        local res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = { ["kong-debug"] = 1 },
+        })
+        assert.res_status(200, res)
+        assert.equal("service_behind_www.example.org",
+                     res.headers["kong-service-name"])
+
+        res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/status/201",
+          headers = { ["kong-debug"] = 1 },
+        })
+        assert.res_status(201, res)
+        assert.equal("service_behind_www.example.org",
+                     res.headers["kong-service-name"])
+
+        proxy_ssl_client:close()
+
+        proxy_ssl_client = helpers.proxy_ssl_client(nil, "example.org")
+
+        local res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = { ["kong-debug"] = 1 },
+        })
+        assert.res_status(200, res)
+        assert.equal("service_behind_example.org",
+                     res.headers["kong-service-name"])
+
+        res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/status/201",
+          headers = { ["kong-debug"] = 1 },
+        })
+        assert.res_status(201, res)
+        assert.equal("service_behind_example.org",
+                     res.headers["kong-service-name"])
+      end)
+    end)
+
+    describe("[headers]", function()
+      local routes
+
+      after_each(function()
+        remove_routes(strategy, routes)
+      end)
+
+      it("matches by header", function()
+        routes = insert_routes(bp, {
+          {
+            headers = { version = { "v1", "v2" } },
+          },
+          {
+            headers = { version = { "v3" } },
+          },
+        })
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            ["Host"]       = "domain.org",
+            ["version"]    = "v1",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+
+        assert.equal(routes[1].id,           res.headers["kong-route-id"])
+        assert.equal(routes[1].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[1].service.name, res.headers["kong-service-name"])
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            ["Host"]       = "domain.org",
+            ["version"]    = "v3",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+
+        assert.equal(routes[2].id,           res.headers["kong-route-id"])
+        assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[2].service.name, res.headers["kong-service-name"])
+      end)
+
+      it("matches headers in a case-insensitive way", function()
+        routes = insert_routes(bp, {
+          {
+            headers = { Version = { "v1", "v2" } },
+          },
+          {
+            headers = { version = { "V3" } },
+          },
+        })
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            ["Host"]       = "domain.org",
+            ["version"]    = "v1",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+
+        assert.equal(routes[1].id,           res.headers["kong-route-id"])
+        assert.equal(routes[1].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[1].service.name, res.headers["kong-service-name"])
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            ["Host"]       = "domain.org",
+            ["Version"]    = "v3",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+
+        assert.equal(routes[2].id,           res.headers["kong-route-id"])
+        assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[2].service.name, res.headers["kong-service-name"])
+      end)
+
+      it("prioritizes Routes with more headers", function()
+        routes = insert_routes(bp, {
+          {
+            headers = {
+              version = { "v1", "v2" },
+            },
+          },
+          {
+            headers = {
+              version = { "v3" },
+              location = { "us-east" },
+            },
+          },
+          {
+            headers = {
+              version = { "v3" },
+            },
+          },
+        })
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            ["Host"]       = "domain.org",
+            ["version"]    = "v3",
+            ["location"]   = "us-east",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+
+        assert.equal(routes[2].id,           res.headers["kong-route-id"])
+        assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[2].service.name, res.headers["kong-service-name"])
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            ["Host"]       = "domain.org",
+            ["version"]    = "v3",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+
+        assert.equal(routes[3].id,           res.headers["kong-route-id"])
+        assert.equal(routes[3].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[3].service.name, res.headers["kong-service-name"])
+      end)
+    end)
+
+    describe("[paths] + [headers]", function()
+      local routes
+
+      lazy_setup(function()
+        routes = insert_routes(bp, {
+          {
+            strip_path = true,
+            headers = {
+              version = { "v1", "v2" },
+            },
+            paths = { "/root" },
+          },
+          {
+            strip_path = true,
+            headers = {
+              version = { "v1", "v2" },
+            },
+            paths = { "/root/fixture" },
+          },
+          {
+            strip_path = true,
+            headers = {
+              version = { "v1", "v2" },
+              location = { "us-east" },
+            },
+            paths = { "/root" },
+          },
+        })
+      end)
+
+      lazy_teardown(function()
+        remove_routes(strategy, routes)
+      end)
+
+      it("prioritizes Routes with more headers", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/root/fixture/get",
+          headers = {
+            ["version"]    = "v2",
+            ["location"]   = "us-east",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(404, res)
+
+        assert.equal(routes[3].id,           res.headers["kong-route-id"])
+        assert.equal(routes[3].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[3].service.name, res.headers["kong-service-name"])
+      end)
+
+      it("prioritizes longer paths if same number of headers", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/root/fixture/get",
+          headers = {
+            ["version"]    = "v2",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+
+        assert.equal(routes[2].id,           res.headers["kong-route-id"])
+        assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[2].service.name, res.headers["kong-service-name"])
+      end)
+    end)
+
+    describe("[snis] for gRPCs connections", function()
+      local routes
+      local grpcs_proxy_ssl_client
+
+      lazy_setup(function()
+        routes = insert_routes(bp, {
+          {
+            protocols = { "grpcs" },
+            snis = { "grpcs_1.test" },
+            service = {
+              name = "grpcs_1",
+              url = "grpcs://localhost:15003",
+            },
+          },
+          {
+            protocols = { "grpcs" },
+            snis = { "grpcs_2.test" },
+            service = {
+              name = "grpcs_2",
+              url = "grpcs://localhost:15003",
+            },
+          },
+        })
+      end)
+
+      lazy_teardown(function()
+        remove_routes(strategy, routes)
+      end)
+
+      it("matches a Route based on its 'snis' attribute", function()
+        grpcs_proxy_ssl_client = helpers.proxy_client_grpcs("grpcs_1.test")
+
+        local ok, resp = assert(grpcs_proxy_ssl_client({
+          service = "hello.HelloService.SayHello",
+          body = {
+            greeting = "world!"
+          },
+          opts = {
+            ["-H"] = "'kong-debug: 1'",
+            ["-v"] = true, -- verbose so we get response headers
+          }
+        }))
+        assert.truthy(ok)
+        assert.truthy(resp)
+        assert.matches("kong-service-name: grpcs_1", resp, nil, true)
+
+        grpcs_proxy_ssl_client = helpers.proxy_client_grpcs("grpcs_2.test")
+        local ok, resp = assert(grpcs_proxy_ssl_client({
+          service = "hello.HelloService.SayHello",
+          body = {
+            greeting = "world!"
+          },
+          opts = {
+            ["-H"] = "'kong-debug: 1'",
+            ["-v"] = true, -- verbose so we get response headers
+          }
+        }))
+        assert.truthy(ok)
+        assert.truthy(resp)
+        assert.matches("kong-service-name: grpcs_2", resp, nil, true)
       end)
     end)
 
@@ -994,7 +1558,7 @@ for _, strategy in helpers.each_strategy() do
               },
               service = {
                 name = "plain_" .. i,
-                path = args[1]
+                path = args[1],
               }
             }
           end
@@ -1008,32 +1572,27 @@ for _, strategy in helpers.each_strategy() do
           end
         end)
 
-        local function check(i, request_uri, expected_uri)
-          return function()
-            local res = assert(proxy_client:send {
-              method  = "GET",
-              path    = request_uri,
+        for i, args in ipairs(checks) do
+          local config = string.format("route.strip_path=%s", args[5] and "on" or "off")
+
+          local description
+          if args[2] then
+            description = string.format("(%d) (%s) %s with uri %s when requesting %s",
+                                        i, config, args[1], args[2], args[3])
+          else
+            description = string.format("(%d) (%s) %s with host %s when requesting %s",
+                                        i, config, args[1], "localbin-" .. i .. ".com", args[3])
+          end
+
+          it(description, function()
+            local res = assert(proxy_client:get(args[3], {
               headers = {
                 ["Host"] = "localbin-" .. i .. ".com",
               }
-            })
+            }))
 
-            local json = assert.res_status(200, res)
-            local data = cjson.decode(json)
-
-            assert.equal(expected_uri, data.vars.request_uri)
-          end
-        end
-
-        for i, args in ipairs(checks) do
-          local config = "(strip = " .. (args[5] and "on" or "off") .. ")"
-
-          it("(" .. i .. ") " .. config ..
-             " is not appended to upstream url " .. args[1] ..
-             " (with " .. (args[2] and ("uri " .. args[2]) or
-             ("host test" .. i .. ".domain.org")) .. ")" ..
-             " when requesting " .. args[3], function()
-            check(i, args[3], args[4])
+            local data = assert.response(res).has.jsonbody()
+            assert.equal(args[4], data.vars.request_uri)
           end)
         end
       end)
@@ -1059,7 +1618,7 @@ for _, strategy in helpers.each_strategy() do
               },
               service = {
                 name = "make_regex_" .. i,
-                path = args[1]
+                path = args[1],
               }
             }
           end
@@ -1071,33 +1630,23 @@ for _, strategy in helpers.each_strategy() do
           remove_routes(strategy, routes)
         end)
 
-        local function check(i, request_uri, expected_uri)
-          return function()
-            local res = assert(proxy_client:send {
-              method  = "GET",
-              path    = request_uri,
-              headers = {
-                ["Host"] = "localbin-" .. i .. ".com",
-              }
-            })
-
-            local json = assert.res_status(200, res)
-            local data = cjson.decode(json)
-
-            assert.equal(expected_uri, data.vars.request_uri)
-          end
-        end
-
         for i, args in ipairs(checks) do
           if args[2] then  -- skip if hostbased match
-            local config = "(strip = " .. (args[5] and "on" or "off") .. ")"
 
-            it("(" .. i .. ") " .. config ..
-              " is not appended to upstream url " .. args[1] ..
-              " (with " .. (args[2] and ("uri " .. make_a_regex(args[2])) or
-              ("host test" .. i .. ".domain.org")) .. ")" ..
-              " when requesting " .. args[3], function()
-              check(i, args[3], args[4])
+            local config = string.format("route.strip_path=%s", args[5] and "on" or "off")
+
+            local description = string.format("(%d) (%s) %s with uri %s when requesting %s",
+                                              i, config, args[1], make_a_regex(args[2]), args[3])
+
+            it(description, function()
+              local res = assert(proxy_client:get(args[3], {
+                headers = {
+                  ["Host"] = "localbin-" .. i .. ".com",
+                }
+              }))
+
+              local data = assert.response(res).has.jsonbody()
+              assert.equal(args[4], data.vars.request_uri)
             end)
           end
         end
@@ -1132,5 +1681,61 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
     end)
+  end)
+
+  describe("Router at startup [#" .. strategy .. "]" , function()
+    local proxy_client
+    local route
+
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "apis",
+      })
+
+      route = bp.routes:insert({
+        methods    = { "GET" },
+        protocols  = { "http" },
+        strip_path = false,
+      })
+
+      assert(helpers.start_kong({
+        database = strategy,
+        nginx_worker_processes = 4,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    after_each(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+    end)
+
+    it("uses configuration from datastore or declarative_config", function()
+      for _ = 1, 1000 do
+        proxy_client = helpers.proxy_client()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = { ["kong-debug"] = 1 },
+        })
+
+        assert.response(res).has_status(200)
+
+        assert.equal(route.service.name, res.headers["kong-service-name"])
+        proxy_client:close()
+      end
+    end)
+
   end)
 end

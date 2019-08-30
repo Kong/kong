@@ -25,6 +25,7 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
+        "snis",
         "certificates",
         "snis",
       })
@@ -398,15 +399,22 @@ for _, strategy in helpers.each_strategy() do
       end
 
       lazy_setup(function()
-        -- populate cache with a miss on
-        -- both nodes
+        -- populate cache with misses on both nodes
         local cert_1 = get_cert(8443, "ssl-example.com")
         local cert_2 = get_cert(9443, "ssl-example.com")
+        local cert_wildcard_1 = get_cert(8443, "test.wildcard.com")
+        local cert_wildcard_2 = get_cert(9443, "test.wildcard.com")
+        local cert_wildcard_3 = get_cert(8443, "wildcard.org")
+        local cert_wildcard_4 = get_cert(9443, "wildcard.org")
 
         -- if you get an error when running these, you likely have an outdated version of openssl installed
         -- to update in osx: https://github.com/Kong/kong/pull/2776#issuecomment-320275043
         assert.cn("localhost", cert_1)
         assert.cn("localhost", cert_2)
+        assert.cn("localhost", cert_wildcard_1)
+        assert.cn("localhost", cert_wildcard_2)
+        assert.cn("localhost", cert_wildcard_3)
+        assert.cn("localhost", cert_wildcard_4)
       end)
 
       it("on certificate+sni create", function()
@@ -563,6 +571,169 @@ for _, strategy in helpers.each_strategy() do
 
         local cert_2 = get_cert(9443, "updated-sn.com")
         assert.cn("localhost", cert_2)
+      end)
+
+      describe("wildcard snis", function()
+        it("on create", function()
+          local admin_res = admin_client_1:post("/certificates", {
+            body   = {
+              cert = ssl_fixtures.cert_alt,
+              key  = ssl_fixtures.key_alt,
+              snis = { "*.wildcard.com" },
+            },
+            headers = { ["Content-Type"] = "application/json" }
+          })
+          assert.res_status(201, admin_res)
+
+          local admin_res = admin_client_1:post("/certificates", {
+            body   = {
+              cert = ssl_fixtures.cert_alt_alt,
+              key  = ssl_fixtures.key_alt_alt,
+              snis = { "wildcard.*" },
+            },
+            headers = { ["Content-Type"] = "application/json" }
+          })
+          assert.res_status(201, admin_res)
+
+          -- no need to wait for workers propagation (lua-resty-worker-events)
+          -- because our test instance only has 1 worker
+
+          local cert = get_cert(8443, "test.wildcard.com")
+          assert.cn("ssl-alt.com", cert)
+          cert = get_cert(8443, "test2.wildcard.com")
+          assert.cn("ssl-alt.com", cert)
+
+          wait_for_propagation()
+
+          cert = get_cert(9443, "test.wildcard.com")
+          assert.cn("ssl-alt.com", cert)
+          cert = get_cert(9443, "test2.wildcard.com")
+          assert.cn("ssl-alt.com", cert)
+
+          cert = get_cert(8443, "wildcard.org")
+          assert.cn("ssl-alt-alt.com", cert)
+          cert = get_cert(8443, "wildcard.com")
+          assert.cn("ssl-alt-alt.com", cert)
+        end)
+
+        it("on certificate update", function()
+          -- update our certificate *without* updating the
+          -- attached sni
+
+          local admin_res = assert(admin_client_1:send {
+            method = "PATCH",
+            path   = "/certificates/%2A.wildcard.com",
+            body   = {
+              cert = ssl_fixtures.cert_alt_alt,
+              key  = ssl_fixtures.key_alt_alt,
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+          assert.res_status(200, admin_res)
+
+          -- no need to wait for workers propagation (lua-resty-worker-events)
+          -- because our test instance only has 1 worker
+
+          local cert = get_cert(8443, "test.wildcard.com")
+          assert.cn("ssl-alt-alt.com", cert)
+          cert = get_cert(8443, "test2.wildcard.com")
+          assert.cn("ssl-alt-alt.com", cert)
+
+          wait_for_propagation()
+
+          local cert = get_cert(9443, "test.wildcard.com")
+          assert.cn("ssl-alt-alt.com", cert)
+          cert = get_cert(9443, "test2.wildcard.com")
+          assert.cn("ssl-alt-alt.com", cert)
+        end)
+
+        it("on sni update via id", function()
+          local admin_res = admin_client_1:get("/snis/%2A.wildcard.com")
+          local body = assert.res_status(200, admin_res)
+          local sni = assert(cjson.decode(body))
+
+          local admin_res = admin_client_1:patch("/snis/" .. sni.id, {
+            body    = { name = "*.wildcard_updated.com" },
+            headers = { ["Content-Type"] = "application/json" },
+          })
+          assert.res_status(200, admin_res)
+
+          local cert_1_old = get_cert(8443, "test.wildcard.com")
+          assert.cn("localhost", cert_1_old)
+          cert_1_old = get_cert(8443, "test2.wildcard.com")
+          assert.cn("localhost", cert_1_old)
+
+          local cert_1_new = get_cert(8443, "test.wildcard_updated.com")
+          assert.cn("ssl-alt-alt.com", cert_1_new)
+          cert_1_new = get_cert(8443, "test2.wildcard_updated.com")
+          assert.cn("ssl-alt-alt.com", cert_1_new)
+
+          wait_for_propagation()
+
+          local cert_2_old = get_cert(9443, "test.wildcard.com")
+          assert.cn("localhost", cert_2_old)
+          cert_2_old = get_cert(9443, "test2.wildcard.com")
+          assert.cn("localhost", cert_2_old)
+
+          local cert_2_new = get_cert(9443, "test.wildcard_updated.com")
+          assert.cn("ssl-alt-alt.com", cert_2_new)
+          cert_2_new = get_cert(9443, "test2.wildcard_updated.com")
+          assert.cn("ssl-alt-alt.com", cert_2_new)
+        end)
+
+        it("on sni update via name", function()
+          local admin_res = admin_client_1:patch("/snis/%2A.wildcard_updated.com", {
+            body    = { name = "*.wildcard.org" },
+            headers = { ["Content-Type"] = "application/json" },
+          })
+          assert.res_status(200, admin_res)
+
+          local cert_1_old = get_cert(8443, "test.wildcard_updated.com")
+          assert.cn("localhost", cert_1_old)
+          cert_1_old = get_cert(8443, "test2.wildcard_updated.com")
+          assert.cn("localhost", cert_1_old)
+
+          local cert_1_new = get_cert(8443, "test.wildcard.org")
+          assert.cn("ssl-alt-alt.com", cert_1_new)
+          cert_1_new = get_cert(8443, "test2.wildcard.org")
+          assert.cn("ssl-alt-alt.com", cert_1_new)
+
+          wait_for_propagation()
+
+          local cert_2_old = get_cert(9443, "test.wildcard_updated.com")
+          assert.cn("localhost", cert_2_old)
+          cert_2_old = get_cert(9443, "test2.wildcard_updated.com")
+          assert.cn("localhost", cert_2_old)
+
+          local cert_2_new = get_cert(9443, "test.wildcard.org")
+          assert.cn("ssl-alt-alt.com", cert_2_new)
+          cert_2_new = get_cert(9443, "test2.wildcard.org")
+          assert.cn("ssl-alt-alt.com", cert_2_new)
+        end)
+
+        it("on certificate delete", function()
+          -- delete our certificate
+
+          local admin_res = admin_client_1:delete("/certificates/%2A.wildcard.org")
+          assert.res_status(204, admin_res)
+
+          -- no need to wait for workers propagation (lua-resty-worker-events)
+          -- because our test instance only has 1 worker
+
+          local cert_1 = get_cert(8443, "test.wildcard.org")
+          assert.cn("localhost", cert_1)
+          cert_1 = get_cert(8443, "test2.wildcard.org")
+          assert.cn("localhost", cert_1)
+
+          wait_for_propagation()
+
+          local cert_2 = get_cert(9443, "test.wildcard.org")
+          assert.cn("localhost", cert_2)
+          cert_2 = get_cert(9443, "test2.wildcard.org")
+          assert.cn("localhost", cert_2)
+        end)
       end)
     end)
 
@@ -866,4 +1037,154 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
+
+  -- declarative_config directive should be ignored in database tests:
+  -- regression test for #4508.
+  describe("declarative_config is ignored in DB mode [#" .. strategy .. "]", function()
+
+    local admin_client_1
+    local admin_client_2
+
+    local proxy_client_1
+    local proxy_client_2
+
+    local wait_for_propagation
+
+    local service_fixture
+
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "apis",
+        "routes",
+        "services",
+        "plugins",
+        "certificates",
+        "snis",
+      })
+
+      -- insert single fixture Service
+      service_fixture = bp.services:insert()
+
+      local db_update_propagation = strategy == "cassandra" and 0.1 or 0
+
+      assert(helpers.start_kong {
+        log_level             = "debug",
+        prefix                = "servroot1",
+        database              = strategy,
+        proxy_listen          = "0.0.0.0:8000, 0.0.0.0:8443 ssl",
+        admin_listen          = "0.0.0.0:8001",
+        db_update_frequency   = POLL_INTERVAL,
+        db_update_propagation = db_update_propagation,
+        nginx_conf            = "spec/fixtures/custom_nginx.template",
+        declarative_config    = "ignore-me.yml",
+      })
+
+      assert(helpers.start_kong {
+        log_level             = "debug",
+        prefix                = "servroot2",
+        database              = strategy,
+        proxy_listen          = "0.0.0.0:9000, 0.0.0.0:9443 ssl",
+        admin_listen          = "0.0.0.0:9001",
+        db_update_frequency   = POLL_INTERVAL,
+        db_update_propagation = db_update_propagation,
+        declarative_config    = "ignore-me.yml",
+      })
+
+      admin_client_1 = helpers.http_client("127.0.0.1", 8001)
+      admin_client_2 = helpers.http_client("127.0.0.1", 9001)
+      proxy_client_1 = helpers.http_client("127.0.0.1", 8000)
+      proxy_client_2 = helpers.http_client("127.0.0.1", 9000)
+
+      wait_for_propagation = function()
+        ngx.sleep(POLL_INTERVAL * 2 + db_update_propagation * 2)
+      end
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong("servroot1", true)
+      helpers.stop_kong("servroot2", true)
+    end)
+
+    before_each(function()
+      admin_client_1 = helpers.http_client("127.0.0.1", 8001)
+      admin_client_2 = helpers.http_client("127.0.0.1", 9001)
+      proxy_client_1 = helpers.http_client("127.0.0.1", 8000)
+      proxy_client_2 = helpers.http_client("127.0.0.1", 9000)
+    end)
+
+    after_each(function()
+      admin_client_1:close()
+      admin_client_2:close()
+      proxy_client_1:close()
+      proxy_client_2:close()
+    end)
+
+    describe("propagation works correctly", function()
+      lazy_setup(function()
+        -- populate cache with a miss on
+        -- both nodes
+
+        local res_1 = assert(proxy_client_1:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            host = "propagation.test",
+          }
+        })
+        assert.res_status(404, res_1)
+
+        local res_2 = assert(proxy_client_2:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            host = "propagation.test",
+          }
+        })
+        assert.res_status(404, res_2)
+      end)
+
+      it("on create", function()
+        local admin_res = assert(admin_client_1:send {
+          method  = "POST",
+          path    = "/routes",
+          body    = {
+            protocols = { "http" },
+            hosts     = { "propagation.test" },
+            service   = {
+              id = service_fixture.id,
+            }
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, admin_res)
+
+        -- no need to wait for workers propagation (lua-resty-worker-events)
+        -- because our test instance only has 1 worker
+
+        local res_1 = assert(proxy_client_1:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            host = "propagation.test",
+          }
+        })
+        assert.res_status(200, res_1)
+
+
+        wait_for_propagation()
+
+        local res_2 = assert(proxy_client_2:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            host = "propagation.test",
+          }
+        })
+        assert.res_status(200, res_2)
+      end)
+    end)
+  end)
+
 end

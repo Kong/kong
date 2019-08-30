@@ -149,10 +149,15 @@ function Connector:is_014()
   -- Implemented pre 1.0 release with Postgres/Cassandra connectors.
   -- All future connectors (if any) won't have to provide a mean to
   -- migrate from 0.14, hence do not have to implement this function.
-  return {
-    is_eq_014 = false,
-    is_gt_014 = true,
-  }
+  return {}
+end
+
+
+function Connector:are_014_apis_present()
+  -- Implemented pre 1.0 release with Postgres/Cassandra connectors.
+  -- All future connectors (if any) won't have to provide a mean to
+  -- migrate from 0.14, hence do not have to implement this function.
+  return false
 end
 
 

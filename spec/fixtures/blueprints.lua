@@ -87,7 +87,7 @@ function _M.new(db)
   local sni_seq = new_sequence("server-name-%d")
   res.snis = new_blueprint(db.snis, function(overrides)
     return {
-      name        = sni_seq:next(),
+      name        = overrides.name or sni_seq:next(),
       certificate = overrides.certificate or res.certificates:insert(),
     }
   end)
@@ -96,6 +96,12 @@ function _M.new(db)
     return {
       cert = ssl_fixtures.cert,
       key  = ssl_fixtures.key,
+    }
+  end)
+
+  res.ca_certificates = new_blueprint(db.ca_certificates, function()
+    return {
+      cert = ssl_fixtures.cert_ca,
     }
   end)
 

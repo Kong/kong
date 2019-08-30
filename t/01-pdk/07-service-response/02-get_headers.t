@@ -236,7 +236,6 @@ qq{
 
             local headers, err = pdk.service.response.get_headers()
             if err then
-            print("here: ", err)
                 ngx.arg[1] = err
                 ngx.arg[2] = true
             end

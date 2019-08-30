@@ -5,7 +5,12 @@ return {
 
     teardown = function(connector)
       assert(connector:query([[
-        DELETE FROM plugins WHERE name = 'galileo';
+        DO $$
+        BEGIN
+          DELETE FROM plugins WHERE name = 'galileo';
+        EXCEPTION WHEN UNDEFINED_COLUMN OR UNDEFINED_TABLE THEN
+          -- Do nothing, accept existing state
+        END$$;
       ]]))
     end,
   },

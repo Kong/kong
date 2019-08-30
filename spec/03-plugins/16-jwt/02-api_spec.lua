@@ -417,7 +417,89 @@ for _, strategy in helpers.each_strategy() do
           --assert.is_nil(json_2.offset) -- last page
         end)
       end)
+
+      describe("POST", function()
+        lazy_setup(function()
+          db:truncate("jwt_secrets")
+        end)
+
+        it("does not create jwt credential when missing consumer", function()
+          local res = assert(admin_client:send {
+            method = "POST",
+            path = "/jwts",
+            body = {
+              key = "key",
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same("schema violation (consumer: required field missing)", json.message)
+        end)
+
+        it("creates jwt credential", function()
+          local res = assert(admin_client:send {
+            method = "POST",
+            path = "/jwts",
+            body = {
+              key = "key",
+              consumer = {
+                id = consumer.id
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("key", json.key)
+        end)
+      end)
     end)
+
+    describe("/jwts/:jwt_key_or_id", function()
+      describe("PUT", function()
+        lazy_setup(function()
+          db:truncate("jwt_secrets")
+        end)
+
+        it("does not create jwt credential when missing consumer", function()
+          local res = assert(admin_client:send {
+            method = "PUT",
+            path = "/jwts/key",
+            body = { },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same("schema violation (consumer: required field missing)", json.message)
+        end)
+
+        it("creates jwt credential", function()
+          local res = assert(admin_client:send {
+            method = "PUT",
+            path = "/jwts/key",
+            body = {
+              consumer = {
+                id = consumer.id
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("key", json.key)
+        end)
+      end)
+    end)
+
     describe("/jwts/:jwt_key_or_id/consumer", function()
       describe("GET", function()
         local credential

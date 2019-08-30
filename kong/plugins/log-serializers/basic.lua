@@ -1,4 +1,5 @@
 local tablex = require "pl.tablex"
+local ngx_ssl = require "ngx.ssl"
 
 local _M = {}
 
@@ -17,6 +18,16 @@ function _M.serialize(ngx)
     }
   end
 
+  local request_tls
+  local request_tls_ver = ngx_ssl.get_tls1_version_str()
+  if request_tls_ver then
+    request_tls = {
+      version = request_tls_ver,
+      cipher = var.ssl_cipher,
+      client_verify = var.ssl_client_verify,
+    }
+  end
+
   local request_uri = var.request_uri or ""
 
   return {
@@ -26,7 +37,8 @@ function _M.serialize(ngx)
       querystring = req.get_uri_args(), -- parameters, as a table
       method = req.get_method(), -- http method
       headers = req.get_headers(),
-      size = var.request_length
+      size = var.request_length,
+      tls = request_tls
     },
     upstream_uri = var.upstream_uri,
     response = {

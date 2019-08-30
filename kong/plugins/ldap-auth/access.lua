@@ -50,7 +50,17 @@ local function ldap_authenticate(given_username, given_password, conf)
 
   sock:settimeout(conf.timeout)
 
-  ok, err = sock:connect(conf.ldap_host, conf.ldap_port)
+  local opts
+
+  -- keep TLS connections in a separate pool to avoid reusing non-secure
+  -- connections and vice-versa, because STARTTLS use the same port
+  if conf.start_tls then
+    opts = {
+      pool = conf.ldap_host .. ":" .. conf.ldap_port .. ":starttls"
+    }
+  end
+
+  ok, err = sock:connect(conf.ldap_host, conf.ldap_port, opts)
   if not ok then
     kong.log.err("failed to connect to ", conf.ldap_host, ":",
                    tostring(conf.ldap_port), ": ", err)
@@ -58,11 +68,22 @@ local function ldap_authenticate(given_username, given_password, conf)
   end
 
   if conf.start_tls then
-    local success, err = ldap.start_tls(sock)
-    if not success then
-      return false, err
+    -- convert connection to a STARTTLS connection only if it is a new connection
+    local count, err = sock:getreusedtimes()
+    if not count then
+      -- connection was closed, just return instead
+      return nil, err
     end
 
+    if count == 0 then
+      local ok, err = ldap.start_tls(sock)
+      if not ok then
+        return nil, err
+      end
+    end
+  end
+
+  if conf.start_tls or conf.ldaps then
     _, err = sock:sslhandshake(true, conf.ldap_host, conf.verify_ldap_host)
     if err ~= nil then
       return false, fmt("failed to do SSL handshake with %s:%s: %s",

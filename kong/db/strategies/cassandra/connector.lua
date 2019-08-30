@@ -36,7 +36,7 @@ function CassandraConnector.new(kong_config)
     package.loaded["resty.dns.client"] = nil
     package.loaded["resty.dns.resolver"] = nil
 
-    ngx.socket.tcp = function(...)
+    ngx.socket.tcp = function(...) -- luacheck: ignore
       local tcp = require("socket").tcp(...)
       return setmetatable({}, {
         __newindex = function(_, k, v)
@@ -63,7 +63,7 @@ function CassandraConnector.new(kong_config)
       })
     end
 
-    ngx.socket.udp = function(...)
+    ngx.socket.udp = function(...) -- luacheck: ignore
       local udp = require("socket").udp(...)
       return setmetatable({}, {
         __newindex = function(_, k, v)
@@ -97,10 +97,10 @@ function CassandraConnector.new(kong_config)
     local dns = dns_tools(kong_config)
 
     for i, cp in ipairs(kong_config.cassandra_contact_points) do
-      local ip, err = dns.toip(cp)
+      local ip, err, try_list = dns.toip(cp)
       if not ip then
-        log.error("could not resolve Cassandra contact point '%s': %s",
-                  cp, err)
+        log.error("[cassandra] DNS resolution failed for contact " ..
+                  "point '%s': %s. Tried: %s", cp, err, tostring(try_list))
 
       else
         log.debug("resolved Cassandra contact point '%s' to: %s", cp, ip)
@@ -115,8 +115,8 @@ function CassandraConnector.new(kong_config)
     package.loaded["kong.tools.dns"] = nil
     package.loaded["socket"] = nil
 
-    ngx.socket.udp = udp_old
-    ngx.socket.tcp = tcp_old
+    ngx.socket.udp = udp_old -- luacheck: ignore
+    ngx.socket.tcp = tcp_old -- luacheck: ignore
   end
 
   if #resolved_contact_points == 0 then
@@ -175,6 +175,15 @@ function CassandraConnector.new(kong_config)
     cluster_options.lb_policy = policy.new(kong_config.cassandra_local_datacenter)
   end
 
+  local serial_consistency
+
+  if string.find(kong_config.cassandra_lb_policy, "DCAware", nil, true) then
+    serial_consistency = cassandra.consistencies.local_serial
+
+  else
+    serial_consistency = cassandra.consistencies.serial
+  end
+
   local cluster, err = Cluster.new(cluster_options)
   if not cluster then
     return nil, err
@@ -188,7 +197,7 @@ function CassandraConnector.new(kong_config)
         cassandra.consistencies[kong_config.cassandra_consistency:lower()],
       read_consistency =
         cassandra.consistencies[kong_config.cassandra_consistency:lower()],
-      serial_consistency = cassandra.consistencies.serial, -- TODO: or local_serial
+      serial_consistency = serial_consistency,
     },
     connection = nil, -- created by connect()
   }
@@ -935,11 +944,11 @@ do
       if cql ~= "" then
         local res, err = conn:execute(cql)
         if not res then
-          if string.find(err, "Column .- was not found in table")
-             or string.find(err, "[Ii]nvalid column name") then
+          if string.find(err, "Column .- was not found in table") or
+             string.find(err, "[Ii]nvalid column name")           or
+             string.find(err, "[Uu]ndefined column name") then
             log.warn("ignored error while running '%s' migration: %s (%s)",
                      name, err, cql:gsub("\n", " "):gsub("%s%s+", " "))
-
           else
             return nil, err
           end

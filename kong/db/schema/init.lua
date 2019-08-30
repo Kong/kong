@@ -9,6 +9,7 @@ local re_match     = ngx.re.match
 local re_find      = ngx.re.find
 local concat       = table.concat
 local insert       = table.insert
+local format       = string.format
 local assert       = assert
 local ipairs       = ipairs
 local pairs        = pairs
@@ -72,6 +73,7 @@ local validation_errors = {
   STARTS_WITH               = "should start with: %s",
   CONTAINS                  = "expected to contain: %s",
   ONE_OF                    = "expected one of: %s",
+  NOT_ONE_OF                = "must not be one of: %s",
   IS_REGEX                  = "not a valid regex: %s",
   TIMESTAMP                 = "expected a valid timestamp",
   UUID                      = "expected a valid UUID",
@@ -81,6 +83,7 @@ local validation_errors = {
   REQUIRED                  = "required field missing",
   NO_FOREIGN_DEFAULT        = "will not generate a default value for a foreign field",
   UNKNOWN                   = "unknown field",
+  IMMUTABLE                 = "immutable field cannot be updated",
   -- entity checks
   REQUIRED_FOR_ENTITY_CHECK = "field required for entity check",
   ENTITY_CHECK              = "failed entity check: %s(%s)",
@@ -91,6 +94,8 @@ local validation_errors = {
   CONDITIONAL_AT_LEAST_ONE_OF = "at least one of these fields must be non-empty: %s",
   ONLY_ONE_OF               = "only one of these fields must be non-empty: %s",
   DISTINCT                  = "values of these fields must be distinct: %s",
+  MUTUALLY_REQUIRED         = "all or none of these fields must be set: %s",
+  MUTUALLY_EXCLUSIVE_SETS   = "these sets are mutually exclusive: %s",
   -- schema error
   SCHEMA_NO_DEFINITION      = "expected a definition table",
   SCHEMA_NO_FIELDS          = "error in schema definition: no 'fields' table",
@@ -140,6 +145,26 @@ local function make_length_validator(err, fn)
     end
     return nil, validation_errors[err]:format(n)
   end
+end
+
+
+--- Produce a nicely quoted list:
+-- Given `{"foo", "bar", "baz"}` and `"or"`, produces
+-- `"'foo', 'bar', 'baz'"`.
+-- Given an array of arrays (e.g., `{{"f1", "f2"}, {"f3", "f4"}}`), produces
+-- `"('f1', 'f2'), ('f3', 'f4')"`.
+-- @param words an array of strings and/or arrays of strings.
+-- @return The string of quoted words and/or arrays.
+local function quoted_list(words)
+  local msg = {}
+  for _, word in ipairs(words) do
+    if type(word) == "table" then
+      insert(msg, ("(%s)"):format(quoted_list(word)))
+    else
+      insert(msg, ("'%s'"):format(word))
+    end
+  end
+  return concat(msg, ", ")
 end
 
 
@@ -268,6 +293,15 @@ Schema.validators = {
     return nil, validation_errors.ONE_OF:format(concat(options, ", "))
   end,
 
+  not_one_of = function(value, options)
+    for _, option in ipairs(options) do
+      if value == option then
+        return nil, validation_errors.NOT_ONE_OF:format(concat(options, ", "))
+      end
+    end
+    return true
+  end,
+
   timestamp = function(value)
     return value > 0 or nil
   end,
@@ -289,6 +323,30 @@ Schema.validators = {
     return nil, validation_errors.CONTAINS:format(wanted)
   end,
 
+  mutually_exclusive_subsets = function(value, subsets)
+    local subset_union = {} -- union of all subsets; key is an element, value is the
+    for _, subset in ipairs(subsets) do -- the subset the element is part of
+      for _, el in ipairs(subset) do
+        subset_union[el] = subset
+      end
+    end
+
+    local member_of = {}
+
+    for _, val in ipairs(value) do -- for each value, add the set it's part of
+      if subset_union[val] and not member_of[subset_union[val]] then -- to member_of, iff it hasn't already
+        member_of[subset_union[val]] = true
+        member_of[#member_of+1] = subset_union[val]
+      end
+    end
+
+    if #member_of <= 1 then
+      return true
+    else
+      return nil, validation_errors.MUTUALLY_EXCLUSIVE_SETS:format(quoted_list(member_of))
+    end
+  end,
+
   custom_validator = function(value, fn)
     return fn(value)
   end
@@ -299,6 +357,7 @@ Schema.validators = {
 Schema.validators_order = {
   "eq",
   "ne",
+  "not_one_of",
   "one_of",
 
   -- type-dependent
@@ -326,6 +385,7 @@ Schema.validators_order = {
 
   -- other
   "custom_validator",
+  "mutually_exclusive_subsets",
 }
 
 
@@ -372,20 +432,6 @@ local function is_sequence(t)
   end
 
   return c == m
-end
-
-
---- Produce a nicely quoted list:
--- Given `{"foo", "bar", "baz"}` and `"or"`, produces
--- `"'foo', 'bar', 'baz'"`.
--- @param words an array of strings.
--- @return The string of quoted words.
-local function quoted_list(words)
-  local msg = {}
-  for _, word in ipairs(words) do
-    insert(msg, ("'%s'"):format(word))
-  end
-  return concat(msg, ", ")
 end
 
 
@@ -613,7 +659,10 @@ Schema.entity_checkers = {
     required_fields = { ["if_field"] = true },
     fn = function(entity, arg, schema, errors)
       local if_value = get_field(entity, arg.if_field)
-      local then_value = get_field(entity, arg.then_field) or null
+      local then_value = get_field(entity, arg.then_field)
+      if then_value == nil then
+        then_value = null
+      end
 
       setmetatable(arg.if_match, {
         __index = get_schema_field(schema, arg.if_field)
@@ -657,8 +706,56 @@ Schema.entity_checkers = {
     fn = function(entity, arg)
       return arg.fn(entity)
     end,
-  }
+  },
 
+  mutually_required = {
+    run_with_missing_fields = true,
+    fn = function(entity, field_names)
+      local nonempty = {}
+
+      for _, name in ipairs(field_names) do
+        if is_nonempty(get_field(entity, name)) then
+          insert(nonempty, name)
+        end
+      end
+
+      if #nonempty == 0 or #nonempty == #field_names then
+        return true
+      end
+
+      return nil, quoted_list(field_names)
+    end
+  },
+
+  mutually_exclusive_sets = {
+    run_with_missing_fields = true,
+    field_sources = { "set1", "set2" },
+    required_fields = { "set1", "set2" },
+
+    fn = function(entity, args)
+      local nonempty1 = {}
+      local nonempty2 = {}
+
+      for _, name in ipairs(args.set1) do
+        if is_nonempty(get_field(entity, name)) then
+          insert(nonempty1, name)
+        end
+      end
+
+      for _, name in ipairs(args.set2) do
+        if is_nonempty(get_field(entity, name)) then
+          insert(nonempty2, name)
+        end
+      end
+
+      if #nonempty1 > 0 and #nonempty2 > 0 then
+        return nil, format("(%s), (%s)", quoted_list(nonempty1),
+                                         quoted_list(nonempty2))
+      end
+
+      return true
+    end
+  },
 }
 
 
@@ -715,7 +812,7 @@ function Schema:validate_field(field, value)
 
   if value == null then
     if field.ne == null then
-      return nil, validation_errors.NE:format("null")
+      return nil, field.err or validation_errors.NE:format("null")
     end
     if field.eq ~= nil and field.eq ~= null then
       return nil, validation_errors.EQ:format(tostring(field.eq))
@@ -727,7 +824,7 @@ function Schema:validate_field(field, value)
   end
 
   if field.eq == null then
-    return nil, validation_errors.EQ:format("null")
+    return nil, field.err or validation_errors.EQ:format("null")
   end
 
   if field.abstract then
@@ -791,7 +888,14 @@ function Schema:validate_field(field, value)
     if field.schema and field.schema.validate_primary_key then
       local ok, errs = field.schema:validate_primary_key(value, true)
       if not ok then
-        return nil, errs
+        if type(value) == "table" and field.schema.validate then
+          local foreign_ok, foreign_errs = field.schema:validate(value, false)
+          if not foreign_ok then
+            return nil, foreign_errs
+          end
+        end
+
+        return ok, errs
       end
     end
 
@@ -828,14 +932,14 @@ function Schema:validate_field(field, value)
   end
 
   for _, k in ipairs(Schema.validators_order) do
-    if field[k] then
+    if field[k] ~= nil then
       local ok, err = self.validators[k](value, field[k], field)
       if not ok then
         if not err then
           err = (validation_errors[k:upper()]
                  or validation_errors.VALIDATION):format(value)
         end
-        return nil, err
+        return nil, field.err or err
       end
     end
   end
@@ -908,9 +1012,19 @@ end
 
 local function get_subschema(self, input)
   if self.subschemas and self.subschema_key then
-    local subschema = self.subschemas[input[self.subschema_key]]
-    if subschema then
-      return self.subschemas[input[self.subschema_key]]
+    local input_key = input[self.subschema_key]
+
+    if type(input_key) == "string" then
+      return self.subschemas[input_key]
+    end
+
+    if type(input_key) == "table" then  -- if subschema key is a set, return
+      for _, v in ipairs(input_key) do  -- subschema for first key
+        local subschema = self.subschemas[v]
+        if subschema then
+          return subschema
+        end
+      end
     end
   end
   return nil
@@ -1135,7 +1249,9 @@ do
     for _, check in ipairs(checks) do
       local check_name = next(check)
       local arg = check[check_name]
-      run_entity_check(self, check_name, input, arg, full_check, errors)
+      if arg and arg ~= null then
+        run_entity_check(self, check_name, input, arg, full_check, errors)
+      end
     end
   end
 
@@ -1233,14 +1349,14 @@ local Set_mt = {
 
 
 --- Sets (or replaces) metatable of an array:
--- 1. array is a proper sequence, but empty, `cjson.empty_array_mt`
+-- 1. array is a proper sequence, `cjson.array_mt`
 --    will be used as a metatable of the returned array.
 -- 2. otherwise no modifications are made to input parameter.
 -- @param array The table containing an array for which to apply the metatable.
 -- @return input table (with metatable, see above)
 local function make_array(array)
-  if is_sequence(array) and #array == 0 then
-    return setmetatable(array, cjson.empty_array_mt)
+  if is_sequence(array) then
+    return setmetatable(array, cjson.array_mt)
   end
 
   return array
@@ -1248,7 +1364,7 @@ end
 
 
 --- Sets (or replaces) metatable of a set and removes duplicates:
--- 1. set is a proper sequence, but empty, `cjson.empty_array_mt`
+-- 1. set is a proper sequence, but empty, `cjson.array_mt`
 --    will be used as a metatable of the returned set.
 -- 2. set a proper sequence, and has values, `Set_mt`
 --    will be used as a metatable of the returned set.
@@ -1263,7 +1379,7 @@ local function make_set(set)
   local count = #set
 
   if count == 0 then
-    return setmetatable(set, cjson.empty_array_mt)
+    return setmetatable(set, cjson.array_mt)
   end
 
   local o = {}
@@ -1361,6 +1477,7 @@ function Schema:process_auto_fields(data, context, nulls)
   local now_ms = ngx_now()
   local read_before_write = false
   local cache_key_modified = false
+  local check_immutable_fields = false
 
   data = tablex.deepcopy(data)
 
@@ -1442,6 +1559,22 @@ function Schema:process_auto_fields(data, context, nulls)
     if context == "select" and field.type == "integer" and type(data[key]) == "number" then
       data[key] = floor(data[key])
     end
+
+    -- Set read_before_write to true,
+    -- to handle deep merge of record object on update.
+    if context == "update" and field.type == "record"
+       and data[key] ~= nil and data[key] ~= null then
+      read_before_write = true
+    end
+
+    if context == 'update' and field.immutable then
+      -- if entity schema contains immutable fields,
+      -- we need to preform a read-before-write and
+      -- check the existing record to insure update
+      -- is valid.
+      read_before_write = true
+      check_immutable_fields = true
+    end
   end
 
   --[[
@@ -1468,9 +1601,16 @@ function Schema:process_auto_fields(data, context, nulls)
     or self.entity_checks)
   then
     read_before_write = true
+
+  elseif context == "select" then
+    for key in pairs(data) do
+      if not self.fields[key] then
+        data[key] = nil
+      end
+    end
   end
 
-  return data, nil, read_before_write
+  return data, nil, read_before_write, check_immutable_fields
 end
 
 
@@ -1482,7 +1622,7 @@ end
 -- @return the merged entity
 function Schema:merge_values(top, bottom)
   local output = {}
-  bottom = bottom or {}
+  bottom = (bottom ~= nil and bottom ~= null) and bottom or {}
   for k,v in pairs(bottom) do
     output[k] = v
   end
@@ -1562,10 +1702,11 @@ function Schema:validate(input, full_check)
         [self.subschema_key] = validation_errors.REQUIRED
       }
     end
-    if not (self.subschemas and self.subschemas[key]) then
+
+    if not get_subschema(self, input) then
       local errmsg = self.subschema_error or validation_errors.SUBSCHEMA_UNKNOWN
       return nil, {
-        [self.subschema_key] = errmsg:format(key)
+        [self.subschema_key] = errmsg:format(type(key) == "string" and key or key[1])
       }
     end
   end
@@ -1586,6 +1727,33 @@ function Schema:validate(input, full_check)
     return nil, errors
   end
   return true
+end
+
+
+-- Iterate through input fields on update and check agianst schema for
+-- immutable attribute. If immutable attribute is set, compare input values
+-- against entity values to detirmine whether input is valid.
+-- @param input The input table.
+-- @param entity The entity update will be performed on.
+-- @return True on success.
+-- On failure, it returns nil and a table containing all errors by field name.
+-- In all cases, the input table is untouched.
+function Schema:validate_immutable_fields(input, entity)
+  local errors = {}
+
+  for key, field in self:each_field(input) do
+    local compare = utils.is_array(input[key]) and tablex.compare_no_order or tablex.deepcompare
+
+    if field.immutable and entity[key] ~= nil and not compare(input[key], entity[key]) then
+      errors[key] = validation_errors.IMMUTABLE
+    end
+  end
+
+  if next(errors) then
+    return nil, errors
+  end
+
+  return true, errors
 end
 
 

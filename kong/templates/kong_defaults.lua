@@ -35,6 +35,11 @@ client_max_body_size = 0
 client_body_buffer_size = 8k
 error_default_type = text/plain
 
+nginx_http_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
+nginx_http_upstream_keepalive = 60
+nginx_http_upstream_keepalive_requests = 100
+nginx_http_upstream_keepalive_timeout = 60s
+
 database = postgres
 pg_host = 127.0.0.1
 pg_port = 5432
@@ -45,6 +50,8 @@ pg_user = kong
 pg_password = NONE
 pg_ssl = off
 pg_ssl_verify = off
+pg_max_concurrent_queries = 0
+pg_semaphore_timeout = 60000
 cassandra_contact_points = 127.0.0.1
 cassandra_port = 9042
 cassandra_keyspace = kong
@@ -66,6 +73,7 @@ db_update_frequency = 5
 db_update_propagation = 0
 db_cache_ttl = 0
 db_resurrect_ttl = 30
+db_cache_warmup_entities = services, plugins
 
 dns_resolver = NONE
 dns_hostsfile = /etc/hosts
@@ -75,6 +83,8 @@ dns_stale_ttl = 4
 dns_not_found_ttl = 30
 dns_error_ttl = 1
 dns_no_sync = off
+
+router_consistency = strict
 
 lua_socket_pool_size = 30
 lua_ssl_trusted_certificate = NONE

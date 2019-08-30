@@ -30,7 +30,13 @@ lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
 lua_shared_dict kong                5m;
 lua_shared_dict kong_db_cache       ${{MEM_CACHE_SIZE}};
-lua_shared_dict kong_db_cache_miss 12m;
+> if database == "off" then
+lua_shared_dict kong_db_cache_2     ${{MEM_CACHE_SIZE}};
+> end
+lua_shared_dict kong_db_cache_miss   12m;
+> if database == "off" then
+lua_shared_dict kong_db_cache_miss_2 12m;
+> end
 lua_shared_dict kong_locks          8m;
 lua_shared_dict kong_process_events 5m;
 lua_shared_dict kong_cluster_events 5m;
@@ -66,8 +72,10 @@ upstream kong_upstream {
     balancer_by_lua_block {
         Kong.balancer()
     }
-> if upstream_keepalive > 0 then
-    keepalive ${{UPSTREAM_KEEPALIVE}};
+
+# injected nginx_http_upstream_* directives
+> for _, el in ipairs(nginx_http_upstream_directives) do
+    $(el.name) $(el.value);
 > end
 }
 
@@ -87,7 +95,6 @@ server {
 > if proxy_ssl_enabled then
     ssl_certificate ${{SSL_CERT}};
     ssl_certificate_key ${{SSL_CERT_KEY}};
-    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
     ssl_certificate_by_lua_block {
         Kong.ssl_certificate()
     }
@@ -114,10 +121,31 @@ server {
     $(el.name) $(el.value);
 > end
 
+    rewrite_by_lua_block {
+        Kong.rewrite()
+    }
+
+    access_by_lua_block {
+        Kong.access()
+    }
+
+    header_filter_by_lua_block {
+        Kong.header_filter()
+    }
+
+    body_filter_by_lua_block {
+        Kong.body_filter()
+    }
+
+    log_by_lua_block {
+        Kong.log()
+    }
+
     location / {
         default_type                     '';
 
         set $ctx_ref                     '';
+        set $upstream_te                 '';
         set $upstream_host               '';
         set $upstream_upgrade            '';
         set $upstream_connection         '';
@@ -127,16 +155,10 @@ server {
         set $upstream_x_forwarded_proto  '';
         set $upstream_x_forwarded_host   '';
         set $upstream_x_forwarded_port   '';
-
-        rewrite_by_lua_block {
-            Kong.rewrite()
-        }
-
-        access_by_lua_block {
-            Kong.access()
-        }
+        set $kong_proxy_mode             'http';
 
         proxy_http_version 1.1;
+        proxy_set_header   TE                $upstream_te;
         proxy_set_header   Host              $upstream_host;
         proxy_set_header   Upgrade           $upstream_upgrade;
         proxy_set_header   Connection        $upstream_connection;
@@ -149,38 +171,32 @@ server {
         proxy_pass_header  Date;
         proxy_ssl_name     $upstream_host;
         proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
+    }
 
-        header_filter_by_lua_block {
-            Kong.header_filter()
-        }
+    location @grpc {
+        internal;
 
-        body_filter_by_lua_block {
-            Kong.body_filter()
-        }
+        set $kong_proxy_mode       'grpc';
+        grpc_pass grpc://kong_upstream;
+    }
 
-        log_by_lua_block {
-            Kong.log()
-        }
+    location @grpcs {
+        internal;
+
+        set $kong_proxy_mode       'grpcs';
+        grpc_pass grpcs://kong_upstream;
     }
 
     location = /kong_error_handler {
         internal;
         uninitialized_variable_warn off;
 
+        rewrite_by_lua_block {;}
+
+        access_by_lua_block {;}
+
         content_by_lua_block {
             Kong.handle_error()
-        }
-
-        header_filter_by_lua_block {
-            Kong.header_filter()
-        }
-
-        body_filter_by_lua_block {
-            Kong.body_filter()
-        }
-
-        log_by_lua_block {
-            Kong.log()
         }
     }
 }
@@ -202,7 +218,6 @@ server {
 > if admin_ssl_enabled then
     ssl_certificate ${{ADMIN_SSL_CERT}};
     ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
-    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 10m;

@@ -37,7 +37,8 @@ describe("Configuration loader", function()
     assert.is_nil(conf.nginx_user)
     assert.equal("1",            conf.nginx_worker_processes)
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
-    assert.same({"0.0.0.0:9000", "0.0.0.0:9443 ssl"}, conf.proxy_listen)
+    assert.same({"0.0.0.0:9000", "0.0.0.0:9443 ssl",
+                 "0.0.0.0:9002 http2", "0.0.0.0:9445 http2 ssl"}, conf.proxy_listen)
     assert.is_nil(getmetatable(conf))
   end)
   it("preserves default properties if not in given file", function()
@@ -55,7 +56,8 @@ describe("Configuration loader", function()
     assert.is_nil(conf.nginx_user)
     assert.equal("auto",           conf.nginx_worker_processes)
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
-    assert.same({"0.0.0.0:9000", "0.0.0.0:9443 ssl"}, conf.proxy_listen)
+    assert.same({"0.0.0.0:9000", "0.0.0.0:9443 ssl",
+                 "0.0.0.0:9002 http2", "0.0.0.0:9445 http2 ssl"}, conf.proxy_listen)
     assert.is_nil(getmetatable(conf))
   end)
   it("strips extraneous properties (not in defaults)", function()
@@ -234,9 +236,9 @@ describe("Configuration loader", function()
         plugins = "off",
       }))
       assert.True(search_directive(conf.nginx_http_directives,
-                                   "variables_hash_bucket_size", '"128"'))
+                                   "variables_hash_bucket_size", "128"))
       assert.True(search_directive(conf.nginx_stream_directives,
-                                   "variables_hash_bucket_size", '"128"'))
+                                   "variables_hash_bucket_size", "128"))
 
       assert.True(search_directive(conf.nginx_http_directives,
                                    "lua_shared_dict", "custom_cache 5m"))
@@ -259,7 +261,7 @@ describe("Configuration loader", function()
       assert.is_nil(err)
 
       assert.True(search_directive(conf.nginx_http_directives,
-                  "max_pending_timers", [["4096"]]))
+                  "max_pending_timers", "4096"))
     end)
 
     it("accepts flexible config values with precedence", function()
@@ -275,9 +277,9 @@ describe("Configuration loader", function()
       }))
 
       assert.True(search_directive(conf.nginx_http_directives,
-                                   "variables_hash_bucket_size", '"256"'))
+                                   "variables_hash_bucket_size", "256"))
       assert.True(search_directive(conf.nginx_stream_directives,
-                                   "variables_hash_bucket_size", '"256"'))
+                                   "variables_hash_bucket_size", "256"))
 
       assert.True(search_directive(conf.nginx_http_directives,
                                    "lua_shared_dict", "custom_cache 2m"))
@@ -454,6 +456,12 @@ describe("Configuration loader", function()
       assert.equal("database has an invalid value: 'mysql' (postgres, cassandra, off)", err)
       assert.is_nil(conf)
 
+      local conf, err = conf_loader(nil, {
+        router_consistency = "magical"
+      })
+      assert.equal("router_consistency has an invalid value: 'magical' (strict, eventual)", err)
+      assert.is_nil(conf)
+
       conf, err = conf_loader(nil, {
         cassandra_consistency = "FOUR"
       })
@@ -461,19 +469,33 @@ describe("Configuration loader", function()
                  .. " (ALL, EACH_QUORUM, QUORUM, LOCAL_QUORUM, ONE, TWO,"
                  .. " THREE, LOCAL_ONE)", err)
       assert.is_nil(conf)
+
     end)
     it("enforces listen addresses format", function()
       local conf, err = conf_loader(nil, {
         admin_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent], [... next entry ...]", err)
+      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         proxy_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent], [... next entry ...]", err)
+      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport], [... next entry ...]", err)
+    end)
+    it("rejects empty string in listen addresses", function()
+      local conf, err = conf_loader(nil, {
+        admin_listen = ""
+      })
+      assert.is_nil(conf)
+      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport], [... next entry ...]", err)
+
+      conf, err = conf_loader(nil, {
+        proxy_listen = ""
+      })
+      assert.is_nil(conf)
+      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport], [... next entry ...]", err)
     end)
     it("errors when dns_resolver is not a list in ipv4/6[:port] format", function()
       local conf, err = conf_loader(nil, {
@@ -787,13 +809,16 @@ describe("Configuration loader", function()
       local conf = assert(conf_loader(helpers.test_conf_path))
       assert.equal("postgres", conf.database)
     end)
-    it("requires cassandra_local_datacenter if DCAwareRoundRobin is in use", function()
-      local conf, err = conf_loader(nil, {
-        database            = "cassandra",
-        cassandra_lb_policy = "DCAwareRoundRobin"
-      })
-      assert.is_nil(conf)
-      assert.equal("must specify 'cassandra_local_datacenter' when DCAwareRoundRobin policy is in use", err)
+    it("requires cassandra_local_datacenter if DCAware LB policy is in use", function()
+      for _, policy in ipairs({ "DCAwareRoundRobin", "RequestDCAwareRoundRobin" }) do
+        local conf, err = conf_loader(nil, {
+          database            = "cassandra",
+          cassandra_lb_policy = policy,
+        })
+        assert.is_nil(conf)
+        assert.equal("must specify 'cassandra_local_datacenter' when " ..
+                     policy .. " policy is in use", err)
+      end
     end)
     it("honors path if provided even if a default file exists", function()
       conf_loader.add_default_path("spec/fixtures/to-strip.conf")
@@ -808,6 +833,40 @@ describe("Configuration loader", function()
 
       local conf = assert(conf_loader(helpers.test_conf_path))
       assert.equal("postgres", conf.database)
+    end)
+  end)
+
+  describe("pg_semaphore options", function()
+    it("rejects a pg_max_concurrent_queries with a negative number", function()
+      local conf, err = conf_loader(nil, {
+        pg_max_concurrent_queries = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_max_concurrent_queries must be greater than 0", err)
+    end)
+
+    it("rejects a pg_max_concurrent_queries with a decimal", function()
+      local conf, err = conf_loader(nil, {
+        pg_max_concurrent_queries = 0.1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_max_concurrent_queries must be an integer greater than 0", err)
+    end)
+
+    it("rejects a pg_semaphore_timeout with a negative number", function()
+      local conf, err = conf_loader(nil, {
+        pg_semaphore_timeout = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_semaphore_timeout must be greater than 0", err)
+    end)
+
+    it("rejects a pg_semaphore_timeout with a decimal", function()
+      local conf, err = conf_loader(nil, {
+        pg_semaphore_timeout = 0.1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_semaphore_timeout must be an integer greater than 0", err)
     end)
   end)
 

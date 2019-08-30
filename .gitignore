@@ -15,3 +15,4 @@ luacov.*
 /doc
 
 kong-build-tools
+bin/grpcurl
