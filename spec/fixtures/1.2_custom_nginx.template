@@ -195,30 +195,6 @@ http {
                 Kong.log()
             }
         }
-
-        location @grpc {
-            internal;
-            rewrite_by_lua_block       { Kong.rewrite() }
-            access_by_lua_block        { Kong.access() }
-            header_filter_by_lua_block { Kong.header_filter() }
-            body_filter_by_lua_block   { Kong.body_filter() }
-            log_by_lua_block           { Kong.log() }
-
-            set $kong_proxy_mode       'grpc';
-            grpc_pass grpc://kong_upstream;
-        }
-
-        location @grpcs {
-            internal;
-            rewrite_by_lua_block       { Kong.rewrite() }
-            access_by_lua_block        { Kong.access() }
-            header_filter_by_lua_block { Kong.header_filter() }
-            body_filter_by_lua_block   { Kong.body_filter() }
-            log_by_lua_block           { Kong.log() }
-
-            set $kong_proxy_mode       'grpcs';
-            grpc_pass grpcs://kong_upstream;
-        }
     }
 > end
 
