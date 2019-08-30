@@ -36,6 +36,7 @@ dependencies = {
   "lua-resty-healthcheck == 1.0.0",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.0",
+  "lrexlib-pcre == 2.9.0-1",
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 0.4",
   "kong-plugin-kubernetes-sidecar-injector ~> 0.2",

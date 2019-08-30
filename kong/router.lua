@@ -2,6 +2,7 @@ local lrucache      = require "resty.lrucache"
 local utils         = require "kong.tools.utils"
 local px            = require "resty.mediador.proxy"
 local bit           = require "bit"
+local perlRegex     = require "rex_pcre"
 
 
 local hostname_type = utils.hostname_type
@@ -234,6 +235,16 @@ local function marshall_route(r)
           regex    = wildcard_host_regex,
         })
 
+      elseif find(host, "%", nil, true) then
+        has_host_wildcard = true
+        local wildcard_host_regex = host:gsub("[%$|%~]","")
+	                                :gsub("\\","%%")
+        insert(route_t.hosts, {
+          wildcard = true,
+          ispcre   = true,
+          value    = host,
+          regex    = wildcard_host_regex,
+        })
       else
         -- plain host matching
         has_host_plain = true
@@ -1260,6 +1271,15 @@ function _M.new(routes)
 
     elseif ctx.req_host then
       for i = 1, #wildcard_hosts do
+        if wildcard_hosts[i].ispcre then
+          local perlregstr = wildcard_hosts[i].regex:gsub("%%","\\")
+          local from  = perlRegex.match(ctx.req_host,perlregstr)
+          if from then
+            hits.host    = wildcard_hosts[i].value
+            req_category = bor(req_category, MATCH_RULES.HOST)
+            break
+          end
+        end
         local from, _, err = re_find(ctx.req_host, wildcard_hosts[i].regex, "ajo")
         if err then
           log(ERR, "could not match wildcard host: ", err)
