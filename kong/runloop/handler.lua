@@ -865,7 +865,13 @@ return {
 
   init_worker = {
     before = function()
-      reports.init_worker()
+      if kong.configuration.anonymous_reports then
+        reports.configure_ping(kong.configuration)
+        reports.add_ping_value("database_version", kong.db.infos.db_ver)
+        reports.toggle(true)
+        reports.init_worker()
+      end
+
       update_lua_mem(true)
 
       register_events()
@@ -1511,7 +1517,9 @@ return {
     after = function(ctx)
       update_lua_mem()
 
-      reports.log()
+      if kong.configuration.anonymous_reports then
+        reports.log()
+      end
 
       if not ctx.KONG_PROXIED then
         return
