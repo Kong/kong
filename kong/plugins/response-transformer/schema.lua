@@ -29,6 +29,14 @@ local colon_string_record = {
   type = "record",
   fields = {
     { json = colon_string_array },
+    { json_types = {
+      type = "array",
+      default = {},
+      elements = {
+        type = "string",
+        one_of = { "boolean", "number", "string" }
+      }
+    } },
     { headers = colon_string_array },
   },
 }
@@ -51,4 +59,3 @@ return {
     },
   },
 }
-
