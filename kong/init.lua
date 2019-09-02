@@ -159,7 +159,8 @@ end
 
 local function execute_plugins_iterator(plugins_iterator, phase, ctx)
   -- XXX EE: Check we don't update old_ws twice
-  local old_ws = ctx.workspaces
+
+  local old_ws = ctx and ctx.workspaces
   for plugin, configuration in plugins_iterator:iterate(phase, ctx) do
     if ctx then
       kong_global.set_named_ctx(kong, "plugin", configuration)
@@ -168,7 +169,10 @@ local function execute_plugins_iterator(plugins_iterator, phase, ctx)
     kong_global.set_namespaced_log(kong, plugin.name)
     plugin.handler[phase](plugin.handler, configuration)
     kong_global.reset_log(kong)
-    ctx.workspaces = old_ws
+
+    if ctx then
+      ctx.workspaces = old_ws
+    end
   end
 end
 
