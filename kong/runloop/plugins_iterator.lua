@@ -410,7 +410,7 @@ local function get_next(self)
     end
 
     -- Added in EE:
-    local phase = self.phase
+    local phase = self.phases
     if phase and phase[plugin.name]
     and (ctx.plugins[plugin.name] or self.phase == "init_worker") then
       return plugin, ctx.plugins[plugin.name]
