@@ -798,6 +798,46 @@ describe("Admin API RBAC with #" .. strategy, function()
 
         assert.not_equal(0, #json.data)
       end)
+
+      it("filters out portal roles", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/portal-enabled-workspace/rbac/roles",
+          body = {
+            name = "regular_rbac_role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+
+        local body = assert.res_status(201, res)
+        local regular_role = cjson.decode(body)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/portal-enabled-workspace/developers/roles",
+          body = {
+            name = "portal_role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "GET",
+          path = "/portal-enabled-workspace/rbac/roles"
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.equals(1, #json.data)
+        assert.equals(regular_role.id, json.data[1].id)
+      end)
     end)
   end)
 
