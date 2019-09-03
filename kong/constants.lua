@@ -120,6 +120,8 @@ return {
     "rbac_role_endpoints",
     "admins",
     "developers",
+    "groups",
+    "group_rbac_roles",
   },
   RATELIMIT = {
     PERIODS = {

@@ -12,6 +12,26 @@ return {
       $$;
 
       CREATE INDEX IF NOT EXISTS developers_rbac_user_id_idx ON developers(rbac_user_id);
+
+      -- Groups Entity
+      CREATE TABLE IF NOT EXISTS groups (
+        id          uuid,
+        created_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
+        name text unique,
+        comment text,
+        PRIMARY KEY (id)
+      );
+
+      CREATE INDEX IF NOT EXISTS groups_name_idx ON groups(name);
+      
+      -- Group and RBAC_Role Mapping
+      CREATE TABLE IF NOT EXISTS group_rbac_roles(
+        created_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
+        group_id uuid REFERENCES groups (id) ON DELETE CASCADE,
+        rbac_role_id uuid REFERENCES rbac_roles (id) ON DELETE CASCADE,
+        workspace_id uuid REFERENCES workspaces (id) ON DELETE CASCADE,
+        PRIMARY KEY (group_id, rbac_role_id)
+      );
     ]],
     teardown = function(connector)
       assert(connector:connect_migrations())
@@ -68,6 +88,29 @@ return {
 
       ALTER TABLE developers ADD rbac_user_id uuid;
       CREATE INDEX IF NOT EXISTS ON developers(rbac_user_id);
+
+      /* Groups Entity */
+      CREATE TABLE IF NOT EXISTS groups (
+        id          uuid,
+        created_at  timestamp,
+        name   text,
+        comment  text,
+        PRIMARY KEY (id)
+      );
+
+      CREATE INDEX IF NOT EXISTS groups_name_idx ON groups(name);
+      
+      /* Group and RBAC_Role Mapping */
+      CREATE TABLE IF NOT EXISTS group_rbac_roles(
+        created_at timestamp,
+        group_id uuid,
+        rbac_role_id uuid,
+        workspace_id uuid,
+        PRIMARY KEY (group_id, rbac_role_id)
+      );
+      
+      CREATE INDEX IF NOT EXISTS group_rbac_roles_rbac_role_id_idx ON group_rbac_roles(rbac_role_id);
+      CREATE INDEX IF NOT EXISTS group_rbac_roles_workspace_id_idx ON group_rbac_roles(workspace_id);
     ]],
     teardown = function(connector, helpers)
       local coordinator = connector:connect_migrations()
