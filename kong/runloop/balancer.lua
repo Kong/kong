@@ -196,7 +196,9 @@ local function populate_healthchecker(hc, balancer)
         -- Get existing health status which may have been initialized
         -- with data from another worker, and apply to the new balancer.
         local tgt_status = hc:get_target_status(ipaddr, port, hostname)
-        balancer:setAddressStatus(tgt_status, ipaddr, port, hostname)
+        if tgt_status ~= nil then
+          balancer:setAddressStatus(tgt_status, ipaddr, port, hostname)
+        end
 
       else
         log(ERR, "[healthchecks] failed adding target: ", err)
@@ -248,7 +250,7 @@ do
         else
           balancer_status = "UNHEALTHY"
         end
-        log(DEBUG, "[healthchecks] balancer ", healthchecker.name,
+        log(WARN, "[healthchecks] balancer ", healthchecker.name,
             " reported health status changed to ", balancer_status)
 
       else

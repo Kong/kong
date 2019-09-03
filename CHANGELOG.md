@@ -1,6 +1,6 @@
 # Table of Contents
 
-- [1.3.0rc1](#130rc1)
+- [1.3.0](#130)
 - [1.2.1](#121)
 - [1.2.0](#120)
 - [1.1.2](#112)
@@ -29,11 +29,11 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
-## [1.3.0rc1]
+## [1.3.0]
 
-> Released on 2019/07/24
+> Released on 2019/08/21
 
-Kong 1.3.0rc1 is the first release to officially support **gRPC proxying**!
+Kong 1.3 is the first version to officially support **gRPC proxying**!
 
 Following our vision for Kong to proxy modern Web services protocols, we are
 excited for this newest addition to the family of protocols already supported
@@ -45,11 +45,6 @@ Additionally, this release includes several highly-requested features such as
 support for upstream **mutual TLS**, **header-based routing** (not only
 `Host`), **database export**, and **configurable upstream keepalive
 timeouts**.
-
-As a release candidate, we discourage the use of 1.3.0rc1 in production
-environments, but we strongly encourage testers to give it a try and give us
-!our feedback. We thank in advance all of the testers of this release
-candidate!
 
 ### Changes
 
@@ -212,8 +207,11 @@ repository will allow you to do both easily.
 - [serverless-functions](https://github.com/Kong/kong-plugin-serverless-functions):
     - Bumped to 0.3 for minor performance improvements.
     - Functions can now have upvalues.
-- [prometheus](https://github.com/Kong/kong-plugin-azure-functions): Bumped to
-  0.4 for minor performance improvements.
+- [prometheus](https://github.com/Kong/kong-plugin-prometheus): Bumped to
+  0.4.1 for minor performance improvements.
+- cors: add OPTIONS, TRACE and CONNECT to default allowed methods
+  [#4899](https://github.com/Kong/kong/pull/4899)
+  Thanks to [@eshepelyuk](https://github.com/eshepelyuk) for the patch!
 
 ##### PDK
 
@@ -244,11 +242,39 @@ repository will allow you to do both easily.
   default page size.
   [#4770](https://github.com/Kong/kong/pull/4770)
 
+##### Plugins
+
+- cors: ensure non-preflight OPTIONS requests can be proxied.
+  [#4899](https://github.com/Kong/kong/pull/4899)
+  Thanks to [@eshepelyuk](https://github.com/eshepelyuk) for the patch!
+- Consumer references in various plugin entities are now
+  properly marked as required, avoiding credentials that map to no Consumer.
+  [#4879](https://github.com/Kong/kong/pull/4879)
+- hmac-auth: Correct the encoding of HTTP/1.0 requests.
+  [#4839](https://github.com/Kong/kong/pull/4839)
+- oauth2: empty client_id wasn't checked, causing a server error.
+  [#4884](https://github.com/Kong/kong/pull/4884)
+- response-transformer: preserve empty arrays correctly.
+  [#4901](https://github.com/Kong/kong/pull/4901)
+
 ##### CLI
 
 - Fixed an issue when running `kong restart` and Kong was not running,
   causing stdout/stderr logging to turn off.
   [#4772](https://github.com/Kong/kong/pull/4772)
+
+##### Admin API
+
+- Ensure PUT works correctly when applied to plugin configurations.
+  [#4882](https://github.com/Kong/kong/pull/4882)
+
+##### PDK
+
+- Prevent PDK calls from failing in custom content blocks.
+  This fixes a misbehavior affecting the Prometheus plugin.
+  [#4904](https://github.com/Kong/kong/pull/4904)
+- Ensure `kong.response.add_header` works in the `rewrite` phase.
+  [#4888](https://github.com/Kong/kong/pull/4888)
 
 [Back to TOC](#table-of-contents)
 
@@ -4056,7 +4082,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[1.3.0rc1]: https://github.com/Kong/kong/compare/1.2.1...1.3.0rc1
+[1.3.0]: https://github.com/Kong/kong/compare/1.2.1...1.3.0
 [1.2.1]: https://github.com/Kong/kong/compare/1.2.0...1.2.1
 [1.2.0]: https://github.com/Kong/kong/compare/1.1.2...1.2.0
 [1.1.2]: https://github.com/Kong/kong/compare/1.1.1...1.1.2

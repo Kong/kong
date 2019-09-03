@@ -14,7 +14,6 @@
 
 local cjson = require "cjson.safe"
 local meta = require "kong.meta"
-local constants = require "kong.constants"
 local checks = require "kong.pdk.private.checks"
 local phase_checker = require "kong.pdk.private.phases"
 
@@ -25,17 +24,19 @@ local type = type
 local find = string.find
 local error = error
 local pairs = pairs
-local insert = table.insert
 local coroutine = coroutine
 local normalize_header = checks.normalize_header
 local normalize_multi_header = checks.normalize_multi_header
 local validate_header = checks.validate_header
 local validate_headers = checks.validate_headers
 local check_phase = phase_checker.check
+local add_header
+if ngx and ngx.config.subsystem == "http" then
+  add_header = require("ngx.resp").add_header
+end
 
 
 local PHASES = phase_checker.phases
-local GRPC_PROXY_MODES = constants.GRPC_PROXY_MODES
 
 
 local header_body_log = phase_checker.new(PHASES.header_filter,
@@ -374,6 +375,9 @@ local function new(self, major_version)
   -- kong.response.add_header("Cache-Control", "no-cache")
   -- kong.response.add_header("Cache-Control", "no-store")
   function _RESPONSE.add_header(name, value)
+    -- stream subsystem would been stopped by the phase checker below
+    -- therefore the nil reference to add_header will never have chance
+    -- to show
     check_phase(rewrite_access_header)
 
     if ngx.headers_sent then
@@ -382,14 +386,7 @@ local function new(self, major_version)
 
     validate_header(name, value)
 
-    local new_value = _RESPONSE.get_headers()[name]
-    if type(new_value) ~= "table" then
-      new_value = { new_value }
-    end
-
-    insert(new_value, normalize_header(value))
-
-    ngx.header[name] = new_value
+    add_header(name, normalize_header(value))
   end
 
 
@@ -508,8 +505,6 @@ local function new(self, major_version)
     if res_ctype then
       is_grpc = find(res_ctype, CONTENT_TYPE_GRPC, 1, true) == 1
       is_grpc_output = is_grpc
-    elseif GRPC_PROXY_MODES[ngx.var.kong_proxy_mode] then
-      is_grpc = true
     elseif req_ctype then
       is_grpc = find(req_ctype, CONTENT_TYPE_GRPC, 1, true) == 1
                   and ngx.req.http_version() == "2"
@@ -536,10 +531,16 @@ local function new(self, major_version)
     local json
     if type(body) == "table" then
       if is_grpc then
-        if type(body.message) == "string" then
+        if is_grpc_output then
+          error("table body encoding with gRPC is not supported", 2)
+
+        elseif type(body.message) == "string" then
           body = body.message
+
         else
-          body = nil -- grpc table encoding not supported currently
+          self.log.warn("body was removed because table body encoding with " ..
+                        "gRPC is not supported")
+          body = nil
         end
 
       else
@@ -561,9 +562,11 @@ local function new(self, major_version)
         ngx.header[CONTENT_LENGTH_NAME] = 0
         ngx.header[GRPC_MESSAGE_NAME] = body
 
+        ngx.print() -- avoid default content
+
       else
         ngx.header[CONTENT_LENGTH_NAME] = #body
-        if grpc_status then
+        if grpc_status and not ngx.header[GRPC_MESSAGE_NAME] then
           ngx.header[GRPC_MESSAGE_NAME] = GRPC_MESSAGES[grpc_status]
         end
 
@@ -572,8 +575,12 @@ local function new(self, major_version)
 
     else
       ngx.header[CONTENT_LENGTH_NAME] = 0
-      if grpc_status then
+      if grpc_status and not ngx.header[GRPC_MESSAGE_NAME] then
         ngx.header[GRPC_MESSAGE_NAME] = GRPC_MESSAGES[grpc_status]
+      end
+
+      if is_grpc then
+        ngx.print() -- avoid default content
       end
     end
 

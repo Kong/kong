@@ -339,7 +339,7 @@ local poll_wait_health
 local poll_wait_address_health
 do
   local function poll_wait(upstream_id, host, port, admin_port, fn)
-    local hard_timeout = ngx.now() + 10
+    local hard_timeout = ngx.now() + 70
     while ngx.now() < hard_timeout do
       local health = get_upstream_health(upstream_id, admin_port)
       if health then
@@ -1340,6 +1340,12 @@ for _, strategy in helpers.each_strategy() do
 
                 end_testcase_setup(strategy, bp)
 
+                -- ensure it's healthy at the beginning of the test
+                direct_request(localhost, port1, "/healthy", protocol)
+                direct_request(localhost, port2, "/healthy", protocol)
+                poll_wait_health(upstream_id, localhost, port1, "HEALTHY")
+                poll_wait_health(upstream_id, localhost, port2, "HEALTHY")
+
                 -- 1) server1 and server2 take requests
                 local oks, fails = client_requests(SLOTS, api_host)
 
@@ -1725,6 +1731,9 @@ for _, strategy in helpers.each_strategy() do
             assert.same(SLOTS, ok2)
           end)
 
+          -- FIXME This is marked as #flaky because of Travis CI instability.
+          -- This runs fine on other environments. This should be re-checked
+          -- at a later time.
           it("#flaky perform active health checks -- can detect before any proxy traffic", function()
 
             local nfails = 2

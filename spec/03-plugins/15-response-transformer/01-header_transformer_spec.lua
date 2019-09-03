@@ -23,7 +23,10 @@ describe("Plugin: response-transformer", function()
     _G.ngx = {
       headers_sent = false,
       resp = {
-      }
+      },
+      config = {
+        subsystem = "http",
+      },
     }
     _G.kong = {
       response = require "kong.pdk.response".new(),
@@ -33,6 +36,18 @@ describe("Plugin: response-transformer", function()
         }
       }
     }
+
+    -- mock since FFI based ngx.resp.add_header won't work in this setup
+    _G.kong.response.add_header = function(name, value)
+      local new_value = _G.kong.response.get_headers()[name]
+      if type(new_value) ~= "table" then
+        new_value = { new_value }
+      end
+
+      table.insert(new_value, value)
+
+      ngx.header[name] = new_value
+    end
 
     header_transformer = require "kong.plugins.response-transformer.header_transformer"
   end)

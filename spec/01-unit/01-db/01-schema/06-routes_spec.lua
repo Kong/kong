@@ -1089,7 +1089,7 @@ describe("routes schema", function()
     assert.falsy(ok)
     assert.same({
       ["@entity"] = {
-        "must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'grpc'"
+        "must set one of 'hosts', 'headers', 'paths' when 'protocols' is 'grpc'"
       }
     }, errs)
 
@@ -1101,7 +1101,7 @@ describe("routes schema", function()
     assert.falsy(ok)
     assert.same({
       ["@entity"] = {
-        "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'grpcs'"
+        "must set one of 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'grpcs'"
       }
     }, errs)
   end)
@@ -1110,6 +1110,7 @@ describe("routes schema", function()
     local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
     local route = Routes:process_auto_fields({
       methods = "GET",
+      paths = { "/foo" },
       protocols = { "grpc" },
       service = s,
     }, "insert")
@@ -1121,6 +1122,7 @@ describe("routes schema", function()
 
     route = Routes:process_auto_fields({
       methods = "GET",
+      paths = { "/foo" },
       protocols = { "grpcs" },
       service = s,
     }, "insert")
@@ -1135,6 +1137,7 @@ describe("routes schema", function()
     local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
     local route = Routes:process_auto_fields({
       methods = "GET",
+      paths = { "/foo" },
       protocols = { "grpc" },
       service = s,
     }, "insert")
@@ -1146,6 +1149,7 @@ describe("routes schema", function()
 
     route = Routes:process_auto_fields({
       methods = "GET",
+      paths = { "/foo" },
       protocols = { "grpcs" },
       service = s,
     }, "insert")

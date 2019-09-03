@@ -25,7 +25,7 @@ local oauth2_credentials = {
   fields = {
     { id = typedefs.uuid },
     { created_at = typedefs.auto_timestamp_s },
-    { consumer = { type = "foreign", reference = "consumers", default = ngx.null, on_delete = "cascade", }, },
+    { consumer = { type = "foreign", reference = "consumers", required = true, on_delete = "cascade", }, },
     { name = { type = "string", required = true }, },
     { client_id = { type = "string", required = false, unique = true, auto = true }, },
     { client_secret = { type = "string", required = false, auto = true }, },
@@ -50,7 +50,7 @@ local oauth2_authorization_codes = {
     { id = typedefs.uuid },
     { created_at = typedefs.auto_timestamp_s },
     { service = { type = "foreign", reference = "services", default = ngx.null, on_delete = "cascade", }, },
-    { credential = { type = "foreign", reference = "oauth2_credentials", default = ngx.null, on_delete = "cascade", }, },
+    { credential = { type = "foreign", reference = "oauth2_credentials", required = true, on_delete = "cascade", }, },
     { code = { type = "string", required = false, unique = true, auto = true }, }, -- FIXME immutable
     { authenticated_userid = { type = "string", required = false }, },
     { scope = { type = "string" }, },
@@ -70,7 +70,7 @@ local oauth2_tokens = {
     { id = typedefs.uuid },
     { created_at = typedefs.auto_timestamp_s },
     { service = { type = "foreign", reference = "services", default = ngx.null, on_delete = "cascade", }, },
-    { credential = { type = "foreign", reference = "oauth2_credentials", default = ngx.null, on_delete = "cascade", }, },
+    { credential = { type = "foreign", reference = "oauth2_credentials", required = true, on_delete = "cascade", }, },
     { token_type = { type = "string", required = true, one_of = { BEARER }, default = BEARER }, },
     { expires_in = { type = "integer", required = true }, },
     { access_token = { type = "string", required = false, unique = true, auto = true }, },

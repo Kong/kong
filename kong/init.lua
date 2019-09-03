@@ -100,9 +100,10 @@ local ngx              = ngx
 local var              = ngx.var
 local header           = ngx.header
 local ngx_log          = ngx.log
+local ngx_ALERT        = ngx.ALERT
+local ngx_CRIT         = ngx.CRIT
 local ngx_ERR          = ngx.ERR
 local ngx_WARN         = ngx.WARN
-local ngx_CRIT         = ngx.CRIT
 local ngx_DEBUG        = ngx.DEBUG
 local ipairs           = ipairs
 local assert           = assert
@@ -130,6 +131,47 @@ local TLS_SCHEMES = {
 
 local declarative_entities
 local schema_state
+
+
+local stash_init_worker_error
+local log_init_worker_errors
+do
+  local init_worker_errors
+  local init_worker_errors_str
+  local ctx_k = {}
+
+
+  stash_init_worker_error = function(err)
+    if err == nil then
+      return
+    end
+
+    err = tostring(err)
+
+    if not init_worker_errors then
+      init_worker_errors = {}
+    end
+
+    table.insert(init_worker_errors, err)
+    init_worker_errors_str = table.concat(init_worker_errors, ", ")
+
+    return ngx_log(ngx_CRIT, "worker initialization error: ", err,
+                             "; this node must be restarted")
+  end
+
+
+  log_init_worker_errors = function()
+    if not init_worker_errors_str or ngx.ctx[ctx_k] then
+      return
+    end
+
+    ngx.ctx[ctx_k] = true
+
+    return ngx_log(ngx_ALERT, "unsafe request processing due to earlier ",
+                              "initialization errors; this node must be ",
+                              "restarted (", init_worker_errors_str, ")")
+  end
+end
 
 
 local reset_kong_shm
@@ -485,7 +527,7 @@ function Kong.init_worker()
 
   local ok, err = kong.db:init_worker()
   if not ok then
-    ngx_log(ngx_CRIT, "could not init DB: ", err)
+    stash_init_worker_error("failed to instantiate 'kong.db' module: " .. err)
     return
   end
 
@@ -504,14 +546,16 @@ function Kong.init_worker()
 
   local worker_events, err = kong_global.init_worker_events()
   if not worker_events then
-    ngx_log(ngx_CRIT, "could not start inter-worker events: ", err)
+    stash_init_worker_error("failed to instantiate 'kong.worker_events' " ..
+                            "module: " .. err)
     return
   end
   kong.worker_events = worker_events
 
   local cluster_events, err = kong_global.init_cluster_events(kong.configuration, kong.db)
   if not cluster_events then
-    ngx_log(ngx_CRIT, "could not create cluster_events: ", err)
+    stash_init_worker_error("failed to instantiate 'kong.cluster_events' " ..
+                            "module: " .. err)
     return
   end
   kong.cluster_events = cluster_events
@@ -525,14 +569,15 @@ function Kong.init_worker()
 
   local cache, err = kong_global.init_cache(kong.configuration, cluster_events, worker_events, kong.vitals)
   if not cache then
-    ngx_log(ngx_CRIT, "could not create kong cache: ", err)
+    stash_init_worker_error("failed to instantiate 'kong.cache' module: " ..
+                            err)
     return
   end
   kong.cache = cache
 
   ok, err = runloop.set_init_versions_in_cache()
   if not ok then
-    ngx_log(ngx_CRIT, err)
+    stash_init_worker_error(err) -- 'err' fully formatted
     return
   end
 
@@ -546,13 +591,13 @@ function Kong.init_worker()
 
   ok, err = load_declarative_config(kong.configuration, declarative_entities)
   if not ok then
-    ngx_log(ngx_CRIT, "error loading declarative config file: ", err)
+    stash_init_worker_error("failed to load declarative config file: " .. err)
     return
   end
 
   ok, err = execute_cache_warmup(kong.configuration)
   if not ok then
-    ngx_log(ngx_ERR, "could not warm up the DB cache: ", err)
+    ngx_log(ngx_ERR, "failed to warm up the DB cache: " .. err)
   end
 
   runloop.init_worker.before()
@@ -561,7 +606,7 @@ function Kong.init_worker()
   -- run plugins init_worker context
   ok, err = runloop.update_plugins_iterator()
   if not ok then
-    ngx_log(ngx_CRIT, "error building plugins iterator: ", err)
+    stash_init_worker_error("failed to build the plugins iterator: " .. err)
     return
   end
 
@@ -570,6 +615,8 @@ function Kong.init_worker()
 end
 
 function Kong.ssl_certificate()
+  log_init_worker_errors()
+
   kong_global.set_phase(kong, PHASES.certificate)
 
   -- this doesn't really work across the phases currently (OpenResty 1.13.6.2),
@@ -683,6 +730,8 @@ function Kong.balancer()
 end
 
 function Kong.rewrite()
+  log_init_worker_errors()
+
   if GRPC_PROXY_MODES[var.kong_proxy_mode] then
     kong_resty_ctx.apply_ref() -- if kong_proxy_mode is gRPC, this is executing
     kong_resty_ctx.stash_ref() -- after an internal redirect. Restore (and restash)
@@ -712,6 +761,8 @@ function Kong.rewrite()
 end
 
 function Kong.preread()
+  log_init_worker_errors()
+
   kong_global.set_phase(kong, PHASES.preread)
 
   local ctx = ngx.ctx
@@ -804,6 +855,8 @@ function Kong.log()
 end
 
 function Kong.handle_error()
+  log_init_worker_errors()
+
   kong_resty_ctx.apply_ref()
 
   local ctx = ngx.ctx
@@ -823,6 +876,8 @@ function Kong.handle_error()
 end
 
 function Kong.serve_admin_api(options)
+  log_init_worker_errors()
+
   kong_global.set_phase(kong, PHASES.admin_api)
 
   options = options or {}

@@ -927,11 +927,11 @@ for _, strategy in helpers.each_strategy() do
                   name    = "schema violation",
                   message = unindent([[
                   schema violation
-                  (must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'grpcs')
+                  (must set one of 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'grpcs')
                   ]], true, true),
                   fields  = {
                     ["@entity"] = {
-                      "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'grpcs'",
+                      "must set one of 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'grpcs'",
                     }
                   }
                 }, cjson.decode(body))
@@ -961,6 +961,7 @@ for _, strategy in helpers.each_strategy() do
                 local res = client:post("/routes", {
                   body = {
                     protocols = { "grpc", "grpcs" },
+                    paths = { "/" },
                     methods = { "GET" }
                   },
                   headers = { ["Content-Type"] = content_type }

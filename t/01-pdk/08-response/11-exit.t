@@ -3,7 +3,7 @@ use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use t::Util;
 
-plan tests => repeat_each() * (blocks() * 4) - 5;
+plan tests => repeat_each() * (blocks() * 4) + 9;
 
 run_tests();
 
@@ -611,11 +611,10 @@ Content-Length: 19
 === TEST 23: response.exit() does not send body with gRPC
 --- http_config eval: $t::Util::HttpConfig
 --- config
-    set $kong_proxy_mode 'grpc';
-
     location = /t {
         default_type 'text/test';
         access_by_lua_block {
+            ngx.req.http_version = function() return "2" end
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
@@ -624,6 +623,8 @@ Content-Length: 19
     }
 --- request
 GET /t
+--- more_headers
+Content-Type: application/grpc
 --- error_code: 200
 --- response_headers_like
 Content-Length: 0
@@ -634,18 +635,16 @@ grpc-message: hello
 
 
 
-=== TEST 24: response.exit() does sends body with gRPC when asked
+=== TEST 24: response.exit() sends body with gRPC when asked (explicit)
 --- http_config eval: $t::Util::HttpConfig
 --- config
-    set $kong_proxy_mode 'grpc';
-
     location = /t {
         default_type 'text/test';
         access_by_lua_block {
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            pdk.response.exit(200, { message = "hello" }, {
+            pdk.response.exit(200, "hello", {
                 content_type = "application/grpc"
             })
         }
@@ -659,5 +658,399 @@ grpc-status: 0
 grpc-message: OK
 --- response_body chop
 hello
+--- no_error_log
+[error]
+
+
+
+=== TEST 25: response.exit() sends body with gRPC when asked (implicit)
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.set_header("Content-Type", "application/grpc")
+            pdk.response.exit(200, "hello")
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_headers_like
+Content-Length: 5
+grpc-status: 0
+grpc-message: OK
+--- response_body chop
+hello
+--- no_error_log
+[error]
+
+
+
+=== TEST 26: response.exit() body replaces grpc-message
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            ngx.req.http_version = function() return "2" end
+
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(200, "OK", {
+              ["grpc-message"] = "REPLACE ME"
+            })
+        }
+    }
+--- request
+GET /t
+--- more_headers
+Content-Type: application/grpc
+--- error_code: 200
+--- response_headers_like
+Content-Length: 0
+grpc-status: 0
+grpc-message: OK
+--- response_body chop
+--- no_error_log
+[error]
+
+
+
+=== TEST 27: response.exit() body does not replace grpc-message with content-type specified (explicit)
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(200, "OK", {
+              ["Content-Type"]  = "application/grpc",
+              ["grpc-message"] = "SHOW ME"
+            })
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_headers_like
+Content-Length: 2
+grpc-status: 0
+grpc-message: SHOW ME
+--- response_body chop
+OK
+--- no_error_log
+[error]
+
+
+
+=== TEST 28: response.exit() body does not replace grpc-message with content-type specified (implicit)
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.set_header("Content-Type", "application/grpc")
+            pdk.response.exit(200, "OK", {
+              ["grpc-message"] = "SHOW ME"
+            })
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_headers_like
+Content-Length: 2
+grpc-status: 0
+grpc-message: SHOW ME
+--- response_body chop
+OK
+--- no_error_log
+[error]
+
+
+
+=== TEST 29: response.exit() nil body does not replace grpc-message with default message
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.set_header("Content-Type", "application/grpc")
+            pdk.response.exit(200, nil, {
+              ["grpc-message"] = "SHOW ME"
+            })
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_headers_like
+Content-Length: 0
+grpc-status: 0
+grpc-message: SHOW ME
+--- response_body chop
+--- no_error_log
+[error]
+
+
+
+=== TEST 30: response.exit() sends default grpc-message (200)
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            ngx.req.http_version = function() return "2" end
+
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(200)
+        }
+    }
+--- request
+GET /t
+--- more_headers
+Content-Type: application/grpc
+--- error_code: 200
+--- response_headers_like
+Content-Length: 0
+grpc-status: 0
+grpc-message: OK
+--- response_body chop
+--- no_error_log
+[error]
+
+
+
+=== TEST 31: response.exit() sends default grpc-message (403)
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            ngx.req.http_version = function() return "2" end
+
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(403)
+        }
+    }
+--- request
+GET /t
+--- more_headers
+Content-Type: application/grpc
+--- error_code: 403
+--- response_headers_like
+Content-Length: 0
+grpc-status: 7
+grpc-message: PermissionDenied
+--- response_body chop
+--- no_error_log
+[error]
+
+
+
+=== TEST 32: response.exit() sends default grpc-message when specifying content-type (explicit)
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(401, nil, {
+                ["Content-Type"]  = "application/grpc"
+            })
+        }
+    }
+--- request
+GET /t
+--- error_code: 401
+--- response_headers_like
+Content-Length: 0
+grpc-status: 16
+grpc-message: Unauthenticated
+--- response_body chop
+--- no_error_log
+[error]
+
+
+
+=== TEST 33: response.exit() sends default grpc-message when specifying content-type (implicit)
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.set_header("Content-Type", "application/grpc")
+            pdk.response.exit(401)
+        }
+    }
+--- request
+GET /t
+--- error_code: 401
+--- response_headers_like
+Content-Length: 0
+grpc-status: 16
+grpc-message: Unauthenticated
+--- response_body chop
+--- no_error_log
+[error]
+
+
+
+=== TEST 34: response.exit() errors with grpc using table body with content-type specified (explicit)
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(401, {}, {
+                ["Content-Type"]  = "application/grpc"
+            })
+        }
+    }
+--- request
+GET /t
+--- error_code: 500
+--- error_log: table body encoding with gRPC is not supported
+
+
+
+=== TEST 35: response.exit() errors with grpc using table body with content-type specified (implicit)
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.set_header("Content-Type", "application/grpc")
+            pdk.response.exit(401, {})
+        }
+    }
+--- request
+GET /t
+--- error_code: 500
+--- error_log: table body encoding with gRPC is not supported
+
+
+
+=== TEST 36: response.exit() errors with grpc using special table body with content-type specified (explicit)
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(401, { message = "I am special" }, {
+                ["Content-Type"]  = "application/grpc"
+            })
+        }
+    }
+--- request
+GET /t
+--- error_code: 500
+--- error_log: table body encoding with gRPC is not supported
+
+
+
+=== TEST 37: response.exit() errors with grpc using special table body with content-type specified (implicit)
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.set_header("Content-Type", "application/grpc")
+            pdk.response.exit(401, { message = "I am special" })
+        }
+    }
+--- request
+GET /t
+--- error_code: 500
+--- error_log: table body encoding with gRPC is not supported
+
+
+
+=== TEST 38: response.exit() logs warning with grpc using table body without content-type specified
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            ngx.req.http_version = function() return "2" end
+
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(401, {})
+        }
+    }
+--- request
+GET /t
+--- more_headers
+Content-Type: application/grpc
+--- response_headers_like
+Content-Length: 0
+grpc-status: 16
+grpc-message: Unauthenticated
+--- response_body chop
+--- error_code: 401
+--- error_log: body was removed because table body encoding with gRPC is not supported
+
+
+
+=== TEST 39: response.exit() does not log warning with grpc using special table body without content-type specified
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            ngx.req.http_version = function() return "2" end
+
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(401, { message = "Hello" })
+        }
+    }
+--- request
+GET /t
+--- more_headers
+Content-Type: application/grpc
+--- response_headers_like
+Content-Length: 0
+grpc-status: 16
+grpc-message: Hello
+--- response_body chop
+--- error_code: 401
 --- no_error_log
 [error]

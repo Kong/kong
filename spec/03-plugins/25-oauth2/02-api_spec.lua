@@ -405,6 +405,97 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    describe("/oauth2", function()
+      describe("POST", function()
+        lazy_setup(function()
+          db:truncate("oauth2_credentials")
+        end)
+
+        it("does not create oauth2 credential when missing consumer", function()
+          local res = assert(admin_client:send {
+            method = "POST",
+            path = "/oauth2",
+            body = {
+              name = "test",
+              redirect_uris =  { "http://localhost/" },
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same("schema violation (consumer: required field missing)", json.message)
+        end)
+
+        it("creates oauth2 credential", function()
+          local res = assert(admin_client:send {
+            method = "POST",
+            path = "/oauth2",
+            body = {
+              name = "test",
+              redirect_uris = { "http://localhost/" },
+              consumer = {
+                id = consumer.id
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("test", json.name)
+        end)
+      end)
+    end)
+
+    describe("/oauth2/:client_id_or_id", function()
+      describe("PUT", function()
+        lazy_setup(function()
+          db:truncate("oauth2_credentials")
+        end)
+
+        it("does not create oauth2 credential when missing consumer", function()
+          local res = assert(admin_client:send {
+            method = "PUT",
+            path = "/oauth2/client-1",
+            body = {
+              name = "test",
+              redirect_uris =  { "http://localhost/" },
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same("schema violation (consumer: required field missing)", json.message)
+        end)
+
+        it("creates oauth2 credential", function()
+          local res = assert(admin_client:send {
+            method = "PUT",
+            path = "/oauth2/client-1",
+            body    = {
+              name = "test",
+              redirect_uris =  { "http://localhost/" },
+              consumer = {
+                id = consumer.id
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("client-1", json.client_id)
+          assert.equal("test", json.name)
+        end)
+      end)
+    end)
+
     describe("/oauth2_tokens/", function()
       local oauth2_credential
       lazy_setup(function()
@@ -452,7 +543,10 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ expires_in = "required field missing" }, json.fields)
+            assert.same({
+              expires_in = "required field missing",
+              credential = 'required field missing',
+            }, json.fields)
           end)
         end)
       end)
@@ -547,7 +641,10 @@ for _, strategy in helpers.each_strategy() do
               })
               local body = assert.res_status(400, res)
               local json = cjson.decode(body)
-              assert.same({ expires_in = "required field missing" }, json.fields)
+              assert.same({
+                expires_in = "required field missing",
+                credential = 'required field missing',
+              }, json.fields)
             end)
           end)
         end)

@@ -19,7 +19,7 @@ for _, strategy in helpers.each_strategy() do
         local service = bp.services:insert {
           name            = "api-1",
           protocol        = "http",
-          host            = "konghq.com",
+          host            = helpers.blackhole_host,
           port            = 81,
           connect_timeout = 1,
         }
@@ -89,7 +89,7 @@ for _, strategy in helpers.each_strategy() do
         local service = bp.services:insert {
           name            = "api-1",
           protocol        = "http",
-          host            = "konghq.com",
+          host            = helpers.blackhole_host,
           port            = 81,
           connect_timeout = 1,
         }

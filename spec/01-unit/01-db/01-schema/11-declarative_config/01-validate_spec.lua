@@ -624,6 +624,7 @@ describe("declarative config: validate", function()
           _format_version: "1.1"
           oauth2_credentials:
           - name: my-credential
+            consumer: foo
             redirect_uris:
             - https://example.com
           - name: another-credential
@@ -670,6 +671,7 @@ describe("declarative config: validate", function()
         assert.same({
           ["oauth2_credentials"] = {
             {
+              ["consumer"] = "required field missing",
               ["redirect_uris"] = {
                 [2] = "cannot parse 'foobar'",
               }
@@ -804,6 +806,7 @@ describe("declarative config: validate", function()
             _format_version: "1.1"
             oauth2_credentials:
             - name: my-credential
+              consumer: bob
               redirect_uris:
               - https://example.com
               oauth2_tokens:
@@ -815,6 +818,7 @@ describe("declarative config: validate", function()
             _format_version: "1.1"
             oauth2_credentials:
             - name: my-credential
+              consumer: bob
               redirect_uris:
               - https://example.com
               oauth2_tokens:
@@ -840,6 +844,7 @@ describe("declarative config: validate", function()
           assert.same({
             ["oauth2_credentials"] = {
               {
+                ["consumer"] = "required field missing",
                 ["oauth2_tokens"] = {
                   {
                     ["expires_in"] = "required field missing",
@@ -855,6 +860,7 @@ describe("declarative config: validate", function()
             _format_version: "1.1"
             oauth2_credentials:
             - name: my-credential
+              consumer: bob
               redirect_uris:
               - https://example.com
               oauth2_tokens:

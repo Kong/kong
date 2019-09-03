@@ -101,7 +101,7 @@ qq{
                 args          = { "X-Foo", "bar" },
                 init_worker   = false,
                 certificate   = "pending",
-                rewrite       = "forced false",
+                rewrite       = true,
                 access        = true,
                 header_filter = true,
                 body_filter   = false,

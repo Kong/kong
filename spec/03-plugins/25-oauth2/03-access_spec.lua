@@ -921,7 +921,27 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           local json = cjson.decode(body)
           assert.same({ error_description = "Invalid client authentication", error = "invalid_client" }, json)
         end)
-        it("returns an error when client_secret is not sent", function()
+        it("returns an error when empty client_id and empty client_secret is sent", function()
+          local res = assert(proxy_ssl_client:send {
+            method  = "POST",
+            path    = "/oauth2/token",
+            body    = {
+              client_id        = "",
+              client_secret    = "",
+              scope            = "email",
+              response_type    = "token",
+              grant_type       = "client_credentials",
+            },
+            headers = {
+              ["Host"]         = "oauth2_4.com",
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same({ error_description = "Invalid client authentication", error = "invalid_client" }, json)
+        end)
+        it("returns an error when grant_type is not sent", function()
           local res = assert(proxy_ssl_client:send {
             method  = "POST",
             path    = "/oauth2/token",

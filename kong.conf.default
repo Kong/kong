@@ -503,6 +503,19 @@
 #   Will inject the following directive in Kong's `http {}` block:
 #
 #   `ssl_protocols <value>;`
+#
+#   If different sets of protocols are desired between the proxy and Admin API
+#   server, you may specify `nginx_proxy_ssl_protocols` and/or
+#   `nginx_admin_ssl_protocols`, both of which taking precedence over the
+#   `http {}` block.
+
+#nginx_http_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
+                                 # Enables the specified protocols for
+                                 # client-side connections. The set of
+                                 # supported protocol versions also depends
+                                 # on the version of OpenSSL Kong was built
+                                 # with.
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_protocols
 
 #nginx_http_upstream_keepalive = 60
                                  # Sets the maximum number of idle keepalive

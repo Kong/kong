@@ -181,7 +181,10 @@ end
 
 
 function CorsHandler:access(conf)
-  if kong.request.get_method() ~= "OPTIONS" then
+  if kong.request.get_method() ~= "OPTIONS"
+     or not kong.request.get_header("Origin")
+     or not kong.request.get_header("Access-Control-Request-Method")
+  then
     return
   end
 
@@ -212,7 +215,8 @@ function CorsHandler:access(conf)
   end
 
   local methods = conf.methods and concat(conf.methods, ",")
-                  or "GET,HEAD,PUT,PATCH,POST,DELETE"
+                  or "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS,TRACE,CONNECT"
+
   set_header("Access-Control-Allow-Methods", methods)
 
   if conf.max_age then

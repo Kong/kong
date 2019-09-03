@@ -397,6 +397,87 @@ for _, strategy in helpers.each_strategy() do
           --assert.is_nil(json_2.offset) -- last page
         end)
       end)
+
+      describe("POST", function()
+        lazy_setup(function()
+          db:truncate("keyauth_credentials")
+        end)
+
+        it("does not create key-auth credential when missing consumer", function()
+          local res = assert(admin_client:send {
+            method = "POST",
+            path = "/key-auths",
+            body = {
+              key = "1234",
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same("schema violation (consumer: required field missing)", json.message)
+        end)
+
+        it("creates key-auth credential", function()
+          local res = assert(admin_client:send {
+            method = "POST",
+            path = "/key-auths",
+            body = {
+              key = "1234",
+              consumer = {
+                id = consumer.id
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("1234", json.key)
+        end)
+      end)
+    end)
+
+    describe("/key-auths/:credential_key_or_id", function()
+      describe("PUT", function()
+        lazy_setup(function()
+          db:truncate("keyauth_credentials")
+        end)
+
+        it("does not create key-auth credential when missing consumer", function()
+          local res = assert(admin_client:send {
+            method = "PUT",
+            path = "/key-auths/1234",
+            body = { },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same("schema violation (consumer: required field missing)", json.message)
+        end)
+
+        it("creates key-auth credential", function()
+          local res = assert(admin_client:send {
+            method = "PUT",
+            path = "/key-auths/1234",
+            body = {
+              consumer = {
+                id = consumer.id
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("1234", json.key)
+        end)
+      end)
     end)
 
     describe("/key-auths/:credential_key_or_id/consumer", function()

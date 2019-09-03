@@ -123,6 +123,24 @@ function _TARGETS:delete(pk)
 end
 
 
+function _TARGETS:select(pk)
+  local target, err, err_t = self.super.select(self, pk)
+  if err then
+    return nil, err, err_t
+  end
+
+  if target then
+    local formatted_target, err = format_target(target.target)
+    if not formatted_target then
+      local err_t = self.errors:schema_violation({ target = err })
+      return nil, tostring(err_t), err_t
+    end
+    target.target = formatted_target
+  end
+  return target
+end
+
+
 function _TARGETS:delete_by_target(tgt)
   local target, err, err_t = self:select_by_target(tgt)
   if err then
@@ -142,7 +160,22 @@ end
 -- with weight=0 (i.e. the "raw" representation of targets in
 -- the database)
 function _TARGETS:page_for_upstream_raw(upstream_pk, ...)
-  return self.super.page_for_upstream(self, upstream_pk, ...)
+  local page, err, err_t, offset =
+    self.super.page_for_upstream(self, upstream_pk, ...)
+  if err then
+    return nil, tostring(err), err_t
+  end
+
+  for _, target in ipairs(page) do
+    local formatted_target, err = format_target(target.target)
+    if not formatted_target then
+      local err_t = self.errors:schema_violation({ target = err })
+      return nil, tostring(err_t), err_t
+    end
+    target.target = formatted_target
+  end
+
+  return page, nil, nil, offset
 end
 
 
@@ -158,6 +191,12 @@ function _TARGETS:select_by_upstream_raw(upstream_pk, ...)
     if not target then
       return nil, err, err_t
     end
+    local formatted_target, err = format_target(target.target)
+    if not formatted_target then
+      local err_t = self.errors:schema_violation({ target = err })
+      return nil, tostring(err_t), err_t
+    end
+    target.target = formatted_target
 
     table.insert(targets, target)
   end
@@ -297,7 +336,11 @@ function _TARGETS:post_health(upstream, target, address, is_healthy)
   if address ~= nil then
     local addr = utils.normalize_ip(address)
     ip = addr.host
-    port = addr.port
+    if addr.port then
+      port = addr.port
+    else
+      port = DEFAULT_PORT
+    end
   else
     ip = nil
     port = host_addr.port
