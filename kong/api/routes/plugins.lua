@@ -13,7 +13,10 @@ local pairs = pairs
 local setmetatable = setmetatable
 
 
-local get_plugin = endpoints.get_entity_endpoint(kong.db.plugins.schema)
+local get_plugin = function(self, db, helpers, parent)
+  return endpoints.get_entity_endpoint(kong.db.plugins.schema)(self, db, helpers)
+end
+
 local delete_plugin = endpoints.delete_entity_endpoint(kong.db.plugins.schema)
 
 
