@@ -17,7 +17,6 @@ local pairs = pairs
 local setmetatable = setmetatable
 local ipairs = ipairs
 local type = type
-local getfenv = getfenv
 local utils_split = utils.split
 local ngx_null = ngx.null
 local tostring = tostring
@@ -671,7 +670,7 @@ end
 
 
 local function is_proxy_request()
-  local r = getfenv(0).__ngx_req
+  local r = base.get_request()
   if not r then
     return false
   end
