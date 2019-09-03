@@ -1268,6 +1268,7 @@ describe("declarative config: flatten", function()
                 id = "UUID",
                 key = "https://keycloak/auth/realms/foo",
                 rsa_public_key = key:gsub("\\n", "\n"),
+                tags = null,
               } }
           }, idempotent(config))
         end)
