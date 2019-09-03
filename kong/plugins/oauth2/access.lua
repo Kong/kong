@@ -467,6 +467,12 @@ local function issue_token(conf)
             error_description = "Invalid provision_key"
           }
 
+        elseif not client then
+          response_params = {
+            [ERROR] = "invalid_client",
+            error_description = "Invalid client authentication"
+          }
+
         else
           -- Check scopes
           local scope, err = retrieve_scope(parameters, conf)
