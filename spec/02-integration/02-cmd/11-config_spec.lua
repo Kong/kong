@@ -302,7 +302,7 @@ describe("kong config", function()
     assert(helpers.stop_kong())
   end)
 
-  it("#db config db_export exports a yaml file", function()
+  it("#flaky #db config db_export exports a yaml file", function() -- XXX EE: db export
     assert(db.plugins:truncate())
     assert(db.routes:truncate())
     assert(db.services:truncate())
