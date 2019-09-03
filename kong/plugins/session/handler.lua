@@ -7,7 +7,7 @@ local kong = kong
 
 local KongSessionHandler = {
   PRIORITY = 1900,
-  VERSION = "2.1.2",
+  VERSION = "2.2.0",
 }
 
 
