@@ -206,6 +206,7 @@ build = {
     ["kong.plugins.basic-auth.migrations"] = "kong/plugins/basic-auth/migrations/init.lua",
     ["kong.plugins.basic-auth.migrations.000_base_basic_auth"] = "kong/plugins/basic-auth/migrations/000_base_basic_auth.lua",
     ["kong.plugins.basic-auth.migrations.001_14_to_15"] = "kong/plugins/basic-auth/migrations/001_14_to_15.lua",
+    ["kong.plugins.basic-auth.migrations.002_130_to_140"] = "kong/plugins/basic-auth/migrations/002_130_to_140.lua",
     ["kong.plugins.basic-auth.crypto"] = "kong/plugins/basic-auth/crypto.lua",
     ["kong.plugins.basic-auth.handler"] = "kong/plugins/basic-auth/handler.lua",
     ["kong.plugins.basic-auth.access"] = "kong/plugins/basic-auth/access.lua",
