@@ -11,7 +11,7 @@ end
 
 
 BasicAuthHandler.PRIORITY = 1001
-BasicAuthHandler.VERSION = "2.0.0"
+BasicAuthHandler.VERSION = "2.1.0"
 
 
 return BasicAuthHandler
