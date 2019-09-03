@@ -39,7 +39,7 @@ local ACLHandler = {}
 
 
 ACLHandler.PRIORITY = 950
-ACLHandler.VERSION = "2.0.0"
+ACLHandler.VERSION = "2.1.0"
 
 
 function ACLHandler:access(conf)

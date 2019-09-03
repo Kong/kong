@@ -285,6 +285,7 @@ build = {
     ["kong.plugins.acl.migrations"] = "kong/plugins/acl/migrations/init.lua",
     ["kong.plugins.acl.migrations.000_base_acl"] = "kong/plugins/acl/migrations/000_base_acl.lua",
     ["kong.plugins.acl.migrations.001_14_to_15"] = "kong/plugins/acl/migrations/001_14_to_15.lua",
+    ["kong.plugins.acl.migrations.002_130_to_140"] = "kong/plugins/acl/migrations/002_130_to_140.lua",
     ["kong.plugins.acl.handler"] = "kong/plugins/acl/handler.lua",
     ["kong.plugins.acl.schema"] = "kong/plugins/acl/schema.lua",
     ["kong.plugins.acl.daos"] = "kong/plugins/acl/daos.lua",
