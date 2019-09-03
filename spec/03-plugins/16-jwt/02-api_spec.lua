@@ -66,6 +66,23 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(consumer.id, body.consumer.id)
           jwt1 = body
         end)
+        it("creates a jwt secret with tags", function()
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/consumers/bob/jwt/",
+            body    = {
+              tags     = { "tag1", "tag2" },
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal(consumer.id, json.consumer.id)
+          assert.equal("tag1", json.tags[1])
+          assert.equal("tag2", json.tags[2])
+        end)
         it("accepts any given `secret` and `key` parameters", function()
           local res = assert(admin_client:send {
             method = "POST",
@@ -231,7 +248,7 @@ for _, strategy in helpers.each_strategy() do
             path = "/consumers/bob/jwt/",
           })
           local body = cjson.decode(assert.res_status(200, res))
-          assert.equal(6, #(body.data))
+          assert.equal(7, #(body.data))
         end)
       end)
     end)
