@@ -147,6 +147,7 @@ for _, strategy in helpers.each_strategy() do
           local json = cjson.decode(body)
           json.path = nil
           json.tags = nil
+          json.client_certificate = nil
           assert.same(service, json)
         end)
 
@@ -157,6 +158,7 @@ for _, strategy in helpers.each_strategy() do
           local json = cjson.decode(body)
           json.path = nil
           json.tags = nil
+          json.client_certificate = nil
           assert.same(service, json)
         end)
 
@@ -192,6 +194,7 @@ for _, strategy in helpers.each_strategy() do
               local in_db = assert(db.services:select({ id = service.id }))
               json.path = nil
               json.tags = nil
+              json.client_certificate = nil
               assert.same(json, in_db)
             end, db)
           end
@@ -231,6 +234,7 @@ for _, strategy in helpers.each_strategy() do
               local in_db = assert(db.services:select_by_name(service.name))
               json.path = nil
               json.tags = nil
+              json.client_certificate = nil
               assert.same(json, in_db)
             end, db)
           end
