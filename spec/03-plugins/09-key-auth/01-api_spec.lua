@@ -101,6 +101,24 @@ for _, strategy in helpers.each_strategy() do
 
           assert.not_equal(first_key, json.key)
         end)
+        it("creates a key-auth credential with tags", function()
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/consumers/bob/key-auth",
+            body    = {
+              key   = "keyauth-with-tags",
+              tags  = { "tag1", "tag2"},
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal(consumer.id, json.consumer.id)
+          assert.equal("tag1", json.tags[1])
+          assert.equal("tag2", json.tags[2])
+        end)
       end)
 
       describe("GET", function()
