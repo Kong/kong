@@ -70,7 +70,7 @@ return {
       DELETE = endpoints.delete_entity_endpoint(credentials_schema),
     },
   },
-  ["/basic-auths/"] = {
+  ["/basic-auths"] = {
     schema = credentials_schema,
     methods = {
       ---EE [[
@@ -78,6 +78,10 @@ return {
       GET = function(self, db, helpers, parent)
         return endpoints.get_collection_endpoint(credentials_schema)(self, db,
           helpers, ee_crud.post_process_credential)
+      end,
+      POST = function(self, db, helpers, parent)
+        return endpoints.post_collection_endpoint(credentials_schema)(self, db,
+          helpers)
       end,
       --]] EE
     }
