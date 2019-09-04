@@ -686,6 +686,7 @@ function Kong.access()
 
         ctx.KONG_ACCESS_ENDED_AT = get_now_ms()
         ctx.KONG_ACCESS_TIME = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_ACCESS_START
+        ctx.KONG_RESPONSE_LATENCY = ctx.KONG_ACCESS_ENDED_AT - start_time() * 1000
 
         return kong.response.exit(500, { message  = "An unexpected error occurred" })
       end
@@ -695,6 +696,7 @@ function Kong.access()
   if ctx.delayed_response then
     ctx.KONG_ACCESS_ENDED_AT = get_now_ms()
     ctx.KONG_ACCESS_TIME = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_ACCESS_START
+    ctx.KONG_RESPONSE_LATENCY = ctx.KONG_ACCESS_ENDED_AT - start_time() * 1000
 
     return flush_delayed_response(ctx)
   end
@@ -901,6 +903,9 @@ function Kong.header_filter()
     if not ctx.KONG_PROXY_LATENCY then
       ctx.KONG_PROXY_LATENCY = ctx.KONG_HEADER_FILTER_START - start_time() * 1000
     end
+
+  elseif not ctx.KONG_RESPONSE_LATENCY then
+    ctx.KONG_RESPONSE_LATENCY = ctx.KONG_HEADER_FILTER_START - start_time() * 1000
   end
 
   kong_global.set_phase(kong, PHASES.header_filter)

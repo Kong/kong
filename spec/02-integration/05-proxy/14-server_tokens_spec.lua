@@ -292,6 +292,16 @@ describe("headers [#" .. strategy .. "]", function()
           },
         }
 
+        local request_termination_route = bp.routes:insert({
+          service = service,
+          hosts = { "request-termination.test" }
+        })
+
+        bp.plugins:insert {
+          name = "request-termination",
+          route = { id = request_termination_route.id },
+        }
+
         config = config or {}
         config.database   = strategy
         config.nginx_conf = "spec/fixtures/custom_nginx.template"
@@ -336,6 +346,7 @@ describe("headers [#" .. strategy .. "]", function()
         assert.res_status(200, res)
         assert.is_not_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
         assert.is_not_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
 
       it("should not be returned when no API matched (no proxy)", function()
@@ -350,6 +361,22 @@ describe("headers [#" .. strategy .. "]", function()
         assert.res_status(404, res)
         assert.is_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
         assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_not_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
+      end)
+
+      it("should not be returned when request is short-circuited", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            host  = "request-termination.test",
+          }
+        })
+
+        assert.res_status(503, res)
+        assert.is_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_not_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
 
       it("should be returned when response status code is included in error_page directive (error_page not executing)", function()
@@ -365,6 +392,7 @@ describe("headers [#" .. strategy .. "]", function()
           assert.res_status(code, res)
           assert.is_not_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
           assert.is_not_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+          assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
         end
       end)
 
@@ -380,6 +408,7 @@ describe("headers [#" .. strategy .. "]", function()
         assert.res_status(502, res)
         assert.is_not_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
         assert.is_not_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
 
       -- Too painfull to get this to work with dbless (need to start new Kong process etc.)
@@ -414,6 +443,7 @@ describe("headers [#" .. strategy .. "]", function()
           assert.res_status(500, res)
           assert.is_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
           assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+          assert.is_not_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
         end)
       end
 
@@ -429,6 +459,7 @@ describe("headers [#" .. strategy .. "]", function()
         assert.res_status(500, res)
         assert.is_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
         assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_not_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
 
 
@@ -445,6 +476,7 @@ describe("headers [#" .. strategy .. "]", function()
         assert.res_status(500, res)
         assert.is_not_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
         assert.is_not_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
 
     end)
@@ -469,6 +501,7 @@ describe("headers [#" .. strategy .. "]", function()
         assert.res_status(200, res)
         assert.is_not_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
         assert.is_not_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
 
       it("should not be returned when no API matched (no proxy)", function()
@@ -483,6 +516,7 @@ describe("headers [#" .. strategy .. "]", function()
         assert.res_status(404, res)
         assert.is_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
         assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_not_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
 
     end)
@@ -507,6 +541,7 @@ describe("headers [#" .. strategy .. "]", function()
         assert.res_status(200, res)
         assert.is_not_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
         assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
 
       it("should not return any latency header when no API matched (no proxy)", function()
@@ -521,6 +556,7 @@ describe("headers [#" .. strategy .. "]", function()
         assert.res_status(404, res)
         assert.is_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
         assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
 
     end)
@@ -545,6 +581,7 @@ describe("headers [#" .. strategy .. "]", function()
         assert.res_status(200, res)
         assert.is_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
         assert.is_not_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
 
       it("should not return any latency header when no API matched (no proxy)", function()
@@ -559,6 +596,47 @@ describe("headers [#" .. strategy .. "]", function()
         assert.res_status(404, res)
         assert.is_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
         assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
+      end)
+
+    end)
+
+    describe("(with headers = X-Kong-Response-Latency)", function()
+
+      lazy_setup(start {
+        headers = "X-Kong-Response-Latency",
+      })
+
+      lazy_teardown(stop)
+
+      it("should not return 'X-Kong-Proxy-Latency', 'X-Kong-Upstream-Latency' or 'X-Kong-Response-Latency' headers when request was proxied", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            host  = "headers-inspect.com"
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.is_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
+      end)
+
+      it("should return 'X-Kong-Response-Latency' when no API matched (no proxy)", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            host  = "404.com",
+          }
+        })
+
+        assert.res_status(404, res)
+        assert.is_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_not_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
 
     end)
@@ -583,6 +661,7 @@ describe("headers [#" .. strategy .. "]", function()
         assert.res_status(200, res)
         assert.is_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
         assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
 
       it("should not be returned when no API matched (no proxy)", function()
@@ -597,6 +676,7 @@ describe("headers [#" .. strategy .. "]", function()
         assert.res_status(404, res)
         assert.is_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
         assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
 
     end)
@@ -622,6 +702,7 @@ describe("headers [#" .. strategy .. "]", function()
         assert.not_equal(default_server_header, res.headers["server"])
         assert.equal(default_server_header, res.headers["via"])
         assert.is_not_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
 
       it("should return Kong 'Server' header but not the Kong 'Via' or 'X-Kong-Proxy-Latency' header when no API matched (no proxy)", function()
@@ -637,6 +718,7 @@ describe("headers [#" .. strategy .. "]", function()
         assert.equal(default_server_header, res.headers["server"])
         assert.is_nil(res.headers["via"])
         assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
 
       it("can be specified via configuration file", function()
@@ -681,6 +763,7 @@ describe("headers [#" .. strategy .. "]", function()
         assert.not_equal(default_server_header, res.headers["server"])
         assert.equal(default_server_header, res.headers["via"])
         assert.is_not_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
 
       it("should return Kong 'Server' header as 'off' will not take effect", function()
@@ -696,6 +779,7 @@ describe("headers [#" .. strategy .. "]", function()
         assert.equal(default_server_header, res.headers["server"])
         assert.is_nil(res.headers["via"])
         assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
 
     end)
@@ -757,6 +841,7 @@ describe("headers [#" .. strategy .. "]", function()
         assert.not_equal(default_server_header, res.headers["server"])
         assert.equal(default_server_header, res.headers["via"])
         assert.is_not_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
 
       it("should return Kong 'Server' header", function()
@@ -772,6 +857,7 @@ describe("headers [#" .. strategy .. "]", function()
         assert.equal(default_server_header, res.headers["server"])
         assert.is_nil(res.headers["via"])
         assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+        assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
     end)
   end)

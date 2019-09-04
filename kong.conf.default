@@ -313,15 +313,18 @@
                                  # Accepted values are:
                                  # - `Server`: Injects `Server: kong/x.y.z`
                                  #   on Kong-produced response (e.g. Admin
-                                 #   API, rejected requests from auth plugin,
-                                 #   etc...).
+                                 #   API, rejected requests from auth plugin).
                                  # - `Via`: Injects `Via: kong/x.y.z` for
                                  #   successfully proxied requests.
-                                 # - `X-Kong-Proxy-Latency`: Time taken (in
-                                 #   milliseconds)
-                                 #   by Kong to process a request and run all
-                                 #   plugins before proxying the request
-                                 #   upstream.
+                                 # - `X-Kong-Proxy-Latency`: Time taken
+                                 #   (in milliseconds) by Kong to process
+                                 #   a request and run all plugins before
+                                 #   proxying the request upstream.
+                                 # - `X-Kong-Response-Latency`: time taken
+                                 #   (in millisecond) by Kong to produce
+                                 #   a response in case of e.g. plugin
+                                 #   short-circuiting the request, or in
+                                 #   in case of an error.
                                  # - `X-Kong-Upstream-Latency`: Time taken
                                  #   (in milliseconds) by the upstream
                                  #   service to send response headers.
@@ -337,6 +340,7 @@
                                  #   `Server` and `Via`.
                                  # - `latency_tokens`: Same as specifying
                                  #   `X-Kong-Proxy-Latency`,
+                                 #   `X-Kong-Response-Latency`,
                                  #   `X-Kong-Admin-Latency` and
                                  #   `X-Kong-Upstream-Latency`
                                  #

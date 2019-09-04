@@ -69,6 +69,7 @@ return {
   HEADERS = {
     HOST_OVERRIDE = "X-Host-Override",
     PROXY_LATENCY = "X-Kong-Proxy-Latency",
+    RESPONSE_LATENCY = "X-Kong-Response-Latency",
     ADMIN_LATENCY = "X-Kong-Admin-Latency",
     UPSTREAM_LATENCY = "X-Kong-Upstream-Latency",
     UPSTREAM_STATUS = "X-Kong-Upstream-Status",
