@@ -117,7 +117,7 @@ local function set_consumer(consumer, credential, token)
     ngx.ctx.authenticated_jwt_token = token  -- backward compatibilty only
 
     if credential.username then
-      set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
+      set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.key)
     else
       clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
     end
