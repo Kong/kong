@@ -194,7 +194,10 @@ for _, strategy in helpers.each_strategy() do
           "plugins",
           "routes",
           "services",
-          "snis"
+          "snis",
+          "workspace_entities", -- XXX EE
+          "workspace_entity_counters",   -- XXX EE
+          "workspaces",
         }, toplevel_keys)
 
         assert.equals("1.1", yaml._format_version)
@@ -247,5 +250,3 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 end
-
-
