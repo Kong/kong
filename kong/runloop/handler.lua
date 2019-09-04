@@ -84,6 +84,8 @@ do
   local LUA_MEM_SAMPLE_RATE = 10 -- seconds
   local last = ngx.time()
 
+  local collectgarbage = collectgarbage
+
   update_lua_mem = function(force)
     local time = ngx.time()
 
@@ -418,8 +420,6 @@ local function register_events()
       cache:flip()
     end, "declarative", "flip_config")
   end
-
-
 end
 
 
@@ -519,6 +519,7 @@ do
   local router
   local router_version
 
+
   local function should_process_route(route)
     for _, protocol in ipairs(route.protocols) do
       if SUBSYSTEMS[protocol] == subsystem then
@@ -603,6 +604,7 @@ do
 
     return service
   end
+
 
   build_router = function(version)
     local db = kong.db
@@ -928,21 +930,6 @@ return {
 
     end
   },
-  certificate = {
-    before = function(_)
-      certificate.execute()
-    end
-  },
-  rewrite = {
-    before = function(ctx)
-      -- special handling for proxy-authorization and te headers in case
-      -- the plugin(s) want to specify them (store the original)
-      ctx.http_proxy_authorization = var.http_proxy_authorization
-      ctx.http_te                  = var.http_te
-
-      mesh.rewrite(ctx)
-    end,
-  },
   preread = {
     before = function(ctx)
       local router = get_updated_router()
@@ -1021,6 +1008,21 @@ return {
         return kong.response.exit(errcode, body)
       end
     end
+  },
+  certificate = {
+    before = function(_)
+      certificate.execute()
+    end
+  },
+  rewrite = {
+    before = function(ctx)
+      -- special handling for proxy-authorization and te headers in case
+      -- the plugin(s) want to specify them (store the original)
+      ctx.http_proxy_authorization = var.http_proxy_authorization
+      ctx.http_te                  = var.http_te
+
+      mesh.rewrite(ctx)
+    end,
   },
   access = {
     before = function(ctx)
