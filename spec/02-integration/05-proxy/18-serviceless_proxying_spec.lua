@@ -356,7 +356,7 @@ for _, strategy in helpers.each_strategy() do
         tcp:close()
       end)
 
-      it("proxies tls to tls (origins)", function()
+      pending("proxies tls to tls (origins)", function()
         local tcp = require "socket".tcp()
         local ssl = require("ssl")
 

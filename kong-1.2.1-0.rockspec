@@ -45,7 +45,6 @@ dependencies = {
   "lua-resty-template == 1.9-1",
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 0.3.1",
-  "kong-plugin-kubernetes-sidecar-injector ~> 0.2",
   "kong-plugin-zipkin ~> 0.1.2",
   "kong-plugin-serverless-functions ~> 0.2",
   "kong-prometheus-plugin ~> 0.3.4",
@@ -185,7 +184,6 @@ build = {
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
-    ["kong.runloop.mesh"] = "kong/runloop/mesh.lua",
     ["kong.runloop.plugins_iterator"] = "kong/runloop/plugins_iterator.lua",
     ["kong.runloop.balancer"] = "kong/runloop/balancer.lua",
 

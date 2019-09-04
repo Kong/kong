@@ -27,6 +27,7 @@ BUILD_FLAGS=(
   "--openssl $OPENSSL"
   "--luarocks $LUAROCKS"
   "--kong-nginx-module $KONG_NGINX_MODULE"
+  "--openresty-patches $OPENRESTY_PATCHES"
   "-j $JOBS"
 )
 

@@ -52,7 +52,6 @@ describe("Plugins", function()
       "bot-detection",
       "cors",
       "session",
-      "kubernetes-sidecar-injector",
       "jwt",
       "oauth2",
       "key-auth",

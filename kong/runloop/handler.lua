@@ -13,7 +13,6 @@ local utils       = require "kong.tools.utils"
 local Router      = require "kong.router"
 local balancer    = require "kong.runloop.balancer"
 local reports      = require "kong.reports"
-local mesh        = require "kong.runloop.mesh"
 local constants   = require "kong.constants"
 local singletons  = require "kong.singletons"
 local certificate = require "kong.runloop.certificate"
@@ -440,7 +439,7 @@ local function register_events()
     end
   end, "crud", "files")
 
-  
+
   worker_events.register(function(data)
     local operation = data.operation
     local file = data.entity
@@ -802,7 +801,7 @@ local function balancer_setup_stage1(ctx, scheme, host_type, host, port,
     port           = port,      -- final target port
     try_count      = 0,         -- retry counter
     tries          = {},        -- stores info per try
-    ssl_ctx        = kong.default_client_ssl_ctx, -- SSL_CTX* to use
+    -- ssl_ctx     = nil,       -- custom SSL_CTX* to use
     -- ip          = nil,       -- final target IP address
     -- balancer    = nil,       -- the balancer object, if any
     -- hostname    = nil,       -- hostname of the final target IP
@@ -978,7 +977,6 @@ return {
       ctx.http_proxy_authorization = var.http_proxy_authorization
       ctx.http_te                  = var.http_te
 
-      mesh.rewrite(ctx)
     end,
     after = function(ctx)
       ctx.KONG_REWRITE_TIME = get_now() - ctx.KONG_REWRITE_START -- time spent in Kong's rewrite_by_lua
@@ -996,33 +994,22 @@ return {
 
       local ssl_termination_ctx -- OpenSSL SSL_CTX to use for termination
 
-      local ssl_preread_alpn_protocols = var.ssl_preread_alpn_protocols
-      -- ssl_preread_alpn_protocols is a comma separated list
-      -- see https://trac.nginx.org/nginx/ticket/1616
-      if ssl_preread_alpn_protocols and
-         ssl_preread_alpn_protocols:find(mesh.get_mesh_alpn(), 1, true) then
-        -- Is probably an incoming service mesh connection
-        -- terminate service-mesh Mutual TLS
-        ssl_termination_ctx = mesh.mesh_server_ssl_ctx
-        ctx.is_service_mesh_request = true
-      else
-        -- TODO: stream router should decide if TLS is terminated or not
-        -- XXX: for now, use presence of SNI to terminate.
-        local sni = var.ssl_preread_server_name
-        if sni then
-          log(DEBUG, "SNI: ", sni)
+      -- TODO: stream router should decide if TLS is terminated or not
+      -- XXX: for now, use presence of SNI to terminate.
+      local sni = var.ssl_preread_server_name
+      if sni then
+        log(DEBUG, "SNI: ", sni)
 
-          local err
-          ssl_termination_ctx, err = certificate.find_certificate(sni)
-          if not ssl_termination_ctx then
-            log(ERR, err)
-            return exit(ERROR)
-          end
-
-          -- TODO Fake certificate phase?
-
-          log(INFO, "attempting to terminate TLS")
+        local err
+        ssl_termination_ctx, err = certificate.find_certificate(sni)
+        if not ssl_termination_ctx then
+          log(ERR, err)
+          return exit(ERROR)
         end
+
+        -- TODO Fake certificate phase?
+
+        log(INFO, "attempting to terminate TLS")
       end
 
       -- Terminate TLS

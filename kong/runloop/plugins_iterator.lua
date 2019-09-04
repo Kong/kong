@@ -228,15 +228,8 @@ local function load_configuration(ctx,
   end
 
   if plugin.run_on ~= "all" then
-    if ctx.is_service_mesh_request then
-      if plugin.run_on == "first" then
-        return
-      end
-
-    else
-      if plugin.run_on == "second" then
-        return
-      end
+    if plugin.run_on == "second" then
+      return
     end
   end
 

@@ -31,6 +31,7 @@ env:
     - OPENRESTY_BASE=1.13.6.2
     - OPENRESTY_LATEST=1.13.6.2
     - OPENRESTY=$OPENRESTY_BASE
+    - OPENRESTY_PATCHES=remove_service_mesh_partches
     - KONG_NGINX_MODULE=master
     - DOWNLOAD_CACHE=$HOME/download-cache
     - DOWNLOAD_ROOT=$HOME/download-root
