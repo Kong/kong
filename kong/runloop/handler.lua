@@ -1419,6 +1419,10 @@ return {
         end
 
       else
+        if enabled_headers[constants.HEADERS.RESPONSE_LATENCY] then
+          header[constants.HEADERS.RESPONSE_LATENCY] = ctx.KONG_RESPONSE_LATENCY
+        end
+
         if enabled_headers[constants.HEADERS.SERVER] then
           header[constants.HEADERS.SERVER] = server_header
 
