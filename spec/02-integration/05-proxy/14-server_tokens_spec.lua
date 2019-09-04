@@ -775,5 +775,79 @@ describe("headers [#" .. strategy .. "]", function()
       end)
     end)
   end)
+
+  describe("X-Kong-Admin-Latency", function()
+    local admin_client
+
+    local function start(config)
+      return function()
+        config = config or {}
+        config.database   = strategy
+        config.nginx_conf = "spec/fixtures/custom_nginx.template"
+
+        assert(helpers.start_kong(config))
+      end
+    end
+
+    before_each(function()
+      admin_client = helpers.admin_client()
+    end)
+
+    after_each(function()
+      if admin_client then
+        admin_client:close()
+      end
+    end)
+
+    describe("(with default configration values)", function()
+      lazy_setup(start())
+      lazy_teardown(stop)
+
+      it("should be returned when admin api is requested", function()
+        local res = assert(admin_client:get("/"))
+        assert.res_status(200, res)
+        assert.is_not_nil(res.headers[constants.HEADERS.ADMIN_LATENCY])
+      end)
+    end)
+
+    describe("(with headers = latency_tokens)", function()
+      lazy_setup(start {
+        headers = "latency_tokens",
+      })
+      lazy_teardown(stop)
+
+      it("should be returned when admin api is requested", function()
+        local res = assert(admin_client:get("/"))
+        assert.res_status(200, res)
+        assert.is_not_nil(res.headers[constants.HEADERS.ADMIN_LATENCY])
+      end)
+    end)
+
+    describe("(with headers = X-Kong-Admin-Latency)", function()
+      lazy_setup(start {
+        headers = "latency_tokens",
+      })
+      lazy_teardown(stop)
+
+      it("should be returned when admin api is requested", function()
+        local res = assert(admin_client:get("/"))
+        assert.res_status(200, res)
+        assert.is_not_nil(res.headers[constants.HEADERS.ADMIN_LATENCY])
+      end)
+    end)
+
+    describe("(with headers = off)", function()
+      lazy_setup(start {
+        headers = "off",
+      })
+      lazy_teardown(stop)
+
+      it("should not be returned when admin api is requested", function()
+        local res = assert(admin_client:get("/"))
+        assert.res_status(200, res)
+        assert.is_nil(res.headers[constants.HEADERS.ADMIN_LATENCY])
+      end)
+    end)
+  end)
 end)
 end

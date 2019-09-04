@@ -236,6 +236,9 @@ server {
         content_by_lua_block {
             Kong.admin_content()
         }
+        header_filter_by_lua_block {
+            Kong.admin_header_filter()
+        }
     }
 
     location /nginx_status {
