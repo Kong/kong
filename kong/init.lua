@@ -1066,7 +1066,11 @@ end
 function Kong.admin_content(options)
   kong_global.set_phase(kong, PHASES.admin_api)
 
-  log_init_worker_errors(ngx.ctx)
+  local ctx = ngx.ctx
+
+  ctx.KONG_ADMIN_CONTENT_START = ctx.KONG_ADMIN_CONTENT_START or get_now_ms()
+
+  log_init_worker_errors(ctx)
 
   options = options or {}
 
@@ -1076,15 +1080,49 @@ function Kong.admin_content(options)
     header["Access-Control-Allow-Methods"] = "GET, HEAD, PUT, PATCH, POST, DELETE"
     header["Access-Control-Allow-Headers"] = "Content-Type"
 
+    ctx.KONG_ADMIN_CONTENT_ENDED_AT = get_now_ms()
+    ctx.KONG_ADMIN_CONTENT_TIME = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_ADMIN_CONTENT_START
+    ctx.KONG_ADMIN_LATENCY = ctx.KONG_ADMIN_CONTENT_ENDED_AT - start_time() * 1000
+
     return ngx.exit(204)
   end
 
-  return lapis.serve("kong.api")
+  lapis.serve("kong.api")
+
+  ctx.KONG_ADMIN_CONTENT_ENDED_AT = get_now_ms()
+  ctx.KONG_ADMIN_CONTENT_TIME = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_ADMIN_CONTENT_START
+  ctx.KONG_ADMIN_LATENCY = ctx.KONG_ADMIN_CONTENT_ENDED_AT - start_time() * 1000
 end
 
 
 -- TODO: deprecate the following alias
 Kong.serve_admin_api = Kong.admin_content
+
+
+function Kong.admin_header_filter()
+  local ctx = ngx.ctx
+
+  if not ctx.KONG_ADMIN_HEADER_FILTER_START then
+    ctx.KONG_ADMIN_HEADER_FILTER_START = get_now_ms()
+
+    if ctx.KONG_ADMIN_CONTENT_START and not ctx.KONG_ADMIN_CONTENT_ENDED_AT then
+      ctx.KONG_ADMIN_CONTENT_ENDED_AT = ctx.KONG_ADMIN_HEADER_FILTER_START
+      ctx.KONG_ADMIN_CONTENT_TIME = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_ADMIN_CONTENT_START
+    end
+
+    if not ctx.KONG_ADMIN_LATENCY then
+      ctx.KONG_ADMIN_LATENCY = ctx.KONG_ADMIN_HEADER_FILTER_START - start_time() * 1000
+    end
+  end
+
+  if kong.configuration.enabled_headers[constants.HEADERS.ADMIN_LATENCY] then
+    header[constants.HEADERS.ADMIN_LATENCY] = ctx.KONG_ADMIN_LATENCY
+  end
+
+  -- this is not used for now, but perhaps we need it later?
+  --ctx.KONG_ADMIN_HEADER_FILTER_ENDED_AT = get_now_ms()
+  --ctx.KONG_ADMIN_HEADER_FILTER_TIME = ctx.KONG_ADMIN_HEADER_FILTER_ENDED_AT - ctx.KONG_ADMIN_HEADER_FILTER_START
+end
 
 
 return Kong
