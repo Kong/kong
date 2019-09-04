@@ -384,7 +384,7 @@ For more details about the updated installation, please visit the official docs:
 
 - :fireworks: Support for **wildcard SNI matching**: the
   `ssl_certificate_by_lua` phase and the stream `preread` phase) is now able to
-  match an client hello SNI against any registered wildcard SNI. This is
+  match a client hello SNI against any registered wildcard SNI. This is
   particularly helpful for deployments serving a certificate for multiple
   subdomains.
   [#4457](https://github.com/Kong/kong/pull/4457)
