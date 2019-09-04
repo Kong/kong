@@ -19,16 +19,18 @@ return {
         return kong.response.exit(404, { message = "No configuration found." })
       end
 
+      local query = kong.request.get_raw_query()
       local res, err = backend.http_get(
         backend_data.config.host,
         backend_data.config.port,
         backend_data.config.connection_timeout,
-        "/status"
+        "/status",
+        query
       )
       if err then
         error("communication with brain/immunity failed: " .. tostring(err))
       else
-        return kong.response.exit(200, res:read_body())
+        return kong.response.exit(res.status, res:read_body())
       end
     end
   },
@@ -59,7 +61,7 @@ return {
       if err then
         error("communication with brain/immunity failed: " .. tostring(err))
       else
-        return kong.response.exit(200, res:read_body())
+        return kong.response.exit(res.status, res:read_body())
       end
     end
   },

@@ -13,6 +13,10 @@ local fixtures = {
               content_by_lua_block {
                 local cjson = require("cjson")
                 local query_args = ngx.req.get_uri_args()
+                if query_args.response_code then
+                  ngx.status = query_args.response_code
+                end
+
                 ngx.say(cjson.encode(query_args))
               }
           }
@@ -31,6 +35,10 @@ local fixtures = {
                     version = "1.7.1"
                   }
                 }
+                if query_args.response_code then
+                  ngx.status = query_args.response_code
+                end
+
                 ngx.say(cjson.encode(status))
               }
           }
@@ -151,6 +159,14 @@ for _, strategy in helpers.each_strategy() do
           }
           assert.are.same(cjson.decode(body), expected_params)
         end)
+
+        it("returns whatever response code returned by upstream", function()
+          local res = assert(admin_client:send {
+            method  = "GET",
+            path    = "/workspace2/collector/alerts?severity=high&response_code=300"
+          })
+          assert.res_status(300, res)
+        end)
       end)
     end)
 
@@ -174,6 +190,14 @@ for _, strategy in helpers.each_strategy() do
             }
           }
           assert.are.same(cjson.decode(body), expected_status)
+        end)
+
+        it("returns whatever response code is returned by upstream", function()
+          local res = assert(admin_client:send {
+            method  = "GET",
+            path    = "/workspace2/collector/status?response_code=400"
+          })
+          assert.res_status(400, res)
         end)
       end)
     end)
