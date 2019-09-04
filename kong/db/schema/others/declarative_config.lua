@@ -412,19 +412,27 @@ local function get_key_for_uuid_gen(entity, item, schema, parent_fk, child_key)
   if schema.endpoint_key and item[schema.endpoint_key] ~= nil then
     local key = item[schema.endpoint_key]
 
-    -- If this item has foreign keys with on_delete "cascade", it is inferred
-    -- that its endpoint is not necessarily unique, so its key must be composed
-    -- by parent's key, avoiding that it is overwritten by identical endpoints
-    -- under other parents.
-    for _, field in schema:each_field(item) do
-      if field.type == "foreign" and field.on_delete == "cascade" then
-        local foreign_key_keys = all_schemas[field.reference].primary_key
-        for _, fk_pk in ipairs(foreign_key_keys) do
-          key = key .. ":" .. parent_fk[fk_pk]
+    -- check if the endpoint key is globally unique
+    if not schema.fields[schema.endpoint_key].unique then
+      -- If it isn't, and this item has foreign keys with on_delete "cascade",
+      -- we assume that it is unique relative to the parent (e.g. targets of
+      -- an upstream). We compose the item's key with the parent's key,
+      -- preventing it from being overwritten by identical endpoint keys
+      -- declared under other parents.
+      for fname, field in schema:each_field(item) do
+        if field.type == "foreign" and field.on_delete == "cascade" then
+          if parent_fk then
+            local foreign_key_keys = all_schemas[field.reference].primary_key
+            for _, fk_pk in ipairs(foreign_key_keys) do
+              key = key .. ":" .. parent_fk[fk_pk]
+            end
+          else
+            key = key .. ":" .. item[fname]
+          end
         end
-
       end
     end
+
     -- generate a PK based on the endpoint_key
     return pk_name, key
   end
