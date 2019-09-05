@@ -45,7 +45,6 @@ dependencies = {
   "lua-resty-template == 1.9-1",
   -- external Kong plugins
   "kong-plugin-zipkin ~> 0.1.2",
-  "kong-plugin-session == 1.0.2-3",
   "kong-plugin-azure-functions ~> 0.4",
   "kong-plugin-kubernetes-sidecar-injector ~> 0.2",
   "kong-plugin-zipkin ~> 0.1",
