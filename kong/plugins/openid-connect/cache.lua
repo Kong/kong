@@ -156,7 +156,7 @@ end
 
 local function normalize_issuer(issuer)
   if sub(issuer, -1) == "/" then
-    return sub(issuer, 1, #issuer - 1)
+    return sub(issuer, 1, -2)
   end
 
   return issuer

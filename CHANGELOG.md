@@ -1,8 +1,14 @@
+## v1.2.4
+
+- Fix issue when discovery did not return issuer information, and which could lead
+  to `500` error on `401` and `403` responses.
+  
+
 ## v1.2.3
 
 - Change invalidations to do local invalidation instead of cluster-wide invalidation
 - Fix admin api to properly call cleanup function on entity endpoint
-- Fix `hide_credentials` not clearing `X-Access-Token header
+- Fix `hide_credentials` not clearing `X-Access-Token` header
 - Chore debug logging to not log about disabled authentication methods 
 - Chore TTL code and fix some edge cases
 

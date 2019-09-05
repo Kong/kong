@@ -701,7 +701,7 @@ local function unauthorized(ctx, issuer, msg, err, session, anonymous, trusted_c
   local parts = uri.parse(issuer)
 
   return kong.response.exit(401, { message = msg }, {
-    ["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
+    ["WWW-Authenticate"] = 'Bearer realm="' .. (parts.host or "kong") .. '"'
   })
 end
 
@@ -726,7 +726,7 @@ local function forbidden(ctx, issuer, msg, err, session, anonymous, trusted_clie
   local parts = uri.parse(issuer)
 
   return kong.response.exit(403, { message = msg }, {
-    ["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
+    ["WWW-Authenticate"] = 'Bearer realm="' .. (parts.host or "kong") .. '"'
   })
 end
 
@@ -987,6 +987,18 @@ function OICHandler:access(conf)
     end
 
     iss = oic.configuration.issuer
+    if not iss then
+      iss = issuer_uri
+      if iss then
+        if sub(iss, -33) == "/.well-known/openid-configuration" then
+          iss = sub(iss, 1, -34)
+        end
+
+        if sub(iss, -1) == "/" then
+          return sub(iss, 1, -2)
+        end
+      end
+    end
 
     secret = args.get_conf_arg("session_secret")
     if not secret then
@@ -2033,12 +2045,12 @@ function OICHandler:access(conf)
 
     if not refresh_tokens then
       return unauthorized(ctx,
-        iss,
-        unauthorized_error_message,
-        "access token has expired and refreshing of tokens was disabled",
-        session,
-        anonymous,
-        trusted_client)
+                          iss,
+                          unauthorized_error_message,
+                          "access token has expired and refreshing of tokens was disabled",
+                          session,
+                          anonymous,
+                          trusted_client)
     end
 
     -- access token has expired, try to refresh the access token before proxying
