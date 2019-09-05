@@ -1165,15 +1165,41 @@ function _M.load_rbac_ctx(dao_factory, ctx, rbac_user)
     return kong.response.exit(401, {message = "Invalid RBAC credentials"})
   end
 
-  ngx.ctx.workspaces = user_ws_scope
-  local roles, err = entity_relationships(dao_factory, user, "user", "role")
-  if err then
-    return nil, err
+  local _roles = {}
+  local _entities_perms = {}
+  local _endpoints_perms = {}
+  for _, workspace in ipairs(user_ws_scope) do
+    ngx.ctx.workspaces = { workspace }
+    local roles, err = entity_relationships(dao_factory, user, "user", "role")
+    if err then
+      return nil, err
+    end
+    for _, role in pairs(roles) do
+      _roles[#_roles + 1] = role
+    end
+
+    local entities_perms, _, err = resolve_role_entity_permissions(_roles)
+    if err then
+      return nil, err
+    end
+
+    for id, perm in pairs(entities_perms) do
+      _entities_perms[id] = perm
+    end
+
+    local endpoints_perms, _, err = resolve_role_endpoint_permissions(_roles)
+    if err then
+      return nil, err
+    end
+
+    for id, perm in pairs(endpoints_perms) do
+      _endpoints_perms[id] = perm
+    end
   end
 
   local default_role
   -- retrieve default role
-  for _, role in ipairs(roles) do
+  for _, role in ipairs(_roles) do
     if role.name == user.name then
       default_role = role
       break
@@ -1185,23 +1211,13 @@ function _M.load_rbac_ctx(dao_factory, ctx, rbac_user)
     return nil, err
   end
 
-  local entities_perms, _, err = resolve_role_entity_permissions(roles)
-  if err then
-    return nil, err
-  end
-
-  local endpoints_perms, _, err = resolve_role_endpoint_permissions(roles)
-  if err then
-    return nil, err
-  end
-
   local rbac_ctx = {
     user = user,
-    roles = roles,
+    roles = _roles,
     default_role = default_role,
     action = action,
-    entities_perms = entities_perms,
-    endpoints_perms = endpoints_perms,
+    entities_perms = _entities_perms,
+    endpoints_perms = _endpoints_perms,
   }
   ngx.ctx.rbac = rbac_ctx
 
