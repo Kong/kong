@@ -744,6 +744,7 @@ for _, strategy in helpers.each_strategy() do
         stream_listen = "0.0.0.0:9100",
         db_update_frequency = 0.1,
         plugins = "bundled,fail-once-auth",
+        portal = false,
       }))
     end)
 
@@ -758,18 +759,21 @@ for _, strategy in helpers.each_strategy() do
       local admin_port_1 = 9001
       local proxy_port_2 = 9010
       local admin_port_2 = 9011
+      local admin_gui_port_2 = 9012
 
       lazy_setup(function()
         -- start a second Kong instance
-        helpers.start_kong({
+        assert(helpers.start_kong({
           database   = strategy,
           admin_listen = "127.0.0.1:" .. admin_port_2,
           proxy_listen = "127.0.0.1:" .. proxy_port_2,
+          admin_gui_listen = "127.0.0.1:" .. admin_gui_port_2,
           stream_listen = "off",
           prefix = "servroot2",
           log_level = "debug",
           db_update_frequency = 0.1,
-        })
+          portal = false,
+        }))
       end)
 
       lazy_teardown(function()

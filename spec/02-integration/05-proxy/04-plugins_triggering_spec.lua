@@ -1518,6 +1518,7 @@ for _, strategy in helpers.each_strategy() do
             database     = strategy,
             proxy_listen = "0.0.0.0:18000, 0.0.0.0:18443 ssl",
             admin_listen = "off",
+            admin_gui_listen = "off",
           })
 
           proxy_client = helpers.proxy_client()
