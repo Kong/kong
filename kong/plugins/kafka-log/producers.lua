@@ -1,18 +1,11 @@
 local kafka_producer = require "resty.kafka.producer"
-local types = require "kong.plugins.kafka-log.types"
-local ipairs = ipairs
+
+local mt_cache = { __mode = "k" }
+local producers_cache = setmetatable({}, mt_cache)
 
 --- Creates a new Kafka Producer.
-local function create_producer(conf)
-  local broker_list = {}
-  for idx, value in ipairs(conf.bootstrap_servers) do
-    local server = types.bootstrap_server(value)
-    if not server then
-      return nil, "invalid bootstrap server value: " .. value
-    end
-    broker_list[idx] = server
-  end
-
+local function create(conf)
+  local broker_list = conf.bootstrap_servers
   local producer_config = {
     -- settings affecting all Kafka APIs (including Metadata API, Produce API, etc)
     socket_timeout = conf.timeout,
@@ -33,7 +26,28 @@ local function create_producer(conf)
     max_buffering = conf.producer_async_buffering_limits_messages_in_memory,
   }
   local cluster_name = conf.uuid
+
   return kafka_producer:new(broker_list, producer_config, cluster_name)
 end
 
-return { new = create_producer }
+
+local function get_or_create(conf)
+  local producer = producers_cache[conf]
+  if producer then
+    return producer
+  end
+  kong.log.notice("creating a new Kafka Producer for configuration table: ", tostring(conf))
+
+  local err
+  producer, err = create(conf)
+  if not producer then
+    return nil, err
+  end
+
+  producers_cache[conf] = producer
+
+  return producer
+end
+
+
+return { get_or_create = get_or_create }
