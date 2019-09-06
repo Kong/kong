@@ -29,9 +29,7 @@ env:
     - LUAROCKS=3.1.3
     - OPENSSL=1.1.1c
     - CASSANDRA_BASE=2.2.12
-    - CASSANDRA_LATEST=3.9
     - OPENRESTY_BASE=1.15.8.1
-    - OPENRESTY_LATEST=1.15.8.1
     - DOWNLOAD_CACHE=$HOME/download-cache
     - INSTALL_CACHE=$HOME/install-cache
     - BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6"
@@ -42,8 +40,6 @@ env:
   matrix:
     - OPENRESTY=$OPENRESTY_BASE
       CASSANDRA=$CASSANDRA_BASE
-    - OPENRESTY=$OPENRESTY_LATEST
-      CASSANDRA=$CASSANDRA_LATEST
 
 before_install:
   - git clone https://$GITHUB_TOKEN:@github.com/Kong/kong-ci.git
