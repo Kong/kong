@@ -104,6 +104,16 @@ return {
           required = false, 
           default = { "username", "custom_id" },
         }},
+        { group_base_dn = {
+          type = "string"
+        }},
+        { group_name_attribute = {
+          type = "string"
+        }},
+        { group_member_attribute = {
+          type = "string",
+          default = "memberOf"
+        }},
       }
     }}
   },

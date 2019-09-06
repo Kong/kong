@@ -1,7 +1,9 @@
 local constants = require "kong.constants"
 local ldap_cache = require "kong.plugins.ldap-auth-advanced.cache"
 local ldap = require "kong.plugins.ldap-auth-advanced.ldap"
+local ldap_groups = require "kong.plugins.ldap-auth-advanced.groups"
 
+local clear_header = kong.service.request.clear_header
 
 local kong = kong
 local match = string.match
@@ -9,10 +11,7 @@ local lower = string.lower
 local find = string.find
 local sub = string.sub
 local fmt = string.format
-local ngx_log = ngx.log
 local request = ngx.req
-local ngx_error = ngx.ERR
-local ngx_debug = ngx.DEBUG
 local md5 = ngx.md5
 local decode_base64 = ngx.decode_base64
 local ngx_socket_tcp = ngx.socket.tcp
@@ -42,8 +41,10 @@ local function retrieve_credentials(authorization_header_value, conf)
   return username, password
 end
 
+
 local function ldap_authenticate(given_username, given_password, conf)
   local is_authenticated
+  local groups = nil
   local err, suppressed_err, ok
 
   local sock = ngx_socket_tcp()
@@ -59,9 +60,9 @@ local function ldap_authenticate(given_username, given_password, conf)
 
   ok, err = sock:connect(conf.ldap_host, conf.ldap_port, opts)
   if not ok then
-    ngx_log(ngx_error, "[ldap-auth-advanced] failed to connect to ", conf.ldap_host,
-            ":", tostring(conf.ldap_port),": ", err)
-    return nil, err
+    kong.log.err("failed to connect to ", conf.ldap_host, ":", 
+                 tostring(conf.ldap_port),": ", err)
+    return nil, nil, err
   end
 
   if conf.ldaps or conf.start_tls then
@@ -69,14 +70,14 @@ local function ldap_authenticate(given_username, given_password, conf)
     if conf.start_tls and sock:getreusedtimes() == 0 then
       local success, err = ldap.start_tls(sock)
       if not success then
-        return false, err
+        return false, nil, err
       end
     end
 
     local _, err = sock:sslhandshake(true, conf.ldap_host, conf.verify_ldap_host)
     if err ~= nil then
-      return false, fmt("failed to do SSL handshake with %s:%s: %s",
-                        conf.ldap_host, tostring(conf.ldap_port), err)
+      return false, nil, fmt("failed to do SSL handshake with %s:%s: %s",
+                             conf.ldap_host, tostring(conf.ldap_port), err)
     end
   end
 
@@ -85,7 +86,7 @@ local function ldap_authenticate(given_username, given_password, conf)
     ok, err = ldap.bind_request(sock, conf.bind_dn, conf.ldap_password)
 
     if err then
-      ngx_log(ngx_error, "[ldap-auth-advanced]", err)
+      kong.log.err(err)
       return kong.response.exit(500)
     end
 
@@ -97,35 +98,49 @@ local function ldap_authenticate(given_username, given_password, conf)
       })
 
       if err then
-        ngx_log(ngx_error, "[ldap-auth-advanced] failed ldap search for "..
-                            conf.attribute .. "=" .. given_username .. 
-                           " base_dn=" .. conf.base_dn)
+        kong.log.err("failed ldap search for "..
+                     conf.attribute .. "=" .. given_username .. " base_dn=" ..
+                     conf.base_dn)
         return kong.response.exit(500)
       end
 
       local user_dn
-      for dn, _ in pairs(search_results) do
+      for dn, result in pairs(search_results) do
         if user_dn then
-          ngx_log(ngx_debug, "[ldap-auth-advanced] more than one user found in" ..
-                             " ldap_search with attribute = " .. conf.attribute ..
-                             " and given_username=" .. given_username)
+          kong.log.err("more than one user found in ldap_search with" ..
+                       " attribute = " .. conf.attribute ..
+                       " and given_username=" .. given_username)
           return kong.response.exit(500)
+        end
+        
+        local raw_groups = result[conf.group_member_attribute]
+        if raw_groups and #raw_groups then
+          local group_dn = conf.group_base_dn or conf.base_dn
+          local group_attr = conf.group_name_attribute or conf.attribute
+          
+          groups = ldap_groups.validate_groups(raw_groups, group_dn, group_attr)
+          ldap_groups.set_groups(groups)
+
+          if groups == nil then
+            kong.log.debug("user has groups, but they are invalid. " ..
+                   "group must include group_base_dn with group_name_attribute")
+          end
+        else
+          clear_header(constants.HEADERS.AUTHENTICATED_GROUPS)
         end
 
         user_dn = dn
       end
       
       if not user_dn then
-        ngx_log(ngx_debug, "[ldap-auth-advanced] user not found")
-        return false, "User not found"
+        return false, nil, "User not found"
       end
 
       is_authenticated, err = ldap.bind_request(sock, user_dn, given_password)
 
       if err then
-        ngx_log(ngx_error, "[ldap-auth-advanced] bind request failed for"..
-                            " user " .. given_username)
-        return false, err
+        kong.log.err("bind request failed for user " .. given_username)
+        return false, nil, err
       end
     end
   else
@@ -135,16 +150,16 @@ local function ldap_authenticate(given_username, given_password, conf)
 
   ok, suppressed_err = sock:setkeepalive(conf.keepalive)
   if not ok then
-    ngx_log(ngx_error, "[ldap-auth-advanced] failed to keepalive to ", conf.ldap_host, ":",
-            tostring(conf.ldap_port), ": ", suppressed_err)
+    kong.log.err("failed to keepalive to ", conf.ldap_host, ":",
+                 tostring(conf.ldap_port), ": ", suppressed_err)
   end
-  return is_authenticated, err
+  return is_authenticated, groups, err
 end
 
 local function load_credential(given_username, given_password, conf)
-  local ok, err = ldap_authenticate(given_username, given_password, conf)
+  local ok, groups, err = ldap_authenticate(given_username, given_password, conf)
   if err ~= nil then
-    ngx_log(ngx_error, "[ldap-auth-advanced]", err)
+    kong.log.err(err)
   end
 
   if ok == nil then
@@ -153,7 +168,7 @@ local function load_credential(given_username, given_password, conf)
   if ok == false then
     return false
   end
-  return {username = given_username, password = given_password}
+  return {username = given_username, password = given_password, groups = groups}
 end
 
 
@@ -245,7 +260,7 @@ local function find_consumer(consumer_field, value)
   end
 
   if err then
-    ngx_log(ngx_debug, "failed to load consumer", err)
+    kong.log.debug("failed to load consumer", err)
     return
   end
 
@@ -351,7 +366,8 @@ local function do_authentication(conf)
       anonymous = nil
     end
   end
-
+  
+  ldap_groups.set_groups(credential.groups)
   set_consumer(consumer, credential, anonymous)
 
   return true
