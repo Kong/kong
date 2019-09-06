@@ -6,7 +6,11 @@
 #---------
 
 DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml | md5sum | awk '{ print $1 }')
+DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
 BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/openresty-build-tools
+
+KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:=master}
+OPENRESTY_PATCHES_BRANCH=${OPENRESTY_PATCHES_BRANCH:=master}
 
 git clone https://github.com/Kong/openresty-build-tools.git $DOWNLOAD_ROOT/openresty-build-tools
 export PATH=$BUILD_TOOLS_DOWNLOAD:$PATH
@@ -14,7 +18,10 @@ export PATH=$BUILD_TOOLS_DOWNLOAD:$PATH
 #--------
 # Install
 #--------
+INSTALL_CACHE=${INSTALL_CACHE:=/install-cache}
 INSTALL_ROOT=$INSTALL_CACHE/$DEPS_HASH
+
+ln -s $INSTALL_CACHE/$DEPS_HASH $HOME/kong
 
 kong-ngx-build \
     --work $DOWNLOAD_ROOT \

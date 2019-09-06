@@ -27,6 +27,17 @@ RESTY_OPENSSL_VERSION ?= `grep RESTY_OPENSSL_VERSION $(KONG_SOURCE_LOCATION)/.re
 RESTY_PCRE_VERSION ?= `grep RESTY_PCRE_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 KONG_BUILD_TOOLS ?= '2.0.1'
 KONG_VERSION ?= `cat $(KONG_SOURCE_LOCATION)/kong-*.rockspec | grep tag | awk '{print $$3}' | sed 's/"//g'`
+OPENRESTY_PATCHES_BRANCH ?= master
+KONG_NGINX_MODULE_BRANCH ?= master
+
+.PHONY: setup-ci
+setup-ci:
+	OPENRESTY=$(RESTY_VERSION) \
+	LUAROCKS=$(RESTY_LUAROCKS_VERSION) \
+	OPENSSL=$(RESTY_OPENSSL_VERSION) \
+	OPENRESTY_PATCHES_BRANCH=$($OPENRESTY_PATCHES_BRANCH) \
+	KONG_NGINX_MODULE_BRANCH=$(KONG_NGINX_MODULE_BRANCH) \
+	.ci/setup_env.sh
 
 setup-kong-build-tools:
 	-rm -rf kong-build-tools; \
