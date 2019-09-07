@@ -92,6 +92,23 @@ return {
       })
     end
   },
+  ["/endpoints"] = {
+    GET = function(self, dao, helpers)
+      local endpoints = setmetatable({}, cjson.array_mt)
+      local lapis_endpoints = require("kong.api").ordered_routes
+
+      for k, v in pairs(lapis_endpoints) do
+        if type(k) == "string" then -- skip numeric indices
+          endpoints[#endpoints + 1] = k:gsub(":([^/:]+)", function(m)
+              return "{" .. m .. "}"
+            end)
+        end
+      end
+      table.sort(endpoints)
+
+      return kong.response.exit(200, endpoints)
+    end
+  },
   ["/schemas/:name"] = {
     GET = function(self, db, helpers)
       local entity = kong.db[self.params.name]
