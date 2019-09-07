@@ -53,7 +53,7 @@ _M.is_body_transform_set = is_body_transform_set
 ---
 --   # Example:
 --   ngx.headers = header_filter.transform_headers(conf, ngx.headers)
--- We run transformations in following order: remove, replace, add, append.
+-- We run transformations in following order: remove, rename, replace, add, append.
 -- @param[type=table] conf Plugin configuration.
 -- @param[type=table] ngx_headers Table of headers, that should be `ngx.headers`
 -- @return table A table containing the new headers.
@@ -61,6 +61,15 @@ function _M.transform_headers(conf, headers)
   -- remove headers
   for _, header_name in iter(conf.remove.headers) do
       kong.response.clear_header(header_name)
+  end
+
+  -- Rename headers(s)
+  for _, old_name, new_name in iter(conf.rename.headers) do
+    if headers[old_name] ~= nil and new_name then
+      local value = headers[old_name]
+      kong.response.set_header(new_name, value)
+      kong.response.clear_header(old_name)
+    end
   end
 
   -- replace headers

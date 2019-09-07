@@ -48,6 +48,82 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.response(res).has.jsonbody()
           assert.equals("just_a_key", body.config.remove.headers[1])
           assert.equals("just_a_key", body.config.remove.json[1])
+
+          admin_client:send {
+            method  = "DELETE",
+            path    = "/plugins/" .. body.id,
+          }
+        end)
+        it("rename succeeds without colons", function()
+          local rename_header = "x-request-id:x-custom-request-id"
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/plugins",
+            body    = {
+              name   = "response-transformer",
+              config = {
+                rename = {
+                  headers = { rename_header },
+                },
+              },
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+          assert.response(res).has.status(201)
+          local body = assert.response(res).has.jsonbody()
+          assert.equals(rename_header, body.config.rename.headers[1])
+
+          admin_client:send {
+            method  = "DELETE",
+            path    = "/plugins/" .. body.id,
+          }
+        end)
+        it("rename fails with missing colons for header old_name/new_name separation", function()
+          local no_colons_header = "x-request-idx-custom-request-id"
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/plugins",
+            body    = {
+              name   = "response-transformer",
+              config = {
+                rename = {
+                  headers = { no_colons_header },
+                },
+              },
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+          local body = assert.response(res).has.status(400)
+          local json = cjson.decode(body)
+          assert.same("schema violation", json.name)
+          assert.same({ "invalid value: " .. no_colons_header }, json.fields.config.rename.headers)
+        end)
+        it("rename fails with invalid header name for old_name or new_name separation", function()
+          local invalid_header = "x-requ,est-id"
+          local rename_header = invalid_header .. ":x-custom-request-id"
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/plugins",
+            body    = {
+              name   = "response-transformer",
+              config = {
+                rename = {
+                  headers = { rename_header },
+                },
+              },
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+          local body = assert.response(res).has.status(400)
+          local json = cjson.decode(body)
+          assert.same("schema violation", json.name)
+          assert.same({ "'" .. invalid_header .. "' is not a valid header" }, json.fields.config.rename.headers)
         end)
         it("add fails with missing colons for key/value separation", function()
           local res = assert(admin_client:send {
