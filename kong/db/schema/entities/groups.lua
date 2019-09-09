@@ -5,6 +5,7 @@ return {
   generate_admin_api = false,
   primary_key        = { "id" },
   endpoint_key       = "name",
+  admin_api_name = "groups",
   workspaceable      = false,
 
   fields = {

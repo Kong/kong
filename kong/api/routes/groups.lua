@@ -1,6 +1,5 @@
 local endpoints        = require "kong.api.endpoints"
 
-local fmt              = string.format
 local groups           = kong.db.groups
 local group_rbac_roles = kong.db.group_rbac_roles
 local rbac_roles       = kong.db.rbac_roles
@@ -45,18 +44,17 @@ end
 
 local function post_process_action(row)
   local _rbac_role = select_from_cache(rbac_roles, row.rbac_role.id)
-  
+
   row.group = select_from_cache(groups, row.group.id)
-  
+
   return response_filter(row.group, _rbac_role, { id = row.workspace.id })
 end
 
 return {
   ["/groups"] = {
-    GET = function(self, db, helpers) 
+    GET = function(self, db, helpers)
       return endpoints.get_collection_endpoint(groups.schema)
-                                              (self, db, helpers,
-                                               nil, "/groups")
+                                              (self, db, helpers)
     end,
 
     POST = function(self, db, helpers)
@@ -70,13 +68,10 @@ return {
 
   ["/groups/:groups/roles"] = {
     GET = function(self, db, helpers)
-      local next_page = fmt("/groups/%s/roles", self.params.groups)
-
       return endpoints.get_collection_endpoint(group_rbac_roles.schema,
                                                groups.schema, "group")
                                               (self, db, helpers,
-                                               post_process_action,
-                                               next_page)
+                                               post_process_action)
     end,
 
     POST = function(self, db, helpers)
@@ -110,7 +105,7 @@ return {
       end
 
       return kong.response.exit(201, response_filter(
-        entities.groups, 
+        entities.groups,
         entities.rbac_roles,
         entities.workspaces
       ))
