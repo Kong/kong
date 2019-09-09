@@ -1,7 +1,8 @@
-local cjson   = require "cjson"
-local utils   = require "kong.tools.utils"
-local helpers = require "spec.helpers"
-local Errors  = require "kong.db.errors"
+local cjson    = require "cjson"
+local utils    = require "kong.tools.utils"
+local pl_utils = require "pl.utils"
+local helpers  = require "spec.helpers"
+local Errors   = require "kong.db.errors"
 
 
 local WORKER_SYNC_TIMEOUT = 10
@@ -24,7 +25,7 @@ describe("Admin API #off", function()
     assert(helpers.start_kong({
       database = "off",
       nginx_worker_processes = 8,
-      mem_cache_size = "32k",
+      mem_cache_size = "10m",
     }))
   end)
 
@@ -599,6 +600,22 @@ describe("Admin API #off", function()
           "  id: d885e256-1abe-5e24-80b6-8f68fe59ea8e\n"
         assert.same(expected_config, json.config)
       end)
+    end)
+
+    it("can load large declarative config (regression test)", function()
+      local config = assert(pl_utils.readfile("spec/fixtures/burst.yml"))
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = config,
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
     end)
   end)
 
