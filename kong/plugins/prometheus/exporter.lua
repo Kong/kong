@@ -22,19 +22,23 @@ local function init()
                                          "Number of HTTP connections",
                                          {"state"})
   metrics.db_reachable = prometheus:gauge("datastore_reachable",
-                                          "Datastore reachable from Kong, 0 is unreachable")
+                                          "Datastore reachable from Kong, " ..
+                                          "0 is unreachable")
 
-  -- per service
+  -- per service/route
   metrics.status = prometheus:counter("http_status",
-                                      "HTTP status codes per service in Kong",
-                                      {"code", "service"})
+                                      "HTTP status codes per service/route in Kong",
+                                      {"code", "service", "route"})
   metrics.latency = prometheus:histogram("latency",
-                                         "Latency added by Kong, total request time and upstream latency for each service in Kong",
-                                         {"type", "service"},
+                                         "Latency added by Kong, total " ..
+                                         "request time and upstream latency " ..
+                                         "for each service/route in Kong",
+                                         {"type", "service", "route"},
                                          DEFAULT_BUCKETS) -- TODO make this configurable
   metrics.bandwidth = prometheus:counter("bandwidth",
-                                         "Total bandwidth in bytes consumed per service in Kong",
-                                         {"type", "service"})
+                                         "Total bandwidth in bytes " ..
+                                         "consumed per service/route in Kong",
+                                         {"type", "service", "route"})
 end
 
 
@@ -54,31 +58,36 @@ local function log(message)
     return
   end
 
-  metrics.status:inc(1, { message.response.status, service_name })
+  local route_name
+  if message and message.route then
+    route_name = message.route.name or message.route.id
+  end
+
+  metrics.status:inc(1, { message.response.status, service_name, route_name })
 
   local request_size = tonumber(message.request.size)
   if request_size and request_size > 0 then
-    metrics.bandwidth:inc(request_size, { "ingress", service_name })
+    metrics.bandwidth:inc(request_size, { "ingress", service_name, route_name })
   end
 
   local response_size = tonumber(message.response.size)
   if response_size and response_size > 0 then
-    metrics.bandwidth:inc(response_size, { "egress", service_name })
+    metrics.bandwidth:inc(response_size, { "egress", service_name, route_name })
   end
 
   local request_latency = message.latencies.request
   if request_latency and request_latency >= 0 then
-    metrics.latency:observe(request_latency, { "request", service_name })
+    metrics.latency:observe(request_latency, { "request", service_name, route_name })
   end
 
   local upstream_latency = message.latencies.proxy
   if upstream_latency ~= nil and upstream_latency >= 0 then
-    metrics.latency:observe(upstream_latency, {"upstream", service_name })
+    metrics.latency:observe(upstream_latency, { "upstream", service_name, route_name })
   end
 
   local kong_proxy_latency = message.latencies.kong
   if kong_proxy_latency ~= nil and kong_proxy_latency >= 0 then
-    metrics.latency:observe(kong_proxy_latency, { "kong", service_name })
+    metrics.latency:observe(kong_proxy_latency, { "kong", service_name, route_name })
   end
 end
 
