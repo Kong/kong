@@ -19,6 +19,7 @@ describe("Plugin: prometheus (access)", function()
 
     bp.routes:insert {
       protocols = { "http" },
+      name = "http-route",
       paths = { "/" },
       methods = { "GET" },
       service = service,
@@ -31,6 +32,7 @@ describe("Plugin: prometheus (access)", function()
 
     bp.routes:insert {
       protocols = { "grpc" },
+      name = "grpc-route",
       hosts = { "grpc" },
       service = grpc_service,
     }
@@ -42,6 +44,7 @@ describe("Plugin: prometheus (access)", function()
 
     bp.routes:insert {
       protocols = { "grpcs" },
+      name = "grpcs-route",
       hosts = { "grpcs" },
       service = grpcs_service,
     }
@@ -87,7 +90,7 @@ describe("Plugin: prometheus (access)", function()
         path    = "/metrics",
       })
       local body = assert.res_status(200, res)
-      return body:find('kong_http_status{code="200",service="mock-service"} 1', nil, true)
+      return body:find('kong_http_status{code="200",service="mock-service",route="http-route"} 1', nil, true)
     end)
 
     res = assert(proxy_client:send {
@@ -105,7 +108,7 @@ describe("Plugin: prometheus (access)", function()
         path    = "/metrics",
       })
       local body = assert.res_status(200, res)
-      return body:find('kong_http_status{code="400",service="mock-service"} 1', nil, true)
+      return body:find('kong_http_status{code="400",service="mock-service",route="http-route"} 1', nil, true)
     end)
   end)
 
@@ -128,7 +131,7 @@ describe("Plugin: prometheus (access)", function()
         path    = "/metrics",
       })
       local body = assert.res_status(200, res)
-      return body:find('kong_http_status{code="200",service="mock-grpc-service"} 1', nil, true)
+      return body:find('kong_http_status{code="200",service="mock-grpc-service",route="grpc-route"} 1', nil, true)
     end)
 
     ok, resp = proxy_client_grpcs({
@@ -149,7 +152,7 @@ describe("Plugin: prometheus (access)", function()
         path    = "/metrics",
       })
       local body = assert.res_status(200, res)
-      return body:find('kong_http_status{code="200",service="mock-grpc-service"} 1', nil, true)
+      return body:find('kong_http_status{code="200",service="mock-grpcs-service",route="grpcs-route"} 1', nil, true)
     end)
   end)
 
