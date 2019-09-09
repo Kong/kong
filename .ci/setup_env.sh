@@ -21,8 +21,6 @@ export PATH=$BUILD_TOOLS_DOWNLOAD:$PATH
 INSTALL_CACHE=${INSTALL_CACHE:=/install-cache}
 INSTALL_ROOT=$INSTALL_CACHE/$DEPS_HASH
 
-ln -s $INSTALL_CACHE/$DEPS_HASH $HOME/kong
-
 kong-ngx-build \
     --work $DOWNLOAD_ROOT \
     --prefix $INSTALL_ROOT \
