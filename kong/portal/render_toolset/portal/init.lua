@@ -1,84 +1,64 @@
-local pl_stringx    = require "pl.stringx"
-local getters       = require "kong.portal.render_toolset.getters"
-local ts_helpers    = require "kong.portal.render_toolset.helpers"
-local files         = require "kong.portal.render_toolset.shared.files"
-local portal_urls   = require "kong.portal.render_toolset.portal.urls"
-local portal_config = require "kong.portal.render_toolset.portal.config"
+local helpers       = require "kong.portal.render_toolset.helpers"
+local workspaces    = require "kong.workspaces"
+local singletons    = require "kong.singletons"
+local ee            = require "kong.enterprise_edition"
+
+local function parse_developer_field(item)
+  local SCHEMA_TO_FIELD_TYPE = { string = "text", number = "number" }
+  local type = item.is_email and "email" or SCHEMA_TO_FIELD_TYPE[item.validator.type]
+
+  return {
+    name = item.title,
+    label = item.label,
+    required = item.validator.required,
+    type = type,
+  }
+end
 
 
-local Portal = {}
+local function get_developer_meta_fields(conf)
+  local fields = helpers.json_decode(conf.PORTAL_DEVELOPER_META_FIELDS)
+  return helpers.map(fields, parse_developer_field)
+end
 
 
-function Portal:specs()
-  local ctx = getters.select_all_files()
+local function get_all_specs(files)
+  local specs = files or {}
 
-  local function compare_cb(_, item)
-    local path_attrs = ts_helpers.get_file_attrs_by_path(item.path)
-    local is_content = pl_stringx.split(path_attrs.base_path, '/')[1] == "content"
-    local is_spec_extension =
-      path_attrs.extension == "json" or
-      path_attrs.extension == "yaml" or
-      path_attrs.extension == "yml"
+  specs = helpers.filter(specs, helpers.is_spec)
+  specs = helpers.map(specs, helpers.parse_spec)
 
-    if is_content and is_spec_extension then
-      return true
+  return specs
+end
+
+
+return function()
+  local conf = singletons.configuration
+  local files = singletons.db.files:select_all()
+  local render_ctx = singletons.render_ctx
+  local workspace = workspaces.get_workspace()
+  local workspace_conf = ee.prepare_portal(render_ctx, singletons.configuration)
+  local portal_gui_url = workspaces.build_ws_portal_gui_url(conf, workspace)
+  local portal = helpers.tbl.deepcopy(render_ctx.portal or {})
+
+  -- Add any fields that might have been missed
+  for k, v in pairs(workspace_conf) do
+    local is_portal = string.sub(k, 1, 7) == "PORTAL_"
+    local key = string.lower(string.sub(k, 8, #k))
+    if is_portal and portal[key] == nil then
+      portal[key] = v
     end
-
-    return false
   end
 
-  local function map_cb(v)
-    v.parsed = ts_helpers.parse_oas(v.contents)
-    v.route  = ts_helpers.get_route_from_path(v.path)
-    return v
+  portal.files = files
+  portal.specs = get_all_specs(files)
+  portal.workspace = workspace.name
+  portal.developer_meta_fields = get_developer_meta_fields(workspace_conf)
+  portal.url = portal_gui_url
+
+  if portal.api_url ~= "" and portal.api_url ~= nil then
+    portal.api_url = portal.api_url .. '/' .. portal.workspace
   end
 
-  return self
-          :set_ctx(ctx)
-          :filter(compare_cb)
-          :map(map_cb)
-          :next({ files })
+  return portal
 end
-
-
-function Portal:config(arg)
-  local ctx = getters.select_portal_config()
-
-  return self
-          :set_ctx(ctx)
-          :next()
-          :val(arg)
-          :next({ portal_config })
-end
-
-
-function Portal:urls()
-  local ctx = getters.get_portal_urls()
-
-  return self
-          :set_ctx(ctx)
-          :next({ portal_urls })
-end
-
-
-function Portal:name()
-  local ctx = getters.get_portal_name()
-
-  return self
-          :set_ctx(ctx)
-          :next()
-end
-
-
-function Portal:redirect(arg)
-  local ctx = getters.get_portal_redirect()
-
-  return self
-          :set_ctx(ctx)
-          :next()
-          :val(arg)
-          :next()
-end
-
-
-return Portal

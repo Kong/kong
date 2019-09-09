@@ -29,7 +29,6 @@ local plugins = {
   "request-termination",
   -- external plugins
   "azure-functions",
-  "kubernetes-sidecar-injector",
   "zipkin",
   "pre-function",
   "post-function",
@@ -127,6 +126,8 @@ return {
     "rbac_role_endpoints",
     "admins",
     "developers",
+    "groups",
+    "group_rbac_roles",
   },
   RATELIMIT = {
     PERIODS = {

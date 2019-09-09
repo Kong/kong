@@ -1024,7 +1024,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("plugin with run_on", function()
+    pending("plugin with run_on", function()
       describe("#http", function()
         local proxy_ssl_client
 

@@ -66,13 +66,7 @@ local DB = require "kong.db"
 local dns = require "kong.tools.dns"
 local utils = require "kong.tools.utils"
 local lapis = require "lapis"
-local pl_utils = require "pl.utils"
-local http_tls = require "http.tls"
-local openssl_ssl = require "openssl.ssl"
-local openssl_pkey = require "openssl.pkey"
-local openssl_x509 = require "openssl.x509"
 local runloop = require "kong.runloop.handler"
-local mesh = require "kong.runloop.mesh"
 local tracing = require "kong.tracing"
 local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
@@ -109,25 +103,13 @@ local ipairs           = ipairs
 local assert           = assert
 local tostring         = tostring
 local coroutine        = coroutine
-local getmetatable     = getmetatable
-local registry         = debug.getregistry()
 local get_last_failure = ngx_balancer.get_last_failure
 local set_current_peer = ngx_balancer.set_current_peer
-local set_ssl_ctx      = ngx_balancer.set_ssl_ctx
 local set_timeouts     = ngx_balancer.set_timeouts
 local set_more_tries   = ngx_balancer.set_more_tries
 
 
-local ffi = require "ffi"
-local cast = ffi.cast
-local voidpp = ffi.typeof("void**")
-
 local GRPC_PROXY_MODES = constants.GRPC_PROXY_MODES
-
-local TLS_SCHEMES = {
-  https = true,
-  tls = true,
-}
 
 local declarative_entities
 local schema_state
@@ -313,8 +295,6 @@ local function load_declarative_config(kong_config, entities)
 
     assert(runloop.build_router("init"))
 
-    mesh.init()
-
     ok, err = ngx.shared.kong:safe_set("declarative_config:loaded", true)
     if not ok then
       kong.log.warn("failed marking declarative_config as loaded: ", err)
@@ -345,25 +325,6 @@ function Kong.init()
   -- retrieve kong_config
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
   local config = assert(conf_loader(conf_path, nil, { from_kong_env = true }))
-
-  -- Set up default ssl client context
-  local default_client_ssl_ctx
-  if set_ssl_ctx then
-    default_client_ssl_ctx = http_tls.new_client_context()
-    default_client_ssl_ctx:setVerify(openssl_ssl.VERIFY_NONE)
-    default_client_ssl_ctx:setAlpnProtos { "http/1.1" }
-    -- TODO: copy proxy_ssl_* flags?
-    if config.client_ssl then
-      local pem_key = assert(pl_utils.readfile(config.client_ssl_cert_key))
-      default_client_ssl_ctx:setPrivateKey(openssl_pkey.new(pem_key))
-      -- XXX: intermediary certs are NYI https://github.com/wahern/luaossl/issues/123
-      local pem_cert = assert(pl_utils.readfile(config.client_ssl_cert))
-      default_client_ssl_ctx:setCertificate(openssl_x509.new(pem_cert))
-    end
-  else
-      ngx_log(ngx_WARN, "missing \"ngx.balancer\".set_ssl_ctx API. ",
-                        "Dynamic client SSL_CTX* will be unavailable")
-  end
 
   kong_global.init_pdk(kong, config, nil) -- nil: latest PDK
   tracing.init(config)
@@ -460,14 +421,9 @@ function Kong.init()
 
   kong.db = db
   kong.dns = singletons.dns
-  kong.default_client_ssl_ctx = default_client_ssl_ctx
 
   if ngx.config.subsystem == "stream" or config.proxy_ssl_enabled then
     certificate.init()
-  end
-
-  if kong.configuration.database ~= "off" then
-  mesh.init()
   end
 
   -- Load plugins as late as possible so that everything is set up
@@ -683,26 +639,6 @@ function Kong.balancer()
     end
   end
 
-  local ssl_ctx = balancer_data.ssl_ctx
-  if TLS_SCHEMES[balancer_data.scheme] and ssl_ctx ~= nil then
-    if not set_ssl_ctx then
-      -- this API depends on an OpenResty patch
-      ngx_log(ngx_ERR, "failed to set the upstream SSL_CTX*: missing ",
-                       "\"ngx.balancer\".set_ssl_ctx API")
-      return ngx.exit(500)
-    end
-
-    -- ensure a third-party (e.g. plugin) did not set an invalid type for
-    -- this value as such mistakes could cause segfaults
-    assert(getmetatable(ssl_ctx) == registry["SSL_CTX*"],
-           "unknown userdata type, expected SSL_CTX*")
-    local ok, err = set_ssl_ctx(cast(voidpp, ssl_ctx)[0])
-    if not ok then
-      ngx_log(ngx_ERR, "failed to set the upstream SSL_CTX*: ", err)
-      return ngx.exit(500)
-    end
-  end
-
   current_try.ip   = balancer_data.ip
   current_try.port = balancer_data.port
 
@@ -890,7 +826,7 @@ function Kong.serve_admin_api(options)
 
     if ngx.req.get_method() == "OPTIONS" then
       header["Access-Control-Allow-Methods"] = options.acam or
-        "GET, HEAD, PATCH, POST, DELETE"
+        "GET, HEAD, PATCH, POST, PUT, DELETE"
       header["Access-Control-Allow-Headers"] = options.acah or "Content-Type"
 
       return ngx.exit(204)

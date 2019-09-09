@@ -79,8 +79,8 @@ return {
     end,
 
     PUT = function(self, _, _, parent)
-      -- disallow changing workspace name
-      if self.params.name and self.params.name ~= self.workspace.name then
+      -- if updating, disallow changing workspace name
+      if self.workspace and self.params.name and self.params.name ~= self.workspace.name then
         return kong.response.exit(400, {message = "Cannot rename a workspace"})
       end
 

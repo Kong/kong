@@ -1,26 +1,17 @@
-local getters = require "kong.portal.render_toolset.getters"
+local helpers       = require "kong.portal.render_toolset.helpers"
+local singletons    = require "kong.singletons"
 
-local User = {}
+return function()
+  local render_ctx = singletons.render_ctx
+  local developer = helpers.tbl.deepcopy(render_ctx.developer or {})
 
-function User:info(arg)
-  local ctx = getters.select_authenticated_developer()
+  developer.is_authenticated = function()
+    return render_ctx.developer ~= nil
+  end
 
-  return self
-          :set_ctx(ctx)
-          :next()
-          :val(arg)
-          :next()
+  developer.get = function(arg)
+    return developer[arg]
+  end
+
+  return developer
 end
-
-
-function User:is_authenticated()
-  local user = getters.select_authenticated_developer()
-  local ctx = user ~= nil and user ~= {}
-
-  return self
-          :set_ctx(ctx)
-          :next()
-end
-
-
-return User

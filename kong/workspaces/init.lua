@@ -855,30 +855,21 @@ function _M.validate_pk_exist(table_name, params, constraints, workspace)
     return true
   end
 
-  -- if workspace is passed along to this function add it to the 
-  -- list if not then retrieve a list of workspaces and use it instead
-  local workspaces = workspace and { workspace } or get_workspaces() 
-  if not workspaces or #workspaces < 1 then
+  local workspace = workspace or get_workspaces()[1]
+  if not workspace then
     return true
   end
 
-  local row, err
-  for _, workspace in ipairs(workspaces) do
-    row, err = find_entity_by_unique_field({
-      workspace_id = workspace.id,
-      entity_id = params[constraints.primary_key]
-    })
+  local row, err = find_entity_by_unique_field({
+    workspace_id = workspace.id,
+    entity_id = params[constraints.primary_key]
+  })
 
-    if err then
-      return false, err
-    end
-
-    if row then
-      return true 
-    end
+  if err then
+    return false, err
   end
 
-  return false
+  return row and true
 end
 
 

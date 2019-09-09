@@ -92,10 +92,17 @@ local function post_process_actions(row)
 end
 
 
-local function post_process_actions_remove_default(row)
+local function post_process_filter_roles(row)
+  -- remove portal roles
+  if string.sub(row.name, 1, PORTAL_PREFIX_LEN) == PORTAL_PREFIX then
+    return
+  end
+
+  -- remove default roles
   if row.is_default then
     return
   end
+
   return row
 end
 
@@ -366,7 +373,7 @@ return {
       GET  = function(self, db, helpers, parent)
         return endpoints.get_collection_endpoint(rbac_roles.schema)
                                                 (self, db, helpers,
-                                                 post_process_actions_remove_default)
+                                                 post_process_filter_roles)
       end,
       POST = endpoints.post_collection_endpoint(rbac_roles.schema),
     }

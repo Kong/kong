@@ -20,8 +20,8 @@ local function validate_path(path)
     end
 
   elseif not file_helpers.is_html_ext(path) and
-         file_helpers.is_layout_path(path) or
-         file_helpers.is_partial_path(path) then
+         (file_helpers.is_layout_path(path) or
+         file_helpers.is_partial_path(path)) then
       return nil, "layouts and partials must end with extension '.html'"
   end
 

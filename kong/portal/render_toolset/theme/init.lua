@@ -1,33 +1,42 @@
-local Theme = {}
-local getters = require "kong.portal.render_toolset.getters"
+local helpers       = require "kong.portal.render_toolset.helpers"
+local singletons    = require "kong.singletons"
 
-function Theme:setup()
-  local ctx = getters.select_theme_config()
+local function get_conf_attr_value(attr)
+  local val
+  if type(attr) ~= "table" then
+    val = attr
+  end
 
-  return self
-          :set_ctx(ctx)
-          :next()
+  if attr.value then
+    val = attr.value
+  end
+
+  return val
 end
 
-function Theme:colors(arg)
-  local ctx = self.ctx.colors
-  return self
-          :set_ctx(ctx)
-          :next()
-          :val(arg)
-          :next()
+local function map_conf_values(tbl)
+  tbl = tbl or {}
+  for key, value in pairs(tbl) do
+    tbl[key] = get_conf_attr_value(tbl[key])
+  end
+  return tbl
 end
 
-
-function Theme:fonts(arg)
-  local ctx = self.ctx.fonts
-
-  return self
-          :set_ctx(ctx)
-          :next()
-          :val(arg)
-          :next()
+local function get_map_value_fn(tbl)
+  return function(key)
+    return tbl[key]
+  end
 end
 
+return function()
+  local render_ctx = singletons.render_ctx
+  local theme = helpers.tbl.deepcopy(render_ctx.theme or {})
 
-return Theme
+  theme.colors = map_conf_values(theme.colors)
+  theme.color = get_map_value_fn(theme.colors)
+
+  theme.fonts = map_conf_values(theme.fonts)
+  theme.font = get_map_value_fn(theme.fonts)
+
+  return theme
+end
