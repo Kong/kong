@@ -386,7 +386,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("restricts a route to its 'hosts' if specified", function()
-        local ok, resp = proxy_client_grpc({
+        local ok, resp = assert(proxy_client_grpc({
           service = "hello.HelloService.SayHello",
           body = {
             greeting = "world!"
@@ -396,7 +396,7 @@ for _, strategy in helpers.each_strategy() do
             ["-H"] = "'kong-debug: 1'",
             ["-authority"] = "grpc1",
           }
-        })
+        }))
         assert.truthy(ok)
         assert.truthy(resp)
         assert.matches("kong-route-id: " .. routes[1].id, resp, nil, true)
