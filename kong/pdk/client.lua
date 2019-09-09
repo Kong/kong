@@ -149,6 +149,50 @@ local function new(self)
 
 
   ---
+  -- Returns the consumer from the datastore (or cache).
+  -- Will look up the consumer by id, and optionally will do a second search by name.
+  -- @phases access, header_filter, body_filter, log
+  -- @tparam consumer_id string. The consumer id to look up.
+  -- @tparam [opt] search_by_username boolean. If truthy,
+  -- then if the consumer was not found by id,
+  -- then a second search by username will be performed
+  -- @treturn table|nil consumer entity or nil
+  -- @treturn nil|err nil if success, or error message if failure
+  -- @usage
+  -- local consumer_id = "john_doe"
+  -- local consumer = kong.client.load_consumer(consumer_id, true)
+  function _CLIENT.load_consumer(consumer_id, search_by_username)
+    check_phase(AUTH_AND_LATER)
+
+    if not consumer_id or type(consumer_id) ~= "string" then
+      error("consumer_id must be a string", 2)
+    end
+
+    if not utils.is_valid_uuid(consumer_id) and not search_by_username then
+      error("cannot load a consumer with an id that is not a uuid", 2)
+    end
+
+    if utils.is_valid_uuid(consumer_id) then
+      local result, err = kong.db.consumers:select { id = consumer_id }
+
+      if result then
+        return result
+      end
+
+      if err then
+        return nil, err
+      end
+    end
+
+    -- no error and if search_by_username, look up by username
+    if search_by_username then
+      return kong.db.consumers:select_by_username(consumer_id)
+    end
+
+  end
+
+
+  ---
   -- Returns the `consumer` entity of the currently authenticated consumer.
   -- If not set yet, it returns `nil`.
   -- @function kong.client.get_consumer
