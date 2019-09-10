@@ -45,7 +45,8 @@ end
 
 local function is_body_transform_set(conf)
   return #conf.add.json > 0  or #conf.remove.json > 0 or #conf.replace.json > 0
-    or conf.replace.body or #conf.append.json > 0
+    or conf.replace.body or #conf.append.json > 0 or
+          (conf.whitelist.json and #conf.whitelist.json > 0)
 end
 
 -- export utility functions

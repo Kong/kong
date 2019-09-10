@@ -20,7 +20,10 @@ describe("Plugin: response-transformer-advanced", function()
         },
         append    = {
           headers = {}
-        }
+        },
+        whitelist    = {
+          json = {}
+        },
       }
       it("all the headers", function()
         local ngx_headers = {h1 = "value1", h2 = {"value2a", "value2b"}}
@@ -47,7 +50,10 @@ describe("Plugin: response-transformer-advanced", function()
         },
         append    = {
           headers = {}
-        }
+        },
+        whitelist    = {
+          json = {}
+        },
       }
       it("header if the header only exists", function()
         local req_ngx_headers = {h1 = "value1", h2 = {"value2a", "value2b"}}
@@ -79,7 +85,10 @@ describe("Plugin: response-transformer-advanced", function()
         },
         append    = {
           headers = {}
-        }
+        },
+        whitelist    = {
+          json = {}
+        },
       }
       it("header if the header does not exists", function()
         local req_ngx_headers = {h1 = "v1"}
@@ -111,7 +120,10 @@ describe("Plugin: response-transformer-advanced", function()
         },
         append    = {
           headers = {"h1:v2"}
-        }
+        },
+        whitelist    = {
+          json = {}
+        },
       }
       it("header if the header does not exists", function()
         local req_ngx_headers = {}
@@ -143,7 +155,10 @@ describe("Plugin: response-transformer-advanced", function()
         },
         append    = {
           headers = {"h3:v4"}
-        }
+        },
+        whitelist    = {
+          json = {}
+        },
       }
       it("transforms all headers", function()
         local req_ngx_headers = {h1 = "v1", h2 = "v2"}
@@ -174,7 +189,10 @@ describe("Plugin: response-transformer-advanced", function()
           append    = {
             json    = {},
             headers = {}
-          }
+          },
+          whitelist    = {
+            json = {}
+          },
         }
         it("sets content-length nil if application/json passed", function()
           local ngx_headers = {[CONTENT_LENGTH] = "100", ["content-type"] = "application/json"}
@@ -215,7 +233,10 @@ describe("Plugin: response-transformer-advanced", function()
           append    = {
             json    = {},
             headers = {}
-          }
+          },
+          whitelist    = {
+            json = {}
+          },
         }
         it("sets content-length nil if application/json passed", function()
           local ngx_headers = {[CONTENT_LENGTH] = "100", ["content-type"] = "application/json"}
@@ -256,7 +277,10 @@ describe("Plugin: response-transformer-advanced", function()
           append    = {
             json    = {},
             headers = {}
-          }
+          },
+          whitelist    = {
+            json = {}
+          },
         }
         it("set content-length nil if application/json passed", function()
           local ngx_headers = {[CONTENT_LENGTH] = "100", ["content-type"] = "application/json"}
@@ -297,7 +321,10 @@ describe("Plugin: response-transformer-advanced", function()
           append    = {
             json    = {"p1:v1", "p2:v1"},
             headers = {"h1:v1", "h2:v2"}
-          }
+          },
+          whitelist    = {
+            json = {}
+          },
         }
         it("set content-length nil if application/json passed", function()
           local ngx_headers = {[CONTENT_LENGTH] = "100", ["content-type"] = "application/json"}

@@ -46,6 +46,12 @@ local status_array = {
 }
 
 
+local strings_set = {
+  type = "set",
+  elements = { type = "string" },
+}
+
+
 return {
   name = "response-transformer-advanced",
   fields = {
@@ -72,5 +78,11 @@ return {
           { headers = colon_strings_array },
           { if_status = status_array },
       }}},
+      { whitelist  = {
+        type = "record",
+        fields = {
+          { json = strings_set },
+      }}},
+
   }}}},
 }

@@ -120,6 +120,20 @@ function _M.transform_json_body(conf, buffered_data, resp_code)
     end
   end
 
+  -- filter body
+  if conf.whitelist.json and not skip_transform(resp_code, conf.remove.if_status) then
+    local filtered_json_body = {}
+    local filtered = false
+    for _, name in iter(conf.whitelist.json) do
+      filtered_json_body[name] = json_body[name]
+      filtered = true
+    end
+
+    if filtered then
+      json_body = filtered_json_body
+    end
+  end
+
   return cjson_encode(json_body)
 end
 
