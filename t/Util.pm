@@ -24,8 +24,6 @@ our $HttpConfig = <<_EOC_;
             v.on(outfile)
         end
 
-        require "resty.core"
-
         if os.getenv("PDK_PHASE_CHECKS_LUACOV") == "1" then
             require("luacov.runner")("t/phase_checks.luacov")
             jit.off()

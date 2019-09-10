@@ -8,11 +8,7 @@
 DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml | md5sum | awk '{ print $1 }')
 BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/openresty-build-tools
 
-mkdir -p $BUILD_TOOLS_DOWNLOAD
-
-wget -O $BUILD_TOOLS_DOWNLOAD/kong-ngx-build https://raw.githubusercontent.com/Kong/openresty-build-tools/$BUILD_TOOLS/kong-ngx-build
-chmod +x $BUILD_TOOLS_DOWNLOAD/kong-ngx-build
-
+git clone https://github.com/Kong/openresty-build-tools.git $DOWNLOAD_ROOT/openresty-build-tools
 export PATH=$BUILD_TOOLS_DOWNLOAD:$PATH
 
 #--------
@@ -20,18 +16,15 @@ export PATH=$BUILD_TOOLS_DOWNLOAD:$PATH
 #--------
 INSTALL_ROOT=$INSTALL_CACHE/$DEPS_HASH
 
-BUILD_FLAGS=(
-  "--prefix $INSTALL_ROOT"
-  "--work $DOWNLOAD_ROOT"
-  "--openresty $OPENRESTY"
-  "--openssl $OPENSSL"
-  "--luarocks $LUAROCKS"
-  "--kong-nginx-module $KONG_NGINX_MODULE"
-  "--openresty-patches $OPENRESTY_PATCHES"
-  "-j $JOBS"
-)
-
-kong-ngx-build "${BUILD_FLAGS[@]}" || exit 1
+kong-ngx-build \
+    --work $DOWNLOAD_ROOT \
+    --prefix $INSTALL_ROOT \
+    --openresty $OPENRESTY \
+    --openresty-patches $OPENRESTY_PATCHES_BRANCH \
+    --kong-nginx-module $KONG_NGINX_MODULE_BRANCH \
+    --luarocks $LUAROCKS \
+    --openssl $OPENSSL \
+    -j $JOBS || exit 1
 
 OPENSSL_INSTALL=$INSTALL_ROOT/openssl
 OPENRESTY_INSTALL=$INSTALL_ROOT/openresty
@@ -67,6 +60,13 @@ if [[ "$TEST_SUITE" == "pdk" ]]; then
   echo "Installing CPAN dependencies..."
   cpanm --notest Test::Nginx &> build.log || (cat build.log && exit 1)
   cpanm --notest --local-lib=$TRAVIS_BUILD_DIR/perl5 local::lib && eval $(perl -I $TRAVIS_BUILD_DIR/perl5/lib/perl5/ -Mlocal::lib)
+fi
+
+# ----------------
+# Run gRPC server |
+# ----------------
+if [[ "$TEST_SUITE" =~ integration|dbless ]]; then
+  docker run -d --name grpcbin -p 15002:9000 -p 15003:9001 moul/grpcbin
 fi
 
 nginx -V

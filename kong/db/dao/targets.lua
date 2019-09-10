@@ -123,6 +123,24 @@ function _TARGETS:delete(pk)
 end
 
 
+function _TARGETS:select(pk)
+  local target, err, err_t = self.super.select(self, pk)
+  if err then
+    return nil, err, err_t
+  end
+
+  if target then
+    local formatted_target, err = format_target(target.target)
+    if not formatted_target then
+      local err_t = self.errors:schema_violation({ target = err })
+      return nil, tostring(err_t), err_t
+    end
+    target.target = formatted_target
+  end
+  return target
+end
+
+
 function _TARGETS:delete_by_target(tgt)
   local target, err, err_t = self:select_by_target(tgt)
   if err then
@@ -142,7 +160,22 @@ end
 -- with weight=0 (i.e. the "raw" representation of targets in
 -- the database)
 function _TARGETS:page_for_upstream_raw(upstream_pk, ...)
-  return self.super.page_for_upstream(self, upstream_pk, ...)
+  local page, err, err_t, offset =
+    self.super.page_for_upstream(self, upstream_pk, ...)
+  if err then
+    return nil, tostring(err), err_t
+  end
+
+  for _, target in ipairs(page) do
+    local formatted_target, err = format_target(target.target)
+    if not formatted_target then
+      local err_t = self.errors:schema_violation({ target = err })
+      return nil, tostring(err_t), err_t
+    end
+    target.target = formatted_target
+  end
+
+  return page, nil, nil, offset
 end
 
 
@@ -158,6 +191,12 @@ function _TARGETS:select_by_upstream_raw(upstream_pk, ...)
     if not target then
       return nil, err, err_t
     end
+    local formatted_target, err = format_target(target.target)
+    if not formatted_target then
+      local err_t = self.errors:schema_violation({ target = err })
+      return nil, tostring(err_t), err_t
+    end
+    target.target = formatted_target
 
     table.insert(targets, target)
   end
@@ -250,9 +289,24 @@ function _TARGETS:page_for_upstream_with_health(upstream_pk, ...)
     -- Note that lua-resty-dns-client does retry by itself,
     -- meaning that if DNS is down and it eventually resumes working, the
     -- library will issue the callback and the target will change state.
-    target.health = health_info
-                   and (health_info[target.target] or "DNS_ERROR")
-                   or  "HEALTHCHECKS_OFF"
+    if health_info[target.target] ~= nil and
+      #health_info[target.target].addresses > 0 then
+      target.health = "HEALTHCHECKS_OFF"
+      -- If any of the target addresses are healthy, then the target is
+      -- considered healthy.
+      for _, address in ipairs(health_info[target.target].addresses) do
+        if address.health == "HEALTHY" then
+          target.health = "HEALTHY"
+          break
+        elseif address.health == "UNHEALTHY" then
+          target.health = "UNHEALTHY"
+        end
+
+      end
+    else
+      target.health = "DNS_ERROR"
+    end
+    target.data = health_info[target.target]
   end
 
   return targets, nil, nil, next_offset
@@ -273,11 +327,26 @@ function _TARGETS:select_by_upstream_filter(upstream_pk, filter, options)
 end
 
 
-function _TARGETS:post_health(upstream, target, is_healthy)
-  local addr = utils.normalize_ip(target.target)
-  local ip   = utils.format_host(addr.host)
-  local port = addr.port
-  local _, err = balancer.post_health(upstream, ip, port, is_healthy)
+function _TARGETS:post_health(upstream, target, address, is_healthy)
+  local host_addr = utils.normalize_ip(target.target)
+  local hostname = utils.format_host(host_addr.host)
+  local ip
+  local port
+
+  if address ~= nil then
+    local addr = utils.normalize_ip(address)
+    ip = addr.host
+    if addr.port then
+      port = addr.port
+    else
+      port = DEFAULT_PORT
+    end
+  else
+    ip = nil
+    port = host_addr.port
+  end
+
+  local _, err = balancer.post_health(upstream, hostname, ip, port, is_healthy)
   if err then
     return nil, err
   end

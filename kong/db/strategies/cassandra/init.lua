@@ -1667,7 +1667,7 @@ do
         local pager = function(size, offset)
           return strategy[method](strategy, primary_key, size, offset)
         end
-        for row, err in iteration.by_row(self, pager) do
+        for row, err in iteration.by_row(self, pager, 1000) do
           if err then
             return nil, self.errors:database_error("could not gather " ..
                                                    "associated entities " ..
@@ -1728,7 +1728,7 @@ function _mt:delete_by_field(field_name, field_value, options)
 
   local pk = self.schema:extract_pk_values(row)
 
-  return self:delete(pk)
+  return self:delete(pk, options)
 end
 
 

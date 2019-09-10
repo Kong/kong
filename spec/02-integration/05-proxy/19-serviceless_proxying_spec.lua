@@ -47,7 +47,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       lazy_teardown(function()
-        helpers.stop_kong(helpers.test_conf.prefix, true)
+        helpers.stop_kong()
       end)
 
       it("proxies http to http (request-line)", function()
@@ -184,7 +184,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       lazy_teardown(function()
-        helpers.stop_kong(helpers.test_conf.prefix, true)
+        helpers.stop_kong()
       end)
 
       -- TODO: nginx doesn't allow absolute uris in http2 path component
@@ -340,7 +340,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       lazy_teardown(function()
-        helpers.stop_kong(helpers.test_conf.prefix, true)
+        helpers.stop_kong()
       end)
 
       it("proxies tcp to tcp (origins)", function()

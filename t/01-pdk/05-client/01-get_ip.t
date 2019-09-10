@@ -47,8 +47,6 @@ ip: 127.0.0.1
     set_real_ip_from unix:;
 
     content_by_lua_block {
-        require "resty.core"
-
         local PDK = require "kong.pdk"
         local pdk = PDK.new()
 
@@ -78,8 +76,6 @@ qq{
             set_real_ip_from unix:;
 
             content_by_lua_block {
-                require "resty.core"
-
                 local PDK = require "kong.pdk"
                 local pdk = PDK.new()
 
@@ -124,8 +120,6 @@ qq{
         set_real_ip_from unix:;
 
         content_by_lua_block {
-            require "resty.core"
-
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 

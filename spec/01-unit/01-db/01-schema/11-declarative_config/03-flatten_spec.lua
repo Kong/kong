@@ -133,6 +133,7 @@ describe("declarative config: flatten", function()
               write_timeout = 60000,
               retries = 5,
               tags = {"hello", "world"},
+              client_certificate = null
             },
             {
               id = "UUID",
@@ -147,7 +148,8 @@ describe("declarative config: flatten", function()
               read_timeout = 60000,
               write_timeout = 60000,
               retries = 5,
-              tags = null
+              tags = null,
+              client_certificate = null
             },
           }
         }, idempotent(config))
@@ -170,6 +172,7 @@ describe("declarative config: flatten", function()
               created_at = 1234567890,
               destinations = null,
               hosts = null,
+              headers = null,
               id = "UUID",
               methods = null,
               name = "foo",
@@ -213,6 +216,7 @@ describe("declarative config: flatten", function()
               read_timeout = 60000,
               write_timeout = 60000,
               retries = 5,
+              client_certificate = null
             }
           }
         }, idempotent(config))
@@ -257,7 +261,7 @@ describe("declarative config: flatten", function()
               name = "http-log",
               enabled = true,
               run_on = "first",
-              protocols = { "http", "https" },
+              protocols = { "grpc", "grpcs", "http", "https" },
               config = {
                 http_endpoint = "https://example.com",
                 content_type = "application/json",
@@ -279,7 +283,7 @@ describe("declarative config: flatten", function()
               name = "key-auth",
               enabled = true,
               run_on = "first",
-              protocols = { "http", "https" },
+              protocols = { "grpc", "grpcs", "http", "https" },
               config = {
                 anonymous = null,
                 hide_credentials = false,
@@ -368,7 +372,7 @@ describe("declarative config: flatten", function()
               name = "http-log",
               route = null,
               run_on = "first",
-              protocols = { "http", "https" },
+              protocols = { "grpc", "grpcs", "http", "https" },
               service = {
                 id = "UUID"
               }
@@ -391,7 +395,7 @@ describe("declarative config: flatten", function()
                 id = "UUID"
               },
               run_on = "first",
-              protocols = { "http", "https" },
+              protocols = { "grpc", "grpcs", "http", "https" },
               service = null
             },
           },
@@ -401,6 +405,7 @@ describe("declarative config: flatten", function()
               created_at = 1234567890,
               destinations = null,
               hosts = null,
+              headers = null,
               id = "UUID",
               methods = null,
               name = "r1",
@@ -432,7 +437,8 @@ describe("declarative config: flatten", function()
               read_timeout = 60000,
               retries = 5,
               updated_at = 1234567890,
-              write_timeout = 60000
+              write_timeout = 60000,
+              client_certificate = null
             }
           }
         }, idempotent(config))
@@ -465,7 +471,8 @@ describe("declarative config: flatten", function()
                 read_timeout = 60000,
                 retries = 5,
                 updated_at = 1234567890,
-                write_timeout = 60000
+                write_timeout = 60000,
+                client_certificate = null
               }
             }
           }, idempotent(config))
@@ -511,7 +518,7 @@ describe("declarative config: flatten", function()
                 enabled = true,
                 id = "UUID",
                 name = "basic-auth",
-                protocols = { "http", "https" },
+                protocols = { "grpc", "grpcs", "http", "https" },
                 route = null,
                 run_on = "first",
                 service = {
@@ -534,7 +541,7 @@ describe("declarative config: flatten", function()
                 enabled = true,
                 id = "UUID",
                 name = "http-log",
-                protocols = { "http", "https" },
+                protocols = { "grpc", "grpcs", "http", "https" },
                 route = null,
                 run_on = "first",
                 service = {
@@ -554,7 +561,7 @@ describe("declarative config: flatten", function()
                 enabled = true,
                 id = "UUID",
                 name = "key-auth",
-                protocols = { "http", "https" },
+                protocols = { "grpc", "grpcs", "http", "https" },
                 route = null,
                 run_on = "first",
                 service = {
@@ -575,7 +582,7 @@ describe("declarative config: flatten", function()
                 enabled = true,
                 id = "UUID",
                 name = "tcp-log",
-                protocols = { "http", "https" },
+                protocols = { "grpc", "grpcs", "http", "https" },
                 route = null,
                 run_on = "first",
                 service = {
@@ -596,7 +603,8 @@ describe("declarative config: flatten", function()
                 retries = 5,
                 tags = null,
                 updated_at = 1234567890,
-                write_timeout = 60000
+                write_timeout = 60000,
+                client_certificate = null
               }, {
                 connect_timeout = 60000,
                 created_at = 1234567890,
@@ -610,7 +618,8 @@ describe("declarative config: flatten", function()
                 retries = 5,
                 tags = null,
                 updated_at = 1234567890,
-                write_timeout = 60000
+                write_timeout = 60000,
+                client_certificate = null
               } }
           }, idempotent(config))
         end)
@@ -641,7 +650,8 @@ describe("declarative config: flatten", function()
                 read_timeout = 60000,
                 retries = 5,
                 updated_at = 1234567890,
-                write_timeout = 60000
+                write_timeout = 60000,
+                client_certificate = null
               }
             }
           }, idempotent(config))
@@ -664,6 +674,7 @@ describe("declarative config: flatten", function()
                 created_at = 1234567890,
                 destinations = null,
                 hosts = null,
+                headers = null,
                 id = "UUID",
                 methods = null,
                 name = null,
@@ -694,7 +705,8 @@ describe("declarative config: flatten", function()
                 retries = 5,
                 tags = null,
                 updated_at = 1234567890,
-                write_timeout = 60000
+                write_timeout = 60000,
+                client_certificate = null
               } }
           }, idempotent(config))
         end)
@@ -732,6 +744,7 @@ describe("declarative config: flatten", function()
                 created_at = 1234567890,
                 destinations = null,
                 hosts = null,
+                headers = null,
                 id = "UUID",
                 methods = null,
                 name = "r1",
@@ -752,6 +765,7 @@ describe("declarative config: flatten", function()
                 created_at = 1234567890,
                 destinations = null,
                 hosts = { "example.com" },
+                headers = null,
                 id = "UUID",
                 methods = null,
                 name = "r2",
@@ -772,6 +786,7 @@ describe("declarative config: flatten", function()
                 created_at = 1234567890,
                 destinations = null,
                 hosts = null,
+                headers = null,
                 id = "UUID",
                 methods = { "GET", "POST" },
                 name = "r3",
@@ -792,6 +807,7 @@ describe("declarative config: flatten", function()
                 created_at = 1234567890,
                 destinations = null,
                 hosts = { "example.com" },
+                headers = null,
                 id = "UUID",
                 methods = { "GET", "POST" },
                 name = "r4",
@@ -822,7 +838,8 @@ describe("declarative config: flatten", function()
                 retries = 5,
                 tags = null,
                 updated_at = 1234567890,
-                write_timeout = 60000
+                write_timeout = 60000,
+                client_certificate = null
               }, {
                 connect_timeout = 60000,
                 created_at = 1234567890,
@@ -836,7 +853,8 @@ describe("declarative config: flatten", function()
                 retries = 5,
                 tags = null,
                 updated_at = 1234567890,
-                write_timeout = 60000
+                write_timeout = 60000,
+                client_certificate = null
               } }
           }, idempotent(config))
         end)
@@ -863,6 +881,7 @@ describe("declarative config: flatten", function()
                 created_at = 1234567890,
                 destinations = null,
                 hosts = null,
+                headers = null,
                 id = "UUID",
                 methods = { "GET" },
                 name = "foo",
@@ -894,7 +913,8 @@ describe("declarative config: flatten", function()
                 read_timeout = 60000,
                 retries = 5,
                 updated_at = 1234567890,
-                write_timeout = 60000
+                write_timeout = 60000,
+                client_certificate = null
               }
             }
           }, idempotent(config))
@@ -941,7 +961,7 @@ describe("declarative config: flatten", function()
                 enabled = true,
                 id = "UUID",
                 name = "basic-auth",
-                protocols = { "http", "https" },
+                protocols = { "grpc", "grpcs", "http", "https" },
                 route = {
                   id = "UUID"
                 },
@@ -964,7 +984,7 @@ describe("declarative config: flatten", function()
                 enabled = true,
                 id = "UUID",
                 name = "http-log",
-                protocols = { "http", "https" },
+                protocols = { "grpc", "grpcs", "http", "https" },
                 route = {
                   id = "UUID"
                 },
@@ -984,7 +1004,7 @@ describe("declarative config: flatten", function()
                 enabled = true,
                 id = "UUID",
                 name = "key-auth",
-                protocols = { "http", "https" },
+                protocols = { "grpc", "grpcs", "http", "https" },
                 route = {
                   id = "UUID"
                 },
@@ -1005,7 +1025,7 @@ describe("declarative config: flatten", function()
                 enabled = true,
                 id = "UUID",
                 name = "tcp-log",
-                protocols = { "http", "https" },
+                protocols = { "grpc", "grpcs", "http", "https" },
                 route = {
                   id = "UUID"
                 },
@@ -1017,6 +1037,7 @@ describe("declarative config: flatten", function()
                 created_at = 1234567890,
                 destinations = null,
                 hosts = null,
+                headers = null,
                 id = "UUID",
                 methods = null,
                 name = "bar",
@@ -1037,6 +1058,7 @@ describe("declarative config: flatten", function()
                 created_at = 1234567890,
                 destinations = null,
                 hosts = null,
+                headers = null,
                 id = "UUID",
                 methods = { "GET" },
                 name = "foo",
@@ -1067,7 +1089,8 @@ describe("declarative config: flatten", function()
                 retries = 5,
                 tags = null,
                 updated_at = 1234567890,
-                write_timeout = 60000
+                write_timeout = 60000,
+                client_certificate = null
               }, {
                 connect_timeout = 60000,
                 created_at = 1234567890,
@@ -1081,10 +1104,49 @@ describe("declarative config: flatten", function()
                 retries = 5,
                 tags = null,
                 updated_at = 1234567890,
-                write_timeout = 60000
+                write_timeout = 60000,
+                client_certificate = null
               } }
           }, idempotent(config))
         end)
+      end)
+    end)
+    describe("upstream:", function()
+      it("identical targets", function()
+        local config = assert(lyaml.load([[
+          _format_version: '1.1'
+          upstreams:
+          - name: first-upstream
+            targets:
+            - target: 127.0.0.1:6661
+              weight: 1
+          - name: second-upstream
+            targets:
+            - target: 127.0.0.1:6661
+              weight: 1
+        ]]))
+        config = DeclarativeConfig:flatten(config)
+        assert.same({
+          targets = {
+            {
+              created_at = 1234567890,
+              id = "UUID",
+              tags = null,
+              target = '127.0.0.1:6661',
+              upstream = { id = 'UUID' },
+              weight = 1,
+            },
+            {
+              created_at = 1234567890,
+              id = "UUID",
+              tags = null,
+              target = '127.0.0.1:6661',
+              upstream = { id = 'UUID' },
+              weight = 1,
+            },
+          },
+
+        }, idempotent({targets = config.targets}))
       end)
     end)
   end)
@@ -1105,6 +1167,7 @@ describe("declarative config: flatten", function()
           _format_version: "1.1"
           oauth2_credentials:
           - name: my-credential
+            consumer: foo
             redirect_uris:
             - https://example.com
           - name: another-credential
@@ -1119,6 +1182,9 @@ describe("declarative config: flatten", function()
             [1] = {
               [1] = "invalid reference 'consumer: foo' (no such entry in 'consumers')"
             },
+            [2] = {
+              [1] = "invalid reference 'consumer: foo' (no such entry in 'consumers')"
+            },
           }
         }, err)
       end)
@@ -1126,20 +1192,25 @@ describe("declarative config: flatten", function()
       it("accepts entities", function()
         local config = assert(lyaml.load([[
           _format_version: "1.1"
-          oauth2_credentials:
-          - name: my-credential
-            redirect_uris:
-            - https://example.com
-          - name: another-credential
-            redirect_uris:
-            - https://example.test
+          consumers:
+          - username: bob
+            oauth2_credentials:
+            - name: my-credential
+              redirect_uris:
+              - https://example.com
+            - name: another-credential
+              redirect_uris:
+              - https://example.test
         ]]))
         config = DeclarativeConfig:flatten(config)
+        config.consumers = nil
         assert.same({
           oauth2_credentials = { {
               client_id = "RANDOM",
-                    client_secret = "RANDOM",
-                          consumer = null,
+              client_secret = "RANDOM",
+              consumer = {
+                id = "UUID"
+              },
               created_at = 1234567890,
               id = "UUID",
               name = "another-credential",
@@ -1147,7 +1218,9 @@ describe("declarative config: flatten", function()
             }, {
               client_id = "RANDOM",
               client_secret = "RANDOM",
-              consumer = null,
+              consumer = {
+                id = "UUID",
+              },
               created_at = 1234567890,
               id = "UUID",
               name = "my-credential",
@@ -1232,18 +1305,24 @@ describe("declarative config: flatten", function()
         it("accepts an empty list", function()
           local config = assert(lyaml.load([[
             _format_version: "1.1"
+            consumers:
+            - username: bob
             oauth2_credentials:
             - name: my-credential
+              consumer: bob
               redirect_uris:
               - https://example.com
               oauth2_tokens:
           ]]))
           config = DeclarativeConfig:flatten(config)
+          config.consumers = nil
           assert.same({
             oauth2_credentials = { {
                 client_id = "RANDOM",
-                      client_secret = "RANDOM",
-                consumer = null,
+                client_secret = "RANDOM",
+                consumer = {
+                  id = "UUID"
+                },
                 created_at = 1234567890,
                 id = "UUID",
                 name = "my-credential",
@@ -1255,8 +1334,11 @@ describe("declarative config: flatten", function()
         it("accepts entities", function()
           local config = assert(lyaml.load([[
             _format_version: "1.1"
+            consumers:
+            - username: bob
             oauth2_credentials:
             - name: my-credential
+              consumer: bob
               redirect_uris:
               - https://example.com
               oauth2_tokens:
@@ -1265,12 +1347,15 @@ describe("declarative config: flatten", function()
               - expires_in: 10
                 scope: "foo"
           ]]))
-          config = DeclarativeConfig:flatten(config)
+          local config = DeclarativeConfig:flatten(config)
+          config.consumers = nil
           assert.same({
             oauth2_credentials = { {
                 client_id = "RANDOM",
                 client_secret = "RANDOM",
-                consumer = null,
+                consumer = {
+                  id = "UUID"
+                },
                 created_at = 1234567890,
                 id = "UUID",
                 name = "my-credential",

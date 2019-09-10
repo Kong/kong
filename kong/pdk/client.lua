@@ -225,7 +225,7 @@ local function new(self)
     end
 
     if ngx.config.subsystem == "http" then
-      local is_trusted = kong.ip.is_trusted(kong.client.get_ip())
+      local is_trusted = self.ip.is_trusted(self.client.get_ip())
       local is_https, err = utils.check_https(is_trusted, allow_terminated)
       if err then
         return nil, err

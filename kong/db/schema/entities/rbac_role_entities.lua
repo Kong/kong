@@ -3,6 +3,7 @@ local typedefs = require "kong.db.schema.typedefs"
 return {
   name = "rbac_role_entities",
   generate_admin_api = false,
+  admin_api_nested_name = "entities",
   primary_key = { "role", "entity_id" },
   fields = {
     { role = { type = "foreign", required = true, reference = "rbac_roles", on_delete = "cascade" } },

@@ -1,6 +1,7 @@
 local Schema = require "kong.db.schema"
 local typedefs = require "kong.db.schema.typedefs"
 local utils = require "kong.tools.utils"
+local null = ngx.null
 
 
 local validate_name = function(name)
@@ -51,7 +52,7 @@ local one_byte_integer = Schema.define {
 
 local check_type = Schema.define {
   type = "string",
-  one_of = { "tcp", "http", "https" },
+  one_of = { "tcp", "http", "https", "grpc", "grpcs" },
   default = "http",
 }
 
@@ -155,6 +156,10 @@ local r =  {
     { id = typedefs.uuid, },
     { created_at = typedefs.auto_timestamp_s },
     { name = { type = "string", required = true, unique = true, custom_validator = validate_name }, },
+    { algorithm = { type = "string",
+        default = "round-robin",
+        one_of = { "consistent-hashing", "least-connections", "round-robin" },
+    }, },
     { hash_on = hash_on },
     { hash_fallback = hash_on },
     { hash_on_header = typedefs.header_name, },
@@ -213,6 +218,45 @@ local r =  {
 
     -- different headers
     { distinct = { "hash_on_header", "hash_fallback_header" }, },
+  },
+
+  -- This is a hack to preserve backwards compatibility with regard to the
+  -- behavior of the hash_on field, and have it take place both in the Admin API
+  -- and via declarative configuration.
+  shorthands = {
+    { algorithm = function(value)
+        if value == "least-connections" then
+          return {
+            algorithm = value,
+            hash_on = null,
+          }
+        else
+          return {
+            algorithm = value,
+          }
+        end
+      end
+    },
+    -- Then, if hash_on is set to some non-null value, adjust the algorithm
+    -- field accordingly.
+    { hash_on = function(value)
+        if value == null then
+          return {
+            hash_on = "none"
+          }
+        elseif value == "none" then
+          return {
+            hash_on = value,
+            algorithm = "round-robin",
+          }
+        else
+          return {
+            hash_on = value,
+            algorithm = "consistent-hashing",
+          }
+        end
+      end
+    },
   },
 }
 

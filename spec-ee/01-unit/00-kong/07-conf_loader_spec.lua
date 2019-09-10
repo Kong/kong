@@ -89,12 +89,13 @@ describe("Configuration loader - enterprise", function()
       assert.equal("admin_gui_auth_conf must be valid json or not set: Expected value but found invalid token at character 23 - { \"hide_credentials\": derp }", err)
     end)
 
-    it("enforces listen addresses format", function()
+    it("#flaky enforces listen addresses format", function()
+      local err_str = "must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport], [... next entry ...]"
       local conf, err = conf_loader(nil, {
         admin_gui_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("admin_gui_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent], [... next entry ...]", err)
+      assert.equal("admin_gui_listen " .. err_str, err)
 
       conf, err = conf_loader(nil, {
         portal = "on",
@@ -103,7 +104,7 @@ describe("Configuration loader - enterprise", function()
         portal_token_exp = 21600,
       })
       assert.is_nil(conf)
-      assert.equal("portal_gui_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent], [... next entry ...]", err)
+      assert.equal("portal_gui_listen " .. err_str, err)
 
       conf, err = conf_loader(nil, {
         portal = "on",
@@ -112,7 +113,7 @@ describe("Configuration loader - enterprise", function()
         portal_token_exp = 21600,
       })
       assert.is_nil(conf)
-      assert.equal("portal_api_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent], [... next entry ...]", err)
+      assert.equal("portal_api_listen " .. err_str, err)
     end)
 
     it("enforces positive number for portal_token_exp ", function()

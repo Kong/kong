@@ -1,0 +1,21 @@
+// from https://github.com/moul/pb
+// based on https://grpc.io/docs/guides/concepts.html
+
+syntax = "proto2";
+
+package hello;
+
+service HelloService {
+  rpc SayHello(HelloRequest) returns (HelloResponse);
+  rpc LotsOfReplies(HelloRequest) returns (stream HelloResponse);
+  rpc LotsOfGreetings(stream HelloRequest) returns (HelloResponse);
+  rpc BidiHello(stream HelloRequest) returns (stream HelloResponse);
+}
+
+message HelloRequest {
+  optional string greeting = 1;
+}
+
+message HelloResponse {
+  required string reply = 1;
+}

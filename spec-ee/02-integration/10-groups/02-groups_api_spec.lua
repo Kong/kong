@@ -29,14 +29,14 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
 
       _, db = helpers.get_db_utils(strategy)
-      
+
       assert(helpers.start_kong({
         database  = strategy,
         smtp_mock = true,
       }))
 
       client = assert(helpers.admin_client())
-      
+
       assert(db.groups)
       assert(db.group_rbac_roles)
     end)
@@ -60,22 +60,22 @@ for _, strategy in helpers.each_strategy() do
 
         assert.same(name, res.data[1].name)
       end)
-      
+
       it("The endpoint should work with the 'offset' filter", function()
         local qty = 3
-        
+
         db:truncate("groups")
 
         for i = 1, qty do
           assert(db.groups:insert{ name = "test_group_" .. utils.uuid()})
         end
-        
+
         local res, count = get_request("/groups?size=" .. qty-1)
         local _, count_2 = get_request(res.next)
-       
+
         assert.is_equal(qty, count + count_2)
       end)
-      
+
       it("The endpoint should not create a group entities with out a 'name'", function()
         local submission = { comment = "create a group with out a name" }
 
@@ -114,7 +114,7 @@ for _, strategy in helpers.each_strategy() do
           }
         }))
         local res_create = cjson.decode(json_create)
-        
+
         -- update a group
         local json_update = assert.res_status(200, assert(client:send {
           method = "PATCH",
@@ -141,12 +141,12 @@ for _, strategy in helpers.each_strategy() do
         local group = assert(db.groups:insert{ name = "test_group_" .. utils.uuid()})
         local role = assert(db.rbac_roles:insert{ name = "test_role_" .. utils.uuid()})
         local workspace = assert(db.workspaces:insert{ name = "test_workspace_" .. utils.uuid()})
-        
+
         return group, role, workspace
       end
 
       local function insert_mapping(group, role, workspace)
-        
+
         local mapping = {
           rbac_role = { id = role.id },
           workspace = { id = workspace.id },
@@ -167,22 +167,22 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/groups/" .. group.id .. "/roles",
           }))
-  
+
           local res = cjson.decode(json)
 
           assert.same(res.data[1].group.id, group.id)
           assert.same(res.data[1].workspace.id, workspace.id)
           assert.same(res.data[1].rbac_role.id, role.id)
         end)
-  
+
         it("The endpoint should list roles by a group name", function()
           local json = assert.res_status(200, assert(client:send {
             method = "GET",
             path = "/groups/" .. group.name .. "/roles",
           }))
-  
+
           local res = cjson.decode(json)
-  
+
           assert.same(res.data[1].group.id, group.id)
           assert.same(res.data[1].workspace.id, workspace.id)
           assert.same(res.data[1].rbac_role.id, role.id)
@@ -190,7 +190,7 @@ for _, strategy in helpers.each_strategy() do
 
         it("The endpoint should work with the 'offset' filter", function()
           local qty = 3
-          
+
           for i = 1, qty do
             local _, _role, _workspace = insert_entities()
             -- insert mapping with one group
@@ -209,7 +209,7 @@ for _, strategy in helpers.each_strategy() do
           local res_before, res_after
           local comment = "now we have comment"
           local new_name = "new_name"
-          
+
           -- ensure entities states before update
           res_before = get_request("/groups/" .. group.id .. "/roles")
           assert.is_nil(res_before.data[1].group.comment)
@@ -244,11 +244,11 @@ for _, strategy in helpers.each_strategy() do
           assert.same(new_name, res_after.data[1].rbac_role.name)
         end)
       end)
-      
+
       describe("POST", function()
         it("The endpoint should not create a mapping with incorrect params", function()
           local _group, _role, _workspace = insert_entities()
-          
+
           do
             -- body params need to be correct
             local json_no_workspace = assert.res_status(400, assert(client:send {
@@ -289,7 +289,7 @@ for _, strategy in helpers.each_strategy() do
                 ["Content-Type"] = "application/json",
               },
             }))
-  
+
             assert.res_status(404, assert(client:send {
               method = "POST",
               path = "/groups/" .. _group.id .. "/roles",
@@ -301,7 +301,7 @@ for _, strategy in helpers.each_strategy() do
                 ["Content-Type"] = "application/json",
               },
             }))
-  
+
             assert.res_status(404, assert(client:send {
               method = "POST",
               path = "/groups/" .. _group.id .. "/roles",
@@ -330,7 +330,7 @@ for _, strategy in helpers.each_strategy() do
               ["Content-Type"] = "application/json",
             },
           }))
-          
+
           local res = cjson.decode(json)
 
           assert.same(res.group.id, _group.id)

@@ -1,6 +1,3 @@
-require("resty.core")
-
-
 local ran_before
 local tracing = require "kong.tracing"
 
@@ -16,9 +13,17 @@ return function(options)
   ran_before = true
 
 
-
   options = options or {}
   local meta = require "kong.meta"
+
+
+  if options.cli then
+    -- disable the _G write guard alert log introduced in OpenResty 1.15.8.1
+    -- when in CLI or when running tests in resty-cli
+    --local _G_mt = getmetatable(_G)
+    setmetatable(_G, nil)
+  end
+
 
   _G._KONG = {
     _NAME = meta._NAME,

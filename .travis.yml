@@ -22,23 +22,26 @@ addons:
       - net-tools
       - libpcre3-dev
       - build-essential
+  hosts:
+    - grpcs_1.test
+    - grpcs_2.test
 
 env:
   global:
     - BUILD_TOOLS=1ea15bc
     - LUAROCKS=3.1.3
     - OPENSSL=1.1.1c
-    - OPENRESTY_BASE=1.13.6.2
-    - OPENRESTY_LATEST=1.13.6.2
-    - OPENRESTY=$OPENRESTY_BASE
-    - OPENRESTY_PATCHES=remove_service_mesh_partches
+    - OPENRESTY=1.15.8.1
     - KONG_NGINX_MODULE=master
     - DOWNLOAD_CACHE=$HOME/download-cache
     - DOWNLOAD_ROOT=$HOME/download-root
     - INSTALL_CACHE=$HOME/install-cache
+    - OPENRESTY_PATCHES_BRANCH=remove_service_mesh_partches
+    - KONG_NGINX_MODULE_BRANCH=master
     - KONG_TEST_PG_DATABASE=travis
     - KONG_TEST_PG_USER=postgres
     - JOBS=2
+    - DOCKER_MACHINE_ARM64_NAME=travis-ci-kong-${TRAVIS_JOB_ID}
   matrix:
     # enterprise matrix begin
     # XXX add extra jobs for different cassandra versions
@@ -102,85 +105,6 @@ jobs:
     - stage: deploy
       if: tag =~ 0.
       script: .ci/trigger-travis.sh --pro $TRAVIS_ACCESS_TOKEN
-
-    # - stage: functional tests
-    #   script: make functional_tests
-    #   if: type=cron
-    # - stage: release
-    #   install: skip
-    #   before_install: skip
-    #   script: make release
-    #   env: PACKAGE_TYPE=src RESTY_IMAGE_BASE=src KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-    #   if: tag IS present AND tag ~= 1.
-    # - script: make release
-    #   env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=trusty KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-    #   if: tag IS present AND tag ~= 1.
-    # - script: make release
-    #   env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=xenial KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-    #   if: tag IS present AND tag ~= 1.
-    # - script: make release
-    #   env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=bionic KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-    #   if: tag IS present AND tag ~= 1.
-    # - script: make release
-    #   env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=stretch KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-    #   if: tag IS present AND tag ~= 1.
-    # - script: make release
-    #   env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=jessie KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-    #   if: tag IS present AND tag ~= 1.
-    # - script: make release
-    #   env: PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=centos RESTY_IMAGE_TAG=6 KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-    #   if: tag IS present AND tag ~= 1.
-    # - script: make release
-    #   env: PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=centos RESTY_IMAGE_TAG=7 KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-    #   if: tag IS present AND tag ~= 1.
-    # - script: make release
-    #   env: PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=latest KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-    #   if: tag IS present AND tag ~= 1.
-    # - script: make release
-    #   env: PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=6 KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-    #   if: tag IS present AND tag ~= 1.
-    # - script: make release
-    #   env: PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=7 KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-    #   if: tag IS present AND tag ~= 1.
-    # - script: make release
-    #   Env: PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=1 KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-    #   if: tag IS present AND tag ~= 1.
-    # - stage: deploy daily build
-    #   install: skip
-    #   before_install: skip
-    #   script: make nightly-release
-    #   env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=trusty KONG_PACKAGE_NAME=${PWD##*/}-$TRAVIS_BRANCH KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
-    #   if: type=cron
-    # - script: make nightly-release
-    #   env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=xenial KONG_PACKAGE_NAME=${PWD##*/}-$TRAVIS_BRANCH KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
-    #   if: type=cron
-    # - script: make nightly-release
-    #   env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=bionic KONG_PACKAGE_NAME=${PWD##*/}-$TRAVIS_BRANCH KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
-    #   if: type=cron
-    # - script: make nightly-release
-    #   env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=stretch KONG_PACKAGE_NAME=${PWD##*/}-$TRAVIS_BRANCH KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
-    #   if: type=cron
-    # - script: make nightly-release
-    #   env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=jessie KONG_PACKAGE_NAME=${PWD##*/}-$TRAVIS_BRANCH KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
-    #   if: type=cron
-    # - script: make nightly-release
-    #   env: PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=centos RESTY_IMAGE_TAG=6 KONG_PACKAGE_NAME=${PWD##*/}-$TRAVIS_BRANCH KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
-    #   if: type=cron
-    # - script: make nightly-release
-    #   env: PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=centos RESTY_IMAGE_TAG=7 KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
-    #   if: type=cron
-    # - script: make nightly-release
-    #   env: PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=latest KONG_PACKAGE_NAME=${PWD##*/}-$TRAVIS_BRANCH KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
-    #   if: type=cron
-    # - script: make nightly-release
-    #   env: PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=6 KONG_PACKAGE_NAME=${PWD##*/}-$TRAVIS_BRANCH KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
-    #   if: type=cron
-    # - script: make nightly-release
-    #   env: PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=7 KONG_PACKAGE_NAME=${PWD##*/}-$TRAVIS_BRANCH KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
-    #   if: type=cron
-    # - script: make nightly-release
-    #   env: PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=latest KONG_PACKAGE_NAME=${PWD##*/}-$TRAVIS_BRANCH KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
-    #   if: type=cron
 
 script:
   - .ci/run_tests.sh

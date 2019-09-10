@@ -4,6 +4,7 @@ local tablex = require "pl.tablex"
 local cjson = require "cjson.safe"
 local ws_dao_wrappers = require "kong.workspaces.dao_wrappers"
 local counters = require "kong.workspaces.counters"
+local base = require "resty.core.base"
 
 
 local find    = string.find
@@ -16,7 +17,6 @@ local pairs = pairs
 local setmetatable = setmetatable
 local ipairs = ipairs
 local type = type
-local getfenv = getfenv
 local utils_split = utils.split
 local ngx_null = ngx.null
 local tostring = tostring
@@ -164,16 +164,34 @@ function _M.upsert_default(db)
 end
 
 
--- Call can come from init phase, Admin or proxy
--- mostly ngx.ctx.workspaces would already be set if not
--- search will be done without workspace
+-- -- Call can come from init phase, Admin or proxy
+-- -- mostly ngx.ctx.workspaces would already be set if not
+-- -- search will be done without workspace
+-- local function get_workspaces()
+--   local curr_phase
+--   local ok, res = pcall(function()
+--     ngx.log(ngx.ERR, [[ngx.ctx.workspaces:]], require("inspect")(ngx.ctx.workspaces))
+--     return true
+--   end)
+
+--   if not ok then
+--     return {}
+--   end
+
+--   if ok then
+--     return ngx.ctx.workspaces or {}
+--   end
+-- end
+
 local function get_workspaces()
-  local r = getfenv(0).__ngx_req
+  local r = base.get_request()
+
   if not r then
     return {}
   end
   return ngx.ctx.workspaces or {}
 end
+
 _M.get_workspaces = get_workspaces
 
 
@@ -652,7 +670,7 @@ end
 
 
 local function is_proxy_request()
-  local r = getfenv(0).__ngx_req
+  local r = base.get_request()
   if not r then
     return false
   end

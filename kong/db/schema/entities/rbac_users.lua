@@ -7,6 +7,7 @@ local LOG_ROUNDS = 9
 return {
   name = "rbac_users",
   generate_admin_api = false,
+  admin_api_name = "/rbac/users",
   primary_key = { "id" },
   endpoint_key = "name",
   workspaceable = true,

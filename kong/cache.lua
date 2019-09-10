@@ -160,29 +160,33 @@ function _M.new(opts)
     if ngx.shared[shm_name] then
       local mlcache, err = resty_mlcache.new(shm_name, shm_name, {
         shm_miss         = shm_miss_name,
-    shm_locks        = "kong_locks",
-    shm_set_retries  = 3,
-    lru_size         = LRU_SIZE,
-    ttl              = max(opts.ttl     or 3600, 0),
-    neg_ttl          = max(opts.neg_ttl or 300,  0),
-    resurrect_ttl    = opts.resurrect_ttl or 30,
-    resty_lock_opts  = opts.resty_lock_opts,
-    ipc = {
-      register_listeners = function(events)
-        for _, event_t in pairs(events) do
-          opts.worker_events.register(function(data)
-            event_t.handler(data)
-              end, channel_name, event_t.channel)
-        end
-      end,
-      broadcast = function(channel, data)
-            opts.worker_events.post(channel_name, channel, data)
+        shm_locks        = "kong_locks",
+        shm_set_retries  = 3,
+        lru_size         = LRU_SIZE,
+        ttl              = max(opts.ttl     or 3600, 0),
+        neg_ttl          = max(opts.neg_ttl or 300,  0),
+        resurrect_ttl    = opts.resurrect_ttl or 30,
+        resty_lock_opts  = opts.resty_lock_opts,
+        ipc = {
+          register_listeners = function(events)
+            for _, event_t in pairs(events) do
+              opts.worker_events.register(function(data)
+                event_t.handler(data)
+                                          end, channel_name, event_t.channel)
+            end
+          end,
+          broadcast = function(channel, data)
+            local ok, err = opts.worker_events.post(channel_name, channel, data)
+            if not ok then
+              log(ERR, "failed to post event '", channel_name, "', '",
+                channel, "': ", err)
+            end
+          end
+        }
+      })
+      if not mlcache then
+        return nil, "failed to instantiate mlcache: " .. err
       end
-    }
-  })
-  if not mlcache then
-    return nil, "failed to instantiate mlcache: " .. err
-  end
       mlcaches[i] = mlcache
       shm_names[i] = shm_name
     end

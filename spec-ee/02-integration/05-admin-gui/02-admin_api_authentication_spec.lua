@@ -398,7 +398,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe('#Cache Invalidation:', function()
         local cache_key, cookie
-        
+
         local function check_cache(expected_status, cache_key)
           local res = assert(client:send {
             method = "GET",
@@ -408,21 +408,21 @@ for _, strategy in helpers.each_strategy() do
               ["Kong-Admin-User"] = super_admin.username,
             },
           })
-        
+
           local json = assert.res_status(expected_status, res)
 
           return cjson.decode(json)
         end
-  
+
         lazy_setup(function()
           cookie = get_admin_cookie_basic_auth(client, super_admin.username, 'hunter1')
-          
+
           -- by default, rbac_user uses primary_key with no-workspace to generates cache_key.
           cache_key = db.rbac_users:cache_key(super_admin.rbac_user.id, '', '', '', '', true)
         end)
 
         it("updates rbac_users cache when admin updates rbac token", function()
-          local cache_token, new_cache_token 
+          local cache_token, new_cache_token
 
           -- access "/" endpoint to trigger authentication process.
           -- rbac user should be cached.
@@ -435,15 +435,15 @@ for _, strategy in helpers.each_strategy() do
                 ["Kong-Admin-User"] = super_admin.username,
               },
             })
-    
+
             assert.res_status(200, res)
             cache_token = check_cache(200, cache_key).user_token
           end
 
           -- updates rbac_user token via admin endpoint,
           -- expects difference of user_token in cookie,
-          -- if cache has been invalidated. 
-          -- see 'rbac.get_user()' and 
+          -- if cache has been invalidated.
+          -- see 'rbac.get_user()' and
           -- 'cache invalidation' in 'runloop'.
           do
             local token = utils.uuid()

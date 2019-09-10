@@ -25,7 +25,11 @@
 -- ==========
 
 pcall(require, "luarocks.loader")
-require "resty.core"
+
+assert(package.loaded["resty.core"], "lua-resty-core must be loaded; make " ..
+                                     "sure 'lua_load_resty_core' is not "..
+                                     "disabled.")
+
 local constants = require "kong.constants"
 
 do
@@ -87,11 +91,13 @@ local invoke_plugin = require "kong.enterprise_edition.invoke_plugin"
 
 local kong             = kong
 local ngx              = ngx
+local var              = ngx.var
 local header           = ngx.header
 local ngx_log          = ngx.log
+local ngx_ALERT        = ngx.ALERT
+local ngx_CRIT         = ngx.CRIT
 local ngx_ERR          = ngx.ERR
 local ngx_WARN         = ngx.WARN
-local ngx_CRIT         = ngx.CRIT
 local ngx_DEBUG        = ngx.DEBUG
 local ipairs           = ipairs
 local assert           = assert
@@ -103,8 +109,51 @@ local set_timeouts     = ngx_balancer.set_timeouts
 local set_more_tries   = ngx_balancer.set_more_tries
 
 
+local GRPC_PROXY_MODES = constants.GRPC_PROXY_MODES
+
 local declarative_entities
 local schema_state
+
+
+local stash_init_worker_error
+local log_init_worker_errors
+do
+  local init_worker_errors
+  local init_worker_errors_str
+  local ctx_k = {}
+
+
+  stash_init_worker_error = function(err)
+    if err == nil then
+      return
+    end
+
+    err = tostring(err)
+
+    if not init_worker_errors then
+      init_worker_errors = {}
+    end
+
+    table.insert(init_worker_errors, err)
+    init_worker_errors_str = table.concat(init_worker_errors, ", ")
+
+    return ngx_log(ngx_CRIT, "worker initialization error: ", err,
+                             "; this node must be restarted")
+  end
+
+
+  log_init_worker_errors = function()
+    if not init_worker_errors_str or ngx.ctx[ctx_k] then
+      return
+    end
+
+    ngx.ctx[ctx_k] = true
+
+    return ngx_log(ngx_ALERT, "unsafe request processing due to earlier ",
+                              "initialization errors; this node must be ",
+                              "restarted (", init_worker_errors_str, ")")
+  end
+end
 
 
 local reset_kong_shm
@@ -132,17 +181,22 @@ do
 end
 
 
-local function execute_plugins_iterator(plugins_iterator, ctx, phase)
+local function execute_plugins_iterator(plugins_iterator, phase, ctx)
   -- XXX EE: Check we don't update old_ws twice
-  local old_ws = ctx.workspaces
-  for plugin, configuration in plugins_iterator:iterate(ctx, phase) do
-    kong_global.set_named_ctx(kong, "plugin", configuration)
+
+  local old_ws = ctx and ctx.workspaces
+  for plugin, configuration in plugins_iterator:iterate(phase, ctx) do
+    if ctx then
+      kong_global.set_named_ctx(kong, "plugin", configuration)
+    end
+
     kong_global.set_namespaced_log(kong, plugin.name)
-
     plugin.handler[phase](plugin.handler, configuration)
-
     kong_global.reset_log(kong)
-    ctx.workspaces = old_ws
+
+    if ctx then
+      ctx.workspaces = old_ws
+    end
   end
 end
 
@@ -270,7 +324,7 @@ function Kong.init()
 
   -- retrieve kong_config
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
-  local config = assert(conf_loader(conf_path))
+  local config = assert(conf_loader(conf_path, nil, { from_kong_env = true }))
 
   kong_global.init_pdk(kong, config, nil) -- nil: latest PDK
   tracing.init(config)
@@ -336,7 +390,7 @@ function Kong.init()
   do
     local origins = {}
 
-    for i, v in ipairs(config.origins) do
+    for _, v in ipairs(config.origins) do
       -- Validated in conf_loader
       local from_scheme, from_authority, to_scheme, to_authority =
         v:match("^(%a[%w+.-]*)://([^=]+:[%d]+)=(%a[%w+.-]*)://(.+)$")
@@ -429,7 +483,7 @@ function Kong.init_worker()
 
   local ok, err = kong.db:init_worker()
   if not ok then
-    ngx_log(ngx_CRIT, "could not init DB: ", err)
+    stash_init_worker_error("failed to instantiate 'kong.db' module: " .. err)
     return
   end
 
@@ -448,14 +502,16 @@ function Kong.init_worker()
 
   local worker_events, err = kong_global.init_worker_events()
   if not worker_events then
-    ngx_log(ngx_CRIT, "could not start inter-worker events: ", err)
+    stash_init_worker_error("failed to instantiate 'kong.worker_events' " ..
+                            "module: " .. err)
     return
   end
   kong.worker_events = worker_events
 
   local cluster_events, err = kong_global.init_cluster_events(kong.configuration, kong.db)
   if not cluster_events then
-    ngx_log(ngx_CRIT, "could not create cluster_events: ", err)
+    stash_init_worker_error("failed to instantiate 'kong.cluster_events' " ..
+                            "module: " .. err)
     return
   end
   kong.cluster_events = cluster_events
@@ -469,14 +525,15 @@ function Kong.init_worker()
 
   local cache, err = kong_global.init_cache(kong.configuration, cluster_events, worker_events, kong.vitals)
   if not cache then
-    ngx_log(ngx_CRIT, "could not create kong cache: ", err)
+    stash_init_worker_error("failed to instantiate 'kong.cache' module: " ..
+                            err)
     return
   end
   kong.cache = cache
 
   ok, err = runloop.set_init_versions_in_cache()
   if not ok then
-    ngx_log(ngx_CRIT, err)
+    stash_init_worker_error(err) -- 'err' fully formatted
     return
   end
 
@@ -490,13 +547,13 @@ function Kong.init_worker()
 
   ok, err = load_declarative_config(kong.configuration, declarative_entities)
   if not ok then
-    ngx_log(ngx_CRIT, "error loading declarative config file: ", err)
+    stash_init_worker_error("failed to load declarative config file: " .. err)
     return
   end
 
   ok, err = execute_cache_warmup(kong.configuration)
   if not ok then
-    ngx_log(ngx_ERR, "could not warm up the DB cache: ", err)
+    ngx_log(ngx_ERR, "failed to warm up the DB cache: " .. err)
   end
 
   runloop.init_worker.before()
@@ -505,29 +562,27 @@ function Kong.init_worker()
   -- run plugins init_worker context
   ok, err = runloop.update_plugins_iterator()
   if not ok then
-    ngx_log(ngx_CRIT, "error building plugins iterator: ", err)
+    stash_init_worker_error("failed to build the plugins iterator: " .. err)
     return
   end
 
   local plugins_iterator = runloop.get_plugins_iterator()
-  for plugin, _ in plugins_iterator:iterate(nil, "init_worker") do
-    kong_global.set_namespaced_log(kong, plugin.name)
-    plugin.handler:init_worker()
-    kong_global.reset_log(kong)
-  end
-
-  ee.handlers.init_worker.after(ngx.ctx)
+  execute_plugins_iterator(plugins_iterator, "init_worker")
 end
 
 function Kong.ssl_certificate()
+  log_init_worker_errors()
+
   kong_global.set_phase(kong, PHASES.certificate)
 
-  local mock_ctx = {} -- ctx is not available in cert phase, use table instead
+  -- this doesn't really work across the phases currently (OpenResty 1.13.6.2),
+  -- but it returns a table (rewrite phase clears it)
+  local ctx = ngx.ctx
 
-  runloop.certificate.before(mock_ctx)
+  runloop.certificate.before(ctx)
 
   local plugins_iterator = runloop.get_updated_plugins_iterator()
-  execute_plugins_iterator(plugins_iterator, mock_ctx, "certificate")
+  execute_plugins_iterator(plugins_iterator, "certificate", ctx)
 end
 
 function Kong.balancer()
@@ -611,6 +666,15 @@ function Kong.balancer()
 end
 
 function Kong.rewrite()
+  log_init_worker_errors()
+
+  if GRPC_PROXY_MODES[var.kong_proxy_mode] then
+    kong_resty_ctx.apply_ref() -- if kong_proxy_mode is gRPC, this is executing
+    kong_resty_ctx.stash_ref() -- after an internal redirect. Restore (and restash)
+                               -- context to avoid re-executing phases
+    return
+  end
+
   kong_resty_ctx.stash_ref()
   kong_global.set_phase(kong, PHASES.rewrite)
 
@@ -627,12 +691,14 @@ function Kong.rewrite()
     plugins_iterator = runloop.get_updated_plugins_iterator()
   end
 
-  execute_plugins_iterator(plugins_iterator, ctx, "rewrite")
+  execute_plugins_iterator(plugins_iterator, "rewrite", ctx)
 
   runloop.rewrite.after(ctx)
 end
 
 function Kong.preread()
+  log_init_worker_errors()
+
   kong_global.set_phase(kong, PHASES.preread)
 
   local ctx = ngx.ctx
@@ -640,7 +706,7 @@ function Kong.preread()
   runloop.preread.before(ctx)
 
   local plugins_iterator = runloop.get_updated_plugins_iterator()
-  execute_plugins_iterator(plugins_iterator, ctx, "preread")
+  execute_plugins_iterator(plugins_iterator, "preread", ctx)
 
   runloop.preread.after(ctx)
 end
@@ -656,7 +722,7 @@ function Kong.access()
 
   local old_ws = ctx.workspaces
   local plugins_iterator = runloop.get_plugins_iterator()
-  for plugin, plugin_conf in plugins_iterator:iterate(ctx, "access") do
+  for plugin, plugin_conf in plugins_iterator:iterate("access", ctx) do
     if not ctx.delayed_response then
       kong_global.set_named_ctx(kong, "plugin", plugin_conf)
       kong_global.set_namespaced_log(kong, plugin.name)
@@ -697,10 +763,8 @@ function Kong.header_filter()
   local ctx = ngx.ctx
 
   runloop.header_filter.before(ctx)
-
   local plugins_iterator = runloop.get_plugins_iterator()
-  execute_plugins_iterator(plugins_iterator, ctx, "header_filter")
-
+  execute_plugins_iterator(plugins_iterator, "header_filter", ctx)
   runloop.header_filter.after(ctx)
   ee.handlers.header_filter.after(ctx)
 end
@@ -711,8 +775,7 @@ function Kong.body_filter()
   local ctx = ngx.ctx
 
   local plugins_iterator = runloop.get_plugins_iterator()
-  execute_plugins_iterator(plugins_iterator, ctx, "body_filter")
-
+  execute_plugins_iterator(plugins_iterator, "body_filter", ctx)
   runloop.body_filter.after(ctx)
 end
 
@@ -722,13 +785,14 @@ function Kong.log()
   local ctx = ngx.ctx
 
   local plugins_iterator = runloop.get_plugins_iterator()
-  execute_plugins_iterator(plugins_iterator, ctx, "log")
-
+  execute_plugins_iterator(plugins_iterator, "log", ctx)
   runloop.log.after(ctx)
   ee.handlers.log.after(ctx, ngx.status)
 end
 
 function Kong.handle_error()
+  log_init_worker_errors()
+
   kong_resty_ctx.apply_ref()
 
   local ctx = ngx.ctx
@@ -738,7 +802,7 @@ function Kong.handle_error()
   local old_ws = ctx.workspaces
   if not ctx.plugins then
     local plugins_iterator = runloop.get_updated_plugins_iterator()
-    for _ in plugins_iterator:iterate(ctx, "content") do
+    for _ in plugins_iterator:iterate("content", ctx) do
       -- just build list of plugins
       ctx.workspaces = old_ws
     end
@@ -748,6 +812,8 @@ function Kong.handle_error()
 end
 
 function Kong.serve_admin_api(options)
+  log_init_worker_errors()
+
   kong_global.set_phase(kong, PHASES.admin_api)
 
   options = options or {}

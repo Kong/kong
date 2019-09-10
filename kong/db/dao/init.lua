@@ -574,7 +574,7 @@ local function generate_foreign_key_methods(schema)
 
         local strategy = self.strategy
 
-        local pager = function(size, offset)
+        local pager = function(size, offset, options)
           return strategy[page_method_name](strategy, foreign_key, size, offset, options)
         end
 
@@ -1499,13 +1499,13 @@ function DAO:post_crud_event(operation, entity, old_entity, options)
   end
 
   if self.events then
-    local _, err = self.events.post_local("dao:crud", operation, {
+    local ok, err = self.events.post_local("dao:crud", operation, {
       operation  = operation,
       schema     = self.schema,
       entity     = entity,
       old_entity = old_entity,
     })
-    if err then
+    if not ok then
       log(ERR, "[db] failed to propagate CRUD operation: ", err)
     end
   end

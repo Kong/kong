@@ -6,6 +6,7 @@ local openssl_x509 = require "openssl.x509"
 return {
   name = "cluster_ca",
   generate_admin_api = false,
+  db_export = false,
 
   -- Cassandra *requires* a primary key.
   -- To keep it happy we add a superfluous boolean column that is always true.

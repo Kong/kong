@@ -336,7 +336,90 @@ for _, strategy in helpers.each_strategy() do
           --assert.is_nil(json_2.offset) -- last page
         end)
       end)
+
+      describe("POST", function()
+        lazy_setup(function()
+          db:truncate("hmacauth_credentials")
+        end)
+
+        it("does not create hmac-auth credential when missing consumer", function()
+          local res = assert(admin_client:send {
+            method = "POST",
+            path = "/hmac-auths",
+            body = {
+              username = "bob",
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same("schema violation (consumer: required field missing)", json.message)
+        end)
+
+        it("creates hmac-auth credential", function()
+          local res = assert(admin_client:send {
+            method = "POST",
+            path = "/hmac-auths",
+            body = {
+              username = "bob",
+              consumer = {
+                id = consumer.id
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("bob", json.username)
+        end)
+      end)
     end)
+
+    describe("/hmac-auths/:username_or_id", function()
+      describe("PUT", function()
+        lazy_setup(function()
+          db:truncate("hmacauth_credentials")
+        end)
+
+        it("does not create hmac-auth credential when missing consumer", function()
+          local res = assert(admin_client:send {
+            method = "PUT",
+            path = "/hmac-auths/bob",
+            body = {
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same("schema violation (consumer: required field missing)", json.message)
+        end)
+
+        it("creates hmac-auth credential", function()
+          local res = assert(admin_client:send {
+            method = "PUT",
+            path = "/hmac-auths/bob",
+            body = {
+              consumer = {
+                id = consumer.id
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("bob", json.username)
+        end)
+      end)
+    end)
+
     describe("/hmac-auths/:hmac_username_or_id/consumer", function()
       describe("GET", function()
         local credential

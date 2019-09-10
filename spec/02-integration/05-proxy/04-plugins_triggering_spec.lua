@@ -600,21 +600,21 @@ for _, strategy in helpers.each_strategy() do
 
         do
           -- service to mock HTTP 504
-          local httpbin_service = bp.services:insert {
+          local blackhole_service = bp.services:insert {
             name            = "timeout",
-            host            = "httpbin.org",
+            host            = helpers.blackhole_host,
             connect_timeout = 1, -- ms
           }
 
           bp.routes:insert {
             hosts     = { "connect_timeout" },
             protocols = { "http" },
-            service   = httpbin_service,
+            service   = blackhole_service,
           }
 
           bp.plugins:insert {
             name     = "file-log",
-            service  = { id = httpbin_service.id },
+            service  = { id = blackhole_service.id },
             config   = {
               path   = FILE_LOG_PATH,
               reopen = true,
@@ -1518,6 +1518,7 @@ for _, strategy in helpers.each_strategy() do
             database     = strategy,
             proxy_listen = "0.0.0.0:18000, 0.0.0.0:18443 ssl",
             admin_listen = "off",
+            admin_gui_listen = "off",
           })
 
           proxy_client = helpers.proxy_client()

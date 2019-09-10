@@ -7,6 +7,7 @@ local cjson      = require "cjson"
 local tablex     = require "pl.tablex"
 local bcrypt     = require "bcrypt"
 local new_tab    = require "table.new"
+local base       = require "resty.core.base"
 
 local band   = bit.band
 local bor    = bit.bor
@@ -562,8 +563,9 @@ local function is_system_table(t)
 end
 _M.is_system_table = is_system_table
 
+
 local function is_admin_api_request()
-  local r = getfenv(0).__ngx_req
+  local r = base.get_request()
   if not r then
     return false
   end

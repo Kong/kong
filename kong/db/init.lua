@@ -6,6 +6,8 @@ local MetaSchema   = require "kong.db.schema.metaschema"
 local constants    = require "kong.constants"
 local log          = require "kong.cmd.utils.log"
 local workspaces   = require "kong.workspaces"
+local utils        = require "kong.tools.utils"
+
 
 local fmt          = string.format
 local type         = type
@@ -62,6 +64,18 @@ function DB.new(kong_config, strategy)
                         err)
       end
       schemas[entity_name] = entity
+
+      -- load core entities subschemas
+      local subschemas
+      ok, subschemas = utils.load_module_if_exists("kong.db.schema.entities." .. entity_name .. "_subschemas")
+      if ok then
+        for name, subschema in pairs(subschemas) do
+          local ok, err = entity:new_subschema(name, subschema)
+          if not ok then
+            return nil, ("error initializing schema for %s: %s"):format(entity_name, err)
+          end
+        end
+      end
     end
   end
 

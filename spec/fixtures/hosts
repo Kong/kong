@@ -1,1 +1,1 @@
-127.0.0.1 localhost custom_localhost lambda.us-east-1.amazonaws.com
+127.0.0.1 localhost custom_localhost lambda.us-east-1.amazonaws.com grpcs_1.test grpcs_2.test

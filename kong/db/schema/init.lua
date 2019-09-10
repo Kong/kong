@@ -148,6 +148,26 @@ local function make_length_validator(err, fn)
 end
 
 
+--- Produce a nicely quoted list:
+-- Given `{"foo", "bar", "baz"}` and `"or"`, produces
+-- `"'foo', 'bar', 'baz'"`.
+-- Given an array of arrays (e.g., `{{"f1", "f2"}, {"f3", "f4"}}`), produces
+-- `"('f1', 'f2'), ('f3', 'f4')"`.
+-- @param words an array of strings and/or arrays of strings.
+-- @return The string of quoted words and/or arrays.
+local function quoted_list(words)
+  local msg = {}
+  for _, word in ipairs(words) do
+    if type(word) == "table" then
+      insert(msg, ("(%s)"):format(quoted_list(word)))
+    else
+      insert(msg, ("'%s'"):format(word))
+    end
+  end
+  return concat(msg, ", ")
+end
+
+
 --- Validator functions available for schemas.
 -- A validator can only affect one field.
 -- Each validation is registered in a schema field definition as
@@ -303,6 +323,30 @@ Schema.validators = {
     return nil, validation_errors.CONTAINS:format(wanted)
   end,
 
+  mutually_exclusive_subsets = function(value, subsets)
+    local subset_union = {} -- union of all subsets; key is an element, value is the
+    for _, subset in ipairs(subsets) do -- the subset the element is part of
+      for _, el in ipairs(subset) do
+        subset_union[el] = subset
+      end
+    end
+
+    local member_of = {}
+
+    for _, val in ipairs(value) do -- for each value, add the set it's part of
+      if subset_union[val] and not member_of[subset_union[val]] then -- to member_of, iff it hasn't already
+        member_of[subset_union[val]] = true
+        member_of[#member_of+1] = subset_union[val]
+      end
+    end
+
+    if #member_of <= 1 then
+      return true
+    else
+      return nil, validation_errors.MUTUALLY_EXCLUSIVE_SETS:format(quoted_list(member_of))
+    end
+  end,
+
   custom_validator = function(value, fn)
     return fn(value)
   end
@@ -341,6 +385,7 @@ Schema.validators_order = {
 
   -- other
   "custom_validator",
+  "mutually_exclusive_subsets",
 }
 
 
@@ -387,20 +432,6 @@ local function is_sequence(t)
   end
 
   return c == m
-end
-
-
---- Produce a nicely quoted list:
--- Given `{"foo", "bar", "baz"}` and `"or"`, produces
--- `"'foo', 'bar', 'baz'"`.
--- @param words an array of strings.
--- @return The string of quoted words.
-local function quoted_list(words)
-  local msg = {}
-  for _, word in ipairs(words) do
-    insert(msg, ("'%s'"):format(word))
-  end
-  return concat(msg, ", ")
 end
 
 
@@ -781,7 +812,7 @@ function Schema:validate_field(field, value)
 
   if value == null then
     if field.ne == null then
-      return nil, validation_errors.NE:format("null")
+      return nil, field.err or validation_errors.NE:format("null")
     end
     if field.eq ~= nil and field.eq ~= null then
       return nil, validation_errors.EQ:format(tostring(field.eq))
@@ -793,7 +824,7 @@ function Schema:validate_field(field, value)
   end
 
   if field.eq == null then
-    return nil, validation_errors.EQ:format("null")
+    return nil, field.err or validation_errors.EQ:format("null")
   end
 
   if field.abstract then
@@ -908,7 +939,7 @@ function Schema:validate_field(field, value)
           err = (validation_errors[k:upper()]
                  or validation_errors.VALIDATION):format(value)
         end
-        return nil, err
+        return nil, field.err or err
       end
     end
   end
@@ -981,9 +1012,19 @@ end
 
 local function get_subschema(self, input)
   if self.subschemas and self.subschema_key then
-    local subschema = self.subschemas[input[self.subschema_key]]
-    if subschema then
-      return self.subschemas[input[self.subschema_key]]
+    local input_key = input[self.subschema_key]
+
+    if type(input_key) == "string" then
+      return self.subschemas[input_key]
+    end
+
+    if type(input_key) == "table" then  -- if subschema key is a set, return
+      for _, v in ipairs(input_key) do  -- subschema for first key
+        local subschema = self.subschemas[v]
+        if subschema then
+          return subschema
+        end
+      end
     end
   end
   return nil
@@ -1674,10 +1715,11 @@ function Schema:validate(input, full_check)
         [self.subschema_key] = validation_errors.REQUIRED
       }
     end
-    if not (self.subschemas and self.subschemas[key]) then
+
+    if not get_subschema(self, input) then
       local errmsg = self.subschema_error or validation_errors.SUBSCHEMA_UNKNOWN
       return nil, {
-        [self.subschema_key] = errmsg:format(key)
+        [self.subschema_key] = errmsg:format(type(key) == "string" and key or key[1])
       }
     end
   end

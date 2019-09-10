@@ -2,12 +2,20 @@ local BasePlugin   = require "kong.plugins.base_plugin"
 local constants    = require "kong.constants"
 local reports      = require "kong.reports"
 
+
 local kong         = kong
 local singletons   = require "kong.singletons"
 local tracing      = require "kong.tracing"
 
-local tostring = tostring
-local ipairs   = ipairs
+local type         = type
+local error        = error
+local pairs        = pairs
+local ipairs       = ipairs
+local assert       = assert
+local tostring     = tostring
+
+
+local EMPTY_T      = {}
 
 
 local COMBO_R      = 1
@@ -259,9 +267,9 @@ local function load_configuration_through_combos(ctx, combos, plugin)
   local plugin_configuration
   local name = plugin.name
 
-  local route        = ctx.route
-  local service      = ctx.service
-    local consumer     = ctx.authenticated_consumer
+  local route    = ctx.route
+  local service  = ctx.service
+  local consumer = ctx.authenticated_consumer
 
     if route and plugin.no_route then
       route = nil
@@ -335,33 +343,35 @@ end
 local function get_next(self)
   local i = self.i + 1
 
-  local plugin = self.iterator.loaded[i]
+  local plugin = self.loaded[i]
   if not plugin then
     return nil
   end
 
   self.i = i
 
+  local name = plugin.name
   if not self.ctx then
-    if self.iterator.phases[self.phase][plugin.name] then
+    if self.phases[name] then
       return plugin
     end
 
     return get_next(self)
   end
 
-  if not self.iterator.map[plugin.name] then
+  if not self.map[name] then
     return get_next(self)
   end
 
   local ctx = self.ctx
+  local plugins = ctx.plugins
 
-  if MUST_LOAD_CONFIGURATION_IN_PHASES[self.phase] then
-    local combos = self.iterator.combos[plugin.name]
+  if self.configure then
+    local combos = self.combos[name]
     if combos then
       local cfg = load_configuration_through_combos(ctx, combos, plugin)
       if cfg then
-        ctx.plugins[plugin.name] = cfg
+        plugins[name] = cfg
       end
     end
   end
@@ -378,7 +388,7 @@ local function get_next(self)
       if plugin_configuration.workspace then
 
         -- Added in EE:
-        local phase = self.iterator.phases[self.phase]
+        local phase = self.phases
         if phase and phase[plugin.name]
         and (ctx.plugins[plugin.name] or self.phase == "init_worker") then
           return plugin, ctx.plugins[plugin.name]
@@ -393,7 +403,7 @@ local function get_next(self)
     end
 
     -- Added in EE:
-    local phase = self.iterator.phases[self.phase]
+    local phase = self.phases
     if phase and phase[plugin.name]
     and (ctx.plugins[plugin.name] or self.phase == "init_worker") then
       return plugin, ctx.plugins[plugin.name]
@@ -402,6 +412,11 @@ local function get_next(self)
     -- when workspace scope empty, return global plugin
     -- fetched in earlier phase
     return get_next(self) -- Load next plugin
+
+  -- XXX EE
+  -- if self.phases[name] and plugins[name] then
+  --   return plugin, plugins[name]
+  -- XXX EE/
   end
 
   return get_next(self) -- Load next plugin
@@ -416,18 +431,25 @@ local PluginsIterator = {}
 -- Iterate over the plugin loaded for a request, stored in
 --`ngx.ctx.plugins`.
 --
--- @param[type=table] ctx Nginx context table
 -- @param[type=string] phase Plugins iterator execution phase
+-- @param[type=table] ctx Nginx context table
 -- @treturn function iterator
-local function iterate(self, ctx, phase)
+local function iterate(self, phase, ctx)
+  -- no ctx, we are in init_worker phase
   if ctx and not ctx.plugins then
     ctx.plugins = {}
   end
 
   local iteration = {
-    iterator = self,
-    phase = phase,
-    ctx                   = ctx,
+    -- XXX EE
+    -- iterator = self,
+    -- phase = phase,
+    configure = MUST_LOAD_CONFIGURATION_IN_PHASES[phase],
+    loaded = self.loaded,
+    phases = self.phases[phase] or EMPTY_T,
+    combos = self.combos,
+    map = self.map,
+    ctx = ctx,
     i = 0,
   }
 

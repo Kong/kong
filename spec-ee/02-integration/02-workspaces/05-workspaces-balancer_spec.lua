@@ -279,27 +279,41 @@ local function http_server(host, port, counts, test_log)
 end
 
 
-local function client_requests(n, host_or_headers, proxy_host, proxy_port)
+local function client_requests(n, host_or_headers, proxy_host, proxy_port, protocol)
   local oks, fails = 0, 0
   local last_status
   for _ = 1, n do
     local client = (proxy_host and proxy_port)
-      and helpers.http_client(proxy_host, proxy_port)
-      or  helpers.proxy_client()
+                   and helpers.http_client(proxy_host, proxy_port)
+                   or  helpers.proxy_client()
+
+    if protocol == "https" then
+      assert(client:ssl_handshake())
+    end
+
     local res = client:send {
       method = "GET",
       path = "/",
       headers = type(host_or_headers) == "string"
-        and { ["Host"] = host_or_headers }
-        or host_or_headers
-        or {}
+                and { ["Host"] = host_or_headers }
+                or host_or_headers
+                or {}
     }
     if not res then
       fails = fails + 1
+      if TEST_LOG then
+        print("FAIL (no body)")
+      end
     elseif res.status == 200 then
       oks = oks + 1
+      if TEST_LOG then
+        print("OK ", res.status, res:read_body())
+      end
     elseif res.status > 399 then
       fails = fails + 1
+      if TEST_LOG then
+        print("FAIL ", res.status, res:read_body())
+      end
     end
     last_status = res and res.status
     client:close()
@@ -512,13 +526,15 @@ for _, strategy in helpers.each_strategy() do
   workspaces = {}
   local teamA
   describe("Ring-balancer #" .. strategy, function()
-    setup(function()
+    lazy_setup(function()
       helpers.get_db_utils(strategy)
-      helpers.start_kong({
+      assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         db_update_frequency = 0.1,
-      })
+        stream_listen = "off",
+        portal     = false,
+      }))
       _, teamA = create_workspace("teamA")
     end)
 
@@ -530,19 +546,22 @@ for _, strategy in helpers.each_strategy() do
 
     describe("#healthchecks (#cluster)", function()
 
-      setup(function()
+      lazy_setup(function()
         -- start a second Kong instance (ports are Kong test ports + 10)
         ngx.ctx.workspaces = nil
-        helpers.start_kong({
+        assert(helpers.start_kong({
           database   = strategy,
+          admin_gui_listen = "127.0.0.1:9012",
           admin_listen = "127.0.0.1:9011",
           proxy_listen = "127.0.0.1:9010",
           proxy_listen_ssl = "127.0.0.1:9453",
           admin_listen_ssl = "127.0.0.1:9454",
+          stream_listen = "off",
           prefix = "servroot3",
           log_level = "debug",
           db_update_frequency = 0.1,
-        })
+          portal     = false,
+        }))
       end)
 
       teardown(function()
@@ -1482,4 +1501,3 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 end -- for each_strategy
-
