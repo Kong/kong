@@ -1,3 +1,8 @@
+## 1.3.3
+
+### Fixed
+- Make plugin initialization safe if the database is not present during worker startup
+
 ## 1.3.2
 
 ### Fixed

@@ -18,7 +18,7 @@ local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
 
 
 NewRLHandler.PRIORITY = 902
-NewRLHandler.VERSION = "1.3.2"
+NewRLHandler.VERSION = "1.3.3"
 
 
 local human_window_size_lookup = {
@@ -137,15 +137,17 @@ function NewRLHandler:init_worker()
     kong.log.err("err in fetching plugins: ", err)
   end
 
-  local namespaces = {}
-  for i = 1, #plugins do
-    local namespace = plugins[i].config.namespace
+  if plugins then
+    local namespaces = {}
+    for i = 1, #plugins do
+      local namespace = plugins[i].config.namespace
 
-    if not namespaces[namespace] then
-      local ret = new_namespace(plugins[i].config, true)
+      if not namespaces[namespace] then
+        local ret = new_namespace(plugins[i].config, true)
 
-      if ret then
-        namespaces[namespace] = true
+        if ret then
+          namespaces[namespace] = true
+        end
       end
     end
   end
@@ -227,6 +229,9 @@ function NewRLHandler:access(conf)
   --
   -- this workaround will not be necessary when real IPC is implemented for
   -- inter-worker communications
+  --
+  -- changes in https://github.com/Kong/kong-plugin-enterprise-rate-limiting/pull/35
+  -- currently rely on this in scenarios where workers initialize without database availability
   if not ratelimiting.config[conf.namespace] then
     new_namespace(conf, true)
   end
