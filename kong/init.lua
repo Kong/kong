@@ -520,7 +520,6 @@ function Kong.init_worker()
   local ok, err = kong.vitals:init()
   if not ok then
     ngx.log(ngx.CRIT, "could not initialize vitals: ", err)
-    return
   end
 
   local cache, err = kong_global.init_cache(kong.configuration, cluster_events, worker_events, kong.vitals)
