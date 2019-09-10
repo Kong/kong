@@ -278,7 +278,7 @@ local function transform_querystrings(conf)
 end
 
 local function transform_json_body(conf, body, content_length)
-  local removed, renamed, replaced, added, appended = false, false, false, false, false
+  local removed, renamed, replaced, added, appended, filtered = false, false, false, false, false, false
   local content_length = (body and #body) or 0
   local parameters = parse_json(body)
   if parameters == nil and content_length > 0 then
@@ -337,13 +337,26 @@ local function transform_json_body(conf, body, content_length)
     end
   end
 
-  if removed or renamed or replaced or added or appended then
+
+  if conf.whitelist.body and #conf.whitelist.body then
+    local whitelisted_parameter = {}
+    for _, name in iter(conf.whitelist.body) do
+      whitelisted_parameter[name] = parameters[name]
+      filtered = true
+    end
+
+    if filtered then
+      parameters = whitelisted_parameter
+    end
+  end
+
+  if removed or renamed or replaced or added or appended or filtered then
     return true, cjson.encode(parameters)
   end
 end
 
 local function transform_url_encoded_body(conf, body, content_length)
-  local renamed, removed, replaced, added, appended = false, false, false, false, false
+  local renamed, removed, replaced, added, appended, filtered = false, false, false, false, false, false
   local parameters = decode_args(body)
 
   if content_length > 0 and #conf.remove.body > 0 then
@@ -388,13 +401,25 @@ local function transform_url_encoded_body(conf, body, content_length)
     end
   end
 
-  if removed or renamed or replaced or added or appended then
+  if conf.whitelist.body and #conf.whitelist.body then
+    local whitelisted_parameter = {}
+    for _, name in iter(conf.whitelist.body) do
+      whitelisted_parameter[name] = parameters[name]
+      filtered = true
+    end
+
+    if filtered then
+      parameters = whitelisted_parameter
+    end
+  end
+
+  if removed or renamed or replaced or added or appended or filtered then
     return true, encode_args(parameters)
   end
 end
 
 local function transform_multipart_body(conf, body, content_length, content_type_value)
-  local removed, renamed, replaced, added, appended = false, false, false, false, false
+  local removed, renamed, replaced, added, appended, filtered = false, false, false, false, false, false
   local parameters = multipart(body and body or "", content_type_value)
 
   if content_length > 0 and #conf.rename.body > 0 then
@@ -434,7 +459,19 @@ local function transform_multipart_body(conf, body, content_length, content_type
     end
   end
 
-  if removed or renamed or replaced or added or appended then
+  if conf.whitelist.body and #conf.whitelist.body > 0 then
+    local whitelisted_parameter = multipart("", content_type_value)
+    for _, name in iter(conf.whitelist.body) do
+      whitelisted_parameter:set_simple(name, parameters:get(name))
+      filtered = true
+    end
+
+    if filtered then
+      parameters = whitelisted_parameter
+    end
+  end
+
+  if removed or renamed or replaced or added or appended or filtered then
     return true, parameters:tostring()
   end
 end
@@ -444,7 +481,8 @@ local function transform_body(conf)
   local content_type = get_content_type(content_type_value)
   if content_type == nil or #conf.rename.body < 1 and
      #conf.remove.body < 1 and #conf.replace.body < 1 and
-     #conf.add.body < 1 and #conf.append.body < 1 then
+     #conf.add.body < 1 and #conf.append.body < 1 and
+     (conf.whitelist.body and #conf.whitelist.body < 1) then
     return
   end
 

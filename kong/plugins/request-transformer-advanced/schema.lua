@@ -58,6 +58,19 @@ local uri = { uri = { type = "string" } }
 table.insert(colon_strings_array_record_plus_uri.fields, uri)
 
 
+local strings_set = {
+  type = "set",
+  elements = { type = "string" },
+}
+
+local strings_set_record = {
+  type = "record",
+  fields = {
+    { body = strings_set },
+  },
+}
+
+
 return {
   name = "request-transformer-advanced",
   fields = {
@@ -71,6 +84,7 @@ return {
           { replace = colon_strings_array_record_plus_uri },
           { add     = colon_strings_array_record },
           { append  = colon_strings_array_record },
+          { whitelist  = strings_set_record },
         }
       },
     },

@@ -1,3 +1,8 @@
+## Unreleased
+
+- added: Support for filtering JSON body with new configration `config.whitelist.body`
+added.
+
 ## 0.35.2
 
 - added: render values from kong.ctx.shared

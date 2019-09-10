@@ -93,6 +93,14 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       hosts = { "test21.com" }
     })
 
+    local route22 = bp.routes:insert({
+      hosts = { "test22.com" }
+    })
+
+    local route23 = bp.routes:insert({
+      hosts = { "test23.com" }
+    })
+
 
     bp.plugins:insert {
       route = { id = route1.id },
@@ -355,6 +363,29 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         }
       }
     end
+
+    bp.plugins:insert {
+      route = { id = route22.id },
+      name = "request-transformer-advanced",
+      config = {
+        whitelist = {
+          body = {"k1", "k3"},
+        }
+      }
+    }
+
+    bp.plugins:insert {
+      route = { id = route23.id },
+      name = "request-transformer-advanced",
+      config = {
+        remove = {
+          body = {"k1", "k2", "k3", "k4"},
+        },
+        whitelist = {
+          body = {"k1", "k3"},
+        }
+      }
+    }
 
     assert(helpers.start_kong({
       database = strategy,
@@ -1828,6 +1859,53 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       assert.response(r).has.status(200)
       local value = assert.request(r).has.queryparam("shared_param1")
       assert.equals("1.2.3", value)
+    end)
+  end)
+
+  describe("filter body ", function()
+    it("filter parameters on GET", function()
+      local r = assert( client:send {
+        method = "GET",
+        path = "/request",
+        body = {
+          k1 = "v1",
+          k2 = "v2",
+          k3 = "v3",
+          k4 = "v4",
+        },
+        headers = {
+          host = "test22.com",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        }
+      })
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.is_not_nil(json.post_data.params.k1)
+      assert.is_not_nil(json.post_data.params.k3)
+      assert.is_nil(json.post_data.params.k2)
+      assert.is_nil(json.post_data.params.k4)
+    end)
+    it("remove works with filter parameters on GET", function()
+      local r = assert( client:send {
+        method = "GET",
+        path = "/request",
+        body = {
+          k1 = "v1",
+          k2 = "v2",
+          k3 = "v3",
+          k4 = "v4",
+        },
+        headers = {
+          host = "test23.com",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        }
+      })
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.is_nil(json.post_data.params.k1)
+      assert.is_nil(json.post_data.params.k3)
+      assert.is_nil(json.post_data.params.k2)
+      assert.is_nil(json.post_data.params.k4)
     end)
   end)
 end)
