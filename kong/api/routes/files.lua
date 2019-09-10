@@ -5,6 +5,7 @@ local utils        = require "kong.tools.utils"
 
 
 local kong = kong
+local tonumber = tonumber
 
 
 local unescape_uri = ngx.unescape_uri
@@ -28,7 +29,7 @@ return {
 
     -- List all files stored in the portal file system
     GET = function(self, db, helpers, parent)
-      local size = self.params.size or 100
+      local size = tonumber(self.params.size or 100)
       local offset = self.params.offset
 
       self.params.size = nil

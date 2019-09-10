@@ -392,7 +392,7 @@ for _, strategy in helpers.each_strategy() do
 
             local res = assert(portal_api_client:send {
               method = "GET",
-              path = json.next .. "&size=4",
+              path = json.next
             })
 
             local body = assert.res_status(200, res)

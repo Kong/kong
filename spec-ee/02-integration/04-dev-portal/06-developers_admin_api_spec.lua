@@ -66,6 +66,18 @@ describe("Admin API - Developer Portal - " .. strategy, function()
       portal_session_conf = PORTAL_SESSION_CONF,
       database = strategy,
     }))
+
+    local store = {}
+    kong.cache = {
+      get = function(_, key, _, f, ...)
+        store[key] = store[key] or f(...)
+        return store[key]
+      end,
+      invalidate = function(_, key)
+        store[key] = nil
+        return true
+      end,
+    }
   end)
 
   lazy_teardown(function()
@@ -86,18 +98,61 @@ describe("Admin API - Developer Portal - " .. strategy, function()
   describe("/developers", function()
     describe("GET", function ()
       lazy_setup(function()
+        configure_portal()
+      end)
+
+      lazy_teardown(function()
+        assert(db:truncate())
+      end)
+
+      before_each(function()
+        assert(client_request({
+          method = "POST",
+          path = "/developers/roles",
+          body = {
+            name = "red"
+          },
+          headers = {["Content-Type"] = "application/json"},
+        }))
+
+        assert(client_request({
+          method = "POST",
+          path = "/developers/roles",
+          body = {
+            name = "blue"
+          },
+          headers = {["Content-Type"] = "application/json"},
+        }))
+
+
         for i = 1, 5 do
           assert(db.developers:insert {
             email = "developer-" .. i .. "@dog.com",
             meta = '{"full_name":"Testy Mctesty Face"}',
             password = "pw",
           })
+
+          assert(db.developers:insert {
+            email = "developer-" .. i .. "@cat.com",
+            meta = '{"full_name":"Testy Mctesty Face 2"}',
+            password = "pw",
+            roles = {"red"},
+          })
+
+          assert(db.developers:insert {
+            email = "developer-" .. i .. "@cow.com",
+            meta = '{"full_name":"Testy Mctesty Face 3"}',
+            password = "pw",
+            roles = {"blue"},
+          })
         end
-        configure_portal()
       end)
 
-      lazy_teardown(function()
-        assert(db:truncate())
+      after_each(function()
+        assert(db:truncate("rbac_roles"))
+        assert(db:truncate("developers"))
+        assert(db:truncate("consumers"))
+        assert(db:truncate("basicauth_credentials"))
       end)
 
       it("retrieves list of developers only", function()
@@ -107,7 +162,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         })
         res = assert.res_status(200, res)
         local json = cjson.decode(res)
-        assert.equal(5, #json.data)
+        assert.equal(15, #json.data)
       end)
 
       it("filters by developer status", function()
@@ -120,30 +175,84 @@ describe("Admin API - Developer Portal - " .. strategy, function()
 
         local res = assert(client:send {
           method = "GET",
-          path = "/developers?status=" .. enums.CONSUMERS.STATUS.APPROVED
+          path = "/developers?size=5&status=" .. enums.CONSUMERS.STATUS.APPROVED
         })
         res = assert.res_status(200, res)
         local json = cjson.decode(res)
         assert.equal(1, #json.data)
+        assert.equal(ngx.null, json.next)
       end)
 
-      it("paginates correctly", function()
+      it("filters by role", function()
         local res = assert(client:send {
           methd = "GET",
-          path = "/developers?size=3"
+          path = "/developers?size=2&role=red"
         })
         res = assert.res_status(200, res)
         local json = cjson.decode(res)
-        assert.equal(3, #json.data)
+        assert.equal(2, #json.data)
+
+        for i, developer in ipairs(json.data) do
+          assert.equal("red", developer.roles[1])
+        end
 
         local next = json.next
+
         local res = assert(client:send {
           methd = "GET",
           path = next
         })
         res = assert.res_status(200, res)
         local json = cjson.decode(res)
-        assert.equal(3, #json.data)
+        assert.equal(2, #json.data)
+
+        for i, developer in ipairs(json.data) do
+          assert.equal("red", developer.roles[1])
+        end
+
+        local next = json.next
+
+        local res = assert(client:send {
+          methd = "GET",
+          path = next
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(1, #json.data)
+
+        local developer = json.data[1]
+        assert.equal("red", developer.roles[1])
+        assert.equal(ngx.null, json.next)
+      end)
+
+      it("paginates correctly", function()
+        local res = assert(client:send {
+          methd = "GET",
+          path = "/developers?size=5"
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(5, #json.data)
+
+        local next = json.next
+
+        local res = assert(client:send {
+          methd = "GET",
+          path = next
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(5, #json.data)
+
+        local next = json.next
+
+        local res = assert(client:send {
+          methd = "GET",
+          path = next
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(5, #json.data)
         assert.equal(ngx.null, json.next)
       end)
     end)

@@ -12,6 +12,7 @@ local cjson = require "cjson"
 local rbac = require "kong.rbac"
 
 local kong = kong
+local tonumber = tonumber
 
 local PORTAL_PREFIX = constants.PORTAL_PREFIX
 -- Adds % in front of "special characters" such as -
@@ -116,11 +117,13 @@ return {
     end,
 
     GET = function(self, db, helpers, parent)
-      local size = self.params.size or 100
+      local size = tonumber(self.params.size or 100)
       local offset = self.params.offset
+      local filter_by_role = self.params.role
 
       self.params.offset = nil
       self.params.size = nil
+      self.params.role = nil
       self.params.status = tonumber(self.params.status)
 
       local developers, err, err_t = db.developers:select_all(self.params)
@@ -128,15 +131,44 @@ return {
         return endpoints.handle_error(err_t)
       end
 
-      local paginated_results, _, err_t = crud_helpers.paginate(
-        self, '/developers', developers, size, offset
-      )
+      local post_process = function(developer)
+        if not developer then
+          return
+        end
 
-      if not paginated_results then
+        local roles, err = kong.db.developers:get_roles(developer)
+        if err then
+          return endpoints.handle_error(err)
+        end
+
+        developer.roles = roles
+
+        if not filter_by_role then
+          return developer
+        end
+
+        -- filtering by role
+        if roles and #roles then
+          for i, current_role in ipairs(roles) do
+            if current_role == filter_by_role then
+              return developer
+            end
+          end
+        end
+      end
+
+      local res, _, err_t = crud_helpers.paginate(self, '/developers',
+                                                  developers, size,
+                                                  offset, post_process)
+      if not res then
         return endpoints.handle_error(err_t)
       end
 
-      return kong.response.exit(200, paginated_results)
+      if filter_by_role and res.next ~= ngx.null then
+        res.next = res.next .. "&role=" .. filter_by_role
+      end
+
+      return kong.response.exit(200, res)
     end,
 
     POST = function(self, db, helpers)

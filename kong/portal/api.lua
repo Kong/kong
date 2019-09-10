@@ -11,6 +11,7 @@ local ee_api             = require "kong.enterprise_edition.api_helpers"
 local secrets            = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 
 local kong = kong
+local tonumber = tonumber
 
 local PORTAL_DEVELOPER_META_FIELDS = constants.WORKSPACE_CONFIG.PORTAL_DEVELOPER_META_FIELDS
 local PORTAL_AUTH = constants.WORKSPACE_CONFIG.PORTAL_AUTH
@@ -78,7 +79,7 @@ return {
   ["/files/unauthenticated"] = {
     -- List all unauthenticated files stored in the portal file system
     GET = function(self, db, helpers)
-      local size = self.params.size or 100
+      local size = tonumber(self.params.size or 100)
       local offset = self.params.offset
 
       self.params.size = nil
@@ -117,7 +118,7 @@ return {
     end,
 
     GET = function(self, db, helpers)
-      local size = self.params.size or 100
+      local size = tonumber(self.params.size or 100)
       local offset = self.params.offset
 
       self.params.size = nil

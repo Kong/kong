@@ -10,6 +10,7 @@ local constants    = require "kong.constants"
 
 local kong = kong
 local type = type
+local next = next
 
 
 local PORTAL = constants.WORKSPACE_CONFIG.PORTAL
@@ -46,53 +47,84 @@ function _M.find_and_filter(self, entity, validator)
   return filtered_items
 end
 
+local function build_param(key, value, param_str)
+  local param = tostring(key) .. "=" .. tostring(value)
+  if param_str == "" then
+    return "?" .. param
+  else
+    return "&" .. param
+  end
+end
 
-local function rebuild_params(params)
+
+local function rebuild_params(params, extra_params)
   local param_str = ""
+
   for k, v in pairs(params) do
-    param_str = param_str .. tostring(k) .. '=' .. tostring(v)
+    param_str = param_str .. build_param(k, v, param_str)
+  end
+
+  for k, v in pairs(extra_params) do
+    param_str = param_str .. build_param(k, v, param_str)
   end
 
   return param_str
 end
 
 
-local function get_paginated_table(self, route, set, size, idx)
-  local offset
-  local data = {}
-  local next = ngx.null
-  local offset_idx = size + idx
-  local final_idx = size + idx - 1
-
-  local data = setmetatable(data, cjson.empty_array_mt)
-
-  for i = idx, final_idx do
-    if set[i] then
-      table.insert(data, set[i])
-    end
+local function get_paginated_table(self, route, set, size, start_idx, post_process)
+  -- This should never happen but it is here to guard the while loop below
+  if start_idx <= 0 then
+    return nil, "invalid pagination start index"
   end
 
-  if set[offset_idx] then
-    offset = set[offset_idx].id
-    next = route .. '?' .. rebuild_params(self.params) .. '&offset=' .. offset
+  local offset
+  local i = start_idx
+  local next_page = ngx.null
+  local total_count = #set
+  local data = setmetatable({}, cjson.empty_array_mt)
+  local should_post_process = type(post_process) == "function"
+
+  -- while index is less that the total set size and
+  -- data is less than requested size
+  while i <= total_count and #data < size do
+    local row = set[i]
+    if should_post_process then
+      row = post_process(row)
+    end
+
+    if row and next(row) then
+      table.insert(data, row)
+    end
+
+    i = i + 1
+  end
+
+  local next_row = set[i]
+  if next_row then
+    offset = next_row.id
+    next_page = route .. rebuild_params(self.params, {
+      size = size,
+      offset = offset,
+    })
   end
 
   return  {
     data = data,
     offset = offset,
-    next = next,
+    next = next_page,
   }
 end
 
 
-function _M.paginate(self, route, set, size, offset)
+function _M.paginate(self, route, set, size, offset, post_process)
   if not offset then
-    return get_paginated_table(self, route, set, size, 1)
+    return get_paginated_table(self, route, set, size, 1, post_process)
   end
 
   for i, v in ipairs(set) do
     if v.id == offset then
-      return get_paginated_table(self, route, set, size, i)
+      return get_paginated_table(self, route, set, size, i, post_process)
     end
   end
 
