@@ -94,7 +94,33 @@ function Counter:inc(value, label_values)
     self.prometheus:log_error(err)
     return
   end
+  if value ~= nil and value < 0 then
+    self.prometheus:log_error_kv(self.name, value, "Value should not be negative")
+    return
+  end
+
   self.prometheus:inc(self.name, self.label_names, label_values, value or 1)
+end
+
+-- Delete a given counter
+--
+-- Args:
+--   label_values: an array of label values. Can be nil (i.e. not defined) for
+--     metrics that have no labels.
+function Counter:del(label_values)
+  local err = self:check_label_values(label_values)
+  if err ~= nil then
+    self.prometheus:log_error(err)
+    return
+  end
+  self.prometheus:set(self.name, self.label_names, label_values, nil)
+end
+
+-- Delete all metrics for this counter. If this counter have no labels, it is
+--   just the same as Counter:del() function. If this counter have labels, it
+--   will delete all the metrics with different label values.
+function Counter:reset()
+  self.prometheus:reset(self.name)
 end
 
 local Gauge = Metric:new()
@@ -115,6 +141,43 @@ function Gauge:set(value, label_values)
     return
   end
   self.prometheus:set(self.name, self.label_names, label_values, value)
+end
+
+-- Delete a given gauge
+--
+-- Args:
+--   label_values: an array of label values. Can be nil (i.e. not defined) for
+--     metrics that have no labels.
+function Gauge:del(label_values)
+  local err = self:check_label_values(label_values)
+  if err ~= nil then
+    self.prometheus:log_error(err)
+    return
+  end
+  self.prometheus:set(self.name, self.label_names, label_values, nil)
+end
+
+-- Delete all metrics for this gauge. If this gauge have no labels, it is
+--   just the same as Gauge:del() function. If this gauge have labels, it
+--   will delete all the metrics with different label values.
+function Gauge:reset()
+  self.prometheus:reset(self.name)
+end
+
+-- Increase a given gauge by `value`
+--
+-- Args:
+--   value: (number) a value to add to the gauge (a negative value when you
+--     need to decrease the value of the gauge). Defaults to 1 if skipped.
+--   label_values: an array of label values. Can be nil (i.e. not defined) for
+--     metrics that have no labels.
+function Gauge:inc(value, label_values)
+  local err = self:check_label_values(label_values)
+  if err ~= nil then
+    self.prometheus:log_error(err)
+    return
+  end
+  self.prometheus:inc(self.name, self.label_names, label_values, value or 1)
 end
 
 local Histogram = Metric:new()
@@ -267,7 +330,14 @@ end
 --   an object that should be used to register metrics.
 function Prometheus.init(dict_name, prefix)
   local self = setmetatable({}, Prometheus)
-  self.dict = ngx.shared[dict_name or "prometheus_metrics"]
+  dict_name = dict_name or "prometheus_metrics"
+  self.dict = ngx.shared[dict_name]
+  if self.dict == nil then
+    ngx.log(ngx.ERR,
+      "Dictionary '", dict_name, "' does not seem to exist. ",
+      "Please define the dictionary using `lua_shared_dict`.")
+    return self
+  end
   self.help = {}
   if prefix then
     self.prefix = prefix
@@ -362,7 +432,6 @@ function Prometheus:gauge(name, description, label_names)
   return Gauge:new{name=name, label_names=label_names, prometheus=self}
 end
 
-
 -- Register a histogram.
 --
 -- Args:
@@ -412,20 +481,17 @@ function Prometheus:set_key(key, value)
   end
 end
 
--- Increment a given counter by `value`.
+-- Increment a given metric by `value`.
 --
 -- Args:
 --   name: (string) short metric name without any labels.
 --   label_names: (array) a list of label keys.
 --   label_values: (array) a list of label values.
---   value: (number) value to add. Optional, defaults to 1.
+--   value: (number) value to add (a negative value when you need to decrease
+--     the value of the gauge). Optional, defaults to 1.
 function Prometheus:inc(name, label_names, label_values, value)
   local key = full_metric_name(name, label_names, label_values)
   if value == nil then value = 1 end
-  if value < 0 then
-    self:log_error_kv(key, value, "Value should not be negative")
-    return
-  end
 
   local newval, err = self.dict:incr(key, value)
   if newval then
@@ -488,13 +554,29 @@ function Prometheus:histogram_observe(name, label_names, label_values, value)
   end
 end
 
--- Present all metrics in a text format compatible with Prometheus.
+-- Delete all metrics in a gauge or counter. If this gauge or counter have labels, it
+--   will delete all the metrics with different label values.
+function Prometheus:reset(name)
+  local keys = self.dict:get_keys(0)
+  for _, key in ipairs(keys) do
+    local value, err = self.dict:get(key)
+    if value then
+      local short_name = short_metric_name(key)
+      if name == short_name then
+        self:set_key(key, nil)
+      end
+    else
+      self:log_error("Error getting '", key, "': ", err)
+    end
+  end
+end
+
+-- Prometheus compatible metric data as an array of strings.
 --
--- This function should be used to expose the metrics on a separate HTTP page.
--- It will get the metrics from the dictionary, sort them, and expose them
--- aling with TYPE and HELP comments.
-function Prometheus:collect()
-  ngx.header.content_type = "text/plain"
+-- Returns:
+--   Array of strings with all metrics in a text format compatible with
+--   Prometheus.
+function Prometheus:metric_data()
   if not self.initialized then
     ngx.log(ngx.ERR, "Prometheus module has not been initialized")
     return
@@ -531,7 +613,17 @@ function Prometheus:collect()
       self:log_error("Error getting '", key, "': ", err)
     end
   end
-  ngx.print(output)
+  return output
+end
+
+-- Present all metrics in a text format compatible with Prometheus.
+--
+-- This function should be used to expose the metrics on a separate HTTP page.
+-- It will get the metrics from the dictionary, sort them, and expose them
+-- aling with TYPE and HELP comments.
+function Prometheus:collect()
+  ngx.header.content_type = "text/plain"
+  ngx.print(self:metric_data())
 end
 
 return Prometheus
