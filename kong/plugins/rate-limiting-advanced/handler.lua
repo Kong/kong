@@ -229,6 +229,9 @@ function NewRLHandler:access(conf)
   --
   -- this workaround will not be necessary when real IPC is implemented for
   -- inter-worker communications
+  --
+  -- changes in https://github.com/Kong/kong-plugin-enterprise-rate-limiting/pull/35
+  -- currently rely on this in scenarios where workers initialize without database availability
   if not ratelimiting.config[conf.namespace] then
     new_namespace(conf, true)
   end
