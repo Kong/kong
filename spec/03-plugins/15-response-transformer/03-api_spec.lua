@@ -54,7 +54,7 @@ for _, strategy in helpers.each_strategy() do
             path    = "/plugins/" .. body.id,
           }
         end)
-        it("rename succeeds without colons", function()
+        it("rename succeeds with colons", function()
           local rename_header = "x-request-id:x-custom-request-id"
           local res = assert(admin_client:send {
             method  = "POST",

@@ -63,7 +63,7 @@ function _M.transform_headers(conf, headers)
       kong.response.clear_header(header_name)
   end
 
-  -- Rename headers(s)
+  -- rename headers(s)
   for _, old_name, new_name in iter(conf.rename.headers) do
     if headers[old_name] ~= nil and new_name then
       local value = headers[old_name]
