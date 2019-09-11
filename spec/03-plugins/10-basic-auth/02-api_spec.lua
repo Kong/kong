@@ -69,6 +69,7 @@ for _, strategy in helpers.each_strategy() do
             path    = "/consumers/bob/basic-auth/",
             body    = {
               username = "bobby",
+              password = "kong",
               tags     = { "tag1", "tag2" },
             },
             headers = {
@@ -135,7 +136,10 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ username = "required field missing" }, json.fields)
+            assert.same({
+              username = "required field missing",
+              password = "required field missing",
+            }, json.fields)
           end)
           it("cannot create two identical usernames", function()
             local res = assert(admin_client:send {
@@ -273,7 +277,10 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ username  = "expected a string" }, json.fields)
+            assert.same({
+              username  = "expected a string",
+              password = "required field missing",
+            }, json.fields)
           end)
         end)
       end)
@@ -401,14 +408,16 @@ for _, strategy in helpers.each_strategy() do
           db:truncate("basicauth_credentials")
           bp.basicauth_credentials:insert {
             consumer = { id = consumer.id },
-            username = "bob"
+            username = "bob",
+            password = "secret",
           }
           consumer2 = bp.consumers:insert {
             username = "bob-the-buidler"
           }
           bp.basicauth_credentials:insert {
             consumer = { id = consumer2.id },
-            username = "bob-the-buidler"
+            username = "bob-the-buidler",
+            password = "secret",
           }
         end)
         it("retrieves all the basic-auths with trailing slash", function()
@@ -480,7 +489,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
-          assert.same("schema violation (consumer: required field missing)", json.message)
+          assert.same("2 schema violations (consumer: required field missing; password: required field missing)", json.message)
         end)
 
         it("creates basic-auth credential", function()
@@ -489,6 +498,7 @@ for _, strategy in helpers.each_strategy() do
             path = "/basic-auths",
             body = {
               username = "bob",
+              password = "test",
               consumer = {
                 id = consumer.id
               }
@@ -505,6 +515,35 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/basic-auths/:username_or_id", function()
+      describe("PATCH", function()
+        local consumer2
+
+        lazy_setup(function()
+          consumer2 = bp.consumers:insert({
+            username = "john"
+          })
+        end)
+
+        it("does not allow updating consumer as it would invalidate the password", function()
+          local res = assert(admin_client:send {
+            method = "PATCH",
+            path = "/basic-auths/bob",
+            body = {
+              consumer = {
+                id = consumer2.id
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same("schema violation (all or none of these fields must be set: 'password', 'consumer.id')", json.message)
+        end)
+      end)
+
       describe("PUT", function()
         lazy_setup(function()
           db:truncate("basicauth_credentials")
@@ -522,7 +561,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
-          assert.same("schema violation (consumer: required field missing)", json.message)
+          assert.same("2 schema violations (consumer: required field missing; password: required field missing)", json.message)
         end)
 
         it("creates basic-auth credential", function()
@@ -530,6 +569,7 @@ for _, strategy in helpers.each_strategy() do
             method = "PUT",
             path = "/basic-auths/bob",
             body = {
+              password = "secret",
               consumer = {
                 id = consumer.id
               }
@@ -552,7 +592,8 @@ for _, strategy in helpers.each_strategy() do
           db:truncate("basicauth_credentials")
           credential = bp.basicauth_credentials:insert {
             consumer = { id = consumer.id },
-            username = "bob"
+            username = "bob",
+            password = "secret",
           }
         end)
         it("retrieve consumer from a basic-auth id", function()
