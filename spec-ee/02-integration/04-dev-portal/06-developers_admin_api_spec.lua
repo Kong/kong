@@ -124,21 +124,24 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           headers = {["Content-Type"] = "application/json"},
         }))
 
-
         for i = 1, 5 do
           assert(db.developers:insert {
             email = "developer-" .. i .. "@dog.com",
             meta = '{"full_name":"Testy Mctesty Face"}',
             password = "pw",
           })
+        end
 
+        for i = 1, 5 do
           assert(db.developers:insert {
             email = "developer-" .. i .. "@cat.com",
             meta = '{"full_name":"Testy Mctesty Face 2"}',
             password = "pw",
             roles = {"red"},
           })
+        end
 
+        for i = 1, 5 do
           assert(db.developers:insert {
             email = "developer-" .. i .. "@cow.com",
             meta = '{"full_name":"Testy Mctesty Face 3"}',
@@ -253,6 +256,22 @@ describe("Admin API - Developer Portal - " .. strategy, function()
         res = assert.res_status(200, res)
         local json = cjson.decode(res)
         assert.equal(5, #json.data)
+        assert.equal(ngx.null, json.next)
+      end)
+
+      it("return null 'next' when role is not found after the first page", function()
+        local res = assert(client:send {
+          methd = "GET",
+          path = "/developers?size=5&role=red"
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(5, #json.data)
+
+        for i, developer in ipairs(json.data) do
+          assert.equal("red", developer.roles[1])
+        end
+
         assert.equal(ngx.null, json.next)
       end)
     end)

@@ -74,7 +74,7 @@ end
 
 local function get_paginated_table(self, route, set, size, start_idx, post_process)
   -- This should never happen but it is here to guard the while loop below
-  if start_idx <= 0 then
+  if start_idx < 1 then
     return nil, "invalid pagination start index"
   end
 
@@ -85,24 +85,28 @@ local function get_paginated_table(self, route, set, size, start_idx, post_proce
   local data = setmetatable({}, cjson.empty_array_mt)
   local should_post_process = type(post_process) == "function"
 
-  -- while index is less that the total set size and
-  -- data is less than requested size
-  while i <= total_count and #data < size do
+  -- search for n+1 records, or until set is exhausted
+  -- after n rows are found, we search for next valid row
+  -- to serve as our pagination offset.
+  while i <= total_count and not offset do
     local row = set[i]
     if should_post_process then
       row = post_process(row)
     end
 
     if row and next(row) then
-      table.insert(data, row)
+      -- our data set is full, save this id as the offset for the next page
+      if #data == size then
+        offset = row.id
+      else
+        table.insert(data, row)
+      end
     end
 
     i = i + 1
   end
 
-  local next_row = set[i]
-  if next_row then
-    offset = next_row.id
+  if offset then
     next_page = route .. rebuild_params(self.params, {
       size = size,
       offset = offset,
