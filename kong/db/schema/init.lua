@@ -10,6 +10,7 @@ local re_find      = ngx.re.find
 local concat       = table.concat
 local insert       = table.insert
 local format       = string.format
+local unpack       = unpack
 local assert       = assert
 local ipairs       = ipairs
 local pairs        = pairs
@@ -112,6 +113,8 @@ local validation_errors = {
   SUBSCHEMA_BAD_TYPE        = "error in definition of '%s': %s: cannot change type in a specialized field",
   SUBSCHEMA_BAD_FIELD       = "error in definition of '%s': %s: cannot create a new field",
   SUBSCHEMA_ABSTRACT_FIELD  = "error in schema definition: abstract field was not specialized",
+  -- transformations
+  TRANSFORMATION_ERROR      = "transformation failed: %s",
 }
 
 
@@ -486,6 +489,23 @@ local function get_schema_field(schema, name)
 end
 
 
+local function mutually_required(entity, field_names)
+  local nonempty = {}
+
+  for _, name in ipairs(field_names) do
+    if is_nonempty(get_field(entity, name)) then
+      insert(nonempty, name)
+    end
+  end
+
+  if #nonempty == 0 or #nonempty == #field_names then
+    return true
+  end
+
+  return nil, quoted_list(field_names)
+end
+
+
 --- Entity checkers are cross-field validation rules.
 -- An entity checker is implemented as an entry in this table,
 -- containing a mandatory field `fn`, the checker function,
@@ -710,21 +730,7 @@ Schema.entity_checkers = {
 
   mutually_required = {
     run_with_missing_fields = true,
-    fn = function(entity, field_names)
-      local nonempty = {}
-
-      for _, name in ipairs(field_names) do
-        if is_nonempty(get_field(entity, name)) then
-          insert(nonempty, name)
-        end
-      end
-
-      if #nonempty == 0 or #nonempty == #field_names then
-        return true
-      end
-
-      return nil, quoted_list(field_names)
-    end
+    fn = mutually_required,
   },
 
   mutually_exclusive_sets = {
@@ -1296,6 +1302,59 @@ do
   end
 end
 
+
+local function run_transformation_checks(self, input, original_input, rbw_entity, errors)
+  if not self.transformations then
+    return
+  end
+
+  for _, transformation in ipairs(self.transformations) do
+    local args = {}
+    local argc = 0
+    local none_set = true
+    for _, input_field_name in ipairs(transformation.input) do
+      if is_nonempty(get_field(original_input or input, input_field_name)) then
+        none_set = false
+      end
+
+      argc = argc + 1
+      args[argc] = input_field_name
+    end
+
+    local needs_changed = false
+    if transformation.needs then
+      for _, input_field_name in ipairs(transformation.needs) do
+        if rbw_entity and not needs_changed then
+          local value = get_field(original_input or input, input_field_name)
+          if is_nonempty(value) then
+            local rbw_value = get_field(rbw_entity, input_field_name)
+            if value ~= rbw_value then
+              needs_changed = true
+            end
+          end
+        end
+
+        argc = argc + 1
+        args[argc] = input_field_name
+      end
+    end
+
+    if needs_changed or (not none_set) then
+      local ok, err = mutually_required(needs_changed and original_input or input, args)
+      if not ok then
+        insert_entity_error(errors, validation_errors.MUTUALLY_REQUIRED:format(err))
+
+      else
+        ok, err = mutually_required(original_input or input, transformation.input)
+        if not ok then
+          insert_entity_error(errors, validation_errors.MUTUALLY_REQUIRED:format(err))
+        end
+      end
+    end
+  end
+end
+
+
 --- Ensure that a given table contains only the primary-key
 -- fields of the entity and that their fields validate.
 -- @param pk A table with primary-key fields only.
@@ -1478,7 +1537,22 @@ function Schema:process_auto_fields(data, context, nulls)
 
   local now_s  = ngx_time()
   local now_ms = ngx_now()
+
   local read_before_write = false
+  if context == "update" and self.transformations then
+    for _, transformation in ipairs(self.transformations) do
+      if transformation.needs then
+        for _, input_field_name in ipairs(transformation.needs) do
+          read_before_write = is_nonempty(get_field(data, input_field_name))
+        end
+
+        if read_before_write then
+          break
+        end
+      end
+    end
+  end
+
   local cache_key_modified = false
   local check_immutable_fields = false
 
@@ -1563,19 +1637,24 @@ function Schema:process_auto_fields(data, context, nulls)
       data[key] = floor(data[key])
     end
 
-    -- Set read_before_write to true,
-    -- to handle deep merge of record object on update.
-    if context == "update" and field.type == "record"
-       and data[key] ~= nil and data[key] ~= null then
-      read_before_write = true
+    if not read_before_write then
+      -- Set read_before_write to true,
+      -- to handle deep merge of record object on update.
+      if context == "update" and field.type == "record"
+         and data[key] ~= nil and data[key] ~= null then
+        read_before_write = true
+      end
     end
 
     if context == 'update' and field.immutable then
-      -- if entity schema contains immutable fields,
-      -- we need to preform a read-before-write and
-      -- check the existing record to insure update
-      -- is valid.
-      read_before_write = true
+      if not read_before_write then
+        -- if entity schema contains immutable fields,
+        -- we need to preform a read-before-write and
+        -- check the existing record to insure update
+        -- is valid.
+        read_before_write = true
+      end
+
       check_immutable_fields = true
     end
   end
@@ -1603,7 +1682,9 @@ function Schema:process_auto_fields(data, context, nulls)
     -- that is necessary for validating may not be present.
     or self.entity_checks)
   then
-    read_before_write = true
+    if not read_before_write then
+      read_before_write = true
+    end
 
   elseif context == "select" then
     for key in pairs(data) do
@@ -1677,6 +1758,8 @@ end
 -- @param full_check If true, demands entity table to be complete.
 -- If false, accepts missing `required` fields when those are not
 -- needed for global checks.
+-- @param original_input The original input for transformation validations.
+-- @param rbw_entity The read-before-write entity, if any.
 -- @return True on success.
 -- On failure, it returns nil and a table containing all errors,
 -- indexed by field name for field errors, plus an "@entity" key
@@ -1695,7 +1778,7 @@ end
 --     }
 --  }
 -- In all cases, the input table is untouched.
-function Schema:validate(input, full_check)
+function Schema:validate(input, full_check, original_input, rbw_entity)
   if full_check == nil then
     full_check = true
   end
@@ -1728,6 +1811,7 @@ function Schema:validate(input, full_check)
   end
 
   run_entity_checks(self, input, full_check, errors)
+  run_transformation_checks(self, input, original_input, rbw_entity, errors)
 
   if next(errors) then
     return nil, errors
@@ -1767,12 +1851,13 @@ end
 -- It validates fields for their attributes,
 -- and runs the global entity checks against the entire table.
 -- @param input The input table.
+-- @param original_input The original input for transformation validations.
 -- @return True on success.
 -- On failure, it returns nil and a table containing all errors,
 -- indexed numerically for general errors, and by field name for field errors.
 -- In all cases, the input table is untouched.
-function Schema:validate_insert(input)
-  return self:validate(input, true)
+function Schema:validate_insert(input, original_input)
+  return self:validate(input, true, original_input)
 end
 
 
@@ -1781,11 +1866,13 @@ end
 -- fields when those are not needed for global checks,
 -- and runs the global checks against the entire table.
 -- @param input The input table.
+-- @param original_input The original input for transformation validations.
+-- @param rbw_entity The read-before-write entity, if any.
 -- @return True on success.
 -- On failure, it returns nil and a table containing all errors,
 -- indexed numerically for general errors, and by field name for field errors.
 -- In all cases, the input table is untouched.
-function Schema:validate_update(input)
+function Schema:validate_update(input, original_input, rbw_entity)
 
   -- Monkey-patch some error messages to make it clearer why they
   -- apply during an update. This avoids propagating update-awareness
@@ -1798,7 +1885,7 @@ function Schema:validate_update(input)
   validation_errors.AT_LEAST_ONE_OF = "when updating, " .. aloo
   validation_errors.CONDITIONAL_AT_LEAST_ONE_OF = "when updating, " .. caloo
 
-  local ok, errors = self:validate(input, false)
+  local ok, errors = self:validate(input, false, original_input, rbw_entity)
 
   -- Restore the original error messages
   validation_errors.REQUIRED_FOR_ENTITY_CHECK = rfec
@@ -1813,12 +1900,13 @@ end
 -- It validates fields for their attributes,
 -- and runs the global entity checks against the entire table.
 -- @param input The input table.
+-- @param original_input The original input for transformation validations.
 -- @return True on success.
 -- On failure, it returns nil and a table containing all errors,
 -- indexed numerically for general errors, and by field name for field errors.
 -- In all cases, the input table is untouched.
-function Schema:validate_upsert(input)
-  return self:validate(input, true)
+function Schema:validate_upsert(input, original_input)
+  return self:validate(input, true, original_input)
 end
 
 
@@ -1960,6 +2048,58 @@ local function allow_record_fields_by_name(record, loop)
       allow_record_fields_by_name(f, loop)
     end
   end
+end
+
+
+--- Run transformations on fields.
+-- @param input The input table.
+-- @param original_input The original input for transformation detection.
+-- @return the transformed entity
+function Schema:transform(input, original_input)
+  if not self.transformations then
+    return input
+  end
+
+  local output = input
+  for _, transformation in ipairs(self.transformations) do
+    local on_write = transformation.on_write
+    local args = {}
+    local argc = 0
+    local all_set  = true
+    for _, input_field_name in ipairs(transformation.input) do
+      local value = get_field(original_input or input, input_field_name)
+      if is_nonempty(value) then
+        argc = argc + 1
+        if original_input then
+          args[argc] = get_field(input, input_field_name)
+        else
+          args[argc] = value
+        end
+
+      else
+        all_set = false
+        break
+      end
+    end
+
+    if all_set then
+      if transformation.needs then
+        for _, need in ipairs(transformation.needs) do
+          argc = argc + 1
+          args[argc] = get_field(input, need)
+        end
+      end
+
+      local data, err = on_write(unpack(args))
+      if err then
+        return nil, validation_errors.TRANSFORMATION_ERROR:format(err)
+      end
+
+      output = self:merge_values(data, output)
+    end
+  end
+
+  return output
 end
 
 

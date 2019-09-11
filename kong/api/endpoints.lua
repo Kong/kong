@@ -590,6 +590,10 @@ local function patch_entity_endpoint(schema, foreign_schema, foreign_field_name,
       self.params[foreign_schema.name] = pk
 
     else
+      if not self.args.post[foreign_field_name] then
+        self.args.post[foreign_field_name] = schema:extract_pk_values(entity)
+      end
+
       local pk = schema:extract_pk_values(entity)
       entity, _, err_t = select_entity(self, db, foreign_schema)
       if err_t then
