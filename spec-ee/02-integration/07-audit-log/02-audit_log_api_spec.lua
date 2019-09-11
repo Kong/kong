@@ -33,7 +33,7 @@ for _, strategy in helpers.each_strategy() do
     describe("audit requests", function()
       -- Assert paging behavior - given we have custom logic for paging in
       -- audit endpoints
-      it("returns paged results", function()
+      it("#flaky returns paged results", function()
         assert.res_status(200, admin_client:get("/services"))
         assert.res_status(200, admin_client:get("/services"))
         assert.res_status(200, admin_client:get("/services"))

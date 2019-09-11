@@ -144,7 +144,7 @@ for _, strategy in helpers.each_strategy() do
       --assert.equal("127.0.0.1", log_message.client_ip)
     end)
 
-    it("logs TLS info", function()
+    it("#flaky logs TLS info", function()
       local thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
 
       -- Making the request
