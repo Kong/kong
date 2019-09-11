@@ -234,7 +234,7 @@ server {
     location / {
         default_type application/json;
         content_by_lua_block {
-            Kong.serve_admin_api()
+            Kong.admin_content()
         }
     }
 

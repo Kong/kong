@@ -1063,7 +1063,7 @@ function Kong.handle_error()
 end
 
 
-function Kong.serve_admin_api(options)
+function Kong.admin_content(options)
   kong_global.set_phase(kong, PHASES.admin_api)
 
   log_init_worker_errors(ngx.ctx)
@@ -1081,6 +1081,10 @@ function Kong.serve_admin_api(options)
 
   return lapis.serve("kong.api")
 end
+
+
+-- TODO: deprecate the following alias
+Kong.serve_admin_api = Kong.admin_content
 
 
 return Kong
