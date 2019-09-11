@@ -51,7 +51,32 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/groups :", function()
-      it("The endpoint should list groups entities as expected", function()
+      local function insert_group()
+        local submission = { name = "test_group_" .. utils.uuid() }
+        local json = assert.res_status(201, assert(client:send {
+          method = "POST",
+          path = "/groups",
+          body = submission,
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        }))
+
+        return cjson.decode(json)
+      end
+
+      local function check_delete(key)
+        assert.res_status(204, assert(client:send {
+          method = "DELETE",
+          path = "/groups/" .. key,
+        }))
+        
+        local res = get_request("/groups")
+
+        assert.same({}, res.data)
+      end
+
+      it("GET The endpoint should list groups entities as expected", function()
         local name = "test_group_" .. utils.uuid()
         local res
 
@@ -60,8 +85,8 @@ for _, strategy in helpers.each_strategy() do
 
         assert.same(name, res.data[1].name)
       end)
-
-      it("The endpoint should work with the 'offset' filter", function()
+      
+      it("GET The endpoint should work with the 'offset' filter", function()
         local qty = 3
 
         db:truncate("groups")
@@ -75,8 +100,8 @@ for _, strategy in helpers.each_strategy() do
 
         assert.is_equal(qty, count + count_2)
       end)
-
-      it("The endpoint should not create a group entities with out a 'name'", function()
+      
+      it("POST The endpoint should not create a group entity with out a 'name'", function()
         local submission = { comment = "create a group with out a name" }
 
         assert.res_status(400, assert(client:send {
@@ -89,19 +114,11 @@ for _, strategy in helpers.each_strategy() do
         }))
       end)
 
-      it("The endpoint should create a group entities as expected", function()
-        local submission = { name = "test_group_" .. utils.uuid() }
-        assert.res_status(201, assert(client:send {
-          method = "POST",
-          path = "/groups",
-          body = submission,
-          headers = {
-            ["Content-Type"] = "application/json",
-          }
-        }))
+      it("POST The endpoint should create a group entity as expected", function()
+        insert_group()
       end)
 
-      it("The endpoint should update a group entities as expected", function()
+      it("PATCH The endpoint should update a group entity as expected", function()
         local comment = "now we have comment"
         local submission = { name = "test_group_" .. utils.uuid() }
         -- create a group
@@ -132,6 +149,22 @@ for _, strategy in helpers.each_strategy() do
         assert.same(ngx.null, res_create.comment)
         assert.same(comment, res_update.comment)
       end)
+
+      it("DELETE The endpoint should delete a group entity by id", function()
+        local group
+
+        db:truncate("groups")
+        group = insert_group()
+        check_delete(group.id)
+      end)
+
+      it("DELETE The endpoint should delete a group entity by name", function()
+        local group
+
+        db:truncate("groups")
+        group = insert_group()
+        check_delete(group.name)
+      end)
     end)
 
     describe("/groups/:groups/roles :", function()
@@ -141,6 +174,13 @@ for _, strategy in helpers.each_strategy() do
         local group = assert(db.groups:insert{ name = "test_group_" .. utils.uuid()})
         local role = assert(db.rbac_roles:insert{ name = "test_role_" .. utils.uuid()})
         local workspace = assert(db.workspaces:insert{ name = "test_workspace_" .. utils.uuid()})
+        
+        assert(db.workspace_entities:insert{ 
+          workspace_id        = workspace.id,
+          workspace_name      = workspace.name,
+          entity_id           = role.id,
+          unique_field_name   = "id",
+        })
 
         return group, role, workspace
       end
@@ -204,48 +244,33 @@ for _, strategy in helpers.each_strategy() do
           -- there is 1 mapping created during the "before_each"
           assert.is_equal(qty + 1, #res_1.data + #res_2.data)
         end)
-
-        it("The endpoint should cache entity correctly", function()
-          local res_before, res_after
-          local comment = "now we have comment"
-          local new_name = "new_name"
-
-          -- ensure entities states before update
-          res_before = get_request("/groups/" .. group.id .. "/roles")
-          assert.is_nil(res_before.data[1].group.comment)
-          assert.not_same(new_name, res_before.data[1].rbac_role.name)
-
-          -- update entities
-          assert.res_status(200, assert(client:send {
-            method = "PATCH",
-            path = "/groups/" .. group.id,
-            body = {
-              comment = comment
-            },
-            headers = {
-              ["Content-Type"] = "application/json",
-            }
-          }))
-
-          assert.res_status(200, assert(client:send {
-            method = "PATCH",
-            path = "/rbac/roles/" .. role.id,
-            body = {
-              name = new_name
-            },
-            headers = {
-              ["Content-Type"] = "application/json",
-            }
-          }))
-
-          -- check entities states after update
-          res_after = get_request("/groups/" .. group.id .. "/roles")
-          assert.same(comment, res_after.data[1].group.comment)
-          assert.same(new_name, res_after.data[1].rbac_role.name)
-        end)
       end)
 
       describe("POST", function()
+        local function check_create(res_code, key, _group, _role, _workspace)
+          local json = assert.res_status(res_code, assert(client:send {
+            method = "POST",
+            path = "/groups/" .. key .. "/roles",
+            body = {
+              rbac_role_id = _role.id,
+              workspace_id = _workspace.id,
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          }))
+          
+          if res_code ~= 201 then 
+            return nil
+          end
+
+          local res = cjson.decode(json)
+
+          assert.same(res.group.id, _group.id)
+          assert.same(res.workspace.id, _workspace.id)
+          assert.same(res.rbac_role.id, _role.id)
+        end
+        
         it("The endpoint should not create a mapping with incorrect params", function()
           local _group, _role, _workspace = insert_entities()
 
@@ -261,7 +286,7 @@ for _, strategy in helpers.each_strategy() do
                 ["Content-Type"] = "application/json",
               },
             }))
-            assert.same("must provide the workspace_id", json_no_workspace)
+            assert.same("must provide the workspace_id", cjson.decode(json_no_workspace).message)
 
             local json_no_role = assert.res_status(400, assert(client:send {
               method = "POST",
@@ -273,7 +298,7 @@ for _, strategy in helpers.each_strategy() do
                 ["Content-Type"] = "application/json",
               },
             }))
-            assert.same("must provide the rbac_role_id", json_no_role)
+            assert.same("must provide the rbac_role_id", cjson.decode(json_no_role).message)
           end
 
           do
@@ -316,39 +341,29 @@ for _, strategy in helpers.each_strategy() do
           end
         end)
 
-        it("The endpoint should create a mapping with correct params", function()
+        it("The endpoint should not create a mapping with incorrect ids", function()
+          local _group, _, _workspace = insert_entities()
+          local _role = assert(db.rbac_roles:insert{ name = "test_role_" .. utils.uuid()})
+
+          check_create(404, _group.id, _group, _role, _workspace)
+        end)
+
+        it("The endpoint should create a mapping with correct params by id", function()
           local _group, _role, _workspace = insert_entities()
+          check_create(201, _group.id, _group, _role, _workspace)
+        end)
 
-          local json = assert.res_status(201, assert(client:send {
-            method = "POST",
-            path = "/groups/" .. _group.id .. "/roles",
-            body = {
-              rbac_role_id = _role.id,
-              workspace_id = _workspace.id,
-            },
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
-          }))
-
-          local res = cjson.decode(json)
-
-          assert.same(res.group.id, _group.id)
-          assert.same(res.workspace.id, _workspace.id)
-          assert.same(res.rbac_role.id, _role.id)
+        it("The endpoint should create a mapping with correct params by group name", function()
+          local _group, _role, _workspace = insert_entities()
+          check_create(201, _group.name, _group, _role, _workspace)
         end)
       end)
 
       describe("DELETE", function()
-        before_each(function()
-          group, role, workspace = insert_entities()
-          insert_mapping(group, role, workspace)
-        end)
-
-        it("The endpoint should delete a mapping with correct params", function()
+        local function check_delete(key)
           assert.res_status(204, assert(client:send {
             method = "DELETE",
-            path = "/groups/" .. group.id .. "/roles",
+            path = "/groups/" .. key .. "/roles",
             body = {
               rbac_role_id = role.id,
               workspace_id = workspace.id,
@@ -366,6 +381,19 @@ for _, strategy in helpers.each_strategy() do
           local res = cjson.decode(json)
 
           assert.same({}, res.data)
+        end
+
+        before_each(function()
+          group, role, workspace = insert_entities()
+          insert_mapping(group, role, workspace)
+        end)
+
+        it("The endpoint should delete a mapping with correct params by id", function()
+          check_delete(group.id)
+        end)
+
+        it("The endpoint should delete a mapping with correct params by group name", function()
+          check_delete(group.name)
         end)
       end)
     end)
