@@ -253,9 +253,15 @@ local function check_insert(self, entity, options)
     return nil, err, err_t
   end
 
-  local ok, errors = self.schema:validate_insert(entity_to_insert)
+  local ok, errors = self.schema:validate_insert(entity_to_insert, entity)
   if not ok then
     local err_t = self.errors:schema_violation(errors)
+    return nil, tostring(err_t), err_t
+  end
+
+  entity_to_insert, err = self.schema:transform(entity_to_insert, entity)
+  if not entity_to_insert then
+    err_t = self.errors:transformation_error(err)
     return nil, tostring(err_t), err_t
   end
 
@@ -319,9 +325,15 @@ local function check_update(self, key, entity, options, name)
     return nil, err, err_t
   end
 
-  local ok, errors = self.schema:validate_update(entity_to_update)
+  local ok, errors = self.schema:validate_update(entity_to_update, entity, rbw_entity)
   if not ok then
     local err_t = self.errors:schema_violation(errors)
+    return nil, nil, tostring(err_t), err_t
+  end
+
+  entity_to_update, err = self.schema:transform(entity_to_update, entity)
+  if not entity_to_update then
+    err_t = self.errors:transformation_error(err)
     return nil, nil, tostring(err_t), err_t
   end
 
@@ -357,7 +369,7 @@ local function check_upsert(self, entity, options, name, value)
     return nil, err, err_t
   end
 
-  local ok, errors = self.schema:validate_upsert(entity_to_upsert)
+  local ok, errors = self.schema:validate_upsert(entity_to_upsert, entity)
   if not ok then
     local err_t = self.errors:schema_violation(errors)
     return nil, tostring(err_t), err_t
@@ -365,6 +377,12 @@ local function check_upsert(self, entity, options, name, value)
 
   if name then
     entity_to_upsert[name] = nil
+  end
+
+  entity_to_upsert, err = self.schema:transform(entity_to_upsert, entity)
+  if not entity_to_upsert then
+    err_t = self.errors:transformation_error(err)
+    return nil, tostring(err_t), err_t
   end
 
   if options ~= nil then

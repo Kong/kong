@@ -1804,6 +1804,585 @@ describe("schema", function()
       assert.falsy(err)
     end)
 
+    it("test mutually required checks specified by transformations", function()
+      local Test = Schema.new({
+        fields = {
+          { a1 = { type = "string" } },
+          { a2 = { type = "string" } },
+          { a3 = { type = "string" } },
+        },
+        transformations = {
+          {
+            input = { "a2" },
+            on_write = function() return {} end
+          },
+          {
+            input = { "a1", "a3" },
+            on_write = function() return {} end
+          },
+        }
+      })
+
+      local ok, err = Test:validate_update({
+        a1 = "foo"
+      })
+      assert.is_falsy(ok)
+      assert.match("all or none of these fields must be set: 'a1', 'a3'", err["@entity"][1])
+
+      ok, err = Test:validate_update({
+        a2 = "foo"
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      ok, err = Test:validate_update({
+        a1 = "aaa",
+        a2 = "bbb",
+        a3 = "ccc",
+        a4 = "ddd",
+      }, {
+        a1 = "foo"
+      })
+
+      assert.is_falsy(ok)
+      assert.match("all or none of these fields must be set: 'a1', 'a3'", err["@entity"][1])
+    end)
+
+    it("test mutually required checks specified by transformations with needs", function()
+      local Test = Schema.new({
+        fields = {
+          { a1 = { type = "string" } },
+          { a2 = { type = "string" } },
+          { a3 = { type = "string" } },
+          { a4 = { type = "string" } },
+        },
+        transformations = {
+          {
+            input = { "a2" },
+            on_write = function() return {} end
+          },
+          {
+            input = { "a1", "a3" },
+            needs = { "a4" },
+            on_write = function() return {} end
+          },
+        }
+      })
+
+      local ok, err = Test:validate_update({
+        a1 = "foo"
+      })
+      assert.is_falsy(ok)
+      assert.match("all or none of these fields must be set: 'a1', 'a3', 'a4'", err["@entity"][1])
+
+      local ok, err = Test:validate_update(
+        {
+          a1 = "foo",
+          a3 = "bar",
+          a4 = "car",
+        },
+        {
+          a1 = "foo",
+          a3 = "bar",
+        }
+      )
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      ok, err = Test:validate_update({
+        a2 = "foo"
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+    end)
+
+
+    it("test mutually required checks specified by transformations with needs (combinations)", function()
+      -- {
+      --   input = I1, I2
+      --   needs = N1, N2
+      -- }
+      --
+      -- ### PATCH          result
+      -- -----------------------------------------
+      -- 01. (no input)     ok
+      -- 02. I1 I2 N1 N2    ok
+      -- 03. I1 I2 N1       ok, rbw N2
+      -- 04. I1 I2    N2    ok, rbw N1
+      -- 05. I1 I2          ok, rbw N1 N2
+      -- 06. I1 I2          fail, rbw N1, missing N2
+      -- 07. I1 I2          fail, rbw N2, missing N1
+      -- 08. I1 I2          fail, missing N1 N2
+      -- 09. I1    N1 N2    fail, missing I2
+      -- 10. I1    N1       fail, missing I2
+      -- 11. I1    N1       fail, missing I2, rbw N2
+      -- 12. I1    N1       fail, rbw I2 N2
+      -- 13. I1       N2    fail, missing I2
+      -- 14. I1       N2    fail, missing I2, rbw N1
+      -- 15. I1       N2    fail, rbw I2 N1
+      -- 16. I1             fail, missing I2
+      -- 17. I1             fail, missing I2, rbw N1
+      -- 18. I1             fail, missing I2, rbw N1 N2
+      -- 19. I1             fail, rbw I2 N1 N2
+      -- 20. I2 N1 N2       fail, missing I1
+      -- 21. I2 N1          fail, missing I1
+      -- 22. I2    N2       fail, missing I1
+      -- 23. I2             fail, missing I1
+      -- 24. N1 N2          fail, needs changes would invalidate I1 I2
+      -- 25. N1             fail, needs changes would invalidate I1 I2
+      -- 26. N2             fail, needs changes would invalidate I1 I2
+      -- 27. N1 N2          ok, no changes in needs, would not invalidate I1 I2
+      -- 28. N1             ok, no changes in needs, would not invalidate I1 I2
+      -- 29. N2             ok, no changes in needs, would not invalidate I1 I2
+
+      local Test = Schema.new({
+        fields = {
+          { i1 = { type = "string" } },
+          { i2 = { type = "string" } },
+          { n1 = { type = "string" } },
+          { n2 = { type = "string" } },
+        },
+        transformations = {
+          {
+            input = { "i1", "i2" },
+            needs = { "n1", "n2" },
+            on_write = function() return {} end,
+          },
+        },
+      })
+
+      -- 01. (no input): ok
+      local ok, err = Test:validate_update(
+        {
+        },
+        {
+        }
+      )
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      -- 02. I1 I2 N1 N2: ok
+      local ok, err = Test:validate_update(
+        {
+        },
+        {
+          i1 = "foo",
+          i2 = "bar",
+          n1 = "foo",
+          n2 = "bar",
+        }
+      )
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      -- 03. I1 I2 N1: ok, rbw N2
+      local ok, err = Test:validate_update(
+        {
+          i1 = "foo",
+          i2 = "bar",
+          n1 = "foo",
+          n2 = "bar",
+        },
+        {
+          i1 = "foo",
+          i2 = "bar",
+          n1 = "foo",
+        }
+      )
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      -- 04. I1 I2 N2: ok, rbw N1
+      local ok, err = Test:validate_update(
+        {
+          i1 = "foo",
+          i2 = "bar",
+          n1 = "foo",
+          n2 = "bar",
+        },
+        {
+          i1 = "foo",
+          i2 = "bar",
+          n2 = "bar",
+        }
+      )
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      -- 05. I1 I2 ok, rbw N1 N2
+      local ok, err = Test:validate_update(
+        {
+          i1 = "foo",
+          i2 = "bar",
+          n1 = "foo",
+          n2 = "bar",
+        },
+        {
+          i1 = "foo",
+          i2 = "bar",
+        }
+      )
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      -- 06. I1 I2: fail, rbw N1, missing N2
+      local ok, err = Test:validate_update(
+        {
+          i1 = "foo",
+          i2 = "bar",
+          n1 = "foo",
+        },
+        {
+          i1 = "foo",
+          i2 = "bar",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2', 'n1', 'n2'", err["@entity"][1])
+
+      -- 07. I1 I2: fail, rbw N2, missing N1
+      local ok, err = Test:validate_update(
+        {
+          i1 = "foo",
+          i2 = "bar",
+          n2 = "bar",
+        },
+        {
+          i1 = "foo",
+          i2 = "bar",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2', 'n1', 'n2'", err["@entity"][1])
+
+      -- 08. I1 I2: fail, missing N1 N2
+      local ok, err = Test:validate_update(
+        {
+          i1 = "foo",
+          i2 = "bar",
+          n2 = "bar",
+        },
+        {
+          i1 = "foo",
+          i2 = "bar",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2', 'n1', 'n2'", err["@entity"][1])
+
+      -- 09. I1 N1 N2: fail, missing I2
+      local ok, err = Test:validate_update(
+        {
+          i1 = "foo",
+          n1 = "foo",
+          n2 = "bar",
+        },
+        {
+          i1 = "foo",
+          n1 = "foo",
+          n2 = "bar",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2', 'n1', 'n2'", err["@entity"][1])
+
+      -- 10. I1 N1: fail, missing I2
+      local ok, err = Test:validate_update(
+        {
+          i1 = "foo",
+          n1 = "foo",
+        },
+        {
+          i1 = "foo",
+          n1 = "foo",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2', 'n1', 'n2'", err["@entity"][1])
+
+      -- 11. I1 N1: fail, missing I2, rbw N2
+      local ok, err = Test:validate_update(
+        {
+          i1 = "foo",
+          n1 = "foo",
+          n2 = "bar",
+        },
+        {
+          i1 = "foo",
+          n1 = "foo",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2', 'n1', 'n2'", err["@entity"][1])
+
+      -- 12. I1 N1: fail, rbw I2 N2
+      local ok, err = Test:validate_update(
+        {
+          i1 = "foo",
+          i2 = "bar",
+          n1 = "foo",
+          n2 = "bar",
+        },
+        {
+          i1 = "foo",
+          n1 = "foo",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2'", err["@entity"][1])
+
+      -- 13. I1 N2: fail, missing I2
+      local ok, err = Test:validate_update(
+        {
+          i1 = "foo",
+          n2 = "bar",
+        },
+        {
+          i1 = "foo",
+          n2 = "bar",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2', 'n1', 'n2'", err["@entity"][1])
+
+      -- 14. I1 N2: fail, missing I2, rbw N1
+      local ok, err = Test:validate_update(
+        {
+          i1 = "foo",
+          n1 = "foo",
+          n2 = "bar",
+        },
+        {
+          i1 = "foo",
+          n2 = "bar",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2', 'n1', 'n2'", err["@entity"][1])
+
+      -- 15. I1 N2: fail, missing I2, rbw I2 N1
+      local ok, err = Test:validate_update(
+        {
+          i1 = "foo",
+          i2 = "bar",
+          n1 = "foo",
+          n2 = "bar",
+        },
+        {
+          i1 = "foo",
+          n2 = "bar",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2'", err["@entity"][1])
+
+      -- 16. I1: fail, missing I2
+      local ok, err = Test:validate_update(
+        {
+          i1 = "foo",
+        },
+        {
+          i1 = "foo",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2', 'n1', 'n2'", err["@entity"][1])
+
+      -- 17. I1: fail, missing I2, rbw N1
+      local ok, err = Test:validate_update(
+        {
+          i1 = "foo",
+          n1 = "foo",
+        },
+        {
+          i1 = "foo",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2', 'n1', 'n2'", err["@entity"][1])
+
+      -- 18. I1: fail, missing I2, rbw N1 N2
+      local ok, err = Test:validate_update(
+        {
+          i1 = "foo",
+          n1 = "foo",
+          n2 = "bar",
+        },
+        {
+          i1 = "foo",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2', 'n1', 'n2'", err["@entity"][1])
+
+      -- 19. I1: fail, rbw I2 N1 N2
+      local ok, err = Test:validate_update(
+        {
+          i1 = "foo",
+          i2 = "bar",
+          n1 = "foo",
+          n2 = "bar",
+        },
+        {
+          i1 = "foo",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2'", err["@entity"][1])
+
+      -- 20. I2 N1 N2: fail, missing I1
+      local ok, err = Test:validate_update(
+        {
+          i2 = "bar",
+          n1 = "foo",
+          n2 = "bar",
+        },
+        {
+          i2 = "bar",
+          n1 = "foo",
+          n2 = "bar",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2', 'n1', 'n2'", err["@entity"][1])
+
+      -- 21. I2 N1: fail, missing I1
+      local ok, err = Test:validate_update(
+        {
+          i2 = "bar",
+          n1 = "foo",
+        },
+        {
+          i2 = "bar",
+          n1 = "foo",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2', 'n1', 'n2'", err["@entity"][1])
+
+      -- 22. I2 N2: fail, missing I1
+      local ok, err = Test:validate_update(
+        {
+          i2 = "bar",
+          n2 = "bar",
+        },
+        {
+          i2 = "bar",
+          n2 = "bar",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2', 'n1', 'n2'", err["@entity"][1])
+
+      -- 23. I2: fail, missing I1
+      local ok, err = Test:validate_update(
+        {
+          i2 = "bar",
+        },
+        {
+          i2 = "bar",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2', 'n1', 'n2'", err["@entity"][1])
+
+      -- 24. N1 N2: fail, needs changes would invalidate I1 I2
+      local ok, err = Test:validate_update(
+        {
+          n1 = "foo",
+          n2 = "bar",
+        },
+        {
+          n1 = "foo",
+          n2 = "bar",
+        },
+        {
+          n1 = "old-foo",
+          n2 = "old-bar",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2', 'n1', 'n2'", err["@entity"][1])
+
+      -- 25. N1: fail, needs changes would invalidate I1 I2
+      local ok, err = Test:validate_update(
+        {
+          n1 = "foo",
+        },
+        {
+          n1 = "foo",
+        },
+        {
+          n1 = "old-foo",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2', 'n1', 'n2'", err["@entity"][1])
+
+      -- 26. N2: fail, needs changes would invalidate I1 I2
+      local ok, err = Test:validate_update(
+        {
+          n2 = "bar",
+        },
+        {
+          n2 = "bar",
+        },
+        {
+          n2 = "old-bar",
+        }
+      )
+      assert.falsy(ok)
+      assert.match("all or none of these fields must be set: 'i1', 'i2', 'n1', 'n2'", err["@entity"][1])
+
+      -- 27. N1 N2: ok, no changes in needs, would not invalidate I1 I2
+      local ok, err = Test:validate_update(
+        {
+          n1 = "foo",
+          n2 = "bar",
+        },
+        {
+          n1 = "foo",
+          n2 = "bar",
+        },
+        {
+          n1 = "foo",
+          n2 = "bar",
+        }
+      )
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      -- 28. N1: fail, ok, no changes in needs, would not invalidate I1 I2
+      local ok, err = Test:validate_update(
+        {
+          n1 = "foo",
+        },
+        {
+          n1 = "foo",
+        },
+        {
+          n1 = "foo",
+        }
+      )
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      -- 29. N2: ok, no changes in needs, would not invalidate I1 I2
+      local ok, err = Test:validate_update(
+        {
+          n2 = "bar",
+        },
+        {
+          n2 = "bar",
+        },
+        {
+          n2 = "bar",
+        }
+      )
+      assert.truthy(ok)
+      assert.falsy(err)
+    end)
+
     it("test mutually exclusive checks", function()
       local Test = Schema.new({
         fields = {
@@ -2987,6 +3566,284 @@ describe("schema", function()
 
       assert.falsy(ok)
       assert.equals(err.list, 'immutable field cannot be updated')
+    end)
+  end)
+
+  describe("transform", function()
+    it("transforms fields", function()
+      local test_schema = {
+        name = "test",
+        fields = {
+          {
+            name = {
+              type = "string"
+            },
+          },
+        },
+        transformations = {
+          {
+            input = { "name" },
+            on_write = function(name)
+              return { name = name:upper() }
+            end,
+          },
+        },
+      }
+      local entity = { name = "test1" }
+
+      local TestEntities = Schema.new(test_schema)
+      local transformed_entity, _ = TestEntities:transform(entity)
+
+      assert.truthy(transformed_entity)
+      assert.equal("TEST1", transformed_entity.name)
+    end)
+
+    it("transforms fields with input table", function()
+      local test_schema = {
+        name = "test",
+        fields = {
+          {
+            name = {
+              type = "string"
+            },
+          },
+        },
+        transformations = {
+          {
+            input = { "name" },
+            on_write = function(name)
+              return { name = name:upper() }
+            end,
+          },
+        },
+      }
+      local entity = { name = "test1" }
+      local input = { name = "we have a value" }
+
+      local TestEntities = Schema.new(test_schema)
+      local transformed_entity, _ = TestEntities:transform(entity, input)
+
+      assert.truthy(transformed_entity)
+      assert.equal("TEST1", transformed_entity.name)
+    end)
+
+    it("skips transformation when none of input matches", function()
+      local test_schema = {
+        name = "test",
+        fields = {
+          {
+            name = {
+              type = "string"
+            },
+          },
+        },
+        transformations = {
+          {
+            input = { "non_existent" },
+            on_write = function(non_existent)
+              return { name = non_existent:upper() }
+            end,
+          },
+        },
+      }
+      local entity = { name = "test1" }
+
+      local TestEntities = Schema.new(test_schema)
+      local transformed_entity, _ = TestEntities:transform(entity)
+
+      assert.truthy(transformed_entity)
+      assert.equal("test1", transformed_entity.name)
+    end)
+
+    it("skips transformation when none of input matches using input table", function()
+      local test_schema = {
+        name = "test",
+        fields = {
+          {
+            name = {
+              type = "string"
+            },
+          },
+        },
+        transformations = {
+          {
+            input = { "name" },
+            on_write = function(non_existent)
+              return { name = non_existent:upper() }
+            end,
+          },
+        },
+      }
+      local entity = { name = "test1" }
+      local input = { name = nil }
+
+      local TestEntities = Schema.new(test_schema)
+      local transformed_entity, _ = TestEntities:transform(entity, input)
+
+      assert.truthy(transformed_entity)
+      assert.equal("test1", transformed_entity.name)
+    end)
+
+
+    it("transforms fields with multiple transformations", function()
+      local test_schema = {
+        name = "test",
+        fields = {
+          {
+            name = {
+              type = "string"
+            },
+          },
+        },
+        transformations = {
+          {
+            input = { "name" },
+            on_write = function(name)
+              return { name = "How are you " .. name }
+            end,
+          },
+          {
+            input = { "name" },
+            on_write = function(name)
+              return { name = name .. "?" }
+            end,
+          },
+        },
+      }
+
+      local entity = { name = "Bob" }
+
+      local TestEntities = Schema.new(test_schema)
+      local transformed_entity, _ = TestEntities:transform(entity)
+
+      assert.truthy(transformed_entity)
+      assert.equal("Bob?", transformed_entity.name)
+    end)
+
+    it("transforms any field not just those given as an input", function()
+      local test_schema = {
+        name = "test",
+        fields = {
+          {
+            name = {
+              type = "string"
+            },
+            age = {
+              type = "integer"
+            }
+          },
+        },
+        transformations = {
+          {
+            input = { "name" },
+            on_write = function(name)
+              return { age = #name }
+            end,
+          },
+        },
+      }
+
+      local entity = { name = "Bob" }
+
+      local TestEntities = Schema.new(test_schema)
+      local transformed_entity, _ = TestEntities:transform(entity)
+
+      assert.truthy(transformed_entity)
+      assert.equal("Bob", transformed_entity.name)
+      assert.equal(3, transformed_entity.age)
+    end)
+
+    it("returns error if transformation returns an error", function()
+      local test_schema = {
+        name = "test",
+        fields = {
+          {
+            name = {
+              type = "string"
+            },
+          },
+        },
+        transformations = {
+          {
+            input = { "name" },
+            on_write = function(name)
+              return nil, "unable to transform name"
+            end,
+          },
+        },
+      }
+      local entity = { name = "test1" }
+
+      local TestEntities = Schema.new(test_schema)
+      local transformed_entity, err = TestEntities:transform(entity)
+
+      assert.falsy(transformed_entity)
+      assert.equal("transformation failed: unable to transform name", err)
+    end)
+
+    it("does not skip transformation if needs are not fulfilled (this is handled by validation)", function()
+      local test_schema = {
+        name = "test",
+        fields = {
+          {
+            name = {
+              type = "string"
+            },
+            age = {
+              type = "integer"
+            },
+          },
+        },
+        transformations = {
+          {
+            input = { "name" },
+            needs = { "age" },
+            on_write = function(name, age)
+              return { name = name:upper() }
+            end,
+          },
+        },
+      }
+      local entity = { name = "test1" }
+
+      local TestEntities = Schema.new(test_schema)
+      local transformed_entity, _ = TestEntities:transform(entity)
+
+      assert.truthy(transformed_entity)
+      assert.equal("TEST1", transformed_entity.name)
+    end)
+
+
+    it("transforms fields with needs given to function", function()
+      local test_schema = {
+        name = "test",
+        fields = {
+          {
+            name = {
+              type = "string"
+            },
+            age = {
+              type = "integer"
+            },
+          },
+        },
+        transformations = {
+          {
+            input = { "name" },
+            needs = { "age" },
+            on_write = function(name, age)
+              return { name = name .. " " .. age }
+            end,
+          },
+        },
+      }
+      local entity = { name = "John", age = 13 }
+
+      local TestEntities = Schema.new(test_schema)
+      local transformed_entity, _ = TestEntities:transform(entity)
+
+      assert.truthy(transformed_entity)
+      assert.equal("John 13", transformed_entity.name)
     end)
   end)
 end)
