@@ -22,7 +22,7 @@ for _, strategy in helpers.each_strategy() do
 
       local res = cjson.decode(json)
 
-      return res, #res.data
+      return res, res.data and #res.data or 0
     end
 
     lazy_setup(function()
@@ -101,6 +101,29 @@ for _, strategy in helpers.each_strategy() do
         assert.is_equal(qty, count + count_2)
       end)
       
+      it("GET The endpoint should list a group by id", function()
+        local res_insert = insert_group()
+        
+        local res_select = get_request("/groups/" .. res_insert.id)
+
+        assert.same(res_insert, res_select)
+      end)
+
+      it("GET The endpoint should list a group by name", function()
+        local res_insert = insert_group()
+        
+        local res_select = get_request("/groups/" .. res_insert.name)
+
+        assert.same(res_insert, res_select)
+      end)
+
+      it("GET The endpoint should return '404' when the group not found", function()
+        assert.res_status(404, assert(client:send {
+          method = "GET",
+          path = "/groups/" .. utils.uuid(),
+        }))
+      end)
+
       it("POST The endpoint should not create a group entity with out a 'name'", function()
         local submission = { comment = "create a group with out a name" }
 

@@ -51,7 +51,10 @@ return {
   },
 
   ["/groups/:groups"] = {
+    GET    = endpoints.get_entity_endpoint(groups.schema),
+
     PATCH  = endpoints.patch_entity_endpoint(groups.schema),
+
     DELETE = function(self, db, helpers)
       local _, err_t
 
