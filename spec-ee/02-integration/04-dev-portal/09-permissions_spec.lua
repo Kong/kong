@@ -105,7 +105,14 @@ for _, strategy in helpers.each_strategy() do
           meta = '{"full_name":"x"}',
           password = "test",
         })
-        local file = assert(db.files:insert({ path = "content/foo.txt", contents = '{"stuff": "things"}' }))
+        local file = assert(db.files:insert({
+          path = "content/foo.txt",
+          contents = [[
+            ---
+            stuff: things
+            ---
+          ]]
+        }))
         assert.is_falsy(permissions.can_read(dev, ws, file.path))
       end)
 
@@ -122,7 +129,11 @@ for _, strategy in helpers.each_strategy() do
         })
         local file = assert(db.files:insert({
           path = "content/foo.txt",
-          contents = '{"readable_by": ["red"]}',
+          contents = [[
+            ---
+            readable_by: ["red"]
+            ---
+          ]],
         }))
         assert.is_falsy(permissions.can_read(dev, ws, file.path))
       end)
@@ -140,7 +151,11 @@ for _, strategy in helpers.each_strategy() do
         })
         local file = assert(db.files:insert({
           path = "content/foo.txt",
-          contents = '{"readable_by": ["red"]}',
+          contents = [[
+            ---
+            readable_by: ["red"]
+            ---
+          ]],
         }))
 
         assert.is_truthy(permissions.can_read(dev, ws, file.path))
@@ -155,12 +170,15 @@ for _, strategy in helpers.each_strategy() do
 
         local file = assert(db.files:insert({
           path = "content/foo.txt",
-          contents = '{"readable_by": ["red"]}',
+          contents = [[
+            ---
+            readable_by: ["red"]
+            ---
+          ]],
         }))
 
         assert.is_truthy(permissions.can_read(dev, ws, file.path))
       end)
-
     end)
 
     describe("set_file_permissions", function()
@@ -196,12 +214,12 @@ for _, strategy in helpers.each_strategy() do
         local ws = workspaces.DEFAULT_WORKSPACE
         local file = {
           path = "content/file.txt",
-          contents = {},
+          contents = "---..,msdfak",
         }
 
         local ok, err = permissions.set_file_permissions(file, ws)
         assert.is_nil(ok)
-        assert.equals("contents: must be valid stringified yaml for files with path prefix of 'content/'", err)
+        assert.equals("contents: cannot parse, files with 'content/' prefix must have valid headmatter/body syntax", err)
 
         local rows = db.rbac_role_endpoints:select_all()
         assert.same({}, rows)
@@ -226,7 +244,11 @@ for _, strategy in helpers.each_strategy() do
         local ws = workspaces.DEFAULT_WORKSPACE
         local file = {
           path = "content/file.txt",
-          contents = '{"readable_by": ["red"]}',
+          contents = [[
+            ---
+            readable_by: ["red"]
+            ---
+          ]],
         }
 
         local ok, err = permissions.set_file_permissions(file, ws)
@@ -242,7 +264,11 @@ for _, strategy in helpers.each_strategy() do
         local ws = workspaces.DEFAULT_WORKSPACE
         local file = {
           path = "something/else.txt",
-          contents = '{"readable_by": ["red"]}',
+          contents = [[
+            ---
+            readable_by: ["red"]
+            ---
+          ]],
         }
 
         assert.is_truthy(permissions.set_file_permissions(file, ws))
@@ -256,7 +282,11 @@ for _, strategy in helpers.each_strategy() do
         local ws = workspaces.DEFAULT_WORKSPACE
         local file = {
           path = "content/file.txt",
-          contents = '{"readable_by": ["red"]}',
+          contents = [[
+            ---
+            readable_by: ["red"]
+            ---
+          ]],
         }
 
         assert.is_truthy(permissions.set_file_permissions(file, ws))
@@ -274,7 +304,11 @@ for _, strategy in helpers.each_strategy() do
         local ws = workspaces.DEFAULT_WORKSPACE
         local file = {
           path = "content/file.txt",
-          contents = '{"readable_by": ["red", "blue"]}',
+          contents = [[
+            ---
+            readable_by: ["red", "blue"]
+            ---
+          ]],
         }
 
         assert.is_truthy(permissions.set_file_permissions(file, ws))
@@ -305,7 +339,11 @@ for _, strategy in helpers.each_strategy() do
         local ws = workspaces.DEFAULT_WORKSPACE
         local file = {
           path = "content/file.txt",
-          contents = '{"readable_by": ["red"]}',
+          contents = [[
+            ---
+            readable_by: ["red"]
+            ---
+          ]],
         }
 
         assert.is_truthy(permissions.set_file_permissions(file, ws))
@@ -317,7 +355,11 @@ for _, strategy in helpers.each_strategy() do
 
         file = {
           path = "content/file.txt",
-          contents = '{"readable_by": ["blue"]}',
+          contents = [[
+            ---
+            readable_by: ["blue"]
+            ---
+          ]],
         }
 
         assert.is_truthy(permissions.set_file_permissions(file, ws))
@@ -364,7 +406,11 @@ for _, strategy in helpers.each_strategy() do
         local ws = workspaces.DEFAULT_WORKSPACE
         local file = {
           path = "content/file.txt",
-          contents = '{"readable_by": ["red"]}',
+          contents = [[
+            ---
+            readable_by: ["red"]
+            ---
+          ]]
         }
 
         assert.is_truthy(permissions.set_file_permissions(file, ws))
@@ -385,31 +431,64 @@ for _, strategy in helpers.each_strategy() do
       local content_files = {
         red = {
           path = "content/red.txt",
-          contents = '{"readable_by": ["red"], "layout": "red.html"}',
+          contents = [[
+            ---
+            readable_by: ["red"]
+            layout: red.html
+            ---
+          ]]
         },
         blue = {
           path = "content/blue.txt",
-          contents = '{"readable_by": ["blue"], "layout": "blue.html"}',
+          contents = [[
+            ---
+            readable_by: ["blue"]
+            layout: blue.html
+            ---
+          ]],
+
         },
         red_blue = {
           path = "content/red_blue.txt",
-          contents = '{"readable_by": ["red", "blue"], "layout": "red_blue.html"}',
+          contents = [[
+            ---
+            readable_by: ["red", "blue"]
+            layout: red_blue.html
+            ---
+          ]]
         },
         star = {
           path = "content/star.txt",
-          contents = '{"readable_by": "*", "layout": "star.html"}',
+          contents = [[
+            ---
+            readable_by: "*"
+            layout: star.html
+            ---
+          ]]
         },
         login = {
           path = "content/login.txt",
-          contents = '{"layout": "login.html"}',
+          contents = [[
+            ---
+            layout: login.html
+            ---
+          ]],
         },
         unauthorized = {
           path = "content/unauthorized.txt",
-          contents = '{"layout": "unauthorized.html"}',
+          contents = [[
+            ---
+            layout: unauthorized.html
+            ---
+          ]],
         },
         ["404"] = {
           path = "content/404.txt",
-          contents = '{"layout": "404.html"}',
+          contents = [[
+            ---
+            layout: 404.html
+            ---
+          ]],
         }
       }
 
@@ -444,17 +523,6 @@ for _, strategy in helpers.each_strategy() do
           assert(db:truncate("keyauth_credentials"))
 
           assert(configure_portal(db))
-
-          -- Conf file
-          assert(client_request({
-            method = "POST",
-            path = "/files",
-            body = {
-              path = "portal.conf.yaml",
-              contents = '{"name": "Test Portal"}',
-            },
-            headers = {["Content-Type"] = "application/json"},
-          }))
 
           -- Roles
           for _, role in ipairs(roles) do
@@ -591,7 +659,7 @@ for _, strategy in helpers.each_strategy() do
 
         lazy_teardown(function()
           assert(db:truncate())
-          helpers.stop_kong()
+          helpers.stop_kong(nil, true)
         end)
 
         before_each(function()
@@ -611,7 +679,9 @@ for _, strategy in helpers.each_strategy() do
             path = "/files",
             body = {
               path = "portal.conf.yaml",
-              contents = '{"name": "Test Portal"}',
+              contents = [[
+                name: Test Portal
+              ]]
             },
             headers = {["Content-Type"] = "application/json"},
           }))
@@ -822,7 +892,12 @@ for _, strategy in helpers.each_strategy() do
             method = "PATCH",
             path = "/files/content/red.txt",
             body = {
-              contents = '{"readable_by": ["blue"], "layout": "red.html"}',
+              contents = [[
+                ---
+                readable_by: ["blue"]
+                layout: red.html
+                ---
+              ]]
             },
             headers = {["Content-Type"] = "application/json"},
           })
@@ -886,7 +961,9 @@ for _, strategy in helpers.each_strategy() do
             path = "/files",
             body = {
               path = "portal.conf.yaml",
-              contents = '{"name": "Test Portal"}',
+              contents = [[
+                name: Test Portal
+              ]]
             },
             headers = {["Content-Type"] = "application/json"},
           }))
@@ -1096,7 +1173,12 @@ for _, strategy in helpers.each_strategy() do
             method = "PATCH",
             path = "/files/content/blue.txt",
             body = {
-              contents = '{"readable_by": ["red"], "layout": "blue.html"}',
+              contents = [[
+                ---
+                readable_by: ["red"]
+                layoute: blue.html
+                ---
+              ]]
             },
             headers = {["Content-Type"] = "application/json"},
           })
@@ -1160,7 +1242,9 @@ for _, strategy in helpers.each_strategy() do
             path = "/files",
             body = {
               path = "portal.conf.yaml",
-              contents = '{"name": "Test Portal"}',
+              contents = [[
+                name: Test Portal
+              ]]
             },
             headers = {["Content-Type"] = "application/json"},
           }))
@@ -1359,7 +1443,9 @@ for _, strategy in helpers.each_strategy() do
             path = "/files",
             body = {
               path = "portal.conf.yaml",
-              contents = '{"name": "Test Portal"}',
+              contents = [[
+                name: Test Portal
+              ]],
             },
             headers = {["Content-Type"] = "application/json"},
           }))
@@ -1636,7 +1722,11 @@ for _, strategy in helpers.each_strategy() do
             path = "/files",
             body = {
               path = "content/custom_login.txt",
-              contents = '{"layout": "custom_login.html"}',
+              contents = [[
+                ---
+                layout: custom_login.html
+                ---
+              ]]
             },
             headers = {["Content-Type"] = "application/json"},
           }))
@@ -1708,7 +1798,11 @@ for _, strategy in helpers.each_strategy() do
             path = "/files",
             body = {
               path = "content/custom_unauthed.txt",
-              contents = '{"layout": "custom_unauthed.html"}',
+              contents = [[
+                ---
+                layout: custom_unauthed.html
+                ---
+              ]]
             },
             headers = {["Content-Type"] = "application/json"},
           }))

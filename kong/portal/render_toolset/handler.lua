@@ -8,8 +8,8 @@ return function(template)
   local ctx = {
     portal = portal(),
     theme = theme(),
-    page = page(),
     user = user(),
+    page = page(),
     helpers = helpers
   }
 

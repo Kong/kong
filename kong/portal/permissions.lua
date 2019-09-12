@@ -1,11 +1,9 @@
 local rbac         = require "kong.rbac"
 local singletons   = require "kong.singletons"
-local lyaml        = require "lyaml"
 local constants    = require "kong.constants"
 local file_helpers = require "kong.portal.file_helpers"
 
 
-local yaml_load = lyaml.load
 local RBAC_BITFIELD_READ = rbac.actions_bitfields.read
 
 -- returns true if the developer has permissions to access the given file
@@ -54,16 +52,18 @@ local function set_file_permissions(file, workspace, new_role_names)
   end
 
   -- this should never happen, as file.contents is required by the schema
-  if not file.contents then
+  if file.contents == nil then
     return nil, "contents: missing required field"
   end
 
-  local ok, contents = pcall(yaml_load, file.contents)
-  if not ok or type(contents) ~= "table" then
-    return nil, "contents: must be valid stringified yaml for files with path prefix of 'content/'"
+  local parsed_content, err = file_helpers.parse_content(file)
+  if not parsed_content then
+    return nil, err
   end
 
-  new_role_names = new_role_names or contents.readable_by or {}
+  local headmatter = parsed_content.headmatter or {}
+  local readable_by = headmatter.readable_by or {}
+  new_role_names = new_role_names or readable_by
 
   -- File requires auth, but no roles
   if new_role_names == "*" then

@@ -2,12 +2,16 @@ local singletons  = require "kong.singletons"
 local pl_stringx   = require "pl.stringx"
 local workspaces   = require "kong.workspaces"
 local permissions  = require "kong.portal.permissions"
+local file_helpers = require "kong.portal.file_helpers"
 local template     = require "resty.template"
 local lyaml        = require "lyaml"
 local handler      = require "kong.portal.render_toolset.handler"
+local constants    = require "kong.constants"
 
+local LAYOUTS = constants.PORTAL_RENDERER.LAYOUTS
+local FALLBACK_404 = constants.PORTAL_RENDERER.FALLBACK_404
 
-local yaml_load   = lyaml.load
+local yaml_load = lyaml.load
 
 local portal_conf_values = {
   "auth",
@@ -23,8 +27,6 @@ local portal_conf_values = {
   "emails_from",
   "emails_reply_to",
 }
-
-local FALLBACK_404 = '<html><head><title>404 Not Found</title></head><body><h1>404 Not Found</h1><p>The page you are requesting cannot be found.</p></body></html>'
 
 
 template.caching(false)
@@ -87,19 +89,14 @@ end
 
 local function get_missing_layout(ctx)
   local theme = ctx.theme
-  local content = ctx.content
-
-  content.title = "Page Not Found"
-
   return singletons.db.files:select_file_by_theme("layouts/404.html",
                                                   theme.name)
 end
 
 
 local function set_layout(ctx)
-  local theme   = ctx.theme
-  local content = ctx.content
-  local path = content.layout
+  local theme = ctx.theme
+  local path = ctx.layout
 
   -- Missing
   if not path then
@@ -125,9 +122,9 @@ local function set_layout(ctx)
 end
 
 
-local function set_content(route_config, developer, workspace, config)
+local function set_layout_by_permission(route_config, developer, workspace, config, path)
   if not next(route_config) then
-    return {}
+    return LAYOUTS.UNSET
   end
 
   local router = singletons.portal_router
@@ -136,26 +133,27 @@ local function set_content(route_config, developer, workspace, config)
   local redirect = config.redirect
   local unauthenticated_r = redirect and redirect.unauthenticated
   if not unauthenticated_r then
-    unauthenticated_r = "login"
+    unauthenticated_r = LAYOUTS.LOGIN
   end
 
   local unauthorized_r = redirect and redirect.unauthorized
   if not unauthorized_r then
-    unauthorized_r = "unauthorized"
+    unauthorized_r = LAYOUTS.UNAUTHORIZED
   end
 
-  local readable_by = route_config.readable_by
+  local headmatter = route_config.headmatter or {}
+  local readable_by = headmatter.readable_by
   local has_permissions = type(readable_by) == "table" and #readable_by > 0
   local auth_required = has_permissions or readable_by == "*"
 
   -- route requires auth, no developer preset, redirect
   local file
-  if not developer and auth_required then
+  if not next(developer) and auth_required then
     file = router.find_highest_priority_file_by_route(db,
                                                       "/" .. unauthenticated_r)
     -- fallback in the case that unauthenticated content not found
     if not file then
-      return { layout = "login" }
+      return LAYOUTS.LOGIN
     end
   end
 
@@ -163,32 +161,28 @@ local function set_content(route_config, developer, workspace, config)
   if not file and has_permissions then
     local ok = permissions.can_read(developer, workspace.name,
                                          route_config.path)
+
     -- permissions check failed, redirect
     if not ok then
       file = router.find_highest_priority_file_by_route(db,
                                                         "/" .. unauthorized_r)
       -- fallback in the case that unauthorized content not found
       if not file then
-        return { layout = "unauthorized" }
+        return LAYOUTS.UNAUTHORIZED
       end
     end
   end
 
-  -- auth checks have passed, fetch the file
   if not file then
-    file = singletons.db.files:select_by_path(route_config.path)
+    return route_config.layout
   end
 
-  if not file then
-    return {}
+  local parsed_file = file_helpers.parse_content(file)
+  if not parsed_file then
+    return LAYOUTS.UNSET
   end
 
-  local parsed_content = yaml_load(file.contents)
-  if not parsed_content then
-    return {}
-  end
-
-  return parsed_content
+  return parsed_file.layout
 end
 
 
@@ -265,22 +259,48 @@ end
 
 
 local function set_render_ctx(self)
-  local workspace     = workspaces.get_workspace()
-  local route         = self.path
-  local developer     = self.developer
-  local path          = set_path(route)
-  local route_config  = set_route_config(route)
+  -- 1. Set Portal Config
+  -- 2. Set Theme Config
+  -- 3. Retrieve Initial Route Config
+  -- 4. Get Developer
+  -- 4. Get layout by permission
+  -- 5. Lookup layout
+
+  local workspace = workspaces.get_workspace()
   local portal_config = set_portal_config()
-  local theme_config  = set_theme_config(portal_config.theme)
-  local content       = set_content(route_config, developer, workspace, portal_config)
+  if not portal_config then
+    return false, "could not retrieve portal config"
+  end
+
+  if not portal_config.theme then
+    portal_config.theme = "default"
+  end
+
+  local theme_config = set_theme_config(portal_config.theme)
+  if not theme_config then
+    return false, "could not retrieve theme config"
+  end
+
+  local route_config = set_route_config(self.path)
+  if not route_config then
+    route_config = {}
+  end
+
+  local developer = self.developer
+  if not developer then
+    developer = {}
+  end
+
+  local path   = set_path(self.path)
+  local layout = set_layout_by_permission(route_config, developer, workspace, portal_config)
 
   singletons.render_ctx = {
-    path      = path,
-    route     = route,
-    content   = content,
-    theme     = theme_config,
-    portal    = portal_config,
-    developer = developer,
+    route_config  = route_config,
+    portal        = portal_config,
+    theme         = theme_config,
+    developer     = developer,
+    layout        = layout,
+    path          = path,
   }
 end
 

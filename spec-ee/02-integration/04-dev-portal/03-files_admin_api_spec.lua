@@ -238,7 +238,11 @@ for _, strategy in helpers.each_strategy() do
               path = "/default/files",
               body = {
                 path = "content/test.txt",
-                contents = '{ "readable_by": ["red"] }',
+                contents = [[
+                  ---
+                  readable_by: ["red"]
+                  ---
+                ]],
                 checksum = "123"
               },
               headers = {["Content-Type"] = content_type}
@@ -293,7 +297,11 @@ for _, strategy in helpers.each_strategy() do
                 path = "/default/files",
                 body = {
                   path = "stub.txt",
-                  contents = '{"hello":"world"}',
+                  contents = [[
+                    ---
+                    hello: world
+                    ---
+                  ]],
                 },
                 headers = {["Content-Type"] = "application/json"}
               })
@@ -303,7 +311,11 @@ for _, strategy in helpers.each_strategy() do
                 path = "/default/files",
                 body = {
                   path = "stub.txt",
-                  contents = '{"hello":"world"}',
+                  contents = [[
+                    ---
+                    hello: world
+                    ---
+                  ]],
                 },
                 headers = {["Content-Type"] = content_type}
               })
@@ -417,7 +429,11 @@ for _, strategy in helpers.each_strategy() do
                 path = "/files",
                 body = {
                   path = "/content/slash.md",
-                  contents = '{ "key": "value" }',
+                  contents = [[
+                    ---
+                    key: value
+                    ---
+                  ]],
                 },
                 headers = {["Content-Type"] = content_type }
               })
@@ -441,7 +457,11 @@ for _, strategy in helpers.each_strategy() do
                 path = "/files",
                 body = {
                   path = "content/no_ext",
-                  contents = '{ "key": "value" }',
+                  contents = [[
+                    ---
+                    key: value
+                    ---
+                  ]],
                 },
                 headers = {["Content-Type"] = content_type }
               })
@@ -465,7 +485,11 @@ for _, strategy in helpers.each_strategy() do
                 path = "/files",
                 body = {
                   path = "content/file.jpg",
-                  contents = '{ "key": "value" }',
+                  contents = [[
+                    ---
+                    key: value
+                    ---
+                  ]],
                 },
                 headers = {["Content-Type"] = content_type}
               })
@@ -489,7 +513,11 @@ for _, strategy in helpers.each_strategy() do
                 path = "/files",
                 body = {
                   path = "themes/theme/layouts/file.jpg",
-                  contents = '{ "key": "value" }',
+                  contents = [[
+                    ---
+                    key: value
+                    ---
+                  ]],
                 },
                 headers = {["Content-Type"] = content_type}
               })
@@ -513,7 +541,11 @@ for _, strategy in helpers.each_strategy() do
                 path = "/files",
                 body = {
                   path = "themes/theme/partials/file.jpg",
-                  contents = '{ "key": "value" }',
+                  contents = [[
+                    ---
+                    key: value
+                    ---
+                  ]],
                 },
                 headers = {["Content-Type"] = content_type}
               })
@@ -537,7 +569,11 @@ for _, strategy in helpers.each_strategy() do
                 path = "/files",
                 body = {
                   path = "content/test.txt",
-                  contents = '{ "readable_by": ["red"] }',
+                  contents = [[
+                    ---
+                    readable_by: ["red"]
+                    ---
+                  ]],
                   checksum = "123"
                 },
                 headers = {["Content-Type"] = content_type}
@@ -555,7 +591,7 @@ for _, strategy in helpers.each_strategy() do
                 path = "/files",
                 body = {
                   path = "content/test.txt",
-                  contents = "not yaml or json",
+                  contents = "---not yaml or json-",
                 },
                 headers = {["Content-Type"] = content_type}
               })
@@ -567,10 +603,10 @@ for _, strategy in helpers.each_strategy() do
                 code = 2,
                 fields = {
                   ["@entity"] = {
-                    [1] = "contents: must be valid stringified yaml for files with path prefix of 'content/'"
+                    [1] = "contents: cannot parse, files with 'content/' prefix must have valid headmatter/body syntax"
                   },
                 },
-                message = "schema violation (contents: must be valid stringified yaml for files with path prefix of 'content/')",
+                message = "schema violation (contents: cannot parse, files with 'content/' prefix must have valid headmatter/body syntax)",
                 name = "schema violation",
               }, json)
             end
@@ -880,7 +916,11 @@ for _, strategy in helpers.each_strategy() do
                 method = "POST",
                 path = "/default/files",
                 body = {
-                  contents = '{"readable_by": ["red"]}',
+                  contents = [[
+                    ---
+                    readable_by: ["red"]
+                    ---
+                  ]],
                   path = "content/test.txt",
                 },
                 headers = {["Content-Type"] = content_type}
@@ -892,7 +932,11 @@ for _, strategy in helpers.each_strategy() do
                 method = "PATCH",
                 path = "/default/files/" .. file.id,
                 body = {
-                  contents = '{"readable_by": ["blue"]}',
+                  contents = [[
+                    ---
+                    readable_by: ["blue"]
+                    ---
+                  ]],
                 },
                 headers = {["Content-Type"] = content_type}
               })

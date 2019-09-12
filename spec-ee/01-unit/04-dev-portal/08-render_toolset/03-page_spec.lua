@@ -8,15 +8,17 @@ describe("page", function()
     workspaces = require "kong.workspaces"
 
     singletons.render_ctx = {
-      route = "/default/hello-world",
-      content = {
-        title = "Hello World",
-        sidebar = {
-          show = true,
-          contents = {
-            "a", "b", "c",
+      path = "/default/hello-world",
+      route_config = {
+        headmatter = {
+          title = "Hello World",
+          sidebar = {
+            show = true,
+            contents = {
+              "a", "b", "c",
+            }
           }
-        },
+        }
       }
     }
 
@@ -61,16 +63,9 @@ describe("page", function()
     assert.equals(page.sidebar.show, true)
   end)
 
-  describe('.contents', function()
-    it('contains page content variables', function()
-      assert.equals(page.contents.title, 'Hello World')
-      assert.equals(page.contents.path, nil)
-    end)
-  end)
-
   describe('.path', function()
     it('returns the currently active path', function()
-      assert.equals(page.path, 'hello-world')
+      assert.equals(page.route, 'hello-world')
     end)
   end)
 

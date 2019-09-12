@@ -24,7 +24,7 @@ describe("page", function()
     }
 
     singletons.render_ctx = {
-      route = "/default/hello-world",
+      path = "/default/hello-world",
       content = {
         title = "Hello World",
         sidebar = {

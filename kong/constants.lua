@@ -187,5 +187,21 @@ return {
     PORTAL_DEVELOPER_META_FIELDS = "portal_developer_meta_fields",
     PORTAL_IS_LEGACY = "portal_is_legacy"
   },
+  PORTAL_RENDERER = {
+    EXTENSION_LIST = {
+      "txt", "md", "html", "json", "yaml", "yml",
+    },
+    ROUTE_TYPES = {
+      EXPLICIT = "explicit", COLLECTION = "collection", DEFAULT = "defualt",
+    },
+    FALLBACK_404 = '<html><head><title>404 Not Found</title></head><body>' .. 
+      '<h1>404 Not Found</h1><p>The page you are requesting cannot be found.</p>' ..
+      '</body></html>',
+    LAYOUTS = {
+      UNSET = "__UNSET__",
+      LOGIN = "login",
+      UNAUTHORIZED = "unauthorized",
+    },
+  },
   GRPC_PROXY_MODES = grpc_proxy_modes,
 }

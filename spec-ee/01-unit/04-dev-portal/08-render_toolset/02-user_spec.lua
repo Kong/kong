@@ -8,7 +8,7 @@ describe("user", function()
     workspaces = require "kong.workspaces"
 
     singletons.render_ctx = {
-      route = "default/hello-world"
+      path = "/default/hello-world",
     }
 
     singletons.db = {

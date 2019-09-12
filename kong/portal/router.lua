@@ -1,74 +1,29 @@
-local workspaces = require "kong.workspaces"
-local lyaml      = require "lyaml"
 local file_helpers = require "kong.portal.file_helpers"
-local ts_helpers   = require "kong.portal.render_toolset.helpers"
+local workspaces   = require "kong.workspaces"
+local constants    = require "kong.constants"
+
+local EXTENSION_LIST = constants.PORTAL_RENDERER.EXTENSION_LIST
+local ROUTE_TYPES    = constants.PORTAL_RENDERER.ROUTE_TYPES
 
 
-local EXTENSION_LIST = file_helpers.content_extension_list
-local yaml_load = lyaml.load
-
-
-local router_item_map = {
-  ["url"]         = true,
-  ["auth"]        = true,
-  ["layout"]      = true,
-  ["readable_by"] = true,
-  ["has_content"] = true,
-}
-
-
-local function is_route_priority(ws_router, route, path)
-  if not ws_router[route] then
+local function is_route_priority(content_router, route_item)
+  local route = route_item.route
+  if not content_router[route] then
     return true
   end
 
-  local route_conf = ws_router[route]
-  if route_conf.url then
+  local route_conf = content_router[route]
+  if route_conf.explicit then
     return false, 'route ' .. route .. ' locked.'
   end
 
-  local path_attrs   = ts_helpers.get_file_attrs_by_path(path)
-  local r_path_attrs = ts_helpers.get_file_attrs_by_path(route_conf.path)
-  if path_attrs.priority > r_path_attrs.priority then
+  local current_path_meta = route_conf.path_meta
+  local incoming_path_meta  = route_item.path_meta
+  if current_path_meta.priority < incoming_path_meta.priority then
     return false, 'route already set with highest priority'
   end
 
   return true
-end
-
-
-local function get_ws_router(router, ws)
-  if not ws then
-    ws = workspaces.get_workspace()
-  end
-  local ws_name = ws.name
-
-  if not router[ws_name] then
-    router[ws_name] = {}
-  end
-
-  return router[ws_name]
-end
-
-
-local function build_route_item(file)
-  local parsed_config = yaml_load(file.contents)
-  if not parsed_config or not next(parsed_config) then
-    return { has_content = false }
-  end
-
-  local router_item = {}
-  for k, v in pairs(parsed_config) do
-    if router_item_map[k] then
-      router_item[k] = parsed_config[k]
-    else
-      router_item.has_content = true
-    end
-  end
-
-  router_item.path = file.path
-
-  return router_item
 end
 
 
@@ -98,55 +53,66 @@ local function find_highest_priority_file_by_route(db, route)
 end
 
 
-local function assign_route_if_priority(ws_router, file)
-  local route = ts_helpers.get_route_from_path(file.path)
-  local is_priority = is_route_priority(ws_router, route, file.path)
-  if route and is_priority then
-    local route_conf = build_route_item(file)
-    if route_conf.url then
-      route = route_conf.url
-    end
-
-    ws_router[route] = route_conf
-  end
-end
-
-
 local function generate_router_by_conf(db, ws_router, router_conf)
-  local custom_router = yaml_load(router_conf.contents)
-  for route, path in pairs(custom_router) do
+  for route, path in pairs(router_conf) do
     local file = db.files:select_by_path(path)
-    ws_router[route] = build_route_item(file)
+    ws_router[route] = file_helpers.parse_content(file)
   end
-
-  ws_router.static = true
 
   return ws_router
 end
 
 
-local function generate_router_by_files(db, ws_router)
+local function generate_route(ws_router, route_item)
+  local route_type = route_item.route_type
+  local route = route_item.route
+  if route_type == ROUTE_TYPES.EXPLICIT then
+    ws_router.explicit[route] = route_item
+    return
+  end
+
+  if route_type == ROUTE_TYPES.COLLECTION then
+    ws_router.collection[route] = route_item
+    return
+  end
+
+  local is_priority = is_route_priority(ws_router.content, route_item)
+  if route and is_priority then
+    ws_router.content[route] = route_item
+  end
+end
+
+
+local function build_ws_router(db, ws_router, router_conf)
+  local router_conf = file_helpers.get_conf("router")
+  if router_conf then
+    ws_router.custom = {}
+    generate_router_by_conf(db, ws_router.custom, router_conf)
+  end
+
+  ws_router.content = ws_router.content or {}
+  ws_router.explicit = ws_router.explicit or {}
+  ws_router.collection = ws_router.collection or {}
   for file in db.files:each() do
-    assign_route_if_priority(ws_router, file)
+    local route_item = file_helpers.parse_content(file)
+    if route_item and route_item.route then
+      generate_route(ws_router, route_item)
+    end
   end
-
-  return ws_router
 end
 
 
--- Re-evaluates current workspaces router either by reading
--- a custom router via the "router.conf.yaml", or generating routes
--- via a workspaces content files.
-local function rebuild_ws_router(db, ws_router, router_conf)
-  if not router_conf then
-    router_conf = db.files:select_by_path("router.conf.yaml")
+local function get_ws_router(router, ws)	-- Iterates through file name possibilities by file extentsion priority.
+  if not ws then
+    ws = workspaces.get_workspace()
+  end
+  local ws_name = ws.name
+
+   if not router[ws_name] then
+    router[ws_name] = {}
   end
 
-  if not router_conf then
-    return generate_router_by_files(db, ws_router)
-  end
-
-  return generate_router_by_conf(db, ws_router, router_conf)
+  return router[ws_name]	
 end
 
 
@@ -157,38 +123,44 @@ return {
     return {
       find_highest_priority_file_by_route = find_highest_priority_file_by_route,
 
-      -- Reads router.conf.yaml file and generates an in-memory router.
-      -- When a custom router is established it overwrites the previously
-      -- generated router.
       build = function(custom_conf)
         local ws_router = get_ws_router(router)
-
-        return rebuild_ws_router(db, ws_router, custom_conf)
+        return build_ws_router(db, ws_router, custom_conf)
       end,
 
       -- Retrieve a route object via route name.  If a wildcard route exists
-      -- the wildcard route will be returned.
+      -- and an alternative cannot be found, the wildcard route will be returned.
       get = function(route)
         local ws_router = get_ws_router(router)
         if not ws_router or not next(ws_router) then
-          rebuild_ws_router(db, ws_router)
+          build_ws_router(db, ws_router)
         end
 
-        if ws_router.static then
-          local route_ctx = ws_router[route]
-      
-          if not route_ctx then
-            route_ctx = ws_router["/*"]
+        local route_obj = ws_router.explicit[route]
+        if not route_obj then
+          route_obj = ws_router.content[route]
+        end
+
+        if not route_obj then
+          route_obj = ws_router.collection[route]
+        end
+
+        if not route_obj then
+          route_obj = {}
+        end
+
+        if ws_router.custom then
+          route_obj = ws_router.custom[route]
+          if not route_obj then
+            route_obj = ws_router.custom["/*"]
           end
       
           if not route then
-            route_ctx = {}
+            route_obj = {}
           end
-      
-          return route_ctx
         end
-      
-        return ws_router[route] or {}
+
+        return route_obj
       end,
 
       -- Set route object via content file.  Route will not be set if the
@@ -197,50 +169,19 @@ return {
       add_route_by_content_file = function(file)
         local ws_router = get_ws_router(router)
         if not ws_router or not next(ws_router) then
-          rebuild_ws_router(db, ws_router)
+          build_ws_router(db, ws_router)
         end
 
-        -- return early if router.conf.yaml is present
-        if ws_router.static then
-          return
+        local route_item = file_helpers.parse_content(file)
+        if route_item and route_item.route then
+          generate_route(ws_router, route_item)
         end
-
-        assign_route_if_priority(ws_router, file)
       end,
 
-      -- Re-evaluates route via the deleted file passed as an argument.
-      -- If a file exists that can fill the route it is generated.
-      -- If a replacement cannot be found the route remains unset.
-      remove_route_by_content_file = function(file)
-        local ws_router = get_ws_router(router)
-        if not ws_router or not next(ws_router) then
-          rebuild_ws_router(db, ws_router)
-        end
-
-        -- return early if router.conf.yaml is present
-        if ws_router.static then
-          return
-        end
-
-        local route = ts_helpers.get_route_from_path(file.path)
-        if not route then
-          return
-        end
-
-        local r_file = find_highest_priority_file_by_route(db, route)
-        if not r_file then
-          ws_router[route] = nil
-          return
-        end
-
-        ws_router[route] = build_route_item(r_file)
-      end,
-
-      -- NOTE: get_ws_router exposed for use by tests only
       get_ws_router = function(workspace)
         local ws_router = get_ws_router(router)
         if not ws_router or not next(ws_router) then
-          rebuild_ws_router(db, ws_router)
+          build_ws_router(db, ws_router)
         end
 
         return ws_router

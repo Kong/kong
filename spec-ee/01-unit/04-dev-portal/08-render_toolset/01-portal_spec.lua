@@ -19,13 +19,14 @@ describe("portal", function()
     singletons.configuration = kong_conf
 
     singletons.render_ctx = {
-      route = "default/hello-world",
+      path = "default/hello-world",
       content = {
         layout = "hello-world.html",
       },
       portal = {
         name = "kong portal"
-      }
+      },
+      route_config = {},
     }
 
     singletons.db = {}
@@ -34,7 +35,7 @@ describe("portal", function()
         return {
           {
             path = "content/hello-world.txt",
-            contents = "layout: hello-world.html",
+            contents = "---layout: hello-world.html---",
           },
           {
             path = "content/a/b/c/dog.json",
@@ -103,7 +104,7 @@ describe("portal", function()
     it("only contains specs", function()
       local res = portal.specs
       for i, v in ipairs(res) do
-        assert.equals(v.contents, "spec")
+        assert.equals(v.body, "spec")
       end
     end)
 

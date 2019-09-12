@@ -160,12 +160,21 @@ end
 
 
 local function is_spec(_, item)
-  local path_attrs = get_file_attrs_by_path(item.path)
-  local is_content = stringx.split(path_attrs.base_path, '/')[1] == "content"
+  local parsed_item = file_helpers.parse_content(item)
+  if not parsed_item then
+    return false
+  end
+
+  local path_meta = parsed_item.path_meta
+  if not path_meta then
+    return false
+  end
+
+  local is_content = stringx.split(path_meta.base_path, '/')[1] == "content"
   local is_spec_extension =
-    path_attrs.extension == "json" or
-    path_attrs.extension == "yaml" or
-    path_attrs.extension == "yml"
+    path_meta.extension == "json" or
+    path_meta.extension == "yaml" or
+    path_meta.extension == "yml"
 
   if is_content and is_spec_extension then
     return true
@@ -176,9 +185,10 @@ end
 
 
 local function parse_spec(v)
-  v.parsed = parse_oas(v.contents)
-  v.route  = get_route_from_path(v.path)
-  return v
+  local parsed_spec = file_helpers.parse_content(v)
+  parsed_spec.parsed = parse_oas(v.contents)
+
+  return parsed_spec
 end
 
 

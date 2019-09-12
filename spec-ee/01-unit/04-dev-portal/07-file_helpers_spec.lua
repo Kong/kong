@@ -1,4 +1,5 @@
 local file_helpers = require "kong.portal.file_helpers"
+local singletons = require "kong.singletons"
 
 describe("file helpers", function()
   local snapshot
@@ -272,4 +273,276 @@ describe("file helpers", function()
     end)
   end)
 
+  describe("parse_content", function()
+    describe("headmatter", function()
+      local file, parsed_file
+
+      it("can decode valid headmatter", function()
+        file = {
+          path = "content/home.txt",
+          contents = [[
+            ---
+            layout: home.html
+            dog: cat
+            ---
+          ]]
+        }
+
+        parsed_file = file_helpers.parse_content(file)
+
+        assert.equals(parsed_file.headmatter.layout, "home.html")
+        assert.equals(parsed_file.headmatter.dog, "cat")
+      end)
+
+      it("does not set route when output is 'false'", function()
+        file = {
+          path = "content/home.txt",
+          contents = [[
+            ---
+            layout: home.html
+            dog: cat
+            output: false
+            ---
+          ]]
+        }
+
+        parsed_file = file_helpers.parse_content(file)
+
+        assert.equals(parsed_file.route, nil)
+      end)
+
+      it("can decode valid headmatter with content in file", function()
+        file = {
+          path = "content/home.txt",
+          contents = [[
+            ---
+            layout: home.html
+            dog: cat
+            ---
+            <h1>This is content</h1>
+          ]]
+        }
+
+        parsed_file = file_helpers.parse_content(file)
+
+        assert.equals(parsed_file.headmatter.layout, "home.html")
+        assert.equals(parsed_file.headmatter.dog, "cat")
+      end)
+
+      it("cannot decode headmatter with improper delimiters", function()
+        file = {
+          path = "content/home.txt",
+          contents = [[
+            ---__
+            layout: home.html
+            dog: cat
+            ---
+            <h1>This is content</h1>
+          ]]
+        }
+
+        parsed_file = file_helpers.parse_content(file)
+        assert.equals(type(parsed_file.headmatter), "table")
+        assert.equals(#parsed_file.headmatter, 0)
+      end)
+
+      it("cannot decode headmatter with improper syntax", function()
+        file = {
+          path = "content/home.txt",
+          contents = [[
+            ---
+            dkfjadkj_)__
+            layout: home.html
+            dog: cat
+            ---
+            <h1>This is content</h1>
+          ]]
+        }
+
+        parsed_file = file_helpers.parse_content(file)
+        assert.equals(type(parsed_file.headmatter), "table")
+        assert.equals(#parsed_file.headmatter, 0)
+      end)
+    end)
+
+    describe("content", function()
+      local file, parsed_file, trimmed_content
+
+      it("can return valid content with headmatter", function()
+        file = {
+          path = "content/home.txt",
+          contents = [[
+            ---
+            layout: home.html
+            dog: cat
+            ---
+            waddup
+          ]]
+        }
+
+        parsed_file = file_helpers.parse_content(file)
+        trimmed_content = string.gsub(parsed_file.body, "%s+", "")
+        assert.equals(trimmed_content, "waddup")
+      end)
+
+      it("can return valid content with no headmatter", function()
+        file = {
+          path = "content/home.txt",
+          contents = [[
+            waddup
+          ]]
+        }
+
+        parsed_file = file_helpers.parse_content(file)
+        trimmed_content = string.gsub(parsed_file.body, "%s+", "")
+        assert.equals(trimmed_content, "waddup")
+      end)
+
+      it("returns empty content when only headmatter present", function()
+        file = {
+          path = "content/home.txt",
+          contents = [[
+            ---
+            layout: home.html
+            dog: cat
+            ---
+          ]]
+        }
+
+        parsed_file = file_helpers.parse_content(file)
+        trimmed_content = string.gsub(parsed_file.body, "%s+", "")
+        assert.equals(trimmed_content, "")
+      end)
+
+      it("returns empty content when file.contents empty", function()
+        file = {
+          path = "content/home.txt",
+          contents = [[]]
+        }
+
+        parsed_file = file_helpers.parse_content(file)
+        trimmed_content = string.gsub(parsed_file.body, "%s+", "")
+        assert.equals(trimmed_content, "")
+      end)
+    end)
+
+    describe("path_meta", function()
+      local file, parsed_file
+
+      it("named content", function()
+        file = {
+          path = "content/home.txt",
+          contents = [[]],
+        }
+
+        parsed_file = file_helpers.parse_content(file)
+        assert.equals(parsed_file.path_meta.base_path, "content")
+        assert.equals(parsed_file.path_meta.full_path, "content/home.txt")
+        assert.equals(parsed_file.path_meta.extension, "txt")
+        assert.equals(parsed_file.path_meta.filename, "home")
+        assert.equals(parsed_file.path_meta.priority, 1)
+      end)
+
+      it("index content", function()
+        file = {
+          path = "content/documentation/index.txt",
+          contents = [[]],
+        }
+
+        parsed_file = file_helpers.parse_content(file)
+        assert.equals(parsed_file.path_meta.base_path, "content/documentation")
+        assert.equals(parsed_file.path_meta.full_path, "content/documentation/index.txt")
+        assert.equals(parsed_file.path_meta.extension, "txt")
+        assert.equals(parsed_file.path_meta.filename, "index")
+        assert.equals(parsed_file.path_meta.priority, 7)
+      end)
+    end)
+
+    describe("route", function()
+      local file, parsed_file
+
+      it("can resolve routes", function()
+        file = {
+          path = "content/home.txt",
+          contents = [[]],
+        }
+        parsed_file = file_helpers.parse_content(file)
+        assert.equals(parsed_file.route, "/home")
+
+        file = {
+          path = "content/documentation.md",
+          contents = [[]],
+        }
+        parsed_file = file_helpers.parse_content(file)
+        assert.equals(parsed_file.route, "/documentation")
+
+        file = {
+          path = "content/documentation/index.md",
+          contents = [[]],
+        }
+        parsed_file = file_helpers.parse_content(file)
+        assert.equals(parsed_file.route, "/documentation")
+      end)
+
+      it("can resolve collection routes", function()
+        local router_files = {
+          ["portal.conf.yaml"] = {
+            path = "portal.conf.yaml",
+            contents = [[
+              collections:
+                dogs:
+                  output: true
+                  route: /blogs/:stub/:title/:collection/:name
+                employees:
+                  output: false
+            ]]
+          }
+        }
+
+        singletons.db = {
+          files = {
+            each = function()
+              local files = {}
+              for k, v in pairs(router_files) do
+                files[v] = ""
+              end
+              return pairs(files)
+            end,
+            select_all = function()
+              return {}
+            end,
+            select_by_path = function(self, path)
+              return router_files[path]
+            end,
+          }
+        }
+
+        file = {
+          path = "content/_dogs/floofer.txt",
+          contents = [[
+            ---
+            stub: doggo
+            title: pupperdino
+            ---
+          ]],
+        }
+        parsed_file = file_helpers.parse_content(file)
+        assert.equals(parsed_file.route, "/blogs/doggo/pupperdino/dogs/floofer")
+
+        file = {
+          path = "content/_employees/candice.txt",
+          contents = [[]],
+        }
+        parsed_file = file_helpers.parse_content(file)
+        assert.equals(parsed_file.route, nil)
+
+        file = {
+          path = "specs/petstore.yaml",
+          contents = [[]],
+        }
+        parsed_file = file_helpers.parse_content(file)
+        assert.equals(parsed_file.route, "/documentation/petstore")
+      end)
+    end)
+  end)
 end)
