@@ -1,12 +1,12 @@
 local strip = (require "pl.stringx").strip
 
 local version = setmetatable({
-  x = 0,
-  y = 36,
+  x = 1,
+  y = 3,
   z = 0,
 }, {
   __tostring = function(t)
-    return string.format("%d.%d%s", t.x, t.y, t.z > 0 and "-" .. t.z or "")
+    return string.format("%d.%d%s", t.x, t.y, t.z > 0 and "." .. t.z or "")
   end
 })
 
