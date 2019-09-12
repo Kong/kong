@@ -35,6 +35,7 @@ local oauth2_credentials = {
         type = "string",
         custom_validator = validate_uri,
     }, }, },
+    { tags = typedefs.tags },
   },
 }
 
