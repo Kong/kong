@@ -80,6 +80,25 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("Test APP", body.name)
           assert.same(ngx.null, body.redirect_uris)
         end)
+        it("creates an oauth2 credential with tags", function()
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/consumers/bob/oauth2",
+            body    = {
+              name          = "Tags APP",
+              redirect_uris = { "http://example.com/" },
+              tags = { "tag1", "tag2" },
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal(consumer.id, json.consumer.id)
+          assert.equal("tag1", json.tags[1])
+          assert.equal("tag2", json.tags[2])
+        end)
         it("creates a oauth2 credential with multiple redirect_uris", function()
           local res = assert(admin_client:send {
             method  = "POST",
