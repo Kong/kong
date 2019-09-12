@@ -17,13 +17,30 @@ local function init()
 
   prometheus = require("kong.plugins.prometheus.prometheus").init(shm, "kong_")
 
-  -- across all services
+  -- global metrics
   metrics.connections = prometheus:gauge("nginx_http_current_connections",
                                          "Number of HTTP connections",
                                          {"state"})
   metrics.db_reachable = prometheus:gauge("datastore_reachable",
                                           "Datastore reachable from Kong, " ..
                                           "0 is unreachable")
+  local memory_stats = {}
+  memory_stats.worker_vms = prometheus:gauge("memory_workers_lua_vms_bytes",
+                                             "Allocated bytes in worker Lua VM",
+                                             {"pid"})
+  memory_stats.shms = prometheus:gauge("memory_lua_shared_dict_bytes",
+                                       "Allocated slabs in bytes in a shared_dict",
+                                       {"shared_dict"})
+  memory_stats.shm_capacity = prometheus:gauge("memory_lua_shared_dict_total_bytes",
+                                               "Total capacity in bytes of a shared_dict",
+                                               {"shared_dict"})
+
+  local res = kong.node.get_memory_stats()
+  for shm_name, value in pairs(res.lua_shared_dicts) do
+    memory_stats.shm_capacity:set(value.capacity, {shm_name})
+  end
+
+  metrics.memory_stats = memory_stats
 
   -- per service/route
   metrics.status = prometheus:counter("http_status",
@@ -127,6 +144,16 @@ local function collect()
     metrics.db_reachable:set(0)
     kong.log.err("prometheus: failed to reach database while processing",
                  "/metrics endpoint: ", err)
+  end
+
+  -- memory stats
+  local res = kong.node.get_memory_stats()
+  for shm_name, value in pairs(res.lua_shared_dicts) do
+    metrics.memory_stats.shms:set(value.allocated_slabs, {shm_name})
+  end
+  for i = 1, #res.workers_lua_vms do
+    metrics.memory_stats.worker_vms:set(res.workers_lua_vms[i].http_allocated_gc,
+                                        {res.workers_lua_vms[i].pid})
   end
 
   prometheus:collect()
