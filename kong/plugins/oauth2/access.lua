@@ -676,19 +676,6 @@ local function load_oauth2_credential_into_memory(credential_id)
   return result
 end
 
-local function load_consumer_into_memory(consumer_id, anonymous)
-  local result, err = kong.db.consumers:select { id = consumer_id }
-  if not result then
-    if anonymous and not err then
-      err = 'anonymous consumer "' .. consumer_id .. '" not found'
-    end
-
-    return nil, err
-  end
-
-  return result
-end
-
 local function set_consumer(consumer, credential, token)
   local set_header = kong.service.request.set_header
   local clear_header = kong.service.request.clear_header
@@ -819,7 +806,7 @@ local function do_authentication(conf)
   local consumer_cache_key, consumer
   consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
   consumer, err      = kong.cache:get(consumer_cache_key, nil,
-                                      load_consumer_into_memory,
+                                      kong.client.load_consumer,
                                       credential.consumer.id)
   if err then
     return internal_server_error(err)
@@ -858,10 +845,11 @@ function _M.execute(conf)
       -- get anonymous user
       local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
       local consumer, err      = kong.cache:get(consumer_cache_key, nil,
-                                                load_consumer_into_memory,
+                                                kong.client.load_consumer,
                                                 conf.anonymous, true)
       if err then
-        return internal_server_error(err)
+        kong.log.err("failed to load anonymous consumer:", err)
+        return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 
       set_consumer(consumer, nil, nil)
