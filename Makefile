@@ -14,8 +14,12 @@ OPENSSL_DIR ?= /usr
 GRPCURL_OS ?= $(OS)
 endif
 
-.PHONY: install remove dependencies grpcurl dev \
-	lint test test-integration test-plugins test-all fix-windows
+.PHONY: install dependencies dev remove grpcurl \
+	setup-ci setup-kong-build-tools \
+	lint test test-integration test-plugins test-all \
+	pdk-phase-check functional-tests \
+	fix-windows \
+	nightly-release release
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
@@ -30,12 +34,11 @@ KONG_VERSION ?= `cat $(KONG_SOURCE_LOCATION)/kong-*.rockspec | grep tag | awk '{
 OPENRESTY_PATCHES_BRANCH ?= master
 KONG_NGINX_MODULE_BRANCH ?= master
 
-.PHONY: setup-ci
 setup-ci:
 	OPENRESTY=$(RESTY_VERSION) \
 	LUAROCKS=$(RESTY_LUAROCKS_VERSION) \
 	OPENSSL=$(RESTY_OPENSSL_VERSION) \
-	OPENRESTY_PATCHES_BRANCH=$($OPENRESTY_PATCHES_BRANCH) \
+	OPENRESTY_PATCHES_BRANCH=$(OPENRESTY_PATCHES_BRANCH) \
 	KONG_NGINX_MODULE_BRANCH=$(KONG_NGINX_MODULE_BRANCH) \
 	.ci/setup_env.sh
 

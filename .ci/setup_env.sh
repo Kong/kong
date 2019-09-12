@@ -12,7 +12,15 @@ BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/openresty-build-tools
 KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:=master}
 OPENRESTY_PATCHES_BRANCH=${OPENRESTY_PATCHES_BRANCH:=master}
 
-git clone https://github.com/Kong/openresty-build-tools.git $DOWNLOAD_ROOT/openresty-build-tools
+if [ ! -d $BUILD_TOOLS_DOWNLOAD ]; then
+    git clone -q https://github.com/Kong/openresty-build-tools.git $BUILD_TOOLS_DOWNLOAD
+else
+    pushd $BUILD_TOOLS_DOWNLOAD
+        git fetch
+        git reset --hard origin/master
+    popd
+fi
+
 export PATH=$BUILD_TOOLS_DOWNLOAD:$PATH
 
 #--------
