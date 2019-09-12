@@ -1197,9 +1197,13 @@ describe("declarative config: flatten", function()
             - name: my-credential
               redirect_uris:
               - https://example.com
+              tags:
+              - tag1
             - name: another-credential
               redirect_uris:
               - https://example.test
+              tags:
+              - tag2
         ]]))
         config = DeclarativeConfig:flatten(config)
         config.consumers = nil
@@ -1213,7 +1217,8 @@ describe("declarative config: flatten", function()
               created_at = 1234567890,
               id = "UUID",
               name = "another-credential",
-              redirect_uris = { "https://example.test" }
+              redirect_uris = { "https://example.test" },
+              tags = { "tag2" },
             }, {
               client_id = "RANDOM",
               client_secret = "RANDOM",
@@ -1223,7 +1228,8 @@ describe("declarative config: flatten", function()
               created_at = 1234567890,
               id = "UUID",
               name = "my-credential",
-              redirect_uris = { "https://example.com" }
+              redirect_uris = { "https://example.com" },
+              tags = { "tag1" },
             } }
         }, idempotent(config))
       end)
@@ -1467,7 +1473,8 @@ describe("declarative config: flatten", function()
                 created_at = 1234567890,
                 id = "UUID",
                 name = "another-credential",
-                redirect_uris = { "https://example.test" }
+                redirect_uris = { "https://example.test" },
+                tags = null,
               }, {
                 client_id = "RANDOM",
                 client_secret = "RANDOM",
@@ -1477,7 +1484,8 @@ describe("declarative config: flatten", function()
                 created_at = 1234567890,
                 id = "UUID",
                 name = "my-credential",
-                redirect_uris = { "https://example.com" }
+                redirect_uris = { "https://example.com" },
+                tags = null,
               } }
           }, idempotent(config))
         end)
@@ -1508,7 +1516,8 @@ describe("declarative config: flatten", function()
                 created_at = 1234567890,
                 id = "UUID",
                 name = "my-credential",
-                redirect_uris = { "https://example.com" }
+                redirect_uris = { "https://example.com" },
+                tags = null
               } }
           }, idempotent(config))
         end)
@@ -1541,7 +1550,8 @@ describe("declarative config: flatten", function()
                 created_at = 1234567890,
                 id = "UUID",
                 name = "my-credential",
-                redirect_uris = { "https://example.com" }
+                redirect_uris = { "https://example.com" },
+                tags = null,
               } },
             oauth2_tokens = {
               {
