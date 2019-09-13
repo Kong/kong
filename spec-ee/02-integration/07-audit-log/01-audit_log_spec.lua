@@ -77,6 +77,20 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
+      it("checks if request_timestamp is a number", function()
+        local res = assert(admin_client:send({
+          path = "/services",
+        }))
+        assert.res_status(200, res)
+        local req_id = res.headers["X-Kong-Admin-Request-ID"]
+
+        helpers.wait_until(function()
+          local rows = fetch_all(db.audit_requests)
+          return 1 == #rows and req_id == rows[1].request_id
+                            and type(rows[1].request_timestamp) == "number"
+        end)
+      end)
+
       it("does not sign the audit log entry by default", function()
         local rows = fetch_all(db.audit_requests)
         for _, row in ipairs(rows) do

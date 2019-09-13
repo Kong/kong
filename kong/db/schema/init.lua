@@ -1548,6 +1548,9 @@ function Schema:process_auto_fields(data, context, nulls)
         elseif field.type == "integer" then
           data[key] = now_s
         end
+
+      elseif key == "request_timestamp" then
+        data[key] = now_s
       end
     end
 
