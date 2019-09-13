@@ -91,7 +91,6 @@ local migrations_utils = require "kong.cmd.utils.migrations"
 local kong             = kong
 local ngx              = ngx
 local now              = ngx.now
-local start_time       = ngx.req.start_time
 local update_time      = ngx.update_time
 local var              = ngx.var
 local arg              = ngx.arg
@@ -571,8 +570,12 @@ end
 
 function Kong.preread()
   local ctx = ngx.ctx
+  if not ctx.KONG_PROCESSING_START then
+    ctx.KONG_PROCESSING_START = get_now_ms()
+  end
+
   if not ctx.KONG_PREREAD_START then
-    ctx.KONG_PREREAD_START = get_now_ms()
+    ctx.KONG_PREREAD_START = ctx.KONG_PROCESSING_START
   end
 
   kong_global.set_phase(kong, PHASES.preread)
@@ -623,6 +626,10 @@ function Kong.rewrite()
   end
 
   local ctx = ngx.ctx
+  if not ctx.KONG_PROCESSING_START then
+    ctx.KONG_PROCESSING_START = ngx.req.start_time() * 1000
+  end
+
   if not ctx.KONG_REWRITE_START then
     ctx.KONG_REWRITE_START = get_now_ms()
   end
@@ -686,7 +693,7 @@ function Kong.access()
 
         ctx.KONG_ACCESS_ENDED_AT = get_now_ms()
         ctx.KONG_ACCESS_TIME = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_ACCESS_START
-        ctx.KONG_RESPONSE_LATENCY = ctx.KONG_ACCESS_ENDED_AT - start_time() * 1000
+        ctx.KONG_RESPONSE_LATENCY = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_PROCESSING_START
 
         return kong.response.exit(500, { message  = "An unexpected error occurred" })
       end
@@ -696,7 +703,7 @@ function Kong.access()
   if ctx.delayed_response then
     ctx.KONG_ACCESS_ENDED_AT = get_now_ms()
     ctx.KONG_ACCESS_TIME = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_ACCESS_START
-    ctx.KONG_RESPONSE_LATENCY = ctx.KONG_ACCESS_ENDED_AT - start_time() * 1000
+    ctx.KONG_RESPONSE_LATENCY = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_PROCESSING_START
 
     return flush_delayed_response(ctx)
   end
@@ -786,7 +793,7 @@ function Kong.balancer()
 
       ctx.KONG_BALANCER_ENDED_AT = get_now_ms()
       ctx.KONG_BALANCER_TIME = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_BALANCER_START
-      ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - start_time() * 1000
+      ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_PROCESSING_START
 
       return ngx.exit(errcode)
     end
@@ -808,7 +815,7 @@ function Kong.balancer()
 
       ctx.KONG_BALANCER_ENDED_AT = get_now_ms()
       ctx.KONG_BALANCER_TIME = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_BALANCER_START
-      ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - start_time() * 1000
+      ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_PROCESSING_START
 
       return ngx.exit(500)
     end
@@ -823,7 +830,7 @@ function Kong.balancer()
 
       ctx.KONG_BALANCER_ENDED_AT = get_now_ms()
       ctx.KONG_BALANCER_TIME = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_BALANCER_START
-      ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - start_time() * 1000
+      ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_PROCESSING_START
 
       return ngx.exit(500)
     end
@@ -843,7 +850,7 @@ function Kong.balancer()
 
     ctx.KONG_BALANCER_ENDED_AT = get_now_ms()
     ctx.KONG_BALANCER_TIME = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_BALANCER_START
-    ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - start_time() * 1000
+    ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_PROCESSING_START
 
     return ngx.exit(500)
   end
@@ -865,12 +872,16 @@ function Kong.balancer()
 
   -- time spent in Kong before sending the request to upstream
   -- start_time() is kept in seconds with millisecond resolution.
-  ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - start_time() * 1000
+  ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_PROCESSING_START
 end
 
 
 function Kong.header_filter()
   local ctx = ngx.ctx
+  if not ctx.KONG_PROCESSING_START then
+    ctx.KONG_PROCESSING_START = ngx.req.start_time() * 1000
+  end
+
   if not ctx.KONG_HEADER_FILTER_START then
     ctx.KONG_HEADER_FILTER_START = get_now_ms()
 
@@ -901,11 +912,11 @@ function Kong.header_filter()
                            (ctx.KONG_BALANCER_ENDED_AT or ctx.KONG_ACCESS_ENDED_AT)
 
     if not ctx.KONG_PROXY_LATENCY then
-      ctx.KONG_PROXY_LATENCY = ctx.KONG_HEADER_FILTER_START - start_time() * 1000
+      ctx.KONG_PROXY_LATENCY = ctx.KONG_HEADER_FILTER_START - ctx.KONG_PROCESSING_START
     end
 
   elseif not ctx.KONG_RESPONSE_LATENCY then
-    ctx.KONG_RESPONSE_LATENCY = ctx.KONG_HEADER_FILTER_START - start_time() * 1000
+    ctx.KONG_RESPONSE_LATENCY = ctx.KONG_HEADER_FILTER_START - ctx.KONG_PROCESSING_START
   end
 
   kong_global.set_phase(kong, PHASES.header_filter)
@@ -991,6 +1002,12 @@ function Kong.log()
                                 ctx.KONG_PREREAD_START
       end
 
+      if ctx.KONG_BALANCER_START and not ctx.KONG_BALANCER_ENDED_AT then
+        ctx.KONG_BALANCER_ENDED_AT = ctx.KONG_LOG_START
+        ctx.KONG_BALANCER_TIME = ctx.KONG_BALANCER_ENDED_AT -
+                                 ctx.KONG_BALANCER_START
+      end
+
     else
       if ctx.KONG_BODY_FILTER_START and not ctx.KONG_BODY_FILTER_ENDED_AT then
         ctx.KONG_BODY_FILTER_ENDED_AT = ctx.KONG_LOG_START
@@ -1072,8 +1089,9 @@ function Kong.admin_content(options)
   kong_global.set_phase(kong, PHASES.admin_api)
 
   local ctx = ngx.ctx
-
+  ctx.KONG_PROCESSING_START = ngx.req.start_time() * 1000
   ctx.KONG_ADMIN_CONTENT_START = ctx.KONG_ADMIN_CONTENT_START or get_now_ms()
+
 
   log_init_worker_errors(ctx)
 
@@ -1087,7 +1105,7 @@ function Kong.admin_content(options)
 
     ctx.KONG_ADMIN_CONTENT_ENDED_AT = get_now_ms()
     ctx.KONG_ADMIN_CONTENT_TIME = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_ADMIN_CONTENT_START
-    ctx.KONG_ADMIN_LATENCY = ctx.KONG_ADMIN_CONTENT_ENDED_AT - start_time() * 1000
+    ctx.KONG_ADMIN_LATENCY = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_PROCESSING_START
 
     return ngx.exit(204)
   end
@@ -1096,7 +1114,7 @@ function Kong.admin_content(options)
 
   ctx.KONG_ADMIN_CONTENT_ENDED_AT = get_now_ms()
   ctx.KONG_ADMIN_CONTENT_TIME = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_ADMIN_CONTENT_START
-  ctx.KONG_ADMIN_LATENCY = ctx.KONG_ADMIN_CONTENT_ENDED_AT - start_time() * 1000
+  ctx.KONG_ADMIN_LATENCY = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_PROCESSING_START
 end
 
 
@@ -1107,6 +1125,10 @@ Kong.serve_admin_api = Kong.admin_content
 function Kong.admin_header_filter()
   local ctx = ngx.ctx
 
+  if not ctx.KONG_PROCESSING_START then
+    ctx.KONG_PROCESSING_START = ngx.req.start_time() * 1000
+  end
+
   if not ctx.KONG_ADMIN_HEADER_FILTER_START then
     ctx.KONG_ADMIN_HEADER_FILTER_START = get_now_ms()
 
@@ -1116,7 +1138,7 @@ function Kong.admin_header_filter()
     end
 
     if not ctx.KONG_ADMIN_LATENCY then
-      ctx.KONG_ADMIN_LATENCY = ctx.KONG_ADMIN_HEADER_FILTER_START - start_time() * 1000
+      ctx.KONG_ADMIN_LATENCY = ctx.KONG_ADMIN_HEADER_FILTER_START - ctx.KONG_PROCESSING_START
     end
   end
 
