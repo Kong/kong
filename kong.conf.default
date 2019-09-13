@@ -1303,6 +1303,15 @@
                         # Granularity can be adjusted through the `log_level`
                         # directive.
 
+#portal_is_legacy = on
+                        # Developer Portal legacy support
+                        #
+                        # Setting this value to `on` will cause all new
+                        # portals to render using the legacy rendering system by default.
+                        #
+                        # Setting this value to `off` will cause all new
+                        # portals to render using the current rendering system.
+
 #------------------------------------------------------------------------------
 # DEFAULT DEVELOPER PORTAL AUTHENTICATION
 #
