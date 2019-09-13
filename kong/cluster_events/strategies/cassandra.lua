@@ -3,6 +3,7 @@ local cassandra = require "cassandra"
 
 local fmt          = string.format
 local setmetatable = setmetatable
+local kong         = kong
 
 
 local INSERT_QUERY = [[
@@ -58,7 +59,7 @@ function _M:insert(node_id, channel, at, data, nbf)
     c_nbf,
   }, {
     prepared    = true,
-    consistency = cassandra.consistencies.local_one,
+    consistency = cassandra.consistencies[kong.configuration.cassandra_consistency:lower()],
   })
   if not res then
     return nil, "could not insert invalidation row: " .. err
@@ -76,7 +77,8 @@ function _M:select_interval(channels, min_at, max_at)
   local opts = {
     prepared      = true,
     page_size     = self.page_size,
-    consistencies = cassandra.consistencies.local_one,
+    consistencies = cassandra.consistencies[kong.configuration.cassandra_consistency:lower()],
+
   }
 
   local iter, b, c = self.cluster:iterate(SELECT_INTERVAL_QUERY, args, opts)
