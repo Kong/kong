@@ -23,6 +23,7 @@ local cmds = {
   migrations = true,
   version = true,
   config = true,
+  runner = true,
   roar = true
 }
 

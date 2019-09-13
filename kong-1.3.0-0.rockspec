@@ -129,6 +129,7 @@ build = {
     ["kong.cmd.migrations"] = "kong/cmd/migrations.lua",
     ["kong.cmd.health"] = "kong/cmd/health.lua",
     ["kong.cmd.version"] = "kong/cmd/version.lua",
+    ["kong.cmd.runner"] = "kong/cmd/runner.lua",
     ["kong.cmd.utils.log"] = "kong/cmd/utils/log.lua",
     ["kong.cmd.utils.kill"] = "kong/cmd/utils/kill.lua",
     ["kong.cmd.utils.env"] = "kong/cmd/utils/env.lua",
