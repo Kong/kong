@@ -364,7 +364,7 @@ local function migrate_core_entities(connector, strategy, opts)
       -- workspace_entities. Or both!
 
       -- Fix for including workspace_id on persisted cache_keys
-      if composite_cache_key then
+      if row.cache_key and row.cache_key ~= ngx_null and composite_cache_key then
         -- Check if entity has core or ee cache_key
         -- XXX: Any better idea besides counting separators?
         --
