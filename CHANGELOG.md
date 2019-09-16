@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [0.5.0](#050---20190916)
 - [0.4.1](#041---20190801)
 - [0.4.0](#040---20190605)
 - [0.3.4](#034---20181217)
@@ -10,10 +11,23 @@
 - [0.2.0](#020---20180924)
 - [0.1.0](#010---20180615)
 
-##  [0.4.1] - 2019/08/01
+##  [0.5.0] - 2019/09/16
 
-- Fix issue where the plugin's shared dictionary would not be properly
-initialized
+- **Route based metrics:**  All proxy metrics now contain a tag with the name
+  or ID of the route.
+  [#40](https://github.com/Kong/kong-plugin-prometheus/issues/40)
+- **New metrics releated to Kong's memory usage:**
+  New metrics related to Kong's shared dictionaries
+  and Lua VMs are now available
+  [#62](https://github.com/Kong/kong-plugin-prometheus/pull/62):
+  - per worker Lua VM allocated bytes (`kong_memory_workers_lua_vms_bytes`)
+  - shm capacity and bytes allocated (`kong_memory_lua_shared_dict_bytes` and
+    `kong_memory_lua_shared_dict_total_bytes`)
+- Performance has been improved by avoiding unnecessary timer creation.
+  This will lower the impact of the plugin on Kong's overall latency.
+  [#60](https://github.com/Kong/kong-plugin-prometheus/pull/60)
+- Tests to ensure gRPC compatibility have been added.
+  [#57](https://github.com/Kong/kong-plugin-prometheus/pull/57)
 
 ##  [0.4.0] - 2019/06/05
 
@@ -61,6 +75,7 @@ initialized
 
 - Initial release of Prometheus plugin for Kong.
 
+[0.5.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.4.1...0.5.0
 [0.4.1]: https://github.com/Kong/kong-plugin-prometheus/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.3.4...0.4.0
 [0.3.4]: https://github.com/Kong/kong-plugin-prometheus/compare/0.3.3...0.3.4
