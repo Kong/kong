@@ -442,7 +442,34 @@ do
 end
 
 
---------------------------------------------------------------------------------
+local function same_targets(target_list_a, target_list_b)
+  local targets_found = {}
+
+  for _, target in pairs(target_list_a) do
+    if target.name and target.port then
+      targets_found[target.name .. ":" .. target.port] = false
+    end
+  end
+
+  for _, target in pairs(target_list_b) do
+    if target.name and target.port and
+      targets_found[target.name .. ":" .. target.port] ~= nil then
+      targets_found[target.name .. ":" .. target.port] = true
+    else
+      return false
+    end
+  end
+
+  for _, found in pairs(targets_found) do
+    if not found then
+      return false
+    end
+  end
+
+  return true
+end
+
+-------------------------------------------------------------------------------
 -- Compare the target history of the upstream with that of the
 -- current balancer object, updating or recreating the balancer if necessary.
 -- @param upstream The upstream entity object
@@ -461,28 +488,30 @@ local function check_target_history(upstream, balancer)
   local old_size = #old_history
   local new_size = #new_history
 
-  if old_size == new_size and
-    (old_history[old_size] or EMPTY_T).order ==
-    (new_history[new_size] or EMPTY_T).order then
+  if old_size == new_size and same_targets(old_history, new_history) then
     -- No history update is necessary in the balancer object.
     return true
   end
 
   -- last entries in history don't match, so we must do some updates.
 
-  -- compare balancer history with db-loaded history
-  local last_equal_index = 0  -- last index where history is the same
-  for i, entry in ipairs(old_history) do
-    if new_history[i] and entry.order == new_history[i].order then
-      last_equal_index = i
-    else
-      break
+  -- entries that are equal don't need to have history applied
+  local new_history_entries = {}
+  for _, new_entry in pairs(new_history) do
+    table.insert(new_history_entries, new_entry)
+    for _, old_entry in pairs(old_history) do
+      if old_entry.name == new_entry.name and old_entry.port == new_entry.port
+        and old_entry.weight == new_entry.weight then
+        table.remove(new_history_entries, #new_history_entries)
+        break
+      end
     end
   end
 
-  if last_equal_index == old_size then
-    -- history is the same, so we only need to add new entries
-    apply_history(balancer, new_history, last_equal_index + 1)
+  -- if there are shared entries between old and new history we only need to add
+  -- the new entries
+  if #new_history_entries > 0 and #new_history_entries ~= new_size then
+    apply_history(balancer, new_history_entries, 1)
     return true
   end
 
