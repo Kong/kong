@@ -335,12 +335,18 @@ local function register_events()
   -- cluster_events handler
   cluster_events:subscribe("balancer:targets", function(data)
     local operation, key = unpack(utils.split(data, ":"))
+    local entity
+    if key ~= "all" then
+      entity = {
+        upstream = { id = key },
+      }
+    else
+      entity = "all"
+    end
     -- => to worker_events node handler
     local ok, err = worker_events.post("balancer", "targets", {
         operation = operation,
-        entity = {
-          upstream = { id = key },
-        }
+        entity = entity
       })
     if not ok then
       log(ERR, "failed broadcasting target ", operation, " to workers: ", err)
@@ -398,13 +404,14 @@ local function register_events()
 
   cluster_events:subscribe("balancer:upstreams", function(data)
     local operation, id, name = unpack(utils.split(data, ":"))
+    local entity = {
+      id = id,
+      name = name,
+    }
     -- => to worker_events node handler
     local ok, err = worker_events.post("balancer", "upstreams", {
         operation = operation,
-        entity = {
-          id = id,
-          name = name,
-        }
+        entity = entity
       })
     if not ok then
       log(ERR, "failed broadcasting upstream ", operation, " to workers: ", err)

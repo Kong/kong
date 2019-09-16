@@ -598,12 +598,7 @@ end
 --==============================================================================
 
 
---------------------------------------------------------------------------------
--- Called on any changes to a target.
--- @param operation "create", "update" or "delete"
--- @param target Target table with `upstream.id` field
-local function on_target_event(operation, target)
-  local upstream_id = target.upstream.id
+local function do_target_event(operation, upstream_id, upstream_name)
   singletons.cache:invalidate_local("balancer:targets:" .. upstream_id)
 
   local upstream = get_upstream_by_id(upstream_id)
@@ -612,68 +607,32 @@ local function on_target_event(operation, target)
     return
   end
 
-  local balancer = balancers[upstream.id]
+  local balancer = balancers[upstream_id]
   if not balancer then
-    log(ERR, "target ", operation, ": balancer not found for ", upstream.name)
+    log(ERR, "target ", operation, ": balancer not found for ", upstream_name)
     return
   end
 
   local ok, err = check_target_history(upstream, balancer)
   if not ok then
-    log(ERR, "failed checking target history for ", upstream.name, ":  ", err)
+    log(ERR, "failed checking target history for ", upstream_name, ":  ", err)
   end
 end
 
-
 --------------------------------------------------------------------------------
--- Called on any changes to an upstream.
+-- Called on any changes to a target.
 -- @param operation "create", "update" or "delete"
--- @param upstream_data table with `id` and `name` fields
-local function on_upstream_event(operation, upstream_data)
-  local upstream_id = upstream_data.id
-  local upstream_name = upstream_data.name
+-- @param target Target table with `upstream.id` field
+local function on_target_event(operation, target)
 
-  if operation == "create" then
-
-    singletons.cache:invalidate_local("balancer:upstreams")
-
-    local upstream = get_upstream_by_id(upstream_id)
-    if not upstream then
-      log(ERR, "upstream not found for ", upstream_id)
-      return
+  if operation == "reset" then
+    local upstreams = get_all_upstreams()
+    for name, id in pairs(upstreams) do
+      do_target_event("create", id, name)
     end
 
-    local _, err = create_balancer(upstream)
-    if err then
-      log(CRIT, "failed creating balancer for ", upstream_name, ": ", err)
-    end
-
-  elseif operation == "delete" or operation == "update" then
-
-    singletons.cache:invalidate_local("balancer:upstreams")
-    singletons.cache:invalidate_local("balancer:upstreams:" .. upstream_id)
-    singletons.cache:invalidate_local("balancer:targets:"   .. upstream_id)
-
-    local balancer = balancers[upstream_id]
-    if balancer then
-      stop_healthchecker(balancer)
-    end
-
-    if operation == "delete" then
-      set_balancer(upstream_id, nil)
-
-    else
-      local upstream = get_upstream_by_id(upstream_id)
-      if not upstream then
-        log(ERR, "upstream not found for ", upstream_id)
-        return
-      end
-
-      local _, err = create_balancer(upstream, true)
-      if err then
-        log(ERR, "failed recreating balancer for ", upstream_name, ": ", err)
-      end
-    end
+  else
+    do_target_event(operation, target.upstream.id, target.upstream.name)
 
   end
 
@@ -774,6 +733,79 @@ local function init()
     end
   end
   log(DEBUG, "initialized ", oks, " balancer(s), ", errs, " error(s)")
+
+end
+
+
+local function do_upstream_event(operation, upstream_id, upstream_name)
+  if operation == "create" then
+
+    singletons.cache:invalidate_local("balancer:upstreams")
+
+    local upstream = get_upstream_by_id(upstream_id)
+    if not upstream then
+      log(ERR, "upstream not found for ", upstream_id)
+      return
+    end
+
+    local _, err = create_balancer(upstream)
+    if err then
+      log(CRIT, "failed creating balancer for ", upstream_name, ": ", err)
+    end
+
+  elseif operation == "delete" or operation == "update" then
+
+    if singletons.db.strategy ~= "off" then
+      singletons.cache:invalidate_local("balancer:upstreams")
+      singletons.cache:invalidate_local("balancer:upstreams:" .. upstream_id)
+      singletons.cache:invalidate_local("balancer:targets:"   .. upstream_id)
+    end
+
+    local balancer = balancers[upstream_id]
+    if balancer then
+      stop_healthchecker(balancer)
+    end
+
+    if operation == "delete" then
+      set_balancer(upstream_id, nil)
+
+    else
+      local upstream = get_upstream_by_id(upstream_id)
+      if not upstream then
+        log(ERR, "upstream not found for ", upstream_id)
+        return
+      end
+
+      local _, err = create_balancer(upstream, true)
+      if err then
+        log(ERR, "failed recreating balancer for ", upstream_name, ": ", err)
+      end
+    end
+
+  end
+
+end
+
+
+--------------------------------------------------------------------------------
+-- Called on any changes to an upstream.
+-- @param operation "create", "update" or "delete"
+-- @param upstream_data table with `id` and `name` fields
+local function on_upstream_event(operation, upstream_data)
+
+  if operation == "reset" then
+    init()
+
+  elseif operation == "delete_all" then
+    local upstreams = get_all_upstreams()
+    for name, id in pairs(upstreams) do
+      do_upstream_event("delete", id, name)
+    end
+
+  else
+    do_upstream_event(operation, upstream_data.id, upstream_data.name)
+
+  end
 
 end
 
