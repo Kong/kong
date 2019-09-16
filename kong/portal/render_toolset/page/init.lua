@@ -1,9 +1,22 @@
 local helpers       = require "kong.portal.render_toolset.helpers"
 local workspaces    = require "kong.workspaces"
 local singletons    = require "kong.singletons"
+local markdown      = require "markdown"
 local lyaml         = require "lyaml"
 
 local yaml_load     = lyaml.load
+
+
+local function markdownify(contents, route_config)
+  local path_meta = route_config.path_meta or {}
+  local extension = path_meta.extension or ""
+  if extension == "md" or extension == "markdown" then
+    return markdown(contents)
+  end
+
+  return contents
+end
+
 
 return function()
   local conf = singletons.configuration
@@ -18,7 +31,7 @@ return function()
   -- Used for spec rendering
   local render_ctx = render_ctx or {}
   local route_config = render_ctx.route_config or {}
-  page.body = route_config.body or ""
+  page.body = markdownify(route_config.body or "", route_config)
   page.parsed_body = yaml_load(page.body) or {}
 
   -- Helper variables
@@ -54,4 +67,3 @@ return function()
 
   return page
 end
-

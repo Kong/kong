@@ -446,6 +446,7 @@ array
   - [`page.path`](#pagepath)
   - [`page.url`](#pageurl)
   - [`page.breadcrumbs`](#pagebreadcrumbs)
+  - [`page.body`](#pagebody)
 
 ---
 
@@ -579,6 +580,55 @@ table[]
   {% end %}
 </div>
 ```
+
+### `page.body`
+
+#### Description
+
+> Returns the body of the current page as a string. If the routes content file has a `.md` or `.markdown` extension, the body will be parsed from markdown to html.
+
+#### Return Type
+
+```lua
+string
+```
+
+#### Usage for .txt, .json, .yaml, .yml templates
+
+##### index.txt
+```hbs
+This is text content.
+```
+
+##### Template
+```hbs
+<h1>This is a title</h1>
+<p>{{ page.body) }}</p>
+```
+
+##### Output
+> # This is a title
+> This is text content
+
+#### Usage for .md, .markdown templates
+
+##### Template (markdown)
+You must use the raw delimiter syntax `{* *}` in order to render markdown within a template.
+
+##### index.txt
+```hbs
+# This is a title
+This is text content.
+```
+
+##### Template
+```hbs
+{* page.body *}
+```
+
+##### Output
+> # This is a title
+> This is text content
 
 # `user`
 

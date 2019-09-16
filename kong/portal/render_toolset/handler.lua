@@ -21,6 +21,7 @@ return function(template)
   -- Expose commonly used helpers to root context
   ctx.each = ctx.helpers.each
   ctx.print = ctx.helpers.print
+  ctx.markdown = ctx.helpers.markdown
 
   return ctx
 end

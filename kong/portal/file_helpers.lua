@@ -11,6 +11,7 @@ local gsub  = string.gsub
 
 local EXTENSION_LIST = constants.PORTAL_RENDERER.EXTENSION_LIST
 local ROUTE_TYPES    = constants.PORTAL_RENDERER.ROUTE_TYPES
+local PRIORITY_INDEX_OFFSET = constants.PORTAL_RENDERER.PRIORITY_INDEX_OFFSET
 
 local content_extension_err = "invalid content extension, must be one of:" .. table.concat(EXTENSION_LIST, ", ")
 
@@ -149,9 +150,9 @@ local function get_path_meta(path)
   -- set path priority. The lower the score, the higher the priorty
   local priority = extension_priority(extension)
 
-  -- set nested index routes priority lower
+  -- set nested index routes to lower priority
   if filename == 'index' and priority then
-    priority = priority + 6
+    priority = priority + PRIORITY_INDEX_OFFSET
   end
 
   return {

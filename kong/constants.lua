@@ -202,6 +202,7 @@ return {
       LOGIN = "login",
       UNAUTHORIZED = "unauthorized",
     },
+    PRIORITY_INDEX_OFFSET = 6,
   },
   GRPC_PROXY_MODES = grpc_proxy_modes,
 }

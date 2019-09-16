@@ -3,6 +3,7 @@ local cjson      = require "cjson.safe"
 local tablex     = require "pl.tablex"
 local stringx    = require "pl.stringx"
 local inspect    = require "inspect"
+local markdown   = require "markdown"
 local file_helpers = require "kong.portal.file_helpers"
 
 local yaml_load   = lyaml.load
@@ -226,5 +227,6 @@ return {
   list_insert            = list_insert,
   json_decode            = cjson.decode,
   json_encode            = cjson.encode,
+  markdown               = markdown,
 }
 

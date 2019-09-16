@@ -286,11 +286,7 @@ local function set_render_ctx(self)
     route_config = {}
   end
 
-  local developer = self.developer
-  if not developer then
-    developer = {}
-  end
-
+  local developer = self.developer or {}
   local path   = set_path(self.path)
   local layout = set_layout_by_permission(route_config, developer, workspace, portal_config)
 

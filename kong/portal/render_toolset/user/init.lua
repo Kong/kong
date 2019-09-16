@@ -1,17 +1,17 @@
-local helpers       = require "kong.portal.render_toolset.helpers"
 local singletons    = require "kong.singletons"
 
 return function()
-  local render_ctx = singletons.render_ctx
-  local developer = helpers.tbl.deepcopy(render_ctx.developer or {})
+  local user = {}
 
-  developer.is_authenticated = function()
-    return render_ctx.developer ~= nil
+  user.is_authenticated = function()
+    local render_ctx = singletons.render_ctx
+    return render_ctx.developer ~= nil and next(render_ctx.developer) ~= nil
   end
 
-  developer.get = function(arg)
-    return developer[arg]
+  user.get = function(arg)
+    local render_ctx = singletons.render_ctx
+    return render_ctx.developer[arg]
   end
 
-  return developer
+  return user
 end

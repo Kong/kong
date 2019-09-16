@@ -43,6 +43,7 @@ dependencies = {
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.0",
   "lua-resty-template == 1.9-1",
+  "markdown == 0.33-1",
   -- external Kong plugins
   "kong-plugin-kubernetes-sidecar-injector ~> 0.2",
   "kong-plugin-azure-functions ~> 0.4",

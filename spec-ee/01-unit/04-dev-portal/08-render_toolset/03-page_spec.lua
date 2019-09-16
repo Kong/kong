@@ -90,4 +90,62 @@ describe("page", function()
       end
     end)
   end)
+
+  describe('.body', function()
+    before_each(function()
+      snapshot = assert:snapshot()
+    end)
+  
+    it("can parse body from .txt file", function()
+      singletons.render_ctx = {
+        path = "/default/hello-world",
+        content = {},
+        route_config = {
+          body = "## this is body text",
+          path_meta = {
+            extension = "txt",
+          },
+        },
+      }
+
+      page = handler().page
+      assert.equals(page.body, "## this is body text")
+    end)
+
+    it("can parse markdown from body from .md file", function()
+      singletons.render_ctx = {
+        path = "/default/hello-world",
+        content = {},
+        route_config = {
+          path_meta = {
+            extension = "md",
+          },
+          body = "## this is body text",
+        }
+      }
+
+      page = handler().page
+      local arg = string.gsub(page.body, "%s+", "")
+      local exp = string.gsub("<h2>this is body text</h2>", "%s+", "")
+      assert.equals(arg, exp)
+    end)
+
+    it("does not parse markdown from body from .txt file", function()
+      singletons.render_ctx = {
+        path = "/default/hello-world",
+        content = {},
+        route_config = {
+          path_meta = {
+            extension = "txt",
+          },
+          body = "## this is body text",
+        }
+      }
+
+      page = handler().page
+      local arg = string.gsub(page.body, "%s+", "")
+      local exp = string.gsub("## this is body text", "%s+", "")
+      assert.equals(arg, exp)
+    end)
+  end)
 end)
