@@ -153,7 +153,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(200, res)
           local expected_params = {
-            workspace_id = workspace2.id,
+            workspace_name = workspace2.name,
             alert_name = "traffic",
             severity = "high"
           }

@@ -43,11 +43,11 @@ return {
       end
 
       local query = kong.request.get_raw_query()
-      local workspace_id = workspace_id_from_request(self)
+      local workspace_name = self.url_params.workspace_name
       if query then
-        query = query .. '&workspace_id=' .. workspace_id
+        query = query .. '&workspace_name=' .. workspace_name
       else
-        query = 'workspace_id=' .. workspace_id
+        query = 'workspace_name=' .. workspace_name
       end
 
       local res, err = backend.http_get(
