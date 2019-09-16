@@ -101,12 +101,14 @@ function Config:parse_string(contents, filename, accept, old_hash)
     dc_table, err = cjson.decode(contents)
 
   elseif accept.lua and filename:match("lua$") then
-    local chunk = loadstring(contents)
-    setfenv(chunk, {})
+    local chunk, pok
+    chunk, err = loadstring(contents)
     if chunk then
-      local pok, dc_table = pcall(chunk)
+      setfenv(chunk, {})
+      pok, dc_table = pcall(chunk)
       if not pok then
         err = dc_table
+        dc_table = nil
       end
     end
 
