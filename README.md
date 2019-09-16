@@ -101,7 +101,7 @@ code, other repos are also under active development:
 - [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B014GHERVU): Kong AMI on
   the AWS Marketplace.
 - [Kong on Microsoft Azure](https://github.com/Kong/kong-dist-azure): Run Kong
-  using Azure Resource Manager.
+  using the Azure Resource Manager.
 - [Kong on Heroku](https://github.com/heroku/heroku-kong): Deploy Kong on
   Heroku in one click.
 - [Kong and Instaclustr](https://www.instaclustr.com/solutions/managed-cassandra-for-kong/): Let
@@ -113,7 +113,7 @@ code, other repos are also under active development:
 
 ## Development
 
-If you are planning on developing on Kong, you'll need a development
+If you are planning on developing in Kong, you'll need a development
 installation. The `next` branch holds the latest unreleased source code.
 
 You can read more about writing your own plugins in the [Plugin Development
@@ -150,7 +150,7 @@ $ luarocks make
 #### Running for development
 
 Check out the [development section](https://github.com/Kong/kong/blob/next/kong.conf.default#L244)
-of the default configuration file for properties to tweak in order to ease
+of the default configuration file for properties to tweak to ease
 the development process for Kong.
 
 Modifying the [`lua_package_path`](https://github.com/openresty/lua-nginx-module#lua_package_path)
