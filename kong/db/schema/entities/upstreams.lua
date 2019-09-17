@@ -46,7 +46,7 @@ local positive_int = Schema.define {
 
 local one_byte_integer = Schema.define {
   type = "integer",
-  between = { 0, 255 },
+  between = { 0, 254 },
 }
 
 
