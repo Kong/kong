@@ -1,6 +1,4 @@
 return [[
-charset UTF-8;
-
 > if anonymous_reports then
 ${{SYSLOG_REPORTS}}
 > end
