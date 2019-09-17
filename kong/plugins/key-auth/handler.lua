@@ -89,14 +89,19 @@ local function do_authentication(conf)
   local key
   local body
 
+  -- EE: FT-891
+  local key_in_body = conf.key_in_body
+
   -- read in the body if we want to examine POST args
-  if conf.key_in_body then
+  if key_in_body then
     local err
     body, err = kong.request.get_body()
 
     if err then
       kong.log.err("Cannot process request body: ", err)
-      return nil, { status = 400, message = "Cannot process request body" }
+      -- EE: FT-891
+      -- return nil, { status = 400, message = "Cannot process request body" }
+      key_in_body =  false
     end
   end
 
@@ -110,7 +115,7 @@ local function do_authentication(conf)
     end
 
     -- search the body, if we asked to
-    if not v and conf.key_in_body then
+    if not v and key_in_body then
       v = body[name]
     end
 
@@ -122,7 +127,7 @@ local function do_authentication(conf)
         kong.service.request.set_query(query)
         kong.service.request.clear_header(name)
 
-        if conf.key_in_body then
+        if key_in_body then
           body[name] = nil
           kong.service.request.set_body(body)
         end
