@@ -121,6 +121,10 @@ describe("plugins", function()
       anonymous = ngx.null,
       key_in_body = false,
       run_on_preflight = true,
+      signature_distance_seconds = 10,
+      signature_in_body = false,
+      signature_names = { "signature" },
+      verify_signature = false,
     }, plugin.config)
   end)
 
