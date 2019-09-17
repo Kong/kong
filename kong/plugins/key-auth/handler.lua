@@ -131,6 +131,7 @@ local function do_authentication(conf)
   local headers = kong.request.get_headers()
   local query = kong.request.get_query()
   local key
+  local message
   local signature
   local body
 
