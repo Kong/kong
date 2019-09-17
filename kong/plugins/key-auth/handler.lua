@@ -147,7 +147,7 @@ local function do_authentication(conf)
   end
 
   -- search for api key in headers & querystring (and maybe body)
-  key, message = check_parameters (conf.key_names, conf.key_in_body, conf.hide_credentials, "api key", headers, query, body)
+  key, message = check_parameters (conf.key_names, conf.key_in_body, conf.hide_credentials, "API key", headers, query, body)
   if not key or key == "" then
     kong.response.set_header("WWW-Authenticate", _realm)
     return nil, message
