@@ -46,7 +46,10 @@ for i = 1, #plugins do
   plugin_map[plugins[i]] = true
 end
 
-local deprecated_plugins = {} -- no currently deprecated plugin
+local deprecated_plugins = {
+  "route-by-header",
+  "upstream-tls",
+}
 
 local deprecated_plugin_map = {}
 for _, plugin in ipairs(deprecated_plugins) do
@@ -194,7 +197,7 @@ return {
     ROUTE_TYPES = {
       EXPLICIT = "explicit", COLLECTION = "collection", DEFAULT = "defualt",
     },
-    FALLBACK_404 = '<html><head><title>404 Not Found</title></head><body>' .. 
+    FALLBACK_404 = '<html><head><title>404 Not Found</title></head><body>' ..
       '<h1>404 Not Found</h1><p>The page you are requesting cannot be found.</p>' ..
       '</body></html>',
     LAYOUTS = {
