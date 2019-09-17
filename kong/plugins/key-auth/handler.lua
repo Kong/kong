@@ -17,7 +17,7 @@ KeyAuthHandler.PRIORITY = 1003
 KeyAuthHandler.VERSION = "2.1.0"
 
 
-local function check_parameters (table_of_parameter_names, search_in_body, title_of_parameter, hide_credentials, headers, query, body)
+local function check_parameters (table_of_parameter_names, search_in_body, hide_credentials, headers, query, body)
   -- search parameter in headers & querystring
   local parameter = ""
   for i = 1, #table_of_parameter_names do
@@ -53,15 +53,6 @@ local function check_parameters (table_of_parameter_names, search_in_body, title
       -- duplicate parameter
       return nil, { status = 401, message = "Duplicate " .. title_of_parameter .. " found" }
     end
-
-    if not parameter or parameter == "" then
-      print("Empty")
-      kong.response.set_header("WWW-Authenticate", _realm)
-      return kong.response.exit(401, { "No " .. title_of_parameter .. " found in request" }, nil)
-      --return nil, { status = 401, message = "No " .. title_of_parameter .. " found in request" }
-    end
-
-
   end
   return parameter
 end
@@ -149,11 +140,19 @@ local function do_authentication(conf)
   end
 
   -- search for api key in headers & querystring (and maybe body)
-  key = check_parameters (conf.key_names, conf.key_in_body, "API Key", conf.hide_credentials, headers, query, body)
+  key = check_parameters (conf.key_names, conf.key_in_body, conf.hide_credentials, headers, query, body)
+  if not key or key == "" then
+    kong.response.set_header("WWW-Authenticate", _realm)
+    return nil, { status = 401, message = "No api key found in request" }
+  end
   
   if conf.verify_signature then
     -- search for signature in headers & querystring (and maybe body)
-    signature = check_parameters (conf.signature_names, conf.signature_in_body, "signature", conf.hide_credentials, headers, query, body)
+    signature = check_parameters (conf.signature_names, conf.signature_in_body, conf.hide_credentials, headers, query, body)
+    if not signature or signature == "" then
+      kong.response.set_header("WWW-Authenticate", _realm)
+      return nil, { status = 401, message = "No signature found in request" }
+    end
   end
 
   local cache = kong.cache
