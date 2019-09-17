@@ -26,7 +26,7 @@ local req_read_body = ngx.req.read_body
 local req_set_body_data = ngx.req.set_body_data
 local req_get_body_data = ngx.req.get_body_data
 local req_clear_header = ngx.req.clear_header
-local req_set_method = ngx.req.set_method
+local req_set_method = kong.service.request.set_method
 local encode_args = ngx.encode_args
 local ngx_decode_args = ngx.decode_args
 
@@ -125,7 +125,7 @@ function _M:access(conf)
 
   local query, variables = self:get_query()
 
-  req_set_method = "POST"
+  req_set_method("POST")
   ngx.var.upstream_uri = "/graphql"
   req_read_body()
   req_set_header("Content-Type", "application/json")
