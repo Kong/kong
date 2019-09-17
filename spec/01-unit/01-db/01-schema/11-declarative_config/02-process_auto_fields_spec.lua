@@ -317,6 +317,10 @@ describe("declarative config: process_auto_fields", function()
                       key_in_body = false,
                       key_names = { "apikey" },
                       run_on_preflight = true,
+                      signature_distance_seconds = 10,
+                      signature_in_body = false,
+                      signature_names = { "signature" },
+                      verify_signature = false,
                     }
                   },
                   {
@@ -599,6 +603,10 @@ describe("declarative config: process_auto_fields", function()
                           key_in_body = false,
                           key_names = { "apikey" },
                           run_on_preflight = true,
+                          signature_distance_seconds = 10,
+                          signature_in_body = false,
+                          signature_names = { "signature" },
+                          verify_signature = false,
                         }
                       },
                       {

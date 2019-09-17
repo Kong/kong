@@ -17,6 +17,56 @@ KeyAuthHandler.PRIORITY = 1003
 KeyAuthHandler.VERSION = "2.1.0"
 
 
+local function check_parameters (table_of_parameter_names, search_in_body, title_of_parameter, hide_credentials, headers, query, body)
+  -- search parameter in headers & querystring
+  local parameter = ""
+  for i = 1, #table_of_parameter_names do
+    local name = table_of_parameter_names[i]
+    local v = headers[name]
+    if not v then
+      -- search in querystring
+      v = query[name]
+    end
+
+    -- search the body, if we asked to
+    if not v and search_in_body then
+      v = body[name]
+    end
+
+    if type(v) == "string" then
+      parameter = v
+
+      if hide_credentials then
+        query[name] = nil
+        kong.service.request.set_query(query)
+        kong.service.request.clear_header(name)
+
+        if search_in_body then
+          body[name] = nil
+          kong.service.request.set_body(body)
+        end
+      end
+
+      break
+
+    elseif type(v) == "table" then
+      -- duplicate parameter
+      return nil, { status = 401, message = "Duplicate " .. title_of_parameter .. " found" }
+    end
+
+    if not parameter or parameter == "" then
+      print("Empty")
+      kong.response.set_header("WWW-Authenticate", _realm)
+      return kong.response.exit(401, { "No " .. title_of_parameter .. " found in request" }, nil)
+      --return nil, { status = 401, message = "No " .. title_of_parameter .. " found in request" }
+    end
+
+
+  end
+  return parameter
+end
+
+
 local function load_credential(key)
   local cred, err = kong.db.keyauth_credentials:select_by_key(key)
   if not cred then
@@ -204,54 +254,5 @@ function KeyAuthHandler:access(conf)
   end
 end
 
-
-function check_parameters (table_of_parameter_names, search_in_body, title_of_parameter, hide_credentials, headers, query, body)
-  -- search parameter in headers & querystring
-  local parameter = ""
-  for i = 1, #table_of_parameter_names do
-    local name = table_of_parameter_names[i]
-    local v = headers[name]
-    if not v then
-      -- search in querystring
-      v = query[name]
-    end
-
-    -- search the body, if we asked to
-    if not v and search_in_body then
-      v = body[name]
-    end
-
-    if type(v) == "string" then
-      parameter = v
-
-      if hide_credentials then
-        query[name] = nil
-        kong.service.request.set_query(query)
-        kong.service.request.clear_header(name)
-
-        if search_in_body then
-          body[name] = nil
-          kong.service.request.set_body(body)
-        end
-      end
-
-      break
-
-    elseif type(v) == "table" then
-      -- duplicate parameter
-      return nil, { status = 401, message = "Duplicate " .. title_of_parameter .. " found" }
-    end
-
-    if not parameter or parameter == "" then
-      print("Empty")
-      kong.response.set_header("WWW-Authenticate", _realm)
-      return kong.response.exit(401, { "No " .. title_of_parameter .. " found in request" }, nil)
-      --return nil, { status = 401, message = "No " .. title_of_parameter .. " found in request" }
-    end
-
-
-  end
-  return parameter
-end
 
 return KeyAuthHandler
