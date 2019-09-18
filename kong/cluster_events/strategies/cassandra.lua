@@ -75,9 +75,9 @@ function _M:select_interval(channels, min_at, max_at)
 
   local args = { cassandra.set(channels), c_min_at, c_max_at }
   local opts = {
-    prepared      = true,
-    page_size     = self.page_size,
-    consistencies = cassandra.consistencies.local_one,
+    prepared    = true,
+    page_size   = self.page_size,
+    consistency = cassandra.consistencies.local_one,
   }
 
   local iter, b, c = self.cluster:iterate(SELECT_INTERVAL_QUERY, args, opts)
