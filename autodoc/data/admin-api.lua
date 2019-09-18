@@ -566,11 +566,12 @@ return {
         headers = {
           kind = "semi-optional",
           description = [[
-            A list of headers that will cause this Route to match if present in the request.
+            One or more lists of values indexed by header name that will cause this Route to
+            match if present in the request.
             The `Host` header cannot be used with this attribute: hosts should be specified
             using the `hosts` attribute.
           ]],
-          examples = { {"/foo", "/bar"}, nil },
+          examples = { { ["x-my-header"] = {"foo", "bar"}, ["x-another-header"] = {"bla"} }, nil },
           skip_in_example = true, -- hack so we get HTTP fields in the first example and Stream fields in the second
         },
         snis = {
