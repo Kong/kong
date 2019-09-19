@@ -6,7 +6,7 @@ local DB = require "kong.db"
 local function run_file(f, kong)
   local func, err = loadfile(f, "t")
   if func then
-    func(kong)
+    func()
     return true
   else
     print("Compilation error:", err)

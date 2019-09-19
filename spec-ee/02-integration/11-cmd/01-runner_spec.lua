@@ -32,5 +32,11 @@ describe("kong runner", function()
     assert.is_false(ok)
   end)
 
+  it("has access to kong variable", function()
+    local _, _, stdout = helpers.execute([[
+      echo 'print(tostring(kong))' | ]] ..
+      helpers.bin_path .. " runner " )
+    assert.matches("table", string.sub(stdout, 1, -2) )
+  end)
 
 end)
