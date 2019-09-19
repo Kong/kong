@@ -3,7 +3,8 @@ local conf_loader = require "kong.conf_loader"
 local DB = require "kong.db"
 
 
-local function run_file(f, kong)
+local function run_file(f, args)
+  _G.args = args
   local func, err = loadfile(f, "t")
   if func then
     func()
@@ -22,14 +23,15 @@ local function execute(args)
   kong.db = db
   assert(db:init_connector())
   assert(db:connect())
-  assert(run_file(args[1], kong))
+  assert(run_file(args[1], args))
 end
 
 return {
   lapp = [[
-Usage: kong runner file.lua
+Usage: kong runner file.lua [args]
 
 Execute a lua file in a kong node. the `kong` variable is available to
-reach the DAO, PDK, etc. ]],
-
-execute = execute, }
+reach the DAO, PDK, etc. The variable `args` can be used to access all
+arguments (args[1] being the lua filename bein run).]],
+  execute = execute,
+}

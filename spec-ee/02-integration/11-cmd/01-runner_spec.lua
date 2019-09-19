@@ -9,19 +9,19 @@ describe("kong runner", function()
 
   it("runs code from stdin if no arg is given", function()
     local _, _, stdout = helpers.execute(
-      [[ echo 'print("roar")' | ]] .. helpers.bin_path .. " runner " )
-    assert.equals("roar", string.sub(stdout, 1, -2) )
+      [[ echo 'print(#args)' | ]] .. helpers.bin_path .. " runner " )
+    assert.equals("0", string.sub(stdout, 1, -2) )
   end)
 
   it("runs code from a given file argument", function()
       local tmpfile = require("pl.path").tmpname()  -- this creates the file!
       finally(function() os.remove(tmpfile) end)
 
-      os.execute([[echo "print('roar')" >]] .. tmpfile)
+      os.execute([[echo 'print(#args)' >]] .. tmpfile)
       local _, _, stdout = helpers.execute(
-        helpers.bin_path .. [[ runner ]] .. tmpfile)
+        helpers.bin_path .. [[ runner ]] .. tmpfile .. " foo")
 
-      assert.equals("roar", string.sub(stdout, 1, -2))
+      assert.equals("2", string.sub(stdout, 1, -2))
   end)
 
   it("errs with sintactically wrong lua file", function()
