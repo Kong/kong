@@ -95,8 +95,30 @@ local function request_id()
 end
 
 
+local header_unsafe_phases = {
+  -- Inverse of https://github.com/openresty/lua-nginx-module#ngxreqget_headers
+  -- although balancer is not listed there, this appears to be a documentation bug
+  -- calling req.get_headers in balancer works normally
+  init              = true,
+  init_worker       = true,
+  ssl_cert          = true,
+  ssl_session_fetch = true,
+  ssl_session_store = true,
+  balancer          = false,
+  timer             = true,
+}
+
+
+local function header_safe_phase()
+  return not header_unsafe_phases[ngx.get_phase()]
+end
+
 local function debug_header_present()
   if not debug_header then
+    return false
+  end
+
+  if not header_safe_phase() then
     return false
   end
 

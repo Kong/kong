@@ -1639,7 +1639,9 @@
                                  # request. When this value is not set and
                                  # tracing is enabled, Kong will generate trace
                                  # data for all requests flowing through the
-                                 # proxy and Admin API.
+                                 # proxy and Admin API. Note that data from
+                                 # certificate handling phases is not logged
+                                 # when this setting is enabled.
 
 #generate_trace_details = off    # When enabled, Kong will write context-
                                  # specific details into traces. Trace details
