@@ -1,7 +1,17 @@
-require "lua_pack"
+local bpack, bunpack
+do
+  local string_pack = string.pack
+  local string_unpack = string.unpack
+  package.loaded.lua_pack = nil
+  require "lua_pack"
+  bpack = string.pack
+  bunpack = string.unpack
+  -- luacheck: globals string.unpack
+  string.unpack = string_unpack
+  -- luacheck: globals string.pack
+  string.pack = string_pack
+end
 
-local bpack = string.pack
-local bunpack = string.unpack
 local math = math
 local bit = bit
 local setmetatable = setmetatable
@@ -10,7 +20,7 @@ local string_reverse = string.reverse
 local string_char = string.char
 local pairs = pairs
 
-local _M = {}
+local _M = { bunpack = bunpack, bpack = bpack }
 
 _M.BERCLASS = {
   Universal = 0,
