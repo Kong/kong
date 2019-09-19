@@ -687,7 +687,7 @@ do
     local balancer_data = {
       scheme         = scheme,    -- scheme for balancer: http, https
       type           = host_type, -- type of 'host': ipv4, ipv6, name
-      host           = host,      -- target host per `upstream_url`
+      host           = host,      -- target host per `service` entity
       port           = port,      -- final target port
       try_count      = 0,         -- retry counter
       tries          = {},        -- stores info per try
