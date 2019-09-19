@@ -1,5 +1,5 @@
 local asn1 = require "kong.plugins.ldap-auth-advanced.asn1"
-local bunpack = string.unpack
+local bunpack = asn1.bunpack
 
 local string_format = string.format
 
