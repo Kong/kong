@@ -28,16 +28,8 @@ addons:
 
 env:
   global:
-    - BUILD_TOOLS=1ea15bc
-    - LUAROCKS=3.1.3
-    - OPENSSL=1.1.1c
-    - OPENRESTY=1.15.8.1
-    - KONG_NGINX_MODULE=master
-    - DOWNLOAD_CACHE=$HOME/download-cache
-    - DOWNLOAD_ROOT=$HOME/download-root
     - INSTALL_CACHE=$HOME/install-cache
-    - OPENRESTY_PATCHES_BRANCH=remove_service_mesh_partches
-    - KONG_NGINX_MODULE_BRANCH=master
+    - DOWNLOAD_ROOT=$HOME/download-root
     - KONG_TEST_PG_DATABASE=travis
     - KONG_TEST_PG_USER=postgres
     - JOBS=2
@@ -62,12 +54,12 @@ env:
     - TEST_SUITE=pdk
 
 install:
+  - make setup-ci
   - source .ci/setup_env.sh
   - make dev
 
 cache:
   apt: true
-  pip: true
   directories:
     - $INSTALL_CACHE
     - $HOME/.ccm/repository
