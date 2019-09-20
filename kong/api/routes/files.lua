@@ -2,13 +2,21 @@ local endpoints    = require "kong.api.endpoints"
 local crud_helpers = require "kong.portal.crud_helpers"
 local renderer     = require "kong.portal.renderer"
 local utils        = require "kong.tools.utils"
-
+local file_helpers = require "kong.portal.file_helpers"
+local workspaces = require "kong.workspaces"
+local constants = require "kong.constants"
 
 local kong = kong
 local tonumber = tonumber
 
-
 local unescape_uri = ngx.unescape_uri
+local ws_constants = constants.WORKSPACE_CONFIG
+
+
+local function is_legacy()
+  local workspace = workspaces.get_workspace()
+  return workspaces.retrieve_ws_config(ws_constants.PORTAL_IS_LEGACY, workspace)
+end
 
 
 local function find_file(db, file_pk)
@@ -31,24 +39,50 @@ return {
     GET = function(self, db, helpers, parent)
       local size = tonumber(self.params.size or 100)
       local offset = self.params.offset
+      local type = self.params.type
 
       self.params.size = nil
       self.params.offset = nil
+
+      if not is_legacy() then
+        self.params.type = nil
+      end
 
       local files, _, err_t = db.files:select_all(self.params)
       if not files then
         return endpoints.handle_error(err_t)
       end
 
-      local paginated_results, _, err_t = crud_helpers.paginate(
-        self, '/files', files, size, offset
+      local post_process = function(file)
+        if not file then
+          return
+        end
+
+        if not type or not file.path then
+          return file
+        end
+
+        local is_content = file_helpers.is_content_path(file.path) or
+                           file_helpers.is_spec_path(file.path)
+
+        if type == "content" and is_content then
+          return file
+        end
+      end
+
+      local res, _, err_t = crud_helpers.paginate(
+        self, '/files', files, size, offset, post_process
       )
 
-      if not paginated_results then
+      if not res then
         return endpoints.handle_error(err_t)
       end
 
-      return kong.response.exit(200, paginated_results)
+      if type and res.next ~= ngx.null then
+        res.next = res.next .. "&type=" .. type
+      end
+
+      return kong.response.exit(200, res)
     end,
   },
 

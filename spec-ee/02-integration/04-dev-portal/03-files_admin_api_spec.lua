@@ -2,6 +2,7 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local escape = require("socket.url").escape
 local singletons = require "kong.singletons"
+local match = string.match
 
 
 local function close_clients(clients)
@@ -134,6 +135,40 @@ for _, strategy in helpers.each_strategy() do
 
           local json = cjson.decode(res.body)
           assert.equal(50, #json.data)
+          assert.equal(ngx.null, json.next)
+        end)
+
+        it("filters for content files", function()
+          local res = client_request({
+            methd = "GET",
+            path = "/files?type=content&size=25",
+          })
+
+          assert.equal(200, res.status)
+
+          local json = cjson.decode(res.body)
+          assert.equal(25, #json.data)
+
+          for i, file in ipairs(json.data) do
+            assert.equal("content", match(file.path, "^(%w+)/"))
+          end
+
+          local next = json.next
+
+          local res = client_request({
+            methd = "GET",
+            path = next,
+          })
+
+          assert.equal(200, res.status)
+
+          local json = cjson.decode(res.body)
+          assert.equal(25, #json.data)
+
+          for i, file in ipairs(json.data) do
+            assert.equal("content", match(file.path, "^(%w+)/"))
+          end
+
           assert.equal(ngx.null, json.next)
         end)
       end)

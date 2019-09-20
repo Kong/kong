@@ -339,6 +339,7 @@ end
 return {
   is_content      = is_content,
   is_content_path = is_content_path,
+  is_spec_path    = is_spec_path,
   is_valid_content_ext = is_valid_content_ext,
   is_layout       = is_layout,
   is_layout_path  = is_layout_path,
