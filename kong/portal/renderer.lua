@@ -281,7 +281,19 @@ local function set_render_ctx(self)
     return false, "could not retrieve theme config"
   end
 
-  local route_config = set_route_config(self.path)
+  local route = self.path
+  if self.is_admin then
+    local path = string.gsub(self.path, "/", "", 1)
+    local file = singletons.db.files:select_by_path(path)
+    if not path then
+      file = {}
+    end
+
+    local parsed_content = file_helpers.parse_content(file)
+    route = parsed_content.route
+  end
+
+  local route_config = set_route_config(route)
   if not route_config then
     route_config = {}
   end
