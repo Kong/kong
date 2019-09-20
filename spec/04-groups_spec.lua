@@ -11,9 +11,9 @@ local ldap_base_config = {
   consumer_optional      = true,
   hide_credentials       = true,
   cache_ttl              = 2,
-  ldap_port = 636,
-  start_tls = true,
-  ldaps     = true,
+  ldap_port              = 636,
+  start_tls              = false,
+  ldaps                  = true,
 }
 
 describe("validate_groups", function()
