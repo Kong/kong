@@ -76,8 +76,8 @@ describe("[AWS Lambda] aws-gateway input", function()
         pathParameters = {
           version = "123",
         },
-        isBase64Encoded = false,
-        body = "text",
+        isBase64Encoded = true,
+        body = ngx.encode_base64("text"),
         headers = {
           ["multi-header"] = "first",
           ["single-header"] = "hello world",
@@ -129,8 +129,8 @@ describe("[AWS Lambda] aws-gateway input", function()
         path = "/plain/strip/more",
         resource = "/plain/strip",
         pathParameters = {},
-        isBase64Encoded = false,
-        body = "text",
+        isBase64Encoded = true,
+        body = ngx.encode_base64("text"),
         headers = {
           ["multi-header"] = "first",
           ["single-header"] = "hello world",
@@ -159,14 +159,14 @@ describe("[AWS Lambda] aws-gateway input", function()
         description = "none",
         ct = nil,
         body_in = "text",
-        body_out = "text",
-        base64 = false,
+        body_out = ngx.encode_base64("text"),
+        base64 = true,
       }, {
         description = "application/json",
         ct = "application/json",
         body_in = [[{ "text": "some text" }]],
-        body_out = [[{ "text": "some text" }]],
-        base64 = false,
+        body_out = ngx.encode_base64([[{ "text": "some text" }]]),
+        base64 = true,
       }, {
         description = "unknown",
         ct = "some-unknown-type-description",

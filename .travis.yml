@@ -1,0 +1,59 @@
+dist: xenial
+sudo: false
+
+language: generic
+
+jdk:
+  - oraclejdk8
+
+notifications:
+  email: false
+
+addons:
+  postgresql: "9.5"
+  apt:
+    packages:
+      - net-tools
+      - libpcre3-dev
+      - build-essential
+  hosts:
+    - grpcs_1.test
+    - grpcs_2.test
+
+services:
+  - docker
+
+env:
+  global:
+    - TEST_SUITE=integration
+    - INSTALL_CACHE=$HOME/install-cache
+    - DOWNLOAD_ROOT=$HOME/download-root
+    - PLUGIN_NAME=liamp
+    - KONG_PLUGINS=bundled,$PLUGIN_NAME
+    - KONG_TEST_PLUGINS=$KONG_PLUGINS
+    - TEST_FILE_PATH=$TRAVIS_BUILD_DIR/spec
+    - JOBS=2
+  matrix:
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2.12 KONG=master BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6,postgres,off"
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 KONG=master BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6,postgres,off"
+    - KONG_TEST_DATABASE=postgres POSTGRES=9.5 KONG=master BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6,cassandra,off"
+matrix:
+  allow_failures:
+    - env: KONG_TEST_DATABASE=postgres POSTGRES=9.5 KONG=master BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6,cassandra,off"
+
+install:
+  - make setup-ci
+  - pushd kong-source && source .ci/setup_env.sh && popd
+  - pushd kong-source && make dev && popd
+  - cp -r kong-source/spec/fixtures spec
+  - luarocks make
+
+script:
+  - pushd kong-source && bin/busted $BUSTED_ARGS ../spec && popd
+
+cache:
+  apt: true
+  directories:
+    - $DOWNLOAD_CACHE
+    - $INSTALL_CACHE
+    - $HOME/.ccm/repository

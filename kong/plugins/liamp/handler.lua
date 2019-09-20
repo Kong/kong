@@ -1,28 +1,19 @@
 -- Copyright (C) Kong Inc.
 
--- Grab pluginname from module name
-local plugin_name = ({...})[1]:match("^kong%.plugins%.([^%.]+)")
-
-local BasePlugin = require "kong.plugins.base_plugin"
-local responses = require "kong.tools.responses"
-local utils = require "kong.tools.utils"
+local aws_v4 = require "kong.plugins.liamp.v4"
+local aws_serializer = require "kong.plugins.liamp.aws-serializer"
 local http = require "resty.http"
 local cjson = require "cjson.safe"
-local public_utils = require "kong.tools.public"
-local singletons = require "kong.singletons"
-local constants = require "kong.constants"
 local meta = require "kong.meta"
-
-local aws_v4 = require("kong.plugins." .. plugin_name .. ".v4")
-local aws_serializer = require("kong.plugins." .. plugin_name .. ".aws-serializer")
+local constants = require "kong.constants"
 
 
 local fetch_credentials
 do
   local credential_sources = {
-    require("kong.plugins." .. plugin_name .. ".iam-ecs-credentials"),
+    require "kong.plugins.liamp.iam-ecs-credentials",
     -- The EC2 one will always return `configured == true`, so must be the last!
-    require("kong.plugins." .. plugin_name .. ".iam-ec2-credentials"),
+    require "kong.plugins.liamp.iam-ec2-credentials",
   }
 
   for _, credential_source in ipairs(credential_sources) do
@@ -36,35 +27,27 @@ end
 
 local tostring             = tostring
 local tonumber             = tonumber
-local pairs                = pairs
 local type                 = type
 local fmt                  = string.format
-local ngx                  = ngx
-local ngx_req_read_body    = ngx.req.read_body
-local ngx_req_get_uri_args = ngx.req.get_uri_args
-local ngx_req_get_headers  = ngx.req.get_headers
 local ngx_encode_base64    = ngx.encode_base64
 local ngx_update_time      = ngx.update_time
 local ngx_now              = ngx.now
 
-local IAM_CREDENTIALS_CACHE_KEY = "plugin." .. plugin_name .. ".iam_role_temp_creds"
-local LOG_PREFIX = "[" .. plugin_name .. "] "
-
-
-local new_tab
-do
-  local ok
-  ok, new_tab = pcall(require, "table.new")
-  if not ok then
-    new_tab = function(narr, nrec) return {} end
-  end
-end
+local IAM_CREDENTIALS_CACHE_KEY = "plugin.liamp.iam_role_temp_creds"
 
 
 local server_header_value
 local server_header_name
-local response_bad_gateway
 local AWS_PORT = 443
+
+
+local raw_content_types = {
+  ["text/plain"] = true,
+  ["text/html"] = true,
+  ["application/xml"] = true,
+  ["text/xml"] = true,
+  ["application/soap+xml"] = true,
+}
 
 
 local function get_now()
@@ -121,83 +104,34 @@ local function extract_proxy_response(content)
 end
 
 
+local AWSLambdaHandler = {}
+
+
 local function send(status, content, headers)
-  ngx.status = status
-
-  if type(headers) == "table" then
-    for k, v in pairs(headers) do
-      ngx.header[k] = v
-    end
-  end
-
-  if not ngx.header["Content-Length"] then
-    ngx.header["Content-Length"] = #content
-  end
+  headers = kong.table.merge(headers) -- create a copy of headers
 
   if server_header_value then
-    ngx.header[server_header_name] = server_header_value
+    headers[server_header_name] = server_header_value
   end
 
-  ngx.print(content)
-
-  return ngx.exit(status)
-end
-
-
-local function flush(ctx)
-  ctx = ctx or ngx.ctx
-  local response = ctx.delayed_response
-  return send(response.status_code, response.content, response.headers)
-end
-
-
-local AWSLambdaHandler = BasePlugin:extend()
-
-
-function AWSLambdaHandler:new()
-  AWSLambdaHandler.super.new(self, plugin_name)
+  return kong.response.exit(status, content, headers)
 end
 
 
 function AWSLambdaHandler:init_worker()
-
-  if singletons.configuration.enabled_headers then
-    -- newer `headers` config directive (0.14.x +)
-    if singletons.configuration.enabled_headers[constants.HEADERS.VIA] then
-      server_header_value = meta._SERVER_TOKENS
-      server_header_name = constants.HEADERS.VIA
-    else
-      server_header_value = nil
-      server_header_name = nil
-    end
-
+  if kong.configuration.enabled_headers[constants.HEADERS.VIA] then
+    server_header_value = meta._SERVER_TOKENS
+    server_header_name = constants.HEADERS.VIA
   else
-    -- old `server_tokens` config directive (up to 0.13.x)
-    if singletons.configuration.server_tokens then
-      server_header_value = _KONG._NAME .. "/" .. _KONG._VERSION
-      server_header_name = "Via"
-    else
-      server_header_value = nil
-      server_header_name = nil
-    end
-  end
-
-
-  -- response for BAD_GATEWAY was added in 0.14x
-  response_bad_gateway = responses.send_HTTP_BAD_GATEWAY
-  if not response_bad_gateway then
-    response_bad_gateway = function(msg)
-      ngx.log(ngx.ERR, LOG_PREFIX, msg)
-      return responses.send(502, "Bad Gateway")
-    end
+    server_header_value = nil
+    server_header_name = nil
   end
 end
 
 
 function AWSLambdaHandler:access(conf)
-  AWSLambdaHandler.super.access(self)
-
-  local upstream_body = new_tab(0, 6)
+  local upstream_body = kong.table.new(0, 6)
+  local var = ngx.var
 
   if conf.awsgateway_compatible then
     upstream_body = aws_serializer(ngx.ctx, conf)
@@ -208,29 +142,36 @@ function AWSLambdaHandler:access(conf)
          conf.forward_request_uri then
 
     -- new behavior to forward request method, body, uri and their args
-    local var = ngx.var
-
     if conf.forward_request_method then
-      upstream_body.request_method = var.request_method
+      upstream_body.request_method = kong.request.get_method()
     end
 
     if conf.forward_request_headers then
-      upstream_body.request_headers = ngx_req_get_headers()
+      upstream_body.request_headers = kong.request.get_headers()
     end
 
     if conf.forward_request_uri then
-      upstream_body.request_uri      = var.request_uri
-      upstream_body.request_uri_args = ngx_req_get_uri_args()
+      local path = kong.request.get_path()
+      local query = kong.request.get_raw_query()
+      if query ~= "" then
+        upstream_body.request_uri = path .. "?" .. query
+      else
+        upstream_body.request_uri = path
+      end
+      upstream_body.request_uri_args = kong.request.get_query()
     end
 
     if conf.forward_request_body then
-      ngx_req_read_body()
-
-      local body_args, err_code, body_raw = public_utils.get_body_info()
-      if err_code == public_utils.req_body_errors.unknown_ct then
-        -- don't know what this body MIME type is, base64 it just in case
-        body_raw = ngx_encode_base64(body_raw)
-        upstream_body.request_body_base64 = true
+      local content_type = kong.request.get_header("content-type")
+      local body_raw = kong.request.get_raw_body()
+      local body_args, err = kong.request.get_body()
+      if err and err:match("content type") then
+        body_args = {}
+        if not raw_content_types[content_type] then
+          -- don't know what this body MIME type is, base64 it just in case
+          body_raw = ngx_encode_base64(body_raw)
+          upstream_body.request_body_base64 = true
+        end
       end
 
       upstream_body.request_body      = body_raw
@@ -240,16 +181,14 @@ function AWSLambdaHandler:access(conf)
   else
     -- backwards compatible upstream body for configurations not specifying
     -- `forward_request_*` values
-    ngx_req_read_body()
-
-    local body_args = public_utils.get_body_args()
-    upstream_body = utils.table_merge(ngx_req_get_uri_args(), body_args)
+    local body_args = kong.request.get_body()
+    upstream_body = kong.table.merge(kong.request.get_query(), body_args)
   end
 
   local upstream_body_json, err = cjson.encode(upstream_body)
   if not upstream_body_json then
-    ngx.log(ngx.ERR, LOG_PREFIX, "could not JSON encode upstream body",
-                     " to forward request values: ", err)
+    kong.log.err("could not JSON encode upstream body",
+    " to forward request values: ", err)
   end
 
   local host = fmt("lambda.%s.amazonaws.com", conf.aws_region)
@@ -275,16 +214,18 @@ function AWSLambdaHandler:access(conf)
     query = conf.qualifier and "Qualifier=" .. conf.qualifier
   }
 
-  if (not conf.aws_key) or conf.aws_key == "" then
+  if not conf.aws_key then
     -- no credentials provided, so try the IAM metadata service
-    local iam_role_credentials, err = singletons.cache:get(
+    local iam_role_credentials, err = kong.cache:get(
       IAM_CREDENTIALS_CACHE_KEY,
       nil,
       fetch_credentials
     )
 
     if not iam_role_credentials then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      return kong.response.exit(500, {
+        message = "An unexpected error occurred"
+      })
     end
 
     opts.access_key = iam_role_credentials.access_key
@@ -299,7 +240,8 @@ function AWSLambdaHandler:access(conf)
   local request
   request, err = aws_v4(opts)
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    kong.log.err(err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   -- Trigger request
@@ -315,12 +257,14 @@ function AWSLambdaHandler:access(conf)
     ok, err = client:connect(host, port)
   end
   if not ok then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    kong.log.err(err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   ok, err = client:ssl_handshake()
   if not ok then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    kong.log.err(err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   local res
@@ -331,7 +275,8 @@ function AWSLambdaHandler:access(conf)
     headers = request.headers
   }
   if not res then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    kong.log.err(err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   local content = res:read_body()
@@ -341,25 +286,37 @@ function AWSLambdaHandler:access(conf)
   ngx.ctx.KONG_WAITING_TIME = get_now() - kong_wait_time_start
   local headers = res.headers
 
+  if var.http2 then
+    headers["Connection"] = nil
+    headers["Keep-Alive"] = nil
+    headers["Proxy-Connection"] = nil
+    headers["Upgrade"] = nil
+    headers["Transfer-Encoding"] = nil
+  end
+
   if conf.proxy_url then
     client:close()
   else
     ok, err = client:set_keepalive(conf.keepalive)
     if not ok then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      kong.log.err(err)
+      return kong.response.exit(500, { message = "An unexpected error occurred" })
     end
   end
 
   local status
+
   if conf.is_proxy_integration then
     local proxy_response, err = extract_proxy_response(content)
     if not proxy_response then
-      return response_bad_gateway("could not JSON decode Lambda function " ..
-                                  "response: " .. tostring(err))
+      kong.log.err(err)
+      return kong.response.exit(502, { message = "Bad Gateway",
+                                       error = "could not JSON decode Lambda " ..
+                                               "function response: " .. err })
     end
 
     status = proxy_response.status_code
-    headers = utils.table_merge(headers, proxy_response.headers)
+    headers = kong.table.merge(headers, proxy_response.headers)
     content = proxy_response.body
   end
 
@@ -375,22 +332,10 @@ function AWSLambdaHandler:access(conf)
   end
 
 
-  local ctx = ngx.ctx
-  if ctx.delay_response and not ctx.delayed_response then
-    ctx.delayed_response = {
-      status_code = status,
-      content     = content,
-      headers     = headers,
-    }
-
-    ctx.delayed_response_callback = flush
-    return
-  end
-
   return send(status, content, headers)
 end
 
 AWSLambdaHandler.PRIORITY = 750
-AWSLambdaHandler.VERSION = "0.1.1"
+AWSLambdaHandler.VERSION = "0.2.0"
 
 return AWSLambdaHandler
