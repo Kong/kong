@@ -3,10 +3,33 @@ local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local stringx = require "pl.stringx"
 local helpers = require "spec.helpers"
+local workspaces = require "kong.workspaces"
 local ee_helpers = require "spec-ee.helpers"
 local singletons = require "kong.singletons"
+local legacy_files = require "kong.portal.migrations.01_legacy_files"
 
 local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
+
+
+local function seed_legacy_files(workspace, db)
+  for _, file in ipairs(legacy_files) do
+    local ok, err = workspaces.run_with_ws_scope(
+      { workspace },
+      db.legacy_files.insert,
+      db.legacy_files,
+      {
+        name = file.name,
+        contents = file.contents,
+        auth = file.auth,
+        type = file.type
+      })
+
+    if not ok then
+      return nil, err
+    end
+  end
+end
+
 
 local function close_clients(clients)
   for idx, client in ipairs(clients) do
@@ -141,6 +164,7 @@ for _, strategy in helpers.each_strategy() do
         portal      = true,
         enforce_rbac = "off",
         portal_auth = "key-auth",
+        portal_is_legacy = true,
         portal_auto_approve = true,
         portal_session_conf = PORTAL_SESSION_CONF,
       }))
@@ -528,6 +552,9 @@ for _, strategy in helpers.each_strategy() do
               },
               headers = {["Content-Type"] = "application/json"},
             })
+
+            local workspace = db.workspaces:select_all({ name = "noauth-test" })
+            seed_legacy_files(workspace[1], db)
 
             assert.equals(201, res.status)
 
@@ -1501,6 +1528,9 @@ for _, strategy in helpers.each_strategy() do
 
         assert.equals(res.status, 201)
 
+        local workspace = db.workspaces:select_all({ name = "sitemaptest" })
+        seed_legacy_files(workspace[1], db)
+
         -- sleep to allow time for threaded file migrations to complete
         ngx.sleep(5)
 
@@ -1544,7 +1574,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equals(1, stringx.count(body, '/default/page_pair'))
         end)
 
-        it("can render sitemap for authenticated user (new workspace default files) #test", function()
+        it("can render sitemap for authenticated user (new workspace default files)", function()
           local res = gui_client_request({
             method = "GET",
             path = "/sitemaptest/sitemap.xml",

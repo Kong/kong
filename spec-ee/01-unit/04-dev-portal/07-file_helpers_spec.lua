@@ -294,6 +294,68 @@ describe("file helpers", function()
         assert.equals(parsed_file.headmatter.dog, "cat")
       end)
 
+      it("can decode valid spec headmatter", function()
+        singletons.db = {
+          files = {
+            each = function()
+              local files = {}
+              for k, v in pairs({}) do
+                files[v] = ""
+              end
+              return pairs(files)
+            end,
+            select_all = function()
+              return {}
+            end,
+            select_by_path = function(self, path)
+              return {}
+            end,
+          }
+        }
+
+        local files = {
+          {
+            path = "specs/spec_1.json",
+            contents = [[
+              x-headmatter:
+                dog: cat
+            ]]
+          },
+          {
+            path = "specs/spec_1.json",
+            contents = [[
+              x-headmatter:
+                dog: cat
+            ]]
+          },
+          {
+            path = "specs/spec_1.json",
+            contents = [[
+              {
+                "x-headmatter": {
+                  "dog": "cat"
+                }
+              }
+            ]]
+          },
+          {
+            path = "specs/spec_1.json",
+            contents = [[
+              {
+                "X-headmatter": {
+                  "dog": "cat"
+                }
+              }
+            ]]
+          }
+        }
+
+        for _, v in ipairs(files) do
+          parsed_file = file_helpers.parse_content(file)
+          assert.equals(parsed_file.headmatter.dog, "cat")
+        end
+      end)
+
       it("does not set route when output is 'false'", function()
         file = {
           path = "content/home.txt",

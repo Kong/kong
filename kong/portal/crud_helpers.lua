@@ -332,9 +332,7 @@ local function initialize_portal_files(premature, workspace, db)
       db.files.insert,
       db.files,
       {
-        auth = file.auth,
-        name = file.name,
-        type = file.type,
+        path = file.path,
         contents = file.contents,
       })
 

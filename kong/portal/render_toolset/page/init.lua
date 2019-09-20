@@ -1,7 +1,7 @@
 local helpers       = require "kong.portal.render_toolset.helpers"
 local workspaces    = require "kong.workspaces"
 local singletons    = require "kong.singletons"
-local markdown      = require "markdown"
+local markdown      = require "kong.portal.render_toolset.markdown"
 local lyaml         = require "lyaml"
 
 local yaml_load     = lyaml.load

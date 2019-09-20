@@ -71,6 +71,7 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.start_kong({
           database = strategy,
           portal = conf_on,
+          portal_is_legacy = true,
           portal_auth = "basic-auth",
           portal_session_conf = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }",
         }))

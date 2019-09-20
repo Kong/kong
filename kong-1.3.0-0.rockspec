@@ -43,7 +43,6 @@ dependencies = {
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.0",
   "lua-resty-template == 1.9-1",
-  "markdown == 0.33-1",
   -- external Kong plugins
   "kong-plugin-kubernetes-sidecar-injector ~> 0.2",
   "kong-plugin-azure-functions ~> 0.4",
@@ -212,6 +211,7 @@ build = {
     ["kong.portal.crud_helpers"] = "kong/portal/crud_helpers.lua",
     ["kong.portal.utils"] = "kong/portal/utils.lua",
     ["kong.portal.migrations.01_initial_files"] = "kong/portal/migrations/01_initial_files.lua",
+    ["kong.portal.migrations.01_legacy_files"] = "kong/portal/migrations/01_legacy_files.lua",
     ["kong.portal.emails"] = "kong/portal/emails.lua",
     ["kong.portal.gui"] = "kong/portal/gui.lua",
     ["kong.portal.auth"] = "kong/portal/auth.lua",
@@ -224,6 +224,7 @@ build = {
     ["kong.portal.classes.portal"] = "kong/portal/classes/portal.lua",
     ["kong.portal.classes.theme"] = "kong/portal/classes/theme.lua",
     ["kong.portal.render_toolset.base"] = "kong/portal/render_toolset/base/init.lua",
+    ["kong.portal.render_toolset.markdown"] = "kong/portal/render_toolset/markdown.lua",
     ["kong.portal.render_toolset.base.boolean"] = "kong/portal/render_toolset/base/boolean.lua",
     ["kong.portal.render_toolset.base.number"] = "kong/portal/render_toolset/base/number.lua",
     ["kong.portal.render_toolset.base.string"] = "kong/portal/render_toolset/base/string.lua",

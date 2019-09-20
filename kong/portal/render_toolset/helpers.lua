@@ -3,7 +3,7 @@ local cjson      = require "cjson.safe"
 local tablex     = require "pl.tablex"
 local stringx    = require "pl.stringx"
 local inspect    = require "inspect"
-local markdown   = require "markdown"
+local markdown   = require "kong.portal.render_toolset.markdown"
 local file_helpers = require "kong.portal.file_helpers"
 
 local yaml_load   = lyaml.load

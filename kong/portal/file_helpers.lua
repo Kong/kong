@@ -63,6 +63,11 @@ local function is_content_path(path)
 end
 
 
+local function is_spec_path(path)
+  return get_prefix(path) == "specs"
+end
+
+
 local function is_layout_path(path)
   return to_bool(match(path, "^themes/[%w-]+/layouts/"))
 end
@@ -180,6 +185,25 @@ local function parse_file_contents(contents)
 end
 
 
+local function parse_spec_contents(contents)
+  local headmatter = {}
+  local ok, parsed_contents = pcall(yaml_load, contents)
+  if not ok or not parsed_contents then
+    return headmatter, contents
+  end
+
+  if parsed_contents["x-headmatter"] then
+    headmatter = parsed_contents["x-headmatter"]
+  end
+
+  if parsed_contents["X-headmatter"] then
+    headmatter = parsed_contents["X-headmatter"]
+  end
+
+  return headmatter, contents
+end
+
+
 local function resolve_route(filename, base_path)
   local route
   if filename == 'index' then
@@ -236,7 +260,12 @@ local function parse_content(file, params)
     return err
   end
 
-  local headmatter, body = parse_file_contents(file.contents)
+  local parse_file = parse_file_contents
+  if is_spec_path(file.path) then
+    parse_file = parse_spec_contents
+  end
+
+  local headmatter, body = parse_file(file.contents)
   if not headmatter or not body then
     return nil, "contents: cannot parse, files with 'content/' prefix must have valid headmatter/body syntax"
   end

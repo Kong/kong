@@ -1303,7 +1303,7 @@
                         # Granularity can be adjusted through the `log_level`
                         # directive.
 
-#portal_is_legacy = on
+#portal_is_legacy = off
                         # Developer Portal legacy support
                         #
                         # Setting this value to `on` will cause all new

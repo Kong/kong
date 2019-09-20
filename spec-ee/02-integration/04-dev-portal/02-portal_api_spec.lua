@@ -809,6 +809,7 @@ for _, strategy in helpers.each_strategy() do
             portal_auth = "basic-auth",
             enforce_rbac = rbac,
             portal_auto_approve = "off",
+            portal_is_legacy = true,
             admin_gui_url = "http://localhost:8080",
           }))
 
@@ -2480,6 +2481,7 @@ for _, strategy in helpers.each_strategy() do
             portal_session_conf = PORTAL_SESSION_CONF,
             portal = true,
             portal_auth = "key-auth",
+            portal_is_legacy = true,
             enforce_rbac = rbac,
             portal_auto_approve = "off",
             admin_gui_url = "http://localhost:8080",

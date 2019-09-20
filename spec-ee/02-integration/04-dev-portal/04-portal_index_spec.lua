@@ -1,6 +1,6 @@
 local ee_helpers = require "spec-ee.helpers"
 local helpers    = require "spec.helpers"
-local singletons   = require "kong.singletons"
+local singletons  = require "kong.singletons"
 local pl_path    = require "pl.path"
 local pl_file    = require "pl.file"
 
@@ -127,6 +127,7 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.start_kong({
           database    = strategy,
           portal      = true,
+          portal_is_legacy = true,
           portal_auth = "basic-auth",
           portal_auto_approve = true,
           portal_session_conf = PORTAL_SESSION_CONF,
@@ -249,6 +250,7 @@ for _, strategy in helpers.each_strategy() do
           portal      = true,
           portal_auth = "basic-auth",
           portal_auto_approve = true,
+          portal_is_legacy = true,
           portal_gui_use_subdomains = true,
           portal_session_conf = PORTAL_SESSION_CONF,
           portal_gui_host = portal_gui_host,
