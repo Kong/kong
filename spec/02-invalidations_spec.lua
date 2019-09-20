@@ -3,7 +3,7 @@ local fmt = string.format
 local lower = string.lower
 local md5 = ngx.md5
 
-local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
+local ldap_host = "localhost"
 
 local ldap_strategies = {
   non_secure = { name = "non-secure", port = 389, start_tls = false, ldaps = false},
@@ -31,7 +31,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             route = { id = route.id },
             name     = "ldap-auth-advanced",
             config   = {
-              ldap_host = ldap_host_aws,
+              ldap_host = ldap_host,
               ldap_port = ldap_strategy.port,
               start_tls = ldap_strategy.start_tls,
               ldaps     = ldap_strategy.ldaps, 
@@ -121,13 +121,13 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               body = {},
               headers = {
                 ["HOST"] = "ldapauth.com",
-                authorization = "ldap " .. ngx.encode_base64("einstein:password")
+                authorization = "ldap " .. ngx.encode_base64("einstein:passw2rd1111A$")
               }
             })
             assert.res_status(200, res)
 
             -- Check that cache is populated
-            local cache_key = cache_key(plugin.config, "einstein", "password")
+            local cache_key = cache_key(plugin.config, "einstein", "passw2rd1111A$")
             res = assert(admin_client:send {
               method = "GET",
               path   = "/cache/" .. cache_key,
@@ -136,7 +136,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             assert.res_status(200, res)
           end)
           it("should invalidate cache once ttl expires", function()
-            local cache_key = cache_key(plugin.config, "einstein", "password")
+            local cache_key = cache_key(plugin.config, "einstein", "passw2rd1111A$")
 
             helpers.wait_until(function()
               local res = assert(admin_client:send {
