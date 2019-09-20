@@ -80,7 +80,7 @@ describe("kong config", function()
       anonymous_reports = "on",
     }))
 
-    local thread = helpers.udp_server(constants.REPORTS.STATS_PORT)
+    local thread = helpers.tcp_server(constants.REPORTS.STATS_PORT)
 
     assert(helpers.kong_exec("config db_import " .. filename, {
       prefix = helpers.test_conf.prefix,
