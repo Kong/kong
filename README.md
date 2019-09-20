@@ -41,9 +41,14 @@ token and secret are no longer required when configuring the plugin.
 The behaviour is now to default to IAM roles, unless the secret and token
 are provided.
 
-When the IAM roles are used (default, if no token/secret is provided), the plugin
-will first try ECS metadata, and if not available it will fallback on EC2
-metadata.
+* When the IAM roles are used (default, if no token/secret is provided), the plugin
+  will first try ECS metadata, and if not available it will fallback on EC2
+  metadata.
+
+* the ability was added to also send very large bodies (that where buffered to
+  disk) by Kong. To control this there is a new setting `skip_large_bodies` which
+  defaults to `true`. Set it to `false` to enable it, but be aware that those
+  very large bodies will have an impact on the system memory.
 
 ## Compatibility
 
