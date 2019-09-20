@@ -136,50 +136,6 @@ local function retrieve_relationship_entity(foreign_factory_key, foreign_id)
 end
 
 
--- fetch the foreign entities associated with a given entity
--- practically, this is used to return the role objects associated with a
--- user, or the permission object associated with a role
--- the kong.cache mechanism is used to cache both the id mapping pairs, as
--- well as the foreign entities themselves
-local function entity_relationships(dao_factory, entity, entity_name, foreign, factory_key)
-  local cache = kong.cache
-
-  -- get the relationship identities for this identity
-  factory_key = factory_key or fmt("rbac_%s_%ss", entity_name, foreign)
-  local relationship_cache_key = dao_factory[factory_key]:cache_key(entity.id)
-  local relationship_ids, err = cache:get(relationship_cache_key, nil,
-                                          retrieve_relationship_ids,
-                                          entity.id, entity_name, factory_key)
-  if err then
-    log(ngx.ERR, "err retrieving relationship ids for ", entity_name, ": ", err)
-    return nil, err
-  end
-
-  -- now get the relationship objects for each relationship id
-  local relationship_objs = {}
-  local foreign_factory_key = fmt("rbac_%ss", foreign)
-
-  for i = 1, #relationship_ids do
-    local foreign_factory_cache_key = dao_factory[foreign_factory_key]:cache_key(
-      relationship_ids[i][foreign].id)
-
-    local relationship, err = cache:get(foreign_factory_cache_key, nil,
-                                        retrieve_relationship_entity,
-                                        foreign_factory_key,
-                                        relationship_ids[i][foreign].id)
-    if err then
-      log(ngx.ERR, "err in retrieving relationship: ", err)
-      return nil, err
-    end
-
-    relationship_objs[#relationship_objs + 1] = relationship
-  end
-
-  return relationship_objs
-end
-_M.entity_relationships = entity_relationships
-
-
 -- predicate answering if a user (rbac_ctx) is able to manage
 -- endpoints from workspace (workspace). Answer is true if user has
 -- all permissions over all endpoints of that workspace ("*" being a
@@ -359,8 +315,53 @@ end
 _M.get_role_endpoints = get_role_endpoints
 
 
+local function retrieve_roles_ids(db, user_id)
+  local relationship_ids = {}
+  for row, err in db.rbac_user_roles:each_for_user({id = user_id }, nil, {skip_rbac = true}) do
+    if err then
+      log(ngx.ERR, "err retrieving roles for user", user_id, ": ", err)
+      return nil, err
+    end
+    relationship_ids[#relationship_ids + 1] = row
+  end
+
+  return relationship_ids
+end
+
 local function get_user_roles(db, user)
-  return entity_relationships(db, user, "user", "role", "rbac_user_roles")
+  local cache = kong.cache
+
+  local relationship_cache_key = db.rbac_user_roles:cache_key(user.id)
+  local relationship_ids, err = cache:get(relationship_cache_key, nil,
+                                          retrieve_roles_ids,
+                                          db,
+                                          user.id)
+
+  if err then
+    log(ngx.ERR, "err retrieving relationship ids for user: ", err)
+    return nil, err
+  end
+
+  -- now get the relationship objects for each relationship id
+  local relationship_objs = {}
+
+  for i = 1, #relationship_ids do
+    local role_entity_key = db.rbac_roles:cache_key(
+      relationship_ids[i]["role"].id)
+
+    local relationship, err = cache:get(role_entity_key, nil,
+      retrieve_relationship_entity,
+      "rbac_roles",
+      relationship_ids[i]["role"].id)
+    if err then
+      log(ngx.ERR, "err in retrieving relationship: ", err)
+      return nil, err
+    end
+
+    relationship_objs[#relationship_objs + 1] = relationship
+  end
+
+  return relationship_objs
 end
 _M.get_user_roles = get_user_roles
 
@@ -436,8 +437,54 @@ end
 _M.set_user_roles = set_user_roles
 
 
+local function retrieve_users_ids(db, role_id)
+  local relationship_ids = {}
+  for row, err in db.rbac_user_roles:each_for_role({id = role_id }, nil, {skip_rbac = true}) do
+    if err then
+      log(ngx.ERR, "err retrieving users for role", role_id, ": ", err)
+      return nil, err
+    end
+    relationship_ids[#relationship_ids + 1] = row
+  end
+
+  return relationship_ids
+end
+
+
 local function get_role_users(db, role)
-  return entity_relationships(db, role, "role", "user", "rbac_user_roles")
+  local cache = kong.cache
+
+  local relationship_cache_key = db.rbac_user_roles:cache_key(role.id)
+  local relationship_ids, err = cache:get(relationship_cache_key, nil,
+                                          retrieve_users_ids,
+                                          db,
+                                          role.id)
+
+  if err then
+    log(ngx.ERR, "err retrieving users ids for role: ", err)
+    return nil, err
+  end
+
+  -- now get the relationship objects for each relationship id
+  local relationship_objs = {}
+
+  for i = 1, #relationship_ids do
+    local role_entity_key = db.rbac_roles:cache_key(
+      relationship_ids[i]["user"].id)
+
+    local relationship, err = cache:get(role_entity_key, nil,
+      retrieve_relationship_entity,
+      "rbac_users",
+      relationship_ids[i]["user"].id)
+    if err then
+      log(ngx.ERR, "err in retrieving relationship: ", err)
+      return nil, err
+    end
+
+    relationship_objs[#relationship_objs + 1] = relationship
+  end
+
+  return relationship_objs
 end
 _M.get_role_users = get_role_users
 
@@ -1172,7 +1219,7 @@ function _M.load_rbac_ctx(dao_factory, ctx, rbac_user)
   local _endpoints_perms = {}
   for _, workspace in ipairs(user_ws_scope) do
     ngx.ctx.workspaces = { workspace }
-    local roles, err = entity_relationships(dao_factory, user, "user", "role")
+    local roles, err = get_user_roles(dao_factory, user)
     if err then
       return nil, err
     end

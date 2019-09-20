@@ -3528,7 +3528,7 @@ for _, strategy in helpers.each_strategy() do
   local services
 
   lazy_setup(function()
-    helpers.get_db_utils()
+    helpers.get_db_utils(strategy)
 
     assert(helpers.start_kong({
       database = strategy
@@ -3624,7 +3624,7 @@ end
 for _, strategy in helpers.each_strategy() do
   describe("RBAC users #" .. strategy, function()
   lazy_setup(function()
-    helpers.get_db_utils()
+    helpers.get_db_utils(strategy)
 
     assert(helpers.start_kong({
       database = strategy,

@@ -149,8 +149,7 @@ return {
     end,
 
     GET = function(self, db, helpers, parent)
-      local roles, err = rbac.entity_relationships(db, self.admin.rbac_user,
-                                                   "user", "role")
+      local roles, err = rbac.get_user_roles(db, self.admin.rbac_user)
 
       if err then
         return endpoints.handle_error(err)
@@ -200,8 +199,7 @@ return {
 
       -- re-fetch the users roles so we show all the role objects, not just our
       -- newly assigned mappings
-      roles, err = rbac.entity_relationships(db, self.admin.rbac_user, "user",
-                                             "role")
+      roles, err = rbac.get_user_roles(db, self.admin.rbac_user)
       if err then
         return endpoints.handle_error(err)
       end
