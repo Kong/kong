@@ -60,7 +60,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("authenticated groups", function()
 
-      it("should set groups from search result with explicit group_base_dn", function()
+      it("should function over ldaps", function()
         local res = assert(admin_client:send {
           method  = "PATCH",
           path    = "/plugins/" .. plugin.id,
