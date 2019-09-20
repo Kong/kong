@@ -1,5 +1,3 @@
-[![Build Status][badge-travis-image]][badge-travis-url]
-
 # kong-plugin-aws-lambda
 
 Invoke an [AWS Lambda](https://aws.amazon.com/lambda/) function from Kong. It can be used in combination with other request plugins to secure, manage or extend the function.
