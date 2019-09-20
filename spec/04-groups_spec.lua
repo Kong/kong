@@ -18,24 +18,24 @@ describe("validate_groups", function()
     "CN=test-group-1,CN=Users,DC=addomain,DC=creativehashtags,DC=com",
     "CN=test-group-2,CN=Users,DC=addomain,DC=creativehashtags,DC=com",
   }
-
+  
   it("should mark groups as valid", function()
     local expected = { "test-group-1", "test-group-2" }
 
     assert.same(expected, ldap_groups.validate_groups(groups, "CN=Users,DC=addomain,DC=creativehashtags,DC=com", "CN"))
     assert.same(expected, ldap_groups.validate_groups(groups, "CN=Users,DC=addomain,DC=creativehashtags,DC=com", "cn"))
     assert.same(expected, ldap_groups.validate_groups(groups, "cn=Users,DC=addomain,dc=creativehashtags,DC=com", "CN"))
-
+    
     -- returns table even when passed as string
     assert.same({expected[1]}, ldap_groups.validate_groups(groups[1], "CN=Users,DC=addomain,DC=creativehashtags,DC=com", "CN"))
   end)
-
+  
   it("should mark groups as invalid", function()
     assert.same(nil, ldap_groups.validate_groups(groups, "cn=Users,DC=addomain,dc=creativehashtags,DC=com", "dc"))
     assert.same(nil, ldap_groups.validate_groups(groups, "dc=creativehashtags,DC=com", "CN"))
     assert.same(nil, ldap_groups.validate_groups(groups, "CN=addomain,CN=creativehashtags,CN=com", "CN"))
   end)
-
+  
   it("filters out invalid groups and returns valid groups", function()
     assert.same({"test-group-1"}, ldap_groups.validate_groups({
       groups[1],
@@ -60,24 +60,24 @@ for _, strategy in helpers.each_strategy() do
         name     = "ldap-auth-advanced",
         config   = ldap_base_config
       }
-
+      
       assert(helpers.start_kong({
         plugins = "ldap-auth-advanced",
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)
-
+    
     before_each(function()
       proxy_client = helpers.proxy_client()
       admin_client = helpers.admin_client()
     end)
-
+    
     after_each(function()
       if proxy_client then
         proxy_client:close()
       end
-
+    
       if admin_client then
         admin_client:close()
       end
@@ -103,7 +103,7 @@ for _, strategy in helpers.each_strategy() do
         local value = assert.request(res).has.header("x-authenticated-groups")
         assert.are.equal("test-group-1", value)
       end)
-
+      
       it("should set groups from search result with more than one group", function()
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -119,7 +119,7 @@ for _, strategy in helpers.each_strategy() do
         local value = assert.request(res).has.header("x-authenticated-groups")
         assert.are.equal("test-group-1, test-group-3", value)
       end)
-
+      
       it("should set groups from search result with explicit group_base_dn", function()
         local res = assert(admin_client:send {
           method  = "PATCH",
@@ -134,7 +134,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equal("CN=Users,dc=ldap,dc=mashape,dc=com", json.config.group_base_dn)
-
+        
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/get",
