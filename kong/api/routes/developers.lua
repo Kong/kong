@@ -106,7 +106,6 @@ local roles_schema = kong.db.rbac_roles.schema
 local get_role_endpoint    = endpoints.get_entity_endpoint(roles_schema)
 local delete_role_endpoint = endpoints.delete_entity_endpoint(roles_schema)
 local patch_role_endpoint  = endpoints.patch_entity_endpoint(roles_schema)
-local get_roles_endpoint   = endpoints.get_collection_endpoint(roles_schema)
 local post_roles_endpoint  = endpoints.post_collection_endpoint(roles_schema)
 
 
@@ -231,8 +230,25 @@ return {
     end,
 
     GET = function(self, db, helpers, parent)
-      local next_page = "/developers/roles"
-      return get_roles_endpoint(self, db, helpers, filter_and_preprocess_roles, next_page)
+      local size = tonumber(self.params.size or 100)
+      local offset = self.params.offset
+
+      self.params.offset = nil
+      self.params.size = nil
+
+      local roles, err, err_t = db.rbac_roles:select_all()
+      if err then
+        return endpoints.handle_error(err_t)
+      end
+
+      local res, _, err_t = crud_helpers.paginate(self, '/developers/roles',
+                                                  roles, size,
+                                                  offset, filter_and_preprocess_roles)
+      if not res then
+        return endpoints.handle_error(err_t)
+      end
+
+      return kong.response.exit(200, res)
     end,
 
     POST = function(self, db, helpers, parent)
