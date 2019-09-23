@@ -22,15 +22,11 @@ title: Dashboard
 ]]
   },
   {
-    checksum = "8c920cbedad10c67d50e06ff7d7be9de71955a1d2db344f727c4b31330d0872a",
+    checksum = "2f459fc754c93569cebe5f10c44fc4538e53531127470d95e5cc14fb645f71e3",
     path = "specs/httpbin.json",
     contents = [[{
   "layout": "system/spec-renderer.html",
   "basePath": "/",
-  "x-headmatter": {
-    "dog": "cat",
-    "bat": "waddup"
-  },
   "definitions": {},
   "host": "httpbin.org",
   "info": {
@@ -1826,13 +1822,10 @@ title: Dashboard
 ]]
   },
   {
-    checksum = "ce8af4717fafe611cbfa601e4ec49b7e46619b1332f45469c7c8ca700dbe71ac",
+    checksum = "a3dd6c0cccf6e14c408a96f95096324f44c395437e29bbd130ddd568e72b800c",
     path = "specs/petstore.yaml",
     contents = [[swagger: "2.0"
 layout: system/spec-renderer.html
-x-headmatter:
-  dog: cat
-  cat: dog
 info:
   version: 1.0.0
   title: Swagger Petstore
@@ -2044,7 +2037,7 @@ pre > code {
 ]]
   },
   {
-    checksum = "c5f124ae51a11bdeaabed45f23e5beb1350f38193b5daf4a8b6f8ab391139273",
+    checksum = "46989acfdad50ba5bbfde7aea8f7e891568d3ec1feb1695cdb0ee168d7258e49",
     path = "themes/light-theme/assets/styles/site.css",
     contents = [[* {
   box-sizing: border-box;
@@ -2325,7 +2318,8 @@ input.has-error {
   }
 
   .site-header nav li ul li a:not(.nav-button):hover {
-    background: var(--accent, #f1f1f1);
+    background: var(--accent, blue);
+    color: var(--button_primary_text, white);
   }
 
   .site-header nav li ul li:first-of-type a {
@@ -4856,7 +4850,7 @@ window.addEventListener("load", function () {
 ]]
   },
   {
-    checksum = "3af0a7a877f7eb144d7932eedbba6ca79661e2118a0fca8b82f37b0785782b2e",
+    checksum = "7a57aa2b8b62280e6c05f2a6102146ffdb5948ca8b763c990c6326be756d77c8",
     path = "themes/light-theme/partials/header.html",
     contents = [[<header class="site-header">
   <div class="container">
@@ -4875,7 +4869,7 @@ window.addEventListener("load", function () {
         {% if portal.auth and portal.auth ~= "" then %}
           {% if user.is_authenticated() then %}
             <li class="has-dropdown">
-              <a href="settings" aria-haspopup="true">{{user.email}}</a>
+              <a href="settings" aria-haspopup="true">{{user.get("email")}}</a>
               <ul class="dropdown" aria-label="submenu">
                 <li><a href="dashboard">Dashboard</a></li>
                 <li><a href="logout">Logout</a></li>
