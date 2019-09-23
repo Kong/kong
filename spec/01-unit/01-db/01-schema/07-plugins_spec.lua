@@ -139,6 +139,9 @@ describe("plugins", function()
         headers = {},
         json = {}
       },
+      rename = {
+        headers = {},
+      },
       replace = {
         headers = {},
         json = {},
