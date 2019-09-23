@@ -9,6 +9,18 @@ local fixtures = {
           server_name collector;
           listen 5000;
 
+          location /service-map {
+              content_by_lua_block {
+                local cjson = require("cjson")
+                local query_args = ngx.req.get_uri_args()
+                if query_args.response_code then
+                  ngx.status = query_args.response_code
+                end
+
+                ngx.say(cjson.encode(query_args))
+              }
+          }
+
           location /alerts {
               content_by_lua_block {
                 local cjson = require("cjson")
@@ -94,59 +106,33 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/service_maps", function()
-      describe("POST", function()
-        it("it stores the given service map data", function()
-          local res = assert(admin_client:send {
-            method = "POST",
-            path = "/workspace1/service_maps",
-            body = { service_map = cjson.encode({ id = workspace1.name})},
-            headers = { ["Content-Type"] = "application/json" }
-          })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.equal(workspace1.id, json.workspace_id)
-
-          -- the above POST should not affect workspace2
-          local res = assert(admin_client:send {
-            method = "GET",
-            path = "/workspace2/service_maps",
-          })
-          assert.res_status(404, res)
-        end)
-      end)
-
       describe("GET", function()
-        before_each(function()
-          local res = assert(admin_client:send {
-            method = "POST",
-            path = "/workspace2/service_maps",
-            body = { service_map = cjson.encode({ id = "workspace2"})},
-            headers = { ["Content-Type"] = "application/json" }
-          })
-          assert.res_status(200, res)
-        end)
-        it("returns the workspace service-map", function()
+        it("forwards query parameters and adds workspace_name", function()
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/workspace2/service_maps"
+            path    = "/workspace2/service_maps?service_id=123"
           })
           local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.equal(workspace2.id, json.data[1].workspace_id)
+          local expected_params = {
+            workspace_name = workspace2.name,
+            service_id = "123",
+          }
+          assert.are.same(cjson.decode(body), expected_params)
         end)
-        it("returns the 404 for workspace without service-map", function()
+
+        it("returns whatever response code returned by upstream", function()
           local res = assert(admin_client:send {
             method  = "GET",
-            path    = "/workspace1/service_maps"
+            path    = "/workspace2/service_maps?response_code=300"
           })
-          assert.res_status(404, res)
+          assert.res_status(300, res)
         end)
       end)
     end)
 
     describe("/collector/alerts", function()
       describe("GET", function()
-        it("forwards query parameters and adds workspace_id", function()
+        it("forwards query parameters and adds workspace_name", function()
           local res = assert(admin_client:send {
             method  = "GET",
             path    = "/workspace2/collector/alerts?severity=high&alert_name=traffic"
