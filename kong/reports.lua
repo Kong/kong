@@ -5,7 +5,7 @@ local constants = require "kong.constants"
 
 local kong_dict = ngx.shared.kong
 local ngx = ngx
-local udp_sock = ngx.socket.udp
+local tcp_sock = ngx.socket.tcp
 local timer_at = ngx.timer.at
 local ngx_log = ngx.log
 local var = ngx.var
@@ -121,25 +121,23 @@ local function send_report(signal_type, t, host, port)
     end
   end
 
-  local sock = udp_sock()
-  local ok, err = sock:setpeername(host, port)
+  local sock = tcp_sock()
+  sock:settimeouts(30000, 30000, 30000)
+
+  local ok, err = sock:connect(host, port)
   if not ok then
-    log(WARN, "could not set peer name for UDP socket: ", err)
+    log(WARN, "could not connect to TCP socket: ", err)
     return
   end
 
-  sock:settimeout(1000)
-
-  -- concat and send buffer
-
-  ok, err = sock:send(concat(_buffer, ";", 1, mutable_idx))
+  local ok, err = sock:send(concat(_buffer, ";", 1, mutable_idx) .. "\n")
   if not ok then
     log(WARN, "could not send data: ", err)
   end
 
-  ok, err = sock:close()
+  ok, err = sock:setkeepalive()
   if not ok then
-    log(WARN, "could not close socket: ", err)
+    log(WARN, "could not setkeepalive socket: ", err)
   end
 end
 

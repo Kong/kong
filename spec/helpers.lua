@@ -561,7 +561,7 @@ local function tcp_server(port, opts)
     function(port, opts)
       local socket = require "socket"
       local server = assert(socket.tcp())
-      server:settimeout(360)
+      server:settimeout(opts.timeout or 360)
       assert(server:setoption("reuseaddr", true))
       assert(server:bind("*", port))
       assert(server:listen())
@@ -570,7 +570,20 @@ local function tcp_server(port, opts)
       local handshake_done = false
       local n = opts.requests or 1
       for _ = 1, n + 1 do
-        local client = assert(server:accept())
+        local client, err
+        if opts.timeout then
+          client, err = server:accept()
+          if err == "timeout" then
+            line = "timeout"
+            break
+
+          else
+            assert(client, err)
+          end
+
+        else
+          client = assert(server:accept())
+        end
 
         if opts.tls and handshake_done then
           local ssl = require "ssl"
@@ -585,7 +598,6 @@ local function tcp_server(port, opts)
           client:dohandshake()
         end
 
-        local err
         line, err = client:receive()
         if err == "closed" then
           fails = fails + 1
@@ -759,71 +771,98 @@ local function udp_server(port, n, timeout)
 end
 
 
-local function mock_reports_server()
+local function mock_reports_server(opts)
   local localhost = "127.0.0.1"
   local threads = require "llthreads2.ex"
   local server_port = constants.REPORTS.STATS_PORT
+  opts = opts or {}
 
   local thread = threads.new({
-    function(port, localhost)
+    function(port, host, opts)
       local socket = require "socket"
-
-      local server = assert(socket.udp())
-      server:settimeout(1)
-      server:setoption("reuseaddr", true)
-      server:setsockname(localhost, port)
+      local server = assert(socket.tcp())
+      server:settimeout(360)
+      assert(server:setoption("reuseaddr", true))
+      assert(server:bind(host, port))
+      assert(server:listen())
       local data = {}
-      local started = false
-      while true do
-        local packet, recvip, recvport = server:receivefrom()
-        if packet then
-          if packet == "\\START" then
-            if not started then
-              started = true
-              server:sendto("\\OK", recvip, recvport)
-            end
-          elseif packet == "\\STOP" then
-            break
+      local handshake_done = false
+      local n = opts.requests or math.huge
+      for _ = 1, n + 1 do
+        local client = assert(server:accept())
+
+        if opts.tls and handshake_done then
+          local ssl = require "ssl"
+          local params = {
+            mode = "server",
+            protocol = "any",
+            key = "spec/fixtures/kong_spec.key",
+            certificate = "spec/fixtures/kong_spec.crt",
+          }
+
+          client = ssl.wrap(client, params)
+          client:dohandshake()
+        end
+
+        local line, err = client:receive()
+        if err ~= "closed" then
+          if not handshake_done then
+            assert(line == "\\START")
+            client:send("\\OK\n")
+            handshake_done = true
+
           else
-            table.insert(data, packet)
+            if line == "@DIE@" then
+              client:close()
+              break
+            end
+
+            table.insert(data, line)
           end
+
+          client:close()
         end
       end
       server:close()
+
       return data
     end
-  }, server_port, localhost)
-  thread:start()
+  }, server_port, localhost, opts)
 
-  local handshake_skt = assert(ngx.socket.udp())
-  handshake_skt:setpeername(localhost, server_port)
-  handshake_skt:settimeout(0.1)
+  thread:start()
 
   -- not necessary for correctness because we do the handshake,
   -- but avoids harmless "connection error" messages in the wait loop
   -- in case the client is ready before the server below.
-  ngx.sleep(0.05)
+  ngx.sleep(0.001)
 
+  local sock = ngx.socket.tcp()
+  sock:settimeout(0.01)
   while true do
-    handshake_skt:send("\\START")
-    local ok = handshake_skt:receive()
-    if ok == "\\OK" then
-      break
+    if sock:connect(localhost, server_port) then
+      sock:send("\\START\n")
+      local ok = sock:receive()
+      sock:close()
+      if ok == "\\OK" then
+        break
+      end
     end
   end
-  handshake_skt:close()
+  sock:close()
 
   return {
     stop = function()
-      local skt = assert(ngx.socket.udp())
-      skt:setpeername(localhost, server_port)
-      skt:send("\\STOP")
+      local skt = assert(ngx.socket.tcp())
+      sock:settimeout(0.01)
+      skt:connect(localhost, server_port)
+      skt:send("@DIE@\n")
       skt:close()
 
       return thread:join()
     end
   }
 end
+
 
 --------------------
 -- Custom assertions
