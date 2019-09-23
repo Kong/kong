@@ -166,6 +166,18 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(false, json.config.start_tls)
         assert.equal(636, json.config.port)
         assert.equal(true, json.config.ldaps)
+
+        -- resetting plugin to LDAP
+        assert(admin_client:send {
+          method  = "PATCH",
+          path    = "/plugins/" .. plugin.id,
+          body    = {
+            config = { start_tls = false, port = 389, ldaps = false }
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
       end)
     end)
   end)
