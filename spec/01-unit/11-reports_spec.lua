@@ -14,8 +14,8 @@ describe("reports", function()
       package.loaded["kong.reports"] = nil
     end)
 
-    it("sends report over UDP", function()
-      local thread = helpers.udp_server(8189)
+    it("sends report over TCP", function()
+      local thread = helpers.tcp_server(8189)
 
       reports.send("stub", {
         hello = "world",
@@ -46,22 +46,21 @@ describe("reports", function()
     it("doesn't send if not enabled", function()
       reports.toggle(false)
 
-      local thread = helpers.udp_server(8189, 1, 0.1)
+      local thread = helpers.tcp_server(8189, { requests = 1, timeout = 0.1 })
 
       reports.send({
         foo = "bar"
       }, "127.0.0.1", 8189)
 
-      local ok, res, err = thread:join()
+      local ok, res = thread:join()
       assert.True(ok)
-      assert.is_nil(res)
-      assert.equal("timeout", err)
+      assert.equal("timeout", res)
     end)
 
     it("accepts custom immutable items", function()
       reports.toggle(true)
 
-      local thread = helpers.udp_server(8189)
+      local thread = helpers.tcp_server(8189)
 
       reports.add_immutable_value("imm1", "fooval")
       reports.add_immutable_value("imm2", "barval")
@@ -92,7 +91,7 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.udp_server(8189)
+        local thread = helpers.tcp_server(8189)
         reports.send_ping("127.0.0.1", 8189)
 
         local _, res = assert(thread:join())
@@ -105,7 +104,7 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.udp_server(8189)
+        local thread = helpers.tcp_server(8189)
         reports.send_ping("127.0.0.1", 8189)
 
         local _, res = assert(thread:join())
@@ -118,7 +117,7 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.udp_server(8189)
+        local thread = helpers.tcp_server(8189)
         reports.send_ping("127.0.0.1", 8189)
 
         local _, res = assert(thread:join())
@@ -133,7 +132,7 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.udp_server(8189)
+        local thread = helpers.tcp_server(8189)
         reports.send_ping("127.0.0.1", 8189)
 
         local _, res = assert(thread:join())
@@ -146,7 +145,7 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.udp_server(8189)
+        local thread = helpers.tcp_server(8189)
         reports.send_ping("127.0.0.1", 8189)
 
         local _, res = assert(thread:join())
@@ -161,7 +160,7 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.udp_server(8189)
+        local thread = helpers.tcp_server(8189)
         reports.send_ping("127.0.0.1", 8189)
 
         local _, res = assert(thread:join())
@@ -174,7 +173,7 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.udp_server(8189)
+        local thread = helpers.tcp_server(8189)
         reports.send_ping("127.0.0.1", 8189)
 
         local _, res = assert(thread:join())
@@ -189,7 +188,7 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.udp_server(8189)
+        local thread = helpers.tcp_server(8189)
         reports.send_ping("127.0.0.1", 8189)
 
         local _, res = assert(thread:join())
@@ -202,7 +201,7 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.udp_server(8189)
+        local thread = helpers.tcp_server(8189)
         reports.send_ping("127.0.0.1", 8189)
 
         local _, res = assert(thread:join())
@@ -217,7 +216,7 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.udp_server(8189)
+        local thread = helpers.tcp_server(8189)
         reports.send_ping("127.0.0.1", 8189)
 
         local _, res = assert(thread:join())
@@ -230,7 +229,7 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.udp_server(8189)
+        local thread = helpers.tcp_server(8189)
         reports.send_ping("127.0.0.1", 8189)
 
         local _, res = assert(thread:join())
@@ -245,7 +244,7 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.udp_server(8189)
+        local thread = helpers.tcp_server(8189)
         reports.send_ping("127.0.0.1", 8189)
 
         local _, res = assert(thread:join())
@@ -258,7 +257,7 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.udp_server(8189)
+        local thread = helpers.tcp_server(8189)
         reports.send_ping("127.0.0.1", 8189)
 
         local _, res = assert(thread:join())
@@ -271,7 +270,7 @@ describe("reports", function()
         }))
         reports.configure_ping(conf)
 
-        local thread = helpers.udp_server(8189)
+        local thread = helpers.tcp_server(8189)
         reports.send_ping("127.0.0.1", 8189)
 
         local _, res = assert(thread:join())
@@ -283,7 +282,7 @@ describe("reports", function()
         local conf = assert(conf_loader())
         reports.configure_ping(conf)
 
-        local thread = helpers.udp_server(8189)
+        local thread = helpers.tcp_server(8189)
         reports.send_ping("127.0.0.1", 8189)
 
         local _, res = assert(thread:join())
