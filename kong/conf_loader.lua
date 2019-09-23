@@ -577,6 +577,13 @@ local function overrides(k, default_v, opts, file_conf, arg_conf)
     end
 
     log.debug('%s ENV found with "%s"', env_name, to_print)
+
+    -- escape "#" in environment variables to avoid them being mangled
+    -- by comment stripping for kong.conf settings
+    if string.match(env, "[^\\]#") then
+      env = ngx.re.gsub(env, "([^\\\\])#", "$1\\#")
+    end
+
     value = env
   end
 
