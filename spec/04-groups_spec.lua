@@ -155,7 +155,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "PATCH",
           path    = "/plugins/" .. plugin.id,
           body    = {
-            config = { start_tls = false, port = 636, ldaps = true }
+            config = { port = 636, ldaps = true }
           },
           headers = {
             ["Content-Type"] = "application/json"
@@ -163,7 +163,6 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal(false, json.config.start_tls)
         assert.equal(636, json.config.port)
         assert.equal(true, json.config.ldaps)
 
@@ -183,7 +182,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "PATCH",
           path    = "/plugins/" .. plugin.id,
           body    = {
-            config = { start_tls = false, port = 389, ldaps = false }
+            config = { port = 389, ldaps = false }
           },
           headers = {
             ["Content-Type"] = "application/json"
@@ -192,7 +191,6 @@ for _, strategy in helpers.each_strategy() do
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal(false, json.config.start_tls)
         assert.equal(389, json.config.port)
         assert.equal(false, json.config.ldaps)
       end)
