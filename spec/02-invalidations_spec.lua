@@ -34,7 +34,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldap_host = ldap_host_aws,
               ldap_port = ldap_strategy.port,
               start_tls = ldap_strategy.start_tls,
-              ldaps     = ldap_strategy.ldaps, 
+              ldaps     = ldap_strategy.ldaps,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
               attribute = "uid",
               cache_ttl = 1,
