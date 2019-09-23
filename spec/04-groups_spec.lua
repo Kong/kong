@@ -149,6 +149,24 @@ for _, strategy in helpers.each_strategy() do
         local value = assert.request(res).has.header("x-authenticated-groups")
         assert.are.equal("test-group-1", value)
       end)
+
+      it("should operate over LDAPS", function()
+        local res = assert(admin_client:send {
+          method  = "PATCH",
+          path    = "/plugins/" .. plugin.id,
+          body    = {
+            config = { start_tls = false, port = 636, ldaps = true }
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(false, json.config.start_tls)
+        assert.equal(636, json.config.port)
+        assert.equal(true, json.config.ldaps)
+      end)
     end)
   end)
 end
