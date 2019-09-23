@@ -176,6 +176,8 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(200)
+        local value = assert.request(res).has.header("x-authenticated-groups")
+        assert.are.equal("test-group-2", value)
 
         -- resetting plugin to LDAP
         local res = assert(admin_client:send {
