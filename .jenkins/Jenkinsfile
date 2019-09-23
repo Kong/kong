@@ -41,8 +41,8 @@ pipeline {
             [[ $i -lt 60 ]] || false
         '''
         sh '$GOJIRA run  -k . -p $JENKINS_PROJECT luacheck -q .'
-        sh '$GOJIRA run  -k . -p $JENKINS_PROJECT bin/busted -- -v -o gtest --exclude-tags=flaky,ipv6 spec/01-unit'
-        sh '$GOJIRA run  -k . -p $JENKINS_PROJECT bin/busted -- -v -o gtest --exclude-tags=flaky,ipv6 spec-ee/01-unit'
+        sh '$GOJIRA run  -k . -p $JENKINS_PROJECT bin/busted -- -v -o gtest --exclude-tags=flaky,ipv6,grpc spec/01-unit'
+        sh '$GOJIRA run  -k . -p $JENKINS_PROJECT bin/busted -- -v -o gtest --exclude-tags=flaky,ipv6,grpc spec-ee/01-unit'
         sh '$GOJIRA down -k . -p $JENKINS_PROJECT'
       }
     }
@@ -54,6 +54,7 @@ pipeline {
             TEST_SUITE='lint'
             KONG_TEST_DATABASE='cassandra'
             JENKINS_PROJECT="${KONG_TEST_DATABASE}-${BUILD_NUMBER}"
+            BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6,grpc"
           }
           steps {
             sh '$GOJIRA up   -k . -p $JENKINS_PROJECT --$KONG_TEST_DATABASE -v /kong/servroot -v /kong/servroot1 -v /kong/servroot2 -v /kong/servroot3'
@@ -76,6 +77,7 @@ pipeline {
           environment {
             KONG_TEST_DATABASE='postgres'
             JENKINS_PROJECT="${KONG_TEST_DATABASE}-${BUILD_NUMBER}"
+            BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6,grpc"
           }
           steps {
             sh '$GOJIRA up   -k . -p $JENKINS_PROJECT --$KONG_TEST_DATABASE -v /kong/servroot -v /kong/servroot1 -v /kong/servroot2 -v /kong/servroot3'

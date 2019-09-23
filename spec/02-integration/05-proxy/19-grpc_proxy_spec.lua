@@ -4,7 +4,7 @@ local cjson = require "cjson"
 
 for _, strategy in helpers.each_strategy() do
 
-  describe("gRPC Proxying [#" .. strategy .. "]", function()
+  describe("#grpc Proxying [#" .. strategy .. "]", function()
     local proxy_client_grpc
     local proxy_client_grpcs
     local proxy_client

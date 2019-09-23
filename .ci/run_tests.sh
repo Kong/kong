@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-export BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6"
+export BUSTED_ARGS=${BUSTED_ARGS:-"-o gtest -v --exclude-tags=flaky,ipv6"}
 
 if [ "$KONG_TEST_DATABASE" == "postgres" ]; then
     export TEST_CMD="bin/busted $BUSTED_ARGS,cassandra,off"
