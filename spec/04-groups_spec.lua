@@ -155,7 +155,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "PATCH",
           path    = "/plugins/" .. plugin.id,
           body    = {
-            config = { port = 636, ldaps = true }
+            config = { ldap_port = 636, ldaps = true }
           },
           headers = {
             ["Content-Type"] = "application/json"
@@ -163,7 +163,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal(636, json.config.port)
+        assert.equal(636, json.config.ldap_port)
         assert.equal(true, json.config.ldaps)
 
         local res = assert(proxy_client:send {
@@ -184,7 +184,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "PATCH",
           path    = "/plugins/" .. plugin.id,
           body    = {
-            config = { port = 389, ldaps = false }
+            config = { ldap_port = 389, ldaps = false }
           },
           headers = {
             ["Content-Type"] = "application/json"
@@ -193,7 +193,7 @@ for _, strategy in helpers.each_strategy() do
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal(389, json.config.port)
+        assert.equal(389, json.config.ldap_port)
         assert.equal(false, json.config.ldaps)
       end)
     end)
