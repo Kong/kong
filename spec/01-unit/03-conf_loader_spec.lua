@@ -229,6 +229,61 @@ describe("Configuration loader", function()
     local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
     assert.equal("test#123", conf.pg_password)
   end)
+  it("escapes unescaped octothorpes in environment variables", function()
+    finally(function()
+      helpers.unsetenv("KONG_PG_PASSWORD")
+    end)
+    helpers.setenv("KONG_PG_PASSWORD", "test#123")
+    local conf = assert(conf_loader())
+    assert.equal("test#123", conf.pg_password)
+
+    helpers.setenv("KONG_PG_PASSWORD", "test#12#3")
+    local conf = assert(conf_loader())
+    assert.equal("test#12#3", conf.pg_password)
+
+    helpers.setenv("KONG_PG_PASSWORD", "test##12##3#")
+    local conf = assert(conf_loader())
+    assert.equal("test##12##3#", conf.pg_password)
+  end)
+  it("escapes unescaped octothorpes in custom_conf overrides", function()
+    local conf = assert(conf_loader(nil, {
+      pg_password = "test#123",
+    }))
+    assert.equal("test#123", conf.pg_password)
+
+    local conf = assert(conf_loader(nil, {
+      pg_password = "test#12#3",
+    }))
+    assert.equal("test#12#3", conf.pg_password)
+
+    local conf = assert(conf_loader(nil, {
+      pg_password = "test##12##3#",
+    }))
+    assert.equal("test##12##3#", conf.pg_password)
+  end)
+  it("does not modify existing escaped octothorpes in environment variables", function()
+    finally(function()
+      helpers.unsetenv("KONG_PG_PASSWORD")
+    end)
+    helpers.setenv("KONG_PG_PASSWORD", [[test\#123]])
+    local conf = assert(conf_loader())
+    assert.equal("test#123", conf.pg_password)
+
+    helpers.setenv("KONG_PG_PASSWORD", [[test\#\#12\#\#3\#]])
+    local conf = assert(conf_loader())
+    assert.equal("test##12##3#", conf.pg_password)
+  end)
+  it("does not modify existing escaped octothorpes in custom_conf overrides", function()
+    local conf = assert(conf_loader(nil, {
+      pg_password = [[test\#123]],
+    }))
+    assert.equal("test#123", conf.pg_password)
+
+    local conf = assert(conf_loader(nil, {
+      pg_password = [[test\#\#12\#\#3\#]],
+    }))
+    assert.equal("test##12##3#", conf.pg_password)
+  end)
 
   describe("dynamic directives", function()
     it("loads flexible prefix based configs from a file", function()

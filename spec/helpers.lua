@@ -46,6 +46,13 @@ local http = require "resty.http"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
+local ffi = require "ffi"
+
+
+ffi.cdef [[
+  int setenv(const char *name, const char *value, int overwrite);
+  int unsetenv(const char *name);
+]]
 
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
@@ -1969,6 +1976,12 @@ return {
       kill.kill(pid_path, "-TERM")
       wait_pid(pid_path, timeout)
     end
+  end,
+  setenv = function(env, value)
+    return ffi.C.setenv(env, value, 1) == 0
+  end,
+  unsetenv = function(env)
+    return ffi.C.unsetenv(env) == 0
   end,
 
   make_yaml_file = make_yaml_file,
