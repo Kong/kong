@@ -5,6 +5,7 @@ local cjson = require "cjson.safe"
 local ws_dao_wrappers = require "kong.workspaces.dao_wrappers"
 local counters = require "kong.workspaces.counters"
 local base = require "resty.core.base"
+local pl_template = require "pl.template"
 
 
 local find    = string.find
@@ -23,6 +24,7 @@ local tostring = tostring
 local inc_counter = counters.inc_counter
 local table_concat = table.concat
 local table_remove = table.remove
+local match = string.match
 
 
 local _M = {}
@@ -534,7 +536,7 @@ end
 -- match each one of the combinations of accepted [hosts, uris,
 -- methods]. The function returns false iff none of the variants
 -- collide.
-function _M.is_route_colliding(req, router)
+local function is_route_crud_allowed_smart(req, router)
   router = router or singletons.router
   local params = req.params
   local methods, uris, hosts = sanitize_routes_ngx_nulls(params.methods, params.paths, params.hosts)
@@ -546,16 +548,64 @@ function _M.is_route_colliding(req, router)
     if type(perm[1]) ~= "string" or
        type(perm[2]) ~= "string" or
        type(perm[3]) ~= "string" then
-         return false -- we can't check for collisions. let the
+         return true -- we can't check for collisions. let the
                       -- schema validator handle the type error
     end
 
     if not validate_route_for_ws(router, perm[1], perm[2], perm[3], ws) then
       ngx_log(DEBUG, "route collided")
-      return true
+      return false, { code = 409,
+                      message = "API route collides with an existing API" }
     end
   end
-  return false
+  return true
+end
+
+
+local compiled_template_cache
+local function validate_path_with_regexes(path, pattern)
+
+  local compiled_template = compiled_template_cache
+  if not compiled_template then
+    compiled_template = pl_template.compile(pattern)
+    compiled_template_cache = compiled_template
+  end
+
+  local pattern = compiled_template:render({
+    workspace = ngx.ctx.workspaces[1].name
+  })
+
+  if not match(path, format("^%s$", pattern)) then
+    return false,
+    format("invalid path: '%s ' (should match pattern '%s')", path, pattern)
+  end
+
+  return true
+end
+
+local function validate_paths(self)
+  local pattern = kong.configuration.enforce_route_path_pattern
+
+  for _, path in pairs(self.params.paths or {}) do
+    local ok, err = validate_path_with_regexes(path, pattern)
+    if not ok then
+      return false, { code = 400,
+                     message = err }
+    end
+  end
+
+  return true
+end
+
+local route_collision_strategies = {
+  off = function() return true end,
+  smart = is_route_crud_allowed_smart,
+  path = validate_paths,
+}
+
+function _M.is_route_crud_allowed(req, router)
+  local strategy = kong.configuration.route_validation_strategy
+  return route_collision_strategies[strategy](req, router)
 end
 
 

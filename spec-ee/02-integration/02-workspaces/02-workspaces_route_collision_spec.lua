@@ -151,4 +151,37 @@ describe("DB [".. strategy .. "] routes are checked for colisions ", function()
     patch("/ws2/routes/" .. r.id, {['hosts[]'] = "example.org"}, nil, 409)
   end)
 end)
+
+describe("DB [".. strategy .. "] with route_validation_strategy = off", function()
+  setup(function()
+    helpers.get_db_utils(strategy)
+
+    assert(helpers.start_kong({
+      database   = strategy,
+      route_validation_strategy = 'off',
+    }))
+
+    client = assert(helpers.admin_client())
+
+    post("/workspaces", {name = "ws1"})
+    post("/workspaces", {name = "ws2"})
+    post("/ws1/services", {name = "default-service", host = "httpbin1.org"})
+    post("/ws2/services", {name = "default-service", host = "httpbin2.org"})
+    post("/ws1/services/default-service/routes", {['hosts[]'] = "example.org"})
+  end)
+
+  teardown(function()
+    helpers.stop_kong()
+    client:close()
+  end)
+
+  it("collision checks do not happen", function()
+    post("/ws2/services/default-service/routes",
+      {['hosts[]'] = "example.org"})
+  end)
+
+
+
+end)
+
 end

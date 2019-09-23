@@ -209,12 +209,11 @@ function _M.create_routes(spec, services)
         },
       }
 
-      if workspaces.is_route_colliding(route_conf, singletons.router) then
-        return nil, {
-          message = "API route collides with an existing API",
-          code = 409,
-        }
+      local ok, err = workspaces.is_route_crud_allowed(route_conf, singletons.router)
+      if not ok then
+        return nil, err
       end
+
 
       local route, _, err_t = singletons.db.routes:insert(route_conf.params)
       if err_t then

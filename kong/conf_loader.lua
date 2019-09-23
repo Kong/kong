@@ -330,6 +330,8 @@ local CONF_INFERENCES = {
   tracing_debug_header = {typ = "string"},
   generate_trace_details = {typ = "boolean"},
 
+  route_validation_strategy = { enum = {"smart", "path", "off"}},
+  enforce_route_path_pattern = {typ = "string"},
 }
 
 

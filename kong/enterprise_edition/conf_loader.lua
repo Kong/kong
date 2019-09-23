@@ -323,6 +323,22 @@ local function validate_tracing(conf, errors)
 end
 
 
+local function validate_route_path_pattern(conf, errors)
+  local pattern = conf.enforce_route_path_pattern
+  if conf.route_validation_strategy == "path" then
+    if not pattern then
+      errors[#errors + 1] = "'enforce_route_path_pattern'is required when" ..
+        "'route_validation_strategy' is set to 'path'"
+      return
+    end
+
+    if not string.match(pattern, "^/[%w%.%-%_~%/%%%$%(%)%*]*$") then
+      errors[#errors + 1] = "invalid path pattern: '" .. pattern
+    end
+  end
+end
+
+
 local function validate(conf, errors)
   validate_admin_gui_authentication(conf, errors)
   validate_admin_gui_ssl(conf, errors)
@@ -352,6 +368,7 @@ local function validate(conf, errors)
   validate_vitals_tsdb(conf, errors)
   add_ee_required_plugins(conf)
   validate_tracing(conf, errors)
+  validate_route_path_pattern(conf, errors)
 end
 
 
@@ -364,4 +381,5 @@ return {
   validate_portal_smtp_config = validate_portal_smtp_config,
   validate_portal_cors_origins = validate_portal_cors_origins,
   validate_tracing = validate_tracing,
+  validate_route_path_pattern = validate_route_path_pattern,
 }
