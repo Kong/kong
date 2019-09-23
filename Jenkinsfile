@@ -125,14 +125,15 @@ pipeline {
       }
       steps {
         parallel (
+          // beware! $KONG_VERSION might have an ending \n that swallows everything after it
           alpine: {
-            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -v $KONG_VERSION -e -R ${env.RELEASE_SCOPE}"
+            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
           },
           centos7: {
-            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -v $KONG_VERSION -e -R ${env.RELEASE_SCOPE}"
+            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION -e -R ${env.RELEASE_SCOPE}"
           },
           rhel: {
-            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -v $KONG_VERSION -e -R ${env.RELEASE_SCOPE}"
+            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION -e -R ${env.RELEASE_SCOPE}"
           },
         )
       }
