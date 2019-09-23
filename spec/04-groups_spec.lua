@@ -167,8 +167,19 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(636, json.config.port)
         assert.equal(true, json.config.ldaps)
 
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          body    = {},
+          headers = {
+            host             = "ldap.com",
+            authorization    = "ldap " .. ngx.encode_base64("Desdemona:passw2rd1111A$"),
+          }
+        })
+        assert.response(res).has.status(200)
+
         -- resetting plugin to LDAP
-        assert(admin_client:send {
+        local res = assert(admin_client:send {
           method  = "PATCH",
           path    = "/plugins/" .. plugin.id,
           body    = {
@@ -178,6 +189,12 @@ for _, strategy in helpers.each_strategy() do
             ["Content-Type"] = "application/json"
           }
         })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(false, json.config.start_tls)
+        assert.equal(389, json.config.port)
+        assert.equal(false, json.config.ldaps)
       end)
     end)
   end)
