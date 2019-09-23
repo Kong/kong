@@ -47,6 +47,10 @@ local HEADER_KEY_TO_NAME = {
 
 local DYNAMIC_KEY_NAMESPACES = {
   {
+    injected_conf_name = "nginx_http_status_directives",
+    prefix = "nginx_http_status_",
+  },
+  {
     injected_conf_name = "nginx_http_upstream_directives",
     prefix = "nginx_http_upstream_",
   },
@@ -111,6 +115,7 @@ local CONF_INFERENCES = {
   -- forced string inferences (or else are retrieved as numbers)
   proxy_listen = { typ = "array" },
   admin_listen = { typ = "array" },
+  status_listen = { typ = "array" },
   stream_listen = { typ = "array" },
   origins = { typ = "array" },
   db_update_frequency = {  typ = "number"  },
@@ -209,6 +214,8 @@ local CONF_INFERENCES = {
   proxy_error_log = { typ = "string" },
   admin_access_log = { typ = "string" },
   admin_error_log = { typ = "string" },
+  status_access_log = { typ = "string" },
+  status_error_log = { typ = "string" },
   log_level = { enum = {
                   "debug",
                   "info",
@@ -1003,6 +1010,13 @@ local function load(path, custom_conf, opts)
         break
       end
     end
+
+    conf.status_listeners, err = parse_listeners(conf.status_listen, { "ssl" })
+    if err then
+      return nil, "status_listen " .. err
+    end
+
+    setmetatable(conf.status_listeners, _nop_tostring_mt)
   end
 
   do
