@@ -18,7 +18,7 @@ do
 
   for _, credential_source in ipairs(credential_sources) do
     if credential_source.configured then
-      fetch_credentials = credential_source.fetchCredential
+      fetch_credentials = credential_source.fetchCredentials
       break
     end
   end
