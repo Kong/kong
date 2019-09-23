@@ -252,4 +252,41 @@ server {
     }
 }
 > end
+
+> if #status_listeners > 0 then
+server {
+    server_name kong_status;
+> for i = 1, #status_listeners do
+    listen $(status_listeners[i].listener);
+> end
+
+    access_log ${{STATUS_ACCESS_LOG}};
+    error_log ${{STATUS_ERROR_LOG}} ${{LOG_LEVEL}};
+
+    # injected nginx_http_status_* directives
+> for _, el in ipairs(nginx_http_status_directives) do
+    $(el.name) $(el.value);
+> end
+
+    location / {
+        default_type application/json;
+        content_by_lua_block {
+            Kong.status_content()
+        }
+        header_filter_by_lua_block {
+            Kong.status_header_filter()
+        }
+    }
+
+    location /nginx_status {
+        internal;
+        access_log off;
+        stub_status;
+    }
+
+    location /robots.txt {
+        return 200 'User-agent: *\nDisallow: /';
+    }
+}
+> end
 ]]

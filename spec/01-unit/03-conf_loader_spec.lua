@@ -348,6 +348,8 @@ describe("Configuration loader", function()
 
       assert.True(search_directive(conf.nginx_admin_directives,
                                    "server_tokens", "build"))
+      assert.True(search_directive(conf.nginx_http_status_directives,
+                                   "client_body_buffer_size", "8k"))
     end)
   end)
 

@@ -1085,7 +1085,7 @@ function Kong.handle_error()
 end
 
 
-function Kong.admin_content(options)
+local function serve_content(module, options)
   kong_global.set_phase(kong, PHASES.admin_api)
 
   local ctx = ngx.ctx
@@ -1110,11 +1110,16 @@ function Kong.admin_content(options)
     return ngx.exit(204)
   end
 
-  lapis.serve("kong.api")
+  lapis.serve(module)
 
   ctx.KONG_ADMIN_CONTENT_ENDED_AT = get_now_ms()
   ctx.KONG_ADMIN_CONTENT_TIME = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_ADMIN_CONTENT_START
   ctx.KONG_ADMIN_LATENCY = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_PROCESSING_START
+end
+
+
+function Kong.admin_content(options)
+  return serve_content("kong.api", options)
 end
 
 
@@ -1150,6 +1155,14 @@ function Kong.admin_header_filter()
   --ctx.KONG_ADMIN_HEADER_FILTER_ENDED_AT = get_now_ms()
   --ctx.KONG_ADMIN_HEADER_FILTER_TIME = ctx.KONG_ADMIN_HEADER_FILTER_ENDED_AT - ctx.KONG_ADMIN_HEADER_FILTER_START
 end
+
+
+function Kong.status_content()
+  return serve_content("kong.status")
+end
+
+
+Kong.status_header_filter = Kong.admin_header_filter
 
 
 return Kong

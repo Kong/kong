@@ -59,6 +59,19 @@
                                           # is adjusted by the `log_level`
                                           # property.
 
+#status_access_log = off                  # Path for Status API request access
+                                          # logs. The default value of `off`
+                                          # implies that loggin for this API
+                                          # is disabled by default.
+                                          # If this value is a relative path,
+                                          # it will be placed under the
+                                          # `prefix` location.
+
+#status_error_log = logs/status_error.log # Path for Status API request error
+                                          # logs. The granularity of these logs
+                                          # is adjusted by the `log_level`
+                                          # property.
+
 #plugins = bundled               # Comma-separated list of plugins this node
                                  # should load. By default, only plugins
                                  # bundled in official distributions are
@@ -234,7 +247,20 @@
                          # capabilities) pulling its configuration changes
                          # from the database.
                          #
-                         # Example: `stream_listen = 127.0.0.1:8444 http2 ssl`
+                         # Example: `admin_listen = 127.0.0.1:8444 http2 ssl`
+
+ #status_listen = off    # Comma-separated list of addresses and ports on
+                         # which the Status API should listen.
+                         # The Status API is a read-only endpoint
+                         # allowing monitoring tools to retrieve metrics,
+                         # healthiness, and other non-sensitive information
+                         # of the current Kong node.
+                         #
+                         # This value can be set to `off`, disabling
+                         # the Status API for this node.
+                         #
+                         # Example: `status_listen = 0.0.0.0:8100`
+
 
 #nginx_user = nobody nobody      # Defines user and group credentials used by
                                  # worker processes. If group is omitted, a

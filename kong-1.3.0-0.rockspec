@@ -118,6 +118,8 @@ build = {
     ["kong.api.routes.snis"] = "kong/api/routes/snis.lua",
     ["kong.api.routes.tags"] = "kong/api/routes/tags.lua",
 
+    ["kong.status"] = "kong/status/init.lua",
+
     ["kong.tools.cluster_ca"] = "kong/tools/cluster_ca.lua",
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
