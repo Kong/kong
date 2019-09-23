@@ -190,4 +190,6 @@ tracing_time_threshold = 0
 tracing_types = all
 tracing_debug_header =
 generate_trace_details = off
+route_validation_strategy = smart
+enforce_route_path_pattern = NONE
 ]]

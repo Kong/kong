@@ -293,9 +293,15 @@ function _PDK.new(kong_config, major_version, self)
       error("PDK module '" .. module_name .. "' conflicts with a key")
     end
 
+    local utils = require "kong.tools.utils"
     local mod = require("kong.pdk." .. module_name)
+    local loaded, ee_mod = utils.load_module_if_exists("kong.enterprise_edition.pdk." .. module_name)
+    if loaded then
+      parent[child] = ee_mod.new(self, mod)
+    else
+      parent[child] = mod.new(self)
+    end
 
-    parent[child] = mod.new(self)
   end
 
   return self

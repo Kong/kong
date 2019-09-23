@@ -1652,3 +1652,35 @@
                                  # information, such as raw SQL queries; care
                                  # should be taken to store traces properly when
                                  # this option is enabled.
+
+#-------------------------------------------------------------------------------
+# ROUTE COLLISION DETECTION/PREVENTION
+# -------------------------------------------------------------------------------
+# route_validation_strategy = smart # The strategy used to validate
+                                    # routes when creating or updating them.
+                                    # Different strategies are available to tune
+                                    # how to enforce splitting traffic of
+                                    # workspaces.
+                                    # - 'smart' is the default option and uses the
+                                    # algorithm described in
+                                    # - 'off' disables any check
+                                    # - 'path' enforces routes to comply with the pattern
+                                    # described in config enforce_route_path_pattern
+
+# enforce_route_path_pattern =  # Here you can specify Lua pattern which will
+                                # be enforced on a `path` attributes of a
+                                # route object. You can also add a
+                                # placeholder for workspace in pattern, which
+                                # will be rendered during runtime based on
+                                # workspace to which `route` belongs to. It a
+                                # field if 'route_validation_strategy'
+                                # is set to 'path'
+                                #
+                                #
+                                # Example
+                                # For Pattern '/$(workspace)/v%d/.*' valid path
+                                # are:
+                                # 1. '/group1/v1/' if route belongs to
+                                #   workspace 'group1'.
+                                # 2. '/group2/v1/some_path' if route belongs to
+                                #   workspace 'group2'.

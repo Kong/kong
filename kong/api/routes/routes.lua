@@ -8,7 +8,7 @@ local uuid = require("kong.tools.utils").uuid
 
 
 local kong = kong
-local null        = ngx.null
+local null = ngx.null
 
 
 local function post_process(data)
@@ -92,10 +92,12 @@ end
 
 
 local function rebuild_routes(db)
-  local old_wss = ngx.ctx.workspaces
-  ngx.ctx.workspaces = {}
-  core_handler.build_router(db, uuid())
-  ngx.ctx.workspaces = old_wss
+  if kong.configuration.route_validation_strategy ~= 'off'  then
+    local old_wss = ngx.ctx.workspaces
+    ngx.ctx.workspaces = {}
+    core_handler.build_router(db, uuid())
+    ngx.ctx.workspaces = old_wss
+  end
 end
 
 
@@ -104,10 +106,11 @@ return {
     POST = function(self, db, helpers, parent)
       rebuild_routes(db)
 
-      if workspaces.is_route_colliding(self, singletons.router) then
-        local err = "API route collides with an existing API"
-        return kong.response.exit(409, {message = err})
+      local ok, err = workspaces.is_route_crud_allowed(self, singletons.router)
+      if not ok then
+        return kong.response.exit(err.code, {message = err.message})
       end
+
       return parent()
     end,
     GET = function(self, db, helpers, parent)
@@ -122,6 +125,7 @@ return {
       return parent()
     end,
     POST = function(self, db, helpers, parent)
+      --todo change it to PUT, handle route collision
       rebuild_routes(db)
       return parent()
     end,
@@ -132,15 +136,16 @@ return {
 
     PATCH = function(self, db, helpers, parent)
       -- create temporary router
+      rebuild_routes(db)
+
       local old_workspaces = ngx.ctx.workspaces
       ngx.ctx.workspaces = {}
-      core_handler.build_router(db, uuid())
       local r = build_router_without(self.params.routes)
       ngx.ctx.workspaces = old_workspaces
 
-      if workspaces.is_route_colliding(self, r) then
-        local err = "API route collides with an existing API"
-        return kong.response.exit(409, {message = err})
+      local ok, err = workspaces.is_route_crud_allowed(self, r)
+      if not ok then
+        return kong.response.exit(err.code, {message = err.message})
       end
 
       return parent()

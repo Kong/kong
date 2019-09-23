@@ -151,6 +151,17 @@ qq{
                 body_filter   = true,
                 log           = true,
                 admin_api     = true,
+            } , {
+                method        = "register_hook",
+                args          = { "exit", function () end, {} },
+                init_worker   = true,
+                certificate   = "pending",
+                rewrite       = "forced false",
+                access        = "forced false",
+                header_filter = "forced false",
+                body_filter   = "forced false",
+                log           = "forced false",
+                admin_api     = "forced false",
             }
         }
 

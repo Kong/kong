@@ -103,6 +103,7 @@ build = {
     ["kong.enterprise_edition.utils"] = "kong/enterprise_edition/utils.lua",
     ["kong.enterprise_edition.invoke_plugin"] = "kong/enterprise_edition/invoke_plugin.lua",
     ["kong.enterprise_edition.distributions_constants"] = "kong/enterprise_edition/distributions_constants.lua",
+    ["kong.enterprise_edition.pdk.response"] = "kong/enterprise_edition/pdk/response.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",

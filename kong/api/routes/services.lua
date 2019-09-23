@@ -21,10 +21,12 @@ end
 return {
   ["/services/:services/routes"] = {
     before = function(self, db, helpers)
-      local old_wss = ngx.ctx.workspaces
-      ngx.ctx.workspaces = {}
-      core_handler.build_router(db, uuid())
-      ngx.ctx.workspaces = old_wss
+      if kong.configuration.route_validation_strategy ~= 'off'  then
+        local old_wss = ngx.ctx.workspaces
+        ngx.ctx.workspaces = {}
+        core_handler.build_router(db, uuid())
+        ngx.ctx.workspaces = old_wss
+      end
 
       -- check for the service existence
       local id = self.params.services
@@ -41,9 +43,9 @@ return {
     end,
 
     POST = function(self, _, _, parent)
-      if workspaces.is_route_colliding(self, singletons.router) then
-        local err = "API route collides with an existing API"
-        return kong.response.exit(409, { message = err })
+      local ok, err = workspaces.is_route_crud_allowed(self, singletons.router)
+      if not ok then
+        return kong.response.exit(err.code, {message = err.message})
       end
       return parent()
     end
