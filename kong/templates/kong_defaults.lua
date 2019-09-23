@@ -5,12 +5,15 @@ proxy_access_log = logs/access.log
 proxy_error_log = logs/error.log
 admin_access_log = logs/admin_access.log
 admin_error_log = logs/error.log
+status_access_log = off
+status_error_log = logs/status_error.log
 plugins = bundled
 anonymous_reports = on
 
 proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 http2 ssl
 stream_listen = off
 admin_listen = 127.0.0.1:8001, 127.0.0.1:8444 http2 ssl
+status_listen = off
 origins = NONE
 nginx_user = nobody nobody
 nginx_worker_processes = auto
