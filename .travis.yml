@@ -43,7 +43,6 @@ env:
     - TEST_SUITE=pdk
 
 install:
-  - make setup-ci
   - source .ci/setup_env.sh
   - make dev
 
