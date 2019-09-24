@@ -319,7 +319,7 @@ server {
     gzip on;
     gzip_types text/plain text/css application/json application/javascript;
 
-    location ^~ /legacy {
+    location ^~ /__legacy {
         root portal;
 
         header_filter_by_lua_block {
