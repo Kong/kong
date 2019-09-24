@@ -1,6 +1,6 @@
 local basic_serializer = require "kong.plugins.log-serializers.basic"
 local statsd_logger    = require "kong.plugins.datadog.statsd_logger"
-
+local utils            = require "kong.tools.utils"
 
 local ngx_log       = ngx.log
 local ngx_timer_at  = ngx.timer.at
@@ -29,19 +29,19 @@ local get_consumer_id = {
 
 
 local metrics = {
-  status_count = function (service_name, message, metric_config, logger)
+  status_count = function (service_name, message, metric_config, logger, all_tags)
     local fmt = string_format("%s.request.status", service_name,
                        message.response.status)
 
     logger:send_statsd(string_format("%s.%s", fmt, message.response.status),
                        1, logger.stat_types.counter,
-                       metric_config.sample_rate, metric_config.tags)
+                       metric_config.sample_rate, all_tags)
 
     logger:send_statsd(string_format("%s.%s", fmt, "total"), 1,
                        logger.stat_types.counter,
-                       metric_config.sample_rate, metric_config.tags)
+                       metric_config.sample_rate, all_tags)
   end,
-  unique_users = function (service_name, message, metric_config, logger)
+  unique_users = function (service_name, message, metric_config, logger, all_tags)
     local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
     local consumer_id     = get_consumer_id(message.consumer)
 
@@ -49,10 +49,10 @@ local metrics = {
       local stat = string_format("%s.user.uniques", service_name)
 
       logger:send_statsd(stat, consumer_id, logger.stat_types.set,
-                         nil, metric_config.tags)
+                         nil, all_tags)
     end
   end,
-  request_per_user = function (service_name, message, metric_config, logger)
+  request_per_user = function (service_name, message, metric_config, logger, all_tags)
     local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
     local consumer_id     = get_consumer_id(message.consumer)
 
@@ -60,10 +60,10 @@ local metrics = {
       local stat = string_format("%s.user.%s.request.count", service_name, consumer_id)
 
       logger:send_statsd(stat, 1, logger.stat_types.counter,
-                         metric_config.sample_rate, metric_config.tags)
+                         metric_config.sample_rate, all_tags)
     end
   end,
-  status_count_per_user = function (service_name, message, metric_config, logger)
+  status_count_per_user = function (service_name, message, metric_config, logger, all_tags)
     local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
     local consumer_id     = get_consumer_id(message.consumer)
 
@@ -72,11 +72,11 @@ local metrics = {
 
       logger:send_statsd(string_format("%s.%s", fmt, message.response.status),
                          1, logger.stat_types.counter,
-                         metric_config.sample_rate, metric_config.tags)
+                         metric_config.sample_rate, all_tags)
 
       logger:send_statsd(string_format("%s.%s", fmt,  "total"),
                          1, logger.stat_types.counter,
-                         metric_config.sample_rate, metric_config.tags)
+                         metric_config.sample_rate, all_tags)
     end
   end,
 }
@@ -87,9 +87,11 @@ local function log(premature, conf, message)
     return
   end
 
-  local name = string_gsub(message.service.name ~= ngx.null and
-                           message.service.name or message.service.host,
-                           "%.", "_")
+  local name = string_gsub(
+    (conf.overloaded_service_name and conf.overloaded_service_name)
+    or (message.service.name ~= ngx.null and message.service.name)
+    or message.service.host,
+    "%.", "_")
 
   local stat_name  = {
     request_size     = name .. ".request.size",
@@ -116,17 +118,21 @@ local function log(premature, conf, message)
 
   for _, metric_config in pairs(conf.metrics) do
     local metric = metrics[metric_config.name]
+    local all_tags = metric_config.tags and utils.shallow_copy(metric_config.tags) or {}
+    for _, v in pairs(conf.common_tags) do
+      table.insert(all_tags, v)
+    end
 
     if metric then
-      metric(name, message, metric_config, logger)
-
+      metric(name, message, metric_config, logger, all_tags)
     else
       local stat_name  = stat_name[metric_config.name]
       local stat_value = stat_value[metric_config.name]
+      
 
       logger:send_statsd(stat_name, stat_value,
                          logger.stat_types[metric_config.stat_type],
-                         metric_config.sample_rate, metric_config.tags)
+                         metric_config.sample_rate, all_tags)
     end
   end
 
@@ -138,7 +144,7 @@ function DatadogHandler:log(conf)
   if not ngx.ctx.service then
     return
   end
-
+  
   local message = basic_serializer.serialize(ngx)
 
   local ok, err = ngx_timer_at(0, log, conf, message)

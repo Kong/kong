@@ -100,6 +100,8 @@ return {
           { host = typedefs.host({ required = true, default = "localhost" }), },
           { port = typedefs.port({ required = true, default = 8125 }), },
           { prefix = { type = "string", default = "kong" }, },
+          { common_tags = { type = "array", elements = { type = "string", match = "^.*[^:]$" }, }, },
+          { overloaded_service_name = { type = "string"}, },
           { metrics = {
               type     = "array",
               required = true,
