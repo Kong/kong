@@ -10,10 +10,12 @@ local match = string.match
 local gsub  = string.gsub
 
 local EXTENSION_LIST = constants.PORTAL_RENDERER.EXTENSION_LIST
+local SPEC_EXT_LIST = constants.PORTAL_RENDERER.SPEC_EXT_LIST
 local ROUTE_TYPES    = constants.PORTAL_RENDERER.ROUTE_TYPES
 local PRIORITY_INDEX_OFFSET = constants.PORTAL_RENDERER.PRIORITY_INDEX_OFFSET
 
 local content_extension_err = "invalid content extension, must be one of:" .. table.concat(EXTENSION_LIST, ", ")
+local spec_extension_err = "invalid spec extension, must be one of:" .. table.concat(SPEC_EXT_LIST, ", ")
 
 
 local function extension_priority(ext)
@@ -53,6 +55,19 @@ local function is_valid_content_ext(path)
 end
 
 
+local function is_valid_spec_ext(path)
+  local ext = get_ext(path)
+  for _, v in ipairs(SPEC_EXT_LIST) do
+    if ext == v then
+      return true
+    end
+  end
+
+  return false, spec_extension_err
+
+end
+
+
 local function get_prefix(path)
   return match(path, "^(%w+)/")
 end
@@ -85,6 +100,11 @@ end
 
 local function is_content(file)
   return is_content_path(file.path) and is_valid_content_ext(file.path)
+end
+
+
+local function is_spec(file)
+  return is_spec_path(file.path) and is_valid_spec_ext(file.path)
 end
 
 
@@ -338,9 +358,11 @@ end
 
 return {
   is_content      = is_content,
+  is_spec         = is_spec,
   is_content_path = is_content_path,
   is_spec_path    = is_spec_path,
   is_valid_content_ext = is_valid_content_ext,
+  is_valid_spec_ext = is_valid_spec_ext,
   is_layout       = is_layout,
   is_layout_path  = is_layout_path,
   is_partial      = is_partial,

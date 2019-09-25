@@ -47,7 +47,7 @@ end
 
 
 local function set_file_permissions(file, workspace, new_role_names)
-  if not file_helpers.is_content(file) then
+  if not file_helpers.is_content(file) and not file_helpers.is_spec(file)  then
     return true
   end
 

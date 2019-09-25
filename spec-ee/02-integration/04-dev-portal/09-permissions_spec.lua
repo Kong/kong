@@ -98,7 +98,7 @@ for _, strategy in helpers.each_strategy() do
         assert(db:truncate("basicauth_credentials"))
       end)
 
-      it("returns false if the developer has no roles", function()
+      it("returns false if the developer has no roles (content)", function()
         local ws = workspaces.DEFAULT_WORKSPACE
         local dev = bp.developers:insert({
           email = "a@a.co" ,
@@ -116,7 +116,23 @@ for _, strategy in helpers.each_strategy() do
         assert.is_falsy(permissions.can_read(dev, ws, file.path))
       end)
 
-      it("returns false if the developer does not have the needed roles", function()
+      it("returns false if the developer has no roles (specs)", function()
+        local ws = workspaces.DEFAULT_WORKSPACE
+        local dev = bp.developers:insert({
+          email = "a@a.co" ,
+          meta = '{"full_name":"x"}',
+          password = "test",
+        })
+        local file = assert(db.files:insert({
+          path = "specs/foo.yaml",
+          contents = [[
+            stuff: things
+          ]]
+        }))
+        assert.is_falsy(permissions.can_read(dev, ws, file.path))
+      end)
+
+      it("returns false if the developer does not have the needed roles (content)", function()
         local ws = workspaces.DEFAULT_WORKSPACE
         bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "red" })
         bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "blue" })
@@ -138,7 +154,27 @@ for _, strategy in helpers.each_strategy() do
         assert.is_falsy(permissions.can_read(dev, ws, file.path))
       end)
 
-      it("returns true if the developer has permissions to access the given file", function()
+      it("returns false if the developer does not have the needed roles (specs)", function()
+        local ws = workspaces.DEFAULT_WORKSPACE
+        bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "red" })
+        bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "blue" })
+
+        local dev = bp.developers:insert({
+          email = "a@a.co" ,
+          meta = '{"full_name":"x"}',
+          password = "test",
+          roles = { "blue" },
+        })
+        local file = assert(db.files:insert({
+          path = "specs/foo.yaml",
+          contents = [[
+            x-headmatter: {"readable_by": ["red"]}
+          ]],
+        }))
+        assert.is_falsy(permissions.can_read(dev, ws, file.path))
+      end)
+
+      it("returns true if the developer has permissions to access the given file (content)", function()
         local ws = workspaces.DEFAULT_WORKSPACE
         bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "red" })
         bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "blue" })
@@ -161,7 +197,28 @@ for _, strategy in helpers.each_strategy() do
         assert.is_truthy(permissions.can_read(dev, ws, file.path))
       end)
 
-      it("returns true if developer.skip_portal_rbac (portal auth disabled)", function()
+      it("returns true if the developer has permissions to access the given file (specs)", function()
+        local ws = workspaces.DEFAULT_WORKSPACE
+        bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "red" })
+        bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "blue" })
+
+        local dev = bp.developers:insert({
+          email = "a@a.co" ,
+          meta = '{"full_name":"x"}',
+          password = "test",
+          roles = { "red" },
+        })
+        local file = assert(db.files:insert({
+          path = "specs/foo.yaml",
+          contents = [[
+            x-headmatter: {"readable_by": ["red"]}
+          ]],
+        }))
+
+        assert.is_truthy(permissions.can_read(dev, ws, file.path))
+      end)
+
+      it("returns true if developer.skip_portal_rbac (content, portal auth disabled)", function()
         local ws = workspaces.DEFAULT_WORKSPACE
         bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "red" })
         bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "blue" })
@@ -174,6 +231,23 @@ for _, strategy in helpers.each_strategy() do
             ---
             readable_by: ["red"]
             ---
+          ]],
+        }))
+
+        assert.is_truthy(permissions.can_read(dev, ws, file.path))
+      end)
+
+      it("returns true if developer.skip_portal_rbac (specs, portal auth disabled)", function()
+        local ws = workspaces.DEFAULT_WORKSPACE
+        bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "red" })
+        bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "blue" })
+
+        local dev = { skip_portal_rbac = true }
+
+        local file = assert(db.files:insert({
+          path = "specs/foo.yaml",
+          contents = [[
+            x-headmatter: {"readable_by": ["red"]}
           ]],
         }))
 
@@ -259,7 +333,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same({}, rows)
       end)
 
-      it("returns true but does not set any permissions if prefix is not 'content/'", function()
+      it("returns true but does not set any permissions if prefix is not 'content/' or 'specs/'", function()
         bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "red" })
         local ws = workspaces.DEFAULT_WORKSPACE
         local file = {
@@ -297,7 +371,25 @@ for _, strategy in helpers.each_strategy() do
         assert.equals(role.id, rows[1].role.id)
       end)
 
-      it("handles multple roles", function()
+      it("returns true and sets permissions if prefix is 'specs'", function()
+        local role = bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "red" })
+        local ws = workspaces.DEFAULT_WORKSPACE
+        local file = {
+          path = "specs/file.yaml",
+          contents = [[
+            x-headmatter: {"readable_by": ["red"]}
+          ]],
+        }
+
+        assert.is_truthy(permissions.set_file_permissions(file, ws))
+
+        local rows = db.rbac_role_endpoints:select_all()
+        assert.equals(1, #rows)
+        assert.equals("/" .. file.path, rows[1].endpoint)
+        assert.equals(role.id, rows[1].role.id)
+      end)
+
+      it("handles multple roles (content)", function()
         local red_role = bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "red" })
         local blue_role = bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "blue" })
 
@@ -333,7 +425,41 @@ for _, strategy in helpers.each_strategy() do
         assert.is_truthy(roles_matched.blue)
       end)
 
-      it("returns true and updates permissions if they exist", function()
+      it("handles multple roles (specs)", function()
+        local red_role = bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "red" })
+        local blue_role = bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "blue" })
+
+        local ws = workspaces.DEFAULT_WORKSPACE
+        local file = {
+          path = "specs/file.yaml",
+          contents = [[
+            x-headmatter: {"readable_by": ["red", "blue"]}
+          ]],
+        }
+
+        assert.is_truthy(permissions.set_file_permissions(file, ws))
+
+        local rows = db.rbac_role_endpoints:select_all()
+
+        assert.equals(2, #rows)
+
+        local roles_matched = {}
+
+        for i, row in ipairs(rows) do
+          assert.equals("/" .. file.path, rows[i].endpoint)
+
+          if rows[i].role.id == red_role.id then
+            roles_matched.red = true
+          elseif rows[i].role.id == blue_role.id then
+            roles_matched.blue = true
+          end
+        end
+
+        assert.is_truthy(roles_matched.red)
+        assert.is_truthy(roles_matched.blue)
+      end)
+
+      it("returns true and updates permissions if they exist (content)", function()
         local red_role = bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "red" })
         local blue_role = bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "blue" })
         local ws = workspaces.DEFAULT_WORKSPACE
@@ -359,6 +485,39 @@ for _, strategy in helpers.each_strategy() do
             ---
             readable_by: ["blue"]
             ---
+          ]],
+        }
+
+        assert.is_truthy(permissions.set_file_permissions(file, ws))
+
+        local rows = db.rbac_role_endpoints:select_all()
+        assert.equals(1, #rows)
+        assert.equals("/" .. file.path, rows[1].endpoint)
+        assert.equals(blue_role.id, rows[1].role.id)
+      end)
+
+      it("returns true and updates permissions if they exist (specs)", function()
+        local red_role = bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "red" })
+        local blue_role = bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "blue" })
+        local ws = workspaces.DEFAULT_WORKSPACE
+        local file = {
+          path = "specs/file.yaml",
+          contents = [[
+            x-headmatter: {"readable_by": ["red"]}
+          ]],
+        }
+
+        assert.is_truthy(permissions.set_file_permissions(file, ws))
+
+        local rows = db.rbac_role_endpoints:select_all()
+        assert.equals(1, #rows)
+        assert.equals("/" .. file.path, rows[1].endpoint)
+        assert.equals(red_role.id, rows[1].role.id)
+
+        file = {
+          path = "specs/file.yaml",
+          contents = [[
+            x-headmatter: {"readable_by": ["blue"]}
           ]],
         }
 
@@ -400,7 +559,7 @@ for _, strategy in helpers.each_strategy() do
         assert(db:truncate("basicauth_credentials"))
       end)
 
-      it("returns nil, error if contents is not valid stringified yaml", function()
+      it("removes permissions from the file (content)", function()
         -- add new permissions to a file
         bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "red" })
         local ws = workspaces.DEFAULT_WORKSPACE
@@ -410,7 +569,29 @@ for _, strategy in helpers.each_strategy() do
             ---
             readable_by: ["red"]
             ---
-          ]]
+          ]],
+        }
+
+        assert.is_truthy(permissions.set_file_permissions(file, ws))
+
+        local rows = db.rbac_role_endpoints:select_all()
+        assert.equals("/" .. file.path, rows[1].endpoint)
+
+        -- delete permissions
+        assert.is_truthy(permissions.delete_file_permissions(file, ws))
+        local rows = db.rbac_role_endpoints:select_all()
+        assert.same({}, rows)
+      end)
+
+      it("removes permissions from the file (specs)", function()
+        -- add new permissions to a file
+        bp.rbac_roles:insert({ name = constants.PORTAL_PREFIX .. "red" })
+        local ws = workspaces.DEFAULT_WORKSPACE
+        local file = {
+          path = "specs/file.yaml",
+          contents = [[
+            x-headmatter: {"readable_by": ["red"]}
+          ]],
         }
 
         assert.is_truthy(permissions.set_file_permissions(file, ws))
