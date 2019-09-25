@@ -30,6 +30,9 @@ env:
   global:
     - INSTALL_CACHE=$HOME/install-cache
     - DOWNLOAD_ROOT=$HOME/download-root
+    - BUILD_TOOLS=master
+    - OPENRESTY_PATCHES_BRANCH=remove_service_mesh_partches
+    - KONG_NGINX_MODULE_BRANCH=master
     - KONG_TEST_PG_DATABASE=travis
     - KONG_TEST_PG_USER=postgres
     - JOBS=2
