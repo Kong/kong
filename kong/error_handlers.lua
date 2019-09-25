@@ -57,7 +57,18 @@ return function(ngx)
   end
 
   local status = ngx.status
-  message = BODIES["s" .. status] or format(BODIES.default, status)
+
+  -- Attempt to read body (message) and headers from ctx for internal/plugin errors generated via kong.response.exit(...)
+  local data = ngx.ctx.error_body
+  message = data and data.message or data or BODIES["s" .. status] or format(BODIES.default, status)
+
+  ngx.ctx.ERROR_HANDLED = true
+
+  if not ngx.headers_sent and type(ngx.ctx.error_headers) == 'table' then
+    for k,v in pairs(ngx.ctx.error_headers) do
+      ngx.header[k] = v
+    end
+  end
 
   if singletons.configuration.enabled_headers[constants.HEADERS.SERVER] then
     ngx.header[constants.HEADERS.SERVER] = SERVER_HEADER

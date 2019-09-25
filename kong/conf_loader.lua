@@ -236,6 +236,8 @@ local CONF_INFERENCES = {
   lua_ssl_verify_depth = { typ = "number" },
   lua_socket_pool_size = { typ = "number" },
   service_mesh = { typ = "boolean" },
+
+  handle_errors = { typ = "boolean" },
 }
 
 

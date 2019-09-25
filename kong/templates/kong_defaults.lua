@@ -97,4 +97,6 @@ lua_ssl_trusted_certificate = NONE
 lua_ssl_verify_depth = 1
 lua_package_path = ./?.lua;./?/init.lua;
 lua_package_cpath = NONE
+
+handle_errors = false
 ]]

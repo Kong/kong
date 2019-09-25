@@ -485,6 +485,12 @@ local function new(self, major_version)
       error("headers have already been sent", 2)
     end
 
+    if self.configuration.handle_errors and self.ctx.core.phase ~= phase_checker.phases.admin_api and ngx.config.subsystem == "http" and status >= 400 then
+      ngx.ctx.error_body = body
+      ngx.ctx.error_headers = headers
+      return ngx.exit(status)
+    end
+
     ngx.status = status
 
     if self.ctx.core.phase == phase_checker.phases.admin_api then
