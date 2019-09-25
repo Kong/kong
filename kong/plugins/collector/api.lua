@@ -66,20 +66,18 @@ return {
         return kong.response.exit(404, { message = "No configuration found." })
       end
 
-      local query = kong.request.get_raw_query()
+
+      local query = kong.request.get_query()
       local workspace_name = self.url_params.workspace_name
-      if query then
-        query = query .. '&workspace_name=' .. workspace_name
-      else
-        query = 'workspace_name=' .. workspace_name
-      end
+      local args = kong.table.merge(query, { workspace_name = workspace_name })
+      local params = utils.encode_args(args)
 
       local res, err = backend.http_get(
         row.config.host,
         row.config.port,
         row.config.connection_timeout,
         "/service-map",
-        query
+        params
       )
 
       if err then
