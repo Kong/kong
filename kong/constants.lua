@@ -194,6 +194,9 @@ return {
     EXTENSION_LIST = {
       "txt", "md", "html", "json", "yaml", "yml",
     },
+    SPEC_EXT_LIST = {
+      "json", "yaml", "yml",
+    },
     ROUTE_TYPES = {
       EXPLICIT = "explicit", COLLECTION = "collection", DEFAULT = "defualt",
     },
