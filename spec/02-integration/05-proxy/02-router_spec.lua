@@ -1312,7 +1312,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("[snis] for gRPCs connections", function()
+    describe("[snis] [#grpc] for gRPCs connections", function()
       local routes
       local grpcs_proxy_ssl_client
 
