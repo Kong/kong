@@ -662,14 +662,6 @@ for _, strategy in helpers.each_strategy() do
             layout: unauthorized.html
             ---
           ]],
-        },
-        ["404"] = {
-          path = "content/404.txt",
-          contents = [[
-            ---
-            layout: 404.html
-            ---
-          ]],
         }
       }
 
@@ -736,6 +728,17 @@ for _, strategy in helpers.each_strategy() do
               headers = {["Content-Type"] = "application/json"},
             }))
           end
+
+          -- 404 page
+          assert(client_request({
+            method = "POST",
+            path = "/files",
+            body = {
+              path = "themes/default/layouts/system/404.html",
+              contents = "404 Page!",
+            },
+            headers = {["Content-Type"] = "application/json"},
+          }))
         end)
 
         it("redirects to login when requesting red page", function()
@@ -813,7 +816,7 @@ for _, strategy in helpers.each_strategy() do
           local body = res.body
 
           assert.equals(200, status)
-          assert.equals("404", body)
+          assert.equals("404 Page!", body)
         end)
       end)
 
@@ -898,6 +901,17 @@ for _, strategy in helpers.each_strategy() do
               headers = {["Content-Type"] = "application/json"},
             }))
           end
+
+          -- 404 page
+          assert(client_request({
+            method = "POST",
+            path = "/files",
+            body = {
+              path = "themes/default/layouts/system/404.html",
+              contents = "404 Page!",
+            },
+            headers = {["Content-Type"] = "application/json"},
+          }))
 
           -- Developer
           local res = register_developer({
@@ -1014,7 +1028,7 @@ for _, strategy in helpers.each_strategy() do
           local body = res.body
 
           assert.equals(200, status)
-          assert.equals("404", body)
+          assert.equals("404 Page!", body)
         end)
 
         it("serves the blue page when blue role is added", function()
@@ -1181,6 +1195,17 @@ for _, strategy in helpers.each_strategy() do
             }))
           end
 
+          -- 404 page
+          assert(client_request({
+            method = "POST",
+            path = "/files",
+            body = {
+              path = "themes/default/layouts/system/404.html",
+              contents = "404 Page!",
+            },
+            headers = {["Content-Type"] = "application/json"},
+          }))
+
           -- Developer
           local res = register_developer({
             email = developer.name .."@konghq.com",
@@ -1296,7 +1321,7 @@ for _, strategy in helpers.each_strategy() do
           local body = res.body
 
           assert.equals(200, status)
-          assert.equals("404", body)
+          assert.equals("404 Page!", body)
         end)
 
         it("serves the red page when red role is added", function()
@@ -1462,6 +1487,17 @@ for _, strategy in helpers.each_strategy() do
             }))
           end
 
+          -- 404 page
+          assert(client_request({
+            method = "POST",
+            path = "/files",
+            body = {
+              path = "themes/default/layouts/system/404.html",
+              contents = "404 Page!",
+            },
+            headers = {["Content-Type"] = "application/json"},
+          }))
+
           -- Developer
           local res = register_developer({
             email = developer.name .."@konghq.com",
@@ -1577,7 +1613,7 @@ for _, strategy in helpers.each_strategy() do
           local body = res.body
 
           assert.equals(200, status)
-          assert.equals("404", body)
+          assert.equals("404 Page!", body)
         end)
       end)
 
@@ -1662,6 +1698,17 @@ for _, strategy in helpers.each_strategy() do
               headers = {["Content-Type"] = "application/json"},
             }))
           end
+
+          -- 404 page
+          assert(client_request({
+            method = "POST",
+            path = "/files",
+            body = {
+              path = "themes/default/layouts/system/404.html",
+              contents = "404 Page!",
+            },
+            headers = {["Content-Type"] = "application/json"},
+          }))
 
           -- Developer
           local res = register_developer({
@@ -1778,7 +1825,7 @@ for _, strategy in helpers.each_strategy() do
           local body = res.body
 
           assert.equals(200, status)
-          assert.equals("404", body)
+          assert.equals("404 Page!", body)
         end)
       end)
 

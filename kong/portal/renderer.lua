@@ -89,7 +89,7 @@ end
 
 local function get_missing_layout(ctx)
   local theme = ctx.theme
-  return singletons.db.files:select_file_by_theme("layouts/404.html",
+  return singletons.db.files:select_file_by_theme("layouts/system/404.html",
                                                   theme.name)
 end
 
