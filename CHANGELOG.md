@@ -33,7 +33,7 @@
 
 ## [1.4.0rc1]
 
-> Released on 2019/09/xx
+> Released on 2019/09/25
 
 ### Additions
 
