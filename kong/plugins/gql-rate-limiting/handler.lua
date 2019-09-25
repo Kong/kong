@@ -54,7 +54,7 @@ local id_lookup = {
 
 
 local function new_namespace(config, init_timer)
-  ngx.log(ngx.DEBUG, "attempting to add namespace ", config.namespace)
+  kong.log.debug("attempting to add namespace ", config.namespace)
 
   local ok, err = pcall(function()
     local strategy = config.strategy == "cluster" and
@@ -67,19 +67,18 @@ local function new_namespace(config, init_timer)
     local dict_name = config.dictionary_name
     if dict_name == nil then
       dict_name = schema.fields.dictionary_name.default
-      ngx.log(ngx.WARN, "[rate-limiting-advanced] no shared dictionary was specified.",
+      kong.log.warn("no shared dictionary was specified.",
         " Trying the default value '", dict_name, "'...")
     end
 
     -- if dictionary name was passed but doesn't exist, fallback to kong
     if ngx.shared[dict_name] == nil then
-      ngx.log(ngx.NOTICE, "[rate-limiting-advanced] specified shared dictionary '", dict_name,
+      kong.log.notice("specified shared dictionary '", dict_name,
         "' doesn't exist. Falling back to the 'kong' shared dictionary")
       dict_name = "kong"
     end
 
-    ngx.log(ngx.NOTICE, "[rate-limiting-advanced] using shared dictionary '"
-                         .. dict_name .. "'")
+    kong.log.notice("using shared dictionary '" .. dict_name .. "'")
 
     ratelimiting.new({
       namespace     = config.namespace,
@@ -101,7 +100,7 @@ local function new_namespace(config, init_timer)
     if init_timer and config.sync_rate > 0 then
       local rate = config.sync_rate
       local when = rate - (ngx.now() - (math.floor(ngx.now() / rate) * rate))
-      ngx.log(ngx.DEBUG, "initial sync in ", when, " seconds")
+      kong.log.debug("initial sync in ", when, " seconds")
       ngx.timer.at(when, ratelimiting.sync, config.namespace)
 
       -- run the fetch from a timer because it uses cosockets
@@ -110,8 +109,7 @@ local function new_namespace(config, init_timer)
     end
 
   else
-    ngx.log(ngx.ERR, "err in creating new ratelimit namespace: ",
-                     err)
+    kong.log.err("err in creating new ratelimit namespace: ", err)
     ret = false
   end
 
@@ -120,7 +118,9 @@ end
 
 
 function NewRLHandler:new()
-  NewRLHandler.super.new(self, "new-rl")
+  NewRLHandler.super.new(self, "gql-rate-limiting")
+  self.gql_schema = {}
+  self.costs = {}
 end
 
 
@@ -133,7 +133,7 @@ function NewRLHandler:init_worker()
     name = "gql-rate-limiting",
   })
   if err then
-    ngx.log(ngx.ERR, "err in fetching plugins: ", err)
+    kong.log.err("err in fetching plugins: ", err)
   end
 
   local namespaces = {}
@@ -152,9 +152,9 @@ function NewRLHandler:init_worker()
   -- event handlers to update recurring sync timers
 
   -- catch any plugins update and forward config data to each worker
-  worker_events.register(function(data) -- TODO: Plugin name changed, adjust?
-    if data.entity.name == "rate-limiting-advanced" then
-      worker_events.post("rl", data.operation, data.entity.config)
+  worker_events.register(function(data)
+    if data.entity.name == "gql-rate-limiting" then
+      worker_events.post("gql-rl", data.operation, data.entity.config)
     end
   end, "crud", "plugins")
 
@@ -163,13 +163,13 @@ function NewRLHandler:init_worker()
     if not ratelimiting.config[config.namespace] then
       new_namespace(config, true)
     end
-  end, "rl", "create")
+  end, "gql-rl", "create")
 
   -- updates should clear the existing config and create a new
   -- namespace config. we do not initiate a new fetch/sync recurring
   -- timer as it's already running in the background
   worker_events.register(function(config)
-    ngx.log(ngx.DEBUG, "clear and reset ", config.namespace)
+    kong.log.debug("clear and reset ", config.namespace)
 
     -- if the previous config did not have a background timer,
     -- we need to start one
@@ -189,10 +189,10 @@ function NewRLHandler:init_worker()
         ratelimiting.config[config.namespace].kill = true
 
       else
-        ngx.log(ngx.WARN, "did not find namespace ", config.namespace, " to kill")
+        kong.log.warn("did not find namespace ", config.namespace, " to kill")
       end
     end
-  end, "rl", "update")
+  end, "gql-rl", "update")
 
   -- nuke this from orbit
   worker_events.register(function(config)
@@ -203,10 +203,9 @@ function NewRLHandler:init_worker()
       ratelimiting.config[config.namespace].kill = true
 
     else
-      ngx.log(ngx.WARN, "did not find namespace ", config.namespace, " to kill")
+      kong.log.warn("did not find namespace ", config.namespace, " to kill")
     end
-  end, "rl", "delete")
-
+  end, "gql-rl", "delete")
 end
 
 
@@ -251,6 +250,7 @@ local function introspect_upstream_schema(service)
 
   local status = res.status
   local body = res:read_body()
+
   local json = cjson.decode(body)
   local json_data = json["data"]
 
@@ -300,9 +300,9 @@ function NewRLHandler:access(conf)
     }, { ["Content-Type"] = "application/json" })
   end
 
+  local service = ngx.ctx.service
 
-  if not self.gql_schema then -- Get upstream schema if needed
-    local service = ngx.ctx.service
+  if not self.gql_schema[service.id] then -- Get upstream schema if needed
     local schema_ok, schema_res = introspect_upstream_schema(service)
     if not schema_ok then
       return kong.response.exit(400, {
@@ -310,13 +310,17 @@ function NewRLHandler:access(conf)
       })
     end
 
-    self.gql_schema = schema_res
+    self.gql_schema[service.id] = schema_res
   end
 
 
   local query_ast = res
-  for cost_dec, _ in kong.db.gql_ratelimiting_cost_decoration:each(100) do
-    query_ast:decorate_data({ cost_dec.type_path }, self.gql_schema, {
+  local gql_schema = self.gql_schema[service.id]
+
+  local costs_db = kong.db.gql_ratelimiting_cost_decoration
+
+  for cost_dec in costs_db:each_for_service({ id = service.id }, 100) do
+    query_ast:decorate_data({ cost_dec.type_path }, gql_schema, {
       add_arguments = cost_dec.add_arguments,
       add_constant = cost_dec.add_constant,
       mul_arguments = cost_dec.mul_arguments,
@@ -324,7 +328,9 @@ function NewRLHandler:access(conf)
     })
   end
 
-  local query_cost = cost(query_ast)
+  local query_cost = cost(query_ast, conf.cost_strategy)
+  -- Reduce tota node cost quantified by 100, min 1
+  query_cost = math.ceil((query_cost + 0.01) * 0.01)
 
   for i = 1, #conf.window_size do
     local window_size = tonumber(conf.window_size[i])
@@ -355,6 +361,10 @@ function NewRLHandler:access(conf)
     if rate > limit then
       deny = true
     end
+  end
+
+  if conf.max_cost > 0 and query_cost > conf.max_cost then
+    return kong.response.exit(403, { message = "API max cost limit exceeded" })
   end
 
   if deny then

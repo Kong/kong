@@ -8,6 +8,7 @@ return {
 
         fields = {
             { id = typedefs.uuid },
+            { service = { type = "foreign", reference = "services" } },
             { type_path = {
                 required = true, unique = true, type = "string"
             } },
@@ -15,7 +16,7 @@ return {
                 default = {}, type = "array", elements = { type = "string" }
             } },
             { add_constant = {
-                default = 0, type = "number"
+                default = 1, type = "number"
             } },
             { mul_arguments =  {
                 default = {}, type = "array", elements = { type = "string" }

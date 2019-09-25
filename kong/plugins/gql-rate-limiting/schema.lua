@@ -64,6 +64,16 @@ return {
             type = "boolean",
             default = false,
           }},
+          { cost_strategy = {
+            type = "string",
+            one_of = { "default", "node_quantifier" },
+            default = "default",
+          }},
+          { max_cost = {
+            type = "number",
+            required = false,
+            default = 0,
+          }},
           { redis = redis.config_schema},
         },
       },
