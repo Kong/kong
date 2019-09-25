@@ -39,7 +39,9 @@ return {
       end
 
       local query = kong.request.get_query()
-      local params = utils.encode_args(kong.table.merge(query, { workspace_name = self.url_params.workspace_name }))
+      local workspace_name = self.url_params.workspace_name
+      local args = kong.table.merge(query, { workspace_name = workspace_name })
+      local params = utils.encode_args(args)
 
       local res, err = backend.http_get(
         row.config.host,
