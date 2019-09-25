@@ -1,4 +1,5 @@
 local backend = require "kong.plugins.collector.backend"
+local utils = require "kong.tools.utils"
 
 local function backend_data()
     local rows = kong.db.plugins:select_all({ name = "collector" })
@@ -37,20 +38,15 @@ return {
         return kong.response.exit(404, { message = "No configuration found." })
       end
 
-      local query = kong.request.get_raw_query()
-      local workspace_name = self.url_params.workspace_name
-      if query then
-        query = query .. '&workspace_name=' .. workspace_name
-      else
-        query = 'workspace_name=' .. workspace_name
-      end
+      local query = kong.request.get_query()
+      local params = utils.encode_args(kong.table.merge(query, { workspace_name = self.url_params.workspace_name }))
 
       local res, err = backend.http_get(
         row.config.host,
         row.config.port,
         row.config.connection_timeout,
         "/alerts",
-        query
+        params
       )
 
       if err then
