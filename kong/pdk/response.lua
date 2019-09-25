@@ -46,6 +46,10 @@ local header_body_log = phase_checker.new(PHASES.header_filter,
                                           PHASES.error,
                                           PHASES.admin_api)
 
+local rewrite_access = phase_checker.new(PHASES.rewrite,
+                                         PHASES.access,
+                                         PHASES.admin_api)
+
 local rewrite_access_header = phase_checker.new(PHASES.rewrite,
                                                 PHASES.access,
                                                 PHASES.header_filter,
@@ -634,6 +638,32 @@ local function new(self, major_version)
   end
 
 
+  local function validate_response(status, body, headers)
+    if ngx.headers_sent then
+      error("headers have already been sent", 2)
+    end
+
+    if type(status) ~= "number" then
+      error("code must be a number", 2)
+
+    elseif status < MIN_STATUS_CODE or status > MAX_STATUS_CODE then
+      error(fmt("code must be a number between %u and %u", MIN_STATUS_CODE, MAX_STATUS_CODE), 2)
+    end
+
+    if body ~= nil and type(body) ~= "string" and type(body) ~= "table" then
+      error("body must be a nil, string or table", 2)
+    end
+
+    if headers ~= nil and type(headers) ~= "table" then
+      error("headers must be a nil or table", 2)
+    end
+
+    if headers ~= nil then
+      validate_headers(headers)
+    end
+  end
+
+
   ---
   -- This function interrupts the current processing and produces a response.
   -- It is typical to see plugins using it to produce a response before Kong
@@ -710,28 +740,7 @@ local function new(self, major_version)
       check_phase(rewrite_access_header)
     end
 
-    if ngx.headers_sent then
-      error("headers have already been sent", 2)
-    end
-
-    if type(status) ~= "number" then
-      error("code must be a number", 2)
-
-    elseif status < MIN_STATUS_CODE or status > MAX_STATUS_CODE then
-      error(fmt("code must be a number between %u and %u", MIN_STATUS_CODE, MAX_STATUS_CODE), 2)
-    end
-
-    if body ~= nil and type(body) ~= "string" and type(body) ~= "table" then
-      error("body must be a nil, string or table", 2)
-    end
-
-    if headers ~= nil and type(headers) ~= "table" then
-      error("headers must be a nil or table", 2)
-    end
-
-    if headers ~= nil then
-      validate_headers(headers)
-    end
+    validate_response(status, body, headers)
 
     local ctx = ngx.ctx
 
@@ -757,6 +766,26 @@ local function new(self, major_version)
     else
       return send(status, body, headers)
     end
+  end
+
+
+  function _RESPONSE.error(status, body, headers)
+    if body == nil then
+      check_phase(rewrite_access_header)
+    else
+      check_phase(rewrite_access)
+    end
+
+    validate_response(status, body, headers)
+
+    if ngx.config.subsystem == "http" then
+      local ctx = ngx.ctx
+      ctx.ERROR_HANDLED = true
+      ctx.KONG_EXITED = true
+      return send(status, body, headers)
+    end
+
+    _RESPONSE.exit(status, body, headers)
   end
 
 
