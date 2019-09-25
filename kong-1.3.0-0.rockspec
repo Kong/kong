@@ -21,7 +21,7 @@ dependencies = {
   "version == 1.0.1",
   "kong-redis-cluster == 1.1-0",
   "kong-lapis == 1.7.0.1",
-  "lua-cassandra == 1.4.0",
+  "lua-cassandra == 1.5.0",
   "pgmoon == 1.10.0",
   "luatz == 0.4",
   "http == 0.3",
