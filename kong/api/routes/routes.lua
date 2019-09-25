@@ -106,7 +106,7 @@ return {
     POST = function(self, db, helpers, parent)
       rebuild_routes(db)
 
-      local ok, err = workspaces.is_route_crud_allowed(self, singletons.router)
+      local ok, err = workspaces.is_route_crud_allowed(self, singletons.router, true)
       if not ok then
         return kong.response.exit(err.code, {message = err.message})
       end

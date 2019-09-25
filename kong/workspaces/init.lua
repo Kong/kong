@@ -571,16 +571,22 @@ local function validate_path_with_regexes(path, pattern)
 
   if not match(path, format("^%s$", pattern)) then
     return false,
-    format("invalid path: '%s ' (should match pattern '%s')", path, pattern)
+    format("invalid path: '%s' (should match pattern '%s')", path, pattern)
   end
 
   return true
 end
 
-local function validate_paths(self)
+local function validate_paths(self, _, is_create)
   local pattern = kong.configuration.enforce_route_path_pattern
+  local paths = self.params.paths
 
-  for _, path in pairs(self.params.paths or {}) do
+  if (is_create and not paths) or paths == ngx_null then
+    return false, { code = 400,
+                    message = format("path is required matching pattern '%s')", pattern) }
+  end
+
+  for _, path in pairs(paths) do
     local ok, err = validate_path_with_regexes(path, pattern)
     if not ok then
       return false, { code = 400,
@@ -597,9 +603,9 @@ local route_collision_strategies = {
   path = validate_paths,
 }
 
-function _M.is_route_crud_allowed(req, router)
+function _M.is_route_crud_allowed(req, router, is_create)
   local strategy = kong.configuration.route_validation_strategy
-  return route_collision_strategies[strategy](req, router)
+  return route_collision_strategies[strategy](req, router, is_create)
 end
 
 
