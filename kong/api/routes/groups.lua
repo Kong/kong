@@ -1,10 +1,10 @@
 local endpoints          = require "kong.api.endpoints"
 local utils              = require "kong.tools.utils"
+local workspaces         = require "kong.workspaces"
 
 local groups             = kong.db.groups
 local group_rbac_roles   = kong.db.group_rbac_roles
 local rbac_roles         = kong.db.rbac_roles
-local workspace_entities = kong.db.workspace_entities
 
 local function response_filter(group, role, workspace)
   if group.created_at then
@@ -76,7 +76,7 @@ return {
     before = function(self, db, helpers)
       if self.req.cmd_mth == "POST" or self.req.cmd_mth == "DELETE" then
         local entity, _, err_t
-        
+
         if not utils.is_valid_uuid(self.params.groups) then
           entity, _, err_t = groups:select_by_name(self.params.groups)
         else
@@ -96,10 +96,12 @@ return {
     end,
 
     GET = function(self, db, helpers)
-      return endpoints.get_collection_endpoint(group_rbac_roles.schema,
+      workspaces.run_with_ws_scope({}, function()
+          return endpoints.get_collection_endpoint(group_rbac_roles.schema,
                                                groups.schema, "group")
                                               (self, db, helpers,
                                                post_process_action)
+      end)
     end,
 
     POST = function(self, db, helpers)
@@ -114,41 +116,30 @@ return {
         if not self.params[key] then
           return kong.response.exit(400, { message = "must provide the " .. key })
         end
+        
+        entities[schema] = workspaces.run_with_ws_scope(
+          -- ws_scope is a ws array
+          {{ id = self.params.workspace_id }},
+          db[schema].select, db[schema],
+          { id = self.params[key] }
+        )
 
-        entities[schema] = db[schema]:select({ id = self.params[key] })
         if not entities[schema] then
           return kong.response.exit(404, { message = "Not found" })
         end
       end
 
-      do
-        -- verify workspace_id and role_id are mapped
-        local row, _, err_t = workspace_entities:select({
-          workspace_id      = self.params.workspace_id,
-          entity_id         = self.params.rbac_role_id,
-          unique_field_name = "id",
-        })
-        
-        if err_t then
-          return endpoints.handle_error(err_t)
-        end
+      workspaces.run_with_ws_scope({{ id = self.params.workspace_id }}, function()
+          local _, _, err_t = group_rbac_roles:insert({
+            rbac_role = { id = self.params.rbac_role_id },
+            workspace = { id = self.params.workspace_id },
+            group 	  = { id = self.params.groups.id },
+          })
 
-        if not row then
-          return kong.response.exit(404, { message = "Not found" })
-        end
-      end
-
-      do
-        local _, _, err_t = group_rbac_roles:insert({
-          rbac_role = { id = self.params.rbac_role_id },
-          workspace = { id = self.params.workspace_id },
-          group 	  = { id = self.params.groups.id },
-        })
-
-        if err_t then
-          return endpoints.handle_error(err_t)
-        end
-      end
+          if err_t then
+            return endpoints.handle_error(err_t)
+          end
+      end)
 
       return kong.response.exit(201, response_filter(
         self.params.groups, 
@@ -169,10 +160,16 @@ return {
         end
       end
 
-      group_rbac_roles:delete({
-        rbac_role = { id = self.params.rbac_role_id },
-        group 	  = { id = self.params.groups.id },
-      })
+      workspaces.run_with_ws_scope({{ id = self.params.workspace_id }}, function()
+          local _, err = group_rbac_roles:delete({
+            rbac_role = { id = self.params.rbac_role_id },
+            group 	  = { id = self.params.groups.id },
+          })
+          
+          if err then
+            kong.log.err('DELETE /groups/:groups/roles:', err)
+          end
+      end)
 
       return kong.response.exit(204)
     end,
