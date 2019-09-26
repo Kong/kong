@@ -194,7 +194,7 @@ end
 
 
 local function execute_cache_warmup(kong_config)
-  if kong_config.database == "off" then
+  if kong_config.storage == "memory" then
     return true
   end
 
@@ -229,7 +229,7 @@ end
 
 
 local function parse_declarative_config(kong_config)
-  if kong_config.database ~= "off" then
+  if kong_config.storage ~= "memory" then
     return {}
   end
 
@@ -249,7 +249,7 @@ end
 
 
 local function load_declarative_config(kong_config, entities)
-  if kong_config.database ~= "off" then
+  if kong_config.storage ~= "memory" then
     return true
   end
 
@@ -426,7 +426,7 @@ function Kong.init()
   -- Load plugins as late as possible so that everything is set up
   assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
 
-  if kong.configuration.database == "off" then
+  if kong.configuration.storage == "memory" then
     local err
     declarative_entities, err = parse_declarative_config(kong.configuration)
     if not declarative_entities then
@@ -547,6 +547,9 @@ function Kong.init_worker()
 
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_plugins_iterator(plugins_iterator, "init_worker")
+
+  local clustering = require "kong.clustering"
+  clustering.init_worker(kong.configuration)
 end
 
 
@@ -1141,6 +1144,19 @@ end
 
 
 Kong.status_header_filter = Kong.admin_header_filter
+
+
+function Kong.serve_cluster_listener(options)
+  local clustering = require "kong.clustering"
+
+  log_init_worker_errors()
+
+  kong_global.set_phase(kong, PHASES.cluster_listener)
+
+  options = options or {}
+
+  return clustering.handle_cp_websocket()
+end
 
 
 return Kong

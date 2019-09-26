@@ -35,15 +35,13 @@ lua_shared_dict kong                5m;
 
 lua_shared_dict kong_core_db_cache  ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_db_cache       ${{MEM_CACHE_SIZE}};
-
 lua_shared_dict kong_core_db_cache_miss   12m;
 lua_shared_dict kong_db_cache_miss   12m;
-
-> if database == "off" then
+> if storage == "memory" then
 lua_shared_dict kong_core_db_cache_2     ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_db_cache_2     ${{MEM_CACHE_SIZE}};
 > end
-> if database == "off" then
+> if storage == "memory" then
 lua_shared_dict kong_core_db_cache_miss_2     ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_db_cache_miss_2 12m;
 > end
@@ -55,6 +53,9 @@ lua_shared_dict kong_healthchecks   5m;
 lua_shared_dict kong_rate_limiting_counters 12m;
 > if database == "cassandra" then
 lua_shared_dict kong_cassandra      5m;
+> end
+> if role == "admin" then
+lua_shared_dict kong_clustering     5m;
 > end
 lua_socket_log_errors off;
 > if lua_ssl_trusted_certificate then
@@ -76,7 +77,7 @@ init_worker_by_lua_block {
     Kong.init_worker()
 }
 
-> if #proxy_listeners > 0 then
+> if (role == "traditional" or role == "proxy") and #proxy_listeners > 0 then
 upstream kong_upstream {
     server 0.0.0.1;
     balancer_by_lua_block {
@@ -260,9 +261,41 @@ server {
         }
     }
 }
+> end -- (role == "traditional" or role == "proxy") and #proxy_listeners > 0
+
+> if #status_listeners > 0 then
+server {
+    server_name kong_status;
+> for i = 1, #status_listeners do
+    listen $(status_listeners[i].listener);
+> end
+    access_log ${{STATUS_ACCESS_LOG}};
+    error_log ${{STATUS_ERROR_LOG}} ${{LOG_LEVEL}};
+    # injected nginx_http_status_* directives
+> for _, el in ipairs(nginx_http_status_directives) do
+    $(el.name) $(el.value);
+> end
+    location / {
+        default_type application/json;
+        content_by_lua_block {
+            Kong.status_content()
+        }
+        header_filter_by_lua_block {
+            Kong.status_header_filter()
+        }
+    }
+    location /nginx_status {
+        internal;
+        access_log off;
+        stub_status;
+    }
+    location /robots.txt {
+        return 200 'User-agent: *\nDisallow: /';
+    }
+}
 > end
 
-> if #admin_listeners > 0 then
+> if (role == "admin" or role == "traditional") and #admin_listeners > 0 then
 server {
     server_name kong_admin;
 > for i = 1, #admin_listeners do
@@ -310,42 +343,22 @@ server {
         return 200 'User-agent: *\nDisallow: /';
     }
 }
-> end
+> end -- (role == "admin" or role == "traditional") and #admin_listeners > 0
 
-> if #status_listeners > 0 then
+> if role == "admin" then
 server {
-    server_name kong_status;
-> for i = 1, #status_listeners do
-    listen $(status_listeners[i].listener);
+    server_name kong_cluster_listener;
+> for i = 1, #cluster_listeners do
+    listen $(cluster_listeners[i].listener);
 > end
 
-    access_log ${{STATUS_ACCESS_LOG}};
-    error_log ${{STATUS_ERROR_LOG}} ${{LOG_LEVEL}};
+    access_log off;
 
-    # injected nginx_http_status_* directives
-> for _, el in ipairs(nginx_http_status_directives) do
-    $(el.name) $(el.value);
-> end
-
-    location / {
-        default_type application/json;
+    location = /v1/outlet {
         content_by_lua_block {
-            Kong.status_content()
+            Kong.serve_cluster_listener()
         }
-        header_filter_by_lua_block {
-            Kong.status_header_filter()
-        }
-    }
-
-    location /nginx_status {
-        internal;
-        access_log off;
-        stub_status;
-    }
-
-    location /robots.txt {
-        return 200 'User-agent: *\nDisallow: /';
     }
 }
-> end
+> end -- role == "admin"
 ]]

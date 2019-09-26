@@ -12,7 +12,7 @@ end
 
 function OffConnector.new(kong_config)
   local self = {
-    database = "off",
+    database = "memory",
     timeout = 1,
     close = ignore,
     connect = ignore,
@@ -29,7 +29,7 @@ end
 
 function OffConnector:infos()
   return {
-    strategy = "off",
+    strategy = "memory",
     db_name = "in memory",
     db_desc = "cache",
     db_ver = meta._VERSION,

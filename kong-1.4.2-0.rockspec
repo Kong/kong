@@ -63,11 +63,12 @@ build = {
     ["kong.cache_warmup"] = "kong/cache_warmup.lua",
     ["kong.globalpatches"] = "kong/globalpatches.lua",
     ["kong.error_handlers"] = "kong/error_handlers.lua",
+    ["kong.clustering"] = "kong/clustering.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",
-    ["kong.cluster_events.strategies.off"] = "kong/cluster_events/strategies/off.lua",
+    ["kong.cluster_events.strategies.memory"] = "kong/cluster_events/strategies/memory.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
@@ -114,6 +115,7 @@ build = {
     ["kong.api.routes.certificates"] = "kong/api/routes/certificates.lua",
     ["kong.api.routes.snis"] = "kong/api/routes/snis.lua",
     ["kong.api.routes.tags"] = "kong/api/routes/tags.lua",
+    ["kong.api.routes.clustering"] = "kong/api/routes/clustering.lua",
 
     ["kong.status"] = "kong/status/init.lua",
 
@@ -168,9 +170,9 @@ build = {
     ["kong.db.strategies.postgres.plugins"] = "kong/db/strategies/postgres/plugins.lua",
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
     ["kong.db.strategies.postgres.tags"] = "kong/db/strategies/postgres/tags.lua",
-    ["kong.db.strategies.off"] = "kong/db/strategies/off/init.lua",
-    ["kong.db.strategies.off.connector"] = "kong/db/strategies/off/connector.lua",
-    ["kong.db.strategies.off.tags"] = "kong/db/strategies/off/tags.lua",
+    ["kong.db.strategies.memory"] = "kong/db/strategies/memory/init.lua",
+    ["kong.db.strategies.memory.connector"] = "kong/db/strategies/memory/connector.lua",
+    ["kong.db.strategies.memory.tags"] = "kong/db/strategies/memory/tags.lua",
 
     ["kong.db.migrations.state"] = "kong/db/migrations/state.lua",
     ["kong.db.migrations.helpers"] = "kong/db/migrations/helpers.lua",

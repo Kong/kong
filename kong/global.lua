@@ -152,7 +152,7 @@ do
   function _GLOBAL.init_cache(kong_config, cluster_events, worker_events)
     local db_cache_ttl = kong_config.db_cache_ttl
     local cache_pages = 1
-    if kong_config.database == "off" then
+    if kong_config.storage == "memory" then
       db_cache_ttl = 0
       cache_pages = 2
     end

@@ -1,0 +1,344 @@
+local _M = {}
+
+
+local semaphore = require("ngx.semaphore")
+local ws_client = require("resty.websocket.client")
+local ws_server = require("resty.websocket.server")
+local cjson = require("cjson.safe")
+local declarative = require("kong.db.declarative")
+local concurrency = require("kong.concurrency")
+local utils = require("kong.tools.utils")
+local assert = assert
+local setmetatable = setmetatable
+local type = type
+local ipairs = ipairs
+local tostring = tostring
+local ngx_log = ngx.log
+local ngx_sleep = ngx.sleep
+local cjson_decode = cjson.decode
+local cjson_encode = cjson.encode
+local kong = kong
+local dc = declarative.new_config(kong.configuration)
+local ngx_exit = ngx.exit
+local exiting = ngx.worker.exiting
+local ngx_time = ngx.time
+local new_tab = require("table.new")
+local ngx_var = ngx.var
+local io_open = io.open
+
+
+local MAX_PAYLOAD = 65536 -- 64KB
+local PING_INTERVAL = 30 -- 30 seconds
+local WS_OPTS = {
+  max_payload_len = MAX_PAYLOAD,
+}
+local ngx_ERR = ngx.ERR
+local ngx_DEBUG = ngx.DEBUG
+local ngx_INFO = ngx.INFO
+local WEAK_KEY_MT = { __mode = "k", }
+local ROLE
+local clients = setmetatable({}, WEAK_KEY_MT)
+local clients_n = 0
+local shdict = ngx.shared.kong_clustering -- only when role == "admin"
+local prefix = ngx.config.prefix()
+local CONFIG_CACHE = prefix .. "/data/config.cache.json"
+
+
+local function update_config(config_table, update_cache)
+  assert(type(config_table) == "table")
+
+  local entities, _, err_t, ver, new_hash = dc:parse_table(config_table)
+  if not entities then
+    return nil, "bad config received from control plane"
+  end
+
+  if declarative.get_current_hash() ~= new_hash then
+    -- NOTE: no worker mutex needed as this code can only be
+    -- executed by worker 0
+    local res, err = declarative.load_into_cache_with_events(entities, new_hash)
+    if not res then
+      return nil, err
+    end
+
+    if update_cache then
+      -- local persistence only after load finishes without error
+      local f, err = io_open(CONFIG_CACHE, "w")
+      if not f then
+        ngx_log(ngx_ERR, "unable to open cache file: ", err)
+
+      else
+        local res
+        res, err = f:write(cjson_encode(config_table))
+        if not res then
+          ngx_log(ngx_ERR, "unable to write cache file: ", err)
+        end
+
+        f:close()
+      end
+    end
+
+  else -- get_current_hash() == new_hash
+    ngx_log(ngx_DEBUG, "same config received from control plane,",
+            "no need to reload")
+    return true
+  end
+
+  return true
+end
+
+
+local function send_ping(c)
+  local _, err = c:send_ping(declarative.get_current_hash())
+  if err then
+    ngx_log(ngx_ERR, "unable to ping control plane node: ", err)
+    -- return and let the main thread handle the error
+    return
+  end
+
+  ngx_log(ngx_DEBUG, "sent PING packet to control plane")
+end
+
+
+local function communicate(premature, conf)
+  if premature then
+    -- worker wants to exit
+    return
+  end
+
+  -- TODO: pick one random CP
+  local address = conf.cluster_control_plane
+
+  local c = assert(ws_client:new(WS_OPTS))
+  local uri = "ws://" .. address .. "/v1/outlet?node_id=" ..
+              kong.node.get_id() .. "&node_hostname=" .. utils.get_hostname()
+  local res, err = c:connect(uri)
+  if not res then
+    local delay = 9 + math.random()
+
+    ngx_log(ngx_ERR, "connection to control plane broken: ", err,
+            " retrying after ", delay , " seconds")
+    assert(ngx.timer.at(delay, communicate, conf))
+    return
+  end
+
+  -- connection established
+  -- ping thread
+  ngx.thread.spawn(function()
+    while true do
+      send_ping(c)
+      ngx_sleep(PING_INTERVAL)
+    end
+  end)
+
+  while true do
+    local data, typ, err = c:recv_frame()
+    if err then
+      ngx.log(ngx.ERR, "error while receiving frame from control plane: ", err)
+      c:close()
+
+      local delay = 9 + math.random()
+      assert(ngx.timer.at(delay, communicate, conf))
+      return
+    end
+
+    if typ == "binary" then
+      local msg = assert(cjson_decode(data))
+
+      if msg.type == "reconfigure" then
+        local config_table = assert(msg.config_table)
+
+        local res, err = update_config(config_table, true)
+        if not res then
+          ngx_log(ngx_ERR, "unable to update running config: ", err)
+        end
+
+        send_ping(c)
+
+      end
+    elseif typ == "pong" then
+      ngx_log(ngx_DEBUG, "received PONG frame from control plane")
+    end
+  end
+end
+
+
+function _M.handle_cp_websocket()
+  local node_id = ngx_var.arg_node_id
+  if not node_id then
+    ngx_exit(400)
+  end
+
+  local node_hostname = ngx_var.arg_node_hostname
+  local node_ip = ngx_var.remote_addr
+
+  local wb, err = ws_server:new(WS_OPTS)
+  if not wb then
+    ngx_log(ngx_ERR, "failed to perform server side WebSocket handshake: ", err)
+    return ngx_exit(444)
+  end
+
+  local sem = semaphore.new()
+  local queue = { sem = sem, }
+  clients[wb] = queue
+
+  -- connection established
+  -- ping thread
+  ngx.thread.spawn(function()
+    while true do
+      local data, typ, err = wb:recv_frame()
+      if not data then
+        ngx_log(ngx_ERR, "did not receive ping frame from data plane: ", err)
+        -- return and let the main thread handle the error
+        return
+      end
+
+      assert(typ == "ping")
+      local ok
+      ok, err = wb:send_pong()
+      if err then
+        ngx_log(ngx_ERR, "failed to send PONG back to data plane: ", err)
+        -- return and let the main thread handle the error
+        return
+      end
+
+      ngx_log(ngx_DEBUG, "sent PONG packet to control plane")
+
+      if data == "" then
+        -- node has no config loaded, send it to them
+        local res, err = declarative.export_config()
+        if not res then
+          ngx_log(ngx_ERR, "unable to export config from database")
+        end
+
+        table.insert(queue, res)
+        queue.sem:post()
+      end
+
+      ok, err = shdict:safe_set(node_id,
+                                cjson_encode({
+                                  last_seen = ngx_time(),
+                                  config_hash =
+                                    data ~= "" and data or nil,
+                                  hostname = node_hostname,
+                                  ip = node_ip,
+                                }))
+      if not ok then
+        ngx_log(ngx_ERR, "unable to update in-memory cluster status: ", err)
+      end
+    end
+  end)
+
+  while not exiting() do
+    local ok, err = sem:wait(10)
+    if ok then
+      local config = table.remove(queue, 1)
+      assert(config, "config queue can not be empty after semaphore returns")
+
+      local bytes, err = wb:send_binary(cjson_encode({ type = "reconfigure",
+                                                       config_table = config,
+                                                     }))
+      if err then
+        ngx_log(ngx_ERR, "unable to send updated configuration to node: ", err)
+
+      else
+        ngx_log(ngx_DEBUG, "sent config update to node")
+      end
+
+    else -- not ok
+      if err ~= "timeout" then
+        ngx_log(ngx_ERR, "semaphore wait error: ", err)
+      end
+    end
+  end
+end
+
+
+function _M.get_status()
+  local result = new_tab(0, 8)
+
+  for _, n in ipairs(shdict:get_keys()) do
+    result[n] = cjson_decode(shdict:get(n))
+  end
+
+
+  return result
+end
+
+
+local function push_config(config_table)
+  local n = 0
+
+  for _, queue in pairs(clients) do
+    table.insert(queue, config_table)
+    queue.sem:post()
+
+    n = n + 1
+  end
+
+  ngx_log(ngx_DEBUG, "config pushed to ", n, " clients")
+end
+
+
+function _M.broadcast_config(config_table)
+  if ROLE ~= "admin" then
+    return
+  end
+
+  local res, err = kong.worker_events.post("cp", "new_config", config_table)
+  if not res then
+    return nil, err
+  end
+
+  return true
+end
+
+
+function _M.init_worker(conf)
+  assert(conf, "conf can not be nil", 2)
+
+  if conf.role == "proxy" then
+    ROLE = "proxy"
+
+    if ngx.worker.id() == 0 then
+      local f = io_open(CONFIG_CACHE, "r")
+      if f then
+        local config, err = f:read("*a")
+        if not config then
+          ngx_log(ngx_ERR, "unable to read cached config file: ", err)
+        end
+
+        f:close()
+
+        if config then
+          ngx_log(ngx_INFO, "found cached copy of data-plane config, loading..")
+          config = cjson_decode(config)
+
+          local res
+          res, err = update_config(config, false)
+          if not res then
+            ngx_log(ngx_ERR, "unable to running config from cache: ", err)
+          end
+        end
+      end
+
+      assert(ngx.timer.at(0, communicate, conf))
+    end
+
+  elseif conf.role == "admin" then
+    assert(shdict, "kong_clustering shdict missing")
+
+    ROLE = "admin"
+
+    kong.worker_events.register(function(data)
+      local res, err = declarative.export_config()
+      if not res then
+        ngx_log(ngx_ERR, "unable to export config from database")
+      end
+
+      push_config(res)
+    end, "dao:crud")
+  end
+end
+
+
+return _M

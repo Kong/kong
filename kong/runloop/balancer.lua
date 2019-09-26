@@ -788,7 +788,7 @@ local function do_upstream_event(operation, upstream_id, upstream_name)
 
   elseif operation == "delete" or operation == "update" then
 
-    if singletons.db.strategy ~= "off" then
+    if singletons.db.strategy ~= "memory" then
       singletons.core_cache:invalidate_local("balancer:upstreams")
       singletons.core_cache:invalidate_local("balancer:upstreams:" .. upstream_id)
       singletons.core_cache:invalidate_local("balancer:targets:"   .. upstream_id)

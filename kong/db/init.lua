@@ -35,7 +35,7 @@ function DB.new(kong_config, strategy)
     error("strategy must be a string", 2)
   end
 
-  strategy = strategy or kong_config.database
+  strategy = strategy or kong_config.storage
 
   -- load errors
 
