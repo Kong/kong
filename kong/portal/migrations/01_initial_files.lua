@@ -1,6 +1,6 @@
 return {
   {
-    checksum = "d82e49aa74b15ba4be8b7bbcfbc57a042cfa6f2f8a583fbf9b7a30862a19c2f6",
+    checksum = "2646989f91981a8064e9bcc46054fda0d6168c2926a1632572eed0524d0379e7",
     path = "portal.conf.yaml",
     contents = [[name: Kong Portal
 theme:
@@ -10,6 +10,8 @@ redirect:
   unauthorized: unauthorized
   login: dashboard
   logout: ''
+  pending_approval: ''
+  pending_email_verification: ''
 ]]
   },
   {
@@ -22,7 +24,7 @@ title: Dashboard
 ]]
   },
   {
-    checksum = "2f459fc754c93569cebe5f10c44fc4538e53531127470d95e5cc14fb645f71e3",
+    checksum = "82dac210c2ae81a5c5329c94dc733026e7558fdccbe85bc76eba28e29168142f",
     path = "specs/httpbin.json",
     contents = [[{
   "layout": "system/spec-renderer.html",
@@ -36,7 +38,7 @@ title: Dashboard
       "responsibleOrganization": "Kenneth Reitz",
       "url": "https://kennethreitz.org"
     },
-    "description": "A simple HTTP Request & Response Service.<br/> <br/> <b>Run locally: </b> <code>$ docker run -p 80:80 kennethreitz/httpbin</code>",
+    "description": "A simple HTTP Request & Response Service.",
     "title": "httpbin.org",
     "version": "0.9.3"
   },
@@ -2037,7 +2039,7 @@ pre > code {
 ]]
   },
   {
-    checksum = "46989acfdad50ba5bbfde7aea8f7e891568d3ec1feb1695cdb0ee168d7258e49",
+    checksum = "b8589b17d73b6c6c2427194690458d78cd24e2e81a8c4e1e8e6973c96bae98f9",
     path = "themes/light-theme/assets/styles/site.css",
     contents = [[* {
   box-sizing: border-box;
@@ -2135,12 +2137,12 @@ input.has-error {
  *****************************************/
 
 .btn-secondary {
-  background-color: var(--button_secondary_fill_hover, gray);
+  background-color: var(--button_secondary_fill, gray);
   border: 1px solid var(--button_secondary_border, #A3D9FF);
   color: var(--button_secondary_text, grey);
 }
 .btn-secondary:hover {
-  background-color: var(--secondary_button_hover_fill, gray);
+  background-color: var(--button_secondary_fill_hover, gray);
   border: 1px solid var(--button_secondary_border, #A3D9FF);
   color: var(--button_secondary_text, grey);
 }
@@ -2329,6 +2331,10 @@ input.has-error {
   .site-header nav li ul li:last-of-type a {
     border-radius: 0 0 3px 3px;
   }
+
+  .dropdown {
+    width: 150px;
+  }
 }
 
 /*****************************************
@@ -2440,6 +2446,14 @@ a.tag-link .tag-link--name {
 a.tag-link .tag-link--count {
   float: right;
   color: #888;
+}
+
+a.tag-link.is-active .tag-link--count {
+  color: #ffffff;
+}
+
+a.tag-link.is-active {
+  color: #ffffff;
 }
 
 a.tag-link.is-active {
@@ -4608,7 +4622,7 @@ window.addEventListener("load", function () {
 ]]
   },
   {
-    checksum = "c61c024ec3ba24c8609109ac38056ca71fb2b900b4699c757021b1db07aaf6d4",
+    checksum = "4c5aec300d7247d78cbbc70a0e46e46a872a2a2cc438a8be8994a7c2385c690e",
     path = "themes/light-theme/layouts/system/settings.html",
     contents = [[{% layout = "layouts/_page.html" %}
 
@@ -4628,7 +4642,7 @@ window.addEventListener("load", function () {
 }
 </style>
 
-<script src="assets/js/dashboard.min.js"></script>
+<script src="assets/js/dashboard-d83a09f.min.js"></script>
 {-content-}
 ]]
   },
@@ -4831,7 +4845,7 @@ window.addEventListener("load", function () {
 </style>]]
   },
   {
-    checksum = "a4b2b1285eedc91ecb4c9c6275e00d72e476f39223569b6ecf53519a6b438722",
+    checksum = "be55a3d9589aa8d40c4fce9c0666a15a83bb07abac13d4cb621f94c2fbd95792",
     path = "themes/light-theme/partials/footer.html",
     contents = [[<footer class="site-footer">
   <div class="container">
@@ -4841,8 +4855,8 @@ window.addEventListener("load", function () {
       </div>
 
       <nav class="eight columns">
-        <a class="nav-link" href="terms">Terms of Service</a>
-        <a class="nav-link" href="privacy">Privacy</a>
+        <a class="nav-link">Terms of Service</a>
+        <a class="nav-link">Privacy</a>
       </nav>
     </div>
   </div>
@@ -4850,7 +4864,7 @@ window.addEventListener("load", function () {
 ]]
   },
   {
-    checksum = "7a57aa2b8b62280e6c05f2a6102146ffdb5948ca8b763c990c6326be756d77c8",
+    checksum = "f8720fcac0996b893ecb38d4714f46a9d6e519cb0b1b809cde78c0350dfc9ed7",
     path = "themes/light-theme/partials/header.html",
     contents = [[<header class="site-header">
   <div class="container">
@@ -4863,7 +4877,6 @@ window.addEventListener("load", function () {
       <input type="checkbox" id="header_nav" class="menu-toggle-checkbox" />
       <nav class="eight columns" role="navigation">
         <li><a href="documentation">Service Catalog</a></li>
-        <li><a href="guides">Tutorials</a></li>
         <li><a href="about">About</a></li>
 
         {% if portal.auth and portal.auth ~= "" then %}
@@ -5017,10 +5030,10 @@ window.addEventListener("load", function () {
 {% end %}]]
   },
   {
-    checksum = "53bde0620963b1676a84ba7ddae4a7f81ee3496ab564b660c495081056113ed1",
+    checksum = "7ba89e2e576d86c7e9df7e65e1ba3a1c66a581037a94578152371879aeeb5da4",
     path = "themes/light-theme/partials/service-catalog/item.html",
     contents = [[<a
-  href="{{route}}"
+  href="{{string.sub(route, 2)}}"
   data-tags="{% for _, tag in pairs(parsed.tags or {}) do %}{{tag.name:lower()}},{% end %}"
   class="catalog-item toggle-content is-visible">
   <div class="catalog-logo">
@@ -5294,7 +5307,7 @@ window.addEventListener("load", function () {
 ]]
   },
   {
-    checksum = "2e3a6464a2bfdee265c455f4c7705db78b6ba5cfa046b6a105a3de44701b71c9",
+    checksum = "8b52d4209480196a19d5e9279019856ded6b1c2f2cafa8b793cfcb16db0f7cd6",
     path = "themes/light-theme/partials/auth/forms/register/basic-auth.html",
     contents = [[  <form id="register" data-type="basic-auth">
     <p class="form-error-message toggle-content"></p>
@@ -5331,7 +5344,6 @@ window.addEventListener("load", function () {
       // Submission variables
       var baseApiUrl = window.Kong.getApiUrl();
       var authType = Kong.Auth.BASIC_AUTH;
-      var redirectTo =  Kong.Auth.getRedirectTo('{{portal.redirect.login}}')
 
 
       // Handle form state
@@ -5353,12 +5365,14 @@ window.addEventListener("load", function () {
             type: authType,
             fields: fields
           }).then(() => {
-            window.location.href = redirectTo;
+            window.location.href = Kong.Auth.getRedirectTo('{{portal.redirect.login}}');
           }).catch(onError)
         } else if (accountIsPendingEmailVerfication) {
           alert(accountIsPendingEmailVerificationMessage)
+          window.location.href = Kong.Auth.getRedirectTo('{{portal.redirect.pending_email_verification}}');
         } else {
           alert(accountisPendingVerificationMessage)
+          window.location.href = Kong.Auth.getRedirectTo('{{portal.redirect.pending_approval}}');
         }
       }
 
@@ -5393,7 +5407,7 @@ window.addEventListener("load", function () {
 ]]
   },
   {
-    checksum = "004f955b2556e598579082d11fbb1cca7ee498eaa74a53e6ec2cd4bf876a6462",
+    checksum = "fbeef167ff83b63d37ce48060645ab2aadea0c646d852f451dbb9f9ef42192be",
     path = "themes/light-theme/partials/auth/forms/register/key-auth.html",
     contents = [[  <form id="register" data-type="key-auth">
     {(partials/auth/custom-fields.html, context)}
@@ -5428,7 +5442,6 @@ window.addEventListener("load", function () {
       // Submission variables
       var baseApiUrl = window.Kong.getApiUrl();
       var authType = Kong.Auth.KEY_AUTH;
-      var redirectTo =  Kong.Auth.getRedirectTo('{{portal.redirect.login}}')
 
 
       // Handle form state
@@ -5450,12 +5463,14 @@ window.addEventListener("load", function () {
             type: authType,
             fields: fields
           }).then(() => {
-            window.location.href = redirectTo;
+            window.location.href = Kong.Auth.getRedirectTo('{{portal.redirect.login}}');
           }).catch(onError)
         } else if (accountIsPendingEmailVerfication) {
           alert(accountIsPendingEmailVerificationMessage)
+          window.location.href = Kong.Auth.getRedirectTo('{{portal.redirect.pending_email_verification}}');
         } else {
           alert(accountisPendingVerificationMessage)
+          window.location.href = Kong.Auth.getRedirectTo('{{portal.redirect.pending_approval}}');
         }
       }
 
@@ -5490,7 +5505,7 @@ window.addEventListener("load", function () {
 ]]
   },
   {
-    checksum = "82ed8444bb4b4bfaea9be9a4ef9844ad697dba8f81ad6d87644bf22e63370749",
+    checksum = "28d6413d1e474d6af0b5f8453ec52e0d92588130ed6b2f30adbc6625d9866f40",
     path = "themes/light-theme/partials/auth/forms/register/oidc.html",
     contents = [[  <form id="register" data-type="openid-connect">
     <p class="form-error-message toggle-content"></p>
@@ -5539,11 +5554,13 @@ window.addEventListener("load", function () {
         var accountIsPendingEmailVerfication = data.developer.status === 5
 
         if (accountIsApproved) {
-          window.location.href = "{{page():redirect('login')()}}";
+          window.location.href = Kong.Auth.getRedirectTo('{{portal.redirect.login}}');
         } else if (accountIsPendingEmailVerfication) {
           alert(accountIsPendingEmailVerificationMessage)
+          window.location.href = Kong.Auth.getRedirectTo('{{portal.redirect.pending_email_verification}}');
         } else {
           alert(accountisPendingVerificationMessage)
+          window.location.href = Kong.Auth.getRedirectTo('{{portal.redirect.pending_approval}}');
         }
       }
 
@@ -5946,7 +5963,7 @@ layout: system/verify-account.html
 ]]
   },
   {
-    checksum = "e1902328962b2adc7ef9eac98ce7f4874c3e20173410f0a1a95fac099d89f404",
+    checksum = "388ad7650de2040ead0472f042aada1f1221279fc4ccc265aa9ee1b9760365ca",
     path = "content/about/index.txt",
     contents = [[---
 layout: about.html
@@ -5977,7 +5994,7 @@ team:
       image: "https://images.unsplash.com/photo-1527860305340-c42077f06851?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=800&q=60"
     - name: "Alamin D."
       title: "VP of Product"
-      image: "https://tinyfac.es/data/avatars/B0298C36-9751-48EF-BE15-80FB9CD11143-500w.jpeg"
+      image: "http://genfkd.wpengine.netdna-cdn.com/wp-content/uploads/2018/05/shutterstock_793117360-503x518.jpg"
     - name: "Tohi B."
       title: "VP of Engineering"
       image: "https://images.unsplash.com/photo-1521119989659-a83eee488004?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=300&q=80"
@@ -5985,6 +6002,252 @@ team:
       title: "VP of Happiness"
       image: "https://images.unsplash.com/photo-1529259646408-5c50deb4cf6a?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=800&q=60"
 ---
+]]
+  },
+  {
+    checksum = "fb46913819c6f3605b84f80ae5886b014a5a65e9481402553d384c7901d894a1",
+    path = "modules/partials/header/blueprint.yaml",
+    contents = [[title: header
+blocks:
+  logo:
+    type: html
+    required: true
+  nav:
+    type: html
+    required: true
+]]
+  },
+  {
+    checksum = "70f5bf6d867583fdca70a9cc8183b137fdcf77002f5fc4014ba4688ae36d6aef",
+    path = "modules/partials/header/default.txt",
+    contents = [[{-logo-}
+<label for="header_nav" class="menu-toggle">Menu</label>
+<h1 class="brand"><a href=""><img class="logo" src="{{theme.images.logo}}" alt="{{portal.name}}" /></a></h1>
+{-logo-}
+
+{-nav-}
+<li><a href="documentation">Service Catalog</a></li>
+<li><a href="guides">Tutorials</a></li>
+<li><a href="about">About</a></li>
+
+{% if portal.auth and portal.auth ~= "" then %}
+  {% if user.is_authenticated() then %}
+    <li class="has-dropdown">
+      <a href="settings" aria-haspopup="true">{{user.get("email")}}</a>
+      <ul class="dropdown" aria-label="submenu">
+        <li><a href="dashboard">Dashboard</a></li>
+        <li><a href="logout">Logout</a></li>
+      </ul>
+    </li>
+  {% else %}
+    <li><a href="login">Login</a></li>
+    <li><a class="nav-button btn btn-secondary" href="register">Sign Up</a></li>
+  {% end %}
+{% end %}
+{-nav-}
+]]
+  },
+  {
+    checksum = "56de82574aa9b38fa0c2bfb17c4f178910109504b2dc101bd4a2c1c2865701cd",
+    path = "modules/partials/header/layout.html",
+    contents = [[<header class="site-header">
+  <div class="container">
+    <div class="row">
+      <div class="four columns">
+        {* blocks.logo *}
+      </div>
+
+      <input type="checkbox" id="header_nav" class="menu-toggle-checkbox" />
+      <nav class="eight columns" role="navigation">
+        {* blocks.nav *}
+      </nav>
+    </div>
+  </div>
+</header>
+  ]]
+  },
+  {
+    checksum = "a9bae17c36123206822fc106cceaa8a4dd1579bf0069cc5df7bce23bde3fe724",
+    path = "modules/partials/footer/blueprint.yaml",
+    contents = [[title: footer
+blocks:
+  company_name:
+    type: html
+    required: true
+  links:
+    type: html
+    required: true
+]]
+  },
+  {
+    checksum = "3d4fbe814b93457fe4485f0634e3ee3f41cfffae28f9e90efa16127f943d5129",
+    path = "modules/partials/footer/default.txt",
+    contents = [[{-company_name-}
+<h1 class="brand">{{portal.name}}</h1>
+{-company_name-}
+
+{-links-}
+<a class="nav-link" href="terms">Terms of Service</a>
+<a class="nav-link" href="privacy">Privacy</a>
+{-links-}
+]]
+  },
+  {
+    checksum = "8e3761514cc269cecf9d459a57c8c7519c8756cc789df919d0ca2536fc3648f8",
+    path = "modules/partials/footer/layout.html",
+    contents = [[<footer class="site-footer">
+  <div class="container">
+    <div class="row">
+      <div class="four columns">
+        {* blocks.company_name *}
+      </div>
+
+      <nav class="eight columns">
+        {* blocks.links *}
+      </nav>
+    </div>
+  </div>
+</footer>
+]]
+  },
+  {
+    checksum = "37898fe180ad8ce6657c9ce4896c41fccdfb2059a04f6603b5c2f307e2557d40",
+    path = "modules/layouts/homepage/blueprint.yaml",
+    contents = [[title: homepage
+blocks:
+  header:
+    type: blueprint
+    required: true
+  footer:
+    type: blueprint
+    required: true
+  hero_text:
+    type: text
+    required: true
+  hero_image:
+    type: image
+    required: true
+]]
+  },
+  {
+    checksum = "51eec060251c0d9902d102b93dea75f650069300a2883348765bb756ed20c055",
+    path = "modules/layouts/homepage/default.txt",
+    contents = [[{-header-}
+{( modules/partials/header )}
+{-header-}
+
+{-footer-}
+{( modules/partials/footer )}
+{-footer-}
+
+{-hero-}
+{( modules/partials/hero )}
+{-hero-}
+]]
+  },
+  {
+    checksum = "1800915b4f3ac885ce0c43ada0dbbb99b8379e123bae39b258c95b3b326ea626",
+    path = "modules/layouts/homepage/layout.html",
+    contents = [[{% layout = "layouts/_base.html" %}
+
+{-main-}
+{* blocks.header *}
+<body>
+  <div class="homepage" style="padding-top: 160px;">
+    <div class="hero">
+      {* blocks.hero *}
+    </div>
+    <section class="homepage-catalog">
+      {* blocks.row_one *}
+    </section>
+    <section class="homepage-catalog">
+      {* blocks.row_two *}
+    </section>
+    <section class="homepage-catalog">
+      {* blocks.row_three *}
+    </section>
+  </div>
+</body>
+{* blocks.footer *}
+{-main-}
+]]
+  },
+  {
+    checksum = "1940fc30c6db8e6bb39fea888ecadc11b063641d2fbb087d249fc0a69766fa21",
+    path = "modules/partials/hero/default.txt",
+    contents = [[{-title-}
+Welcome to Kong Dev Portal
+{-title-}
+
+{-tagline-}
+Make a thing!
+{-tagline-}
+
+{-footer-}
+<a class="btn btn-primary" href="register">Create a Developer Account</a>
+{-footer-}
+]]
+  },
+  {
+    checksum = "875e35225e03919c6319be3b74a6c83f920a0d1917c8c1039a01ca85952a42d2",
+    path = "modules/partials/hero/layout.html",
+    contents = [[<div class="hero-header">
+    <h2>
+      {* blocks.title *}
+    </h2>
+    <p>
+      {* blocks.tagline *}
+    </p>
+  </div>
+  <div class="hero-footer">
+    {* blocks.cta *}
+  </div>
+</div>
+]]
+  },
+  {
+    checksum = "04d46cdde9d4242bb788f7c4638f86d2bb2c467706c261a0a0864f8cbc496594",
+    path = "themes/light-theme/partials/__kong/header/nav.html",
+    contents = [[<li><a href="documentation">Service Catalog</a></li>
+<li><a href="guides">Tutorials</a></li>
+<li><a href="about">About</a></li>
+
+{% if portal.auth and portal.auth ~= "" then %}
+  {% if user.is_authenticated() then %}
+    <li class="has-dropdown">
+      <a href="settings" aria-haspopup="true">{{user.get("email")}}</a>
+      <ul class="dropdown" aria-label="submenu">
+        <li><a href="dashboard">Dashboard</a></li>
+        <li><a href="logout">Logout</a></li>
+      </ul>
+    </li>
+  {% else %}
+    <li><a href="login">Login</a></li>
+    <li><a class="nav-button btn btn-secondary" href="register">Sign Up</a></li>
+  {% end %}
+{% end %}
+]]
+  },
+  {
+    checksum = "5f8d829ae14f6a4aeb544ad9aaf88cdf36e66acd766874b9a5423e29e143f2e6",
+    path = "modules/partials/hero/blueprint.yaml",
+    contents = [[title: hero
+blocks:
+  title:
+    type: text
+    required: true
+  tagline:
+    type: text
+    required: true
+  footer:
+    type: html
+]]
+  },
+  {
+    checksum = "df093dc44680ab0bbddce785a4c3284255e6a49abd47464e253e9d59ab6ddfde",
+    path = "themes/light-theme/partials/__kong/header/logo.html",
+    contents = [[<label for="header_nav" class="menu-toggle">Menu</label>
+<h1 class="brand"><a href=""><img class="logo" src="{{theme.images.logo}}" alt="{{portal.name}}" /></a></h1>
 ]]
   }
 }
