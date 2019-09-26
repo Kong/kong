@@ -4,6 +4,7 @@ return {
   name               = "groups",
   generate_admin_api = false,
   primary_key        = { "id" },
+  cache_key          = { "name" },
   endpoint_key       = "name",
   admin_api_name = "groups",
   workspaceable      = false,

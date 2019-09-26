@@ -26,7 +26,7 @@ end
 local function post_process_action(row)
   local rbac_role_row, err_role = rbac_roles:select({ id = row.rbac_role.id })
   local group_row, err_group = groups:select({ id = row.group.id })
-  
+
   if err_role or err_group then
     return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
@@ -86,7 +86,7 @@ return {
         if err_t then
           return endpoints.handle_error(err_t)
         end
-      
+
         if not entity then
           return kong.response.exit(404, { message = "Not found" })
         end
@@ -116,7 +116,7 @@ return {
         if not self.params[key] then
           return kong.response.exit(400, { message = "must provide the " .. key })
         end
-        
+
         entities[schema] = workspaces.run_with_ws_scope(
           -- ws_scope is a ws array
           {{ id = self.params.workspace_id }},
@@ -128,6 +128,9 @@ return {
           return kong.response.exit(404, { message = "Not found" })
         end
       end
+
+      local cache_key = db["group_rbac_roles"]:cache_key(self.params.groups.id)
+      kong.cache:invalidate(cache_key)
 
       workspaces.run_with_ws_scope({{ id = self.params.workspace_id }}, function()
           local _, _, err_t = group_rbac_roles:insert({
@@ -142,7 +145,7 @@ return {
       end)
 
       return kong.response.exit(201, response_filter(
-        self.params.groups, 
+        self.params.groups,
         entities.rbac_roles,
         entities.workspaces
       ))
@@ -159,6 +162,9 @@ return {
           return kong.response.exit(400, { message = "must provide the " .. key })
         end
       end
+
+      local cache_key = db["group_rbac_roles"]:cache_key(self.params.groups.id)
+      kong.cache:invalidate(cache_key)
 
       workspaces.run_with_ws_scope({{ id = self.params.workspace_id }}, function()
           local _, err = group_rbac_roles:delete({
