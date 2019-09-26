@@ -27,6 +27,20 @@ return {
         -- Do nothing, accept existing state
       END$$;
 
+      DO $$
+      BEGIN
+        CREATE INDEX IF NOT EXISTS oauth2_authorization_codes_ttl_idx ON oauth2_authorization_codes (ttl);
+      EXCEPTION WHEN UNDEFINED_TABLE THEN
+        -- Do nothing, accept existing state
+      END$$;
+
+      DO $$
+      BEGIN
+        CREATE INDEX IF NOT EXISTS oauth2_tokens_ttl_idx ON oauth2_tokens (ttl);
+      EXCEPTION WHEN UNDEFINED_TABLE THEN
+        -- Do nothing, accept existing state
+      END$$;
+
     ]],
   },
   cassandra = {
