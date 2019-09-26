@@ -27,7 +27,11 @@ return {
                 default = "kong_db_cache",
               } },
             },
-          } }
+          } },
+          { vary_headers = {
+            type = "array",
+            elements = { type = "string" },
+          }},
         }
       }
     }

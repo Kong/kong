@@ -1,13 +1,12 @@
-local md5              = ngx.md5
 local time             = ngx.time
 local resp_get_headers = ngx.resp and ngx.resp.get_headers
 local ngx_now          = ngx.now
 local ngx_re_match     = ngx.re.match
 local floor            = math.floor
 local str_lower        = string.lower
-local fmt               = string.format
 
-local ee         = require "kong.enterprise_edition"
+local ee = require "kong.enterprise_edition"
+local cache_key = require "kong.plugins.gql-proxy-cache.cache_key"
 
 local STRATEGY_PATH = "kong.plugins.gql-proxy-cache.strategies"
 local CACHE_VERSION = 1
@@ -39,36 +38,6 @@ local function overwritable_header(header)
 
   return not hop_by_hop_headers[n_header] and
          not (ngx_re_match(n_header, "ratelimit-remaining"))
-end
-
-
-local function prefix_uuid(route_id)
-  -- route id
-  if route_id then
-    return route_id
-  end
-
-  -- global default
-  return "default"
-end
-
-
-local function query_key(body_raw)
-  -- replace all multiple spaces to one space and minimize the size
-  -- of the query key
-  return string.gsub(body_raw, "%s+", " ")
-end
-
-
---
--- Build cache key from query that was passed in a request body
--- @param body_raw: raw body from the request
---
-local function build_cache_key(route_id, body_raw)
-  local prefix_digest = prefix_uuid(route_id)
-  local query_digest  = query_key(body_raw)
-
-  return md5(fmt("%s|%s", prefix_digest, query_digest))
 end
 
 
@@ -138,7 +107,8 @@ function _GqlCacheHandler:access(conf)
   local route_id = ctx.route and ctx.route.id
 
   -- build cache key
-  local cache_key = build_cache_key(route_id, body_raw)
+  local cache_key = cache_key.build_cache_key(route_id, body_raw,
+      kong.request.get_headers(), conf.vary_headers)
 
   ngx.header["X-Cache-Key"] = cache_key
 
