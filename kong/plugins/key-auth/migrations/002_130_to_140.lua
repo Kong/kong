@@ -34,6 +34,13 @@ return {
         -- Do nothing, accept existing state
       END$$;
 
+      DO $$
+      BEGIN
+        CREATE INDEX IF NOT EXISTS keyauth_credentials_ttl_idx ON keyauth_credentials (ttl);
+      EXCEPTION WHEN UNDEFINED_TABLE THEN
+        -- Do nothing, accept existing state
+      END$$;
+
     ]],
   },
   cassandra = {
