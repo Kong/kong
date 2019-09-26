@@ -188,6 +188,7 @@ local CONF_INFERENCES = {
                           }
                         },
   cassandra_local_datacenter = { typ = "string" },
+  cassandra_refresh_frequency = { typ = "number" },
   cassandra_repl_strategy = { enum = {
                                 "SimpleStrategy",
                                 "NetworkTopologyStrategy",
@@ -343,6 +344,10 @@ local function check_and_infer(conf)
     then
       errors[#errors + 1] = "must specify 'cassandra_local_datacenter' when " ..
                             conf.cassandra_lb_policy .. " policy is in use"
+    end
+
+    if conf.cassandra_refresh_frequency < 0 then
+      errors[#errors + 1] = "cassandra_refresh_frequency must be 0 or greater"
     end
 
     for _, contact_point in ipairs(conf.cassandra_contact_points) do

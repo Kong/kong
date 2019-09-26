@@ -66,6 +66,7 @@ cassandra_password = NONE
 cassandra_consistency = ONE
 cassandra_lb_policy = RequestRoundRobin
 cassandra_local_datacenter = NONE
+cassandra_refresh_frequency = 60
 cassandra_repl_strategy = SimpleStrategy
 cassandra_repl_factor = 1
 cassandra_data_centers = dc1:2,dc2:3
