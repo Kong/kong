@@ -563,6 +563,14 @@ describe("Configuration loader", function()
       assert.equal([[bad cassandra contact point 'some/really\bad/host\name': invalid hostname: some/really\bad/host\name]], err)
       assert.is_nil(conf)
     end)
+    it("errors cassandra_refresh_frequency is < 0", function()
+      local conf, err = conf_loader(nil, {
+          database                    = "cassandra",
+          cassandra_refresh_frequency = -1,
+      })
+      assert.equal("cassandra_refresh_frequency must be 0 or greater", err)
+      assert.is_nil(conf)
+    end)
     it("errors when specifying a port in cassandra_contact_points", function()
       local conf, err = conf_loader(nil, {
           database                 = "cassandra",

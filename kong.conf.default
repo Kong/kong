@@ -667,6 +667,14 @@
                                  # of the local (closest) datacenter for this
                                  # Kong node.
 
+#cassandra_refresh_frequency = 60          # Frequency (in seconds) at which
+                                           # the cluster topology will be
+                                           # checked for new or decommissioned
+                                           # nodes.
+                                           # A value of `0` will disable this
+                                           # check, and the cluster topology
+                                           # will never be refreshed.
+
 #cassandra_repl_strategy = SimpleStrategy  # When migrating for the first time,
                                            # Kong will use this setting to
                                            # create your keyspace.
