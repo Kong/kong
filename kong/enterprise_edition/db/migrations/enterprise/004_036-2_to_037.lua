@@ -48,6 +48,21 @@ return {
       EXCEPTION WHEN UNDEFINED_TABLE THEN
         -- Do nothing, accept existing state
       END$$;
+
+      -- Backport oauth2 ttl index, this will come in 1.4.0
+      DO $$
+      BEGIN
+        CREATE INDEX IF NOT EXISTS oauth2_authorization_codes_ttl_idx ON oauth2_authorization_codes (ttl);
+      EXCEPTION WHEN UNDEFINED_TABLE THEN
+        -- Do nothing, accept existing state
+      END$$;
+
+      DO $$
+      BEGIN
+        CREATE INDEX IF NOT EXISTS oauth2_tokens_ttl_idx ON oauth2_tokens (ttl);
+      EXCEPTION WHEN UNDEFINED_TABLE THEN
+        -- Do nothing, accept existing state
+      END$$;
     ]],
     teardown = function(connector)
       assert(connector:connect_migrations())
