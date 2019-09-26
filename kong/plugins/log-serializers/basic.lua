@@ -1,14 +1,19 @@
 local tablex = require "pl.tablex"
 local ngx_ssl = require "ngx.ssl"
+local gkong = kong
 
 local _M = {}
 
 local EMPTY = tablex.readonly({})
 
-function _M.serialize(ngx)
+function _M.serialize(ngx, kong)
   local ctx = ngx.ctx
   local var = ngx.var
   local req = ngx.req
+
+  if not kong then
+    kong = gkong
+  end
 
   local authenticated_entity
   if ctx.authenticated_credential ~= nil then
@@ -34,9 +39,9 @@ function _M.serialize(ngx)
     request = {
       uri = request_uri,
       url = var.scheme .. "://" .. var.host .. ":" .. var.server_port .. request_uri,
-      querystring = req.get_uri_args(), -- parameters, as a table
-      method = req.get_method(), -- http method
-      headers = req.get_headers(),
+      querystring = kong.request.get_query(), -- parameters, as a table
+      method = kong.request.get_method(), -- http method
+      headers = kong.request.get_headers(),
       size = var.request_length,
       tls = request_tls
     },
