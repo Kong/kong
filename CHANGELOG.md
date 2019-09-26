@@ -1,10 +1,20 @@
 # Table of Contents
 
- - [1.5.0](#151---20190813)
+ - [1.5.1](#151---20190926)
+ - [1.5.0](#150---20190813)
 
 ## Unreleased
 
+## [1.5.1] - 2019/09/26
+
+#### Summary
+
+This release includes bug fixes and non breaking changes.
+
+#### Under the hood
+
 - `/collector/status` and `/collector/alerts` returns response_code returned by collector server
+- `/service_maps` API endpioint proxies the request to `collector` and no longer relies on local storage
 
 ## [1.5.0] - 2019/08/13
 
