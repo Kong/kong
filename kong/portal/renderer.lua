@@ -283,7 +283,7 @@ local function set_render_ctx(self)
 
   local route = self.path
   if self.is_admin then
-    local path = string.gsub(self.path, "/", "", 1)
+    local path = pl_stringx.replace(self.path, workspace.name .. '/', '')
     local file = singletons.db.files:select_by_path(path)
     if not path then
       file = {}
