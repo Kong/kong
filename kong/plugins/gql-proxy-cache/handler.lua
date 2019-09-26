@@ -1,133 +1,222 @@
-local strategy = require('kong.plugins.gql-proxy-cache.strategies')
-local md5 = ngx.md5
-local build_ast = require("kong.gql.build_ast")
-local gql_util = require('kong.gql.util')
+local md5              = ngx.md5
+local time             = ngx.time
+local resp_get_headers = ngx.resp and ngx.resp.get_headers
+local ngx_now          = ngx.now
+local ngx_re_match     = ngx.re.match
+local floor            = math.floor
+local str_lower        = string.lower
+local fmt               = string.format
 
-local _GqlCacheHandler = {
-    VERSION = "1.2.1",
-    PRIORITY = 100
+local ee         = require "kong.enterprise_edition"
+
+local STRATEGY_PATH = "kong.plugins.gql-proxy-cache.strategies"
+local CACHE_VERSION = 1
+
+
+local function get_now()
+  return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
+end
+
+
+-- http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html#sec13.5.1
+-- note content-length is not strictly hop-by-hop but we will be
+-- adjusting it here anyhow
+local hop_by_hop_headers = {
+  ["connection"]          = true,
+  ["keep-alive"]          = true,
+  ["proxy-authenticate"]  = true,
+  ["proxy-authorization"] = true,
+  ["te"]                  = true,
+  ["trailers"]            = true,
+  ["transfer-encoding"]   = true,
+  ["upgrade"]             = true,
+  ["content-length"]      = true,
 }
 
 
-function _GqlCacheHandler:init_worker()
+local function overwritable_header(header)
+  local n_header = str_lower(header)
 
+  return not hop_by_hop_headers[n_header] and
+         not (ngx_re_match(n_header, "ratelimit-remaining"))
 end
 
 
--- Determines if query operation is cacheable
-local function cacheable_req(ast)
-    return ast.is_query_op()
+local function prefix_uuid(route_id)
+  -- route id
+  if route_id then
+    return route_id
+  end
+
+  -- global default
+  return "default"
 end
 
 
--- Build cache key from current subtree
--- @param subtree:
--- @param conf: plugin configuration table
--- @param(opt) path_key: Cache key of current tree context
-local function build_cache_key(service_id, cache_key, conf, path_key)
-
+local function query_key(body_raw)
+  -- replace all multiple spaces to one space and minimize the size
+  -- of the query key
+  return string.gsub(body_raw, "%s+", " ")
 end
 
 
--- Stringify keys in alphabetical order
-local function _prefix_args(arguments)
+--
+-- Build cache key from query that was passed in a request body
+-- @param body_raw: raw body from the request
+--
+local function build_cache_key(route_id, body_raw)
+  local prefix_digest = prefix_uuid(route_id)
+  local query_digest  = query_key(body_raw)
 
-    for k, v in pairs(arguments) do
+  return md5(fmt("%s|%s", prefix_digest, query_digest))
+end
 
+
+local function signal_cache_req(cache_key, cache_status)
+  ngx.ctx.gql_proxy_cache = {
+    cache_key = cache_key,
+  }
+
+  kong.response.set_header("X-Cache-Status", cache_status or "Miss")
+end
+
+
+local function send_response(res)
+  -- simulate the access.after handler
+  --===========================================================
+  local now = get_now()
+
+  ngx.ctx.KONG_ACCESS_TIME = now - ngx.ctx.KONG_ACCESS_START
+  ngx.ctx.KONG_ACCESS_ENDED_AT = now
+  local proxy_latency = now - ngx.req.start_time() * 1000
+  ngx.ctx.KONG_PROXY_LATENCY = proxy_latency
+  ngx.ctx.KONG_PROXIED = true
+
+  ee.handlers.access.after(ngx.ctx)
+  --===========================================================
+
+  ngx.status = res.status
+
+  for k, v in pairs(res.headers) do
+    if overwritable_header(k) then
+      ngx.header[k] = v
     end
+  end
 
+  ngx.header["Age"] = floor(time() - res.timestamp)
+  ngx.header["X-Cache-Status"] = "Hit"
 
+  ngx.ctx.delayed_response = true
+  ngx.ctx.delayed_response_callback = function()
+    ngx.say(res.body)
+  end
 end
 
 
--- @param node: node has 1 or more arguments
-local function _prefix_node(node)
-    local arg_digest = _prefix_args(node.arguments)
-    return string.format("%s(%s)", node.name, arg_digest)
-end
+local _GqlCacheHandler = {}
 
 
-local function cache_traverse_find(subtree, path_key, forward_req)
-    local node_digest = _prefix_node(subtree.node)
-    local key = md5(string.format("%s|%s"), path_key, node_digest)
+_GqlCacheHandler.PRIORITY = 100
+_GqlCacheHandler.VERSION = "1.2.1"
 
-    local res, err = strategy:fetch(key)
-    if err then
-        return nil, subtree
+
+function _GqlCacheHandler:access(conf)
+  local body_raw = kong.request.get_raw_body()
+  local http_method = kong.request.get_method()
+
+  -- skip it if there is no body in the request
+  if not body_raw or http_method ~= 'POST' then
+    return
+  end
+
+  local strategy = require(STRATEGY_PATH)({
+    strategy_name = conf.strategy,
+    strategy_opts = conf[conf.strategy],
+  })
+
+  local ctx = ngx.ctx
+  local route_id = ctx.route and ctx.route.id
+
+  -- build cache key
+  local cache_key = build_cache_key(route_id, body_raw)
+
+  ngx.header["X-Cache-Key"] = cache_key
+
+  -- check cache
+  local res, err = strategy:fetch(cache_key)
+
+  if err == "request object not in cache" then
+    if not res then
+      -- this request is cacheable but wasn't found in the data store
+      -- make a note that we should store it in cache later,
+      -- and pass the request upstream
+      return signal_cache_req(cache_key)
     end
+  elseif err then
+    kong.log.err(err)
+    return
+  end
 
-    -- res is table of subtree's response along with all subtrees of no arguments
-    local children_w_args = gql_util.filter_iter(
-            subtree.node:children(),
-            function (node)
-                for _ in pairs(node.arguments) do return true end
-                return false
-            end
-    )
+  if res.version ~= CACHE_VERSION then
+    kong.log.notice("[proxy-cache] cache format mismatch, purging ", cache_key)
+    strategy:purge(cache_key)
+    return signal_cache_req(cache_key, "Bypass")
+  end
 
-    -- TODO: account for field nodes missing from found subtree
-    for node in children_w_args do
-        local c_res, c_forward = cache_traverse_find(node, key, new_context)
+  -- don't serve stale data
+  if time() - res.timestamp > conf.cache_ttl then
+    return signal_cache_req(cache_key, "Refresh")
+  end
 
-        -- TODO: Should accumulate into array and merge at the end
-        res = response_merge(res, node.name, c_result)
-        forward_req = upstream_forward_merge(forward_req, node.name, c_forward)
-    end
-
-    return res, forward_req
+  return send_response(res)
 end
 
+function _GqlCacheHandler:header_filter(conf)
+  local ctx = ngx.ctx.gql_proxy_cache
+  if not ctx then
+    return
+  end
 
--- Store what is needed of the response by traversing tree
--- @param subtree_node: node of subtree
--- @param 
--- @param res_context: current context of upstream response
-local function cache_traverse_store(subtree_node, path_key, res_context)
-
-    local key = build_cache_key(subtree_node, path_key)
-
-    local raw_res = strategy:has(key)
-    if not raw_res then
-
-    end
-
-    -- Here, we merge responses
-    local res = deserialize(raw_res)
-
+  ctx.res_headers = resp_get_headers(0, true)
+  ctx.res_ttl = conf.cache_ttl
+  ngx.ctx.gql_proxy_cache = ctx
 end
 
+function _GqlCacheHandler:body_filter(conf)
+  local ctx = ngx.ctx.gql_proxy_cache
+  if not ctx then
+    return
+  end
 
-function _GqlCacheHandler:access()
+  local chunk = ngx.arg[1]
+  local eof   = ngx.arg[2]
 
-    local body = kong.request.get_body()
-    local gql_op = body.query
+  ctx.res_body = (ctx.res_body or "") .. (chunk or "")
 
-    local ok, result = pcall(build_ast, gql_op)
+  if eof then
+    local strategy = require(STRATEGY_PATH)({
+      strategy_name = conf.strategy,
+      strategy_opts = conf[conf.strategy],
+    })
+
+    local res = {
+      status    = ngx.status,
+      headers   = ctx.res_headers,
+      body      = ctx.res_body,
+      body_len  = #ctx.res_body,
+      timestamp = time(),
+      ttl       = ctx.res_ttl,
+      version   = CACHE_VERSION,
+      req_body  = ngx.ctx.req_body,
+    }
+
+    local ok, err = strategy:store(ctx.cache_key, res, ctx.res_ttl)
     if not ok then
-        kong.log.err(result)
-        return kong.response.exit(400, {
-            err = '[GqlBaseErr]: internal parsing',
-            message = result
-        }, { ['Content-Type'] = 'application/json' })
+      kong.log.err("[proxy-cache] ", err)
     end
-
-    if not cacheable_req(result) then
-        ngx.header["X-Cache-Status"] = "Bypass"
-        return
-    end
-
-    -- Compute miss or hit type
-
-
-    -- Compute upstream request if partial hit type
-
-end
-
-
-function _GqlCacheHandler:body_filter()
-    -- Path 1: Glue together response if partial hit
-
-    -- Path 2: If miss, save to cache each subtree with arguments
+  else
+    ngx.ctx.gql_proxy_cache = ctx
+  end
 
 end
 
