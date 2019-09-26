@@ -1874,7 +1874,11 @@ for _, strategy in helpers.each_strategy() do
 
             add_target(bp, upstream_id, localhost, port1)
             add_target(bp, upstream_id, localhost, port2)
-            local _, service_id, route_id = add_api(bp, upstream_name, 500, 500, nil, nil, "tcp")
+            local _, service_id, route_id = add_api(bp, upstream_name, {
+              read_timeout = 500,
+              write_timeout = 500,
+              route_protocol = "tcp",
+            })
             end_testcase_setup(strategy, bp)
 
             finally(function()

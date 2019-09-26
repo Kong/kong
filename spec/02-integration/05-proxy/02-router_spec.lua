@@ -352,12 +352,20 @@ for _, strategy in helpers.each_strategy() do
         routes = insert_routes(bp, {
           {
             protocols = { "grpc", "grpcs" },
-            hosts = { "grpc1" },
+            hosts = {
+              "grpc1",
+              "grpc1:" .. helpers.get_proxy_port(false, true),
+              "grpc1:"..helpers.get_proxy_port(true, true),
+            },
             service = service,
           },
           {
             protocols = { "grpc", "grpcs" },
-            hosts = { "grpc2" },
+            hosts = {
+              "grpc2",
+              "grpc2:" .. helpers.get_proxy_port(false, true),
+              "grpc2:"..helpers.get_proxy_port(true, true),
+            },
             service = service,
           },
           {
@@ -865,7 +873,7 @@ for _, strategy in helpers.each_strategy() do
         routes = insert_routes(bp, {
           {
             preserve_host = true,
-            hosts         = { "preserved.com" },
+            hosts         = { "preserved.com", "preserved.com:123" },
             service       = {
               path        = "/request"
             },

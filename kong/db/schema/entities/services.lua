@@ -22,7 +22,7 @@ return {
     { retries            = { type = "integer", default = 5, between = { 0, 32767 } }, },
     -- { tags             = { type = "array", array = { type = "string" } }, },
     { protocol           = typedefs.protocol { required = true, default = "http" } },
-    { host               = typedefs.host { required = true } },
+    { host               = typedefs.host_with_optional_port { required = true } },
     { port               = typedefs.port { required = true, default = 80 }, },
     { path               = typedefs.path },
     { connect_timeout    = nonzero_timeout { default = 60000 }, },
