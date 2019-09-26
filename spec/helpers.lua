@@ -112,6 +112,7 @@ local conf = assert(conf_loader(TEST_CONF_PATH))
 
 _G.kong = kong_global.new()
 kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
+kong_global.set_phase(kong, kong_global.phases.access)
 
 local db = assert(DB.new(conf))
 assert(db:init_connector())
