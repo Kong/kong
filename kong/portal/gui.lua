@@ -92,6 +92,10 @@ app:before_filter(function(self)
   self.is_admin = headers["Kong-Request-Type"] == "editor"
   self.path = ngx.unescape_uri(self.req.parsed_url.path)
 
+  if self.is_admin then
+    self.path = string.gsub(self.path, "/", "", 1)
+  end
+
   if config.portal_gui_use_subdomains then
     gui_helpers.set_workspace_by_subdomain(self)
   else
