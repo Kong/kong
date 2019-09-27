@@ -20,8 +20,9 @@ end
 local function get_conf()
   -- Gets plugin configuration for the ctx, no matter the priority
   local ctx = ngx.ctx
+
   local plugins_iterator = runloop_handler.get_plugins_iterator()
-  for plugin, plugin_conf in plugins_iterator:iterate(ctx, "access") do
+  for plugin, plugin_conf in plugins_iterator:iterate("access", ctx) do
     if plugin.name == PLUGIN_NAME then
       return plugin_conf
     end
