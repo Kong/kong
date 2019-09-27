@@ -12,7 +12,7 @@ return {
               elements = {
                 type = "record",
                 fields = {
-                  { host = typedefs.ip({ required = true }), },
+                  { host = typedefs.host({ required = true }), },
                   { port = typedefs.port({ required = true }), },
                 },
               },
