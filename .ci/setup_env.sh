@@ -1,11 +1,20 @@
 #!/usr/bin/env bash
 # set -e
 
+dep_version() {
+    grep $1 .requirements | sed -e 's/.*=//' | tr -d '\n'
+}
+
+OPENRESTY=$(dep_version RESTY_VERSION)
+LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
+OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
+
+
 #---------
 # Download
 #---------
 
-DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml | md5sum | awk '{ print $1 }')
+DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml .requirements | md5sum | awk '{ print $1 }')
 DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
 BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/openresty-build-tools
 
