@@ -66,8 +66,8 @@ end
 -- @param body_raw: raw body from the request
 --
 function _M.build_cache_key(route_id, body_raw, headers_table, vary_headers)
-  local prefix_digest = prefix_uuid(route_id)
-  local query_digest  = query_key(body_raw)
+  local prefix_digest = route_id and prefix_uuid(route_id) or ""
+  local query_digest  = body_raw and query_key(body_raw) or ""
   local headers_digest = headers_key(headers_table, vary_headers)
 
   return md5(fmt("%s|%s|%s", prefix_digest, headers_digest, query_digest))

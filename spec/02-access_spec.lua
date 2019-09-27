@@ -85,6 +85,10 @@ for _, policy in ipairs({"memory"}) do
         hosts = { "route-5.com" },
       })
 
+      local route6 = assert(bp.routes:insert {
+        hosts = { "route-6.com" },
+      })
+
       assert(bp.plugins:insert {
         name = "gql-proxy-cache",
         route = { id = route1.id },
@@ -129,6 +133,16 @@ for _, policy in ipairs({"memory"}) do
         config = {
           strategy = policy,
           [policy] = policy_config,
+        },
+      })
+
+      assert(bp.plugins:insert {
+        name = "gql-proxy-cache",
+        route = { id = route6.id },
+        config = {
+          strategy = policy,
+          [policy] = policy_config,
+          vary_headers = {"foo"}
         },
       })
 
@@ -181,7 +195,7 @@ for _, policy in ipairs({"memory"}) do
 
       wait_until_key_in_cache(cache_key1)
       --
-      local res = client:send {
+      res = client:send {
         method = "POST",
         path = "/request",
         headers = {
@@ -219,7 +233,7 @@ for _, policy in ipairs({"memory"}) do
 
       wait_until_key_in_cache(cache_key1)
       --
-      local res = client:send {
+      res = client:send {
         method = "POST",
         path = "/request",
         headers = {
@@ -236,7 +250,7 @@ for _, policy in ipairs({"memory"}) do
       -- assert that response bodies are identical
       assert.same(body1, body2)
 
-      local res = assert(client:send {
+      res = assert(client:send {
         method = "POST",
         path = "/request",
         headers = {
@@ -269,7 +283,7 @@ for _, policy in ipairs({"memory"}) do
 
       wait_until_key_in_cache(cache_key1)
       --
-      local res = client:send {
+      res = client:send {
         method = "POST",
         path = "/request",
         headers = {
@@ -286,7 +300,7 @@ for _, policy in ipairs({"memory"}) do
       -- assert that response bodies are identical
       assert.same(body1, body2)
 
-      local res = assert(client:send {
+      res = assert(client:send {
         method = "POST",
         path = "/request",
         headers = {
@@ -360,6 +374,48 @@ for _, policy in ipairs({"memory"}) do
 
       assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
+    end)
+
+    it("uses headers if instructed to do so", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/request",
+        headers = {
+          host = "route-6.com",
+          foo = "bar"
+        },
+        body = '{ query { user(id:"2") { id, name }}}'
+      })
+      assert.res_status(200, res)
+      assert.same("Miss", res.headers["X-Cache-Status"])
+      local cache_key = res.headers["X-Cache-Key"]
+
+      -- wait until the underlying strategy converges
+      wait_until_key_in_cache(cache_key)
+
+      res = assert(client:send {
+        method = "POST",
+        path = "/request",
+        headers = {
+          host = "route-6.com",
+          foo = "bar"
+        },
+        body = '{ query { user(id:"2") { id, name }}}'
+      })
+      assert.res_status(200, res)
+      assert.same("Hit", res.headers["X-Cache-Status"])
+
+      res = assert(client:send {
+        method = "POST",
+        path = "/request",
+        headers = {
+          host = "route-6.com",
+          foo = "baz"
+        },
+        body = '{ query { user(id:"2") { id, name }}}'
+      })
+      assert.res_status(200, res)
+      assert.same("Miss", res.headers["X-Cache-Status"])
     end)
   end)
 end
