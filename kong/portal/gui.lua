@@ -4,6 +4,7 @@ local pl_file = require "pl.file"
 local auth    = require "kong.portal.auth"
 local workspaces  = require "kong.workspaces"
 local gui_helpers = require "kong.portal.gui_helpers"
+local crud_helpers = require "kong.portal.crud_helpers"
 local EtluaWidget = require("lapis.etlua").EtluaWidget
 local constants = require "kong.constants"
 local ws_constants = constants.WORKSPACE_CONFIG
@@ -104,6 +105,7 @@ app:before_filter(function(self)
 
   ngx.ctx.workspaces = self.workspaces
   self.workspaces = nil
+  crud_helpers.exit_if_portal_disabled()
   auth.authenticate_gui_session(self, kong.db, {})
 end)
 

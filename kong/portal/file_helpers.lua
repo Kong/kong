@@ -220,6 +220,10 @@ local function parse_spec_contents(contents)
     headmatter = parsed_contents["X-headmatter"]
   end
 
+  if not headmatter.title and parsed_contents.info and parsed_contents.info.title then
+    headmatter.title = parsed_contents.info.title
+  end
+
   return headmatter, contents
 end
 
