@@ -944,9 +944,12 @@ do
       if cql ~= "" then
         local res, err = conn:execute(cql)
         if not res then
-          if string.find(err, "Column .- was not found in table") or
-             string.find(err, "[Ii]nvalid column name")           or
-             string.find(err, "[Uu]ndefined column name") then
+          if string.find(err, "Column .- was not found in table")
+          or string.find(err, "[Ii]nvalid column name")
+          or string.find(err, "[Uu]ndefined column name")
+          or string.find(err, "No column definition found for column")
+          or string.find(err, "Undefined name .- in selection clause")
+          then
             log.warn("ignored error while running '%s' migration: %s (%s)",
                      name, err, cql:gsub("\n", " "):gsub("%s%s+", " "))
           else

@@ -42,16 +42,20 @@ return {
 
       local _, err = connector:query([[
         ALTER TABLE oauth2_authorization_codes DROP api_id]])
-      if err and not (string.find(err, "Column .- was not found in table") or
-                      string.find(err, "[Ii]nvalid column name")           or
-                      string.find(err, "[Uu]ndefined column name")) then
+      if err and not (string.find(err, "Column .- was not found in table")       or
+                      string.find(err, "[Ii]nvalid column name")                 or
+                      string.find(err, "[Uu]ndefined column name")               or
+                      string.find(err, "No column definition found for column")  or
+                      string.find(err, "Undefined name .- in selection clause")) then
         return nil, err
       end
 
       _, err = connector:query("ALTER TABLE oauth2_tokens DROP api_id")
-      if err and not (string.find(err, "Column .- was not found in table") or
-                      string.find(err, "[Ii]nvalid column name")           or
-                      string.find(err, "[Uu]ndefined column name")) then
+      if err and not (string.find(err, "Column .- was not found in table")       or
+                      string.find(err, "[Ii]nvalid column name")                 or
+                      string.find(err, "[Uu]ndefined column name")               or
+                      string.find(err, "No column definition found for column")  or
+                      string.find(err, "Undefined name .- in selection clause")) then
         return nil, err
       end
     end,
