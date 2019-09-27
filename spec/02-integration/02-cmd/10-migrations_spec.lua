@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local pl_utils = require "pl.utils"
+local utils = require "kong.tools.utils"
 local DB = require "kong.db.init"
 
 
@@ -16,13 +17,18 @@ local lua_path = [[ KONG_LUA_PATH_OVERRIDE="./spec/fixtures/migrations/?.lua;]] 
 for _, strategy in helpers.each_strategy() do
 
 
-  local function run_kong(cmd, env)
+  local function run_kong(cmd, env, no_lua_path_overrides)
     env = env or {}
     env.database = strategy
     env.plugins = env.plugins or "off"
 
+    local lpath
+    if not no_lua_path_overrides then
+      lpath = lua_path
+    end
+
     local cmdline = cmd .. " -c " .. helpers.test_conf_path
-    local _, code, stdout, stderr = helpers.kong_exec(cmdline, env, true, lua_path)
+    local _, code, stdout, stderr = helpers.kong_exec(cmdline, env, true, lpath)
     return code, stdout, stderr
   end
 
@@ -283,6 +289,137 @@ for _, strategy in helpers.each_strategy() do
         assert.same(0, code)
         assert.same(0, #stdout)
         assert.same(0, #stderr)
+      end)
+    end)
+
+    describe("reentrancy " .. strategy, function()
+
+      lazy_setup(function()
+        run_kong("migrations reset --yes")
+      end)
+
+      after_each(function()
+        run_kong("migrations reset --yes")
+      end)
+
+      it("#db is reentrant with migrations up -f", function()
+        local _, code, stdout, stderr
+        code, _, stderr = run_kong("migrations reset --yes", {
+          plugins = "bundled"
+        }, true)
+        assert.equal(1, code)
+        assert.equal("", stderr)
+
+        code, _, stderr = run_kong("migrations bootstrap", {
+          plugins = "bundled"
+        }, true)
+        assert.equal(0, code)
+        if strategy ~= "cassandra" then
+          -- cassandra outputs some warnings on duplicate
+          -- columns which can safely be ignored
+          assert.equal("", stderr)
+        end
+
+        code, stdout, stderr = run_kong("migrations up", {
+          plugins = "bundled"
+        }, true)
+        assert.equal(0, code)
+        assert.equal("Database is already up-to-date", utils.strip(stdout))
+        if strategy ~= "cassandra" then
+          -- cassandra outputs some warnings on duplicate
+          -- columns which can safely be ignored
+          assert.equal("", stderr)
+        end
+
+        code, stdout, stderr = run_kong("migrations up -f", {
+          plugins = "bundled"
+        }, true)
+        assert.equal(0, code)
+        if strategy ~= "cassandra" then
+          -- cassandra outputs some warnings on duplicate
+          -- columns which can safely be ignored
+          assert.equal("", stderr)
+        end
+
+        local code2, stdout2, stderr2 = run_kong("migrations up -f", {
+          plugins = "bundled"
+        }, true)
+        assert.equal(0, code)
+        if strategy ~= "cassandra" then
+          -- cassandra outputs some warnings on duplicate
+          -- columns which can safely be ignored
+          assert.equal("", stderr)
+        end
+
+        assert.equal(code, code2)
+        assert.equal(stdout, stdout2)
+        if strategy ~= "cassandra" then
+          assert.equal(stderr, stderr2)
+        end
+      end)
+
+      it("#db is reentrant with migrations finish -f", function()
+        local _, code, stdout, stderr
+        code, _, stderr = run_kong("migrations reset --yes", {
+          plugins = "bundled"
+        }, true)
+        assert.equal(1, code)
+        assert.equal("", stderr)
+
+        code, _, stderr = run_kong("migrations bootstrap", {
+          plugins = "bundled"
+        }, true)
+        assert.equal(0, code)
+        if strategy ~= "cassandra" then
+          -- cassandra outputs some warnings on duplicate
+          -- columns which can safely be ignored
+          assert.equal("", stderr)
+        end
+
+        code, stdout, stderr = run_kong("migrations up", {
+          plugins = "bundled"
+        }, true)
+
+        assert.equal(0, code)
+        assert.equal("Database is already up-to-date", utils.strip(stdout))
+        if strategy ~= "cassandra" then
+          -- cassandra outputs some warnings on duplicate
+          -- columns which can safely be ignored
+          assert.equal("", stderr)
+        end
+
+        code, stdout, stderr = run_kong("migrations finish", {
+          plugins = "bundled"
+        }, true)
+        assert.equal(0, code)
+        assert.equal("No pending migrations to finish", utils.strip(stdout))
+        assert.equal("", stderr)
+
+        code, stdout, stderr = run_kong("migrations finish -f", {
+          plugins = "bundled"
+        }, true)
+        assert.equal(0, code)
+        if strategy ~= "cassandra" then
+          -- cassandra outputs some warnings on duplicate
+          -- columns which can safely be ignored
+          assert.equal("", stderr)
+        end
+
+        local code2, stdout2, stderr2 = run_kong("migrations finish -f", {
+          plugins = "bundled"
+        }, true)
+        assert.equal(0, code)
+        if strategy ~= "cassandra" then
+          -- cassandra outputs some warnings on duplicate
+          -- columns which can safely be ignored
+          assert.equal("", stderr)
+        end
+
+        assert.equal(code, code2)
+        assert.equal(stdout, stdout2)
+        if strategy ~= "cassandra" then
+          assert.equal(stderr, stderr2)
+        end
       end)
     end)
   end)
