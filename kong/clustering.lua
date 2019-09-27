@@ -181,6 +181,17 @@ function _M.handle_cp_websocket()
   local queue = { sem = sem, }
   clients[wb] = queue
 
+  local res
+  -- unconditionally send config update to new clients to
+  -- ensure they have latest version running
+  res, err = declarative.export_config()
+  if not res then
+    ngx_log(ngx_ERR, "unable to export config from database")
+  end
+
+  table.insert(queue, res)
+  queue.sem:post()
+
   -- connection established
   -- ping thread
   ngx.thread.spawn(function()
@@ -203,17 +214,6 @@ function _M.handle_cp_websocket()
 
       ngx_log(ngx_DEBUG, "sent PONG packet to control plane")
 
-      if data == "" then
-        -- node has no config loaded, send it to them
-        local res, err = declarative.export_config()
-        if not res then
-          ngx_log(ngx_ERR, "unable to export config from database")
-        end
-
-        table.insert(queue, res)
-        queue.sem:post()
-      end
-
       ok, err = shdict:safe_set(node_id,
                                 cjson_encode({
                                   last_seen = ngx_time(),
@@ -221,7 +221,7 @@ function _M.handle_cp_websocket()
                                     data ~= "" and data or nil,
                                   hostname = node_hostname,
                                   ip = node_ip,
-                                }))
+                                }), PING_INTERVAL * 2 + 5)
       if not ok then
         ngx_log(ngx_ERR, "unable to update in-memory cluster status: ", err)
       end
