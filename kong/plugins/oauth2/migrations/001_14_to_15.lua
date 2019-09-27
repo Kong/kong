@@ -194,10 +194,11 @@ return {
       for rows, err in coordinator:iterate([[
         SELECT id, redirect_uri FROM oauth2_credentials]]) do
         if err then
-          if string.find(err, "Column .- was not found in table") or
-             string.find(err, "[Ii]nvalid column name")           or
-             string.find(err, "[Uu]ndefined column name")
-          then
+          if string.find(err, "Column .- was not found in table")      or
+             string.find(err, "[Ii]nvalid column name")                or
+             string.find(err, "[Uu]ndefined column name")              or
+             string.find(err, "No column definition found for column") or
+             string.find(err, "Undefined name .- in selection clause") then
             return
           end
 
