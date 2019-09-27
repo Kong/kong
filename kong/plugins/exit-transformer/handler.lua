@@ -67,6 +67,9 @@ _M.VERSION = PLUGIN_VERSION
 
 function _M:new()
   _M.super.new(self, PLUGIN_NAME)
+end
+
+function _M:init_worker()
   kong.response.register_hook("exit", self.exit, self)
 end
 
