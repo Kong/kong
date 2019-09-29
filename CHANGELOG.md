@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [0.6.0](#060---20190929)
 - [0.5.0](#050---20190916)
 - [0.4.1](#041---20190801)
 - [0.4.0](#040---20190605)
@@ -10,6 +11,12 @@
 - [0.3.0](#030---20181015)
 - [0.2.0](#020---20180924)
 - [0.1.0](#010---20180615)
+
+##  [0.6.0] - 2019/09/29
+
+- **Metrics on Status API:** Metrics are now be available on the Status API
+  (Status API is being shipped with Kong 1.4).
+  [#66](https://github.com/Kong/kong-plugin-prometheus/pull/66)
 
 ##  [0.5.0] - 2019/09/16
 
@@ -75,6 +82,7 @@
 
 - Initial release of Prometheus plugin for Kong.
 
+[0.6.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.5.0...0.6.0
 [0.5.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.4.1...0.5.0
 [0.4.1]: https://github.com/Kong/kong-plugin-prometheus/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.3.4...0.4.0
