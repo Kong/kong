@@ -20,6 +20,7 @@ build = {
   type = "builtin",
   modules = {
     ["kong.plugins.prometheus.api"] = "kong/plugins/prometheus/api.lua",
+    ["kong.plugins.prometheus.status_api"] = "kong/plugins/prometheus/status_api.lua",
     ["kong.plugins.prometheus.exporter"] = "kong/plugins/prometheus/exporter.lua",
     ["kong.plugins.prometheus.handler"] = "kong/plugins/prometheus/handler.lua",
     ["kong.plugins.prometheus.prometheus"] = "kong/plugins/prometheus/prometheus.lua",
