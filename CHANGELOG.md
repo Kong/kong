@@ -36,6 +36,11 @@
 - Tests to ensure gRPC compatibility have been added.
   [#57](https://github.com/Kong/kong-plugin-prometheus/pull/57)
 
+##  [0.4.1] - 2019/08/01
+
+- Fix issue where the plugin's shared dictionary would not be properly
+initialized
+
 ##  [0.4.0] - 2019/06/05
 
 - Remove BasePlugin inheritance (not needed anymore)
