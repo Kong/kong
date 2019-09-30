@@ -1,5 +1,143 @@
 return {
   {
+    checksum = "e189dc7a10326226e74d2de0512a332c83258b09d703594e30d4bb6217ef7865",
+    path = "content/dashboard.txt",
+    contents = [[---
+layout: system/dashboard.html
+title: Dashboard
+---
+]]
+  },
+  {
+    checksum = "3650f72193a273df7078adcf613150788c3628b027522321dafdb0cac3330f7d",
+    path = "content/index.txt",
+    contents = [[---
+layout: homepage.html
+title: Home
+
+hero:
+  title: Built with Kong
+  tagline: Empowering developers across the globe.
+---
+]]
+  },
+  {
+    checksum = "62b84c3e2788fcc1b755344bba51a317fd73639f8a662c7187ca30550cdfb755",
+    path = "content/login.txt",
+    contents = [[---
+layout: system/login.html
+title: Login
+
+locale:
+  login_form_header: "Log into your account"
+  login_form_content: >
+      Use your credentials to access your account.
+
+  login_side_header: "Welcome back 🙌"
+  login_side_content: >
+      Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonumm.
+      Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
+
+  login_home_link_text: "← Go back home"
+
+  login_form_key_label: "Token"
+  login_form_email_label: "Email"
+  login_form_password_label: "Password"
+  login_form_button_text: "Login"
+
+  login_register_text: "Don't have an account?"
+  login_register_link_text: "Register here"
+---
+]]
+  },
+  {
+    checksum = "8c569725638415a4adce9dd862774d603c399a9c636e401638895c195abdb9b1",
+    path = "content/logout.txt",
+    contents = [[---
+layout: system/logout.html
+title: Logout
+---
+]]
+  },
+  {
+    checksum = "78d71ef18f178c1a1a33b063e585833e4f1063ebe514ce0049ddd74f3f67592f",
+    path = "content/register.txt",
+    contents = [[---
+layout: system/register.html
+title: Register
+
+locale:
+  register_form_header: "Create an account"
+  register_form_content: >
+      Enter your information below to create an account.
+
+  register_side_header: "Welcome to {{portal.name}}"
+  register_side_content: >
+      Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonumm.
+      Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
+
+  register_form_key_label: "Api Key"
+  register_form_email_label: "Email"
+  register_form_password_label: "Password"
+  register_form_button_text: "Create Account"
+
+  register_home_link_text: "← Go back home"
+
+  register_login_text: "Already have an account?"
+  register_login_link_text: "Login here"
+---
+]]
+  },
+  {
+    checksum = "41b0c80e2b0c9a2bbd90d42a89f5ad6b4d7afd080cde16208422f157092ffafb",
+    path = "content/reset-password.txt",
+    contents = [[---
+layout: system/reset-password.html
+title: Reset Password
+
+locale:
+  reset_password_form_header: "Reset Password"
+  reset_password_form_content: >
+      Enter the email you use to login to reset your password.
+
+  reset_password_side_header: "Forgot your password?"
+  reset_password_side_content: >
+      It happens to the best of us.
+      Don't worry, we have you covered.
+
+  reset_password_form_email_label: "Email Address"
+  reset_password_form_button_text: "Reset Password"
+
+  reset_password_login_link_text: "← Back to Login"
+---
+]]
+  },
+  {
+    checksum = "5858b8e13fe5369d8782fe0da968e6a81f2daa65c33102d6b7764f7f347ef6cc",
+    path = "content/settings.txt",
+    contents = [[---
+layout: system/settings.html
+title: Account Settings
+---
+]]
+  },
+  {
+    checksum = "98424866db4cb9991133cdb284b3ec9d4389aeec6ff54fc0eb3c986726fa7cfc",
+    path = "content/unauthorized.txt",
+    contents = [[---
+layout: system/401.html
+---
+]]
+  },
+  {
+    checksum = "102fdbcfbe7b776a5a7b09ad997da1a3440232350fec93086345a80e6c19ea04",
+    path = "content/verify-account.txt",
+    contents = [[---
+layout: system/verify-account.html
+---
+]]
+  },
+  {
     checksum = "2646989f91981a8064e9bcc46054fda0d6168c2926a1632572eed0524d0379e7",
     path = "portal.conf.yaml",
     contents = [[name: Kong Portal
@@ -15,11 +153,100 @@ redirect:
 ]]
   },
   {
-    checksum = "e189dc7a10326226e74d2de0512a332c83258b09d703594e30d4bb6217ef7865",
-    path = "content/dashboard.txt",
+    checksum = "4f5c2ee70a030409d1971180e1c677fa8fe3d667f0abaee9c8a86398daa4fd40",
+    path = "content/guides/index.txt",
     contents = [[---
-layout: system/dashboard.html
-title: Dashboard
+layout: knowledgebase.html
+---
+]]
+  },
+  {
+    checksum = "4f5c2ee70a030409d1971180e1c677fa8fe3d667f0abaee9c8a86398daa4fd40",
+    path = "content/guides/testing/index.txt",
+    contents = [[---
+layout: knowledgebase.html
+---
+]]
+  },
+  {
+    checksum = "c9bf40a7d67cdd258589683cecc665387522c9290faf8a03fb8c1e0aa4d7e20f",
+    path = "content/documentation/index.txt",
+    contents = [[---
+layout: catalog.html
+title: Service Catalog
+hide_filter: false
+hide_categories: false
+
+locale:
+  catalog_no_results_header: "No Results Found"
+  catalog_no_results_content: "No services matched your criteria. Try another query?"
+  catalog_categories_header_text: "Category"
+---
+]]
+  },
+  {
+    checksum = "85349becd702abc861dd368337979869318843f566e7b15c1b15ebd11f1afb9d",
+    path = "content/account/invalidate-verification.txt",
+    contents = [[---
+layout: system/invalidate-verification.html
+---
+]]
+  },
+  {
+    checksum = "9823785cd6cfba8e331bb90dc68707fe57590e6b89fcd62bb47d16bed86fe502",
+    path = "content/account/resend-verification.txt",
+    contents = [[---
+layout: system/resend-verification.html
+---
+]]
+  },
+  {
+    checksum = "102fdbcfbe7b776a5a7b09ad997da1a3440232350fec93086345a80e6c19ea04",
+    path = "content/account/verify.txt",
+    contents = [[---
+layout: system/verify-account.html
+---
+]]
+  },
+  {
+    checksum = "388ad7650de2040ead0472f042aada1f1221279fc4ccc265aa9ee1b9760365ca",
+    path = "content/about/index.txt",
+    contents = [[---
+layout: about.html
+
+title: About Us
+
+hero:
+  title: Making Data Available. Anytime. Anywhere.
+  points:
+    - It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout.
+    - The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters.
+    - Many desktop publishing packages and web page editors now use Lorem Ipsum.
+
+html: >
+  The hero title is {{page("hero.title")()}}
+
+team:
+  title: Meet our (amazing) team
+  slogan: >
+    It is a long established fact that a reader will be distracted by <br />
+    the readable content of a page when looking at its layout.
+  members:
+    - name: "Alex Y."
+      title: "CEO"
+      image: "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=934&q=80"
+    - name: "Sara L."
+      title: "CTO"
+      image: "https://images.unsplash.com/photo-1527860305340-c42077f06851?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=800&q=60"
+    - name: "Alamin D."
+      title: "VP of Product"
+      image: "http://genfkd.wpengine.netdna-cdn.com/wp-content/uploads/2018/05/shutterstock_793117360-503x518.jpg"
+    - name: "Tohi B."
+      title: "VP of Engineering"
+      image: "https://images.unsplash.com/photo-1521119989659-a83eee488004?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=300&q=80"
+    - name: "Mubin P."
+      title: "VP of Happiness"
+      image: "https://images.unsplash.com/photo-1529259646408-5c50deb4cf6a?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=800&q=60"
 ---
 ]]
   },
@@ -4864,7 +5091,7 @@ window.addEventListener("load", function () {
 ]]
   },
   {
-    checksum = "f8720fcac0996b893ecb38d4714f46a9d6e519cb0b1b809cde78c0350dfc9ed7",
+    checksum = "5a4577bf2b3754a14633e21926c7e185528c27c0f53988035805d41cf15ad1d8",
     path = "themes/light-theme/partials/header.html",
     contents = [[<header class="site-header">
   <div class="container">
@@ -4878,9 +5105,8 @@ window.addEventListener("load", function () {
       <nav class="eight columns" role="navigation">
         <li><a href="documentation">Service Catalog</a></li>
         <li><a href="about">About</a></li>
-
         {% if portal.auth and portal.auth ~= "" then %}
-          {% if user.is_authenticated() then %}
+          {% if user.is_authenticated then %}
             <li class="has-dropdown">
               <a href="settings" aria-haspopup="true">{{user.get("email")}}</a>
               <ul class="dropdown" aria-label="submenu">
@@ -5279,7 +5505,7 @@ window.addEventListener("load", function () {
   ]]
   },
   {
-    checksum = "4c388471eb4227caf7c09a0824bc7bd88bb44da57d37890615c8d8d90eb59b5b",
+    checksum = "f0fb83e24d5e3f88317aa1fc26f9557a04f6e563a3a3c89b84070bcfbe15b09b",
     path = "themes/light-theme/partials/homepage/hero.html",
     contents = [[<section class="homepage-hero">
   <div class="hero-header">
@@ -5292,7 +5518,9 @@ window.addEventListener("load", function () {
   </div>
 
   <div class="hero-footer">
-    <a class="btn btn-primary" href="register">Create a Developer Account</a>
+    {% if portal.auth and portal.auth ~= "" then %}
+      <a class="btn btn-primary" href="register">Create a Developer Account</a>
+    {% end %}
   </div>
 </section>
 ]]
@@ -5775,479 +6003,6 @@ window.addEventListener("load", function () {
       })
     })
   </script>
-]]
-  },
-  {
-    checksum = "41b0c80e2b0c9a2bbd90d42a89f5ad6b4d7afd080cde16208422f157092ffafb",
-    path = "content/reset-password.txt",
-    contents = [[---
-layout: system/reset-password.html
-title: Reset Password
-
-locale:
-  reset_password_form_header: "Reset Password"
-  reset_password_form_content: >
-      Enter the email you use to login to reset your password.
-
-  reset_password_side_header: "Forgot your password?"
-  reset_password_side_content: >
-      It happens to the best of us.
-      Don't worry, we have you covered.
-
-  reset_password_form_email_label: "Email Address"
-  reset_password_form_button_text: "Reset Password"
-
-  reset_password_login_link_text: "← Back to Login"
----
-]]
-  },
-  {
-    checksum = "5858b8e13fe5369d8782fe0da968e6a81f2daa65c33102d6b7764f7f347ef6cc",
-    path = "content/settings.txt",
-    contents = [[---
-layout: system/settings.html
-title: Account Settings
----
-]]
-  },
-  {
-    checksum = "98424866db4cb9991133cdb284b3ec9d4389aeec6ff54fc0eb3c986726fa7cfc",
-    path = "content/unauthorized.txt",
-    contents = [[---
-layout: system/401.html
----
-]]
-  },
-  {
-    checksum = "102fdbcfbe7b776a5a7b09ad997da1a3440232350fec93086345a80e6c19ea04",
-    path = "content/verify-account.txt",
-    contents = [[---
-layout: system/verify-account.html
----
-]]
-  },
-  {
-    checksum = "4f5c2ee70a030409d1971180e1c677fa8fe3d667f0abaee9c8a86398daa4fd40",
-    path = "content/guides/index.txt",
-    contents = [[---
-layout: knowledgebase.html
----
-]]
-  },
-  {
-    checksum = "4f5c2ee70a030409d1971180e1c677fa8fe3d667f0abaee9c8a86398daa4fd40",
-    path = "content/guides/testing/index.txt",
-    contents = [[---
-layout: knowledgebase.html
----
-]]
-  },
-  {
-    checksum = "3650f72193a273df7078adcf613150788c3628b027522321dafdb0cac3330f7d",
-    path = "content/index.txt",
-    contents = [[---
-layout: homepage.html
-title: Home
-
-hero:
-  title: Built with Kong
-  tagline: Empowering developers across the globe.
----
-]]
-  },
-  {
-    checksum = "62b84c3e2788fcc1b755344bba51a317fd73639f8a662c7187ca30550cdfb755",
-    path = "content/login.txt",
-    contents = [[---
-layout: system/login.html
-title: Login
-
-locale:
-  login_form_header: "Log into your account"
-  login_form_content: >
-      Use your credentials to access your account.
-
-  login_side_header: "Welcome back 🙌"
-  login_side_content: >
-      Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonumm.
-      Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
-
-  login_home_link_text: "← Go back home"
-
-  login_form_key_label: "Token"
-  login_form_email_label: "Email"
-  login_form_password_label: "Password"
-  login_form_button_text: "Login"
-
-  login_register_text: "Don't have an account?"
-  login_register_link_text: "Register here"
----
-]]
-  },
-  {
-    checksum = "8c569725638415a4adce9dd862774d603c399a9c636e401638895c195abdb9b1",
-    path = "content/logout.txt",
-    contents = [[---
-layout: system/logout.html
-title: Logout
----
-]]
-  },
-  {
-    checksum = "78d71ef18f178c1a1a33b063e585833e4f1063ebe514ce0049ddd74f3f67592f",
-    path = "content/register.txt",
-    contents = [[---
-layout: system/register.html
-title: Register
-
-locale:
-  register_form_header: "Create an account"
-  register_form_content: >
-      Enter your information below to create an account.
-
-  register_side_header: "Welcome to {{portal.name}}"
-  register_side_content: >
-      Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonumm.
-      Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
-
-  register_form_key_label: "Api Key"
-  register_form_email_label: "Email"
-  register_form_password_label: "Password"
-  register_form_button_text: "Create Account"
-
-  register_home_link_text: "← Go back home"
-
-  register_login_text: "Already have an account?"
-  register_login_link_text: "Login here"
----
-]]
-  },
-  {
-    checksum = "c9bf40a7d67cdd258589683cecc665387522c9290faf8a03fb8c1e0aa4d7e20f",
-    path = "content/documentation/index.txt",
-    contents = [[---
-layout: catalog.html
-title: Service Catalog
-hide_filter: false
-hide_categories: false
-
-locale:
-  catalog_no_results_header: "No Results Found"
-  catalog_no_results_content: "No services matched your criteria. Try another query?"
-  catalog_categories_header_text: "Category"
----
-]]
-  },
-  {
-    checksum = "85349becd702abc861dd368337979869318843f566e7b15c1b15ebd11f1afb9d",
-    path = "content/account/invalidate-verification.txt",
-    contents = [[---
-layout: system/invalidate-verification.html
----
-]]
-  },
-  {
-    checksum = "9823785cd6cfba8e331bb90dc68707fe57590e6b89fcd62bb47d16bed86fe502",
-    path = "content/account/resend-verification.txt",
-    contents = [[---
-layout: system/resend-verification.html
----
-]]
-  },
-  {
-    checksum = "102fdbcfbe7b776a5a7b09ad997da1a3440232350fec93086345a80e6c19ea04",
-    path = "content/account/verify.txt",
-    contents = [[---
-layout: system/verify-account.html
----
-]]
-  },
-  {
-    checksum = "388ad7650de2040ead0472f042aada1f1221279fc4ccc265aa9ee1b9760365ca",
-    path = "content/about/index.txt",
-    contents = [[---
-layout: about.html
-
-title: About Us
-
-hero:
-  title: Making Data Available. Anytime. Anywhere.
-  points:
-    - It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout.
-    - The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters.
-    - Many desktop publishing packages and web page editors now use Lorem Ipsum.
-
-html: >
-  The hero title is {{page("hero.title")()}}
-
-team:
-  title: Meet our (amazing) team
-  slogan: >
-    It is a long established fact that a reader will be distracted by <br />
-    the readable content of a page when looking at its layout.
-  members:
-    - name: "Alex Y."
-      title: "CEO"
-      image: "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=934&q=80"
-    - name: "Sara L."
-      title: "CTO"
-      image: "https://images.unsplash.com/photo-1527860305340-c42077f06851?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=800&q=60"
-    - name: "Alamin D."
-      title: "VP of Product"
-      image: "http://genfkd.wpengine.netdna-cdn.com/wp-content/uploads/2018/05/shutterstock_793117360-503x518.jpg"
-    - name: "Tohi B."
-      title: "VP of Engineering"
-      image: "https://images.unsplash.com/photo-1521119989659-a83eee488004?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=300&q=80"
-    - name: "Mubin P."
-      title: "VP of Happiness"
-      image: "https://images.unsplash.com/photo-1529259646408-5c50deb4cf6a?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=800&q=60"
----
-]]
-  },
-  {
-    checksum = "fb46913819c6f3605b84f80ae5886b014a5a65e9481402553d384c7901d894a1",
-    path = "modules/partials/header/blueprint.yaml",
-    contents = [[title: header
-blocks:
-  logo:
-    type: html
-    required: true
-  nav:
-    type: html
-    required: true
-]]
-  },
-  {
-    checksum = "70f5bf6d867583fdca70a9cc8183b137fdcf77002f5fc4014ba4688ae36d6aef",
-    path = "modules/partials/header/default.txt",
-    contents = [[{-logo-}
-<label for="header_nav" class="menu-toggle">Menu</label>
-<h1 class="brand"><a href=""><img class="logo" src="{{theme.images.logo}}" alt="{{portal.name}}" /></a></h1>
-{-logo-}
-
-{-nav-}
-<li><a href="documentation">Service Catalog</a></li>
-<li><a href="guides">Tutorials</a></li>
-<li><a href="about">About</a></li>
-
-{% if portal.auth and portal.auth ~= "" then %}
-  {% if user.is_authenticated() then %}
-    <li class="has-dropdown">
-      <a href="settings" aria-haspopup="true">{{user.get("email")}}</a>
-      <ul class="dropdown" aria-label="submenu">
-        <li><a href="dashboard">Dashboard</a></li>
-        <li><a href="logout">Logout</a></li>
-      </ul>
-    </li>
-  {% else %}
-    <li><a href="login">Login</a></li>
-    <li><a class="nav-button btn btn-secondary" href="register">Sign Up</a></li>
-  {% end %}
-{% end %}
-{-nav-}
-]]
-  },
-  {
-    checksum = "56de82574aa9b38fa0c2bfb17c4f178910109504b2dc101bd4a2c1c2865701cd",
-    path = "modules/partials/header/layout.html",
-    contents = [[<header class="site-header">
-  <div class="container">
-    <div class="row">
-      <div class="four columns">
-        {* blocks.logo *}
-      </div>
-
-      <input type="checkbox" id="header_nav" class="menu-toggle-checkbox" />
-      <nav class="eight columns" role="navigation">
-        {* blocks.nav *}
-      </nav>
-    </div>
-  </div>
-</header>
-  ]]
-  },
-  {
-    checksum = "a9bae17c36123206822fc106cceaa8a4dd1579bf0069cc5df7bce23bde3fe724",
-    path = "modules/partials/footer/blueprint.yaml",
-    contents = [[title: footer
-blocks:
-  company_name:
-    type: html
-    required: true
-  links:
-    type: html
-    required: true
-]]
-  },
-  {
-    checksum = "3d4fbe814b93457fe4485f0634e3ee3f41cfffae28f9e90efa16127f943d5129",
-    path = "modules/partials/footer/default.txt",
-    contents = [[{-company_name-}
-<h1 class="brand">{{portal.name}}</h1>
-{-company_name-}
-
-{-links-}
-<a class="nav-link" href="terms">Terms of Service</a>
-<a class="nav-link" href="privacy">Privacy</a>
-{-links-}
-]]
-  },
-  {
-    checksum = "8e3761514cc269cecf9d459a57c8c7519c8756cc789df919d0ca2536fc3648f8",
-    path = "modules/partials/footer/layout.html",
-    contents = [[<footer class="site-footer">
-  <div class="container">
-    <div class="row">
-      <div class="four columns">
-        {* blocks.company_name *}
-      </div>
-
-      <nav class="eight columns">
-        {* blocks.links *}
-      </nav>
-    </div>
-  </div>
-</footer>
-]]
-  },
-  {
-    checksum = "37898fe180ad8ce6657c9ce4896c41fccdfb2059a04f6603b5c2f307e2557d40",
-    path = "modules/layouts/homepage/blueprint.yaml",
-    contents = [[title: homepage
-blocks:
-  header:
-    type: blueprint
-    required: true
-  footer:
-    type: blueprint
-    required: true
-  hero_text:
-    type: text
-    required: true
-  hero_image:
-    type: image
-    required: true
-]]
-  },
-  {
-    checksum = "51eec060251c0d9902d102b93dea75f650069300a2883348765bb756ed20c055",
-    path = "modules/layouts/homepage/default.txt",
-    contents = [[{-header-}
-{( modules/partials/header )}
-{-header-}
-
-{-footer-}
-{( modules/partials/footer )}
-{-footer-}
-
-{-hero-}
-{( modules/partials/hero )}
-{-hero-}
-]]
-  },
-  {
-    checksum = "1800915b4f3ac885ce0c43ada0dbbb99b8379e123bae39b258c95b3b326ea626",
-    path = "modules/layouts/homepage/layout.html",
-    contents = [[{% layout = "layouts/_base.html" %}
-
-{-main-}
-{* blocks.header *}
-<body>
-  <div class="homepage" style="padding-top: 160px;">
-    <div class="hero">
-      {* blocks.hero *}
-    </div>
-    <section class="homepage-catalog">
-      {* blocks.row_one *}
-    </section>
-    <section class="homepage-catalog">
-      {* blocks.row_two *}
-    </section>
-    <section class="homepage-catalog">
-      {* blocks.row_three *}
-    </section>
-  </div>
-</body>
-{* blocks.footer *}
-{-main-}
-]]
-  },
-  {
-    checksum = "1940fc30c6db8e6bb39fea888ecadc11b063641d2fbb087d249fc0a69766fa21",
-    path = "modules/partials/hero/default.txt",
-    contents = [[{-title-}
-Welcome to Kong Dev Portal
-{-title-}
-
-{-tagline-}
-Make a thing!
-{-tagline-}
-
-{-footer-}
-<a class="btn btn-primary" href="register">Create a Developer Account</a>
-{-footer-}
-]]
-  },
-  {
-    checksum = "875e35225e03919c6319be3b74a6c83f920a0d1917c8c1039a01ca85952a42d2",
-    path = "modules/partials/hero/layout.html",
-    contents = [[<div class="hero-header">
-    <h2>
-      {* blocks.title *}
-    </h2>
-    <p>
-      {* blocks.tagline *}
-    </p>
-  </div>
-  <div class="hero-footer">
-    {* blocks.cta *}
-  </div>
-</div>
-]]
-  },
-  {
-    checksum = "04d46cdde9d4242bb788f7c4638f86d2bb2c467706c261a0a0864f8cbc496594",
-    path = "themes/light-theme/partials/__kong/header/nav.html",
-    contents = [[<li><a href="documentation">Service Catalog</a></li>
-<li><a href="guides">Tutorials</a></li>
-<li><a href="about">About</a></li>
-
-{% if portal.auth and portal.auth ~= "" then %}
-  {% if user.is_authenticated() then %}
-    <li class="has-dropdown">
-      <a href="settings" aria-haspopup="true">{{user.get("email")}}</a>
-      <ul class="dropdown" aria-label="submenu">
-        <li><a href="dashboard">Dashboard</a></li>
-        <li><a href="logout">Logout</a></li>
-      </ul>
-    </li>
-  {% else %}
-    <li><a href="login">Login</a></li>
-    <li><a class="nav-button btn btn-secondary" href="register">Sign Up</a></li>
-  {% end %}
-{% end %}
-]]
-  },
-  {
-    checksum = "5f8d829ae14f6a4aeb544ad9aaf88cdf36e66acd766874b9a5423e29e143f2e6",
-    path = "modules/partials/hero/blueprint.yaml",
-    contents = [[title: hero
-blocks:
-  title:
-    type: text
-    required: true
-  tagline:
-    type: text
-    required: true
-  footer:
-    type: html
-]]
-  },
-  {
-    checksum = "df093dc44680ab0bbddce785a4c3284255e6a49abd47464e253e9d59ab6ddfde",
-    path = "themes/light-theme/partials/__kong/header/logo.html",
-    contents = [[<label for="header_nav" class="menu-toggle">Menu</label>
-<h1 class="brand"><a href=""><img class="logo" src="{{theme.images.logo}}" alt="{{portal.name}}" /></a></h1>
 ]]
   }
 }
