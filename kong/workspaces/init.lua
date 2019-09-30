@@ -2,7 +2,6 @@ local singletons = require "kong.singletons"
 local utils = require "kong.tools.utils"
 local tablex = require "pl.tablex"
 local cjson = require "cjson.safe"
-local ws_dao_wrappers = require "kong.workspaces.dao_wrappers"
 local counters = require "kong.workspaces.counters"
 local base = require "resty.core.base"
 local pl_template = require "pl.template"
@@ -36,11 +35,6 @@ local ALL_METHODS = "GET,POST,PUT,DELETE,OPTIONS,PATCH"
 
 _M.DEFAULT_WORKSPACE = DEFAULT_WORKSPACE
 _M.WORKSPACE_DELIMITER = WORKSPACE_DELIMETER
-
-
--- XXX compat_find_all will go away with workspaces remodel
-local compat_find_all = ws_dao_wrappers.compat_find_all
-_M.compat_find_all = compat_find_all
 
 
 -- a map of workspaceable relations to its primary key name

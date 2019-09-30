@@ -227,7 +227,6 @@ build = {
 
     ["kong.workspaces"] = "kong/workspaces/init.lua",
     ["kong.workspaces.counters"] = "kong/workspaces/counters.lua",
-    ["kong.workspaces.dao_wrappers"] = "kong/workspaces/dao_wrappers.lua",
 
     ["kong.portal"] = "kong/portal/init.lua",
     ["kong.portal.api"] = "kong/portal/api.lua",

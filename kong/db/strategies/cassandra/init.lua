@@ -737,12 +737,6 @@ end
 
 
 local function _select_all(self, cql, args)
-  local rows, err = self.connector:query(cql, args, nil, "read")
-  if not rows then
-    return nil, self.errors:database_error("could not execute selection query: "
-                                           .. err)
-  end
-
   local workspaceable = workspaceable[self.schema.name]
   local pk_name = workspaceable and workspaceable.primary_key
   local ws_list = get_workspaces()
@@ -759,12 +753,19 @@ local function _select_all(self, cql, args)
   end
 
   local c = 1
-  local entities = new_tab(#rows, 0)
+  local entities = {}
 
-  for _, row in ipairs(rows) do
-    if not apply_workspaces or ws_entities_map[row[pk_name]] then
-      entities[c] = self:deserialize_row(row)
-      c = c + 1
+  for rows, err in self.connector.cluster:iterate(cql, args) do
+    if err then
+      return nil, self.errors:database_error("could not execute selection query: "
+                                             .. err)
+    end
+
+    for _, row in ipairs(rows) do
+      if not apply_workspaces or ws_entities_map[row[pk_name]] then
+        entities[c] = self:deserialize_row(row)
+        c = c + 1
+      end
     end
   end
 

@@ -96,32 +96,6 @@ do
 end
 
 
--- fetch the id pair mapping of related objects from the database
-local function retrieve_relationship_ids(entity_id, entity_name, factory_key)
-  local relationship_ids, err
-
-
-  -- workspace_entities doesn't have a "formal" foreign key relationship
-  -- with workspace even though the field name is workspace_id so the
-  -- search is different for rbac and workspace_entities.
-  if factory_key == "workspace_entities" then
-    relationship_ids, err = workspaces.compat_find_all(factory_key, {
-      [entity_name .. "_id"] = entity_id
-    }, { skip_rbac = true })
-  else
-    relationship_ids, err = workspaces.compat_find_all(factory_key, {
-      [entity_name] = { id = entity_id }
-    }, { skip_rbac = true })
-  end
-  if err then
-    log(ngx.ERR, "err retrieving relationship via id ", entity_id, ": ", err)
-    return nil, err
-  end
-
-  return relationship_ids
-end
-
-
 -- fetch the foreign object associated with a mapping id pair
 local function retrieve_relationship_entity(foreign_factory_key, foreign_id)
   local relationship, err = kong.db[foreign_factory_key]:select({
@@ -214,6 +188,20 @@ local function arr_hash_add(t, e)
 end
 
 
+local function retrieve_entity_ids(ws_id)
+  local workspaced_entities, err = kong.db.workspace_entities:select_all({
+      workspace_id = ws_id
+    }, { skip_rbac = true })
+
+  if err then
+    log(ngx.ERR, "err retrieving related entities for workspace ", ws_id, ": ", err)
+    return nil, err
+  end
+
+  return workspaced_entities
+end
+
+
 -- given a list of workspace IDs, return a list/hash
 -- of entities belonging to the workspaces, handling
 -- circular references
@@ -231,9 +219,9 @@ function _M.resolve_workspace_entities(workspaces)
   local seen_workspaces = {}
 
 
-  local function resolve(workspace)
+  local function resolve(workspace_id)
     local workspace_entities, err =
-      retrieve_relationship_ids(workspace, "workspace", "workspace_entities")
+    retrieve_entity_ids(workspace_id)
     if err then
       error(err)
     end

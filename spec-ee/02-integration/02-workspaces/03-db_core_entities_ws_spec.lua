@@ -631,6 +631,31 @@ for _, strategy in helpers.each_strategy() do
           end, db)
         end)
       end)
+
+      pending(":select_all", function()
+        local foo_ws
+        lazy_setup(function()
+          db:truncate()
+
+          foo_ws = add_ws(db, "foo")
+          with_current_ws( {foo_ws},function()
+            for i = 1, 1005 do
+              bp.routes:insert({
+                hosts   = { "selectall-" .. i .. ".com" },
+                methods = { "GET" }
+              })
+            end
+          end, db)
+        end)
+
+        -- I/O
+        ("fetch all rows", function()
+          with_current_ws( {foo_ws},function()
+            local rows = db.routes:select_all()
+            assert.equal(1005, #rows)
+          end, db)
+        end)
+      end)
     end)
 
     --[[

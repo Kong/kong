@@ -201,7 +201,8 @@ describe("tracing [#" .. strategy .. "]", function()
 
       -- we have at least one db call
       -- this is the workspace scope lookup
-      assert(has_trace_element(traces, "name", "query"))
+      assert(has_trace_element(traces, "name", "query") or
+        has_trace_element(traces, "name", "cassandra_iterate"))
     end)
 
     it("writes a second trace", function()
@@ -326,7 +327,8 @@ describe("tracing [#" .. strategy .. "]", function()
 
       -- we have at least one db call
       -- this is the workspace scope lookup
-      assert(has_trace_element(traces, "name", "query"))
+      assert(has_trace_element(traces, "name", "query") or
+        has_trace_element(traces, "name", "cassandra_iterate"))
     end)
   end)
 
@@ -467,7 +469,8 @@ describe("tracing [#" .. strategy .. "]", function()
 
       -- we have at least one db call
       -- this is the workspace scope lookup
-      assert(has_trace_element(traces, "name", "query"))
+      assert(has_trace_element(traces, "name", "query") or
+        has_trace_element(traces, "name", "cassandra_iterate"))
     end)
   end)
 
