@@ -20,6 +20,7 @@ return {
           { anonymous = { type = "string", uuid = true, legacy = true }, },
           { key_in_body = { type = "boolean", default = false }, },
           { run_on_preflight = { type = "boolean", default = true }, },
+          { allow_unauthorized = { type = "boolean", default = false }, },
         },
     }, },
   },

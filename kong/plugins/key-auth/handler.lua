@@ -154,9 +154,14 @@ local function do_authentication(conf)
     return kong.response.exit(500, "An unexpected error occurred")
   end
 
-  -- no credential in DB, for this key, it is invalid, HTTP 401
+  -- no credential in DB, for this key, it is invalid
   if not credential then
-    return nil, { status = 401, message = "Invalid authentication credentials" }
+    -- return HTTP 401 unless allow_unauthorized is set
+    if conf.allow_unauthorized then
+      return true
+    else
+      return nil, { status = 401, message = "Invalid authentication credentials" }
+    end
   end
 
   -----------------------------------------
