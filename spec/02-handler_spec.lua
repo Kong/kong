@@ -36,6 +36,19 @@ for _, strategy in helpers.each_strategy() do
         end
       ]]
 
+      local function_body_request_id = [[
+        return function (status, body, headers)
+          local uid = request_id()
+          return 418, uid, headers
+        end
+      ]]
+
+      local function_global_ctx = [[
+        return function (status, body, headers)
+          return 418, type(kong), headers
+        end
+      ]]
+
       bp.plugins:insert {
         name = PLUGIN_NAME,
         route = { id = route1.id },
@@ -88,7 +101,6 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "test4.com" },
       }
 
-
       bp.plugins:insert {
         name = PLUGIN_NAME,
         route = { id = route4.id },
@@ -101,6 +113,40 @@ for _, strategy in helpers.each_strategy() do
       bp.plugins:insert {
         name = "key-auth",
         route = { id = route4.id },
+      }
+
+      local route5 = bp.routes:insert {
+        hosts = { "test5.com" },
+      }
+
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = route5.id },
+        config = { functions = { function_body_request_id } },
+      }
+
+      -- Add a plugin that generates a kong.response.exit, such as key-auth
+      -- with invalid or no credentials
+      bp.plugins:insert {
+        name = "key-auth",
+        route = { id = route5.id },
+      }
+
+      local route6 = bp.routes:insert {
+        hosts = { "test6.com" },
+      }
+
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = route6.id },
+        config = { functions = { function_global_ctx } },
+      }
+
+      -- Add a plugin that generates a kong.response.exit, such as key-auth
+      -- with invalid or no credentials
+      bp.plugins:insert {
+        name = "key-auth",
+        route = { id = route6.id },
       }
 
       -- start kong
@@ -174,6 +220,30 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("{\"hello\":\"world\"}", body)
         local header = assert.response(res).has.header("some-header")
         assert.equal("some value", header)
+      end)
+
+      it("has a get_request_id function available", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/request",  -- makes mockbin return the entire request
+          headers = {
+            host = "test5.com"
+          }
+        })
+        local body = assert.response(res).has.status(418)
+        assert.equal(32, body:len())
+      end)
+
+      it("has no access to the global context", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/request",  -- makes mockbin return the entire request
+          headers = {
+            host = "test6.com"
+          }
+        })
+        local body = res:read_body()
+        assert.equal("nil", body)
       end)
     end)
   end)

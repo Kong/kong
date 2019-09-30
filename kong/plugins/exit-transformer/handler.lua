@@ -1,3 +1,5 @@
+local inspect = require "inspect"
+
 local utils = require "kong.tools.utils"
 local runloop_handler = require "kong.runloop.handler"
 
@@ -31,26 +33,30 @@ local function get_conf()
 end
 
 
--- XXX: Ideally use kong.cache, but functions cannot be serialized
 local transform_function_cache = setmetatable({}, { __mode = "k" })
 local function get_transform_functions(config)
   local functions = transform_function_cache[config]
+  -- transform functions have the following available to them
+  local helper_ctx = {
+    type = type,
+    print = print,
+    pairs = pairs,
+    ipairs = ipairs,
+    inspect = inspect,
+    request_id = request_id,
+  }
+
   if not functions then
     -- first call, go compile the functions
     functions = {}
     for _, fn_str in ipairs(config.functions) do
-      local func1 = loadstring(fn_str)    -- load it
-      local _, func2 = pcall(func1)       -- run it
-      if type(func2) ~= "function" then
-        -- old style (0.1.0), without upvalues
-        table.insert(functions, func1)
-      else
-        -- this is a new function (0.2.0+), with upvalues
-        table.insert(functions, func2)
-
-        -- the first call to func1 above only initialized it, so run again
-        func2()
-      end
+      local fn = loadstring(fn_str)     -- load
+      -- Set function context
+      local fn_ctx = {}
+      setmetatable(fn_ctx, { __index = helper_ctx })
+      setfenv(fn, fn_ctx)
+      local _, actual_fn = pcall(fn)
+      table.insert(functions, actual_fn)
     end
 
     transform_function_cache[config] = functions
@@ -58,7 +64,6 @@ local function get_transform_functions(config)
 
   return ipairs(functions)
 end
-
 
 local _M = BasePlugin:extend()
 
@@ -86,13 +91,10 @@ function _M:exit(status, body, headers)
   end
 
   -- Try to get plugin configuration for current context
-  conf = get_conf()
+  local conf = get_conf()
   if not conf then
     return status, body, headers
   end
-
-  -- Some customers want a request id on kong exit responses
-  kong.ctx._exit_request_id = request_id()
 
   -- Reduce on status, body, headers through transform functions
   for _, fn in get_transform_functions(conf) do
