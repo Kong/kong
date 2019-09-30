@@ -329,8 +329,8 @@ function NewRLHandler:access(conf)
   end
 
   local query_cost = cost(query_ast, conf.cost_strategy)
-  -- Reduce tota node cost quantified by 100, min 1
-  query_cost = math.ceil((query_cost + 0.01) * 0.01)
+  -- Reduce tota node cost quantified by conf.score_factor, min 1
+  query_cost = math.ceil((query_cost + 0.01) * conf.score_factor)
 
   for i = 1, #conf.window_size do
     local window_size = tonumber(conf.window_size[i])

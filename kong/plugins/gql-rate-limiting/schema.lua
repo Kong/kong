@@ -69,6 +69,13 @@ return {
             one_of = { "default", "node_quantifier" },
             default = "default",
           }},
+          { score_factor = {
+            type = "number",
+            required = false,
+            default = 1.0,
+            -- score_factor always greater than 0
+            gt = 0
+          }},
           { max_cost = {
             type = "number",
             required = false,
