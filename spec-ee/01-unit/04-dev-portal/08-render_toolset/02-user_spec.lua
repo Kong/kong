@@ -46,7 +46,7 @@ describe("user", function()
 
   describe(".is_authenticated()", function()
     it("returns false when logged out", function()
-      assert.equals(user.is_authenticated(), false)
+      assert.equals(user.is_authenticated, false)
     end)
 
     it("returns true when logged in", function()
@@ -54,7 +54,7 @@ describe("user", function()
         username = "nijiko"
       }
 
-      assert.equals(user.is_authenticated(), true)
+      assert.equals(user.is_authenticated, true)
     end)
   end)
 

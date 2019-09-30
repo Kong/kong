@@ -248,6 +248,7 @@ build = {
     ["kong.portal.classes.portal"] = "kong/portal/classes/portal.lua",
     ["kong.portal.classes.theme"] = "kong/portal/classes/theme.lua",
     ["kong.portal.render_toolset.base"] = "kong/portal/render_toolset/base/init.lua",
+    ["kong.portal.render_toolset.looper"] = "kong/portal/render_toolset/looper.lua",
     ["kong.portal.render_toolset.markdown"] = "kong/portal/render_toolset/markdown.lua",
     ["kong.portal.render_toolset.base.boolean"] = "kong/portal/render_toolset/base/boolean.lua",
     ["kong.portal.render_toolset.base.number"] = "kong/portal/render_toolset/base/number.lua",

@@ -3,6 +3,7 @@ local workspaces    = require "kong.workspaces"
 local singletons    = require "kong.singletons"
 local markdown      = require "kong.portal.render_toolset.markdown"
 local lyaml         = require "lyaml"
+local looper        = require "kong.portal.render_toolset.looper"
 
 local yaml_load     = lyaml.load
 
@@ -25,12 +26,8 @@ return function()
   local workspace_path_gsub = "^/" .. workspace.name .. "/"
   local portal_gui_url = workspaces.build_ws_portal_gui_url(conf, workspace)
   local route_config = render_ctx.route_config or {}
-  local page = helpers.tbl.deepcopy(route_config.headmatter or {})
 
-  -- Table containing only page content
-  -- Used for spec rendering
-  local render_ctx = render_ctx or {}
-  local route_config = render_ctx.route_config or {}
+  local page = {}
   page.body = markdownify(route_config.body or "", route_config)
   page.parsed_body = yaml_load(page.body) or {}
 
@@ -50,6 +47,9 @@ return function()
     return (page.locale and page.locale[property]) or fallback
   end
 
+  -- everything after this is un-nillable
+  looper.set_node(page)
+
   -- Build breadcrumbs object with helpful properties
   page.breadcrumbs = {}
   local crumbs = helpers.str.split(page.route, "/")
@@ -63,6 +63,11 @@ return function()
       is_last = i == #crumbs,
       is_first = i == 1,
     })
+  end
+
+  local headmatter = route_config.headmatter or {}
+  for k, v in pairs(headmatter) do
+    page[k] = v
   end
 
   return page
