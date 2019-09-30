@@ -10,7 +10,7 @@ return {
             { id = typedefs.uuid },
             { service = { type = "foreign", reference = "services" } },
             { type_path = {
-                required = true, unique = true, type = "string"
+                required = true, type = "string"
             } },
             { add_arguments = {
                 default = {}, type = "array", elements = { type = "string" }

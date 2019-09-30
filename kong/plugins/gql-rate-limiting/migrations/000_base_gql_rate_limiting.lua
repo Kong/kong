@@ -4,7 +4,7 @@ return {
             CREATE TABLE IF NOT EXISTS "gql_ratelimiting_cost_decoration" (
                 "id"                         UUID                           PRIMARY KEY,
                 "service_id"                 UUID                           REFERENCES "services" ("id") ON DELETE CASCADE,
-                "type_path"                  TEXT                           UNIQUE,
+                "type_path"                  TEXT,
                 "add_arguments"              TEXT[],
                 "add_constant"               FLOAT,
                 "mul_arguments"              TEXT[],
