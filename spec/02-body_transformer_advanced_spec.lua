@@ -173,7 +173,6 @@ describe("Plugin: response-transformer-advanced", function()
               data = "large"
             end
           end
-
           return key, data
         end
       ]]
@@ -199,7 +198,7 @@ describe("Plugin: response-transformer-advanced", function()
         },
       }
 
-      it("performs arbitrary transformations on body #transform", function()
+      it("performs arbitrary transformations on body transform", function()
         local json = [[
           {
             "something": {
@@ -243,8 +242,84 @@ describe("Plugin: response-transformer-advanced", function()
             }
           }
         }
-
         local body = body_transformer.transform_json_body(conf, json, 200)
+        local body_json = cjson.decode(body)
+        assert.same(expected, body_json)
+      end)
+
+      it("has no access to the global context", function()
+        local some_function_that_access_global_ctx = [[
+          return function (key, data)
+            return key, type(_KONG)
+          end
+        ]]
+
+        local json = [[
+          { "some": "data" }
+        ]]
+
+        local g_conf = {
+          remove   = {
+            json   = {}
+          },
+          replace  = {
+            json   = {},
+          },
+          add      = {
+            json   = {}
+          },
+          append   = {
+            json   = {}
+          },
+          whitelist = {
+            json   = {},
+          },
+          transform = {
+            functions = { some_function_that_access_global_ctx },
+          },
+        }
+
+        local body = body_transformer.transform_json_body(g_conf, json, 200)
+        local body_json = cjson.decode(body)
+        assert.same("nil", body_json)
+      end)
+
+      it("has its own context", function()
+        local some_function_that_access_global_ctx = [[
+          local foo = "bar"
+          return function (key, data)
+            return key, foo
+          end
+        ]]
+
+        local json = [[
+          { "some": "data" }
+        ]]
+
+        local expected = "bar"
+
+        local g_conf = {
+          remove   = {
+            json   = {}
+          },
+          replace  = {
+            json   = {},
+          },
+          add      = {
+            json   = {}
+          },
+          append   = {
+            json   = {}
+          },
+          whitelist = {
+            json   = {},
+          },
+          transform = {
+            functions = { some_function_that_access_global_ctx },
+          },
+        }
+
+        local body = body_transformer.transform_json_body(g_conf, json, 200)
         local body_json = cjson.decode(body)
         assert.same(expected, body_json)
       end)

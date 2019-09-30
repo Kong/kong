@@ -54,26 +54,29 @@ local function iter(config_array)
   end, config_array, 0
 end
 
--- XXX Use proper kong caching, initialize it on init_worker etc
 local transform_function_cache = setmetatable({}, { __mode = "k" })
 local function get_transform_functions(config)
   local functions = transform_function_cache[config]
+
+  -- transform functions have the following available to them
+  local helper_ctx = {
+    type = type,
+    print = print,
+    pairs = pairs,
+    ipairs = ipairs,
+  }
+
   if not functions then
     -- first call, go compile the functions
     functions = {}
     for _, fn_str in ipairs(config.transform.functions) do
-      local func1 = loadstring(fn_str)    -- load it
-      local _, func2 = pcall(func1)       -- run it
-      if type(func2) ~= "function" then
-        -- old style (0.1.0), without upvalues
-        table_insert(functions, func1)
-      else
-        -- this is a new function (0.2.0+), with upvalues
-        table_insert(functions, func2)
-
-        -- the first call to func1 above only initialized it, so run again
-        func2()
-      end
+      local fn = loadstring(fn_str)     -- load
+      -- Set function context
+      local fn_ctx = {}
+      setmetatable(fn_ctx, { __index = helper_ctx })
+      setfenv(fn, fn_ctx)
+      local _, actual_fn = pcall(fn)
+      table_insert(functions, actual_fn)
     end
 
     transform_function_cache[config] = functions
