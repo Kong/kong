@@ -1,5 +1,5 @@
-local helpers       = require "kong.portal.render_toolset.helpers"
-local singletons    = require "kong.singletons"
+local singletons = require "kong.singletons"
+local looper     = require "kong.portal.render_toolset.looper"
 
 local function get_conf_attr_value(attr)
   local val
@@ -30,7 +30,13 @@ end
 
 return function()
   local render_ctx = singletons.render_ctx
-  local theme = helpers.tbl.deepcopy(render_ctx.theme or {})
+  local theme = {}
+  looper.set_node(theme)
+
+  local _theme = render_ctx.theme or {}
+  for k, v in pairs(_theme) do
+    theme[k] = v
+  end
 
   theme.colors = map_conf_values(theme.colors)
   theme.color = get_map_value_fn(theme.colors)

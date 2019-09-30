@@ -1,7 +1,9 @@
-local singletons    = require "kong.singletons"
+local singletons = require "kong.singletons"
+local looper = require "kong.portal.render_toolset.looper"
 
 return function()
   local user = {}
+  looper.set_node(user)
 
   user.is_authenticated = function()
     local render_ctx = singletons.render_ctx
