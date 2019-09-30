@@ -41,7 +41,7 @@ dependencies = {
   "kong-plugin-kubernetes-sidecar-injector ~> 0.2",
   "kong-plugin-zipkin ~> 0.1",
   "kong-plugin-serverless-functions ~> 0.3",
-  "kong-prometheus-plugin ~> 0.5",
+  "kong-prometheus-plugin ~> 0.6",
   "kong-proxy-cache-plugin ~> 1.2",
   "kong-plugin-request-transformer ~> 1.2",
   "kong-plugin-session ~> 2.1",
