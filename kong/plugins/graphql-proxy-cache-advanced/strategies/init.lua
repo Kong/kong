@@ -12,7 +12,7 @@ _M.LOCAL_DATA_STRATEGIES = {
 }
 
 local function require_strategy(name)
-    return require("kong.plugins.gql-proxy-cache.strategies." .. name)
+    return require("kong.plugins.graphql-proxy-cache-advanced.strategies." .. name)
 end
 
 return setmetatable(_M, {

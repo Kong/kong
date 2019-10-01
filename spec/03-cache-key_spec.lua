@@ -1,5 +1,5 @@
 local utils = require "kong.tools.utils"
-local cache_key_utils = require "kong.plugins.gql-proxy-cache.cache_key"
+local cache_key_utils = require "kong.plugins.graphql-proxy-cache-advanced.cache_key"
 
 describe("builds cache key", function()
   local route1_uuid = utils.uuid()

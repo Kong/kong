@@ -1,11 +1,11 @@
 local helpers = require "spec.helpers"
-local strategies = require("kong.plugins.gql-proxy-cache.strategies")
+local strategies = require("kong.plugins.graphql-proxy-cache-advanced.strategies")
 local cjson   = require "cjson"
 
 local TIMEOUT = 10 -- default timeout for non-memory strategies
 
 for _, policy in ipairs({"memory"}) do
-  describe("gql-proxy-cache access with policy: #" .. policy, function()
+  describe("graphql-proxy-cache-advanced access with policy: #" .. policy, function()
     local client, admin_client
     local policy_config
 
@@ -28,7 +28,7 @@ for _, policy in ipairs({"memory"}) do
       helpers.wait_until(function()
         local res = admin_client:send {
           method = "GET",
-          path   = "/gql-proxy-cache/" .. key
+          path   = "/graphql-proxy-cache-advanced/" .. key
         }
         -- wait_until does not like asserts
         if not res then return false end
@@ -62,7 +62,7 @@ for _, policy in ipairs({"memory"}) do
 
     setup(function()
 
-      local bp = helpers.get_db_utils(nil, nil, {"gql-proxy-cache"})
+      local bp = helpers.get_db_utils(nil, nil, {"graphql-proxy-cache-advanced"})
       strategy:flush(true)
 
       local route1 = assert(bp.routes:insert {
@@ -90,7 +90,7 @@ for _, policy in ipairs({"memory"}) do
       })
 
       assert(bp.plugins:insert {
-        name = "gql-proxy-cache",
+        name = "graphql-proxy-cache-advanced",
         route = { id = route1.id },
         config = {
           strategy = policy,
@@ -99,7 +99,7 @@ for _, policy in ipairs({"memory"}) do
       })
 
       assert(bp.plugins:insert {
-        name = "gql-proxy-cache",
+        name = "graphql-proxy-cache-advanced",
         route = { id = route2.id },
         config = {
           strategy = policy,
@@ -109,7 +109,7 @@ for _, policy in ipairs({"memory"}) do
       })
 
       assert(bp.plugins:insert {
-        name = "gql-proxy-cache",
+        name = "graphql-proxy-cache-advanced",
         route = { id = route3.id },
         config = {
           strategy = policy,
@@ -119,7 +119,7 @@ for _, policy in ipairs({"memory"}) do
       })
 
       assert(bp.plugins:insert {
-        name = "gql-proxy-cache",
+        name = "graphql-proxy-cache-advanced",
         route = { id = route4.id },
         config = {
           strategy = policy,
@@ -128,7 +128,7 @@ for _, policy in ipairs({"memory"}) do
       })
 
       assert(bp.plugins:insert {
-        name = "gql-proxy-cache",
+        name = "graphql-proxy-cache-advanced",
         route = { id = route5.id },
         config = {
           strategy = policy,
@@ -137,7 +137,7 @@ for _, policy in ipairs({"memory"}) do
       })
 
       assert(bp.plugins:insert {
-        name = "gql-proxy-cache",
+        name = "graphql-proxy-cache-advanced",
         route = { id = route6.id },
         config = {
           strategy = policy,
@@ -147,7 +147,7 @@ for _, policy in ipairs({"memory"}) do
       })
 
       assert(helpers.start_kong({
-        plugins = "bundled,gql-proxy-cache",
+        plugins = "bundled,graphql-proxy-cache-advanced",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)
