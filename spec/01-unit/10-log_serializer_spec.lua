@@ -1,10 +1,9 @@
+require "spec.helpers"
 local basic = require "kong.plugins.log-serializers.basic"
 
 describe("Log Serializer", function()
-  local ngx
-
   before_each(function()
-    ngx = {
+    _G.ngx = {
       ctx = {
         balancer_data = {
           tries = {
@@ -36,11 +35,15 @@ describe("Log Serializer", function()
         get_headers = function() return {"respheader1", "respheader2"} end
       }
     }
+
+    package.loaded["kong.pdk.request"] = nil
+    local pdk_request = require "kong.pdk.request"
+    kong.request = pdk_request.new(kong)
   end)
 
   describe("Basic", function()
     it("serializes without API, Consumer or Authenticated entity", function()
-      local res = basic.serialize(ngx)
+      local res = basic.serialize(ngx, kong)
       assert.is_table(res)
 
       -- Simple properties
@@ -80,7 +83,7 @@ describe("Log Serializer", function()
       ngx.ctx.route = { id = "my_route" }
       ngx.ctx.service = { id = "my_service" }
 
-      local res = basic.serialize(ngx)
+      local res = basic.serialize(ngx, kong)
       assert.is_table(res)
 
       assert.equal("my_route", res.route.id)
@@ -92,7 +95,7 @@ describe("Log Serializer", function()
     it("serializes the Consumer object", function()
       ngx.ctx.authenticated_consumer = {id = "someconsumer"}
 
-      local res = basic.serialize(ngx)
+      local res = basic.serialize(ngx, kong)
       assert.is_table(res)
 
       assert.equal("someconsumer", res.consumer.id)
@@ -104,7 +107,7 @@ describe("Log Serializer", function()
       ngx.ctx.authenticated_credential = {id = "somecred",
                                           consumer_id = "user1"}
 
-      local res = basic.serialize(ngx)
+      local res = basic.serialize(ngx, kong)
       assert.is_table(res)
 
       assert.same({id = "somecred", consumer_id = "user1"},
@@ -120,7 +123,7 @@ describe("Log Serializer", function()
         { ip = "127.0.0.1", port = 1234 },
       }
 
-      local res = basic.serialize(ngx)
+      local res = basic.serialize(ngx, kong)
       assert.is_table(res)
 
       assert.same({
@@ -143,7 +146,7 @@ describe("Log Serializer", function()
     it("does not fail when the 'balancer_data' structure is missing", function()
       ngx.ctx.balancer_data = nil
 
-      local res = basic.serialize(ngx)
+      local res = basic.serialize(ngx, kong)
       assert.is_table(res)
 
       assert.is_nil(res.tries)

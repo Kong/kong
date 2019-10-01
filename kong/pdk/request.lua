@@ -242,7 +242,7 @@ local function new(self)
   --
   -- @function kong.request.get_http_version
   -- @phases rewrite, access, header_filter, body_filter, log, admin_api
-  -- @treturn number|nil the http version
+  -- @treturn number|nil the HTTP version as a Lua number
   -- @usage
   -- kong.request.get_http_version() -- 1.1
   function _REQUEST.get_http_version()
@@ -263,6 +263,14 @@ local function new(self)
   -- kong.request.get_method() -- "GET"
   function _REQUEST.get_method()
     check_phase(PHASES.request)
+
+    if ngx.ctx.KONG_UNEXPECTED and _REQUEST.get_http_version() < 2 then
+      local req_line = ngx.var.request
+      local idx = find(req_line, " ", 1, true)
+      if idx then
+        return sub(req_line, 1, idx - 1)
+      end
+    end
 
     return ngx.req.get_method()
   end
@@ -397,19 +405,36 @@ local function new(self)
     check_phase(PHASES.request)
 
     if max_args == nil then
-      return ngx.req.get_uri_args(MAX_QUERY_ARGS_DEFAULT)
+      max_args = MAX_QUERY_ARGS_DEFAULT
+
+    else
+      if type(max_args) ~= "number" then
+        error("max_args must be a number", 2)
+      end
+
+      if max_args < MIN_QUERY_ARGS then
+        error("max_args must be >= " .. MIN_QUERY_ARGS, 2)
+      end
+
+      if max_args > MAX_QUERY_ARGS then
+        error("max_args must be <= " .. MAX_QUERY_ARGS, 2)
+      end
     end
 
-    if type(max_args) ~= "number" then
-      error("max_args must be a number", 2)
-    end
+    if ngx.ctx.KONG_UNEXPECTED and _REQUEST.get_http_version() < 2 then
+      local req_line = ngx.var.request
+      local qidx = find(req_line, "?", 1, true)
+      if not qidx then
+        return {}
+      end
 
-    if max_args < MIN_QUERY_ARGS then
-      error("max_args must be >= " .. MIN_QUERY_ARGS, 2)
-    end
+      local eidx = find(req_line, " ", qidx + 1, true)
+      if not eidx then
+        -- HTTP 414, req_line is too long
+        return {}
+      end
 
-    if max_args > MAX_QUERY_ARGS then
-      error("max_args must be <= " .. MAX_QUERY_ARGS, 2)
+      return ngx.decode_args(sub(req_line, qidx + 1, eidx - 1), max_args)
     end
 
     return ngx.req.get_uri_args(max_args)

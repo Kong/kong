@@ -1,19 +1,41 @@
 #!/usr/bin/env bash
 # set -e
 
+dep_version() {
+    grep $1 .requirements | sed -e 's/.*=//' | tr -d '\n'
+}
+
+OPENRESTY=$(dep_version RESTY_VERSION)
+LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
+OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
+
+
 #---------
 # Download
 #---------
 
-DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml | md5sum | awk '{ print $1 }')
+DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml .requirements | md5sum | awk '{ print $1 }')
+DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
 BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/openresty-build-tools
 
-git clone https://github.com/Kong/openresty-build-tools.git $DOWNLOAD_ROOT/openresty-build-tools
+KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:=master}
+OPENRESTY_PATCHES_BRANCH=${OPENRESTY_PATCHES_BRANCH:=master}
+
+if [ ! -d $BUILD_TOOLS_DOWNLOAD ]; then
+    git clone -q https://github.com/Kong/openresty-build-tools.git $BUILD_TOOLS_DOWNLOAD
+else
+    pushd $BUILD_TOOLS_DOWNLOAD
+        git fetch
+        git reset --hard origin/master
+    popd
+fi
+
 export PATH=$BUILD_TOOLS_DOWNLOAD:$PATH
 
 #--------
 # Install
 #--------
+INSTALL_CACHE=${INSTALL_CACHE:=/install-cache}
 INSTALL_ROOT=$INSTALL_CACHE/$DEPS_HASH
 
 kong-ngx-build \

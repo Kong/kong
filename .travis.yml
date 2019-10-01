@@ -26,13 +26,8 @@ addons:
 
 env:
   global:
-    - LUAROCKS=3.1.3
-    - OPENSSL=1.1.1c
-    - OPENRESTY=1.15.8.1
-    - DOWNLOAD_ROOT=$HOME/download-root
     - INSTALL_CACHE=$HOME/install-cache
-    - OPENRESTY_PATCHES_BRANCH=master
-    - KONG_NGINX_MODULE_BRANCH=master
+    - DOWNLOAD_ROOT=$HOME/download-root
     - KONG_TEST_PG_DATABASE=travis
     - KONG_TEST_PG_USER=postgres
     - JOBS=2
@@ -53,7 +48,6 @@ install:
 
 cache:
   apt: true
-  pip: true
   directories:
     - $INSTALL_CACHE
     - $HOME/.ccm/repository

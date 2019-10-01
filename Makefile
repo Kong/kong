@@ -14,8 +14,12 @@ OPENSSL_DIR ?= /usr
 GRPCURL_OS ?= $(OS)
 endif
 
-.PHONY: install remove dependencies grpcurl dev \
-	lint test test-integration test-plugins test-all fix-windows
+.PHONY: install dependencies dev remove grpcurl \
+	setup-ci setup-kong-build-tools \
+	lint test test-integration test-plugins test-all \
+	pdk-phase-check functional-tests \
+	fix-windows \
+	nightly-release release
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
@@ -25,8 +29,18 @@ RESTY_VERSION ?= `grep RESTY_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk
 RESTY_LUAROCKS_VERSION ?= `grep RESTY_LUAROCKS_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 RESTY_OPENSSL_VERSION ?= `grep RESTY_OPENSSL_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 RESTY_PCRE_VERSION ?= `grep RESTY_PCRE_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
-KONG_BUILD_TOOLS ?= '2.0.1'
+KONG_BUILD_TOOLS ?= '2.0.3'
 KONG_VERSION ?= `cat $(KONG_SOURCE_LOCATION)/kong-*.rockspec | grep tag | awk '{print $$3}' | sed 's/"//g'`
+OPENRESTY_PATCHES_BRANCH ?= master
+KONG_NGINX_MODULE_BRANCH ?= master
+
+setup-ci:
+	OPENRESTY=$(RESTY_VERSION) \
+	LUAROCKS=$(RESTY_LUAROCKS_VERSION) \
+	OPENSSL=$(RESTY_OPENSSL_VERSION) \
+	OPENRESTY_PATCHES_BRANCH=$(OPENRESTY_PATCHES_BRANCH) \
+	KONG_NGINX_MODULE_BRANCH=$(KONG_NGINX_MODULE_BRANCH) \
+	.ci/setup_env.sh
 
 setup-kong-build-tools:
 	-rm -rf kong-build-tools; \
