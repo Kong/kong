@@ -99,8 +99,5 @@ return function(ctx, config)
     isBase64Encoded                 = isBase64Encoded,
   }
 
-  --print(require("pl.pretty").write(request))
-  --print(require("pl.pretty").write(ctx.router_matches))
-
   return request
 end

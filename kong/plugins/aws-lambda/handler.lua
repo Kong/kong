@@ -1,19 +1,25 @@
 -- Copyright (C) Kong Inc.
 
-local aws_v4 = require "kong.plugins.liamp.v4"
-local aws_serializer = require "kong.plugins.liamp.aws-serializer"
+local aws_v4 = require "kong.plugins.aws-lambda.v4"
+local aws_serializer = require "kong.plugins.aws-lambda.aws-serializer"
 local http = require "resty.http"
 local cjson = require "cjson.safe"
 local meta = require "kong.meta"
 local constants = require "kong.constants"
 
 
+local VIA_HEADER = constants.HEADERS.VIA
+local VIA_HEADER_VALUE = meta._NAME .. "/" .. meta._VERSION
+local IAM_CREDENTIALS_CACHE_KEY = "plugin.aws-lambda.iam_role_temp_creds"
+local AWS_PORT = 443
+
+
 local fetch_credentials
 do
   local credential_sources = {
-    require "kong.plugins.liamp.iam-ecs-credentials",
+    require "kong.plugins.aws-lambda.iam-ecs-credentials",
     -- The EC2 one will always return `configured == true`, so must be the last!
-    require "kong.plugins.liamp.iam-ec2-credentials",
+    require "kong.plugins.aws-lambda.iam-ec2-credentials",
   }
 
   for _, credential_source in ipairs(credential_sources) do
@@ -32,13 +38,7 @@ local fmt                  = string.format
 local ngx_encode_base64    = ngx.encode_base64
 local ngx_update_time      = ngx.update_time
 local ngx_now              = ngx.now
-
-local IAM_CREDENTIALS_CACHE_KEY = "plugin.liamp.iam_role_temp_creds"
-
-
-local server_header_value
-local server_header_name
-local AWS_PORT = 443
+local kong                 = kong
 
 
 local raw_content_types = {
@@ -107,28 +107,6 @@ end
 local AWSLambdaHandler = {}
 
 
-local function send(status, content, headers)
-  headers = kong.table.merge(headers) -- create a copy of headers
-
-  if server_header_value then
-    headers[server_header_name] = server_header_value
-  end
-
-  return kong.response.exit(status, content, headers)
-end
-
-
-function AWSLambdaHandler:init_worker()
-  if kong.configuration.enabled_headers[constants.HEADERS.VIA] then
-    server_header_value = meta._SERVER_TOKENS
-    server_header_name = constants.HEADERS.VIA
-  else
-    server_header_value = nil
-    server_header_name = nil
-  end
-end
-
-
 function AWSLambdaHandler:access(conf)
   local upstream_body = kong.table.new(0, 6)
   local var = ngx.var
@@ -151,13 +129,7 @@ function AWSLambdaHandler:access(conf)
     end
 
     if conf.forward_request_uri then
-      local path = kong.request.get_path()
-      local query = kong.request.get_raw_query()
-      if query ~= "" then
-        upstream_body.request_uri = path .. "?" .. query
-      else
-        upstream_body.request_uri = path
-      end
+      upstream_body.request_uri = kong.request.get_path_with_query()
       upstream_body.request_uri_args = kong.request.get_query()
     end
 
@@ -216,7 +188,7 @@ function AWSLambdaHandler:access(conf)
 
   if not conf.aws_key then
     -- no credentials provided, so try the IAM metadata service
-    local iam_role_credentials, err = kong.cache:get(
+    local iam_role_credentials = kong.cache:get(
       IAM_CREDENTIALS_CACHE_KEY,
       nil,
       fetch_credentials
@@ -267,8 +239,7 @@ function AWSLambdaHandler:access(conf)
     return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
-  local res
-  res, err = client:request {
+  local res, err = client:request {
     method = "POST",
     path = request.url,
     body = request.body,
@@ -331,11 +302,16 @@ function AWSLambdaHandler:access(conf)
     end
   end
 
+  headers = kong.table.merge(headers) -- create a copy of headers
 
-  return send(status, content, headers)
+  if kong.configuration.enabled_headers[VIA_HEADER] then
+    headers[VIA_HEADER] = VIA_HEADER_VALUE
+  end
+
+  return kong.response.exit(status, content, headers)
 end
 
 AWSLambdaHandler.PRIORITY = 750
-AWSLambdaHandler.VERSION = "0.2.0"
+AWSLambdaHandler.VERSION = "3.0.0"
 
 return AWSLambdaHandler

@@ -1,3 +1,7 @@
+## 3.0.0
+
+- supersede the `aws-lambda` plugin from Kong core
+
 ## 0.2.0
 
 ### Changed

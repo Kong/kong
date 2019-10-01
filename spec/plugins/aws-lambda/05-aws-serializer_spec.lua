@@ -1,4 +1,4 @@
-local deepcopy = require("pl.tablex").deepcopy
+local deepcopy = require "pl.tablex".deepcopy
 
 describe("[AWS Lambda] aws-gateway input", function()
 
@@ -27,13 +27,13 @@ describe("[AWS Lambda] aws-gateway input", function()
 
 
     -- make sure to reload the module
-    package.loaded["kong.plugins.liamp.aws-serializer"] = nil
-    aws_serialize = require("kong.plugins.liamp.aws-serializer")
+    package.loaded["kong.plugins.aws-lambda.aws-serializer"] = nil
+    aws_serialize = require "kong.plugins.aws-lambda.aws-serializer"
   end)
 
   teardown(function()
     -- make sure to drop the mocks
-    package.loaded["kong.plugins.liamp.aws-serializer"] = nil
+    package.loaded["kong.plugins.aws-lambda.aws-serializer"] = nil
     ngx = old_ngx         -- luacheck: ignore
   end)
 

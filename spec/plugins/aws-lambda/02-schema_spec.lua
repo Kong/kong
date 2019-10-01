@@ -1,4 +1,4 @@
-local schema_def = require "kong.plugins.liamp.schema"
+local schema_def = require "kong.plugins.aws-lambda.schema"
 local v = require("spec.helpers").validate_plugin_config_schema
 
 

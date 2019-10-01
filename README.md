@@ -115,11 +115,12 @@ Here's a list of all the parameters which can be used in this plugin's configura
 |`config.aws_secret` <br>*semi-optional* ||The AWS secret credential to be used when invoking the function. This value is required if `aws_key` is defined.
 |`config.aws_region` || The AWS region where the Lambda function is located. Regions supported are: `ap-northeast-1`, `ap-northeast-2`, `ap-south-1`, `ap-southeast-1`, `ap-southeast-2`, `ca-central-1`, `cn-north-1`, `cn-northwest-1`, `eu-central-1`, `eu-west-1`, `eu-west-2`, `sa-east-1`, `us-east-1`, `us-east-2`, `us-gov-west-1`, `us-west-1`, `us-west-2`.
 |`config.function_name` || The AWS Lambda function name to invoke.
+|`config.timeout`| `60000` | Timeout protection in milliseconds when invoking the function.
+|`config.keepalive`| `60000` | Max idle timeout in milliseconds when invoking the function.
 |`config.qualifier` <br>*optional* || The [`Qualifier`](http://docs.aws.amazon.com/lambda/latest/dg/API_Invoke.html#API_Invoke_RequestSyntax) to use when invoking the function.
 |`config.invocation_type` <br>*optional*| `RequestResponse` | The [`InvocationType`](http://docs.aws.amazon.com/lambda/latest/dg/API_Invoke.html#API_Invoke_RequestSyntax) to use when invoking the function. Available types are `RequestResponse`, `Event`, `DryRun`.
 |`config.log_type` <br>*optional* | `Tail`| The [`LogType`](http://docs.aws.amazon.com/lambda/latest/dg/API_Invoke.html#API_Invoke_RequestSyntax) to use when invoking the function. By default `None` and `Tail` are supported.
-|`config.port` <br>*optional* | `Tail`| The [`LogType`](http://docs.aws.amazon.com/lambda/latest/dg/API_Invoke.html#API_Invoke_RequestSyntax) to use when invoking the function. By default `None` and `Tail` are supported.
-|`config.timeout`| `60000` | An optional timeout in milliseconds when invoking the function.
+|`config.port` <br>*optional* | `443` | The TCP port that this plugin will use to connect to the server.
 |`config.unhandled_status` <br>*optional* | `200`, `202` or `204` | The response status code to use (instead of the default `200`, `202`, or `204`) in the case of an [`Unhandled` Function Error](https://docs.aws.amazon.com/lambda/latest/dg/API_Invoke.html#API_Invoke_ResponseSyntax)
 |`config.forward_request_body` <br>*optional* | `false` | An optional value that defines whether the request body is to be sent in the `request_body` field of the JSON-encoded request. If the body arguments can be parsed, they will be sent in the separate `request_body_args` field of the request. The body arguments can be parsed for `application/json`, `application/x-www-form-urlencoded`, and `multipart/form-data` content types.
 |`config.forward_request_headers` <br>*optional* | `false` | An optional value that defines whether the original HTTP request headers are to be sent as a map in the `request_headers` field of the JSON-encoded request.

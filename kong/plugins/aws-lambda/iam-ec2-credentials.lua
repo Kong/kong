@@ -4,10 +4,7 @@ local parse_date = require("luatz").parse.rfc_3339
 local ngx_now = ngx.now
 
 
-local plugin_name = ({...})[1]:match("^kong%.plugins%.([^%.]+)")
-
-
-local LOG_PREFIX = "[" .. plugin_name .. " ec2] "
+local kong = kong
 local METADATA_SERVICE_PORT = 80
 local METADATA_SERVICE_REQUEST_TIMEOUT = 5000
 local METADATA_SERVICE_HOST = "169.254.169.254"
@@ -40,7 +37,7 @@ local function fetch_ec2_credentials()
 
   local iam_role_name = role_name_request_res:read_body()
 
-  ngx.log(ngx.DEBUG, LOG_PREFIX, "Found IAM role on instance with name: ", iam_role_name)
+  kong.log.debug("Found IAM role on instance with name: ", iam_role_name)
 
   local ok, err = client:connect(METADATA_SERVICE_HOST, METADATA_SERVICE_PORT)
 
@@ -71,7 +68,7 @@ local function fetch_ec2_credentials()
 
   local iam_security_token_data = json.decode(iam_security_token_request:read_body())
 
-  ngx.log(ngx.DEBUG, LOG_PREFIX, "Received temporary IAM credential from metadata service for role '",
+  kong.log.debug("Received temporary IAM credential from metadata service for role '",
                      iam_role_name, "' with session token: ", iam_security_token_data.Token)
 
   local result = {
@@ -89,7 +86,7 @@ local function fetchCredentialsLogged()
   if creds then
     return creds, err, ttl
   end
-  ngx.log(ngx.ERR, LOG_PREFIX, err)
+  kong.log.err(err)
 end
 
 return {

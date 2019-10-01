@@ -9,9 +9,7 @@ local function makeset(t)
   return t
 end
 
-local plugin_name = ({...})[1]:match("^kong%.plugins%.([^%.]+)")
-
-local LOG_PREFIX = "[" .. plugin_name .. " ecs] "
+local kong = kong
 local ENV_RELATIVE_URI = os.getenv 'AWS_CONTAINER_CREDENTIALS_RELATIVE_URI'
 local ENV_FULL_URI = os.getenv 'AWS_CONTAINER_CREDENTIALS_FULL_URI'
 local FULL_URI_UNRESTRICTED_PROTOCOLS = makeset { "https" }
@@ -23,14 +21,14 @@ local DEFAULT_SERVICE_REQUEST_TIMEOUT = 5000
 local url = require "socket.url"
 local http = require "resty.http"
 local json = require "cjson"
-local parse_date = require("luatz").parse.rfc_3339
+local parse_date = require "luatz".parse.rfc_3339
 local ngx_now = ngx.now
 
 local ECSFullUri
 do
   if not (ENV_RELATIVE_URI or ENV_FULL_URI) then
     -- No variables found, so we're not running on ECS containers
-    ngx.log(ngx.NOTICE, LOG_PREFIX, "No ECS environment variables found for IAM")
+    kong.log.notice("No ECS environment variables found for IAM")
   else
 
     -- construct the URL
@@ -66,7 +64,7 @@ do
     local err
     ECSFullUri, err = getECSFullUri()
     if not ECSFullUri then
-      ngx.log(ngx.ERR, LOG_PREFIX, "Failed to construct IAM url: ", err)
+      kong.log.err("Failed to construct IAM url: ", err)
     else
       -- parse it and set a default port if omitted
       ECSFullUri = url.parse(ECSFullUri)
@@ -104,7 +102,7 @@ local function fetchCredentials()
 
   local credentials = json.decode(response:read_body())
 
-  ngx.log(ngx.DEBUG, LOG_PREFIX, "Received temporary IAM credential from ECS metadata " ..
+  kong.log.debug("Received temporary IAM credential from ECS metadata " ..
                       "service with session token: ", credentials.Token)
 
   local result = {
@@ -122,7 +120,7 @@ local function fetchCredentialsLogged()
   if creds then
     return creds, err, ttl
   end
-  ngx.log(ngx.ERR, LOG_PREFIX, err)
+  kong.log.err(err)
 end
 
 return {

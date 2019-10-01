@@ -1,3 +1,4 @@
+require "spec.helpers"
 
 describe("[AWS Lambda] iam-ecs", function()
 
@@ -5,7 +6,7 @@ describe("[AWS Lambda] iam-ecs", function()
   local old_getenv = os.getenv
 
   before_each(function()
-    package.loaded["kong.plugins.liamp.iam-ecs-credentials"] = nil
+    package.loaded["kong.plugins.aws-lambda.iam-ecs-credentials"] = nil
     package.loaded["resty.http"] = nil
     local http = require "resty.http"
     -- mock the http module
@@ -56,7 +57,7 @@ describe("[AWS Lambda] iam-ecs", function()
 ]]
     }
 
-    fetch_ecs = require("kong.plugins.liamp.iam-ecs-credentials").fetchCredentials
+    fetch_ecs = require("kong.plugins.aws-lambda.iam-ecs-credentials").fetchCredentials
 
     local iam_role_credentials, err = fetch_ecs()
 

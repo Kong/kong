@@ -89,7 +89,7 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
-      }, { "liamp" })
+      }, { "aws-lambda" })
 
       local route1 = bp.routes:insert {
         hosts = { "lambda.com" },
@@ -182,7 +182,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "liamp",
+        name     = "aws-lambda",
         route    = { id = route1.id },
         config   = {
           port          = 10001,
@@ -194,7 +194,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "liamp",
+        name     = "aws-lambda",
         route    = { id = route2.id },
         config   = {
           port            = 10001,
@@ -207,7 +207,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "liamp",
+        name     = "aws-lambda",
         route    = { id = route3.id },
         config   = {
           port            = 10001,
@@ -220,7 +220,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "liamp",
+        name     = "aws-lambda",
         route    = { id = route4.id },
         config   = {
           port          = 10001,
@@ -233,7 +233,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "liamp",
+        name     = "aws-lambda",
         route    = { id = route5.id },
         config   = {
           port          = 10001,
@@ -245,7 +245,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "liamp",
+        name     = "aws-lambda",
         route    = { id = route6.id },
         config   = {
           port            = 10001,
@@ -258,7 +258,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "liamp",
+        name     = "aws-lambda",
         route    = { id = route7.id },
         config   = {
           port            = 10001,
@@ -271,7 +271,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "liamp",
+        name     = "aws-lambda",
         route    = { id = route8.id },
         config   = {
           port             = 10001,
@@ -284,7 +284,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "liamp",
+        name     = "aws-lambda",
         route    = { id = route9.id },
         config   = {
           port                    = 10001,
@@ -300,7 +300,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "liamp",
+        name     = "aws-lambda",
         route    = { id = route10.id },
         config                    = {
           port                    = 10001,
@@ -316,7 +316,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "liamp",
+        name     = "aws-lambda",
         route    = { id = route11.id },
         config                 = {
           port                 = 10001,
@@ -329,7 +329,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "liamp",
+        name     = "aws-lambda",
         route    = { id = route12.id },
         config                 = {
           port                 = 10001,
@@ -342,7 +342,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "liamp",
+        name     = "aws-lambda",
         route    = { id = route13.id },
         config                 = {
           port                 = 10001,
@@ -355,7 +355,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
-        name     = "liamp",
+        name     = "aws-lambda",
         route = { id = route14.id },
         config   = {
           port          = 10001,
@@ -368,7 +368,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database   = strategy,
-        plugins = "liamp",
+        plugins = "aws-lambda",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }, nil, nil, fixtures))
     end)

@@ -1,10 +1,11 @@
+require "spec.helpers"
 
 describe("[AWS Lambda] iam-ec2", function()
 
   local fetch_ec2, http_responses
 
   before_each(function()
-    package.loaded["kong.plugins.liamp.iam-ec2-credentials"] = nil
+    package.loaded["kong.plugins.aws-lambda.iam-ec2-credentials"] = nil
     package.loaded["resty.http"] = nil
     local http = require "resty.http"
     -- mock the http module
@@ -26,7 +27,7 @@ describe("[AWS Lambda] iam-ec2", function()
         end,
       }
     end
-    fetch_ec2 = require("kong.plugins.liamp.iam-ec2-credentials").fetchCredentials
+    fetch_ec2 = require("kong.plugins.aws-lambda.iam-ec2-credentials").fetchCredentials
   end)
 
   after_each(function()
