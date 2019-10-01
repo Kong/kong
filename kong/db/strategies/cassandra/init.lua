@@ -1131,8 +1131,8 @@ do
           clear_tab(current_entity_ids)
           current_entity_count = 0
           for i, row in ipairs(rows) do
-            current_entity_ids[i] = row.entity_id
             current_entity_count = current_entity_count + 1
+            current_entity_ids[current_entity_count] = row.entity_id
           end
         end
       end
