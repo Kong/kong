@@ -1,9 +1,9 @@
 # Contributing to Kong :monkey_face:
 
-Hello, and welcome! Whether you are looking for help, trying to report a bug,
+Hello, and welcome! If you are looking for help, trying to report a bug,
 thinking about getting involved in the project or about to submit a patch, this
-document is for you! Its intent is to be both an entry point for newcomers to
-the community (with various technical backgrounds), and a guide/reference for
+document is for you! It's intent is to be both an entry point for newcomers to
+the community (with various technical backgrounds), and as a guide/reference for
 contributors and maintainers.
 
 Consult the Table of Contents below, and jump to the desired section.
@@ -77,7 +77,7 @@ to respect the GitHub issue template, and include:
 3. The version of Kong you encountered the issue with
 4. Your Kong configuration, or the parts that are relevant to your issue
 
-If you wish, you are more than welcome to propose a patch to fix the issue!
+If you wish to propose a patch to fix the issue, you are more than welcome to do so!
 See the [Submit a patch](#submitting-a-patch) section for more information
 on how to best do so.
 
@@ -88,16 +88,16 @@ on how to best do so.
 You can [submit an issue](https://github.com/Kong/kong/issues/new) for feature
 requests. Please add as much detail as you can when doing so.
 
-You are also welcome to propose patches adding new features. See the section
+You are also welcome to propose patches while adding new features. See the section
 on [Submitting a patch](#submitting-a-patch) for details.
 
 [Back to TOC](#table-of-contents)
 
 ## Contributing
 
-We welcome contributions of all kinds, you do not need to code to be helpful!
-All of the following tasks are noble and worthy contributions that you can
-make without coding:
+We welcome all kinds of contributions, you do not need to code to be helpful!
+All of the following tasks are noble and worthy contributions that you can 
+perform without coding:
 
 - Reporting a bug (see the [report bugs](#where-to-report-bugs) section)
 - Helping other members of the community on the support channels
@@ -162,7 +162,7 @@ When contributing, please follow the guidelines provided in this document. They
 will cover topics such as the different Git branches we use, the commit message
 format to use or the appropriate code style.
 
-Once you have read them, and you are ready to submit your Pull Request, be sure
+Once you have read them, and are ready to submit your Pull Request, be sure
 to verify a few things:
 
 - Your work was based on the appropriate branch (`master` vs. `next`), and you
@@ -179,7 +179,7 @@ to verify a few things:
 - Do not update CHANGELOG.md yourself. Your change will be included there in
   due time if it is accepted, no worries!
 
-If the above guidelines are respected, your Pull Request has all its chances
+If the above guidelines are respected, your Pull Request has all it's chances
 to be considered and will be reviewed by a maintainer.
 
 If you are asked to update your patch by a reviewer, please do so! Remember:
@@ -231,8 +231,8 @@ work on the initial bug, propose your patch, and come back to the second bug
 later on. This is also valid for unrelated style fixes, refactors, etc...
 
 You should use your best judgment when facing such decisions. A good approach
-for this is to put yourself in the shoes of the person who will review your
-patch: will they understand your changes and reasoning just by reading your
+for this is to put yourself in the shoes of the reviewer of the patch: will they
+understand your changes and reasoning just by reading your
 commit history? Will they find unrelated changes in a particular commit? They
 shouldn't!
 
