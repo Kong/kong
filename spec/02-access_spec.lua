@@ -884,6 +884,7 @@ for i, policy in ipairs({"memory", "redis"}) do
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
+      local cache_key = res.headers["X-Cache-Key"]
 
       res = assert(client:send {
         method = "GET",
@@ -896,6 +897,9 @@ for i, policy in ipairs({"memory", "redis"}) do
       assert.res_status(200, res)
 
       assert.same("Miss", res.headers["X-Cache-Status"])
+
+      -- wait until the underlying strategy converges
+      wait_until_key_in_cache(cache_key)
 
       res = assert(client:send {
         method = "GET",
