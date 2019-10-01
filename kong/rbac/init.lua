@@ -1334,10 +1334,7 @@ function _M.load_rbac_ctx(dao_factory, ctx, rbac_user, groups)
       return kong.response.exit(500, { message = "An unexpected error occurred" })
     end
 
-    print(require("pl.pretty").write({roles, group_roles}))
     roles = _M.merge_roles(roles, group_roles)
-
-    print(require("pl.pretty").write({roles, group_roles}))
 
     if err then
       return nil, err
