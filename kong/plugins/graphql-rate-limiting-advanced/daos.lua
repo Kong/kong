@@ -1,8 +1,8 @@
 local typedefs = require "kong.db.schema.typedefs"
 
 return {
-    gql_ratelimiting_cost_decoration = {
-        name = "gql_ratelimiting_cost_decoration",
+    graphql_ratelimiting_advanced_cost_decoration = {
+        name = "graphql_ratelimiting_advanced_cost_decoration",
         primary_key = { "id" },
         endpoint_key = "type_path",
 

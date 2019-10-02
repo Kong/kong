@@ -1,7 +1,7 @@
 return {
     postgres = { -- TODO: Breaking Error. Reference route_id, service_id, or consumer_id
         up = [[
-            CREATE TABLE IF NOT EXISTS "gql_ratelimiting_cost_decoration" (
+            CREATE TABLE IF NOT EXISTS "graphql_ratelimiting_advanced_cost_decoration" (
                 "id"                         UUID                           PRIMARY KEY,
                 "service_id"                 UUID                           REFERENCES "services" ("id") ON DELETE CASCADE,
                 "type_path"                  TEXT,
@@ -15,8 +15,8 @@ return {
 
             DO $$
             BEGIN
-              CREATE INDEX IF NOT EXISTS "gql_ratelimiting_cost_decoration_fkey_service" ON
-                                         "gql_ratelimiting_cost_decoration" ("service_id");
+              CREATE INDEX IF NOT EXISTS "graphql_ratelimiting_advanced_cost_decoration_fkey_service" ON
+                                         "graphql_ratelimiting_advanced_cost_decoration" ("service_id");
             EXCEPTION WHEN UNDEFINED_COLUMN THEN
               -- Do nothing
             END $$;
@@ -25,7 +25,7 @@ return {
 
     cassandra = {
         up = [[
-            CREATE TABLE IF NOT EXISTS "gql_ratelimiting_cost_decoration" (
+            CREATE TABLE IF NOT EXISTS "graphql_ratelimiting_advanced_cost_decoration" (
               "partition"         text,
               "id"                uuid,
               "service_id"        uuid,
@@ -39,8 +39,8 @@ return {
               PRIMARY KEY         (partition, id)
             );
 
-            CREATE INDEX IF NOT EXISTS gql_ratelimiting_cost_decoration_service_id_idx ON
-                                       gql_ratelimiting_cost_decoration(service_id);
+            CREATE INDEX IF NOT EXISTS graphql_ratelimiting_advanced_cost_decoration_service_id_idx ON
+                                       graphql_ratelimiting_advanced_cost_decoration(service_id);
         ]]
     }
 }
