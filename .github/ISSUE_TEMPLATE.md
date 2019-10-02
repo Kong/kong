@@ -1,7 +1,5 @@
-Please read the CONTRIBUTING.md guidelines to learn on which channels you can
-seek for help and ask general questions:
-
-https://github.com/Kong/kong/blob/master/CONTRIBUTING.md#where-to-seek-for-help
+Please read the [CONTRIBUTING.md guidelines](https://github.com/Kong/kong/blob/master/CONTRIBUTING.md#where-to-seek-for-help
+) to learn on which channels you can seek for help and ask general questions
 
 ### Summary
 
