@@ -71,7 +71,7 @@ timeouts**.
   packages, you are not affected by this change.
   [openresty-build-tools#26](https://github.com/Kong/openresty-build-tools/pull/26)
 
-**Note:** if you are not using one of our distribution packages and compiling
+**Note:** if you are not using one of our distribution packages and are compiling
 OpenResty from source, you must still apply Kong's [OpenResty
 patches](https://github.com/kong/openresty-patches) (and, as highlighted above,
 compile OpenResty with the new lua-kong-nginx-module). Our new
@@ -84,21 +84,21 @@ repository will allow you to do both easily.
   different Routes being matched. It was reported to us that the router behaved
   incorrectly in some cases when configuring wildcard Hosts and regex paths
   (e.g. [#3094](https://github.com/Kong/kong/issues/3094)). It may be so that
-  you are subject to these bugs without realizing it. Please ensure that
+  you are subjected to these bugs without realizing it. Please ensure that
   wildcard Hosts and regex paths Routes you have configured are matching as
   expected before upgrading.
   See [9ca4dc0](https://github.com/Kong/kong/commit/9ca4dc09fdb12b340531be8e0f9d1560c48664d5),
   [2683b86](https://github.com/Kong/kong/commit/2683b86c2f7680238e3fe85da224d6f077e3425d), and
   [6a03e1b](https://github.com/Kong/kong/commit/6a03e1bd95594716167ccac840ff3e892ed66215)
   for details.
-- Upstream connections are now only kept-alive for 100 requests or 60 seconds
+- Upstream connections are now only kept alive for 100 requests or 60 seconds
   (idle) by default. Previously, upstream connections were not actively closed
   by Kong. This is a (non-breaking) change in behavior, inherited from Nginx
   1.15, and configurable via new configuration properties (see below).
 
 ##### Configuration
 
-- :warning: The `upstream_keepalive` configuration property is deprecated, and
+- :warning: The `upstream_keepalive` configuration property is depreciated, and
   replaced by the new `nginx_http_upstream_keepalive` property. Its behavior is
   almost identical, but the notable difference is that the latter leverages the
   [injected Nginx
@@ -157,10 +157,10 @@ repository will allow you to do both easily.
   directives. We have high hopes that this will remove the occasional need for
   custom Nginx configuration templates.
   [#4382](https://github.com/Kong/kong/pull/4382)
-- :fireworks: New configuration properties allow for controling the behavior of
+- :fireworks: New configuration properties allow for controlling the behavior of
   upstream keepalive connections. `nginx_http_upstream_keepalive_requests` and
-  `nginx_http_upstream_keepalive_timeout` respectively control the maximum
-  number of proxied requests and idle timeout of an upstream connection.
+  `nginx_http_upstream_keepalive_timeout` control the maximum
+  number of proxied requests and idle timeout of an upstream connection respectively.
   [#4382](https://github.com/Kong/kong/pull/4382)
 - New flags have been added to the `*_listen` properties: `deferred`, `bind`,
   and `reuseport`.
@@ -216,7 +216,7 @@ repository will allow you to do both easily.
 
 ##### PDK
 
-- New function `kong.service.set_tls_cert_key()`. This functions sets the
+- New function `kong.service.set_tls_cert_key()`. This function sets the
   client TLS certificate used while handshaking with the upstream service.
   [#4797](https://github.com/Kong/kong/pull/4797)
 
@@ -360,7 +360,7 @@ bugfixes. There are no new features nor breaking changes.
 
 This release brings **improvements to reduce long latency tails**,
 **consolidates declarative configuration support**, and comes with **newly open
-sourced plugins** previously only available to Enterprise customers. It also
+sourced plugins**, which were previously only available to Enterprise customers. It also
 ships with new features improving observability and usability.
 
 This release includes database migrations. Please take a few minutes to read
