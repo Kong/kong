@@ -62,22 +62,22 @@ or the maintainers of this project:
 
 **Please avoid opening GitHub issues for general questions or help**, as those
 should be reserved for actual bug reports. The Kong community is welcoming and
-more than willing to assist you on those channels!
+more than willing to assist you on the above mentioned channels!
 
 [Back to TOC](#table-of-contents)
 
 ## Where to report bugs?
 
 Feel free to [submit an issue](https://github.com/Kong/kong/issues/new) on
-the GitHub repository, we would be grateful to hear about it! Please make sure
-to respect the GitHub issue template, and include:
+the GitHub repository, we would be Pleased to hear about it! Please make sure
+to respect the GitHub issue template and include:
 
 1. A summary of the issue
 2. A list of steps to reproduce the issue
 3. The version of Kong you encountered the issue with
 4. Your Kong configuration, or the parts that are relevant to your issue
 
-If you wish, you are more than welcome to propose a patch to fix the issue!
+If you want, you are more than welcome to propose a patch to fix the issue!
 See the [Submit a patch](#submitting-a-patch) section for more information
 on how to best do so.
 
@@ -95,7 +95,7 @@ on [Submitting a patch](#submitting-a-patch) for details.
 
 ## Contributing
 
-We welcome contributions of all kinds, you do not need to code to be helpful!
+We welcome contributions of all kind, you do not need to code to be helpful!
 All of the following tasks are noble and worthy contributions that you can
 make without coding:
 
@@ -183,8 +183,8 @@ If the above guidelines are respected, your Pull Request has all its chances
 to be considered and will be reviewed by a maintainer.
 
 If you are asked to update your patch by a reviewer, please do so! Remember:
-**you are responsible for pushing your patch forward**. If you contributed it,
-you are probably the one in need of it. You must be prepared to apply changes
+**you are responsible for pushing your patch forward**. If you have contributed 
+to it,you are probably the one in need of it. You must be prepared to apply changes
 to it if necessary.
 
 If your Pull Request was accepted and fixes a bug, adds functionality, or
@@ -243,7 +243,7 @@ also help you respect this mantra (see the below section).
 
 #### Commit message format
 
-To maintain a healthy Git history, we ask of you that you write your commit
+To maintain a healthy Git history, we ask you that you write your commit
 messages as follows:
 
 - The tense of your message must be **present**
