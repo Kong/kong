@@ -256,7 +256,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-[kong-url]: https://konghq.com/
+[kong-url]: https://konghq.com
 [kong-logo]: https://konghq.com/wp-content/uploads/2018/05/kong-logo-github-readme.png
 [kong-benefits]: https://konghq.com/wp-content/uploads/2018/05/kong-benefits-github-readme.png
 [kong-nightly-master]: https://bintray.com/kong/kong-nightly/master
