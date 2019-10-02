@@ -328,7 +328,8 @@ function _TARGETS:select_by_upstream_filter(upstream_pk, filter, options)
 end
 
 
-function _TARGETS:post_health(upstream, target, address, is_healthy)
+function _TARGETS:post_health(upstream_pk, target, address, is_healthy)
+  local upstream = balancer.get_upstream_by_id(upstream_pk.id)
   local host_addr = utils.normalize_ip(target.target)
   local hostname = utils.format_host(host_addr.host)
   local ip

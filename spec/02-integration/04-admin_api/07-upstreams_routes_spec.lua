@@ -154,6 +154,25 @@ describe("Admin API: #" .. strategy, function()
           assert.are.equal(slots_max, json.slots)
         end
       end)
+      it_content_types("creates an upstream with host header", function(content_type)
+        return function()
+          local res = client:post("/upstreams", {
+            body = { name = "my.upstream", host_header = "localhost" },
+            headers = {["Content-Type"] = content_type}
+          })
+          assert.response(res).has.status(201)
+          local json = assert.response(res).has.jsonbody()
+          assert.equal("my.upstream", json.name)
+          assert.is_number(json.created_at)
+          assert.is_string(json.id)
+          assert.are.equal(slots_default, json.slots)
+          assert.are.equal("none", json.hash_on)
+          assert.are.equal("none", json.hash_fallback)
+          assert.equal(ngx.null, json.hash_on_header)
+          assert.equal(ngx.null, json.hash_fallback_header)
+          assert.equal("localhost", json.host_header)
+        end
+      end)
       describe("errors", function()
         it("handles malformed JSON body", function()
           local res = assert(client:request {
@@ -685,6 +704,7 @@ describe("Admin API: #" .. strategy, function()
         assert(db:truncate("upstreams"))
         assert(db:truncate("targets"))
 
+        client = assert(helpers.admin_client())
         -- create the upstream
         local res = assert(client:send {
           method = "POST",
