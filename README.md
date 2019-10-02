@@ -10,7 +10,7 @@ cases Service Mesh)*. Made available as an open-source project in 2015, its
 core values are high performance and extensibility.
 
 Actively maintained, Kong is widely used in production at companies ranging
-from startups to Global 5000 as well as government organizations.
+from startups to Global 5000, as well as government organizations.
 
 [Installation](https://konghq.com/install) |
 [Documentation](https://docs.konghq.com) |
@@ -30,11 +30,11 @@ IRC (freenode): [#kong](https://webchat.freenode.net/?channels=kong) |
 
 ## Why Kong?
 
-If you are building for the web, mobile, or IoT (Internet of Things) you will
+If you are building for the web, mobile, or even for the IoT (Internet of Things), you will
 likely end up needing common functionality to run your actual software. Kong
 can help by acting as a gateway (or a sidecar) for microservices requests while
 providing load balancing, logging, authentication, rate-limiting,
-transformations, and more through plugins.
+transformations, and even more through plugins.
 
 [![][kong-benefits]][kong-url]
 
@@ -129,7 +129,7 @@ following the instructions on [Kong/kong-build-tools](https://github.com/Kong/ko
 
 #### Vagrant
 
-You can use a Vagrant box running Kong and Postgres that you can find at
+You can use a Vagrant box running Kong and Postgres, which you can find at
 [Kong/kong-vagrant](https://github.com/Kong/kong-vagrant).
 
 #### Source Install
@@ -185,7 +185,7 @@ $ make test
 ```
 
 However, the integration and plugins tests will spawn a Kong instance and
-perform their tests against it. As so, consult/edit the `spec/kong_tests.conf`
+perform their tests against it. Consequently, consult/edit the `spec/kong_tests.conf`
 configuration file to make your test instance point to your Postgres/Cassandra
 servers, depending on your needs.
 
