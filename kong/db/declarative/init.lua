@@ -146,13 +146,7 @@ function Config:parse_table(dc_table, hash)
     error("expected a table as input", 2)
   end
 
-  local ok, err_t = self.schema:validate(dc_table)
-  if not ok then
-    return nil, pretty_print_error(err_t), err_t
-  end
-
-  local entities
-  entities, err_t = self.schema:flatten(dc_table)
+  local entities, err_t = self.schema:flatten(dc_table)
   if err_t then
     return nil, pretty_print_error(err_t), err_t
   end
@@ -346,7 +340,7 @@ function declarative.load_into_cache(entities, hash, shadow_page)
       table.insert(ids, id)
 
       local cache_key = dao:cache_key(id)
-      item = remove_nulls(item)
+      item = schema:transform(remove_nulls(item))
       local ok, err = kong.cache:safe_set(cache_key, item, shadow_page)
       if not ok then
         return nil, err

@@ -442,7 +442,7 @@ end
 -- such as "x.y.z", such that `get_field(t, "x.y.z")` is the
 -- same as `t.x.y.z`.
 local function get_field(tbl, name)
-  if tbl == nil then
+  if tbl == nil or tbl == null then
     return nil
   end
   local dot = find(name, ".", 1, true)
