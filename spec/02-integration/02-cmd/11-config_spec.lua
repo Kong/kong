@@ -396,4 +396,60 @@ describe("kong config", function()
     assert.equals(acls.group, yaml.acls[1].group)
     assert.equals(consumer.id, yaml.acls[1].consumer)
   end)
+
+  it("#db config db_import works when foreign keys need to be resolved", function()
+    assert(db.consumers:truncate())
+    assert(db.basicauth_credentials:truncate())
+
+    -- note that routes have no name
+    local filename = helpers.make_yaml_file([[
+      _format_version: "1.1"
+      consumers:
+      - username: consumer
+        basicauth_credentials:
+        - username: username
+          password: password
+    ]])
+
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
+
+    assert(helpers.kong_exec("config db_import " .. filename, {
+      prefix = helpers.test_conf.prefix,
+    }))
+
+    local client = helpers.admin_client()
+
+    local res = client:get("/consumers")
+    local body = assert.res_status(200, res)
+    local json = cjson.decode(body)
+    assert.equals(1, #json.data)
+
+    local res = client:get("/basic-auths")
+    local body = assert.res_status(200, res)
+    local json = cjson.decode(body)
+    assert.equals(1, #json.data)
+
+    assert(helpers.stop_kong())
+
+    assert(db.consumers:truncate())
+    assert(db.basicauth_credentials:truncate())
+  end)
+
+  it("#db config parse works when foreign keys need to be resolved", function()
+    -- note that routes have no name
+    local filename = helpers.make_yaml_file([[
+      _format_version: "1.1"
+      consumers:
+      - username: consumer
+        basicauth_credentials:
+        - username: username
+          password: password
+    ]])
+
+    assert(helpers.kong_exec("config parse " .. filename, {
+      prefix = helpers.test_conf.prefix,
+    }))
+  end)
 end)
