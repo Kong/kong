@@ -1361,6 +1361,7 @@ describe("declarative config: flatten", function()
                     }
                   }
                 },
+                host_header = null,
                 id = "UUID",
                 name = "first-upstream",
                 slots = 10000,
@@ -1409,6 +1410,7 @@ describe("declarative config: flatten", function()
                     }
                   }
                 },
+                host_header = null,
                 id = "UUID",
                 name = "second-upstream",
                 slots = 10000,
