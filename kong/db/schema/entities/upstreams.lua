@@ -171,6 +171,7 @@ local r =  {
         fields = healthchecks_fields,
     }, },
     { tags = typedefs.tags },
+    { host_header = typedefs.host },
   },
   entity_checks = {
     -- hash_on_header must be present when hashing on header
