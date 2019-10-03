@@ -31,15 +31,11 @@ local function validate_function(fun)
     return false, "Error parsing function: " .. err
   end
 
+  setfenv(func1, {})
   local success, func2 = pcall(func1)
 
-  if not success or func2 == nil then
-    -- the code IS the handler function
-    return true
-  end
-
   -- the code RETURNED the handler function
-  if type(func2) == "function" then
+  if success and type(func2) == "function" then
     return true
   end
 
