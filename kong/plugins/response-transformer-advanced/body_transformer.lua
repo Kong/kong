@@ -70,7 +70,7 @@ local function get_transform_functions(config)
     -- first call, go compile the functions
     functions = {}
     for _, fn_str in ipairs(config.transform.functions) do
-      local fn = loadstring(fn_str)     -- load
+      local fn = load(fn_str)     -- load
       -- Set function context
       local fn_ctx = {}
       setmetatable(fn_ctx, { __index = helper_ctx })

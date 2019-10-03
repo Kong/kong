@@ -26,7 +26,7 @@ end
 
 
 local function validate_function(fun)
-  local func1, err = loadstring(fun)
+  local func1, err = load(fun)
   if err then
     return false, "Error parsing function: " .. err
   end
