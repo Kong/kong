@@ -187,20 +187,24 @@ local function overwrites()
 
     local handler_orig = h[phase]
 
-    local w = function(self, conf)
-      local t = trace("plugin", trace_data and {
-        plugin      = plugin,
-        plugin_conf = setmetatable(conf, __data_mt)
-      })
 
-      local r = pack(handler_orig(self, conf))
+    if type(handler_orig) == "function" then
+      local w = function(self, conf)
+        local t = trace("plugin", trace_data and {
+          plugin      = plugin,
+          plugin_conf = setmetatable(conf, __data_mt)
+        })
 
-      t:finish()
+        local r = pack(handler_orig(self, conf))
 
-      return unpack(r)
+        t:finish()
+
+        return unpack(r)
+      end
+
+
+      h[phase] = w
     end
-
-    h[phase] = w
 
     end
   end
