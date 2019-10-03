@@ -56,6 +56,10 @@ end
 
 local transform_function_cache = setmetatable({}, { __mode = "k" })
 local function get_transform_functions(config)
+  local route = kong and kong.router and kong.router.get_route() and
+                kong.router.get_route().id or ""
+  local chunk_name = "route:" .. route .. ":f#"
+
   local functions = transform_function_cache[config]
 
   -- transform functions have the following available to them
@@ -69,12 +73,11 @@ local function get_transform_functions(config)
   if not functions then
     -- first call, go compile the functions
     functions = {}
-    for _, fn_str in ipairs(config.transform.functions) do
-      local fn = load(fn_str)     -- load
+    for i, fn_str in ipairs(config.transform.functions) do
       -- Set function context
       local fn_ctx = {}
       setmetatable(fn_ctx, { __index = helper_ctx })
-      setfenv(fn, fn_ctx)
+      local fn = load(fn_str, chunk_name .. i, "t", fn_ctx)     -- load
       local _, actual_fn = pcall(fn)
       table_insert(functions, actual_fn)
     end
