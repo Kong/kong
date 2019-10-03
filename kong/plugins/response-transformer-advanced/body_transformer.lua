@@ -88,28 +88,39 @@ local function get_transform_functions(config)
   return ipairs(functions)
 end
 
-local function transform_data(data, transform_function, key)
-  if (type(data) == "table") then
-    -- TODO: Better list detection?
-    local data_iterator
-    -- it's a list
-    if data[1] then
-      data_iterator = ipairs
-    else
-      data_iterator = pairs
+local function transform_data(data, transform_function)
+  local function _transform_data(data, transform_function, key)
+    if (type(data) == "table") then
+      -- TODO: Better list detection?
+      local data_iterator
+      -- it's a list
+      if data[1] then
+        data_iterator = ipairs
+      else
+        data_iterator = pairs
+      end
+
+      local new_data = {}
+
+      for k, v in data_iterator(data) do
+        local nk, thing = unpack(_transform_data(v, transform_function, k))
+        new_data[nk] = thing
+      end
+
+      data = new_data
     end
 
-    local new_data = {}
-
-    for k, v in data_iterator(data) do
-      local nk, thing = transform_data(v, transform_function, k)
-      new_data[nk] = thing
-    end
-
-    data = new_data
+    local key, data = transform_function(key, data)
+    return { key, data }
   end
 
-  return transform_function(key, data)
+  local ok, err_or_data = pcall(_transform_data, data, transform_function)
+  if not ok then
+    return nil, err_or_data
+  end
+
+  local _, data = unpack(err_or_data)
+  return data, nil
 end
 
 
@@ -193,17 +204,19 @@ function _M.transform_json_body(conf, buffered_data, resp_code)
     end
   end
 
+  local err, data
   -- perform arbitrary transformations on a json
   if not skip_transform(resp_code, conf.transform.if_status) then
     for _, fn in get_transform_functions(conf) do
-      local err, data = transform_data(json_body, fn, nil)
-      if not err then
-        json_body = data
+      data, err = transform_data(json_body, fn)
+      if err then
+        break
       end
+      json_body = data
     end
   end
 
-  return cjson_encode(json_body)
+  return cjson_encode(json_body), err
 end
 
 return _M

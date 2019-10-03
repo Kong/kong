@@ -78,8 +78,12 @@ function ResponseTransformerHandler:body_filter(conf)
 
     -- transform json
     if is_json_body(ngx.header["content-type"]) then
-      body = body_filter.transform_json_body(conf, resp_body, ngx.status)
+      local err
+      body, err = body_filter.transform_json_body(conf, resp_body, ngx.status)
       ngx.arg[1] = body
+      if err then
+        kong.log.err(err)
+      end
     end
   end
 end

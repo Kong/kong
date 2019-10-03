@@ -323,6 +323,48 @@ describe("Plugin: response-transformer-advanced", function()
         local body_json = cjson.decode(body)
         assert.same(expected, body_json)
       end)
+
+      it("leaves response untouched on error", function()
+        local some_function_that_access_global_ctx = [[
+          local foo = "bar"
+          return function (key, data)
+            hello.darkness()
+            return key, foo
+          end
+        ]]
+
+        local json = [[
+          { "some": "data" }
+        ]]
+
+        local expected = { ["some"] = "data" }
+
+        local g_conf = {
+          remove   = {
+            json   = {}
+          },
+          replace  = {
+            json   = {},
+          },
+          add      = {
+            json   = {}
+          },
+          append   = {
+            json   = {}
+          },
+          whitelist = {
+            json   = {},
+          },
+          transform = {
+            functions = { some_function_that_access_global_ctx },
+          },
+        }
+
+        local body, err = body_transformer.transform_json_body(g_conf, json, 200)
+        local body_json = cjson.decode(body)
+        assert.same(expected, body_json)
+        assert.not_nil(err)
+      end)
     end)
 
     describe("remove, replace, add, append", function()
