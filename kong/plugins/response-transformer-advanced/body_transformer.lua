@@ -85,14 +85,12 @@ local function get_transform_functions(config)
   return ipairs(functions)
 end
 
--- key defaults to nil
 local function transform_data(data, transform_function, key)
   if (type(data) == "table") then
-    -- Try to do a global match transform
-    -- XXX: Better list detection?
+    -- TODO: Better list detection?
     local data_iterator
+    -- it's a list
     if data[1] then
-      -- it's a list
       data_iterator = ipairs
     else
       data_iterator = pairs
