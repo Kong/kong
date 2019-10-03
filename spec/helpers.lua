@@ -1480,15 +1480,13 @@ local function kong_exec(cmd, env, pl_returns, env_vars)
   return exec(env_vars .. " " .. BIN_PATH .. " " .. cmd, pl_returns)
 end
 
---- Prepare the Kong environment.
--- creates the workdirectory and deletes any existing one.
+--- Prepares the Kong environment.
+-- Creates the working directory if it does not exist.
 -- @param prefix (optional) path to the working directory, if omitted the test
 -- configuration will be used
 -- @name prepare_prefix
 local function prepare_prefix(prefix)
-  prefix = prefix or conf.prefix
-  exec("rm -rf " .. prefix .. "/*")
-  return pl_dir.makepath(prefix)
+  return pl_dir.makepath(prefix or conf.prefix)
 end
 
 --- Cleans the Kong environment.
@@ -1653,10 +1651,14 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
   end
   env = env or {}
   local prefix = env.prefix or conf.prefix
-  if not preserve_prefix then
-    local ok, err = prepare_prefix(prefix)
-    if not ok then return nil, err end
+
+  -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
+  if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
+    clean_prefix(prefix)
   end
+
+  local ok, err = prepare_prefix(prefix)
+  if not ok then return nil, err end
 
   truncate_tables(db, tables)
 
