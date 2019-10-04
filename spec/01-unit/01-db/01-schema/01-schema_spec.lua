@@ -3598,6 +3598,42 @@ describe("schema", function()
       assert.equal("TEST1", transformed_entity.name)
     end)
 
+    it("transforms fields on write and read", function()
+      local test_schema = {
+        name = "test",
+        fields = {
+          {
+            name = {
+              type = "string"
+            },
+          },
+        },
+        transformations = {
+          {
+            input = { "name" },
+            on_write = function(name)
+              return { name = name:upper() }
+            end,
+            on_read = function(name)
+              return { name = name:lower() }
+            end,
+          },
+        },
+      }
+      local entity = { name = "TeSt1" }
+
+      local TestEntities = Schema.new(test_schema)
+      local transformed_entity, _ = TestEntities:transform(entity)
+
+      assert.truthy(transformed_entity)
+      assert.equal("TEST1", transformed_entity.name)
+
+      transformed_entity, _ = TestEntities:transform(transformed_entity, nil, "select")
+
+      assert.truthy(transformed_entity)
+      assert.equal("test1", transformed_entity.name)
+    end)
+
     it("transforms fields with input table", function()
       local test_schema = {
         name = "test",
@@ -3781,7 +3817,7 @@ describe("schema", function()
       assert.equal("transformation failed: unable to transform name", err)
     end)
 
-    it("does not skip transformation if needs are not fulfilled (this is handled by validation)", function()
+    it("skips transformation if needs are not fulfilled", function()
       local test_schema = {
         name = "test",
         fields = {
@@ -3810,7 +3846,7 @@ describe("schema", function()
       local transformed_entity, _ = TestEntities:transform(entity)
 
       assert.truthy(transformed_entity)
-      assert.equal("TEST1", transformed_entity.name)
+      assert.equal("test1", transformed_entity.name)
     end)
 
 
