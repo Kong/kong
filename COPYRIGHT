@@ -148,10 +148,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 LPeg
 
-http://www.inf.puc-rio.br/~roberto/lpeg.html
-http://www.inf.puc-rio.br/~roberto/lpeg/lpeg.html#license
+http://www.inf.puc-rio.br/~roberto/lpeg/
+http://www.inf.puc-rio.br/~roberto/lpeg/#license
 
-Copyright © 2007-2017 Lua.org, PUC-Rio.
+Copyright © 2007-2019 Lua.org, PUC-Rio.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy 
 of this software and associated documentation files (the "Software"), to deal 
