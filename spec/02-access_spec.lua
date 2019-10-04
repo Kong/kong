@@ -75,9 +75,11 @@ for i, policy in ipairs({"memory", "redis"}) do
       end)
     end
 
+    local bp
+
     setup(function()
 
-      local bp = helpers.get_db_utils(nil, nil, {"proxy-cache-advanced"})
+      bp = helpers.get_db_utils(nil, nil, {"proxy-cache-advanced"})
       strategy:flush(true)
 
       local route1 = assert(bp.routes:insert {
@@ -1276,5 +1278,52 @@ for i, policy in ipairs({"memory", "redis"}) do
         assert.matches("^%d+$", res.headers["X-Kong-Upstream-Latency"])
       end)
     end)
+
+    if policy == "redis" then
+      describe("some broken redis config", function()
+        local route
+
+        setup(function()
+          -- Best website ever
+          route = assert(bp.routes:insert {
+            hosts = { "broken-redis.com" }
+          })
+
+          local broken_config = {
+            host = "yolo",
+            port = REDIS_PORT,
+            database = REDIS_DATABASE,
+          }
+
+          assert(bp.plugins:insert {
+            name = "proxy-cache-advanced",
+            route = { id = route.id },
+            config = {
+              strategy = policy,
+              content_type = { "text/plain", "application/json" },
+              [policy] = broken_config,
+            },
+          })
+
+          -- Force kong to reload router
+          assert(helpers.restart_kong({
+            plugins = "bundled,proxy-cache-advanced",
+            nginx_conf = "spec/fixtures/custom_nginx.template",
+          }))
+        end)
+
+        it("bypasses cache", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/get",
+            headers = {
+              host = "broken-redis.com",
+            }
+          })
+          assert.res_status(200, res)
+          assert.same("Bypass", res.headers["X-Cache-Status"])
+        end)
+      end)
+    end
   end)
 end

@@ -370,8 +370,8 @@ function ProxyCacheHandler:access(conf)
     return signal_cache_req(cache_key)
 
   elseif err then
-    ngx_log(ngx.ERR, "[proxy_cache] ", err)
-    return
+    kong.log.err(err)
+    return signal_cache_req(cache_key, "Bypass")
   end
 
   if res.version ~= CACHE_VERSION then
