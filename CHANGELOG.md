@@ -157,7 +157,7 @@ repository will allow you to do both easily.
   directives. We have high hopes that this will remove the occasional need for
   custom Nginx configuration templates.
   [#4382](https://github.com/Kong/kong/pull/4382)
-- :fireworks: New configuration properties allow for controling the behavior of
+- :fireworks: New configuration properties allow for controlling the behavior of
   upstream keepalive connections. `nginx_http_upstream_keepalive_requests` and
   `nginx_http_upstream_keepalive_timeout` respectively control the maximum
   number of proxied requests and idle timeout of an upstream connection.
@@ -295,7 +295,7 @@ bugfixes. There are no new features nor breaking changes.
 
 ##### Core
 
-- Case sentitivity fix when clearing the Upgrade header.
+- Case sensitivity fix when clearing the Upgrade header.
   [#4779](https://github.com/kong/kong/issues/4779)
 
 ### Performance
