@@ -1,6 +1,8 @@
 local enums = require "kong.enterprise_edition.dao.enums"
 local ee_api_helpers = require "kong.enterprise_edition.api_helpers"
 
+local ADMIN = enums.CONSUMERS.TYPE.ADMIN
+local DEVELOPER = enums.CONSUMERS.TYPE.DEVELOPER
 
 local kong = kong
 local _M = {}
@@ -16,7 +18,7 @@ function _M.post_process_credential(credential)
   end
 
   -- don't return credentials for non-proxy consumers
-  if consumer.type == enums.CONSUMERS.TYPE.ADMIN then
+  if consumer.type == ADMIN or consumer.type == DEVELOPER then
     return nil
   end
 
