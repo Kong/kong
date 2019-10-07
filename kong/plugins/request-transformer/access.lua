@@ -4,18 +4,18 @@ local pl_template = require "pl.template"
 local pl_tablex = require "pl.tablex"
 
 local table_insert = table.insert
-local req_set_uri_args = ngx.req.set_uri_args
-local req_get_uri_args = ngx.req.get_uri_args
-local req_set_header = ngx.req.set_header
-local req_get_headers = ngx.req.get_headers
-local req_read_body = ngx.req.read_body
-local req_set_body_data = ngx.req.set_body_data
-local req_get_body_data = ngx.req.get_body_data
-local req_clear_header = ngx.req.clear_header
-local req_set_method = ngx.req.set_method
+local get_uri_args = kong.request.get_query
+local set_uri_args = kong.service.request.set_query
+local clear_header = kong.service.request.clear_header
+local get_header = kong.request.get_header
+local set_header = kong.service.request.set_header
+local get_headers = kong.request.get_headers
+local set_headers = kong.service.request.set_headers
+local set_method = kong.service.request.set_method
+local get_raw_body = kong.request.get_raw_body
+local set_raw_body = kong.service.request.set_raw_body
 local encode_args = ngx.encode_args
 local ngx_decode_args = ngx.decode_args
-local ngx_log = ngx.log
 local type = type
 local str_find = string.find
 local pcall = pcall
@@ -69,10 +69,10 @@ local __meta_environment = {
   __index = function(self, key)
     local lazy_loaders = {
       headers = function(self)
-        return req_get_headers() or EMPTY
+        return get_headers() or EMPTY
       end,
       query_params = function(self)
-        return req_get_uri_args() or EMPTY
+        return get_uri_args() or EMPTY
       end,
       uri_captures = function(self)
         return (ngx.ctx.router_matches or EMPTY).uri_captures or EMPTY
@@ -153,7 +153,7 @@ local function iter(config_array)
         current_value, ", error:", err)
     end
 
-    ngx_log(DEBUG, "[request-transformer] template `", current_value,
+    kong.log.debug("[request-transformer] template `", current_value,
       "` rendered to `", res, "`")
 
     return i, current_name, res
@@ -174,48 +174,59 @@ local function append_value(current_value, value)
 end
 
 local function transform_headers(conf)
+  local headers = get_headers()
+  local headers_to_remove = {}
+
+  headers.host = nil
+
   -- Remove header(s)
   for _, name, value in iter(conf.remove.headers) do
-    if template_environment.headers[name] then
-      req_clear_header(name)
+    name = name:lower()
+    if headers[name] then
+      headers[name] = nil
+      headers_to_remove[name] = true
     end
   end
 
   -- Rename headers(s)
   for _, old_name, new_name in iter(conf.rename.headers) do
-    if template_environment.headers[old_name] then
-      local value = template_environment.headers[old_name]
-      req_set_header(new_name, value)
-      req_clear_header(old_name)
+    old_name = old_name:lower()
+    if headers[old_name] then
+      local value = headers[old_name]
+      headers[new_name] = value
+      headers[old_name] = nil
+      headers_to_remove[old_name] = true
     end
   end
 
   -- Replace header(s)
   for _, name, value in iter(conf.replace.headers) do
-    if template_environment.headers[name] then
-      req_set_header(name, value)
-      if name:lower() == HOST then -- Host header has a special treatment
-        ngx.var.upstream_host = value
-      end
+    name = name:lower()
+    if headers[name] or name == HOST then
+      headers[name] = value
     end
   end
 
   -- Add header(s)
   for _, name, value in iter(conf.add.headers) do
-    if not template_environment.headers[name] then
-      req_set_header(name, value)
-      if name:lower() == HOST then -- Host header has a special treatment
-        ngx.var.upstream_host = value
-      end
+    name = name:lower()
+    if not headers[name] and name ~= HOST then
+      headers[name] = value
     end
   end
 
   -- Append header(s)
   for _, name, value in iter(conf.append.headers) do
     if name:lower() ~= HOST then
-      req_set_header(name, append_value(req_get_headers()[name], value))
+      headers[name] = append_value(headers[name], value)
     end
   end
+
+  for name, _ in pairs(headers_to_remove) do
+    clear_header(name)
+  end
+
+  set_headers(headers)
 end
 
 local function transform_querystrings(conf)
@@ -257,7 +268,7 @@ local function transform_querystrings(conf)
   for _, name, value in iter(conf.append.querystring) do
     querystring[name] = append_value(querystring[name], value)
   end
-  req_set_uri_args(querystring)
+  set_uri_args(querystring)
 end
 
 local function transform_json_body(conf, body, content_length)
@@ -416,7 +427,7 @@ local function transform_multipart_body(conf, body, content_length, content_type
 end
 
 local function transform_body(conf)
-  local content_type_value = req_get_headers()[CONTENT_TYPE]
+  local content_type_value = get_header(CONTENT_TYPE)
   local content_type = get_content_type(content_type_value)
   if content_type == nil or #conf.rename.body < 1 and
      #conf.remove.body < 1 and #conf.replace.body < 1 and
@@ -425,8 +436,7 @@ local function transform_body(conf)
   end
 
   -- Call req_read_body to read the request body first
-  req_read_body()
-  local body = req_get_body_data()
+  local body = get_raw_body()
   local is_body_transformed = false
   local content_length = (body and #body) or 0
 
@@ -439,31 +449,39 @@ local function transform_body(conf)
   end
 
   if is_body_transformed then
-    req_set_body_data(body)
-    req_set_header(CONTENT_LENGTH, #body)
+    set_raw_body(body)
+    set_header(CONTENT_LENGTH, #body)
   end
 end
 
 local function transform_method(conf)
   if conf.http_method then
-    req_set_method(ngx["HTTP_" .. conf.http_method:upper()])
+    set_method(conf.http_method:upper())
     if conf.http_method == "GET" or conf.http_method == "HEAD" or conf.http_method == "TRACE" then
-      local content_type_value = req_get_headers()[CONTENT_TYPE]
+      local content_type_value = get_header(CONTENT_TYPE)
       local content_type = get_content_type(content_type_value)
       if content_type == ENCODED then
         -- Also put the body into querystring
-
-        -- Read the body
-        req_read_body()
-        local body = req_get_body_data()
+        local body = get_raw_body()
         local parameters = decode_args(body)
 
         -- Append to querystring
-        local querystring = req_get_uri_args()
-        for name, value in pairs(parameters) do
-          querystring[name] = value
+        if type(parameters) == "table" and next(parameters) then
+          local querystring = get_uri_args()
+          for name, value in pairs(parameters) do
+            if querystring[name] then
+              if type(querystring[name]) == "table" then
+                append_value(querystring[name], value)
+              else
+                querystring[name] = { querystring[name], value }
+              end
+            else
+              querystring[name] = value
+            end
+          end
+
+          set_uri_args(querystring)
         end
-        req_set_uri_args(querystring)
       end
     end
   end
@@ -478,7 +496,7 @@ local function transform_uri(conf)
         conf.replace.uri, ", error:", err)
     end
 
-    ngx_log(DEBUG, "[request-transformer] template `", conf.replace.uri,
+    kong.log.debug(DEBUG, "[request-transformer] template `", conf.replace.uri,
       "` rendered to `", res, "`")
 
     if res then

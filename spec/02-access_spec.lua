@@ -16,7 +16,8 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       hosts = { "test1.com" }
     })
     local route2 = bp.routes:insert({
-      hosts = { "test2.com" }
+      hosts = { "test2.com" },
+      preserve_host = true,
     })
     local route3 = bp.routes:insert({
       hosts = { "test3.com" }
@@ -92,7 +93,9 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
     local route21 = bp.routes:insert({
       hosts = { "test21.com" }
     })
-
+    local route22 = bp.routes:insert({
+      hosts = { "test22.test" }
+    })
 
     bp.plugins:insert {
       route = { id = route1.id },
@@ -353,6 +356,19 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
         }
       }
     end
+    bp.plugins:insert {
+      route = { id = route22.id },
+      name = "request-transformer",
+      config = {
+        http_method = "POST",
+        remove = {
+          headers = { "Authorization" },
+        },
+        add = {
+          headers = { "Authorization:Basic test" },
+        },
+      },
+    }
 
     assert(helpers.start_kong({
       database = strategy,
@@ -1268,7 +1284,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.response(r).has.status(200)
       local json = assert.response(r).has.jsonbody()
       local value = assert.has.header("host", json)
-      assert.equals(helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port, value)
+      assert.equals("test2.com", value)
     end)
   end)
 
@@ -1796,6 +1812,35 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.response(r).has.status(200)
       local value = assert.request(r).has.queryparam("shared_param1")
       assert.equals("1.2.3", value)
+    end)
+  end)
+  describe("remove then add header (regression test)", function()
+    it("header already exists in request", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/",
+        headers = {
+          host = "test22.test",
+          ["Authorization"] = "Basic dGVzdDp0ZXN0",
+          ["Content-Type"] = "application/json",
+        }
+      })
+      assert.response(r).has.status(200)
+      local value = assert.request(r).has.header("authorization")
+      assert.equals("Basic test", value)
+    end)
+    it("header does not exist in request", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/",
+        headers = {
+          host = "test22.test",
+          ["Content-Type"] = "application/json",
+        }
+      })
+      assert.response(r).has.status(200)
+      local value = assert.request(r).has.header("authorization")
+      assert.equals("Basic test", value)
     end)
   end)
 end)

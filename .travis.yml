@@ -30,7 +30,7 @@ env:
     - LUAROCKS=3.0.4
     - OPENSSL=1.1.1a
     - KONG_REPOSITORY=kong
-    - KONG_LATEST=release/1.2.0
+    - KONG_LATEST=master
     - CASSANDRA_BASE=2.2.12
     - CASSANDRA_LATEST=3.9
     - OPENRESTY_LATEST=1.13.6.2
