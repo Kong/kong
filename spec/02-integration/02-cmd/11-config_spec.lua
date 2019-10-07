@@ -2,6 +2,7 @@ local helpers = require "spec.helpers"
 local constants = require "kong.constants"
 local cjson = require "cjson"
 local lyaml = require "lyaml"
+local lfs = require "lfs"
 
 
 local function sort_by_name(a, b)
@@ -451,5 +452,39 @@ describe("kong config", function()
     assert(helpers.kong_exec("config parse " .. filename, {
       prefix = helpers.test_conf.prefix,
     }))
+  end)
+
+  it("config init creates kong.yml by default", function()
+    local kong_yml_exists = false
+    if lfs.attributes("kong.yml") then
+      kong_yml_exists = true
+      os.execute("mv kong.yml kong.yml~")
+    end
+    finally(function()
+      if kong_yml_exists then
+        os.execute("mv kong.yml~ kong.yml")
+      else
+        os.remove("kong.yml")
+      end
+    end)
+
+    os.remove("kong.yml")
+    assert.is_nil(lfs.attributes("kong.yml"))
+    assert(helpers.kong_exec("config init"))
+    assert.not_nil(lfs.attributes("kong.yml"))
+    assert(helpers.kong_exec("config parse kong.yml"))
+  end)
+
+  it("config init can take an argument", function()
+    local tmpname = os.tmpname() .. ".yml"
+    finally(function()
+      os.remove(tmpname)
+    end)
+
+    os.remove(tmpname)
+    assert.is_nil(lfs.attributes(tmpname))
+    assert(helpers.kong_exec("config init " .. tmpname))
+    assert.not_nil(lfs.attributes(tmpname))
+    assert(helpers.kong_exec("config parse " .. tmpname))
   end)
 end)
