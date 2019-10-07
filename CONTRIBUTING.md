@@ -2,7 +2,7 @@
 
 Hello, and welcome! Whether you are looking for help, trying to report a bug,
 thinking about getting involved in the project or about to submit a patch, this
-document is for you! Its intent is to be both an entry point for newcomers to
+document is for you! It intends to be both an entry point for newcomers to
 the community (with various technical backgrounds), and a guide/reference for
 contributors and maintainers.
 
@@ -28,7 +28,7 @@ Consult the Table of Contents below, and jump to the desired section.
   - [Contributor T-shirt](#contributor-t-shirt)
 - [Code style](#code-style)
 
-## Where to seek for help?
+## Where to seek help?
 
 ### Enterprise Edition
 
@@ -52,9 +52,8 @@ There are several channels where you can get answers from the community
 or the maintainers of this project:
 
 - Our public forum, [Kong Nation](https://discuss.konghq.com), is great for
-  asking questions, giving advice, and staying up-to-date with the latest
-  announcements. Kong Nation is frequented by Kong maintainers.
-- Two chat channels are used by the community, but are rarely visited by Kong
+  asking questions, giving advice, and staying up-to-date with the latest announcements. Kong Nation is frequented by Kong maintainers.
+- Two chat channels are used by the community but are rarely visited by Kong
   maintainers:
   - [Gitter](https://gitter.im/Kong/kong)
   - IRC, registered on freenode as
@@ -237,7 +236,7 @@ commit history? Will they find unrelated changes in a particular commit? They
 shouldn't!
 
 Writing meaningful commit messages that follow our commit message format will
-also help you respect this mantra (see the below section).
+also, help you respect this mantra (see the below section).
 
 [Back to TOC](#table-of-contents)
 
