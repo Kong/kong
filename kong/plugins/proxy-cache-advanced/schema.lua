@@ -78,6 +78,10 @@ return {
           { redis = redis.config_schema }, -- redis schema is provided by
                                            -- Kong Enterprise, since it's useful
                                            -- for other plugins (e.g., rate-limiting)
+          { bypass_on_err = {
+            type = "boolean",
+            default = false,
+          }},
         },
       }
     },

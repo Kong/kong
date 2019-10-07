@@ -369,7 +369,7 @@ function ProxyCacheHandler:access(conf)
     -- and pass the request upstream
     return signal_cache_req(cache_key)
 
-  elseif err then
+  elseif err and conf.bypass_on_err then
     kong.log.err(err)
     return signal_cache_req(cache_key, "Bypass")
   end

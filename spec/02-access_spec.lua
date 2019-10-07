@@ -1281,12 +1281,16 @@ for i, policy in ipairs({"memory", "redis"}) do
 
     if policy == "redis" then
       describe("some broken redis config", function()
-        local route
+        local route_bypass, route_no_bypass
 
         setup(function()
           -- Best website ever
-          route = assert(bp.routes:insert {
-            hosts = { "broken-redis.com" }
+          route_bypass = assert(bp.routes:insert {
+            hosts = { "broken-redis-bypass.com" }
+          })
+
+          route_no_bypass = assert(bp.routes:insert {
+            hosts = { "broken-redis-no-bypass.com" }
           })
 
           local broken_config = {
@@ -1297,11 +1301,23 @@ for i, policy in ipairs({"memory", "redis"}) do
 
           assert(bp.plugins:insert {
             name = "proxy-cache-advanced",
-            route = { id = route.id },
+            route = { id = route_bypass.id },
             config = {
               strategy = policy,
               content_type = { "text/plain", "application/json" },
               [policy] = broken_config,
+              bypass_on_err = true,
+            },
+          })
+
+          assert(bp.plugins:insert {
+            name = "proxy-cache-advanced",
+            route = { id = route_no_bypass.id },
+            config = {
+              strategy = policy,
+              content_type = { "text/plain", "application/json" },
+              [policy] = broken_config,
+              bypass_on_err = false,
             },
           })
 
@@ -1312,16 +1328,26 @@ for i, policy in ipairs({"memory", "redis"}) do
           }))
         end)
 
-        it("bypasses cache", function()
+        it("bypasses cache when bypass_on_err is enabled", function()
           local res = assert(client:send {
             method = "GET",
             path = "/get",
             headers = {
-              host = "broken-redis.com",
+              host = "broken-redis-bypass.com",
             }
           })
           assert.res_status(200, res)
           assert.same("Bypass", res.headers["X-Cache-Status"])
+        end)
+        it("crashes when bypass_on_err is disabled", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/get",
+            headers = {
+              host = "broken-redis-no-bypass.com",
+            }
+          })
+          assert.res_status(500, res)
         end)
       end)
     end
