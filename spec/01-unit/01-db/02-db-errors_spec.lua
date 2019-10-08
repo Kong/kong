@@ -64,6 +64,31 @@ describe("DB Errors", function()
     end)
 
 
+    describe("INVALID_FOREIGN_KEY", function()
+      local pk = {
+        id = "missing",
+        id2 = "missing2",
+      }
+
+      local err_t = e:invalid_foreign_key(pk)
+
+      it("creates", function()
+        assert.same({
+          code = Errors.codes.INVALID_FOREIGN_KEY,
+          name = "invalid foreign key",
+          strategy = "some_strategy",
+          message = [[invalid foreign key: '{id2="missing2",id="missing"}']],
+          fields = pk,
+        }, err_t)
+      end)
+
+      it("__tostring", function()
+        local s = fmt("[%s] %s", err_t.strategy, err_t.message)
+        assert.equals(s, tostring(err_t))
+      end)
+    end)
+
+
     describe("SCHEMA_VIOLATION", function()
       local schema_errors = {
         foo = "expected an integer",
