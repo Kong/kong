@@ -3,7 +3,7 @@ local utils    = require "kong.tools.utils"
 local pl_utils = require "pl.utils"
 local helpers  = require "spec.helpers"
 local Errors   = require "kong.db.errors"
-
+local mocker   = require("spec.fixtures.mocker")
 
 local WORKER_SYNC_TIMEOUT = 10
 
@@ -697,5 +697,137 @@ describe("Admin API #off", function()
 
       client:close()
     end)
+  end)
+end)
+
+describe("Admin API #off with Unique Foreign #unique", function()
+  local client
+
+  lazy_setup(function()
+    assert(helpers.start_kong({
+      database = "off",
+      plugins = "unique-foreign",
+      nginx_worker_processes = 1,
+      mem_cache_size = "10m",
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong(nil, true)
+  end)
+
+  before_each(function()
+    client = assert(helpers.admin_client())
+  end)
+
+  after_each(function()
+    if client then
+      client:close()
+    end
+  end)
+
+
+  it("unique foreign works with dbless", function()
+    local config = [[
+        _format_version: "1.1"
+        unique_foreigns:
+        - name: name
+          unique_references:
+          - note: note
+      ]]
+
+    local res = assert(client:send {
+      method = "POST",
+      path = "/config",
+      body = {
+        config = config,
+      },
+      headers = {
+        ["Content-Type"] = "application/json"
+      }
+    })
+    assert.res_status(201, res)
+
+    local res = assert(client:get("/unique-foreigns"))
+    local body = assert.res_status(200, res)
+    local foreigns = cjson.decode(body)
+
+
+    assert.equal(foreigns.data[1].name, "name")
+
+    local res = assert(client:get("/unique-references"))
+    local body = assert.res_status(200, res)
+    local references = cjson.decode(body)
+
+    assert.equal(references.data[1].note, "note")
+    assert.equal(references.data[1].unique_foreign.id, foreigns.data[1].id)
+
+
+    local res = assert(client:get("/cache/unique_references|unique_foreign:" ..
+                                  foreigns.data[1].id))
+    local body = assert.res_status(200, res)
+    local cached_reference = cjson.decode(body)
+
+    assert.same(cached_reference, references.data[1])
+
+    local cache = {
+      get = function(_, k)
+        if k ~= "unique_references|unique_foreign:" .. foreigns.data[1].id then
+          return nil
+        end
+
+        return cached_reference
+      end
+    }
+
+    mocker.setup(finally, {
+      kong = {
+        cache = cache,
+      }
+    })
+
+    local _, db = helpers.get_db_utils("off", {}, {
+      "unique-foreign"
+    })
+
+    local i = 1
+    while true do
+      local n, v = debug.getupvalue(db.unique_references.strategy.select_by_field, i)
+      if not n then
+        break
+      end
+
+      if n == "select_by_key" then
+        local j = 1
+        while true do
+          local n, v = debug.getupvalue(v, j)
+          if not n then
+            break
+          end
+
+          if n == "kong" then
+            v.cache = cache
+            break
+          end
+
+          j = j + 1
+        end
+
+        break
+      end
+
+      i = i + 1
+    end
+
+    local unique_reference, err, err_t = db.unique_references:select_by_unique_foreign({
+      id = foreigns.data[1].id,
+    })
+
+    assert.is_nil(err)
+    assert.is_nil(err_t)
+
+    assert.equal(references.data[1].id, unique_reference.id)
+    assert.equal(references.data[1].note, unique_reference.note)
+    assert.equal(references.data[1].unique_foreign.id, unique_reference.unique_foreign.id)
   end)
 end)
