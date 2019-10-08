@@ -578,6 +578,66 @@ describe("metaschema", function()
     assert.truthy(MetaSchema:validate(MetaSchema))
   end)
 
+  it("validates transformation has transformation function specified (positive)", function()
+    assert.truthy(MetaSchema:validate({
+      name = "test",
+      primary_key = { "test" },
+      fields = {
+        { test = { type = "string" } },
+      },
+      transformations = {
+        {
+          input = { "test" },
+          on_write = function() return true end,
+        },
+      },
+    }))
+
+    assert.truthy(MetaSchema:validate({
+      name = "test",
+      primary_key = { "test" },
+      fields = {
+        { test = { type = "string" } },
+      },
+      transformations = {
+        {
+          input = { "test" },
+          on_read = function() return true end,
+        },
+      },
+    }))
+
+    assert.truthy(MetaSchema:validate({
+      name = "test",
+      primary_key = { "test" },
+      fields = {
+        { test = { type = "string" } },
+      },
+      transformations = {
+        {
+          input = { "test" },
+          on_read = function() return true end,
+          on_write = function() return true end,
+        },
+      },
+    }))
+  end)
+
+  it("validates transformation has transformation function specified (negative)", function()
+    assert.falsy(MetaSchema:validate({
+      name = "test",
+      primary_key = { "test" },
+      fields = {
+        { test = { type = "string" } },
+      },
+      transformations = {
+        {
+          input = { "test" },
+        },
+      },
+    }))
+  end)
+
   it("validates transformation input fields exists (positive)", function()
     assert.truthy(MetaSchema:validate({
       name = "test",
