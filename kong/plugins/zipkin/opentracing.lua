@@ -7,29 +7,25 @@ A plugin that derives this should:
   - Implement a :initialise_request(conf, ctx) method if it needs to do per-request initialisation
 ]]
 
-local BasePlugin = require "kong.plugins.base_plugin"
 local subsystem = ngx.config.subsystem
 
-local OpenTracingHandler = BasePlugin:extend()
-OpenTracingHandler.VERSION = "scm"
+local OpenTracingHandler = {
+  VERSION = "scm",
+  -- We want to run first so that timestamps taken are at start of the phase
+  -- also so that other plugins might be able to use our structures
+  PRIORITY = 100000,
+}
 
--- We want to run first so that timestamps taken are at start of the phase
--- also so that other plugins might be able to use our structures
-OpenTracingHandler.PRIORITY = 100000
+local tracer_cache = setmetatable({}, {__mode = "k"})
 
-function OpenTracingHandler:new(name)
-  OpenTracingHandler.super.new(self, name or "opentracing")
-
-  self.conf_to_tracer = setmetatable({}, {__mode = "k"})
-end
 
 function OpenTracingHandler:get_tracer(conf)
-  local tracer = self.conf_to_tracer[conf]
+  local tracer = tracer_cache[conf]
   if tracer == nil then
     assert(self.new_tracer, "derived class must implement .new_tracer()")
     tracer = self.new_tracer(conf)
     assert(type(tracer) == "table", ".new_tracer() must return an opentracing tracer object")
-    self.conf_to_tracer[conf] = tracer
+    tracer_cache[conf] = tracer
   end
   return tracer
 end
@@ -283,5 +279,11 @@ function OpenTracingHandler:log(conf)
   proxy_span:finish(proxy_end)
   request_span:finish(now)
 end
+
+
+function OpenTracingHandler:extend()
+  return setmetatable({ super = self }, { __index = self })
+end
+
 
 return OpenTracingHandler
