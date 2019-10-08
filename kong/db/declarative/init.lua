@@ -327,7 +327,14 @@ function declarative.load_into_cache(entities, hash, shadow_page)
     local foreign_fields = {}
     for fname, fdata in schema:each_field() do
       if fdata.unique then
-        table.insert(uniques, fname)
+        if fdata.type == "foreign" then
+          if #kong.db[fdata.reference].schema.primary_key == 1 then
+            table.insert(uniques, fname)
+          end
+
+        else
+          table.insert(uniques, fname)
+        end
       end
       if fdata.type == "foreign" then
         page_for[fdata.reference] = {}
@@ -356,7 +363,14 @@ function declarative.load_into_cache(entities, hash, shadow_page)
 
       for _, unique in ipairs(uniques) do
         if item[unique] then
-          local cache_key = entity_name .. "|" .. unique .. ":" .. item[unique]
+          local unique_key = item[unique]
+          if type(unique_key) == "table" then
+            local _
+            -- this assumes that foreign keys are not composite
+            _, unique_key = next(unique_key)
+          end
+
+          local cache_key = entity_name .. "|" .. unique .. ":" .. unique_key
           ok, err = kong.cache:safe_set(cache_key, item, shadow_page)
           if not ok then
             return nil, err
