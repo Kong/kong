@@ -1,4 +1,4 @@
-local STRATEGY_PATH = "kong.plugins.proxy-cache.strategies"
+local STRATEGY_PATH = "kong.plugins.proxy-cache-advanced.strategies"
 
 
 local kong = kong
@@ -7,18 +7,16 @@ local cluster_events = kong.cluster_events
 
 local function broadcast_purge(plugin_id, cache_key)
   local data = string.format("%s:%s", plugin_id, cache_key or "nil")
-  ngx.log(ngx.DEBUG, "[proxy-cache] broadcasting purge '", data, "'")
-  return cluster_events:broadcast("proxy-cache:purge", data)
+  ngx.log(ngx.DEBUG, "[proxy-cache-advanced] broadcasting purge '", data, "'")
+  return cluster_events:broadcast("proxy-cache-advanced:purge", data)
 end
 
 
 return {
-  ["/proxy-cache"] = {
-    resource = "proxy-cache",
-
+  ["/proxy-cache-advanced"] = {
     DELETE = function()
       local rows, err = kong.db.plugins:select_all {
-        name = "proxy-cache"
+        name = "proxy-cache-advanced"
       }
       if err then
         return kong.response.exit(500, { message = err })
@@ -48,12 +46,10 @@ return {
       return kong.response.exit(204)
     end
   },
-  ["/proxy-cache/:cache_key"] = {
-    resource = "proxy-cache",
-
+  ["/proxy-cache-advanced/:cache_key"] = {
     GET = function(self)
       local rows, err = kong.db.plugins:select_all {
-        name = "proxy-cache",
+        name = "proxy-cache-advanced",
       }
       if err then
         return kong.response.exit(500, err)
@@ -82,7 +78,7 @@ return {
 
     DELETE = function(self)
       local rows, err = kong.db.plugins:select_all {
-        name = "proxy-cache",
+        name = "proxy-cache-advanced",
       }
       if err then
         return kong.response.exit(500, err)
@@ -122,9 +118,7 @@ return {
       return kong.response.exit(404)
     end,
   },
-  ["/proxy-cache/:plugin_id/caches/:cache_key"] = {
-    resource = "proxy-cache",
-
+  ["/proxy-cache-advanced/:plugin_id/caches/:cache_key"] = {
     GET = function(self)
       local row, err = kong.db.plugins:select {
         id   = self.params.plugin_id,

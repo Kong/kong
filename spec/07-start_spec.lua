@@ -1,9 +1,9 @@
 local helpers = require "spec.helpers"
 
-describe("kong starts with proxy-cache plugin", function()
+describe("kong starts with proxy-cache-advanced plugin", function()
 
   setup(function()
-    helpers.get_db_utils(nil, nil, {"proxy-cache"})
+    helpers.get_db_utils(nil, nil, {"proxy-cache-advanced"})
   end)
 
   before_each(function()
@@ -16,14 +16,14 @@ describe("kong starts with proxy-cache plugin", function()
 
   it("starts with default conf", function()
     assert(helpers.start_kong({
-      plugins = "bundled,proxy-cache",
+      plugins = "bundled,proxy-cache-advanced",
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
 
   it("starts with stream listen", function()
     assert(helpers.start_kong({
-      plugins = "bundled,proxy-cache",
+      plugins = "bundled,proxy-cache-advanced",
       nginx_conf = "spec/fixtures/custom_nginx.template",
       stream_listen = "0.0.0.0:5555",
     }))

@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 local pl_file = require "pl.file"
-local strategies = require("kong.plugins.proxy-cache.strategies")
+local strategies = require("kong.plugins.proxy-cache-advanced.strategies")
 local cjson   = require "cjson"
 
 
@@ -13,7 +13,7 @@ local REDIS_DATABASE = 1
 
 
 for i, policy in ipairs({"memory", "redis"}) do
-  describe("proxy-cache access with policy: #" .. policy, function()
+  describe("proxy-cache-advanced access with policy: " .. policy, function()
     local client, admin_client
     local policy_config
     local cache_key
@@ -43,7 +43,7 @@ for i, policy in ipairs({"memory", "redis"}) do
       helpers.wait_until(function()
         local res = admin_client:send {
           method = "GET",
-          path   = "/proxy-cache/" .. key
+          path   = "/proxy-cache-advanced/" .. key
         }
         -- wait_until does not like asserts
         if not res then return false end
@@ -77,7 +77,7 @@ for i, policy in ipairs({"memory", "redis"}) do
 
     setup(function()
 
-      local bp = helpers.get_db_utils(nil, nil, {"proxy-cache"})
+      local bp = helpers.get_db_utils(nil, nil, {"proxy-cache-advanced"})
       strategy:flush(true)
 
       local route1 = assert(bp.routes:insert {
@@ -170,7 +170,7 @@ for i, policy in ipairs({"memory", "redis"}) do
       })
 
       assert(bp.plugins:insert {
-        name = "proxy-cache",
+        name = "proxy-cache-advanced",
         route = { id = route1.id },
         config = {
           strategy = policy,
@@ -180,7 +180,7 @@ for i, policy in ipairs({"memory", "redis"}) do
       })
 
       assert(bp.plugins:insert {
-        name = "proxy-cache",
+        name = "proxy-cache-advanced",
         route = { id = route2.id },
         config = {
           strategy = policy,
@@ -191,7 +191,7 @@ for i, policy in ipairs({"memory", "redis"}) do
 
       -- global plugin for routes 3 and 4
       assert(bp.plugins:insert {
-        name = "proxy-cache",
+        name = "proxy-cache-advanced",
         config = {
           strategy = policy,
           content_type = { "text/plain", "application/json" },
@@ -200,7 +200,7 @@ for i, policy in ipairs({"memory", "redis"}) do
       })
 
       assert(bp.plugins:insert {
-        name = "proxy-cache",
+        name = "proxy-cache-advanced",
         route = { id = route5.id },
         config = {
           strategy = policy,
@@ -210,7 +210,7 @@ for i, policy in ipairs({"memory", "redis"}) do
       })
 
       assert(bp.plugins:insert {
-        name = "proxy-cache",
+        name = "proxy-cache-advanced",
         route = { id = route6.id },
         config = {
           strategy = policy,
@@ -221,7 +221,7 @@ for i, policy in ipairs({"memory", "redis"}) do
       })
 
       assert(bp.plugins:insert {
-        name = "proxy-cache",
+        name = "proxy-cache-advanced",
         route = { id = route7.id },
         config = {
           strategy = policy,
@@ -232,7 +232,7 @@ for i, policy in ipairs({"memory", "redis"}) do
       })
 
       assert(bp.plugins:insert {
-        name = "proxy-cache",
+        name = "proxy-cache-advanced",
         route = { id = route8.id },
         config = {
           strategy = policy,
@@ -244,7 +244,7 @@ for i, policy in ipairs({"memory", "redis"}) do
       })
 
       assert(bp.plugins:insert {
-        name = "proxy-cache",
+        name = "proxy-cache-advanced",
         route = { id = route9.id },
         config = {
           strategy = policy,
@@ -256,7 +256,7 @@ for i, policy in ipairs({"memory", "redis"}) do
       })
 
       assert(bp.plugins:insert {
-        name = "proxy-cache",
+        name = "proxy-cache-advanced",
         route = { id = route10.id },
         config = {
           strategy = policy,
@@ -268,7 +268,7 @@ for i, policy in ipairs({"memory", "redis"}) do
       })
 
       assert(bp.plugins:insert {
-        name = "proxy-cache",
+        name = "proxy-cache-advanced",
         route = { id = route11.id },
         config = {
           strategy = policy,
@@ -281,7 +281,7 @@ for i, policy in ipairs({"memory", "redis"}) do
       })
 
       assert(bp.plugins:insert {
-        name = "proxy-cache",
+        name = "proxy-cache-advanced",
         route = { id = route12.id },
         config = {
           strategy = policy,
@@ -294,7 +294,7 @@ for i, policy in ipairs({"memory", "redis"}) do
       })
 
       assert(helpers.start_kong({
-        plugins = "bundled,proxy-cache",
+        plugins = "bundled,proxy-cache-advanced",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)
@@ -1211,7 +1211,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         assert.same("Bypass", res.headers["X-Cache-Status"])
 
         local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
-        assert.matches("[proxy-cache] cache format mismatch, purging " .. cache_key,
+        assert.matches("[proxy-cache-advanced] cache format mismatch, purging " .. cache_key,
                        err_log, nil, true)
       end)
     end)

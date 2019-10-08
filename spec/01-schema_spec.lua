@@ -1,7 +1,7 @@
-local proxy_cache_schema = require "kong.plugins.proxy-cache.schema"
+local proxy_cache_schema = require "kong.plugins.proxy-cache-advanced.schema"
 local v = require("spec.helpers").validate_plugin_config_schema
 
-describe("proxy-cache schema", function()
+describe("proxy-cache-advanced schema", function()
   it("accepts a minimal config", function()
     local entity, err = v({
       strategy = "memory",

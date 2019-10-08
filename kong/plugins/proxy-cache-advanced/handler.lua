@@ -1,6 +1,6 @@
 local BasePlugin  = require "kong.plugins.base_plugin"
-local strategies  = require "kong.plugins.proxy-cache.strategies"
-local cache_key   = require "kong.plugins.proxy-cache.cache_key"
+local strategies  = require "kong.plugins.proxy-cache-advanced.strategies"
+local cache_key   = require "kong.plugins.proxy-cache-advanced.cache_key"
 local utils       = require "kong.tools.utils"
 local ee          = require "kong.enterprise_edition"
 
@@ -26,7 +26,7 @@ local time             = ngx.time
 local tab_new = require("table.new")
 
 
-local STRATEGY_PATH = "kong.plugins.proxy-cache.strategies"
+local STRATEGY_PATH = "kong.plugins.proxy-cache-advanced.strategies"
 local CACHE_VERSION = 1
 
 
@@ -77,7 +77,7 @@ local function parse_directive_header(h)
     local _, err = ngx_re_match(m[0], [[^\s*([^=]+)(?:=(.+))?]],
                                 "oj", nil, res)
     if err then
-      ngx_log(ngx.ERR, "[proxy-cache] ", err)
+      ngx_log(ngx.ERR, "[proxy-cache-advanced] ", err)
     end
 
     -- store the directive token as a numeric value if it looks like a number;
@@ -261,7 +261,7 @@ local function async_store(premature, strategy, key, res, ttl)
 
   local ok, err = strategy:store(key, res, ttl)
   if not ok then
-    ngx_log(ngx.ERR, "[proxy-cache] ", err)
+    ngx_log(ngx.ERR, "[proxy-cache-advanced] ", err)
   end
 end
 
@@ -270,11 +270,11 @@ local ProxyCacheHandler = BasePlugin:extend()
 
 
 ProxyCacheHandler.PRIORITY = 100
-ProxyCacheHandler.VERSION = "0.4.2"
+ProxyCacheHandler.VERSION = "0.5.0"
 
 
 function ProxyCacheHandler:new()
-  ProxyCacheHandler.super.new(self, "proxy-cache")
+  ProxyCacheHandler.super.new(self, "proxy-cache-advanced")
 end
 
 function ProxyCacheHandler:init_worker()
@@ -284,8 +284,8 @@ function ProxyCacheHandler:init_worker()
   -- only need one worker to handle purges like this
   -- if/when we introduce inline LRU caching this needs to involve
   -- worker events as well
-  cluster_events:subscribe("proxy-cache:purge", function(data)
-    ngx.log(ngx.DEBUG, "[proxy-cache] handling purge of '", data, "'")
+  cluster_events:subscribe("proxy-cache-advanced:purge", function(data)
+    ngx.log(ngx.DEBUG, "[proxy-cache-advanced] handling purge of '", data, "'")
 
     local plugin_id, cache_key = unpack(utils.split(data, ":"))
 
@@ -293,7 +293,8 @@ function ProxyCacheHandler:init_worker()
       id   = plugin_id,
     })
     if err then
-      ngx_log(ngx.ERR, "[proxy-cache] error in retrieving plugins: ", err)
+      ngx_log(ngx.ERR, "[proxy-cache-advanced] error in retrieving plugins: ",
+              err)
       return
     end
 
@@ -305,15 +306,16 @@ function ProxyCacheHandler:init_worker()
     if cache_key ~= "nil" then
       local ok, err = strategy:purge(cache_key)
       if not ok then
-        ngx_log(ngx.ERR, "[proxy-cache] failed to purge cache key '", cache_key,
-              "': ", err)
+        ngx_log(ngx.ERR, "[proxy-cache-advanced] failed to purge cache key '",
+              cache_key, "': ", err)
         return
       end
 
     else
       local ok, err = strategy:flush(true)
       if not ok then
-        ngx_log(ngx.ERR, "[proxy-cache] error in flushing cache data: ", err)
+        ngx_log(ngx.ERR, "[proxy-cache-advanced] error in flushing cache data: ",
+                err)
       end
     end
   end)
@@ -373,7 +375,8 @@ function ProxyCacheHandler:access(conf)
   end
 
   if res.version ~= CACHE_VERSION then
-    ngx_log(ngx.NOTICE, "[proxy-cache] cache format mismatch, purging ", cache_key)
+    ngx_log(ngx.NOTICE, "[proxy-cache-advanced] cache format mismatch, purging ",
+            cache_key)
     strategy:purge(cache_key)
     return signal_cache_req(cache_key, "Bypass")
   end
@@ -477,14 +480,14 @@ function ProxyCacheHandler:body_filter(conf)
     if not strategies.DELAY_STRATEGY_STORE[conf.strategy] then
       local ok, err = strategy:store(ctx.cache_key, res, ttl)
       if not ok then
-        ngx_log(ngx.ERR, "[proxy-cache] ", err)
+        ngx_log(ngx.ERR, "[proxy-cache-advanced] ", err)
       end
 
     else
       local ok, err = timer_at(0, async_store, strategy, ctx.cache_key,
                                res, ttl)
       if not ok then
-        ngx_log(ngx.ERR, "[proxy-cache] ", err)
+        ngx_log(ngx.ERR, "[proxy-cache-advanced] ", err)
       end
     end
 

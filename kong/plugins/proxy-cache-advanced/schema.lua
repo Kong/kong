@@ -1,4 +1,4 @@
-local strategies = require "kong.plugins.proxy-cache.strategies"
+local strategies = require "kong.plugins.proxy-cache-advanced.strategies"
 local redis      = require "kong.enterprise_edition.redis"
 
 
@@ -12,7 +12,7 @@ end
 
 
 return {
-  name = "proxy-cache",
+  name = "proxy-cache-advanced",
   fields = {
     { config = {
         type = "record",

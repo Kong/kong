@@ -2,18 +2,18 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 
-describe("Plugin: proxy-cache", function()
+describe("Plugin: proxy-cache-advanced", function()
   local bp
   local proxy_client, admin_client, cache_key, plugin1, route1
 
   setup(function()
-    bp = helpers.get_db_utils(nil, nil, {"proxy-cache"})
+    bp = helpers.get_db_utils(nil, nil, {"proxy-cache-advanced"})
 
     route1 = assert(bp.routes:insert {
       hosts = { "route-1.com" },
     })
     plugin1 = assert(bp.plugins:insert {
-      name = "proxy-cache",
+      name = "proxy-cache-advanced",
       route = { id = route1.id },
       config = {
         strategy = "memory",
@@ -29,7 +29,7 @@ describe("Plugin: proxy-cache", function()
     })
 
     assert(bp.plugins:insert {
-      name = "proxy-cache",
+      name = "proxy-cache-advanced",
       route = { id = route2.id },
       config = {
         strategy = "memory",
@@ -41,7 +41,7 @@ describe("Plugin: proxy-cache", function()
     })
 
     assert(helpers.start_kong({
-      plugins = "proxy-cache",
+      plugins = "proxy-cache-advanced",
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
 
@@ -68,7 +68,7 @@ describe("Plugin: proxy-cache", function()
         method = "POST",
         path = "/plugins",
         body = {
-          name = "proxy-cache",
+          name = "proxy-cache-advanced",
           config = {
             strategy = "memory",
             memory = {
@@ -97,7 +97,7 @@ describe("Plugin: proxy-cache", function()
         method = "POST",
         path = "/plugins",
         body = {
-          name = "proxy-cache",
+          name = "proxy-cache-advanced",
           config = {
             strategy = "memory",
             memory = {
@@ -122,7 +122,7 @@ describe("Plugin: proxy-cache", function()
         method = "POST",
         path = "/plugins",
         body = {
-          name = "proxy-cache",
+          name = "proxy-cache-advanced",
           config = {
             strategy = "memory",
             memory = {
@@ -147,7 +147,7 @@ describe("Plugin: proxy-cache", function()
         method = "POST",
         path = "/plugins",
         body = {
-          name = "proxy-cache",
+          name = "proxy-cache-advanced",
           config = {
             strategy = "memory",
             memory = {
@@ -175,7 +175,7 @@ describe("Plugin: proxy-cache", function()
         method = "POST",
         path = "/plugins",
         body = {
-          name = "proxy-cache",
+          name = "proxy-cache-advanced",
           config = {
             strategy = "memory",
             memory = {
@@ -233,7 +233,8 @@ describe("Plugin: proxy-cache", function()
         -- delete the key
         res = assert(admin_client:send {
           method = "DELETE",
-          path = "/proxy-cache/" .. plugin1.id .. "/caches/" .. cache_key,
+          path = "/proxy-cache-advanced/" .. plugin1.id .. "/caches/" ..
+                  cache_key,
         })
         assert.res_status(204, res)
 
@@ -248,10 +249,10 @@ describe("Plugin: proxy-cache", function()
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
 
-        -- delete directly, having to look up all proxy-cache instances
+        -- delete directly, having to look up all proxy-cache-advanced instances
         res = assert(admin_client:send {
           method = "DELETE",
-          path = "/proxy-cache/" .. cache_key,
+          path = "/proxy-cache-advanced/" .. cache_key,
         })
         assert.res_status(204, res)
 
@@ -312,7 +313,7 @@ describe("Plugin: proxy-cache", function()
         -- delete all the cache keys
         res = assert(admin_client:send {
           method = "DELETE",
-          path = "/proxy-cache",
+          path = "/proxy-cache-advanced",
         })
         assert.res_status(204, res)
 
@@ -342,13 +343,13 @@ describe("Plugin: proxy-cache", function()
         -- delete all the cache keys
         local res = assert(admin_client:send {
           method = "DELETE",
-          path = "/proxy-cache",
+          path = "/proxy-cache-advanced",
         })
         assert.res_status(204, res)
 
         local res = assert(admin_client:send {
           method = "DELETE",
-          path = "/proxy-cache/" .. plugin1.id .. "/caches/" .. "123",
+          path = "/proxy-cache-advanced/" .. plugin1.id .. "/caches/" .. "123",
         })
         assert.res_status(404, res)
       end)
@@ -356,13 +357,13 @@ describe("Plugin: proxy-cache", function()
         -- delete all the cache keys
         local res = assert(admin_client:send {
           method = "DELETE",
-          path = "/proxy-cache",
+          path = "/proxy-cache-advanced",
         })
         assert.res_status(204, res)
 
         local res = assert(admin_client:send {
           method = "DELETE",
-          path = "/proxy-cache/" .. route1.id .. "/caches/" .. "123",
+          path = "/proxy-cache-advanced/" .. route1.id .. "/caches/" .. "123",
         })
         assert.res_status(404, res)
       end)
@@ -372,20 +373,21 @@ describe("Plugin: proxy-cache", function()
         -- delete all the cache keys
         local res = assert(admin_client:send {
           method = "DELETE",
-          path = "/proxy-cache",
+          path = "/proxy-cache-advanced",
         })
         assert.res_status(204, res)
 
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/proxy-cache/" .. plugin1.id .. "/caches/" .. cache_key,
+          path = "/proxy-cache-advanced/" .. plugin1.id .. "/caches/" ..
+                  cache_key,
         })
         assert.res_status(404, res)
 
         -- attempt to list an entry directly via cache key
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/proxy-cache/" .. cache_key,
+          path = "/proxy-cache-advanced/" .. cache_key,
         })
         assert.res_status(404, res)
       end)
@@ -402,7 +404,8 @@ describe("Plugin: proxy-cache", function()
 
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/proxy-cache/" .. plugin1.id .. "/caches/" .. cache_key,
+          path = "/proxy-cache-advanced/" .. plugin1.id .. "/caches/" ..
+                  cache_key,
         })
         local body = assert.res_status(200, res)
         local json_body = cjson.decode(body)
@@ -411,7 +414,7 @@ describe("Plugin: proxy-cache", function()
         -- list an entry directly via cache key
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/proxy-cache/" ..  cache_key,
+          path = "/proxy-cache-advanced/" ..  cache_key,
         })
         local body = assert.res_status(200, res)
         local json_body = cjson.decode(body)
