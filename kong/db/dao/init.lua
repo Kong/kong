@@ -259,7 +259,7 @@ local function check_insert(self, entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  entity_to_insert, err = self.schema:transform(entity_to_insert, entity)
+  entity_to_insert, err = self.schema:transform(entity_to_insert, entity, "insert")
   if not entity_to_insert then
     err_t = self.errors:transformation_error(err)
     return nil, tostring(err_t), err_t
@@ -331,7 +331,7 @@ local function check_update(self, key, entity, options, name)
     return nil, nil, tostring(err_t), err_t
   end
 
-  entity_to_update, err = self.schema:transform(entity_to_update, entity)
+  entity_to_update, err = self.schema:transform(entity_to_update, entity, "update")
   if not entity_to_update then
     err_t = self.errors:transformation_error(err)
     return nil, nil, tostring(err_t), err_t
@@ -379,7 +379,7 @@ local function check_upsert(self, entity, options, name, value)
     entity_to_upsert[name] = nil
   end
 
-  entity_to_upsert, err = self.schema:transform(entity_to_upsert, entity)
+  entity_to_upsert, err = self.schema:transform(entity_to_upsert, entity, "upsert")
   if not entity_to_upsert then
     err_t = self.errors:transformation_error(err)
     return nil, tostring(err_t), err_t
@@ -1080,7 +1080,13 @@ function DAO:row_to_entity(row, options)
     return nil, tostring(err_t), err_t
   end
 
-  return entity
+  local transformed_entity, err = self.schema:transform(entity, row, "select")
+  if not transformed_entity then
+    local err_t = self.errors:transformation_error(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  return transformed_entity
 end
 
 

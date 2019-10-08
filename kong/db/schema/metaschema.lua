@@ -120,7 +120,21 @@ local transformations_array = {
       {
         on_write = {
           type = "function",
-          required = true,
+          required = false,
+        },
+      },
+      {
+        on_read = {
+          type = "function",
+          required = false,
+        },
+      },
+    },
+    entity_checks = {
+      {
+        at_least_one_of = {
+          "on_write",
+          "on_read",
         },
       },
     },
