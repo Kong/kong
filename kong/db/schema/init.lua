@@ -2054,18 +2054,30 @@ end
 --- Run transformations on fields.
 -- @param input The input table.
 -- @param original_input The original input for transformation detection.
+-- @param context a string describing the CRUD context:
+-- valid values are: "insert", "update", "upsert", "select"
 -- @return the transformed entity
-function Schema:transform(input, original_input)
+function Schema:transform(input, original_input, context)
   if not self.transformations then
     return input
   end
 
   local output = input
   for _, transformation in ipairs(self.transformations) do
-    local on_write = transformation.on_write
+    local transform
+    if context == "select" then
+      transform = transformation.on_read
+
+    else
+      transform = transformation.on_write
+    end
+
+    if not transform then
+      goto next
+    end
+
     local args = {}
     local argc = 0
-    local all_set  = true
     for _, input_field_name in ipairs(transformation.input) do
       local value = get_field(original_input or input, input_field_name)
       if is_nonempty(value) then
@@ -2077,26 +2089,31 @@ function Schema:transform(input, original_input)
         end
 
       else
-        all_set = false
-        break
+        goto next
       end
     end
 
-    if all_set then
-      if transformation.needs then
-        for _, need in ipairs(transformation.needs) do
+    if transformation.needs then
+      for _, need in ipairs(transformation.needs) do
+        local value = get_field(input, need)
+        if is_nonempty(value) then
           argc = argc + 1
           args[argc] = get_field(input, need)
+
+        else
+          goto next
         end
       end
-
-      local data, err = on_write(unpack(args))
-      if err then
-        return nil, validation_errors.TRANSFORMATION_ERROR:format(err)
-      end
-
-      output = self:merge_values(data, output)
     end
+
+    local data, err = transform(unpack(args))
+    if err then
+      return nil, validation_errors.TRANSFORMATION_ERROR:format(err)
+    end
+
+    output = self:merge_values(data, output)
+
+    ::next::
   end
 
   return output
