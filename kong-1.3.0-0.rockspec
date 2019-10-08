@@ -45,6 +45,7 @@ dependencies = {
   "kong-proxy-cache-plugin ~> 1.2",
   "kong-plugin-request-transformer ~> 1.2",
   "kong-plugin-session ~> 2.1",
+  "kong-plugin-aws-lambda ~> 3.0",
 }
 build = {
   type = "builtin",
@@ -343,10 +344,6 @@ build = {
     ["kong.plugins.bot-detection.handler"] = "kong/plugins/bot-detection/handler.lua",
     ["kong.plugins.bot-detection.schema"] = "kong/plugins/bot-detection/schema.lua",
     ["kong.plugins.bot-detection.rules"] = "kong/plugins/bot-detection/rules.lua",
-
-    ["kong.plugins.aws-lambda.handler"] = "kong/plugins/aws-lambda/handler.lua",
-    ["kong.plugins.aws-lambda.schema"] = "kong/plugins/aws-lambda/schema.lua",
-    ["kong.plugins.aws-lambda.v4"] = "kong/plugins/aws-lambda/v4.lua",
 
     ["kong.plugins.request-termination.handler"] = "kong/plugins/request-termination/handler.lua",
     ["kong.plugins.request-termination.schema"] = "kong/plugins/request-termination/schema.lua",
