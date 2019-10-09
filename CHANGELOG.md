@@ -35,6 +35,11 @@
 
 > Released on 2019/09/25
 
+### Installation
+
+  - :warning: All Bintray assets have been renamed from `.all.` / `.noarch.` to be
+    architecture specific namely `.arm64.` and `.amd64.`
+
 ### Additions
 
 ##### Core
