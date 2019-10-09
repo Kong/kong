@@ -258,8 +258,10 @@ return {
 
       -- if you've forgotten your password, this is all we know about you
       self.admin = admins.find_by_email(self.params.email)
+
       if not self.admin then
-        return kong.response.exit(404, { message = "Not found" })
+        kong.log.err("Failed to find admin with email" .. self.params.email)
+        return kong.response.exit(200)
       end
 
       -- when you reset your password, you come in with an email and a JWT
@@ -271,7 +273,8 @@ return {
 
         -- make sure the email in the query params matches the one in the token
         if self.admin.consumer.id ~= self.consumer_id then
-          return kong.response.exit(404, { message = "Not found" })
+          kong.log.err("self.admin.consumer.id(" .. self.admin.consumer.id .. ") and self.consumer_id(" .. self.consumer_id .. ") not match")
+          return kong.response.exit(200)
         end
       end
     end,
@@ -292,7 +295,7 @@ return {
         return endpoints.handle_error(err)
       end
 
-      return kong.response.exit(201)
+      return kong.response.exit(200)
     end,
 
     -- reset password and consume token
