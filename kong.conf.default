@@ -118,6 +118,15 @@
 #anonymous_reports = on          # Send anonymous usage data such as error
                                  # stack traces to help improve Kong.
 
+#service_mesh = off              # When `on`, enable the built-in Service Mesh
+                                 # support of Kong.
+                                 #
+                                 # **Note:** Enabling service mesh causes
+                                 # upstream requests to HTTPS services to
+                                 # behave incorrectly. Service Mesh has been
+                                 # deprecated and will be removed in the next
+                                 # release of Kong.
+
 #------------------------------------------------------------------------------
 # NGINX
 #------------------------------------------------------------------------------

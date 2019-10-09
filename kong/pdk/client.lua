@@ -280,7 +280,9 @@ local function new(self)
     -- else subsystem is stream
 
     local balancer_data = ngx.ctx.balancer_data
-    local is_tls = balancer_data and balancer_data.scheme == "tls" and balancer_data.ssl_ctx
+    local is_tls = balancer_data and balancer_data.scheme == "tls" and
+                   (kong.configuration.service_mesh and
+                    balancer_data.ssl_ctx or true)
 
     return is_tls and "tls" or "tcp"
   end

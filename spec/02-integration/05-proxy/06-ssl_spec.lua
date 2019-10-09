@@ -119,6 +119,25 @@ for _, strategy in helpers.each_strategy() do
         preserve_host = false,
       }
 
+      local service_mockbin = assert(bp.services:insert {
+        name     = "service-mockbin",
+        url      = "https://mockbin.com/request",
+      })
+
+      assert(bp.routes:insert {
+        protocols     = { "http" },
+        hosts         = { "mockbin.com" },
+        paths         = { "/" },
+        service       = service_mockbin,
+      })
+
+      assert(bp.routes:insert {
+        protocols     = { "http" },
+        hosts         = { "example-clear.com" },
+        paths         = { "/" },
+        service       = service8,
+      })
+
       local cert = bp.certificates:insert {
         cert  = ssl_fixtures.cert,
         key   = ssl_fixtures.key,
@@ -177,6 +196,8 @@ for _, strategy in helpers.each_strategy() do
         database    = strategy,
         nginx_conf  = "spec/fixtures/custom_nginx.template",
         trusted_ips = "127.0.0.1",
+        nginx_http_proxy_ssl_verify = "on",
+        nginx_http_proxy_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
       })
 
       proxy_client = helpers.proxy_client()
@@ -185,6 +206,61 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_teardown(function()
       helpers.stop_kong()
+    end)
+
+    describe("proxy ssl verify", function()
+      it("prevents requests to upstream that does not possess a trusted certificate", function()
+        -- setup: cleanup logs
+        local test_error_log_path = helpers.test_conf.nginx_err_logs
+        os.execute(":> " .. test_error_log_path)
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            Host  = "mockbin.com",
+          },
+        })
+        local body = assert.res_status(502, res)
+        assert.equal("An invalid response was received from the upstream server", body)
+
+        local pl_file = require("pl.file")
+
+        helpers.wait_until(function()
+          -- Assertion: there should be [error] resulting from
+          -- TLS handshake failure
+
+          local logs = pl_file.read(test_error_log_path)
+          local found = false
+
+          for line in logs:gmatch("[^\r\n]+") do
+            if line:find("upstream SSL certificate verify error: " ..
+                         "(20:unable to get local issuer certificate) " ..
+                         "while SSL handshaking to upstream", nil, true)
+            then
+              found = true
+
+            else
+              assert.not_match("[error]", line, nil, true)
+            end
+          end
+
+          if found then
+              return true
+          end
+        end, 2)
+      end)
+
+      it("trusted certificate, request goes through", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            Host  = "example-clear.com",
+          }
+        })
+        assert.res_status(200, res)
+      end)
     end)
 
     describe("global SSL", function()

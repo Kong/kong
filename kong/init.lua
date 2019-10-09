@@ -305,7 +305,9 @@ local function load_declarative_config(kong_config, entities)
 
     assert(runloop.build_router("init"))
 
-    mesh.init()
+    if kong_config.service_mesh then
+      mesh.init()
+    end
 
     ok, err = ngx.shared.kong:safe_set("declarative_config:loaded", true)
     if not ok then
@@ -360,21 +362,24 @@ function Kong.init()
 
   -- Set up default ssl client context
   local default_client_ssl_ctx
-  if set_ssl_ctx then
-    default_client_ssl_ctx = http_tls.new_client_context()
-    default_client_ssl_ctx:setVerify(openssl_ssl.VERIFY_NONE)
-    default_client_ssl_ctx:setAlpnProtos { "http/1.1" }
-    -- TODO: copy proxy_ssl_* flags?
-    if config.client_ssl then
-      local pem_key = assert(pl_utils.readfile(config.client_ssl_cert_key))
-      default_client_ssl_ctx:setPrivateKey(openssl_pkey.new(pem_key))
-      -- XXX: intermediary certs are NYI https://github.com/wahern/luaossl/issues/123
-      local pem_cert = assert(pl_utils.readfile(config.client_ssl_cert))
-      default_client_ssl_ctx:setCertificate(openssl_x509.new(pem_cert))
+
+  if config.service_mesh then
+    if set_ssl_ctx then
+      default_client_ssl_ctx = http_tls.new_client_context()
+      default_client_ssl_ctx:setVerify(openssl_ssl.VERIFY_NONE)
+      default_client_ssl_ctx:setAlpnProtos { "http/1.1" }
+      -- TODO: copy proxy_ssl_* flags?
+      if config.client_ssl then
+        local pem_key = assert(pl_utils.readfile(config.client_ssl_cert_key))
+        default_client_ssl_ctx:setPrivateKey(openssl_pkey.new(pem_key))
+        -- XXX: intermediary certs are NYI https://github.com/wahern/luaossl/issues/123
+        local pem_cert = assert(pl_utils.readfile(config.client_ssl_cert))
+        default_client_ssl_ctx:setCertificate(openssl_x509.new(pem_cert))
+      end
+    else
+        ngx_log(ngx_WARN, "missing \"ngx.balancer\".set_ssl_ctx API. ",
+                          "Dynamic client SSL_CTX* will be unavailable")
     end
-  else
-      ngx_log(ngx_WARN, "missing \"ngx.balancer\".set_ssl_ctx API. ",
-                        "Dynamic client SSL_CTX* will be unavailable")
   end
 
   kong_global.init_pdk(kong, config, nil) -- nil: latest PDK
@@ -440,13 +445,17 @@ function Kong.init()
 
   kong.db = db
   kong.dns = singletons.dns
-  kong.default_client_ssl_ctx = default_client_ssl_ctx
+
+
+  if config.service_mesh then
+    kong.default_client_ssl_ctx = default_client_ssl_ctx
+  end
 
   if subsystem == "stream" or config.proxy_ssl_enabled then
     certificate.init()
   end
 
-  if kong.configuration.database ~= "off" then
+  if config.service_mesh and kong.configuration.database ~= "off" then
     mesh.init()
   end
 

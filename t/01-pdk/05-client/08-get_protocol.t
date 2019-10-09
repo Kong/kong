@@ -267,6 +267,10 @@ qq{
         listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock proxy_protocol;
 
         content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
             ngx.ctx.route = {
               protocols = { "tcp", "tls" }
             }
