@@ -23,6 +23,17 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
       assert.falsy(err)
     end)
 
+    it("error in function is not triggered during validation", function()
+      local ok, err = v({
+        functions = {
+          [[error("should never happen")]],
+        }
+      }, schema)
+
+      assert.truthy(ok)
+      assert.falsy(err)
+    end)
+
     it("validates single function with upvalues", function()
       local ok, err = v({ functions = { mock_fn_three } }, schema)
 
@@ -37,26 +48,26 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
       assert.falsy(err)
     end)
 
+    it("a valid chunk with an invalid return type", function()
+      local ok, err = v({ functions = { mock_fn_invalid_return } }, schema)
+
+      assert.truthy(ok)
+      assert.falsy(err)
+    end)
+
     describe("errors", function()
       it("with an invalid function", function()
         local ok, err = v({ functions = { mock_fn_invalid } }, schema)
 
         assert.falsy(ok)
-        assert.equals("Error parsing " .. plugin_name .. ": [string \"print(\"]:1: unexpected symbol near '<eof>'", err.config.functions[1])
-      end)
-
-      it("with an invalid return value", function()
-        local ok, err = v({ functions = { mock_fn_invalid_return } }, schema)
-
-        assert.falsy(ok)
-        assert.equals("Bad return value from " .. plugin_name .. " function, expected function type, got string", err.config.functions[1])
+        assert.equals("error parsing " .. plugin_name .. ": [string \"print(\"]:1: unexpected symbol near '<eof>'", err.config.functions[1])
       end)
 
       it("with a valid and invalid function", function()
         local ok, err = v({ functions = { mock_fn_one, mock_fn_invalid } }, schema)
 
         assert.falsy(ok)
-        assert.equals("Error parsing " .. plugin_name .. ": [string \"print(\"]:1: unexpected symbol near '<eof>'", err.config.functions[2])
+        assert.equals("error parsing " .. plugin_name .. ": [string \"print(\"]:1: unexpected symbol near '<eof>'", err.config.functions[2])
       end)
     end)
   end)
