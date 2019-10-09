@@ -12,7 +12,7 @@ describe("DNS", function()
     stub(ngx, "log")
     singletons = require "kong.singletons"
 
-    singletons.cache = {
+    singletons.core_cache = {
       get = function() return {} end
     }
 

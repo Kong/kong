@@ -348,14 +348,14 @@ function declarative.load_into_cache(entities, hash, shadow_page)
 
       local cache_key = dao:cache_key(id)
       item = schema:transform(remove_nulls(item))
-      local ok, err = kong.cache:safe_set(cache_key, item, shadow_page)
+      local ok, err = kong.core_cache:safe_set(cache_key, item, shadow_page)
       if not ok then
         return nil, err
       end
 
       if schema.cache_key then
         local cache_key = dao:cache_key(item)
-        ok, err = kong.cache:safe_set(cache_key, item, shadow_page)
+        ok, err = kong.core_cache:safe_set(cache_key, item, shadow_page)
         if not ok then
           return nil, err
         end
@@ -371,7 +371,7 @@ function declarative.load_into_cache(entities, hash, shadow_page)
           end
 
           local cache_key = entity_name .. "|" .. unique .. ":" .. unique_key
-          ok, err = kong.cache:safe_set(cache_key, item, shadow_page)
+          ok, err = kong.core_cache:safe_set(cache_key, item, shadow_page)
           if not ok then
             return nil, err
           end
@@ -401,7 +401,7 @@ function declarative.load_into_cache(entities, hash, shadow_page)
       end
     end
 
-    local ok, err = kong.cache:safe_set(entity_name .. "|list", ids, shadow_page)
+    local ok, err = kong.core_cache:safe_set(entity_name .. "|list", ids, shadow_page)
     if not ok then
       return nil, err
     end
@@ -409,7 +409,7 @@ function declarative.load_into_cache(entities, hash, shadow_page)
     for ref, fids in pairs(page_for) do
       for fid, entries in pairs(fids) do
         local key = entity_name .. "|" .. ref .. "|" .. fid .. "|list"
-        ok, err = kong.cache:safe_set(key, entries, shadow_page)
+        ok, err = kong.core_cache:safe_set(key, entries, shadow_page)
         if not ok then
           return nil, err
         end
@@ -428,7 +428,7 @@ function declarative.load_into_cache(entities, hash, shadow_page)
       end
       -- stay consistent with pagination
       table.sort(arr)
-      ok, err = kong.cache:safe_set(key, arr, shadow_page)
+      ok, err = kong.core_cache:safe_set(key, arr, shadow_page)
       if not ok then
         return nil, err
       end
@@ -439,7 +439,7 @@ function declarative.load_into_cache(entities, hash, shadow_page)
     -- tags:admin|list -> all tags tagged "admin", regardless of the entity type
     -- each tag is encoded as a string with the format "admin|services|uuid", where uuid is the service uuid
     local key = "tags:" .. tag_name .. "|list"
-    local ok, err = kong.cache:safe_set(key, tags, shadow_page)
+    local ok, err = kong.core_cache:safe_set(key, tags, shadow_page)
     if not ok then
       return nil, err
     end
@@ -447,7 +447,7 @@ function declarative.load_into_cache(entities, hash, shadow_page)
 
   -- tags|list -> all tags, with no distinction of tag name or entity type.
   -- each tag is encoded as a string with the format "admin|services|uuid", where uuid is the service uuid
-  local ok, err = kong.cache:safe_set("tags|list", tags, shadow_page)
+  local ok, err = kong.core_cache:safe_set("tags|list", tags, shadow_page)
   if not ok then
     return nil, err
   end
@@ -486,13 +486,13 @@ function declarative.load_into_cache_with_events(entities, hash)
     end
   end
 
-  kong.cache:purge(SHADOW)
+  kong.core_cache:purge(SHADOW)
 
   if not ok then
     return nil, err
   end
 
-  kong.cache:invalidate("router:version")
+  kong.core_cache:invalidate("router:version")
 
   ok, err = kong.worker_events.post("balancer", "upstreams", {
     operation = "reset",

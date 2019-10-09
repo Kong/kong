@@ -84,10 +84,10 @@ local function load_configuration(ctx,
                                         route_id,
                                         service_id,
                                         consumer_id)
-  local plugin, err = kong.cache:get(key,
-                                     nil,
-                                     load_plugin_from_db,
-                                     key)
+  local plugin, err = kong.core_cache:get(key,
+                                          nil,
+                                          load_plugin_from_db,
+                                          key)
   if err then
     ctx.delay_response = false
     ngx.log(ngx.ERR, tostring(err))

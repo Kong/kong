@@ -100,6 +100,17 @@ return {
     "cluster_ca",
     "tags",
     "ca_certificates",
+    consumers = true,
+    certificates = true,
+    services = true,
+    routes = true,
+    snis = true,
+    upstreams = true,
+    targets = true,
+    plugins = true,
+    cluster_ca = true,
+    tags = true,
+    ca_certificates = true,
   },
   RATELIMIT = {
     PERIODS = {

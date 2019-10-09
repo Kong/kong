@@ -99,7 +99,7 @@ end
 ------------------------------------------------------------------------ end --
 
 
-local _init
+local _init = {}
 
 
 local function log(lvl, ...)
@@ -112,8 +112,12 @@ local mt = { __index = _M }
 
 
 function _M.new(opts)
-  if _init then
-    error("kong.cache was already created", 2)
+  if type(opts.shm_name) ~= "string" then
+    error("opts.shm_name must be a string", 2)
+  end
+
+  if _init[opts.shm_name] then
+    error("kong.cache (" .. opts.shm_name .. ") was already created", 2)
   end
 
   -- opts validation
@@ -152,9 +156,17 @@ function _M.new(opts)
   local shm_names = {}
 
   for i = 1, opts.cache_pages or 1 do
-    local channel_name  = (i == 1) and "mlcache"            or "mlcache_2"
-    local shm_name      = (i == 1) and "kong_db_cache"      or "kong_db_cache_2"
-    local shm_miss_name = (i == 1) and "kong_db_cache_miss" or "kong_db_cache_miss_2"
+    local channel_name  = (i == 1) and "mlcache"                 or "mlcache_2"
+    local shm_name      = (i == 1) and opts.shm_name             or opts.shm_name .. "_2"
+    local shm_miss_name = (i == 1) and opts.shm_name .. "_miss"  or opts.shm_name .. "_miss_2"
+
+    if not ngx.shared[shm_name] then
+      log(ERR, "shared dictionary ", shm_name, " not found")
+    end
+
+    if not ngx.shared[shm_miss_name] then
+      log(ERR, "shared dictionary ", shm_miss_name, " not found")
+    end
 
     if ngx.shared[shm_name] then
       local mlcache, err = resty_mlcache.new(shm_name, shm_name, {
@@ -209,7 +221,7 @@ function _M.new(opts)
                 "channel: " .. err
   end
 
-  _init = true
+  _init[opts.shm_name] = true
 
   return setmetatable(self, mt)
 end
