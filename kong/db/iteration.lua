@@ -1,4 +1,8 @@
-local constants = require "kong.constants"
+local defaults = require "kong.db.strategies.connector".defaults
+
+
+local tostring = tostring
+local type = type
 
 
 local iteration = {}
@@ -18,7 +22,17 @@ end
 
 local function page_iterator(pager, size, options)
   local page = 1
-  size = size or constants.DEFAULT_ITERATION_SIZE
+
+  if not size then
+    if type(options) == "table" and type(options.pagination) == "table" then
+      size = options.pagination.page_size
+    end
+
+    if not size then
+      size = defaults.pagination.page_size
+    end
+  end
+
   local i, rows, err, offset = 0, pager(size, nil, options)
 
   return function()

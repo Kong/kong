@@ -1,4 +1,5 @@
 local Errors  = require "kong.db.errors"
+local defaults = require "kong.db.strategies.connector".defaults
 local utils   = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
@@ -71,6 +72,145 @@ for _, strategy in helpers.each_strategy() do
           assert.has_error(function()
             db.routes:page(nil, false)
           end, "offset must be a string")
+        end)
+
+        describe("pagination options", function()
+          it("errors on invalid page size", function()
+            local ok, err, err_t = db.routes:page(nil, nil, {
+              pagination = {
+                page_size = 0,
+              }
+            })
+
+            assert.is_nil(ok)
+            assert.equal(fmt("[%s] invalid option (pagination.page_size: must be an integer between 1 and %d)",
+                             strategy, db.routes.pagination.max_page_size), err)
+            assert.equal(11, err_t.code)
+
+            ok, err, err_t = db.routes:page(nil, nil, {
+              pagination = {
+                page_size = {},
+              }
+            })
+
+            assert.is_nil(ok)
+            assert.equal(fmt("[%s] invalid option (pagination.page_size: must be a number)", strategy), err)
+            assert.equal(11, err_t.code)
+
+            ok, err, err_t = db.routes:page(nil, nil, {
+              pagination = {
+                page_size = true,
+              }
+            })
+
+            assert.is_nil(ok)
+            assert.equal(fmt("[%s] invalid option (pagination.page_size: must be a number)", strategy), err)
+            assert.equal(11, err_t.code)
+
+            ok, err, err_t = db.routes:page(nil, nil, {
+              pagination = {
+                page_size = false,
+              }
+            })
+
+            assert.is_nil(ok)
+            assert.equal(fmt("[%s] invalid option (pagination.page_size: must be a number)", strategy), err)
+            assert.equal(11, err_t.code)
+          end)
+
+          it("errors on invalid max page size", function()
+            local ok, err, err_t = db.routes:page(nil, nil, {
+              pagination = {
+                max_page_size = 0,
+              }
+            })
+
+            assert.is_nil(ok)
+            assert.equal(fmt("[%s] invalid option (pagination.max_page_size: must be an integer greater than 0)",
+                             strategy, db.routes.pagination.max_page_size), err)
+            assert.equal(11, err_t.code)
+
+            ok, err, err_t = db.routes:page(nil, nil, {
+              pagination = {
+                max_page_size = {},
+              }
+            })
+
+            assert.is_nil(ok)
+            assert.equal(fmt("[%s] invalid option (pagination.max_page_size: must be a number)", strategy), err)
+            assert.equal(11, err_t.code)
+
+            ok, err, err_t = db.routes:page(nil, nil, {
+              pagination = {
+                max_page_size = true,
+              }
+            })
+
+            assert.is_nil(ok)
+            assert.equal(fmt("[%s] invalid option (pagination.max_page_size: must be a number)", strategy), err)
+            assert.equal(11, err_t.code)
+
+            ok, err, err_t = db.routes:page(nil, nil, {
+              pagination = {
+                max_page_size = false,
+              }
+            })
+
+            assert.is_nil(ok)
+            assert.equal(fmt("[%s] invalid option (pagination.max_page_size: must be a number)", strategy), err)
+            assert.equal(11, err_t.code)
+          end)
+
+          it("errors on invalid page size and invalid max page size", function()
+            local ok, err, err_t = db.routes:page(nil, nil, {
+              pagination = {
+                page_size = 0,
+                max_page_size = 0,
+              }
+            })
+
+            assert.is_nil(ok)
+            assert.equal(fmt("[%s] 2 option violations (pagination.max_page_size: must be an integer greater than 0; " ..
+                                                       "pagination.page_size: must be an integer between 1 and %d)",
+                             strategy, db.routes.pagination.max_page_size), err)
+            assert.equal(11, err_t.code)
+
+            ok, err, err_t = db.routes:page(nil, nil, {
+              pagination = {
+                page_size = {},
+                max_page_size = {},
+              }
+            })
+
+            assert.is_nil(ok)
+            assert.equal(fmt("[%s] 2 option violations (pagination.max_page_size: must be a number; " ..
+                                                       "pagination.page_size: must be a number)", strategy), err)
+            assert.equal(11, err_t.code)
+
+            ok, err, err_t = db.routes:page(nil, nil, {
+              pagination = {
+                page_size = true,
+                max_page_size = true,
+              }
+            })
+
+            assert.is_nil(ok)
+            assert.equal(fmt("[%s] 2 option violations (pagination.max_page_size: must be a number; " ..
+                                                       "pagination.page_size: must be a number)", strategy), err)
+            assert.equal(11, err_t.code)
+
+            ok, err, err_t = db.routes:page(nil, nil, {
+              pagination = {
+                page_size = false,
+                max_page_size = false,
+              }
+            })
+
+            assert.is_nil(ok)
+            assert.equal(fmt("[%s] 2 option violations (pagination.max_page_size: must be a number; " ..
+                                                       "pagination.page_size: must be a number)", strategy), err)
+            assert.equal(11, err_t.code)
+          end)
         end)
 
         -- I/O
@@ -219,7 +359,7 @@ for _, strategy in helpers.each_strategy() do
           it("returns an error with invalid size", function()
             local rows, err, err_t = db.routes:page(5.5)
             assert.is_nil(rows)
-            local message  = "size must be an integer between 1 and 1000"
+            local message  = "size must be an integer between 1 and " .. defaults.pagination.max_page_size
             assert.equal(fmt("[%s] %s", strategy, message), err)
             assert.same({
               code     = Errors.codes.INVALID_SIZE,
@@ -251,13 +391,19 @@ for _, strategy in helpers.each_strategy() do
                 methods = { "GET" },
               })
             end
+
+
+            db.routes.pagination.page_size = 100
+            db.routes.pagination.max_page_size = 1000
           end)
 
           lazy_teardown(function()
+            db.routes.pagination.page_size = defaults.pagination.page_size
+            db.routes.pagination.max_page_size = defaults.pagination.max_page_size
             db:truncate("routes")
           end)
 
-          it("defaults page_size = 100 and invokes schema post-processing", function()
+          it("= 100 and invokes schema post-processing", function()
             local rows, err, err_t = db.routes:page()
             assert.is_nil(err_t)
             assert.is_nil(err)
@@ -270,6 +416,19 @@ for _, strategy in helpers.each_strategy() do
             for i = 1, #rows do
               assert.is_truthy(rows[i].methods.GET)
             end
+          end)
+
+          it("of 100 is overridden by page size option of 50", function()
+            local rows, err, err_t = db.routes:page(nil, nil, {
+              pagination = {
+                page_size = 50,
+              }
+            })
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.is_table(rows)
+            assert.equal(cjson.array_mt, getmetatable(rows))
+            assert.equal(50, #rows)
           end)
         end)
       end)
@@ -1921,9 +2080,17 @@ for _, strategy in helpers.each_strategy() do
                   service = service,
                 }
               end
+
+              db.routes.pagination.page_size = 100
+              db.routes.pagination.max_page_size = 1000
             end)
 
-            it("defaults page_size = 100", function()
+            lazy_teardown(function()
+              db.routes.pagination.page_size = defaults.pagination.page_size
+              db.routes.pagination.max_page_size = defaults.pagination.max_page_size
+            end)
+
+            it("= 100", function()
               local rows, err, err_t = db.routes:page_for_service {
                 id = service.id,
               }
@@ -2104,6 +2271,48 @@ for _, strategy in helpers.each_strategy() do
                 message  = message,
                 strategy = strategy,
               }, err_t)
+            end)
+          end)
+
+          describe("paging options", function()
+            lazy_setup(function()
+
+              service = bp.services:insert()
+
+              for i = 1, 10 do
+                bp.routes:insert {
+                  hosts   = { "paginate-" .. i .. ".com" },
+                  service = service,
+                }
+              end
+            end)
+
+            it("overrides the defaults", function()
+              local rows, err, err_t, offset = db.routes:page_for_service({
+                id = service.id,
+              }, nil, nil, {
+                pagination = {
+                  page_size     = 5,
+                  max_page_size = 5,
+                },
+              })
+              assert.is_nil(err_t)
+              assert.is_nil(err)
+              assert.is_not_nil(offset)
+              assert.equal(5, #rows)
+
+              rows, err, err_t, offset = db.routes:page_for_service({
+                id = service.id,
+              }, nil, offset, {
+                pagination = {
+                  page_size     = 6,
+                  max_page_size = 6,
+                }
+              })
+              assert.is_nil(err_t)
+              assert.is_nil(err)
+              assert.is_nil(offset)
+              assert.equal(5, #rows)
             end)
           end)
         end) -- paginates

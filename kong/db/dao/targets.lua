@@ -1,5 +1,4 @@
 local singletons = require "kong.singletons"
-local constants = require "kong.constants"
 local balancer = require "kong.runloop.balancer"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
@@ -9,6 +8,7 @@ local setmetatable = setmetatable
 local tostring = tostring
 local ipairs = ipairs
 local table = table
+local type = type
 local min = math.min
 
 
@@ -244,10 +244,21 @@ function _TARGETS:page_for_upstream(upstream_pk, size, offset, options)
     end
   end
 
+  local pagination = self.pagination
+
+  if type(options) == "table" and type(options.pagination) == "table" then
+    pagination = utils.table_merge(pagination, options.pagination)
+  end
+
+  if not size then
+    size = pagination.page_size
+  end
+
+  size = min(size, pagination.max_page_size)
+  offset = offset or 0
+
   -- Extract the requested page
   local page = setmetatable({}, cjson.array_mt)
-  size = min(size or constants.DEFAULT_PAGE_SIZE, constants.MAX_PAGE_SIZE)
-  offset = offset or 0
   for i = 1 + offset, size + offset do
     local target = all_active_targets[i]
     if not target then
