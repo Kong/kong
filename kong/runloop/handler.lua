@@ -807,7 +807,7 @@ return {
 
       register_events()
 
-
+      balancer.reload_all_upstreams()
       -- initialize balancers for active healthchecks
       timer_at(0, function()
         balancer.init()

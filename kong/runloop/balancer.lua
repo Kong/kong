@@ -493,41 +493,39 @@ local function check_target_history(upstream, balancer)
   return true
 end
 
+local all_upstreams
+local upstream_version = utils.uuid()
+local new_upstream_version = utils.uuid()
+
+local function reload_all_upstreams()
+
+  if upstream_version == new_upstream_version then
+    return true
+  end
+
+  kong.log.notice("reload all upstreams")
+  local upstreams_dict = {}
+  for up, err in singletons.db.upstreams:each() do
+    if err then
+      log(CRIT, "could not obtain list of upstreams: ", err)
+      return nil
+    end
+
+    upstreams_dict[up.name] = up.id
+  end
+  upstream_version = new_upstream_version
+  all_upstreams = upstreams_dict
+end
 
 local get_all_upstreams
 do
   local function load_upstreams_dict_into_memory()
-    local upstreams_dict = {}
-    -- build a dictionary, indexed by the upstream name
-    for up, err in singletons.db.upstreams:each(1000) do
-      if err then
-        log(CRIT, "could not obtain list of upstreams: ", err)
-        return nil
-      end
-
-      upstreams_dict[up.name] = up.id
-    end
-    return upstreams_dict
+    return all_upstreams
   end
   _load_upstreams_dict_into_memory = load_upstreams_dict_into_memory
 
-
-  local opts = { neg_ttl = 10 }
-
-
-  ------------------------------------------------------------------------------
-  -- Implements a simple dictionary with all upstream-ids indexed
-  -- by their name.
-  -- @return The upstreams dictionary (a map with upstream names as string keys
-  -- and upstream entity tables as values), or nil+error
   get_all_upstreams = function()
-    local upstreams_dict, err = singletons.cache:get("balancer:upstreams", opts,
-                                                load_upstreams_dict_into_memory)
-    if err then
-      return nil, err
-    end
-
-    return upstreams_dict or {}
+    return load_upstreams_dict_into_memory()
   end
 end
 
@@ -627,8 +625,7 @@ local function on_upstream_event(operation, upstream_data)
   local upstream_name = upstream_data.name
 
   if operation == "create" then
-
-    singletons.cache:invalidate_local("balancer:upstreams")
+    new_upstream_version = utils.uuid()
 
     local upstream = get_upstream_by_id(upstream_id)
     if not upstream then
@@ -642,8 +639,8 @@ local function on_upstream_event(operation, upstream_data)
     end
 
   elseif operation == "delete" or operation == "update" then
+    new_upstream_version = utils.uuid()
 
-    singletons.cache:invalidate_local("balancer:upstreams")
     singletons.cache:invalidate_local("balancer:upstreams:" .. upstream_id)
     singletons.cache:invalidate_local("balancer:targets:"   .. upstream_id)
 
@@ -768,6 +765,12 @@ local function init()
   end
   log(DEBUG, "initialized ", oks, " balancer(s), ", errs, " error(s)")
 
+  timer_every(10, function(premature)
+    if premature then
+      return
+    end
+    reload_all_upstreams()
+  end)
 end
 
 
@@ -1002,6 +1005,7 @@ return {
   on_upstream_event = on_upstream_event,
   get_upstream_by_name = get_upstream_by_name,
   get_all_upstreams = get_all_upstreams,
+  reload_all_upstreams = reload_all_upstreams,
   post_health = post_health,
   subscribe_to_healthcheck_events = subscribe_to_healthcheck_events,
   unsubscribe_from_healthcheck_events = unsubscribe_from_healthcheck_events,
