@@ -68,7 +68,7 @@ more than willing to assist you on those channels!
 
 ## Where to report bugs?
 
-Feel free to [submit an issue](https://github.com/Kong/kong/issues/new) on
+Feel free to [submit an issue](https://github.com/Kong/kong/issues/new/choose) on
 the GitHub repository, we would be grateful to hear about it! Please make sure
 to respect the GitHub issue template, and include:
 
@@ -85,7 +85,7 @@ on how to best do so.
 
 ## Where to submit feature requests?
 
-You can [submit an issue](https://github.com/Kong/kong/issues/new) for feature
+You can [submit an issue](https://github.com/Kong/kong/issues/new/choose) for feature
 requests. Please add as much detail as you can when doing so.
 
 You are also welcome to propose patches adding new features. See the section

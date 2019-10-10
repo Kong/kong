@@ -1,3 +1,9 @@
+---
+name: "Bug report"
+about: Create a report to help improve the project
+
+---
+
 <!--
 Please read the CONTRIBUTING.md guidelines to learn on which channels you can
 seek for help and ask general questions:
