@@ -57,11 +57,11 @@ pipeline {
       steps {
         parallel (
           centos6: {
-            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:6 --ee --custom ${env.RELEASE_SCOPE} --key-file $PRIVATE_KEY_FILE --key-password $PRIVATE_KEY_PASSWORD -V"
+            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:6 --ee --custom ${env.RELEASE_SCOPE} --key-file $PRIVATE_KEY_FILE --key-password '${PRIVATE_KEY_PASSWORD}' -V"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:6 -e -R ${env.RELEASE_SCOPE}"
           },
           centos7: {
-            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:7 --ee --custom ${env.RELEASE_SCOPE} --key-file $PRIVATE_KEY_FILE --key-password $PRIVATE_KEY_PASSWORD -V"
+            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:7 --ee --custom ${env.RELEASE_SCOPE} --key-file $PRIVATE_KEY_FILE --key-password '${PRIVATE_KEY_PASSWORD}' -V"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:7 -e -R ${env.RELEASE_SCOPE}"
           },
           debian8: {
@@ -97,11 +97,11 @@ pipeline {
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p alpine -e -R ${env.RELEASE_SCOPE}"
           },
           rhel6: {
-            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW --redhat-username $REDHAT_USR --redhat-password $REDHAT_PSW -p rhel:6 --ee --custom ${env.RELEASE_SCOPE} --key-file $PRIVATE_KEY_FILE --key-password $PRIVATE_KEY_PASSWORD -V"
+            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW --redhat-username $REDHAT_USR --redhat-password $REDHAT_PSW -p rhel:6 --ee --custom ${env.RELEASE_SCOPE} --key-file $PRIVATE_KEY_FILE --key-password '${PRIVATE_KEY_PASSWORD}' -V"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel:6 -e -R ${env.RELEASE_SCOPE}"
           },
           rhel7: {
-            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW --redhat-username $REDHAT_USR --redhat-password $REDHAT_PSW -p rhel:7 --ee --custom ${env.RELEASE_SCOPE} --key-file $PRIVATE_KEY_FILE --key-password $PRIVATE_KEY_PASSWORD -V"
+            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW --redhat-username $REDHAT_USR --redhat-password $REDHAT_PSW -p rhel:7 --ee --custom ${env.RELEASE_SCOPE} --key-file $PRIVATE_KEY_FILE --key-password '${PRIVATE_KEY_PASSWORD}' -V"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel:7 -e -R ${env.RELEASE_SCOPE}"
           },
         )
