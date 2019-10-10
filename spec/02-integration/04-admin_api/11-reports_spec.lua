@@ -3,7 +3,6 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 
-local localhost = "127.0.0.1"
 local SAMPLE_YAML_CONFIG = [[
  _format_version: "1.1"
  services:
@@ -14,72 +13,6 @@ local SAMPLE_YAML_CONFIG = [[
      hosts:
      - example.test
 ]]
-
-
-local function mock_reports_server()
-  local threads = require "llthreads2.ex"
-  local server_port = constants.REPORTS.STATS_PORT
-
-  local thread = threads.new({
-    function(port, localhost)
-      local socket = require "socket"
-
-      local server = assert(socket.udp())
-      server:settimeout(1)
-      server:setoption("reuseaddr", true)
-      server:setsockname(localhost, port)
-      local data = {}
-      local started = false
-      while true do
-        local packet, recvip, recvport = server:receivefrom()
-        if packet then
-          if packet == "\\START" then
-            if not started then
-              started = true
-              server:sendto("\\OK", recvip, recvport)
-            end
-          elseif packet == "\\STOP" then
-            break
-          else
-            table.insert(data, packet)
-          end
-        end
-      end
-      server:close()
-      return data
-    end
-  }, server_port, localhost)
-  thread:start()
-
-  local handshake_skt = assert(ngx.socket.udp())
-  handshake_skt:setpeername(localhost, server_port)
-  handshake_skt:settimeout(0.1)
-
-  -- not necessary for correctness because we do the handshake,
-  -- but avoids harmless "connection error" messages in the wait loop
-  -- in case the client is ready before the server below.
-  ngx.sleep(0.01)
-
-  while true do
-    handshake_skt:send("\\START")
-    local ok = handshake_skt:receive()
-    if ok == "\\OK" then
-      break
-    end
-  end
-  handshake_skt:close()
-
-  return {
-    stop = function()
-      local skt = assert(ngx.socket.udp())
-      skt:setpeername(localhost, server_port)
-      skt:send("\\STOP")
-      skt:close()
-
-      return thread:join()
-    end
-  }
-end
 
 
 local function admin_send(req)
@@ -121,7 +54,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     before_each(function()
-      reports_server = mock_reports_server()
+      reports_server = helpers.mock_reports_server()
 
       assert(helpers.get_db_utils(strategy, {}))
 

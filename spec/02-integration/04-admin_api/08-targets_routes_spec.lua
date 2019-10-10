@@ -377,7 +377,12 @@ describe("Admin API #" .. strategy, function()
           assert.equal(targets[3].target, res.data[2].target)
           assert.equal(targets[2].target, res.data[3].target)
           for i = 1, n do
-            assert.equal(health, res.data[i].health)
+            if res.data[i].data ~= nil and res.data[i].data.addresses ~= nil then
+              for j = 1, #res.data[i].data.addresses do
+                assert.equal(health, res.data[i].data.addresses[j].health)
+              end
+              assert.equal(health, res.data[i].health)
+            end
           end
         end
       end

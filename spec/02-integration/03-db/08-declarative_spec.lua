@@ -1,6 +1,7 @@
 local declarative = require "kong.db.declarative"
 local ssl_fixtures = require "spec.fixtures.ssl"
 local helpers = require "spec.helpers"
+local lyaml = require "lyaml"
 
 for _, strategy in helpers.each_strategy() do
   describe("declarative config #" .. strategy, function()
@@ -31,7 +32,8 @@ for _, strategy in helpers.each_strategy() do
       read_timeout = 60000,
       retries = 5,
       updated_at = 1549025889,
-      write_timeout = 60000
+      write_timeout = 60000,
+      tags = { "potato", "carrot" },
     }
 
     local route_def = {
@@ -97,27 +99,28 @@ for _, strategy in helpers.each_strategy() do
       consumer = { id = consumer_def.id },
       group = "The A Team"
     }
+    before_each(function()
+      db.acls:truncate()
+      db.plugins:truncate()
+      db.routes:truncate()
+      db.services:truncate()
+      db.snis:truncate()
+      db.certificates:truncate()
+      db.consumers:truncate()
+
+      assert(declarative.load_into_db({
+        snis = { [sni_def.id] = sni_def },
+        certificates = { [certificate_def.id] = certificate_def },
+        routes = { [route_def.id] = route_def },
+        services = { [service_def.id] = service_def },
+        consumers = { [consumer_def.id] = consumer_def },
+        plugins = { [plugin_def.id] = plugin_def },
+        acls = { [acl_def.id] = acl_def  },
+      }))
+    end)
 
     describe("load_into_db", function()
       it("imports base and custom entities with associations", function()
-        db.acls:truncate()
-        db.plugins:truncate()
-        db.routes:truncate()
-        db.services:truncate()
-        db.snis:truncate()
-        db.certificates:truncate()
-        db.consumers:truncate()
-
-        assert(declarative.load_into_db({
-          snis = { [sni_def.id] = sni_def },
-          certificates = { [certificate_def.id] = certificate_def },
-          routes = { [route_def.id] = route_def },
-          services = { [service_def.id] = service_def },
-          consumers = { [consumer_def.id] = consumer_def },
-          plugins = { [plugin_def.id] = plugin_def },
-          acls = { [acl_def.id] = acl_def  },
-        }))
-
         local sni = assert(db.snis:select_by_name("baz"))
         assert.equals(sni_def.id, sni.id)
         assert.equals(certificate_def.id, sni.certificate.id)
@@ -151,6 +154,94 @@ for _, strategy in helpers.each_strategy() do
 
         local acl = assert(db.acls:select({ id = acl_def.id }))
         assert.equals(consumer_def.id, acl.consumer.id)
+        assert.equals("The A Team", acl.group)
+      end)
+    end)
+
+    describe("export_from_db", function()
+      it("exports base and custom entities with associations", function()
+
+        -- Add a basicauth_credential to make sure it is not exported
+        db.basicauth_credentials:insert({
+          username = "some_username",
+          password = "secret",
+          consumer = { id = consumer_def.id },
+        })
+
+        local fake_file = {
+          buffer = {},
+          write = function(self, str)
+            self.buffer[#self.buffer + 1] = str
+          end,
+        }
+
+        assert(declarative.export_from_db(fake_file))
+
+        local exported_str = table.concat(fake_file.buffer)
+        local yaml = lyaml.load(exported_str)
+
+        -- ensure tags, cluster_ca & basicauth_credentials are not being exported
+        local toplevel_keys = {}
+        for k in pairs(yaml) do
+          toplevel_keys[#toplevel_keys + 1] = k
+        end
+        table.sort(toplevel_keys)
+        assert.same({
+          "_format_version",
+          "acls",
+          "certificates",
+          "consumers",
+          "plugins",
+          "routes",
+          "services",
+          "snis"
+        }, toplevel_keys)
+
+        assert.equals("1.1", yaml._format_version)
+
+        assert.equals(1, #yaml.snis)
+        local sni = assert(yaml.snis[1])
+        assert.equals(sni_def.id, sni.id)
+        assert.equals(sni_def.name, sni.name)
+        assert.equals(certificate_def.id, sni.certificate)
+
+        assert.equals(1, #yaml.certificates)
+        local cert = assert(yaml.certificates[1])
+        assert.equals(certificate_def.id, cert.id)
+        assert.equals(ssl_fixtures.key, cert.key)
+        assert.equals(ssl_fixtures.cert, cert.cert)
+
+        assert.equals(1, #yaml.services)
+        local service = assert(yaml.services[1])
+        assert.equals(service_def.id, service.id)
+        assert.equals("example.com", service.host)
+        assert.equals("https", service.protocol)
+        table.sort(service.tags)
+        assert.same({"carrot", "potato"}, service.tags)
+
+        assert.equals(1, #yaml.routes)
+        local route = assert(yaml.routes[1])
+        assert.equals(route_def.id, route.id)
+        assert.equals("example.com", route.hosts[1])
+        assert.same({ "http", "https" }, route.protocols)
+        assert.equals(service_def.id, route.service)
+
+        assert.equals(1, #yaml.consumers)
+        local consumer = assert(yaml.consumers[1])
+        assert.equals(consumer_def.id, consumer.id)
+        assert.equals("andru", consumer_def.username)
+        assert.equals("donalds", consumer_def.custom_id)
+
+        assert.equals(1, #yaml.plugins)
+        local plugin = assert(yaml.plugins[1])
+        assert.equals(plugin_def.id, plugin.id)
+        assert.equals(service.id, plugin.service)
+        assert.equals("acl", plugin.name)
+        assert.same(plugin_def.config, plugin.config)
+
+        assert.equals(1, #yaml.acls)
+        local acl = assert(yaml.acls[1])
+        assert.equals(consumer_def.id, acl.consumer)
         assert.equals("The A Team", acl.group)
       end)
     end)

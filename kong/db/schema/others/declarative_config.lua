@@ -409,10 +409,32 @@ local function get_key_for_uuid_gen(entity, item, schema, parent_fk, child_key)
     return
   end
 
-  if schema.endpoint_key and
-     item[schema.endpoint_key] ~= nil then
+  if schema.endpoint_key and item[schema.endpoint_key] ~= nil then
+    local key = item[schema.endpoint_key]
+
+    -- check if the endpoint key is globally unique
+    if not schema.fields[schema.endpoint_key].unique then
+      -- If it isn't, and this item has foreign keys with on_delete "cascade",
+      -- we assume that it is unique relative to the parent (e.g. targets of
+      -- an upstream). We compose the item's key with the parent's key,
+      -- preventing it from being overwritten by identical endpoint keys
+      -- declared under other parents.
+      for fname, field in schema:each_field(item) do
+        if field.type == "foreign" and field.on_delete == "cascade" then
+          if parent_fk then
+            local foreign_key_keys = all_schemas[field.reference].primary_key
+            for _, fk_pk in ipairs(foreign_key_keys) do
+              key = key .. ":" .. parent_fk[fk_pk]
+            end
+          else
+            key = key .. ":" .. item[fname]
+          end
+        end
+      end
+    end
+
     -- generate a PK based on the endpoint_key
-    return pk_name, item[schema.endpoint_key]
+    return pk_name, key
   end
 
   if schema.cache_key then
@@ -498,6 +520,21 @@ local function flatten(self, input)
 end
 
 
+local function load_entity_subschemas(entity_name, entity)
+  local ok, subschemas = utils.load_module_if_exists("kong.db.schema.entities." .. entity_name .. "_subschemas")
+  if ok then
+    for name, subschema in pairs(subschemas) do
+      local ok, err = entity:new_subschema(name, subschema)
+      if not ok then
+        return nil, ("error initializing schema for %s: %s"):format(entity_name, err)
+      end
+    end
+  end
+
+  return true
+end
+
+
 function DeclarativeConfig.load(plugin_set)
   if not core_entities then
     -- a copy of constants.CORE_ENTITIES without "tags"
@@ -517,6 +554,9 @@ function DeclarativeConfig.load(plugin_set)
       local mod = require("kong.db.schema.entities." .. entity)
       local definition = utils.deep_copy(mod, false)
       all_schemas[entity] = Entity.new(definition)
+
+      -- load core entities subschemas
+      assert(load_entity_subschemas(entity, all_schemas[entity]))
     end
   end
 

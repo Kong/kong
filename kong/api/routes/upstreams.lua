@@ -38,7 +38,7 @@ local function post_health(self, db, is_healthy)
     return kong.response.exit(404, { message = "Not found" })
   end
 
-  local ok, err = db.targets:post_health(upstream, target, is_healthy)
+  local ok, err = db.targets:post_health(upstream, target, self.params.address, is_healthy)
   if not ok then
     return kong.response.exit(400, { message = err })
   end
@@ -106,6 +106,18 @@ return {
   },
 
   ["/upstreams/:upstreams/targets/:targets/unhealthy"] = {
+    POST = function(self, db)
+      return post_health(self, db, false)
+    end,
+  },
+
+  ["/upstreams/:upstreams/targets/:targets/:address/healthy"] = {
+    POST = function(self, db)
+      return post_health(self, db, true)
+    end,
+  },
+
+  ["/upstreams/:upstreams/targets/:targets/:address/unhealthy"] = {
     POST = function(self, db)
       return post_health(self, db, false)
     end,

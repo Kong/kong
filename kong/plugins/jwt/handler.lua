@@ -19,7 +19,7 @@ JwtHandler.VERSION = "2.0.0"
 
 --- Retrieve a JWT in a request.
 -- Checks for the JWT in URI parameters, then in cookies, and finally
--- in the `Authorization` header.
+-- in the configured header_names (defaults to `[Authorization]`).
 -- @param request ngx request object
 -- @param conf Plugin configuration
 -- @return token JWT token contained in request (can be a table) or nil
@@ -40,20 +40,28 @@ local function retrieve_token(conf)
     end
   end
 
-  local authorization_header = kong.request.get_header("authorization")
-  if authorization_header then
-    local iterator, iter_err = re_gmatch(authorization_header, "\\s*[Bb]earer\\s+(.+)")
-    if not iterator then
-      return nil, iter_err
-    end
+  local request_headers = kong.request.get_headers()
+  for _, v in ipairs(conf.header_names) do
+    local token_header = request_headers[v]
+    if token_header then
+      if type(token_header) == "table" then
+        token_header = token_header[1]
+      end
+      local iterator, iter_err = re_gmatch(token_header, "\\s*[Bb]earer\\s+(.+)")
+      if not iterator then
+        kong.log.err(iter_err)
+        break
+      end
 
-    local m, err = iterator()
-    if err then
-      return nil, err
-    end
+      local m, err = iterator()
+      if err then
+        kong.log.err(err)
+        break
+      end
 
-    if m and #m > 0 then
-      return m[1]
+      if m and #m > 0 then
+        return m[1]
+      end
     end
   end
 end

@@ -211,7 +211,7 @@ assert(package.loaded["resty.core"])
 
 local MAJOR_VERSIONS = {
   [1] = {
-    version = "1.1.0",
+    version = "1.3.0",
     modules = {
       "table",
       "node",

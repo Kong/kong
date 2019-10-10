@@ -2,21 +2,6 @@
 
 local DEFAULT_RESTY_FLAGS="-c 4096"
 
-do
-  local lines = getmetatable(io.output()).lines
-
-  getmetatable(io.output()).lines = function(self, ...)
-    local iter = lines(self, ...)
-
-    return function()
-      local ok, ret = pcall(iter)
-      if ok then
-        return ret
-      end
-    end
-  end
-end
-
 if not os.getenv("KONG_BUSTED_RESPAWNED") then
   -- initial run, so go update the environment
   local script = {}
@@ -28,7 +13,8 @@ if not os.getenv("KONG_BUSTED_RESPAWNED") then
     end
 
     local var = line:match("^(KONG_[^=]*)")
-    if var then
+    local var_for_spec = line:match("^(KONG_SPEC_[^=]*)")
+    if var and not var_for_spec then
       -- remove existing KONG_xxx and KONG_TEST_xxx variables; prepend
       table.insert(script, 1, "unset " .. var)
     end
@@ -58,6 +44,8 @@ if not os.getenv("KONG_BUSTED_RESPAWNED") then
   local _, _, rc = os.execute(table.concat(script, "; "))
   os.exit(rc)
 end
+
+setmetatable(_G, nil)
 
 pcall(require, "luarocks.loader")
 

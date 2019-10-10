@@ -175,5 +175,15 @@ describe("typedefs", function()
     assert.falsy(Test:validate({ f = 123 }))
   end)
 
+  it("headers rejects 'host' but accepts 'host' substring", function()
+    local Test = Schema.new({
+      fields = {
+        { f = typedefs.headers() }
+      }
+    })
+    assert.falsy(Test:validate({ f = { ["host"]  = { "example.com" } } }))
+    assert.truthy(Test:validate({ f = { ["hostname"]  = { "example.com" } } }))
+  end)
+
 
 end)

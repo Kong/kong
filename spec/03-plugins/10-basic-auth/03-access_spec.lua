@@ -367,6 +367,7 @@ for _, strategy in helpers.each_strategy() do
         "plugins",
         "consumers",
         "basicauth_credentials",
+        "keyauth_credentials",
       })
 
       anonymous = bp.consumers:insert {

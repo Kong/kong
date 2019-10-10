@@ -1,26 +1,52 @@
 #!/usr/bin/env bash
 # set -e
 
+dep_version() {
+    grep $1 .requirements | sed -e 's/.*=//' | tr -d '\n'
+}
+
+OPENRESTY=$(dep_version RESTY_VERSION)
+LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
+OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
+
+
 #---------
 # Download
 #---------
 
-DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml | md5sum | awk '{ print $1 }')
+DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml .requirements | md5sum | awk '{ print $1 }')
+DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
 BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/openresty-build-tools
 
-mkdir -p $BUILD_TOOLS_DOWNLOAD
+KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:=master}
+OPENRESTY_PATCHES_BRANCH=${OPENRESTY_PATCHES_BRANCH:=master}
 
-wget -O $BUILD_TOOLS_DOWNLOAD/kong-ngx-build https://raw.githubusercontent.com/Kong/openresty-build-tools/master/kong-ngx-build
-chmod +x $BUILD_TOOLS_DOWNLOAD/kong-ngx-build
+if [ ! -d $BUILD_TOOLS_DOWNLOAD ]; then
+    git clone -q https://github.com/Kong/openresty-build-tools.git $BUILD_TOOLS_DOWNLOAD
+else
+    pushd $BUILD_TOOLS_DOWNLOAD
+        git fetch
+        git reset --hard origin/master
+    popd
+fi
 
 export PATH=$BUILD_TOOLS_DOWNLOAD:$PATH
 
 #--------
 # Install
 #--------
+INSTALL_CACHE=${INSTALL_CACHE:=/install-cache}
 INSTALL_ROOT=$INSTALL_CACHE/$DEPS_HASH
 
-kong-ngx-build -p $INSTALL_ROOT --work $DOWNLOAD_ROOT --openresty $OPENRESTY --openssl $OPENSSL --luarocks $LUAROCKS -j $JOBS
+kong-ngx-build \
+    --work $DOWNLOAD_ROOT \
+    --prefix $INSTALL_ROOT \
+    --openresty $OPENRESTY \
+    --openresty-patches $OPENRESTY_PATCHES_BRANCH \
+    --kong-nginx-module $KONG_NGINX_MODULE_BRANCH \
+    --luarocks $LUAROCKS \
+    --openssl $OPENSSL \
+    -j $JOBS
 
 OPENSSL_INSTALL=$INSTALL_ROOT/openssl
 OPENRESTY_INSTALL=$INSTALL_ROOT/openresty
@@ -55,6 +81,13 @@ if [[ "$TEST_SUITE" == "pdk" ]]; then
   echo "Installing CPAN dependencies..."
   cpanm --notest Test::Nginx &> build.log || (cat build.log && exit 1)
   cpanm --notest --local-lib=$TRAVIS_BUILD_DIR/perl5 local::lib && eval $(perl -I $TRAVIS_BUILD_DIR/perl5/lib/perl5/ -Mlocal::lib)
+fi
+
+# ----------------
+# Run gRPC server |
+# ----------------
+if [[ "$TEST_SUITE" =~ integration|dbless ]]; then
+  docker run -d --name grpcbin -p 15002:9000 -p 15003:9001 moul/grpcbin
 fi
 
 nginx -V

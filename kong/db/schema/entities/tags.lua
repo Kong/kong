@@ -5,6 +5,7 @@ return {
   primary_key  = { "tag" },
   endpoint_key = "tag",
   dao          = "kong.db.dao.tags",
+  db_export = false,
 
   fields = {
     { tag          = typedefs.tag, },

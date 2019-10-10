@@ -301,6 +301,87 @@ for _, strategy in helpers.each_strategy() do
           --assert.is_nil(json_2.offset) -- last page
         end)
       end)
+
+      describe("POST", function()
+        lazy_setup(function()
+          db:truncate("acls")
+        end)
+
+        it("does not create acl when missing consumer", function()
+          local res = assert(admin_client:send {
+            method = "POST",
+            path = "/acls",
+            body = {
+              group = "test-group",
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same("schema violation (consumer: required field missing)", json.message)
+        end)
+
+        it("creates acl", function()
+          local res = assert(admin_client:send {
+            method = "POST",
+            path = "/acls",
+            body = {
+              group = "test-group",
+              consumer = {
+                id = consumer.id
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("test-group", json.group)
+        end)
+      end)
+    end)
+
+    describe("/acls/:group_or_id", function()
+      describe("PUT", function()
+        lazy_setup(function()
+          db:truncate("acls")
+        end)
+
+        it("does not create acl when missing consumer", function()
+          local res = assert(admin_client:send {
+            method = "PUT",
+            path = "/acls/test-group",
+            body = { },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same("schema violation (consumer: required field missing)", json.message)
+        end)
+
+        it("creates acl", function()
+          local res = assert(admin_client:send {
+            method = "PUT",
+            path = "/acls/test-group",
+            body = {
+              consumer = {
+                id = consumer.id
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("test-group", json.group)
+        end)
+      end)
     end)
 
     describe("/acls/:acl_id/consumer", function()

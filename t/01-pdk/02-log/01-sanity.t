@@ -21,7 +21,6 @@ our $HttpConfig = qq{
             v.on(outfile)
         end
 
-        require "resty.core"
         -- jit.opt.start("hotloop=1")
         -- jit.opt.start("loopunroll=1000000")
         -- jit.off()

@@ -3,7 +3,7 @@ local timestamp      = require "kong.tools.timestamp"
 local cjson          = require "cjson"
 
 
-local REDIS_HOST     = "127.0.0.1"
+local REDIS_HOST     = helpers.redis_host
 local REDIS_PORT     = 6379
 local REDIS_PASSWORD = ""
 local REDIS_DATABASE = 1

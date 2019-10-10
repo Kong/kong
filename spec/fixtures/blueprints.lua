@@ -99,6 +99,12 @@ function _M.new(db)
     }
   end)
 
+  res.ca_certificates = new_blueprint(db.ca_certificates, function()
+    return {
+      cert = ssl_fixtures.cert_ca,
+    }
+  end)
+
   local upstream_name_seq = new_sequence("upstream-%d")
   res.upstreams = new_blueprint(db.upstreams, function(overrides)
     local slots = overrides.slots or 100

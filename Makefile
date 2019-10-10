@@ -1,54 +1,70 @@
-OS := $(shell uname)
+OS := $(shell uname | awk '{print tolower($$0)}')
+MACHINE := $(shell uname -m)
 
 DEV_ROCKS = "busted 2.0.rc13" "luacheck 0.20.0" "lua-llthreads2 0.1.5"
 WIN_SCRIPTS = "bin/busted" "bin/kong"
 BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
 
-ifeq ($(OS), Darwin)
+ifeq ($(OS), darwin)
 OPENSSL_DIR ?= /usr/local/opt/openssl
+GRPCURL_OS ?= osx
 else
 OPENSSL_DIR ?= /usr
+GRPCURL_OS ?= $(OS)
 endif
 
-.PHONY: install remove dependencies dev \
-	lint test test-integration test-plugins test-all fix-windows
+.PHONY: install dependencies dev remove grpcurl \
+	setup-ci setup-kong-build-tools \
+	lint test test-integration test-plugins test-all \
+	pdk-phase-check functional-tests \
+	fix-windows \
+	nightly-release release
 
-KONG_GMP_VERSION ?= `grep KONG_GMP_VERSION .requirements | awk -F"=" '{print $$2}'`
-RESTY_VERSION ?= `grep RESTY_VERSION .requirements | awk -F"=" '{print $$2}'`
-RESTY_LUAROCKS_VERSION ?= `grep RESTY_LUAROCKS_VERSION .requirements | awk -F"=" '{print $$2}'`
-RESTY_OPENSSL_VERSION ?= `grep RESTY_OPENSSL_VERSION .requirements | awk -F"=" '{print $$2}'`
-RESTY_PCRE_VERSION ?= `grep RESTY_PCRE_VERSION .requirements | awk -F"=" '{print $$2}'`
-KONG_BUILD_TOOLS ?= `grep KONG_BUILD_TOOLS .requirements | awk -F"=" '{print $$2}'`
-KONG_VERSION ?= `cat kong-*.rockspec | grep tag | awk '{print $$3}' | sed 's/"//g'`
+ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
+KONG_BUILD_TOOLS_LOCATION ?= $(KONG_SOURCE_LOCATION)/../kong-build-tools
+KONG_GMP_VERSION ?= `grep KONG_GMP_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
+RESTY_VERSION ?= `grep RESTY_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
+RESTY_LUAROCKS_VERSION ?= `grep RESTY_LUAROCKS_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
+RESTY_OPENSSL_VERSION ?= `grep RESTY_OPENSSL_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
+RESTY_PCRE_VERSION ?= `grep RESTY_PCRE_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
+KONG_BUILD_TOOLS ?= '2.0.3'
+KONG_VERSION ?= `cat $(KONG_SOURCE_LOCATION)/kong-*.rockspec | grep tag | awk '{print $$3}' | sed 's/"//g'`
+OPENRESTY_PATCHES_BRANCH ?= master
+KONG_NGINX_MODULE_BRANCH ?= master
 
-setup-release:
-	if cd kong-build-tools; \
-	then git pull; \
-	else git clone https://github.com/Kong/kong-build-tools.git; fi
-	cd kong-build-tools; \
-	git fetch; \
-	git reset --hard origin/$(KONG_BUILD_TOOLS); \
-	make setup_tests
+setup-ci:
+	OPENRESTY=$(RESTY_VERSION) \
+	LUAROCKS=$(RESTY_LUAROCKS_VERSION) \
+	OPENSSL=$(RESTY_OPENSSL_VERSION) \
+	OPENRESTY_PATCHES_BRANCH=$(OPENRESTY_PATCHES_BRANCH) \
+	KONG_NGINX_MODULE_BRANCH=$(KONG_NGINX_MODULE_BRANCH) \
+	.ci/setup_env.sh
 
-functional_tests: setup-release
-	cd kong-build-tools; \
-	export KONG_SOURCE_LOCATION=`pwd`/../ && \
-	make package-kong && \
-	make test
+setup-kong-build-tools:
+	-rm -rf kong-build-tools; \
+	git clone https://github.com/Kong/kong-build-tools.git $(KONG_BUILD_TOOLS_LOCATION); fi
+	cd $(KONG_BUILD_TOOLS_LOCATION); \
+	git reset --hard $(KONG_BUILD_TOOLS); \
 
-nightly-release: setup-release
+functional-tests: setup-kong-build-tools
+	cd $(KONG_BUILD_TOOLS_LOCATION); \
+	$(MAKE) setup-build && \
+	$(MAKE) build-kong && \
+	$(MAKE) test
+
+nightly-release: setup-kong-build-tools
 	sed -i -e '/return string\.format/,/\"\")/c\return "$(KONG_VERSION)\"' kong/meta.lua && \
-	cd kong-build-tools; \
-	export KONG_SOURCE_LOCATION=`pwd`/../ && \
-	make package-kong && \
-	make release-kong
+	cd $(KONG_BUILD_TOOLS_LOCATION); \
+	$(MAKE) setup-build && \
+	$(MAKE) build-kong && \
+	$(MAKE) release-kong
 
-release: setup-release
-	cd kong-build-tools; \
-	export KONG_SOURCE_LOCATION=`pwd`/../ && \
-	make package-kong && \
-	make release-kong
+release: setup-kong-build-tools
+	cd $(KONG_BUILD_TOOLS_LOCATION); \
+	$(MAKE) package-kong && \
+	$(MAKE) release-kong
 
 install:
 	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR)
@@ -66,7 +82,12 @@ dependencies:
 	  fi \
 	done;
 
-dev: remove install dependencies
+grpcurl:
+	@curl -s -S -L \
+		https://github.com/fullstorydev/grpcurl/releases/download/v1.3.0/grpcurl_1.3.0_$(GRPCURL_OS)_$(MACHINE).tar.gz | tar xz -C bin;
+	@rm bin/LICENSE
+
+dev: remove install dependencies grpcurl
 
 lint:
 	@luacheck -q .
