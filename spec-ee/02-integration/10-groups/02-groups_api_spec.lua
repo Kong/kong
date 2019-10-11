@@ -1,6 +1,8 @@
-local helpers	= require "spec.helpers"
-local cjson 	= require "cjson"
-local utils 	= require "kong.tools.utils"
+local workspaces = require "kong.workspaces"
+local helpers	   = require "spec.helpers"
+local cjson 	   = require "cjson"
+local utils 	   = require "kong.tools.utils"
+local ee_helpers = require "spec-ee.helpers"
 
 local client
 local db
@@ -14,10 +16,18 @@ end
 
 for _, strategy in helpers.each_strategy() do
   describe("Groups API #" .. strategy, function()
-    local function get_request(url)
+    local function get_request(url, token)
+      if not token then 
+        token ="letmein-default" 
+      end
+
       local json = assert.res_status(200, assert(client:send {
         method = "GET",
         path = url,
+        headers = {
+          ["Content-Type"] = "application/json",
+          ["Kong-Admin-Token"] = token,
+        },
       }))
 
       local res = cjson.decode(json)
@@ -33,6 +43,10 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database  = strategy,
         smtp_mock = true,
+        admin_gui_auth = "basic-auth",
+        enforce_rbac = "on",
+        
+        admin_gui_auth_config = "{ \"hide_credentials\": true }",
       }))
 
       client = assert(helpers.admin_client())
@@ -59,6 +73,7 @@ for _, strategy in helpers.each_strategy() do
           body = submission,
           headers = {
             ["Content-Type"] = "application/json",
+            ["Kong-Admin-Token"] = "letmein-default",
           }
         }))
 
@@ -69,12 +84,23 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(204, assert(client:send {
           method = "DELETE",
           path = "/groups/" .. key,
+          headers = {
+            ["Kong-Admin-Token"] = "letmein-default",
+          }
         }))
         
         local res = get_request("/groups")
 
         assert.same({}, res.data)
       end
+
+      lazy_setup(function()
+        ee_helpers.register_rbac_resources(db)
+      end)
+
+      lazy_teardown(function()
+        db:truncate("rbac_roles")
+      end)
 
       it("GET The endpoint should list groups entities as expected", function()
         local name = "test_group_" .. utils.uuid()
@@ -121,6 +147,9 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(404, assert(client:send {
           method = "GET",
           path = "/groups/" .. utils.uuid(),
+          headers = {
+            ["Kong-Admin-Token"] = "letmein-default",
+          }
         }))
       end)
 
@@ -133,7 +162,8 @@ for _, strategy in helpers.each_strategy() do
           body = submission,
           headers = {
             ["Content-Type"] = "application/json",
-          }
+            ["Kong-Admin-Token"] = "letmein-default",
+          },
         }))
       end)
 
@@ -151,7 +181,8 @@ for _, strategy in helpers.each_strategy() do
           body = submission,
           headers = {
             ["Content-Type"] = "application/json",
-          }
+            ["Kong-Admin-Token"] = "letmein-default",
+          },
         }))
         local res_create = cjson.decode(json_create)
 
@@ -164,7 +195,8 @@ for _, strategy in helpers.each_strategy() do
           },
           headers = {
             ["Content-Type"] = "application/json",
-          }
+            ["Kong-Admin-Token"] = "letmein-default",
+          },
         }))
         local res_update = cjson.decode(json_update)
 
@@ -190,22 +222,35 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/groups/:groups/roles :", function()
-      local group, role, workspace
+    describe("/groups/:groups/roles : ", function()
+      local function register_resources(db, ws)
+        local _, user_role, err = ee_helpers.register_rbac_resources(db, ws)
+        -- ensure resources
+        assert.is.falsy(err)
+      
+        return user_role.role, "letmein-" .. ws
+      end
 
-      local function insert_entities()
+      local function insert_entities(workspace)
         local group = assert(db.groups:insert{ name = "test_group_" .. utils.uuid()})
-        local role = assert(db.rbac_roles:insert{ name = "test_role_" .. utils.uuid()})
-        local workspace = assert(db.workspaces:insert{ name = "test_workspace_" .. utils.uuid()})
-        
-        assert(db.workspace_entities:insert{ 
-          workspace_id        = workspace.id,
-          workspace_name      = workspace.name,
-          entity_id           = role.id,
-          unique_field_name   = "id",
-        })
+        local role, token
 
-        return group, role, workspace
+        if not workspace then
+          workspace = assert(db.workspaces:insert({ name = "test_ws_" .. utils.uuid()}))
+          workspaces.run_with_ws_scope({ workspace }, function()
+            role, token = register_resources(db, workspace.name)
+          end)
+        else
+          workspaces.run_with_ws_scope({ workspace }, function()
+            role = assert(db.rbac_roles:insert(
+              { name = "test_role_" .. utils.uuid() }
+            ))
+          end)
+
+          token = "letmein-" .. workspace.name
+        end
+
+        return group, role, workspace, token
       end
 
       local function insert_mapping(group, role, workspace)
@@ -216,22 +261,25 @@ for _, strategy in helpers.each_strategy() do
           group 	  = { id = group.id },
         }
 
-        assert(db.group_rbac_roles:insert(mapping))
+        workspaces.run_with_ws_scope({ workspace }, function()
+          assert(db.group_rbac_roles:insert(mapping))
+        end)
       end
 
       describe("GET", function()
-        before_each(function()
-          group, role, workspace = insert_entities()
+        local group, role, workspace, token
+
+        lazy_setup(function()
+          group, role, workspace, token = insert_entities()
           insert_mapping(group, role, workspace)
         end)
 
-        it("The endpoint should list roles by a group id", function()
-          local json = assert.res_status(200, assert(client:send {
-            method = "GET",
-            path = "/groups/" .. group.id .. "/roles",
-          }))
+        lazy_teardown(function()
+          db:truncate("rbac_roles")
+        end)
 
-          local res = cjson.decode(json)
+        it("The endpoint should list roles by a group id", function()
+          local res = get_request("/groups/" .. group.id .. "/roles", token)
 
           assert.same(res.data[1].group.id, group.id)
           assert.same(res.data[1].workspace.id, workspace.id)
@@ -239,12 +287,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("The endpoint should list roles by a group name", function()
-          local json = assert.res_status(200, assert(client:send {
-            method = "GET",
-            path = "/groups/" .. group.name .. "/roles",
-          }))
-
-          local res = cjson.decode(json)
+          local res = get_request("/groups/" .. group.name .. "/roles", token)
 
           assert.same(res.data[1].group.id, group.id)
           assert.same(res.data[1].workspace.id, workspace.id)
@@ -255,13 +298,13 @@ for _, strategy in helpers.each_strategy() do
           local qty = 3
 
           for i = 1, qty do
-            local _, _role, _workspace = insert_entities()
+            local _, _role = insert_entities(workspace)
             -- insert mapping with one group
-            insert_mapping(group, _role, _workspace)
+            insert_mapping(group, _role, workspace)
           end
 
-          local res_1 = get_request("/groups/" .. group.id .. "/roles?size=" .. qty-1)
-          local res_2 = get_request(res_1.next)
+          local res_1 = get_request("/groups/" .. group.id .. "/roles?size=" .. qty-1, token)
+          local res_2 = get_request(res_1.next, token)
 
           -- it's qty+1  since,
           -- there is 1 mapping created during the "before_each"
@@ -270,6 +313,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("POST", function()
+        local group, role, workspace, token
+
         local function check_create(res_code, key, _group, _role, _workspace)
           local json = assert.res_status(res_code, assert(client:send {
             method = "POST",
@@ -280,6 +325,7 @@ for _, strategy in helpers.each_strategy() do
             },
             headers = {
               ["Content-Type"] = "application/json",
+              ["Kong-Admin-Token"] = token,
             },
           }))
           
@@ -294,8 +340,17 @@ for _, strategy in helpers.each_strategy() do
           assert.same(res.rbac_role.id, _role.id)
         end
         
+        lazy_setup(function()
+          group, role, workspace, token = insert_entities()
+          insert_mapping(group, role, workspace)
+        end)
+
+        lazy_teardown(function()
+          db:truncate("rbac_roles")
+        end)
+
         it("The endpoint should not create a mapping with incorrect params", function()
-          local _group, _role, _workspace = insert_entities()
+          local _group, _role = insert_entities(workspace)
 
           do
             -- body params need to be correct
@@ -307,6 +362,7 @@ for _, strategy in helpers.each_strategy() do
               },
               headers = {
                 ["Content-Type"] = "application/json",
+                ["Kong-Admin-Token"] = token,
               },
             }))
             assert.same("must provide the workspace_id", cjson.decode(json_no_workspace).message)
@@ -315,10 +371,11 @@ for _, strategy in helpers.each_strategy() do
               method = "POST",
               path = "/groups/" .. _group.id .. "/roles",
               body = {
-                workspace_id = _workspace.id,
+                workspace_id = workspace.id,
               },
               headers = {
                 ["Content-Type"] = "application/json",
+                ["Kong-Admin-Token"] = token,
               },
             }))
             assert.same("must provide the rbac_role_id", cjson.decode(json_no_role).message)
@@ -328,18 +385,6 @@ for _, strategy in helpers.each_strategy() do
             -- entities need to be found
             assert.res_status(404, assert(client:send {
               method = "POST",
-              path = "/groups/" .. utils.uuid() .. "/roles",
-              body = {
-                rbac_role_id = _role.id,
-                workspace_id = _workspace.id,
-              },
-              headers = {
-                ["Content-Type"] = "application/json",
-              },
-            }))
-
-            assert.res_status(404, assert(client:send {
-              method = "POST",
               path = "/groups/" .. _group.id .. "/roles",
               body = {
                 workspace_id = utils.uuid(),
@@ -347,6 +392,7 @@ for _, strategy in helpers.each_strategy() do
               },
               headers = {
                 ["Content-Type"] = "application/json",
+                ["Kong-Admin-Token"] = token,
               },
             }))
 
@@ -354,35 +400,39 @@ for _, strategy in helpers.each_strategy() do
               method = "POST",
               path = "/groups/" .. _group.id .. "/roles",
               body = {
-                workspace_id = _workspace.id,
+                workspace_id = workspace.id,
                 rbac_role_id = utils.uuid(),
               },
               headers = {
                 ["Content-Type"] = "application/json",
+                ["Kong-Admin-Token"] = token,
               },
             }))
           end
         end)
 
-        it("The endpoint should not create a mapping with incorrect ids", function()
-          local _group, _, _workspace = insert_entities()
+        it("The endpoint should not create a mapping with incorrect ids", function() 
           local _role = assert(db.rbac_roles:insert{ name = "test_role_" .. utils.uuid()})
+          local res_roles_default = get_request("/default/rbac/roles", token)
 
-          check_create(404, _group.id, _group, _role, _workspace)
+          assert.same(_role.id, res_roles_default.data[1].id)
+          check_create(404, group.id, group, _role, workspace)	
         end)
 
         it("The endpoint should create a mapping with correct params by id", function()
-          local _group, _role, _workspace = insert_entities()
-          check_create(201, _group.id, _group, _role, _workspace)
+          local _group, _role = insert_entities(workspace)
+          check_create(201, _group.id, _group, _role, workspace)
         end)
 
         it("The endpoint should create a mapping with correct params by group name", function()
-          local _group, _role, _workspace = insert_entities()
-          check_create(201, _group.name, _group, _role, _workspace)
+          local _group, _role = insert_entities(workspace)
+          check_create(201, _group.name, _group, _role, workspace)
         end)
       end)
 
       describe("DELETE", function()
+        local group, role, workspace, token
+
         local function check_delete(key)
           assert.res_status(204, assert(client:send {
             method = "DELETE",
@@ -393,22 +443,22 @@ for _, strategy in helpers.each_strategy() do
             },
             headers = {
               ["Content-Type"] = "application/json",
+              ["Kong-Admin-Token"] = token,
             },
           }))
 
-          local json = assert.res_status(200, assert(client:send {
-            method = "GET",
-            path = "/groups/" .. group.id .. "/roles",
-          }))
-
-          local res = cjson.decode(json)
+          local res = get_request("/groups/" .. group.id .. "/roles", token)
 
           assert.same({}, res.data)
         end
 
         before_each(function()
-          group, role, workspace = insert_entities()
+          group, role, workspace, token = insert_entities(workspace)
           insert_mapping(group, role, workspace)
+        end)
+
+        lazy_teardown(function()
+          db:truncate("rbac_roles")
         end)
 
         it("The endpoint should delete a mapping with correct params by id", function()

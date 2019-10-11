@@ -2,6 +2,7 @@ local pl_stringx = require "pl.stringx"
 local lyaml      = require "lyaml"
 local singletons = require "kong.singletons"
 local constants  = require "kong.constants"
+local cjson      = require "cjson.safe"
 
 local decode_base64 = ngx.decode_base64
 local split = pl_stringx.split
@@ -207,9 +208,16 @@ end
 
 local function parse_spec_contents(contents)
   local headmatter = {}
-  local ok, parsed_contents = pcall(yaml_load, contents)
-  if not ok or not parsed_contents then
-    return headmatter, contents
+  local parsed_contents, ok
+
+  -- first try to parse as JSON
+  parsed_contents = cjson.decode(contents)
+  if not parsed_contents then
+    -- if fail, try as YAML
+    ok, parsed_contents = pcall(yaml_load, contents)
+    if not ok or not parsed_contents  then
+      return headmatter, contents
+    end
   end
 
   if parsed_contents["x-headmatter"] then
@@ -224,7 +232,7 @@ local function parse_spec_contents(contents)
     headmatter.title = parsed_contents.info.title
   end
 
-  return headmatter, contents
+  return headmatter, contents, parsed_contents
 end
 
 
@@ -276,7 +284,7 @@ local function get_collection_conf(route)
 end
 
 
-local function parse_content(file, params)
+local function parse_content(file)
   local output = true
   local route_type = ROUTE_TYPES.DEFAULT
   local path_meta, err = get_path_meta(file.path)
@@ -284,12 +292,13 @@ local function parse_content(file, params)
     return err
   end
 
-  local parse_file = parse_file_contents
+  local headmatter, body, parsed
   if is_spec_path(file.path) then
-    parse_file = parse_spec_contents
+    headmatter, body, parsed = parse_spec_contents(file.contents)
+  else
+    headmatter, body = parse_file_contents(file.contents)
   end
 
-  local headmatter, body = parse_file(file.contents)
   if not headmatter or not body then
     return nil, "contents: cannot parse, files with 'content/' prefix must have valid headmatter/body syntax"
   end
@@ -356,6 +365,7 @@ local function parse_content(file, params)
     route      = route,
     path       = file.path,
     body       = body,
+    parsed     = parsed, -- specs only
   }
 end
 

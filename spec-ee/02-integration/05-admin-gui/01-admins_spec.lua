@@ -737,7 +737,7 @@ for _, strategy in helpers.each_strategy() do
               email = "gruce@konghq.com",
             }
           })
-          assert.res_status(201, res)
+          assert.res_status(200, res)
 
           local num_secrets = 0
           for _, err in db.consumer_reset_secrets:each_for_consumer({ id = admin.consumer.id }) do

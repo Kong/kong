@@ -15,6 +15,7 @@ local function truncate_tables(db)
   db:truncate("rbac_user_roles")
   db:truncate("rbac_roles")
   db:truncate("rbac_users")
+  db:truncate("groups")
   db:truncate("admins")
 end
 
@@ -45,17 +46,19 @@ end
 
 local function admin(db, workspace, name, role, email)
   return workspaces.run_with_ws_scope({workspace}, function ()
-    local admin = db.admins:insert({
+    local admin = assert(db.admins:insert({
       username = name,
       email = email,
       status = 4, -- TODO remove once admins are auto-tagged as invited
-    })
+    }))
 
-    local role = db.rbac_roles:select_by_name(role)
-    db.rbac_user_roles:insert({
-      user = { id = admin.rbac_user.id },
-      role = { id = role.id }
-    })
+    if role then
+      local role = db.rbac_roles:select_by_name(role)
+      db.rbac_user_roles:insert({
+        user = { id = admin.rbac_user.id },
+        role = { id = role.id }
+      })
+    end
 
     local raw_user_token = utils.uuid()
     assert(db.rbac_users:update({id = admin.rbac_user.id}, {
@@ -71,7 +74,12 @@ end
 for _, strategy in helpers.each_strategy() do
   describe("Admin API authentication on #" .. strategy, function()
     lazy_setup(function()
-      _, db, dao = helpers.get_db_utils(strategy)
+      _, db, dao = helpers.get_db_utils(strategy, {
+        'services',
+        'routes',
+        'consumers',
+        'plugins'
+      }, { "ldap-auth-advanced" })
     end)
 
     lazy_teardown(function()
@@ -85,7 +93,6 @@ for _, strategy in helpers.each_strategy() do
       local super_admin, read_only_admin, test_admin
 
       lazy_setup(function()
-        helpers.stop_kong()
         truncate_tables(db)
 
         assert(helpers.start_kong({
@@ -469,7 +476,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("key-auth authentication", function()
+    pending("key-auth authentication", function()
       local super_admin, read_only_admin
 
       setup(function()
@@ -566,6 +573,210 @@ for _, strategy in helpers.each_strategy() do
           })
 
           assert.res_status(401, res)
+        end)
+      end)
+    end)
+
+    describe("ldap-auth-advanced - authentication groups", function()
+      local super_admin, read_only_admin, other_ws_admin
+
+      lazy_setup(function()
+        helpers.stop_kong()
+        truncate_tables(db)
+
+        assert(helpers.start_kong({
+          plugins = "bundled, ldap-auth-advanced",
+          database   = strategy,
+          admin_gui_auth = "ldap-auth-advanced",
+          enforce_rbac = "on",
+          admin_gui_auth_conf = '{"attribute":"cn","base_dn":"cn=users,dc=ldap,dc=mashape,dc=com","bind_dn":"cn=ophelia,cn=users,dc=ldap,dc=mashape,dc=com","ldap_password":"passw2rd1111A$","cache_ttl":2,"header_type":"Basic","keepalive":60000,"ldap_host":"localhost","ldap_port":389,"start_tls":false,"timeout":10000,"verify_ldap_host":true}',
+          rbac_auth_header = 'Kong-Admin-Token',
+          smtp_mock = true,
+        }))
+
+        client = assert(helpers.admin_client())
+
+        local ws = setup_ws_defaults(dao, db) -- default workspace
+
+        super_admin = admin(db, ws, 'MacBeth')
+        read_only_admin = admin(db, ws, 'Ophelia')
+
+        local read_only_role = assert(db.rbac_roles:select_by_name('read-only'))
+        local super_admin_role = assert(db.rbac_roles:select_by_name('super-admin'))
+        local group1 = db.groups:insert({ name = 'test-group-1' })
+        local group2 = db.groups:insert({ name = 'test-group-2' })
+        local group3 = db.groups:insert({ name = 'test-group-3' })
+
+        assert(db.group_rbac_roles:insert({
+          group = group1,
+          rbac_role = { id = super_admin_role.id },
+          workspace = ws,
+        }))
+        assert(db.group_rbac_roles:insert({
+          group = group2,
+          rbac_role = { id = read_only_role.id },
+          workspace = ws,
+        }))
+
+        -- give the super admin a non ldap-specified role
+        local user_specified_role = db.rbac_roles:insert({ name = "no-read-service" })
+        post(client, "/rbac/roles/no-read-service/endpoints", {
+          workspace = "default",
+          endpoint = "/services",
+          actions = "read",
+          negative = true,
+        }, { ['Kong-Admin-Token'] = 'letmein-default' }, 201)
+        assert(db.rbac_user_roles:insert({
+          user = super_admin.rbac_user,
+          role = user_specified_role,
+        }))
+
+        local another_ws = setup_ws_defaults(dao, db, 'another-one')
+        other_ws_admin = admin(db, ws, 'Hamlet')
+        local another_role = db.rbac_roles:insert({ name = "workspace-super-admin" })
+        post(client, "/another-one/rbac/roles/workspace-super-admin/endpoints", {
+          workspace = "another-one",
+          endpoint = "*",
+          actions = "create,read,update,delete",
+          negative = false,
+        }, { ['Kong-Admin-Token'] = 'letmein-default' }, 201)
+        ngx.ctx.workspaces = {}
+        assert(db.group_rbac_roles:insert({
+          group = group3,
+          rbac_role = { id = another_role.id },
+          workspace = another_ws,
+        }))
+      end)
+
+      lazy_teardown(function()
+        if client then
+          client:close()
+        end
+      end)
+
+      describe("groups - rbac roles mapped from ldap groups", function()
+        it("read-only user - can login and only read resources", function()
+          local cookie = get_admin_cookie_basic_auth(client, read_only_admin.username,
+                                                     'passw2rd1111A$')
+          local res = assert(client:send({
+            method = "GET",
+            path = "/userinfo",
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = read_only_admin.username,
+            }
+          }))
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.same({"test-group-2"}, json.groups)
+          assert.same({ ["*"] = { ["*"] = { actions = { "read" },
+                      negative = false } }}, json.permissions.endpoints)
+
+          res = assert(client:send({
+            method = "POST",
+            path = "/consumers",
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = read_only_admin.username,
+              ["Content-Type"]     = "application/json",
+            },
+            body = {
+              username = "somebody-that-i-used-to-know"
+            }
+          }))
+
+          -- cannot create consumers
+          assert.res_status(403, res)
+
+          res = assert(client:send({
+            method = "GET",
+            path = "/consumers",
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = read_only_admin.username,
+            },
+          }))
+
+          -- but can read consumers
+          assert.res_status(200, res)
+        end)
+
+        it("super-admin user - can login and read/create resources", function()
+          local cookie = get_admin_cookie_basic_auth(client, super_admin.username,
+                                                     'passw2rd1111A$')
+          local res = client:send {
+            method = "GET",
+            path = "/userinfo",
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = super_admin.username,
+            }
+          }
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.same({"test-group-1", "test-group-3"}, json.groups)
+          assert.same({ "delete", "create", "update", "read" },
+                      json.permissions.endpoints["*"]["*"].actions)
+
+          res = assert(client:send({
+            method = "POST",
+            path = "/consumers",
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = super_admin.username,
+              ["Content-Type"]     = "application/json",
+            },
+            body = {
+              username = "somebody-that-i-used-to-know"
+            }
+          }))
+
+          assert.res_status(201, res)
+        end)
+
+        it("super-admin user - user defined roles are applied", function()
+          local cookie = get_admin_cookie_basic_auth(client, super_admin.username, 'passw2rd1111A$')
+          local res = client:send {
+            method = "GET",
+            path = "/services",
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = super_admin.username,
+            }
+          }
+
+          assert.res_status(403, res)
+        end)
+
+        it("groups with roles in another workspace are applied", function()
+          local cookie = get_admin_cookie_basic_auth(client, other_ws_admin.username,
+                                                     'passw2rd1111A$')
+          local req = function (path)
+            return assert(client:send({
+              method = "GET",
+              path = path,
+              headers = {
+                ["cookie"] = cookie,
+                ["Kong-Admin-User"] = other_ws_admin.username,
+              }
+            }))
+          end
+
+          local res = req("/userinfo")
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same({"test-group-3"}, json.groups)
+
+          -- can only access entities in their workspace
+          res = req("/services")
+          assert.res_status(403, res)
+
+          res = req("/another-one/services")
+          assert.res_status(200, res)
         end)
       end)
     end)

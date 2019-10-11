@@ -57,6 +57,16 @@ for _, strategy in helpers.each_strategy() do
       client:close()
     end)
 
+    it("returns 400 on empty path list", function()
+      local res = assert(client:send{
+        method = "POST",
+        path = "/ws2/services/ws2-service/routes",
+        body = '{"protocols":["http"],"methods":["GET"],"hosts":[],"strip_path":true,"preserve_host":false,"service":{"id":"'.. ws2_service.id .. '"}}',
+        headers = {["Content-Type"] = "application/json"}
+      })
+      return cjson.decode(assert.res_status(400, res))
+    end)
+
     it("returns 400 on wrong workspace", function()
       local res = assert(client:send{
         method = "POST",
@@ -145,6 +155,25 @@ for _, strategy in helpers.each_strategy() do
         headers = {["Content-Type"] = "application/json"}
       })
       return cjson.decode(assert.res_status(200, res))
+    end)
+
+    it("returns 200 when paths is empty with PATCH", function()
+      local res = assert(client:send{
+        method = "PATCH",
+        path = "/ws2/routes/ws2_route",
+        body = '{"protocols":["http"],"methods":["GET"],"hosts":[],"paths":[],"strip_path":true,"preserve_host":false,"service":{"id":"'.. ws2_service.id .. '"}}',
+        headers = {["Content-Type"] = "application/json"}
+      })
+      return cjson.decode(assert.res_status(200, res))
+    end)
+    it("returns 400 when paths is null with PATCH", function()
+      local res = assert(client:send{
+        method = "PATCH",
+        path = "/ws2/routes/ws2_route",
+        body = '{"protocols":["http"],"methods":["GET"],"hosts":[],"paths":null,"strip_path":true,"preserve_host":false,"service":{"id":"'.. ws2_service.id .. '"}}',
+        headers = {["Content-Type"] = "application/json"}
+      })
+      return cjson.decode(assert.res_status(400, res))
     end)
   end)
 end

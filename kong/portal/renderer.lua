@@ -49,10 +49,6 @@ end
 
 
 local function set_path(path)
-  local workspace = workspaces.get_workspace()
-
-  path = pl_stringx.replace(path, '/' .. workspace.name .. '/', '')
-  path = pl_stringx.replace(path, '/' .. workspace.name, '')
   path = pl_stringx.rstrip(path, '/')
   path = pl_stringx.lstrip(path, '/')
 
@@ -65,9 +61,7 @@ end
 
 
 local function set_route_config(path)
-  local workspace = workspaces.get_workspace()
-  path = pl_stringx.replace(path, '/' .. workspace.name .. '/', '')
-  path = pl_stringx.replace(path, '/' .. workspace.name, '')
+
   path = pl_stringx.rstrip(path, '/')
   path = pl_stringx.lstrip(path, '/')
 
@@ -283,9 +277,8 @@ local function set_render_ctx(self)
 
   local route = self.path
   if self.is_admin then
-    local path = pl_stringx.replace(self.path, workspace.name .. '/', '')
-    local file = singletons.db.files:select_by_path(path)
-    if not path then
+    local file = singletons.db.files:select_by_path(self.path)
+    if not self.path then
       file = {}
     end
 

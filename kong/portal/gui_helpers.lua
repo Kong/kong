@@ -72,6 +72,11 @@ function _M.set_workspace_by_path(self)
     return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
+  if workspace and workspace.name == self.params.workspace_name then
+    -- strip workspace from path if not default
+    self.path = self.path:sub(# ("/" .. workspace_name) + 1)
+  end
+
   -- unable to find workspace associated with workspace_name, fallback to default
   if not workspace then
     workspace, err = workspaces.fetch_workspace(workspaces.DEFAULT_WORKSPACE)

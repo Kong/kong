@@ -43,7 +43,7 @@ return {
     end,
 
     POST = function(self, _, _, parent)
-      local ok, err = workspaces.is_route_crud_allowed(self, singletons.router)
+      local ok, err = workspaces.is_route_crud_allowed(self, singletons.router, true)
       if not ok then
         return kong.response.exit(err.code, {message = err.message})
       end
