@@ -84,6 +84,13 @@ local function is_spec_path(path)
 end
 
 
+local function is_config_path(path)
+  return to_bool(match(path, "portal.conf.yaml")) or
+         to_bool(match(path, "theme.conf.yaml")) or
+         to_bool(match(path, "router.conf.yaml"))
+end
+
+
 local function is_layout_path(path)
   return to_bool(match(path, "^themes/[%w-]+/layouts/"))
 end
@@ -96,6 +103,11 @@ end
 
 local function is_asset_path(path)
   return to_bool(match(path, "^themes/[%w-]+/assets/"))
+end
+
+
+local function is_collection_path(path)
+  return is_content_path(path) and to_bool(match(path, "/_[%w-]+/"))
 end
 
 
@@ -374,6 +386,8 @@ return {
   is_content      = is_content,
   is_spec         = is_spec,
   is_content_path = is_content_path,
+  is_collection_path = is_collection_path,
+  is_config_path  = is_config_path,
   is_spec_path    = is_spec_path,
   is_valid_content_ext = is_valid_content_ext,
   is_valid_spec_ext = is_valid_spec_ext,
@@ -391,4 +405,3 @@ return {
   parse_content   = parse_content,
   get_conf        = get_conf,
 }
-
