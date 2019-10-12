@@ -504,7 +504,6 @@ local function reload_all_upstreams()
     return true
   end
 
-  kong.log.notice("reload all upstreams")
   local upstreams_dict = {}
   for up, err in singletons.db.upstreams:each() do
     if err then
