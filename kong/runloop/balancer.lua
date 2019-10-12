@@ -12,6 +12,7 @@ local log = ngx.log
 local sleep = ngx.sleep
 local min = math.min
 local max = math.max
+local timer_every  = ngx.timer.every
 
 local CRIT  = ngx.CRIT
 local ERR   = ngx.ERR
@@ -515,6 +516,7 @@ local function reload_all_upstreams()
   end
   upstream_version = new_upstream_version
   all_upstreams = upstreams_dict
+  return true
 end
 
 local get_all_upstreams
@@ -766,6 +768,13 @@ local function init()
     end
   end
   log(DEBUG, "initialized ", oks, " balancer(s), ", errs, " error(s)")
+
+  timer_every(1, function(premature)
+    if premature then
+      return
+    end
+    reload_all_upstreams()
+  end)
 end
 
 

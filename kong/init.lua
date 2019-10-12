@@ -73,6 +73,7 @@ local openssl_ssl = require "openssl.ssl"
 local openssl_pkey = require "openssl.pkey"
 local openssl_x509 = require "openssl.x509"
 local runloop = require "kong.runloop.handler"
+local balancer = require "kong.runloop.balancer"
 local mesh = require "kong.runloop.mesh"
 local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
@@ -439,6 +440,7 @@ function Kong.init()
     end
 
     assert(runloop.build_router("init"))
+    assert(balancer.reload_all_upstreams())
   end
 
   db:close()
