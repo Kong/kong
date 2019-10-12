@@ -494,7 +494,7 @@ local function check_target_history(upstream, balancer)
   return true
 end
 
-local all_upstreams
+local all_upstreams = {}
 local upstream_version = utils.uuid()
 local new_upstream_version = utils.uuid()
 

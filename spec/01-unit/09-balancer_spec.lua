@@ -258,6 +258,7 @@ describe("Balancer", function()
         self._cache[key] = nil
       end
     }
+    balancer.reload_all_upstreams()
 
 
   end)
@@ -310,7 +311,6 @@ describe("Balancer", function()
   describe("get_balancer()", function()
     local dns_client = require("resty.dns.client")
     dns_client.init()
-    balancer.reload_all_upstreams()
 
     lazy_setup(function()
       -- In these tests, we pass `true` to get_balancer
@@ -352,7 +352,6 @@ describe("Balancer", function()
   end)
 
   describe("load_upstreams_dict_into_memory()", function()
-    balancer.reload_all_upstreams()
     local upstreams_dict
     lazy_setup(function()
       upstreams_dict = balancer._load_upstreams_dict_into_memory()
@@ -369,7 +368,6 @@ describe("Balancer", function()
   end)
 
   describe("get_all_upstreams()", function()
-    balancer.reload_all_upstreams()
     it("gets a map of all upstream names to ids", function()
       local upstreams_dict = balancer.get_all_upstreams()
 
@@ -383,7 +381,6 @@ describe("Balancer", function()
   end)
 
   describe("get_upstream_by_name()", function()
-    balancer.reload_all_upstreams()
     it("retrieves a complete upstream based on its name", function()
       for _, fixture in ipairs(UPSTREAMS_FIXTURES) do
         local upstream = balancer.get_upstream_by_name(fixture.name)

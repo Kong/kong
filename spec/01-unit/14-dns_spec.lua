@@ -26,7 +26,6 @@ describe("DNS", function()
     singletons.origins = {}
 
     balancer = require "kong.runloop.balancer"
-    balancer.reload_all_upstreams()
     balancer.init()
 
     resolver = require "resty.dns.resolver"
