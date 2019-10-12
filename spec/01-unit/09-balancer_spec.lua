@@ -369,6 +369,7 @@ describe("Balancer", function()
 
   describe("get_all_upstreams()", function()
     it("gets a map of all upstream names to ids", function()
+      balancer.reload_all_upstreams()
       local upstreams_dict = balancer.get_all_upstreams()
 
       local fixture_dict = {}
@@ -382,6 +383,7 @@ describe("Balancer", function()
 
   describe("get_upstream_by_name()", function()
     it("retrieves a complete upstream based on its name", function()
+      balancer.reload_all_upstreams()
       for _, fixture in ipairs(UPSTREAMS_FIXTURES) do
         local upstream = balancer.get_upstream_by_name(fixture.name)
         assert.same(fixture, upstream)
