@@ -766,13 +766,6 @@ local function init()
     end
   end
   log(DEBUG, "initialized ", oks, " balancer(s), ", errs, " error(s)")
-
-  timer_every(10, function(premature)
-    if premature then
-      return
-    end
-    reload_all_upstreams()
-  end)
 end
 
 

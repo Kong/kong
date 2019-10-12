@@ -809,6 +809,12 @@ return {
 
 
       balancer.reload_all_upstreams()
+      timer_every(10, function(premature)
+        if premature then
+          return
+        end
+        balancer.reload_all_upstreams()
+      end)
       -- initialize balancers for active healthchecks
       timer_at(0, function()
         balancer.init()
