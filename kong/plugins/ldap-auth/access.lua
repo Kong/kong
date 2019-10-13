@@ -106,12 +106,12 @@ local function ldap_authenticate(given_username, given_password, conf)
     local who = conf.attribute .. "=" .. given_username .. "," .. conf.base_dn
   end
 
-  -- Case attribute is Common Name
+  -- Case attribute is sAMAccountName
   if conf.attribute == "sAMAccountName" then
     local who = user .. "@" .. domain
   end
 
-  -- Case attribute is Common Name
+  -- Case attribute is UPN
   if conf.attribute == "userPrincipalName" then
     local who = given_username
   end
