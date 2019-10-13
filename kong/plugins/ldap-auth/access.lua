@@ -91,7 +91,31 @@ local function ldap_authenticate(given_username, given_password, conf)
     end
   end
 
-  local who = conf.attribute .. "=" .. given_username .. "," .. conf.base_dn
+  -- Get Domain base from base_dn
+  base_dn = conf.base_dn
+  base_dn = string.upper(base_dn)
+
+  domain=""
+  for word in string.gmatch(base_dn, 'DC=([^,]+)') do
+    domain = domain .. "." .. word
+  end
+  domain = string.sub(domain, 2)
+
+  -- Case attribute is Common Name
+  if conf.attribute == "cn" then
+    local who = conf.attribute .. "=" .. given_username .. "," .. conf.base_dn
+  end
+
+  -- Case attribute is Common Name
+  if conf.attribute == "sAMAccountName" then
+    local who = user .. "@" .. domain
+  end
+
+  -- Case attribute is Common Name
+  if conf.attribute == "userPrincipalName" then
+    local who = given_username
+  end
+
   is_authenticated, err = ldap.bind_request(sock, who, given_password)
 
   ok, suppressed_err = sock:setkeepalive(conf.keepalive)
