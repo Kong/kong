@@ -67,7 +67,7 @@ describe("Plugins", function()
       "response-transformer",
       "aws-lambda",
       "azure-functions",
-      --"proxy-cache", XXX- Restore after proxy-cache-advanced is renamed
+      "proxy-cache",
       "prometheus",
       "http-log",
       "statsd",
