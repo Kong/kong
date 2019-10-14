@@ -1,17 +1,15 @@
-## Unreleased
+## 0.3
 
 ### Added
 
-Support for filtering JSON body with new configration `config.whitelist.json`
+- Support for filtering JSON body with new configration `config.whitelist.json`
 added.
-
-
-### Added
 
 - Added a support of status code ranges for `if_status` configuration parameter.
 Now you can provide status code ranges and single status codes together
 (e.g., 201-204,401)
 
+- Support arbitrary transforms through lua functions
 
 ## 0.2
 
