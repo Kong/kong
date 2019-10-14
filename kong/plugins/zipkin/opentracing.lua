@@ -89,8 +89,6 @@ if subsystem == "http" then
   end
 
   function OpenTracingHandler:access(conf)
-    OpenTracingHandler.super.access(self, conf)
-
     local ctx = ngx.ctx
     local opentracing = self:get_context(conf, ctx)
 
@@ -114,8 +112,6 @@ if subsystem == "http" then
   end
 
   function OpenTracingHandler:header_filter(conf)
-    OpenTracingHandler.super.header_filter(self, conf)
-
     local ctx = ngx.ctx
     local opentracing = self:get_context(conf, ctx)
 
@@ -135,8 +131,6 @@ if subsystem == "http" then
   end
 
   function OpenTracingHandler:body_filter(conf)
-    OpenTracingHandler.super.body_filter(self, conf)
-
     local ctx = ngx.ctx
     local opentracing = self:get_context(conf, ctx)
 
@@ -175,8 +169,6 @@ elseif subsystem == "stream" then
   end
 
   function OpenTracingHandler:preread(conf)
-    OpenTracingHandler.super.preread(self, conf)
-
     local ctx = ngx.ctx
     local opentracing = self:get_context(conf, ctx)
 
@@ -194,9 +186,6 @@ end
 
 function OpenTracingHandler:log(conf)
   local now = ngx.now()
-
-  OpenTracingHandler.super.log(self, conf)
-
   local ctx = ngx.ctx
   local opentracing = self:get_context(conf, ctx)
   local request_span = opentracing.request_span
