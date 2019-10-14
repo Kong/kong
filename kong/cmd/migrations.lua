@@ -253,7 +253,9 @@ local function execute(args)
       conf = args.conf,
     })
     if err then error(err) end
-
+  elseif args.command == "reinitialize-workspace-entity-counters" then
+    local counters = require "kong.workspaces.counters"
+    counters.initialize_counters(db)
   else
     error("unreachable")
   end
