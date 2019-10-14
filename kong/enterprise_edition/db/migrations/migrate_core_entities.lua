@@ -140,6 +140,17 @@ local strategies = function(connector)
         )
       end,
 
+      update_entity_field = function(entity, entity_schema, field_name, field_value)
+        return fmt([[
+          UPDATE %s SET %s = %s WHERE id = %s;
+          ]],
+          pg_escape_identifier(entity_schema.name),
+          pg_escape_identifier(field_name),
+          field_value,
+          pg_escape_literal(entity.id)
+        )
+      end,
+
       incr_workspace_counter = function(workspace, entity_type, count)
         return fmt([[
           INSERT INTO workspace_entity_counters (workspace_id, entity_type, count)
@@ -243,6 +254,17 @@ local strategies = function(connector)
         }
       end,
 
+      update_entity_field = function(entity, entity_schema, field_name, field_value)
+        local query = "UPDATE %s SET %s = ? WHERE id = ?;"
+
+        return {
+          fmt(query, entity_schema.name, field_name), {
+            field_value,
+            c_escape(entity.id, "uuid")
+          }
+        }
+      end,
+
       incr_workspace_counter = function(workspace, entity_type, count)
         return {
           [[ UPDATE workspace_entity_counters set
@@ -271,6 +293,18 @@ local strategies = function(connector)
       end,
     }
   }
+end
+
+
+-- updates entity data with "delta" or missing information during the migration between CE and EE
+local function entity_correction(queries, entity_fixes, entity_schema, entity)
+  -- consumers
+  if entity_schema.name == "consumers" then
+    -- update default value for field 'type' mainly for cassandra
+    if not entity.type then
+      entity_fixes[#entity_fixes + 1] = queries.update_entity_field(entity, entity_schema, "type", 0)
+    end
+  end
 end
 
 
@@ -322,6 +356,9 @@ local function migrate_core_entities(connector, strategy, opts)
       local update_counter = false
       local entity_id = row[relation.primary_key]
       local unique_field_name = relation.primary_key
+
+      -- add entity correction if needed
+      entity_correction(queries, entity_fixes, schema, row)
 
       -- One entity per primary key
       -- check if primary key relation of entity is already migrated
