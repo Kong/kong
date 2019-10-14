@@ -1,5 +1,9 @@
 # Changelog; Kong Serverless Functions Plugin
 
+## 0.3.1
+
+- Do not execute functions when validating ([Kong/kong#5110](https://github.com/Kong/kong/issues/5110))
+
 ## 0.3.0
 
 - Functions can now have upvalues
