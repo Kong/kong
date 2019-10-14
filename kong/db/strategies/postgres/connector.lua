@@ -292,17 +292,13 @@ end
 
 function _mt:init_worker(strategies)
   if ngx.worker.id() == 0 then
-    local graph
-    local found = false
+    local graph = tsort.new()
+
+    graph:add("cluster_events")
 
     for _, strategy in pairs(strategies) do
       local schema = strategy.schema
       if schema.ttl then
-        if not found then
-          graph = tsort.new()
-          found = true
-        end
-
         local name = schema.name
         graph:add(name)
         for _, field in schema:each_field() do
@@ -313,21 +309,20 @@ function _mt:init_worker(strategies)
       end
     end
 
-    if not found then
-      return true
-    end
-
     local sorted_strategies = graph:sort()
     local ttl_escaped = self:escape_identifier("ttl")
+    local expire_at_escaped = self:escape_identifier("expire_at")
     local cleanup_statements = {}
     local cleanup_statements_count = #sorted_strategies
     for i = 1, cleanup_statements_count do
       local table_name = sorted_strategies[i]
+      local column_name = table_name == "cluster_events" and expire_at_escaped
+                                                          or ttl_escaped
       cleanup_statements[i] = concat {
         "  DELETE FROM ",
         self:escape_identifier(table_name),
         " WHERE ",
-        ttl_escaped,
+        column_name,
         " < CURRENT_TIMESTAMP AT TIME ZONE 'UTC';"
       }
     end
