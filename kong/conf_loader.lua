@@ -235,6 +235,7 @@ local CONF_INFERENCES = {
 
   lua_ssl_verify_depth = { typ = "number" },
   lua_socket_pool_size = { typ = "number" },
+  service_mesh = { typ = "boolean" },
 }
 
 
@@ -545,6 +546,13 @@ local function check_and_infer(conf)
 
   if conf.router_update_frequency <= 0 then
     errors[#errors + 1] = "router_update_frequency must be greater than 0"
+  end
+
+  if conf.service_mesh then
+    log.warn("You enabled the deprecated Service Mesh feature of " ..
+             "the Kong Gateway, which will cause upstream HTTPS request " ..
+             "to behave incorrectly. Service Mesh support" ..
+             "in Kong Gateway will be removed in the next release.")
   end
 
   return #errors == 0, errors[1], errors

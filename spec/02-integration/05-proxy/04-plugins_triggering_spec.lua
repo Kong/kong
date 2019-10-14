@@ -163,6 +163,7 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        service_mesh = "on",
       }))
 
       proxy_client = helpers.proxy_client()
@@ -1486,6 +1487,7 @@ for _, strategy in helpers.each_strategy() do
             prefix       = "servroot1",
             database     = strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
+            service_mesh = "on",
           })
 
           assert(helpers.start_kong {
@@ -1493,6 +1495,7 @@ for _, strategy in helpers.each_strategy() do
             database     = strategy,
             proxy_listen = "0.0.0.0:18000, 0.0.0.0:18443 ssl",
             admin_listen = "off",
+            service_mesh = "on",
           })
 
           proxy_client = helpers.proxy_client()
@@ -2170,6 +2173,7 @@ for _, strategy in helpers.each_strategy() do
                             "0.0.0.0:18007,0.0.0.0:18447,0.0.0.0:18008,0.0.0.0:18448",
             proxy_listen  = "off",
             admin_listen  = "off",
+            service_mesh  = "on",
           })
 
           assert(helpers.start_kong {
@@ -2178,6 +2182,7 @@ for _, strategy in helpers.each_strategy() do
             stream_listen = "0.0.0.0:19444,0.0.0.0:19445,0.0.0.0:19448",
             proxy_listen  = "off",
             admin_listen  = "off",
+            service_mesh  = "on",
           })
         end)
 

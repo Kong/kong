@@ -188,6 +188,7 @@ for _, strategy in helpers.each_strategy() do
         stream_listen = helpers.get_proxy_ip(false) .. ":19000," ..
                         helpers.get_proxy_ip(false) .. ":19001," ..
                         helpers.get_proxy_ip(true)  .. ":19443",
+        service_mesh = "on",
 
       }))
 

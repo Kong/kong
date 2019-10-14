@@ -335,7 +335,8 @@ for _, strategy in helpers.each_strategy() do
           origins       = "tcp://127.0.0.1:19000=" ..
                           "tcp://" .. STREAM_UPSTREAM_HOST ..  ":" .. STREAM_UPSTREAM_PORT .. "," ..
                           "tls://127.0.0.1:19443=" ..
-                          "tls://" .. STREAM_UPSTREAM_HOST ..  ":" .. STREAM_UPSTREAM_SSL_PORT
+                          "tls://" .. STREAM_UPSTREAM_HOST ..  ":" .. STREAM_UPSTREAM_SSL_PORT,
+          service_mesh  = "on",
         }))
       end)
 

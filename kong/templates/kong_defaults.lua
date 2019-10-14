@@ -9,6 +9,7 @@ status_access_log = off
 status_error_log = logs/status_error.log
 plugins = bundled
 anonymous_reports = on
+service_mesh = off
 
 proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 http2 ssl
 stream_listen = off
