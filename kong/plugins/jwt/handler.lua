@@ -102,7 +102,7 @@ local function set_consumer(consumer, credential, token)
 
   if credential then
     kong.ctx.shared.authenticated_jwt_token = token -- TODO: wrap in a PDK function?
-    ngx.ctx.authenticated_jwt_token = token  -- backward compatibilty only
+    ngx.ctx.authenticated_jwt_token = token  -- backward compatibility only
 
     if credential.username then
       set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
@@ -149,6 +149,8 @@ local function do_authentication(conf)
   local jwt_secret_key = claims[conf.key_claim_name] or header[conf.key_claim_name]
   if not jwt_secret_key then
     return false, { status = 401, message = "No mandatory '" .. conf.key_claim_name .. "' in claims" }
+  elseif jwt_secret_key == "" then
+    return false, { status = 401, message = "Invalid '" .. conf.key_claim_name .. "' in claims" }
   end
 
   -- Retrieve the secret
