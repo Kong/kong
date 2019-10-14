@@ -1,4 +1,4 @@
-local cost = require "kong.plugins.gql-rate-limiting.cost"
+local cost = require "kong.plugins.graphql-rate-limiting-advanced.cost"
 local build_ast = require "kong.gql.query.build_ast"
 local cjson = require "cjson.safe"
 local Schema = require "kong.gql.schema"

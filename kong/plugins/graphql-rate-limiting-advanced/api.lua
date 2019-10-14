@@ -2,11 +2,11 @@
 local endpoints = require "kong.api.endpoints"
 
 local services_schema = kong.db.services.schema
-local cost_decoration_schema = kong.db.gql_ratelimiting_cost_decoration.schema
+local cost_decoration_schema = kong.db.graphql_ratelimiting_advanced_cost_decoration.schema
 
 
 return {
-    ["/services/:services/gql-rate-limiting/costs"] = {
+    ["/services/:services/graphql-rate-limiting-advanced/costs"] = {
         schema = cost_decoration_schema,
         methods = {
             GET = endpoints.get_collection_endpoint(cost_decoration_schema, services_schema, "service"),
@@ -15,7 +15,7 @@ return {
             PUT = endpoints.put_entity_endpoint(cost_decoration_schema, services_schema, "service")
         }
     },
-    ["/gql-rate-limiting/costs"] = {
+    ["/graphql-rate-limiting-advanced/costs"] = {
         schema = cost_decoration_schema,
         methods = {
             GET = endpoints.get_collection_endpoint(cost_decoration_schema),
@@ -24,7 +24,7 @@ return {
             PUT = endpoints.put_entity_endpoint(cost_decoration_schema),
         }
     },
-    ["/gql-rate-limiting/costs/:gql_ratelimiting_cost_decoration"] = {
+    ["/graphql-rate-limiting-advanced/costs/:graphql_ratelimiting_advanced_cost_decoration"] = {
           schema = cost_decoration_schema,
           methods = {
             GET = endpoints.get_entity_endpoint(cost_decoration_schema),

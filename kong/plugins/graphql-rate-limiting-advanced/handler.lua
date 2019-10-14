@@ -4,8 +4,8 @@ local BasePlugin   = require "kong.plugins.base_plugin"
 local GqlSchema    = require "kong.gql.schema"
 local build_ast    = require "kong.gql.query.build_ast"
 local ratelimiting = require "kong.tools.public.rate-limiting"
-local schema       = require "kong.plugins.gql-rate-limiting.schema"
-local cost         = require "kong.plugins.gql-rate-limiting.cost"
+local schema       = require "kong.plugins.graphql-rate-limiting-advanced.schema"
+local cost         = require "kong.plugins.graphql-rate-limiting-advanced.cost"
 local http         = require "resty.http"
 local cjson        = require "cjson.safe"
 
@@ -118,7 +118,7 @@ end
 
 
 function NewRLHandler:new()
-  NewRLHandler.super.new(self, "gql-rate-limiting")
+  NewRLHandler.super.new(self, "graphql-rate-limiting-advanced")
   self.gql_schema = {}
   self.costs = {}
 end
@@ -130,7 +130,7 @@ function NewRLHandler:init_worker()
   -- to start with, load existing plugins and create the
   -- namespaces/sync timers
   local plugins, err = kong.db.plugins:select_all({
-    name = "gql-rate-limiting",
+    name = "graphql-rate-limiting-advanced",
   })
   if err then
     kong.log.err("err in fetching plugins: ", err)
@@ -153,7 +153,7 @@ function NewRLHandler:init_worker()
 
   -- catch any plugins update and forward config data to each worker
   worker_events.register(function(data)
-    if data.entity.name == "gql-rate-limiting" then
+    if data.entity.name == "graphql-rate-limiting-advanced" then
       worker_events.post("gql-rl", data.operation, data.entity.config)
     end
   end, "crud", "plugins")
@@ -317,7 +317,7 @@ function NewRLHandler:access(conf)
   local query_ast = res
   local gql_schema = self.gql_schema[service.id]
 
-  local costs_db = kong.db.gql_ratelimiting_cost_decoration
+  local costs_db = kong.db.graphql_ratelimiting_advanced_cost_decoration
 
   for cost_dec in costs_db:each_for_service({ id = service.id }, 100) do
     query_ast:decorate_data({ cost_dec.type_path }, gql_schema, {

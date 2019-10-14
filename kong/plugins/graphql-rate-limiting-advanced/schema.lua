@@ -11,7 +11,7 @@ end
 
 
 return {
-  name = "gql-rate-limiting",
+  name = "graphql-rate-limiting-advanced",
   fields = {
     { config = {
         type = "record",
