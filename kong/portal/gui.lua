@@ -1,6 +1,7 @@
 local lapis = require "lapis"
 local ck = require "resty.cookie"
 local pl_file = require "pl.file"
+local pl_pretty   = require "pl.pretty"
 local auth    = require "kong.portal.auth"
 local workspaces  = require "kong.workspaces"
 local gui_helpers = require "kong.portal.gui_helpers"
@@ -51,12 +52,33 @@ local function index_handler(self)
     return
   end
 
+  if self.path:sub(1, #"/assets") == "/assets" then
+    asset_handler(self)
+  end
+
   renderer.set_render_ctx(self)
   local view = renderer.compile_layout()
 
   return kong.response.exit(200, view)
 end
 
+app.handle_404 = function(self)
+  return kong.response.exit(404, constants.PORTAL_RENDERER.FALLBACK_404)
+end
+
+app.handle_error = function(self, err, trace)
+  if err then
+    if type(err) ~= "string" then
+      err = pl_pretty.write(err)
+    end
+    if string.find(err, "don't know how to respond to", nil, true) then
+      return kong.response.exit(405, { message = "Method not allowed"})
+    end
+  end
+
+  ngx.log(ngx.ERR, err, "\n", trace)
+  return kong.response.exit(500, { message = "An unexpected error occurred" })
+end
 
 app:before_filter(function(self)
   local config = kong.configuration
@@ -97,7 +119,7 @@ app:before_filter(function(self)
     self.path = string.gsub(self.path, "/", "", 1)
   end
 
-  if config.portal_gui_use_subdomains then
+  if config.portal_gui_use_subdomains and not self.is_admin then
     gui_helpers.set_workspace_by_subdomain(self)
   else
     gui_helpers.set_workspace_by_path(self)
@@ -109,11 +131,8 @@ app:before_filter(function(self)
   auth.authenticate_gui_session(self, kong.db, {})
 end)
 
-
 app:match("/sitemap.xml", sitemap_handler)
 app:match("/:workspace_name/sitemap.xml", sitemap_handler)
-
-app:match("/:workspace_name/assets/*", asset_handler)
 
 app:match("/:workspace_name(/*)", index_handler)
 app:match("/", index_handler)

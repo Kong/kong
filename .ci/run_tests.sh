@@ -34,6 +34,7 @@ fi
 if [ "$TEST_SUITE" == "unit-ee" ]; then
     make test-ee
 elif [ "$TEST_SUITE" == "integration-ee" ]; then
+    cd .ci/ad-server && make build-ad-server && make clone-plugin && cd ../..
     make test-integration-ee
 elif [ "$TEST_SUITE" == "plugins-ee" ]; then
     make test-plugins-ee

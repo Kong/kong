@@ -102,7 +102,6 @@ local function retrieve_relationship_entity(foreign_factory_key, foreign_id)
     id = foreign_id },
     { skip_rbac = true })
   if err then
-    log(ngx.ERR, "err retrieving relationship via id ", foreign_id, ": ", err)
     return nil, err
   end
 
@@ -303,11 +302,21 @@ end
 _M.get_role_endpoints = get_role_endpoints
 
 
+local function retrieve_group(dao, name)
+  local entity, err = dao:select_by_name(name)
+
+  if err then
+    return nil, err
+  end
+
+  return entity
+end
+
+
 local function retrieve_roles_ids(db, user_id)
   local relationship_ids = {}
   for row, err in db.rbac_user_roles:each_for_user({id = user_id }, nil, {skip_rbac = true}) do
     if err then
-      log(ngx.ERR, "err retrieving roles for user", user_id, ": ", err)
       return nil, err
     end
     relationship_ids[#relationship_ids + 1] = row
@@ -315,6 +324,34 @@ local function retrieve_roles_ids(db, user_id)
 
   return relationship_ids
 end
+
+
+local function retrieve_group_roles_ids(db, group_id)
+  local relations = {}
+  for row, err in db.group_rbac_roles:each_for_group({id = group_id }, nil,
+                                                     {skip_rbac = true})
+  do
+    if err then
+      return nil, err
+    end
+    relations[#relations + 1] = row
+  end
+
+  return relations
+end
+
+
+local function select_from_cache(dao, id, retrieve_entity)
+  local cache_key = dao:cache_key(id)
+  local entity, err = kong.cache:get(cache_key, nil, retrieve_entity, dao, id)
+
+  if err then
+    return nil, err
+  end
+
+  return entity
+end
+
 
 local function get_user_roles(db, user)
   local cache = kong.cache
@@ -326,7 +363,7 @@ local function get_user_roles(db, user)
                                           user.id)
 
   if err then
-    log(ngx.ERR, "err retrieving relationship ids for user: ", err)
+    log(ngx.ERR, "err retrieving roles for user", user.id, ": ", err)
     return nil, err
   end
 
@@ -334,15 +371,13 @@ local function get_user_roles(db, user)
   local relationship_objs = {}
 
   for i = 1, #relationship_ids do
-    local role_entity_key = db.rbac_roles:cache_key(
-      relationship_ids[i]["role"].id)
+    local foreign_id = relationship_ids[i]["role"].id
+    local role_entity_key = db.rbac_roles:cache_key(foreign_id)
 
     local relationship, err = cache:get(role_entity_key, nil,
-      retrieve_relationship_entity,
-      "rbac_roles",
-      relationship_ids[i]["role"].id)
+      retrieve_relationship_entity, "rbac_roles",foreign_id)
     if err then
-      log(ngx.ERR, "err in retrieving relationship: ", err)
+      kong.log.err("err retrieving relationship via id ", foreign_id, ": ", err)
       return nil, err
     end
 
@@ -352,6 +387,56 @@ local function get_user_roles(db, user)
   return relationship_objs
 end
 _M.get_user_roles = get_user_roles
+
+
+function _M.get_groups_roles(db, groups)
+  if not groups then
+    return nil
+  end
+
+  local cache = kong.cache
+
+  for k, group_name in ipairs(groups) do
+    local group, err = select_from_cache(db.groups, group_name, retrieve_group)
+    if err then
+      kong.log.err("err retrieving group by name: ", group_name, err)
+      return nil, err
+    end
+
+    if group then
+
+      local relationship_cache_key = db.group_rbac_roles:cache_key(group.id)
+      local relationship_ids, err = cache:get(relationship_cache_key, nil,
+                                              retrieve_group_roles_ids, db,
+                                              group.id)
+
+      if err then
+        kong.log.err("err retrieving group_rbac_roles for group: ", group.id,
+                     ": ", err)
+        return nil, err
+      end
+
+      -- now get the relationship objects for each relationship id
+      local relationship_objs = {}
+
+      for i = 1, #relationship_ids do
+        local rbac_role_id = relationship_ids[i]["rbac_role"].id
+        local role_entity_key = db.rbac_roles:cache_key(rbac_role_id)
+
+        local relationship, err = cache:get(role_entity_key, nil,
+          retrieve_relationship_entity, "rbac_roles", rbac_role_id)
+        if err then
+          kong.log.err("err retrieving rbac_role for id: ", rbac_role_id, ": ", err)
+          return nil, err
+        end
+
+        relationship_objs[#relationship_objs + 1] = relationship
+      end
+
+      return relationship_objs
+    end
+  end
+end
 
 
 -- allows setting several roles simultaneously, minimizing database accesses
@@ -533,7 +618,7 @@ end
 _M.resolve_role_entity_permissions = resolve_role_entity_permissions
 
 
-local function get_rbac_user_info(rbac_user)
+local function get_rbac_user_info(rbac_user, groups)
   local guest_user = {
     roles = {},
     user = "guest",
@@ -549,7 +634,7 @@ local function get_rbac_user_info(rbac_user)
 
   local ctx = ngx.ctx
   local old_ws_ctx = ctx.workspaces
-  local user, err = _M.load_rbac_ctx(kong.db, ctx, rbac_user)
+  local user, err = _M.load_rbac_ctx(kong.db, ctx, rbac_user, groups)
 
   ctx.workspaces = old_ws_ctx
 
@@ -1151,7 +1236,36 @@ end
 _M.validate_rbac_token = validate_rbac_token
 
 
-function _M.load_rbac_ctx(dao_factory, ctx, rbac_user)
+-- Merges two rbac_user_roles together by `id` to form the union between roles1
+-- and roles2
+--@tparam table roles1
+--@tparam table roles2
+--@tparam table - roles1 ∪ roles2
+function _M.merge_roles(roles1, roles2)
+  local _roles1 = utils.table_merge({}, roles1)
+
+  if not roles2 then
+    return roles1
+  end
+
+  local found = {}
+  for _, r2 in ipairs(roles2) do
+    for _, r1 in ipairs(_roles1) do
+      if r1.id == r2.id then
+        found[r2.id] = true
+        break
+      end
+    end
+    if not found[r2.id] then
+      _roles1[#_roles1 + 1] = r2
+    end
+  end
+
+  return _roles1
+end
+
+
+function _M.load_rbac_ctx(dao_factory, ctx, rbac_user, groups)
   local user = rbac_user
 
   if not user then
@@ -1205,9 +1319,23 @@ function _M.load_rbac_ctx(dao_factory, ctx, rbac_user)
   local _roles = {}
   local _entities_perms = {}
   local _endpoints_perms = {}
+  local group_roles, err = _M.get_groups_roles(dao_factory, groups)
+  if err then
+    kong.log.err("error getting groups roles", err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
+  end
+
   for _, workspace in ipairs(user_ws_scope) do
     ngx.ctx.workspaces = { workspace }
+
     local roles, err = get_user_roles(dao_factory, user)
+    if err then
+      kong.log.err("error getting user roles", err)
+      return kong.response.exit(500, { message = "An unexpected error occurred" })
+    end
+
+    roles = _M.merge_roles(roles, group_roles)
+
     if err then
       return nil, err
     end
@@ -1261,7 +1389,7 @@ function _M.load_rbac_ctx(dao_factory, ctx, rbac_user)
   return rbac_ctx
 end
 
-function _M.validate_user(rbac_user)
+function _M.validate_user(rbac_user, groups)
   if kong.configuration.rbac == "off" then
     return
   end
@@ -1271,7 +1399,7 @@ function _M.validate_user(rbac_user)
     return true
   end
 
-  local rbac_ctx, err = get_rbac_user_info(rbac_user)
+  local rbac_ctx, err = get_rbac_user_info(rbac_user, groups)
   if err then
     ngx.log(ngx.ERR, "[rbac] ", err)
     return kong.response.exit(500, { message = "An unexpected error occurred" })
@@ -1283,7 +1411,7 @@ function _M.validate_user(rbac_user)
 end
 
 
-function _M.validate_endpoint(route_name, route, rbac_user)
+function _M.validate_endpoint(route_name, route, rbac_user, groups)
   if route_name == "default_route" then
     return
   end
@@ -1294,7 +1422,7 @@ function _M.validate_endpoint(route_name, route, rbac_user)
     return
   end
 
-  local rbac_ctx, err = get_rbac_user_info(rbac_user)
+  local rbac_ctx, err = get_rbac_user_info(rbac_user, groups)
   if err then
     ngx.log(ngx.ERR, "[rbac] ", err)
     return kong.response.exit(500, { message = "An unexpected error occurred" })

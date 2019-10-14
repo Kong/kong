@@ -252,6 +252,7 @@ server {
         add_header X-Frame-Options 'sameorigin';
         add_header X-XSS-Protection '1; mode=block';
         add_header X-Content-Type-Options 'nosniff';
+        add_header X-Permitted-Cross-Domain-Policies 'master-only';
         etag off;
     }
 
@@ -264,6 +265,7 @@ server {
         add_header X-Frame-Options 'sameorigin';
         add_header X-XSS-Protection '1; mode=block';
         add_header X-Content-Type-Options 'nosniff';
+        add_header X-Permitted-Cross-Domain-Policies 'master-only';
         etag off;
 
         access_log ${{ADMIN_GUI_ACCESS_LOG}};

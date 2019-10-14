@@ -186,10 +186,7 @@ end
 
 
 local function parse_spec(v)
-  local parsed_spec = file_helpers.parse_content(v)
-  parsed_spec.parsed = parse_oas(v.contents)
-
-  return parsed_spec
+  return file_helpers.parse_content(v)
 end
 
 

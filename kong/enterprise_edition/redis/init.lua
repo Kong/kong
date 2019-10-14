@@ -150,7 +150,7 @@ function _M.connection(conf)
     })
     if err then
       log(ERR, "failed to connect to redis cluster: ", err)
-      return nil
+      return nil, err
     end
   elseif conf.sentinel_master then
     -- creating client for redis sentinel
@@ -167,7 +167,7 @@ function _M.connection(conf)
     })
     if err then
       log(ERR, "failed to connect to redis sentinel: ", err)
-      return nil
+      return nil, err
     end
   else
     -- regular redis
@@ -177,7 +177,7 @@ function _M.connection(conf)
     local ok, err = red:connect(conf.host, conf.port)
     if not ok then
       log(ERR, "failed to connect to Redis: ", err)
-      return nil
+      return nil, err
     end
 
     if conf.password and conf.password ~= "" then
@@ -185,7 +185,7 @@ function _M.connection(conf)
       if not ok then
         log(ERR, "failed to auth to Redis: ", err)
         red:close() -- dont try to hold this connection open if we failed
-        return nil
+        return nil, err
       end
     end
 
@@ -194,14 +194,14 @@ function _M.connection(conf)
       if not ok then
         log(ERR, "failed to change Redis database: ", err)
         red:close()
-        return nil
+        return nil, err
       end
     end
   end
 
   reports.retrieve_redis_version(red)
 
-  return red
+  return red, nil
 end
 
 

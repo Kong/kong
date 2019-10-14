@@ -229,6 +229,9 @@ return {
       local roles, err = workspaces.run_with_ws_scope({}, rbac.get_user_roles,
                                                       kong.db,
                                                       ngx.ctx.rbac.user)
+      local group_roles = rbac.get_groups_roles(kong.db, ngx.ctx.authenticated_groups)
+      roles = rbac.merge_roles(roles, group_roles)
+
       if err then
         log(ERR, "[userinfo] ", err)
         return kong.response.exit(500, err)
@@ -263,6 +266,7 @@ return {
     GET = function(self, dao, helpers)
       return kong.response.exit(200, {
         admin = admins.transmogrify(self.admin),
+        groups = self.groups,
         permissions = self.permissions,
         workspaces = self.workspaces,
       })
