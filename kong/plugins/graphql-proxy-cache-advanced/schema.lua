@@ -1,7 +1,7 @@
-local strategies = require "kong.plugins.gql-proxy-cache.strategies"
+local strategies = require "kong.plugins.graphql-proxy-cache-advanced.strategies"
 
 return {
-  name = "gql-proxy-cache",
+  name = "graphql-proxy-cache-advanced",
   fields = {
     {
       config = {

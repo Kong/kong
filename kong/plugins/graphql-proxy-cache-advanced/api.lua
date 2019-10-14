@@ -1,4 +1,4 @@
-local STRATEGY_PATH = "kong.plugins.gql-proxy-cache.strategies"
+local STRATEGY_PATH = "kong.plugins.graphql-proxy-cache-advanced.strategies"
 
 
 local kong = kong
@@ -9,18 +9,18 @@ local HTTP_INTERNAL_SERVER_ERROR_MSG = "An unexpected error occurred"
 
 local function broadcast_purge(plugin_id, cache_key)
   local data = string.format("%s:%s", plugin_id, cache_key or "nil")
-  ngx.log(ngx.DEBUG, "[gql-proxy-cache] broadcasting purge '", data, "'")
-  return cluster_events:broadcast("gql-proxy-cache:purge", data)
+  ngx.log(ngx.DEBUG, "[graphql-proxy-cache-advanced] broadcasting purge '", data, "'")
+  return cluster_events:broadcast("graphql-proxy-cache-advanced:purge", data)
 end
 
 
 return {
-  ["/gql-proxy-cache"] = {
-    resource = "gql-proxy-cache",
+  ["/graphql-proxy-cache-advanced"] = {
+    resource = "graphql-proxy-cache-advanced",
 
     DELETE = function()
       local rows, err = kong.db.plugins:select_all {
-        name = "gql-proxy-cache"
+        name = "graphql-proxy-cache-advanced"
       }
       if err then
         return kong.response.exit(500, { message = HTTP_INTERNAL_SERVER_ERROR_MSG })
@@ -50,12 +50,12 @@ return {
       return kong.response.exit(204)
     end
   },
-  ["/gql-proxy-cache/:cache_key"] = {
-    resource = "gql-proxy-cache",
+  ["/graphql-proxy-cache-advanced/:cache_key"] = {
+    resource = "graphql-proxy-cache-advanced",
 
     GET = function(self)
       local rows, err = kong.db.plugins:select_all {
-        name = "gql-proxy-cache",
+        name = "graphql-proxy-cache-advanced",
       }
       if err then
         return kong.response.exit(500, { message = HTTP_INTERNAL_SERVER_ERROR_MSG })
@@ -84,7 +84,7 @@ return {
 
     DELETE = function(self)
       local rows, err = kong.db.plugins:select_all {
-        name = "gql-proxy-cache",
+        name = "graphql-proxy-cache-advanced",
       }
       if err then
         return kong.response.exit(500, { message = HTTP_INTERNAL_SERVER_ERROR_MSG })
@@ -124,8 +124,8 @@ return {
       return kong.response.exit(404)
     end,
   },
-  ["/gql-proxy-cache/:plugin_id/caches/:cache_key"] = {
-    resource = "gql-proxy-cache",
+  ["/graphql-proxy-cache-advanced/:plugin_id/caches/:cache_key"] = {
+    resource = "graphql-proxy-cache-advanced",
 
     GET = function(self)
       local row, err = kong.db.plugins:select {

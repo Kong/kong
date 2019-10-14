@@ -6,9 +6,9 @@ local floor            = math.floor
 local str_lower        = string.lower
 
 local ee = require "kong.enterprise_edition"
-local cache_key = require "kong.plugins.gql-proxy-cache.cache_key"
+local cache_key = require "kong.plugins.graphql-proxy-cache-advanced.cache_key"
 
-local STRATEGY_PATH = "kong.plugins.gql-proxy-cache.strategies"
+local STRATEGY_PATH = "kong.plugins.graphql-proxy-cache-advanced.strategies"
 local CACHE_VERSION = 1
 
 
