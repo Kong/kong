@@ -50,7 +50,7 @@ dependencies = {
   "kong-plugin-serverless-functions ~> 0.3",
   "kong-prometheus-plugin ~> 0.4",
   "kong-plugin-session == 2.2.0-1",
-  -- "kong-proxy-cache-plugin ~> 1.2", XXX- Restore after proxy-cache-advanced is renamed
+  "kong-proxy-cache-plugin ~> 1.2",
   "kong-plugin-request-transformer ~> 1.2",
 }
 build = {

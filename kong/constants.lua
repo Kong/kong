@@ -33,7 +33,7 @@ local plugins = {
   "pre-function",
   "post-function",
   "prometheus",
-  -- "proxy-cache", XXX- Restore after proxy-cache-advanced is renamed
+  "proxy-cache",
   "session",
 }
 
