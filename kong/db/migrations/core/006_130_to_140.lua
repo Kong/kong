@@ -8,6 +8,10 @@ return {
         -- Do nothing, accept existing state
       END;
       $$;
+
+
+      DROP TRIGGER IF EXISTS "delete_expired_cluster_events_trigger" ON "cluster_events";
+      DROP FUNCTION IF EXISTS "delete_expired_cluster_events" ();
     ]],
   },
 
