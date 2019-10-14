@@ -103,17 +103,17 @@ local function ldap_authenticate(given_username, given_password, conf)
 
   -- Case attribute is Common Name
   if conf.attribute == "cn" then
-    local who = conf.attribute .. "=" .. given_username .. "," .. conf.base_dn
+    who = conf.attribute .. "=" .. given_username .. "," .. conf.base_dn
   end
 
   -- Case attribute is sAMAccountName
   if conf.attribute == "sAMAccountName" then
-    local who = user .. "@" .. domain
+    who = user .. "@" .. domain
   end
 
   -- Case attribute is UPN
   if conf.attribute == "userPrincipalName" then
-    local who = given_username
+    who = given_username
   end
 
   is_authenticated, err = ldap.bind_request(sock, who, given_password)
