@@ -1,3 +1,4 @@
+require "spec.helpers" -- initializes 'kong' global for plugins
 local Entity = require "kong.db.schema.entity"
 local typedefs = require "kong.db.schema.typedefs"
 local utils = require "kong.tools.utils"
