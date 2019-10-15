@@ -1,5 +1,10 @@
+local handler   = require "kong.plugins.request-size-limiting.handler"
 local helpers   = require "spec.helpers"
 local cjson     = require "cjson"
+
+
+local size_units                 = handler.size_units
+local unit_multiplication_factor = handler.unit_multiplication_factor
 
 
 local TEST_SIZE = 2
@@ -25,9 +30,24 @@ for _, strategy in helpers.each_strategy() do
         name     = "request-size-limiting",
         route = { id = route.id },
         config   = {
-          allowed_payload_size = TEST_SIZE
+          allowed_payload_size = TEST_SIZE,
         }
       }
+
+      for _, unit in ipairs(size_units) do
+        local route = bp.routes:insert {
+          hosts = { string.format("limit_%s.com", unit) },
+        }
+
+        bp.plugins:insert {
+          name     = "request-size-limiting",
+          route = { id = route.id },
+          config   = {
+            allowed_payload_size = TEST_SIZE,
+            size_unit = unit
+          }
+        }
+      end
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -107,6 +127,40 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.same({ message = "Request size limit exceeded" }, json)
       end)
+
+      for _, unit in ipairs(size_units) do
+        it("blocks if size is greater than limit when unit in " .. unit, function()
+          local body = string.rep("a", (TEST_SIZE * unit_multiplication_factor[unit]) + 1)
+          local res = assert(proxy_client:request {
+            method  = "POST",
+            path    = "/request",
+            body    = body,
+            headers = {
+              ["Host"]           = string.format("limit_%s.com", unit),
+              ["Content-Length"] = #body
+            }
+          })
+          local body = assert.res_status(413, res)
+          local json = cjson.decode(body)
+          assert.same({ message = "Request size limit exceeded" }, json)
+        end)
+      end
+
+      for _, unit in ipairs(size_units) do
+        it("works if size is less than limit when unit in " .. unit, function()
+          local body = string.rep("a", (TEST_SIZE * unit_multiplication_factor[unit]) - 1)
+          local res = assert(proxy_client:request {
+            method  = "POST",
+            path    = "/request",
+            body    = body,
+            headers = {
+              ["Host"]           = string.format("limit_%s.com", unit),
+              ["Content-Length"] = #body
+            }
+          })
+          assert.res_status(200, res)
+        end)
+      end
     end)
 
     describe("without Content-Length", function()
@@ -167,6 +221,38 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.same({ message = "Request size limit exceeded" }, json)
       end)
+
+      for _, unit in ipairs(size_units) do
+        it("blocks if size is greater than limit when unit in " .. unit, function()
+          local body = string.rep("a", (TEST_SIZE * unit_multiplication_factor[unit]) + 1)
+          local res = assert(proxy_client:request {
+            method  = "POST",
+            path    = "/request",
+            body    = body,
+            headers = {
+              ["Host"]           = string.format("limit_%s.com", unit),
+            }
+          })
+          local body = assert.res_status(413, res)
+          local json = cjson.decode(body)
+          assert.same({ message = "Request size limit exceeded" }, json)
+        end)
+      end
+
+      for _, unit in ipairs(size_units) do
+        it("works if size is less than limit when unit in " .. unit, function()
+          local body = string.rep("a", (TEST_SIZE * unit_multiplication_factor[unit]))
+          local res = assert(proxy_client:request {
+            method  = "POST",
+            path    = "/request",
+            body    = body,
+            headers = {
+              ["Host"]           = string.format("limit_%s.com", unit),
+            }
+          })
+          assert.res_status(200, res)
+        end)
+      end
     end)
   end)
 end
