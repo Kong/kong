@@ -95,11 +95,13 @@ function _M.inc_counter(dao, ws, entity_type, entity, count)
 end
 
 
-local workspaces = require "kong.workspaces"
-
 local function pg_initialize_counters_migration(dao)
-  dao:truncate("workspace_entity_counters")
-  local _, err = dao:query([[
+  local _, err = dao:truncate("workspace_entity_counters")
+  if err then
+    return nil, err
+  end
+
+  local _, err = dao.connector:query([[
                    insert into workspace_entity_counters
                       select workspace_id, entity_type, count(distinct entity_id)
                         from workspace_entities
@@ -111,34 +113,20 @@ end
 
 -- Cassandra strategy for counting all entities per workspace: We
 -- iterate all the table once incrementing the counter to the
--- corresponding workspace+entity_type. Only increment for the primary
+-- correspondng workspace+entity_type. Only increment for the primary
 -- field
-local function c_initialize_counters_migration(dao)
-  dao:truncate_table("workspace_entity_counters")
-  local db = dao
+local function c_initialize_counters_migration(db)
+  local workspaces = require 'kong.workspaces'
+
+  local _, err = db:truncate("workspace_entity_counters")
+  if err then
+    return nil, err
+  end
+
   local workspaceable_relations = workspaces.get_workspaceable_relations()
   local counts = {}
 
-  -- get coordinator if present, else set one.
-  -- also, set keyspace
-  local coordinator ,err  = db:get_coordinator()
-  if err then
-    local ok, err = db:first_coordinator()
-    if not ok then
-      return nil, "could not find coordinator: " .. err
-    end
-    coordinator ,err  = db:get_coordinator()
-    if err then
-      error(err)
-    end
-    if coordinator then
-      local keyspace = db.cluster_options.keyspace
-      local ok, err = db:coordinator_change_keyspace(keyspace)
-      if not ok then
-        return nil, err
-      end
-    end
-  end
+  local coordinator = assert(db.connector:connect())
 
   -- for every workspace_entity primary_key row increment a counter
   -- for its workspace+entity_type
@@ -153,20 +141,14 @@ local function c_initialize_counters_migration(dao)
     end
   end
 
-  -- fill the blanks with 0s
-  for ws_id, ws in pairs(counts) do
-    for entity_type, relation_info in pairs(workspaceable_relations) do
-      counts[ws_id][entity_type] = counts[ws_id][entity_type] or 0
-    end
-  end
-
   return counts
 end
 
 function _M.initialize_counters(dao)
-  if dao.db_type == "postgres" then
+
+  if dao.strategy == "postgres" then
     pg_initialize_counters_migration(dao)
-  elseif dao.db_type == "cassandra" then
+  elseif dao.strategy == "cassandra" then
     local workspaces_counts = c_initialize_counters_migration(dao)
 
     for k, v in pairs(workspaces_counts) do
@@ -175,7 +157,6 @@ function _M.initialize_counters(dao)
           {type = enums.CONSUMERS.TYPE.PROXY}, count)
       end
     end
-
   end
 
 end
