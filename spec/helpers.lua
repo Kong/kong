@@ -46,6 +46,13 @@ local http = require "resty.http"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
+local ffi = require "ffi"
+
+
+ffi.cdef [[
+  int setenv(const char *name, const char *value, int overwrite);
+  int unsetenv(const char *name);
+]]
 
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
@@ -1517,15 +1524,13 @@ local function kong_exec(cmd, env, pl_returns, env_vars)
   return exec(env_vars .. " " .. BIN_PATH .. " " .. cmd, pl_returns)
 end
 
---- Prepare the Kong environment.
--- creates the workdirectory and deletes any existing one.
+--- Prepares the Kong environment.
+-- Creates the working directory if it does not exist.
 -- @param prefix (optional) path to the working directory, if omitted the test
 -- configuration will be used
 -- @name prepare_prefix
 local function prepare_prefix(prefix)
-  prefix = prefix or conf.prefix
-  exec("rm -rf " .. prefix .. "/*")
-  return pl_dir.makepath(prefix)
+  return pl_dir.makepath(prefix or conf.prefix)
 end
 
 --- Cleans the Kong environment.
@@ -1690,10 +1695,14 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
   end
   env = env or {}
   local prefix = env.prefix or conf.prefix
-  if not preserve_prefix then
-    local ok, err = prepare_prefix(prefix)
-    if not ok then return nil, err end
+
+  -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
+  if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
+    clean_prefix(prefix)
   end
+
+  local ok, err = prepare_prefix(prefix)
+  if not ok then return nil, err end
 
   truncate_tables(db, tables)
 
@@ -2004,6 +2013,12 @@ return {
       kill.kill(pid_path, "-TERM")
       wait_pid(pid_path, timeout)
     end
+  end,
+  setenv = function(env, value)
+    return ffi.C.setenv(env, value, 1) == 0
+  end,
+  unsetenv = function(env)
+    return ffi.C.unsetenv(env) == 0
   end,
 
   make_yaml_file = make_yaml_file,

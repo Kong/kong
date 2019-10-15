@@ -290,7 +290,7 @@ local function serialize_arg(field, arg)
   elseif field.type == "integer" then
     serialized_arg = cassandra.int(arg)
 
-  elseif field.type == "float" then
+  elseif field.type == "number" then
     serialized_arg = cassandra.float(arg)
 
   elseif field.type == "boolean" then
@@ -1028,6 +1028,7 @@ do
     if not entity_ids then
       return {}, nil, nil
     end
+    local entity_index = 0
     entity_count = entity_count or #entity_ids
     local entities = new_tab(entity_count, 0)
     -- TODO: send one query using IN
@@ -1037,7 +1038,10 @@ do
       if err then
         return nil, err, err_t
       end
-      entities[i] = entity
+      if entity then
+        entity_index = entity_index + 1
+        entities[entity_index] = entity
+      end
     end
     return entities, nil, nil
   end
@@ -1151,8 +1155,8 @@ do
           clear_tab(current_entity_ids)
           current_entity_count = 0
           for i, row in ipairs(rows) do
-            current_entity_ids[i] = row.entity_id
             current_entity_count = current_entity_count + 1
+            current_entity_ids[current_entity_count] = row.entity_id
           end
         end
       end

@@ -555,6 +555,7 @@ local function overrides(k, default_v, opts, file_conf, arg_conf)
   opts = opts or {}
 
   local value -- definitive value for this property
+  local escape -- whether to escape a value's octothorpes
 
   -- default values have lowest priority
 
@@ -582,12 +583,24 @@ local function overrides(k, default_v, opts, file_conf, arg_conf)
     end
 
     log.debug('%s ENV found with "%s"', env_name, to_print)
+
     value = env
+    escape = true
   end
 
   -- arg_conf have highest priority
   if arg_conf and arg_conf[k] ~= nil then
     value = arg_conf[k]
+    escape = true
+  end
+
+  if escape and type(value) == "string" then
+    -- Escape "#" in env vars or overrides to avoid them being mangled by
+    -- comments stripping logic.
+    repeat
+      local s, n = string.gsub(value, [[([^\])#]], [[%1\#]])
+      value = s
+    until n == 0
   end
 
   return value, k
