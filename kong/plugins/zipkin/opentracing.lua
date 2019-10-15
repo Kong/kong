@@ -58,15 +58,13 @@ if subsystem == "http" then
     local tracer = self:get_tracer(conf)
     local req = kong.request
     local wire_context = tracer:extract("http_headers", req.get_headers()) -- could be nil
-    local method, url
     local path_with_query = req.get_path_with_query()
-    if path_with_query ~= "" then
-      method = req.get_method()
-      url = req.get_scheme() .. "://" .. req.get_host() .. ":"
-        .. req.get_port() .. path_with_query
-    end
+    local method = req.get_method()
+    local url = req.get_scheme() .. "://" .. req.get_host() .. ":"
+             .. req.get_port() .. path_with_query
     local forwarded_ip = kong.client.get_forwarded_ip()
-    local request_span = tracer:start_span("kong.request", {
+
+    local request_span = tracer:start_span(method .. " " .. url, {
       child_of = wire_context,
       start_timestamp = ngx.req.start_time(),
       tags = {
