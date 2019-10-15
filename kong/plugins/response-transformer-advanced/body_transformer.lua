@@ -3,6 +3,8 @@ local transform_utils = require "kong.plugins.response-transformer-advanced.tran
 local cjson_decode = require("cjson").decode
 local cjson_encode = require("cjson").encode
 
+local inspect = require("inspect")
+
 local skip_transform = transform_utils.skip_transform
 local table_insert = table.insert
 local pcall = pcall
@@ -54,6 +56,37 @@ local function iter(config_array)
   end, config_array, 0
 end
 
+
+local function each_all(data, transform_function)
+  local function _each_all(data, transform_function, key)
+    if (type(data) == "table") then
+      -- TODO: Better list detection?
+      local data_iterator
+      -- it's a list
+      if data[1] then
+        data_iterator = ipairs
+      else
+        data_iterator = pairs
+      end
+
+      local new_data = {}
+
+      for k, v in data_iterator(data) do
+        local nk, thing = _each_all(v, transform_function, k)
+        new_data[nk] = thing
+      end
+
+      data = new_data
+    end
+
+    return transform_function(key, data)
+  end
+
+  local _, data = _each_all(data, transform_function)
+
+  return data
+end
+
 local transform_function_cache = setmetatable({}, { __mode = "k" })
 local function get_transform_functions(config)
   local route = kong and kong.router and kong.router.get_route() and
@@ -66,8 +99,15 @@ local function get_transform_functions(config)
   local helper_ctx = {
     type = type,
     print = print,
+    tostring = tostring,
+    inspect = inspect,
     pairs = pairs,
     ipairs = ipairs,
+    -- utility functions provided by kong
+    utils = {
+      -- apply function recursively through a JSON tree
+      each_all = each_all,
+    },
   }
 
   if not functions then
@@ -89,38 +129,12 @@ local function get_transform_functions(config)
 end
 
 local function transform_data(data, transform_function)
-  local function _transform_data(data, transform_function, key)
-    if (type(data) == "table") then
-      -- TODO: Better list detection?
-      local data_iterator
-      -- it's a list
-      if data[1] then
-        data_iterator = ipairs
-      else
-        data_iterator = pairs
-      end
-
-      local new_data = {}
-
-      for k, v in data_iterator(data) do
-        local nk, thing = unpack(_transform_data(v, transform_function, k))
-        new_data[nk] = thing
-      end
-
-      data = new_data
-    end
-
-    local key, data = transform_function(key, data)
-    return { key, data }
-  end
-
-  local ok, err_or_data = pcall(_transform_data, data, transform_function)
+  local ok, err_or_data = pcall(transform_function, data)
   if not ok then
     return nil, err_or_data
   end
 
-  local _, data = unpack(err_or_data)
-  return data, nil
+  return err_or_data, nil
 end
 
 

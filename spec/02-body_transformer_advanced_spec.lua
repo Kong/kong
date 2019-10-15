@@ -159,46 +159,83 @@ describe("Plugin: response-transformer-advanced", function()
     end)
 
     describe("transform", function()
-      local transform_function = [[
-        return function (key, data)
-          if key and key == "quantity" then
-            key = "inventory"
-            if data <= 0 then
-              data = "none"
-            elseif data >= 1 and data <= 10 then
-              data = "small"
-            elseif data > 10 and data <= 50 then
-              data = "medium"
-            else
-              data = "large"
-            end
+      local conf
+
+      before_each(function()
+        conf = {
+          remove   = {
+            json   = {}
+          },
+          replace  = {
+            json   = {},
+          },
+          add      = {
+            json   = {}
+          },
+          append   = {
+            json   = {}
+          },
+          whitelist = {
+            json   = {},
+          },
+          transform = {
+            functions = {}
+          },
+        }
+      end)
+
+      it("performs simple transformmations on body transform", function()
+        local transform_function = [[
+          return function(data)
+            -- remove key foo
+            data["foo"] = nil
+            -- add key foobar
+            data["foobar"] = "hello world"
+            -- ...
+            return data
           end
-          return key, data
-        end
-      ]]
+        ]]
 
-      local conf = {
-        remove   = {
-          json   = {}
-        },
-        replace  = {
-          json   = {},
-        },
-        add      = {
-          json   = {}
-        },
-        append   = {
-          json   = {}
-        },
-        whitelist = {
-          json   = {},
-        },
-        transform = {
-          functions = { transform_function },
-        },
-      }
+        local json = [[
+          {
+            "foo": "bar",
+            "something": "else"
+          }
+        ]]
 
-      it("performs arbitrary transformations on body transform", function()
+        local expected = {
+          foobar = "hello world",
+          something = "else",
+        }
+
+        conf.transform.functions = { transform_function }
+        local body = body_transformer.transform_json_body(conf, json, 200)
+        local body_json = cjson.decode(body)
+        assert.same(expected, body_json)
+      end)
+
+      it("performs complex recursive arbitrary transformations on body transform", function()
+        local transform_function = [[
+          return function(data)
+            return utils.each_all(data, function(key, data)
+              if key and key == "quantity" then
+                key = "inventory"
+                if data <= 0 then
+                  data = "none"
+                elseif data >= 1 and data <= 10 then
+                  data = "small"
+                elseif data > 10 and data <= 50 then
+                  data = "medium"
+                else
+                  data = "large"
+                end
+              end
+
+              return key, data
+            end)
+          end
+        ]]
+
         local json = [[
           {
             "something": {
@@ -242,15 +279,61 @@ describe("Plugin: response-transformer-advanced", function()
             }
           }
         }
+        conf.transform.functions = { transform_function }
         local body = body_transformer.transform_json_body(conf, json, 200)
         local body_json = cjson.decode(body)
         assert.same(expected, body_json)
       end)
 
+      it("reduces over transform functions", function()
+        local transform_functions = {
+          [[
+            return function(data)
+              -- remove key foo
+              data["foo"] = nil
+              -- increment counter
+              data.counter = data.counter + 1
+
+              return data
+            end
+          ]],
+          [[
+            return function(data)
+              -- add key foobar
+              data["foobar"] = "hello world"
+              -- increment counter
+              data.counter = data.counter + 1
+
+              return data
+            end
+          ]],
+        }
+
+        local json = [[
+          {
+            "foo": "bar",
+            "something": "else",
+            "counter": 0
+          }
+        ]]
+
+        local expected = {
+          foobar = "hello world",
+          something = "else",
+          counter = 2
+        }
+
+        conf.transform.functions = transform_functions
+        local body = body_transformer.transform_json_body(conf, json, 200)
+        local body_json = cjson.decode(body)
+        assert.same(expected, body_json)
+
+      end)
+
       it("has no access to the global context", function()
         local some_function_that_access_global_ctx = [[
-          return function (key, data)
-            return key, type(_KONG)
+          return function (data)
+            return type(_KONG)
           end
         ]]
 
@@ -258,28 +341,8 @@ describe("Plugin: response-transformer-advanced", function()
           { "some": "data" }
         ]]
 
-        local g_conf = {
-          remove   = {
-            json   = {}
-          },
-          replace  = {
-            json   = {},
-          },
-          add      = {
-            json   = {}
-          },
-          append   = {
-            json   = {}
-          },
-          whitelist = {
-            json   = {},
-          },
-          transform = {
-            functions = { some_function_that_access_global_ctx },
-          },
-        }
-
-        local body = body_transformer.transform_json_body(g_conf, json, 200)
+        conf.transform.functions = { some_function_that_access_global_ctx }
+        local body = body_transformer.transform_json_body(conf, json, 200)
         local body_json = cjson.decode(body)
         assert.same("nil", body_json)
       end)
@@ -287,8 +350,8 @@ describe("Plugin: response-transformer-advanced", function()
       it("has its own context", function()
         local some_function_that_access_global_ctx = [[
           local foo = "bar"
-          return function (key, data)
-            return key, foo
+          return function (data)
+            return foo
           end
         ]]
 
@@ -298,38 +361,18 @@ describe("Plugin: response-transformer-advanced", function()
 
         local expected = "bar"
 
-        local g_conf = {
-          remove   = {
-            json   = {}
-          },
-          replace  = {
-            json   = {},
-          },
-          add      = {
-            json   = {}
-          },
-          append   = {
-            json   = {}
-          },
-          whitelist = {
-            json   = {},
-          },
-          transform = {
-            functions = { some_function_that_access_global_ctx },
-          },
-        }
-
-        local body = body_transformer.transform_json_body(g_conf, json, 200)
+        conf.transform.functions = { some_function_that_access_global_ctx }
+        local body = body_transformer.transform_json_body(conf, json, 200)
         local body_json = cjson.decode(body)
         assert.same(expected, body_json)
       end)
 
-      it("leaves response untouched on error", function()
+      it("leaves response untouched on error (returned)", function()
         local some_function_that_access_global_ctx = [[
           local foo = "bar"
-          return function (key, data)
+          return function (data)
             hello.darkness()
-            return key, foo
+            return data
           end
         ]]
 
@@ -339,28 +382,9 @@ describe("Plugin: response-transformer-advanced", function()
 
         local expected = { ["some"] = "data" }
 
-        local g_conf = {
-          remove   = {
-            json   = {}
-          },
-          replace  = {
-            json   = {},
-          },
-          add      = {
-            json   = {}
-          },
-          append   = {
-            json   = {}
-          },
-          whitelist = {
-            json   = {},
-          },
-          transform = {
-            functions = { some_function_that_access_global_ctx },
-          },
-        }
+        conf.transform.functions = { some_function_that_access_global_ctx }
 
-        local body, err = body_transformer.transform_json_body(g_conf, json, 200)
+        local body, err = body_transformer.transform_json_body(conf, json, 200)
         local body_json = cjson.decode(body)
         assert.same(expected, body_json)
         assert.not_nil(err)
