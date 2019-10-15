@@ -30,6 +30,7 @@ function OpenTracingHandler:get_tracer(conf)
   return tracer
 end
 
+
 function OpenTracingHandler:get_context(conf, ctx)
   local opentracing = ctx.opentracing
   if not opentracing then
@@ -38,6 +39,7 @@ function OpenTracingHandler:get_context(conf, ctx)
   end
   return opentracing
 end
+
 
 -- Utility function to set either ipv4 or ipv6 tags
 -- nginx apis don't have a flag to indicate whether an address is v4 or v6
@@ -49,6 +51,7 @@ local function ip_tag(addr)
     return "peer.ipv6"
   end
 end
+
 
 if subsystem == "http" then
   function OpenTracingHandler:initialise_request(conf, ctx)
@@ -64,29 +67,30 @@ if subsystem == "http" then
     end
     local forwarded_ip = kong.client.get_forwarded_ip()
     local request_span = tracer:start_span("kong.request", {
-      child_of = wire_context;
+      child_of = wire_context,
       start_timestamp = ngx.req.start_time(),
       tags = {
-        component = "kong";
-        ["span.kind"] = "server";
-        ["http.method"] = method;
-        ["http.url"] = url;
-        [ip_tag(forwarded_ip)] = forwarded_ip;
-        ["peer.port"] = kong.client.get_forwarded_port();
+        component = "kong",
+        ["span.kind"] = "server",
+        ["http.method"] = method,
+        ["http.url"] = url,
+        [ip_tag(forwarded_ip)] = forwarded_ip,
+        ["peer.port"] = kong.client.get_forwarded_port(),
       }
     })
     ctx.opentracing = {
-      tracer = tracer;
-      wire_context = wire_context;
-      request_span = request_span;
-      rewrite_span = nil;
-      access_span = nil;
-      proxy_span = nil;
-      header_filter_span = nil;
-      header_filter_finished = false;
-      body_filter_span = nil;
+      tracer = tracer,
+      wire_context = wire_context,
+      request_span = request_span,
+      rewrite_span = nil,
+      access_span = nil,
+      proxy_span = nil,
+      header_filter_span = nil,
+      header_filter_finished = false,
+      body_filter_span = nil,
     }
   end
+
 
   function OpenTracingHandler:access(conf)
     local ctx = ngx.ctx
@@ -111,6 +115,7 @@ if subsystem == "http" then
     end
   end
 
+
   function OpenTracingHandler:header_filter(conf)
     local ctx = ngx.ctx
     local opentracing = self:get_context(conf, ctx)
@@ -130,6 +135,7 @@ if subsystem == "http" then
     )
   end
 
+
   function OpenTracingHandler:body_filter(conf)
     local ctx = ngx.ctx
     local opentracing = self:get_context(conf, ctx)
@@ -144,29 +150,32 @@ if subsystem == "http" then
       opentracing.body_filter_span = opentracing.proxy_span:start_child_span("kong.body_filter", now)
     end
   end
+
 elseif subsystem == "stream" then
+
   function OpenTracingHandler:initialise_request(conf, ctx)
     local tracer = self:get_tracer(conf)
     local wire_context = nil
     local forwarded_ip = kong.client.get_forwarded_ip()
     local request_span = tracer:start_span("kong.stream", {
-      child_of = wire_context;
+      child_of = wire_context,
       start_timestamp = ngx.req.start_time(),
       tags = {
-        component = "kong";
-        ["span.kind"] = "server";
-        [ip_tag(forwarded_ip)] = forwarded_ip;
-        ["peer.port"] = kong.client.get_forwarded_port();
+        component = "kong",
+        ["span.kind"] = "server",
+        [ip_tag(forwarded_ip)] = forwarded_ip,
+        ["peer.port"] = kong.client.get_forwarded_port(),
       }
     })
     ctx.opentracing = {
-      tracer = tracer;
-      wire_context = wire_context;
-      request_span = request_span;
-      preread_span = nil;
-      proxy_span = nil;
+      tracer = tracer,
+      wire_context = wire_context,
+      request_span = request_span,
+      preread_span = nil,
+      proxy_span = nil,
     }
   end
+
 
   function OpenTracingHandler:preread(conf)
     local ctx = ngx.ctx
@@ -183,6 +192,7 @@ elseif subsystem == "stream" then
     )
   end
 end
+
 
 function OpenTracingHandler:log(conf)
   local now = ngx.now()

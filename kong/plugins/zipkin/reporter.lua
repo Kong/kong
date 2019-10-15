@@ -3,30 +3,35 @@ local to_hex = require "resty.string".to_hex
 local cjson = require "cjson".new()
 cjson.encode_number_precision(16)
 
+
 local zipkin_reporter_methods = {}
 local zipkin_reporter_mt = {
-  __name = "kong.plugins.zipkin.reporter";
-  __index = zipkin_reporter_methods;
+  __name = "kong.plugins.zipkin.reporter",
+  __index = zipkin_reporter_methods,
 }
+
 
 local function new_zipkin_reporter(conf)
   local http_endpoint = conf.http_endpoint
   local default_service_name = conf.default_service_name
   assert(type(http_endpoint) == "string", "invalid http endpoint")
   return setmetatable({
-                default_service_name = default_service_name;
-    http_endpoint = http_endpoint;
-    pending_spans = {};
-    pending_spans_n = 0;
+    default_service_name = default_service_name,
+    http_endpoint = http_endpoint,
+    pending_spans = {},
+    pending_spans_n = 0,
   }, zipkin_reporter_mt)
 end
 
+
 local span_kind_map = {
-  client = "CLIENT";
-  server = "SERVER";
-  producer = "PRODUCER";
-  consumer = "CONSUMER";
+  client = "CLIENT",
+  server = "SERVER",
+  producer = "PRODUCER",
+  consumer = "CONSUMER",
 }
+
+
 function zipkin_reporter_methods:report(span)
   local span_context = span:context()
 
@@ -46,19 +51,19 @@ function zipkin_reporter_methods:report(span)
     if serviceName then
       zipkin_tags["peer.service"] = nil
       localEndpoint = {
-        serviceName = serviceName;
+        serviceName = serviceName,
         -- TODO: ip/port from ngx.var.server_name/ngx.var.server_port?
       }
     else
-                        -- configurable override of the unknown-service-name spans
-                        if self.default_service_name then
-                                localEndpoint = {
-                                        serviceName = self.default_service_name;
-                                }
-                        -- needs to be null; not the empty object
-                        else
-                                localEndpoint = cjson.null
-                        end
+      -- configurable override of the unknown-service-name spans
+      if self.default_service_name then
+        localEndpoint = {
+          serviceName = self.default_service_name,
+        }
+        -- needs to be null, not the empty object
+      else
+        localEndpoint = cjson.null
+      end
     end
   end
 
@@ -67,9 +72,9 @@ function zipkin_reporter_methods:report(span)
     if peer_port then
       zipkin_tags["peer.port"] = nil
       remoteEndpoint = {
-        ipv4 = zipkin_tags["peer.ipv4"];
-        ipv6 = zipkin_tags["peer.ipv6"];
-        port = peer_port; -- port is *not* optional
+        ipv4 = zipkin_tags["peer.ipv4"],
+        ipv6 = zipkin_tags["peer.ipv6"],
+        port = peer_port, -- port is *not* optional
       }
       zipkin_tags["peer.ipv4"] = nil
       zipkin_tags["peer.ipv6"] = nil
@@ -79,18 +84,18 @@ function zipkin_reporter_methods:report(span)
   end
 
   local zipkin_span = {
-    traceId = to_hex(span_context.trace_id);
-    name = span.name;
-    parentId = span_context.parent_id and to_hex(span_context.parent_id) or nil;
-    id = to_hex(span_context.span_id);
-    kind = span_kind_map[span_kind];
-    timestamp = span.timestamp * 1000000;
-    duration = math.floor(span.duration * 1000000); -- zipkin wants integer
-    -- shared = nil; -- We don't use shared spans (server reuses client generated spanId)
+    traceId = to_hex(span_context.trace_id),
+    name = span.name,
+    parentId = span_context.parent_id and to_hex(span_context.parent_id) or nil,
+    id = to_hex(span_context.span_id),
+    kind = span_kind_map[span_kind],
+    timestamp = span.timestamp * 1000000,
+    duration = math.floor(span.duration * 1000000), -- zipkin wants integer
+    -- shared = nil, -- We don't use shared spans (server reuses client generated spanId)
     -- TODO: debug?
-    localEndpoint = localEndpoint;
-    remoteEndpoint = remoteEndpoint;
-    tags = zipkin_tags;
+    localEndpoint = localEndpoint,
+    remoteEndpoint = remoteEndpoint,
+    tags = zipkin_tags,
     annotations = span.logs -- XXX: not guaranteed by documented opentracing-lua API to be in correct format
   }
 
@@ -98,6 +103,7 @@ function zipkin_reporter_methods:report(span)
   self.pending_spans[i] = zipkin_span
   self.pending_spans_n = i
 end
+
 
 function zipkin_reporter_methods:flush()
   if self.pending_spans_n == 0 then
@@ -110,11 +116,11 @@ function zipkin_reporter_methods:flush()
 
   local httpc = resty_http.new()
   local res, err = httpc:request_uri(self.http_endpoint, {
-    method = "POST";
+    method = "POST",
     headers = {
-      ["content-type"] = "application/json";
-    };
-    body = pending_spans;
+      ["content-type"] = "application/json",
+    },
+    body = pending_spans,
   })
   -- TODO: on failure, retry?
   if not res then
@@ -125,6 +131,7 @@ function zipkin_reporter_methods:flush()
   return true
 end
 
+
 return {
-  new = new_zipkin_reporter;
+  new = new_zipkin_reporter,
 }

@@ -1,9 +1,11 @@
 local to_hex = require "resty.string".to_hex
 local new_span_context = require "opentracing.span_context".new
 
+
 local function hex_to_char(c)
   return string.char(tonumber(c, 16))
 end
+
 
 local function from_hex(str)
   if str ~= nil then -- allow nil to pass through
@@ -11,6 +13,7 @@ local function from_hex(str)
   end
   return str
 end
+
 
 local function new_extractor(warn)
   return function(headers)
@@ -78,6 +81,7 @@ local function new_extractor(warn)
   end
 end
 
+
 local function new_injector()
   return function(span_context, headers)
     -- We want to remove headers if already present
@@ -94,7 +98,8 @@ local function new_injector()
   end
 end
 
+
 return {
-  new_extractor = new_extractor;
-  new_injector = new_injector;
+  new_extractor = new_extractor,
+  new_injector = new_injector,
 }

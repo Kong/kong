@@ -8,12 +8,14 @@ local OpenTracingHandler = require "kong.plugins.zipkin.opentracing"
 local ZipkinLogHandler = OpenTracingHandler:extend()
 ZipkinLogHandler.VERSION = "scm"
 
+
 function ZipkinLogHandler.new_tracer(conf)
   local tracer = new_tracer(new_zipkin_reporter(conf), new_random_sampler(conf))
   tracer:register_injector("http_headers", zipkin_codec.new_injector())
   tracer:register_extractor("http_headers", zipkin_codec.new_extractor(kong.log.warn))
   return tracer
 end
+
 
 local function log(premature, reporter)
   if premature then
@@ -27,6 +29,7 @@ local function log(premature, reporter)
   end
 end
 
+
 function ZipkinLogHandler:log(conf)
   ZipkinLogHandler.super.log(self, conf)
 
@@ -37,5 +40,6 @@ function ZipkinLogHandler:log(conf)
     kong.log.err("failed to create timer: ", err)
   end
 end
+
 
 return ZipkinLogHandler
