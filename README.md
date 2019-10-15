@@ -58,6 +58,7 @@ Of those, this plugin currently uses:
 
 In addition to the above standardised tags, this plugin also adds:
 
+  - `component` (sent to Zipkin as "lc", for "local component")
   - `kong.api` (deprecated)
   - `kong.consumer`
   - `kong.credential`

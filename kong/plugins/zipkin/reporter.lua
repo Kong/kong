@@ -46,6 +46,11 @@ function zipkin_reporter_methods:report(span)
   local span_kind = zipkin_tags["span.kind"]
   zipkin_tags["span.kind"] = nil
 
+  -- rename component tag to lc ("local component")
+  local component = zipkin_tags["component"]
+  zipkin_tags["component"] = nil
+  zipkin_tags["lc"] = component
+
   local localEndpoint do
     local serviceName = zipkin_tags["peer.service"]
     if serviceName then
