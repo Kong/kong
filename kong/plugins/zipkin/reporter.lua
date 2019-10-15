@@ -40,7 +40,11 @@ function zipkin_reporter_methods:report(span)
     -- Zipkin tag values should be strings
     -- see https://zipkin.io/zipkin-api/#/default/post_spans
     -- and https://github.com/Kong/kong-plugin-zipkin/pull/13#issuecomment-402389342
-    zipkin_tags[k] = tostring(v)
+    -- Zipkin tags should be non-empty
+    -- see https://github.com/openzipkin/zipkin/pull/2834#discussion_r332125458
+    if v ~= "" then
+      zipkin_tags[k] = tostring(v)
+    end
   end
 
   local span_kind = zipkin_tags["span.kind"]
