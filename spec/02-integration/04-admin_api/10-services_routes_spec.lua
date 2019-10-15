@@ -523,9 +523,9 @@ for _, strategy in helpers.each_strategy() do
                       id = service.id,
                     }
                   },
-                  message = [[UNIQUE violation detected on '{]] ..
-                            [[service={id="]] .. service.id ..
-                            [["},name="basic-auth",route=null,consumer=null}']],
+                  message = [[UNIQUE violation detected on '{consumer=null,name="basic-auth",]] ..
+                            [[route=null,service={id="]] .. service.id ..
+                            [["}}']],
                 }, json)
               end
             end)

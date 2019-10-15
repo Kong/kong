@@ -1717,9 +1717,9 @@ for _, strategy in helpers.each_strategy() do
                     },
                     service = ngx.null,
                   },
-                  message = [[UNIQUE violation detected on '{]] ..
-                            [[service=null,name="basic-auth",route={id="]] ..
-                            route.id .. [["},consumer=null}']],
+                  message = [[UNIQUE violation detected on '{consumer=null,]] ..
+                            [[name="basic-auth",route={id="]] ..
+                            route.id .. [["},service=null}']],
                   name = "unique constraint violation",
                 }, json)
               end
