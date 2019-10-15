@@ -31,6 +31,9 @@ The available commands are:
   migrate-community-to-enterprise   Migrates CE entities to EE on the default
                                     workspace
 
+  reinitialize-workspace-entity-counters  Resets the entity counters from the
+                                          database entities.
+
 Options:
  -y,--yes                           Assume "yes" to prompts and run
                                     non-interactively.
@@ -252,10 +255,14 @@ local function execute(args)
       force = args.force,
       conf = args.conf,
     })
-    if err then error(err) end
+    if err then
+      error(err)
+    end
+
   elseif args.command == "reinitialize-workspace-entity-counters" then
     local counters = require "kong.workspaces.counters"
     counters.initialize_counters(db)
+
   else
     error("unreachable")
   end
@@ -273,5 +280,6 @@ return {
     reset = true,
     ["migrate-apis"] = true,
     ["migrate-community-to-enterprise"] = true,
+    ["reinitialize-workspace-entity-counters"]=true,
   }
 }
