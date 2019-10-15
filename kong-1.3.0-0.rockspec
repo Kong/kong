@@ -48,7 +48,7 @@ dependencies = {
   "kong-plugin-azure-functions ~> 0.4",
   "kong-plugin-zipkin ~> 0.1.2",
   "kong-plugin-serverless-functions ~> 0.3",
-  "kong-prometheus-plugin ~> 0.4",
+  "kong-prometheus-plugin ~> 0.6",
   "kong-plugin-session == 2.2.0-1",
   "kong-proxy-cache-plugin ~> 1.2",
   "kong-plugin-request-transformer ~> 1.2",
