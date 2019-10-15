@@ -285,7 +285,7 @@ local function serialize_arg(field, arg)
   elseif field.type == "integer" then
     serialized_arg = cassandra.int(arg)
 
-  elseif field.type == "float" then
+  elseif field.type == "number" then
     serialized_arg = cassandra.float(arg)
 
   elseif field.type == "boolean" then
