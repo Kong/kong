@@ -1,3 +1,4 @@
+require "spec.helpers" -- initializes 'kong' global for plugins
 local conf_loader = require "kong.conf_loader"
 
 
