@@ -18,6 +18,10 @@ describe("plugins", function()
     assert(Entity.new(services_definition))
     assert(Entity.new(routes_definition))
 
+    local kong_global = require "kong.global"
+    _G.kong = kong_global.new()
+    kong_global.init_pdk(kong, conf, nil)
+
     Plugins = assert(Entity.new(plugins_definition))
 
     local my_plugins = {
