@@ -10,6 +10,17 @@ local go = {}
 local kong = kong
 local ngx = ngx
 local char_null = ffi.new("char*", ngx.null)
+local find = string.find
+
+
+local new_tab
+do
+  local ok
+  ok, new_tab = pcall(require, "table.new")
+  if not ok then
+    new_tab = function() return {} end
+  end
+end
 
 
 local init_bridge, L
@@ -64,6 +75,49 @@ local function set_plugin_conf(plugin_name, config)
   end
 end
 
+
+local function index_table(table, field)
+  local res = table
+  for segment, e in ngx.re.gmatch(field, "\\w+", "o") do
+    if res[segment[0]] then
+      res = res[segment[0]]
+    else
+      return nil
+    end
+  end
+  return res
+end
+
+
+local pdk_cache = new_tab(0, 50)
+local function get_field(method)
+  if pdk_cache[method] then
+    return pdk_cache[method]
+  else
+    pdk_cache[method] = index_table(_G, method)
+    return pdk_cache[method]
+  end
+end
+
+
+local function unmarshal_pdk_call(call)
+  local idx = find(call, ":", 1, true)
+
+  if not idx then
+    return call
+  end
+
+  local cmd = call:sub(1, idx - 1)
+  local args = cjson.decode(call:sub(idx + 1))
+
+  if args == ngx.null then
+    args = {}
+  end
+
+  return cmd, args
+end
+
+
 function go.bridge(op, goplugin)
   local key = L.InitBridge(op, goplugin)
   if key == -1 then
@@ -72,32 +126,23 @@ function go.bridge(op, goplugin)
   end
 
   local msg = "run"
+
   while true do
     local ptr = L.Bridge(key, msg)
-    local cmdarg = ffi.string(ptr)
+    local pdk_call = ffi.string(ptr)
     ffi.C.free(ptr)
 
-    local c = string.find(cmdarg, ":", 1, true)
-    local cmd = cmdarg
-    local arg
-    if c then
-      cmd = cmdarg:sub(1, c - 1)
-      arg = cmdarg:sub(c + 1)
-    end
+    local cmd, args = unmarshal_pdk_call(pdk_call)
 
-    if cmd == "kong.client.get_credential" then
-      msg = encode(kong.client.get_credential())
-
-    elseif cmd == "kong.client.get_consumer" then
-      msg = encode(kong.client.get_consumer())
-
-    elseif cmd == "kong.log.err" then
-      kong.log.err(arg)
-      msg = "ok"
+    if cmd == "ret" then
+      break
 
     elseif cmd == "kong.log.serialize" then
       msg = cjson.encode(basic_serializer.serialize(ngx))
 
+    --
+    -- ngx API
+    --
     elseif cmd == "kong.nginx.get_var" then
       msg = encode(ngx.var[arg])
 
@@ -108,39 +153,23 @@ function go.bridge(op, goplugin)
       msg = encode(ngx.ctx[arg])
 
     elseif cmd == "kong.nginx.req_start_time" then
-      msg = tostring(ngx.req.start_time())
+      msg = encode(ngx.req.start_time())
 
-    elseif cmd == "kong.request.get_header" then
-      msg = kong.request.get_header(arg)
+    -- PDK
+    else
+      local method = get_field(cmd)
+      if not method then
+        kong.log.err("could not find pdk method: ", cmd)
+        break
+      end
 
-    elseif cmd == "kong.request.get_method" then
-      msg = kong.request.get_method()
-
-    elseif cmd == "kong.request.get_query" then
-      msg = encode(kong.request.get_query())
-
-    elseif cmd == "kong.request.get_headers" then
-      msg = encode(kong.request.get_headers())
-
-    elseif cmd == "kong.response.set_header" then
-      local args = cjson.decode(arg)
-      kong.response.set_header(args[1], args[2])
-      msg = "ok"
-
-    elseif cmd == "kong.response.get_headers" then
-      msg = encode(kong.response.get_headers())
-
-    elseif cmd == "kong.response.get_status" then
-      msg = tostring(kong.response.get_status())
-
-    elseif cmd == "kong.router.get_route" then
-      msg = encode(kong.router.get_route())
-
-    elseif cmd == "kong.router.get_service" then
-      msg = encode(kong.router.get_service())
-
-    elseif cmd == "ret" then
-      break
+      local err
+      msg, err = method(unpack(args))
+      if not msg and not err then
+        msg = "ok"
+      else
+        msg = encode(msg)
+      end
     end
   end
 end
