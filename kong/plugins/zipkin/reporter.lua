@@ -3,6 +3,7 @@ local to_hex = require "resty.string".to_hex
 local cjson = require "cjson".new()
 cjson.encode_number_precision(16)
 
+local floor = math.floor
 
 local zipkin_reporter_methods = {}
 local zipkin_reporter_mt = {
@@ -92,6 +93,24 @@ function zipkin_reporter_methods:report(span)
     end
   end
 
+  local annotations do
+    local n_logs = span.n_logs
+    if n_logs > 0 then
+      annotations = kong.table.new(n_logs, 0)
+      for i = 1, n_logs do
+        local log = span.logs[i]
+        annotations[i] = {
+          event = log.key .. "." .. log.value,
+          timestamp = log.timestamp,
+        }
+      end
+    end
+  end
+
+  if not next(zipkin_tags) then
+    zipkin_tags = nil
+  end
+
   local zipkin_span = {
     traceId = to_hex(span_context.trace_id),
     name = span.name,
@@ -99,13 +118,13 @@ function zipkin_reporter_methods:report(span)
     id = to_hex(span_context.span_id),
     kind = span_kind_map[span_kind],
     timestamp = span.timestamp * 1000000,
-    duration = math.floor(span.duration * 1000000), -- zipkin wants integer
+    duration = floor(span.duration * 1000000), -- zipkin wants integer
     -- shared = nil, -- We don't use shared spans (server reuses client generated spanId)
     -- TODO: debug?
     localEndpoint = localEndpoint,
     remoteEndpoint = remoteEndpoint,
     tags = zipkin_tags,
-    annotations = span.logs -- XXX: not guaranteed by documented opentracing-lua API to be in correct format
+    annotations = annotations,
   }
 
   local i = self.pending_spans_n + 1
