@@ -456,26 +456,25 @@ local function check_target_history(upstream, balancer)
   local old_size = #old_history
   local new_size = #new_history
 
-  if old_size == new_size and
-    (old_history[old_size] or EMPTY_T).order ==
-    (new_history[new_size] or EMPTY_T).order then
-    -- No history update is necessary in the balancer object.
-    return true
-  end
-
-  -- last entries in history don't match, so we must do some updates.
-
   -- compare balancer history with db-loaded history
   local last_equal_index = 0  -- last index where history is the same
   for i, entry in ipairs(old_history) do
-    if new_history[i] and entry.order == new_history[i].order then
+    local new_entry = new_history[i]
+    if new_entry and
+       new_entry.name == entry.name and
+       new_entry.port == entry.port and
+       new_entry.weight == entry.weight
+    then
       last_equal_index = i
     else
       break
     end
   end
 
-  if last_equal_index == old_size then
+  if last_equal_index == new_size then
+    -- No history update is necessary in the balancer object.
+    return true
+  elseif last_equal_index == old_size then
     -- history is the same, so we only need to add new entries
     apply_history(balancer, new_history, last_equal_index + 1)
     return true
