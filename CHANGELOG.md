@@ -1,6 +1,6 @@
 # Table of Contents
 
-- [1.4.0rc1](#140rc1)
+- [1.4.0](#140)
 - [1.3.0](#130)
 - [1.2.2](#122)
 - [1.2.1](#121)
@@ -31,9 +31,9 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
-## [1.4.0rc1]
+## [1.4.0]
 
-> Released on 2019/09/25
+> Released on 2019/10/21
 
 ### Installation
 
@@ -4186,7 +4186,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[1.4.0rc1]: https://github.com/Kong/kong/compare/1.3.0...1.4.0rc1
+[1.4.0]: https://github.com/Kong/kong/compare/1.3.0...1.4.0
 [1.3.0]: https://github.com/Kong/kong/compare/1.2.2...1.3.0
 [1.2.2]: https://github.com/Kong/kong/compare/1.2.1...1.2.2
 [1.2.1]: https://github.com/Kong/kong/compare/1.2.0...1.2.1
