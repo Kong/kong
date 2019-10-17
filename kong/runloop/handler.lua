@@ -87,6 +87,17 @@ local _set_router
 local _set_router_version
 
 
+local function _set_ngx(mock_ngx)
+  if type(mock_ngx) ~= "table" then
+    return
+  end
+
+  if mock_ngx.var then
+    var = mock_ngx.var
+  end
+end
+
+
 local update_lua_mem
 do
   local pid = ngx.worker.pid
@@ -810,7 +821,6 @@ local function build_upstream_uri(components)
     upstream_uri = prefix .. sub(components.request_uri, 2, -1)
   end
 
-
   if var.is_args == "?" or sub(var.request_uri, -1) == "?" then
     upstream_uri = upstream_uri .. "?" .. (var.args or "")
   end
@@ -855,6 +865,7 @@ return {
   _set_build_router = _set_build_router,
   _set_router_version = _set_router_version,
   _set_update_plugins_iterator = _set_update_plugins_iterator,
+  _set_ngx = _set_ngx,
   _get_updated_router = get_updated_router,
   _update_lua_mem = update_lua_mem,
   _build_upstream_uri = build_upstream_uri,

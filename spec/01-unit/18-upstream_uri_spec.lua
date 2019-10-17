@@ -1,5 +1,6 @@
 local Router = require "kong.router"
-local build_upstream_uri = require("kong.runloop.handler")._build_upstream_uri
+local runloop = require "kong.runloop.handler"
+local build_upstream_uri = runloop._build_upstream_uri
 
 local spy_stub = {
   nop = function() end
@@ -10,6 +11,7 @@ local function mock_ngx(method, request_uri, headers)
   _ngx = {
     re = ngx.re,
     var = setmetatable({
+      is_args = "",
       request_uri = request_uri,
       http_kong_debug = headers.kong_debug
     }, {
@@ -161,6 +163,7 @@ describe("build_upstream_uri", function()
       local router = assert(Router.new(use_case_routes) )
       local _ngx = mock_ngx("GET", args[3], { host = "localbin-" .. i .. ".com" })
       router._set_ngx(_ngx)
+      runloop._set_ngx(_ngx)
       local match_t = router.exec()
       assert.same(use_case_routes[1].route, match_t.route)
       assert.equal(args[1], match_t.upstream_url_t.path)
@@ -218,6 +221,7 @@ describe("build_upstream_uri", function()
         local router = assert(Router.new(use_case_routes) )
         local _ngx = mock_ngx("GET", args[3], { host = "localbin-" .. i .. ".com" })
         router._set_ngx(_ngx)
+        runloop._set_ngx(_ngx)
         local match_t = router.exec()
         assert.same(use_case_routes[1].route, match_t.route)
         assert.equal(args[1], match_t.upstream_url_t.path)
@@ -233,3 +237,4 @@ describe("build_upstream_uri", function()
     end
   end
 end)
+
