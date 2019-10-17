@@ -224,24 +224,26 @@ local function query_entity(context, self, db, schema, method)
   end
 
   local key = self.params[schema.name]
-  if type(key) ~= "table" then
-    if type(key) == "string" then
-      key = { id = unescape_uri(key) }
-    else
-      key = { id = key }
-    end
-  end
-
-  if not utils.is_valid_uuid(key.id) then
-    local endpoint_key = schema.endpoint_key
-    if endpoint_key then
-      local field = schema.fields[endpoint_key]
-      local inferred_value = arguments.infer_value(key.id, field)
-      if is_update then
-        return dao[method or context .. "_by_" .. endpoint_key](dao, inferred_value, args, opts)
+  if key then
+    if type(key) ~= "table" then
+      if type(key) == "string" then
+        key = { id = unescape_uri(key) }
+      else
+        key = { id = key }
       end
+    end
 
-      return dao[method or context .. "_by_" .. endpoint_key](dao, inferred_value, opts)
+    if key.id and not utils.is_valid_uuid(key.id) then
+      local endpoint_key = schema.endpoint_key
+      if endpoint_key then
+        local field = schema.fields[endpoint_key]
+        local inferred_value = arguments.infer_value(key.id, field)
+        if is_update then
+          return dao[method or context .. "_by_" .. endpoint_key](dao, inferred_value, args, opts)
+        end
+
+        return dao[method or context .. "_by_" .. endpoint_key](dao, inferred_value, opts)
+      end
     end
   end
 
@@ -547,30 +549,53 @@ local function put_entity_endpoint(schema, foreign_schema, foreign_field_name, m
       return not_found()
     end
 
+    local associate
     local inverse = not foreign_schema.fields[foreign_field_name] and
                                 schema.fields[foreign_field_name]
 
     if inverse then
       local pk = entity[foreign_field_name]
-      if not pk or pk == null then
-        return not_found()
+      if pk and pk ~= null then
+        self.params[foreign_schema.name] = pk
+      else
+        associate = true
+        self.params[foreign_schema.name] = utils.uuid()
       end
 
-      self.params[foreign_schema.name] = pk
     else
       self.args.post[foreign_field_name] = schema:extract_pk_values(entity)
     end
 
-    entity, _, err_t = upsert_entity(self, db, foreign_schema, method)
+    local foreign_entity
+    foreign_entity, _, err_t = upsert_entity(self, db, foreign_schema, method)
     if err_t then
       return handle_error(err_t)
     end
 
-    if not entity then
+    if not foreign_entity then
       return not_found()
     end
 
-    return ok(entity)
+    if associate then
+      local pk = schema:extract_pk_values(entity)
+      local data = {
+        [foreign_field_name] = foreign_schema:extract_pk_values(foreign_entity)
+      }
+
+      _, _, err_t = db[schema.name]:update(pk, data)
+      if err_t then
+        return handle_error(err_t)
+      end
+
+      --if not entity then
+        -- route was deleted after service was created,
+        -- so we cannot associate anymore. perhaps not
+        -- worth it to handle, the service on the other
+        -- hand was updates just fine.
+      --end
+    end
+
+    return ok(foreign_entity)
   end
 end
 
