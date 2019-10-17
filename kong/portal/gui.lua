@@ -29,6 +29,13 @@ local function sitemap_handler(self)
     app:enable("etlua")
     app.layout = EtluaWidget:load(pl_file.read(config.prefix .. "/portal/views/sitemap.etlua"))
     gui_helpers.prepare_sitemap(self)
+
+    return
+  end
+
+  local sitemap = renderer.compile_sitemap()
+  if sitemap then
+    return kong.response.exit(200, sitemap)
   end
 end
 

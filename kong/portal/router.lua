@@ -85,7 +85,7 @@ local function generate_route(ws_router, route_item)
 end
 
 
-local function build_ws_router(db, ws_router, skip_collections)
+local function build_ws_router(db, ws, ws_router, skip_collections)
   local router_conf = file_helpers.get_conf("router")
   if router_conf then
     ws_router.custom = {}
@@ -98,7 +98,7 @@ local function build_ws_router(db, ws_router, skip_collections)
   for file in db.files:each() do
     local is_collection = file_helpers.is_collection_path(file.path)
     if not skip_collections or skip_collections and not is_collection then
-      local route_item = file_helpers.parse_content(file)
+      local route_item = file_helpers.parse_content(file, ws)
       if route_item and route_item.route then
         generate_route(ws_router, route_item)
       end
@@ -143,7 +143,7 @@ return {
         local local_version = local_version_cache[cache_key] or "local_unset"
 
         if local_version == "local_unset" then
-          local ws_router = build_ws_router(db, {}, true)
+          local ws_router = build_ws_router(db, ws, {}, true)
           if ws_router then
             router[ws.name] = ws_router
           end
@@ -156,13 +156,15 @@ return {
         -- due to many concurrent requests.
         if local_version ~= global_version and not is_building then
           timer_at(0, function()
-            is_building = true
-            local ws_router = build_ws_router(db, {})
-            if ws_router then
-              router[ws.name] = ws_router
-              local_version_cache[cache_key] = global_version
-            end
-            is_building = false
+            workspaces.run_with_ws_scope({ws}, function()
+              is_building = true
+              local ws_router = build_ws_router(db, ws, {})
+              if ws_router then
+                router[ws.name] = ws_router
+                local_version_cache[cache_key] = global_version
+              end
+              is_building = false
+            end)
           end)
         end
 

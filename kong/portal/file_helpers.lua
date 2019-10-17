@@ -342,7 +342,7 @@ local function parse_content(file)
     end
 
     -- headmatter route takes precidence
-    if not headmatter.route and collection_conf.route then
+    if not headmatter.route and collection_conf and collection_conf.route then
       route_type = ROUTE_TYPES.COLLECTION
       route = collection_conf.route
 
@@ -370,12 +370,14 @@ local function parse_content(file)
   end
 
   return {
+    path       = file.path,
+    created_at = file.created_at,
+    updated_at = file.updated_at,
     headmatter = headmatter,
     route_type = route_type,
     path_meta  = path_meta,
     layout     = layout,
     route      = route,
-    path       = file.path,
     body       = body,
     parsed     = parsed, -- specs only
   }
