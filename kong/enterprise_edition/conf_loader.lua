@@ -73,6 +73,28 @@ local function validate_admin_gui_authentication(conf, errors)
       })
     end
   end
+
+  local keyword = "admin_gui_auth_password_complexity"
+  if conf[keyword] and conf[keyword] ~= "" then
+    if not conf.admin_gui_auth or conf.admin_gui_auth ~= "basic-auth" then
+      errors[#errors+1] = keyword .. " is set without basic-auth"
+    end
+
+    local auth_password_complexity, err = cjson.decode(tostring(conf[keyword]))
+    if err then
+      errors[#errors+1] = keyword .. " must be valid json or not set: "
+        .. err .. " - " .. conf[keyword]
+    else
+      -- convert json to lua table format
+      conf[keyword] = auth_password_complexity
+
+      setmetatable(conf[keyword], {
+        __tostring = function (v)
+          return assert(cjson.encode(v))
+        end
+      })
+    end
+  end
 end
 
 

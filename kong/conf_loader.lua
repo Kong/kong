@@ -273,6 +273,7 @@ local CONF_INFERENCES = {
   admin_gui_auth = {typ = "string"},
   admin_gui_auth_conf = {typ = "string"},
   admin_gui_auth_header = {typ = "string"},
+  admin_gui_auth_password_complexity = {typ = "string"},
   admin_gui_session_conf = {typ = "string"},
   admin_gui_auth_login_attempts = {typ = "number"},
   admin_emails_from = {typ = "string"},

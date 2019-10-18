@@ -1050,6 +1050,38 @@
                         #
                         #  admin_gui_auth_conf = { "hide_credentials": true }
 
+#admin_gui_auth_password_complexity =
+                        # Kong Manager Authentication Password Complexity (JSON)
+                        # 
+                        # When admin_gui_auth = basic-auth, this property defines
+                        # the rules required for Kong Manager passwords. Choose 
+                        # from preset rules or write your own.
+                        # 
+                        # Example using preset rules:
+                        #
+                        # admin_gui_auth_password_complexity = { "kong-preset": "min_8" }
+                        # 
+                        # All values for kong-preset require the password to contain 
+                        # characters from at least three of the following categories:
+                        # 1) Uppercase characters (A through Z)
+                        # 2) Lowercase characters (a through z)
+                        # 3) Base-10 digits (0 through 9)
+                        # 4) Special characters (for example, &, $, #, %)
+                        # 
+                        # Value to Use | Minimum Length
+                        # min_8        |     8
+                        # min_12       |    12
+                        # min_20       |    20
+                        # 
+                        # To write your own rules, see 
+                        # https://manpages.debian.org/jessie/passwdqc/passwdqc.conf.5.en.html.
+                        # 
+                        # NOTE: Only keywords "min", "max" and "passphrase" are supported.
+                        # 
+                        # Example:
+                        # 
+                        # admin_gui_auth_password_complexity = { "min": "disabled,24,11,9,8" }
+                        
 #admin_gui_session_conf =
                         # Kong Manager Session Config (JSON)
                         #

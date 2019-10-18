@@ -1,10 +1,11 @@
-local endpoints   = require "kong.api.endpoints"
-local singletons  = require "kong.singletons"
-local enums       = require "kong.enterprise_edition.dao.enums"
-local rbac        = require "kong.rbac"
-local workspaces  = require "kong.workspaces"
-local ee_utils    = require "kong.enterprise_edition.utils"
-local ee_jwt      = require "kong.enterprise_edition.jwt"
+local endpoints       = require "kong.api.endpoints"
+local singletons      = require "kong.singletons"
+local enums           = require "kong.enterprise_edition.dao.enums"
+local rbac            = require "kong.rbac"
+local workspaces      = require "kong.workspaces"
+local ee_utils        = require "kong.enterprise_edition.utils"
+local ee_jwt          = require "kong.enterprise_edition.jwt"
+local ee_auth_helpers = require "kong.enterprise_edition.auth_helpers"
 
 local kong = kong
 local log = ngx.log
@@ -349,6 +350,22 @@ function _M.validate_email(self, dao_factory, helpers)
   end
 end
 
+function _M.validate_password(password)
+  local config = singletons.configuration.admin_gui_auth_password_complexity
+
+  if not password or password == "" then
+    return kong.response.exit(400, { message = "password is required" })
+  end
+  
+  if config then
+    local _, err = ee_auth_helpers.check_password_complexity(password, 
+                                                  nil, config)
+
+    if err then
+      return kong.response.exit(400, { message = "Invalid password: " .. err })
+    end
+  end
+end
 
 function _M.routes_consumers_before(self, params, is_collection)
   if params.type then

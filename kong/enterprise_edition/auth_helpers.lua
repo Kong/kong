@@ -1,9 +1,30 @@
-local kong  = kong
+local passwdqc = require "resty.passwdqc"
 
+local kong = kong
 
 local _M = {}
-local attempt_ttl = 60 * 60 * 24 * 7 -- one week
 
+-- By default, the attempts_ttl is one week (60 * 60 * 24 * 7)
+local LOGIN_ATTEMPTS_TTL = 604800
+
+-- user-friendly preset can be added to this table
+-- Kong Manager only supports the keywords: "min", "max" and "passphrase"
+-- since the existed password will be supported regardless it's complexity
+local PASSWD_COMPLEXITY_PRESET = {
+  min_8  = { min = "disabled,disabled,8,8,8" },
+  min_12 = { min = "disabled,disabled,12,12,12" },
+  min_20 = { min = "disabled,disabled,20,20,20" },
+}
+
+-- Passwordqc wrapper function
+-- @tparam string new_pass
+-- @tparam string|nil old_pass
+-- @tparam table|nil opts - password quality control options
+function _M.check_password_complexity(new_pass, old_pass, opts)
+  opts = PASSWD_COMPLEXITY_PRESET[opts["kong-preset"]] or opts
+
+  return passwdqc.check(new_pass, old_pass, opts)
+end
 
 -- Plugin response handler from login attempts
 -- @tparam table|boolean|nil plugin_res
@@ -54,7 +75,7 @@ function _M.unauthorized_login_attempt(entity, ip, max)
       attempts = {
         [ip] = 1
       }
-    }, { ttl = attempt_ttl })
+    }, { ttl = LOGIN_ATTEMPTS_TTL })
 
     if err then
       kong.log.err("error inserting login_attempts", err)

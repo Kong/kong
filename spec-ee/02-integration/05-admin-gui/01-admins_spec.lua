@@ -464,6 +464,7 @@ for _, strategy in helpers.each_strategy() do
           database = strategy,
           admin_gui_url = "http://manager.konghq.com",
           admin_gui_auth = 'basic-auth',
+          admin_gui_auth_password_complexity = "{\"kong-preset\": \"min_12\"}",
           enforce_rbac = "on",
         }))
         ee_helpers.register_rbac_resources(db)
@@ -486,12 +487,46 @@ for _, strategy in helpers.each_strategy() do
             body  = {
               username  = "dale",
               email = "not-valid.com",
+              password = "new2!pas$Word",
             },
           })
 
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
           assert.truthy(string.match(json.message, "Invalid email"))
+        end)
+
+        it("denies invalid password", function()
+          -- expect returns password required
+          local json_no_pass = assert.res_status(400, assert(client:send {
+            method = "POST",
+            path = "/admins/register",
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+            body = {
+              username  = "bob",
+              email = "hong@konghq.com",
+            },
+          }))
+          local res_no_pass = cjson.decode(json_no_pass)
+          assert.same(res_no_pass.message, "password is required")
+
+          -- expect returns too short
+          local json_short_pass = assert.res_status(400, assert(client:send {
+            method = "POST",
+            path = "/admins/register",
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+            body = {
+              username  = "bob",
+              email = "hong@konghq.com",
+              password = "pass"
+            },
+          }))
+          local res_short_pass = cjson.decode(json_short_pass)
+          assert.same(res_short_pass.message, "Invalid password: too short")
         end)
 
         it("successfully registers an invited admin", function()
@@ -529,7 +564,7 @@ for _, strategy in helpers.each_strategy() do
               username = "bob",
               email = "hong@konghq.com",
               token = valid_jwt,
-              password = "clawz"
+              password = "new2!pas$Word",
             },
           })
 
@@ -693,6 +728,7 @@ for _, strategy in helpers.each_strategy() do
           database = strategy,
           admin_gui_url = "http://manager.konghq.com",
           admin_gui_auth = "basic-auth",
+          admin_gui_auth_password_complexity = "{\"kong-preset\": \"min_12\"}",
           enforce_rbac = "on",
         }))
         ee_helpers.register_rbac_resources(db)
@@ -814,7 +850,7 @@ for _, strategy in helpers.each_strategy() do
             token = ee_jwt.generate_JWT(claims, row.secret, "HS256")
           end
 
-          -- set password
+          -- set invalid password
           res = assert(client:send {
             method = "POST",
             path = "/admins/register",
@@ -828,6 +864,25 @@ for _, strategy in helpers.each_strategy() do
               token = token,
             },
           })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.truthy(string.match(json.message, "Invalid password"))
+
+          -- set new password
+          local new_password = "resetPassword123"
+          res = assert(client:send {
+            method = "POST",
+            path = "/admins/register",
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+            body  = {
+              username  = "kinman",
+              email = "kinman@konghq.com",
+              password = new_password,
+              token = token,
+            },
+          })
           assert.res_status(201, res)
 
           -- use password
@@ -835,7 +890,8 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/auth",
             headers = {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("kinman:password"),
+              ["Authorization"] = "Basic " .. 
+                                  ngx.encode_base64("kinman:" .. new_password),
               ["Kong-Admin-User"] = "kinman",
             }
           })
@@ -847,6 +903,7 @@ for _, strategy in helpers.each_strategy() do
           assert.is_not_nil(jwt)
 
           -- update password
+          new_password = "update-Password"
           res = assert(client:send {
             method = "PATCH",
             path  = "/admins/password_resets",
@@ -855,7 +912,7 @@ for _, strategy in helpers.each_strategy() do
             },
             body  = {
               email = "kinman@konghq.com",
-              password = "new-password",
+              password = new_password,
               token = jwt,
             }
           })
@@ -866,7 +923,8 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/auth",
             headers = {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("kinman:new-password"),
+              ["Authorization"] = "Basic " .. 
+                                  ngx.encode_base64("kinman:" .. new_password),
               ["Kong-Admin-User"] = "kinman",
             }
           })

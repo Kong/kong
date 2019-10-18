@@ -89,6 +89,7 @@ admin_gui_flags = {}
 admin_gui_auth =
 admin_gui_auth_conf =
 admin_gui_auth_header = Kong-Admin-User
+admin_gui_auth_password_complexity =
 admin_gui_session_conf =
 admin_gui_auth_login_attempts = 0
 admin_approved_email = true

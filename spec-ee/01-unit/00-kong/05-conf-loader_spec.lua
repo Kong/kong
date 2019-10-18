@@ -38,6 +38,29 @@ describe("ee conf loader", function()
       assert.same(expected, msgs)
     end)
 
+    it("returns error if admin_gui_auth_password_complexity is set without basic-auth", function()
+      ee_conf_loader.validate_admin_gui_authentication({
+        admin_gui_auth_password_complexity = "{ \"min\": \"disabled,24,11,9,8\", \"match\": 3 }"
+      }, msgs)
+
+      local expected = { "admin_gui_auth_password_complexity is set without basic-auth" }
+      assert.same(expected, msgs)
+    end)
+
+    it("returns error if admin_gui_auth_password_complexity is invalid JSON", function()
+      ee_conf_loader.validate_admin_gui_authentication({
+        admin_gui_auth = "basic-auth",
+        admin_gui_auth_password_complexity = "{ \"min\"= \"disabled,24,11,9,8\", \"match\": 3 }",
+        enforce_rbac = true,
+      }, msgs)
+
+      local expected = { "admin_gui_auth_password_complexity must be valid json or not set: " ..
+                         "Expected colon but found invalid token at " ..
+                         "character 8 - { \"min\"= \"disabled,24,11,9,8\", \"match\": 3 }" }
+
+      assert.same(expected, msgs)
+    end)
+
     it("returns error if admin_gui_auth is on but rbac is off", function()
       ee_conf_loader.validate_admin_gui_authentication({
         admin_gui_auth = "basic-auth",

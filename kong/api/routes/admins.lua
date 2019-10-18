@@ -301,15 +301,12 @@ return {
 
     -- reset password and consume token
     PATCH = function(self, db, helpers, parent)
-      local new_password = self.params.password
-      if not new_password or new_password == "" then
-        return kong.response.exit(400, { message = "password is required" })
-      end
-
+      ee_api.validate_password(self.params.password)
+      
       local found, err = admins.reset_password(self.plugin,
                                                self.collection,
                                                self.admin.consumer,
-                                               new_password,
+                                               self.params.password,
                                                self.reset_secret_id)
 
       if err then
@@ -352,6 +349,7 @@ return {
         return kong.response.exit(400, {
           message = "cannot register with admin_gui_auth = " .. self.plugin.name})
       end
+      ee_api.validate_password(self.params.password)
       ee_api.validate_email(self, db, helpers)
       ee_api.validate_jwt(self, db, helpers)
     end,
