@@ -280,9 +280,34 @@ return {
 
       local err
       if auto_approve then
-        _, err = portal_emails:account_verification_success_approved(consumer.username)
+        _, err = portal_emails:account_verification_success_approved(developer.email)
+        if err then
+          if err.code then
+            return kong.response.exit(err.code, { message = err.message })
+          end
+
+          return endpoints.handle_error(err)
+        end
+
       else
-        _, err = portal_emails:account_verification_success_pending(consumer.username)
+        local name_or_email = developer.meta and developer.meta.full_name or developer.email
+        _, err = portal_emails:access_request(developer.email, name_or_email)
+        if err then
+          if err.code then
+            return kong.response.exit(err.code, { message = err.message })
+          end
+
+          return endpoints.handle_error(err)
+        end
+
+        _, err = portal_emails:account_verification_success_pending(developer.email)
+        if err then
+          if err.code then
+            return kong.response.exit(err.code, { message = err.message })
+          end
+
+          return endpoints.handle_error(err)
+        end
       end
 
       if err then
@@ -342,6 +367,10 @@ return {
       local portal_emails = portal_smtp_client.new()
       local _, err = portal_emails:account_verification_email(developer.email, jwt)
       if err then
+        if err.code then
+          return kong.response.exit(err.code, { message = err.message })
+        end
+
         return endpoints.handle_error(err)
       end
 
@@ -467,6 +496,10 @@ return {
       local portal_emails = portal_smtp_client.new()
       local _, err = portal_emails:password_reset_success(consumer.username)
       if err then
+        if err.code then
+          return kong.response.exit(err.code, { message = err.message })
+        end
+
         return endpoints.handle_error(err)
       end
 
@@ -504,6 +537,10 @@ return {
       local portal_emails = portal_smtp_client.new()
       local _, err = portal_emails:password_reset(developer.email, jwt)
       if err then
+        if err.code then
+          return kong.response.exit(err.code, { message = err.message })
+        end
+
         return endpoints.handle_error(err)
       end
 
