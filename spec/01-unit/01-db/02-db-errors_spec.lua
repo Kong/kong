@@ -52,7 +52,7 @@ describe("DB Errors", function()
           code = Errors.codes.INVALID_PRIMARY_KEY,
           name = "invalid primary key",
           strategy = "some_strategy",
-          message = [[invalid primary key: '{id2="missing2",id="missing"}']],
+          message = [[invalid primary key: '{id="missing",id2="missing2"}']],
           fields = pk,
         }, err_t)
       end)
@@ -77,7 +77,7 @@ describe("DB Errors", function()
           code = Errors.codes.INVALID_FOREIGN_KEY,
           name = "invalid foreign key",
           strategy = "some_strategy",
-          message = [[invalid foreign key: '{id2="missing2",id="missing"}']],
+          message = [[invalid foreign key: '{id="missing",id2="missing2"}']],
           fields = pk,
         }, err_t)
       end)
