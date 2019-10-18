@@ -3,6 +3,12 @@
 .buildpath
 .project
 .idea
+thumbs.db
+.vscode
+ehthumbs.db
+._*
+.Trashes
+$RECYCLE.BIN/
 
 servroot*
 
