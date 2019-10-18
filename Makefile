@@ -27,8 +27,8 @@ RESTY_OPENSSL_VERSION ?= `grep RESTY_OPENSSL_VERSION $(KONG_SOURCE_LOCATION)/.re
 RESTY_PCRE_VERSION ?= `grep RESTY_PCRE_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 KONG_BUILD_TOOLS ?= '2.0.1'
 KONG_VERSION ?= `cat $(KONG_SOURCE_LOCATION)/kong-*.rockspec | grep tag | awk '{print $$3}' | sed 's/"//g'`
-OPENRESTY_PATCHES_BRANCH ?= master
-KONG_NGINX_MODULE_BRANCH ?= master
+OPENRESTY_PATCHES_BRANCH ?= `grep OPENRESTY_PATCHES_BRANCH $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
+KONG_NGINX_MODULE_BRANCH ?= `grep KONG_NGINX_MODULE_BRANCH $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 
 .PHONY: setup-ci
 setup-ci:
