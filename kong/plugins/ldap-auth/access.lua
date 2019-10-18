@@ -108,7 +108,7 @@ local function ldap_authenticate(given_username, given_password, conf)
 
   -- Case attribute is sAMAccountName
   if conf.attribute == "sAMAccountName" then
-    who = user .. "@" .. domain
+    who = given_username .. "@" .. domain
   end
 
   -- Case attribute is UPN
