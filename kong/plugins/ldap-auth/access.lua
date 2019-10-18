@@ -46,6 +46,9 @@ local function ldap_authenticate(given_username, given_password, conf)
   local is_authenticated
   local err, suppressed_err, ok, _
 
+  local base_dn
+  local domain
+  local who
   local sock = tcp()
 
   sock:settimeout(conf.timeout)
@@ -101,10 +104,7 @@ local function ldap_authenticate(given_username, given_password, conf)
   end
   domain = string.sub(domain, 2)
 
-  -- Case attribute is Common Name
-  if conf.attribute == "cn" then
-    who = conf.attribute .. "=" .. given_username .. "," .. conf.base_dn
-  end
+  who = conf.attribute .. "=" .. given_username .. "," .. conf.base_dn
 
   -- Case attribute is sAMAccountName
   if conf.attribute == "sAMAccountName" then
