@@ -83,6 +83,7 @@ local function ldap_authenticate(given_username, given_password, conf)
 
   if conf.bind_dn then
     is_authenticated = false
+    kong.log.debug("binding with ", conf.bind_dn, " and conf.ldap_password")
     ok, err = ldap.bind_request(sock, conf.bind_dn, conf.ldap_password)
 
     if err then
@@ -91,6 +92,9 @@ local function ldap_authenticate(given_username, given_password, conf)
     end
 
     if ok then
+      kong.log.debug("ldap bind successful, performing search request with base_dn:", 
+        conf.base_dn, ", scope='sub', and filter=", conf.attribute .. "=" .. given_username)
+
       local search_results, err = ldap.search_request(sock, {
         base = conf.base_dn;
         scope = "sub";
@@ -144,6 +148,9 @@ local function ldap_authenticate(given_username, given_password, conf)
       end
     end
   else
+    kong.log.debug("bind_dn failed to bind with given ldap_password," .. 
+      "attempting to bind with username and base_dn:", 
+      conf.attribute .. "=" .. given_username .. "," .. conf.base_dn)
     local who = conf.attribute .. "=" .. given_username .. "," .. conf.base_dn
     is_authenticated, err = ldap.bind_request(sock, who, given_password)
   end
@@ -270,7 +277,12 @@ end
 
 local function load_consumers(value, consumer_by, ttl)
   local err
+  
+  if not value then
+    return nil, "cannot load consumers with empty value"
+  end
 
+  kong.log.debug('finding consumers by value:', value, ", and by field:", consumer_by)
   for _, field_name in ipairs(consumer_by) do
     local key
     local consumer
@@ -281,8 +293,7 @@ local function load_consumers(value, consumer_by, ttl)
       key = ldap_cache.consumer_field_cache_key(field_name, value)
     end
 
-    consumer, err = kong.cache:get(key, ttl, find_consumer, field_name,
-                                         value)
+    consumer, err = kong.cache:get(key, ttl, find_consumer, field_name, value)
 
     if consumer then
       return consumer
@@ -301,13 +312,15 @@ local function do_authentication(conf)
   local consumer, err
   local ttl = conf.ttl
 
-  -- If both headers are missing, return 401
+  -- If both headers are missing, check anonymous
   if not (authorization_value or proxy_authorization_value) then
     ngx.header["WWW-Authenticate"] = 'LDAP realm="kong"'
     consumer, err = load_consumers(anonymous, { 'id' }, ttl)
 
     if err then
-      return false, { status = 500 }
+      kong.log.err('error fetching anonymous user with conf.anonymous="' .. 
+                   (anonymous or '') .. '"', err)
+      return false, { status = 500, message = "An unexpected error occurred" }
     end
 
     if consumer then
@@ -317,7 +330,9 @@ local function do_authentication(conf)
 
     -- anonymous is configured but doesn't exist
     if anonymous ~= "" and not consumer then
-      return false, { status = 500 }
+      kong.log.err('anonymous user not found with conf.anonymous="' .. 
+                   (anonymous or '') .. '"', err)
+      return false, { status = 500, message = "An unexpected error occurred" }
     end
 
     return false, { status = 401, message = "Unauthorized" }
@@ -348,9 +363,11 @@ local function do_authentication(conf)
   end
 
   if not conf.consumer_optional then
+    kong.log.debug('consumer mapping is not optional, looking for consumer.')
     consumer, err = load_consumers(credential.username, conf.consumer_by, ttl)
 
     if not consumer then
+      kong.log.debug("consumer not found, checking anonymous")
       if err then
         return false, { status = 403, "kong consumer was not found (" .. err .. ")" }
       end
@@ -363,6 +380,7 @@ local function do_authentication(conf)
 
     else
       -- we found a consumer to map, so no need to fallback to anonymous
+      kong.log.debug("consumer found, id:", consumer.id)
       anonymous = nil
     end
   end
@@ -378,6 +396,7 @@ function _M.execute(conf)
   if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
+    kong.log.debug("credential found, using anonymous consumer:", conf.anonymous)
     return
   end
 
