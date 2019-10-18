@@ -77,8 +77,9 @@ function _M.unauthorized_login_attempt(entity, ip, max)
 
   -- Final attempt
   if attempt.attempts[ip] >= max then
+    local user = entity.username or entity.email
     kong.log.warn("Unauthorized, and login attempts exceed max for user:" ..
-      entity.username .. ", account locked at ip address:", ip)
+      user .. ", account locked at ip address:", ip)
   end
 end
 
@@ -106,8 +107,9 @@ function _M.successful_login_attempt(entity, ip, max)
 
   -- User is authorized, but can be denied access if attempts exceed max
   if attempt.attempts[ip] >= max then
+    local user = entity.username or entity.email
     kong.log.warn("Successful authorization, but login attempts exceed max for user:"
-     .. entity.username .. ", account locked at ip address:", ip)
+     .. user .. ", account locked at ip address:", ip)
     -- use the same response from basic-auth plugin
     kong.response.exit(401, { message = "Invalid authentication credentials" })
   end

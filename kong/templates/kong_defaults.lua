@@ -42,6 +42,7 @@ portal_api_error_log = logs/error.log
 portal_auto_approve = off
 portal_auth = NONE
 portal_auth_conf = NONE
+portal_auth_login_attempts = 0
 portal_token_exp = 21600
 portal_session_conf =
 

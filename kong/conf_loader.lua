@@ -297,6 +297,7 @@ local CONF_INFERENCES = {
   proxy_uri = {typ = "string"},
   portal_auth = {typ = "string"},
   portal_auth_conf = {typ = "string"},
+  portal_auth_login_attempts = {typ = "number"},
   portal_token_exp = {typ = "number"},
   portal_auto_approve = {typ = "boolean"},
   portal_email_verification = {typ = "boolean"},

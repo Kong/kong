@@ -1365,6 +1365,15 @@
                         #
                         #  portal_auth_conf = { "hide_credentials": true }
 
+#portal_auth_login_attempts  = 0
+                        # Number of times a user can attempt to login to the
+                        # Dev Portal before password must be reset.
+                        #
+                        # 0 (default) means infinite attempts allowed.
+                        #
+                        # Note: Any value greater than 0 will only affect
+                        # Dev Portals secured with basic-auth.
+
 #portal_session_conf =  # Portal Session Config (JSON)
                         #
                         # Here you may specify the configuration for the

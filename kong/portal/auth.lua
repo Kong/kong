@@ -5,15 +5,20 @@ local utils         = require "kong.tools.utils"
 local enums         = require "kong.enterprise_edition.dao.enums"
 local singletons    = require "kong.singletons"
 local rbac          = require "kong.rbac"
+local auth_helpers  = require "kong.enterprise_edition.auth_helpers"
 
 local ws_constants  = constants.WORKSPACE_CONFIG
 
 local log = ngx.log
 local ERR = ngx.ERR
+local decode_base64 = ngx.decode_base64
+local re_gmatch = ngx.re.gmatch
+local re_match = ngx.re.match
 
 local DEVELOPER_TYPE = enums.CONSUMERS.TYPE.DEVELOPER
 
 local UNEXPECTED_ERR = { message = "An unexpected error occurred" }
+local UNAUTHED_ERR = { message = "Invalid authentication credentials" }
 
 local kong = kong
 
@@ -87,10 +92,10 @@ local function check_oidc_session()
   return true
 end
 
-local function get_developer(self)
+local function get_authenticated_developer(self)
   local consumer = ngx.ctx.authenticated_consumer
   if not consumer or consumer.type ~= DEVELOPER_TYPE then
-    return nil, "Unauthorized"
+    return nil, UNAUTHED_ERR.message
   end
 
   local developer, err = kong.db.developers:select_by_email(consumer.username)
@@ -99,7 +104,7 @@ local function get_developer(self)
   end
 
   if not developer then
-    return nil, "Developer not found"
+    return nil, UNAUTHED_ERR.message
   end
 
   local status = developer.status
@@ -107,15 +112,15 @@ local function get_developer(self)
   -- normalize status if OIDC enabled and developer UNVERIFIED
   if self.plugin.name == "openid-connect" and
      status == enums.CONSUMERS.STATUS.UNVERIFIED then
-      developer, err = kong.db.developers:update({ id = developer.id }, {
-        status = get_oidc_developer_status()
-      })
+    developer, err = kong.db.developers:update({ id = developer.id }, {
+      status = get_oidc_developer_status()
+    })
 
-      if err then
-        return nil, err
-      end
+    if err then
+      return nil, UNEXPECTED_ERR.message
+    end
 
-      status = developer.status
+    status = developer.status
   end
 
   if status ~= enums.CONSUMERS.STATUS.APPROVED then
@@ -164,27 +169,86 @@ function _M.add_required_session_conf(session_conf, workspace)
   return session_conf
 end
 
+-- modified from kong/plugins/basic-auth/access.lua retrieve_credentials
+function _M.get_basic_auth_username()
+  local username
+  local authorization_header = kong.request.get_header("authorization")
+  if authorization_header then
+    local iterator = re_gmatch(authorization_header, "\\s*[Bb]asic\\s*(.+)")
+    if not iterator then
+      return nil, 'error parsing developer basic-auth header'
+    end
+
+    local m, err = iterator()
+    if err then
+      return nil, 'error parsing developer basic-auth header'
+    end
+
+    if m and m[1] then
+      local decoded_basic = decode_base64(m[1])
+      if decoded_basic then
+        local basic_parts, err = re_match(decoded_basic, "([^:]+):(.*)", "oj")
+        if err or not basic_parts then
+          return nil, 'error parsing developer basic-auth header'
+        end
+
+        username = basic_parts[1]
+      end
+    end
+  end
+
+  if not username then
+    return nil, 'error parsing developer basic auth-header'
+  end
+
+  return username
+end
+
 
 function _M.login(self, db, helpers)
   local invoke_plugin = singletons.invoke_plugin
+  local unauthenticated_developer
 
   _M.validate_auth_plugin(self, db, helpers)
+
+  -- Login attempts are only enforced when basic-auth is enabled.
+  -- We need to read the basic auth header before auth runs and the header
+  -- is removed. We use username from the header to lookup up the developer
+  -- so we can track login attempts below.
+  local is_basic_auth = self.plugin.name == "basic-auth"
+  if is_basic_auth then
+    local username, err = _M.get_basic_auth_username()
+    if err or not username then
+      return kong.response.exit(401, UNAUTHED_ERR)
+    end
+
+    unauthenticated_developer, err = kong.db.developers:select_by_email(username)
+    if err or not unauthenticated_developer then
+      return kong.response.exit(401, UNAUTHED_ERR)
+    end
+  end
 
   local workspace = workspaces.get_workspace()
   local auth_conf = workspaces.retrieve_ws_config(
                                       ws_constants.PORTAL_AUTH_CONF, workspace)
 
-  local ok, err = invoke_plugin({
+  local plugin_auth_response, err = invoke_plugin({
     name = self.plugin.name,
     config = auth_conf,
     phases = { "access"},
     api_type = ee_api.apis.PORTAL,
     db = db,
+    exit_handler = function (res) return res end,
   })
 
-  if not ok then
+  if err or not plugin_auth_response then
     log(ERR, err)
     return kong.response.exit(500, UNEXPECTED_ERR)
+  end
+
+  if is_basic_auth then
+    local max_attempts = singletons.configuration.portal_auth_login_attempts
+    auth_helpers.plugin_res_handler(plugin_auth_response, unauthenticated_developer, max_attempts)
   end
 
   -- if not openid-connect
@@ -209,7 +273,7 @@ function _M.login(self, db, helpers)
     end
   end
 
-  local developer, err = get_developer(self)
+  local developer, err = get_authenticated_developer(self)
   if err then
     if ngx.ctx.authenticated_session then
       ngx.ctx.authenticated_session:destroy()
@@ -267,7 +331,7 @@ function _M.authenticate_api_session(self, db, helpers)
     return kong.response.exit(500, UNEXPECTED_ERR)
   end
 
-  local developer, err = get_developer(self)
+  local developer, err = get_authenticated_developer(self)
   if err then
     if ngx.ctx.authenticated_session then
       ngx.ctx.authenticated_session:destroy()
@@ -344,8 +408,7 @@ function _M.authenticate_gui_session(self, db, helpers)
     return kong.response.exit(500, UNEXPECTED_ERR)
   end
 
-  local developer = get_developer(self)
-
+  local developer = get_authenticated_developer(self)
   if not developer then
     if ngx.ctx.authenticated_session then
       ngx.ctx.authenticated_session:destroy()

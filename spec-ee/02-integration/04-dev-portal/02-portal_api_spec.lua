@@ -796,7 +796,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("Authenticated Routes [basic-auth]", function()
-        local approved_developer
+        local approved_developer, locked_out_developer
 
         lazy_setup(function()
           helpers.stop_kong()
@@ -811,6 +811,7 @@ for _, strategy in helpers.each_strategy() do
             portal_auto_approve = "off",
             portal_is_legacy = true,
             admin_gui_url = "http://localhost:8080",
+            portal_auth_login_attempts = 3,
           }))
 
           configure_portal(db, {
@@ -841,6 +842,15 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(200, res)
           local resp_body_json = cjson.decode(body)
           approved_developer = resp_body_json.developer
+
+          local res = register_developer(portal_api_client, {
+            email = "lockout@konghq.com",
+            password = "locked",
+            meta = "{\"full_name\":\"YEE\"}",
+          })
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+          locked_out_developer = resp_body_json.developer
 
           close_clients(portal_api_client)
         end)
@@ -905,10 +915,98 @@ for _, strategy in helpers.each_strategy() do
 
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
-              assert.equals("Unauthorized", json.message)
+              assert.equals("Invalid authentication credentials", json.message)
             end)
 
-            it("returns 403 with invalid username ", function()
+            it("account locks after portal_auth_login_attempts, resets on password reset", function()
+              local cookie = authenticate(portal_api_client, {
+                ["Authorization"] = "Basic " .. ngx.encode_base64("lockout@konghq.com:locked"),
+              }, true)
+
+              -- login succeeds
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/developer",
+                headers = {
+                  ["Cookie"] = cookie
+                },
+              })
+
+              assert.res_status(200, res)
+
+              -- 3 unsuccessful attempts
+              for i = 1, 3 do
+                local res = authenticate(portal_api_client, {
+                  ["Authorization"] = "Basic " .. ngx.encode_base64("lockout@konghq.com:wrong"),
+                })
+
+                local body = assert.res_status(401, res)
+                local json = cjson.decode(body)
+                assert.equals("Invalid authentication credentials", json.message)
+              end
+
+              -- valid password now fails
+              local res = authenticate(portal_api_client, {
+                ["Authorization"] = "Basic " .. ngx.encode_base64("lockout@konghq.com:locked"),
+              })
+
+              local body = assert.res_status(401, res)
+              local json = cjson.decode(body)
+              assert.equals("Invalid authentication credentials", json.message)
+
+              -- reset password flow
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/forgot-password",
+                body = {
+                  email = locked_out_developer.email,
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              assert.res_status(200, res)
+
+              local pending = {}
+              for secret in db.consumer_reset_secrets:each_for_consumer({ id = locked_out_developer.consumer.id}) do
+                if secret.status == enums.TOKENS.STATUS.PENDING then
+                  pending[#pending + 1] = secret
+                end
+              end
+
+              local secret = pending[1].secret
+
+              local claims = {id = locked_out_developer.consumer.id, exp = time() + 100000}
+              local valid_jwt = ee_jwt.generate_JWT(claims, secret)
+
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/reset-password",
+                body = {
+                  token = valid_jwt,
+                  password = "unlocked",
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              assert.res_status(200, res)
+
+              -- new password auths
+              cookie = authenticate(portal_api_client, {
+                ["Authorization"] = "Basic " .. ngx.encode_base64("lockout@konghq.com:unlocked"),
+              }, true)
+
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/developer",
+                headers = {
+                  ["Cookie"] = cookie
+                },
+              })
+
+              assert.res_status(200, res)
+            end)
+
+            it("returns 401 with invalid username ", function()
               local res = authenticate(portal_api_client, {
                 ["Authorization"] = "Basic " .. ngx.encode_base64("derp:kong"),
               })
@@ -930,7 +1028,7 @@ for _, strategy in helpers.each_strategy() do
 
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
-              assert.equals("Unauthorized", json.message)
+              assert.equals("Invalid authentication credentials", json.message)
             end)
 
             it("returns 200 and session cookie with valid credentials", function()
@@ -984,7 +1082,7 @@ for _, strategy in helpers.each_strategy() do
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
 
-              assert.equals("Unauthorized", json.message)
+              assert.equals("Invalid authentication credentials", json.message)
             end)
           end)
         end)
@@ -1083,6 +1181,10 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("/forgot-password [basic-auth]", function()
+          setup(function()
+            db:truncate("consumer_reset_secrets")
+          end)
+
           describe("POST", function()
             it("should return 400 if called with invalid email", function()
               local res = assert(portal_api_client:send {
@@ -2580,7 +2682,7 @@ for _, strategy in helpers.each_strategy() do
 
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
-              assert.equals("Unauthorized", json.message)
+              assert.equals("Invalid authentication credentials", json.message)
             end)
 
             it("returns 200 and session cookie with valid apikey", function()
@@ -2634,7 +2736,7 @@ for _, strategy in helpers.each_strategy() do
               local body = assert.res_status(401, res)
               local json = cjson.decode(body)
 
-              assert.equals("Unauthorized", json.message)
+              assert.equals("Invalid authentication credentials", json.message)
             end)
           end)
         end)

@@ -8,6 +8,7 @@ local endpoints          = require "kong.api.endpoints"
 local crud_helpers       = require "kong.portal.crud_helpers"
 local enums              = require "kong.enterprise_edition.dao.enums"
 local ee_api             = require "kong.enterprise_edition.api_helpers"
+local auth_helpers       = require "kong.enterprise_edition.auth_helpers"
 local secrets            = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 
 local kong = kong
@@ -491,6 +492,8 @@ return {
       if not ok then
         return endpoints.handle_error(err)
       end
+
+      auth_helpers.reset_attempts(consumer)
 
       -- Email user with reset success confirmation
       local portal_emails = portal_smtp_client.new()
