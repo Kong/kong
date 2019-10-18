@@ -83,6 +83,7 @@ build = {
     ["kong.enterprise_edition.admins_helpers"] = "kong/enterprise_edition/admins_helpers.lua",
     ["kong.enterprise_edition.api_helpers"] = "kong/enterprise_edition/api_helpers.lua",
     ["kong.enterprise_edition.audit_log"] = "kong/enterprise_edition/audit_log.lua",
+    ["kong.enterprise_edition.auth_helpers"] = "kong/enterprise_edition/auth_helpers.lua",
     ["kong.enterprise_edition.conf_loader"] = "kong/enterprise_edition/conf_loader.lua",
     ["kong.enterprise_edition.consumer_reset_secret_helpers"] = "kong/enterprise_edition/consumer_reset_secret_helpers.lua",
     ["kong.enterprise_edition.crud_helpers"] = "kong/enterprise_edition/crud_helpers.lua",
@@ -195,6 +196,7 @@ build = {
     ["kong.db.schema.entities.files"] = "kong/db/schema/entities/files.lua",
     ["kong.db.schema.entities.legacy_files"] = "kong/db/schema/entities/legacy_files.lua",
     ["kong.db.schema.entities.consumer_reset_secrets"] = "kong/db/schema/entities/consumer_reset_secrets.lua",
+    ["kong.db.schema.entities.login_attempts"] = "kong/db/schema/entities/login_attempts.lua",
 
     ["kong.rbac"] = "kong/rbac/init.lua",
     ["kong.rbac.migrations.01_defaults"] = "kong/rbac/migrations/01_defaults.lua",

@@ -131,6 +131,7 @@ return {
     "developers",
     "groups",
     "group_rbac_roles",
+    "login_attempts",
   },
   RATELIMIT = {
     PERIODS = {

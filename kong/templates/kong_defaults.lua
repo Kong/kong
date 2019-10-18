@@ -89,6 +89,7 @@ admin_gui_auth =
 admin_gui_auth_conf =
 admin_gui_auth_header = Kong-Admin-User
 admin_gui_session_conf =
+admin_gui_auth_login_attempts = 0
 admin_approved_email = true
 admin_emails_from = ""
 admin_emails_reply_to = NONE

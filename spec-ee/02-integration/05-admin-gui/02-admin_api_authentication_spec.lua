@@ -2,6 +2,7 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local ee_helpers = require "spec-ee.helpers"
 local workspaces = require "kong.workspaces"
+local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local utils = require "kong.tools.utils"
 
 local client
@@ -12,11 +13,14 @@ local get_admin_cookie_basic_auth = ee_helpers.get_admin_cookie_basic_auth
 local function truncate_tables(db)
   db:truncate("workspace_entities")
   db:truncate("consumers")
+  db:truncate("admins")
+  db:truncate("rbac_role_endpoints")
   db:truncate("rbac_user_roles")
   db:truncate("rbac_roles")
   db:truncate("rbac_users")
   db:truncate("groups")
-  db:truncate("admins")
+  db:truncate("login_attempts")
+  db:truncate("basicauth_credentials")
 end
 
 local function setup_ws_defaults(dao, db, workspace)
@@ -77,8 +81,10 @@ for _, strategy in helpers.each_strategy() do
       _, db, dao = helpers.get_db_utils(strategy, {
         'services',
         'routes',
+        'admins',
         'consumers',
-        'plugins'
+        'plugins',
+        'login_attempts'
       }, { "ldap-auth-advanced" })
     end)
 
@@ -155,6 +161,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       lazy_teardown(function()
+        helpers.stop_kong()
         if client then
           client:close()
         end
@@ -480,7 +487,6 @@ for _, strategy in helpers.each_strategy() do
       local super_admin, read_only_admin
 
       setup(function()
-        helpers.stop_kong()
         truncate_tables(db)
 
         assert(helpers.start_kong({
@@ -515,6 +521,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       teardown(function()
+        helpers.stop_kong()
         if client then
           client:close()
         end
@@ -581,7 +588,6 @@ for _, strategy in helpers.each_strategy() do
       local super_admin, read_only_admin, other_ws_admin
 
       lazy_setup(function()
-        helpers.stop_kong()
         truncate_tables(db)
 
         assert(helpers.start_kong({
@@ -649,6 +655,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       lazy_teardown(function()
+        helpers.stop_kong()
         if client then
           client:close()
         end
@@ -777,6 +784,247 @@ for _, strategy in helpers.each_strategy() do
 
           res = req("/another-one/services")
           assert.res_status(200, res)
+        end)
+      end)
+    end)
+
+    describe("login attempts", function()
+      local request_invalid = function (username, times)
+        local res
+        for i=1, times or 1 do
+          res = assert(client:send {
+            method = "GET",
+            path = "/auth",
+            headers = {
+              ["Authorization"] = "Basic "
+                .. ngx.encode_base64(username .. ":this-password-is-bad" .. i),
+              ["Kong-Admin-User"] = username,
+            }
+          })
+          assert.res_status(401, res)
+        end
+
+        -- only returning the last response is required for now
+        return res
+      end
+
+      describe("lockout", function()
+        describe("default - unlimited attempts", function()
+          local super_admin
+
+          lazy_setup(function()
+            truncate_tables(db)
+
+            assert(helpers.start_kong({
+              database   = strategy,
+              admin_gui_auth = "basic-auth",
+              enforce_rbac = "on",
+              admin_gui_auth_config = "{ \"hide_credentials\": true }",
+              rbac_auth_header = 'Kong-Admin-Token',
+              -- admin_gui_auth_login_attempts = 0, DEFAULT VALUE
+              smtp_mock = true
+            }))
+
+            client = assert(helpers.admin_client())
+
+            local ws = setup_ws_defaults(dao, db, workspaces.DEFAULT_WORKSPACE)
+            super_admin = admin(db, ws, 'mars', 'super-admin','test@konghq.com')
+
+            assert(db.basicauth_credentials:insert {
+              username    = super_admin.username,
+              password    = "hunter1",
+              consumer = {
+                id = super_admin.consumer.id,
+              },
+            })
+          end)
+
+          lazy_teardown(function()
+            helpers.stop_kong()
+            if client then
+              client:close()
+            end
+          end)
+
+          it("GET - infinite attempts", function()
+            request_invalid(super_admin.username, 10)
+            assert.is_nil(db.login_attempts:select({consumer = super_admin.consumer}))
+          end)
+        end)
+
+        describe("max attempts", function()
+          local super_admin, read_only_admin1, read_only_admin2, read_only_admin3
+
+          lazy_setup(function()
+            truncate_tables(db)
+
+            assert(helpers.start_kong({
+              database   = strategy,
+              admin_gui_auth = "basic-auth",
+              enforce_rbac = "on",
+              admin_gui_auth_config = "{ \"hide_credentials\": true }",
+              rbac_auth_header = 'Kong-Admin-Token',
+              smtp_mock = true,
+              admin_gui_auth_login_attempts = 7,
+            }))
+
+            client = assert(helpers.admin_client())
+
+            local ws = setup_ws_defaults(dao, db, workspaces.DEFAULT_WORKSPACE)
+            super_admin = admin(db, ws, 'mars', 'super-admin','test@konghq.com')
+            read_only_admin1 = admin(db, ws, 'gruce1', 'read-only', 'test1@konghq.com')
+            read_only_admin2 = admin(db, ws, 'gruce2', 'read-only', 'test2@konghq.com')
+            read_only_admin3 = admin(db, ws, 'gruce3', 'read-only', 'test3@konghq.com')
+
+            assert(db.basicauth_credentials:insert {
+              username    = super_admin.username,
+              password    = "hunter1",
+              consumer = {
+                id = super_admin.consumer.id,
+              },
+            })
+
+            assert(db.basicauth_credentials:insert {
+              username    = read_only_admin1.username,
+              password    = "hunter2",
+              consumer = {
+                id = read_only_admin1.consumer.id,
+              },
+            })
+
+            assert(db.basicauth_credentials:insert {
+              username    = read_only_admin2.username,
+              password    = "hunter2",
+              consumer = {
+                id = read_only_admin2.consumer.id,
+              },
+            })
+
+            assert(db.basicauth_credentials:insert {
+              username    = read_only_admin3.username,
+              password    = "hunter2",
+              consumer = {
+                id = read_only_admin3.consumer.id,
+              },
+            })
+          end)
+
+          lazy_teardown(function()
+            helpers.stop_kong()
+            if client then
+              client:close()
+            end
+          end)
+
+          describe("GET", function()
+            it("user is allowed access", function ()
+              local res = assert(client:send {
+                method = "GET",
+                path = "/auth",
+                headers = {
+                  ["Authorization"] = "Basic "
+                    .. ngx.encode_base64(read_only_admin1.username .. ":hunter2"),
+                  ["Kong-Admin-User"] = read_only_admin1.username,
+                }
+              })
+
+              assert.res_status(200, res)
+              assert.is_nil(db.login_attempts:select({consumer = super_admin.consumer}))
+            end)
+
+            it("user is denied access", function ()
+              local res = request_invalid(super_admin.username)
+
+              assert.res_status(401, res)
+              assert.equals(1, db.login_attempts:select({consumer = super_admin.consumer}).attempts["127.0.0.1"])
+            end)
+
+            it("user is denied access - different consumer", function ()
+              local res = request_invalid(read_only_admin1.username, 3)
+
+              assert.res_status(401, res)
+              assert.equals(3, db.login_attempts:select({consumer = read_only_admin1.consumer}).attempts["127.0.0.1"])
+            end)
+
+            it("user is locked out after max login attempts", function ()
+              request_invalid(read_only_admin2.username, 7)
+              assert.equals(7, db.login_attempts:select({consumer = read_only_admin2.consumer}).attempts["127.0.0.1"])
+
+              -- Now that user is LOCKED_OUT, check to make sure that even a valid
+              -- password will not work
+              local res = assert(client:send {
+                method = "GET",
+                path = "/auth",
+                headers = {
+                  ["Authorization"] = "Basic "
+                    .. ngx.encode_base64(read_only_admin2.username .. ":hunter2"),
+                  ["Kong-Admin-User"] = read_only_admin2.username,
+                }
+              })
+
+              local body = assert.res_status(401, res)
+              local json = cjson.decode(body)
+              assert.equals("Invalid authentication credentials", json.message)
+            end)
+
+            it("attempts are reset after successful login", function ()
+              request_invalid(read_only_admin3.username, 2)
+              assert.equals(2, db.login_attempts:select({consumer = read_only_admin3.consumer}).attempts["127.0.0.1"])
+
+              local res = assert(client:send {
+                method = "GET",
+                path = "/auth",
+                headers = {
+                  ["Authorization"] = "Basic "
+                    .. ngx.encode_base64(read_only_admin3.username .. ":hunter2"),
+                  ["Kong-Admin-User"] = read_only_admin3.username,
+                }
+              })
+
+              assert.res_status(200, res)
+              assert.is_nil(db.login_attempts:select({consumer = read_only_admin3.consumer}))
+            end)
+
+            it("attempts are reset after forgot password", function ()
+              -- lock the admin out
+              request_invalid(read_only_admin3.username, 7)
+              assert.equals(7, db.login_attempts:select({consumer = read_only_admin3.consumer}).attempts["127.0.0.1"])
+
+              -- create a token for updating password
+              local jwt = secrets.create(read_only_admin3.consumer, "localhost",
+                                         ngx.time() + 100000)
+
+             -- update their password
+              local res = assert(client:send {
+                method = "PATCH",
+                path  = "/admins/password_resets",
+                headers = {
+                  ["Content-Type"] = "application/json",
+                },
+                body  = {
+                  email = read_only_admin3.email,
+                  password = "my-new-password",
+                  token = jwt,
+                }
+              })
+              assert.res_status(200, res)
+
+              -- use their new password
+              res = assert(client:send {
+                method = "GET",
+                path = "/auth",
+                headers = {
+                  ["Authorization"] = "Basic " ..
+                    ngx.encode_base64(read_only_admin3.username .. ":my-new-password"),
+                  ["Kong-Admin-User"] = read_only_admin3.username,
+                }
+              })
+              assert.res_status(200, res)
+
+              -- check that login attempts are reset
+              assert.is_nil(db.login_attempts:select({consumer = read_only_admin3.consumer}))
+            end)
+          end)
         end)
       end)
     end)

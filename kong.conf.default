@@ -1069,6 +1069,10 @@
                         # the Admin API will attempt to identify the Kong Admin
                         # user.
 
+#admin_gui_auth_login_attempts = 0
+                        # Number of times a user can attempt to login to Kong
+                        # Manager. 0 means infinite attempts allowed.
+
 #------------------------------------------------------------------------------
 # VITALS
 #------------------------------------------------------------------------------
