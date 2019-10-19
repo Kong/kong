@@ -9,7 +9,9 @@ local enums      = require "kong.enterprise_edition.dao.enums"
 local utils      = require "kong.tools.utils"
 local rbac       = require "kong.rbac"
 local enterprise_utils = require "kong.enterprise_edition.utils"
-local MetaSchema   = require "kong.db.schema.metaschema"
+local MetaSchema = require "kong.db.schema.metaschema"
+local ee_auth_helpers = require "kong.enterprise_edition.auth_helpers"
+
 local log = ngx.log
 local ERR = ngx.ERR
 local null = ngx.null
@@ -29,6 +31,43 @@ local auth_plugins = {
   ["jwt"] =        { name = "jwt",        dao = "jwt_secrets" },
   ["key-auth"] =   { name = "key-auth",   dao = "keyauth_credentials" },
 }
+
+
+local function validate_developer_password(password)
+  local workspace = workspaces.get_workspace()
+  local portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+  if portal_auth ~= "basic-auth" then
+    return true
+  end
+
+  local config = singletons.configuration.portal_auth_password_complexity
+  local ok, err, err_t
+  if not password or password == "" then
+    err = "password is required"
+    err_t = {
+      code = Errors.codes.SCHEMA_VIOLATION,
+      fields = { password = err },
+    }
+
+    return nil, err, err_t
+  end
+
+  if config then
+    ok, err = ee_auth_helpers.check_password_complexity(password, nil, config)
+
+    if not ok then
+      err = "Invalid password: " .. err
+      err_t = {
+        code = Errors.codes.SCHEMA_VIOLATION,
+        fields = { password = err },
+      }
+
+      return nil, err, err_t
+    end
+  end
+
+  return true
+end
 
 
 local function get_developer_status()
@@ -229,7 +268,7 @@ local function create_consumer(entity)
 end
 
 
-local function build_temp_record (input_fields)
+local function build_temp_record(input_fields)
   if type(input_fields) ~= "table" then
     return nil, 'config.portal_developer_meta_fields must be arrays'
   end
@@ -772,4 +811,5 @@ return {
   set_portal_developer_meta_fields = set_portal_developer_meta_fields,
   set_portal_session_conf = set_portal_session_conf,
   set_portal_conf = set_portal_conf,
+  validate_developer_password = validate_developer_password,
 }

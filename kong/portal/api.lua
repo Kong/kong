@@ -10,6 +10,7 @@ local enums              = require "kong.enterprise_edition.dao.enums"
 local ee_api             = require "kong.enterprise_edition.api_helpers"
 local auth_helpers       = require "kong.enterprise_edition.auth_helpers"
 local secrets            = require "kong.enterprise_edition.consumer_reset_secret_helpers"
+local dao_helpers        = require "kong.portal.dao_helpers"
 
 local kong = kong
 local tonumber = tonumber
@@ -174,6 +175,12 @@ return {
         return kong.response.exit(400, {
           fields = { status = "invalid field" },
         })
+      end
+
+      local password = self.params and self.params.password
+      local ok, _, err_t = dao_helpers.validate_developer_password(password)
+      if not ok then
+        return endpoints.handle_error(err_t)
       end
 
       local developer, _, err_t = db.developers:insert(self.params)
@@ -475,6 +482,11 @@ return {
           { message = self.plugin.credential_key .. " is required"})
       end
 
+      local ok, _, err_t = dao_helpers.validate_developer_password(new_password)
+      if not ok then
+        return endpoints.handle_error(err_t)
+      end
+
       local cred_pk = { id = credential.id }
       local entity = { [self.plugin.credential_key] = new_password }
       local ok, err = crud_helpers.update_login_credential(
@@ -649,6 +661,11 @@ return {
         self.params.key = nil
       else
         return kong.response.exit(400, { message = "key or password is required" })
+      end
+
+      local ok, _, err_t = dao_helpers.validate_developer_password(cred_params.password)
+      if not ok then
+        return endpoints.handle_error(err_t)
       end
 
       local cred_pk = { id = credential.id }

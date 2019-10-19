@@ -405,6 +405,8 @@ for _, strategy in helpers.each_strategy() do
 
       describe("/register", function()
         describe("basic-auth", function()
+          local password = "tHiSPasSw0rDiSTr*ng"
+
           lazy_setup(function()
             helpers.stop_kong()
             assert(db:truncate())
@@ -415,6 +417,7 @@ for _, strategy in helpers.each_strategy() do
               portal_auth = "basic-auth",
               enforce_rbac = rbac,
               portal_session_conf = PORTAL_SESSION_CONF,
+              portal_auth_password_complexity = [[{"kong-preset": "min_8"}]],
               admin_gui_url = "http://localhost:8080",
             }))
 
@@ -447,14 +450,41 @@ for _, strategy in helpers.each_strategy() do
               local body = assert.res_status(400, res)
               local resp_body_json = cjson.decode(body)
               local password = resp_body_json.fields.password
-
               assert.equal("password is required", password)
+            end)
+
+            it("returns a 400 if password is too short", function()
+              local res = register_developer(portal_api_client, {
+                email = "noob@konghq.com",
+                password = "kong",
+                meta = "{\"full_name\":\"I Like Turtles\"}",
+              })
+
+              local body = assert.res_status(400, res)
+              local resp_body_json = cjson.decode(body)
+              local password = resp_body_json.fields.password
+
+              assert.equal("Invalid password: too short", password)
+            end)
+
+            it("returns a 400 if password is too weak", function()
+              local res = register_developer(portal_api_client, {
+                email = "noob@konghq.com",
+                password = "asdfasdfasdfasdf",
+                meta = "{\"full_name\":\"I Like Turtles\"}",
+              })
+
+              local body = assert.res_status(400, res)
+              local resp_body_json = cjson.decode(body)
+              local password = resp_body_json.fields.password
+
+              assert.equal("Invalid password: not enough different characters or classes", password)
             end)
 
             it("returns a 400 if email is invalid format", function()
               local res = register_developer(portal_api_client, {
                 email = "grucekonghq.com",
-                password = "kong",
+                password = password,
                 meta = "{\"full_name\":\"I Like Turtles\"}",
               })
 
@@ -468,7 +498,7 @@ for _, strategy in helpers.each_strategy() do
             it("returns a 400 if email is invalid type", function()
               local res = register_developer(portal_api_client, {
                 email = 9000,
-                password = "kong",
+                password = password,
                 meta = "{\"full_name\":\"I Like Turtles\"}",
               })
 
@@ -481,7 +511,7 @@ for _, strategy in helpers.each_strategy() do
 
             it("returns a 400 if email is missing", function()
               local res = register_developer(portal_api_client, {
-                password = "kong",
+                password = password,
                 meta = "{\"full_name\":\"I Like Turtles\"}",
               })
 
@@ -495,7 +525,7 @@ for _, strategy in helpers.each_strategy() do
             it("returns a 400 if meta is missing", function()
               local res = register_developer(portal_api_client, {
                 email = "gruce@konghq.com",
-                password = "kong",
+                password = password,
               })
 
               local body = assert.res_status(400, res)
@@ -507,7 +537,7 @@ for _, strategy in helpers.each_strategy() do
             it("returns a 400 if meta is invalid", function()
               local res = register_developer(portal_api_client, {
                 email = "gruce@konghq.com",
-                password = "kong",
+                password = password,
                 meta = "{weird}",
               })
 
@@ -521,7 +551,7 @@ for _, strategy in helpers.each_strategy() do
             it("returns a 400 if status is included in the request", function()
               local res = register_developer(portal_api_client, {
                 email = "noob@konghq.com",
-                password = "iheartkong",
+                password = password,
                 meta = "{\"full_name\":\"I Like Turtles\"}",
                 status = enums.CONSUMERS.STATUS.APPROVED,
               })
@@ -536,7 +566,7 @@ for _, strategy in helpers.each_strategy() do
             it("registers a developer and set status to pending", function()
               local res = register_developer(portal_api_client, {
                 email = "noob@konghq.com",
-                password = "iheartkong",
+                password = password,
                 meta = "{\"full_name\":\"I Like Turtles\"}",
               })
 
@@ -580,7 +610,7 @@ for _, strategy in helpers.each_strategy() do
               it("can register a developer with no meta fields", function()
                 local res = register_developer(portal_api_client, {
                   email = "noobz@konghq.com",
-                  password = "iheartkong",
+                  password = password,
                 })
 
                 assert.res_status(200, res)
@@ -865,6 +895,122 @@ for _, strategy in helpers.each_strategy() do
 
         after_each(function()
           close_clients(portal_api_client)
+        end)
+
+        describe("/forgot-password [basic-auth] #test", function()
+          describe("POST", function()
+            it("should return 400 if called with invalid email", function()
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/forgot-password",
+                body = {
+                  email = "grucekonghq.com",
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              local body = assert.res_status(400, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.message
+
+              assert.equal("invalid email address grucekonghq.com", message)
+            end)
+
+            it("should return 200 if called with email of a nonexistent user", function()
+              
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/forgot-password",
+                body = {
+                  email = "creeper@example.com",
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              assert.res_status(200, res)
+
+              local secrets = db.consumer_reset_secrets:select_all()
+              assert.equals(0, #secrets)
+            end)
+
+            it("should return 200 and generate a token secret if called with developer email", function()
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/forgot-password",
+                body = {
+                  email = "gruce@konghq.com",
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              assert.res_status(200, res)
+
+              local rows = {}
+              for secret in db.consumer_reset_secrets:each_for_consumer({ id = approved_developer.consumer.id}) do
+                rows[#rows + 1] = secret
+              end
+
+              assert.is_string(rows[1].secret)
+              assert.equal(1, #rows)
+            end)
+
+            it("should invalidate the previous secret if called twice", function()
+              db:truncate("consumer_reset_secrets")
+
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/forgot-password",
+                body = {
+                  email = "gruce@konghq.com",
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              assert.res_status(200, res)
+
+              local rows = {}
+              for secret in db.consumer_reset_secrets:each_for_consumer({ id = approved_developer.consumer.id}) do
+                rows[#rows + 1] = secret
+              end
+
+              assert.equal(1, #rows)
+              assert.is_string(rows[1].secret)
+
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/forgot-password",
+                body = {
+                  email = "gruce@konghq.com",
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              assert.res_status(200, res)
+
+              local pending = {}
+              for secret in db.consumer_reset_secrets:each_for_consumer({ id = approved_developer.consumer.id}) do
+                if secret.status == enums.TOKENS.STATUS.PENDING then
+                  pending[#pending + 1] = secret
+                end
+              end
+
+              assert.equal(1, #pending)
+
+              db.consumer_reset_secrets:delete({ id = pending[1].id })
+
+              local invalidated = {}
+              for secret in db.consumer_reset_secrets:each_for_consumer({ id = approved_developer.consumer.id}) do
+                if secret.status == enums.TOKENS.STATUS.INVALIDATED then
+                  invalidated[#invalidated + 1] = secret
+                end
+              end
+
+              assert.equal(1, #invalidated)
+              db.consumer_reset_secrets:delete({ id = invalidated[1].id })
+
+              assert.not_equal(pending[1].secret, invalidated[1].secret)
+            end)
+          end)
         end)
 
         describe("/auth [basic-auth]", function()
@@ -1179,1048 +1325,6 @@ for _, strategy in helpers.each_strategy() do
             end)
           end)
         end)
-
-        describe("/forgot-password [basic-auth]", function()
-          setup(function()
-            db:truncate("consumer_reset_secrets")
-          end)
-
-          describe("POST", function()
-            it("should return 400 if called with invalid email", function()
-              local res = assert(portal_api_client:send {
-                method = "POST",
-                path = "/forgot-password",
-                body = {
-                  email = "grucekonghq.com",
-                },
-                headers = {["Content-Type"] = "application/json"}
-              })
-
-              local body = assert.res_status(400, res)
-              local resp_body_json = cjson.decode(body)
-              local message = resp_body_json.message
-
-              assert.equal("invalid email address grucekonghq.com", message)
-            end)
-
-            it("should return 200 if called with email of a nonexistent user", function()
-              local res = assert(portal_api_client:send {
-                method = "POST",
-                path = "/forgot-password",
-                body = {
-                  email = "creeper@example.com",
-                },
-                headers = {["Content-Type"] = "application/json"}
-              })
-
-              assert.res_status(200, res)
-
-              local secrets = db.consumer_reset_secrets:select_all()
-              assert.equals(0, #secrets)
-            end)
-
-            it("should return 200 and generate a token secret if called with developer email", function()
-              local res = assert(portal_api_client:send {
-                method = "POST",
-                path = "/forgot-password",
-                body = {
-                  email = "gruce@konghq.com",
-                },
-                headers = {["Content-Type"] = "application/json"}
-              })
-
-              assert.res_status(200, res)
-
-              local rows = {}
-              for secret in db.consumer_reset_secrets:each_for_consumer({ id = approved_developer.consumer.id}) do
-                rows[#rows + 1] = secret
-              end
-
-              assert.is_string(rows[1].secret)
-              assert.equal(1, #rows)
-            end)
-
-            it("should invalidate the previous secret if called twice", function()
-              db:truncate("consumer_reset_secrets")
-
-              local res = assert(portal_api_client:send {
-                method = "POST",
-                path = "/forgot-password",
-                body = {
-                  email = "gruce@konghq.com",
-                },
-                headers = {["Content-Type"] = "application/json"}
-              })
-
-              assert.res_status(200, res)
-
-              local rows = {}
-              for secret in db.consumer_reset_secrets:each_for_consumer({ id = approved_developer.consumer.id}) do
-                rows[#rows + 1] = secret
-              end
-
-              assert.equal(1, #rows)
-              assert.is_string(rows[1].secret)
-
-              local res = assert(portal_api_client:send {
-                method = "POST",
-                path = "/forgot-password",
-                body = {
-                  email = "gruce@konghq.com",
-                },
-                headers = {["Content-Type"] = "application/json"}
-              })
-
-              assert.res_status(200, res)
-
-              local pending = {}
-              for secret in db.consumer_reset_secrets:each_for_consumer({ id = approved_developer.consumer.id}) do
-                if secret.status == enums.TOKENS.STATUS.PENDING then
-                  pending[#pending + 1] = secret
-                end
-              end
-
-              assert.equal(1, #pending)
-
-              db.consumer_reset_secrets:delete({ id = pending[1].id })
-
-              local invalidated = {}
-              for secret in db.consumer_reset_secrets:each_for_consumer({ id = approved_developer.consumer.id}) do
-                if secret.status == enums.TOKENS.STATUS.INVALIDATED then
-                  invalidated[#invalidated + 1] = secret
-                end
-              end
-
-              assert.equal(1, #invalidated)
-              db.consumer_reset_secrets:delete({ id = invalidated[1].id })
-
-              assert.not_equal(pending[1].secret, invalidated[1].secret)
-            end)
-          end)
-        end)
-
-        describe("/reset-password [basic-auth]", function()
-          local secret
-          local approved_developer
-
-          lazy_setup(function()
-            portal_api_client = assert(ee_helpers.portal_api_client())
-
-            local res = register_developer(portal_api_client, {
-              email = "kongkong@konghq.com",
-              password = "wowza",
-              meta = "{\"full_name\":\"1337\"}",
-            })
-
-            local body = assert.res_status(200, res)
-            local resp_body_json = cjson.decode(body)
-            approved_developer = resp_body_json.developer
-
-            local res = assert(portal_api_client:send {
-              method = "POST",
-              path = "/forgot-password",
-              body = {
-                email = approved_developer.email,
-              },
-              headers = {["Content-Type"] = "application/json"}
-            })
-
-            assert.res_status(200, res)
-
-            local pending = {}
-            for secret in db.consumer_reset_secrets:each_for_consumer({ id = approved_developer.consumer.id}) do
-              if secret.status == enums.TOKENS.STATUS.PENDING then
-                pending[#pending + 1] = secret
-              end
-            end
-
-            secret = pending[1].secret
-            close_clients(portal_api_client)
-          end)
-
-          describe("POST", function()
-            it("should return 400 if called without a token", function()
-              local res = assert(portal_api_client:send {
-                method = "POST",
-                path = "/reset-password",
-                body = {
-                  token = "",
-                },
-                headers = {["Content-Type"] = "application/json"}
-              })
-
-              local body = assert.res_status(400, res)
-              local resp_body_json = cjson.decode(body)
-              local message = resp_body_json.message
-
-              assert.equal("token is required", message)
-            end)
-
-            it("should return 401 if called with an invalid jwt format", function()
-              local res = assert(portal_api_client:send {
-                method = "POST",
-                path = "/reset-password",
-                body = {
-                  token = "im_a_token_lol",
-                  password = "derp",
-                },
-                headers = {["Content-Type"] = "application/json"}
-              })
-
-              local body = assert.res_status(401, res)
-              local resp_body_json = cjson.decode(body)
-              local message = resp_body_json.message
-
-              assert.equal("Unauthorized", message)
-            end)
-
-            it("should return 401 if token is signed with an invalid secret", function()
-              local claims = {id = approved_developer.consumer.id, exp = time() + 100000}
-              local bad_jwt = ee_jwt.generate_JWT(claims, "bad_secret")
-
-              local res = assert(portal_api_client:send {
-                method = "POST",
-                path = "/reset-password",
-                body = {
-                  token = bad_jwt,
-                  password = "derp",
-                },
-                headers = {["Content-Type"] = "application/json"}
-              })
-
-              local body = assert.res_status(401, res)
-              local resp_body_json = cjson.decode(body)
-              local message = resp_body_json.message
-
-              assert.equal("Unauthorized", message)
-            end)
-
-            it("should return 401 if token is expired", function()
-              local claims = {id = approved_developer.consumer.id, exp = time() - 100000}
-              local expired_jwt = ee_jwt.generate_JWT(claims, secret)
-
-              local res = assert(portal_api_client:send {
-                method = "POST",
-                path = "/reset-password",
-                body = {
-                  token = expired_jwt,
-                  password = "derp",
-                },
-                headers = {["Content-Type"] = "application/json"}
-              })
-
-              local body = assert.res_status(401, res)
-              local resp_body_json = cjson.decode(body)
-              local message = resp_body_json.message
-
-              assert.equal("Unauthorized", message)
-            end)
-
-            it("should return 401 if token contains non-existent developer", function()
-              local claims = {id = uuid(), exp = time() + 100000}
-              local random_uuid_jwt = ee_jwt.generate_JWT(claims, secret)
-
-              local res = assert(portal_api_client:send {
-                method = "POST",
-                path = "/reset-password",
-                body = {
-                  token = random_uuid_jwt,
-                  password = "derp",
-                },
-                headers = {["Content-Type"] = "application/json"}
-              })
-
-              local body = assert.res_status(401, res)
-              local resp_body_json = cjson.decode(body)
-              local message = resp_body_json.message
-
-              assert.equal("Unauthorized", message)
-            end)
-
-            it("should return 400 if called without a password", function()
-              local claims = {id = approved_developer.consumer.id, exp = time() + 100000}
-              local valid_jwt = ee_jwt.generate_JWT(claims, secret)
-
-              local res = assert(portal_api_client:send {
-                method = "POST",
-                path = "/reset-password",
-                body = {
-                  token = valid_jwt,
-                },
-                headers = {["Content-Type"] = "application/json"}
-              })
-
-              local body = assert.res_status(400, res)
-              local resp_body_json = cjson.decode(body)
-              local message = resp_body_json.message
-
-              assert.equal("password is required", message)
-            end)
-
-            it("should return 200 if called with a valid token, ignoring email_or_id param (regression)", function()
-              local claims = {id = approved_developer.consumer.id, exp = time() + 100000}
-              local valid_jwt = ee_jwt.generate_JWT(claims, secret)
-
-              local res = assert(portal_api_client:send {
-                method = "POST",
-                path = "/reset-password",
-                body = {
-                  email_or_id = "this_will_be_ignored",
-                  token = valid_jwt,
-                  password = "derp",
-                },
-                headers = {["Content-Type"] = "application/json"}
-              })
-
-              assert.res_status(200, res)
-
-              local rows = {}
-              for secret in db.consumer_reset_secrets:each_for_consumer({ id = approved_developer.consumer.id}) do
-                rows[#rows + 1] = secret
-              end
-
-              -- token is consumed
-              assert.equal(1, #rows)
-              assert.equal(enums.TOKENS.STATUS.CONSUMED, rows[1].status)
-
-              -- old password fails
-              local res = authenticate(portal_api_client, {
-                ["Authorization"] = "Basic " .. ngx.encode_base64("kongkong@konghq.com:wowza"),
-              })
-
-              local body = assert.res_status(401, res)
-              local json = cjson.decode(body)
-              assert.equals("Invalid authentication credentials", json.message)
-
-              local cookie = res.headers["Set-Cookie"]
-              assert.is_nil(cookie)
-
-              -- new password auths
-              cookie = authenticate(portal_api_client, {
-                ["Authorization"] = "Basic " .. ngx.encode_base64("kongkong@konghq.com:derp"),
-              }, true)
-
-              local res = assert(portal_api_client:send {
-                method = "GET",
-                path = "/developer",
-                headers = {
-                  ["Cookie"] = cookie
-                },
-              })
-
-              assert.res_status(200, res)
-            end)
-          end)
-        end)
-
-        describe("/validate-reset [basic-auth]", function()
-          local secret
-
-          lazy_setup(function()
-            portal_api_client = assert(ee_helpers.portal_api_client())
-
-            local res = assert(portal_api_client:send {
-              method = "POST",
-              path = "/forgot-password",
-              body = {
-                email = "gruce@konghq.com",
-              },
-              headers = {["Content-Type"] = "application/json"}
-            })
-
-            assert.res_status(200, res)
-
-            local pending = {}
-            for secret in db.consumer_reset_secrets:each_for_consumer({ id = approved_developer.consumer.id}) do
-              if secret.status == enums.TOKENS.STATUS.PENDING then
-                pending[#pending + 1] = secret
-              end
-            end
-
-            secret = pending[1].secret
-            close_clients(portal_api_client)
-          end)
-
-          describe("POST", function()
-            it("should return 400 if called without a token", function()
-              local res = assert(portal_api_client:send {
-                method = "POST",
-                path = "/validate-reset",
-                body = {
-                  token = "",
-                },
-                headers = {["Content-Type"] = "application/json"}
-              })
-
-              local body = assert.res_status(400, res)
-              local resp_body_json = cjson.decode(body)
-              local message = resp_body_json.message
-
-              assert.equal("token is required", message)
-            end)
-
-            it("should return 401 if called with an invalid jwt format", function()
-              local res = assert(portal_api_client:send {
-                method = "POST",
-                path = "/validate-reset",
-                body = {
-                  token = "im_a_token_lol",
-                },
-                headers = {["Content-Type"] = "application/json"}
-              })
-
-              local body = assert.res_status(401, res)
-              local resp_body_json = cjson.decode(body)
-              local message = resp_body_json.message
-
-              assert.equal("Unauthorized", message)
-            end)
-
-            it("should return 401 if token is signed with an invalid secret", function()
-              local claims = {id = approved_developer.consumer.id, exp = time() + 100000}
-              local bad_jwt = ee_jwt.generate_JWT(claims, "bad_secret")
-
-              local res = assert(portal_api_client:send {
-                method = "POST",
-                path = "/validate-reset",
-                body = {
-                  token = bad_jwt,
-                },
-                headers = {["Content-Type"] = "application/json"}
-              })
-
-              local body = assert.res_status(401, res)
-              local resp_body_json = cjson.decode(body)
-              local message = resp_body_json.message
-
-              assert.equal("Unauthorized", message)
-            end)
-
-            it("should return 401 if token is expired", function()
-              local claims = {id = approved_developer.consumer.id, exp = time() - 100000}
-              local expired_jwt = ee_jwt.generate_JWT(claims, secret)
-
-              local res = assert(portal_api_client:send {
-                method = "POST",
-                path = "/validate-reset",
-                body = {
-                  token = expired_jwt,
-                },
-                headers = {["Content-Type"] = "application/json"}
-              })
-
-              local body = assert.res_status(401, res)
-              local resp_body_json = cjson.decode(body)
-              local message = resp_body_json.message
-
-              assert.equal("Unauthorized", message)
-            end)
-
-            it("should return 401 if token contains non-existent developer", function()
-              local claims = {id = uuid(), exp = time() + 100000}
-              local random_uuid_jwt = ee_jwt.generate_JWT(claims, secret)
-
-              local res = assert(portal_api_client:send {
-                method = "POST",
-                path = "/validate-reset",
-                body = {
-                  token = random_uuid_jwt,
-                },
-                headers = {["Content-Type"] = "application/json"}
-              })
-
-              local body = assert.res_status(401, res)
-              local resp_body_json = cjson.decode(body)
-              local message = resp_body_json.message
-
-              assert.equal("Unauthorized", message)
-            end)
-
-            it("should return 200 if called with a valid token", function()
-              local claims = {id = approved_developer.consumer.id, exp = time() + 100000}
-              local valid_jwt = ee_jwt.generate_JWT(claims, secret)
-
-              local res = assert(portal_api_client:send {
-                method = "POST",
-                path = "/validate-reset",
-                body = {
-                  token = valid_jwt,
-                },
-                headers = {["Content-Type"] = "application/json"}
-              })
-
-              assert.res_status(200, res)
-            end)
-          end)
-        end)
-
-        describe("/developer [basic-auth]", function()
-          local developer
-          local cookie
-
-          lazy_setup(function()
-            portal_api_client = assert(ee_helpers.portal_api_client())
-
-            local res = register_developer(portal_api_client, {
-              email = "devdevdev@konghq.com",
-              password = "developer",
-              meta = "{\"full_name\":\"Kong Dev\"}",
-            })
-
-            local body = assert.res_status(200, res)
-            local resp_body_json = cjson.decode(body)
-            developer = resp_body_json.developer
-
-            cookie = authenticate(portal_api_client, {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("devdevdev@konghq.com:developer"),
-            }, true)
-
-            close_clients(portal_api_client)
-          end)
-
-          describe("GET", function()
-            it("returns 401 if unauthenticated", function()
-              local res = assert(portal_api_client:send {
-                method = "GET",
-                path = "/developer",
-              })
-
-              assert.res_status(401, res)
-
-              local res = assert(portal_api_client:send {
-                method = "GET",
-                path = "/developer",
-                headers = {
-                  ["Cookie"] = "nope"
-                },
-              })
-
-              assert.res_status(401, res)
-            end)
-
-            it("returns the authenticated developer", function()
-              local res = assert(portal_api_client:send {
-                method = "GET",
-                path = "/developer",
-                headers = {
-                  ["Cookie"] = cookie
-                }
-              })
-
-              local body = assert.res_status(200, res)
-              local resp_body_json = cjson.decode(body)
-
-              assert.same(developer, resp_body_json)
-            end)
-          end)
-
-          describe("DELETE", function()
-            it("returns 401 if unauthenticated", function()
-              local res = assert(portal_api_client:send {
-                method = "DELETE",
-                path = "/developer",
-              })
-
-              assert.res_status(401, res)
-
-              local res = assert(portal_api_client:send {
-                method = "DELETE",
-                path = "/developer",
-                headers = {
-                  ["Cookie"] = "nope"
-                },
-              })
-
-              assert.res_status(401, res)
-            end)
-
-            it("deletes authenticated developer", function()
-              local res = assert(portal_api_client:send {
-                method = "DELETE",
-                path = "/developer",
-                headers = {
-                  ["Cookie"] = cookie
-                }
-              })
-
-              assert.res_status(204, res)
-
-              local res = assert(portal_api_client:send {
-                method = "GET",
-                path = "/developer",
-                headers = {
-                  ["Cookie"] = cookie
-                }
-              })
-
-              assert.res_status(401, res)
-            end)
-          end)
-        end)
-
-        describe("/developer/password [basic-auth]", function()
-          local cookie
-
-          lazy_setup(function()
-            portal_api_client = assert(ee_helpers.portal_api_client())
-
-            local res = register_developer(portal_api_client, {
-              email = "passwordchange@konghq.com",
-              password = "changeme",
-              meta = "{\"full_name\":\"Mario\"}",
-            })
-
-            assert.res_status(200, res)
-
-            cookie = authenticate(portal_api_client, {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("passwordchange@konghq.com:changeme"),
-            }, true)
-
-            close_clients(portal_api_client)
-          end)
-
-          lazy_teardown(function()
-            portal_api_client = assert(ee_helpers.portal_api_client())
-
-            cookie = authenticate(portal_api_client, {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("passwordchange@konghq.com:hunter1"),
-            }, true)
-
-            local res = assert(portal_api_client:send {
-              method = "DELETE",
-              path = "/developer",
-              headers = {
-                ["Cookie"] = cookie
-              }
-            })
-
-            assert.res_status(204, res)
-            close_clients(portal_api_client)
-          end)
-
-          describe("PATCH", function()
-            it("returns 401 if not authenticated", function()
-              local res = assert(portal_api_client:send {
-                method = "PATCH",
-                body = {
-                  password = "hunter1",
-                },
-                path = "/developer/password",
-                headers = {
-                  ["Content-Type"] = "application/json",
-                }
-              })
-
-              assert.res_status(401, res)
-
-              local res = assert(portal_api_client:send {
-                method = "PATCH",
-                body = {
-                  password = "hunter1",
-                },
-                path = "/developer/password",
-                headers = {
-                  ["Content-Type"] = "application/json",
-                  ["Cookie"] = "nope",
-                }
-              })
-
-              assert.res_status(401, res)
-            end)
-
-            it("returns 400 if patched with no password", function()
-              local res = assert(portal_api_client:send {
-                method = "PATCH",
-                body = {},
-                path = "/developer/password",
-                headers = {
-                  ["Content-Type"] = "application/json",
-                  ["Cookie"] = cookie,
-                }
-              })
-
-              local body = assert.res_status(400, res)
-              local resp_body_json = cjson.decode(body)
-              local message = resp_body_json.message
-
-              assert.equal("key or password is required", message)
-            end)
-
-            it("updates the password", function()
-              local res = assert(portal_api_client:send {
-                method = "PATCH",
-                body = {
-                  password = "hunter1",
-                },
-                path = "/developer/password",
-                headers = {
-                  ["Content-Type"] = "application/json",
-                  ["Cookie"] = cookie,
-                }
-              })
-
-              assert.res_status(204, res)
-
-              -- old password fails
-              local res = authenticate(portal_api_client, {
-                ["Authorization"] = "Basic " .. ngx.encode_base64("passwordchange@konghq.com:changeme")
-              })
-
-              cookie = res.headers["Set-Cookie"]
-              assert.is_nil(cookie)
-              assert.res_status(401, res)
-
-              -- new password auths
-              cookie = authenticate(portal_api_client, {
-                ["Authorization"] = "Basic " .. ngx.encode_base64("passwordchange@konghq.com:hunter1"),
-              }, true)
-
-              local res = assert(portal_api_client:send {
-                method = "GET",
-                path = "/developer",
-                headers = {
-                  ["Cookie"] = cookie
-                }
-              })
-
-              assert.res_status(200, res)
-            end)
-          end)
-        end)
-
-        describe("/developer/email [basic-auth]", function()
-          local other_developer
-          local cookie
-
-          lazy_setup(function()
-            portal_api_client = assert(ee_helpers.portal_api_client())
-
-            local res = register_developer(portal_api_client, {
-              email = "changeme@konghq.com",
-              password = "pancakes",
-              meta = "{\"full_name\":\"Bowser\"}",
-            })
-
-            assert.res_status(200, res)
-
-            res = register_developer(portal_api_client, {
-              email = "otherdeveloper@konghq.com",
-              password = "rad",
-              meta = "{\"full_name\":\"Toad\"}",
-            })
-
-            local body = assert.res_status(200, res)
-            local resp_body_json = cjson.decode(body)
-            other_developer = resp_body_json.developer
-
-            cookie = authenticate(portal_api_client, {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("changeme@konghq.com:pancakes"),
-            }, true)
-
-            close_clients(portal_api_client)
-          end)
-
-          lazy_teardown(function()
-            portal_api_client = assert(ee_helpers.portal_api_client())
-
-            cookie = authenticate(portal_api_client, {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("new_email@whodis.com:pancakes"),
-            }, true)
-
-            local res = assert(portal_api_client:send {
-              method = "DELETE",
-              path = "/developer",
-              headers = {
-                ["Cookie"] = cookie
-              }
-            })
-
-            assert.res_status(204, res)
-
-            cookie = authenticate(portal_api_client, {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("otherdeveloper@konghq.com:rad"),
-            }, true)
-
-            local res = assert(portal_api_client:send {
-              method = "DELETE",
-              path = "/developer",
-              headers = {
-                ["Cookie"] = cookie
-              }
-            })
-
-            assert.res_status(204, res)
-            close_clients(portal_api_client)
-          end)
-
-          describe("PATCH", function()
-            it("returns 401 if unauthenticated", function()
-              local res = assert(portal_api_client:send {
-                method = "PATCH",
-                body = {
-                  email = "email@lol.com",
-                },
-                path = "/developer/email",
-                headers = {
-                  ["Content-Type"] = "application/json",
-                }
-              })
-
-              assert.res_status(401, res)
-
-              local res = assert(portal_api_client:send {
-                method = "PATCH",
-                body = {
-                  email = "email@lol.com",
-                },
-                path = "/developer/email",
-                headers = {
-                  ["Cookie"] = "nope",
-                  ["Content-Type"] = "application/json",
-                }
-              })
-
-              assert.res_status(401, res)
-            end)
-
-
-            it("returns 400 if patched with an invalid email", function()
-              local res = assert(portal_api_client:send {
-                method = "PATCH",
-                body = {
-                  email = "emailol.com",
-                },
-                path = "/developer/email",
-                headers = {
-                  ["Cookie"] = cookie,
-                  ["Content-Type"] = "application/json",
-                }
-              })
-
-              local body = assert.res_status(400, res)
-              local resp_body_json = cjson.decode(body)
-              local message = resp_body_json.fields.email
-
-              assert.equal("missing '@' symbol", message)
-            end)
-
-            it("returns 409 if patched with an email that already exists", function()
-              local res = assert(portal_api_client:send {
-                method = "PATCH",
-                body = {
-                  email = other_developer.email,
-                },
-                path = "/developer/email",
-                headers = {
-                  ["Cookie"] = cookie,
-                  ["Content-Type"] = "application/json",
-                }
-              })
-
-              local body = assert.res_status(409, res)
-              local resp_body_json = cjson.decode(body)
-              local message = resp_body_json.fields.email
-
-              assert.equal("already exists with value '" .. other_developer.email .. "'", message)
-            end)
-
-            it("updates both email and username", function()
-              local res = assert(portal_api_client:send {
-                method = "PATCH",
-                body = {
-                  email = "new_email@whodis.com",
-                },
-                path = "/developer/email",
-                headers = {
-                  ["Cookie"] = cookie,
-                  ["Content-Type"] = "application/json",
-                }
-              })
-
-              assert.res_status(200, res)
-
-              -- old email fails
-              local res = authenticate(portal_api_client, {
-                ["Authorization"] = "Basic " .. ngx.encode_base64("changeme@konghq.com:pancakes"),
-              })
-
-              assert.res_status(401, res)
-              cookie = res.headers["Set-Cookie"]
-              assert.is_nil(cookie)
-
-              -- new email auths
-              cookie = authenticate(portal_api_client, {
-                ["Authorization"] = "Basic " .. ngx.encode_base64("new_email@whodis.com:pancakes"),
-              }, true)
-
-              local res = assert(portal_api_client:send {
-                method = "GET",
-                path = "/developer",
-                headers = {
-                  ["Cookie"] = cookie,
-                  ["Content-Type"] = "application/json",
-                }
-              })
-
-              local body = assert.res_status(200, res)
-              local resp_body_json = cjson.decode(body)
-              assert.equal("new_email@whodis.com", resp_body_json.email)
-            end)
-          end)
-        end)
-
-        describe("/developer/meta [basic-auth]", function()
-          local cookie
-
-          lazy_setup(function()
-            portal_api_client = assert(ee_helpers.portal_api_client())
-
-            local res = register_developer(portal_api_client, {
-              email = "metachange@konghq.com",
-              password = "bloodsport",
-              meta = "{\"full_name\":\"I will change\"}",
-            })
-
-            assert.res_status(200, res)
-
-            cookie = authenticate(portal_api_client, {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("metachange@konghq.com:bloodsport"),
-            }, true)
-
-            close_clients(portal_api_client)
-          end)
-
-          lazy_teardown(function()
-            portal_api_client = assert(ee_helpers.portal_api_client())
-
-            local res = assert(portal_api_client:send {
-              method = "DELETE",
-              path = "/developer",
-              headers = {
-                ["Cookie"] = cookie
-              }
-            })
-
-            assert.res_status(204, res)
-            close_clients(portal_api_client)
-          end)
-
-          describe("PUT", function()
-            it("updates the meta", function()
-              local new_meta = "{\"full_name\":\"KONG!!!\"}"
-
-              local res = assert(portal_api_client:send {
-                method = "PUT",
-                body = {
-                  meta = new_meta
-                },
-                path = "/developer/meta",
-                headers = {
-                  ["Content-Type"] = "application/json",
-                  ["Cookie"] = cookie,
-                }
-              })
-
-              assert.res_status(200, res)
-
-              local res = assert(portal_api_client:send {
-                method = "GET",
-                path = "/developer",
-                headers = {
-                  ["Cookie"] = cookie,
-                }
-              })
-
-              local body = assert.res_status(200, res)
-              local resp_body_json = cjson.decode(body)
-              local meta = resp_body_json.meta
-
-              assert.equal(meta, new_meta)
-            end)
-
-            it("keys not matching schema throw an error", function()
-              local res = assert(portal_api_client:send {
-                method = "GET",
-                path = "/developer",
-                headers = {
-                  ["Cookie"] = cookie,
-                }
-              })
-
-              local body = assert.res_status(200, res)
-              local resp_body_json = cjson.decode(body)
-              local current_meta = resp_body_json.meta
-
-              local new_meta = "{\"new_key\":\"not in current schema\"}"
-
-              local res = assert(portal_api_client:send {
-                method = "PUT",
-                body = {
-                  meta = new_meta
-                },
-                path = "/developer/meta",
-                headers = {
-                  ["Content-Type"] = "application/json",
-                  ["Cookie"] = cookie,
-                },
-              })
-
-              assert.res_status(400, res)
-
-              local res = assert(portal_api_client:send {
-                method = "GET",
-                path = "/developer",
-                headers = {
-                  ["Cookie"] = cookie,
-                },
-              })
-
-              local body = assert.res_status(200, res)
-              local resp_body_json = cjson.decode(body)
-              local new_meta = resp_body_json.meta
-
-              assert.equal(new_meta, current_meta)
-            end)
-          end)
-        end)
-
-        describe("/developer/meta-fields ", function()
-          lazy_setup(function()
-            portal_api_client = assert(ee_helpers.portal_api_client())
-            close_clients(portal_api_client)
-          end)
-
-          lazy_teardown(function()
-            portal_api_client = assert(ee_helpers.portal_api_client())
-            close_clients(portal_api_client)
-          end)
-
-          describe("GET", function()
-            it("returns default developer meta fields in format for portal templates", function ()
-              local res = assert(portal_api_client:send {
-                method = "GET",
-                path = "/developer/meta_fields",
-                headers = {
-                  ["Content-Type"] = "application/json",
-                },
-              })
-              local body = assert.res_status(200, res)
-              local expect = {{
-                title = "full_name",
-                label = "Full Name",
-                is_email = false,
-                validator = {
-                   type = "string",
-                   required = true,
-                  }
-                },
-              }
-
-              assert(expect, body)
-            end)
-          end)
-        end)
-
 
         describe("/credentials/:plugin [basic-auth]", function()
           local credential
@@ -2566,6 +1670,1087 @@ for _, strategy in helpers.each_strategy() do
               local config = resp_body_json
 
               assert.same({}, config.plugins.enabled_in_cluster)
+            end)
+          end)
+        end)
+
+        describe("/validate-reset [basic-auth]", function()
+          local secret
+
+          lazy_setup(function()
+            portal_api_client = assert(ee_helpers.portal_api_client())
+
+            local res = assert(portal_api_client:send {
+              method = "POST",
+              path = "/forgot-password",
+              body = {
+                email = "gruce@konghq.com",
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            assert.res_status(200, res)
+
+            local pending = {}
+            for secret in db.consumer_reset_secrets:each_for_consumer({ id = approved_developer.consumer.id}) do
+              if secret.status == enums.TOKENS.STATUS.PENDING then
+                pending[#pending + 1] = secret
+              end
+            end
+
+            secret = pending[1].secret
+            close_clients(portal_api_client)
+          end)
+
+          describe("POST", function()
+            it("should return 400 if called without a token", function()
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/validate-reset",
+                body = {
+                  token = "",
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              local body = assert.res_status(400, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.message
+
+              assert.equal("token is required", message)
+            end)
+
+            it("should return 401 if called with an invalid jwt format", function()
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/validate-reset",
+                body = {
+                  token = "im_a_token_lol",
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              local body = assert.res_status(401, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.message
+
+              assert.equal("Unauthorized", message)
+            end)
+
+            it("should return 401 if token is signed with an invalid secret", function()
+              local claims = {id = approved_developer.consumer.id, exp = time() + 100000}
+              local bad_jwt = ee_jwt.generate_JWT(claims, "bad_secret")
+
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/validate-reset",
+                body = {
+                  token = bad_jwt,
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              local body = assert.res_status(401, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.message
+
+              assert.equal("Unauthorized", message)
+            end)
+
+            it("should return 401 if token is expired", function()
+              local claims = {id = approved_developer.consumer.id, exp = time() - 100000}
+              local expired_jwt = ee_jwt.generate_JWT(claims, secret)
+
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/validate-reset",
+                body = {
+                  token = expired_jwt,
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              local body = assert.res_status(401, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.message
+
+              assert.equal("Unauthorized", message)
+            end)
+
+            it("should return 401 if token contains non-existent developer", function()
+              local claims = {id = uuid(), exp = time() + 100000}
+              local random_uuid_jwt = ee_jwt.generate_JWT(claims, secret)
+
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/validate-reset",
+                body = {
+                  token = random_uuid_jwt,
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              local body = assert.res_status(401, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.message
+
+              assert.equal("Unauthorized", message)
+            end)
+
+            it("should return 200 if called with a valid token", function()
+              local claims = {id = approved_developer.consumer.id, exp = time() + 100000}
+              local valid_jwt = ee_jwt.generate_JWT(claims, secret)
+
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/validate-reset",
+                body = {
+                  token = valid_jwt,
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              assert.res_status(200, res)
+            end)
+          end)
+        end)
+
+        describe("/developer [basic-auth]", function()
+          local developer
+          local cookie
+
+          lazy_setup(function()
+            portal_api_client = assert(ee_helpers.portal_api_client())
+
+            local res = register_developer(portal_api_client, {
+              email = "devdevdev@konghq.com",
+              password = "developer",
+              meta = "{\"full_name\":\"Kong Dev\"}",
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+            developer = resp_body_json.developer
+
+            cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("devdevdev@konghq.com:developer"),
+            }, true)
+
+            close_clients(portal_api_client)
+          end)
+
+          describe("GET", function()
+            it("returns 401 if unauthenticated", function()
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/developer",
+              })
+
+              assert.res_status(401, res)
+
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/developer",
+                headers = {
+                  ["Cookie"] = "nope"
+                },
+              })
+
+              assert.res_status(401, res)
+            end)
+
+            it("returns the authenticated developer", function()
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/developer",
+                headers = {
+                  ["Cookie"] = cookie
+                }
+              })
+
+              local body = assert.res_status(200, res)
+              local resp_body_json = cjson.decode(body)
+
+              assert.same(developer, resp_body_json)
+            end)
+          end)
+
+          describe("DELETE", function()
+            it("returns 401 if unauthenticated", function()
+              local res = assert(portal_api_client:send {
+                method = "DELETE",
+                path = "/developer",
+              })
+
+              assert.res_status(401, res)
+
+              local res = assert(portal_api_client:send {
+                method = "DELETE",
+                path = "/developer",
+                headers = {
+                  ["Cookie"] = "nope"
+                },
+              })
+
+              assert.res_status(401, res)
+            end)
+
+            it("deletes authenticated developer", function()
+              local res = assert(portal_api_client:send {
+                method = "DELETE",
+                path = "/developer",
+                headers = {
+                  ["Cookie"] = cookie
+                }
+              })
+
+              assert.res_status(204, res)
+
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/developer",
+                headers = {
+                  ["Cookie"] = cookie
+                }
+              })
+
+              assert.res_status(401, res)
+            end)
+          end)
+        end)
+
+        describe("/developer/meta [basic-auth]", function()
+          local cookie
+
+          lazy_setup(function()
+            portal_api_client = assert(ee_helpers.portal_api_client())
+
+            local res = register_developer(portal_api_client, {
+              email = "metachange@konghq.com",
+              password = "bloodsport",
+              meta = "{\"full_name\":\"I will change\"}",
+            })
+
+            assert.res_status(200, res)
+
+            cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("metachange@konghq.com:bloodsport"),
+            }, true)
+
+            close_clients(portal_api_client)
+          end)
+
+          lazy_teardown(function()
+            portal_api_client = assert(ee_helpers.portal_api_client())
+
+            local res = assert(portal_api_client:send {
+              method = "DELETE",
+              path = "/developer",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            assert.res_status(204, res)
+            close_clients(portal_api_client)
+          end)
+
+          describe("PUT", function()
+            it("updates the meta", function()
+              local new_meta = "{\"full_name\":\"KONG!!!\"}"
+
+              local res = assert(portal_api_client:send {
+                method = "PUT",
+                body = {
+                  meta = new_meta
+                },
+                path = "/developer/meta",
+                headers = {
+                  ["Content-Type"] = "application/json",
+                  ["Cookie"] = cookie,
+                }
+              })
+
+              assert.res_status(200, res)
+
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/developer",
+                headers = {
+                  ["Cookie"] = cookie,
+                }
+              })
+
+              local body = assert.res_status(200, res)
+              local resp_body_json = cjson.decode(body)
+              local meta = resp_body_json.meta
+
+              assert.equal(meta, new_meta)
+            end)
+
+            it("keys not matching schema throw an error", function()
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/developer",
+                headers = {
+                  ["Cookie"] = cookie,
+                }
+              })
+
+              local body = assert.res_status(200, res)
+              local resp_body_json = cjson.decode(body)
+              local current_meta = resp_body_json.meta
+
+              local new_meta = "{\"new_key\":\"not in current schema\"}"
+
+              local res = assert(portal_api_client:send {
+                method = "PUT",
+                body = {
+                  meta = new_meta
+                },
+                path = "/developer/meta",
+                headers = {
+                  ["Content-Type"] = "application/json",
+                  ["Cookie"] = cookie,
+                },
+              })
+
+              assert.res_status(400, res)
+
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/developer",
+                headers = {
+                  ["Cookie"] = cookie,
+                },
+              })
+
+              local body = assert.res_status(200, res)
+              local resp_body_json = cjson.decode(body)
+              local new_meta = resp_body_json.meta
+
+              assert.equal(new_meta, current_meta)
+            end)
+          end)
+        end)
+
+        describe("/developer/meta-fields", function()
+          lazy_setup(function()
+            portal_api_client = assert(ee_helpers.portal_api_client())
+            close_clients(portal_api_client)
+          end)
+
+          lazy_teardown(function()
+            portal_api_client = assert(ee_helpers.portal_api_client())
+            close_clients(portal_api_client)
+          end)
+
+          describe("GET", function()
+            it("returns default developer meta fields in format for portal templates", function ()
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/developer/meta_fields",
+                headers = {
+                  ["Content-Type"] = "application/json",
+                },
+              })
+              local body = assert.res_status(200, res)
+              local expect = {{
+                title = "full_name",
+                label = "Full Name",
+                is_email = false,
+                validator = {
+                   type = "string",
+                   required = true,
+                  }
+                },
+              }
+
+              assert(expect, body)
+            end)
+          end)
+        end)
+
+        describe("/reset-password [basic-auth]", function()
+          local secret
+          local approved_developer
+          local password = "tHiSPasSw0rDiSTr*ng"
+
+          lazy_setup(function()
+            helpers.stop_kong()
+            assert(db:truncate())
+  
+            assert(helpers.start_kong({
+              database   = strategy,
+              portal_session_conf = PORTAL_SESSION_CONF,
+              portal_auth_password_complexity = [[{"kong-preset": "min_8"}]],
+              portal = true,
+              portal_auth = "basic-auth",
+              enforce_rbac = rbac,
+              portal_auto_approve = true,
+              portal_is_legacy = true,
+              admin_gui_url = "http://localhost:8080",
+            }))
+
+            configure_portal(db, {
+              portal = true,
+              portal_auth = "basic-auth",
+              portal_auto_approve = true,
+            })
+  
+            portal_api_client = assert(ee_helpers.portal_api_client())
+
+            local res = register_developer(portal_api_client, {
+              email = "kongkong@konghq.com",
+              password = password,
+              meta = "{\"full_name\":\"1337\"}",
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+            approved_developer = resp_body_json.developer
+
+            local res = assert(portal_api_client:send {
+              method = "POST",
+              path = "/forgot-password",
+              body = {
+                email = approved_developer.email,
+              },
+              headers = {["Content-Type"] = "application/json"}
+            })
+
+            assert.res_status(200, res)
+
+            local pending = {}
+            for secret in db.consumer_reset_secrets:each_for_consumer({ id = approved_developer.consumer.id}) do
+              if secret.status == enums.TOKENS.STATUS.PENDING then
+                pending[#pending + 1] = secret
+              end
+            end
+
+            secret = pending[1].secret
+            close_clients(portal_api_client)
+          end)
+  
+          lazy_teardown(function()
+            helpers.stop_kong()
+          end)
+  
+          before_each(function()
+            portal_api_client = assert(ee_helpers.portal_api_client())
+          end)
+  
+          after_each(function()
+            close_clients(portal_api_client)
+          end)
+
+          describe("POST", function()
+            it("should return 400 if called without a token", function()
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/reset-password",
+                body = {
+                  token = "",
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              local body = assert.res_status(400, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.message
+
+              assert.equal("token is required", message)
+            end)
+
+            it("should return 401 if called with an invalid jwt format", function()
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/reset-password",
+                body = {
+                  token = "im_a_token_lol",
+                  password = password,
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              local body = assert.res_status(401, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.message
+
+              assert.equal("Unauthorized", message)
+            end)
+
+            it("should return 401 if token is signed with an invalid secret", function()
+              local claims = {id = approved_developer.consumer.id, exp = time() + 100000}
+              local bad_jwt = ee_jwt.generate_JWT(claims, "bad_secret")
+
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/reset-password",
+                body = {
+                  token = bad_jwt,
+                  password = password,
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              local body = assert.res_status(401, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.message
+
+              assert.equal("Unauthorized", message)
+            end)
+
+            it("should return 401 if token is expired", function()
+              local claims = {id = approved_developer.consumer.id, exp = time() - 100000}
+              local expired_jwt = ee_jwt.generate_JWT(claims, secret)
+
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/reset-password",
+                body = {
+                  token = expired_jwt,
+                  password = password,
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              local body = assert.res_status(401, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.message
+
+              assert.equal("Unauthorized", message)
+            end)
+
+            it("should return 401 if token contains non-existent developer", function()
+              local claims = {id = uuid(), exp = time() + 100000}
+              local random_uuid_jwt = ee_jwt.generate_JWT(claims, secret)
+
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/reset-password",
+                body = {
+                  token = random_uuid_jwt,
+                  password = password,
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              local body = assert.res_status(401, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.message
+
+              assert.equal("Unauthorized", message)
+            end)
+
+            it("should return 400 if called without a password", function()
+              local claims = {id = approved_developer.consumer.id, exp = time() + 100000}
+              local valid_jwt = ee_jwt.generate_JWT(claims, secret)
+
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/reset-password",
+                body = {
+                  token = valid_jwt,
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              local body = assert.res_status(400, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.message
+
+              assert.equal("password is required", message)
+            end)
+
+            it("should return 400 if called with a password too short", function()
+              local claims = {id = approved_developer.consumer.id, exp = time() + 100000}
+              local valid_jwt = ee_jwt.generate_JWT(claims, secret)
+
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/reset-password",
+                body = {
+                  token = valid_jwt,
+                  password = "asdf"
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              local body = assert.res_status(400, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.fields.password
+
+              assert.equal("Invalid password: too short", message)
+            end)
+
+            it("should return 400 if called with a password too simple", function()
+              local claims = {id = approved_developer.consumer.id, exp = time() + 100000}
+              local valid_jwt = ee_jwt.generate_JWT(claims, secret)
+
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/reset-password",
+                body = {
+                  token = valid_jwt,
+                  password = "askdfjlsakjdflksajfl"
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              local body = assert.res_status(400, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.fields.password
+
+              assert.equal("Invalid password: not enough different characters or classes", message)
+            end)
+
+            it("should return 200 if called with a valid token, ignoring email_or_id param (regression)", function()
+              local claims = {id = approved_developer.consumer.id, exp = time() + 100000}
+              local valid_jwt = ee_jwt.generate_JWT(claims, secret)
+
+              local res = assert(portal_api_client:send {
+                method = "POST",
+                path = "/reset-password",
+                body = {
+                  email_or_id = "this_will_be_ignored",
+                  token = valid_jwt,
+                  password = password .. "1",
+                },
+                headers = {["Content-Type"] = "application/json"}
+              })
+
+              assert.res_status(200, res)
+
+              local rows = {}
+              for secret in db.consumer_reset_secrets:each_for_consumer({ id = approved_developer.consumer.id}) do
+                rows[#rows + 1] = secret
+              end
+
+              -- token is consumed
+              assert.equal(1, #rows)
+              assert.equal(enums.TOKENS.STATUS.CONSUMED, rows[1].status)
+
+              -- old password fails
+              local res = authenticate(portal_api_client, {
+                ["Authorization"] = "Basic " .. ngx.encode_base64("kongkong@konghq.com:" .. password),
+              })
+
+              local body = assert.res_status(401, res)
+              local json = cjson.decode(body)
+              assert.equals("Invalid authentication credentials", json.message)
+
+              local cookie = res.headers["Set-Cookie"]
+              assert.is_nil(cookie)
+
+              -- new password auths
+              cookie = authenticate(portal_api_client, {
+                ["Authorization"] = "Basic " .. ngx.encode_base64("kongkong@konghq.com:" .. password .. "1"),
+              }, true)
+
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/developer",
+                headers = {
+                  ["Cookie"] = cookie
+                },
+              })
+
+              assert.res_status(200, res)
+            end)
+          end)
+        end)
+
+        describe("/developer/email [basic-auth]", function()
+          local other_developer
+          local cookie
+
+          lazy_setup(function()
+            helpers.stop_kong()
+            assert(db:truncate())
+  
+            assert(helpers.start_kong({
+              database   = strategy,
+              portal_session_conf = PORTAL_SESSION_CONF,
+              portal = true,
+              portal_auth = "basic-auth",
+              enforce_rbac = rbac,
+              portal_auto_approve = true,
+              portal_is_legacy = true,
+              admin_gui_url = "http://localhost:8080",
+            }))
+
+            configure_portal(db, {
+              portal = true,
+              portal_auth = "basic-auth",
+              portal_auto_approve = true,
+            })
+
+            portal_api_client = assert(ee_helpers.portal_api_client())
+
+            local res = register_developer(portal_api_client, {
+              email = "changeme@konghq.com",
+              password = "pancakes",
+              meta = "{\"full_name\":\"Bowser\"}",
+            })
+
+            assert.res_status(200, res)
+
+            res = register_developer(portal_api_client, {
+              email = "otherdeveloper@konghq.com",
+              password = "rad",
+              meta = "{\"full_name\":\"Toad\"}",
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+            other_developer = resp_body_json.developer
+
+            cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("changeme@konghq.com:pancakes"),
+            }, true)
+
+            close_clients(portal_api_client)
+          end)
+
+          lazy_teardown(function()
+            portal_api_client = assert(ee_helpers.portal_api_client())
+
+            cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("new_email@whodis.com:pancakes"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "DELETE",
+              path = "/developer",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            assert.res_status(204, res)
+
+            cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("otherdeveloper@konghq.com:rad"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "DELETE",
+              path = "/developer",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            assert.res_status(204, res)
+            close_clients(portal_api_client)
+          end)
+
+          describe("PATCH", function()
+            it("returns 401 if unauthenticated", function()
+              local res = assert(portal_api_client:send {
+                method = "PATCH",
+                body = {
+                  email = "email@lol.com",
+                },
+                path = "/developer/email",
+                headers = {
+                  ["Content-Type"] = "application/json",
+                }
+              })
+
+              assert.res_status(401, res)
+
+              local res = assert(portal_api_client:send {
+                method = "PATCH",
+                body = {
+                  email = "email@lol.com",
+                },
+                path = "/developer/email",
+                headers = {
+                  ["Cookie"] = "nope",
+                  ["Content-Type"] = "application/json",
+                }
+              })
+
+              assert.res_status(401, res)
+            end)
+
+
+            it("returns 400 if patched with an invalid email", function()
+              local res = assert(portal_api_client:send {
+                method = "PATCH",
+                body = {
+                  email = "emailol.com",
+                },
+                path = "/developer/email",
+                headers = {
+                  ["Cookie"] = cookie,
+                  ["Content-Type"] = "application/json",
+                }
+              })
+
+              local body = assert.res_status(400, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.fields.email
+
+              assert.equal("missing '@' symbol", message)
+            end)
+
+            it("returns 409 if patched with an email that already exists", function()
+              local res = assert(portal_api_client:send {
+                method = "PATCH",
+                body = {
+                  email = other_developer.email,
+                },
+                path = "/developer/email",
+                headers = {
+                  ["Cookie"] = cookie,
+                  ["Content-Type"] = "application/json",
+                }
+              })
+
+              local body = assert.res_status(409, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.fields.email
+
+              assert.equal("already exists with value '" .. other_developer.email .. "'", message)
+            end)
+
+            it("updates both email and username", function()
+              local res = assert(portal_api_client:send {
+                method = "PATCH",
+                body = {
+                  email = "new_email@whodis.com",
+                },
+                path = "/developer/email",
+                headers = {
+                  ["Cookie"] = cookie,
+                  ["Content-Type"] = "application/json",
+                }
+              })
+
+              assert.res_status(200, res)
+
+              -- old email fails
+              local res = authenticate(portal_api_client, {
+                ["Authorization"] = "Basic " .. ngx.encode_base64("changeme@konghq.com:pancakes"),
+              })
+
+              assert.res_status(401, res)
+              cookie = res.headers["Set-Cookie"]
+              assert.is_nil(cookie)
+
+              -- new email auths
+              cookie = authenticate(portal_api_client, {
+                ["Authorization"] = "Basic " .. ngx.encode_base64("new_email@whodis.com:pancakes"),
+              }, true)
+
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/developer",
+                headers = {
+                  ["Cookie"] = cookie,
+                  ["Content-Type"] = "application/json",
+                }
+              })
+
+              local body = assert.res_status(200, res)
+              local resp_body_json = cjson.decode(body)
+              assert.equal("new_email@whodis.com", resp_body_json.email)
+            end)
+          end)
+        end)
+
+        describe("/developer/password [basic-auth]", function()
+          local cookie
+          local changeme_password = "cHaNgEm3Ple@s3"
+          local password = "tHiSPasSw0rDiSTr*ng"
+
+          lazy_setup(function()
+            helpers.stop_kong()
+            assert(db:truncate())
+  
+            assert(helpers.start_kong({
+              database   = strategy,
+              portal_session_conf = PORTAL_SESSION_CONF,
+              portal_auth_password_complexity = [[{"kong-preset": "min_8"}]],
+              portal = true,
+              portal_auth = "basic-auth",
+              enforce_rbac = rbac,
+              portal_auto_approve = true,
+              portal_is_legacy = true,
+              admin_gui_url = "http://localhost:8080",
+            }))
+
+            configure_portal(db, {
+              portal = true,
+              portal_auth = "basic-auth",
+              portal_auto_approve = true,
+            })
+
+            portal_api_client = assert(ee_helpers.portal_api_client())
+
+            local res = register_developer(portal_api_client, {
+              email = "passwordchange@konghq.com",
+              password = changeme_password,
+              meta = "{\"full_name\":\"Mario\"}",
+            })
+
+            assert.res_status(200, res)
+
+            cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("passwordchange@konghq.com:" .. changeme_password),
+            }, true)
+
+            close_clients(portal_api_client)
+          end)
+
+          lazy_teardown(function()
+            portal_api_client = assert(ee_helpers.portal_api_client())
+
+            cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("passwordchange@konghq.com:" .. password),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "DELETE",
+              path = "/developer",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            assert.res_status(204, res)
+            close_clients(portal_api_client)
+          end)
+
+          describe("PATCH", function()
+            it("returns 401 if not authenticated", function()
+              local res = assert(portal_api_client:send {
+                method = "PATCH",
+                body = {
+                  password = "hunter1",
+                },
+                path = "/developer/password",
+                headers = {
+                  ["Content-Type"] = "application/json",
+                }
+              })
+
+              assert.res_status(401, res)
+
+              local res = assert(portal_api_client:send {
+                method = "PATCH",
+                body = {
+                  password = "hunter1",
+                },
+                path = "/developer/password",
+                headers = {
+                  ["Content-Type"] = "application/json",
+                  ["Cookie"] = "nope",
+                }
+              })
+
+              assert.res_status(401, res)
+            end)
+
+            it("returns 400 if patched with no password", function()
+              local res = assert(portal_api_client:send {
+                method = "PATCH",
+                body = {},
+                path = "/developer/password",
+                headers = {
+                  ["Content-Type"] = "application/json",
+                  ["Cookie"] = cookie,
+                }
+              })
+
+              local body = assert.res_status(400, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.message
+
+              assert.equal("key or password is required", message)
+            end)
+
+            it("returns 400 if patched with too short password", function()
+              local res = assert(portal_api_client:send {
+                method = "PATCH",
+                body = {
+                  password = "asdf",
+                },
+                path = "/developer/password",
+                headers = {
+                  ["Content-Type"] = "application/json",
+                  ["Cookie"] = cookie,
+                }
+              })
+
+              local body = assert.res_status(400, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.fields.password
+
+              assert.equal("Invalid password: too short", message)
+            end)
+
+            it("returns 400 if patched with too simple password", function()
+              local res = assert(portal_api_client:send {
+                method = "PATCH",
+                body = {
+                  password = "asdfasdfasdfasdf",
+                },
+                path = "/developer/password",
+                headers = {
+                  ["Content-Type"] = "application/json",
+                  ["Cookie"] = cookie,
+                }
+              })
+
+              local body = assert.res_status(400, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.fields.password
+
+              assert.equal("Invalid password: not enough different characters or classes", message)
+            end)
+
+            it("updates the password", function()
+              local res = assert(portal_api_client:send {
+                method = "PATCH",
+                body = {
+                  password = password,
+                },
+                path = "/developer/password",
+                headers = {
+                  ["Content-Type"] = "application/json",
+                  ["Cookie"] = cookie,
+                }
+              })
+
+              assert.res_status(204, res)
+
+              -- old password fails
+              local res = authenticate(portal_api_client, {
+                ["Authorization"] = "Basic " .. ngx.encode_base64("passwordchange@konghq.com:" .. changeme_password)
+              })
+
+              cookie = res.headers["Set-Cookie"]
+              assert.is_nil(cookie)
+              assert.res_status(401, res)
+
+              -- new password auths
+              cookie = authenticate(portal_api_client, {
+                ["Authorization"] = "Basic " .. ngx.encode_base64("passwordchange@konghq.com:" .. password),
+              }, true)
+
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/developer",
+                headers = {
+                  ["Cookie"] = cookie
+                }
+              })
+
+              assert.res_status(200, res)
             end)
           end)
         end)

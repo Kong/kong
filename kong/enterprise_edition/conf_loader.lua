@@ -164,6 +164,31 @@ local function validate_portal_session(conf, errors)
 end
 
 
+local function validate_portal_auth_password_complexity(conf, errors)
+  local keyword = "portal_auth_password_complexity"
+  if conf[keyword] and conf[keyword] ~= "" then
+    if not conf.portal_auth or conf.portal_auth ~= "basic-auth" then
+      errors[#errors+1] = keyword .. " is set without basic-auth"
+    end
+
+    local auth_password_complexity, err = cjson.decode(tostring(conf[keyword]))
+    if err then
+      errors[#errors+1] = keyword .. " must be valid json or not set: "
+        .. err .. " - " .. conf[keyword]
+    else
+      -- conver json to lua table format
+      conf[keyword] = auth_password_complexity
+
+      setmetatable(conf[keyword], {
+        __tostring = function (v)
+          return assert(cjson.encode(v))
+        end
+      })
+    end
+  end
+end
+
+
 local function validate_admin_gui_ssl(conf, errors)
   if (table.concat(conf.admin_gui_listen, ",") .. " "):find("%sssl[%s,]") then
     if conf.admin_gui_ssl_cert and not conf.admin_gui_ssl_cert_key then
@@ -373,6 +398,7 @@ local function validate(conf, errors)
   if conf.portal then
     validate_portal_smtp_config(conf, errors)
     validate_portal_session(conf, errors)
+    validate_portal_auth_password_complexity(conf, errors)
 
     local portal_gui_host = conf.portal_gui_host
     if not portal_gui_host or portal_gui_host == "" then
