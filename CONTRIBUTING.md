@@ -2,7 +2,7 @@
 
 Hello, and welcome! Whether you are looking for help, trying to report a bug,
 thinking about getting involved in the project or about to submit a patch, this
-document is for you! Its intent is to be both an entry point for newcomers to
+document is for you! It intends to be both an entry point for newcomers to
 the community (with various technical backgrounds), and a guide/reference for
 contributors and maintainers.
 
@@ -28,7 +28,7 @@ Consult the Table of Contents below, and jump to the desired section.
   - [Contributor T-shirt](#contributor-t-shirt)
 - [Code style](#code-style)
 
-## Where to seek for help?
+## Where to seek help?
 
 ### Enterprise Edition
 
@@ -52,9 +52,8 @@ There are several channels where you can get answers from the community
 or the maintainers of this project:
 
 - Our public forum, [Kong Nation](https://discuss.konghq.com), is great for
-  asking questions, giving advice, and staying up-to-date with the latest
-  announcements. Kong Nation is frequented by Kong maintainers.
-- Two chat channels are used by the community, but are rarely visited by Kong
+  asking questions, giving advice, and staying up-to-date with the latest announcements. Kong Nation is frequented by Kong maintainers.
+- Two chat channels are used by the community but are rarely visited by Kong
   maintainers:
   - [Gitter](https://gitter.im/Kong/kong)
   - IRC, registered on freenode as
@@ -127,7 +126,7 @@ https://github.com/Kong/docs.konghq.com/
 ### Proposing a new plugin
 
 We **do not** accept new plugins into the core repository. The plugins that are
-currently part of this repository are there because of historical reasons, but
+currently part of this repository is there because of historical reasons, but
 will be pushed into separate repositories in the foreseeable future.
 
 If you wish to write a new plugin for your own needs, you should start by
@@ -176,7 +175,7 @@ to verify a few things:
   development documentation for additional details)
 - The tests are passing: run `make test`, `make test-all`, or whichever is
   appropriate for your change
-- Do not update CHANGELOG.md yourself. Your change will be included there in
+- Do not update CHANGELOG.md yourself. Your change will be included therein
   due time if it is accepted, no worries!
 
 If the above guidelines are respected, your Pull Request has all its chances
@@ -206,7 +205,7 @@ When contributing to Kong, this distinction is important. Please ensure that
 you are basing your work on top of the appropriate branch, it might save you
 some time down the road!
 
-If you have write access to the GitHub repository, please follow the following
+If you have to write access to the GitHub repository, please follow the following
 naming scheme when pushing your branch(es):
 
 - `feat/foo-bar` for new features
@@ -225,7 +224,7 @@ logical units of work. You are free to propose a patch with one or many
 commits, as long as their atomicity is respected. This means that no unrelated
 changes should be included in a commit.
 
-For example: you are writing a patch to fix a bug, but in your endeavour, you
+For example, you are writing a patch to fix a bug, but in your endeavor, you
 spot another bug. **Do not fix both bugs in the same commit!** Finish your
 work on the initial bug, propose your patch, and come back to the second bug
 later on. This is also valid for unrelated style fixes, refactors, etc...
@@ -237,7 +236,7 @@ commit history? Will they find unrelated changes in a particular commit? They
 shouldn't!
 
 Writing meaningful commit messages that follow our commit message format will
-also help you respect this mantra (see the below section).
+also, help you respect this mantra (see the below section).
 
 [Back to TOC](#table-of-contents)
 
@@ -353,7 +352,7 @@ tests(proxy) add a new test case for URI encoding
 When proxying upstream, the URI sent by Kong should be the one
 received from the client, even if it was percent-encoded.
 
-This adds a new test case which was missing, to ensure it is
+This adds a new test case that was missing, to ensure it is
 the case.
 ```
 
@@ -390,7 +389,7 @@ suite.
   output
 - `spec/03-plugins` contains tests (both unit and integration) for the bundled
   plugins (those plugins still live in the core repository as of now, but will
-  eventually be externalized)
+  eventually, be externalized)
 
 A few guidelines when writing tests:
 
@@ -498,7 +497,7 @@ language you are using. :smile:
 If your Pull Request to [Kong/kong](https://github.com/Kong/kong) was
 accepted, and it fixes a bug, adds functionality, or makes it significantly
 easier to use or understand Kong, congratulations! You are eligible to
-receive the very special Contributor T-shirt! Go ahead and fill out the
+receive a very special Contributor T-shirt! Go ahead and fill out the
 [Contributors Submissions form](https://goo.gl/forms/5w6mxLaE4tz2YM0L2).
 
 Proudly wear your T-shirt and show it to us by tagging
@@ -510,9 +509,9 @@ Proudly wear your T-shirt and show it to us by tagging
 
 ## Code style
 
-In order to ensure a healthy and consistent codebase, we ask of you that you
+To ensure a healthy and consistent codebase, we ask of you that you
 respect the adopted code style. This section contains a non-exhaustive list
-of preferred styles for writing Lua. It is opinionated, but follows the
+of preferred styles for writing Lua. It is opinionated but follows the
 code styles of OpenResty and, by association, Nginx. OpenResty or Nginx
 contributors should find themselves at ease when contributing to Kong.
 
@@ -522,7 +521,7 @@ contributors should find themselves at ease when contributing to Kong.
 When you are unsure about the style to adopt, please browse other parts of the
 codebase to find a similar case, and stay consistent with it.
 
-You might also notice places in the code base where the described style is not
+You might also notice places in the codebase where the described style is not
 respected. This is due to legacy code. **Contributions to update the code to
 the recommended style are welcome!**
 
@@ -550,12 +549,12 @@ local _M = {}
 
 
 function _M.bar()
-  -- do thing...
+  -- do the thing...
 end
 
 
 function _M.baz()
-  -- do thing...
+  -- do the thing...
 end
 
 
@@ -713,7 +712,7 @@ end
 local function check()
   local ok, err = do_thing()
   if not ok then
-    return nil, "could not do thing: " .. err
+    return nil, "could not do the thing: " .. err
   end
 
   return true
@@ -764,7 +763,7 @@ end
 ```
 
 When creating multiple branches that span multiple lines, **do** include a
-blank line above the `elseif` and `else` statements:
+blank line above the `else if` and `else` statements:
 
 ```lua
 -- bad
@@ -783,7 +782,7 @@ if thing then
   do_stuff()
   keep_doing_stuff()
 
-elseif bar then
+else if bar then
   do_other_stuff()
   keep_doing_other_stuff()
 
