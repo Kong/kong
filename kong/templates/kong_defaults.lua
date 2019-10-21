@@ -96,7 +96,6 @@ admin_gui_auth_login_attempts = 0
 admin_approved_email = true
 admin_emails_from = ""
 admin_emails_reply_to = NONE
-admin_docs_url = https://docs.konghq.com/enterprise/0.34/admin-gui/overview/
 admin_invitation_expiry = 259200
 
 origins = NONE

@@ -10,6 +10,7 @@ local mt = { __index = _M }
 
 local _log_prefix = "[admin-smtp] "
 
+local ADMIN_DOCS_URL = "https://docs.konghq.com/enterprise/latest/kong-manager/overview/"
 
 local templates = {
   invite_login = {
@@ -166,7 +167,7 @@ function _M:invite(recipients, jwt)
                                          jwt, recipient.username),
                        recipient.username,
                        kong_conf.admin_invitation_expiry / 60 / 60,
-                       kong_conf.admin_docs_url)
+                       ADMIN_DOCS_URL)
 
     res = self.client:send({recipient.email}, options, res)
   end
