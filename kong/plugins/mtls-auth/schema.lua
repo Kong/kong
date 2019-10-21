@@ -30,6 +30,11 @@ return {
             required = true,
             default = 60
           }, },
+          { skip_consumer_lookup = {
+            type = "boolean",
+            required = true,
+            default = false
+          }, },
         },
     }, },
   },

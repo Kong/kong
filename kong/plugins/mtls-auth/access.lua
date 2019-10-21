@@ -5,7 +5,6 @@ local _M = {}
 
 
 local resty_kong_tls = require("resty.kong.tls")
-local ngx_re = require("ngx.re")
 local openssl_x509 = require("openssl.x509")
 local openssl_x509_chain = require("openssl.x509.chain")
 local openssl_x509_store = require("openssl.x509.store")
@@ -14,14 +13,16 @@ local constants = require("kong.constants")
 
 
 local kong = kong
-local ngx_exit = ngx.exit
-local ngx_ERROR = ngx.ERROR
 local ngx_re_gmatch = ngx.re.gmatch
 local ipairs = ipairs
 local pairs = pairs
 local new_tab = require("table.new")
 local tb_concat = table.concat
 local ngx_md5 = ngx.md5
+local table_concat = table.concat
+local ngx_var = ngx.var
+
+
 local cache_opts = {
   l1_serializer = function(cas)
     local trust_store = openssl_x509_store.new()
@@ -165,8 +166,8 @@ local function find_consumer(value, consumer_by, ttl)
 end
 
 
+local set_header = kong.service.request.set_header
 local function set_consumer(consumer, credential)
-  local set_header = kong.service.request.set_header
   local clear_header = kong.service.request.clear_header
 
   if consumer and consumer.id then
@@ -222,6 +223,7 @@ local function get_subject_names_from_cert(x509)
 
   local names = new_tab(4, 0)
   local names_n = 0
+  local cn
 
   local subj_alt = x509:getSubjectAlt()
 
@@ -239,16 +241,27 @@ local function get_subject_names_from_cert(x509)
       if entry.id == "2.5.4.3" then -- common name
         names_n = names_n + 1
         names[names_n] = entry.blob
+        cn = entry.blob
+        break
       end
     end
   end
 
-  return names
+  return names, cn
 end
 
 
 local function ca_ids_cache_key(ca_ids)
     return ngx_md5("mtls:cas:" .. tb_concat(ca_ids, ':'))
+end
+
+
+local function set_cert_headers(names)
+  set_header("X-Client-Cert-DN", ngx_var.ssl_client_s_dn)
+
+  if #names ~= 0 then
+    set_header("X-Client-Cert-SAN", table_concat(names, ","))
+  end
 end
 
 
@@ -327,8 +340,13 @@ local function do_authentication(conf)
 
     local ca_id = trust_table.reverse_lookup[ca:digest()]
 
-    local names = get_subject_names_from_cert(chain[1])
+    local names, cn = get_subject_names_from_cert(chain[1])
     kong.log.debug("names = ", tb_concat(names, ", "))
+
+    if conf.skip_consumer_lookup then
+      set_cert_headers(names)
+      return true
+    end
 
     for _, n in ipairs(names) do
       local credential = find_credential(n, ca_id, conf.cache_ttl)
@@ -369,20 +387,6 @@ local function do_authentication(conf)
   kong.log.err(chain_or_err)
 
   return nil, "TLS certificate failed verification"
-end
-
-
-local function load_consumer_into_memory(consumer_id, anonymous)
-  local result, err = kong.db.consumers:select({ id = consumer_id })
-  if not result then
-    if anonymous and not err then
-      err = 'anonymous consumer "' .. consumer_id .. '" not found'
-    end
-
-    return nil, err
-  end
-
-  return result
 end
 
 

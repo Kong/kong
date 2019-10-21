@@ -1,12 +1,21 @@
 local kong = kong
 local null = ngx.null
 
+local ipairs = ipairs
+
 
 local _M = {}
 
 
+local SNI_CACHE_KEY = "mtls-auth:cert_enabled_snis"
+
+
 function _M.consumer_field_cache_key(key, value)
   return kong.db.consumers:cache_key(key, value, "consumers")
+end
+
+local function invalidate_sni_cache()
+  kong.cache:invalidate(SNI_CACHE_KEY)
 end
 
 
@@ -15,7 +24,12 @@ function _M.init_worker()
     return
   end
 
-  kong.worker_events.register(
+  local register = kong.worker_events.register
+  for _, v in ipairs({"services", "routes", "plugins"}) do
+    register(invalidate_sni_cache, "crud", v)
+  end
+
+  register(
     function(data)
       local cache_key = _M.consumer_field_cache_key
 

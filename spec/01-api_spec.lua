@@ -135,7 +135,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/consumers"
           })
-          local body = assert.res_status(200, res)
+          assert.res_status(200, res)
         end)
 
         lazy_teardown(function()
@@ -212,7 +212,7 @@ for _, strategy in helpers.each_strategy() do
             }
           })
           local body = assert.res_status(200, res)
-          cred = cjson.decode(body)
+          local cred = cjson.decode(body)
           assert.equal(consumer.id, cred.consumer.id)
           assert.equal("bar", cred.subject_name)
           assert.equal("c16bbff7-5d0d-4a28-8127-1ee581898f11", cred.id)
@@ -230,7 +230,7 @@ for _, strategy in helpers.each_strategy() do
             }
           })
           local body = assert.res_status(200, res)
-          cred = cjson.decode(body)
+          local cred = cjson.decode(body)
           assert.equal(consumer.id, cred.consumer.id)
           assert.equal("baz", cred.subject_name)
           assert.equal("c16bbff7-5d0d-4a28-8127-1ee581898f11", cred.id)
@@ -308,20 +308,18 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("deletes the certificate cascades to the credential", function()
-          local tmp_ca = bp.ca_certificates:insert()
-
           assert(db:truncate("mtls_auth_credentials"))
           local cred_id = assert(db.mtls_auth_credentials:insert {
             consumer = { id = consumer.id },
             subject_name = "cascade.delete.test",
-            ca_certificate = { id = tmp_ca.id, },
+            ca_certificate = { id = ca.id, },
           }).id
 
           assert(db.mtls_auth_credentials:select({ id = cred_id, }))
 
-          res = assert(admin_client:send {
+          local res = assert(admin_client:send {
             method  = "DELETE",
-            path    = "/ca_certificates/" .. tmp_ca.id,
+            path    = "/ca_certificates/" .. ca.id,
           })
 
           assert.res_status(204, res)
@@ -347,7 +345,7 @@ for _, strategy in helpers.each_strategy() do
 
           assert(db.mtls_auth_credentials:select({ id = cred_id, }))
 
-          res = assert(admin_client:send {
+          local res = assert(admin_client:send {
             method  = "DELETE",
             path    = "/consumers/bob",
           })
