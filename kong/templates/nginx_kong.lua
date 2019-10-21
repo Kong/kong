@@ -47,6 +47,7 @@ lua_shared_dict kong_rate_limiting_counters 12m;
 lua_shared_dict kong_reports_consumers       10m;
 lua_shared_dict kong_reports_routes          1m;
 lua_shared_dict kong_reports_services        1m;
+lua_shared_dict kong_reports_workspaces 1m;
 > if database == "cassandra" then
 lua_shared_dict kong_cassandra      5m;
 > end

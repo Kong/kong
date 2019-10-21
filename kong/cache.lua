@@ -230,7 +230,7 @@ function _M:get(key, opts, cb, ...)
   end
 
   kong.vitals:cache_accessed(hit_lvl, key, v)
-  reports.report_cached_entity(v)
+  reports.report_cached_entity(v, key)
 
   return v, nil, hit_lvl
 end

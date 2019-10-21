@@ -356,6 +356,7 @@ local function increment_counter(counter, entity)
 
   if counter ~= "routes" and
     counter ~= "services" and
+    counter ~= "workspaces" and
     counter ~= "consumers" then
       return
   end
@@ -367,29 +368,43 @@ local function increment_counter(counter, entity)
 end
 
 
+local function str_begins_with(s, pref)
+  return string.sub(s, 1, #pref) == pref
+end
+
 -- Takes entity into account in case it needs to be counted for PHL
 -- reporting.  It's the function responsibility to increment it only
 -- if needed (not seen before).
-local function report_cached_entity(entity)
+local function report_cached_entity(entity, key)
   if type(entity) ~= "table" then
     return
   end
 
+  local found = false
   if entity.consumer_id then
     increment_counter("consumers", {id = entity.consumer_id})
+    found = true
   end
 
   if entity.service_id then
     increment_counter("services", {id = entity.service_id})
+    found = true
   end
 
   if entity.route then
     increment_counter("routes", entity.route)
+    found = true
   end
 
   if entity.service then
     increment_counter("services", entity.service)
+    found = true
   end
+
+  if not found and key and str_begins_with(key, "apis_ws_resolution:") then
+    increment_counter("workspaces", entity.id)
+  end
+
 end
 
 local function add_entity_reports()
@@ -399,6 +414,7 @@ local function add_entity_reports()
     r = "routes",
     c = "consumers",
     s = "services",
+    w = "workspaces",
   }
 
   for k, v in pairs(reported_entities) do
