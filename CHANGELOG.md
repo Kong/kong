@@ -1,5 +1,8 @@
 ## Unreleased
 
+
+## 0.37.0
+
 - added: Support for filtering JSON body with new configration `config.whitelist.body`
 added.
 
