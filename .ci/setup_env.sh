@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -x
+# set -eu
 
 dep_version() {
     grep $1 .requirements | sed -e 's/.*=//' | tr -d '\n'
@@ -8,6 +8,9 @@ dep_version() {
 OPENRESTY=$(dep_version RESTY_VERSION)
 LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
 OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
+OPENRESTY_PATCHES_BRANCH=$(dep_version OPENRESTY_PATCHES_BRANCH)
+KONG_NGINX_MODULE_BRANCH=$(dep_version KONG_NGINX_MODULE_BRANCH)
+BUILD_TOOLS=$(dep_version BUILD_TOOLS)
 
 #---------
 # Download
@@ -17,10 +20,6 @@ DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml .requirements | md5sum | awk '{ pri
 DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
 BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/openresty-build-tools
 
-KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:-master}
-OPENRESTY_PATCHES_BRANCH=${OPENRESTY_PATCHES_BRANCH:-master}
-
-BUILD_TOOLS=${BUILD_TOOLS:-master}
 
 mkdir -p ${BUILD_TOOLS_DOWNLOAD}
 curl -sSL "https://github.com/kong/openresty-build-tools/archive/${BUILD_TOOLS}.tar.gz" \
