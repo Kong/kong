@@ -1209,6 +1209,7 @@ do
     if not entity_ids then
       return {}, nil, nil
     end
+    local entity_index = 0
     entity_count = entity_count or #entity_ids
     local entities = new_tab(entity_count, 0)
     -- TODO: send one query using IN
@@ -1218,7 +1219,10 @@ do
       if err then
         return nil, err, err_t
       end
-      entities[i] = entity
+      if entity then
+        entity_index = entity_index + 1
+        entities[entity_index] = entity
+      end
     end
     return entities, nil, nil
   end
