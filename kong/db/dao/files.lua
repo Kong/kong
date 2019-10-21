@@ -1,7 +1,9 @@
 local Errors    = require "kong.db.errors"
+local Schema    = require "kong.db.schema"
 local constants = require "kong.constants"
 local workspaces = require "kong.workspaces"
 local permissions = require "kong.portal.permissions"
+local files = require "kong.db.schema.entities.files"
 local singletons = require "kong.singletons"
 local resty_sha256 = require "resty.sha256"
 local file_helpers = require "kong.portal.file_helpers"
@@ -102,6 +104,13 @@ function _Files:select_all(options)
 end
 
 
+-- order for non-legacy file insertions/updates
+-- 1. build checksum
+-- 2. get path if not included through method
+-- 3. validate file
+-- 4. set permisions
+-- 5. save
+
 function _Files:insert(entity, options)
   if is_legacy() then
     entity = transform_legacy_fields(entity)
@@ -112,15 +121,22 @@ function _Files:insert(entity, options)
     entity.checksum = entity.checksum or generate_checksum(entity.contents)
   end
 
-  local inserted, err, err_t = self.super.insert(self, entity, options)
-  if not inserted then
-    return nil, err, err_t
+  local Files = Schema.new(files)
+  local ok, err = Files:validate_insert(entity)
+  if not ok then
+    local err_t = self.errors:schema_violation(err)
+    return nil, tostring(err_t), err_t
   end
 
-  local ok, err = permissions.set_file_permissions(inserted, get_workspace())
+  ok, err  = permissions.set_file_permissions(entity, get_workspace())
   if not ok then
     local err_t = Errors:schema_violation({ ["@entity"] = { err } })
     return nil, tostring(err_t), err_t
+  end
+
+  local inserted, err, err_t = self.super.insert(self, entity, options)
+  if not inserted then
+    return nil, err, err_t
   end
 
   return inserted
@@ -137,15 +153,30 @@ function _Files:upsert(file_pk, entity, options)
     entity.checksum = entity.checksum or generate_checksum(entity.contents)
   end
 
-  local updated, err, err_t = self.super.upsert(self, file_pk, entity, options)
-  if not updated then
-    return nil, err, err_t
+  if not entity.path then
+    -- err for file not found will be caught by validate
+    local file = self.super.select(self, file_pk, options)
+    if file then
+      entity.path = file.path
+    end
   end
 
-  local ok, err = permissions.set_file_permissions(updated, get_workspace())
+  local Files = Schema.new(files)
+  local ok, err = Files:validate_upsert(entity)
+  if not ok then
+    local err_t = self.errors:schema_violation(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  local ok, err = permissions.set_file_permissions(entity, get_workspace())
   if not ok then
     local err_t = Errors:schema_violation({ ["@entity"] = { err } })
     return nil, tostring(err_t), err_t
+  end
+
+  local updated, err, err_t = self.super.upsert(self, file_pk, entity, options)
+  if not updated then
+    return nil, err, err_t
   end
 
   return updated
@@ -162,17 +193,27 @@ function _Files:upsert_by_path(file_pk, entity, options)
     entity.checksum = entity.checksum or generate_checksum(entity.contents)
   end
 
-  local updated, err, err_t =  self.super.upsert_by_path(self, file_pk, entity, options)
-  if not updated then
-    return nil, err, err_t
+  if not entity.path then
+    entity.path = file_pk
   end
 
-  local ok, err = permissions.set_file_permissions(updated, get_workspace())
+  local Files = Schema.new(files)
+  local ok, err = Files:validate_upsert(entity)
+  if not ok then
+    local err_t = self.errors:schema_violation(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  local ok, err = permissions.set_file_permissions(entity, get_workspace())
   if not ok then
     local err_t = Errors:schema_violation({ ["@entity"] = { err } })
     return nil, tostring(err_t), err_t
   end
 
+  local updated, err, err_t =  self.super.upsert_by_path(self, file_pk, entity, options)
+  if not updated then
+    return nil, err, err_t
+  end
   return updated
 end
 
@@ -187,15 +228,29 @@ function _Files:update(file_pk, entity, options)
     entity.checksum = entity.checksum or generate_checksum(entity.contents)
   end
 
-  local updated, err, err_t = self.super.update(self, file_pk, entity, options)
-  if not updated then
-    return nil, err, err_t
+  if not entity.path then
+    local file = self.super.select(self, file_pk, options)
+    if file then
+      entity.path = file.path
+    end
   end
 
-  local ok, err = permissions.set_file_permissions(updated, get_workspace())
+  local Files = Schema.new(files)
+  local ok, err = Files:validate_update(entity)
+  if not ok then
+    local err_t = self.errors:schema_violation(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  local ok, err = permissions.set_file_permissions(entity, get_workspace())
   if not ok then
     local err_t = Errors:schema_violation({ ["@entity"] = { err } })
     return nil, tostring(err_t), err_t
+  end
+
+  local updated, err, err_t = self.super.update(self, file_pk, entity, options)
+  if not updated then
+    return nil, err, err_t
   end
 
   return updated
@@ -212,15 +267,26 @@ function _Files:update_by_path(file_pk, entity, options)
     entity.checksum = entity.checksum or generate_checksum(entity.contents)
   end
 
-  local updated, err, err_t = self.super.update_by_path(self, file_pk, entity, options)
-  if not updated then
-    return nil, err, err_t
+  if not entity.path then
+    entity.path = file_pk
   end
 
-  local ok, err = permissions.set_file_permissions(updated, get_workspace())
+  local Files = Schema.new(files)
+  local ok, err = Files:validate_update(entity)
+  if not ok then
+    local err_t = self.errors:schema_violation(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  ok, err = permissions.set_file_permissions(entity, get_workspace())
   if not ok then
     local err_t = Errors:schema_violation({ ["@entity"] = { err } })
     return nil, tostring(err_t), err_t
+  end
+
+  local updated, err, err_t = self.super.update_by_path(self, file_pk, entity, options)
+  if not updated then
+    return nil, err, err_t
   end
 
   return updated

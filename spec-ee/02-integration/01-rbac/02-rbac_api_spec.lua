@@ -2669,7 +2669,7 @@ describe("Admin API RBAC with #" .. strategy, function()
             },
           })
 
-          assert.res_status(409, res)
+          assert.res_status(400, res)
         end)
 
         it("on invalid workspace", function()

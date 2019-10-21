@@ -17,14 +17,16 @@ local function apply_plugin(plugin, phase, opts)
   set_phase(kong, PHASES[phase])
   set_named_ctx(kong, "plugin", plugin.config)
 
-  local err = coroutine.wrap(plugin.handler[phase])(plugin.handler, plugin.config)
+  local res, err = coroutine.wrap(plugin.handler[phase])(plugin.handler,
+                                                         plugin.config,
+                                                         opts.exit_handler)
   if err then
     return nil, err
   end
 
   set_phase(kong, PHASES.admin_api)
 
-  return true
+  return res or true
 end
 
 local function prepare_plugin(opts)
@@ -145,15 +147,15 @@ local function prepare_and_invoke(opts)
     return nil, err
   end
 
-  local ok, err
+  local res, err
   for _, phase in ipairs(opts.phases) do
-    ok, err = apply_plugin(prepared_plugin, phase, opts)
-    if not ok then
+    res, err = apply_plugin(prepared_plugin, phase, opts)
+    if not res then
       return nil, err
     end
   end
 
-  return true
+  return res
 end
 
 return {

@@ -30,8 +30,11 @@ return {
   lapp = [[
 Usage: kong runner file.lua [args]
 
-Execute a lua file in a kong node. the `kong` variable is available to
+Execute a lua file in a kong node. The `kong` variable is available to
 reach the DAO, PDK, etc. The variable `args` can be used to access all
-arguments (args[1] being the lua filename bein run).]],
+arguments (args[1] being the lua filename bein run).
+
+Options:
+]],
   execute = execute,
 }

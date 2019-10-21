@@ -21,7 +21,7 @@ local tracing     = require "kong.tracing"
 local concurrency  = require "kong.concurrency"
 local ngx_re       = require "ngx.re"
 local PluginsIterator = require "kong.runloop.plugins_iterator"
-
+local file_helpers = require "kong.portal.file_helpers"
 
 local kong        = kong
 local ipairs       = ipairs
@@ -424,41 +424,48 @@ local function register_events()
 
 
   -- portal router events
-
-
   worker_events.register(function(data)
-    local _, err = worker_events.post("portal", "router", {
-      operation = data.operation,
-      entity = data.entity,
-      workspace = workspaces.get_workspace(),
-    })
+    local file = data.entity
+    if file_helpers.is_config_path(file.path) or
+       file_helpers.is_content_path(file.path) or
+       file_helpers.is_spec_path(file.path) then
+      local workspace = workspaces.get_workspace()
+      local cache_key = "portal_router-" .. workspace.name .. ":version"
+      local cache_val = tostring(file.created_at) .. file.checksum
+      
+      -- to node worker event
+      local ok, err = worker_events.post("portal", "router", {
+        cache_key = cache_key,
+        cache_val = cache_val,
+      })
+      if not ok then
+        log(ERR, "failed broadcasting portal:router event to workers: ", err)
+      end
 
-    if err then
-      log(ERR, "[events] could not broadcast portal router event: ", err)
-      return
+      -- to cluster worker event
+      local cluster_key = cache_key .. "|" .. cache_val
+      local ok, err = cluster_events:broadcast("portal:router", cluster_key)
+      if not ok then
+        log(ERR, "failed broadcasting portal:router event to cluster: ", err)
+      end
     end
   end, "crud", "files")
 
 
-  worker_events.register(function(data)
-    local operation = data.operation
-    local file = data.entity
-    local workspace = data.workspace
-    local portal_router = singletons.portal_router
-    local cb
-
-    if file.path and file.path == "router.conf.yaml" then
-      if operation == "create" or operation == "update" then
-        cb = portal_router.build
-        workspaces.run_with_ws_scope({ workspace }, cb, file)
-      elseif operation == "delete" then
-        cb = portal_router.build
-        workspaces.run_with_ws_scope({ workspace }, cb)
-      end
-    elseif operation ~= "read" and file then
-      cb = portal_router.add_route_by_content_file
-      workspaces.run_with_ws_scope({ workspace }, cb, file)
+  cluster_events:subscribe("portal:router", function(data)
+    local cache_key, cache_val = unpack(utils.split(data, "|"))
+    local ok, err = worker_events.post("portal", "router", {
+      cache_key = cache_key,
+      cache_val = cache_val,
+    })
+    if not ok then
+      log(ERR, "failed broadcasting portal:router event to workers: ", err)
     end
+  end)
+
+
+  worker_events.register(function(data)
+    singletons.portal_router.set_version(data.cache_key, data.cache_val)
   end, "portal", "router")
 end
 

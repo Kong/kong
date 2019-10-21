@@ -324,13 +324,113 @@ for _, strategy in helpers.each_strategy() do
             ---
           ]],
         }
-
         local ok, err = permissions.set_file_permissions(file, ws)
         assert.is_nil(ok)
         assert.equals("could not find role: red", err)
 
         local rows = db.rbac_role_endpoints:select_all()
         assert.same({}, rows)
+      end)
+
+      it("file is not saved if role does not exist - insert", function()
+        local file, err = db.files:insert({
+          path = "content/file.txt",
+          contents = [[
+            ---
+            readable_by: ["red"]
+            ---
+          ]],
+        })
+
+        assert.is_nil(file)
+        assert.equal("schema violation (could not find role: red)", err)
+        local rows = db.files:select_all()
+        assert.equals(0, #rows)
+      end)
+
+      it("file is not saved if role does not exist - upsert", function()
+        local file, err = db.files:upsert({id = 12345}, {
+          path = "content/file.txt",
+          contents = [[
+            ---
+            readable_by: ["red"]
+            ---
+          ]],
+        })
+
+        assert.is_nil(file)
+        assert.equal("schema violation (could not find role: red)", err)
+        local rows = db.files:select_all()
+        assert.equals(0, #rows)
+      end)
+
+      it("file is not saved if role does not exist - upsert by path", function()
+        local file, err = db.files:upsert_by_path("content/file.txt", {
+          contents = [[
+            ---
+            readable_by: ["red"]
+            ---
+          ]],
+        })
+
+        assert.is_nil(file)
+        assert.equal("schema violation (could not find role: red)", err)
+        local rows = db.files:select_all()
+        assert.equals(0, #rows)
+      end)
+
+
+      it("file is not saved if role does not exist - update", function()
+        local og = db.files:insert({
+          path = "content/file.txt",
+          contents = [[
+            ---
+            random_crap: asdlkfjasfj
+            ---
+          ]],
+        })
+
+        assert.is_truthy(og)
+
+        local file, err = db.files:update({id = og.id}, {
+          contents = [[
+            ---
+            readable_by: ["red"]
+            random_crap: asdlkfjasfj
+            ---
+          ]],
+        })
+
+        assert.is_nil(file)
+        assert.equal("schema violation (could not find role: red)", err)
+        assert(db:truncate("files"))
+      end)
+
+      it("file is not saved if role does not exist - update_by_path", function()
+        local og  = db.files:insert({
+          path = "content/file.txt",
+          contents = [[
+            ---
+            random_crap: asdlkfjasfj
+            ---
+          ]],
+        })
+
+        assert.is_truthy(og)
+
+        local file, err = db.files:update_by_path("content/file.txt", {
+          contents = [[
+            ---
+            readable_by: ["red"]
+            random_crap: asdlkfjasfj
+            ---
+          ]],
+        })
+
+        assert.is_nil(file)
+        assert.equal("schema violation (could not find role: red)", err)
+        assert(db:truncate("files"))
+
       end)
 
       it("returns true but does not set any permissions if prefix is not 'content/' or 'specs/'", function()
