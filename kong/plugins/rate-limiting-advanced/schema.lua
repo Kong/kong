@@ -85,7 +85,7 @@ return {
         -- sort the window_size and limit arrays by limit
         -- first we create a temp table, each element of which is a pair of
         -- limit/window_size values. we then sort based on the limit element
-        -- of this array of pairs. finally, we re-assign the plugin_t configuration
+        -- of this array of pairs. finally, we re-assign the configuration
         -- elements directly based off the sorted temp table
         local t = {}
         for i, v in ipairs(config.limit) do
@@ -99,17 +99,18 @@ return {
           config.window_size[i] = tonumber(t[i][2])
         end
 
-        if config.strategy == "memory" then
-          local ok, err = check_shdict(config.dictionary_name)
-          if not ok then
-            return nil, err
-          end
-
-        elseif config.strategy == "redis" then
+        if config.strategy == "redis" then
           if config.redis.host == ngx.null and
              config.redis.sentinel_addresses == ngx.null and
              config.redis.cluster_addresses == ngx.null then
             return nil, "No redis config provided"
+          end
+        end
+
+        if config.dictionary_name ~= nil then
+          local ok, err = check_shdict(config.dictionary_name)
+          if not ok then
+            return nil, err
           end
         end
 
