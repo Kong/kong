@@ -17,7 +17,7 @@ local allowed_to_run
 local BrainHandler = BasePlugin:extend()
 
 BrainHandler.PRIORITY = 3
-BrainHandler.VERSION = "1.5.1"
+BrainHandler.VERSION = "1.6.0"
 
 local function get_buffer_id(conf)
     return string.format("%s:%s:%s", conf.host, conf.port, conf.https)

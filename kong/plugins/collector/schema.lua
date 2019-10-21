@@ -17,7 +17,7 @@ return {
           { flush_timeout = { type = "number", default = 2 } },
           { log_bodies = { type = "boolean", default = false } },
           { service_token = { type = "string", default = 'default' } },
-          { connection_timeout = { type = "number", default = 30 } },
+          { connection_timeout = { type = "number", default = 120 } },
           { host = { type = "string", required = true, default = "collector.com" } },
           { port = { type = "number", required = true, default = 443 } },
           { https = { type = "boolean", default = true } },

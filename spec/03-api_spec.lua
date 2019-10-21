@@ -6,54 +6,111 @@ local fixtures = {
   http_mock = {
     collector = [[
       server {
-          server_name collector;
-          listen 5000;
+        server_name collector;
+        listen 5000;
 
-          location /service-map {
-              content_by_lua_block {
-                local cjson = require("cjson")
-                local query_args = ngx.req.get_uri_args()
-                if query_args.response_code then
-                  ngx.status = query_args.response_code
-                end
+        location /service-map {
+          content_by_lua_block {
+            local cjson = require("cjson")
+            local query_args = ngx.req.get_uri_args()
+            if query_args.response_code then
+              ngx.status = query_args.response_code
+            end
 
-                ngx.say(cjson.encode(query_args))
-              }
+            ngx.say(cjson.encode(query_args))
           }
+        }
 
-          location /alerts {
-              content_by_lua_block {
-                local cjson = require("cjson")
-                local query_args = ngx.req.get_uri_args()
-                if query_args.response_code then
-                  ngx.status = query_args.response_code
-                end
+        location /alerts {
+          content_by_lua_block {
+            local cjson = require("cjson")
+            local query_args = ngx.req.get_uri_args()
+            if query_args.response_code then
+              ngx.status = query_args.response_code
+            end
 
-                ngx.say(cjson.encode(query_args))
-              }
+            ngx.say(cjson.encode(query_args))
           }
+        }
 
-          location /status {
-              content_by_lua_block {
-                local cjson = require("cjson")
-                local query_args = ngx.req.get_uri_args()
-                local status = {
-                  immunity = {
-                    available = true,
-                    version = "1.7.1"
-                  },
-                  brain = {
-                    available = true,
-                    version = "1.7.1"
-                  }
-                }
-                if query_args.response_code then
-                  ngx.status = query_args.response_code
-                end
+        location /alerts/config {
+          content_by_lua_block {
+            local utils = require "kong.tools.utils"
+            local cjson = require("cjson")
+            local method = ngx.req.get_method()
+            local queryless_url = utils.split(ngx.var.request_uri, "?")[1]
+            local id = utils.split(queryless_url, "/")[4]
+            ngx.req.read_body()
 
-                ngx.say(cjson.encode(status))
+            if method == "POST" then
+              ngx.say(ngx.req.get_body_data())
+            elseif method == "PATCH" then
+              local data = cjson.decode(ngx.req.get_body_data())
+              ngx.say(cjson.encode(data))
+            elseif method == "GET" and id == nil then
+              local rules = {
+                {
+                  workspace_name = "not_applied",
+                  service_id = cjson.null,
+                  route_id = cjson.null,
+                  severity = "high",
+                },
+                {
+                  workspace_name = cjson.null,
+                  service_id = "not_applied",
+                  route_id = cjson.null,
+                  severity = "low",
+                },
+                {
+                  workspace_name = cjson.null,
+                  service_id = cjson.null,
+                  route_id = "not_applied",
+                  severity = "medium",
+                },
+                {
+                  workspace_name = "workspace1",
+                  service_id = cjson.null,
+                  route_id = cjson.null,
+                  severity = "medium",
+                },
+                {
+                  workspace_name = cjson.null,
+                  service_id = cjson.null,
+                  route_id = "2f081378-01aa-490d-906e-b382dc78ee01",
+                  severity = "low",
+                },
               }
+              ngx.say(cjson.encode(rules))
+            else
+              local params = ngx.req.get_uri_args()
+              params.id = id
+              params.method = method
+              ngx.say(cjson.encode(params))
+            end
           }
+        }
+
+        location /status {
+          content_by_lua_block {
+            local cjson = require("cjson")
+            local query_args = ngx.req.get_uri_args()
+            local status = {
+              immunity = {
+                available = true,
+                version = "1.7.1"
+              },
+              brain = {
+                available = true,
+                version = "1.7.1"
+              }
+            }
+            if query_args.response_code then
+              ngx.status = query_args.response_code
+            end
+
+            ngx.say(cjson.encode(status))
+          }
+        }
       }
     ]]
   },
@@ -67,6 +124,7 @@ for _, strategy in helpers.each_strategy() do
     local db
     local workspace1
     local workspace2
+    local route1
 
     lazy_setup(function()
       local plugin_config = {
@@ -82,9 +140,17 @@ for _, strategy in helpers.each_strategy() do
       workspace1 = bp.workspaces:insert({ name = "workspace1"})
       workspace2 = bp.workspaces:insert({ name = "workspace2"})
 
+      route1 = bp.routes:insert_ws(
+        {
+          id = "2f081378-01aa-490d-906e-b382dc78ee01",
+          name = "route1",
+          paths = { "/ws1" },
+        },
+        workspace1
+      )
+
       bp.plugins:insert_ws({ name = "collector", config = plugin_config }, workspace1)
       bp.plugins:insert_ws({ name = "collector", config = plugin_config }, workspace2)
-
 
       assert(helpers.start_kong({
         database = strategy,
@@ -156,13 +222,98 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    describe("/collector/alerts/config", function()
+      describe("GET", function()
+        it("filters workspace's entities", function()
+          local res = assert(admin_client:send {
+            method  = "GET",
+            path    = "/workspace1/collector/alerts/config"
+          })
+          local body = assert.res_status(200, res)
+          assert.are.same(cjson.decode(body), {
+            {
+              workspace_name = "workspace1",
+              service_id = cjson.null,
+              route_id = cjson.null,
+              severity = "medium"
+            },
+            {
+              workspace_name = cjson.null,
+              service_id = cjson.null,
+              route_id = "2f081378-01aa-490d-906e-b382dc78ee01",
+              severity = "low"
+            },
+          })
+        end)
+      end)
+      describe("POST", function()
+        it("forwards post arguments", function()
+          local expected_body = {
+            route_id = route1.id,
+            severity = "high",
+            workspace_name = "workspace1",
+          }
+
+          local res = assert(admin_client:send {
+            method = "POST",
+            path = "/workspace1/collector/alerts/config",
+            body = expected_body,
+            headers = { ["Content-Type"] = "application/json" }
+          })
+
+          local body = assert.res_status(200, res)
+          assert.are.same(cjson.decode(body), expected_body)
+        end)
+      end)
+    end)
+
+    describe("/collector/alerts/config/{id}", function()
+      describe("GET", function()
+        it("forwards rule id", function()
+          local res = assert(admin_client:send {
+            method  = "GET",
+            path    = "/workspace2/collector/alerts/config/20"
+          })
+          local body = assert.res_status(200, res)
+          assert.are.same(cjson.decode(body), { id = "20", method = "GET" })
+        end)
+      end)
+      describe("DELETE", function()
+        it("forwards rule id", function()
+          local res = assert(admin_client:send {
+            method = "DELETE",
+            path = "/workspace2/collector/alerts/config/20"
+          })
+          local body = assert.res_status(200, res)
+          assert.are.same(cjson.decode(body), { id = "20", method = "DELETE"})
+        end)
+      end)
+      describe("PATCH", function()
+        it("forwards post arguments", function()
+          local expected_body = {
+            id = "20",
+            route_id = route1.id,
+            severity = "high"
+          }
+
+          local res = assert(admin_client:send {
+            method = "PATCH",
+            path = "/workspace1/collector/alerts/config/20",
+            body = { route_id = route1.id, severity = "high" },
+            headers = { ["Content-Type"] = "application/json" }
+          })
+
+          local body = assert.res_status(200, res)
+          assert.are.same(cjson.decode(body), expected_body)
+        end)
+      end)
+    end)
+
     describe("/collector/status", function()
       describe("GET", function()
         it("returns backend status", function()
-          local res = assert(admin_client:send {
-            method  = "GET",
-            path    = "/workspace2/collector/status"
-          })
+          local path = "/workspace2/collector/status"
+          local res = assert(admin_client:send({method = "GET", path = path}))
           local body = assert.res_status(200, res)
 
           local expected_status = {
@@ -176,14 +327,6 @@ for _, strategy in helpers.each_strategy() do
             }
           }
           assert.are.same(cjson.decode(body), expected_status)
-        end)
-
-        it("returns whatever response code is returned by upstream", function()
-          local res = assert(admin_client:send {
-            method  = "GET",
-            path    = "/workspace2/collector/status?response_code=400"
-          })
-          assert.res_status(400, res)
         end)
       end)
     end)

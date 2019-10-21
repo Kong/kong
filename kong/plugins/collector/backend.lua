@@ -1,20 +1,23 @@
+local cjson = require("cjson")
 local http = require("resty.http")
 
-local function http_get(host, port, timeout, path, query)
+local function http_request(method, uri, data)
   local client = http.new()
-  client:set_timeout(timeout)
-
-  local ok, err = client:connect(host, port)
-  if not ok then
-    return ok, err
+  if data then
+    return client:request_uri(
+      uri,
+      {
+        method = method,
+        body = cjson.encode(data),
+        headers = { ["Content-Type"] = "application/json" },
+      }
+    )
+  else
+    return client:request_uri(uri, { method = method })
   end
-  local res, err = client:request({
-    method = "GET", path = path, query = query
-  })
-
-  return res, err
 end
 
+
 return {
-  http_get = http_get
+  http_request = http_request,
 }
