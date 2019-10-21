@@ -151,8 +151,9 @@ local function new(self)
   ---
   -- Returns the consumer from the datastore (or cache).
   -- Will look up the consumer by id, and optionally will do a second search by name.
+  -- @function kong.client.load_consumer
   -- @phases access, header_filter, body_filter, log
-  -- @tparam consumer_id string. The consumer id to look up.
+  -- @tparam string consumer_id The consumer id to look up.
   -- @tparam [opt] search_by_username boolean. If truthy,
   -- then if the consumer was not found by id,
   -- then a second search by username will be performed
