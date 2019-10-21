@@ -4,6 +4,7 @@ local workspaces = require "kong.workspaces"
 local singletons = require "kong.singletons"
 local admins     = require "kong.enterprise_edition.admins_helpers"
 local ee_api     = require "kong.enterprise_edition.api_helpers"
+local auth_helpers = require "kong.enterprise_edition.auth_helpers"
 local endpoints  = require "kong.api.endpoints"
 local tablex     = require "pl.tablex"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
@@ -300,15 +301,12 @@ return {
 
     -- reset password and consume token
     PATCH = function(self, db, helpers, parent)
-      local new_password = self.params.password
-      if not new_password or new_password == "" then
-        return kong.response.exit(400, { message = "password is required" })
-      end
-
+      ee_api.validate_password(self.params.password)
+      
       local found, err = admins.reset_password(self.plugin,
                                                self.collection,
                                                self.admin.consumer,
-                                               new_password,
+                                               self.params.password,
                                                self.reset_secret_id)
 
       if err then
@@ -318,6 +316,8 @@ return {
       if not found then
         return kong.response.exit(404, { message = "Not found" })
       end
+
+      auth_helpers.reset_attempts(self.admin.consumer)
 
       local _, err = emails:reset_password_success(self.admin.email)
       if err then
@@ -349,6 +349,7 @@ return {
         return kong.response.exit(400, {
           message = "cannot register with admin_gui_auth = " .. self.plugin.name})
       end
+      ee_api.validate_password(self.params.password)
       ee_api.validate_email(self, db, helpers)
       ee_api.validate_jwt(self, db, helpers)
     end,

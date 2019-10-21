@@ -84,6 +84,13 @@ local function is_spec_path(path)
 end
 
 
+local function is_config_path(path)
+  return to_bool(match(path, "portal.conf.yaml")) or
+         to_bool(match(path, "theme.conf.yaml")) or
+         to_bool(match(path, "router.conf.yaml"))
+end
+
+
 local function is_layout_path(path)
   return to_bool(match(path, "^themes/[%w-]+/layouts/"))
 end
@@ -96,6 +103,11 @@ end
 
 local function is_asset_path(path)
   return to_bool(match(path, "^themes/[%w-]+/assets/"))
+end
+
+
+local function is_collection_path(path)
+  return is_content_path(path) and to_bool(match(path, "/_[%w-]+/"))
 end
 
 
@@ -330,7 +342,7 @@ local function parse_content(file)
     end
 
     -- headmatter route takes precidence
-    if not headmatter.route and collection_conf.route then
+    if not headmatter.route and collection_conf and collection_conf.route then
       route_type = ROUTE_TYPES.COLLECTION
       route = collection_conf.route
 
@@ -358,12 +370,14 @@ local function parse_content(file)
   end
 
   return {
+    path       = file.path,
+    created_at = file.created_at,
+    updated_at = file.updated_at,
     headmatter = headmatter,
     route_type = route_type,
     path_meta  = path_meta,
     layout     = layout,
     route      = route,
-    path       = file.path,
     body       = body,
     parsed     = parsed, -- specs only
   }
@@ -374,6 +388,8 @@ return {
   is_content      = is_content,
   is_spec         = is_spec,
   is_content_path = is_content_path,
+  is_collection_path = is_collection_path,
+  is_config_path  = is_config_path,
   is_spec_path    = is_spec_path,
   is_valid_content_ext = is_valid_content_ext,
   is_valid_spec_ext = is_valid_spec_ext,
@@ -391,4 +407,3 @@ return {
   parse_content   = parse_content,
   get_conf        = get_conf,
 }
-

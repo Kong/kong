@@ -2,6 +2,8 @@ local file_helpers = require "kong.portal.file_helpers"
 local workspaces   = require "kong.workspaces"
 local constants    = require "kong.constants"
 
+local timer_at = ngx.timer.at
+
 local EXTENSION_LIST = constants.PORTAL_RENDERER.EXTENSION_LIST
 local ROUTE_TYPES    = constants.PORTAL_RENDERER.ROUTE_TYPES
 
@@ -83,7 +85,7 @@ local function generate_route(ws_router, route_item)
 end
 
 
-local function build_ws_router(db, ws_router, router_conf)
+local function build_ws_router(db, ws, ws_router, skip_collections)
   local router_conf = file_helpers.get_conf("router")
   if router_conf then
     ws_router.custom = {}
@@ -94,15 +96,21 @@ local function build_ws_router(db, ws_router, router_conf)
   ws_router.explicit = ws_router.explicit or {}
   ws_router.collection = ws_router.collection or {}
   for file in db.files:each() do
-    local route_item = file_helpers.parse_content(file)
-    if route_item and route_item.route then
-      generate_route(ws_router, route_item)
+    local is_collection = file_helpers.is_collection_path(file.path)
+    if not skip_collections or skip_collections and not is_collection then
+      local route_item = file_helpers.parse_content(file, ws)
+      if route_item and route_item.route then
+        generate_route(ws_router, route_item)
+      end
     end
   end
+
+  return ws_router
 end
 
 
-local function get_ws_router(router, ws)	-- Iterates through file name possibilities by file extentsion priority.
+-- Iterates through file name possibilities by file extentsion priority.
+local function get_ws_router(router, ws)
   if not ws then
     ws = workspaces.get_workspace()
   end
@@ -119,21 +127,45 @@ end
 return {
   new = function(db)
     local router = {}
+    local global_version_cache = {}
+    local local_version_cache = {}
+    local is_building = false
 
     return {
       find_highest_priority_file_by_route = find_highest_priority_file_by_route,
 
-      build = function(custom_conf)
-        local ws_router = get_ws_router(router)
-        return build_ws_router(db, ws_router, custom_conf)
-      end,
-
       -- Retrieve a route object via route name.  If a wildcard route exists
       -- and an alternative cannot be found, the wildcard route will be returned.
       get = function(route)
-        local ws_router = get_ws_router(router)
-        if not ws_router or not next(ws_router) then
-          build_ws_router(db, ws_router)
+        local ws = workspaces.get_workspace()
+        local cache_key = "portal_router-" .. ws.name .. ":version"
+        local global_version = global_version_cache[cache_key] or "global_unset"
+        local local_version = local_version_cache[cache_key] or "local_unset"
+
+        if local_version == "local_unset" then
+          local ws_router = build_ws_router(db, ws, {}, true)
+          if ws_router then
+            router[ws.name] = ws_router
+          end
+        end
+
+        local ws_router = get_ws_router(router, ws)
+
+        -- if local router is out of state, defer router rebuild to background,
+        -- and indicate the router is undergoing a build to prevent DB overload
+        -- due to many concurrent requests.
+        if local_version ~= global_version and not is_building then
+          timer_at(0, function()
+            workspaces.run_with_ws_scope({ws}, function()
+              is_building = true
+              local ws_router = build_ws_router(db, ws, {})
+              if ws_router then
+                router[ws.name] = ws_router
+                local_version_cache[cache_key] = global_version
+              end
+              is_building = false
+            end)
+          end)
         end
 
         local route_obj = ws_router.explicit[route]
@@ -163,29 +195,17 @@ return {
         return route_obj
       end,
 
-      -- Set route object via content file.  Route will not be set if the
-      -- passed content file is lower priority than a previously set file
-      -- under the same resolved route.
-      add_route_by_content_file = function(file)
-        local ws_router = get_ws_router(router)
-        if not ws_router or not next(ws_router) then
-          build_ws_router(db, ws_router)
-        end
-
-        local route_item = file_helpers.parse_content(file)
-        if route_item and route_item.route then
-          generate_route(ws_router, route_item)
-        end
+      set_version = function(cache_key, cache_val)
+        global_version_cache[cache_key] = cache_val
       end,
 
-      get_ws_router = function(workspace)
-        local ws_router = get_ws_router(router)
-        if not ws_router or not next(ws_router) then
-          build_ws_router(db, ws_router)
-        end
-
-        return ws_router
-      end,
+      introspect = function()
+        return {
+          global_version_cache = global_version_cache,
+          local_version_cache = local_version_cache,
+          router = router,
+        }
+      end
     }
   end
 }

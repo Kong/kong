@@ -131,6 +131,7 @@ return {
     "developers",
     "groups",
     "group_rbac_roles",
+    "login_attempts",
   },
   RATELIMIT = {
     PERIODS = {
@@ -203,6 +204,18 @@ return {
     FALLBACK_404 = '<html><head><title>404 Not Found</title></head><body>' ..
       '<h1>404 Not Found</h1><p>The page you are requesting cannot be found.</p>' ..
       '</body></html>',
+    SITEMAP = [[<?xml version="1.0" encoding="UTF-8"?>
+
+      <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+        {% for idx, url_obj in ipairs(xml_urlset) do %}
+          <url>
+            {% for key, value in pairs(url_obj) do %}
+              <{*key*}>{*value*}</{*key*}>
+            {% end %}
+          </url>
+        {% end %}
+      </urlset>
+    ]],
     LAYOUTS = {
       UNSET = "__UNSET__",
       LOGIN = "login",

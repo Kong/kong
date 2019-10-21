@@ -8,7 +8,9 @@ local endpoints          = require "kong.api.endpoints"
 local crud_helpers       = require "kong.portal.crud_helpers"
 local enums              = require "kong.enterprise_edition.dao.enums"
 local ee_api             = require "kong.enterprise_edition.api_helpers"
+local auth_helpers       = require "kong.enterprise_edition.auth_helpers"
 local secrets            = require "kong.enterprise_edition.consumer_reset_secret_helpers"
+local dao_helpers        = require "kong.portal.dao_helpers"
 
 local kong = kong
 local tonumber = tonumber
@@ -175,6 +177,12 @@ return {
         })
       end
 
+      local password = self.params and self.params.password
+      local ok, _, err_t = dao_helpers.validate_developer_password(password)
+      if not ok then
+        return endpoints.handle_error(err_t)
+      end
+
       local developer, _, err_t = db.developers:insert(self.params)
       if not developer then
         return endpoints.handle_error(err_t)
@@ -280,9 +288,34 @@ return {
 
       local err
       if auto_approve then
-        _, err = portal_emails:account_verification_success_approved(consumer.username)
+        _, err = portal_emails:account_verification_success_approved(developer.email)
+        if err then
+          if err.code then
+            return kong.response.exit(err.code, { message = err.message })
+          end
+
+          return endpoints.handle_error(err)
+        end
+
       else
-        _, err = portal_emails:account_verification_success_pending(consumer.username)
+        local name_or_email = developer.meta and developer.meta.full_name or developer.email
+        _, err = portal_emails:access_request(developer.email, name_or_email)
+        if err then
+          if err.code then
+            return kong.response.exit(err.code, { message = err.message })
+          end
+
+          return endpoints.handle_error(err)
+        end
+
+        _, err = portal_emails:account_verification_success_pending(developer.email)
+        if err then
+          if err.code then
+            return kong.response.exit(err.code, { message = err.message })
+          end
+
+          return endpoints.handle_error(err)
+        end
       end
 
       if err then
@@ -342,6 +375,10 @@ return {
       local portal_emails = portal_smtp_client.new()
       local _, err = portal_emails:account_verification_email(developer.email, jwt)
       if err then
+        if err.code then
+          return kong.response.exit(err.code, { message = err.message })
+        end
+
         return endpoints.handle_error(err)
       end
 
@@ -445,6 +482,11 @@ return {
           { message = self.plugin.credential_key .. " is required"})
       end
 
+      local ok, _, err_t = dao_helpers.validate_developer_password(new_password)
+      if not ok then
+        return endpoints.handle_error(err_t)
+      end
+
       local cred_pk = { id = credential.id }
       local entity = { [self.plugin.credential_key] = new_password }
       local ok, err = crud_helpers.update_login_credential(
@@ -463,10 +505,16 @@ return {
         return endpoints.handle_error(err)
       end
 
+      auth_helpers.reset_attempts(consumer)
+
       -- Email user with reset success confirmation
       local portal_emails = portal_smtp_client.new()
       local _, err = portal_emails:password_reset_success(consumer.username)
       if err then
+        if err.code then
+          return kong.response.exit(err.code, { message = err.message })
+        end
+
         return endpoints.handle_error(err)
       end
 
@@ -504,6 +552,10 @@ return {
       local portal_emails = portal_smtp_client.new()
       local _, err = portal_emails:password_reset(developer.email, jwt)
       if err then
+        if err.code then
+          return kong.response.exit(err.code, { message = err.message })
+        end
+
         return endpoints.handle_error(err)
       end
 
@@ -609,6 +661,11 @@ return {
         self.params.key = nil
       else
         return kong.response.exit(400, { message = "key or password is required" })
+      end
+
+      local ok, _, err_t = dao_helpers.validate_developer_password(cred_params.password)
+      if not ok then
+        return endpoints.handle_error(err_t)
       end
 
       local cred_pk = { id = credential.id }

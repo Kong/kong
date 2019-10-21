@@ -41,7 +41,9 @@ portal_api_error_log = logs/error.log
 
 portal_auto_approve = off
 portal_auth = NONE
+portal_auth_password_complexity =
 portal_auth_conf = NONE
+portal_auth_login_attempts = 0
 portal_token_exp = 21600
 portal_session_conf =
 
@@ -88,11 +90,12 @@ admin_gui_flags = {}
 admin_gui_auth =
 admin_gui_auth_conf =
 admin_gui_auth_header = Kong-Admin-User
+admin_gui_auth_password_complexity =
 admin_gui_session_conf =
+admin_gui_auth_login_attempts = 0
 admin_approved_email = true
 admin_emails_from = ""
 admin_emails_reply_to = NONE
-admin_docs_url = https://docs.konghq.com/enterprise/0.34/admin-gui/overview/
 admin_invitation_expiry = 259200
 
 origins = NONE

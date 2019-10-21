@@ -23,7 +23,7 @@ return {
       );
 
       CREATE INDEX IF NOT EXISTS groups_name_idx ON groups(name);
-      
+
       -- Group and RBAC_Role Mapping
       CREATE TABLE IF NOT EXISTS group_rbac_roles(
         created_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
@@ -33,6 +33,14 @@ return {
         PRIMARY KEY (group_id, rbac_role_id)
       );
 
+      -- Login Attempts
+      CREATE TABLE IF NOT EXISTS login_attempts (
+        consumer_id uuid REFERENCES consumers (id) ON DELETE CASCADE,
+        attempts json DEFAULT '{}'::json,
+        ttl         TIMESTAMP WITH TIME ZONE,
+        created_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
+        PRIMARY KEY (consumer_id)
+      );
 
       -- Backport keyauth ttl, this will come on 1.4.0
       DO $$
@@ -130,7 +138,7 @@ return {
       );
 
       CREATE INDEX IF NOT EXISTS groups_name_idx ON groups(name);
-      
+
       /* Group and RBAC_Role Mapping */
       CREATE TABLE IF NOT EXISTS group_rbac_roles(
         created_at timestamp,
@@ -139,9 +147,18 @@ return {
         workspace_id uuid,
         PRIMARY KEY (group_id, rbac_role_id)
       );
-      
+
       CREATE INDEX IF NOT EXISTS group_rbac_roles_rbac_role_id_idx ON group_rbac_roles(rbac_role_id);
       CREATE INDEX IF NOT EXISTS group_rbac_roles_workspace_id_idx ON group_rbac_roles(workspace_id);
+
+      /* Login Attempts */
+      CREATE TABLE IF NOT EXISTS login_attempts (
+        consumer_id uuid,
+        attempts map<text,int>,
+        created_at  timestamp,
+        PRIMARY KEY (consumer_id)
+      );
+
     ]],
     teardown = function(connector, helpers)
       local coordinator = connector:connect_migrations()

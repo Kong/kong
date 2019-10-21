@@ -649,9 +649,9 @@ return {
         end
 
         self.params.rbac_roles = nil
-        local row, err = singletons.db.rbac_role_endpoints:insert(self.params)
-        if err then
-          return kong.response.exit(409, {message = err})
+        local row, _, err_t = singletons.db.rbac_role_endpoints:insert(self.params)
+        if err_t then
+          return endpoints.handle_error(err_t)
         end
 
         return kong.response.exit(201, post_process_actions(row))

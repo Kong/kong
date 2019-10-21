@@ -10,7 +10,9 @@ local constants    = require "kong.constants"
 
 local LAYOUTS = constants.PORTAL_RENDERER.LAYOUTS
 local FALLBACK_404 = constants.PORTAL_RENDERER.FALLBACK_404
+local SITEMAP = constants.PORTAL_RENDERER.SITEMAP
 
+local ws_constants  = constants.WORKSPACE_CONFIG
 local yaml_load = lyaml.load
 
 local portal_conf_values = {
@@ -32,19 +34,72 @@ local portal_conf_values = {
 template.caching(false)
 template.load = function(path)
   -- look into alternative ways of passing info
-  local ctx = singletons.render_ctx
-  local theme = ctx.theme.name
+  local ctx = singletons.render_ctx or {}
+  local theme = ctx.theme or { name = "" }
 
   if type(path) == 'table' and path.contents then
     return path.contents
   end
 
-  local template = singletons.db.files:select_file_by_theme(path, theme)
+  local template = singletons.db.files:select_file_by_theme(path, theme.name)
   if not template then
     return path
   end
 
   return template.contents
+end
+
+
+local function build_url_obj(route, page, url_map)
+  local workspace = workspaces.get_workspace()
+
+  local headmatter = page.headmatter or {}
+  if headmatter.private then
+    return
+  end
+
+  local url_items = {}
+  local page_url = workspaces.build_ws_portal_gui_url(kong.configuration, workspace) .. route
+  page_url = pl_stringx.rstrip(page_url, '/')
+  url_items["loc"] = page_url
+
+  local updated_at = page.updated_at or page.created_at
+  local formated_date = os.date("%Y-%d-%m", updated_at / 1000)
+  url_items["lastmod"] = formated_date
+  url_map[page_url] = url_items
+end
+
+
+local function build_sitemap_obj()
+  local router_info = singletons.portal_router.introspect()
+  local ws_name = workspaces.get_workspace().name
+  local router = router_info.router[ws_name] or {}
+  local routes = {}
+
+  for k, v in pairs(router.collection or {}) do
+    routes[k] = v
+  end
+
+  for k, v in pairs(router.content or {}) do
+    routes[k] = v
+  end
+
+  for k, v in pairs(router.explicit or {}) do
+    routes[k] = v
+  end
+
+  local url_map = {}
+  local url_list = {}
+
+  for route, page in pairs(routes) do
+    build_url_obj(route, page, url_map)
+  end
+
+  for key, url_item in pairs(url_map) do
+    table.insert(url_list, url_item)
+  end
+
+  return url_list
 end
 
 
@@ -135,13 +190,22 @@ local function set_layout_by_permission(route_config, developer, workspace, conf
     unauthorized_r = LAYOUTS.UNAUTHORIZED
   end
 
+  local file
   local headmatter = route_config.headmatter or {}
+  local workspace = workspaces.get_workspace()
+  local portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH,
+                                                    workspace)
+
+  local no_auth = portal_auth == nil or portal_auth == ''
+  if headmatter.private and no_auth then
+    return LAYOUTS.UNSET
+  end
+
   local readable_by = headmatter.readable_by
   local has_permissions = type(readable_by) == "table" and #readable_by > 0
   local auth_required = has_permissions or readable_by == "*"
 
   -- route requires auth, no developer preset, redirect
-  local file
   if not next(developer) and auth_required then
     file = router.find_highest_priority_file_by_route(db,
                                                       "/" .. unauthenticated_r)
@@ -275,18 +339,20 @@ local function set_render_ctx(self)
     return false, "could not retrieve theme config"
   end
 
-  local route = self.path
+  local route_config
   if self.is_admin then
     local file = singletons.db.files:select_by_path(self.path)
     if not self.path then
       file = {}
     end
 
-    local parsed_content = file_helpers.parse_content(file)
-    route = parsed_content.route
+    route_config = file_helpers.parse_content(file)
   end
 
-  local route_config = set_route_config(route)
+  if not route_config then
+    route_config = set_route_config(self.path)
+  end
+
   if not route_config then
     route_config = {}
   end
@@ -332,8 +398,16 @@ local function compile_asset()
 end
 
 
+local function compile_sitemap()
+  local xml_urlset = build_sitemap_obj()
+
+  return template.compile(SITEMAP)({ xml_urlset = xml_urlset })
+end
+
+
 return {
   compile_layout = compile_layout,
+  compile_sitemap = compile_sitemap,
   compile_asset  = compile_asset,
   set_render_ctx = set_render_ctx,
 }

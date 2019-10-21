@@ -273,10 +273,11 @@ local CONF_INFERENCES = {
   admin_gui_auth = {typ = "string"},
   admin_gui_auth_conf = {typ = "string"},
   admin_gui_auth_header = {typ = "string"},
+  admin_gui_auth_password_complexity = {typ = "string"},
   admin_gui_session_conf = {typ = "string"},
+  admin_gui_auth_login_attempts = {typ = "number"},
   admin_emails_from = {typ = "string"},
-  admin_emails_reply_to = {typ = "string"},
-  admin_docs_url = {typ = "string"},
+  admin_emails_reply_to = {typ = "string"}, 
   admin_invitation_expiry = {typ = "number"},
 
   portal = {typ = "boolean"},
@@ -295,7 +296,9 @@ local CONF_INFERENCES = {
 
   proxy_uri = {typ = "string"},
   portal_auth = {typ = "string"},
+  portal_auth_password_complexity = {typ = "string"},
   portal_auth_conf = {typ = "string"},
+  portal_auth_login_attempts = {typ = "number"},
   portal_token_exp = {typ = "number"},
   portal_auto_approve = {typ = "boolean"},
   portal_email_verification = {typ = "boolean"},

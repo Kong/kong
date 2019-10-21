@@ -198,7 +198,14 @@ local function do_authentication(conf)
 end
 
 
-function _M.execute(conf)
+function _M.execute(conf, exit_handler)
+  ---EE [[
+  local exit_handler = exit_handler or
+    function (err)
+      kong.response.exit(kong.response.exit(err.status, {message = err.message},
+                                          err.headers))
+    end
+  --]] EE
   if conf.anonymous and kong.client.get_credential() then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
@@ -215,13 +222,17 @@ function _M.execute(conf)
                                                 conf.anonymous, true)
       if err then
         kong.log.err(err)
-        return kong.response.exit(500, { message = "An unexpected error occurred" })
+        ---EE [[
+        return exit_handler({status = 500, message = "An unexpected error occurred"})
+        --]] EE
       end
 
       set_consumer(consumer, nil)
 
     else
-      return kong.response.exit(err.status, { message = err.message }, err.headers)
+      ---EE [[
+      return exit_handler(err)
+      --]] EE
     end
   end
 end

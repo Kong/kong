@@ -4,6 +4,7 @@ local workspaces = require "kong.workspaces"
 local conf_loader = require "kong.conf_loader"
 local ee_api = require "kong.enterprise_edition.api_helpers"
 local admins = require "kong.enterprise_edition.admins_helpers"
+local auth_helpers = require "kong.enterprise_edition.auth_helpers"
 local cjson = require "cjson"
 local rbac = require "kong.rbac"
 local api_helpers = require "kong.api.api_helpers"
@@ -368,28 +369,38 @@ return {
         return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 
+      -- logging out
+      if kong.request.get_method() == 'DELETE' then
+        return
+      end
+
       -- apply auth plugin
+      local plugin_auth_response
       if not ngx.ctx.authenticated_consumer then
-        local ok, err = invoke_plugin({
+        plugin_auth_response, err = invoke_plugin({
           name = gui_auth,
           config = gui_auth_conf,
           phases = { "access" },
           api_type = ee_api.apis.ADMIN,
           db = kong.db,
+          exit_handler = function (res) return res end,
         })
 
-       if err or not ok then
-         log(ERR, _log_prefix, err)
-         return kong.response.exit(500, err)
-       end
+        if err or not plugin_auth_response then
+          log(ERR, _log_prefix, err)
+          return kong.response.exit(500, err)
+        end
       end
 
       -- Plugin ran but consumer was not created on context
-      if not ngx.ctx.authenticated_consumer then
+      if not ngx.ctx.authenticated_consumer and not plugin_auth_response then
         log(DEBUG, _log_prefix, "no consumer mapped from plugin ", gui_auth)
 
         return kong.response.exit(401, { message = "Unauthorized" })
       end
+
+      local max_attempts = singletons.configuration.admin_gui_auth_login_attempts
+      auth_helpers.plugin_res_handler(plugin_auth_response, admin, max_attempts)
 
       if self.consumer
          and ngx.ctx.authenticated_consumer.id ~= self.consumer.id
