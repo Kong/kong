@@ -38,7 +38,7 @@ configuration, without dropping existing in-flight connections.
 
 
 
-## Upgrade to `1.4.0rc2`
+## Upgrade to `1.4.0`
 
 Kong adheres to [semantic versioning](https://semver.org/), which makes a
 distinction between "major", "minor" and "patch" versions. The upgrade path
@@ -57,7 +57,7 @@ path for the correct dependencies.
 
 #### 2. Breaking Changes
 
-Kong 1.4.0rc2 does not include any breaking changes over Kong 1.3, but Kong 1.3
+Kong 1.4.0 does not include any breaking changes over Kong 1.3, but Kong 1.3
 included breaking changes in configuration and for routing in some edge-cases
 over Kong 1.2, and Kong 1.0 included a number of breaking changes over Kong 0.x.
 If you are upgrading from 1.2, please read the section on
@@ -68,19 +68,19 @@ proceeding.
 
 #### 3. Suggested Upgrade Path
 
-##### Upgrade from `0.x` to `1.4.0rc2`
+##### Upgrade from `0.x` to `1.4.0`
 
-The lowest version that Kong 1.4.0rc2 supports migrating from is 0.14.1. if you
+The lowest version that Kong 1.4.0 supports migrating from is 0.14.1. if you
 are migrating from a previous 0.x release, please migrate to 0.14.1 first.
 
-For upgrading from 0.14.1 to Kong 1.4.0rc2, the steps for upgrading are the same
+For upgrading from 0.14.1 to Kong 1.4.0, the steps for upgrading are the same
 as upgrading from 0.14.1 to Kong 1.0. Please follow the steps described in the
 "Migration Steps from 0.14" in the [Suggested Upgrade Path for Kong
 1.0](#kong-1-0-upgrade-path).
 
-##### Upgrade from `1.0.x` - `1.3.x` to `1.4.0rc2`
+##### Upgrade from `1.0.x` - `1.3.x` to `1.4.0`
 
-Kong 1.4.0rc2 supports a no-downtime migration model. This means that while the
+Kong 1.4.0 supports a no-downtime migration model. This means that while the
 migration is ongoing, you will have two Kong clusters running, sharing the
 same database. (This is sometimes called the Blue/Green migration model.)
 
@@ -91,31 +91,31 @@ it in a way so that the old Kong cluster keeps working until it is finally
 time to decomission it. For this reason, the full migration is now split into
 two steps, which are performed via commands `kong migrations up` (which does
 only non-destructive operations) and `kong migrations finish` (which puts the
-database in the final expected state for Kong 1.4.0rc2).
+database in the final expected state for Kong 1.4.0).
 
-1. Download 1.4.0rc2, and configure it to point to the same datastore
+1. Download 1.4.0, and configure it to point to the same datastore
    as your old (1.0 to 1.3) cluster. Run `kong migrations up`.
-2. Once that finishes running, both the old and new (1.4.0rc2) clusters can now
+2. Once that finishes running, both the old and new (1.4.0) clusters can now
    run simultaneously on the same datastore. Start provisioning
-   1.4.0rc2 nodes, but do not use their Admin API yet. If you need to
+   1.4.0 nodes, but do not use their Admin API yet. If you need to
    perform Admin API requests, these should be made to the old cluster's nodes.
    The reason is to prevent the new cluster from generating data
    that is not understood by the old cluster.
 3. Gradually divert traffic away from your old nodes, and into
-   your 1.4.0rc2 cluster. Monitor your traffic to make sure everything
+   your 1.4.0 cluster. Monitor your traffic to make sure everything
    is going smoothly.
-4. When your traffic is fully migrated to the 1.4.0rc2 cluster,
+4. When your traffic is fully migrated to the 1.4.0 cluster,
    decommission your old nodes.
-5. From your 1.4.0rc2 cluster, run: `kong migrations finish`.
+5. From your 1.4.0 cluster, run: `kong migrations finish`.
    From this point on, it will not be possible to start
    nodes in the old cluster pointing to the same datastore anymore. Only run
    this command when you are confident that your migration
    was successful. From now on, you can safely make Admin API
-   requests to your 1.4.0rc2 nodes.
+   requests to your 1.4.0 nodes.
 
-##### Installing 1.4.0rc2 on a Fresh Datastore
+##### Installing 1.4.0 on a Fresh Datastore
 
-The following commands should be used to prepare a new 1.4.0rc2 cluster from a
+The following commands should be used to prepare a new 1.4.0 cluster from a
 fresh datastore:
 
 ```
