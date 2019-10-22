@@ -606,6 +606,9 @@ function JwtSignerHandler:access(conf)
             ins(logs.expiry)
             return unauthorized(realm, "invalid_token", errs.expiry, logs.expiry)
           end
+
+        else
+          expiry = tonumber(payload.exp) or time()
         end
 
         local verify_scopes = args.get_conf_arg(config.verify_scopes)
@@ -765,7 +768,7 @@ end
 
 
 JwtSignerHandler.PRIORITY = 999
-JwtSignerHandler.VERSION  = "1.0.2"
+JwtSignerHandler.VERSION  = "1.0.3"
 
 
 return JwtSignerHandler
