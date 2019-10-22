@@ -46,6 +46,11 @@ local function ldap_authenticate(given_username, given_password, conf)
   local is_authenticated
   local err, suppressed_err, ok, _
 
+  -- Local variables for ldap
+  local base_dn
+  local domain
+  local who
+
   local sock = tcp()
 
   sock:settimeout(conf.timeout)
@@ -90,8 +95,30 @@ local function ldap_authenticate(given_username, given_password, conf)
                         conf.ldap_host, tostring(conf.ldap_port), err)
     end
   end
+  
+  -- Get Domain Base from base_dn
+  base_dn = conf.base_dn
+  base_dn = string.upper(base_dn)
 
-  local who = conf.attribute .. "=" .. given_username .. "," .. conf.base_dn
+  domain = ""
+  for word in string.gmatch(base_dn, 'DC=([^,]+)') do
+    domain = domain .. "." .. word
+  end
+  domain = string.sub(domain, 2)
+
+  -- CASE: Attribute is Common Name or UUID
+  who = conf.attribute .. "=" .. given_username .. "," .. conf.base_dn
+  
+  -- CASE: Attribute is sAMAccountName
+  if conf.attribute == "sAMAccoutName" then
+    who = given_username .. @ .. domain
+  end
+
+  -- CASE: Attribute is UPN
+  if conf.attribute == "userPrincipalName" then
+    who = given_username
+  end
+ 
   is_authenticated, err = ldap.bind_request(sock, who, given_password)
 
   ok, suppressed_err = sock:setkeepalive(conf.keepalive)
