@@ -536,12 +536,19 @@ local function issue_token(conf)
             }
 
           else
-            response_params = generate_token(conf, kong.router.get_service(),
-                                             client,
-                                             token.authenticated_userid,
-                                             token.scope, state)
-            -- Delete old token
-            kong.db.oauth2_tokens:delete({ id = token.id })
+            if conf.persistent_refresh_token then -- FT-1033
+              response_params = generate_token(conf, kong.router.get_service(),
+                                               client,
+                                               token.authenticated_userid,
+                                               token.scope, state, nil, true)
+            else
+              response_params = generate_token(conf, kong.router.get_service(),
+                                               client,
+                                               token.authenticated_userid,
+                                               token.scope, state)
+              -- Delete old token
+              kong.db.oauth2_tokens:delete({ id = token.id })
+            end
           end
         end
       end
