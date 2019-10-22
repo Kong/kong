@@ -366,6 +366,7 @@ describe("Balancer", function()
   end)
 
   describe("load_upstreams_dict_into_memory()", function()
+    balancer.reload_all_upstreams()
     local upstreams_dict
     lazy_setup(function()
       upstreams_dict = balancer._load_upstreams_dict_into_memory()
@@ -396,6 +397,7 @@ describe("Balancer", function()
   end)
 
   describe("get_upstream_by_name()", function()
+    balancer.reload_all_upstreams()
     it("retrieves a complete upstream based on its name", function()
       for _, fixture in ipairs(UPSTREAMS_FIXTURES) do
         local upstream = balancer.get_upstream_by_name(fixture.name)
