@@ -1,3 +1,9 @@
+## v1.0.3
+
+### Fixed
+
+- Set local expiry variable even when `config.verify_expiry` is turned off.
+
 ## v1.0.2
 
 ### Changed
