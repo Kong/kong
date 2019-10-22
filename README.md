@@ -1,3 +1,5 @@
+[![Build Status][badge-travis-image]][badge-travis-url]
+
 # kong-plugin-aws-lambda
 
 Invoke an [AWS Lambda](https://aws.amazon.com/lambda/) function from Kong. It can be used in combination with other request plugins to secure, manage or extend the function.
@@ -135,3 +137,6 @@ Here's a list of all the parameters which can be used in this plugin's configura
 ## Notes
 
 When the IAM roles are used (default, if no `aws.key` / `aws.secret` is provided), the plugin will first try ECS metadata, and if not available it will fallback on EC2 metadata.
+
+[badge-travis-image]: https://travis-ci.com/Kong/kong-plugin-aws-lambda.svg?branch=master
+[badge-travis-url]: https://travis-ci.com/Kong/kong-plugin-aws-lambda

@@ -25,7 +25,7 @@ env:
     - CASSANDRA_BASE=2.2.12
     - CASSANDRA_LATEST=3.9
     - KONG_REPOSITORY=kong
-    - KONG_TAG=master
+    - KONG_TAG=next
     - DOWNLOAD_CACHE=$HOME/download-cache
     - INSTALL_CACHE=$HOME/install-cache
     - DOWNLOAD_ROOT=$HOME/download-root
