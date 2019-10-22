@@ -200,6 +200,9 @@ local CONF_INFERENCES = {
   dns_no_sync = { typ = "boolean" },
   router_consistency = { enum = { "strict", "eventual" } },
 
+  upstream_consistency = { enum = { "strict", "eventual" } },
+  upstream_update_frequency = { typ = "number" },
+
   client_ssl = { typ = "boolean" },
 
   proxy_access_log = { typ = "string" },
@@ -526,6 +529,10 @@ local function check_and_infer(conf)
 
   if conf.pg_semaphore_timeout ~= math.floor(conf.pg_semaphore_timeout) then
     errors[#errors + 1] = "pg_semaphore_timeout must be an integer greater than 0"
+  end
+
+  if conf.upstream_update_frequency <= 0 then
+    errors[#errors + 1] = "upstream_update_frequency must be greater than 0"
   end
 
   return #errors == 0, errors[1], errors

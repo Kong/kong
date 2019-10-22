@@ -1,4 +1,15 @@
 local utils = require "kong.tools.utils"
+local mocker = require("spec.fixtures.mocker")
+
+local function setup_it_block()
+  mocker.setup(finally, {
+    kong = {
+      configuration = {
+        upstream_consistency = "strict",
+      }
+    }
+  })
+end
 
 describe("Balancer", function()
   local singletons, balancer
@@ -18,7 +29,7 @@ describe("Balancer", function()
   lazy_setup(function()
     stub(ngx, "log")
 
-    balancer = require "kong.runloop.balancer"
+    -- balancer = require "kong.runloop.balancer"
     singletons = require "kong.singletons"
     singletons.worker_events = require "resty.worker.events"
     singletons.db = {}
@@ -258,9 +269,12 @@ describe("Balancer", function()
         self._cache[key] = nil
       end
     }
-    balancer.reload_all_upstreams()
 
+  end)
 
+  it("init", function()
+    setup_it_block()
+    balancer = require "kong.runloop.balancer"
   end)
 
   describe("create_balancer()", function()
@@ -368,8 +382,8 @@ describe("Balancer", function()
   end)
 
   describe("get_all_upstreams()", function()
+    balancer._reset_all_upstreams()
     it("gets a map of all upstream names to ids", function()
-      balancer.reload_all_upstreams()
       local upstreams_dict = balancer.get_all_upstreams()
 
       local fixture_dict = {}
@@ -383,7 +397,6 @@ describe("Balancer", function()
 
   describe("get_upstream_by_name()", function()
     it("retrieves a complete upstream based on its name", function()
-      balancer.reload_all_upstreams()
       for _, fixture in ipairs(UPSTREAMS_FIXTURES) do
         local upstream = balancer.get_upstream_by_name(fixture.name)
         assert.same(fixture, upstream)

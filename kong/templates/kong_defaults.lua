@@ -86,6 +86,9 @@ dns_no_sync = off
 
 router_consistency = strict
 
+upstream_consistency = strict
+upstream_update_frequency = 1
+
 lua_socket_pool_size = 30
 lua_ssl_trusted_certificate = NONE
 lua_ssl_verify_depth = 1

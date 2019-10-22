@@ -842,6 +842,31 @@
                                  # for a short period of time after Routes and
                                  # Services updates.
 
+#upstream_consistency = strict   # Defines whether this node should reload its
+                                 # upstream synchronously or asynchronously (the
+                                 # upstream is reload every time a upstream
+                                 # is updated via the Admin API or
+                                 # loading a declarative configuration file).
+                                 #
+                                 # Accepted values are:
+                                 #
+                                 # - `strict`: the upstream will be reload
+                                 #   synchronously, causing incoming requests to
+                                 #   be delayed until the reload is finished.
+                                 # - `eventual`: the upstream will be reload
+                                 #   asynchronously via a recurring background
+                                 #   job running every second inside of each
+                                 #   worker.
+
+#upstream_update_frequency = 1   # Defines how often the upstream changes are
+                                 # checked with a background job. When a change
+                                 # is detected, a new upstream will be reload. By
+                                 # default we check for changes every second.
+                                 # Raising this value will decrease the load on
+                                 # database servers and result in less jitter
+                                 # in proxy latency, with downside of longer
+                                 # converge time for upstream updates.
+
 #------------------------------------------------------------------------------
 # DEVELOPMENT & MISCELLANEOUS
 #------------------------------------------------------------------------------

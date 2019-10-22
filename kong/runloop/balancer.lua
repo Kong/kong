@@ -13,6 +13,7 @@ local sleep = ngx.sleep
 local min = math.min
 local max = math.max
 local timer_every  = ngx.timer.every
+local kong  = kong
 
 local CRIT  = ngx.CRIT
 local ERR   = ngx.ERR
@@ -24,6 +25,7 @@ local EMPTY_T = pl_tablex.readonly {}
 local _load_upstreams_dict_into_memory
 local _load_upstream_into_memory
 local _load_targets_into_memory
+local _reset_all_upstreams
 
 
 --==============================================================================
@@ -498,29 +500,44 @@ local all_upstreams = {}
 local upstream_version = utils.uuid()
 local new_upstream_version = utils.uuid()
 
-local function reload_all_upstreams()
+local reload_all_upstreams
+do
+  local function reset_all_upstreams()
+    local upstreams_dict = {}
+    for up, err in singletons.db.upstreams:each() do
+      if err then
+        log(CRIT, "could not obtain list of upstreams: ", err)
+        return nil
+      end
 
-  if upstream_version == new_upstream_version then
+      upstreams_dict[up.name] = up.id
+    end
+    upstream_version = new_upstream_version
+    all_upstreams = upstreams_dict
     return true
   end
+  _reset_all_upstreams = reset_all_upstreams
 
-  local upstreams_dict = {}
-  for up, err in singletons.db.upstreams:each() do
-    if err then
-      log(CRIT, "could not obtain list of upstreams: ", err)
-      return nil
+  reload_all_upstreams = function()
+    if upstream_version == new_upstream_version then
+      return true
     end
-
-    upstreams_dict[up.name] = up.id
+    return reset_all_upstreams()
   end
-  upstream_version = new_upstream_version
-  all_upstreams = upstreams_dict
-  return true
 end
 
 local get_all_upstreams
 do
   local function load_upstreams_dict_into_memory()
+    if kong.configuration.upstream_consistency == "strict" then
+      local ok, err = reload_all_upstreams()
+      if not ok then
+        -- If an error happens while updating, log it and return non-updated
+        -- version.
+        log(ERR, "could not reload upstream: ", err,
+          " (stale upstream will be used)")
+      end
+    end
     return all_upstreams
   end
   _load_upstreams_dict_into_memory = load_upstreams_dict_into_memory
@@ -768,7 +785,8 @@ local function init()
   end
   log(DEBUG, "initialized ", oks, " balancer(s), ", errs, " error(s)")
 
-  timer_every(1, function(premature)
+  local upstream_update_frequency = kong.configuration.upstream_update_frequency or 1
+  timer_every(upstream_update_frequency, function(premature)
     if premature then
       return
     end
@@ -1020,6 +1038,7 @@ return {
   _get_healthchecker = _get_healthchecker,
   _get_target_history = _get_target_history,
   _load_upstreams_dict_into_memory = _load_upstreams_dict_into_memory,
+  _reset_all_upstreams = _reset_all_upstreams,
   _load_upstream_into_memory = _load_upstream_into_memory,
   _load_targets_into_memory = _load_targets_into_memory,
   _create_hash = create_hash,

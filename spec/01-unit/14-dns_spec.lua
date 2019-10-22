@@ -1,3 +1,15 @@
+local mocker = require("spec.fixtures.mocker")
+
+local function setup_it_block()
+  mocker.setup(finally, {
+    kong = {
+      configuration = {
+        upstream_consistency = "strict",
+      }
+    }
+  })
+end
+
 -- simple debug function
 local function dump(...)
   print(require("pl.pretty").write({...}))
@@ -16,17 +28,17 @@ describe("DNS", function()
       get = function() return {} end
     }
 
-    --[[
-    singletons.db = {}
-    singletons.db.upstreams = {
-      find_all = function(self) return {} end
+    singletons.db = {
+      upstreams = {
+        each = function()
+          return function(self)
+            return nil
+          end
+        end
+      }
     }
-    --]]
 
     singletons.origins = {}
-
-    balancer = require "kong.runloop.balancer"
-    balancer.init()
 
     resolver = require "resty.dns.resolver"
     client = require "resty.dns.client"
@@ -85,6 +97,12 @@ describe("DNS", function()
 
   after_each(function()
     resolver.new = old_new
+  end)
+
+  it("init", function()
+    setup_it_block()
+    balancer = require "kong.runloop.balancer"
+    balancer.init()
   end)
 
   it("returns an error and 503 on a Name Error (3)", function()
