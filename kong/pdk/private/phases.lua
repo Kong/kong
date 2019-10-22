@@ -57,7 +57,7 @@ end
 
 
 local function check_phase(accepted_phases)
-  if not kong then
+  if not kong or not kong.ctx then
     -- no _G.kong, we are likely in tests
     return
   end
@@ -86,7 +86,7 @@ end
 
 
 local function check_not_phase(rejected_phases)
-  if not kong then
+  if not kong or not kong.ctx then
     -- no _G.kong, we are likely in tests
     return
   end

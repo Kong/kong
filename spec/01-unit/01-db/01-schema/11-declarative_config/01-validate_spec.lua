@@ -631,7 +631,6 @@ describe("declarative config: validate", function()
           ["oauth2_credentials"] = {
             {
               ["name"] = "required field missing",
-              ["redirect_uris"] = "required field missing",
             }
           }
         }, err)
@@ -697,28 +696,6 @@ describe("declarative config: validate", function()
           ]]))
 
           assert(DeclarativeConfig:validate(config))
-        end)
-
-        it("verifies required fields", function()
-          local ok, err = DeclarativeConfig:validate(lyaml.load([[
-            _format_version: "1.1"
-            consumers:
-            - username: bob
-              oauth2_credentials:
-              - name: foo
-          ]]))
-          assert.falsy(ok)
-          assert.same({
-            ["consumers"] = {
-              {
-                ["oauth2_credentials"] = {
-                  {
-                    ["redirect_uris"] = "required field missing",
-                  }
-                }
-              }
-            }
-          }, err)
         end)
 
         it("performs regular validations", function()

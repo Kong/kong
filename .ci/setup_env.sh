@@ -86,7 +86,7 @@ fi
 # ----------------
 # Run gRPC server |
 # ----------------
-if [[ "$TEST_SUITE" =~ integration|dbless ]]; then
+if [[ "$TEST_SUITE" =~ integration|dbless|plugins ]]; then
   docker run -d --name grpcbin -p 15002:9000 -p 15003:9001 moul/grpcbin
 fi
 

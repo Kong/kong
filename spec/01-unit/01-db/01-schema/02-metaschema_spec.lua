@@ -577,6 +577,221 @@ describe("metaschema", function()
     -- does not account for cyclic schemas at this point.
     assert.truthy(MetaSchema:validate(MetaSchema))
   end)
+
+  it("validates transformation input fields exists (positive)", function()
+    assert.truthy(MetaSchema:validate({
+      name = "test",
+      primary_key = { "test" },
+      fields = {
+        { test = { type = "string" } },
+      },
+      transformations = {
+        {
+          input = { "test" },
+          on_write = function() return true end,
+        },
+      },
+    }))
+  end)
+
+  it("validates transformation input fields exists (negative)", function()
+    assert.falsy(MetaSchema:validate({
+      name = "test",
+      primary_key = { "test" },
+      fields = {
+        { test = { type = "string" } },
+      },
+      transformations = {
+        {
+          input = { "nonexisting" },
+          on_write = function() return true end,
+        },
+      },
+    }))
+  end)
+
+  it("validates nested transformation input fields exists (positive)", function()
+    assert.truthy(MetaSchema:validate({
+      name = "test",
+      primary_key = { "test" },
+      fields = {
+        {
+          test = {
+            type = "record",
+            fields = {
+              {
+                field = { type = "string" }
+              },
+            }
+          }
+        },
+      },
+      transformations = {
+        {
+          input = { "test.field" },
+          on_write = function() return true end,
+        },
+      },
+    }))
+  end)
+
+  it("validates nested transformation input fields exists (negative)", function()
+    assert.falsy(MetaSchema:validate({
+      name = "test",
+      primary_key = { "test" },
+      fields = {
+        {
+          test = {
+            type = "record",
+            fields = {
+              {
+                field = { type = "string" },
+              },
+            },
+          },
+        },
+      },
+      transformations = {
+        {
+          input = { "test.nonexisting" },
+          on_write = function() return true end,
+        },
+      },
+    }))
+
+    assert.falsy(MetaSchema:validate({
+      name = "test",
+      primary_key = { "test" },
+      fields = {
+        {
+          test = {
+            type = "record",
+            fields = {
+              {
+                field = { type = "string" },
+              },
+            },
+          },
+        },
+      },
+      transformations = {
+        {
+          input = { "nonexisting.field" },
+          on_write = function() return true end,
+        },
+      },
+    }))
+  end)
+
+  it("validates transformation needs fields exists (positive)", function()
+    assert.truthy(MetaSchema:validate({
+      name = "test",
+      primary_key = { "test" },
+      fields = {
+        { test = { type = "string" } },
+      },
+      transformations = {
+        {
+          input = { "test" },
+          needs = { "test" },
+          on_write = function() return true end,
+        },
+      },
+    }))
+  end)
+
+  it("validates transformation needs fields exists (negative)", function()
+    assert.falsy(MetaSchema:validate({
+      name = "test",
+      primary_key = { "test" },
+      fields = {
+        { test = { type = "string" } },
+      },
+      transformations = {
+        {
+          input = { "test" },
+          needs = { "nonexisting" },
+          on_write = function() return true end,
+        },
+      },
+    }))
+  end)
+
+  it("validates nested transformation needs fields exists (positive)", function()
+    assert.truthy(MetaSchema:validate({
+      name = "test",
+      primary_key = { "test" },
+      fields = {
+        {
+          test = {
+            type = "record",
+            fields = {
+              {
+                field = { type = "string" }
+              },
+            }
+          }
+        },
+      },
+      transformations = {
+        {
+          input = { "test.field" },
+          needs = { "test.field" },
+          on_write = function() return true end,
+        },
+      },
+    }))
+  end)
+
+  it("validates nested transformation needs fields exists (negative)", function()
+    assert.falsy(MetaSchema:validate({
+      name = "test",
+      primary_key = { "test" },
+      fields = {
+        {
+          test = {
+            type = "record",
+            fields = {
+              {
+                field = { type = "string" },
+              },
+            },
+          },
+        },
+      },
+      transformations = {
+        {
+          input = { "test.field" },
+          needs = { "test.nonexisting" },
+          on_write = function() return true end,
+        },
+      },
+    }))
+
+    assert.falsy(MetaSchema:validate({
+      name = "test",
+      primary_key = { "test" },
+      fields = {
+        {
+          test = {
+            type = "record",
+            fields = {
+              {
+                field = { type = "string" },
+              },
+            },
+          },
+        },
+      },
+      transformations = {
+        {
+          input = { "test.field" },
+          needs = { "nonexisting.field" },
+          on_write = function() return true end,
+        },
+      },
+    }))
+  end)
 end)
 
 

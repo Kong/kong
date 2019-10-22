@@ -199,6 +199,7 @@ function CassandraConnector.new(kong_config)
         cassandra.consistencies[kong_config.cassandra_consistency:lower()],
       serial_consistency = serial_consistency,
     },
+    refresh_frequency = kong_config.cassandra_refresh_frequency,
     connection = nil, -- created by connect()
   }
 
@@ -255,6 +256,36 @@ function CassandraConnector:init()
 
   self.major_version = major_version
   self.major_minor_version = major_minor_version
+
+  return true
+end
+
+
+function CassandraConnector:init_worker()
+  if self.refresh_frequency > 0 then
+    local hdl, err = ngx.timer.every(self.refresh_frequency, function()
+      local ok, err, topology = self.cluster:refresh(self.refresh_frequency)
+      if not ok then
+        ngx.log(ngx.ERR, "[cassandra] failed to refresh cluster topology: ",
+                         err)
+
+      elseif topology then
+        if #topology.added > 0 then
+          ngx.log(ngx.NOTICE, "[cassandra] peers added to cluster topology: ",
+                              table.concat(topology.added, ", "))
+        end
+
+        if #topology.removed > 0 then
+          ngx.log(ngx.NOTICE, "[cassandra] peers removed from cluster topology: ",
+                              table.concat(topology.removed, ", "))
+        end
+      end
+    end)
+    if not hdl then
+      return nil, "failed to initialize Cassandra topology refresh timer: " ..
+                  err
+    end
+  end
 
   return true
 end
@@ -944,9 +975,12 @@ do
       if cql ~= "" then
         local res, err = conn:execute(cql)
         if not res then
-          if string.find(err, "Column .- was not found in table") or
-             string.find(err, "[Ii]nvalid column name")           or
-             string.find(err, "[Uu]ndefined column name") then
+          if string.find(err, "Column .- was not found in table")
+          or string.find(err, "[Ii]nvalid column name")
+          or string.find(err, "[Uu]ndefined column name")
+          or string.find(err, "No column definition found for column")
+          or string.find(err, "Undefined name .- in selection clause")
+          then
             log.warn("ignored error while running '%s' migration: %s (%s)",
                      name, err, cql:gsub("\n", " "):gsub("%s%s+", " "))
           else

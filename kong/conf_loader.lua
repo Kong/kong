@@ -38,12 +38,18 @@ local HEADER_KEY_TO_NAME = {
   [string.lower(HEADERS.VIA)] = HEADERS.VIA,
   [string.lower(HEADERS.SERVER)] = HEADERS.SERVER,
   [string.lower(HEADERS.PROXY_LATENCY)] = HEADERS.PROXY_LATENCY,
+  [string.lower(HEADERS.RESPONSE_LATENCY)] = HEADERS.RESPONSE_LATENCY,
+  [string.lower(HEADERS.ADMIN_LATENCY)] = HEADERS.ADMIN_LATENCY,
   [string.lower(HEADERS.UPSTREAM_LATENCY)] = HEADERS.UPSTREAM_LATENCY,
   [string.lower(HEADERS.UPSTREAM_STATUS)] = HEADERS.UPSTREAM_STATUS,
 }
 
 
 local DYNAMIC_KEY_NAMESPACES = {
+  {
+    injected_conf_name = "nginx_http_status_directives",
+    prefix = "nginx_http_status_",
+  },
   {
     injected_conf_name = "nginx_http_upstream_directives",
     prefix = "nginx_http_upstream_",
@@ -109,6 +115,7 @@ local CONF_INFERENCES = {
   -- forced string inferences (or else are retrieved as numbers)
   proxy_listen = { typ = "array" },
   admin_listen = { typ = "array" },
+  status_listen = { typ = "array" },
   stream_listen = { typ = "array" },
   origins = { typ = "array" },
   db_update_frequency = {  typ = "number"  },
@@ -181,6 +188,7 @@ local CONF_INFERENCES = {
                           }
                         },
   cassandra_local_datacenter = { typ = "string" },
+  cassandra_refresh_frequency = { typ = "number" },
   cassandra_repl_strategy = { enum = {
                                 "SimpleStrategy",
                                 "NetworkTopologyStrategy",
@@ -199,6 +207,7 @@ local CONF_INFERENCES = {
   dns_error_ttl = { typ = "number" },
   dns_no_sync = { typ = "boolean" },
   router_consistency = { enum = { "strict", "eventual" } },
+  router_update_frequency = { typ = "number" },
 
   client_ssl = { typ = "boolean" },
 
@@ -206,6 +215,8 @@ local CONF_INFERENCES = {
   proxy_error_log = { typ = "string" },
   admin_access_log = { typ = "string" },
   admin_error_log = { typ = "string" },
+  status_access_log = { typ = "string" },
+  status_error_log = { typ = "string" },
   log_level = { enum = {
                   "debug",
                   "info",
@@ -224,6 +235,7 @@ local CONF_INFERENCES = {
 
   lua_ssl_verify_depth = { typ = "number" },
   lua_socket_pool_size = { typ = "number" },
+  service_mesh = { typ = "boolean" },
 }
 
 
@@ -333,6 +345,10 @@ local function check_and_infer(conf)
     then
       errors[#errors + 1] = "must specify 'cassandra_local_datacenter' when " ..
                             conf.cassandra_lb_policy .. " policy is in use"
+    end
+
+    if conf.cassandra_refresh_frequency < 0 then
+      errors[#errors + 1] = "cassandra_refresh_frequency must be 0 or greater"
     end
 
     for _, contact_point in ipairs(conf.cassandra_contact_points) do
@@ -526,6 +542,17 @@ local function check_and_infer(conf)
 
   if conf.pg_semaphore_timeout ~= math.floor(conf.pg_semaphore_timeout) then
     errors[#errors + 1] = "pg_semaphore_timeout must be an integer greater than 0"
+  end
+
+  if conf.router_update_frequency <= 0 then
+    errors[#errors + 1] = "router_update_frequency must be greater than 0"
+  end
+
+  if conf.service_mesh then
+    log.warn("You enabled the deprecated Service Mesh feature of " ..
+             "the Kong Gateway, which will cause upstream HTTPS request " ..
+             "to behave incorrectly. Service Mesh support" ..
+             "in Kong Gateway will be removed in the next release.")
   end
 
   return #errors == 0, errors[1], errors
@@ -1009,6 +1036,13 @@ local function load(path, custom_conf, opts)
         break
       end
     end
+
+    conf.status_listeners, err = parse_listeners(conf.status_listen, { "ssl" })
+    if err then
+      return nil, "status_listen " .. err
+    end
+
+    setmetatable(conf.status_listeners, _nop_tostring_mt)
   end
 
   do
@@ -1043,6 +1077,8 @@ local function load(path, custom_conf, opts)
 
     if enabled_headers.latency_tokens then
       enabled_headers[HEADERS.PROXY_LATENCY] = true
+      enabled_headers[HEADERS.RESPONSE_LATENCY] = true
+      enabled_headers[HEADERS.ADMIN_LATENCY] = true
       enabled_headers[HEADERS.UPSTREAM_LATENCY] = true
     end
 

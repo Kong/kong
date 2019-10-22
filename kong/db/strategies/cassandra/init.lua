@@ -1,4 +1,5 @@
 local iteration = require "kong.db.iteration"
+local constants = require "kong.constants"
 local cassandra = require "cassandra"
 local cjson = require "cjson"
 
@@ -124,6 +125,10 @@ local function build_queries(self)
   local partitioned, err = is_partitioned(self)
   if err then
     return nil, err
+  end
+
+  if schema.ttl == true then
+    select_columns = select_columns .. fmt(", TTL(%s) as ttl", self.ttl_field())
   end
 
   if partitioned then
@@ -511,6 +516,7 @@ function _M.new(connector, schema, errors)
 
   local each_pk_field
   local each_non_pk_field
+  local ttl_field
 
   do
     local non_pk_fields = new_tab(n_fields - n_pk, 0)
@@ -546,6 +552,10 @@ function _M.new(connector, schema, errors)
     each_non_pk_field = function()
       return iter, non_pk_fields, 0
     end
+
+    ttl_field = function()
+      return schema.ttl and non_pk_fields[1] and non_pk_fields[1].field_name
+    end
   end
 
   -- self instanciation
@@ -556,6 +566,7 @@ function _M.new(connector, schema, errors)
     errors                  = errors,
     each_pk_field           = each_pk_field,
     each_non_pk_field       = each_non_pk_field,
+    ttl_field               = ttl_field,
     foreign_keys_db_columns = {},
     queries                 = nil,
   }
@@ -1183,6 +1194,8 @@ do
   end
 
   function _mt:page(size, offset, options, foreign_key, foreign_key_db_columns)
+    size = size or constants.DEFAULT_PAGE_SIZE
+
     if offset then
       local offset_decoded = decode_base64(offset)
       if not offset_decoded then
@@ -1465,7 +1478,7 @@ do
         local pager = function(size, offset)
           return strategy[method](strategy, primary_key, size, offset)
         end
-        for row, err in iteration.by_row(self, pager, 1000) do
+        for row, err in iteration.by_row(self, pager) do
           if err then
             return nil, self.errors:database_error("could not gather " ..
                                                    "associated entities " ..

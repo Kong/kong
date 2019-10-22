@@ -139,17 +139,23 @@ describe("plugins", function()
         headers = {},
         json = {}
       },
+      rename = {
+        headers = {},
+      },
       replace = {
         headers = {},
-        json = {}
+        json = {},
+        json_types = {}
       },
       add = {
         headers = {},
-        json = {}
+        json = {},
+        json_types = {}
       },
       append = {
         headers = {},
-        json = {}
+        json = {},
+        json_types = {}
       }
     }, plugin.config)
   end)

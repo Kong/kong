@@ -28,6 +28,7 @@ local sub          = string.sub
 
 
 local WARN                          = ngx.WARN
+local ERR                           = ngx.ERR
 local SQL_INFORMATION_SCHEMA_TABLES = [[
 SELECT table_name
   FROM information_schema.tables
@@ -272,7 +273,7 @@ function _mt:init()
   local res, err = self:query("SHOW server_version_num;")
   local ver = tonumber(res and res[1] and res[1].server_version_num)
   if not ver then
-    return nil, "failed to retrieve server_version_num: " .. err
+    return nil, "failed to retrieve PostgreSQL server_version_num: " .. err
   end
 
   local major = floor(ver / 10000)
@@ -291,17 +292,13 @@ end
 
 function _mt:init_worker(strategies)
   if ngx.worker.id() == 0 then
-    local graph
-    local found = false
+    local graph = tsort.new()
+
+    graph:add("cluster_events")
 
     for _, strategy in pairs(strategies) do
       local schema = strategy.schema
       if schema.ttl then
-        if not found then
-          graph = tsort.new()
-          found = true
-        end
-
         local name = schema.name
         graph:add(name)
         for _, field in schema:each_field() do
@@ -312,21 +309,20 @@ function _mt:init_worker(strategies)
       end
     end
 
-    if not found then
-      return true
-    end
-
     local sorted_strategies = graph:sort()
     local ttl_escaped = self:escape_identifier("ttl")
+    local expire_at_escaped = self:escape_identifier("expire_at")
     local cleanup_statements = {}
     local cleanup_statements_count = #sorted_strategies
     for i = 1, cleanup_statements_count do
       local table_name = sorted_strategies[i]
+      local column_name = table_name == "cluster_events" and expire_at_escaped
+                                                          or ttl_escaped
       cleanup_statements[i] = concat {
         "  DELETE FROM ",
         self:escape_identifier(table_name),
         " WHERE ",
-        ttl_escaped,
+        column_name,
         " < CURRENT_TIMESTAMP AT TIME ZONE 'UTC';"
       }
     end
@@ -338,21 +334,26 @@ function _mt:init_worker(strategies)
         return
       end
 
-      local ok, _, _, num_queries = self:query(cleanup_statement)
+      local ok, err, _, num_queries = self:query(cleanup_statement)
       if not ok then
-        for i = num_queries + 1, cleanup_statements_count do
-          local statement = cleanup_statements[i]
-          local ok, err = self:query(statement)
-          if not ok then
-            if err then
-              log(WARN, "unable to clean expired rows from table '",
-                        sorted_strategies[i], "' on postgres database (",
-                        err, ")")
-            else
-              log(WARN, "unable to clean expired rows from table '",
-                        sorted_strategies[i], "' on postgres database")
+        if num_queries then
+          for i = num_queries + 1, cleanup_statements_count do
+            local statement = cleanup_statements[i]
+            local ok, err = self:query(statement)
+            if not ok then
+              if err then
+                log(WARN, "unable to clean expired rows from table '",
+                          sorted_strategies[i], "' on PostgreSQL database (",
+                          err, ")")
+              else
+                log(WARN, "unable to clean expired rows from table '",
+                          sorted_strategies[i], "' on PostgreSQL database")
+              end
             end
           end
+
+        else
+          log(ERR, "unable to clean expired rows from PostgreSQL database (", err, ")")
         end
       end
     end)

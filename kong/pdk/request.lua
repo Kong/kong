@@ -237,7 +237,7 @@ local function new(self)
 
   ---
   -- Returns the HTTP version used by the client in the request as a Lua
-  -- number, returning values such as `1.1` and `2.0.`, or `nil` for
+  -- number, returning values such as `1`, `1.1`, `2.0`, or `nil` for
   -- unrecognized values.
   --
   -- @function kong.request.get_http_version

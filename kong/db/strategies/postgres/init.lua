@@ -1,3 +1,4 @@
+local constants     = require "kong.constants"
 local arrays        = require "pgmoon.arrays"
 local json          = require "pgmoon.json"
 local cjson         = require "cjson"
@@ -562,6 +563,8 @@ end
 
 
 local function page(self, size, token, foreign_key, foreign_entity_name, options)
+  size = size or constants.DEFAULT_PAGE_SIZE
+
   local limit = size + 1
 
   local statement_name
@@ -1321,6 +1324,13 @@ function _M.new(connector, schema, errors)
     update_expressions = concat(update_expressions, ", ")
 
     upsert_expressions = concat(upsert_expressions, ", ")
+
+    select_expressions = concat {
+      select_expressions, ",",
+      "FLOOR(EXTRACT(EPOCH FROM (",
+        ttl_escaped, " AT TIME ZONE 'UTC' - CURRENT_TIMESTAMP AT TIME ZONE 'UTC'",
+      "))) AS ", ttl_escaped
+    }
 
     create_statement = concat {
       "CREATE TABLE IF NOT EXISTS ", table_name_escaped, " (\n",

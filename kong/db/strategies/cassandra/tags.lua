@@ -1,4 +1,6 @@
 local cassandra = require "cassandra"
+local constants = require "kong.constants"
+
 
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
@@ -26,6 +28,8 @@ local Tags = {}
 -- @tparam string tag_pk the tag value
 -- @treturn table|nil,err,offset
 function Tags:page_by_tag(tag, size, offset, options)
+  size = size or constants.DEFAULT_PAGE_SIZE
+
   local opts = new_tab(0, 2)
 
   if offset then

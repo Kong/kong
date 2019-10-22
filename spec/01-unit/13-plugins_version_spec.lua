@@ -10,6 +10,10 @@ describe("Plugins", function()
 
     plugins = {}
 
+    local kong_global = require "kong.global"
+    _G.kong = kong_global.new()
+    kong_global.init_pdk(kong, conf, nil)
+
     for plugin in pairs(conf.loaded_plugins) do
       local handler = require("kong.plugins." .. plugin .. ".handler")
       table.insert(plugins, {

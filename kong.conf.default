@@ -59,6 +59,19 @@
                                           # is adjusted by the `log_level`
                                           # property.
 
+#status_access_log = off                  # Path for Status API request access
+                                          # logs. The default value of `off`
+                                          # implies that loggin for this API
+                                          # is disabled by default.
+                                          # If this value is a relative path,
+                                          # it will be placed under the
+                                          # `prefix` location.
+
+#status_error_log = logs/status_error.log # Path for Status API request error
+                                          # logs. The granularity of these logs
+                                          # is adjusted by the `log_level`
+                                          # property.
+
 #plugins = bundled               # Comma-separated list of plugins this node
                                  # should load. By default, only plugins
                                  # bundled in official distributions are
@@ -104,6 +117,15 @@
 
 #anonymous_reports = on          # Send anonymous usage data such as error
                                  # stack traces to help improve Kong.
+
+#service_mesh = off              # When `on`, enable the built-in Service Mesh
+                                 # support of Kong.
+                                 #
+                                 # **Note:** Enabling service mesh causes
+                                 # upstream requests to HTTPS services to
+                                 # behave incorrectly. Service Mesh has been
+                                 # deprecated and will be removed in the next
+                                 # release of Kong.
 
 #------------------------------------------------------------------------------
 # NGINX
@@ -234,7 +256,20 @@
                          # capabilities) pulling its configuration changes
                          # from the database.
                          #
-                         # Example: `stream_listen = 127.0.0.1:8444 http2 ssl`
+                         # Example: `admin_listen = 127.0.0.1:8444 http2 ssl`
+
+ #status_listen = off    # Comma-separated list of addresses and ports on
+                         # which the Status API should listen.
+                         # The Status API is a read-only endpoint
+                         # allowing monitoring tools to retrieve metrics,
+                         # healthiness, and other non-sensitive information
+                         # of the current Kong node.
+                         #
+                         # This value can be set to `off`, disabling
+                         # the Status API for this node.
+                         #
+                         # Example: `status_listen = 0.0.0.0:8100`
+
 
 #nginx_user = nobody nobody      # Defines user and group credentials used by
                                  # worker processes. If group is omitted, a
@@ -313,18 +348,24 @@
                                  # Accepted values are:
                                  # - `Server`: Injects `Server: kong/x.y.z`
                                  #   on Kong-produced response (e.g. Admin
-                                 #   API, rejected requests from auth plugin,
-                                 #   etc...).
+                                 #   API, rejected requests from auth plugin).
                                  # - `Via`: Injects `Via: kong/x.y.z` for
                                  #   successfully proxied requests.
-                                 # - `X-Kong-Proxy-Latency`: Time taken (in
-                                 #   milliseconds)
-                                 #   by Kong to process a request and run all
-                                 #   plugins before proxying the request
-                                 #   upstream.
+                                 # - `X-Kong-Proxy-Latency`: Time taken
+                                 #   (in milliseconds) by Kong to process
+                                 #   a request and run all plugins before
+                                 #   proxying the request upstream.
+                                 # - `X-Kong-Response-Latency`: time taken
+                                 #   (in millisecond) by Kong to produce
+                                 #   a response in case of e.g. plugin
+                                 #   short-circuiting the request, or in
+                                 #   in case of an error.
                                  # - `X-Kong-Upstream-Latency`: Time taken
                                  #   (in milliseconds) by the upstream
                                  #   service to send response headers.
+                                 # - `X-Kong-Admin-Latency`: Time taken
+                                 #   (in milliseconds) by Kong to process
+                                 #   an Admin API request.
                                  # - `X-Kong-Upstream-Status`: The HTTP status
                                  #   code returned by the upstream service.
                                  #   This is particularly useful for clients to
@@ -332,9 +373,11 @@
                                  #   response is rewritten by a plugin.
                                  # - `server_tokens`: Same as specifying both
                                  #   `Server` and `Via`.
-                                 # - `latency_tokens`: Same as specifying both
-                                 #   `X-Kong-Proxy-Latency` and
-                                 #   `X-Kong-Upstream-Latency`.
+                                 # - `latency_tokens`: Same as specifying
+                                 #   `X-Kong-Proxy-Latency`,
+                                 #   `X-Kong-Response-Latency`,
+                                 #   `X-Kong-Admin-Latency` and
+                                 #   `X-Kong-Upstream-Latency`
                                  #
                                  # In addition to those, this value can be set
                                  # to `off`, which prevents Kong from injecting
@@ -633,6 +676,14 @@
                                  # of the local (closest) datacenter for this
                                  # Kong node.
 
+#cassandra_refresh_frequency = 60          # Frequency (in seconds) at which
+                                           # the cluster topology will be
+                                           # checked for new or decommissioned
+                                           # nodes.
+                                           # A value of `0` will disable this
+                                           # check, and the cluster topology
+                                           # will never be refreshed.
+
 #cassandra_repl_strategy = SimpleStrategy  # When migrating for the first time,
                                            # Kong will use this setting to
                                            # create your keyspace.
@@ -841,6 +892,15 @@
                                  # cause workers to route requests differently
                                  # for a short period of time after Routes and
                                  # Services updates.
+
+#router_update_frequency = 1     # Defines how often the router changes are
+                                 # checked with a background job. When a change
+                                 # is detected, a new router will be built. By
+                                 # default we check for changes every second.
+                                 # Raising this value will decrease the load on
+                                 # database servers and result in less jitter
+                                 # in proxy latency, with downside of longer
+                                 # converge time for router updates.
 
 #------------------------------------------------------------------------------
 # DEVELOPMENT & MISCELLANEOUS

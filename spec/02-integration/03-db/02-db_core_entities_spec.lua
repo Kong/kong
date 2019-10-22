@@ -423,6 +423,7 @@ for _, strategy in helpers.each_strategy() do
           local fake_id = utils.uuid()
           local credentials, _, err_t = db.basicauth_credentials:insert({
             username = "peter",
+            password = "pan",
             consumer = { id = fake_id },
           })
 

@@ -1,4 +1,5 @@
 local singletons = require "kong.singletons"
+local constants = require "kong.constants"
 local balancer = require "kong.runloop.balancer"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
@@ -31,7 +32,7 @@ local function clean_history(self, upstream_pk)
   local cleanup_factor = 0.1
 
   --cleaning up history, check if it's necessary...
-  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, 1000)
+  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk)
   if not targets then
     return nil, err, err_t
   end
@@ -183,11 +184,11 @@ end
 -- including entries that have been since overriden, and those
 -- with weight=0 (i.e. the "raw" representation of targets in
 -- the database)
-function _TARGETS:select_by_upstream_raw(upstream_pk, ...)
+function _TARGETS:select_by_upstream_raw(upstream_pk, options)
   local targets = {}
 
   -- Note that each_for_upstream is not overridden, so it returns "raw".
-  for target, err, err_t in self:each_for_upstream(upstream_pk, ...) do
+  for target, err, err_t in self:each_for_upstream(upstream_pk, nil, options) do
     if not target then
       return nil, err, err_t
     end
@@ -214,7 +215,7 @@ function _TARGETS:page_for_upstream(upstream_pk, size, offset, options)
   -- extract the page requested by the user.
 
   -- Read all targets; this returns the target history sorted chronologically
-  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, 1000, options)
+  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, options)
   if not targets then
     return nil, err, err_t
   end
@@ -245,7 +246,7 @@ function _TARGETS:page_for_upstream(upstream_pk, size, offset, options)
 
   -- Extract the requested page
   local page = setmetatable({}, cjson.array_mt)
-  size = min(size or 100, 1000)
+  size = min(size or constants.DEFAULT_PAGE_SIZE, constants.MAX_PAGE_SIZE)
   offset = offset or 0
   for i = 1 + offset, size + offset do
     local target = all_active_targets[i]
@@ -314,7 +315,7 @@ end
 
 
 function _TARGETS:select_by_upstream_filter(upstream_pk, filter, options)
-  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, 1000, options)
+  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, options)
   if not targets then
     return nil, err, err_t
   end
@@ -327,7 +328,8 @@ function _TARGETS:select_by_upstream_filter(upstream_pk, filter, options)
 end
 
 
-function _TARGETS:post_health(upstream, target, address, is_healthy)
+function _TARGETS:post_health(upstream_pk, target, address, is_healthy)
+  local upstream = balancer.get_upstream_by_id(upstream_pk.id)
   local host_addr = utils.normalize_ip(target.target)
   local hostname = utils.format_host(host_addr.host)
   local ip

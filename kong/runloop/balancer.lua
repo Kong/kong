@@ -38,6 +38,7 @@ local balancers = {}
 local healthcheckers = {}
 local healthchecker_callbacks = {}
 local target_histories = {}
+local upstream_ids = {}
 
 
 -- health check API callbacks to be called on healthcheck events
@@ -123,7 +124,7 @@ do
     log(DEBUG, "fetching targets for upstream: ", tostring(upstream_id))
 
     local target_history, err, err_t =
-      singletons.db.targets:select_by_upstream_raw({ id = upstream_id }, 1000)
+      singletons.db.targets:select_by_upstream_raw({ id = upstream_id })
 
     if not target_history then
       return nil, err, err_t
@@ -183,19 +184,19 @@ local function apply_history(rb, history, start)
 end
 
 
-local function populate_healthchecker(hc, balancer)
+local function populate_healthchecker(hc, balancer, upstream)
   for weight, addr, host in balancer:addressIter() do
     if weight > 0 then
       local ipaddr = addr.ip
       local port = addr.port
-      local hostname = host.hostname
-      local ok, err = hc:add_target(ipaddr, port, hostname)
+      local ok, err = hc:add_target(ipaddr, port, host.hostname, true,
+                                    upstream.host_header)
       if ok then
         -- Get existing health status which may have been initialized
         -- with data from another worker, and apply to the new balancer.
-        local tgt_status = hc:get_target_status(ipaddr, port, hostname)
+        local tgt_status = hc:get_target_status(ipaddr, port, host.hostname)
         if tgt_status ~= nil then
-          balancer:setAddressStatus(tgt_status, ipaddr, port, hostname)
+          balancer:setAddressStatus(tgt_status, ipaddr, port)
         end
 
       else
@@ -229,19 +230,8 @@ do
     -- @param hostname string
     local function ring_balancer_callback(balancer, action, address, ip, port, hostname)
       local healthchecker = healthcheckers[balancer]
-      if action == "added" then
-        local ok, err = healthchecker:add_target(ip, port, hostname)
-        if not ok then
-          log(ERR, "[healthchecks] failed adding a target: ", err)
-        end
 
-      elseif action == "removed" then
-        local ok, err = healthchecker:remove_target(ip, port, hostname)
-        if not ok then
-          log(ERR, "[healthchecks] failed removing a target: ", err)
-        end
-
-      elseif action == "health" then
+      if action == "health" then
         local balancer_status
         if address then
           balancer_status = "HEALTHY"
@@ -252,8 +242,27 @@ do
             " reported health status changed to ", balancer_status)
 
       else
-        log(WARN, "[healthchecks] unknown status from balancer: ",
-                  tostring(action))
+        local upstream_id = upstream_ids[balancer]
+        local upstream = get_upstream_by_id(upstream_id)
+
+        if action == "added" then
+          local ok, err = healthchecker:add_target(ip, port, hostname, true,
+                                                  upstream.host_header)
+          if not ok then
+            log(ERR, "[healthchecks] failed adding a target: ", err)
+          end
+
+        elseif action == "removed" then
+          local ok, err = healthchecker:remove_target(ip, port, hostname)
+          if not ok then
+            log(ERR, "[healthchecks] failed removing a target: ", err)
+          end
+
+        else
+          log(WARN, "[healthchecks] unknown status from balancer: ",
+                    tostring(action))
+        end
+
       end
     end
 
@@ -271,12 +280,13 @@ do
           return
         end
 
+        local hostname = tgt.hostname
         local ok, err
-        ok, err = balancer:setAddressStatus(status, tgt.ip, tgt.port, tgt.hostname)
+        ok, err = balancer:setAddressStatus(status, tgt.ip, tgt.port, hostname)
 
         local health = status and "healthy" or "unhealthy"
         for _, subscriber in ipairs(healthcheck_subscribers) do
-          subscriber(upstream_id, tgt.ip, tgt.port, tgt.hostname, health)
+          subscriber(upstream_id, tgt.ip, tgt.port, hostname, health)
         end
 
         if not ok then
@@ -349,7 +359,7 @@ do
         return nil, err
       end
 
-      populate_healthchecker(healthchecker, balancer)
+      populate_healthchecker(healthchecker, balancer, upstream)
 
       attach_healthchecker_to_balancer(healthchecker, balancer, upstream.id)
 
@@ -377,6 +387,11 @@ do
       step = min(max(0.001, step * ratio), timeout, max_step)
     end
     return nil, "timeout"
+  end
+
+  local function invalidate_upstream_caches(upstream_id)
+    singletons.cache:invalidate_local("balancer:upstreams:" .. upstream_id)
+    singletons.cache:invalidate_local("balancer:targets:" .. upstream_id)
   end
 
   ------------------------------------------------------------------------------
@@ -410,6 +425,8 @@ do
       return nil, err
     end
 
+    invalidate_upstream_caches(upstream.id)
+
     target_histories[balancer] = {}
 
     if not history then
@@ -421,6 +438,8 @@ do
     end
 
     apply_history(balancer, history, start)
+
+    upstream_ids[balancer] = upstream.id
 
     create_healthchecker(balancer, upstream)
 
@@ -499,7 +518,7 @@ do
   local function load_upstreams_dict_into_memory()
     local upstreams_dict = {}
     -- build a dictionary, indexed by the upstream name
-    for up, err in singletons.db.upstreams:each(1000) do
+    for up, err in singletons.db.upstreams:each() do
       if err then
         log(CRIT, "could not obtain list of upstreams: ", err)
         return nil
@@ -591,12 +610,7 @@ end
 --==============================================================================
 
 
---------------------------------------------------------------------------------
--- Called on any changes to a target.
--- @param operation "create", "update" or "delete"
--- @param target Target table with `upstream.id` field
-local function on_target_event(operation, target)
-  local upstream_id = target.upstream.id
+local function do_target_event(operation, upstream_id, upstream_name)
   singletons.cache:invalidate_local("balancer:targets:" .. upstream_id)
 
   local upstream = get_upstream_by_id(upstream_id)
@@ -605,68 +619,32 @@ local function on_target_event(operation, target)
     return
   end
 
-  local balancer = balancers[upstream.id]
+  local balancer = balancers[upstream_id]
   if not balancer then
-    log(ERR, "target ", operation, ": balancer not found for ", upstream.name)
+    log(ERR, "target ", operation, ": balancer not found for ", upstream_name)
     return
   end
 
   local ok, err = check_target_history(upstream, balancer)
   if not ok then
-    log(ERR, "failed checking target history for ", upstream.name, ":  ", err)
+    log(ERR, "failed checking target history for ", upstream_name, ":  ", err)
   end
 end
 
-
 --------------------------------------------------------------------------------
--- Called on any changes to an upstream.
+-- Called on any changes to a target.
 -- @param operation "create", "update" or "delete"
--- @param upstream_data table with `id` and `name` fields
-local function on_upstream_event(operation, upstream_data)
-  local upstream_id = upstream_data.id
-  local upstream_name = upstream_data.name
+-- @param target Target table with `upstream.id` field
+local function on_target_event(operation, target)
 
-  if operation == "create" then
-
-    singletons.cache:invalidate_local("balancer:upstreams")
-
-    local upstream = get_upstream_by_id(upstream_id)
-    if not upstream then
-      log(ERR, "upstream not found for ", upstream_id)
-      return
+  if operation == "reset" then
+    local upstreams = get_all_upstreams()
+    for name, id in pairs(upstreams) do
+      do_target_event("create", id, name)
     end
 
-    local _, err = create_balancer(upstream)
-    if err then
-      log(CRIT, "failed creating balancer for ", upstream_name, ": ", err)
-    end
-
-  elseif operation == "delete" or operation == "update" then
-
-    singletons.cache:invalidate_local("balancer:upstreams")
-    singletons.cache:invalidate_local("balancer:upstreams:" .. upstream_id)
-    singletons.cache:invalidate_local("balancer:targets:"   .. upstream_id)
-
-    local balancer = balancers[upstream_id]
-    if balancer then
-      stop_healthchecker(balancer)
-    end
-
-    if operation == "delete" then
-      set_balancer(upstream_id, nil)
-
-    else
-      local upstream = get_upstream_by_id(upstream_id)
-      if not upstream then
-        log(ERR, "upstream not found for ", upstream_id)
-        return
-      end
-
-      local _, err = create_balancer(upstream, true)
-      if err then
-        log(ERR, "failed recreating balancer for ", upstream_name, ": ", err)
-      end
-    end
+  else
+    do_target_event(operation, target.upstream.id, target.upstream.name)
 
   end
 
@@ -771,6 +749,79 @@ local function init()
 end
 
 
+local function do_upstream_event(operation, upstream_id, upstream_name)
+  if operation == "create" then
+
+    singletons.cache:invalidate_local("balancer:upstreams")
+
+    local upstream = get_upstream_by_id(upstream_id)
+    if not upstream then
+      log(ERR, "upstream not found for ", upstream_id)
+      return
+    end
+
+    local _, err = create_balancer(upstream)
+    if err then
+      log(CRIT, "failed creating balancer for ", upstream_name, ": ", err)
+    end
+
+  elseif operation == "delete" or operation == "update" then
+
+    if singletons.db.strategy ~= "off" then
+      singletons.cache:invalidate_local("balancer:upstreams")
+      singletons.cache:invalidate_local("balancer:upstreams:" .. upstream_id)
+      singletons.cache:invalidate_local("balancer:targets:"   .. upstream_id)
+    end
+
+    local balancer = balancers[upstream_id]
+    if balancer then
+      stop_healthchecker(balancer)
+    end
+
+    if operation == "delete" then
+      set_balancer(upstream_id, nil)
+
+    else
+      local upstream = get_upstream_by_id(upstream_id)
+      if not upstream then
+        log(ERR, "upstream not found for ", upstream_id)
+        return
+      end
+
+      local _, err = create_balancer(upstream, true)
+      if err then
+        log(ERR, "failed recreating balancer for ", upstream_name, ": ", err)
+      end
+    end
+
+  end
+
+end
+
+
+--------------------------------------------------------------------------------
+-- Called on any changes to an upstream.
+-- @param operation "create", "update" or "delete"
+-- @param upstream_data table with `id` and `name` fields
+local function on_upstream_event(operation, upstream_data)
+
+  if operation == "reset" then
+    init()
+
+  elseif operation == "delete_all" then
+    local upstreams = get_all_upstreams()
+    for name, id in pairs(upstreams) do
+      do_upstream_event("delete", id, name)
+    end
+
+  else
+    do_upstream_event(operation, upstream_data.id, upstream_data.name)
+
+  end
+
+end
+
+
 --==============================================================================
 -- Main entry point when resolving
 --==============================================================================
@@ -860,7 +911,11 @@ local function execute(target, ctx)
 
   target.ip = ip
   target.port = port
-  target.hostname = hostname
+  if upstream and upstream.host_header ~= nil then
+    target.hostname = upstream.host_header
+  else
+    target.hostname = hostname
+  end
   return true
 end
 
@@ -1006,6 +1061,7 @@ return {
   subscribe_to_healthcheck_events = subscribe_to_healthcheck_events,
   unsubscribe_from_healthcheck_events = unsubscribe_from_healthcheck_events,
   get_upstream_health = get_upstream_health,
+  get_upstream_by_id = get_upstream_by_id,
 
   -- ones below are exported for test purposes only
   _create_balancer = create_balancer,
