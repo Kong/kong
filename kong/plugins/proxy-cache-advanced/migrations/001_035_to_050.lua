@@ -116,7 +116,7 @@ return {
         -- update rbac
         local update_rbac_query = str_format([[
           UPDATE rbac_role_entities SET entity_id = %s
-          WHERE entity_type = "plugins" AND entity_id = %s
+          WHERE entity_type = 'plugins' AND entity_id = %s
         ]], new_id, escape_literal(plugin.id))
         local _, err = connector:query(update_rbac_query)
         if err then
