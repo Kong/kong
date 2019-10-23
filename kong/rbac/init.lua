@@ -395,6 +395,7 @@ function _M.get_groups_roles(db, groups)
   end
 
   local cache = kong.cache
+  local relationship_objs = {}
 
   for k, group_name in ipairs(groups) do
     local group, err = select_from_cache(db.groups, group_name, retrieve_group)
@@ -416,8 +417,6 @@ function _M.get_groups_roles(db, groups)
         return nil, err
       end
 
-      -- now get the relationship objects for each relationship id
-      local relationship_objs = {}
 
       for i = 1, #relationship_ids do
         local rbac_role_id = relationship_ids[i]["rbac_role"].id
@@ -432,10 +431,10 @@ function _M.get_groups_roles(db, groups)
 
         relationship_objs[#relationship_objs + 1] = relationship
       end
-
-      return relationship_objs
     end
   end
+
+  return relationship_objs
 end
 
 

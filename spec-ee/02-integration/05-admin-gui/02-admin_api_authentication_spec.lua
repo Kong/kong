@@ -585,7 +585,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("ldap-auth-advanced - authentication groups", function()
-      local super_admin, read_only_admin, other_ws_admin
+      local super_admin, read_only_admin, multiple_groups_admin, other_ws_admin
 
       lazy_setup(function()
         truncate_tables(db)
@@ -606,12 +606,15 @@ for _, strategy in helpers.each_strategy() do
 
         super_admin = admin(db, ws, 'MacBeth')
         read_only_admin = admin(db, ws, 'Ophelia')
+        multiple_groups_admin = admin(db, ws, 'Beatrice')
 
         local read_only_role = assert(db.rbac_roles:select_by_name('read-only'))
         local super_admin_role = assert(db.rbac_roles:select_by_name('super-admin'))
+        local admin_role = assert(db.rbac_roles:select_by_name('admin'))
         local group1 = db.groups:insert({ name = 'test-group-1' })
         local group2 = db.groups:insert({ name = 'test-group-2' })
         local group3 = db.groups:insert({ name = 'test-group-3' })
+        local group4 = db.groups:insert({ name = 'test-group-4' })
 
         assert(db.group_rbac_roles:insert({
           group = group1,
@@ -621,6 +624,11 @@ for _, strategy in helpers.each_strategy() do
         assert(db.group_rbac_roles:insert({
           group = group2,
           rbac_role = { id = read_only_role.id },
+          workspace = ws,
+        }))
+        assert(db.group_rbac_roles:insert({
+          group = group4,
+          rbac_role = { id = admin_role.id },
           workspace = ws,
         }))
 
@@ -784,6 +792,35 @@ for _, strategy in helpers.each_strategy() do
 
           res = req("/another-one/services")
           assert.res_status(200, res)
+        end)
+
+        it("user in multiple groups has all roles applied", function()
+          local cookie = get_admin_cookie_basic_auth(client,
+                                                    multiple_groups_admin.username,
+                                                    'passw2rd1111A$')
+          local req = function (path)
+            return assert(client:send({
+              method = "GET",
+              path = path,
+              headers = {
+                ["cookie"] = cookie,
+                ["Kong-Admin-User"] = multiple_groups_admin.username,
+              }
+            }))
+          end
+
+          local res = req("/userinfo")
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same({"test-group-1", "test-group-4"}, json.groups)
+
+          -- user can do things super-admins can from group-1
+          res = req("/services")
+          assert.res_status(200, res)
+
+          -- but "admin" role from group-4 is applied, meaning no access to rbac
+          res = req("/rbac/roles")
+          assert.res_status(403, res)
         end)
       end)
     end)
