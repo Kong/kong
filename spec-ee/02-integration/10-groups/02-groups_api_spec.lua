@@ -44,6 +44,7 @@ for _, strategy in helpers.each_strategy() do
         database  = strategy,
         smtp_mock = true,
         admin_gui_auth = "basic-auth",
+        admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
         enforce_rbac = "on",
         
         admin_gui_auth_config = "{ \"hide_credentials\": true }",

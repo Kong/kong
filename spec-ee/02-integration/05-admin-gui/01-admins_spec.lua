@@ -74,6 +74,7 @@ for _, strategy in helpers.each_strategy() do
         database = strategy,
         admin_gui_url = "http://manager.konghq.com",
         admin_gui_auth = "basic-auth",
+        admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
         enforce_rbac = "on",
       })
 
@@ -144,6 +145,7 @@ for _, strategy in helpers.each_strategy() do
             database = strategy,
             admin_gui_url = "http://manager.konghq.com",
             admin_gui_auth = "basic-auth",
+            admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
             enforce_rbac = "on",
             smtp_mock = false,
           })
@@ -464,6 +466,7 @@ for _, strategy in helpers.each_strategy() do
           database = strategy,
           admin_gui_url = "http://manager.konghq.com",
           admin_gui_auth = 'basic-auth',
+          admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           admin_gui_auth_password_complexity = "{\"kong-preset\": \"min_12\"}",
           enforce_rbac = "on",
         }))
@@ -586,6 +589,7 @@ for _, strategy in helpers.each_strategy() do
           database = strategy,
           admin_gui_url = "http://manager.konghq.com",
           admin_gui_auth = 'ldap-auth-advanced',
+          admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           enforce_rbac = "on",
         }))
         ee_helpers.register_rbac_resources(db)
@@ -728,6 +732,7 @@ for _, strategy in helpers.each_strategy() do
           database = strategy,
           admin_gui_url = "http://manager.konghq.com",
           admin_gui_auth = "basic-auth",
+          admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           admin_gui_auth_password_complexity = "{\"kong-preset\": \"min_12\"}",
           enforce_rbac = "on",
         }))
@@ -944,6 +949,7 @@ for _, strategy in helpers.each_strategy() do
           database = strategy,
           admin_gui_url = "http://manager.konghq.com",
           admin_gui_auth = "ldap-auth-advanced",
+          admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           enforce_rbac = "on",
         }))
         ee_helpers.register_rbac_resources(db)
@@ -1023,6 +1029,7 @@ for _, strategy in helpers.each_strategy() do
           database = strategy,
           admin_gui_url = "http://manager.konghq.com",
           admin_gui_auth = "basic-auth",
+          admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           enforce_rbac = "on",
         }))
         ee_helpers.register_rbac_resources(db)
@@ -1657,6 +1664,7 @@ for _, strategy in helpers.each_strategy() do
       local config = {
         database = strategy,
         admin_gui_url = "http://manager.konghq.com",
+        admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
         admin_gui_auth = "basic-auth",
         enforce_rbac = "on",
       }

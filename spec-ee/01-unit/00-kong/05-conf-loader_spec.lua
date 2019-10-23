@@ -92,6 +92,38 @@ describe("ee conf loader", function()
     end)
   end)
 
+  describe("validate_admin_gui_session()", function()
+    it("returns error if admin_gui_auth is set without admin_gui_session_conf", function()
+      ee_conf_loader.validate_admin_gui_session({
+        admin_gui_auth = "basic-auth",
+      }, msgs)
+
+      local expected = { "admin_gui_session_conf must be set when admin_gui_auth is enabled" }
+      assert.same(expected, msgs)
+    end)
+
+    it("returns error if admin_gui_session_conf is set with no admin_gui_auth", function()
+      ee_conf_loader.validate_admin_gui_session({
+        admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
+      }, msgs)
+
+      local expected = { "admin_gui_session_conf is set with no admin_gui_auth" }
+      assert.same(expected, msgs)
+    end)
+
+    it("returns error if admin_gui_session_conf is invalid json", function()
+      ee_conf_loader.validate_admin_gui_session({
+        admin_gui_auth = "basic-auth",
+        admin_gui_session_conf = "{ 'secret': 'i-am-invalid-json' }",
+      }, msgs)
+
+      local expected = { "admin_gui_session_conf must be valid json or not set: " ..
+                         "Expected object key string but found invalid token at " ..
+                         "character 3 - { 'secret': 'i-am-invalid-json' }" }
+      assert.same(expected, msgs)
+    end)
+  end)
+
   describe("validate_admin_gui_ssl()", function()
     it("returns errors if ssl_cert is set and doesn't exist", function()
       local conf = {

@@ -104,6 +104,7 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.start_kong({
           database   = strategy,
           admin_gui_auth = "basic-auth",
+          admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           enforce_rbac = "on",
           admin_gui_auth_config = "{ \"hide_credentials\": true }",
           rbac_auth_header = 'Kong-Admin-Token',
@@ -492,6 +493,7 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.start_kong({
           database   = strategy,
           admin_gui_auth = "key-auth",
+          admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           enforce_rbac = "on",
           rbac_auth_header = 'Kong-Admin-Token',
         }))
@@ -594,6 +596,7 @@ for _, strategy in helpers.each_strategy() do
           plugins = "bundled, ldap-auth-advanced",
           database   = strategy,
           admin_gui_auth = "ldap-auth-advanced",
+          admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           enforce_rbac = "on",
           admin_gui_auth_conf = '{"attribute":"cn","base_dn":"cn=users,dc=ldap,dc=mashape,dc=com","bind_dn":"cn=ophelia,cn=users,dc=ldap,dc=mashape,dc=com","ldap_password":"passw2rd1111A$","cache_ttl":2,"header_type":"Basic","keepalive":60000,"ldap_host":"localhost","ldap_port":389,"start_tls":false,"timeout":10000,"verify_ldap_host":true}',
           rbac_auth_header = 'Kong-Admin-Token',
@@ -818,6 +821,7 @@ for _, strategy in helpers.each_strategy() do
             assert(helpers.start_kong({
               database   = strategy,
               admin_gui_auth = "basic-auth",
+              admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
               enforce_rbac = "on",
               admin_gui_auth_config = "{ \"hide_credentials\": true }",
               rbac_auth_header = 'Kong-Admin-Token',
@@ -861,6 +865,7 @@ for _, strategy in helpers.each_strategy() do
             assert(helpers.start_kong({
               database   = strategy,
               admin_gui_auth = "basic-auth",
+              admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
               enforce_rbac = "on",
               admin_gui_auth_config = "{ \"hide_credentials\": true }",
               rbac_auth_header = 'Kong-Admin-Token',

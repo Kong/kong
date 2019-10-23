@@ -768,6 +768,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         audit_log  = "on",
         admin_gui_auth = "basic-auth",
+        admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
         enforce_rbac = "on",
         admin_gui_listen = "0.0.0.0:8002",
       }))
