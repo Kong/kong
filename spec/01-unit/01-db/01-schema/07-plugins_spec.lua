@@ -1,3 +1,4 @@
+require "spec.helpers" -- initializes 'kong' global for plugins
 local Entity = require "kong.db.schema.entity"
 local typedefs = require "kong.db.schema.typedefs"
 local utils = require "kong.tools.utils"
@@ -138,17 +139,23 @@ describe("plugins", function()
         headers = {},
         json = {}
       },
+      rename = {
+        headers = {},
+      },
       replace = {
         headers = {},
-        json = {}
+        json = {},
+        json_types = {}
       },
       add = {
         headers = {},
-        json = {}
+        json = {},
+        json_types = {}
       },
       append = {
         headers = {},
-        json = {}
+        json = {},
+        json_types = {}
       }
     }, plugin.config)
   end)

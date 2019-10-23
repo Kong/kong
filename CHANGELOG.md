@@ -1,5 +1,7 @@
 # Table of Contents
 
+
+- [1.4.0](#140)
 - [1.3.0](#130)
 - [1.2.2](#122)
 - [1.2.1](#121)
@@ -29,6 +31,114 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+## [1.4.0]
+
+> Released on 2019/10/22
+
+### Installation
+
+  - :warning: All Bintray assets have been renamed from `.all.` / `.noarch.` to be
+    architecture specific namely `.arm64.` and `.amd64.`
+
+### Additions
+
+##### Core
+
+  - :fireworks: New configuration option `cassandra_refresh_frequency` to set
+    the frequency that Kong will check for Cassandra cluster topology changes,
+    avoiding restarts when Cassandra nodes are added or removed.
+    [#5071](https://github.com/Kong/kong/pull/5071)
+  - New `transformations` property in DAO schemas, which allows adding functions
+    that run when database rows are inserted or updated.
+    [#5047](https://github.com/Kong/kong/pull/5047)
+  - The new attribute `hostname` has been added to `upstreams` entities. This
+    attribute is used as the `Host` header when proxying requests through Kong
+    to servers that are listening on server names that are different from the
+    names to which they resolve.
+    [#4959](https://github.com/Kong/kong/pull/4959)
+  - New status interface has been introduced. It exposes insensitive health,
+    metrics and error read-only information from Kong, which can be consumed by
+    other services in the infrastructure to monitor Kong's health.
+    This removes the requirement of the long-used workaround to monitor Kong's
+    health by injecting a custom server block.
+    [#4977](https://github.com/Kong/kong/pull/4977)
+  - New Admin API response header `X-Kong-Admin-Latency`, reporting the time
+    taken by Kong to process an Admin API request.
+    [#4966](https://github.com/Kong/kong/pull/4996/files)
+
+##### Configuration
+
+  - :warning: New configuration option `service_mesh` which enables or disables
+    the Service Mesh functionality. The Service Mesh is being deprecated and
+    will not be available in the next releases of Kong.
+    [#5124](https://github.com/Kong/kong/pull/5124)
+  - New configuration option `router_update_frequency` that allows setting the
+    frequency that router and plugins will be checked for changes. This new
+    option avoids performance degradation when Kong routes or plugins are
+    frequently changed. [#4897](https://github.com/Kong/kong/pull/4897)
+
+##### Plugins
+
+  - rate-limiting: in addition to consumer, credential, and IP levels, now
+    rate-limiting plugin has service-level support. Thanks
+    [wuguangkuo](https://github.com/wuguangkuo) for the patch!
+    [#5031](https://github.com/Kong/kong/pull/5031)
+  - Now rate-limiting `local` policy counters expire using the shared
+    dictionary's TTL, avoiding to keep unnecessary counters in memory. Thanks
+    [cb372](https://github.com/cb372) for the patch!
+    [#5029](https://github.com/Kong/kong/pull/5029)
+  - Authentication plugins have support for tags now.
+    [#4945](https://github.com/Kong/kong/pull/4945)
+  - response-transformer plugin now supports renaming response headers. Thanks
+    [aalmazanarbs](https://github.com/aalmazanarbs) for the patch!
+    [#5040](https://github.com/Kong/kong/pull/5040)
+
+### Fixes
+
+##### Core
+
+  - :warning: Service Mesh is known to cause HTTPS requests to upstream to
+    ignore `proxy_ssl*` directives, so it is being discontinued in the next
+    major release of Kong. In this release it is disabled by default, avoiding
+    this issue, and it can be enabled as aforementioned in the configuration
+    section. [#5124](https://github.com/Kong/kong/pull/5124)
+  - Fixed an issue on reporting the proper request method and URL arguments on
+    NGINX-produced errors in logging plugins.
+    [#5073](https://github.com/Kong/kong/pull/5073)
+  - Fixed an issue where targets were not properly updated in all Kong workers
+    when they were removed. [#5041](https://github.com/Kong/kong/pull/5041)
+  - Deadlocks cases in database access functions when using Postgres and
+    cleaning up `cluster_events` in high-changing scenarios were fixed.
+    [#5118](https://github.com/Kong/kong/pull/5118)
+  - Fixed issues with tag-filtered GETs on Cassandra-backed nodes.
+    [#5105](https://github.com/Kong/kong/pull/5105)
+
+##### Configuration
+
+  - Fixed Lua parsing and error handling in declarative configurations.
+    [#5019](https://github.com/Kong/kong/pull/5019)
+  - Automatically escape any unescaped `#` characters in parsed `KONG_*`
+    environment variables. [#5062](https://github.com/Kong/kong/pull/5062)
+
+##### Plugins
+
+  - file-log: creates log file with proper permissions when Kong uses
+    declarative config. [#5028](https://github.com/Kong/kong/pull/5028)
+  - basic-auth: fixed credentials parsing when using DB-less
+    configurations. [#5080](https://github.com/Kong/kong/pull/5080)
+  - jwt: plugin handles empty claims and return the correct error message.
+    [#5123](https://github.com/Kong/kong/pull/5123)
+    Thanks to [@jeremyjpj0916](https://github.com/jeremyjpj0916) for the patch!
+  - serverless-functions: Lua code in declarative configurations is validated
+    and loaded correctly.
+    [#24](https://github.com/Kong/kong-plugin-serverless-functions/pull/24)
+  - request-transformer: fixed bug on removing and then adding request headers
+    with the same name.
+    [#9](https://github.com/Kong/kong-plugin-request-transformer/pull/9)
+
+
+[Back to TOC](#table-of-contents)
 
 ## [1.3.0]
 
@@ -276,7 +386,6 @@ repository will allow you to do both easily.
   [#4904](https://github.com/Kong/kong/pull/4904)
 - Ensure `kong.response.add_header` works in the `rewrite` phase.
   [#4888](https://github.com/Kong/kong/pull/4888)
->>>>>>> release/1.3.0
 
 [Back to TOC](#table-of-contents)
 
@@ -4109,6 +4218,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[1.4.0]: https://github.com/Kong/kong/compare/1.3.0...1.4.0
 [1.3.0]: https://github.com/Kong/kong/compare/1.2.2...1.3.0
 [1.2.2]: https://github.com/Kong/kong/compare/1.2.1...1.2.2
 [1.2.1]: https://github.com/Kong/kong/compare/1.2.0...1.2.1

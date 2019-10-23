@@ -62,11 +62,6 @@ for p,_ in pairs(protocols_with_subsystem) do
 end
 table.sort(protocols)
 
-local grpc_proxy_modes = {
-  grpc = true,
-  grpcs = true,
-}
-
 return {
   BUNDLED_PLUGINS = plugin_map,
   DEPRECATED_PLUGINS = deprecated_plugin_map,
@@ -74,6 +69,8 @@ return {
   HEADERS = {
     HOST_OVERRIDE = "X-Host-Override",
     PROXY_LATENCY = "X-Kong-Proxy-Latency",
+    RESPONSE_LATENCY = "X-Kong-Response-Latency",
+    ADMIN_LATENCY = "X-Kong-Admin-Latency",
     UPSTREAM_LATENCY = "X-Kong-Upstream-Latency",
     UPSTREAM_STATUS = "X-Kong-Upstream-Status",
     CONSUMER_ID = "X-Consumer-ID",
@@ -118,7 +115,7 @@ return {
   REPORTS = {
     ADDRESS = "kong-hf.konghq.com",
     SYSLOG_PORT = 61828,
-    STATS_PORT = 61829
+    STATS_PORT = 61830
   },
   DICTS = {
     "kong",
@@ -142,5 +139,8 @@ return {
   },
   PROTOCOLS = protocols,
   PROTOCOLS_WITH_SUBSYSTEM = protocols_with_subsystem,
-  GRPC_PROXY_MODES = grpc_proxy_modes,
+  DEFAULT_ITERATION_SIZE = 1000,
+  DEFAULT_PAGE_SIZE = 100,
+  DEFAULT_CLUSTER_EVENTS_PAGE_SIZE = 1000,
+  MAX_PAGE_SIZE = 1000,
 }

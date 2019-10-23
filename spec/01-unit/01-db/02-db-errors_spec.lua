@@ -292,6 +292,35 @@ describe("DB Errors", function()
     end)
 
 
+    describe("TRANSFORMATION_ERROR", function()
+      it("creates", function()
+        local err_t = e:transformation_error()
+        assert.same({
+          code = Errors.codes.TRANSFORMATION_ERROR,
+          name = "transformation error",
+          strategy = "some_strategy",
+          message = "transformation error",
+        }, err_t)
+
+        local s = fmt("[%s] %s", err_t.strategy, err_t.message)
+        assert.equals(s, tostring(err_t))
+      end)
+
+      it("creates with error string as message", function()
+        local err_t = e:transformation_error("timeout")
+        assert.same({
+          code = Errors.codes.TRANSFORMATION_ERROR,
+          name = "transformation error",
+          strategy = "some_strategy",
+          message = "timeout",
+        }, err_t)
+
+        local s = fmt("[%s] %s", err_t.strategy, err_t.message)
+        assert.equals(s, tostring(err_t))
+      end)
+    end)
+
+
     describe("INVALID_SIZE", function()
       local err_t = e:invalid_size("size must be an integer between 1 and 1000")
 

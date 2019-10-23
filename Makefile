@@ -57,8 +57,7 @@ functional-tests: setup-kong-build-tools
 nightly-release: setup-kong-build-tools
 	sed -i -e '/return string\.format/,/\"\")/c\return "$(KONG_VERSION)\"' kong/meta.lua && \
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
-	$(MAKE) setup-build && \
-	$(MAKE) build-kong && \
+	$(MAKE) package-kong && \
 	$(MAKE) release-kong
 
 release: setup-kong-build-tools

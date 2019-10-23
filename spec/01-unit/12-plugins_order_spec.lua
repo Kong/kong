@@ -1,3 +1,4 @@
+require "spec.helpers" -- initializes 'kong' global for plugins
 local conf_loader = require "kong.conf_loader"
 
 
@@ -11,6 +12,10 @@ describe("Plugins", function()
     local conf = assert(conf_loader(nil, {
       plugins = "bundled",
     }))
+
+    local kong_global = require "kong.global"
+    _G.kong = kong_global.new()
+    kong_global.init_pdk(kong, conf, nil)
 
     plugins = {}
 

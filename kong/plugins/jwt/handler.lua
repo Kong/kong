@@ -14,7 +14,7 @@ local JwtHandler = {}
 
 
 JwtHandler.PRIORITY = 1005
-JwtHandler.VERSION = "2.0.0"
+JwtHandler.VERSION = "2.1.0"
 
 
 --- Retrieve a JWT in a request.
@@ -76,18 +76,6 @@ local function load_credential(jwt_secret_key)
 end
 
 
-local function load_consumer(consumer_id, anonymous)
-  local result, err = kong.db.consumers:select { id = consumer_id }
-  if not result then
-    if anonymous and not err then
-      err = 'anonymous consumer "' .. consumer_id .. '" not found'
-    end
-    return nil, err
-  end
-  return result
-end
-
-
 local function set_consumer(consumer, credential, token)
   local set_header = kong.service.request.set_header
   local clear_header = kong.service.request.clear_header
@@ -114,7 +102,7 @@ local function set_consumer(consumer, credential, token)
 
   if credential then
     kong.ctx.shared.authenticated_jwt_token = token -- TODO: wrap in a PDK function?
-    ngx.ctx.authenticated_jwt_token = token  -- backward compatibilty only
+    ngx.ctx.authenticated_jwt_token = token  -- backward compatibility only
 
     if credential.username then
       set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
@@ -161,6 +149,8 @@ local function do_authentication(conf)
   local jwt_secret_key = claims[conf.key_claim_name] or header[conf.key_claim_name]
   if not jwt_secret_key then
     return false, { status = 401, message = "No mandatory '" .. conf.key_claim_name .. "' in claims" }
+  elseif jwt_secret_key == "" then
+    return false, { status = 401, message = "Invalid '" .. conf.key_claim_name .. "' in claims" }
   end
 
   -- Retrieve the secret
@@ -216,10 +206,9 @@ local function do_authentication(conf)
   -- Retrieve the consumer
   local consumer_cache_key = kong.db.consumers:cache_key(jwt_secret.consumer.id)
   local consumer, err      = kong.cache:get(consumer_cache_key, nil,
-                                            load_consumer,
+                                            kong.client.load_consumer,
                                             jwt_secret.consumer.id, true)
   if err then
-    kong.log.err(err)
     return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
@@ -255,10 +244,10 @@ function JwtHandler:access(conf)
       -- get anonymous user
       local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
       local consumer, err      = kong.cache:get(consumer_cache_key, nil,
-                                                load_consumer,
+                                                kong.client.load_consumer,
                                                 conf.anonymous, true)
       if err then
-        kong.log.err(err)
+        kong.log.err("failed to load anonymous consumer:", err)
         return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 

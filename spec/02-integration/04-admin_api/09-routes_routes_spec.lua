@@ -185,11 +185,6 @@ for _, strategy in helpers.each_strategy() do
               headers = { ["Content-Type"] = content_type }
             })
 
-            -- TODO: For some reason the body which arrives to the server is
-            -- incorrectly parsed on this test: self.params.methods is the string
-            -- "PATCH" instead of an array, for example. I could not find the
-            -- cause
-
             local body = assert.res_status(201, res)
             local json = cjson.decode(body)
             assert.same({ "foo.api.com", "bar.api.com" }, json.hosts)
@@ -216,11 +211,6 @@ for _, strategy in helpers.each_strategy() do
               },
               headers = { ["Content-Type"] = content_type }
             })
-
-            -- TODO: For some reason the body which arrives to the server is
-            -- incorrectly parsed on this test: self.params.methods is the string
-            -- "PATCH" instead of an array, for example. I could not find the
-            -- cause
 
             local body = assert.res_status(201, res)
             local json = cjson.decode(body)
@@ -250,11 +240,6 @@ for _, strategy in helpers.each_strategy() do
               headers = { ["Content-Type"] = content_type }
             })
 
-            -- TODO: For some reason the body which arrives to the server is
-            -- incorrectly parsed on this test: self.params.methods is the string
-            -- "PATCH" instead of an array, for example. I could not find the
-            -- cause
-
             local body = assert.res_status(201, res)
             local json = cjson.decode(body)
             assert.same({ "foo.api.com", "bar.api.com" }, json.hosts)
@@ -281,11 +266,6 @@ for _, strategy in helpers.each_strategy() do
               },
               headers = { ["Content-Type"] = content_type }
             })
-
-            -- TODO: For some reason the body which arrives to the server is
-            -- incorrectly parsed on this test: self.params.methods is the string
-            -- "PATCH" instead of an array, for example. I could not find the
-            -- cause
 
             local body = assert.res_status(201, res)
             local json = cjson.decode(body)
@@ -1475,6 +1455,169 @@ for _, strategy in helpers.each_strategy() do
               local res = client:delete("/routes/in-existent-route/service")
               assert.res_status(404, res)
             end)
+          end)
+        end)
+      end)
+
+      describe("PUT", function()
+        it_content_types("creates if not found", function(content_type)
+          return function()
+            if content_type == "multipart/form-data" then
+              -- the client doesn't play well with this
+              return
+            end
+
+            local route = bp.routes:insert({ paths = { "/my-route" } })
+            local res = client:put("/routes/" .. route.id .. "/service", {
+              headers = {
+                ["Content-Type"] = content_type
+              },
+              body = {
+                url = "http://httpbin.org",
+              },
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.same("httpbin.org", json.host)
+
+            local in_db = assert(db.services:select({ id = json.id }, { nulls = true }))
+            assert.same(json, in_db)
+          end
+        end)
+
+        it_content_types("updates if found", function(content_type)
+          return function()
+            if content_type == "multipart/form-data" then
+              -- the client doesn't play well with this
+              return
+            end
+
+            local service = bp.named_services:insert({ path = "/" })
+            local route = bp.routes:insert({ paths = { "/my-route" }, service = service })
+            local edited_name = "name-" .. service.name
+            local edited_host = "edited-" .. service.host
+            local res = client:put("/routes/" .. route.id .. "/service", {
+              headers = {
+                ["Content-Type"] = content_type
+              },
+              body = {
+                name  = edited_name,
+                host  = edited_host,
+                path  = cjson.null,
+              },
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal(edited_name, json.name)
+            assert.equal(edited_host, json.host)
+            assert.same(cjson.null,   json.path)
+
+
+            local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
+            assert.same(json, in_db)
+          end
+        end)
+
+        it_content_types("updates if found by name", function(content_type)
+          return function()
+            if content_type == "multipart/form-data" then
+              -- the client doesn't play well with this
+              return
+            end
+
+            local service = bp.named_services:insert({ path = "/" })
+            local route = bp.routes:insert({ name = "my-service-patch-route", paths = { "/my-route" }, service = service })
+            local edited_name = "name-" .. service.name
+            local edited_host = "edited-" .. service.host
+            local res = client:put("/routes/my-service-patch-route/service", {
+              headers = {
+                ["Content-Type"] = content_type
+              },
+              body = {
+                name  = edited_name,
+                host  = edited_host,
+                path  = cjson.null,
+              },
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal(edited_name, json.name)
+            assert.equal(edited_host, json.host)
+            assert.same(cjson.null,   json.path)
+
+
+            local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
+            assert.same(json, in_db)
+
+            db.routes:delete({ id = route.id })
+            db.services:delete({ id = service.id })
+          end
+        end)
+
+        it_content_types("updates with url", function(content_type)
+          return function()
+            local service = bp.services:insert({ host = "example.com", path = "/" })
+            local route = bp.routes:insert({ paths = { "/my-route" }, service = service })
+            local res = client:put("/routes/" .. route.id .. "/service", {
+              headers = {
+                ["Content-Type"] = content_type
+              },
+              body = {
+                url = "http://edited2.com:1234/foo",
+              },
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal("edited2.com", json.host)
+            assert.equal(1234,          json.port)
+            assert.equal("/foo",        json.path)
+
+
+            local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
+            assert.same(json, in_db)
+          end
+        end)
+
+        describe("errors", function()
+          it_content_types("returns 404 if not found", function(content_type)
+            return function()
+              local res = client:put("/routes/" .. utils.uuid() .. "/service", {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  name  = "edited",
+                  host  = "edited.com",
+                  path  = cjson.null,
+                },
+              })
+              assert.res_status(404, res)
+            end
+          end)
+
+          it_content_types("handles invalid input", function(content_type)
+            return function()
+              local service = bp.services:insert({ host = "example.com", path = "/" })
+              local route = bp.routes:insert({ paths = { "/my-route" }, service = service })
+              local res = client:put("/routes/" .. route.id .. "/service", {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  connect_timeout = "foobar"
+                },
+              })
+              local body = assert.res_status(400, res)
+              assert.same({
+                code    = Errors.codes.SCHEMA_VIOLATION,
+                name    = "schema violation",
+                message = "2 schema violations (connect_timeout: expected an integer; host: required field missing)",
+                fields  = {
+                  connect_timeout = "expected an integer",
+                  host = "required field missing",
+                },
+              }, cjson.decode(body))
+            end
           end)
         end)
       end)

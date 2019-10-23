@@ -108,10 +108,13 @@ function _M.new(db)
   local upstream_name_seq = new_sequence("upstream-%d")
   res.upstreams = new_blueprint(db.upstreams, function(overrides)
     local slots = overrides.slots or 100
+    local name = overrides.name or upstream_name_seq:next()
+    local host_header = overrides.host_header or nil
 
     return {
-      name      = upstream_name_seq:next(),
+      name      = name,
       slots     = slots,
+      host_header = host_header,
     }
   end)
 

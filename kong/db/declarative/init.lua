@@ -146,13 +146,7 @@ function Config:parse_table(dc_table, hash)
     error("expected a table as input", 2)
   end
 
-  local ok, err_t = self.schema:validate(dc_table)
-  if not ok then
-    return nil, pretty_print_error(err_t), err_t
-  end
-
-  local entities
-  entities, err_t = self.schema:flatten(dc_table)
+  local entities, err_t = self.schema:flatten(dc_table)
   if err_t then
     return nil, pretty_print_error(err_t), err_t
   end
@@ -300,41 +294,6 @@ local function remove_nulls(tbl)
 end
 
 
-local function nil_fn()
-  return nil
-end
-
-
-local function post_upstream_crud_delete_events()
-  local upstreams = kong.cache:get("upstreams|list", nil, nil_fn)
-  if upstreams then
-    for _, id in ipairs(upstreams) do
-      local ok = kong.worker_events.post("crud", "upstreams", {
-        operation = "delete",
-        entity = {
-          id = id,
-          name = "?", -- only used for error messages
-        },
-      })
-      if not ok then
-        kong.log.err("failed posting invalidation event for upstream ", id)
-      end
-    end
-  end
-end
-
-
-local function post_crud_create_event(entity_name, item)
-  local ok = kong.worker_events.post("crud", entity_name, {
-    operation = "create",
-    entity = item,
-  })
-  if not ok then
-    kong.log.err("failed posting crud event for ", entity_name, " ", entity_name.id)
-  end
-end
-
-
 function declarative.get_current_hash()
   return ngx.shared.kong:get("declarative_config:hash")
 end
@@ -381,7 +340,7 @@ function declarative.load_into_cache(entities, hash, shadow_page)
       table.insert(ids, id)
 
       local cache_key = dao:cache_key(id)
-      item = remove_nulls(item)
+      item = schema:transform(remove_nulls(item))
       local ok, err = kong.cache:safe_set(cache_key, item, shadow_page)
       if not ok then
         return nil, err
@@ -496,7 +455,13 @@ function declarative.load_into_cache_with_events(entities, hash)
     return nil, err
   end
 
-  post_upstream_crud_delete_events()
+  ok, err = kong.worker_events.post("balancer", "upstreams", {
+    operation = "delete_all",
+    entity = { id = "all", name = "all" }
+  })
+  if not ok then
+    return nil, err
+  end
 
   ok, err = declarative.load_into_cache(entities, hash, SHADOW)
 
@@ -515,12 +480,20 @@ function declarative.load_into_cache_with_events(entities, hash)
 
   kong.cache:invalidate("router:version")
 
-  for _, entity_name in ipairs({"upstreams", "targets"}) do
-    if entities[entity_name] then
-      for _, item in pairs(entities[entity_name]) do
-        post_crud_create_event(entity_name, item)
-      end
-    end
+  ok, err = kong.worker_events.post("balancer", "upstreams", {
+    operation = "reset",
+    entity = { id = "all", name = "all" }
+  })
+  if not ok then
+    return nil, err
+  end
+
+  ok, err = kong.worker_events.post("balancer", "targets", {
+    operation = "reset",
+    entity = { id = "all", name = "all" }
+  })
+  if not ok then
+    return nil, err
   end
 
   return true
