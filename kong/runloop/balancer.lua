@@ -667,13 +667,8 @@ local function on_target_event(operation, target)
 
 end
 
---------------------------------------------------------------------------------
--- Called on any changes to an upstream.
--- @param operation "create", "update" or "delete"
--- @param upstream_data table with `id` and `name` fields
-local function on_upstream_event(operation, upstream_data)
-  local upstream_id = upstream_data.id
-  local upstream_name = upstream_data.name
+
+local function do_upstream_event(operation, upstream_id, upstream_name)
 
   if operation == "create" then
 
@@ -692,10 +687,11 @@ local function on_upstream_event(operation, upstream_data)
 
   elseif operation == "delete" or operation == "update" then
 
-    new_upstream_version = utils.uuid()
-
-    singletons.cache:invalidate_local("balancer:upstreams:" .. upstream_id)
-    singletons.cache:invalidate_local("balancer:targets:"   .. upstream_id)
+    if singletons.db.strategy ~= "off" then
+      new_upstream_version = utils.uuid()
+      singletons.cache:invalidate_local("balancer:upstreams:" .. upstream_id)
+      singletons.cache:invalidate_local("balancer:targets:"   .. upstream_id)
+    end
 
     local balancer = balancers[upstream_id]
     if balancer then
@@ -717,6 +713,29 @@ local function on_upstream_event(operation, upstream_data)
         log(ERR, "failed recreating balancer for ", upstream_name, ": ", err)
       end
     end
+
+  end
+
+end
+
+
+--------------------------------------------------------------------------------
+-- Called on any changes to an upstream.
+-- @param operation "create", "update" or "delete"
+-- @param upstream_data table with `id` and `name` fields
+local function on_upstream_event(operation, upstream_data)
+
+  if operation == "reset" then
+    init()
+
+  elseif operation == "delete_all" then
+    local upstreams = get_all_upstreams()
+    for name, id in pairs(upstreams) do
+      do_upstream_event("delete", id, name)
+    end
+
+  else
+    do_upstream_event(operation, upstream_data.id, upstream_data.name)
 
   end
 
