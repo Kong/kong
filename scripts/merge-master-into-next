@@ -97,7 +97,7 @@ case "$step" in
       do
          echo "Type 'y' to open it in a browser window, or Ctrl-C to cancel."
          read
-         if [ "$REPLY" = "y" ]
+         if [ "$REPLY" = "y" || "$REPLY" = "Y" ]
          then
             break
          fi
