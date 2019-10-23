@@ -776,7 +776,7 @@ end
 local function do_upstream_event(operation, upstream_id, upstream_name)
   if operation == "create" then
 
-    singletons.cache:invalidate_local("balancer:upstreams")
+    new_upstream_version = utils.uuid()
 
     local upstream = get_upstream_by_id(upstream_id)
     if not upstream then
@@ -792,7 +792,7 @@ local function do_upstream_event(operation, upstream_id, upstream_name)
   elseif operation == "delete" or operation == "update" then
 
     if singletons.db.strategy ~= "off" then
-      singletons.cache:invalidate_local("balancer:upstreams")
+      new_upstream_version = utils.uuid()
       singletons.cache:invalidate_local("balancer:upstreams:" .. upstream_id)
       singletons.cache:invalidate_local("balancer:targets:"   .. upstream_id)
     end
