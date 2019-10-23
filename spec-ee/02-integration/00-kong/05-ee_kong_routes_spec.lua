@@ -75,6 +75,7 @@ describe("Admin API - ee-specific Kong routes", function()
         assert(helpers.start_kong({
           database = strategy,
           admin_gui_auth = 'basic-auth',
+          admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           enforce_rbac = 'on',
         }))
 
@@ -93,6 +94,7 @@ describe("Admin API - ee-specific Kong routes", function()
         assert(helpers.start_kong({
           database = strategy,
           admin_gui_auth = "basic-auth",
+          admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           enforce_rbac = "both",
         }))
 
@@ -192,6 +194,7 @@ describe("Admin API - ee-specific Kong routes", function()
         assert(helpers.start_kong({
           database = strategy,
           admin_gui_auth = "basic-auth",
+          admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           enforce_rbac = "both",
         }))
 
@@ -249,6 +252,7 @@ describe("Admin API - ee-specific Kong routes", function()
         assert(helpers.start_kong({
           database = strategy,
           admin_gui_auth = "basic-auth",
+          admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           enforce_rbac = "on",
         }))
 
@@ -276,6 +280,7 @@ describe("Admin API - ee-specific Kong routes", function()
         assert(helpers.start_kong({
           database = strategy,
           admin_gui_auth = "basic-auth",
+          admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           enforce_rbac = "both"
         }))
 

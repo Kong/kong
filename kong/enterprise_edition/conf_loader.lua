@@ -118,6 +118,9 @@ local function validate_admin_gui_session(conf, errors)
         end
       })
     end
+  elseif conf.admin_gui_auth or conf.admin_gui_auth == "" then
+    errors[#errors+1] =
+      "admin_gui_session_conf must be set when admin_gui_auth is enabled"
   end
 end
 
@@ -424,6 +427,7 @@ return {
   validate = validate,
   -- only exposed for unit testing :-(
   validate_admin_gui_authentication = validate_admin_gui_authentication,
+  validate_admin_gui_session = validate_admin_gui_session,
   validate_admin_gui_ssl = validate_admin_gui_ssl,
   validate_smtp_config = validate_smtp_config,
   validate_portal_smtp_config = validate_portal_smtp_config,
