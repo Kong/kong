@@ -17,7 +17,7 @@ local fixtures = {
               ngx.status = query_args.response_code
             end
 
-            ngx.say(cjson.encode(query_args))
+            ngx.say(cjson.encode({ endpoint = "/service-map", query = query_args }))
           }
         }
 
@@ -180,8 +180,11 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(200, res)
           local expected_params = {
-            workspace_name = workspace2.name,
-            service_id = "123",
+            endpoint = "/service-map",
+            query = {
+              workspace_name = workspace2.name,
+              service_id = "123",
+            }
           }
           assert.are.same(cjson.decode(body), expected_params)
         end)
