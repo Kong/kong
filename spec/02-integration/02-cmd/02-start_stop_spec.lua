@@ -469,6 +469,29 @@ describe("kong start/stop #" .. strategy, function()
         assert.matches("Kong stopped", stdout, nil, true)
         assert.equal("", stderr)
       end)
+
+      it("'service_mesh'", function()
+        local opts = {
+          prefix = helpers.test_conf.prefix,
+          database = helpers.test_conf.database,
+          pg_database = helpers.test_conf.pg_database,
+          cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+          service_mesh = "on",
+        }
+
+        local _, stderr, stdout = assert(helpers.kong_exec("start", opts))
+        assert.matches("Kong started", stdout, nil, true)
+        print(stderr)
+        assert.matches("You enabled the deprecated Service Mesh feature of " ..
+                       "the Kong Gateway, which will cause upstream HTTPS request " ..
+                       "to behave incorrectly. Service Mesh support" ..
+                       "in Kong Gateway will be removed in the next release."
+        , stderr, nil, true)
+
+        local _, stderr, stdout = assert(helpers.kong_exec("stop", opts))
+        assert.matches("Kong stopped", stdout, nil, true)
+        assert.equal("", stderr)
+      end)
     end)
   end)
 end)

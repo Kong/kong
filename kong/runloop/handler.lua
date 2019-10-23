@@ -952,7 +952,7 @@ return {
       local ssl_preread_alpn_protocols = var.ssl_preread_alpn_protocols
       -- ssl_preread_alpn_protocols is a comma separated list
       -- see https://trac.nginx.org/nginx/ticket/1616
-      if ssl_preread_alpn_protocols and
+      if kong.configuration.service_mesh and ssl_preread_alpn_protocols and
          ssl_preread_alpn_protocols:find(mesh.get_mesh_alpn(), 1, true) then
         -- Is probably an incoming service mesh connection
         -- terminate service-mesh Mutual TLS
@@ -1028,7 +1028,9 @@ return {
       ctx.http_proxy_authorization = var.http_proxy_authorization
       ctx.http_te                  = var.http_te
 
-      mesh.rewrite(ctx)
+      if kong.configuration.service_mesh then
+        mesh.rewrite(ctx)
+      end
     end,
   },
   access = {
