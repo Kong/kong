@@ -72,16 +72,19 @@ function _M.register_rbac_resources(db, ws)
     return nil, nil, err
   end
 
-  _, err = db.rbac_role_endpoints:insert({
-    role = { id = roles.admin.id, },
-    workspace = "*",
-    endpoint = "/rbac",
-    negative = true,
-    actions = action_bits_all, -- all actions
-  })
+  local rbac_endpoints = { '/rbac/*', '/rbac/*/*', '/rbac/*/*/*' }
+  for _, endpoint in ipairs(rbac_endpoints) do
+    _, err = db.rbac_role_endpoints:insert({
+      role = { id = roles.admin.id, },
+      workspace = "*",
+      endpoint = endpoint,
+      negative = true,
+      actions = action_bits_all, -- all actions
+    })
 
-  if err then
-    return nil, nil, err
+    if err then
+      return nil, nil, err
+    end
   end
 
   -- finally, a super user role who has access to all initial resources
