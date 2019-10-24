@@ -141,7 +141,7 @@ return {
     before = set_workspace_url,
     GET = function(self, db)
       local query = build_params_with_workspace(self.url_params.workspace_name)
-      local path = self.collector_url .. "/alerts?" .. query
+      local path = self.collector_url .. "/service-map?" .. query
       local res, err = backend.http_request("GET", path)
 
       if err then
