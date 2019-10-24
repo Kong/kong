@@ -743,7 +743,6 @@ end
 
 
 local function init()
-
   reload_all_upstreams()
   local upstreams, err = get_all_upstreams()
   if not upstreams then
