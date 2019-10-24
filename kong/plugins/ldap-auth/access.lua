@@ -106,7 +106,7 @@ local function ldap_authenticate(given_username, given_password, conf)
   end
   domain = string.sub(domain, 2)
 
-  -- CASE: Attribute is Common Name or UUID
+  -- CASE DEFAULT: Attribute is Common Name or UUID
   who = conf.attribute .. "=" .. given_username .. "," .. conf.base_dn
   
   -- CASE: Attribute is sAMAccountName
