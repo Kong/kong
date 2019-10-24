@@ -744,6 +744,7 @@ end
 
 local function init()
 
+  reload_all_upstreams()
   local upstreams, err = get_all_upstreams()
   if not upstreams then
     log(CRIT, "failed loading initial list of upstreams: ", err)
@@ -830,6 +831,7 @@ end
 local function on_upstream_event(operation, upstream_data)
 
   if operation == "reset" then
+    new_upstream_version = utils.uuid()
     init()
 
   elseif operation == "delete_all" then
