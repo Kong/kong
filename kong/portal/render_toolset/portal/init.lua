@@ -48,8 +48,8 @@ local function get_all_specs()
       if auth_required then
         can_read = permissions.can_read(developer, workspace.name, v.path)
       end
-  
-      if can_read then
+
+      if can_read and v.parsed then
         table.insert(specs, v)
       end
     end
