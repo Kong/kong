@@ -19,6 +19,12 @@ local function validate_path(path)
       return nil, err
     end
 
+  elseif file_helpers.is_spec_path(path) then
+    local ok, err = file_helpers.is_valid_spec_ext(path)
+    if not ok then
+      return nil, err
+    end
+
   elseif not file_helpers.is_html_ext(path) and
          (file_helpers.is_layout_path(path) or
          file_helpers.is_partial_path(path)) then
