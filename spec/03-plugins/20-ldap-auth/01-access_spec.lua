@@ -67,7 +67,12 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           bp.routes:insert {
             hosts = { "ldap6.com" },
           }
-    
+
+          -- Add route 7 (littlechicks)
+          local route7 = bp.routes:insert {
+            hosts = { "ldap7.com" },
+          }    
+
           local anonymous_user = bp.consumers:insert {
             username = "no-body"
           }
@@ -148,7 +153,20 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               attribute = "uid"
             }
           }
-    
+          
+          -- Insert plugins with UPN attribute (littlechicks)
+          -- Works only with Active Directory LDAP
+          bp.plugins:insert {
+            name = "ldap-auth",
+            config = {
+              ldap_host = ldap_host_aws,
+              ldap_port = 389,
+              start_tls = ldap_strategy.start_tls,
+              base_dn   = "dc=ldap,dc=mashape,dc=com",
+              attribute = "userPrincipalName"
+            }
+          }
+          
           assert(helpers.start_kong({
             database   = strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -253,6 +271,21 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           })
           assert.response(r).has.status(401)
         end)
+        -- Test failure when attributes is different than uid
+        -- This should failed because ldap server is not an Active Directory
+        -- Littlechicks
+        it("passes if credential is valid and attributes is UPN for active directory", function()
+          local res = assert(proxy_client:send {
+            method  = "POST",
+            path    = "/request",
+            headers = {
+              host          = "ldap7.com",
+              authorization = "ldap" .. ngx.encode_base64("einstein@ldap.mashape.com:password")
+            }
+          })
+          assert.response(res).has.status(200)
+        end)
+
         it("passes if credential is valid and starts with space in post request", function()
           local res = assert(proxy_client:send {
             method  = "POST",
