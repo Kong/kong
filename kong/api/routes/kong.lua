@@ -104,7 +104,20 @@ return {
             end)
         end
       end
-      table.sort(endpoints)
+      table.sort(endpoints, function(a, b)
+        -- when sorting use lower-ascii char for "/" to enable segment based
+        -- sorting, so not this:
+        --   /a
+        --   /ab
+        --   /ab/a
+        --   /a/z
+        -- But this:
+        --   /a
+        --   /a/z
+        --   /ab
+        --   /ab/a
+        return a:gsub("/", "\x00") < b:gsub("/", "\x00")
+      end)
 
       return kong.response.exit(200, endpoints)
     end
