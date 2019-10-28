@@ -273,7 +273,6 @@ for _, strategy in helpers.each_strategy() do
         request.ctx = ctx
         local headers, stream = request:go()
 
-        print(stream)
         assert.equal(200, tonumber((headers:get(":status"))))
 
         local body = assert(stream:get_body_as_string())
@@ -335,7 +334,8 @@ for _, strategy in helpers.each_strategy() do
           origins       = "tcp://127.0.0.1:19000=" ..
                           "tcp://" .. STREAM_UPSTREAM_HOST ..  ":" .. STREAM_UPSTREAM_PORT .. "," ..
                           "tls://127.0.0.1:19443=" ..
-                          "tls://" .. STREAM_UPSTREAM_HOST ..  ":" .. STREAM_UPSTREAM_SSL_PORT
+                          "tls://" .. STREAM_UPSTREAM_HOST ..  ":" .. STREAM_UPSTREAM_SSL_PORT,
+          service_mesh  = "on",
         }))
       end)
 
