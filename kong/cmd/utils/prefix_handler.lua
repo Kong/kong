@@ -122,7 +122,7 @@ local function gather_system_infos()
   end
 
   infos.worker_rlimit = ulimit
-  infos.worker_connections = math.min(16384, ulimit)
+  infos.worker_connections = ulimit
 
   return infos
 end
