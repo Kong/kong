@@ -8,6 +8,9 @@ jdk:
 
 notifications:
   email: false
+  slack:
+    if: branch = master OR branch = next
+    secure: WfMWtoj88BvoWG1AqNQMZ0c9OqjseUaMIwgSpaP8SJ+H33NTMI7vMhbbMBN2ENRD8r2haV0A2D0fnHy/3GQi6ryzKsqR1Jw/c+J0QZXQgmuj51i9iKSOM42n59t9V/QuD5b2BmHt5T+1Q6jLxtgtqBKoaJk3+WE5Iz9l+f+v0Hs=
 
 services:
   - redis-server
