@@ -68,7 +68,6 @@ local function is_valid_spec_ext(path)
 
 end
 
-
 local function get_prefix(path)
   return match(path, "^(%w+)/")
 end
@@ -205,30 +204,45 @@ end
 
 local function parse_file_contents(contents)
   local content
+  local err = nil
   local split_contents = pl_stringx.split(contents, "---")
+  content = split_contents[3]
+
   local ok, headmatter = pcall(yaml_load, split_contents[2])
-  if not ok then
+  if not ok or not headmatter then
     headmatter = {}
     content = contents
-  else
-    content = split_contents[3]
+    err = "contents: cannot parse, files with 'content/' prefix must have valid headmatter/body syntax"
   end
 
-  return headmatter, content
+  return headmatter, content, nil, err
 end
 
 
-local function parse_spec_contents(contents)
+local function parse_spec_contents(contents, ext)
   local headmatter = {}
+  local err = nil
   local parsed_contents, ok
 
-  -- first try to parse as JSON
-  parsed_contents = cjson.decode(contents)
-  if not parsed_contents then
-    -- if fail, try as YAML
+  if ext == "json" then
+    parsed_contents = cjson.decode(contents)
+    if not parsed_contents then
+      parsed_contents = {}
+      err = "contents: cannot parse, files with 'spec/' prefix and ending in '.json' must be valid json"
+    end
+
+  else
     ok, parsed_contents = pcall(yaml_load, contents)
-    if not ok or not parsed_contents  then
-      return headmatter, contents
+    if not ok or not parsed_contents then
+      -- pcalls 2nd return is error string if not ok (but it might be nil)
+      if not parsed_contents then
+        err = "contents: cannot parse, files with 'spec/' prefix and ending in '.yaml' or '.yml' must be valid yaml"
+      else
+        err = "contents: cannot parse, files with 'spec/' prefix and ending in '.yaml' or '.yml' must be valid yaml, " ..
+          parsed_contents or ""
+      end
+
+      parsed_contents = {}
     end
   end
 
@@ -244,7 +258,7 @@ local function parse_spec_contents(contents)
     headmatter.title = parsed_contents.info.title
   end
 
-  return headmatter, contents, parsed_contents
+  return headmatter, contents, parsed_contents, err
 end
 
 
@@ -304,16 +318,23 @@ local function parse_content(file)
     return err
   end
 
-  local headmatter, body, parsed
+  local headmatter, body, parsed, err, _
   if is_spec_path(file.path) then
-    headmatter, body, parsed = parse_spec_contents(file.contents)
+    local ext = get_ext(file.path)
+    headmatter, body, parsed, err = parse_spec_contents(file.contents, ext)
   else
-    headmatter, body = parse_file_contents(file.contents)
+    headmatter, body, _, err = parse_file_contents(file.contents)
   end
 
+  -- not erroring out on strictly err here in favor of
+  -- throwing error only "explosion for rendering"
+  -- "strict on crud" always throwing err on failed parse in Permisions
   if not headmatter or not body then
-    return nil, "contents: cannot parse, files with 'content/' prefix must have valid headmatter/body syntax"
+    -- err should always exist if not headmatter or not body, but just in case
+    return nil, err
+      or "contents: cannot parse, files with 'content/' prefix must have valid headmatter/body syntax"
   end
+
 
   local route = resolve_route(path_meta.filename, path_meta.base_path)
   if not route then
@@ -380,7 +401,7 @@ local function parse_content(file)
     route      = route,
     body       = body,
     parsed     = parsed, -- specs only
-  }
+  }, err
 end
 
 

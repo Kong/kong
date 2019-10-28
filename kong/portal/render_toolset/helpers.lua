@@ -114,6 +114,10 @@ end
 
 
 local function each(items)
+  if type(items) ~= "table" then
+    return ipairs({})
+  end
+
   if is_list(items) then
     return ipairs(items)
   end

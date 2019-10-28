@@ -1470,6 +1470,17 @@ describe("Admin API - Developer Portal - " .. strategy, function()
 
         assert.equals(dev_role.id, rbac_role.id)
       end)
+
+      it("returns 400 if attempting to create role named '*'", function()
+        local res = client:post("/developers/roles", {
+          body = { name = "*" },
+          headers = { ["content-type"] = "application/json" },
+        })
+        local body = assert.res_status(400, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.equal("Invalid role '*'", resp_body_json.message)
+      end)
     end)
   end)
 
@@ -1574,6 +1585,19 @@ describe("Admin API - Developer Portal - " .. strategy, function()
 
         local res = client:patch("/developers/roles/rbac_role")
         assert.res_status(404, res)
+      end)
+
+      it("returns 400 if attempting to patch an existing role with new name '*'", function()
+        bp.rbac_roles:insert({ name = PORTAL_PREFIX .. "red" })
+        local res = client:patch("/developers/roles/red", {
+          body = { name = "*" },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+
+        local body = assert.res_status(400, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.equal("Invalid role '*'", resp_body_json.message)
       end)
     end)
 

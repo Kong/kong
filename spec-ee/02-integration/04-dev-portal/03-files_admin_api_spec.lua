@@ -85,16 +85,17 @@ for _, strategy in helpers.each_strategy() do
           configure_portal(db)
 
           for i = 1, 100 do
-            local contents = '{"test":i-' .. i .. '}'
+            local content_contents = "--- title: " .. i .. " ---"
+            local html_contents = "<h1>" .. i .. "</h1>"
             if math.fmod(i, 2) == 0 then
               assert(db.files:insert {
                 path = "content/file-" .. i .. ".txt",
-                contents = contents
+                contents = content_contents
               })
             else
               assert(db.files:insert {
                 path = "themes/default/layout/file-" .. i .. ".html",
-                contents = contents
+                contents = html_contents
               })
             end
           end
@@ -192,12 +193,17 @@ for _, strategy in helpers.each_strategy() do
       describe("POST", function()
         it_content_types("creates a page", function(content_type)
           return function()
+            local contents = [[
+---
+  title: Hello World
+---
+]]
             local res = client_request({
               method = "POST",
               path = "/files",
               body = {
                 path = "content/test.txt",
-                contents = '{"hello":"world"}',
+                contents = contents
               },
               headers = {["Content-Type"] = content_type}
             })
@@ -205,7 +211,7 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(res.body)
 
             assert.equal("content/test.txt", json.path)
-            assert.equal('{"hello":"world"}', json.contents)
+            assert.equal(contents, json.contents)
             assert.is_number(json.created_at)
             assert.is_string(json.id)
           end
@@ -213,12 +219,18 @@ for _, strategy in helpers.each_strategy() do
 
         it_content_types("generates a checksum", function(content_type)
           return function()
+            local contents = [[
+---
+  title: Hello World
+---
+]]
+
             local res = client_request({
               method = "POST",
               path = "/files",
               body = {
                 path = "content/test.txt",
-                contents = '{"hello":"world"}',
+                contents = contents,
               },
               headers = {["Content-Type"] = content_type}
             })
@@ -227,8 +239,8 @@ for _, strategy in helpers.each_strategy() do
 
             local json = cjson.decode(res.body)
             assert.equal("content/test.txt", json.path)
-            assert.equal('{"hello":"world"}', json.contents)
-            assert.equal("93a23971a914e5eacbf0a8d25154cda309c3c1c72fbb9914d47c60f3cb681588", json.checksum)
+            assert.equal(contents, json.contents)
+            assert.equal("bd10ca54df3295d72bb491f59c767190bdb0b248ae5d7db74512f62263923736", json.checksum)
             assert.is_number(json.created_at)
             assert.is_string(json.id)
           end
@@ -236,12 +248,18 @@ for _, strategy in helpers.each_strategy() do
 
         it_content_types("takes a user given checksum", function(content_type)
           return function()
+            local contents = [[
+---
+  title: Hello World
+---
+]]
+
             local res = client_request({
               method = "POST",
               path = "/default/files",
               body = {
                 path = "content/test.txt",
-                contents = '{"hello":"world"}',
+                contents = contents,
                 checksum = "123"
               },
               headers = {["Content-Type"] = content_type}
@@ -251,7 +269,7 @@ for _, strategy in helpers.each_strategy() do
 
             local json = cjson.decode(res.body)
             assert.equal("content/test.txt", json.path)
-            assert.equal('{"hello":"world"}', json.contents)
+            assert.equal(contents, json.contents)
             assert.equal("123", json.checksum)
             assert.is_number(json.created_at)
             assert.is_string(json.id)
@@ -597,6 +615,32 @@ for _, strategy in helpers.each_strategy() do
             end
           end)
 
+          it_content_types("return 400 if spec file extension is invalid", function(content_type)
+            return function()
+              local res = client_request({
+                method = "POST",
+                path = "/files",
+                body = {
+                  path = "specs/mySpec.bad",
+                  contents = [[
+                    title: "bad"
+                  ]],
+                },
+                headers = {["Content-Type"] = content_type}
+              })
+              assert.equals(400, res.status)
+              local json = cjson.decode(res.body)
+              assert.same({
+                code = 2,
+                fields = {
+                  path = "invalid spec extension, must be one of:json, yaml, yml"
+                },
+                message = "schema violation (path: invalid spec extension, must be one of:json, yaml, yml)",
+                name = "schema violation"
+              }, json)
+            end
+          end)
+
           it_content_types("returns 400 on inexisting roles", function(content_type)
             return function()
               local res = client_request({
@@ -642,6 +686,112 @@ for _, strategy in helpers.each_strategy() do
                   },
                 },
                 message = "schema violation (contents: cannot parse, files with 'content/' prefix must have valid headmatter/body syntax)",
+                name = "schema violation",
+              }, json)
+            end
+          end)
+
+          it_content_types("returns 400 if yaml spec file contents is not yaml", function(content_type)
+            return function()
+              local res = client_request({
+                method = "POST",
+                path = "/files",
+                body = {
+                  path = "specs/bad.yaml",
+                  contents = [[
+                    bad: '*"
+                  ]]
+                },
+                headers = {["Content-Type"] = content_type}
+              })
+
+              assert.equals(400, res.status)
+
+              local json = cjson.decode(res.body)
+              assert.same({
+                code = 2,
+                fields = {
+                  ["@entity"] = {
+                    [1] = "contents: cannot parse, files with 'spec/' prefix and ending in '.yaml' or '.yml' must be valid yaml, 1:21: found unexpected end of stream",
+                  },
+                },
+                message = "schema violation (contents: cannot parse, files with 'spec/' prefix and ending in '.yaml' or '.yml' must be valid yaml, 1:21: found unexpected end of stream)",
+                name = "schema violation",
+              }, json)
+            end
+          end)
+
+          it_content_types("returns 400 if json spec file contents is not json", function(content_type)
+            return function()
+              local res = client_request({
+                method = "POST",
+                path = "/files",
+                body = {
+                  path = "specs/badjson.json",
+                  contents = '{bad: "json}'
+                },
+                headers = {["Content-Type"] = content_type}
+              })
+
+              assert.equals(400, res.status)
+
+              local json = cjson.decode(res.body)
+              assert.same({
+                code = 2,
+                fields = {
+                  ["@entity"] = {
+                    [1] = "contents: cannot parse, files with 'spec/' prefix and ending in '.json' must be valid json"
+                  },
+                },
+                message = "schema violation (contents: cannot parse, files with 'spec/' prefix and ending in '.json' must be valid json)",
+                name = "schema violation",
+              }, json)
+            end
+          end)
+
+          it_content_types("returns 400 if readable_by is invalid type", function(content_type)
+            return function()
+              local red_res = client_request({
+                method = "POST",
+                path = "/developers/roles",
+                body = { name = "red" },
+                headers = {["Content-Type"] = content_type}
+              })
+              assert.equal(201, red_res.status)
+
+              local blue_res = client_request({
+                method = "POST",
+                path = "/developers/roles",
+                body = { name = "blue" },
+                headers = {["Content-Type"] = content_type}
+              })
+              assert.equal(201, blue_res.status)
+
+              local res = client_request({
+                method = "POST",
+                path = "/default/files",
+                body = {
+                  contents = [[
+                    ---
+                    readable_by:
+                      - red:
+                        - blue
+                    ---
+                  ]],
+                  path = "content/test.txt",
+                },
+                headers = {["Content-Type"] = content_type}
+              })
+              assert.equal(400,res.status)
+              local json = cjson.decode(res.body)
+              assert.same({
+                code = 2,
+                fields = {
+                  ["@entity"] = {
+                    [1] = "readable_by must be a string role or array of string roles"
+                  },
+                },
+                message = "schema violation (readable_by must be a string role or array of string roles)",
                 name = "schema violation",
               }, json)
             end
@@ -1186,7 +1336,12 @@ for _, strategy in helpers.each_strategy() do
               path = "/default/files",
               body = {
                 path = "content/test.txt",
-                contents = '{ "readable_by": ["red"] }',
+                contents = [[
+                  ---
+                  readable_by:
+                    - red
+                  ---
+                ]],
                 checksum = "123"
               },
               headers = { ["Content-Type"] = "application/json" }
