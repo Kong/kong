@@ -40,17 +40,23 @@ local tracing_write_strategy, tracing_write_endpoint
 
 local __log_prefix = "[tracing] "
 
+local function ffi_cdef_gettimeofday()
+  ffi.cdef[[
+    typedef long time_t;
 
-ffi.cdef[[
-  typedef long time_t;
+    typedef struct timeval {
+      time_t tv_sec;
+      time_t tv_usec;
+    } timeval;
 
-  typedef struct timeval {
-    time_t tv_sec;
-    time_t tv_usec;
-  } timeval;
+    int gettimeofday(struct timeval* t, void* tzp);
+  ]]
+end
 
-  int gettimeofday(struct timeval* t, void* tzp);
-]]
+local ok = pcall(function() return ffi.C.gettimeofday end)
+if not ok then
+  ffi_cdef_gettimeofday()
+end
 
 
 local gettimeofday_struct = ffi.new("timeval")
