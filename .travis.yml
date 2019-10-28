@@ -111,6 +111,12 @@ jobs:
       - make setup-kong-build-tools
       - pushd ../kong-build-tools && make setup-ci && popd
       - make release
+      env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=buster KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
+      if: tag IS present AND tag ~= 1.
+    - script:
+      - make setup-kong-build-tools
+      - pushd ../kong-build-tools && make setup-ci && popd
+      - make release
       env: PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=centos RESTY_IMAGE_TAG=6 KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
       if: tag IS present AND tag ~= 1.
     - script:
@@ -174,6 +180,12 @@ jobs:
       - pushd ../kong-build-tools && make setup-ci && popd
       - make nightly-release
       env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=jessie KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
+      if: type=cron
+    - script:
+      - make setup-kong-build-tools
+      - pushd ../kong-build-tools && make setup-ci && popd
+      - make nightly-release
+      env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=buster KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=`date +%Y-%m-%d` REPOSITORY_NAME=${PWD##*/}-nightly REPOSITORY_OS_NAME=$TRAVIS_BRANCH
       if: type=cron
     - script:
       - make setup-kong-build-tools
