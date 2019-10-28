@@ -253,6 +253,10 @@ return {
 
     POST = function(self, db, helpers, parent)
       if type(self.args.post.name) == "string" then
+        if self.args.post.name == "*" then
+          return kong.response.exit(400, { message = "Invalid role '*'" })
+        end
+
         self.args.post.name = PORTAL_PREFIX .. self.args.post.name
       end
 
@@ -276,6 +280,10 @@ return {
     end,
     PATCH = function(self, db, helpers)
       if type(self.args.post.name) == "string" then
+        if self.args.post.name == "*" then
+          return kong.response.exit(400, { message = "Invalid role '*'" })
+        end
+
         self.args.post.name = PORTAL_PREFIX .. self.args.post.name
       end
 

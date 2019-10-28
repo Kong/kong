@@ -45,6 +45,27 @@ local function can_read(developer, workspace, file_path)
     RBAC_BITFIELD_READ)
 end
 
+-- readable by can be a string or a list of strings or empty table
+local function is_valid_type_readable_by(readable_by)
+  if type(readable_by) == "string" then
+    return true
+  end
+  if type(readable_by) ~= "table" then
+    return false
+  end
+
+  for k, v in pairs(readable_by) do
+    if type(k) ~= "number" then
+      return false
+    end
+    if type(v) ~= "string" then
+      return false
+    end
+  end
+
+  return true
+end
+
 
 local function set_file_permissions(file, workspace, new_role_names)
   if not file_helpers.is_content(file) and not file_helpers.is_spec(file)  then
@@ -57,12 +78,18 @@ local function set_file_permissions(file, workspace, new_role_names)
   end
 
   local parsed_content, err = file_helpers.parse_content(file)
-  if not parsed_content then
+  if err then
     return nil, err
   end
 
   local headmatter = parsed_content.headmatter or {}
+
   local readable_by = headmatter.readable_by or {}
+  local ok = is_valid_type_readable_by(readable_by)
+  if not ok then
+    return nil, "readable_by must be a string role or array of string roles"
+  end
+
   new_role_names = new_role_names or readable_by
 
   -- File requires auth, but no roles
