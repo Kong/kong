@@ -26,17 +26,24 @@ local MEASUREMENT = "kong_request" -- influx point measurement name
 -- cheaper to format this string since we know the format
 local CACHE_FMT = "kong_datastore_cache,hostname=%s,wid=%d hits=%di,misses=%di %s"
 
+local function ffi_cdef_gettimeofday()
+  ffi.cdef[[
+      typedef long time_t;
 
-ffi.cdef[[
-    typedef long time_t;
-
-    typedef struct timeval {
+      typedef struct timeval {
         time_t tv_sec;
         time_t tv_usec;
-    } timeval;
+      } timeval;
 
-    int gettimeofday(struct timeval* t, void* tzp);
-]]
+      int gettimeofday(struct timeval* t, void* tzp);
+  ]]
+end
+
+
+local ok = pcall(function() return ffi.C.gettimeofday end)
+if not ok then
+  ffi_cdef_gettimeofday()
+end
 
 
 local gettimeofday_struct = ffi.new("timeval")
