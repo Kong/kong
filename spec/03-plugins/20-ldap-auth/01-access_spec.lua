@@ -157,6 +157,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           -- Insert plugins with UPN attribute (littlechicks)
           -- Works only with Active Directory LDAP
           bp.plugins:insert {
+            route = { id = route7.id },
             name = "ldap-auth",
             config = {
               ldap_host = ldap_host_aws,
