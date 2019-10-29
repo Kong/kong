@@ -72,6 +72,11 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           --Add route 7 (littlechicks)
           local route7 = bp.routes:insert {
             hosts = { "ldap7.com" },
+          }
+
+          --Add route 8 (littlechicks)
+          local route7 = bp.routes:insert {
+            hosts = { "ldap8.com",
           }    
 
           local anonymous_user = bp.consumers:insert {
@@ -155,7 +160,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             }
           }
           
-          -- Insert plugins with UPN attribute (littlechicks)
+          -- Insert plugins with CN attribute (littlechicks)
           -- Works only with Active Directory LDAP
           bp.plugins:insert {
             route = { id = route7.id },
@@ -168,7 +173,20 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               attribute = "cn"
             }
           }
-          
+          -- Insert plugins with UPN attribute
+          -- Works only with Active Directory LDAP
+          bp.plugins:insert {
+            route = { id = route8.id },
+            name = "ldap-auth",
+            config = {
+              ldap_host = ldap_host_ad,
+              ldap_port = 389,
+              start_tls = ldap_strategy.start_tls,
+              base_dn   = "DC=mycompany,DC=local",
+              attribute = "userPrincipalName"
+            }
+          }
+
           assert(helpers.start_kong({
             database   = strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -273,6 +291,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           })
           assert.response(r).has.status(401)
         end)
+
         -- Test for LDAP AD with commonName
         -- littlechicks
         it("passes if credential is valid with active directory server", function()
@@ -286,6 +305,21 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           })
           assert.response(res).has.status(200)
         end)
+
+        -- Test for LDAP AD with UserPrincipalName
+        -- littlechicks
+        it("passes if credential is valid with active directory server", function()
+          local res = assert(proxy_client:send {
+            method  = "POST",
+            path    = "/request",
+            headers = {
+              host          = "ldap7.com",
+              ["proxy-authorization"] = "ldap " .. ngx.encode_base64("albert.einstein:adTest#AD2019")
+            }
+          })
+          assert.response(res).has.status(200)
+        end)
+
 
         it("passes if credential is valid and starts with space in post request", function()
           local res = assert(proxy_client:send {
