@@ -282,7 +282,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             path    = "/request",
             headers = {
               host          = "ldap7.com",
-              authorization = "ldap" .. ngx.encode_base64("albert.einstein@mycompany.local:adTest#AD2019")
+              authorization = "ldap" .. ngx.encode_base64("albert.einstein:adTest#AD2019")
             }
           })
           assert.response(res).has.status(200)
