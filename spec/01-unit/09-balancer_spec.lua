@@ -11,7 +11,7 @@ describe("Balancer", function()
   local upstream_ote
 
   lazy_teardown(function()
-    ngx.log:revert()
+    ngx.log:revert() -- luacheck: ignore
   end)
 
 

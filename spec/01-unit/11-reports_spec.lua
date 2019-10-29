@@ -301,7 +301,7 @@ describe("reports", function()
     end)
 
     lazy_teardown(function()
-      ngx.log:revert()
+      ngx.log:revert() -- luacheck: ignore
     end)
 
     before_each(function()
