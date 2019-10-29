@@ -294,7 +294,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
 
         -- Test for LDAP AD with commonName
         -- littlechicks
-        it("passes if credential is valid with active directory server", function()
+        it("passes if credential is valid with CN in active directory server", function()
           local res = assert(proxy_client:send {
             method  = "POST",
             path    = "/request",
@@ -308,12 +308,12 @@ for _, ldap_strategy in pairs(ldap_strategies) do
 
         -- Test for LDAP AD with UserPrincipalName
         -- littlechicks
-        it("passes if credential is valid with active directory server", function()
+        it("passes if credential is valid with UPN in active directory server", function()
           local res = assert(proxy_client:send {
             method  = "POST",
             path    = "/request",
             headers = {
-              host          = "ldap7.com",
+              host          = "ldap8.com",
               ["proxy-authorization"] = "ldap " .. ngx.encode_base64("albert.einstein:adTest#AD2019")
             }
           })
