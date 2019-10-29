@@ -164,7 +164,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldap_host = ldap_host_ad,
               ldap_port = 389,
               start_tls = ldap_strategy.start_tls,
-              base_dn   = "ou=scientists,dc=mycompany,dc=local",
+              base_dn   = "OU=scientists,DC=mycompany,DC=local",
               attribute = "cn"
             }
           }
@@ -281,7 +281,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             path    = "/request",
             headers = {
               host          = "ldap7.com",
-              ["proxy-authorization"] = "ldap" .. ngx.encode_base64("albert einstein:adTest#AD2019")
+              ["proxy-authorization"] = "ldap " .. ngx.encode_base64("albert einstein:adTest#AD2019")
             }
           })
           assert.response(res).has.status(200)
