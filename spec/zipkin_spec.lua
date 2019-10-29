@@ -1,15 +1,19 @@
-local TEST_TIMEOUT = 1
+local TEST_TIMEOUT = 2
 
 local cqueues = require "cqueues"
+local helpers = require "spec.helpers"
 local http_request = require "http.request"
 local http_server = require "http.server"
 local new_headers = require "http.headers".new
 local cjson = require "cjson"
 
-describe("integration tests with mock zipkin server", function()
+
+for _, strategy in helpers.each_strategy() do
+describe("integration tests with mock zipkin server [#" .. strategy .. "]", function()
   local server
 
   local cb
+  local proxy_port, proxy_host
   after_each(function()
     cb = nil
   end)
@@ -36,10 +40,6 @@ describe("integration tests with mock zipkin server", function()
   end
 
   setup(function()
-    assert(os.execute("kong migrations reset --yes > /dev/null"))
-    assert(os.execute("kong migrations up > /dev/null"))
-    assert(os.execute("kong start > /dev/null"))
-
     -- create a mock zipkin server
     server = assert(http_server.listen {
       host = "127.0.0.1";
@@ -58,63 +58,41 @@ describe("integration tests with mock zipkin server", function()
     assert(server:listen())
     local _, ip, port = server:localname()
 
-    do -- enable zipkin plugin globally pointing to mock server
-      local r = http_request.new_from_uri("http://127.0.0.1:8001/plugins/")
-      r.headers:upsert(":method", "POST")
-      r.headers:upsert("content-type", "application/json")
-      r:set_body(string.format([[{
-        "name":"zipkin",
-        "config": {
-          "sample_ratio": 1,
-          "http_endpoint": "http://%s:%d/api/v2/spans"
-        }
-      }]], ip, port))
-      local headers = assert(r:go(TEST_TIMEOUT))
-      assert.same("201", headers:get ":status")
-    end
+    local bp = helpers.get_db_utils(strategy, { "services", "routes", "plugins" })
 
-    do -- create service+route pointing at the zipkin server
-      do
-        local r = http_request.new_from_uri("http://127.0.0.1:8001/services/")
-        r.headers:upsert(":method", "POST")
-        r.headers:upsert("content-type", "application/json")
-        r:set_body(string.format([[{
-          "name":"mock-zipkin",
-          "url": "http://%s:%d"
-        }]], ip, port))
-        local headers = assert(r:go(TEST_TIMEOUT))
-        assert.same("201", headers:get ":status")
-      end
-      do
-        local r = http_request.new_from_uri("http://127.0.0.1:8001/services/mock-zipkin/routes")
-        r.headers:upsert(":method", "POST")
-        r.headers:upsert("content-type", "application/json")
-        r:set_body([[{
-          "hosts":["mock-zipkin-route"],
-          "preserve_host": true
-        }]])
-        local headers = assert(r:go(TEST_TIMEOUT))
-        assert.same("201", headers:get ":status")
-      end
-    end
-    do -- create (deprecated) api pointing at the zipkin server
-      local r = http_request.new_from_uri("http://127.0.0.1:8001/apis/")
-      r.headers:upsert(":method", "POST")
-      r.headers:upsert("content-type", "application/json")
-      r:set_body(string.format([[{
-        "name":"mock-zipkin",
-        "upstream_url": "http://%s:%d",
-        "hosts":["mock-zipkin-api"],
-        "preserve_host": true
-      }]], ip, port))
-      local headers = assert(r:go(TEST_TIMEOUT))
-      assert.same("201", headers:get ":status")
-    end
+    -- enable zipkin plugin globally pointing to mock server
+    bp.plugins:insert({
+      name = "zipkin",
+      config = {
+        sample_ratio = 1,
+        http_endpoint = string.format("http://%s:%d/api/v2/spans", ip, port),
+      }
+    })
+
+    -- create service+route pointing at the zipkin server
+    local service = bp.services:insert({
+      name = "mock-zipkin",
+      url = string.format("http://%s:%d", ip, port),
+    })
+
+    bp.routes:insert({
+      service = { id = service.id },
+      hosts = { "mock-zipkin-route" },
+      preserve_host = true,
+    })
+
+    helpers.start_kong({
+      database = strategy,
+    })
+
+    proxy_host = helpers.get_proxy_ip(false)
+    proxy_port = helpers.get_proxy_port(false)
   end)
+
 
   teardown(function()
     server:close()
-    assert(os.execute("kong stop > /dev/null"))
+    helpers.stop_kong()
   end)
 
   it("vaguely works", function()
@@ -137,36 +115,8 @@ describe("integration tests with mock zipkin server", function()
       end
     end, function()
       local req = http_request.new_from_uri("http://mock-zipkin-route/")
-      req.host = "127.0.0.1"
-      req.port = 8000
-      assert(req:go())
-    end))
-  end)
-  it("works with an api (deprecated)", function()
-    assert.truthy(with_server(function(req_headers, res_headers, stream)
-      if req_headers:get(":authority") == "mock-zipkin-api" then
-        -- is the request itself
-        res_headers:upsert(":status", "204")
-      else
-        local body = cjson.decode((assert(stream:get_body_as_string())))
-        assert.same("table", type(body))
-        assert.same("table", type(body[1]))
-        for _, v in ipairs(body) do
-          assert.same("string", type(v.traceId))
-          assert.truthy(v.traceId:match("^%x+$"))
-          assert.same("number", type(v.timestamp))
-          assert.same("table", type(v.tags))
-          assert.truthy(v.duration >= 0)
-          if v.localEndpoint ~= cjson.null then
-            assert.same("string", type(v.localEndpoint.service))
-          end
-        end
-        res_headers:upsert(":status", "204")
-      end
-    end, function()
-      local req = http_request.new_from_uri("http://mock-zipkin-api/")
-      req.host = "127.0.0.1"
-      req.port = 8000
+      req.host = proxy_host
+      req.port = proxy_port
       assert(req:go())
     end))
   end)
@@ -179,7 +129,8 @@ describe("integration tests with mock zipkin server", function()
       end
       res_headers:upsert(":status", "204")
     end, function()
-      local req = http_request.new_from_uri("http://127.0.0.1:8000/")
+      local uri = string.format("http://%s:%d/", proxy_host, proxy_port)
+      local req = http_request.new_from_uri(uri)
       req.headers:upsert("x-b3-traceid", trace_id)
       req.headers:upsert("x-b3-sampled", "1")
       assert(req:go())
@@ -202,11 +153,12 @@ describe("integration tests with mock zipkin server", function()
       end
     end, function()
       local req = http_request.new_from_uri("http://mock-zipkin/")
-      req.host = "127.0.0.1"
-      req.port = 8000
+      req.host = proxy_host
+      req.port = proxy_port
       req.headers:upsert("x-b3-traceid", trace_id)
       req.headers:upsert("x-b3-sampled", "1")
       assert(req:go())
     end))
   end)
 end)
+end
