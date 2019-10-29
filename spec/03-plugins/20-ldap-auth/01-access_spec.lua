@@ -273,7 +273,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           })
           assert.response(r).has.status(401)
         end)
-        -- Test for LDAP AD
+        -- Test for LDAP AD with commonName
         -- littlechicks
         it("passes if credential is valid with active directory server", function()
           local res = assert(proxy_client:send {
