@@ -21,7 +21,7 @@ end
 
 
 local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
-local ldap_host_ad = "littlechicks.eastus.cloudapp.azure.com"
+--local ldap_host_ad = "littlechicks.eastus.cloudapp.azure.com"
 
 local ldap_strategies = {
   non_secure = { name = "non-secure", start_tls = false },
@@ -70,9 +70,9 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           }
 
           -- Add route 7 (littlechicks)
-          local route7 = bp.routes:insert {
-            hosts = { "ldap7.com" },
-          }    
+          --local route7 = bp.routes:insert {
+            --hosts = { "ldap7.com" },
+          --}    
 
           local anonymous_user = bp.consumers:insert {
             username = "no-body"
@@ -157,17 +157,17 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           
           -- Insert plugins with UPN attribute (littlechicks)
           -- Works only with Active Directory LDAP
-          bp.plugins:insert {
-            route = { id = route7.id },
-            name = "ldap-auth",
-            config = {
-              ldap_host = ldap_host_ad,
-              ldap_port = 389,
-              start_tls = ldap_strategy.start_tls,
-              base_dn   = "dc=mycompany,dc=local",
-              attribute = "userPrincipalName"
-            }
-          }
+          --bp.plugins:insert {
+            --route = { id = route7.id },
+            --name = "ldap-auth",
+            --config = {
+              --ldap_host = ldap_host_ad,
+              --ldap_port = 389,
+              --start_tls = ldap_strategy.start_tls,
+              --base_dn   = "dc=mycompany,dc=local",
+              --attribute = "userPrincipalName"
+            --}
+          --}
           
           assert(helpers.start_kong({
             database   = strategy,
@@ -276,17 +276,17 @@ for _, ldap_strategy in pairs(ldap_strategies) do
         -- Test failure when attributes is different than uid
         -- This should failed because if ldap server is not an Active Directory
         -- littlechicks
-        it("passes if credential is valid and attributes is UPN for active directory", function()
-          local res = assert(proxy_client:send {
-            method  = "POST",
-            path    = "/request",
-            headers = {
-              host          = "ldap7.com",
-              authorization = "ldap" .. ngx.encode_base64("albert.einstein:adTest#AD2019")
-            }
-          })
-          assert.response(res).has.status(200)
-        end)
+        --it("passes if credential is valid and attributes is UPN for active directory", function()
+          --local res = assert(proxy_client:send {
+            --method  = "POST",
+            --path    = "/request",
+            --headers = {
+              --host          = "ldap7.com",
+              --authorization = "ldap" .. ngx.encode_base64("albert.einstein:adTest#AD2019")
+            --}
+          --})
+          --assert.response(res).has.status(200)
+        --end)
 
         it("passes if credential is valid and starts with space in post request", function()
           local res = assert(proxy_client:send {
