@@ -24,6 +24,15 @@ return {
 
       CREATE INDEX IF NOT EXISTS groups_name_idx ON groups(name);
 
+       -- License data
+      CREATE TABLE IF NOT EXISTS license_data (
+        node_id         uuid,
+        req_cnt         integer,
+        PRIMARY KEY (node_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS license_data_key_idx ON license_data(node_id);
+
       -- Group and RBAC_Role Mapping
       CREATE TABLE IF NOT EXISTS group_rbac_roles(
         created_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
@@ -151,6 +160,13 @@ return {
       CREATE INDEX IF NOT EXISTS group_rbac_roles_rbac_role_id_idx ON group_rbac_roles(rbac_role_id);
       CREATE INDEX IF NOT EXISTS group_rbac_roles_workspace_id_idx ON group_rbac_roles(workspace_id);
 
+      /* License data */
+      CREATE TABLE IF NOT EXISTS license_data (
+        node_id         uuid,
+        req_cnt         counter,
+        PRIMARY KEY (node_id)
+      );
+    
       /* Login Attempts */
       CREATE TABLE IF NOT EXISTS login_attempts (
         consumer_id uuid,
@@ -158,7 +174,6 @@ return {
         created_at  timestamp,
         PRIMARY KEY (consumer_id)
       );
-
     ]],
     teardown = function(connector, helpers)
       local coordinator = connector:connect_migrations()

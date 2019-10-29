@@ -155,6 +155,7 @@ return {
     "kong_db_cache_miss",
     "kong_process_events",
     "kong_cluster_events",
+    "kong_counters",
     "kong_vitals_counters",
     "kong_vitals_lists",
     "kong_healthchecks",

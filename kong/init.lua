@@ -82,6 +82,7 @@ local migrations_utils = require "kong.cmd.utils.migrations"
 
 local internal_proxies = require "kong.enterprise_edition.proxies"
 local vitals = require "kong.vitals"
+local sales_counters = require "kong.counters.sales"
 local ee = require "kong.enterprise_edition"
 local portal_auth = require "kong.portal.auth"
 local portal_emails = require "kong.portal.emails"
@@ -422,6 +423,9 @@ function Kong.init()
   kong.db = db
   kong.dns = singletons.dns
 
+  local counters_strategy = require("kong.counters.sales.strategies." .. kong.db.strategy):new(kong.db)
+  kong.sales_counters = sales_counters.new({ strategy = counters_strategy })
+
   if ngx.config.subsystem == "stream" or config.proxy_ssl_enabled then
     certificate.init()
   end
@@ -520,6 +524,12 @@ function Kong.init_worker()
   local ok, err = kong.vitals:init()
   if not ok then
     ngx.log(ngx.CRIT, "could not initialize vitals: ", err)
+  end
+
+  -- sales counters functions require a timer, so must start in worker context
+  local ok, err = kong.sales_counters:init()
+  if not ok then
+    ngx.log(ngx.CRIT, "could not initialize sales counters: ", err)
   end
 
   local cache, err = kong_global.init_cache(kong.configuration, cluster_events, worker_events, kong.vitals)

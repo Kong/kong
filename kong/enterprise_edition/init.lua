@@ -25,6 +25,7 @@ _M.handlers = {
       if not ctx.is_internal then
         kong.vitals:log_latency(ctx.KONG_PROXY_LATENCY)
         kong.vitals:log_request(ctx)
+        kong.sales_counters:log_request()
       end
     end
   },

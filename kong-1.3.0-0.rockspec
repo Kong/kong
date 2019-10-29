@@ -79,6 +79,11 @@ build = {
     ["kong.tracing"] = "kong/tracing/init.lua",
     ["kong.tracing.strategies"] = "kong/tracing/strategies.lua",
 
+    ["kong.counters"] = "kong/counters/init.lua",
+    ["kong.counters.sales"] = "kong/counters/sales/init.lua",
+    ["kong.counters.sales.strategies.postgres"] = "kong/counters/sales/strategies/postgres/init.lua",
+    ["kong.counters.sales.strategies.cassandra"] = "kong/counters/sales/strategies/cassandra/init.lua",
+
     ["kong.enterprise_edition"] = "kong/enterprise_edition/init.lua",
     ["kong.enterprise_edition.admin.emails"] = "kong/enterprise_edition/admin/emails.lua",
     ["kong.enterprise_edition.admins_helpers"] = "kong/enterprise_edition/admins_helpers.lua",
