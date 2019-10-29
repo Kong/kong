@@ -16,6 +16,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
   lazy_setup(function()
     helpers.get_db_utils(nil, {}) -- runs migrations
     assert(helpers.start_kong {
+      plugins = "bundled,reports-api",
       pg_password = "hide_me"
     })
     client = helpers.admin_client(10000)
@@ -110,6 +111,33 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       end
     end)
   end)
+
+
+  describe("/endpoints", function()
+    it("only returns base, plugin, and custom-plugin endpoints", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/endpoints"
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+
+      local function find(endpoint)
+        for _, ep in ipairs(json) do
+          if ep == endpoint then
+            return true
+          end
+        end
+        return nil, ("endpoint '%s' not found in list of endpoints from " ..
+                     "`/endpoints`"):format(endpoint)
+      end
+
+      assert(find("/plugins"))                             -- Kong base endpoint
+      assert(find("/basic-auths/{basicauth_credentials}")) -- Core plugin endpoint
+      assert(find("/reports/send-ping"))                   -- Custom plugin "reports-api"
+    end)
+  end)
+
 
   describe("/status", function()
     it("returns status info", function()

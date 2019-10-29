@@ -92,6 +92,36 @@ return {
       })
     end
   },
+  ["/endpoints"] = {
+    GET = function(self, dao, helpers)
+      local endpoints = setmetatable({}, cjson.array_mt)
+      local lapis_endpoints = require("kong.api").ordered_routes
+
+      for k, v in pairs(lapis_endpoints) do
+        if type(k) == "string" then -- skip numeric indices
+          endpoints[#endpoints + 1] = k:gsub(":([^/:]+)", function(m)
+              return "{" .. m .. "}"
+            end)
+        end
+      end
+      table.sort(endpoints, function(a, b)
+        -- when sorting use lower-ascii char for "/" to enable segment based
+        -- sorting, so not this:
+        --   /a
+        --   /ab
+        --   /ab/a
+        --   /a/z
+        -- But this:
+        --   /a
+        --   /a/z
+        --   /ab
+        --   /ab/a
+        return a:gsub("/", "\x00") < b:gsub("/", "\x00")
+      end)
+
+      return kong.response.exit(200, endpoints)
+    end
+  },
   ["/schemas/:name"] = {
     GET = function(self, db, helpers)
       local entity = kong.db[self.params.name]
