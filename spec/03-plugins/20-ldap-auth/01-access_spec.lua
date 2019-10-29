@@ -275,7 +275,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
         end)
         -- Test failure when attributes is different than uid
         -- This should failed because if ldap server is not an Active Directory
-        -- Littlechicks
+        -- littlechicks
         it("passes if credential is valid and attributes is UPN for active directory", function()
           local res = assert(proxy_client:send {
             method  = "POST",

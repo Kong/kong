@@ -116,7 +116,7 @@ local function ldap_authenticate(given_username, given_password, conf)
 
   -- CASE: Attribute is UPN.
   if conf.attribute == "userPrincipalName" then
-    who = given_username
+    who = given_username .. "@" .. domain
   end
  
   is_authenticated, err = ldap.bind_request(sock, who, given_password)
@@ -254,7 +254,7 @@ local function do_authentication(conf)
   end
 
   if not is_authorized then
-    return false, {status = 401, message = authorization_value}
+    return false, {status = 401, message = "Invalid authentication credentials"}
   end
 
   if conf.hide_credentials then
