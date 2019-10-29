@@ -34,7 +34,7 @@ describe("DNS", function()
 
   lazy_teardown(function()
     if type(ngx.log) == "table" then
-      ngx.log:revert()
+      ngx.log:revert() -- luacheck: ignore
     end
   end)
 
