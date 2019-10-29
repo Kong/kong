@@ -1,26 +1,70 @@
-language: python
-
-sudo: false
+language: generic
+dist: trusty
+sudo: required
 
 branches:
   only:
     - master
 
-before_install:
-  - pip install hererocks
-  - hererocks ~/hererocks -r^ --luajit 2.1
-  - export PATH=$PATH:~/hererocks/bin
-  - eval $(luarocks path --bin)
-  - luarocks install luacheck
+services:
+  - redis-server
+
+addons:
+  postgresql: "9.5"
+  apt:
+    packages:
+      - net-tools
+      - libpcre3-dev
+      - build-essential
+
+services:
+  - redis
+  - docker
+
+env:
+  global:
+    - PLUGIN_NAME=zipkin
+    - KONG_REPOSITORY=kong
+    - KONG_TAG=master
+    - KONG_PLUGINS=bundled
+    - KONG_TEST_PLUGINS=$KONG_PLUGINS
+    - LUAROCKS=3.2.1
+    - OPENSSL=1.1.1d
+    - CASSANDRA_BASE=2.2.12
+    - CASSANDRA_LATEST=3.9
+    - OPENRESTY=1.15.8.2
+    - DOWNLOAD_CACHE=$HOME/download-cache
+    - INSTALL_CACHE=$HOME/install-cache
+    - BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6"
+    - TEST_FILE_PATH=$TRAVIS_BUILD_DIR/spec
+
+  matrix:
+    # Some of these might be commented off because they don't apply for the current plugin.
+    # If a plugin does not extend the pdk, the pdk test suite doesn't need to be run.
+    # If a plugin is not compatible with dbless, then the dbless test suite doesn't need to be run.
+    # If a plugin doesn't monkeypatch Kong's internal entities, it should not need to run integration tests
+    # - TEST_SUITE=pdk
+    # - KONG_TEST_DATABASE=postgres TEST_SUITE=integration
+    # - KONG_TEST_DATABASE=cassandra CASSANDRA=$CASSANDRA_BASE TEST_SUITE=integration
+    # - KONG_TEST_DATABASE=cassandra CASSANDRA=$CASSANDRA_LATEST TEST_SUITE=integration
+    # - KONG_TEST_DATABASE=off TEST_SUITE=dbless
+    - KONG_TEST_DATABASE=postgres TEST_SUITE=plugins
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=$CASSANDRA_BASE TEST_SUITE=plugins
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=$CASSANDRA_LATEST TEST_SUITE=plugins
+
+install:
+  - git clone --single-branch https://$GITHUB_TOKEN:@github.com/Kong/kong-ci ../kong-ci
+  - source ../kong-ci/setup_plugin_env.sh
 
 script:
-  - luacheck .
+  - eval $LUACHECK_CMD
+  - eval $BUSTED_CMD
 
 notifications:
-  email:
-    on_success: change
-    on_failure: always
+  email: false
 
 cache:
   directories:
-    - $HOME/.cache/hererocks
+    - $DOWNLOAD_CACHE
+    - $INSTALL_CACHE
+    - $HOME/.ccm/repository
