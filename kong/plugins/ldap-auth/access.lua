@@ -114,7 +114,7 @@ local function ldap_authenticate(given_username, given_password, conf)
     who = given_username .. "@" .. domain
   end
 
-  -- CASE: Attribute is UPN
+  -- CASE: Attribute is UPN.
   if conf.attribute == "userPrincipalName" then
     who = given_username
   end
