@@ -21,6 +21,7 @@ end
 
 
 local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
+local ldap_host_ad = "littlechicks.eastus.cloudapp.azure.com"
 
 local ldap_strategies = {
   non_secure = { name = "non-secure", start_tls = false },
@@ -160,10 +161,10 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             route = { id = route7.id },
             name = "ldap-auth",
             config = {
-              ldap_host = ldap_host_aws,
+              ldap_host = ldap_host_ad,
               ldap_port = 389,
               start_tls = ldap_strategy.start_tls,
-              base_dn   = "dc=ldap,dc=mashape,dc=com",
+              base_dn   = "dc=mycompany,dc=local",
               attribute = "userPrincipalName"
             }
           }
@@ -273,7 +274,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           assert.response(r).has.status(401)
         end)
         -- Test failure when attributes is different than uid
-        -- This should failed because ldap server is not an Active Directory
+        -- This should failed because if ldap server is not an Active Directory
         -- Littlechicks
         it("passes if credential is valid and attributes is UPN for active directory", function()
           local res = assert(proxy_client:send {
@@ -281,7 +282,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             path    = "/request",
             headers = {
               host          = "ldap7.com",
-              authorization = "ldap" .. ngx.encode_base64("einstein@ldap.mashape.com:password")
+              authorization = "ldap" .. ngx.encode_base64("albert.einstein@mycompany.local:adTest#AD2019")
             }
           })
           assert.response(res).has.status(200)
