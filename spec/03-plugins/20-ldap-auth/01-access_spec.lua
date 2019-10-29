@@ -76,7 +76,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
 
           --Add route 8 (littlechicks)
           local route7 = bp.routes:insert {
-            hosts = { "ldap8.com",
+            hosts = { "ldap8.com" },
           }    
 
           local anonymous_user = bp.consumers:insert {
