@@ -11,21 +11,23 @@ local reports         = require "kong.reports"
 
 local log = ngx.log
 local ERR = ngx.ERR
-
+local ngx_null = ngx.null
 
 local _M = {}
 
+local function is_present(x)
+  return x and ngx_null ~= x
+end
+
 
 local function is_redis_sentinel(redis)
-  local is_sentinel = redis.sentinel_master or
-                      redis.sentinel_role or
-                      redis.sentinel_addresses
-
-  return is_sentinel and true or false
+  return is_present(redis.sentinel_master) or
+    is_present(redis.sentinel_role) or
+    is_present(redis.sentinel_addresses)
 end
 
 local function is_redis_cluster(redis)
-  return redis.cluster_addresses and true or false
+  return is_present(redis.cluster_addresses)
 end
 
 _M.is_redis_cluster = is_redis_cluster
@@ -152,7 +154,7 @@ function _M.connection(conf)
       log(ERR, "failed to connect to redis cluster: ", err)
       return nil, err
     end
-  elseif conf.sentinel_master then
+  elseif is_redis_sentinel(conf) then
     -- creating client for redis sentinel
     local rc = redis_connector.new()
     rc:set_connect_timeout(conf.timeout)
@@ -180,7 +182,7 @@ function _M.connection(conf)
       return nil, err
     end
 
-    if conf.password and conf.password ~= "" then
+    if is_present(conf.password) and conf.password ~= "" then
       local ok, err = red:auth(conf.password)
       if not ok then
         log(ERR, "failed to auth to Redis: ", err)
@@ -189,7 +191,7 @@ function _M.connection(conf)
       end
     end
 
-    if conf.database and conf.database ~= 0 then
+    if is_present(conf.database) and conf.database ~= 0 then
       local ok, err = red:select(conf.database)
       if not ok then
         log(ERR, "failed to change Redis database: ", err)
