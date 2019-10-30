@@ -109,7 +109,7 @@ function _M.normalize_nested_params(obj)
         -- and we set it to the array (v)
         -- this edge case is needed because Lapis builds params like that (flatten_params function)
         prev[path_entry or k] = v
-      else
+      elseif type(node) == "table" then
         -- regular case: the last element is similar to the loop iteration.
         -- instead of a table, we set the value (v) on the last element
         node[transform_no_array_index_mark(path[path_len], node)] = v
