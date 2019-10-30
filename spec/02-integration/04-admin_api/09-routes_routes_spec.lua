@@ -806,6 +806,28 @@ for _, strategy in helpers.each_strategy() do
             end
           end)
 
+          it_content_types("handles same parameter in url and params gracefully", function(content_type)
+            return function()
+              local res = client:put("/routes/my-put-route", {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  routes = {
+                    test = {
+                      {
+                        test = "test",
+                      }
+                    }
+                  },
+                  tags = "test",
+                },
+              })
+
+              assert.res_status(400, res)
+            end
+          end)
+
           describe("errors", function()
             it("handles malformed JSON body", function()
               local route = bp.routes:insert({ paths = { "/my-route" } })
