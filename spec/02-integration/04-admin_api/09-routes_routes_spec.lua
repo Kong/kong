@@ -1816,4 +1816,97 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
+
+  describe("Admin API Override #" .. strategy, function()
+    local bp
+    local db
+    local client
+
+    lazy_setup(function()
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+      }, {
+        "api-override",
+      })
+
+
+      assert(helpers.start_kong({
+        database      = strategy,
+        plugins       = "bundled,api-override",
+        nginx_conf    = "spec/fixtures/custom_nginx.template",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong(nil, true)
+    end)
+
+    before_each(function()
+      client = assert(helpers.admin_client())
+    end)
+
+    after_each(function()
+      if client then
+        client:close()
+      end
+    end)
+    describe("/routes", function()
+      describe("POST", function()
+        it_content_types("creates a route", function(content_type)
+          return function()
+            if content_type == "multipart/form-data" then
+              -- the client doesn't play well with this
+              return
+            end
+
+            local res = client:post("/routes", {
+              body = {
+                protocols = { "http" },
+                hosts     = { "my.route.com" },
+                headers   = { location = { "my-location" } },
+                service   = bp.services:insert(),
+              },
+              headers = { ["Content-Type"] = content_type }
+            })
+            local body = assert.res_status(201, res)
+            local json = cjson.decode(body)
+            assert.same({ "my.route.com" }, json.hosts)
+            assert.same({ location = { "my-location" } }, json.headers)
+            assert.is_number(json.created_at)
+            assert.is_number(json.regex_priority)
+            assert.is_string(json.id)
+            assert.equals(cjson.null, json.name)
+            assert.equals(cjson.null, json.paths)
+            assert.False(json.preserve_host)
+            assert.True(json.strip_path)
+
+            assert.equal("ok", res.headers["Kong-Api-Override"])
+          end
+        end)
+      end)
+      describe("GET", function()
+        describe("with data", function()
+          lazy_setup(function()
+            db:truncate("routes")
+            for i = 1, 10 do
+              bp.routes:insert({ paths = { "/route-" .. i } })
+            end
+          end)
+
+          it("retrieves the first page", function()
+            local res = assert(client:send {
+              method = "GET",
+              path   = "/routes"
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal(10, #json.data)
+
+            assert.equal("ok", res.headers["Kong-Api-Override"])
+          end)
+        end)
+      end)
+    end)
+  end)
 end
