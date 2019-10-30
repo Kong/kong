@@ -50,6 +50,13 @@ local function get_all_specs()
       end
 
       if can_read and v.parsed then
+        -- create meta for parsed spec if needed for templates
+        if not v.parsed.info then
+          v.parsed.info = {
+            title = v.title or v.path_meta.filename
+          }
+        end
+
         table.insert(specs, v)
       end
     end
