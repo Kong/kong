@@ -822,7 +822,7 @@ return {
           ]]
         }
       },
-      ["/plugins/meta/:name"] = {
+      ["/plugins/:name/metadata"] = {
         GET = {
           title = [[Retrieve plugin's custom metadata]],
           description = [[Retrieve a JSON representation of Lua data in a `schema-meta.lua` module]],
