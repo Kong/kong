@@ -123,7 +123,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       local json = cjson.decode(body)
 
       local function find(endpoint)
-        for _, ep in ipairs(json) do
+        for _, ep in ipairs(json.data) do
           if ep == endpoint then
             return true
           end
