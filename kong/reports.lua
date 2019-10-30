@@ -1,6 +1,7 @@
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
+local counter = require "resty.counter"
 
 
 local kong_dict = ngx.shared.kong
@@ -47,6 +48,8 @@ local _enabled = false
 local _unique_str = utils.random_string()
 local _buffer_immutable_idx
 
+-- the resty.counter instance, will be initialized in `init_worker`
+local report_counter = nil
 
 do
   -- initialize immutable buffer data (the same for each report)
@@ -163,9 +166,17 @@ local function create_timer(...)
   end
 end
 
+-- interval interval is exposed for unit test
+local function create_counter(interval)
+  local err
+  -- create a counter instance which syncs to `kong` shdict every 10 minutes
+  report_counter, err = counter.new('kong', interval or 600)
+  return err
+end
+
 
 local function get_counter(key)
-  local count, err = kong_dict:get(key)
+  local count, err = report_counter:get(key)
   if err then
     log(WARN, "could not get ", key, " from 'kong' shm: ", err)
   end
@@ -192,7 +203,7 @@ end
 -- `reset_counter` was set to 0 (with `kong_dict:set(key, 0)` we would lose the increment
 -- done by Worker B.
 local function reset_counter(key, amount)
-  local ok, err = kong_dict:incr(key, -amount, amount)
+  local ok, err = report_counter:reset(key, amount)
   if not ok then
     log(WARN, "could not reset ", key, " in 'kong' shm: ", err)
   end
@@ -200,7 +211,7 @@ end
 
 
 local function incr_counter(key)
-  local ok, err = kong_dict:incr(key, 1, 0)
+  local ok, err = report_counter:incr(key, 1)
   if not ok then
     log(WARN, "could not increment ", key, " in 'kong' shm: ", err)
   end
@@ -402,6 +413,11 @@ return {
     end
 
     create_timer(PING_INTERVAL, ping_handler)
+
+    local err = create_counter()
+    if err then
+      error(err)
+    end
   end,
   add_immutable_value = add_immutable_value,
   configure_ping = configure_ping,
@@ -433,4 +449,6 @@ return {
   end,
   send = send_report,
   retrieve_redis_version = retrieve_redis_version,
+  -- exposed for unit test
+  create_counter = create_counter,
 }
