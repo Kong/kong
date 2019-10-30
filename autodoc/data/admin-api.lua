@@ -822,6 +822,23 @@ return {
           ]]
         }
       },
+      ["/plugins/meta/:name"] = {
+        GET = {
+          title = [[Retrieve plugin's custom metadata]],
+          description = [[Retrieve a JSON representation of Lua data in a `schema-meta.lua` module]],
+          endpoint = [[<div class="endpoint get">/plugins/meta/{plugin name}</div>]],
+          response = [[
+            ```
+            HTTP 200 OK
+            ```
+            ```json
+            {
+              "description": "This is what the plugin developer intends",
+              "icon": <url of a nice pic>
+            }
+          ]]
+        }
+      },
 
       -- While these endpoints actually support DELETE (deleting the entity and
       -- cascade-deleting the plugin), we do not document them, as this operation
