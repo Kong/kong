@@ -210,6 +210,42 @@ local function filter_by_path(items, arg)
 end
 
 
+local function get_str_helpers()
+  local str_helpers = {}
+  for k, v in pairs(stringx) do
+    str_helpers[k] = v
+  end
+
+  for k, v in pairs(string) do
+    str_helpers[k] = v
+  end
+
+  return str_helpers
+end
+
+
+local function get_tbl_helpers()
+  local tbl_helpers = {}
+  for k, v in pairs(tablex) do
+    tbl_helpers[k] = v
+  end
+
+  for k, v in pairs(table) do
+    tbl_helpers[k] = v
+  end
+
+  tbl_helpers.map = map
+  tbl_helpers.each = each
+  tbl_helpers.filter = filter
+  tbl_helpers.filter_by_path = filter_by_path
+  tbl_helpers.is_list = is_list
+  tbl_helpers.list_insert = list_insert
+  tbl_helpers.table_insert = table_insert
+
+  return tbl_helpers
+end
+
+
 return {
   get_file_attrs_by_path = get_file_attrs_by_path,
   get_route_from_path    = get_route_from_path,
@@ -217,17 +253,10 @@ return {
   parse_oas              = parse_oas,
   parse_spec             = parse_spec,
   is_spec                = is_spec,
-  is_list                = is_list,
-  tbl                    = tablex,
-  str                    = stringx,
-  each                   = each,
-  map                    = map,
-  filter                 = filter,
   print                  = inspect,
-  table_insert           = table_insert,
-  list_insert            = list_insert,
   json_decode            = cjson.decode,
   json_encode            = cjson.encode,
   markdown               = markdown,
+  tbl                    = get_tbl_helpers(),
+  str                    = get_str_helpers(),
 }
-

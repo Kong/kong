@@ -19,9 +19,13 @@ return function(template)
   end
 
   -- Expose commonly used helpers to root context
-  ctx.each = ctx.helpers.each
-  ctx.print = ctx.helpers.print
-  ctx.markdown = ctx.helpers.markdown
+  ctx.tbl      = ctx.helpers.tbl
+  ctx.str      = ctx.helpers.str
+  ctx.each     = ctx.tbl.each
+  ctx.print    = ctx.helpers.print
+  ctx.json_decode = helpers.json_decode
+  ctx.json_encode = helpers.json_encode
+  ctx.markdown    = ctx.helpers.markdown
 
   return ctx
 end

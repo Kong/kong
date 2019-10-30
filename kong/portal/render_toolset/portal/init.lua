@@ -21,7 +21,7 @@ end
 
 local function get_developer_meta_fields(conf)
   local fields = helpers.json_decode(conf.PORTAL_DEVELOPER_META_FIELDS)
-  return helpers.map(fields, parse_developer_field)
+  return helpers.tbl.map(fields, parse_developer_field)
 end
 
 
