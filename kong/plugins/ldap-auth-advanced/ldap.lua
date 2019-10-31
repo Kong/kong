@@ -55,12 +55,18 @@ end
 
 local function receive_packet(socket)
   local data = socket:receive(2)
+  if not data then
+    return nil, 'socket packet is empty'
+  end
   local _, packet_len = calculate_payload_length(data, 2, socket)
   return socket:receive(packet_len)
 end
 
 local function receive_ldap_message(socket)
-  local packet = receive_packet(socket)
+  local packet, err = receive_packet(socket)
+  if err then
+    return nil, nil, nil, nil, err
+  end
   local pos, messageID = decoder:decode(packet, 1)
   local protocolOp
   pos, protocolOp = bunpack(packet, "C", pos)
@@ -79,7 +85,11 @@ function _M.bind_request(socket, username, password)
   ldapMessageId = ldapMessageId +1
   socket:send(send_packet)
 
-  local _, protocolOp, packet, pos = receive_ldap_message(socket)
+  local _, protocolOp, packet, pos, err = receive_ldap_message(socket)
+  
+  if err then
+    return false, err
+  end
 
   if protocolOp.number ~= APPNO.BindResponse then
     return false, string_format("Received incorrect Op in packet: %d, expected %d",

@@ -87,8 +87,8 @@ local function ldap_authenticate(given_username, given_password, conf)
     ok, err = ldap.bind_request(sock, conf.bind_dn, conf.ldap_password)
 
     if err then
-      kong.log.err(err)
-      return kong.response.exit(500)
+      kong.log.err("Error during bind request. ", err)
+      return kong.response.exit(500, { message = "An unexpected error occurred" })
     end
 
     if ok then
@@ -105,7 +105,7 @@ local function ldap_authenticate(given_username, given_password, conf)
         kong.log.err("failed ldap search for "..
                      conf.attribute .. "=" .. given_username .. " base_dn=" ..
                      conf.base_dn)
-        return kong.response.exit(500)
+        return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 
       local user_dn
@@ -282,7 +282,6 @@ local function load_consumers(value, consumer_by, ttl)
     return nil, "cannot load consumers with empty value"
   end
 
-  kong.log.debug('finding consumers by value:', value, ", and by field:", consumer_by)
   for _, field_name in ipairs(consumer_by) do
     local key
     local consumer
