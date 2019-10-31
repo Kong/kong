@@ -481,6 +481,50 @@ for _, strategy in helpers.each_strategy() do
             assert.not_equal(cache_token, new_cache_token)
           end
         end)
+
+        describe("Kong-Admin-Token invalidation: #p1", function()
+          local function reset_token(token)
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/admins/self/token",
+              headers = {
+                ["cookie"] = cookie,
+                ["Kong-Admin-User"] = super_admin.username,
+                ["Content-Type"] = "application/json"
+              },
+              body = {
+                token = token
+              }
+            })
+  
+            assert.res_status(200, res)
+          end
+
+          local function call_api_with_token(code, token)
+            local res = assert(client:send {
+              method = "GET",
+              path = "/",
+              headers = {
+                ["Kong-Admin-Token"] = token,
+              },
+            })
+  
+            assert.res_status(code, res)
+          end
+
+          it("updates admin token when updates rbac token", function()
+            -- set token to "one"
+            reset_token("one");
+            call_api_with_token(200, "one")
+            -- ensure token "two" not works before reset
+            call_api_with_token(401, "two")
+            -- reset token to "two"
+            reset_token("two")
+            -- "one" should invalid
+            call_api_with_token(401, "one")
+            call_api_with_token(200, "two")
+          end)
+        end)
       end)
     end)
 

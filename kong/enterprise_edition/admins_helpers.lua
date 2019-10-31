@@ -471,9 +471,8 @@ function _M.update_password(admin, params)
 end
 
 
-
-
 function _M.update_token(admin, params)
+  local expired_ident = admin.rbac_user.user_token_ident
 
   if not params.token then
     return { code = 400, body = { message = "You must supply a new token" }}
@@ -501,6 +500,13 @@ function _M.update_token(admin, params)
 
   if err then
     return nil, err
+  end
+
+  if expired_ident then
+    -- invalidate the cached token
+    -- if there is a user token set
+    local cache_key = "rbac_user_token_ident:" .. expired_ident
+    kong.cache:invalidate(cache_key)
   end
 
   return { code = 200, body = { message = "Token reset successfully" }}
