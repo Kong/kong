@@ -183,25 +183,7 @@ local function get_counter(key)
   return count or 0
 end
 
--- For counter resetting we use `incr` instead of `set` because we want to
--- preserve measurements which might get received while we send the
--- report from worker A:
---
---                   Flow of Time
---                       |||
---                       VVV
---
---         Worker A       |     Worker B
---                        |
---   get_counter -> 100   |
---                        |
---                        |  <log phase> incr_counter(1) -> 101
---                        |
---   reset_counter(-100)  |
---
--- Final counter value after reset: 1 (correct, the worker B increment was preserved)
--- `reset_counter` was set to 0 (with `kong_dict:set(key, 0)` we would lose the increment
--- done by Worker B.
+
 local function reset_counter(key, amount)
   local ok, err = report_counter:reset(key, amount)
   if not ok then
