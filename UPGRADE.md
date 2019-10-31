@@ -10,12 +10,12 @@ Unless indicated otherwise in one of the upgrade paths of this document, it is
 possible to upgrade Kong **without downtime**:
 
 Assuming that Kong is already running on your system, acquire the latest
-version from any of the available [installation
+the version from any of the available [installation
 methods](https://getkong.org/install/) and proceed to install it, overriding
 your previous installation.
 
 If you are planning to make modifications to your configuration, this is a
-good time to do so.
+A good time to do so.
 
 Then, run migration to upgrade your database schema:
 
@@ -42,7 +42,7 @@ configuration, without dropping existing in-flight connections.
 
 Kong adheres to [semantic versioning](https://semver.org/), which makes a
 distinction between "major", "minor" and "patch" versions. The upgrade path
-will be different on which previous version from which you are migrating.
+will be different on which the previous version from which you are migrating.
 If you are upgrading from 0.x, this is a major upgrade. If you are
 upgrading from 1.0.x or 1.3.x, this is a minor upgrade. Both scenarios are
 explained below.
