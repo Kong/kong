@@ -7,9 +7,12 @@ local singletons = require "kong.singletons"
 local api_helpers = require "kong.api.api_helpers"
 
 
+local ngx = ngx
 local kong = kong
 local type = type
+local find = string.find
 local pairs = pairs
+local lower = string.lower
 local setmetatable = setmetatable
 
 
@@ -56,7 +59,14 @@ local function fill_plugin_data(self, plugin)
   post.name = post.name or plugin.name
 
   -- Only now we can decode the 'config' table for form-encoded values
-  post = arguments.decode(post, kong.db.plugins.schema)
+  local content_type = ngx.var.content_type
+  if content_type then
+    content_type = lower(content_type)
+    if find(content_type, "application/x-www-form-urlencoded", 1, true) == 1 or
+       find(content_type, "multipart/form-data",               1, true) == 1 then
+      post = arguments.decode(post, kong.db.plugins.schema)
+    end
+  end
 
   -- While we're at it, get values for composite uniqueness check
   post.route = post.route or plugin.route
