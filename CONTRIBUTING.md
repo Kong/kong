@@ -28,7 +28,7 @@ Consult the Table of Contents below, and jump to the desired section.
   - [Contributor T-shirt](#contributor-t-shirt)
 - [Code style](#code-style)
 
-## Where to seek for help?
+## Where to seek help?
 
 ### Enterprise Edition
 
@@ -52,9 +52,8 @@ There are several channels where you can get answers from the community
 or the maintainers of this project:
 
 - Our public forum, [Kong Nation](https://discuss.konghq.com), is great for
-  asking questions, giving advice, and staying up-to-date with the latest
-  announcements. Kong Nation is frequented by Kong maintainers.
-- Two chat channels are used by the community, but are rarely visited by Kong
+  asking questions, giving advice, and staying up-to-date with the latest announcements. Kong Nation is frequented by Kong maintainers.
+- Two chat channels are used by the community but are rarely visited by Kong
   maintainers:
   - [Gitter](https://gitter.im/Kong/kong)
   - IRC, registered on freenode as
@@ -127,7 +126,7 @@ https://github.com/Kong/docs.konghq.com/
 ### Proposing a new plugin
 
 We **do not** accept new plugins into the core repository. The plugins that are
-currently part of this repository are there because of historical reasons, but
+currently part of this repository is there because of historical reasons, but
 will be pushed into separate repositories in the foreseeable future.
 
 If you wish to write a new plugin for your own needs, you should start by
@@ -176,7 +175,7 @@ to verify a few things:
   development documentation for additional details)
 - The tests are passing: run `make test`, `make test-all`, or whichever is
   appropriate for your change
-- Do not update CHANGELOG.md yourself. Your change will be included there in
+- Do not update CHANGELOG.md yourself. Your change will be included therein
   due time if it is accepted, no worries!
 
 If the above guidelines are respected, your Pull Request has all its chances
@@ -225,7 +224,7 @@ logical units of work. You are free to propose a patch with one or many
 commits, as long as their atomicity is respected. This means that no unrelated
 changes should be included in a commit.
 
-For example: you are writing a patch to fix a bug, but in your endeavour, you
+For example, you are writing a patch to fix a bug, but in your endeavour, you
 spot another bug. **Do not fix both bugs in the same commit!** Finish your
 work on the initial bug, propose your patch, and come back to the second bug
 later on. This is also valid for unrelated style fixes, refactors, etc...
@@ -237,7 +236,7 @@ commit history? Will they find unrelated changes in a particular commit? They
 shouldn't!
 
 Writing meaningful commit messages that follow our commit message format will
-also help you respect this mantra (see the below section).
+also, help you respect this mantra (see the below section).
 
 [Back to TOC](#table-of-contents)
 
@@ -353,7 +352,7 @@ tests(proxy) add a new test case for URI encoding
 When proxying upstream, the URI sent by Kong should be the one
 received from the client, even if it was percent-encoded.
 
-This adds a new test case which was missing, to ensure it is
+This adds a new test case that was missing, to ensure it is
 the case.
 ```
 
