@@ -27,7 +27,7 @@ return {
        -- License data
       CREATE TABLE IF NOT EXISTS license_data (
         node_id         uuid,
-        req_cnt         integer,
+        req_cnt         bigint,
         PRIMARY KEY (node_id)
       );
 
@@ -166,7 +166,7 @@ return {
         req_cnt         counter,
         PRIMARY KEY (node_id)
       );
-    
+
       /* Login Attempts */
       CREATE TABLE IF NOT EXISTS login_attempts (
         consumer_id uuid,

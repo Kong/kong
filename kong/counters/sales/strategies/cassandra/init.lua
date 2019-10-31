@@ -12,6 +12,10 @@ local UPDATE_STATEMENT = [[
       node_id = ?
   ]]
 
+local SELECT_DATA = [[
+  select * from license_data
+]]
+
 
 local _M = {}
 local mt = { __index = _M }
@@ -40,8 +44,23 @@ function _M:flush_data(data)
   local _, err = self.cluster:execute(UPDATE_STATEMENT, values, QUERY_OPTIONS)
 
   if err then
-    log(ERR, "error occurred during counters flush in cassandra: ", err)
+    log(ERR, "error occurred during counters data flush: ", err)
   end
+end
+
+
+function _M:pull_data()
+  local QUERY_OPTIONS = {
+    prepared = true,
+  }
+
+  local res, err = self.cluster:execute(SELECT_DATA, QUERY_OPTIONS)
+  if err then
+    log(ERR, "error occurred during data pull: ", err)
+    return nil
+  end
+
+  return res
 end
 
 

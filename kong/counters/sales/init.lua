@@ -1,4 +1,5 @@
 local counters_service = require("kong.counters")
+local utils = require "kong.tools.utils"
 
 
 local timer_at   = ngx.timer.at
@@ -135,6 +136,96 @@ function _M:flush_data()
       self.strategy:flush_data(merged_data)
     end
   end
+end
+
+
+-- retrieves all merged counters data from all nodes that is stored in the database
+local function get_counters_data(strategy)
+  local data = {}
+
+  local counters_data = strategy:pull_data()
+  if counters_data then
+    for i = 1, #counters_data do
+
+      if counters_data[i] then
+        -- iterate over counters and sum data
+        for key, counter in pairs(counters_data[i]) do
+          -- sum only numbers
+          if type(counter) == "number" then
+            if not data[key] then
+              data[key] = 0
+            end
+
+            data[key] = data[key] + counter
+          end
+        end
+      end
+    end
+  end
+
+  return data
+end
+
+
+local function get_workspaces_count()
+  -- probably it is better to use :each() but since it is being run once a quarter
+  -- don't think it is a big problem
+  local workspaces, err = kong.db.workspaces:select_all()
+  if err then
+    log(ngx.WARN, "failed to get count of workspaces: ", err)
+    return nil
+  end
+
+  return #workspaces;
+end
+
+
+local function get_rbac_users_count()
+  -- probably it is better to use :each() but since it is being run once a quarter
+  -- don't think it is a big problem
+  local counts, err = kong.db.workspace_entity_counters:select_all({
+    entity_type = "rbac_users"
+  })
+  if err then
+    log(ngx.WARN, "failed to get count of RBAC users: ", err)
+    return nil
+  end
+
+  local c = 0
+  for _, entity_counter in ipairs(counts) do
+    c = c + entity_counter.count or 0
+  end
+
+  return c
+end
+
+
+local function get_license_data()
+  return kong.license and kong.license.license.payload.license_key or nil
+end
+
+
+function _M:get_license_report()
+  local db = kong.db
+  local sys_info = utils.get_system_infos()
+
+  local report = {
+    kong_version = kong.version,
+    db_version = tostring(db.strategy) .. " " .. tostring(db.connector.major_minor_version),
+    -- system info
+    system_info = {
+      uname = sys_info.uname,
+      hostname = sys_info.hostname,
+      cores = sys_info.cores
+    },
+    license_key = get_license_data(),
+    -- counters
+    counters = get_counters_data(self.strategy),
+    rbac_users = get_rbac_users_count(),
+    workspaces_count = get_workspaces_count(),
+  }
+
+  return report
 end
 
 
