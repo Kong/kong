@@ -37,6 +37,15 @@ local non_nullable_schema_definition = {
   }
 }
 
+local ttl_schema_definition = {
+  name = "Foo",
+  ttl = true,
+  primary_key = { "a" },
+  fields = {
+    { a = { type = "number" }, },
+  }
+}
+
 local optional_cache_key_fields_schema = {
   name = "Foo",
   primary_key = { "a" },
@@ -129,6 +138,27 @@ describe("DAO", function()
       assert.same(null, row.b)
       assert.same(10, row.r.f1)
       assert.same(null, row.r.f2)
+    end)
+
+    it("only returns a null ttl if nulls is given (#5185)", function()
+      local schema = assert(Schema.new(ttl_schema_definition))
+
+      -- mock strategy
+      local strategy = {
+        select = function()
+          return { a = 42, ttl = null }
+        end,
+      }
+
+      local dao = DAO.new(mock_db, schema, strategy, errors)
+
+      local row = dao:select({ a = 42 }, { nulls = true })
+      assert.same(42, row.a)
+      assert.same(null, row.ttl)
+
+      row = dao:select({ a = 42 }, { nulls = false })
+      assert.same(42, row.a)
+      assert.same(nil, row.ttl)
     end)
   end)
 

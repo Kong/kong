@@ -1659,6 +1659,10 @@ function Schema:process_auto_fields(data, context, nulls)
     end
   end
 
+  if self.ttl and context == "select" and data.ttl == null and not nulls then
+    data.ttl = nil
+  end
+
   --[[
   if context ~= "select" and self.translations then
     for _, translation in ipairs(self.translations) do
