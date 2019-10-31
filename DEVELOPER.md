@@ -1,5 +1,5 @@
 
-These are the steps we follow at Kong to set up a development environment.
+These are the steps we follow in Kong to set up a development environment.
 
 
 ## Virtual Machine
@@ -101,7 +101,7 @@ Fedora:
 
 ### OpenResty
 
-We have a build script that makes it easy to pull and compile specific versions of the needed components of the OpenResty system.  Currently these include OpenResty 1.15.8.2, OpenSSl 1.1.1d, LuaRocks 3.2.1 and PCRE 8.43;  the exact versions can also be found on the `.requirements` file of the main Kong repository (https://github.com/Kong/kong/blob/master/.requirements)
+We have a build script that makes it easy to pull and compile specific versions of the needed components of the OpenResty system.  Currently, these include OpenResty 1.15.8.2, OpenSSl 1.1.1d, LuaRocks 3.2.1 and PCRE 8.43;  the exact versions can also be found on the `.requirements` file of the main Kong repository (https://github.com/Kong/kong/blob/master/.requirements)
 
 These commands don't have to be performed as root, since all compilation is done within a subdirectory, and installs everything in the target specified by the `-p` argument (here the `build` directory).
 
@@ -117,7 +117,7 @@ These commands don't have to be performed as root, since all compilation is done
         --pcre 8.43
 ```
 
-After this task, we'd like to have the next steps use the built packages and for LuaRocks to install new packages inside this `build` directory.  For that, it's important to set the `$PATH` variable accordingly:
+After this task, we'd like to have the next steps to use the built packages and for LuaRocks to install new packages inside this `build` directory.  For that, it's important to set the `$PATH` variable accordingly:
 
 ```
     export PATH=$HOME/path/to/kong/openresty-build-tools/build/openresty/bin:$HOME/path/to/kong/openresty-build-tools/build/openresty/nginx/sbin:$HOME/path/to/kong/openresty-build-tools/build/luarocks/bin:$PATH
@@ -128,7 +128,7 @@ After this task, we'd like to have the next steps use the built packages and for
 
 The `$OPENSSL_DIR` variable is needed when compiling Kong, to make sure it uses the correct version of OpenSSL.
 
-You can add these lines to your `.profile` or `.bashrc` file.  Otherwise you could find yourself wondering where is everything!.
+You can add these lines to your `.profile` or `.bashrc` file.  Otherwise, you could find yourself wondering where is everything!.
 
 
 ### Databases
