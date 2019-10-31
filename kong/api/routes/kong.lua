@@ -119,7 +119,7 @@ return {
         return a:gsub("/", "\x00") < b:gsub("/", "\x00")
       end)
 
-      return kong.response.exit(200, endpoints)
+      return kong.response.exit(200, { data = endpoints })
     end
   },
   ["/schemas/:name"] = {
