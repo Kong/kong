@@ -8,7 +8,6 @@ describe("reports", function()
   describe("send()", function()
     lazy_setup(function()
       reports.toggle(true)
-      reports.create_counter(1)
     end)
 
     lazy_teardown(function()
@@ -83,7 +82,7 @@ describe("reports", function()
       package.loaded["kong.reports"] = nil
       reports = require "kong.reports"
       reports.toggle(true)
-      reports.create_counter(1)
+      reports._create_counter()
     end)
 
     describe("sends 'database'", function()
@@ -310,7 +309,7 @@ describe("reports", function()
       package.loaded["kong.reports"] = nil
       reports = require "kong.reports"
       reports.toggle(true)
-      reports.create_counter(1)
+      reports._create_counter()
     end)
 
     it("does not query Redis if not enabled", function()

@@ -450,5 +450,5 @@ return {
   send = send_report,
   retrieve_redis_version = retrieve_redis_version,
   -- exposed for unit test
-  create_counter = create_counter,
+  _create_counter = create_counter,
 }
