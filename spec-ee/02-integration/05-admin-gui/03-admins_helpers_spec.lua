@@ -547,6 +547,16 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("rbac token", function()
+      lazy_setup(function()
+        if _G.kong then
+          _G.kong.cache = helpers.get_cache(db)
+        else
+          _G.kong = { db = db,
+            cache = helpers.get_cache(db)
+          }
+        end
+      end)
+
       before_each(function()
         db:truncate("rbac_users")
         db:truncate("admins")
@@ -573,6 +583,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(200, res.code)
         assert.not_equal(admin.rbac_user.user_token, params.token)
       end)
+
       it("update_token - successful unhashed token", function()
         local admin = db.admins:insert({
           username = "kong_admin",
@@ -601,6 +612,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("Token reset successfully", res.body.message)
         assert.equal(200, res.code)
       end)
+
       it("update_token - cannot reuse an existing token", function()
         local admin = db.admins:insert({
           username = "an_admin_11",
@@ -617,6 +629,7 @@ for _, strategy in helpers.each_strategy() do
         local _, err = admins_helpers.update_token(admin, params)
         assert.equal("UNIQUE violation detected on '{\"user_token\"}'", err.fields.message)
       end)
+
       it("update_token - cannot use another user's token", function()
         local admin = db.admins:insert({
           username = "an_admin_12",
