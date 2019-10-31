@@ -35,6 +35,12 @@ return {
             required = true,
             default = false
           }, },
+          { authenticated_group_by = {
+            required = false,
+            type = "string",
+            one_of = {"CN", "DN"},
+            default = "CN"
+          }, },
         },
     }, },
   },

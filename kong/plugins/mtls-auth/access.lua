@@ -1,5 +1,6 @@
 --- Copyright 2019 Kong Inc.
-
+local utils = require "kong.tools.utils"
+local split = utils.split
 
 local _M = {}
 
@@ -255,6 +256,25 @@ local function ca_ids_cache_key(ca_ids)
     return ngx_md5("mtls:cas:" .. tb_concat(ca_ids, ':'))
 end
 
+local autheticate_group_by = {
+  ["DN"] = function(cn)
+    local group = {
+      ngx_var.ssl_client_s_dn
+    }
+    return group
+  end,
+  ["CN"] = function(cn)
+    if not cn then
+      return nil, "Certificate missing Common Name"
+    end
+
+    local group = {
+      cn
+    }
+    return group
+  end,
+}
+
 
 local function set_cert_headers(names)
   set_header("X-Client-Cert-DN", ngx_var.ssl_client_s_dn)
@@ -344,6 +364,14 @@ local function do_authentication(conf)
     kong.log.debug("names = ", tb_concat(names, ", "))
 
     if conf.skip_consumer_lookup then
+      if conf.consumer_id_by then
+        local group , err = autheticate_group_by[conf.authenticated_group_by](cn)
+        if not group then
+          return nil, err
+        end
+
+        ngx.ctx.autheticated_groups = group
+      end
       set_cert_headers(names)
       return true
     end
