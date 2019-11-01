@@ -79,6 +79,11 @@ build = {
     ["kong.tracing"] = "kong/tracing/init.lua",
     ["kong.tracing.strategies"] = "kong/tracing/strategies.lua",
 
+    ["kong.counters"] = "kong/counters/init.lua",
+    ["kong.counters.sales"] = "kong/counters/sales/init.lua",
+    ["kong.counters.sales.strategies.postgres"] = "kong/counters/sales/strategies/postgres/init.lua",
+    ["kong.counters.sales.strategies.cassandra"] = "kong/counters/sales/strategies/cassandra/init.lua",
+
     ["kong.enterprise_edition"] = "kong/enterprise_edition/init.lua",
     ["kong.enterprise_edition.admin.emails"] = "kong/enterprise_edition/admin/emails.lua",
     ["kong.enterprise_edition.admins_helpers"] = "kong/enterprise_edition/admins_helpers.lua",
@@ -188,6 +193,7 @@ build = {
     ["kong.api.routes.developers"] = "kong/api/routes/developers.lua",
     ["kong.api.routes.tags"] = "kong/api/routes/tags.lua",
     ["kong.api.routes.groups"] = "kong/api/routes/groups.lua",
+    ["kong.api.routes.license"] = "kong/api/routes/license.lua",
 
     ["kong.tools.cluster_ca"] = "kong/tools/cluster_ca.lua",
     ["kong.tools.dns"] = "kong/tools/dns.lua",
