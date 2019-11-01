@@ -632,7 +632,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("ldap-auth-advanced - authentication groups", function()
       local super_admin, read_only_admin, multiple_groups_admin, other_ws_admin
-
+      local skeleton_key = "passw2rd1111A$"
       lazy_setup(function()
         truncate_tables(db)
 
@@ -642,7 +642,7 @@ for _, strategy in helpers.each_strategy() do
           admin_gui_auth = "ldap-auth-advanced",
           admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           enforce_rbac = "on",
-          admin_gui_auth_conf = '{"attribute":"cn","base_dn":"cn=users,dc=ldap,dc=mashape,dc=com","bind_dn":"cn=ophelia,cn=users,dc=ldap,dc=mashape,dc=com","ldap_password":"passw2rd1111A$","cache_ttl":2,"header_type":"Basic","keepalive":60000,"ldap_host":"localhost","ldap_port":389,"start_tls":false,"timeout":10000,"verify_ldap_host":true}',
+          admin_gui_auth_conf = '{"attribute":"cn","base_dn":"cn=users,dc=ldap,dc=mashape,dc=com","bind_dn":"cn=ophelia,cn=users,dc=ldap,dc=mashape,dc=com","ldap_password":"'.. skeleton_key .. '","cache_ttl":2,"header_type":"Basic","keepalive":60000,"ldap_host":"localhost","ldap_port":389,"start_tls":false,"timeout":10000,"verify_ldap_host":true}',
           rbac_auth_header = 'Kong-Admin-Token',
           smtp_mock = true,
         }))
@@ -692,11 +692,11 @@ for _, strategy in helpers.each_strategy() do
           role = user_specified_role,
         }))
 
-        local another_ws = setup_ws_defaults(dao, db, 'another-one')
+        local ws2 = setup_ws_defaults(dao, db, 'ws2')
         other_ws_admin = admin(db, ws, 'Hamlet')
         local another_role = db.rbac_roles:insert({ name = "workspace-super-admin" })
-        post(client, "/another-one/rbac/roles/workspace-super-admin/endpoints", {
-          workspace = "another-one",
+        post(client, "/ws2/rbac/roles/workspace-super-admin/endpoints", {
+          workspace = "ws2",
           endpoint = "*",
           actions = "create,read,update,delete",
           negative = false,
@@ -705,8 +705,10 @@ for _, strategy in helpers.each_strategy() do
         assert(db.group_rbac_roles:insert({
           group = group3,
           rbac_role = { id = another_role.id },
-          workspace = another_ws,
+          workspace = ws2,
         }))
+
+        setup_ws_defaults(dao, db, 'ws3')
       end)
 
       lazy_teardown(function()
@@ -719,7 +721,7 @@ for _, strategy in helpers.each_strategy() do
       describe("groups - rbac roles mapped from ldap groups", function()
         it("read-only user - can login and only read resources", function()
           local cookie = get_admin_cookie_basic_auth(client, read_only_admin.username,
-                                                     'passw2rd1111A$')
+                                                     skeleton_key)
           local res = assert(client:send({
             method = "GET",
             path = "/userinfo",
@@ -767,7 +769,7 @@ for _, strategy in helpers.each_strategy() do
 
         it("super-admin user - can login and read/create resources", function()
           local cookie = get_admin_cookie_basic_auth(client, super_admin.username,
-                                                     'passw2rd1111A$')
+                                                     skeleton_key)
           local res = client:send {
             method = "GET",
             path = "/userinfo",
@@ -801,7 +803,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("super-admin user - user defined roles are applied", function()
-          local cookie = get_admin_cookie_basic_auth(client, super_admin.username, 'passw2rd1111A$')
+          local cookie = get_admin_cookie_basic_auth(client, super_admin.username, skeleton_key)
           local res = client:send {
             method = "GET",
             path = "/services",
@@ -816,7 +818,7 @@ for _, strategy in helpers.each_strategy() do
 
         it("groups with roles in another workspace are applied", function()
           local cookie = get_admin_cookie_basic_auth(client, other_ws_admin.username,
-                                                     'passw2rd1111A$')
+                                                     skeleton_key)
           local req = function (path)
             return assert(client:send({
               method = "GET",
@@ -832,19 +834,58 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.same({"test-group-3"}, json.groups)
+          assert.same({["ws2"] = {
+            ["*"] = {
+              actions = {
+                "delete",
+                "create",
+                "update",
+                "read"
+              },
+              negative = false
+            }
+          }}, json.permissions.endpoints)
+
 
           -- can only access entities in their workspace
           res = req("/services")
           assert.res_status(403, res)
 
-          res = req("/another-one/services")
+          res = req("/ws2/services")
+          assert.res_status(200, res)
+        end)
+
+        it("groups with '*' apply in multiple workspace", function()
+          local cookie = get_admin_cookie_basic_auth(client, super_admin.username,
+                                                     skeleton_key)
+          local req = function (path)
+            return assert(client:send({
+              method = "GET",
+              path = path,
+              headers = {
+                ["cookie"] = cookie,
+                ["Kong-Admin-User"] = super_admin.username,
+              }
+            }))
+          end
+
+          -- can only access entities in their workspace
+          local res = req("/default/kong")
+          assert.res_status(200, res)
+
+          res = req("/ws2/kong")
+          assert.res_status(200, res)
+
+          -- with no roles in this workspace, but still is super-admin, so they
+          -- should still have access
+          res = req("/ws3/kong")
           assert.res_status(200, res)
         end)
 
         it("user in multiple groups has all roles applied", function()
           local cookie = get_admin_cookie_basic_auth(client,
                                                     multiple_groups_admin.username,
-                                                    'passw2rd1111A$')
+                                                    skeleton_key)
           local req = function (path)
             return assert(client:send({
               method = "GET",

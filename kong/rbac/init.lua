@@ -1318,7 +1318,10 @@ function _M.load_rbac_ctx(dao_factory, ctx, rbac_user, groups)
   local _roles = {}
   local _entities_perms = {}
   local _endpoints_perms = {}
-  local group_roles, err = _M.get_groups_roles(dao_factory, groups)
+  local group_roles, err = workspaces.run_with_ws_scope({}, _M.get_groups_roles,
+                                                        kong.db,
+                                                        ngx.ctx.authenticated_groups)
+
   if err then
     kong.log.err("error getting groups roles", err)
     return kong.response.exit(500, { message = "An unexpected error occurred" })
