@@ -229,6 +229,45 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           assert.is_true(ok)
         end)
+
+        it("appends workspace on cacheable columns", function()
+          local c = db.consumers:insert({ username = "foobar" })
+
+          local res, err, query
+          if db.strategy == "postgres" then
+            query = "SELECT username FROM consumers WHERE id = '%s'"
+          elseif db.strategy == "cassandra" then
+            query = "SELECT username FROM consumers WHERE id = %s"
+          else
+            -- dbless?
+            return
+          end
+
+          res, err = db.connector:query(query:format(c.id))
+          assert.is_nil(err)
+          assert.same({ username = "default:foobar" }, res[1])
+          assert(db.consumers:delete({ id = c.id }))
+        end)
+
+        it("appends workspace on cacheable columns with colon", function()
+          local c = db.consumers:insert({ username = "http://foobar" })
+
+          local res, err, query
+          if db.strategy == "postgres" then
+            query = "SELECT username FROM consumers WHERE id = '%s'"
+          elseif db.strategy == "cassandra" then
+            query = "SELECT username FROM consumers WHERE id = %s"
+          else
+            -- dbless?
+            return
+          end
+
+          res, err = db.connector:query(query:format(c.id))
+          assert.is_nil(err)
+          assert.same({ username = "default:http://foobar" }, res[1])
+          assert(db.consumers:delete({ id = c.id }))
+        end)
+
       end)
 
       describe("update():", function()
@@ -290,6 +329,19 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           assert.is_true(ok)
         end)
+
+        it("does not mess up cacheable columns that contain colons", function()
+          local res, err
+          local c = bp.consumers:insert({ username = "foobar" })
+
+          c.username = "http://hello-world"
+          res, err = db.consumers:update({ id = c.id }, c)
+          assert.is_nil(err)
+          assert.same("http://hello-world", res.username)
+
+          db.consumers:delete(c)
+        end)
+
       end)
 
       describe("upsert():", function()
