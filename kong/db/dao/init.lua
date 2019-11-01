@@ -316,6 +316,7 @@ local function check_update(self, key, entity, options, name)
     end
 
     if rbw_entity then
+      workspaces.remove_ws_prefix(self.schema.name, rbw_entity)
       entity_to_update = self.schema:merge_values(entity_to_update, rbw_entity)
     else
       local err_t = name
@@ -324,8 +325,6 @@ local function check_update(self, key, entity, options, name)
       return nil, nil, tostring(err_t), err_t
     end
   end
-
-  workspaces.remove_ws_prefix(self.schema.name, entity_to_update)
 
   local ok, err, err_t = resolve_foreign(self, entity_to_update)
   if not ok then
@@ -1252,7 +1251,6 @@ function DAO:update(primary_key, entity, options)
     end
   end
 
-  workspaces.remove_ws_prefix(self.schema.name, rbw_entity)
   self:post_crud_event("update", row, rbw_entity, options)
 
   return row
