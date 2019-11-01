@@ -117,6 +117,7 @@ build = {
     ["kong.api.routes.certificates"] = "kong/api/routes/certificates.lua",
     ["kong.api.routes.snis"] = "kong/api/routes/snis.lua",
     ["kong.api.routes.tags"] = "kong/api/routes/tags.lua",
+    ["kong.api.routes.metadata"] = "kong/api/routes/metadata.lua",
 
     ["kong.status"] = "kong/status/init.lua",
 

@@ -16,6 +16,7 @@ return {
       "kong/api/routes/health.lua",
       "kong/api/routes/config.lua",
       "kong/api/routes/tags.lua",
+      "kong/api/routes/metadata.lua",
     },
     nodoc_files = {
       "kong/api/routes/cache.lua", -- FIXME should we document this?
@@ -387,6 +388,33 @@ return {
             }
             ```
           ]]
+        },
+      },
+    },
+    metadata = {
+      title = [[ Metadata ]],
+      description = [[ Developer-supplied data. ]],
+      ["/metadata/plugins/:name"] = {
+        GET = {
+          title = [[ A plugin's metadata. ]],
+          endpoint = [[<div class="endpoint get">/metadata/plugins/:name</div>]],
+          description = [[
+            Returns a JSON representation of the value returned by the `metadata.lua` module
+            in the named plugin directory.
+          ]],
+          response = [[
+            ```
+            HTTP 200 OK
+            ```
+
+            ```json
+            {
+              "name": "sample plugin",
+              "description": "Just a sample of what can be.",
+              "icon": "http://example.com/plugin-icon.png"
+            }
+            ```
+          ]],
         },
       },
     },
@@ -819,23 +847,6 @@ return {
                 ]
             }
             ```
-          ]]
-        }
-      },
-      ["/plugins/:name/metadata"] = {
-        GET = {
-          title = [[Retrieve plugin's custom metadata]],
-          description = [[Retrieve a JSON representation of Lua data in a `schema-meta.lua` module]],
-          endpoint = [[<div class="endpoint get">/plugins/meta/{plugin name}</div>]],
-          response = [[
-            ```
-            HTTP 200 OK
-            ```
-            ```json
-            {
-              "description": "This is what the plugin developer intends",
-              "icon": <url of a nice pic>
-            }
           ]]
         }
       },
