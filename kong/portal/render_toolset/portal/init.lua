@@ -44,9 +44,17 @@ local function get_all_specs()
       local readable_by = headmatter.readable_by
       local has_permissions = type(readable_by) == "table" and #readable_by > 0
       local auth_required = has_permissions or readable_by == "*"
-      local can_read = true
-      if auth_required then
+
+      -- if: file has roles or * and there is no authenticated developer - can't read
+      -- elseif: file has roles assigned to it, check permissions to determine can read
+      -- else: can read
+      local can_read
+      if auth_required and not next(developer) then
+        can_read = false
+      elseif has_permissions then
         can_read = permissions.can_read(developer, workspace.name, v.path)
+      else
+        can_read = true
       end
 
       if can_read and v.parsed then
@@ -81,7 +89,7 @@ local function get_specs_by_tag(_tag)
         if type(tag) == "table" then
           tag = tag.name
         end
-        
+
         if  string.lower(tag) == string.lower(_tag) then
           table.insert(filtered, spec)
         end
