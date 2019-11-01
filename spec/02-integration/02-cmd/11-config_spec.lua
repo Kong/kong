@@ -115,7 +115,7 @@ describe("kong config", function()
     local filename = helpers.make_yaml_file([[
       _format_version: "1.1"
       services:
-      - name: foo
+      - name: foobar
         host: example.com
         protocol: https
         _comment: my comment
@@ -332,6 +332,8 @@ describe("kong config", function()
     local consumer = bp.consumers:insert()
     local acls = bp.acls:insert({ consumer = consumer })
 
+    local keyauth = bp.keyauth_credentials:insert({ consumer = consumer, key = "hello" })
+
     assert(helpers.kong_exec("config db_export " .. filename, {
       prefix = helpers.test_conf.prefix,
     }))
@@ -354,6 +356,7 @@ describe("kong config", function()
       "_format_version",
       "acls",
       "consumers",
+      "keyauth_credentials",
       "plugins",
       "routes",
       "services",
@@ -395,6 +398,10 @@ describe("kong config", function()
     assert.equals(1, #yaml.acls)
     assert.equals(acls.group, yaml.acls[1].group)
     assert.equals(consumer.id, yaml.acls[1].consumer)
+
+    assert.equals(1, #yaml.keyauth_credentials)
+    assert.equals(keyauth.key, yaml.keyauth_credentials[1].key)
+    assert.equals(consumer.id, yaml.keyauth_credentials[1].consumer)
   end)
 
   it("#db config db_import works when foreign keys need to be resolved", function()
