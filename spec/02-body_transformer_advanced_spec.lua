@@ -383,7 +383,7 @@ describe("Plugin: response-transformer-advanced", function()
       body = body_transformer.replace_body(conf, original_body, 400)
       assert.same([[{"error": "server error"}]], body)
       body = body_transformer.replace_body(conf, original_body, 500)
-      assert.same(nil, body)
+      assert.same([[{"error": "error message with sensitive data"}]], body)
     end)
     it("doesn't replace entire body if response code doesn't match", function()
       local conf = {
@@ -394,9 +394,9 @@ describe("Plugin: response-transformer-advanced", function()
       }
       local original_body = [[{"error": "error message with sensitive data"}]]
       local body = body_transformer.replace_body(conf, original_body, 200)
-      assert.same(nil, body)
+      assert.same([[{"error": "error message with sensitive data"}]], body)
       body = body_transformer.replace_body(conf, original_body, 400)
-      assert.same(nil, body)
+      assert.same([[{"error": "error message with sensitive data"}]], body)
     end)
   end)
 

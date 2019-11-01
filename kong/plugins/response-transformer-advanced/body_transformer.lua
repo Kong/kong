@@ -108,12 +108,13 @@ function _M.is_json_body(content_type)
 end
 
 -- if resp_code is in allowed response codes (conf.replace.if_status),
--- return string specified in conf.replace.body; otherwise, return nil
+-- return string specified in conf.replace.body; otherwise, return resp_body
 function _M.replace_body(conf, resp_body, resp_code)
   local allowed_codes = conf.replace.if_status
   if not skip_transform(resp_code, allowed_codes) and conf.replace.body then
     return conf.replace.body
   end
+  return resp_body
 end
 
 function _M.transform_json_body(conf, buffered_data, resp_code)

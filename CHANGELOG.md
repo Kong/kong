@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixed
+
+- Fixed a bug where the plugin was returning an empty body in the response for status codes outside of those specified in `config.replace.if_status`. For example, if we specified a `config.replace.if_status=404` and a body `config.replace.body=test` and the status code was 200, the response would be empty.
+
 ## 0.3
 
 ### Added
