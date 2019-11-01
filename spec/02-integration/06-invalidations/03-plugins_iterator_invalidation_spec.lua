@@ -216,7 +216,9 @@ for _, strategy in helpers.each_strategy() do
           method = "PATCH",
           path   = "/plugins/" .. service_plugin_id,
           body   = {
-            ["config.resp_header_value"] = "2",
+            config = {
+              resp_header_value = "2"
+            }
           },
           headers = {
             ["Content-Type"] = "application/json",
