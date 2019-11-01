@@ -234,6 +234,7 @@ return {
                                                        kong.db,
                                                        ngx.ctx.authenticated_groups)
       roles = rbac.merge_roles(roles, group_roles)
+      ee_api.attach_workspaces_roles(self, roles)
 
       if err then
         log(ERR, "[userinfo] ", err)
@@ -261,7 +262,9 @@ return {
             return helpers.yield_error(err)
           end
           ws_dict[v.workspace_id] = true
-          self.workspaces[k] = ws
+          if ws then
+            self.workspaces[#self.workspaces + 1] = ws
+          end
         end
       end
     end,

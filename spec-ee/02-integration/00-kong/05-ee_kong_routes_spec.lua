@@ -293,11 +293,31 @@ describe("Admin API - ee-specific Kong routes", function()
         if err then
           ws = db.workspaces:select_by_name(ws_name)
         end
+
+        -- add a workspace and role to admin that admin is not "linked" in
+        local ws1, err = db.workspaces:insert({ name = "test-ws-1", }, { quiet = true })
+        if err then
+          ws1 = db.workspaces:select_by_name("test-ws-1")
+        end
+        local role1 = workspaces.run_with_ws_scope({ws1}, function ()
+          return db.rbac_roles:insert({ name = "hello" })
+        end)
+        assert(role1)
+
         ngx.ctx.workspaces = { ws }
 
         -- create the non-default admin
         local role = db.rbac_roles:insert({ name = "another-one" })
         local admin = admin(db, "test-ws", "dj-khaled", "another-one", "test42@konghq.com")
+
+        -- add a role that rbac_user is not "linked" to
+        workspaces.run_with_ws_scope({}, function ()
+          db.rbac_user_roles:insert({
+            user = { id = admin.rbac_user.id },
+            role = { id = role1.id },
+          })
+        end)
+
         admin.rbac_user = nil
         admin.status = enums.CONSUMERS.STATUS.APPROVED
         admin.updated_at = nil
@@ -340,8 +360,6 @@ describe("Admin API - ee-specific Kong routes", function()
         res = assert.res_status(200, res)
         local json = cjson.decode(res)
 
-        local user_workspaces = json.workspaces
-        json.workspaces = nil
         json.admin.updated_at = nil
 
         local expected = {
@@ -359,9 +377,13 @@ describe("Admin API - ee-specific Kong routes", function()
           },
         }
 
-        assert.same(expected, json)
-        assert.equal(1, #user_workspaces)
-        assert.equal("test-ws", user_workspaces[1].name)
+        assert.same(expected.admin, json.admin)
+        assert.same(expected.permissions, json.permissions)
+
+        -- includes workspace admin is not "linked" in
+        assert.equal(2, #json.workspaces)
+        assert.equal("test-ws", json.workspaces[1].name)
+        assert.equal("test-ws-1", json.workspaces[2].name)
 
         -- TODO: add this back once we can know the rbac_user.token of admin
         -- insert.

@@ -237,6 +237,29 @@ function _M.attach_consumer(self, consumer_id)
   self.consumer = consumer
 end
 
+function _M.attach_workspaces_roles(self, roles)
+  if not roles then
+    return
+  end
+
+  for k, role in ipairs(roles) do
+    local entities, err = kong.db.workspace_entities:select_all({
+      entity_id = role.id,
+      unique_field_name = "id",
+      entity_type = "rbac_roles",
+    })
+
+    if err then
+      kong.log.err("Error fetching workspaces for role: ", role.id, ": ", err)
+      return endpoints.handle_error()
+    end
+
+    for j, entity in ipairs(entities) do
+      self.workspace_entities[#self.workspace_entities + 1] = entity
+    end
+  end
+end
+
 
 function _M.attach_workspaces(self, consumer_id)
   local workspace_entities, err = kong.db.workspace_entities:select_all({
@@ -356,9 +379,9 @@ function _M.validate_password(password)
   if not password or password == "" then
     return kong.response.exit(400, { message = "password is required" })
   end
-  
+
   if config then
-    local _, err = ee_auth_helpers.check_password_complexity(password, 
+    local _, err = ee_auth_helpers.check_password_complexity(password,
                                                   nil, config)
 
     if err then
