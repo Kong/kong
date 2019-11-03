@@ -119,48 +119,6 @@ These commands don't have to be performed as root, since all compilation is done
 
 After this task, the following steps will use these built packages and LuaRocks will install new packages inside this `build` directory.  It is important to set the `$PATH` variable accordingly:
 
-Changes requested
-1 review requesting changes by reviewers with write access. 
-1 change requested
-All checks have passed
-2 successful checks
-
-continuous-integration/travis-ci/pr — The Travis CI build passed
-Details
-
-license/cla — Contributor License Agreement is signed.
-Details
-Merging is blocked
-Merging can be performed automatically once the requested changes are addressed.
- You’re not authorized to merge this pull request.
-@sakshamtaneja21
- 
- 
-Leave a comment
-
-Attach files by dragging & dropping, selecting or pasting them.
- ProTip! Add .patch or .diff to the end of URLs for Git’s plaintext views.
-Reviewers
-@levfishbluefish levfishbluefish
-Requested changes must be addressed to merge this pull request.
-
-Assignees
-No one assigned
-Labels
-None yet
-Projects
-None yet
-Milestone
-No milestone
-Notifications
-Customize
-You’re receiving notifications because you authored the thread.
-2 participants
-@sakshamtaneja21
-@levfishbluefish
- Allow edits from maintainers.
-
-
 ```
     export PATH=$HOME/path/to/kong/openresty-build-tools/build/openresty/bin:$HOME/path/to/kong/openresty-build-tools/build/openresty/nginx/sbin:$HOME/path/to/kong/openresty-build-tools/build/luarocks/bin:$PATH
     export OPENSSL_DIR=$HOME/path/to/kong/openresty-build-tools/build/openssl
