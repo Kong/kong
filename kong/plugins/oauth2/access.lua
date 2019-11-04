@@ -701,6 +701,8 @@ local function set_consumer(consumer, credential, token)
   kong.client.authenticate(consumer, credential)
 
   if credential then
+    set_header(constants.HEADERS.CREDENTIAL_CLIENT_ID, credential.client_id)
+
     if token.scope then
       set_header("x-authenticated-scope", token.scope)
     else
@@ -720,7 +722,8 @@ local function set_consumer(consumer, credential, token)
     clear_header("x-authenticated-scope")
     clear_header("x-authenticated-userid")
   end
-
+else
+  clear_header(constants.HEADERS.CREDENTIAL_CLIENT_ID)
 end
 
 local function do_authentication(conf)
