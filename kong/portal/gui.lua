@@ -142,6 +142,7 @@ app:match("/sitemap.xml", sitemap_handler)
 app:match("/:workspace_name/sitemap.xml", sitemap_handler)
 
 app:match("/:workspace_name(/*)", index_handler)
+app:match("/:workspace_name/", index_handler)
 app:match("/", index_handler)
 
 
