@@ -38,7 +38,6 @@ dependencies = {
   "lua-resty-mlcache == 2.4.0",
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 0.4",
-  "kong-plugin-kubernetes-sidecar-injector ~> 0.2",
   "kong-plugin-zipkin ~> 0.1",
   "kong-plugin-serverless-functions ~> 0.3",
   "kong-prometheus-plugin ~> 0.6",

@@ -1,6 +1,7 @@
 # Table of Contents
 
 
+- [2.0.0](#200)
 - [1.4.0](#140)
 - [1.3.0](#130)
 - [1.2.2](#122)
@@ -31,6 +32,21 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+## [2.0.0]
+
+> Released on
+
+### Changes
+
+#### Plugins
+
+  - As Service Mesh has been deprecated, kubernetes-sidecar-injector plugin
+    should not be used anymore and has been removed from bundled plugins.
+    [#5199](https://github.com/Kong/kong/pull/5199)
+
+
+[Back to TOC](#table-of-contents)
 
 ## [1.4.0]
 
