@@ -5,9 +5,6 @@ return {
   name = "short-circuit",
   fields = {
     {
-      run_on = typedefs.run_on { default = "all" }
-    },
-    {
       protocols = typedefs.protocols { default = {"http", "https", "tcp", "tls"} }
     },
     {

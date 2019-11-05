@@ -6,7 +6,6 @@ local utils        = require "kong.tools.utils"
 local Router       = require "kong.router"
 local balancer     = require "kong.runloop.balancer"
 local reports      = require "kong.reports"
-local mesh         = require "kong.runloop.mesh"
 local constants    = require "kong.constants"
 local singletons   = require "kong.singletons"
 local certificate  = require "kong.runloop.certificate"
@@ -36,12 +35,10 @@ local re_match     = ngx.re.match
 local re_find      = ngx.re.find
 local subsystem    = ngx.config.subsystem
 local clear_header = ngx.req.clear_header
-local starttls     = ngx.req.starttls -- luacheck: ignore
 local unpack       = unpack
 
 
 local ERR   = ngx.ERR
-local INFO  = ngx.INFO
 local WARN  = ngx.WARN
 local DEBUG = ngx.DEBUG
 local ERROR = ngx.ERROR
@@ -752,7 +749,6 @@ do
       port           = port,      -- final target port
       try_count      = 0,         -- retry counter
       tries          = {},        -- stores info per try
-      ssl_ctx        = kong.default_client_ssl_ctx, -- SSL_CTX* to use
       -- ip          = nil,       -- final target IP address
       -- balancer    = nil,       -- the balancer object, if any
       -- hostname    = nil,       -- hostname of the final target IP
@@ -953,43 +949,6 @@ return {
         return exit(500)
       end
 
-      local ssl_termination_ctx -- OpenSSL SSL_CTX to use for termination
-
-      local ssl_preread_alpn_protocols = var.ssl_preread_alpn_protocols
-      -- ssl_preread_alpn_protocols is a comma separated list
-      -- see https://trac.nginx.org/nginx/ticket/1616
-      if kong.configuration.service_mesh and ssl_preread_alpn_protocols and
-         ssl_preread_alpn_protocols:find(mesh.get_mesh_alpn(), 1, true) then
-        -- Is probably an incoming service mesh connection
-        -- terminate service-mesh Mutual TLS
-        ssl_termination_ctx = mesh.mesh_server_ssl_ctx
-        ctx.is_service_mesh_request = true
-      else
-        -- TODO: stream router should decide if TLS is terminated or not
-        -- XXX: for now, use presence of SNI to terminate.
-        local sni = var.ssl_preread_server_name
-        if sni then
-          log(DEBUG, "SNI: ", sni)
-
-          local err
-          ssl_termination_ctx, err = certificate.find_certificate(sni)
-          if not ssl_termination_ctx then
-            log(ERR, err)
-            return exit(ERROR)
-          end
-
-          -- TODO Fake certificate phase?
-
-          log(INFO, "attempting to terminate TLS")
-        end
-      end
-
-      -- Terminate TLS
-      if ssl_termination_ctx and not starttls(ssl_termination_ctx) then
-        -- errors are logged by nginx core
-        return exit(ERROR)
-      end
-
       local route = match_t.route
       local service = match_t.service
       local upstream_url_t = match_t.upstream_url_t
@@ -998,7 +957,7 @@ return {
         -----------------------------------------------------------------------
         -- Serviceless stream route
         -----------------------------------------------------------------------
-        local service_scheme = ssl_termination_ctx and "tls" or "tcp"
+        local service_scheme = "tcp"
         local service_host   = var.server_addr
 
         match_t.upstream_scheme = service_scheme
@@ -1033,10 +992,6 @@ return {
       -- the plugin(s) want to specify them (store the original)
       ctx.http_proxy_authorization = var.http_proxy_authorization
       ctx.http_te                  = var.http_te
-
-      if kong.configuration.service_mesh then
-        mesh.rewrite(ctx)
-      end
     end,
   },
   access = {

@@ -260,7 +260,6 @@ describe("declarative config: flatten", function()
               route = null,
               name = "http-log",
               enabled = true,
-              run_on = "first",
               protocols = { "grpc", "grpcs", "http", "https" },
               config = {
                 http_endpoint = "https://example.com",
@@ -282,7 +281,6 @@ describe("declarative config: flatten", function()
               route = null,
               name = "key-auth",
               enabled = true,
-              run_on = "first",
               protocols = { "grpc", "grpcs", "http", "https" },
               config = {
                 anonymous = null,
@@ -370,7 +368,6 @@ describe("declarative config: flatten", function()
               id = "UUID",
               name = "http-log",
               route = null,
-              run_on = "first",
               protocols = { "grpc", "grpcs", "http", "https" },
               service = {
                 id = "UUID"
@@ -393,7 +390,6 @@ describe("declarative config: flatten", function()
               route = {
                 id = "UUID"
               },
-              run_on = "first",
               protocols = { "grpc", "grpcs", "http", "https" },
               service = null
             },
@@ -519,7 +515,6 @@ describe("declarative config: flatten", function()
                 name = "basic-auth",
                 protocols = { "grpc", "grpcs", "http", "https" },
                 route = null,
-                run_on = "first",
                 service = {
                   id = "UUID"
                 },
@@ -542,7 +537,6 @@ describe("declarative config: flatten", function()
                 name = "http-log",
                 protocols = { "grpc", "grpcs", "http", "https" },
                 route = null,
-                run_on = "first",
                 service = {
                   id = "UUID"
                 },
@@ -562,7 +556,6 @@ describe("declarative config: flatten", function()
                 name = "key-auth",
                 protocols = { "grpc", "grpcs", "http", "https" },
                 route = null,
-                run_on = "first",
                 service = {
                   id = "UUID"
                 },
@@ -583,7 +576,6 @@ describe("declarative config: flatten", function()
                 name = "tcp-log",
                 protocols = { "grpc", "grpcs", "http", "https" },
                 route = null,
-                run_on = "first",
                 service = {
                   id = "UUID"
                 },
@@ -964,7 +956,6 @@ describe("declarative config: flatten", function()
                 route = {
                   id = "UUID"
                 },
-                run_on = "first",
                 service = null,
                 tags = null
               }, {
@@ -987,7 +978,6 @@ describe("declarative config: flatten", function()
                 route = {
                   id = "UUID"
                 },
-                run_on = "first",
                 service = null,
                 tags = null
               }, {
@@ -1007,7 +997,6 @@ describe("declarative config: flatten", function()
                 route = {
                   id = "UUID"
                 },
-                run_on = "first",
                 service = null,
                 tags = null
               }, {
@@ -1028,7 +1017,6 @@ describe("declarative config: flatten", function()
                 route = {
                   id = "UUID"
                 },
-                run_on = "first",
                 service = null,
                 tags = null
               } },

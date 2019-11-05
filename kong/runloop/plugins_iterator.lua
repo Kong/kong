@@ -98,19 +98,6 @@ local function load_configuration(ctx,
     return
   end
 
-  if plugin.run_on ~= "all" then
-    if ctx.is_service_mesh_request then
-      if plugin.run_on == "first" then
-        return
-      end
-
-    else
-      if plugin.run_on == "second" then
-        return
-      end
-    end
-  end
-
   local cfg = plugin.config or {}
 
   cfg.route_id    = plugin.route and plugin.route.id

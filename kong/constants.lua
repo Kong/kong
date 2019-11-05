@@ -98,7 +98,6 @@ return {
     "upstreams",
     "targets",
     "plugins",
-    "cluster_ca",
     "tags",
     "ca_certificates",
     consumers = true,

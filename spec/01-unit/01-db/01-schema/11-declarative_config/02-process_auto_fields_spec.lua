@@ -141,7 +141,6 @@ describe("declarative config: process_auto_fields", function()
               _ignore = { { foo = "bar" } },
               name = "key-auth",
               enabled = true,
-              run_on = "first",
               protocols = { "grpc", "grpcs", "http", "https" },
               config = {
                 hide_credentials = false,
@@ -155,7 +154,6 @@ describe("declarative config: process_auto_fields", function()
               _ignore = { { foo = "bar" } },
               name = "http-log",
               enabled = true,
-              run_on = "first",
               protocols = { "grpc", "grpcs", "http", "https" },
               config = {
                 http_endpoint = "https://example.com",
@@ -192,7 +190,6 @@ describe("declarative config: process_auto_fields", function()
               route = "foo",
               name = "key-auth",
               enabled = true,
-              run_on = "first",
               protocols = { "grpc", "grpcs", "http", "https" },
               config = {
                 hide_credentials = false,
@@ -206,7 +203,6 @@ describe("declarative config: process_auto_fields", function()
               consumer = "my-consumer",
               name = "http-log",
               enabled = true,
-              run_on = "first",
               protocols = { "grpc", "grpcs", "http", "https" },
               config = {
                 http_endpoint = "https://example.com",
@@ -302,7 +298,6 @@ describe("declarative config: process_auto_fields", function()
                     _ignore = { { foo = "bar" } },
                     name = "key-auth",
                     enabled = true,
-                    run_on = "first",
                     protocols = { "grpc", "grpcs", "http", "https" },
                     config = {
                       hide_credentials = false,
@@ -314,7 +309,6 @@ describe("declarative config: process_auto_fields", function()
                   {
                     name = "http-log",
                     enabled = true,
-                    run_on = "first",
                     protocols = { "grpc", "grpcs", "http", "https" },
                     config = {
                       http_endpoint = "https://example.com",
@@ -342,7 +336,6 @@ describe("declarative config: process_auto_fields", function()
                   {
                     name = "basic-auth",
                     enabled = true,
-                    run_on = "first",
                     protocols = { "grpc", "grpcs", "http", "https" },
                     config = {
                       hide_credentials = false,
@@ -351,7 +344,6 @@ describe("declarative config: process_auto_fields", function()
                   {
                     name = "tcp-log",
                     enabled = true,
-                    run_on = "first",
                     protocols = { "grpc", "grpcs", "http", "https" },
                     config = {
                       host = "127.0.0.1",
@@ -584,7 +576,6 @@ describe("declarative config: process_auto_fields", function()
                       {
                         name = "key-auth",
                         enabled = true,
-                        run_on = "first",
                         protocols = { "grpc", "grpcs", "http", "https" },
                         config = {
                           hide_credentials = false,
@@ -596,7 +587,6 @@ describe("declarative config: process_auto_fields", function()
                       {
                         name = "http-log",
                         enabled = true,
-                        run_on = "first",
                         protocols = { "grpc", "grpcs", "http", "https" },
                         config = {
                           http_endpoint = "https://example.com",
@@ -635,7 +625,6 @@ describe("declarative config: process_auto_fields", function()
                       {
                         name = "basic-auth",
                         enabled = true,
-                        run_on = "first",
                         protocols = { "grpc", "grpcs", "http", "https" },
                         config = {
                           hide_credentials = false,
@@ -644,7 +633,6 @@ describe("declarative config: process_auto_fields", function()
                       {
                         name = "tcp-log",
                         enabled = true,
-                        run_on = "first",
                         protocols = { "grpc", "grpcs", "http", "https" },
                         config = {
                           host = "127.0.0.1",

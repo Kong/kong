@@ -235,7 +235,6 @@ local function get_db_utils(strategy, tables, plugins)
     dcbp = nil
   else
     bp = assert(dc_blueprints.new(db))
-    bp.cluster_ca:insert()
     dcbp = bp
   end
 
@@ -1512,7 +1511,7 @@ local function kong_exec(cmd, env, pl_returns, env_vars)
   if not env.plugins then
     env.plugins = "bundled,dummy,cache,rewriter,error-handler-log," ..
                   "error-generator,error-generator-last," ..
-                  "short-circuit,short-circuit-last"
+                  "short-circuit"
   end
 
   -- build Kong environment variables
