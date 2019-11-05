@@ -51,7 +51,7 @@ Of those, this plugin currently uses:
   - `span.kind` (sent to Zipkin as "kind")
   - `http.method`
   - `http.status_code`
-  - `http.url`
+  - `http.path`
   - `error`
   - `peer.ipv4`
   - `peer.ipv6`

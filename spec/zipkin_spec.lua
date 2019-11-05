@@ -183,7 +183,7 @@ describe("integration tests with mock zipkin server [#" .. strategy .. "]", func
         request_tags["kong.node.id"] = nil
         assert.same({
           ["http.method"] = "GET",
-          ["http.url"] = url,
+          ["http.path"] = "/",
           ["http.status_code"] = "204", -- found (matches server status)
           lc = "kong"
         }, request_tags)
@@ -239,7 +239,7 @@ describe("integration tests with mock zipkin server [#" .. strategy .. "]", func
       request_tags["kong.node.id"] = nil
       assert.same({
         ["http.method"] = "GET",
-        ["http.url"] = url,
+        ["http.path"] = "/",
         ["http.status_code"] = "404", -- note that this was "not found"
         lc = "kong"
       }, request_tags)
