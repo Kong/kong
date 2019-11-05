@@ -577,6 +577,8 @@ function Kong.init_worker()
 
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_plugins_iterator(plugins_iterator, "init_worker")
+
+  ee.handlers.init_worker.after(ngx.ctx)
 end
 
 function Kong.ssl_certificate()
