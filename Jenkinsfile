@@ -52,7 +52,7 @@ pipeline {
     }
     stage('Build & Push Packages') {
       when {
-        expression { BRANCH_NAME ==~ /^release\/.*/ }
+        expression { BRANCH_NAME ==~ /^(release\/)?.*/ }
       }
       steps {
         parallel (
@@ -109,7 +109,7 @@ pipeline {
     }
     stage("Prepare Docker Kong EE") {
       when {
-        expression { BRANCH_NAME ==~ /^release\/.*/ }
+        expression { BRANCH_NAME ==~ /^(release\/)?.*/ }
       }
       steps {
         checkout([$class: 'GitSCM',
