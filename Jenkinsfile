@@ -36,7 +36,7 @@ pipeline {
     }
     stage('Prepare Kong Distributions') {
       when {
-        expression { BRANCH_NAME ==~ /^(release\/).*/}
+        expression { BRANCH_NAME ==~ /^(release\/)?.*/}
       }
       steps {
         echo "Kong version: $KONG_VERSION"
