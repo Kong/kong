@@ -74,7 +74,6 @@ local strings_set_record = {
 return {
   name = "request-transformer-advanced",
   fields = {
-    { run_on = typedefs.run_on_first },
     { config = {
         type = "record",
         fields = {
