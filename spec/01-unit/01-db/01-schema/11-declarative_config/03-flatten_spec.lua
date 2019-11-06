@@ -1359,7 +1359,8 @@ describe("declarative config: flatten", function()
                       tcp_failures = 0,
                       timeouts = 0
                     }
-                  }
+                  },
+                  threshold = 0
                 },
                 host_header = null,
                 id = "UUID",
@@ -1408,7 +1409,8 @@ describe("declarative config: flatten", function()
                       tcp_failures = 0,
                       timeouts = 0
                     }
-                  }
+                  },
+                  threshold = 0
                 },
                 host_header = null,
                 id = "UUID",

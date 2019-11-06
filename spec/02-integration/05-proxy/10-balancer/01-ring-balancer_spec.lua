@@ -190,6 +190,7 @@ local add_upstream
 local patch_upstream
 local get_upstream
 local get_upstream_health
+local get_balancer_health
 local post_target_address_health
 local get_router_version
 local add_target
@@ -254,6 +255,14 @@ do
 
   get_upstream_health = function(upstream_id, forced_port)
     local path = "/upstreams/" .. upstream_id .."/health"
+    local status, body = api_send("GET", path, nil, forced_port)
+    if status == 200 then
+      return body
+    end
+  end
+
+  get_balancer_health = function(upstream_id, forced_port)
+    local path = "/upstreams/" .. upstream_id .."/health?balancer_health=1"
     local status, body = api_send("GET", path, nil, forced_port)
     if status == 200 then
       return body
@@ -1072,7 +1081,8 @@ for _, strategy in helpers.each_strategy() do
                   tcp_failures = 0,
                   timeouts = 0
                 }
-              }
+              },
+              threshold = 0
             }
 
             local upstream_data = get_upstream(upstream_id)
@@ -1316,6 +1326,114 @@ for _, strategy in helpers.each_strategy() do
 
               assert.are.equal(requests - nfails, client_oks)
               assert.are.equal(nfails, client_fails)
+            end
+          end)
+
+          it("threshold for health checks", function()
+            local dns_mock_filename = helpers.test_conf.prefix .. "/dns_mock_records.lua"
+            finally(function()
+              os.remove(dns_mock_filename)
+            end)
+
+            local fixtures = {
+              dns_mock = helpers.dns_mock.new()
+            }
+            fixtures.dns_mock:A {
+              name = "health-threshold.test",
+              address = "127.0.0.1",
+            }
+            fixtures.dns_mock:A {
+              name = "health-threshold.test",
+              address = "127.0.0.2",
+            }
+            fixtures.dns_mock:A {
+              name = "health-threshold.test",
+              address = "127.0.0.3",
+            }
+            fixtures.dns_mock:A {
+              name = "health-threshold.test",
+              address = "127.0.0.4",
+            }
+
+            -- restart Kong
+            begin_testcase_setup_update(strategy, bp)
+            helpers.restart_kong({
+              database = strategy,
+              nginx_conf = "spec/fixtures/custom_nginx.template",
+              lua_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
+              db_update_frequency = 0.1,
+              stream_listen = "0.0.0.0:9100",
+              plugins = "bundled,fail-once-auth",
+            }, nil, fixtures)
+            end_testcase_setup(strategy, bp)
+            ngx.sleep(1)
+
+            local health_threshold = { 0, 25, 75, 99, 100 }
+            for i = 1, 5 do
+              -- configure healthchecks
+              begin_testcase_setup(strategy, bp)
+              local upstream_name, upstream_id = add_upstream(bp, {
+                healthchecks = healthchecks_config {
+                  passive = {
+                    unhealthy = {
+                      tcp_failures = 1,
+                    }
+                  },
+                  threshold = health_threshold[i],
+                }
+              })
+
+              add_target(bp, upstream_id, "health-threshold.test", 80, { weight = 25 })
+              end_testcase_setup(strategy, bp)
+
+              -- 100% healthy
+              post_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.1:80", "healthy")
+              post_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.2:80", "healthy")
+              post_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.3:80", "healthy")
+              post_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.4:80", "healthy")
+
+              local health = get_balancer_health(upstream_name)
+              assert.is.table(health)
+              assert.is.table(health.data)
+
+              if health_threshold[i] < 100 then
+                assert.equals("HEALTHY", health.data.health)
+              else
+                assert.equals("UNHEALTHY", health.data.health)
+              end
+
+              -- 75% healthy
+              post_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.1:80", "unhealthy")
+              health = get_balancer_health(upstream_name)
+              if health_threshold[i] < 75 then
+                assert.equals("HEALTHY", health.data.health)
+              else
+                assert.equals("UNHEALTHY", health.data.health)
+              end
+
+              -- 50% healthy
+              post_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.2:80", "unhealthy")
+              health = get_balancer_health(upstream_name)
+              if health_threshold[i] < 50 then
+                assert.equals("HEALTHY", health.data.health)
+              else
+                assert.equals("UNHEALTHY", health.data.health)
+              end
+
+              -- 25% healthy
+              post_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.3:80", "unhealthy")
+              health = get_balancer_health(upstream_name)
+              if health_threshold[i] < 25 then
+                assert.equals("HEALTHY", health.data.health)
+              else
+                assert.equals("UNHEALTHY", health.data.health)
+              end
+
+              -- 0% healthy
+              post_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.4:80", "unhealthy")
+              health = get_balancer_health(upstream_name)
+              assert.equals("UNHEALTHY", health.data.health)
+
             end
           end)
 
