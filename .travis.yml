@@ -53,7 +53,7 @@ env:
     - KONG_TEST_DATABASE=cassandra CASSANDRA=$CASSANDRA_LATEST TEST_SUITE=plugins
 
 install:
-  - git clone --single-branch https://$GITHUB_TOKEN:@github.com/Kong/kong-ci ../kong-ci
+  - git clone --single-branch https://$GITHUB_TOKEN:@github.com/Kong/kong-ci.git ../kong-ci
   - source ../kong-ci/setup_plugin_env.sh
 
 script:
