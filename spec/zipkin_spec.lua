@@ -173,9 +173,8 @@ describe("integration tests with mock zipkin server [#" .. strategy .. "]", func
         local spans = cjson.decode((assert(stream:get_body_as_string())))
         assert.equals(3, #spans)
         local balancer_span, proxy_span, request_span = spans[1], spans[2], spans[3]
-        local url = string.format("http://mock-zipkin-route:%d/", proxy_port)
         -- common assertions for request_span and proxy_span
-        assert_span_invariants(request_span, proxy_span, "GET " .. url)
+        assert_span_invariants(request_span, proxy_span, "GET")
 
         -- specific assertions for request_span
         local request_tags = request_span.tags
@@ -229,9 +228,8 @@ describe("integration tests with mock zipkin server [#" .. strategy .. "]", func
       local spans = cjson.decode((assert(stream:get_body_as_string())))
       assert.equals(2, #spans)
       local proxy_span, request_span = spans[1], spans[2]
-      local url = string.format("http://0.0.0.0:%d/", proxy_port)
       -- common assertions for request_span and proxy_span
-      assert_span_invariants(request_span, proxy_span, "GET " .. url)
+      assert_span_invariants(request_span, proxy_span, "GET")
 
       -- specific assertions for request_span
       local request_tags = request_span.tags

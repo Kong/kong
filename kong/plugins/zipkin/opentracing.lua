@@ -75,7 +75,7 @@ if subsystem == "http" then
     local method = req.get_method()
     local forwarded_ip = kong.client.get_forwarded_ip()
 
-    local request_span = tracer:start_span(method .. " " .. path, {
+    local request_span = tracer:start_span(method, {
       child_of = wire_context,
       start_timestamp = ngx.req.start_time(),
       tags = {
