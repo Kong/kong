@@ -62,6 +62,7 @@ install:
   - cd kong-ce
 
 script:
+  - cd .. && luacheck . && cd kong-ce
   - bin/busted $BUSTED_ARGS ../spec
 
 cache:

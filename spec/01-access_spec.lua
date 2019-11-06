@@ -179,7 +179,7 @@ for _, strategy in helpers.each_strategy() do
         local cookie_name = utils.split(cookie, "=")[1]
         assert.equal("session", cookie_name)
 
-        -- e.g. ["Set-Cookie"] = 
+        -- e.g. ["Set-Cookie"] =
         --    "da_cookie=m1EL96jlDyQztslA4_6GI20eVuCmsfOtd6Y3lSo4BTY.|15434724
         --    06|U5W4A6VXhvqvBSf4G_v0-Q..|DFJMMSR1HbleOSko25kctHZ44oo.; Path=/
         --    ; SameSite=Lax; Secure; HttpOnly"

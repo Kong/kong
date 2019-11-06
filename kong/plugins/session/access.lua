@@ -1,5 +1,5 @@
 local constants = require "kong.constants"
-local session = require "kong.plugins.session.session"
+local kong_session = require "kong.plugins.session.session"
 local kong = kong
 
 local _M = {}
@@ -51,7 +51,7 @@ end
 
 
 function _M.execute(conf)
-  local s = session.open_session(conf)
+  local s = kong_session.open_session(conf)
 
   if not s.present then
     kong.log.debug("session not present")
@@ -59,14 +59,14 @@ function _M.execute(conf)
   end
 
   -- check if incoming request is trying to logout
-  if session.logout(conf) then
+  if kong_session.logout(conf) then
     kong.log.debug("session logging out")
     s:destroy()
     return kong.response.exit(200)
   end
 
 
-  local cid, credential, groups = session.retrieve_session_data(s)
+  local cid, credential, groups = kong_session.retrieve_session_data(s)
 
   local consumer_cache_key = kong.db.consumers:cache_key(cid)
   local consumer, err = kong.cache:get(consumer_cache_key, nil,
