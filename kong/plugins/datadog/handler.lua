@@ -6,13 +6,12 @@ local ngx_log       = ngx.log
 local ngx_timer_at  = ngx.timer.at
 local string_gsub   = string.gsub
 local pairs         = pairs
-local string_format = string.format
 local NGX_ERR       = ngx.ERR
 
 
 local DatadogHandler    = {}
 DatadogHandler.PRIORITY = 10
-DatadogHandler.VERSION = "2.0.0"
+DatadogHandler.VERSION = "3.0.0"
 
 
 local get_consumer_id = {
@@ -28,58 +27,18 @@ local get_consumer_id = {
 }
 
 
-local metrics = {
-  status_count = function (service_name, message, metric_config, logger)
-    local fmt = string_format("%s.request.status", service_name,
-                       message.response.status)
-
-    logger:send_statsd(string_format("%s.%s", fmt, message.response.status),
-                       1, logger.stat_types.counter,
-                       metric_config.sample_rate, metric_config.tags)
-
-    logger:send_statsd(string_format("%s.%s", fmt, "total"), 1,
-                       logger.stat_types.counter,
-                       metric_config.sample_rate, metric_config.tags)
-  end,
-  unique_users = function (service_name, message, metric_config, logger)
-    local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
-    local consumer_id     = get_consumer_id(message.consumer)
-
-    if consumer_id then
-      local stat = string_format("%s.user.uniques", service_name)
-
-      logger:send_statsd(stat, consumer_id, logger.stat_types.set,
-                         nil, metric_config.tags)
+local function compose_tags(service_name, status, consumer_id, tags)
+  local result = {"name:" ..service_name, "status:"..status}
+  if consumer_id ~= nil then
+    table.insert(result, "consumer:" ..consumer_id)
+  end
+  if tags ~= nil then
+    for _, v in pairs(tags) do
+      table.insert(result, v)
     end
-  end,
-  request_per_user = function (service_name, message, metric_config, logger)
-    local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
-    local consumer_id     = get_consumer_id(message.consumer)
-
-    if consumer_id then
-      local stat = string_format("%s.user.%s.request.count", service_name, consumer_id)
-
-      logger:send_statsd(stat, 1, logger.stat_types.counter,
-                         metric_config.sample_rate, metric_config.tags)
-    end
-  end,
-  status_count_per_user = function (service_name, message, metric_config, logger)
-    local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
-    local consumer_id     = get_consumer_id(message.consumer)
-
-    if consumer_id then
-      local fmt = string_format("%s.user.%s.request.status", service_name, consumer_id)
-
-      logger:send_statsd(string_format("%s.%s", fmt, message.response.status),
-                         1, logger.stat_types.counter,
-                         metric_config.sample_rate, metric_config.tags)
-
-      logger:send_statsd(string_format("%s.%s", fmt,  "total"),
-                         1, logger.stat_types.counter,
-                         metric_config.sample_rate, metric_config.tags)
-    end
-  end,
-}
+  end
+  return result
+end
 
 
 local function log(premature, conf, message)
@@ -92,12 +51,12 @@ local function log(premature, conf, message)
                            "%.", "_")
 
   local stat_name  = {
-    request_size     = name .. ".request.size",
-    response_size    = name .. ".response.size",
-    latency          = name .. ".latency",
-    upstream_latency = name .. ".upstream_latency",
-    kong_latency     = name .. ".kong_latency",
-    request_count    = name .. ".request.count",
+    request_size     = "request.size",
+    response_size    = "response.size",
+    latency          = "latency",
+    upstream_latency = "upstream_latency",
+    kong_latency     = "kong_latency",
+    request_count    = "request.count",
   }
   local stat_value = {
     request_size     = message.request.size,
@@ -115,21 +74,18 @@ local function log(premature, conf, message)
   end
 
   for _, metric_config in pairs(conf.metrics) do
-    local metric = metrics[metric_config.name]
+    local stat_name       = stat_name[metric_config.name]
+    local stat_value      = stat_value[metric_config.name]
+    local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
+    local consumer_id     = get_consumer_id and get_consumer_id(message.consumer) or nil
+    local tags            = compose_tags(name, message.response.status, consumer_id, metric_config.tags)
 
-    if metric then
-      metric(name, message, metric_config, logger)
-
-    else
-      local stat_name  = stat_name[metric_config.name]
-      local stat_value = stat_value[metric_config.name]
-
+    if stat_name ~= nil then
       logger:send_statsd(stat_name, stat_value,
                          logger.stat_types[metric_config.stat_type],
-                         metric_config.sample_rate, metric_config.tags)
+                         metric_config.sample_rate, tags)
     end
   end
-
   logger:close_socket()
 end
 
