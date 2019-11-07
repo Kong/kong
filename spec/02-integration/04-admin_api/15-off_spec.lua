@@ -803,7 +803,7 @@ describe("Admin API #off with Unique Foreign #unique", function()
 
     mocker.setup(finally, {
       kong = {
-        cache = cache,
+        core_cache = cache,
       }
     })
 
@@ -827,7 +827,7 @@ describe("Admin API #off with Unique Foreign #unique", function()
           end
 
           if n == "kong" then
-            v.cache = cache
+            v.core_cache = cache
             break
           end
 

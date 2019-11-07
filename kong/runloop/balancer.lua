@@ -108,7 +108,7 @@ do
 
   get_upstream_by_id = function(upstream_id)
     local upstream_cache_key = "balancer:upstreams:" .. upstream_id
-    return singletons.cache:get(upstream_cache_key, nil,
+    return singletons.core_cache:get(upstream_cache_key, nil,
                                 load_upstream_into_memory, upstream_id)
   end
 end
@@ -149,7 +149,7 @@ do
   -- @return The target history array, with target entity tables.
   fetch_target_history = function(upstream)
     local targets_cache_key = "balancer:targets:" .. upstream.id
-    return singletons.cache:get(targets_cache_key, nil,
+    return singletons.core_cache:get(targets_cache_key, nil,
                                 load_targets_into_memory, upstream.id)
   end
 end
@@ -390,8 +390,8 @@ do
   end
 
   local function invalidate_upstream_caches(upstream_id)
-    singletons.cache:invalidate_local("balancer:upstreams:" .. upstream_id)
-    singletons.cache:invalidate_local("balancer:targets:" .. upstream_id)
+    singletons.core_cache:invalidate_local("balancer:upstreams:" .. upstream_id)
+    singletons.core_cache:invalidate_local("balancer:targets:" .. upstream_id)
   end
 
   ------------------------------------------------------------------------------
@@ -540,7 +540,7 @@ do
   -- @return The upstreams dictionary (a map with upstream names as string keys
   -- and upstream entity tables as values), or nil+error
   get_all_upstreams = function()
-    local upstreams_dict, err = singletons.cache:get("balancer:upstreams", opts,
+    local upstreams_dict, err = singletons.core_cache:get("balancer:upstreams", opts,
                                                 load_upstreams_dict_into_memory)
     if err then
       return nil, err
@@ -611,7 +611,7 @@ end
 
 
 local function do_target_event(operation, upstream_id, upstream_name)
-  singletons.cache:invalidate_local("balancer:targets:" .. upstream_id)
+  singletons.core_cache:invalidate_local("balancer:targets:" .. upstream_id)
 
   local upstream = get_upstream_by_id(upstream_id)
   if not upstream then
@@ -752,7 +752,7 @@ end
 local function do_upstream_event(operation, upstream_id, upstream_name)
   if operation == "create" then
 
-    singletons.cache:invalidate_local("balancer:upstreams")
+    singletons.core_cache:invalidate_local("balancer:upstreams")
 
     local upstream = get_upstream_by_id(upstream_id)
     if not upstream then
@@ -768,9 +768,9 @@ local function do_upstream_event(operation, upstream_id, upstream_name)
   elseif operation == "delete" or operation == "update" then
 
     if singletons.db.strategy ~= "off" then
-      singletons.cache:invalidate_local("balancer:upstreams")
-      singletons.cache:invalidate_local("balancer:upstreams:" .. upstream_id)
-      singletons.cache:invalidate_local("balancer:targets:"   .. upstream_id)
+      singletons.core_cache:invalidate_local("balancer:upstreams")
+      singletons.core_cache:invalidate_local("balancer:upstreams:" .. upstream_id)
+      singletons.core_cache:invalidate_local("balancer:targets:"   .. upstream_id)
     end
 
     local balancer = balancers[upstream_id]

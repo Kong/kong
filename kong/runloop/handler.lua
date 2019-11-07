@@ -168,6 +168,7 @@ local function register_events()
   -- initialize local local_events hooks
   local db             = kong.db
   local cache          = kong.cache
+  local core_cache     = kong.core_cache
   local worker_events  = kong.worker_events
   local cluster_events = kong.cluster_events
 
@@ -193,6 +194,7 @@ local function register_events()
 
     if cache_key then
       cache:invalidate(cache_key)
+      core_cache:invalidate(cache_key)
     end
 
     -- if we had an update, but the cache key was part of what was updated,
@@ -202,6 +204,7 @@ local function register_events()
       cache_key = db[data.schema.name]:cache_key(data.old_entity)
       if cache_key then
         cache:invalidate(cache_key)
+        core_cache:invalidate(cache_key)
       end
     end
 
@@ -237,7 +240,7 @@ local function register_events()
 
   worker_events.register(function()
     log(DEBUG, "[events] Route updated, invalidating router")
-    cache:invalidate("router:version")
+    core_cache:invalidate("router:version")
   end, "crud", "routes")
 
 
@@ -250,14 +253,14 @@ local function register_events()
       -- ditto for deletion: if a Service if being deleted, it is
       -- only allowed because no Route is pointing to it anymore.
       log(DEBUG, "[events] Service updated, invalidating router")
-      cache:invalidate("router:version")
+      core_cache:invalidate("router:version")
     end
   end, "crud", "services")
 
 
   worker_events.register(function(data)
     log(DEBUG, "[events] Plugin updated, invalidating plugins iterator")
-    cache:invalidate("plugins_iterator:version")
+    core_cache:invalidate("plugins_iterator:version")
   end, "crud", "plugins")
 
 
@@ -268,14 +271,14 @@ local function register_events()
     log(DEBUG, "[events] SNI updated, invalidating cached certificates")
     local sni = data.old_entity or data.entity
     local sni_wild_pref, sni_wild_suf = certificate.produce_wild_snis(sni.name)
-    cache:invalidate("snis:" .. sni.name)
+    core_cache:invalidate("snis:" .. sni.name)
 
     if sni_wild_pref then
-      cache:invalidate("snis:" .. sni_wild_pref)
+      core_cache:invalidate("snis:" .. sni_wild_pref)
     end
 
     if sni_wild_suf then
-      cache:invalidate("snis:" .. sni_wild_suf)
+      core_cache:invalidate("snis:" .. sni_wild_suf)
     end
   end, "crud", "snis")
 
@@ -292,7 +295,7 @@ local function register_events()
       end
 
       local cache_key = "certificates:" .. sni.certificate.id
-      cache:invalidate(cache_key)
+      core_cache:invalidate(cache_key)
     end
   end, "crud", "certificates")
 
@@ -424,7 +427,7 @@ local function register_events()
 
   if db.strategy == "off" then
     worker_events.register(function()
-      cache:flip()
+      core_cache:flip()
     end, "declarative", "flip_config")
   end
 end
@@ -440,8 +443,8 @@ end
 -- or an error happened).
 -- @returns error message as a second return value in case of failure/error
 local function rebuild(name, callback, version, opts)
-  local current_version, err = kong.cache:get(name .. ":version", TTL_ZERO,
-                                              utils.uuid)
+  local current_version, err = kong.core_cache:get(name .. ":version", TTL_ZERO,
+                                                   utils.uuid)
   if err then
     return nil, "failed to retrieve " .. name .. " version: " .. err
   end
@@ -469,7 +472,7 @@ do
 
 
   update_plugins_iterator = function()
-    local version, err = kong.cache:get("plugins_iterator:version", TTL_ZERO,
+    local version, err = kong.core_cache:get("plugins_iterator:version", TTL_ZERO,
                                         utils.uuid)
     if err then
       return nil, "failed to retrieve plugins iterator version: " .. err
@@ -522,11 +525,11 @@ end
 
 
 do
-  -- Given a protocol, return the subsystem that handles it
   local router
   local router_version
 
 
+  -- Given a protocol, return the subsystem that handles it
   local function should_process_route(route)
     for _, protocol in ipairs(route.protocols) do
       if SUBSYSTEMS[protocol] == subsystem then
@@ -577,13 +580,13 @@ do
 
     local err
 
-    -- kong.cache is not available on init phase
-    if kong.cache then
+    -- kong.core_cache is available, not in init phase
+    if kong.core_cache then
       local cache_key = db.services:cache_key(service_pk.id)
-      service, err = kong.cache:get(cache_key, TTL_ZERO,
+      service, err = kong.core_cache:get(cache_key, TTL_ZERO,
                                     load_service_from_db, service_pk)
 
-    else -- init phase, not present on init cache
+    else -- init phase, kong.core_cache not available
 
       -- A new service/route has been inserted while the initial route
       -- was being created, on init (perhaps by a different Kong node).
@@ -618,10 +621,11 @@ do
     local routes, i = {}, 0
 
     local err
-    -- The router is initially created on init phase, where kong.cache is still not ready
-    -- For those cases, use a plain Lua table as a cache instead
+    -- The router is initially created on init phase, where kong.core_cache is
+    -- still not ready. For those cases, use a plain Lua table as a cache
+    -- instead
     local services_init_cache = {}
-    if not kong.cache then
+    if not kong.core_cache then
       services_init_cache, err = build_services_init_cache(db)
       if err then
         services_init_cache = {}
@@ -661,7 +665,9 @@ do
       router_version = version
     end
 
+    -- LEGACY - singletons module is deprecated
     singletons.router = router
+    -- /LEGACY
 
     return true
   end
@@ -671,7 +677,7 @@ do
     -- we might not need to rebuild the router (if we were not
     -- the first request in this process to enter this code path)
     -- check again and rebuild only if necessary
-    local version, err = kong.cache:get("router:version", TTL_ZERO, utils.uuid)
+    local version, err = kong.core_cache:get("router:version", TTL_ZERO, utils.uuid)
     if err then
       return nil, "failed to retrieve router version: " .. err
     end
@@ -816,14 +822,14 @@ end
 
 
 local function set_init_versions_in_cache()
-  local ok, err = kong.cache:get("router:version", TTL_ZERO, function()
+  local ok, err = kong.core_cache:get("router:version", TTL_ZERO, function()
     return "init"
   end)
   if not ok then
     return nil, "failed to set router version in cache: " .. tostring(err)
   end
 
-  local ok, err = kong.cache:get("plugins_iterator:version", TTL_ZERO, function()
+  local ok, err = kong.core_cache:get("plugins_iterator:version", TTL_ZERO, function()
     return "init"
   end)
   if not ok then
