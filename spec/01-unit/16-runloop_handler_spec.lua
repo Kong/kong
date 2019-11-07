@@ -41,7 +41,7 @@ local function setup_it_block()
       db = {
         strategy = "dummy",
       },
-      cache = {
+      core_cache = {
         _cache = my_cache,
         get = function(_, k)
           return my_cache[k] or "1"
@@ -192,7 +192,7 @@ describe("runloop handler", function()
       local latest_router
 
       local build_router_spy = spy.new(function()
-        handler._set_router_version(kong.cache:get("router:version"))
+        handler._set_router_version(kong.core_cache:get("router:version"))
         latest_router = {
           exec = function()
             return nil
@@ -211,7 +211,7 @@ describe("runloop handler", function()
 
       local saved_router = latest_router
 
-      kong.cache._cache["router:version"] = "new_version"
+      kong.core_cache._cache["router:version"] = "new_version"
 
       handler.access.before({})
 
@@ -230,7 +230,7 @@ describe("runloop handler", function()
       local latest_router
 
       local build_router_spy = spy.new(function()
-        handler._set_router_version(kong.cache:get("router:version"))
+        handler._set_router_version(kong.core_cache:get("router:version"))
         latest_router = {
           exec = function()
             return nil

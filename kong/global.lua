@@ -158,6 +158,7 @@ do
     end
 
     return kong_cache.new {
+      shm_name          = "kong_db_cache",
       cluster_events    = cluster_events,
       worker_events     = worker_events,
       propagation_delay = kong_config.db_update_propagation,
@@ -172,6 +173,30 @@ do
     }
   end
 
+
+  function _GLOBAL.init_core_cache(kong_config, cluster_events, worker_events)
+    local db_cache_ttl = kong_config.db_cache_ttl
+    local cache_pages = 1
+    if kong_config.database == "off" then
+      db_cache_ttl = 0
+      cache_pages = 2
+    end
+
+    return kong_cache.new {
+      shm_name          = "kong_core_db_cache",
+      cluster_events    = cluster_events,
+      worker_events     = worker_events,
+      propagation_delay = kong_config.db_update_propagation,
+      ttl               = db_cache_ttl,
+      neg_ttl           = db_cache_ttl,
+      resurrect_ttl     = kong_config.resurrect_ttl,
+      cache_pages       = cache_pages,
+      resty_lock_opts   = {
+        exptime = 10,
+        timeout = 5,
+      },
+    }
+  end
 end
 
 

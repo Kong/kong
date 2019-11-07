@@ -156,7 +156,7 @@ end
 
 
 local function get_certificate(pk, sni_name)
-  return kong.cache:get("certificates:" .. pk.id,
+  return kong.core_cache:get("certificates:" .. pk.id,
                         get_certificate_opts, fetch_certificate,
                         pk, sni_name)
 end
@@ -182,7 +182,7 @@ local function find_certificate(sni)
     bulk:add("snis:" .. sni_wild_suf, nil, fetch_sni, sni_wild_suf)
   end
 
-  local res, err = kong.cache:get_bulk(bulk)
+  local res, err = kong.core_cache:get_bulk(bulk)
   if err then
     return nil, err
   end
