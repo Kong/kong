@@ -1758,6 +1758,12 @@ return {
               `config`<br>**required** | The config data (in YAML or JSON format) to be loaded.
             ]],
 
+            request_query = [[
+              Attributes | Description
+              ---:| ---
+              `check_hash`<br>*optional* | If set to 1, Kong will compare the hash of the input config data against that of the previous one. If the configuration is identical, it will not reload it and will return HTTP 304.
+            ]],
+
             description = [[
               This endpoint allows resetting a DB-less Kong with a new
               declarative configuration data file. All previous contents
