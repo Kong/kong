@@ -1,3 +1,8 @@
+## v1.2.5
+
+- Enable db-less & declarative mode for OpenID Connect plugin
+
+
 ## v1.2.4
 
 - Fix issue when discovery did not return issuer information, and which could lead
