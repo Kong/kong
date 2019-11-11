@@ -1052,15 +1052,15 @@ return {
         GET = {
           title = [[Show Upstream health for node]],
           description = [[
-            Displays the health status for all Targets of a given Upstream, according to
-            the perspective of a specific Kong node. Note that, being node-specific
-            information, making this same request to different nodes of the Kong cluster
-            may produce different results. For example, one specific node of the Kong
-            cluster may be experiencing network issues, causing it to fail to connect to
-            some Targets: these Targets will be marked as unhealthy by that node
-            (directing traffic from this node to other Targets that it can successfully
-            reach), but healthy to all others Kong nodes (which have no problems using that
-            Target).
+            Displays the health status for all Targets of a given Upstream, or for
+            the whole Upstream, according to the perspective of a specific Kong node.
+            Note that, being node-specific information, making this same request
+            to different nodes of the Kong cluster may produce different results.
+            For example, one specific node of the Kong cluster may be experiencing
+            network issues, causing it to fail to connect to some Targets: these
+            Targets will be marked as unhealthy by that node (directing traffic from
+            this node to other Targets that it can successfully reach), but healthy
+            to all others Kong nodes (which have no problems using that Target).
 
             The `data` field of the response contains an array of Target objects.
             The health for each Target is returned in its `health` field:
@@ -1078,6 +1078,11 @@ return {
               (circuit breakers) or [manually](#set-target-as-unhealthy),
               its status is displayed as `UNHEALTHY`. The load balancer is not directing
               any traffic to this Target via this Upstream.
+
+            When the request query parameter `balancer_health` is set to `1`, the
+            `data` field of the response refers to the whole Upstream, and its `health`
+            attribute is defined by the state of all of Upstream's Targets, according
+            to the field [health checker's threshold][healthchecks.threshold].
           ]],
           endpoint = [[
             <div class="endpoint get">/upstreams/{name or id}/health/</div>
@@ -1085,6 +1090,11 @@ return {
             Attributes | Description
             ---:| ---
             `name or id`<br>**required** | The unique identifier **or** the name of the Upstream for which to display Target health.
+          ]],
+          request_query = [[
+            Attributes | Description
+            ---:| ---
+            `balancer_health`<br>*optional* | If set to 1, Kong will return the health status of the whole Upstream.
           ]],
           response = [[
             ```
@@ -1113,6 +1123,22 @@ return {
                         "weight": 200
                     }
                 ]
+            }
+            ```
+
+            If `balancer_health=1`:
+            ```
+            HTTP 200 OK
+            ```
+
+            ```json
+            {
+                "data": {
+                    "health": "HEALTHY",
+                    "id": "07131005-ba30-4204-a29f-0927d53257b4"
+                },
+                "next": null,
+                "node_id": "cbb297c0-14a9-46bc-ad91-1d0ef9b42df9"
             }
             ```
           ]],
@@ -1153,6 +1179,7 @@ return {
         ["healthchecks.passive.unhealthy.tcp_failures"] = { description = [[Number of TCP failures in proxied traffic to consider a target unhealthy, as observed by passive health checks.]] },
         ["healthchecks.passive.unhealthy.timeouts"] = { description = [[Number of timeouts in proxied traffic to consider a target unhealthy, as observed by passive health checks.]] },
         ["healthchecks.passive.unhealthy.http_failures"] = { description = [[Number of HTTP failures in proxied traffic (as defined by `healthchecks.passive.unhealthy.http_statuses`) to consider a target unhealthy, as observed by passive health checks.]] },
+        ["healthchecks.threshold"] = { description = [[The minimum percentage of the upstream's targets' weight that must be available for the whole upstream to be considered healthy.]] },
         tags = {
           description = [[
             An optional set of strings associated with the Upstream, for grouping and filtering.

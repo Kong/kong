@@ -364,4 +364,14 @@ function _TARGETS:post_health(upstream_pk, target, address, is_healthy)
 end
 
 
+function _TARGETS:get_balancer_health(upstream_pk)
+  local health_info, err = balancer.get_balancer_health(upstream_pk.id)
+  if err then
+    ngx.log(ngx.ERR, "failed getting upstream health: ", err)
+  end
+
+  return health_info
+end
+
+
 return _TARGETS
