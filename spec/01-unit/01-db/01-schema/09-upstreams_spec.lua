@@ -275,9 +275,11 @@ describe("load upstreams", function()
       local status_code = "value should be between 100 and 999"
       local integer = "expected an integer"
       local boolean = "expected a boolean"
+      local number = "expected a number"
       local invalid_host = "invalid value: "
       local invalid_host_port = "must not have a port"
       local invalid_ip = "must not be an IP"
+      local threshold = "value should be between 0 and 100"
       local tests = {
         {{ active = { timeout = -1 }}, seconds },
         {{ active = { timeout = 1e+42 }}, seconds },
@@ -309,6 +311,10 @@ describe("load upstreams", function()
         {{ active = { healthy = { http_statuses = { 1000 }}}}, status_code },
         {{ active = { healthy = { http_statuses = { 111.314 }}}}, integer },
         {{ active = { healthy = { successes = 0.5 }}}, integer },
+        {{ active = { unhealthy = { timeouts = 1 }}, threshold = -1}, threshold },
+        {{ active = { unhealthy = { timeouts = 1 }}, threshold = 101}, threshold },
+        {{ active = { unhealthy = { timeouts = 1 }}, threshold = "50"}, number },
+        {{ active = { unhealthy = { timeouts = 1 }}, threshold = true}, number },
         --{{ active = { healthy = { successes = 0 }}}, "must be an integer" },
         {{ active = { healthy = { successes = -1 }}}, zero_integer },
         {{ active = { unhealthy = { interval = -1 }}}, seconds },
@@ -348,6 +354,11 @@ describe("load upstreams", function()
         {{ passive = { unhealthy = { http_failures = 0.5 }}}, integer },
         --{{ passive = { unhealthy = { http_failures = 0 }}}, integer },
         {{ passive = { unhealthy = { http_failures = -1 }}}, zero_integer },
+        {{ passive = { unhealthy = { timeouts = 1 }}, threshold = -1}, threshold },
+        {{ passive = { unhealthy = { timeouts = 1 }}, threshold = 101}, threshold },
+        {{ passive = { unhealthy = { timeouts = 1 }}, threshold = "50"}, number },
+        {{ passive = { unhealthy = { timeouts = 1 }}, threshold = true}, number },
+
         --]]
       }
 
@@ -386,12 +397,18 @@ describe("load upstreams", function()
         { active = { unhealthy = { tcp_failures = 3 }}},
         { active = { unhealthy = { timeouts = 9 }}},
         { active = { unhealthy = { http_failures = 2 }}},
+        { active = { unhealthy = { http_failures = 2 }}, threshold = 0},
+        { active = { unhealthy = { http_failures = 2 }}, threshold = 50.50},
+        { active = { unhealthy = { http_failures = 2 }}, threshold = 100},
         { passive = { healthy = { http_statuses = { 200, 201 } }}},
         { passive = { healthy = { successes = 2 }}},
         { passive = { unhealthy = { http_statuses = { 400, 500 } }}},
         { passive = { unhealthy = { tcp_failures = 8 }}},
         { passive = { unhealthy = { timeouts = 1 }}},
         { passive = { unhealthy = { http_failures = 2 }}},
+        { passive = { unhealthy = { http_failures = 2 }}, threshold = 0},
+        { passive = { unhealthy = { http_failures = 2 }}, threshold = 50.50},
+        { passive = { unhealthy = { http_failures = 2 }}, threshold = 100},
       }
       for _, test in ipairs(tests) do
         local entity = {

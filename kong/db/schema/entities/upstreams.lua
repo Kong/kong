@@ -63,6 +63,13 @@ local check_verify_certificate = Schema.define {
 }
 
 
+local health_threshold = Schema.define {
+  type = "number",
+  default = 0,
+  between = { 0, 100 },
+}
+
+
 local NO_DEFAULT = {}
 
 
@@ -145,6 +152,7 @@ end
 
 
 local healthchecks_fields, healthchecks_defaults = gen_fields(healthchecks_config)
+healthchecks_fields[#healthchecks_fields+1] = { ["threshold"] = health_threshold }
 
 
 local r =  {

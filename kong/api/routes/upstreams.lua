@@ -59,6 +59,21 @@ return {
         return kong.response.exit(404, { message = "Not found" })
       end
 
+      local node_id, err = kong.node.get_id()
+      if err then
+        kong.log.err("failed to get node id: ", err)
+      end
+
+      if tostring(self.params.balancer_health) == "1" then
+        local upstream_pk = db.upstreams.schema:extract_pk_values(upstream)
+        local balancer_health  = db.targets:get_balancer_health(upstream_pk)
+        return kong.response.exit(200, {
+          data = balancer_health,
+          next = null,
+          node_id = node_id,
+        })
+      end
+
       self.params.targets = db.upstreams.schema:extract_pk_values(upstream)
       local targets_with_health, _, err_t, offset =
         endpoints.page_collection(self, db, db.targets.schema, "page_for_upstream_with_health")
@@ -70,11 +85,6 @@ return {
       local next_page = offset and fmt("/upstreams/%s/health?offset=%s",
                                        self.params.upstreams,
                                        escape_uri(offset)) or null
-
-      local node_id, err = kong.node.get_id()
-      if err then
-        kong.log.err("failed getting node id: ", err)
-      end
 
       return kong.response.exit(200, {
         data    = targets_with_health,
