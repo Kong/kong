@@ -210,31 +210,31 @@ describe("Router", function()
   describe("split_port()", function()
     it("splits port number", function()
       for _, case in ipairs({
-        { {''}, { '', '', false } },
-        { {'localhost'}, { 'localhost', 'localhost', false } },
-        { {'localhost:'}, { 'localhost', 'localhost', false } },
-        { {'localhost:80'}, { 'localhost', 'localhost:80', true } },
-        { {'localhost:23h'}, { 'localhost:23h', 'localhost:23h', false } },
-        { {'localhost/24'}, { 'localhost/24', 'localhost/24', false } },
-        { {'::1'}, { '::1', '::1', false } },
-        { {'[::1]'}, { '::1', '[::1]', false } },
-        { {'[::1]:'}, { '::1', '[::1]:', false } },
-        { {'[::1]:80'}, { '::1', '[::1]:80', true } },
-        { {'[::1]:80b'}, { '[::1]:80b', '[::1]:80b', false } },
-        { {'[::1]/96'}, { '[::1]/96', '[::1]/96', false } },
+        { { "" }, { "", "", false } },
+        { { "localhost" }, { "localhost", "localhost", false } },
+        { { "localhost:" }, { "localhost", "localhost", false } },
+        { { "localhost:80" }, { "localhost", "localhost:80", true } },
+        { { "localhost:23h" }, { "localhost:23h", "localhost:23h", false } },
+        { { "localhost/24" }, { "localhost/24", "localhost/24", false } },
+        { { "::1" }, { "::1", "::1", false } },
+        { { "[::1]" }, { "::1", "[::1]", false } },
+        { { "[::1]:" }, { "::1", "[::1]:", false } },
+        { { "[::1]:80" }, { "::1", "[::1]:80", true } },
+        { { "[::1]:80b" }, { "[::1]:80b", "[::1]:80b", false } },
+        { { "[::1]/96" }, { "[::1]/96", "[::1]/96", false } },
 
-        { {'', 88}, { '', ':88', false } },
-        { {'localhost', 88}, { 'localhost', 'localhost:88', false } },
-        { {'localhost:', 88}, { 'localhost', 'localhost:88', false } },
-        { {'localhost:80', 88}, { 'localhost', 'localhost:80', true } },
-        { {'localhost:23h', 88}, { 'localhost:23h', '[localhost:23h]:88', false } },
-        { {'localhost/24', 88}, { 'localhost/24', 'localhost/24:88', false } },
-        { {'::1', 88}, { '::1', '[::1]:88', false } },
-        { {'[::1]', 88}, { '::1', '[::1]:88', false } },
-        { {'[::1]:', 88}, { '::1', '[::1]:88', false } },
-        { {'[::1]:80', 88}, { '::1', '[::1]:80', true } },
-        { {'[::1]:80b', 88}, { '[::1]:80b', '[::1]:80b:88', false } },
-        { {'[::1]/96', 88}, { '[::1]/96', '[::1]/96:88', false } },
+        { { "", 88 }, { "", ":88", false } },
+        { { "localhost", 88 }, { "localhost", "localhost:88", false } },
+        { { "localhost:", 88 }, { "localhost", "localhost:88", false } },
+        { { "localhost:80", 88 }, { "localhost", "localhost:80", true } },
+        { { "localhost:23h", 88 }, { "localhost:23h", "[localhost:23h]:88", false } },
+        { { "localhost/24", 88 }, { "localhost/24", "localhost/24:88", false } },
+        { { "::1", 88 }, { "::1", "[::1]:88", false } },
+        { { "[::1]", 88 }, { "::1", "[::1]:88", false } },
+        { { "[::1]:", 88 }, { "::1", "[::1]:88", false } },
+        { { "[::1]:80", 88 }, { "::1", "[::1]:80", true } },
+        { { "[::1]:80b", 88 }, { "[::1]:80b", "[::1]:80b:88", false } },
+        { { "[::1]/96", 88 }, { "[::1]/96", "[::1]/96:88", false } },
       }) do
         assert.same(case[2], { Router.split_port(unpack(case[1])) })
       end
@@ -540,7 +540,7 @@ describe("Router", function()
       assert.same(use_case[8].route.paths[1], match_t.matches.uri)
     end)
 
-    describe("[IPv6 #literal host]", function()
+    describe("[IPv6 literal host]", function()
       local use_case = {
         -- 1: no port, with and without brackets, unique IPs
         {
@@ -1153,6 +1153,49 @@ describe("Router", function()
         assert.same("plain.route.com", match_t.matches.host)
         assert.same(nil, match_t.matches.method)
         assert.same("/path2", match_t.matches.uri)
+        assert.same(nil, match_t.matches.uri_captures)
+      end)
+
+      it("matches a [wildcard host + port] even if a [wildcard host] matched", function()
+        local use_case = {
+          {
+            service = service,
+            route = {
+              hosts = { "route.*" },
+            },
+          },
+          {
+            service = service,
+            route = {
+              hosts = { "route.*:123" },
+            },
+          },
+          {
+            service = service,
+            route = {
+              hosts = { "route.*:80" },
+            },
+          },
+        }
+
+        local router = assert(Router.new(use_case))
+
+        -- explicit port
+        local match_t = router.select("GET", "/", "route.org:123")
+        assert.truthy(match_t)
+        assert.equal(use_case[2].route, match_t.route)
+        assert.same("route.*:123", match_t.matches.host)
+        assert.same(nil, match_t.matches.method)
+        assert.same(nil, match_t.matches.uri)
+        assert.same(nil, match_t.matches.uri_captures)
+
+        -- implicit port
+        local match_t = router.select("GET", "/", "route.org")
+        assert.truthy(match_t)
+        assert.equal(use_case[3].route, match_t.route)
+        assert.same("route.*:80", match_t.matches.host)
+        assert.same(nil, match_t.matches.method)
+        assert.same(nil, match_t.matches.uri)
         assert.same(nil, match_t.matches.uri_captures)
       end)
 

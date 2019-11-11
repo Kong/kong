@@ -355,7 +355,7 @@ for _, strategy in helpers.each_strategy() do
             hosts = {
               "grpc1",
               "grpc1:" .. helpers.get_proxy_port(false, true),
-              "grpc1:"..helpers.get_proxy_port(true, true),
+              "grpc1:" .. helpers.get_proxy_port(true, true),
             },
             service = service,
           },
@@ -364,7 +364,7 @@ for _, strategy in helpers.each_strategy() do
             hosts = {
               "grpc2",
               "grpc2:" .. helpers.get_proxy_port(false, true),
-              "grpc2:"..helpers.get_proxy_port(true, true),
+              "grpc2:" .. helpers.get_proxy_port(true, true),
             },
             service = service,
           },

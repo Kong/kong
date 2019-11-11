@@ -56,15 +56,17 @@ end
 
 local split_port
 do
+  local ZERO, NINE, LEFTBRACKET, RIGHTBRACKET = ("09[]"):byte(1, -1)
+
+
   local function safe_add_port(host, port)
     if not port then
       return host
     end
 
-    return host .. ':' .. port
+    return host .. ":" .. port
   end
 
-  local ZERO, NINE, LEFTBRACKET, RIGHTBRACKET = ("09[]"):byte(1, -1)
 
   local function onlydigits(s, begin)
     for i = begin or 1, #s do
@@ -76,14 +78,15 @@ do
     return true
   end
 
-  --- splits an optional ':port' section from a hostname
+
+  --- Splits an optional ':port' section from a hostname
   -- the port section must be decimal digits only.
   -- brackets ('[]') are peeled off the hostname if present.
   -- if there's more than one colon and no brackets, no split is possible.
   -- on non-parseable input, returns name unchanged,
   -- every string input produces at least one string output.
-  -- @tparam name string the string to split.
-  -- @tparam default_port number default port number
+  -- @tparam string name the string to split.
+  -- @tparam number default_port default port number
   -- @treturn string hostname without port
   -- @treturn string hostname with port
   -- @treturn boolean true if input had a port number
@@ -96,7 +99,7 @@ do
       local splitpos = find(name, "]:", 2, true)
       if splitpos then
         if splitpos == #name - 1 then
-          return sub(name, 2, splitpos - 1), name .. (default_port or ''), false
+          return sub(name, 2, splitpos - 1), name .. (default_port or ""), false
         end
 
         if onlydigits(name, splitpos + 2) then
@@ -128,13 +131,15 @@ do
     return sub(name, 1, firstcolon - 1), name, true
   end
 
-  -- split_port is a pure function, so we can memoize it.
-  local memo_h = setmetatable({}, {__mode = 'k'})
-  local memo_hp = setmetatable({}, {__mode = 'k'})
-  local memo_p = setmetatable({}, {__mode = 'k'})
 
-  function split_port(name, default_port)
-    local k = name .. '#' .. (default_port or '')
+  -- split_port is a pure function, so we can memoize it.
+  local memo_h = setmetatable({}, { __mode = "k" })
+  local memo_hp = setmetatable({}, { __mode = "k" })
+  local memo_p = setmetatable({}, { __mode = "k" })
+
+
+  split_port = function(name, default_port)
+    local k = name .. "#" .. (default_port or "")
     local h, hp, p = memo_h[k], memo_hp[k], memo_p[k]
     if not h then
       h, hp, p = l_split_port(name, default_port)
@@ -144,7 +149,6 @@ do
     return h, hp, p
   end
 end
-
 
 
 --[[
@@ -181,9 +185,9 @@ sort(SORTED_MATCH_RULES, function(a, b)
 end)
 
 local MATCH_SUBRULES = {
-  HAS_REGEX_URI    = 0x01,
-  PLAIN_HOSTS_ONLY = 0x02,
-  HAS_HOST_PORT    = 0x04,
+  HAS_REGEX_URI          = 0x01,
+  PLAIN_HOSTS_ONLY       = 0x02,
+  HAS_WILDCARD_HOST_PORT = 0x04,
 }
 
 local EMPTY_T = {}
@@ -361,7 +365,7 @@ local function marshall_route(r)
 
     if has_port then
       route_t.submatch_weight = bor(route_t.submatch_weight,
-                                    MATCH_SUBRULES.HAS_HOST_PORT)
+                                    MATCH_SUBRULES.HAS_WILDCARD_HOST_PORT)
     end
   end
 
@@ -770,8 +774,7 @@ do
   local matchers = {
     [MATCH_RULES.HOST] = function(route_t, ctx)
       local req_host = ctx.hits.host or ctx.req_host
-      local host = route_t.hosts[req_host]
-        or route_t.hosts[split_port(req_host)]
+      local host = route_t.hosts[req_host] or route_t.hosts[ctx.host_no_port]
       if host then
         ctx.matches.host = host
         return true
@@ -1353,10 +1356,12 @@ function _M.new(routes)
     -- req_host might have port or maybe not, host_no_port definitely doesn't
     -- if there wasn't a port, req_port is assumed to be the default port
     -- according the protocol scheme
-    local host_no_port, host_with_port = split_port(
-        req_host, req_scheme == 'https' and 443 or 80)
+    local host_no_port, host_with_port = split_port(req_host,
+                                                    req_scheme == "https"
+                                                    and 443 or 80)
 
     ctx.host_with_port = host_with_port
+    ctx.host_no_port   = host_no_port
 
     local hits         = ctx.hits
     local req_category = 0x00
@@ -1376,7 +1381,8 @@ function _M.new(routes)
 
     elseif ctx.req_host then
       for i = 1, #wildcard_hosts do
-        local from, _, err = re_find(host_with_port, wildcard_hosts[i].regex, "ajo")
+        local from, _, err = re_find(host_with_port, wildcard_hosts[i].regex,
+                                     "ajo")
         if err then
           log(ERR, "could not match wildcard host: ", err)
           return
