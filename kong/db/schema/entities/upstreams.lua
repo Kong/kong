@@ -179,7 +179,7 @@ local r =  {
         fields = healthchecks_fields,
     }, },
     { tags = typedefs.tags },
-    { host_header = typedefs.host },
+    { host_header = typedefs.host_with_optional_port },
   },
   entity_checks = {
     -- hash_on_header must be present when hashing on header

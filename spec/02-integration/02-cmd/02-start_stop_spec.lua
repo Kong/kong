@@ -438,7 +438,7 @@ describe("kong start/stop #" .. strategy, function()
               in 'routes':
                 - in entry 1 of 'routes':
                   in 'hosts':
-                    - in entry 2 of 'hosts': invalid value: \\99
+                    - in entry 2 of 'hosts': invalid hostname: \\99
         ]], err, nil, true)
       end)
     end

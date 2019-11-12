@@ -337,18 +337,8 @@ describe("services", function()
 
         local ok, err = Services:validate(service)
         assert.falsy(ok)
-        assert.equal("invalid value: " .. invalid_hosts[i], err.host)
+        assert.equal("invalid hostname: " .. invalid_hosts[i], err.host)
       end
-    end)
-
-    it("rejects values with a valid port", function()
-      local service = {
-        host = "example.com:80",
-      }
-
-      local ok, err = Services:validate(service)
-      assert.falsy(ok)
-      assert.equal("must not have a port", err.host)
     end)
 
     it("rejects values with an invalid port", function()
@@ -358,7 +348,7 @@ describe("services", function()
 
       local ok, err = Services:validate(service)
       assert.falsy(ok)
-      assert.equal("must not have a port", err.host)
+      assert.equal("invalid port number", err.host)
     end)
 
     -- acceptance
