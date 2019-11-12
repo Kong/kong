@@ -1,5 +1,5 @@
 local ffi = require("ffi")
-local cjson = require("cjson")
+local cjson = require("cjson.safe")
 local ngx_ssl = require("ngx.ssl")
 local basic_serializer = require "kong.plugins.log-serializers.basic"
 
@@ -11,6 +11,8 @@ local kong = kong
 local ngx = ngx
 local char_null = ffi.new("char*", ngx.null)
 local find = string.find
+local cjson_encode = cjson.encode
+local cjson_decode = cjson.decode
 
 
 local new_tab
@@ -53,20 +55,8 @@ do
 end
 
 
-local function encode(v)
-  local tv = type(v)
-  if tv == "string" then
-    return string.format("%q", v)
-  elseif tv == "number" or tv == "boolean" then
-    return tostring(v)
-  elseif tv == "table" then
-    return cjson.encode(v)
-  end
-  return "null"
-end
-
 local function set_plugin_conf(plugin_name, config)
-  local configstr = cjson.encode(config)
+  local configstr = cjson_encode(config)
 
   local key = L.SetConf(plugin_name, configstr, #configstr)
   if key == -1 then
@@ -89,18 +79,19 @@ local function index_table(table, field)
 end
 
 
-local pdk_cache = new_tab(0, 50)
+local method_cache = new_tab(0, 50)
 local function get_field(method)
-  if pdk_cache[method] then
-    return pdk_cache[method]
+  if method_cache[method] then
+    return method_cache[method]
+
   else
-    pdk_cache[method] = index_table(_G, method)
-    return pdk_cache[method]
+    method_cache[method] = index_table(_G, method)
+    return method_cache[method]
   end
 end
 
 
-local function unmarshal_pdk_call(call)
+function go.unmarshal_pdk_call(call)
   local idx = find(call, ":", 1, true)
 
   if not idx then
@@ -118,6 +109,50 @@ local function unmarshal_pdk_call(call)
 end
 
 
+function go.marshal_pdk_response(res, err)
+  local res, err = cjson_encode({ res = res, err = err })
+  if not res then
+    return nil, err
+  end
+
+  return res
+end
+
+
+function go.call_pdk_method(cmd, args)
+  local res, err
+
+  if cmd == "kong.log.serialize" then
+    res = cjson_encode(basic_serializer.serialize(ngx))
+
+  -- ngx API
+  elseif cmd == "kong.nginx.get_var" then
+    res = ngx.var[args[1]]
+
+  elseif cmd == "kong.nginx.get_tls1_version_str" then
+    res = ngx_ssl.get_tls1_version_str()
+
+  elseif cmd == "kong.nginx.get_ctx" then
+    res = ngx.ctx[args[1]]
+
+  elseif cmd == "kong.nginx.req_start_time" then
+    res = ngx.req.start_time()
+
+  -- PDK
+  else
+    local method = get_field(cmd)
+    if not method then
+      kong.log.err("could not find pdk method: ", cmd)
+      return
+    end
+
+    res, err = method(unpack(args))
+  end
+
+  return res, err
+end
+
+
 function go.bridge(op, goplugin)
   local key = L.InitBridge(op, goplugin)
   if key == -1 then
@@ -132,44 +167,18 @@ function go.bridge(op, goplugin)
     local pdk_call = ffi.string(ptr)
     ffi.C.free(ptr)
 
-    local cmd, args = unmarshal_pdk_call(pdk_call)
-
-    if cmd == "ret" then
+    local method, args = go.unmarshal_pdk_call(pdk_call)
+    if method  == "ret" then
       break
+    end
 
-    elseif cmd == "kong.log.serialize" then
-      msg = cjson.encode(basic_serializer.serialize(ngx))
+    local pdk_res, pdk_err = go.call_pdk_method(method, args)
 
-    --
-    -- ngx API
-    --
-    elseif cmd == "kong.nginx.get_var" then
-      msg = encode(ngx.var[arg])
-
-    elseif cmd == "kong.nginx.get_tls1_version_str" then
-      msg = encode(ngx_ssl.get_tls1_version_str())
-
-    elseif cmd == "kong.nginx.get_ctx" then
-      msg = encode(ngx.ctx[arg])
-
-    elseif cmd == "kong.nginx.req_start_time" then
-      msg = encode(ngx.req.start_time())
-
-    -- PDK
-    else
-      local method = get_field(cmd)
-      if not method then
-        kong.log.err("could not find pdk method: ", cmd)
-        break
-      end
-
-      local err
-      msg, err = method(unpack(args))
-      if not msg and not err then
-        msg = "ok"
-      else
-        msg = encode(msg)
-      end
+    local err
+    msg, err = go.marshal_pdk_response(pdk_res, pdk_err)
+    if not msg then
+      kong.log.err("failed encoding response: ", err)
+      break
     end
   end
 end
