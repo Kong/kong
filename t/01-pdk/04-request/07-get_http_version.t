@@ -52,7 +52,7 @@ version: 1.1
 
 
 
-=== TEST 3: request.get_http_version() returns number
+=== TEST 3: request.get_http_version() returns a number
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {

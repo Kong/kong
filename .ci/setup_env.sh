@@ -12,6 +12,15 @@ OPENRESTY_PATCHES_BRANCH=$(dep_version OPENRESTY_PATCHES_BRANCH)
 KONG_NGINX_MODULE_BRANCH=$(dep_version KONG_NGINX_MODULE_BRANCH)
 BUILD_TOOLS=$(dep_version BUILD_TOOLS)
 
+dep_version() {
+    grep $1 .requirements | sed -e 's/.*=//' | tr -d '\n'
+}
+
+OPENRESTY=$(dep_version RESTY_VERSION)
+LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
+OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
+
+
 #---------
 # Download
 #---------
@@ -20,10 +29,18 @@ DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml .requirements | md5sum | awk '{ pri
 DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
 BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/openresty-build-tools
 
+KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:=master}
+OPENRESTY_PATCHES_BRANCH=${OPENRESTY_PATCHES_BRANCH:=master}
 
-mkdir -p ${BUILD_TOOLS_DOWNLOAD}
-curl -sSL "https://github.com/kong/openresty-build-tools/archive/${BUILD_TOOLS}.tar.gz" \
-          | tar -C ${BUILD_TOOLS_DOWNLOAD} -xz --strip-components=1
+if [ ! -d $BUILD_TOOLS_DOWNLOAD ]; then
+    git clone -q https://github.com/Kong/openresty-build-tools.git $BUILD_TOOLS_DOWNLOAD -b $BUILD_TOOLS
+else
+    pushd $BUILD_TOOLS_DOWNLOAD
+        git fetch
+        git reset --hard origin/$BUILD_TOOLS
+    popd
+fi
+
 export PATH=$BUILD_TOOLS_DOWNLOAD:$PATH
 
 #--------
@@ -81,7 +98,7 @@ fi
 # ----------------
 # Run gRPC server |
 # ----------------
-if [[ "$TEST_SUITE" =~ integration|dbless ]]; then
+if [[ "$TEST_SUITE" =~ integration|dbless|plugins ]]; then
   docker run -d --name grpcbin -p 15002:9000 -p 15003:9001 moul/grpcbin
 fi
 

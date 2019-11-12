@@ -21,8 +21,8 @@ describe("Configuration loader", function()
     assert.is_string(conf.lua_package_path)
     assert.is_nil(conf.nginx_user)
     assert.equal("auto", conf.nginx_worker_processes)
-    assert.same({"127.0.0.1:8001", "127.0.0.1:8444 ssl"}, conf.admin_listen)
-    assert.same({"0.0.0.0:8000", "0.0.0.0:8443 ssl"}, conf.proxy_listen)
+    assert.same({"127.0.0.1:8001", "127.0.0.1:8444 http2 ssl"}, conf.admin_listen)
+    assert.same({"0.0.0.0:8000", "0.0.0.0:8443 http2 ssl"}, conf.proxy_listen)
     assert.is_nil(conf.ssl_cert) -- check placeholder value
     assert.is_nil(conf.ssl_cert_key)
     assert.is_nil(conf.admin_ssl_cert)
@@ -37,8 +37,8 @@ describe("Configuration loader", function()
     assert.is_nil(conf.nginx_user)
     assert.equal("1",            conf.nginx_worker_processes)
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
-    assert.same({"0.0.0.0:9000", "0.0.0.0:9443 ssl",
-                 "0.0.0.0:9002 http2", "0.0.0.0:9445 http2 ssl"}, conf.proxy_listen)
+    assert.same({"0.0.0.0:9000", "0.0.0.0:9443 http2 ssl",
+                 "0.0.0.0:9002 http2"}, conf.proxy_listen)
     assert.is_nil(getmetatable(conf))
   end)
   it("preserves default properties if not in given file", function()
@@ -56,8 +56,8 @@ describe("Configuration loader", function()
     assert.is_nil(conf.nginx_user)
     assert.equal("auto",           conf.nginx_worker_processes)
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
-    assert.same({"0.0.0.0:9000", "0.0.0.0:9443 ssl",
-                 "0.0.0.0:9002 http2", "0.0.0.0:9445 http2 ssl"}, conf.proxy_listen)
+    assert.same({"0.0.0.0:9000", "0.0.0.0:9443 http2 ssl",
+                 "0.0.0.0:9002 http2"}, conf.proxy_listen)
     assert.is_nil(getmetatable(conf))
   end)
   it("strips extraneous properties (not in defaults)", function()
@@ -108,8 +108,8 @@ describe("Configuration loader", function()
     assert.equal("127.0.0.1", conf.admin_listeners[2].ip)
     assert.equal(8444, conf.admin_listeners[2].port)
     assert.equal(true, conf.admin_listeners[2].ssl)
-    assert.equal(false, conf.admin_listeners[2].http2)
-    assert.equal("127.0.0.1:8444 ssl", conf.admin_listeners[2].listener)
+    assert.equal(true, conf.admin_listeners[2].http2)
+    assert.equal("127.0.0.1:8444 ssl http2", conf.admin_listeners[2].listener)
 
     assert.equal("0.0.0.0", conf.proxy_listeners[1].ip)
     assert.equal(8000, conf.proxy_listeners[1].port)
@@ -120,8 +120,8 @@ describe("Configuration loader", function()
     assert.equal("0.0.0.0", conf.proxy_listeners[2].ip)
     assert.equal(8443, conf.proxy_listeners[2].port)
     assert.equal(true, conf.proxy_listeners[2].ssl)
-    assert.equal(false, conf.proxy_listeners[2].http2)
-    assert.equal("0.0.0.0:8443 ssl", conf.proxy_listeners[2].listener)
+    assert.equal(true, conf.proxy_listeners[2].http2)
+    assert.equal("0.0.0.0:8443 ssl http2", conf.proxy_listeners[2].listener)
   end)
   it("parses IPv6 from proxy_listen/admin_listen", function()
     local conf = assert(conf_loader(nil, {
@@ -232,6 +232,61 @@ describe("Configuration loader", function()
     local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
     assert.equal("test#123", conf.pg_password)
   end)
+  it("escapes unescaped octothorpes in environment variables", function()
+    finally(function()
+      helpers.unsetenv("KONG_PG_PASSWORD")
+    end)
+    helpers.setenv("KONG_PG_PASSWORD", "test#123")
+    local conf = assert(conf_loader())
+    assert.equal("test#123", conf.pg_password)
+
+    helpers.setenv("KONG_PG_PASSWORD", "test#12#3")
+    local conf = assert(conf_loader())
+    assert.equal("test#12#3", conf.pg_password)
+
+    helpers.setenv("KONG_PG_PASSWORD", "test##12##3#")
+    local conf = assert(conf_loader())
+    assert.equal("test##12##3#", conf.pg_password)
+  end)
+  it("escapes unescaped octothorpes in custom_conf overrides", function()
+    local conf = assert(conf_loader(nil, {
+      pg_password = "test#123",
+    }))
+    assert.equal("test#123", conf.pg_password)
+
+    local conf = assert(conf_loader(nil, {
+      pg_password = "test#12#3",
+    }))
+    assert.equal("test#12#3", conf.pg_password)
+
+    local conf = assert(conf_loader(nil, {
+      pg_password = "test##12##3#",
+    }))
+    assert.equal("test##12##3#", conf.pg_password)
+  end)
+  it("does not modify existing escaped octothorpes in environment variables", function()
+    finally(function()
+      helpers.unsetenv("KONG_PG_PASSWORD")
+    end)
+    helpers.setenv("KONG_PG_PASSWORD", [[test\#123]])
+    local conf = assert(conf_loader())
+    assert.equal("test#123", conf.pg_password)
+
+    helpers.setenv("KONG_PG_PASSWORD", [[test\#\#12\#\#3\#]])
+    local conf = assert(conf_loader())
+    assert.equal("test##12##3#", conf.pg_password)
+  end)
+  it("does not modify existing escaped octothorpes in custom_conf overrides", function()
+    local conf = assert(conf_loader(nil, {
+      pg_password = [[test\#123]],
+    }))
+    assert.equal("test#123", conf.pg_password)
+
+    local conf = assert(conf_loader(nil, {
+      pg_password = [[test\#\#12\#\#3\#]],
+    }))
+    assert.equal("test##12##3#", conf.pg_password)
+  end)
 
   describe("dynamic directives", function()
     it("loads flexible prefix based configs from a file", function()
@@ -296,6 +351,8 @@ describe("Configuration loader", function()
 
       assert.True(search_directive(conf.nginx_admin_directives,
                                    "server_tokens", "build"))
+      assert.True(search_directive(conf.nginx_http_status_directives,
+                                   "client_body_buffer_size", "8k"))
     end)
   end)
 
@@ -878,6 +935,30 @@ describe("Configuration loader", function()
       })
       assert.is_nil(conf)
       assert.equal("pg_semaphore_timeout must be an integer greater than 0", err)
+    end)
+  end)
+
+  describe("router_update_frequency option", function()
+    it("is rejected with a zero", function()
+      local conf, err = conf_loader(nil, {
+        router_update_frequency = 0,
+      })
+      assert.is_nil(conf)
+      assert.equal("router_update_frequency must be greater than 0", err)
+    end)
+    it("is rejected with a negative number", function()
+      local conf, err = conf_loader(nil, {
+        router_update_frequency = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("router_update_frequency must be greater than 0", err)
+    end)
+    it("accepts decimal numbers", function()
+      local conf, err = conf_loader(nil, {
+        router_update_frequency = 0.01,
+      })
+      assert.equal(conf.router_update_frequency, 0.01)
+      assert.is_nil(err)
     end)
   end)
 

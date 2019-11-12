@@ -1,11 +1,15 @@
 local cjson         = require "cjson"
 local cjson_safe    = require "cjson.safe"
+local constants     = require "kong.constants"
+
+
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local fmt           = string.format
 
 
 local Tags = {}
+
 
 local sql_templates = {
   page_first = [[
@@ -35,7 +39,10 @@ local sql_templates = {
     LIMIT %s;]],
 }
 
+
 local function page(self, size, token, options, tag)
+  size = size or constants.DEFAULT_PAGE_SIZE
+
   local limit = size + 1
 
   local sql
@@ -63,14 +70,14 @@ local function page(self, size, token, options, tag)
       sql = sql_templates.page_for_tag_next
       args = {
                 entity_id_delimeter,
-                tag_literal, limit 
+                tag_literal, limit
               }
     else
       sql = sql_templates.page_next
       local ordinality_delimeter = self:escape_literal(token_decoded[2])
       args = {
                 entity_id_delimeter, entity_id_delimeter,
-                ordinality_delimeter, limit 
+                ordinality_delimeter, limit
               }
     end
   else
@@ -127,9 +134,11 @@ local function page(self, size, token, options, tag)
 
 end
 
+
 function Tags:page_by_tag(tag, size, token, options)
   return page(self, size, token, options, tag)
 end
+
 
 -- Overwrite the page function for /tags
 function Tags:page(size, token, options)

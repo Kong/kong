@@ -165,6 +165,7 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        service_mesh = "on",
       }))
 
       proxy_client = helpers.proxy_client()
@@ -708,9 +709,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
 
-      pending("log plugins sees same request in error_page handler (HTTP 502)", function()
-        -- PENDING: waiting on Nginx error_patch_preserve_method patch
-
+      it("log plugins sees same request in error_page handler (HTTP 502)", function()
         -- triggers error_page directive
         local uuid = utils.uuid()
 
@@ -805,7 +804,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
 
-      pending("log plugins sees same request in error_page handler (HTTP 504)", function()
+      it("log plugins sees same request in error_page handler (HTTP 504)", function()
         -- triggers error_page directive
         local uuid = utils.uuid()
 
@@ -873,9 +872,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
 
-      pending("log plugins sees same request in error_page handler (HTTP 494)", function()
-        -- PENDING: waiting on Nginx error_patch_preserve_method patch
-
+      it("log plugins sees same request in error_page handler (HTTP 494)", function()
         -- triggers error_page directive
         local uuid = utils.uuid()
 
@@ -907,9 +904,9 @@ for _, strategy in helpers.each_strategy() do
         local log_message = cjson.decode(pl_stringx.strip(log))
         assert.equal("POST", log_message.request.method)
         assert.equal("bar", log_message.request.querystring.foo)
-        assert.equal("/status/200?foo=bar", log_message.upstream_uri)
+        assert.equal("", log_message.upstream_uri) -- no URI here since Nginx could not parse request
         assert.equal(uuid, log_message.request.headers["x-uuid"])
-        assert.equal("unavailable", log_message.request.headers.host)
+        assert.is_nil(log_message.request.headers.host) -- none as well
       end)
 
 
@@ -943,9 +940,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
 
-      pending("log plugins sees same request in error_page handler (HTTP 414)", function()
-        -- PENDING: waiting on Nginx error_patch_preserve_method patch
-
+      it("log plugins sees same request in error_page handler (HTTP 414)", function()
         -- triggers error_page directive
         local uuid = utils.uuid()
 
@@ -974,8 +969,6 @@ for _, strategy in helpers.each_strategy() do
 
         local log = pl_file.read(FILE_LOG_PATH)
         local log_message = cjson.decode(pl_stringx.strip(log))
-        local ins = require "inspect"
-        print(ins(log_message))
         assert.equal("POST", log_message.request.method)
         assert.equal("", log_message.upstream_uri) -- no URI here since Nginx could not parse request
         assert.is_nil(log_message.request.headers["x-uuid"]) -- none since Nginx could not parse request
@@ -1511,6 +1504,7 @@ for _, strategy in helpers.each_strategy() do
             prefix       = "servroot1",
             database     = strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
+            service_mesh = "on",
           })
 
           assert(helpers.start_kong {
@@ -1519,6 +1513,7 @@ for _, strategy in helpers.each_strategy() do
             proxy_listen = "0.0.0.0:18000, 0.0.0.0:18443 ssl",
             admin_listen = "off",
             admin_gui_listen = "off",
+            service_mesh = "on",
           })
 
           proxy_client = helpers.proxy_client()
@@ -2200,6 +2195,7 @@ for _, strategy in helpers.each_strategy() do
             proxy_listen  = "off",
             admin_listen  = "off",
             admin_gui_listen = "off",
+            service_mesh  = "on",
           })
 
           assert(helpers.start_kong {
@@ -2209,6 +2205,7 @@ for _, strategy in helpers.each_strategy() do
             proxy_listen  = "off",
             admin_listen  = "off",
             admin_gui_listen = "off",
+            service_mesh  = "on",
           })
 
         end)

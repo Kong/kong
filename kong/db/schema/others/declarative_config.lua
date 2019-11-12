@@ -419,19 +419,27 @@ local function get_key_for_uuid_gen(entity, item, schema, parent_fk, child_key)
   if schema.endpoint_key and item[schema.endpoint_key] ~= nil then
     local key = item[schema.endpoint_key]
 
-    -- If this item has foreign keys with on_delete "cascade", it is inferred
-    -- that its endpoint is not necessarily unique, so its key must be composed
-    -- by parent's key, avoiding that it is overwritten by identical endpoints
-    -- under other parents.
-    for _, field in schema:each_field(item) do
-      if field.type == "foreign" and field.on_delete == "cascade" then
-        local foreign_key_keys = all_schemas[field.reference].primary_key
-        for _, fk_pk in ipairs(foreign_key_keys) do
-          key = key .. ":" .. parent_fk[fk_pk]
+    -- check if the endpoint key is globally unique
+    if not schema.fields[schema.endpoint_key].unique then
+      -- If it isn't, and this item has foreign keys with on_delete "cascade",
+      -- we assume that it is unique relative to the parent (e.g. targets of
+      -- an upstream). We compose the item's key with the parent's key,
+      -- preventing it from being overwritten by identical endpoint keys
+      -- declared under other parents.
+      for fname, field in schema:each_field(item) do
+        if field.type == "foreign" and field.on_delete == "cascade" then
+          if parent_fk then
+            local foreign_key_keys = all_schemas[field.reference].primary_key
+            for _, fk_pk in ipairs(foreign_key_keys) do
+              key = key .. ":" .. parent_fk[fk_pk]
+            end
+          else
+            key = key .. ":" .. item[fname]
+          end
         end
-
       end
     end
+
     -- generate a PK based on the endpoint_key
     return pk_name, key
   end
@@ -479,10 +487,22 @@ end
 local function flatten(self, input)
   local output = {}
 
+    -- This may give invalid errors as it validates input that does not have
+  -- foreign keys filled (e.g. basicauth_credentials fail on this with this
+  -- config:
+  --
+  --   consumers:
+  --     username: consumer
+  --     basicauth_credentials:
+  --     - username: username
+  --       password: password
+  --
+  -- because it tries to validate the credential that has no consumer.id at
+  -- this point filled in, and transformation implicitly adds mutually_required
+  -- check on that entity.
+  --
+  -- As a short-term solution, we don't error right away here.
   local ok, err = self:validate(input)
-  if not ok then
-    return nil, err
-  end
 
   generate_ids(input, self.known_entities)
 
@@ -490,6 +510,12 @@ local function flatten(self, input)
 
   local by_id, by_key_or_err = validate_references(self, processed)
   if not by_id then
+    -- let's return original error in case it is defined, as the reference
+    -- validation could have failed because of that.
+    if not ok then
+      return nil, err
+    end
+
     return nil, by_key_or_err
   end
   local by_key = by_key_or_err
@@ -509,6 +535,44 @@ local function flatten(self, input)
         else
           flat_entry[name] = entry[name]
         end
+      end
+
+      -- TODO: is the plugin not enabled a sign of something wrong somewhere?
+      local ok2, err2 = schema:validate(flat_entry)
+      if not ok2
+         and err2
+         and err2.name ~= string.format("plugin '%s' not enabled; add it to " ..
+                                        "the 'plugins' configuration property",
+                                        flat_entry.name)
+        then
+
+        if err then
+          if err2["@entity"] then
+            for _, errmsg2 in ipairs(err2["@entity"]) do
+              local found
+              if err["@entity"] then
+                for _, errmsg in ipairs(err["@entity"]) do
+                  if errmsg2 == errmsg then
+                    found = true
+                    break
+                  end
+                end
+              end
+
+              if not found then
+                if not err["@entity"] then
+                  err["@entity"] = {}
+                end
+
+                table.insert(err["@entity"], errmsg2)
+              end
+            end
+          end
+
+          return nil, err
+        end
+
+        return nil, err2
       end
 
       output[entity][id] = flat_entry

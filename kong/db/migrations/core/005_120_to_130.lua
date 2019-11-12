@@ -18,6 +18,8 @@ return {
         "tags"        TEXT[]
       );
 
+      DROP TRIGGER IF EXISTS ca_certificates_sync_tags_trigger ON ca_certificates;
+
       DO $$
       BEGIN
         DROP TRIGGER IF EXISTS ca_certificates_sync_tags_trigger

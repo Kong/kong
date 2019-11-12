@@ -14,6 +14,7 @@ events {}
 http {
 > if #proxy_listeners > 0 or #admin_listeners > 0 then
     charset UTF-8;
+    server_tokens off;
 
     error_log logs/error.log ${{LOG_LEVEL}};
 
@@ -166,6 +167,7 @@ http {
             set $upstream_x_forwarded_host   '';
             set $upstream_x_forwarded_port   '';
             set $set_request_id     $request_id;
+            set $kong_proxy_mode             'http';
 
             proxy_http_version 1.1;
             proxy_set_header   Host              $upstream_host;
@@ -198,14 +200,14 @@ http {
         location @grpc {
             internal;
 
-            set $kong_proxy_mode       'grpc';
+            set $kong_proxy_mode  'grpc';
             grpc_pass grpc://kong_upstream;
         }
 
         location @grpcs {
             internal;
 
-            set $kong_proxy_mode       'grpcs';
+            set $kong_proxy_mode  'grpc';
             grpc_pass grpcs://kong_upstream;
         }
     }
@@ -236,7 +238,7 @@ http {
         location / {
             default_type application/json;
             content_by_lua_block {
-                Kong.serve_admin_api({
+                Kong.admin_content({
                     acah = "Content-Type, ${{RBAC_AUTH_HEADER}}",
                 })
             }
@@ -244,6 +246,10 @@ http {
             log_by_lua_block {
                 local audit_log = require "kong.enterprise_edition.audit_log"
                 audit_log.admin_log_handler()
+            }
+
+            header_filter_by_lua_block {
+                Kong.admin_header_filter()
             }
         }
 
@@ -497,6 +503,10 @@ http {
 
 > if #stream_listeners > 0 then
 stream {
+> if anonymous_reports then
+    ${{SYSLOG_REPORTS}}
+> end
+
     log_format basic '$remote_addr [$time_local] '
                      '$protocol $status $bytes_sent $bytes_received '
                      '$session_time';

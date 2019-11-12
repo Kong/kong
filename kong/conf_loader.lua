@@ -40,12 +40,18 @@ local HEADER_KEY_TO_NAME = {
   [string.lower(HEADERS.VIA)] = HEADERS.VIA,
   [string.lower(HEADERS.SERVER)] = HEADERS.SERVER,
   [string.lower(HEADERS.PROXY_LATENCY)] = HEADERS.PROXY_LATENCY,
+  [string.lower(HEADERS.RESPONSE_LATENCY)] = HEADERS.RESPONSE_LATENCY,
+  [string.lower(HEADERS.ADMIN_LATENCY)] = HEADERS.ADMIN_LATENCY,
   [string.lower(HEADERS.UPSTREAM_LATENCY)] = HEADERS.UPSTREAM_LATENCY,
   [string.lower(HEADERS.UPSTREAM_STATUS)] = HEADERS.UPSTREAM_STATUS,
 }
 
 
 local DYNAMIC_KEY_NAMESPACES = {
+  {
+    injected_conf_name = "nginx_http_status_directives",
+    prefix = "nginx_http_status_",
+  },
   {
     injected_conf_name = "nginx_http_upstream_directives",
     prefix = "nginx_http_upstream_",
@@ -125,6 +131,7 @@ local CONF_INFERENCES = {
   -- forced string inferences (or else are retrieved as numbers)
   proxy_listen = { typ = "array" },
   admin_listen = { typ = "array" },
+  status_listen = { typ = "array" },
   stream_listen = { typ = "array" },
   origins = { typ = "array" },
   db_update_frequency = {  typ = "number"  },
@@ -216,6 +223,7 @@ local CONF_INFERENCES = {
   dns_error_ttl = { typ = "number" },
   dns_no_sync = { typ = "boolean" },
   router_consistency = { enum = { "strict", "eventual" } },
+  router_update_frequency = { typ = "number" },
 
   client_ssl = { typ = "boolean" },
 
@@ -223,6 +231,8 @@ local CONF_INFERENCES = {
   proxy_error_log = { typ = "string" },
   admin_access_log = { typ = "string" },
   admin_error_log = { typ = "string" },
+  status_access_log = { typ = "string" },
+  status_error_log = { typ = "string" },
   log_level = { enum = {
                   "debug",
                   "info",
@@ -277,7 +287,7 @@ local CONF_INFERENCES = {
   admin_gui_session_conf = {typ = "string"},
   admin_gui_auth_login_attempts = {typ = "number"},
   admin_emails_from = {typ = "string"},
-  admin_emails_reply_to = {typ = "string"}, 
+  admin_emails_reply_to = {typ = "string"},
   admin_invitation_expiry = {typ = "number"},
 
   portal = {typ = "boolean"},
@@ -336,6 +346,7 @@ local CONF_INFERENCES = {
 
   route_validation_strategy = { enum = {"smart", "path", "off"}},
   enforce_route_path_pattern = {typ = "string"},
+  service_mesh = { typ = "boolean" },
 }
 
 
@@ -721,6 +732,17 @@ local function check_and_infer(conf)
     errors[#errors + 1] = "pg_semaphore_timeout must be an integer greater than 0"
   end
 
+  if conf.router_update_frequency <= 0 then
+    errors[#errors + 1] = "router_update_frequency must be greater than 0"
+  end
+
+  if conf.service_mesh then
+    log.warn("You enabled the deprecated Service Mesh feature of " ..
+             "the Kong Gateway, which will cause upstream HTTPS request " ..
+             "to behave incorrectly. Service Mesh support" ..
+             "in Kong Gateway will be removed in the next release.")
+  end
+
   return #errors == 0, errors[1], errors
 end
 
@@ -729,6 +751,7 @@ local function overrides(k, default_v, opts, file_conf, arg_conf)
   opts = opts or {}
 
   local value -- definitive value for this property
+  local escape -- whether to escape a value's octothorpes
 
   -- default values have lowest priority
 
@@ -756,12 +779,24 @@ local function overrides(k, default_v, opts, file_conf, arg_conf)
     end
 
     log.debug('%s ENV found with "%s"', env_name, to_print)
+
     value = env
+    escape = true
   end
 
   -- arg_conf have highest priority
   if arg_conf and arg_conf[k] ~= nil then
     value = arg_conf[k]
+    escape = true
+  end
+
+  if escape and type(value) == "string" then
+    -- Escape "#" in env vars or overrides to avoid them being mangled by
+    -- comments stripping logic.
+    repeat
+      local s, n = string.gsub(value, [[([^\])#]], [[%1\#]])
+      value = s
+    until n == 0
   end
 
   return value, k
@@ -1236,6 +1271,12 @@ local function load(path, custom_conf, opts)
         end
       end
     end
+    conf.status_listeners, err = parse_listeners(conf.status_listen, { "ssl" })
+    if err then
+      return nil, "status_listen " .. err
+    end
+
+    setmetatable(conf.status_listeners, _nop_tostring_mt)
   end
 
   do
@@ -1270,6 +1311,8 @@ local function load(path, custom_conf, opts)
 
     if enabled_headers.latency_tokens then
       enabled_headers[HEADERS.PROXY_LATENCY] = true
+      enabled_headers[HEADERS.RESPONSE_LATENCY] = true
+      enabled_headers[HEADERS.ADMIN_LATENCY] = true
       enabled_headers[HEADERS.UPSTREAM_LATENCY] = true
     end
 

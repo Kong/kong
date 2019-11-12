@@ -38,6 +38,7 @@ return {
             "ES256",
           },
       }, },
+      { tags = typedefs.tags },
     },
     entity_checks = {
       { conditional = { if_field = "algorithm",
