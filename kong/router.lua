@@ -15,9 +15,11 @@ local var           = ngx.var
 local ngx_log       = ngx.log
 local insert        = table.insert
 local sort          = table.sort
+local byte          = string.byte
 local upper         = string.upper
 local lower         = string.lower
 local find          = string.find
+local format        = string.format
 local sub           = string.sub
 local tonumber      = tonumber
 local ipairs        = ipairs
@@ -48,6 +50,103 @@ do
         tab[k] = nil
       end
     end
+  end
+end
+
+
+local split_port
+do
+  local ZERO, NINE, LEFTBRACKET, RIGHTBRACKET = ("09[]"):byte(1, -1)
+
+
+  local function safe_add_port(host, port)
+    if not port then
+      return host
+    end
+
+    return host .. ":" .. port
+  end
+
+
+  local function onlydigits(s, begin)
+    for i = begin or 1, #s do
+      local c = byte(s, i)
+      if c < ZERO or c > NINE then
+        return false
+      end
+    end
+    return true
+  end
+
+
+  --- Splits an optional ':port' section from a hostname
+  -- the port section must be decimal digits only.
+  -- brackets ('[]') are peeled off the hostname if present.
+  -- if there's more than one colon and no brackets, no split is possible.
+  -- on non-parseable input, returns name unchanged,
+  -- every string input produces at least one string output.
+  -- @tparam string name the string to split.
+  -- @tparam number default_port default port number
+  -- @treturn string hostname without port
+  -- @treturn string hostname with port
+  -- @treturn boolean true if input had a port number
+  local function l_split_port(name, default_port)
+    if byte(name, 1) == LEFTBRACKET then
+      if byte(name, -1) == RIGHTBRACKET then
+        return sub(name, 2, -2), safe_add_port(name, default_port), false
+      end
+
+      local splitpos = find(name, "]:", 2, true)
+      if splitpos then
+        if splitpos == #name - 1 then
+          return sub(name, 2, splitpos - 1), name .. (default_port or ""), false
+        end
+
+        if onlydigits(name, splitpos + 2) then
+          return sub(name, 2, splitpos - 1), name, true
+        end
+      end
+
+      return name, safe_add_port(name, default_port), false
+    end
+
+    local firstcolon = find(name, ":", 1, true)
+    if not firstcolon then
+      return name, safe_add_port(name, default_port), false
+    end
+
+    if firstcolon == #name then
+      local host = sub(name, 1, firstcolon - 1)
+      return host, safe_add_port(host, default_port), false
+    end
+
+    if not onlydigits(name, firstcolon + 1) then
+      if default_port then
+        return name, format("[%s]:%s", name, default_port), false
+      end
+
+      return name, name, false
+    end
+
+    return sub(name, 1, firstcolon - 1), name, true
+  end
+
+
+  -- split_port is a pure function, so we can memoize it.
+  local memo_h = setmetatable({}, { __mode = "k" })
+  local memo_hp = setmetatable({}, { __mode = "k" })
+  local memo_p = setmetatable({}, { __mode = "k" })
+
+
+  split_port = function(name, default_port)
+    local k = name .. "#" .. (default_port or "")
+    local h, hp, p = memo_h[k], memo_hp[k], memo_p[k]
+    if not h then
+      h, hp, p = l_split_port(name, default_port)
+      memo_h[k], memo_hp[k], memo_p[k] = h, hp, p
+    end
+
+    return h, hp, p
   end
 end
 
@@ -86,8 +185,9 @@ sort(SORTED_MATCH_RULES, function(a, b)
 end)
 
 local MATCH_SUBRULES = {
-  HAS_REGEX_URI    = 0x01,
-  PLAIN_HOSTS_ONLY = 0x02,
+  HAS_REGEX_URI          = 0x01,
+  PLAIN_HOSTS_ONLY       = 0x02,
+  HAS_WILDCARD_HOST_PORT = 0x04,
 }
 
 local EMPTY_T = {}
@@ -216,6 +316,7 @@ local function marshall_route(r)
 
     local has_host_wildcard
     local has_host_plain
+    local has_port
 
     for _, host in ipairs(hosts) do
       if type(host) ~= "string" then
@@ -228,6 +329,12 @@ local function marshall_route(r)
 
         local wildcard_host_regex = host:gsub("%.", "\\.")
                                         :gsub("%*", ".+") .. "$"
+
+        _, _, has_port = split_port(host)
+        if not has_port then
+          wildcard_host_regex = wildcard_host_regex:gsub("%$$", [[(?::\d+)?$]])
+        end
+
         insert(route_t.hosts, {
           wildcard = true,
           value    = host,
@@ -254,6 +361,11 @@ local function marshall_route(r)
     if not has_host_wildcard then
       route_t.submatch_weight = bor(route_t.submatch_weight,
                                     MATCH_SUBRULES.PLAIN_HOSTS_ONLY)
+    end
+
+    if has_port then
+      route_t.submatch_weight = bor(route_t.submatch_weight,
+                                    MATCH_SUBRULES.HAS_WILDCARD_HOST_PORT)
     end
   end
 
@@ -661,7 +773,8 @@ end
 do
   local matchers = {
     [MATCH_RULES.HOST] = function(route_t, ctx)
-      local host = route_t.hosts[ctx.hits.host or ctx.req_host]
+      local req_host = ctx.hits.host or ctx.req_host
+      local host = route_t.hosts[req_host] or route_t.hosts[ctx.host_no_port]
       if host then
         ctx.matches.host = host
         return true
@@ -671,7 +784,7 @@ do
         local host_t = route_t.hosts[i]
 
         if host_t.wildcard then
-          local from, _, err = re_find(ctx.req_host, host_t.regex, "ajo")
+          local from, _, err = re_find(ctx.host_with_port, host_t.regex, "ajo")
           if err then
             log(ERR, "could not evaluate wildcard host regex: ", err)
             return
@@ -995,6 +1108,7 @@ _M.has_capturing_groups = has_capturing_groups
 
 -- for unit-testing purposes only
 _M._set_ngx = _set_ngx
+_M.split_port = split_port
 
 
 function _M.new(routes)
@@ -1167,7 +1281,7 @@ function _M.new(routes)
 
   local grab_req_headers = #plain_indexes.headers > 0
 
-  local function find_route(req_method, req_uri, req_host,
+  local function find_route(req_method, req_uri, req_host, req_scheme,
                             src_ip, src_port,
                             dst_ip, dst_port,
                             sni, req_headers)
@@ -1179,6 +1293,9 @@ function _M.new(routes)
     end
     if req_host and type(req_host) ~= "string" then
       error("host must be a string", 2)
+    end
+    if req_scheme and type(req_scheme) ~= "string" then
+      error("scheme must be a string", 2)
     end
     if src_ip and type(src_ip) ~= "string" then
       error("src_ip must be a string", 2)
@@ -1236,13 +1353,15 @@ function _M.new(routes)
 
     req_method = upper(req_method)
 
-    if req_host ~= "" then
-      -- strip port number if given because matching ignores ports
-      local idx = find(req_host, ":", 2, true)
-      if idx then
-        ctx.req_host = sub(req_host, 1, idx - 1)
-      end
-    end
+    -- req_host might have port or maybe not, host_no_port definitely doesn't
+    -- if there wasn't a port, req_port is assumed to be the default port
+    -- according the protocol scheme
+    local host_no_port, host_with_port = split_port(req_host,
+                                                    req_scheme == "https"
+                                                    and 443 or 80)
+
+    ctx.host_with_port = host_with_port
+    ctx.host_no_port   = host_no_port
 
     local hits         = ctx.hits
     local req_category = 0x00
@@ -1255,12 +1374,15 @@ function _M.new(routes)
 
     -- host match
 
-    if plain_indexes.hosts[ctx.req_host] then
+    if plain_indexes.hosts[host_with_port]
+      or plain_indexes.hosts[host_no_port]
+    then
       req_category = bor(req_category, MATCH_RULES.HOST)
 
     elseif ctx.req_host then
       for i = 1, #wildcard_hosts do
-        local from, _, err = re_find(ctx.req_host, wildcard_hosts[i].regex, "ajo")
+        local from, _, err = re_find(host_with_port, wildcard_hosts[i].regex,
+                                     "ajo")
         if err then
           log(ERR, "could not match wildcard host: ", err)
           return
@@ -1485,6 +1607,7 @@ function _M.new(routes)
       local req_method = get_method()
       local req_uri = var.request_uri
       local req_host = var.http_host or ""
+      local req_scheme = var.scheme
       local sni = var.ssl_server_name
 
       local headers
@@ -1507,7 +1630,7 @@ function _M.new(routes)
         end
       end
 
-      local match_t = find_route(req_method, req_uri, req_host,
+      local match_t = find_route(req_method, req_uri, req_host, req_scheme,
                                  nil, nil, -- src_ip, src_port
                                  nil, nil, -- dst_ip, dst_port
                                  sni, headers)
@@ -1550,7 +1673,7 @@ function _M.new(routes)
       local dst_port = tonumber(var.server_port, 10)
       local sni = var.ssl_preread_server_name
 
-      return find_route(nil, nil, nil,
+      return find_route(nil, nil, nil, "tcp",
                         src_ip, src_port,
                         dst_ip, dst_port,
                         sni)

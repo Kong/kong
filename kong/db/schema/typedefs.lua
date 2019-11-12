@@ -32,6 +32,12 @@ local function validate_host(host)
 end
 
 
+local function validate_host_with_optional_port(host)
+  local res, err_or_port = utils.normalize_ip(host)
+  return (res and true or nil), err_or_port
+end
+
+
 local function validate_ip(ip)
   local res, err = utils.normalize_ip(ip)
   if not res then
@@ -212,6 +218,12 @@ typedefs.protocol = Schema.define {
 typedefs.host = Schema.define {
   type = "string",
   custom_validator = validate_host,
+}
+
+
+typedefs.host_with_optional_port = Schema.define {
+  type = "string",
+  custom_validator = validate_host_with_optional_port,
 }
 
 
@@ -400,7 +412,7 @@ typedefs.protocols_http = Schema.define {
 
 local function validate_host_with_wildcards(host)
   local no_wildcards = string.gsub(host, "%*", "abc")
-  return typedefs.host.custom_validator(no_wildcards)
+  return typedefs.host_with_optional_port.custom_validator(no_wildcards)
 end
 
 local function validate_path_with_regexes(path)
