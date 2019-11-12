@@ -457,6 +457,8 @@ return {
     end,
 
     PATCH = function(self, db, helpers, parent)
+      ee_api.validate_password(self.params.password)
+      
       local res, err = admins.update_password(self.admin, self.params)
 
       if err then

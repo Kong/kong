@@ -1030,6 +1030,7 @@ for _, strategy in helpers.each_strategy() do
           admin_gui_url = "http://manager.konghq.com",
           admin_gui_auth = "basic-auth",
           admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
+          admin_gui_auth_password_complexity = "{\"kong-preset\": \"min_8\"}",
           enforce_rbac = "on",
         }))
         ee_helpers.register_rbac_resources(db)
@@ -1063,6 +1064,18 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("POST", function()
+        it("400 - password complexity checks should be enabled", function()
+          local cookie = get_admin_cookie(client, "gruce", "original_gangster")
+          local res = assert(password_reset(client, cookie, {
+            password = "1"
+          }))
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+
+          assert.equal("Invalid password: too short", json.message)
+        end)
+
         it("400 - old_password required", function()
           local cookie = get_admin_cookie(client, "gruce", "original_gangster")
           local res = assert(password_reset(client, cookie, {password = "new_hotness"}))
@@ -1073,8 +1086,8 @@ for _, strategy in helpers.each_strategy() do
         it("400 - old_password cannot be the same as new password", function()
           local cookie = get_admin_cookie(client, "gruce", "original_gangster")
           local res = assert(password_reset(client, cookie, {
-            password = "new_hotness",
-            old_password = "new_hotness"
+            password = "New_hotness123",
+            old_password = "New_hotness123"
           }))
 
           local body = assert.res_status(400, res)
@@ -1086,7 +1099,7 @@ for _, strategy in helpers.each_strategy() do
         it("400 - old_password must be correct", function()
           local cookie = get_admin_cookie(client, "gruce", "original_gangster")
           local res = assert(password_reset(client, cookie, {
-            password = "new_hotness",
+            password = "New_hotness123",
             old_password = "i_Am_Not_Correct"
           }))
           local body = assert.res_status(400, res)
@@ -1097,7 +1110,7 @@ for _, strategy in helpers.each_strategy() do
 
         it("password can be reset successfully", function()
           local old_password = "original_gangster"
-          local new_password = "new_hotness"
+          local new_password = "New_hotne33"
 
           local cookie = get_admin_cookie(client, "gruce", old_password)
           local res = assert(password_reset(client, cookie, {
