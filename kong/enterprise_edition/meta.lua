@@ -4,9 +4,10 @@ local version = setmetatable({
   x = 1,
   y = 3,
   z = 0,
+  e = 0,
 }, {
   __tostring = function(t)
-    return string.format("%d.%d%s", t.x, t.y, t.z > 0 and "." .. t.z or "")
+    return string.format("%d.%d.%d.%d", t.x, t.y, t.z, t.e)
   end
 })
 
