@@ -82,7 +82,7 @@ function _M.build_ssl_route_filter_set()
       return nil, "could not load plugins: " .. err
     end
 
-    if plugin.name == "mtls-auth" then
+    if plugin.enabled and plugin.name == "mtls-auth" then
       local err = get_snis_for_plugin(db, plugin, snis)
       if err then
         return nil, err
