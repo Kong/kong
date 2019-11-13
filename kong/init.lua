@@ -423,6 +423,9 @@ function Kong.init()
     end
   end
 
+  local clustering = require "kong.clustering"
+  clustering.init_worker(config)
+
   -- Load plugins as late as possible so that everything is set up
   assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
 
@@ -547,9 +550,6 @@ function Kong.init_worker()
 
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_plugins_iterator(plugins_iterator, "init_worker")
-
-  local clustering = require "kong.clustering"
-  clustering.init_worker(kong.configuration)
 end
 
 

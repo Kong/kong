@@ -281,6 +281,8 @@ local CONF_INFERENCES = {
   lua_socket_pool_size = { typ = "number" },
   role = { enum = { "proxy", "admin", "traditional", }, },
   cluster_control_plane = { typ = "string", },
+  cluster_cert = { typ = "string" },
+  cluster_cert_key = { typ = "string" },
 }
 
 
@@ -561,6 +563,50 @@ local function check_and_infer(conf)
 
   if conf.router_update_frequency <= 0 then
     errors[#errors + 1] = "router_update_frequency must be greater than 0"
+  end
+
+  if conf.role == "admin" then
+    if #conf.admin_listen < 1 then
+      errors[#errors + 1] = "admin_listen must be specified when role = \"admin\""
+    end
+
+    if #conf.cluster_listen < 1 then
+      errors[#errors + 1] = "cluster_listen must be specified when role = \"admin\""
+    end
+
+    if conf.storage == "memory" then
+      errors[#errors + 1] = "in-memory storage can not be used when role = \"admin\""
+    end
+
+  elseif conf.role == "proxy" then
+    if #conf.proxy_listen < 1 then
+      errors[#errors + 1] = "proxy_listen must be specified when role = \"proxy\""
+    end
+
+    if not conf.cluster_control_plane then
+      errors[#errors + 1] = "cluster_control_plane must be specified when role = \"proxy\""
+    end
+
+    if conf.storage ~= "memory" then
+      errors[#errors + 1] = "only in-memory storage can be used when role = \"proxy\""
+    end
+  end
+
+  if conf.role == "admin" or conf.role == "proxy" then
+    if not conf.cluster_cert or not conf.cluster_cert_key then
+      errors[#errors + 1] = "cluster certificate and key must be provided to use Hybrid mode"
+
+    else
+      if not pl_path.exists(conf.cluster_cert) then
+        errors[#errors + 1] = "cluster_cert: no such file at " ..
+                            conf.cluster_cert
+      end
+
+      if not pl_path.exists(conf.cluster_cert_key) then
+        errors[#errors + 1] = "cluster_cert_key: no such file at " ..
+                            conf.cluster_cert_key
+      end
+    end
   end
 
   return #errors == 0, errors[1], errors

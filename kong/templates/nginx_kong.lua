@@ -349,10 +349,15 @@ server {
 server {
     server_name kong_cluster_listener;
 > for i = 1, #cluster_listeners do
-    listen $(cluster_listeners[i].listener);
+    listen $(cluster_listeners[i].listener) ssl;
 > end
 
     access_log off;
+
+    ssl_verify_client optional_no_ca;
+
+    ssl_certificate     ${{CLUSTER_CERT}};
+    ssl_certificate_key ${{CLUSTER_CERT_KEY}};
 
     location = /v1/outlet {
         content_by_lua_block {

@@ -4,10 +4,12 @@ local _M = {}
 local semaphore = require("ngx.semaphore")
 local ws_client = require("resty.websocket.client")
 local ws_server = require("resty.websocket.server")
+local ssl = require("ngx.ssl")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local concurrency = require("kong.concurrency")
 local utils = require("kong.tools.utils")
+local openssl_x509 = require("openssl.x509")
 local assert = assert
 local setmetatable = setmetatable
 local type = type
@@ -37,6 +39,8 @@ local ngx_DEBUG = ngx.DEBUG
 local ngx_INFO = ngx.INFO
 local WEAK_KEY_MT = { __mode = "k", }
 local ROLE
+local CERT_DIGEST
+local CERT, CERT_KEY
 local clients = setmetatable({}, WEAK_KEY_MT)
 local clients_n = 0
 local shdict = ngx.shared.kong_clustering -- only when role == "admin"
@@ -109,9 +113,14 @@ local function communicate(premature, conf)
   local address = conf.cluster_control_plane
 
   local c = assert(ws_client:new(WS_OPTS))
-  local uri = "ws://" .. address .. "/v1/outlet?node_id=" ..
+  local uri = "wss://" .. address .. "/v1/outlet?node_id=" ..
               kong.node.get_id() .. "&node_hostname=" .. utils.get_hostname()
-  local res, err = c:connect(uri)
+  local res, err = c:connect(uri, { ssl_verify = true,
+                                    client_cert = CERT,
+                                    client_priv_key = CERT_KEY,
+                                    server_name = "kong_clustering",
+                                  }
+                            )
   if not res then
     local delay = 9 + math.random()
 
@@ -163,6 +172,25 @@ end
 
 
 function _M.handle_cp_websocket()
+  -- use mutual TLS authentication
+  local cert = ngx_var.ssl_client_raw_cert
+
+  if not cert then
+    ngx_log(ngx_ERR, "Data Plane failed to present client certificate " ..
+                     "during handshake")
+    return ngx_exit(444)
+  end
+
+  cert = assert(openssl_x509.new(cert, "PEM"))
+  local digest = cert:digest("sha256")
+
+  if CERT_DIGEST and digest ~= CERT_DIGEST then
+    ngx_log(ngx_ERR, "Data Plane presented incorrect client certificate " ..
+                     "during handshake, expected digest: " .. CERT_DIGEST ..
+                     " got: " .. digest)
+    return ngx_exit(444)
+  end
+
   local node_id = ngx_var.arg_node_id
   if not node_id then
     ngx_exit(400)
@@ -290,6 +318,60 @@ function _M.broadcast_config(config_table)
   end
 
   return true
+end
+
+
+local function init_mtls(conf)
+  local f, err = io_open(conf.cluster_cert, "r")
+  if not f then
+    return nil, "unable to open cluster cert file: " .. err
+  end
+
+  local cert
+  cert, err = f:read("*a")
+  if not cert then
+    return nil, "unable to read cluster cert file: " .. err
+  end
+
+  f:close()
+
+  CERT, err = ssl.parse_pem_cert(cert)
+  if not CERT then
+    return nil, err
+  end
+
+  cert = openssl_x509.new(cert, "PEM")
+
+  CERT_DIGEST = cert:digest("sha256")
+
+  f, err = io_open(conf.cluster_cert_key, "r")
+  if not f then
+    return nil, "unable to open cluster cert key file: " .. err
+  end
+
+  local key
+  key, err = f:read("*a")
+  if not key then
+    return nil, "unable to read cluster cert key file: " .. err
+  end
+
+  f:close()
+
+  CERT_KEY, err = ssl.parse_pem_priv_key(key)
+  if not CERT_KEY then
+    return nil, err
+  end
+
+  return true
+end
+
+
+function _M.init(conf)
+  assert(conf, "conf can not be nil", 2)
+
+  if conf.role == "proxy" or conf.role == "admin" then
+    assert(init_mtls(conf))
+  end
 end
 
 
