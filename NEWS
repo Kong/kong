@@ -1,3 +1,12 @@
+0.2.0 - 2019-11-12
+
+  - Remove dependency on BasePlugin (#50, #51)
+  - Rename `component` tag to `lc` (#52)
+  - Restructure of Kong generated spans (#52)
+  - Change the name of spans for http traffic to `GET` (#57)
+  - Remove the no-longer supported `run_on` field from plugin config schema (#54)
+
+
 0.1.3 - 2019-08-16
 
   - Add support for stream subsystem (#30)

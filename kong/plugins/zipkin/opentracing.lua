@@ -11,7 +11,7 @@ local subsystem = ngx.config.subsystem
 local fmt = string.format
 
 local OpenTracingHandler = {
-  VERSION = "scm",
+  VERSION = "0.2.0",
   -- We want to run first so that timestamps taken are at start of the phase
   -- also so that other plugins might be able to use our structures
   PRIORITY = 100000,
