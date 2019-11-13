@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # set -eu
 
+die() {
+    echo $1
+    exit -1
+}
+
 dep_version() {
+    [ $(grep $1 .requirements | wc -l) != 1 ] && die "value not in .requirements (or doubled)"
     grep $1 .requirements | sed -e 's/.*=//' | tr -d '\n'
 }
 
@@ -11,14 +17,6 @@ OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
 OPENRESTY_PATCHES_BRANCH=$(dep_version OPENRESTY_PATCHES_BRANCH)
 KONG_NGINX_MODULE_BRANCH=$(dep_version KONG_NGINX_MODULE_BRANCH)
 BUILD_TOOLS=$(dep_version BUILD_TOOLS)
-
-dep_version() {
-    grep $1 .requirements | sed -e 's/.*=//' | tr -d '\n'
-}
-
-OPENRESTY=$(dep_version RESTY_VERSION)
-LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
-OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
 
 
 #---------
