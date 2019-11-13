@@ -1,0 +1,66 @@
+dist: trusty
+sudo: required
+
+language: java
+
+jdk:
+  - oraclejdk8
+
+notifications:
+  email: false
+
+services:
+  - redis-server
+
+addons:
+  postgresql: "9.5"
+  apt:
+    packages:
+      - net-tools
+      - libpcre3-dev
+      - build-essential
+
+services:
+  - redis
+  - docker
+
+env:
+  global:
+    - PLUGIN_NAME=letsencrypt
+    - LUAROCKS=3.0.4
+    - OPENSSL=1.1.1d
+    - KONG_REPOSITORY=kong
+    - KONG_LATEST=master
+    - CASSANDRA_BASE=2.2.12
+    - CASSANDRA_LATEST=3.9
+    - OPENRESTY_LATEST=1.15.8.1
+    - DOWNLOAD_CACHE=$HOME/download-cache
+    - INSTALL_CACHE=$HOME/install-cache
+    - BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6"
+    - TEST_FILE_PATH=$TRAVIS_BUILD_DIR/spec
+    - KONG_PLUGINS=bundled,$PLUGIN_NAME
+    - KONG_TEST_PLUGINS=$KONG_PLUGINS
+
+  matrix:
+    - OPENRESTY=$OPENRESTY_LATEST
+      CASSANDRA=$CASSANDRA_BASE
+      KONG_TAG=$KONG_LATEST
+    - OPENRESTY=$OPENRESTY_LATEST
+      CASSANDRA=$CASSANDRA_LATEST
+      KONG_TAG=$KONG_LATEST
+
+install:
+  - git clone --single-branch https://$GITHUB_TOKEN:@github.com/Kong/kong-ci ../kong-ci
+  - source ../kong-ci/setup_plugin_env.sh
+
+script:
+  - eval $LUACHECK_CMD
+  - eval $BUSTED_CMD
+
+cache:
+  apt: true
+  pip: true
+  directories:
+    - $DOWNLOAD_CACHE
+    - $INSTALL_CACHE
+    - $HOME/.ccm/repository

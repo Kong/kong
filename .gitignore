@@ -1,0 +1,6 @@
+/luarocks
+/lua
+/lua_modules
+/.luarocks
+*.rock
+*.tar.gz
