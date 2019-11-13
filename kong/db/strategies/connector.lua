@@ -33,7 +33,6 @@ function Connector:get_page_size(options)
 end
 
 
-
 do
   local past_init
   local ngx = ngx

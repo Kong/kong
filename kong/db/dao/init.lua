@@ -1,7 +1,7 @@
 local cjson = require "cjson"
-local defaults = require "kong.db.strategies.connector".defaults
 local iteration = require "kong.db.iteration"
 local utils = require "kong.tools.utils"
+local defaults = require "kong.db.strategies.connector".defaults
 
 
 local setmetatable = setmetatable
@@ -160,7 +160,6 @@ local function get_pagination_options(self, options)
 end
 
 
-
 local function validate_options_value(self, options)
   local errors = {}
   local schema = self.schema
@@ -210,21 +209,19 @@ local function validate_options_value(self, options)
       if max_page_size == nil then
         max_page_size = self.pagination.max_page_size
 
-      else
-        if type(max_page_size) ~= "number" then
-          errors.pagination = {
-            max_page_size = "must be a number",
-          }
+      elseif type(max_page_size) ~= "number" then
+        errors.pagination = {
+          max_page_size = "must be a number",
+        }
 
-          max_page_size = self.pagination.max_page_size
+        max_page_size = self.pagination.max_page_size
 
-        elseif floor(max_page_size) ~= max_page_size or max_page_size < 1 then
-          errors.pagination = {
-            max_page_size = "must be an integer greater than 0",
-          }
+      elseif floor(max_page_size) ~= max_page_size or max_page_size < 1 then
+        errors.pagination = {
+          max_page_size = "must be an integer greater than 0",
+        }
 
-          max_page_size = self.pagination.max_page_size
-        end
+        max_page_size = self.pagination.max_page_size
       end
 
       if page_size ~= nil then
