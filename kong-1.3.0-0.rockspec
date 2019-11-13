@@ -25,7 +25,7 @@ dependencies = {
   "pgmoon == 1.10.0",
   "luatz == 0.4",
   "http == 0.3",
-  "lua_system_constants == 0.1.3",
+  "lua_system_constants == 0.1.4",
   "lyaml == 6.2.3",
   "lua-resty-iputils == 0.3.0",
   "luaossl == 20190612",
