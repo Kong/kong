@@ -1092,9 +1092,10 @@ return {
             return exit(ERROR)
           end
 
-        -- TODO Fake certificate phase?
+          -- TODO Fake certificate phase?
 
-        log(INFO, "attempting to terminate TLS")
+          log(INFO, "attempting to terminate TLS")
+        end
       end
 
       -- Terminate TLS
