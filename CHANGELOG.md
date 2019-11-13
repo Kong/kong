@@ -1,3 +1,23 @@
+## 1.2.4
+
+### Changed
+
+- Remove the no-longer supported `run_on` field from plugin config schema
+
+### Fixed
+
+- None
+
+## 1.2.3
+
+### Changed
+
+- Allow rendering values stored in `kong.ctx.shared` from the template renderer environment
+
+### Fixed
+
+- Fixed bug on adding a header with the same name as a removed one doesn't behave correctly
+
 ## 1.2.2
 
 ### Changed
