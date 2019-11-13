@@ -1,7 +1,15 @@
+local type = type
 local fmt = string.format
 
 
-local Connector = {}
+local Connector = {
+  defaults = {
+    pagination = {
+      page_size     = 1000,
+      max_page_size = 50000,
+    },
+  },
+}
 
 
 function Connector:init()
@@ -13,6 +21,15 @@ end
 function Connector:init_worker()
   -- nop by default
   return true
+end
+
+
+function Connector:get_page_size(options)
+  if type(options) == "table" and type(options.pagination) == "table" then
+    return options.pagination.page_size
+  end
+
+  return self.defaults.pagination.page_size
 end
 
 

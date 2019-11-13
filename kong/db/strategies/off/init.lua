@@ -1,9 +1,11 @@
 local declarative_config = require "kong.db.schema.others.declarative_config"
-local constants = require "kong.constants"
 
 
 local kong = kong
 local fmt = string.format
+local type = type
+local next = next
+local pairs = pairs
 local tostring = tostring
 local tonumber = tonumber
 local encode_base64 = ngx.encode_base64
@@ -86,7 +88,9 @@ end
 
 
 local function page_for_key(self, key, size, offset, options)
-  size = size or constants.DEFAULT_PAGE_SIZE
+  if not size then
+    size = self.connector:get_page_size(options)
+  end
 
   if offset then
     local token = decode_base64(offset)

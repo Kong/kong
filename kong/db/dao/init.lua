@@ -1,6 +1,7 @@
 local cjson = require "cjson"
 local iteration = require "kong.db.iteration"
-local constants = require "kong.constants"
+local utils = require "kong.tools.utils"
+local defaults = require "kong.db.strategies.connector".defaults
 
 
 local setmetatable = setmetatable
@@ -46,9 +47,7 @@ local function validate_size_type(size)
 end
 
 
-local function validate_size_value(size)
-  local max = constants.MAX_PAGE_SIZE
-
+local function validate_size_value(size, max)
   if floor(size) ~= size or
            size < 1 or
            size > max then
@@ -137,8 +136,33 @@ local function validate_options_type(options)
 end
 
 
-local function validate_options_value(options, schema, context)
+local function get_pagination_options(self, options)
+  if options == nil then
+    return {
+      pagination = self.pagination,
+    }
+  end
+
+  if type(options) ~= "table" then
+    error("options must be a table when specified", 3)
+  end
+
+  options = utils.deep_copy(options, false)
+
+  if type(options.pagination) == "table" then
+    options.pagination = utils.table_merge(self.pagination, options.pagination)
+
+  else
+    options.pagination = self.pagination
+  end
+
+  return options
+end
+
+
+local function validate_options_value(self, options)
   local errors = {}
+  local schema = self.schema
 
   if schema.ttl == true and options.ttl ~= nil then
     if floor(options.ttl) ~= options.ttl or
@@ -172,6 +196,60 @@ local function validate_options_value(options, schema, context)
 
   elseif schema.fields.tags == nil and options.tags ~= nil then
     errors.tags = fmt("cannot be used with '%s'", schema.name)
+  end
+
+  if options.pagination ~= nil then
+    if type(options.pagination) ~= "table" then
+      errors.pagination = "must be a table"
+
+    else
+      local page_size     = options.pagination.page_size
+      local max_page_size = options.pagination.max_page_size
+
+      if max_page_size == nil then
+        max_page_size = self.pagination.max_page_size
+
+      elseif type(max_page_size) ~= "number" then
+        errors.pagination = {
+          max_page_size = "must be a number",
+        }
+
+        max_page_size = self.pagination.max_page_size
+
+      elseif floor(max_page_size) ~= max_page_size or max_page_size < 1 then
+        errors.pagination = {
+          max_page_size = "must be an integer greater than 0",
+        }
+
+        max_page_size = self.pagination.max_page_size
+      end
+
+      if page_size ~= nil then
+        if type(page_size) ~= "number" then
+          if not errors.pagination then
+            errors.pagination = {
+              page_size = "must be a number",
+            }
+
+          else
+            errors.pagination.page_size = "must be a number"
+          end
+
+        elseif floor(page_size) ~= page_size
+          or page_size < 1
+          or page_size > max_page_size
+        then
+          if not errors.pagination then
+            errors.pagination = {
+              page_size = fmt("must be an integer between 1 and %d", max_page_size),
+            }
+
+          else
+            errors.pagination.page_size = fmt("must be an integer between 1 and %d", max_page_size)
+          end
+        end
+      end
+    end
   end
 
   if next(errors) then
@@ -266,7 +344,7 @@ local function check_insert(self, entity, options)
   end
 
   if options ~= nil then
-    ok, errors = validate_options_value(options, self.schema, "insert")
+    ok, errors = validate_options_value(self, options)
     if not ok then
       local err_t = self.errors:invalid_options(errors)
       return nil, tostring(err_t), err_t
@@ -338,7 +416,7 @@ local function check_update(self, key, entity, options, name)
   end
 
   if options ~= nil then
-    ok, errors = validate_options_value(options, self.schema, "update")
+    ok, errors = validate_options_value(self, options)
     if not ok then
       local err_t = self.errors:invalid_options(errors)
       return nil, nil, tostring(err_t), err_t
@@ -386,7 +464,7 @@ local function check_upsert(self, entity, options, name, value)
   end
 
   if options ~= nil then
-    local ok, errors = validate_options_value(options, self.schema, "upsert")
+    local ok, errors = validate_options_value(self, options)
     if not ok then
       local err_t = self.errors:invalid_options(errors)
       return nil, tostring(err_t), err_t
@@ -455,9 +533,7 @@ local function generate_foreign_key_methods(schema)
           validate_offset_type(offset)
         end
 
-        if options ~= nil then
-          validate_options_type(options)
-        end
+        options = get_pagination_options(self, options)
 
         local ok, errors = self.schema:validate_field(field, foreign_key)
         if not ok then
@@ -467,22 +543,20 @@ local function generate_foreign_key_methods(schema)
 
         if size ~= nil then
           local err
-          ok, err = validate_size_value(size)
+          ok, err = validate_size_value(size, options.pagination.max_page_size)
           if not ok then
             local err_t = self.errors:invalid_size(err)
             return nil, tostring(err_t), err_t
           end
 
         else
-          size = constants.DEFAULT_PAGE_SIZE
+          size = options.pagination.page_size
         end
 
-        if options ~= nil then
-          ok, errors = validate_options_value(options, schema, "select")
-          if not ok then
-            local err_t = self.errors:invalid_options(errors)
-            return nil, tostring(err_t), err_t
-          end
+        ok, errors = validate_options_value(self, options)
+        if not ok then
+          local err_t = self.errors:invalid_options(errors)
+          return nil, tostring(err_t), err_t
         end
 
         local strategy = self.strategy
@@ -513,19 +587,17 @@ local function generate_foreign_key_methods(schema)
           validate_size_type(size)
         end
 
+        options = get_pagination_options(self, options)
+
         if size ~= nil then
-          local ok, err = validate_size_value(size)
+          local ok, err = validate_size_value(size, options.pagination.max_page_size)
           if not ok then
             local err_t = self.errors:invalid_size(err)
             return iteration.failed(tostring(err_t), err_t)
           end
 
         else
-          size = constants.DEFAULT_ITERATION_SIZE
-        end
-
-        if options ~= nil then
-          validate_options_type(options)
+          size = options.pagination.page_size
         end
 
         local ok, errors = schema:validate_field(field, foreign_key)
@@ -534,12 +606,10 @@ local function generate_foreign_key_methods(schema)
           return iteration.failed(tostring(err_t), err_t)
         end
 
-        if options ~= nil then
-          ok, errors = validate_options_value(options, schema, "select")
-          if not ok then
-            local err_t = self.errors:invalid_options(errors)
-            return nil, tostring(err_t), err_t
-          end
+        ok, errors = validate_options_value(self, options)
+        if not ok then
+          local err_t = self.errors:invalid_options(errors)
+          return nil, tostring(err_t), err_t
         end
 
         local strategy = self.strategy
@@ -572,7 +642,7 @@ local function generate_foreign_key_methods(schema)
         end
 
         if options ~= nil then
-          ok, errors = validate_options_value(options, schema, "select")
+          ok, errors = validate_options_value(self, options)
           if not ok then
             local err_t = self.errors:invalid_options(errors)
             return nil, tostring(err_t), err_t
@@ -692,7 +762,7 @@ local function generate_foreign_key_methods(schema)
         end
 
         if options ~= nil then
-          ok, errors = validate_options_value(options, schema, "delete")
+          ok, errors = validate_options_value(self, options)
           if not ok then
             local err_t = self.errors:invalid_options(errors)
             return nil, tostring(err_t), err_t
@@ -733,11 +803,12 @@ function _M.new(db, schema, strategy, errors)
   local super      = setmetatable(fk_methods, DAO)
 
   local self = {
-    db       = db,
-    schema   = schema,
-    strategy = strategy,
-    errors   = errors,
-    super    = super,
+    db         = db,
+    schema     = schema,
+    strategy   = strategy,
+    errors     = errors,
+    pagination = utils.shallow_copy(defaults.pagination),
+    super      = super,
   }
 
   if schema.dao then
@@ -770,7 +841,7 @@ function DAO:select(primary_key, options)
   end
 
   if options ~= nil then
-    ok, errors = validate_options_value(options, self.schema, "select")
+    ok, errors = validate_options_value(self, options)
     if not ok then
       local err_t = self.errors:invalid_options(errors)
       return nil, tostring(err_t), err_t
@@ -799,27 +870,23 @@ function DAO:page(size, offset, options)
     validate_offset_type(offset)
   end
 
-  if options ~= nil then
-    validate_options_type(options)
-  end
+  options = get_pagination_options(self, options)
 
   if size ~= nil then
-    local ok, err = validate_size_value(size)
+    local ok, err = validate_size_value(size, options.pagination.max_page_size)
     if not ok then
       local err_t = self.errors:invalid_size(err)
       return nil, tostring(err_t), err_t
     end
 
   else
-    size = constants.DEFAULT_PAGE_SIZE
+    size = options.pagination.page_size
   end
 
-  if options ~= nil then
-    local ok, errors = validate_options_value(options, self.schema, "select")
-    if not ok then
-      local err_t = self.errors:invalid_options(errors)
-      return nil, tostring(err_t), err_t
-    end
+  local ok, errors = validate_options_value(self, options)
+  if not ok then
+    local err_t = self.errors:invalid_options(errors)
+    return nil, tostring(err_t), err_t
   end
 
   local rows, err_t, offset = self.strategy:page(size, offset, options)
@@ -842,27 +909,23 @@ function DAO:each(size, options)
     validate_size_type(size)
   end
 
-  if options ~= nil then
-    validate_options_type(options)
-  end
+  options = get_pagination_options(self, options)
 
   if size ~= nil then
-    local ok, err = validate_size_value(size)
+    local ok, err = validate_size_value(size, options.pagination.max_page_size)
     if not ok then
       local err_t = self.errors:invalid_size(err)
       return nil, tostring(err_t), err_t
     end
 
   else
-    size = constants.DEFAULT_ITERATION_SIZE
+    size = options.pagination.page_size
   end
 
-  if options ~= nil then
-    local ok, errors = validate_options_value(options, self.schema, "select")
-    if not ok then
-      local err_t = self.errors:invalid_options(errors)
-      return nil, tostring(err_t), err_t
-    end
+  local ok, errors = validate_options_value(self, options)
+  if not ok then
+    local err_t = self.errors:invalid_options(errors)
+    return nil, tostring(err_t), err_t
   end
 
   local pager = function(size, offset, options)
@@ -997,7 +1060,7 @@ function DAO:delete(primary_key, options)
   end
 
   if options ~= nil then
-    ok, errors = validate_options_value(options, self.schema, "delete")
+    ok, errors = validate_options_value(self, options)
     if not ok then
       local err_t = self.errors:invalid_options(errors)
       return nil, tostring(err_t), err_t
