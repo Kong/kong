@@ -58,10 +58,64 @@ return {
             },
           },
           {
-            client_arg = {
+            discovery_headers_names = {
               required = false,
-              type     = "string",
-              default  = "client_id",
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            discovery_headers_values = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            extra_jwks_uris = {
+              required = false,
+              type     = "set",
+              elements = typedefs.url,
+            },
+          },
+          {
+            rediscovery_lifetime = {
+              required = false,
+              type     = "number",
+              default  = 300,
+            },
+          },
+          {
+            auth_methods = {
+              required = false,
+              type     = "array",
+              default  = {
+                "password",
+                "client_credentials",
+                "authorization_code",
+                "bearer",
+                "introspection",
+                "kong_oauth2",
+                "refresh_token",
+                "session",
+              },
+              elements = {
+                type   = "string",
+                one_of = {
+                  "password",
+                  "client_credentials",
+                  "authorization_code",
+                  "bearer",
+                  "introspection",
+                  "kong_oauth2",
+                  "refresh_token",
+                  "session",
+                },
+              },
             },
           },
           {
@@ -80,6 +134,13 @@ return {
               elements = {
                 type = "string",
               },
+            },
+          },
+          {
+            client_arg = {
+              required = false,
+              type     = "string",
+              default  = "client_id",
             },
           },
           {
@@ -146,37 +207,6 @@ return {
             },
           },
           {
-            scopes = {
-              required = false,
-              type     = "array",
-              default  = {
-                "openid",
-              },
-              elements = {
-                type = "string",
-              },
-            },
-          },
-          {
-            scopes_required = {
-              required = false,
-              type     = "array",
-              elements = {
-                type = "string",
-              },
-            },
-          },
-          {
-            scopes_claim = {
-              required = false,
-              type     = "array",
-              default  = { "scope" },
-              elements = {
-                type = "string",
-              },
-            },
-          },
-          {
             response_mode = {
               required = false,
               type     = "string",
@@ -201,31 +231,14 @@ return {
             },
           },
           {
-            auth_methods = {
+            scopes = {
               required = false,
               type     = "array",
               default  = {
-                "password",
-                "client_credentials",
-                "authorization_code",
-                "bearer",
-                "introspection",
-                "kong_oauth2",
-                "refresh_token",
-                "session",
+                "openid",
               },
               elements = {
-                type   = "string",
-                one_of = {
-                  "password",
-                  "client_credentials",
-                  "authorization_code",
-                  "bearer",
-                  "introspection",
-                  "kong_oauth2",
-                  "refresh_token",
-                  "session",
-                },
+                type = "string",
               },
             },
           },
@@ -233,6 +246,25 @@ return {
             audience = {
               required = false,
               type     = "array",
+              elements = {
+                type = "string",
+              },
+            },
+          },
+          {
+            scopes_required = {
+              required = false,
+              type     = "array",
+              elements = {
+                type = "string",
+              },
+            },
+          },
+          {
+            scopes_claim = {
+              required = false,
+              type     = "array",
+              default  = { "scope" },
               elements = {
                 type = "string",
               },
@@ -278,6 +310,38 @@ return {
               type     = "array",
               elements = {
                 type = "string",
+              },
+            },
+          },
+          {
+            authorization_endpoint = typedefs.url {
+              required = false,
+            },
+          },
+          {
+            authorization_query_args_names = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            authorization_query_args_values = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            authorization_query_args_client = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
               },
             },
           },
@@ -333,7 +397,180 @@ return {
             },
           },
           {
-            authorization_endpoint = typedefs.url {
+            token_endpoint = typedefs.url {
+              required = false,
+            },
+          },
+          {
+            token_endpoint_auth_method = {
+              required = false,
+              type     = "string",
+              one_of   = {
+                "none",
+                "client_secret_basic",
+                "client_secret_post",
+              },
+            },
+          },
+          {
+            token_headers_names = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            token_headers_values = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            token_headers_client = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            token_headers_replay = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            token_headers_prefix = {
+              required = false,
+              type     = "string",
+            },
+          },
+          {
+            token_headers_grants = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+                one_of = {
+                  "password",
+                  "client_credentials",
+                  "authorization_code",
+                },
+              },
+            },
+          },
+          {
+            token_post_args_names = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            token_post_args_values = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            token_post_args_client = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            introspection_endpoint = typedefs.url {
+              required = false,
+            },
+          },
+          {
+            introspection_hint = {
+              required = false,
+              type     = "string",
+              default  = "access_token",
+            },
+          },
+          {
+            introspection_headers_names = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            introspection_headers_values = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            introspection_post_args_names = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            introspection_post_args_values = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            introspection_post_args_client = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            introspect_jwt_tokens = {
+              required = false,
+              type     = "boolean",
+              default  = false,
+            },
+          },
+          {
+            revocation_endpoint = typedefs.url {
+              required = false,
+            },
+          },
+          {
+            end_session_endpoint = typedefs.url {
+              required = false,
+            },
+          },
+          {
+            token_exchange_endpoint = typedefs.url {
               required = false,
             },
           },
@@ -472,16 +709,10 @@ return {
             },
           },
           {
-            extra_jwks_uris = {
+            reverify = {
               required = false,
-              type     = "set",
-              elements = typedefs.url,
-            },
-          },
-          {
-            jwt_session_cookie = {
-              required = false,
-              type     = "string",
+              type     = "boolean",
+              default  = false,
             },
           },
           {
@@ -492,17 +723,9 @@ return {
             },
           },
           {
-            rediscovery_lifetime = {
+            jwt_session_cookie = {
               required = false,
-              type     = "number",
-              default  = 300,
-            },
-          },
-          {
-            reverify = {
-              required = false,
-              type     = "boolean",
-              default  = false,
+              type     = "string",
             },
           },
           {
@@ -563,12 +786,6 @@ return {
             },
           },
           {
-            id_token_param_name = {
-              required = false,
-              type     = "string",
-            },
-          },
-          {
             id_token_param_type = {
               required = false,
               type     = "array",
@@ -588,7 +805,7 @@ return {
             },
           },
           {
-            refresh_token_param_name = {
+            id_token_param_name = {
               required = false,
               type     = "string",
             },
@@ -613,154 +830,16 @@ return {
             },
           },
           {
+            refresh_token_param_name = {
+              required = false,
+              type     = "string",
+            },
+          },
+          {
             refresh_tokens = {
               required = false,
               type     = "boolean",
               default  = true,
-            },
-          },
-          {
-            discovery_headers_names = {
-              required = false,
-              type     = "array",
-              elements = {
-                type   = "string",
-              },
-            },
-          },
-          {
-            discovery_headers_values = {
-              required = false,
-              type     = "array",
-              elements = {
-                type   = "string",
-              },
-            },
-          },
-          {
-            authorization_query_args_names = {
-              required = false,
-              type     = "array",
-              elements = {
-                type   = "string",
-              },
-            },
-          },
-          {
-            authorization_query_args_values = {
-              required = false,
-              type     = "array",
-              elements = {
-                type   = "string",
-              },
-            },
-          },
-          {
-            authorization_query_args_client = {
-              required = false,
-              type     = "array",
-              elements = {
-                type   = "string",
-              },
-            },
-          },
-          {
-            token_headers_names = {
-              required = false,
-              type     = "array",
-              elements = {
-                type   = "string",
-              },
-            },
-          },
-          {
-            token_headers_values = {
-              required = false,
-              type     = "array",
-              elements = {
-                type   = "string",
-              },
-            },
-          },
-          {
-            token_post_args_names = {
-              required = false,
-              type     = "array",
-              elements = {
-                type   = "string",
-              },
-            },
-          },
-          {
-            token_post_args_values = {
-              required = false,
-              type     = "array",
-              elements = {
-                type   = "string",
-              },
-            },
-          },
-          {
-            token_post_args_client = {
-              required = false,
-              type     = "array",
-              elements = {
-                type   = "string",
-              },
-            },
-          },
-          {
-            token_headers_client = {
-              required = false,
-              type     = "array",
-              elements = {
-                type   = "string",
-              },
-            },
-          },
-          {
-            token_headers_replay = {
-              required = false,
-              type     = "array",
-              elements = {
-                type   = "string",
-              },
-            },
-          },
-          {
-            token_headers_prefix = {
-              required = false,
-              type     = "string",
-            },
-          },
-          {
-            token_headers_grants = {
-              required = false,
-              type     = "array",
-              elements = {
-                type   = "string",
-                one_of = {
-                  "password",
-                  "client_credentials",
-                  "authorization_code",
-                },
-              },
-            },
-          },
-          {
-            token_endpoint_auth_method = {
-              required = false,
-              type     = "string",
-              one_of   = {
-                "none",
-                "client_secret_basic",
-                "client_secret_post",
-              },
-            },
-          },
-          {
-            token_endpoint = typedefs.url {
-              required = false,
             },
           },
           {
@@ -782,6 +861,55 @@ return {
             },
           },
           {
+            upstream_access_token_header = {
+              required = false,
+              type     = "string",
+              default  = "authorization:bearer",
+            },
+          },
+          {
+            upstream_access_token_jwk_header = {
+              required = false,
+              type     = "string",
+            },
+          },
+          {
+            upstream_id_token_header = {
+              required = false,
+              type     = "string",
+            },
+          },
+          {
+            upstream_id_token_jwk_header = {
+              required = false,
+              type     = "string",
+            },
+          },
+          {
+            upstream_refresh_token_header = {
+              required = false,
+              type     = "string",
+            },
+          },
+          {
+            upstream_user_info_header = {
+              required = false,
+              type     = "string",
+            },
+          },
+          {
+            upstream_introspection_header = {
+              required = false,
+              type     = "string",
+            },
+          },
+          {
+            upstream_session_id_header = {
+              required = false,
+              type     = "string",
+            },
+          },
+          {
             downstream_headers_claims = {
               required = false,
               type     = "array",
@@ -800,20 +928,7 @@ return {
             },
           },
           {
-            upstream_access_token_header = {
-              required = false,
-              type     = "string",
-              default  = "authorization:bearer",
-            },
-          },
-          {
             downstream_access_token_header = {
-              required = false,
-              type     = "string",
-            },
-          },
-          {
-            upstream_access_token_jwk_header = {
               required = false,
               type     = "string",
             },
@@ -825,19 +940,7 @@ return {
             },
           },
           {
-            upstream_id_token_header = {
-              required = false,
-              type     = "string",
-            },
-          },
-          {
             downstream_id_token_header = {
-              required = false,
-              type     = "string",
-            },
-          },
-          {
-            upstream_id_token_jwk_header = {
               required = false,
               type     = "string",
             },
@@ -849,19 +952,7 @@ return {
             },
           },
           {
-            upstream_refresh_token_header = {
-              required = false,
-              type     = "string",
-            },
-          },
-          {
             downstream_refresh_token_header = {
-              required = false,
-              type     = "string",
-            },
-          },
-          {
-            upstream_user_info_header = {
               required = false,
               type     = "string",
             },
@@ -873,19 +964,7 @@ return {
             },
           },
           {
-            upstream_introspection_header = {
-              required = false,
-              type     = "string",
-            },
-          },
-          {
             downstream_introspection_header = {
-              required = false,
-              type     = "string",
-            },
-          },
-          {
-            upstream_session_id_header = {
               required = false,
               type     = "string",
             },
@@ -894,61 +973,6 @@ return {
             downstream_session_id_header = {
               required = false,
               type     = "string",
-            },
-          },
-          {
-            introspect_jwt_tokens = {
-              required = false,
-              type     = "boolean",
-              default  = false,
-            },
-          },
-          {
-            introspection_endpoint = typedefs.url {
-              required = false,
-            },
-          },
-          {
-            introspection_hint = {
-              required = false,
-              type     = "string",
-              default  = "access_token",
-            },
-          },
-          {
-            introspection_headers_names = {
-              required = false,
-              type     = "array",
-              elements = {
-                type   = "string",
-              },
-            },
-          },
-          {
-            introspection_headers_values = {
-              required = false,
-              type     = "array",
-              elements = {
-                type   = "string",
-              },
-            },
-          },
-          {
-            introspection_post_args_names = {
-              required = false,
-              type     = "array",
-              elements = {
-                type   = "string",
-              },
-            },
-          },
-          {
-            introspection_post_args_values = {
-              required = false,
-              type     = "array",
-              elements = {
-                type   = "string",
-              },
             },
           },
           {
@@ -1070,21 +1094,6 @@ return {
               required = false,
               type     = "boolean",
               default  = true,
-            },
-          },
-          {
-            revocation_endpoint = typedefs.url {
-              required = false,
-            },
-          },
-          {
-            end_session_endpoint = typedefs.url {
-              required = false,
-            },
-          },
-          {
-            token_exchange_endpoint = typedefs.url {
-              required = false,
             },
           },
           {
@@ -1230,13 +1239,6 @@ return {
             cache_ttl_resurrect = {
               required = false,
               type     = "number",
-            },
-          },
-          {
-            verify_signature = {
-              required = false,
-              type     = "boolean",
-              default  = true,
             },
           },
           {
