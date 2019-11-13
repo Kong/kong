@@ -1,11 +1,12 @@
 local cjson         = require "cjson"
 local cjson_safe    = require "cjson.safe"
-local constants     = require "kong.constants"
 
 
+local kong          = kong
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local fmt           = string.format
+local unpack        = unpack
 
 
 local Tags = {}
@@ -41,7 +42,9 @@ local sql_templates = {
 
 
 local function page(self, size, token, options, tag)
-  size = size or constants.DEFAULT_PAGE_SIZE
+  if not size then
+    size = self.connector:get_page_size(options)
+  end
 
   local limit = size + 1
 

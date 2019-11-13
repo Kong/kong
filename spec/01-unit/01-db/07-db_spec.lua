@@ -7,6 +7,12 @@ local function setup_it_block()
       {"kong.db.strategies", {
         new = function()
           local connector = {
+            defaults = {
+              pagination = {
+                page_size     = 1000,
+                max_page_size = 50000,
+              },
+            },
             infos = function()
               return {}
             end,

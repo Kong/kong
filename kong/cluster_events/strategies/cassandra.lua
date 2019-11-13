@@ -1,5 +1,4 @@
 local cassandra = require "cassandra"
-local constants = require "kong.constants"
 
 
 local fmt          = string.format
@@ -25,9 +24,13 @@ local mt = { __index = _M }
 
 
 function _M.new(db, page_size, event_ttl)
+  if type(page_size) ~= "number" then
+    error("page_size must be a number", 2)
+  end
+
   local self  = {
     cluster   = db.connector.cluster,
-    page_size = page_size or constants.DEFAULT_CLUSTER_EVENTS_PAGE_SIZE,
+    page_size = page_size,
     event_ttl = event_ttl,
   }
 

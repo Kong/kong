@@ -407,6 +407,7 @@ function _M:transformation_error(err)
   return new_err_t(self, ERRORS.TRANSFORMATION_ERROR, err)
 end
 
+
 function _M:invalid_size(err)
   if type(err) ~= "string" then
     error("err must be a string", 2)
