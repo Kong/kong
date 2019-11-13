@@ -10,6 +10,9 @@ for details on installation and usage.
 
 # History
 
+0.4.1
+- Remove the no-longer supported `run_on` field from plugin config schema
+
 0.4.0
 - Fix #7 (run_on in schema should be in toplevel fields table)
 - Remove BasePlugin inheritance (not needed anymore)

@@ -22,7 +22,7 @@ end
 
 local azure = {
   PRIORITY = 749,
-  VERSION  = "0.4.0",
+  VERSION  = "0.4.1",
 }
 
 
