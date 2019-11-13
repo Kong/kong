@@ -386,7 +386,7 @@ local function check_and_infer(conf)
   -- custom validations
   ---------------------
 
-  if conf.database == "cassandra" then
+  if conf.storage == "cassandra" then
     if string.find(conf.cassandra_lb_policy, "DCAware", nil, true)
        and not conf.cassandra_local_datacenter
     then
@@ -599,12 +599,12 @@ local function check_and_infer(conf)
     else
       if not pl_path.exists(conf.cluster_cert) then
         errors[#errors + 1] = "cluster_cert: no such file at " ..
-                            conf.cluster_cert
+                              conf.cluster_cert
       end
 
       if not pl_path.exists(conf.cluster_cert_key) then
         errors[#errors + 1] = "cluster_cert_key: no such file at " ..
-                            conf.cluster_cert_key
+                              conf.cluster_cert_key
       end
     end
   end
@@ -1176,6 +1176,10 @@ local function load(path, custom_conf, opts)
   if conf.lua_ssl_trusted_certificate then
     conf.lua_ssl_trusted_certificate =
       pl_path.abspath(conf.lua_ssl_trusted_certificate)
+
+  if conf.cluster_cert and conf.cluster_cert_key then
+    conf.cluster_cert = pl_path.abspath(conf.cluster_cert)
+    conf.cluster_cert_key = pl_path.abspath(conf.cluster_cert_key)
   end
 
   -- attach prefix files paths

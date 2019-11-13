@@ -424,7 +424,7 @@ function Kong.init()
   end
 
   local clustering = require "kong.clustering"
-  clustering.init_worker(config)
+  clustering.init(config)
 
   -- Load plugins as late as possible so that everything is set up
   assert(db.plugins:load_plugin_schemas(config.loaded_plugins))

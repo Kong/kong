@@ -51,7 +51,7 @@ lua_shared_dict kong_process_events 5m;
 lua_shared_dict kong_cluster_events 5m;
 lua_shared_dict kong_healthchecks   5m;
 lua_shared_dict kong_rate_limiting_counters 12m;
-> if database == "cassandra" then
+> if storage == "cassandra" then
 lua_shared_dict kong_cassandra      5m;
 > end
 > if role == "admin" then
