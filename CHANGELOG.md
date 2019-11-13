@@ -1,3 +1,7 @@
+## aws-lambda 3.0.1
+
+- Remove the no-longer supported `run_on` field from plugin config schema
+
 ## aws-lambda 3.0.0
 
 - Renamed from `liamp` to `aws-lambda` to supersede the `aws-lambda` plugin
