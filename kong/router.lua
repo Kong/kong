@@ -1,3 +1,4 @@
+local constants     = require "kong.constants"
 local lrucache      = require "resty.lrucache"
 local utils         = require "kong.tools.utils"
 local px            = require "resty.mediador.proxy"
@@ -156,12 +157,8 @@ local function has_capturing_groups(subj)
 end
 
 
-local protocol_subsystem = {
-  http = "http",
-  https = "http",
-  tcp = "stream",
-  tls = "stream",
-}
+local protocol_subsystem = constants.PROTOCOLS_WITH_SUBSYSTEM
+
 
 local function marshall_route(r)
   local route        = r.route
