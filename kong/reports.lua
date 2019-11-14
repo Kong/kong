@@ -166,7 +166,7 @@ local function create_timer(...)
   end
 end
 
--- interval interval is exposed for unit test
+-- @param interval exposed for unit test only
 local function create_counter(interval)
   local err
   -- create a counter instance which syncs to `kong` shdict every 10 minutes
