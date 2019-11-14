@@ -19,7 +19,12 @@ DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
 BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/openresty-build-tools
 
 KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:=master}
-OPENRESTY_PATCHES_BRANCH=${OPENRESTY_PATCHES_BRANCH:=master}
+
+if [ $TRAVIS_BRANCH == "master" ] || [ ! -z "$TRAVIS_TAG" ]; then
+  OPENRESTY_PATCHES_BRANCH=${OPENRESTY_PATCHES_BRANCH:=master}
+else
+  OPENRESTY_PATCHES_BRANCH=${OPENRESTY_PATCHES_BRANCH:=next}
+fi
 
 if [ ! -d $BUILD_TOOLS_DOWNLOAD ]; then
     git clone -q https://github.com/Kong/openresty-build-tools.git $BUILD_TOOLS_DOWNLOAD
