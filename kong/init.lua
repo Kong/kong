@@ -74,7 +74,6 @@ local openssl_ssl = require "openssl.ssl"
 local openssl_pkey = require "openssl.pkey"
 local openssl_x509 = require "openssl.x509"
 local runloop = require "kong.runloop.handler"
-local mesh = require "kong.runloop.mesh"
 local tracing = require "kong.tracing"
 local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
@@ -323,7 +322,7 @@ local function load_declarative_config(kong_config, entities)
     assert(runloop.build_router("init"))
 
     if kong_config.service_mesh then
-      mesh.init()
+      -- mesh.init()
     end
 
     ok, err = ngx.shared.kong:safe_set("declarative_config:loaded", true)
@@ -508,7 +507,7 @@ function Kong.init()
   end
 
   if config.service_mesh and kong.configuration.database ~= "off" then
-    mesh.init()
+    -- mesh.init()
   end
 
   -- Load plugins as late as possible so that everything is set up

@@ -6,7 +6,6 @@ local utils        = require "kong.tools.utils"
 local Router       = require "kong.router"
 local balancer     = require "kong.runloop.balancer"
 local reports      = require "kong.reports"
-local mesh         = require "kong.runloop.mesh"
 local constants   = require "kong.constants"
 local singletons  = require "kong.singletons"
 local certificate = require "kong.runloop.certificate"
@@ -1051,10 +1050,11 @@ return {
       -- ssl_preread_alpn_protocols is a comma separated list
       -- see https://trac.nginx.org/nginx/ticket/1616
       if kong.configuration.service_mesh and ssl_preread_alpn_protocols and
-         ssl_preread_alpn_protocols:find(mesh.get_mesh_alpn(), 1, true) then
-        -- Is probably an incoming service mesh connection
-        -- terminate service-mesh Mutual TLS
-        ssl_termination_ctx = mesh.mesh_server_ssl_ctx
+        -- ssl_preread_alpn_protocols:find(mesh.get_mesh_alpn(), 1, true) and
+        true then
+        -- -- Is probably an incoming service mesh connection
+        -- -- terminate service-mesh Mutual TLS
+        -- ssl_termination_ctx = mesh.mesh_server_ssl_ctx
         ctx.is_service_mesh_request = true
       else
         -- TODO: stream router should decide if TLS is terminated or not
@@ -1126,9 +1126,9 @@ return {
       ctx.http_proxy_authorization = var.http_proxy_authorization
       ctx.http_te                  = var.http_te
 
-      if kong.configuration.service_mesh then
-        mesh.rewrite(ctx)
-      end
+      -- if kong.configuration.service_mesh then
+      --   mesh.rewrite(ctx)
+      -- end
     end,
   },
   access = {
