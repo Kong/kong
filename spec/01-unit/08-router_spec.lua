@@ -2362,6 +2362,155 @@ describe("Router", function()
       end)
     end)
 
+    describe("preserve Host header #grpc", function()
+      local router
+      local use_case_routes = {
+        -- use the request's Host header
+        {
+          service         = {
+            name          = "service-invalid",
+            host          = "example.org",
+            protocol      = "grpc"
+          },
+          route           = {
+            preserve_host = true,
+            hosts         = { "preserve.com" },
+          },
+        },
+        -- use the route's upstream_url's Host
+        {
+          service         = {
+            name          = "service-invalid",
+            host          = "example.org",
+            protocol      = "grpc"
+          },
+          route           = {
+            preserve_host = false,
+            hosts         = { "discard.com" },
+          },
+        },
+      }
+
+      lazy_setup(function()
+        router = assert(Router.new(use_case_routes))
+      end)
+
+      describe("when preserve_host is true", function()
+        local host = "preserve.com"
+
+        it("uses the request's Host header", function()
+          local _ngx = mock_ngx("GET", "/", { host = host })
+          router._set_ngx(_ngx)
+          local match_t = router.exec()
+          assert.equal(use_case_routes[1].route, match_t.route)
+          assert.equal(host, match_t.upstream_host)
+          assert.equal("grpc", match_t.service.protocol)
+        end)
+
+        it("uses the request's Host header incl. port", function()
+          local _ngx = mock_ngx("GET", "/", { host = host .. ":123" })
+          router._set_ngx(_ngx)
+          local match_t = router.exec()
+          assert.equal(use_case_routes[1].route, match_t.route)
+          assert.equal(host .. ":123", match_t.upstream_host)
+          assert.equal("grpc", match_t.service.protocol)
+        end)
+
+        it("does not change the target upstream", function()
+          local _ngx = mock_ngx("GET", "/", { host = host })
+          router._set_ngx(_ngx)
+          local match_t = router.exec()
+          assert.equal(use_case_routes[1].route, match_t.route)
+          assert.equal("example.org", match_t.upstream_url_t.host)
+          assert.equal("grpc", match_t.service.protocol)
+        end)
+
+        it("uses the request's Host header when `grab_header` is disabled", function()
+          local use_case_routes = {
+            {
+              service         = {
+                name = "service-invalid",
+                protocol = "grpc",
+              },
+              route           = {
+                name          = "route-1",
+                preserve_host = true,
+                paths         = { "/foo" },
+              },
+              upstream_url    = "http://example.org",
+            },
+          }
+
+          local router = assert(Router.new(use_case_routes))
+          local _ngx = mock_ngx("GET", "/foo", { host = "preserve.com" })
+          router._set_ngx(_ngx)
+          local match_t = router.exec()
+          assert.equal(use_case_routes[1].route, match_t.route)
+          assert.equal("preserve.com", match_t.upstream_host)
+          assert.equal("grpc", match_t.service.protocol)
+        end)
+
+        it("uses the request's Host header if an route with no host was cached", function()
+          -- This is a regression test for:
+          -- https://github.com/Kong/kong/issues/2825
+          -- Ensure cached routes (in the LRU cache) still get proxied with the
+          -- correct Host header when preserve_host = true and no registered
+          -- route has a `hosts` property.
+
+          local use_case_routes = {
+            {
+              service         = {
+                name = "service-invalid",
+                protocol = "grpc",
+              },
+              route           = {
+                name          = "no-host",
+                paths         = { "/nohost" },
+                preserve_host = true,
+              },
+            },
+          }
+
+          local router = assert(Router.new(use_case_routes))
+          local _ngx = mock_ngx("GET", "/nohost", { host = "domain1.com" })
+          router._set_ngx(_ngx)
+          local match_t = router.exec()
+          assert.equal(use_case_routes[1].route, match_t.route)
+          assert.equal("domain1.com", match_t.upstream_host)
+          assert.equal("grpc", match_t.service.protocol)
+
+          _ngx = mock_ngx("GET", "/nohost", { host = "domain2.com" })
+          router._set_ngx(_ngx)
+          match_t = router.exec()
+          assert.equal(use_case_routes[1].route, match_t.route)
+          assert.equal("domain2.com", match_t.upstream_host)
+          assert.equal("grpc", match_t.service.protocol)
+        end)
+      end)
+
+      describe("when preserve_host is false", function()
+        local host = "discard.com"
+
+        it("does not change the target upstream", function()
+          local _ngx = mock_ngx("GET", "/", { host = host })
+          router._set_ngx(_ngx)
+          local match_t = router.exec()
+          assert.equal(use_case_routes[2].route, match_t.route)
+          assert.equal("example.org", match_t.upstream_url_t.host)
+          assert.equal("grpc", match_t.service.protocol)
+        end)
+
+        it("does not set the host_header", function()
+          local _ngx = mock_ngx("GET", "/", { host = host })
+          router._set_ngx(_ngx)
+          local match_t = router.exec()
+          assert.equal(use_case_routes[2].route, match_t.route)
+          assert.is_nil(match_t.upstream_host)
+          assert.equal("grpc", match_t.service.protocol)
+        end)
+      end)
+    end)
+
 
     describe("slash handling", function()
       local checks = {

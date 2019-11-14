@@ -176,15 +176,29 @@ server {
 
     location @grpc {
         internal;
-
         set $kong_proxy_mode  'grpc';
+
+        grpc_set_header    Host              $upstream_host;
+        grpc_set_header    X-Forwarded-For   $upstream_x_forwarded_for;
+        grpc_set_header    X-Forwarded-Proto $upstream_x_forwarded_proto;
+        grpc_set_header    X-Forwarded-Host  $upstream_x_forwarded_host;
+        grpc_set_header    X-Forwarded-Port  $upstream_x_forwarded_port;
+        grpc_set_header    X-Real-IP         $remote_addr;
+
         grpc_pass grpc://kong_upstream;
     }
 
     location @grpcs {
         internal;
-
         set $kong_proxy_mode  'grpc';
+
+        grpc_set_header    Host              $upstream_host;
+        grpc_set_header    X-Forwarded-For   $upstream_x_forwarded_for;
+        grpc_set_header    X-Forwarded-Proto $upstream_x_forwarded_proto;
+        grpc_set_header    X-Forwarded-Host  $upstream_x_forwarded_host;
+        grpc_set_header    X-Forwarded-Port  $upstream_x_forwarded_port;
+        grpc_set_header    X-Real-IP         $remote_addr;
+
         grpc_pass grpcs://kong_upstream;
     }
 
