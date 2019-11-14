@@ -1264,6 +1264,7 @@ describe("declarative config: flatten", function()
                 custom_id = null,
                 id = "UUID",
                 tags = null,
+                type = 0,
                 username = "foo"
               } },
             jwt_secrets = { {
