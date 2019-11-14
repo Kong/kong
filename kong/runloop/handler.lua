@@ -6,6 +6,7 @@ local utils        = require "kong.tools.utils"
 local Router       = require "kong.router"
 local balancer     = require "kong.runloop.balancer"
 local reports      = require "kong.reports"
+local mesh         = require "kong.runloop.mesh"
 local constants   = require "kong.constants"
 local singletons  = require "kong.singletons"
 local certificate = require "kong.runloop.certificate"
@@ -36,10 +37,6 @@ local timer_at     = ngx.timer.at
 local timer_every  = ngx.timer.every
 local re_match     = ngx.re.match
 local re_find      = ngx.re.find
-local re_split     = ngx_re.split
-local update_time = ngx.update_time
-local subsystem   = ngx.config.subsystem
-local start_time   = ngx.req.start_time
 local subsystem    = ngx.config.subsystem
 local clear_header = ngx.req.clear_header
 local starttls     = ngx.req.starttls -- luacheck: ignore
@@ -1036,25 +1033,6 @@ return {
         }
       end
 
-    end
-  },
-  certificate = {
-    before = function(_)
-      certificate.execute()
-    end
-  },
-  rewrite = {
-    before = function(ctx)
-      ctx.KONG_REWRITE_START = get_now()
-
-      -- special handling for proxy-authorization and te headers in case
-      -- the plugin(s) want to specify them (store the original)
-      ctx.http_proxy_authorization = var.http_proxy_authorization
-      ctx.http_te                  = var.http_te
-
-    end,
-    after = function(ctx)
-      ctx.KONG_REWRITE_TIME = get_now() - ctx.KONG_REWRITE_START -- time spent in Kong's rewrite_by_lua
     end
   },
   preread = {

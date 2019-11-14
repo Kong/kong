@@ -8,6 +8,7 @@ local Errors = require "kong.db.errors"
 local singletons = require "kong.singletons"
 local workspaces = require "kong.workspaces"
 local ee_api      = require "kong.enterprise_edition.api_helpers"
+local rbac = require "kong.rbac"
 
 
 local ngx      = ngx
@@ -16,7 +17,7 @@ local find     = string.find
 local type     = type
 local pairs    = pairs
 local ipairs   = ipairs
-
+local fmt = string.format
 
 local _M = {}
 local NO_ARRAY_INDEX_MARK = {}

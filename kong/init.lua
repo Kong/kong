@@ -68,7 +68,13 @@ local DB = require "kong.db"
 local dns = require "kong.tools.dns"
 local utils = require "kong.tools.utils"
 local lapis = require "lapis"
+local pl_utils = require "pl.utils"
+local http_tls = require "http.tls"
+local openssl_ssl = require "openssl.ssl"
+local openssl_pkey = require "openssl.pkey"
+local openssl_x509 = require "openssl.x509"
 local runloop = require "kong.runloop.handler"
+local mesh = require "kong.runloop.mesh"
 local tracing = require "kong.tracing"
 local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
@@ -113,13 +119,14 @@ local ipairs           = ipairs
 local assert           = assert
 local tostring         = tostring
 local coroutine        = coroutine
+local getmetatable     = getmetatable
+local registry         = debug.getregistry()
 local get_last_failure = ngx_balancer.get_last_failure
 local set_current_peer = ngx_balancer.set_current_peer
+local set_ssl_ctx      = ngx_balancer.set_ssl_ctx
 local set_timeouts     = ngx_balancer.set_timeouts
 local set_more_tries   = ngx_balancer.set_more_tries
 
-
-local GRPC_PROXY_MODES = constants.GRPC_PROXY_MODES
 
 local ffi = require "ffi"
 local cast = ffi.cast
@@ -771,6 +778,12 @@ function Kong.access()
         ctx.KONG_RESPONSE_LATENCY = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_PROCESSING_START
 
         return kong.response.exit(500, { message  = "An unexpected error occurred" })
+      end
+
+      local ok, err = portal_auth.verify_developer_status(ctx.authenticated_consumer)
+      if not ok then
+        ctx.delay_response = false
+        return kong.response.exit(401, { message = err })
       end
     end
     ctx.workspaces = old_ws

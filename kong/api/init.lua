@@ -1,19 +1,17 @@
 local lapis       = require "lapis"
 local utils       = require "kong.tools.utils"
 local singletons  = require "kong.singletons"
+local app_helpers = require "lapis.application"
 local api_helpers = require "kong.api.api_helpers"
 
 local Endpoints   = require "kong.api.endpoints"
 
-local rbac = require "kong.rbac"
-local workspaces = require "kong.workspaces"
 local ee_api      = require "kong.enterprise_edition.api_helpers"
 
 local ngx      = ngx
 local type     = type
 local pairs    = pairs
 local ipairs   = ipairs
-local fmt      = string.format
 
 
 local app = lapis.Application()
@@ -37,7 +35,7 @@ end
 -- XXX EE, move elsewhere
 for _, v in ipairs({"vitals", "oas_config", "license"}) do
   local routes = require("kong.api.routes." .. v)
-  attach_routes(routes)
+  api_helpers.attach_routes(app, routes)
 end
 
 
@@ -128,9 +126,9 @@ for _, k in ipairs({"rbac", "audit"}) do
   if loaded then
     ngx.log(ngx.DEBUG, "Loading API endpoints for module: ", k)
     if is_new_db_routes(mod) then
-      attach_new_db_routes(mod)
+      api_helpers.attach_new_db_routes(app, mod)
     else
-      attach_routes(mod)
+      api_helpers.attach_routes(app, mod)
     end
 
   else
