@@ -179,7 +179,7 @@ end
 local function write_env_file(path, data)
   local c = require "lua_system_constants"
 
-  local flags = bit.bor(c.O_CREAT(), c.O_WRONLY())
+  local flags = bit.bor(c.O_CREAT(), c.O_WRONLY(), c.O_TRUNC())
   local mode  = bit.bor(c.S_IRUSR(), c.S_IWUSR(), c.S_IRGRP())
 
   local fd = ffi.C.open(path, flags, mode)
