@@ -1539,7 +1539,15 @@ function _M.new(routes)
               if byte(upstream_base, -1) == SLASH then
                 -- ends with / and strip_uri = true
                 if matched_route.strip_uri then
-                  if byte(request_postfix, 1, 1) == SLASH then
+                  if request_postfix == "" then
+                    -- leave the slash if that's all there is, but remove the slash otherwise
+                    -- (i.e leave "/" but transform "/foo/bar/" into "/foo/bar")
+                    if upstream_base == "/" then
+                      upstream_uri = "/"
+                    else
+                      upstream_uri = sub(upstream_base, 1, -2)
+                    end
+                  elseif byte(request_postfix, 1, 1) == SLASH then
                     -- double "/", so drop the first
                     upstream_uri = sub(upstream_base, 1, -2) .. request_postfix
                   else -- ends with / and strip_uri = true, no double slash
@@ -1557,7 +1565,7 @@ function _M.new(routes)
                 if matched_route.strip_uri then
                   if request_postfix == "" then
                     upstream_uri = upstream_base
-                  elseif request_postfix == "/" then
+                  elseif byte(request_postfix, 1, 1) == SLASH then
                     upstream_uri = upstream_base .. request_postfix
                   else
                     upstream_uri = upstream_base .. "/" .. request_postfix
