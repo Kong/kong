@@ -6,6 +6,12 @@ This plugin allows Kong to apply cerificates from Let's Encrypt and serve dynami
 
 ### Using the Plugin
 
+#### Configure Kong
+
+- Kong needs to listen 80 port or proxied by a load balancer that listens for 80 port.
+- `lua_ssl_trusted_certificate` needs to be set in `kong.conf` to ensure the plugin can properly
+verify Let's Encrypt API.
+
 #### Enable the Plugin
 ```bash
 $ curl http://localhost:8001/plugins -d name=letsencrypt -d config.account_email=yourname@example.com
@@ -26,6 +32,36 @@ $ curl https://mydomain.com -k
 $ curl https://mydomain.com
 # Now gives you a valid Let's Encrypt certicate
 ```
+
+### Plugin Config
+
+Name                | Required   | Default | Description
+-------------------:|------------|------------|------------
+config.account_email| Yes        |            | The account identifier, can be reused in different plugin instance.
+config.staging      |            |  `false`   | Set to true to use [Let's Encrypt staing environemnt](https://letsencrypt.org/docs/staging-environment/).
+config.cert_type    |            |  `"rsa"`   | The certificate to recreate, choice of `"rsa"` or `"ecc"`.
+config.renew_threshold_days|     |  `14`      | Days before expire to renew the certificate.
+config.storage      |            |  `"kong"`  | The backend storage type to use, choice of `"kong"`, `"shm"`, `"redis"`, `"consul"` or `"vault"`
+config.storage_config|           | (See below)| Storage configs for each backend storage.
+
+`config.storage_config` is a hash for all posisble storage types, by default it is:
+```lua
+    storage_config = {
+        redis = {},
+        shm = {
+            shm_name = kong
+        },
+        vault = {
+            https = true,
+        },
+        kong = {},
+        consul = {
+            https = true,
+        }
+    }
+```
+
+To use storage type other than `kong`, please refer to [lua-resty-acme](https://github.com/fffonion/lua-resty-acme#storage-adapters).
 
 ### Local testing and development
 
@@ -74,7 +110,7 @@ $ curl https://$NGROK_HOST:8443 --resolve $NGROK_HOST:8443:127.0.0.1 -vk
 #### Check new certificate
 
 ```bash
-$ echo q |openssl s_client -connect localhost -port 8443 -servername $NGROK_HOST 2>/dev/null|openssl x509 -text -noout
+$ echo q |openssl s_client -connect localhost -port 8443 -servername $NGROK_HOST 2>/dev/nil|openssl x509 -text -noout
 ```
 
 ### Notes
