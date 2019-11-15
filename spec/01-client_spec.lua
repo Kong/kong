@@ -15,31 +15,63 @@ local function new_cert_key_pair()
   return key:to_PEM("private"), crt:to_PEM()
 end
 
-describe("Plugin: letsencrypt (client.new)", function()
-  it("rejects invalid storage config", function()
-    local c, err = client.new({
-      storage = "shm",
-      storage_config = {
-        shm = nil,
-      }
-    })
-    assert.is_nil(c)
-    assert.equal(err, "shm is not defined in plugin storage config")
-  end)
+for _, strategy in helpers.each_strategy() do
+    local _, db
 
-  it("creates acme client properly", function()
-    local c, err = client.new({
-      account_key = util.create_pkey(),
+    local proper_config = {
       account_email = "someone@somedomain.com",
       storage = "shm",
       storage_config = {
         shm = { shm_name = "kong" },
       }
-    })
-    assert.is_nil(err)
-    assert.not_nil(c)
+    }
+
+    local account_name = client._account_name(proper_config)
+
+    local fake_cache = {
+      [account_name] = {
+        key = util.create_pkey(),
+        kid = "fake kid url",
+      },
+    }
+
+    lazy_setup(function()
+      _, db = helpers.get_db_utils(strategy, {
+        "letsencrypt_storage"
+      }, { "letsencrypt", })
+
+      kong.cache = {
+        get = function(_, _, _, f, _, k)
+          return fake_cache[k]
+        end
+      }
+
+      db.letsencrypt_storage:insert {
+        key = account_name,
+        value = fake_cache[account_name],
+      }
+
+    end)
+
+  describe("Plugin: letsencrypt (client.new) [#" .. strategy .. "]", function()
+    it("rejects invalid storage config", function()
+      local c, err = client.new({
+        storage = "shm",
+        storage_config = {
+          shm = nil,
+        }
+      })
+      assert.is_nil(c)
+      assert.equal(err, "shm is not defined in plugin storage config")
+    end)
+
+    it("creates acme client properly", function()
+      local c, err = client.new(proper_config)
+      assert.is_nil(err)
+      assert.not_nil(c)
+    end)
   end)
-end)
+end
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: letsencrypt (client.save) [#" .. strategy .. "]", function()

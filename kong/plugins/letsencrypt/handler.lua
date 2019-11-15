@@ -13,6 +13,9 @@ local acme_challenge_path = [[^/\.well-known/acme-challenge/(.+)]]
 -- cache for dummy cert kong generated (it's a table)
 local default_cert_key
 
+-- FIXME: we run only one timer per storage_type
+local timers = {}
+
 local LetsencryptHandler = BasePlugin:extend()
 
 LetsencryptHandler.PRIORITY = 1000
@@ -52,6 +55,12 @@ function LetsencryptHandler:access(conf)
     return
   end
 
+  if not timers[conf.storage] then
+    kong.log.info("renew timer for storage ", conf.storage, " started")
+    ngx.timer.every(86400, client.renew_certificate, conf)
+    timers[conf.storage] = true
+  end
+
   local host = kong.request.get_host()
   -- if we are not serving challenge, do normal proxy pass
   -- but record what cert did we used to serve request
@@ -81,14 +90,15 @@ function LetsencryptHandler:access(conf)
 
   -- TODO: do we match the whitelist?
   ngx.timer.at(0, function()
-    local acme_client, err = client.new(conf)
-    if err then
-      kong.log.err("failed to create acme client:", err)
-      return
-    end
-    err = client.update_certificate(acme_client, host, nil, conf.cert_type)
+    err = client.update_certificate(conf, host, nil)
     if err then
       kong.log.err("failed to update certificate: ", err)
+      return
+    end
+    err = client.store_renew_config(conf, host)
+    if err then
+      kong.log.err("failed to store renew record: ", err)
+      return
     end
   end)
 

@@ -1,5 +1,5 @@
 local typedefs = require "kong.db.schema.typedefs"
-local util = require "resty.acme.util"
+local client = require("kong.plugins.letsencrypt.client")
 
 local CERT_TYPES = { "rsa", "ecc" }
 
@@ -33,6 +33,12 @@ local CONSUL_VAULT_STORAGE_SCHEMA = {
   { token = { type = "string", }, },
 }
 
+local function check_account(conf)
+  -- hack: create an account if it doesn't exist, during plugin creation time
+  -- TODO: remove from storage if schema check failed?
+  local err = client.create_account(conf)
+  return err == nil, err
+end
 
 return {
   name = "letsencrypt",
@@ -41,21 +47,24 @@ return {
     { protocols = typedefs.protocols_http },
     { config = {
       type = "record",
+      custom_validator = check_account,
       fields = {
-        -- TOOD: put account_key, account_email (and kid) into seperate DAO
-        { account_key = typedefs.key({ default = util.create_pkey(4096, 'RSA') }), },
         { account_email = {
           type = "string",
           -- very loose validation for basic sanity test
           match = "%w*%p*@+%w*%.?%w*",
           required = true,
         }, },
-        { staging = { type = "boolean", default = false, }, },
+        { staging = { type = "boolean", default = true, }, },
         -- kong doesn't support multiple certificate chains yet
         { cert_type = {
           type = "string",
           default = 'rsa',
           one_of = CERT_TYPES,
+        }, },
+        { renew_threshold_days = {
+          type = "number",
+          default = 14,
         }, },
         { storage = {
           type = "string",
