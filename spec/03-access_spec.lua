@@ -26,7 +26,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acme",
         config = {
           account_email = "test@test.com",
-          api_uri = "https://acme-staging-v02.api.acme.org",
+          api_uri = "https://acme-staging-v02.api.letsencrypt.org",
         }
       }
 

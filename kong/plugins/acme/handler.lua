@@ -13,9 +13,6 @@ local acme_challenge_path = [[^/\.well-known/acme-challenge/(.+)]]
 -- cache for dummy cert kong generated (it's a table)
 local default_cert_key
 
--- FIXME: we run only one timer per storage_type
-local timers = {}
-
 local LetsencryptHandler = BasePlugin:extend()
 
 LetsencryptHandler.PRIORITY = 1000
@@ -25,38 +22,43 @@ function LetsencryptHandler:new()
   LetsencryptHandler.super.new(self, "acme")
 end
 
+function LetsencryptHandler:init_worker()
+  LetsencryptHandler.super.init_worker(self, "acme")
+
+  kong.log.info("acme renew timer started")
+  ngx.timer.every(86400, client.renew_certificate)
+end
+
 
 -- access phase is to terminate the http-01 challenge request if necessary
 function LetsencryptHandler:access(conf)
   LetsencryptHandler.super.access(self)
 
-  local captures, err =
-    ngx.re.match(kong.request.get_path(), acme_challenge_path, "jo")
-  if err then
-    kong.log(kong.WARN, "error matching acme-challenge uri: ", err)
-    return
-  end
+  local protocol = kong.client.get_protocol()
 
-  if captures then
-    local acme_client, err = client.new(conf)
-
+  -- http-01 challenge only sends to http port
+  if protocol == 'http' then
+    local captures, err =
+      ngx.re.match(kong.request.get_path(), acme_challenge_path, "jo")
     if err then
-      kong.log.err("failed to create acme client:", err)
+      kong.log(kong.WARN, "error matching acme-challenge uri: ", err)
       return
     end
 
-    acme_client:serve_http_challenge()
+    if captures then
+      local acme_client, err = client.new(conf)
+
+      if err then
+        kong.log.err("failed to create acme client:", err)
+        return
+      end
+
+      acme_client:serve_http_challenge()
+    end
     return
   end
 
-  if not timers[conf.storage] then
-    kong.log.info("renew timer for storage ", conf.storage, " started")
-    ngx.timer.every(86400, client.renew_certificate, conf)
-    timers[conf.storage] = true
-  end
-
-  local protocol = kong.client.get_protocol()
-  if protocol ~= 'https' then
+  if protocol ~= 'https' and protocol ~= 'grpcs' then
     kong.log.debug("skipping because request is protocol: ", protocol)
     return
   end

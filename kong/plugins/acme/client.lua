@@ -205,10 +205,8 @@ local function update_certificate(conf, host, key)
   return err
 end
 
-local function renew_certificate(premature, conf)
-  if premature then
-    return
-  end
+
+local function renew_certificate_storage(conf)
   local _, st, err = new_storage_adapter(conf)
   if err then
     kong.log.err("can't create storage adapter: ", err)
@@ -278,6 +276,27 @@ local function renew_certificate(premature, conf)
 ::renew_continue::
   end
 
+end
+
+local function renew_certificate(premature)
+  if premature then
+    return
+  end
+
+  for plugin, err in kong.db.plugins:each(1000,
+        { cache_key = "acme", }) do
+    if err then
+      kong.log.warn("error fetching plugin: ", err)
+    end
+
+    if plugin.name ~= "acme" then
+      goto plugin_iterator_continue
+    end
+
+    kong.log.info("renew storage configured in acme plugin: ", plugin.id)
+    renew_certificate_storage(plugin.config)
+::plugin_iterator_continue::
+  end
 end
 
 return {
