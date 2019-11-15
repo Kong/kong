@@ -3,7 +3,7 @@ local helpers = require "spec.helpers"
 local dummy_id = "ZR02iVO6PFywzFLj6igWHd6fnK2R07C-97dkQKC7vJo"
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: letsencrypt (client.save) [#" .. strategy .. "]", function()
+  describe("Plugin: acme (client.save) [#" .. strategy .. "]", function()
     local bp, db
     local proxy_client
 
@@ -14,29 +14,29 @@ for _, strategy in helpers.each_strategy() do
         "services",
         "routes",
         "plugins",
-        "letsencrypt_storage",
-      }, { "letsencrypt", })
+        "acme_storage",
+      }, { "acme", })
 
       local route = bp.routes:insert {
-        hosts = { "letsencrypt.test" },
+        hosts = { "acme.test" },
       }
 
       bp.plugins:insert {
         route = route,
-        name = "letsencrypt",
+        name = "acme",
         config = {
           account_email = "test@test.com",
-          staging = true,
+          api_uri = "https://acme-staging-v02.api.acme.org",
         }
       }
 
-      db.letsencrypt_storage:insert {
+      db.acme_storage:insert {
         key = dummy_id,
         value = "isme",
       }
 
       assert(helpers.start_kong({
-        plugins = "bundled,letsencrypt",
+        plugins = "bundled,acme",
         database = strategy,
       }))
 
@@ -56,7 +56,7 @@ for _, strategy in helpers.each_strategy() do
       local res = assert( proxy_client:send {
         method  = "GET",
         path    = "/.well-known/acme-challenge/yay",
-        headers =  { host = "letsencrypt.test" }
+        headers =  { host = "acme.test" }
       })
       assert.response(res).has.status(404)
       body = res:read_body()
@@ -65,7 +65,7 @@ for _, strategy in helpers.each_strategy() do
       res = assert( proxy_client:send {
         method  = "GET",
         path    = "/.well-known/acme-challenge/" .. dummy_id,
-        headers =  { host = "letsencrypt.test" }
+        headers =  { host = "acme.test" }
       })
       assert.response(res).has.status(200)
       body = res:read_body()

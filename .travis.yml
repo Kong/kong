@@ -26,7 +26,7 @@ services:
 
 env:
   global:
-    - PLUGIN_NAME=letsencrypt
+    - PLUGIN_NAME=acme
     - LUAROCKS=3.0.4
     - OPENSSL=1.1.1d
     - KONG_REPOSITORY=kong

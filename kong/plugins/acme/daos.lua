@@ -1,11 +1,11 @@
 local typedefs = require "kong.db.schema.typedefs"
 
 return {
-  letsencrypt_storage = {
+  acme_storage = {
     ttl = true,
     primary_key = { "id" },
     cache_key = { "key" },
-    name = "letsencrypt_storage",
+    name = "acme_storage",
     fields = {
       { id = typedefs.uuid },
       { key = { type = "string", required = true, unique = true, auto = true }, },

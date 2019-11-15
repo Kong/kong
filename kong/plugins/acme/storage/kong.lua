@@ -1,4 +1,4 @@
--- kong.plugin.letsencrypt.storage.kong implements the lua-resty-acme
+-- kong.plugin.acme.storage.kong implements the lua-resty-acme
 -- storage adapter interface by using kong's db as backend
 
 local table_insert = table.insert
@@ -8,7 +8,7 @@ local mt = {__index = _M}
 
 function _M.new(_)
   local self = setmetatable({
-    dao = kong.db.letsencrypt_storage,
+    dao = kong.db.acme_storage,
   }, mt)
   return self
 end

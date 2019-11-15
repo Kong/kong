@@ -1,5 +1,5 @@
 local typedefs = require "kong.db.schema.typedefs"
-local client = require("kong.plugins.letsencrypt.client")
+local client = require("kong.plugins.acme.client")
 
 local CERT_TYPES = { "rsa", "ecc" }
 
@@ -41,7 +41,7 @@ local function check_account(conf)
 end
 
 return {
-  name = "letsencrypt",
+  name = "acme",
   fields = {
     { consumer = typedefs.no_consumer },
     { protocols = typedefs.protocols_http },
@@ -55,7 +55,8 @@ return {
           match = "%w*%p*@+%w*%.?%w*",
           required = true,
         }, },
-        { staging = { type = "boolean", default = true, }, },
+        { api_uri = typedefs.url({ default = "https://acme-v02.api.letsencrypt.org" }),
+        },
         -- kong doesn't support multiple certificate chains yet
         { cert_type = {
           type = "string",

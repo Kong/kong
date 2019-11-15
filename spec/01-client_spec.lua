@@ -1,4 +1,4 @@
-local client = require("kong.plugins.letsencrypt.client")
+local client = require("kong.plugins.acme.client")
 local util = require("resty.acme.util")
 
 local helpers = require "spec.helpers"
@@ -16,44 +16,45 @@ local function new_cert_key_pair()
 end
 
 for _, strategy in helpers.each_strategy() do
-    local _, db
+  local _, db
 
-    local proper_config = {
-      account_email = "someone@somedomain.com",
-      storage = "shm",
-      storage_config = {
-        shm = { shm_name = "kong" },
-      }
+  local proper_config = {
+    account_email = "someone@somedomain.com",
+    api_uri = "http://api.acme.org",
+    storage = "shm",
+    storage_config = {
+      shm = { shm_name = "kong" },
+    }
+  }
+
+  local account_name = client._account_name(proper_config)
+
+  local fake_cache = {
+    [account_name] = {
+      key = util.create_pkey(),
+      kid = "fake kid url",
+    },
+  }
+
+  lazy_setup(function()
+    _, db = helpers.get_db_utils(strategy, {
+      "acme_storage"
+    }, { "acme", })
+
+    kong.cache = {
+      get = function(_, _, _, f, _, k)
+        return fake_cache[k]
+      end
     }
 
-    local account_name = client._account_name(proper_config)
-
-    local fake_cache = {
-      [account_name] = {
-        key = util.create_pkey(),
-        kid = "fake kid url",
-      },
+    db.acme_storage:insert {
+      key = account_name,
+      value = fake_cache[account_name],
     }
 
-    lazy_setup(function()
-      _, db = helpers.get_db_utils(strategy, {
-        "letsencrypt_storage"
-      }, { "letsencrypt", })
+  end)
 
-      kong.cache = {
-        get = function(_, _, _, f, _, k)
-          return fake_cache[k]
-        end
-      }
-
-      db.letsencrypt_storage:insert {
-        key = account_name,
-        value = fake_cache[account_name],
-      }
-
-    end)
-
-  describe("Plugin: letsencrypt (client.new) [#" .. strategy .. "]", function()
+  describe("Plugin: acme (client.new) [#" .. strategy .. "]", function()
     it("rejects invalid storage config", function()
       local c, err = client.new({
         storage = "shm",
@@ -74,7 +75,7 @@ for _, strategy in helpers.each_strategy() do
 end
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: letsencrypt (client.save) [#" .. strategy .. "]", function()
+  describe("Plugin: acme (client.save) [#" .. strategy .. "]", function()
     local bp, db
     local cert, sni
     local host = "test1.com"
@@ -83,19 +84,19 @@ for _, strategy in helpers.each_strategy() do
       bp, db = helpers.get_db_utils(strategy, {
         "certificates",
         "snis",
-      }, { "letsencrypt", })
+      }, { "acme", })
 
       local key, crt = new_cert_key_pair()
       cert = bp.certificates:insert {
         cert = crt,
         key = key,
-        tags = { "managed-by-letsencrypt" },
+        tags = { "managed-by-acme" },
       }
 
       sni = bp.snis:insert {
         name = host,
         certificate = cert,
-        tags = { "managed-by-letsencrypt" },
+        tags = { "managed-by-acme" },
       }
 
     end)

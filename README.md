@@ -1,8 +1,9 @@
-# Kong Let's Encrypt Plugin
+# Kong ACME Plugin
 
-![Build Status](https://travis-ci.com/Kong/kong-plugin-letsencrypt.svg?branch=master)
+![Build Status](https://travis-ci.com/Kong/kong-plugin-acme.svg?branch=master)
 
-This plugin allows Kong to apply cerificates from Let's Encrypt and serve dynamically.
+This plugin allows Kong to apply cerificates from Let's Encrypt or any other ACMEv2 service
+and serve dynamically. Renew is handled with a configurable threshold time.
 
 ### Using the Plugin
 
@@ -14,7 +15,7 @@ verify Let's Encrypt API.
 
 #### Enable the Plugin
 ```bash
-$ curl http://localhost:8001/plugins -d name=letsencrypt -d config.account_email=yourname@example.com
+$ curl http://localhost:8001/plugins -d name=acme -d config.account_email=yourname@example.com
 ```
 
 The plugin can be enabled globally or per Service/Route.
@@ -38,7 +39,7 @@ $ curl https://mydomain.com
 Name                | Required   | Default | Description
 -------------------:|------------|------------|------------
 config.account_email| Yes        |            | The account identifier, can be reused in different plugin instance.
-config.staging      |            |  `false`   | Set to true to use [Let's Encrypt staing environemnt](https://letsencrypt.org/docs/staging-environment/).
+config.api_uri      |            |  `"https://acme-v02.api.letsencrypt.org"`   | The ACMEv2 API endpoint to use, user might use [Let's Encrypt staging environemnt](https://letsencrypt.org/docs/staging-environment/) during testing.
 config.cert_type    |            |  `"rsa"`   | The certificate to recreate, choice of `"rsa"` or `"ecc"`.
 config.renew_threshold_days|     |  `14`      | Days before expire to renew the certificate.
 config.storage      |            |  `"kong"`  | The backend storage type to use, choice of `"kong"`, `"shm"`, `"redis"`, `"consul"` or `"vault"`
@@ -116,7 +117,7 @@ $ echo q |openssl s_client -connect localhost -port 8443 -servername $NGROK_HOST
 ### Notes
 
 - The plugin creates sni and certificate entity in Kong to serve certificate, as using the certificate plugin phase
-to serve dynamic cert means to copy paste part of kong. Then dbless mode is not supported.
+to serve dynamic cert means to copy paste part of kong. Then dbless mode is not supported (currently).
 - Apart from above, the plugin can be used without db. Optional storages are `shm`, `redis`, `consul` and `vault`.
 - It only supports http-01 challenge, meaning user will need a public IP and setup resolvable DNS. And Kong
 needs to accept proxy traffic from 80 port.

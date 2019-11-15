@@ -1,7 +1,7 @@
 return {
   postgres = {
     up = [[
-      CREATE TABLE IF NOT EXISTS "letsencrypt_storage" (
+      CREATE TABLE IF NOT EXISTS "acme_storage" (
         "id"          UUID   PRIMARY KEY,
         "key"         TEXT   UNIQUE,
         "value"       TEXT,
@@ -13,13 +13,13 @@ return {
 
   cassandra = {
     up = [[
-      CREATE TABLE IF NOT EXISTS letsencrypt_storage (
+      CREATE TABLE IF NOT EXISTS acme_storage (
         id          uuid PRIMARY KEY,
         key         text,
         value       text,
         created_at  timestamp
       );
-      CREATE INDEX IF NOT EXISTS letsencrypt_storage_key_idx ON letsencrypt_storage(key);
+      CREATE INDEX IF NOT EXISTS acme_storage_key_idx ON acme_storage(key);
     ]],
   },
 }

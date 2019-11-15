@@ -1,15 +1,14 @@
 local acme = require "resty.acme.client"
 local util = require "resty.acme.util"
+local x509 = require "resty.openssl.x509"
 
 local cjson = require "cjson"
 
-local LE_API = "https://acme-v02.api.letsencrypt.org"
-local LE_STAGING_API = "https://acme-staging-v02.api.letsencrypt.org"
-
-local renew_key_prefix = "kong_letsencrypt:renew_config:"
+local RENEW_KEY_PREFIX = "kong_acme:renew_config:"
+local RENEW_LAST_RUN_KEY = "kong_acme:renew_last_run"
 
 local function account_name(conf)
-  return "kong_letsencrypt:account:" ..(conf.staging and "staging:" or "prod:") ..
+  return "kong_acme:account:" .. conf.api_uri .. ":" ..
                       ngx.encode_base64(conf.account_email)
 end
 
@@ -22,7 +21,7 @@ local function deserialize_account(j)
 end
 
 local function cached_get(storage, key, deserializer)
-  local cache_key = kong.db.letsencrypt_storage:cache_key(key)
+  local cache_key = kong.db.acme_storage:cache_key(key)
   return kong.cache:get(cache_key, {
     l1_serializer = deserializer,
   }, storage.get, storage, key)
@@ -38,7 +37,7 @@ local function new_storage_adapter(conf)
     return nil, nil, storage .. " is not defined in plugin storage config"
   end
   if storage == "kong" then
-    storage = "kong.plugins.letsencrypt.storage.kong"
+    storage = "kong.plugins.acme.storage.kong"
   else
     storage = "resty.acme.storage." .. storage
   end
@@ -66,13 +65,12 @@ local function new(conf)
   return acme.new({
     account_email = conf.account_email,
     account_key = account.key,
-    api_uri = conf.staging and LE_STAGING_API or LE_API,
+    api_uri = conf.api_uri,
     storage_adapter = storage,
     storage_config = conf.storage_config[storage],
   })
 end
 
--- idempotent routine for updating sni and certificate in kong db
 local function order(acme_client, host, key, cert_type)
   local err = acme_client:init()
   if err then
@@ -101,11 +99,12 @@ local function order(acme_client, host, key, cert_type)
   return cert, key, nil
 end
 
+-- idempotent routine for updating sni and certificate in kong db
 local function save(host, key, cert)
   local cert_entity, err = kong.db.certificates:insert({
     cert = cert,
     key = key,
-    tags = { "managed-by-letsencrypt" },
+    tags = { "managed-by-acme" },
   })
 
   if err then
@@ -119,7 +118,7 @@ local function save(host, key, cert)
 
   local _, err = kong.db.snis:upsert_by_name(host, {
     certificate = cert_entity,
-    tags = { "managed-by-letsencrypt" },
+    tags = { "managed-by-acme" },
   })
 
   if err then
@@ -148,8 +147,8 @@ local function store_renew_config(conf, host)
   if err then
     return err
   end
-  -- Note: we don't distinguish staging because host is unique in Kong SNIs
-  err = st:set(renew_key_prefix .. host, cjson.encode({
+  -- Note: we don't distinguish api uri because host is unique in Kong SNIs
+  err = st:set(RENEW_KEY_PREFIX .. host, cjson.encode({
     host = host,
     conf = conf,
     expire_at = ngx.time() + 86400 * 90,
@@ -187,7 +186,7 @@ local function update_certificate(conf, host, key)
   if err then
     return err
   end
-  local lock_key = "kong_letsencrypt:update_lock:" .. host
+  local lock_key = "kong_acme:update_lock:" .. host
   -- TODO: wait longer?
   -- This goes to the backend storage and may bring pressure, add a first pass shm cache?
   local err = acme_client.storage:add(lock_key, "placeholder", 30)
@@ -216,13 +215,18 @@ local function renew_certificate(premature, conf)
     return
   end
 
-  local keys, err = st:list(renew_key_prefix)
+  local renew_conf_keys, err = st:list(RENEW_KEY_PREFIX)
   if err then
     kong.log.err("can't list renew hosts: ", err)
     return
   end
-  for _, key in ipairs(keys) do
-    local renew_conf, err = st:get(key)
+  err = st:set(RENEW_LAST_RUN_KEY, ngx.localtime())
+  if err then
+    kong.log.warn("can't set renew_last_run: ", err)
+  end
+
+  for _, renew_conf_key in ipairs(renew_conf_keys) do
+    local renew_conf, err = st:get(renew_conf_key)
     if err then
       kong.log.err("can't read renew conf: ", err)
       goto renew_continue
@@ -247,8 +251,17 @@ local function renew_certificate(premature, conf)
     if sni_entity.certificate then
       local cert_entity, err = kong.db.certificates:select({ id = sni_entity.certificate.id })
       if err then
-        kong.log.info("unable read certificate ", sni_entity.certificate.id, " from db")
-      elseif cert_entity then
+        kong.log.info("can't read certificate ", sni_entity.certificate.id, " from db")
+      end
+      local crt, err = x509.new(cert_entity.cert)
+      if err then
+        kong.log.info("can't parse cert stored in kong: ", err)
+      elseif crt.get_not_after() - 86400 * conf.renew_threshold_days > ngx.time() then
+        kong.log.info("certificate for host ", host, " is not due for renewal (DAO)")
+        goto renew_continue
+      end
+
+      if cert_entity then
         key = cert_entity.key
       end
     end
@@ -256,10 +269,10 @@ local function renew_certificate(premature, conf)
       kong.log.info("previous key is not defined, creating new key")
     end
 
-    kong.log.info("create new certificate for host ", host)
+    kong.log.info("renew certificate for host ", host)
     err = update_certificate(conf, host, key)
     if err then
-      kong.log.err("failed to update certificate: ", err)
+      kong.log.err("failed to renew certificate: ", err)
       return
     end
 ::renew_continue::

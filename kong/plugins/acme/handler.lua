@@ -1,11 +1,11 @@
 local BasePlugin = require("kong.plugins.base_plugin")
 local kong_certificate = require("kong.runloop.certificate")
 
-local client = require("kong.plugins.letsencrypt.client")
+local client = require("kong.plugins.acme.client")
 
 
 if kong.configuration.database == "off" then
-  error("letsencrypt can't be used in Kong dbless mode currently")
+  error("acme can't be used in Kong dbless mode currently")
 end
 
 local acme_challenge_path = [[^/\.well-known/acme-challenge/(.+)]]
@@ -22,13 +22,7 @@ LetsencryptHandler.PRIORITY = 1000
 LetsencryptHandler.VERSION = "0.0.1"
 
 function LetsencryptHandler:new()
-  LetsencryptHandler.super.new(self, "letsencrypt")
-end
-
-
-function LetsencryptHandler:init_worker()
-  LetsencryptHandler.super.init_worker(self, "letsencrypt")
-  -- create renewal timer
+  LetsencryptHandler.super.new(self, "acme")
 end
 
 
@@ -61,9 +55,15 @@ function LetsencryptHandler:access(conf)
     timers[conf.storage] = true
   end
 
+  local protocol = kong.client.get_protocol()
+  if protocol ~= 'https' then
+    kong.log.debug("skipping because request is protocol: ", protocol)
+    return
+  end
+
   local host = kong.request.get_host()
-  -- if we are not serving challenge, do normal proxy pass
-  -- but record what cert did we used to serve request
+  -- if current request is not serving challenge, do normal proxy pass
+  -- but check what cert did we used to serve request
   local cert_and_key, err = kong_certificate.find_certificate(host)
   if err then
     kong.log.err("error find certificate for current request:", err)
@@ -82,12 +82,6 @@ function LetsencryptHandler:access(conf)
     return
   end
 
-  local protocol = kong.client.get_protocol()
-  if protocol ~= 'https' then
-    kong.log.debug("skipping because request is protocol: ", protocol)
-    return
-  end
-
   -- TODO: do we match the whitelist?
   ngx.timer.at(0, function()
     err = client.update_certificate(conf, host, nil)
@@ -97,7 +91,7 @@ function LetsencryptHandler:access(conf)
     end
     err = client.store_renew_config(conf, host)
     if err then
-      kong.log.err("failed to store renew record: ", err)
+      kong.log.err("failed to store renew config: ", err)
       return
     end
   end)

@@ -1,10 +1,10 @@
-local storage = require("kong.plugins.letsencrypt.storage.kong")
+local storage = require("kong.plugins.acme.storage.kong")
 
 local helpers = require "spec.helpers"
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: letsencrypt (storage.kong) [#" .. strategy .. "]", function()
+  describe("Plugin: acme (storage.kong) [#" .. strategy .. "]", function()
     local _, db
 
     lazy_setup(function()
@@ -12,10 +12,10 @@ for _, strategy in helpers.each_strategy() do
         "certificates",
         "snis",
         "cluster_events",
-        "letsencrypt_storage",
-      }, { "letsencrypt", })
+        "acme_storage",
+      }, { "acme", })
 
-      db.letsencrypt_storage:truncate()
+      db.acme_storage:truncate()
     end)
 
     describe("new", function()
@@ -172,7 +172,7 @@ for _, strategy in helpers.each_strategy() do
         assert.not_nil(keys)
         table.sort(keys)
 
-        local rows = db.letsencrypt_storage:page(100)
+        local rows = db.acme_storage:page(100)
         local expected_keys = {}
         for i, row in ipairs(rows) do
           expected_keys[i] = row.key
