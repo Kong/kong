@@ -1083,6 +1083,8 @@ A summary of the changes introduced in the new Admin API:
 
 - Pagination has been included in all "multi-record" endpoints, and pagination
   control fields are different than in 0.14.x.
+- The changelog for Kong 0.14.x mentions breaking changes to the /consumers endpoint as a result of moving to the new DAO, as                   
+  part of #3437
 - Filtering now happens via URL path changes (`/consumers/x/plugins`) instead
   of querystring fields (`/plugins?consumer_id=x`).
 - Array values can't be coerced from comma-separated strings anymore. They must
