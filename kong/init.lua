@@ -851,7 +851,7 @@ function Kong.balancer()
   balancer_data.try_count = balancer_data.try_count + 1
   tries[balancer_data.try_count] = current_try
 
-  runloop.balancer.before(ctx)
+  -- runloop.balancer.before(ctx)
   current_try.balancer_start = now_ms
 
   if balancer_data.try_count > 1 then
@@ -955,9 +955,6 @@ function Kong.balancer()
     ngx_log(ngx_ERR, "could not set upstream timeouts: ", err)
   end
 
-  runloop.balancer.after(ctx)
-  trace:finish()
-
   -- record overall latency
   ctx.KONG_BALANCER_ENDED_AT = get_now_ms()
   ctx.KONG_BALANCER_TIME = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_BALANCER_START
@@ -970,6 +967,8 @@ function Kong.balancer()
   -- start_time() is kept in seconds with millisecond resolution.
   ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_PROCESSING_START
 
+  -- runloop.balancer.after(ctx)
+  trace:finish()
 end
 
 
