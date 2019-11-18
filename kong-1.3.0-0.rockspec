@@ -171,6 +171,7 @@ build = {
     ["kong.api.routes.tags"] = "kong/api/routes/tags.lua",
     ["kong.api.routes.groups"] = "kong/api/routes/groups.lua",
     ["kong.api.routes.license"] = "kong/api/routes/license.lua",
+    ["kong.api.routes.entities"] = "kong/api/routes/entities.lua",
 
     ["kong.tools.cluster_ca"] = "kong/tools/cluster_ca.lua",
     ["kong.tools.dns"] = "kong/tools/dns.lua",
