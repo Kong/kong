@@ -52,14 +52,10 @@ end
 
 
 local function generate_token(conf, service, credential, authenticated_userid,
-                              scope, state, expiration, disable_refresh)
+                              scope, state, existing_token, expiration,
+                              disable_refresh)
 
   local token_expiration = expiration or conf.token_expiration
-
-  local refresh_token
-  if not disable_refresh and token_expiration > 0 then
-    refresh_token = random_string()
-  end
 
   local refresh_token_ttl
   if conf.refresh_token_ttl and conf.refresh_token_ttl > 0 then
@@ -71,18 +67,38 @@ local function generate_token(conf, service, credential, authenticated_userid,
     service_id = service.id
   end
 
-  local token, err = kong.db.oauth2_tokens:insert({
-    service = service_id and { id = service_id } or nil,
-    credential = { id = credential.id },
-    authenticated_userid = authenticated_userid,
-    expires_in = token_expiration,
-    refresh_token = refresh_token,
-    scope = scope
-  }, {
-    -- Access tokens (and their associated refresh token) are being
-    -- permanently deleted after 'refresh_token_ttl' seconds
-    ttl = token_expiration > 0 and refresh_token_ttl or nil
-  })
+  local refresh_token
+  local token, err
+  if existing_token and conf.persistent_refresh_token then
+    token, err = kong.db.oauth2_tokens:update({
+      id = existing_token.id
+    }, {
+      access_token = random_string(),
+      expires_in = token_expiration,
+      created_at = timestamp.get_utc() / 1000
+    }, {
+      -- Access tokens (and their associated refresh token) are being
+      -- permanently deleted after 'refresh_token_ttl' seconds
+      ttl = token_expiration > 0 and refresh_token_ttl or nil
+    })
+    refresh_token = token.refresh_token  -- required for output
+  else
+    if not disable_refresh and token_expiration > 0 then
+      refresh_token = random_string()
+    end
+    token, err = kong.db.oauth2_tokens:insert({
+      service = service_id and { id = service_id } or nil,
+      credential = { id = credential.id },
+      authenticated_userid = authenticated_userid,
+      expires_in = token_expiration,
+      refresh_token = refresh_token,
+      scope = scope
+    }, {
+      -- Access tokens (and their associated refresh token) are being
+      -- permanently deleted after 'refresh_token_ttl' seconds
+      ttl = token_expiration > 0 and refresh_token_ttl or nil
+    })
+  end
 
   if err then
     return internal_server_error(err)
@@ -273,7 +289,7 @@ local function authorize(conf)
           response_params = generate_token(conf, kong.router.get_service(),
                                            client,
                                            parameters[AUTHENTICATED_USERID],
-                                           scopes, state, nil, true)
+                                           scopes, state, nil, nil, true)
           is_implicit_grant = true
         end
       end
@@ -491,7 +507,7 @@ local function issue_token(conf)
             response_params = generate_token(conf, kong.router.get_service(),
                                              client,
                                              parameters.authenticated_userid,
-                                             scope, state, nil, true)
+                                             scope, state, nil, nil, true)
           end
         end
 
@@ -554,9 +570,11 @@ local function issue_token(conf)
             response_params = generate_token(conf, kong.router.get_service(),
                                              client,
                                              token.authenticated_userid,
-                                             token.scope, state)
-            -- Delete old token
-            kong.db.oauth2_tokens:delete({ id = token.id })
+                                             token.scope, state, token)
+            -- Delete old token if refresh token not persisted
+            if not conf.persistent_refresh_token then
+              kong.db.oauth2_tokens:delete({ id = token.id })
+            end
           end
         end
       end

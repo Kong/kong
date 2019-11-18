@@ -64,6 +64,30 @@ local function provision_token(host, extra_headers, client_id, client_secret)
 end
 
 
+local function refresh_token(host, refresh_token)
+  local request_client = helpers.proxy_ssl_client()
+  local res = assert(request_client:send {
+    method  = "POST",
+    path    = "/oauth2/token",
+    body    = {
+      refresh_token    = refresh_token,
+      client_id        = "clientid123",
+      client_secret    = "secret123",
+      grant_type       = "refresh_token"
+    },
+    headers = {
+      ["Host"]         = host or "oauth2.com",
+      ["Content-Type"] = "application/json"
+    }
+  })
+  assert.response(res).has.status(200)
+  local token = assert.response(res).has.jsonbody()
+  assert.is_table(token)
+  request_client:close()
+  return token
+end
+
+
 for _, strategy in helpers.each_strategy() do
 
 describe("Plugin: oauth2 [#" .. strategy .. "]", function()
@@ -169,6 +193,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       local service10   = admin_api.services:insert()
       local service11   = admin_api.services:insert()
       local service12   = admin_api.services:insert()
+      local service13   = admin_api.services:insert()
 
       local route1 = assert(admin_api.routes:insert({
         hosts     = { "oauth2.com" },
@@ -246,6 +271,12 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         hosts       = { "oauth2_12.com" },
         protocols   = { "http", "https" },
         service     = service12,
+      }))
+
+      local route13 = assert(admin_api.routes:insert({
+        hosts       = { "oauth2_13.com" },
+        protocols   = { "http", "https" },
+        service     = service13,
       }))
 
       admin_api.oauth2_plugins:insert({
@@ -344,6 +375,15 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           hide_credentials   = true,
         },
       })
+      admin_api.oauth2_plugins:insert({
+        route = { id = route13.id },
+        config   = {
+          scopes                   = { "email", "profile", "user.email" },
+          global_credentials       = true,
+          persistent_refresh_token = true,
+        },
+      })
+
 
       proxy_client     = helpers.proxy_client()
       proxy_ssl_client = helpers.proxy_ssl_client()
@@ -2271,6 +2311,62 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.falsy(token.refresh_token == cjson.decode(body).refresh_token)
 
         assert.falsy(db.oauth2_tokens:select({ id = id }))
+      end)
+      it("does rewrite non-persistent refresh tokens", function ()
+        local token = provision_token()
+        local refreshed_token = refresh_token(nil, token.refresh_token)
+        assert.is_table(refreshed_token)
+        assert.falsy(token.refresh_token == refreshed_token.refresh_token)
+      end)
+      it("does not rewrite persistent refresh tokens", function()
+        local token = provision_token("oauth2_13.com")
+        local refreshed_token = refresh_token("oauth2_13.com", token.refresh_token)
+        local new_access_token = db.oauth2_tokens:select_by_access_token(refreshed_token.access_token)
+        local new_refresh_token = db.oauth2_tokens:select_by_refresh_token(token.refresh_token)
+        assert.truthy(new_refresh_token)
+        assert.same(new_access_token.id, new_refresh_token.id)
+
+
+        -- check refreshing sets created_at so access token doesn't expire
+        db.oauth2_tokens:update({
+          id = new_refresh_token.id
+        }, {
+          created_at = 123, -- set time as expired
+        })
+
+        local status, json, headers
+        helpers.wait_until(function()
+          local client = helpers.proxy_ssl_client()
+          local first_res = assert(client:send {
+            method  = "POST",
+            path    = "/request",
+            headers = {
+              ["Host"]      = "oauth2_13.com",
+              Authorization = "bearer " .. refreshed_token.access_token
+            }
+          })
+          local nbody = first_res:read_body()
+          status = first_res.status
+          headers = first_res.headers
+          json = cjson.decode(nbody)
+          client:close()
+          return status == 401
+        end, 7)
+        assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
+        assert.are.equal('Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"', headers['www-authenticate'])
+
+        local final_refreshed_token = refresh_token("oauth2_13.com", refreshed_token.refresh_token)
+        local last_res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"]      = "oauth2_13.com",
+            authorization = "bearer " .. final_refreshed_token.access_token
+          }
+        })
+        local last_body = cjson.decode(assert.res_status(200, last_res))
+        assert.equal("bearer " .. final_refreshed_token.access_token, last_body.headers.authorization)
+
       end)
     end)
 
