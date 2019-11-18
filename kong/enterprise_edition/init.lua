@@ -20,7 +20,7 @@ _M.handlers = {
       license_helpers.report_expired_license()
     end,
   },
-  access = {
+  balancer = {
     after = function(ctx)
       if not ctx.is_internal then
         kong.vitals:log_latency(ctx.KONG_PROXY_LATENCY)

@@ -799,7 +799,6 @@ function Kong.access()
   ctx.delay_response = false
 
   runloop.access.after(ctx)
-  ee.handlers.access.after(ctx)
 
   ctx.KONG_ACCESS_ENDED_AT = get_now_ms()
   ctx.KONG_ACCESS_TIME = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_ACCESS_START
@@ -968,6 +967,7 @@ function Kong.balancer()
   ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_PROCESSING_START
 
   -- runloop.balancer.after(ctx)
+  ee.handlers.balancer.after(ctx)
   trace:finish()
 end
 
