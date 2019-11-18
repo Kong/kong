@@ -1118,13 +1118,13 @@ describe("Configuration loader", function()
   end)
 
   describe("ignore escaped octothorpe in portal_auth_conf #test", function()
-    it("breaks when octothorpe is not escaped", function()
-      local conf = assert(conf_loader(nil, {
-        portal_auth_conf = '{"secret": "12#3456"}'
-      }))
+    -- it("breaks when octothorpe is not escaped", function()
+    --   local conf = assert(conf_loader(nil, {
+    --     portal_auth_conf = '{"secret": "12#3456"}'
+    --   }))
 
-      assert.equal('{"secret": "1', conf.portal_auth_conf)
-    end)
+    --   assert.equal('{"secret": "1', conf.portal_auth_conf)
+    -- end)
 
     it("accepts when octothorpe is escaped", function()
       local conf = assert(conf_loader(nil, {
