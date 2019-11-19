@@ -64,7 +64,6 @@ local function handle_vitals_response(res, err, helpers)
   return kong.response.exit(200, res)
 end
 
-
 return {
   ["/auth"] = {
     GET = function(self, db, helpers)
@@ -188,6 +187,8 @@ return {
         return endpoints.handle_error(err_t)
       end
 
+      local name_or_email = dao_helpers.get_name_or_email(developer)
+
       local res = {
         developer = developer,
       }
@@ -195,7 +196,6 @@ return {
       if developer.status == enums.CONSUMERS.STATUS.PENDING then
         local portal_emails = portal_smtp_client.new()
         -- if name does not exist, we use the email for email template
-        local name_or_email = developer.meta and developer.meta.full_name or developer.email
         local email, err = portal_emails:access_request(developer.email,
                             name_or_email)
         if err then
@@ -221,7 +221,8 @@ return {
 
         -- Email user with reset jwt included
         local portal_emails = portal_smtp_client.new()
-        local email, err = portal_emails:account_verification_email(developer.email, jwt)
+        local email, err = portal_emails:account_verification_email(developer.email,
+                                                                    jwt, name_or_email)
         if err then
           return endpoints.handle_error(err)
         end
@@ -277,6 +278,8 @@ return {
         return endpoints.handle_error(err_t)
       end
 
+      local name_or_email = dao_helpers.get_name_or_email(developer)
+
       -- Mark the token secret as consumed
       local ok, err = secrets.consume_secret(self.reset_secret_id)
       if not ok then
@@ -288,7 +291,7 @@ return {
 
       local err
       if auto_approve then
-        _, err = portal_emails:account_verification_success_approved(developer.email)
+        _, err = portal_emails:account_verification_success_approved(developer.email, name_or_email)
         if err then
           if err.code then
             return kong.response.exit(err.code, { message = err.message })
@@ -298,7 +301,6 @@ return {
         end
 
       else
-        local name_or_email = developer.meta and developer.meta.full_name or developer.email
         _, err = portal_emails:access_request(developer.email, name_or_email)
         if err then
           if err.code then
@@ -308,7 +310,7 @@ return {
           return endpoints.handle_error(err)
         end
 
-        _, err = portal_emails:account_verification_success_pending(developer.email)
+        _, err = portal_emails:account_verification_success_pending(developer.email, name_or_email)
         if err then
           if err.code then
             return kong.response.exit(err.code, { message = err.message })
@@ -359,6 +361,8 @@ return {
         return kong.response.exit(204)
       end
 
+      local name_or_email = dao_helpers.get_name_or_email(developer)
+
       -- -- Invalidate pending account verifications
       local ok, err = secrets.invalidate_pending_resets(consumer)
       if not ok then
@@ -373,7 +377,7 @@ return {
       end
 
       local portal_emails = portal_smtp_client.new()
-      local _, err = portal_emails:account_verification_email(developer.email, jwt)
+      local _, err = portal_emails:account_verification_email(developer.email, jwt, name_or_email)
       if err then
         if err.code then
           return kong.response.exit(err.code, { message = err.message })
@@ -507,9 +511,16 @@ return {
 
       auth_helpers.reset_attempts(consumer)
 
+      local developer, _, err_t = db.developers:select_by_email(consumer.username)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      local name_or_email = dao_helpers.get_name_or_email(developer)
+
       -- Email user with reset success confirmation
       local portal_emails = portal_smtp_client.new()
-      local _, err = portal_emails:password_reset_success(consumer.username)
+      local _, err = portal_emails:password_reset_success(consumer.username, name_or_email)
       if err then
         if err.code then
           return kong.response.exit(err.code, { message = err.message })
@@ -548,9 +559,11 @@ return {
         return endpoints.handle_error(err)
       end
 
+      local name_or_email = dao_helpers.get_name_or_email(developer)
+
       -- Email user with reset jwt included
       local portal_emails = portal_smtp_client.new()
-      local _, err = portal_emails:password_reset(developer.email, jwt)
+      local _, err = portal_emails:password_reset(developer.email, jwt, name_or_email)
       if err then
         if err.code then
           return kong.response.exit(err.code, { message = err.message })

@@ -7,6 +7,7 @@ local portal_smtp_client = require "kong.portal.emails"
 local crud_helpers = require "kong.portal.crud_helpers"
 local enums   = require "kong.enterprise_edition.dao.enums"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
+local dao_helpers = require "kong.portal.dao_helpers"
 
 local cjson = require "cjson"
 local rbac = require "kong.rbac"
@@ -180,10 +181,11 @@ return {
         return endpoints.handle_error(err_t)
       end
 
+      local name_or_email = dao_helpers.get_name_or_email(developer)
+
       if developer.status == enums.CONSUMERS.STATUS.PENDING then
         local portal_emails = portal_smtp_client.new()
         -- if name does not exist, we use the email for email template
-        local name_or_email = developer.meta and developer.meta.full_name or developer.email
         local _, err = portal_emails:access_request(developer.email,
                                                     name_or_email)
         if err then
@@ -213,7 +215,7 @@ return {
         -- Email user with reset jwt included
         local portal_emails = portal_smtp_client.new()
         local _, err = portal_emails:account_verification_email(developer.email,
-                                                                jwt)
+                                                                jwt, name_or_email)
 
         if err then
           return endpoints.handle_error(err)
@@ -335,8 +337,10 @@ return {
          developer.status ~= previous_status and
          previous_status ~= enums.CONSUMERS.STATUS.REVOKED then
 
+        local name_or_email = dao_helpers.get_name_or_email(developer)
+
         local portal_emails = portal_smtp_client.new()
-        local email_res, err = portal_emails:approved(developer.email)
+        local email_res, err = portal_emails:approved(developer.email, name_or_email)
         if err then
           if err.code then
             return kong.response.exit(err.code, { message = err.message })
