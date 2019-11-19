@@ -7,8 +7,8 @@ describe("reports", function()
     setup(function()
       reports.toggle(true)
     end)
-    it("sends report over UDP", function()
-      local thread = helpers.udp_server(8189)
+    it("sends report over tcp", function()
+      local thread = helpers.tcp_server(8189)
 
       reports.send("stub", {
         hello = "world",
