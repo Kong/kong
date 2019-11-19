@@ -181,7 +181,7 @@ end
 function plugin_loader.load_subschema(parent_schema, plugin, errors)
   local plugin_schema = "kong.plugins." .. plugin .. ".schema"
   local ok, schema = utils.load_module_if_exists(plugin_schema)
-  if not ok then
+  if not ok and kong.configuration.pluginserver_socket ~= "off" then
     ok, schema = go.load_schema(plugin)
   end
 

@@ -80,6 +80,7 @@ local cache_warmup = require "kong.cache_warmup"
 local balancer_execute = require("kong.runloop.balancer").execute
 local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
+local go = require "kong.db.dao.plugins.go"
 
 
 local kong             = kong
@@ -372,28 +373,18 @@ function Kong.init()
     certificate.init()
   end
 
-  db:close()
-end
-
-
-function Kong.init_worker()
-  kong_global.set_phase(kong, PHASES.init_worker)
-
-  -- special math.randomseed from kong.globalpatches not taking any argument.
-  -- Must only be called in the init or init_worker phases, to avoid
-  -- duplicated seeds.
-  math.randomseed()
-
-
-  -- init DB
-
+  if config.pluginserver_socket ~= "off" then
+    local conn, err = go.get_connection(config.pluginserver_socket)
+    if not conn then
+      kong.log.err("failure connecting to go plugin server socket: ", err)
+    else
+      conn:setkeepalive()
+    end
+  end
 
   -- Load plugins as late as possible so that everything is set up
-  assert(kong.db.plugins:load_plugin_schemas(kong.configuration.loaded_plugins))
+  assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
 
-
-  -- FIXME moved to the worker thread because of Go address space initialization,
-  -- but causes errors in plugin declarations to be triggered too late
   if kong.configuration.database == "off" then
     local err
     declarative_entities, err = parse_declarative_config(kong.configuration)
@@ -409,6 +400,21 @@ function Kong.init_worker()
 
     assert(runloop.build_router("init"))
   end
+
+  db:close()
+end
+
+
+function Kong.init_worker()
+  kong_global.set_phase(kong, PHASES.init_worker)
+
+  -- special math.randomseed from kong.globalpatches not taking any argument.
+  -- Must only be called in the init or init_worker phases, to avoid
+  -- duplicated seeds.
+  math.randomseed()
+
+
+  -- init DB
 
 
   local ok, err = kong.db:init_worker()
