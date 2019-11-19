@@ -321,10 +321,6 @@ local function load_declarative_config(kong_config, entities)
 
     assert(runloop.build_router("init"))
 
-    if kong_config.service_mesh then
-      -- mesh.init()
-    end
-
     ok, err = ngx.shared.kong:safe_set("declarative_config:loaded", true)
     if not ok then
       kong.log.warn("failed marking declarative_config as loaded: ", err)
@@ -504,10 +500,6 @@ function Kong.init()
 
   if subsystem == "stream" or config.proxy_ssl_enabled then
     certificate.init()
-  end
-
-  if config.service_mesh and kong.configuration.database ~= "off" then
-    -- mesh.init()
   end
 
   -- Load plugins as late as possible so that everything is set up

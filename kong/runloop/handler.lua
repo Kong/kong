@@ -1046,34 +1046,22 @@ return {
 
       local ssl_termination_ctx -- OpenSSL SSL_CTX to use for termination
 
-      local ssl_preread_alpn_protocols = var.ssl_preread_alpn_protocols
-      -- ssl_preread_alpn_protocols is a comma separated list
-      -- see https://trac.nginx.org/nginx/ticket/1616
-      if kong.configuration.service_mesh and ssl_preread_alpn_protocols and
-        -- ssl_preread_alpn_protocols:find(mesh.get_mesh_alpn(), 1, true) and
-        true then
-        -- -- Is probably an incoming service mesh connection
-        -- -- terminate service-mesh Mutual TLS
-        -- ssl_termination_ctx = mesh.mesh_server_ssl_ctx
-        ctx.is_service_mesh_request = true
-      else
-        -- TODO: stream router should decide if TLS is terminated or not
-        -- XXX: for now, use presence of SNI to terminate.
-        local sni = var.ssl_preread_server_name
-        if sni then
-          log(DEBUG, "SNI: ", sni)
+      -- TODO: stream router should decide if TLS is terminated or not
+      -- XXX: for now, use presence of SNI to terminate.
+      local sni = var.ssl_preread_server_name
+      if sni then
+        log(DEBUG, "SNI: ", sni)
 
-          local err
-          ssl_termination_ctx, err = certificate.find_certificate(sni)
-          if not ssl_termination_ctx then
-            log(ERR, err)
-            return exit(ERROR)
-          end
-
-          -- TODO Fake certificate phase?
-
-          log(INFO, "attempting to terminate TLS")
+        local err
+        ssl_termination_ctx, err = certificate.find_certificate(sni)
+        if not ssl_termination_ctx then
+          log(ERR, err)
+          return exit(ERROR)
         end
+
+        -- TODO Fake certificate phase?
+
+        log(INFO, "attempting to terminate TLS")
       end
 
       -- Terminate TLS
@@ -1125,10 +1113,6 @@ return {
       -- the plugin(s) want to specify them (store the original)
       ctx.http_proxy_authorization = var.http_proxy_authorization
       ctx.http_te                  = var.http_te
-
-      -- if kong.configuration.service_mesh then
-      --   mesh.rewrite(ctx)
-      -- end
     end,
   },
   access = {
