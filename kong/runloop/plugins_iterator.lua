@@ -65,6 +65,7 @@ local function load_plugin_from_db(key)
   end
 
   if type(row) == 'table' then
+    row.__key__ = key
     row.__seq__ = next_seq
     next_seq = next_seq + 1
   end
