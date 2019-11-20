@@ -740,6 +740,42 @@ describe("Router", function()
         assert.equal(use_case[1].route, match_t.route)
       end)
 
+      it("does not supersede another route with a longer [uri] when a better [uri] match exists for another [host]", function()
+        local use_case = {
+          {
+            service   = service,
+            route     = {
+              hosts   = { "example.com" },
+              paths   = { "/my-route" },
+            },
+          },
+          {
+            service   = service,
+            route     = {
+              hosts   = { "example.com" },
+              paths   = { "/my-route/hello" },
+            },
+          },
+          {
+            service   = service,
+            route     = {
+              hosts   = { "example.net" },
+              paths   = { "/my-route/hello/world" },
+            },
+          },
+        }
+
+        local router = assert(Router.new(use_case))
+
+        local match_t = router.select("GET", "/my-route/hello/world", "example.com")
+        assert.truthy(match_t)
+        assert.equal(use_case[2].route, match_t.route)
+
+        local match_t = router.select("GET", "/my-route/hello/world/and/goodnight", "example.com")
+        assert.truthy(match_t)
+        assert.equal(use_case[2].route, match_t.route)
+      end)
+
       it("only matches [uri prefix] as a prefix (anchored mode)", function()
         local use_case = {
           {
