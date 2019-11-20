@@ -678,6 +678,37 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local route14 = bp.routes:insert {
+        hosts = { "acl14.com" },
+      }
+
+      bp.plugins:insert {
+        name = "acl",
+        route = { id = route14.id },
+        config = {
+          whitelist = { "anonymous" },
+          reject_anonymous = anonymous.id
+        }
+      }
+
+      bp.plugins:insert {
+        name = "key-auth",
+        route = { id = route14.id },
+        config = {
+          anonymous = anonymous.id,
+        }
+      }
+
+      bp.plugins:insert {
+        name = "ctx-checker",
+        route = { id = route14.id },
+        config = {
+          ctx_kind      = "kong.ctx.shared",
+          ctx_set_field = "authenticated_groups",
+          ctx_set_array = { "anonymous" },
+        }
+      }
+
       assert(helpers.start_kong({
         plugins    = "bundled, ctx-checker",
         database   = strategy,
@@ -1262,6 +1293,17 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
         assert.same({ message = "You cannot consume this service" }, json)
+      end)
+
+      it("rejects anonymous consumer when reject_anonymous configured", function()
+        local res = assert(proxy_client:get("/request", {
+          headers = {
+            ["Host"] = "acl14.com"
+          }
+        }))
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Unauthorized" }, json)
       end)
     end)
   end)

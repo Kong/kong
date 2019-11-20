@@ -13,6 +13,7 @@ return {
           { whitelist = { type = "array", elements = { type = "string" }, }, },
           { blacklist = { type = "array", elements = { type = "string" }, }, },
           { hide_groups_header = { type = "boolean", default = false }, },
+          { reject_anonymous = { type = "string", uuid = true }, },
         }
       }
     }

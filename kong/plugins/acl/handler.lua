@@ -53,12 +53,21 @@ function ACLHandler:access(conf)
       type = config_type,
       groups = config_type == BLACK and conf.blacklist or conf.whitelist,
       cache = setmetatable({}, mt_cache),
+      reject_anonymous = conf.reject_anonymous
     }
 
     config_cache[conf] = config
   end
 
   local to_be_blocked
+
+  -- reject anonymous consumer
+  if config.reject_anonymous then
+    local credential = kong.client.get_credential()
+    if credential and credential.consumer_id == config.reject_anonymous then
+      return kong.response.exit(401, { message = "Unauthorized" })
+    end
+  end
 
   -- get the consumer/credentials
   local consumer_id = groups.get_current_consumer_id()
