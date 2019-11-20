@@ -2,11 +2,15 @@ local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
 local conf_loader = require "kong.conf_loader"
 local ee_api = require "kong.enterprise_edition.api_helpers"
+local admins = require "kong.enterprise_edition.admins_helpers"
 local auth_helpers = require "kong.enterprise_edition.auth_helpers"
 local cjson = require "cjson"
+local rbac = require "kong.rbac"
 local api_helpers = require "kong.api.api_helpers"
 local Schema = require "kong.db.schema"
 local Errors = require "kong.db.errors"
+local workspaces = require "kong.workspaces"
+
 
 local sub = string.sub
 local kong = kong
@@ -29,6 +33,93 @@ local strip_foreign_schemas = function(fields)
     local fdata = field[fname]
     if fdata["type"] == "foreign" then
       fdata.schema = nil
+    end
+  end
+end
+
+local function ws_and_rbac_helper(self, dao_factory, helpers)
+  local admin_auth = singletons.configuration.admin_gui_auth
+
+  if not admin_auth and not ngx.ctx.rbac then
+    return kong.response.exit(404, { message = "Not found" })
+  end
+
+  -- For when only RBAC token comes in
+  if not self.admin then
+    local admins, err = kong.db.admins:page_for_rbac_user({
+      id = ngx.ctx.rbac.user.id
+    })
+
+    if err then
+      return kong.response.exit(500, err)
+    end
+
+    if not admins[1] then
+      -- no admin associated with this rbac_user
+      return kong.response.exit(404, { message = "Not found" })
+    end
+
+    ee_api.attach_consumer_and_workspaces(self, admins[1].consumer.id)
+    self.admin = admins[1]
+  end
+
+  -- now to get the right permission set
+  self.permissions = {
+    endpoints = {
+      ["*"] = {
+        ["*"] = {
+          actions = { "delete", "create", "update", "read", },
+          negative = false,
+        }
+      }
+    },
+    entities = {
+      ["*"] = {
+        actions = { "delete", "create", "update", "read", },
+        negative = false,
+      }
+    },
+  }
+
+  -- get roles across all workspaces
+  local roles, err = workspaces.run_with_ws_scope({}, rbac.get_user_roles,
+    kong.db,
+    ngx.ctx.rbac.user)
+  local group_roles = workspaces.run_with_ws_scope({}, rbac.get_groups_roles,
+    kong.db,
+    ngx.ctx.authenticated_groups)
+  roles = rbac.merge_roles(roles, group_roles)
+  ee_api.attach_workspaces_roles(self, roles)
+
+  if err then
+    log(ERR, "[userinfo] ", err)
+    return kong.response.exit(500, err)
+  end
+
+  local rbac_enabled = singletons.configuration.rbac
+  if rbac_enabled == "on" or rbac_enabled == "both" then
+    self.permissions.endpoints = rbac.readable_endpoints_permissions(roles)
+  end
+
+  if rbac_enabled == "entity" or rbac_enabled == "both" then
+    self.permissions.entities = rbac.readable_entities_permissions(roles)
+  end
+
+  -- fetch workspace resources from workspace entities
+  self.workspaces = {}
+
+  local ws_dict = {} -- dict to keep track of which workspaces we have added
+  local ws, err
+  for k, v in ipairs(self.workspace_entities) do
+    if not ws_dict[v.workspace_id] then
+      ws, err = kong.db.workspaces:select({id = v.workspace_id})
+      if err then
+        return helpers.yield_error(err)
+      end
+      ws_dict[v.workspace_id] = true
+      if ws then
+        self.workspaces[#self.workspaces + 1] = ws
+      end
     end
   end
 end
@@ -105,6 +196,22 @@ return {
         license = license,
       })
     end
+  },
+  --- Retrieves current user info, either an admin or an rbac user
+  -- This route is whitelisted from RBAC validation. It requires that an admin
+  -- is set on the headers, but should only work for a consumer that is set when
+  -- an authentication plugin has set the admin_gui_auth_header.
+  -- See for reference: kong.rbac.authorize_request_endpoint()
+  ["/userinfo"] = {
+    GET = function(self, dao, helpers)
+      ws_and_rbac_helper(self, dao, helpers)
+      return kong.response.exit(200, {
+        admin = admins.transmogrify(self.admin),
+        groups = self.groups,
+        permissions = self.permissions,
+        workspaces = self.workspaces,
+      })
+    end,
   },
   ["/schemas/:name"] = {
     GET = function(self, db, helpers)
@@ -264,4 +371,5 @@ return {
       return kong.response.exit(200)
     end,
   },
+
 }
