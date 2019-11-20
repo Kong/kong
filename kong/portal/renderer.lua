@@ -7,9 +7,11 @@ local template     = require "resty.template"
 local lyaml        = require "lyaml"
 local handler      = require "kong.portal.render_toolset.handler"
 local constants    = require "kong.constants"
+local emails       = require "kong.portal.emails"
 
 local LAYOUTS = constants.PORTAL_RENDERER.LAYOUTS
 local FALLBACK_404 = constants.PORTAL_RENDERER.FALLBACK_404
+local FALLBACK_EMAIL = constants.PORTAL_RENDERER.FALLBACK_EMAIL
 local SITEMAP = constants.PORTAL_RENDERER.SITEMAP
 
 local ws_constants  = constants.WORKSPACE_CONFIG
@@ -138,6 +140,14 @@ end
 
 local function get_missing_layout(ctx)
   local theme = ctx.theme
+
+  if file_helpers.is_email_path(ctx.path) then
+    return {
+      contents = FALLBACK_EMAIL,
+      path = "__UNSET"
+    }
+  end
+
   return singletons.db.files:select_file_by_theme("layouts/system/404.html",
                                                   theme.name)
 end
@@ -316,13 +326,14 @@ local function set_theme_config(portal_theme_conf)
 end
 
 
-local function set_render_ctx(self)
+local function set_render_ctx(self, email_tokens)
   -- 1. Set Portal Config
   -- 2. Set Theme Config
-  -- 3. Retrieve Initial Route Config
-  -- 4. Get Developer
-  -- 4. Get layout by permission
-  -- 5. Lookup layout
+  -- 3. Grab example tokens if email content & editor
+  -- 4. Retrieve Initial Route Config
+  -- 5. Get Developer
+  -- 6. Get layout by permission
+  -- 7. Lookup layout
 
   local workspace = workspaces.get_workspace()
   local portal_config = set_portal_config()
@@ -339,14 +350,18 @@ local function set_render_ctx(self)
     return false, "could not retrieve theme config"
   end
 
+  if self.admin and file_helpers.is_email_path(self.path) then
+    email_tokens = emails:get_example_email_tokens(self.path)
+  end
+
   local route_config
-  if self.is_admin then
+  if self.is_admin or self.is_email then
     local file = singletons.db.files:select_by_path(self.path)
-    if not self.path then
+    if not file then
       file = {}
     end
 
-    route_config = file_helpers.parse_content(file)
+    route_config = file_helpers.parse_content(file, email_tokens)
   end
 
   if not route_config then
@@ -362,12 +377,13 @@ local function set_render_ctx(self)
   local layout = set_layout_by_permission(route_config, developer, workspace, portal_config)
 
   singletons.render_ctx = {
-    route_config  = route_config,
-    portal        = portal_config,
-    theme         = theme_config,
-    developer     = developer,
-    layout        = layout,
-    path          = path,
+    route_config         = route_config,
+    portal               = portal_config,
+    theme                = theme_config,
+    developer            = developer,
+    layout               = layout,
+    path                 = path,
+    example_email_tokens = email_tokens,
   }
 end
 
@@ -379,7 +395,14 @@ local function compile_layout()
     return FALLBACK_404
   end
 
-  return template.compile(layout)(handler(template))
+  local view = template.compile(layout)(handler(template))
+  if ctx.example_email_tokens then
+    -- redudent replacement for edge case of email tokens
+    -- (will need to be escaped) in layouts/partials
+    view = emails:replace_tokens(view, ctx.example_email_tokens)
+  end
+
+  return view
 end
 
 

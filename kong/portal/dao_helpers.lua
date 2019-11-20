@@ -802,6 +802,19 @@ local function update_developer(self, developer, entity, options)
   return updated
 end
 
+local function get_name_or_email(developer)
+  if not developer.meta then
+    return developer.email
+  end
+
+  local meta = cjson.decode(developer.meta)
+  if meta and meta.full_name then
+    return meta.full_name
+  end
+
+  return developer.email
+end
+
 
 return {
   create_developer = create_developer,
@@ -812,4 +825,5 @@ return {
   set_portal_session_conf = set_portal_session_conf,
   set_portal_conf = set_portal_conf,
   validate_developer_password = validate_developer_password,
+  get_name_or_email = get_name_or_email,
 }

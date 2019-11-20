@@ -141,6 +141,110 @@ local base_conf = {
   }
 }
 
+function _M:get_example_email_tokens(path)
+  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+
+
+  local portal_gui_url = workspaces.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local admin_gui_url = workspaces.build_ws_admin_gui_url(singletons.configuration, workspace)
+  local developer_email = "developer@example.com"
+  local developer_name = "Example Developer"
+  local email_token = "exampletoken123"
+  local exp_seconds = workspaces.retrieve_ws_config(ws_constants.PORTAL_TOKEN_EXP, workspace)
+  local token_exp
+  if exp_seconds then
+    token_exp = portal_utils.humanize_timestamp(exp_seconds)
+  else
+    token_exp = "PORTAL_TOKEN_EXP MUST BE SET"
+  end
+
+  local tokens_by_path = {
+    ["emails/invite.txt"] = {
+      ["portal.url"] = portal_gui_url,
+      ["email.developer_email"] = developer_email
+    },
+    ["emails/request-access.txt"] = {
+      ["portal.url"] = portal_gui_url,
+      ["email.admin_gui_url"] = admin_gui_url,
+      ["email.developer_name"] = developer_name,
+      ["email.developer_email"] = developer_email,
+    },
+    ["emails/approved-access.txt"] = {
+      ["portal.url"] = portal_gui_url,
+      ["email.developer_email"] = developer_email,
+      ["email.developer_name"] = developer_name,
+    },
+    ["emails/password-reset.txt"] = {
+      ["portal.url"] = portal_gui_url,
+      ["email.developer_email"] = developer_email,
+      ["email.developer_name"] = developer_name,
+      ["email.token"] = email_token,
+      ["email.token_exp"] = token_exp,
+      ["email.reset_url"] = portal_gui_url .. "/reset-password?token=" ..
+                            email_token,
+    },
+    ["emails/password-reset-success.txt"] = {
+      ["portal.url"] = portal_gui_url,
+      ["email.developer_email"] = developer_email,
+      ["email.developer_name"] = developer_name,
+    },
+    ["emails/account-verification-approved.txt"] = {
+      ["portal.url"] = portal_gui_url,
+      ["email.developer_email"] = developer_email,
+      ["email.developer_name"] = developer_name,
+    },
+    ["emails/account-verification-pending.txt"] = {
+      ["portal.url"] = portal_gui_url,
+      ["email.developer_email"] = developer_email,
+      ["email.developer_name"] = developer_name,
+    },
+    ["emails/account-verification.txt"] = {
+      ["portal.url"] = portal_gui_url,
+      ["email.developer_email"] = developer_email,
+      ["email.developer_name"] = developer_name,
+      ["email.token"] = email_token,
+      ["email.verify_url"] = portal_gui_url .. "/account/verify?token=" ..
+                                  email_token .. "&email=" .. developer_email,
+      ["email.invalidate_url"]= portal_gui_url .. "/account/invalidate-verification?token=" ..
+                                email_token .. "&email=" .. developer_email,
+    },
+  }
+  return tokens_by_path[path]
+end
+
+function _M:replace_tokens(view, tokens)
+  for match, replacement in pairs(tokens) do
+    match =  "{{%s*" .. match .. "%s*}}"
+    view = string.gsub(view, match, replacement)
+  end
+  return view
+end
+
+local function email_handler(self, tokens, file)
+  -- can not be required at file scope because ngx.location is not built at start
+  local renderer = require "kong.portal.renderer"
+  local file_helpers = require "kong.portal.file_helpers"
+
+
+  self.is_email = true
+  renderer.set_render_ctx(self, tokens)
+  local view = renderer.compile_layout(tokens)
+  -- redudent replacement for edge case of email tokens
+  -- (will need to be escaped) in layouts/partials
+  view = _M:replace_tokens(view, tokens)
+
+  -- get subject
+  if file and file.contents then
+    -- parse_file_contents also templates in email tokens
+    local headmatter = file_helpers.parse_file_contents(file.contents, tokens)
+
+    if headmatter and headmatter.subject then
+      return view, headmatter.subject
+    end
+  end
+
+  return view
+end
 
 function _M.new()
   local conf = singletons.configuration or {}
@@ -171,16 +275,33 @@ function _M:invite(recipients)
   local portal_emails_from = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_invite_email
-  local options = {
-    from = portal_emails_from,
-    reply_to = portal_emails_reply_to,
-    subject = fmt(conf.subject, portal_gui_url),
-    html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url),
-  }
-
   local res
+
   -- send emails individually
   for _, recipient in ipairs(recipients) do
+
+    local html
+    local subject
+    local path = "emails/invite.txt"
+
+    local file = singletons.db.files:select_by_path(path)
+    if not file then
+      html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url)
+    else
+      local matches = {}
+      matches["portal.url"] = portal_gui_url
+      matches["email.developer_email"] = recipient
+      self.path = path
+      html, subject = email_handler(self, matches, file)
+    end
+
+    local options = {
+      from = portal_emails_from,
+      reply_to = portal_emails_reply_to,
+      subject = subject or fmt(conf.subject, portal_gui_url),
+      html = html,
+    }
+
     res = self.client:send({recipient}, options, res)
   end
 
@@ -201,11 +322,29 @@ function _M:access_request(developer_email, developer_name)
   local portal_emails_from = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_access_request_email
+
+  local html
+  local subject
+  local path = "emails/request-access.txt"
+
+  local file = singletons.db.files:select_by_path(path)
+  if not file then
+    html = fmt(conf.html, developer_name, developer_email, portal_gui_url, admin_gui_url, admin_gui_url)
+  else
+    local matches = {}
+    matches["portal.url"] = portal_gui_url
+    matches["email.admin_gui_url"] = admin_gui_url
+    matches["email.developer_name"] = developer_name
+    matches["email.developer_email"] = developer_email
+    self.path = path
+    html, subject = email_handler(self, matches, file)
+  end
+
   local options = {
     from = portal_emails_from,
     reply_to = portal_emails_reply_to,
-    subject = fmt(conf.subject, portal_gui_url),
-    html = fmt(conf.html, developer_name, developer_email, portal_gui_url, admin_gui_url, admin_gui_url),
+    subject = subject or fmt(conf.subject, portal_gui_url),
+    html = html,
   }
 
   local res = self.client:send(singletons.configuration.smtp_admin_emails, options)
@@ -213,7 +352,7 @@ function _M:access_request(developer_email, developer_name)
 end
 
 
-function _M:approved(recipient)
+function _M:approved(recipient, developer_name)
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
   local portal_approved_email = workspaces.retrieve_ws_config(ws_constants.PORTAL_APPROVED_EMAIL, workspace)
 
@@ -225,18 +364,35 @@ function _M:approved(recipient)
   local portal_emails_from = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_approved_email
+
+  local html
+  local subject
+  local path = "emails/approved-access.txt"
+
+  local file = singletons.db.files:select_by_path(path)
+  if not file then
+    html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url)
+  else
+    local matches = {}
+    matches["portal.url"] = portal_gui_url
+    matches["email.developer_email"] = recipient
+    matches["email.developer.name"] = developer_name
+    self.path = path
+    html, subject = email_handler(self, matches, file)
+  end
+
   local options = {
     from = portal_emails_from,
     reply_to = portal_emails_reply_to,
-    subject = fmt(conf.subject, portal_gui_url),
-    html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url),
+    subject = subject or fmt(conf.subject, portal_gui_url),
+    html = html,
   }
 
   local res = self.client:send({recipient}, options)
   return smtp_client.handle_res(res)
 end
 
-function _M:password_reset(recipient, token)
+function _M:password_reset(recipient, token, developer_name)
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
   local portal_reset_email = workspaces.retrieve_ws_config(ws_constants.PORTAL_RESET_EMAIL, workspace)
 
@@ -254,18 +410,39 @@ function _M:password_reset(recipient, token)
   local portal_emails_reply_to = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local exp_string = portal_utils.humanize_timestamp(exp_seconds)
   local conf = self.conf.portal_reset_email
+
+  local html
+  local subject
+  local path = "emails/password-reset.txt"
+
+  local file = singletons.db.files:select_by_path(path)
+  if not file then
+    html = fmt(conf.html, portal_gui_url, token, portal_gui_url, token, exp_string)
+  else
+    local matches = {}
+    matches["portal.url"] = portal_gui_url
+    matches["email.developer_email"] = recipient
+    matches["email.developer_name"] = developer_name
+    matches["email.token"] = token
+    matches["email.token_exp"] = exp_string
+    matches["email.reset_url"] =  portal_gui_url .. "/reset-password?token=" ..
+                                  token
+    self.path = path
+    html, subject = email_handler(self, matches, file)
+  end
+
   local options = {
     from = portal_emails_from,
     reply_to = portal_emails_reply_to,
-    subject = fmt(conf.subject, portal_gui_url),
-    html = fmt(conf.html, portal_gui_url, token, portal_gui_url, token, exp_string),
+    subject = subject or fmt(conf.subject, portal_gui_url),
+    html = html,
   }
 
   local res = self.client:send({recipient}, options)
   return smtp_client.handle_res(res)
 end
 
-function _M:password_reset_success(recipient)
+function _M:password_reset_success(recipient, developer_name)
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
   local portal_reset_success_email = workspaces.retrieve_ws_config(ws_constants.PORTAL_RESET_SUCCESS_EMAIL, workspace)
 
@@ -277,69 +454,144 @@ function _M:password_reset_success(recipient)
   local portal_emails_from = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_reset_success_email
+
+  local html
+  local subject
+  local path = "emails/password-reset-success.txt"
+
+  local file = singletons.db.files:select_by_path(path)
+  if not file then
+    html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url, portal_gui_url)
+  else
+    local matches = {}
+    matches["portal.url"] = portal_gui_url
+    matches["email.developer_email"] = recipient
+    matches["email.developer_name"] = developer_name
+    self.path = path
+    html, subject = email_handler(self, matches, file)
+  end
+
   local options = {
     from = portal_emails_from,
     reply_to = portal_emails_reply_to,
-    subject = fmt(conf.subject, portal_gui_url),
-    html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url, portal_gui_url),
+    subject = subject or fmt(conf.subject, portal_gui_url),
+    html = html,
   }
 
   local res = self.client:send({recipient}, options)
   return smtp_client.handle_res(res)
 end
 
-function _M:account_verification_email(recipient, token)
+function _M:account_verification_email(recipient, token, developer_name)
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
 
   local portal_gui_url = workspaces.build_ws_portal_gui_url(singletons.configuration, workspace)
   local portal_emails_from = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_account_verification_email
-  local options = {
-    from = portal_emails_from,
-    reply_to = portal_emails_reply_to,
-    subject = fmt(conf.subject, portal_gui_url),
+
+  local html
+  local subject
+  local path = "emails/account-verification.txt"
+
+  local file = singletons.db.files:select_by_path(path)
+  if not file then
     html = fmt(conf.html, portal_gui_url,
       portal_gui_url, token, recipient,
       portal_gui_url, token,
       portal_gui_url, token, recipient,
-      portal_gui_url, token),
+      portal_gui_url, token)
+  else
+    local matches = {}
+    matches["portal.url"] = portal_gui_url
+    matches["email.developer_email"] = recipient
+    matches["email.developer_name"] = developer_name
+    matches["email.token"] = token
+    matches["email.verify_url"] = portal_gui_url ..
+                                  "/account/verify?token=" ..
+                                  token .. "&email=" .. recipient
+    matches["email.invalidate_url"] = portal_gui_url ..
+                                  "/account/invalidate-verification?token=" ..
+                                   token .. "&email=" .. recipient
+    self.path = path
+    html, subject = email_handler(self, matches, file)
+  end
+
+  local options = {
+    from = portal_emails_from,
+    reply_to = portal_emails_reply_to,
+    subject = subject or fmt(conf.subject, portal_gui_url),
+    html = html,
   }
 
   local res = self.client:send({recipient}, options)
   return smtp_client.handle_res(res)
 end
 
-function _M:account_verification_success_approved(recipient, token)
+function _M:account_verification_success_approved(recipient, developer_name)
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
 
   local portal_gui_url = workspaces.build_ws_portal_gui_url(singletons.configuration, workspace)
   local portal_emails_from = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_account_verification_success_approved_email
+
+  local html
+  local subject
+  local path = "emails/account-verification-approved.txt"
+
+  local file = singletons.db.files:select_by_path(path)
+  if not file then
+    html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url, portal_gui_url)
+  else
+    local matches = {}
+    matches["portal.url"] = portal_gui_url
+    matches["email.developer_email"] = recipient
+    matches["email.developer_name"] = developer_name
+    self.path = path
+    html, subject = email_handler(self, matches, file)
+  end
+
   local options = {
     from = portal_emails_from,
     reply_to = portal_emails_reply_to,
-    subject = fmt(conf.subject, portal_gui_url),
-    html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url, portal_gui_url),
+    subject = subject or fmt(conf.subject, portal_gui_url),
+    html = html,
   }
 
   local res = self.client:send({recipient}, options)
   return smtp_client.handle_res(res)
 end
 
-function _M:account_verification_success_pending(recipient)
+function _M:account_verification_success_pending(recipient, developer_name)
   local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
 
   local portal_gui_url = workspaces.build_ws_portal_gui_url(singletons.configuration, workspace)
   local portal_emails_from = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_account_verification_success_pending_email
+
+  local html
+  local subject
+  local path = "emails/account-verification-pending.txt"
+
+  local file = singletons.db.files:select_by_path(path)
+  if not file then
+    html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url, portal_gui_url)
+  else
+    local matches = {}
+    matches["portal.url"] = portal_gui_url
+    matches["email.developer_email"] = recipient
+    matches["email.developer_name"] = developer_name
+    self.path = path
+    html, subject = email_handler(self, matches, file)
+  end
+
   local options = {
     from = portal_emails_from,
     reply_to = portal_emails_reply_to,
-    subject = fmt(conf.subject, portal_gui_url),
-    html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url, portal_gui_url),
+    subject = subject or fmt(conf.subject, portal_gui_url),
+    html = html,
   }
 
   local res = self.client:send({recipient}, options)
