@@ -216,7 +216,7 @@ local function load_consumer_db(subject, by)
   end
 
   local result, err
-  log.notice("loading consumer by  ", by, " using ", subject)
+  log.notice("loading consumer by ", by, " using ", subject)
 
   if by == "id" then
     if not utils.is_valid_uuid(subject) then
@@ -232,7 +232,7 @@ local function load_consumer_db(subject, by)
   end
 
   if type(result) == "table" then
-      return result
+    return result
   end
 
   if err then
