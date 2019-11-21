@@ -783,7 +783,14 @@ local function mock_reports_server(opts)
       local server = assert(socket.tcp())
       server:settimeout(360)
       assert(server:setoption("reuseaddr", true))
-      assert(server:bind(host, port))
+      local counter = 0
+      while not server:bind(host, port) do
+        counter = counter + 1
+        if counter > 5 then
+          error('could not bind successfully')
+        end
+        socket.sleep(1)
+      end
       assert(server:listen())
       local data = {}
       local handshake_done = false
@@ -839,7 +846,9 @@ local function mock_reports_server(opts)
   local sock = ngx.socket.tcp()
   sock:settimeout(0.01)
   while true do
-    if sock:connect(localhost, server_port) then
+    if not thread:alive() then
+      error('the reports thread died')
+    elseif sock:connect(localhost, server_port) then
       sock:send("\\START\n")
       local ok = sock:receive()
       sock:close()
