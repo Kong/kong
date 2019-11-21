@@ -17,13 +17,13 @@ describe("validate_groups", function()
   local groups = {
     "CN=test-group-1,CN=Users,DC=addomain,DC=creativehashtags,DC=com",
     "CN=test-group-2,CN=Users,DC=addomain,DC=creativehashtags,DC=com",
+    "CN=Test-Group-3,CN=Users,DC=addomain,DC=creativehashtags,DC=com",
   }
   
   it("should mark groups as valid", function()
-    local expected = { "test-group-1", "test-group-2" }
+    local expected = { "test-group-1", "test-group-2", "Test-Group-3" }
 
     assert.same(expected, ldap_groups.validate_groups(groups, "CN=Users,DC=addomain,DC=creativehashtags,DC=com", "CN"))
-    assert.same(expected, ldap_groups.validate_groups(groups, "CN=Users,DC=addomain,DC=creativehashtags,DC=com", "cn"))
     assert.same(expected, ldap_groups.validate_groups(groups, "cn=Users,DC=addomain,dc=creativehashtags,DC=com", "CN"))
     
     -- returns table even when passed as string
@@ -41,6 +41,13 @@ describe("validate_groups", function()
       groups[1],
       "CN=invalid-group-dn,CN=Users,CN=addomain,CN=creativehashtags,CN=com"
     }, "cn=Users,DC=addomain,dc=creativehashtags,DC=com", "CN"))
+  end)
+  
+  it('returns groups from records with case sensitivity', function()
+    assert.same({'Test-Group-3', 'test-group-3'}, ldap_groups.validate_groups({
+      groups[3],
+      "CN=test-group-3,CN=Users,DC=addomain,DC=creativehashtags,DC=com"
+    }, "CN=Users,DC=addomain,DC=creativehashtags,DC=com", "CN"))
   end)
 end)
 

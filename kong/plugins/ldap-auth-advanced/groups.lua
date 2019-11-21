@@ -18,15 +18,17 @@ function _M.set_groups(groups)
 end
 
 -- Ensure that the groups the user is in match the properties that were
--- configured in the plugin
+-- configured in the plugin. Group matching is case insensitive.
 -- @tparam table|string groups - groups returned from ldap search request 
 --   e.g. { "CN=test-group-1,CN=Users,DC=addomain,DC=creativehashtags,DC=com",
---          "CN=test-group-2,CN=Users,DC=addomain,DC=creativehashtags,DC=com", }
+--          "CN=test-group-2,CN=Users,DC=addomain,DC=creativehashtags,DC=com",
+--          "CN=Test-Group-3,CN=Users,DC=addomain,DC=creativehashtags,DC=com", }
 -- @tparam string gbase_dn - group base dn 
 --   e.g. CN=Users,DC=addomain,DC=creativehashtags,DC=com
 -- @tparam string gattribute - group name attribute e.g. CN
--- @treturns table|nil - array of groups that pass validation, nil if all invalid
---   e.g. { "test-group-1", "test-group-2", }
+-- @treturns table|nil - array of groups that pass validation, nil if all 
+-- invalid. Groups retains case based on what is in the record.
+--   e.g. { "test-group-1", "test-group-2", "Test-Group-3" }
 function _M.validate_groups(groups, gbase_dn, gattribute)  
   local group_names = {}
 
@@ -41,11 +43,16 @@ function _M.validate_groups(groups, gbase_dn, gattribute)
                         .. "%=[%w-_+:@]+%,"
                         .. lower(gbase_dn):gsub("([^%w])", "%%%1") .. "$"
     local is_matched = string.match(lower(groupdn), group_match)
-                        
     if is_matched and is_matched ~= "" and is_matched ~= gbase_dn then
       -- pick off group name from full dn
-      local group_name = split(is_matched, lower(gattribute) .. "=")[2]:sub(1, -2)
-      group_names[#group_names + 1] = group_name
+      local group_name = split(split(is_matched, lower(gattribute) .. "=")[2],
+                               ",")[1]
+      -- use group from record, not lowercased version
+      local group_name_original = split(split(groupdn, ",")[1], "=")[2]
+      
+      if group_name and group_name == lower(group_name_original) then
+        group_names[#group_names + 1] = group_name_original
+      end
     else
       kong.log.debug('"'.. groupdn .. '"' .. ' is not a valid group')
     end
