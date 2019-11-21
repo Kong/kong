@@ -4,7 +4,6 @@ local resty_mlcache = require "resty.mlcache"
 local type    = type
 local max     = math.max
 local ngx_log = ngx.log
-local ngx_now = ngx.now
 local ERR     = ngx.ERR
 local NOTICE  = ngx.NOTICE
 local DEBUG   = ngx.DEBUG
@@ -314,15 +313,15 @@ function _M:invalidate(key)
 
   self:invalidate_local(key)
 
-  local nbf
+  local delay
   if self.propagation_delay > 0 then
-    nbf = ngx_now() + self.propagation_delay
+    delay = self.propagation_delay
   end
 
   log(DEBUG, "broadcasting (cluster) invalidation for key: '", key, "' ",
-             "with nbf: '", nbf or "none", "'")
+             "with delay: '", delay or "none", "'")
 
-  local ok, err = self.cluster_events:broadcast("invalidations", key, nbf)
+  local ok, err = self.cluster_events:broadcast("invalidations", key, delay)
   if not ok then
     log(ERR, "failed to broadcast cached entity invalidation: ", err)
   end
