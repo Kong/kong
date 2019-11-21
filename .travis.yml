@@ -58,7 +58,6 @@ cache:
 stages:
   - lint and unit
   - test
-  - Deploy daily build
   - Release
 
 jobs:
