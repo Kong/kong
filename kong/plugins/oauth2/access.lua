@@ -1,6 +1,7 @@
 local url = require "socket.url"
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
+local sha256 = require "resty.sha256"
 local timestamp = require "kong.tools.timestamp"
 
 
@@ -11,6 +12,7 @@ local table = table
 local split = utils.split
 local strip = utils.strip
 local string_find = string.find
+local string_gsub = string.gsub
 local check_https = utils.check_https
 local encode_args = utils.encode_args
 local random_string = utils.random_string
@@ -20,6 +22,7 @@ local table_contains = utils.table_contains
 local ngx_decode_args = ngx.decode_args
 local ngx_re_gmatch = ngx.re.gmatch
 local ngx_decode_base64 = ngx.decode_base64
+local ngx_encode_base64 = ngx.encode_base64
 
 
 local _M = {}
@@ -29,6 +32,11 @@ local EMPTY = {}
 local RESPONSE_TYPE = "response_type"
 local STATE = "state"
 local CODE = "code"
+local CODE_CHALLENGE = "code_challenge"
+local CODE_CHALLENGE_METHOD = "code_challenge_method"
+local CODE_VERIFIER = "code_verifier"
+local CLIENT_TYPE_PUBLIC = "public"
+local CLIENT_TYPE_CONFIDENTIAL = "confidential"
 local TOKEN = "token"
 local REFRESH_TOKEN = "refresh_token"
 local SCOPE = "scope"
@@ -180,6 +188,20 @@ local function retrieve_scope(parameters, conf)
   end -- else return nil
 end
 
+local function retrieve_code_challenge(parameters)
+  local code_challenge = parameters[CODE_CHALLENGE]
+  local code_challenge_method = parameters[CODE_CHALLENGE_METHOD]
+
+  if code_challenge ~= nil then
+    code_challenge = split(code_challenge, "=")[1] -- remove padding
+    if code_challenge_method == nil then
+      code_challenge_method = "S256"
+    elseif code_challenge_method ~= "S256" then
+      return code_challenge, nil
+    end
+  end
+  return code_challenge, code_challenge_method
+end
 
 local function authorize(conf)
   local response_params = {}
@@ -258,6 +280,31 @@ local function authorize(conf)
 
       parsed_redirect_uri = url.parse(redirect_uri)
 
+      local code_challenge, code_method
+      if client then
+        if client.client_type == CLIENT_TYPE_PUBLIC then
+          code_challenge, code_method = retrieve_code_challenge(parameters)
+          if not code_challenge then
+            response_params = {
+              [ERROR] = "invalid_request",
+              error_description = "code_challenge is required for " .. CLIENT_TYPE_PUBLIC .. " clients"
+            }
+          elseif not code_method then
+            response_params = {
+              [ERROR] = "invalid_request",
+              error_description = "transform algorithm not supported, must be S256"
+            }
+          end
+        elseif client.client_type == CLIENT_TYPE_CONFIDENTIAL then
+          if parameters[CODE_CHALLENGE] or parameters[CODE_CHALLENGE_METHOD] then
+          response_params = {
+            [ERROR] = "invalid_request",
+            error_description = "code_challenge and code_challenge_method are disallowed for " .. CLIENT_TYPE_CONFIDENTIAL .. " clients"
+          }
+          end
+        end
+      end
+
       -- If there are no errors, keep processing the request
       if not response_params[ERROR] then
         if response_type == CODE then
@@ -270,7 +317,9 @@ local function authorize(conf)
             service = service_id and { id = service_id } or nil,
             credential = { id = client.id },
             authenticated_userid = parameters[AUTHENTICATED_USERID],
-            scope = scopes
+            scope = scopes,
+            challenge = code_challenge,
+            challenge_method = code_method
           }, {
             ttl = 300
           })
@@ -362,11 +411,35 @@ local function retrieve_client_credentials(parameters, conf)
         client_secret = basic_parts[2]
       end
     end
+
+  elseif parameters[CLIENT_ID] then
+    client_id = parameters[CLIENT_ID]
   end
 
   return client_id, client_secret, from_authorization_header
 end
 
+local function retrieve_verifier(code_verifier)
+  if code_verifier and type(code_verifier) == "string" then
+    local len_verifier = code_verifier:len()
+    if len_verifier > 42 and len_verifier < 129 then
+      return code_verifier
+    end -- else return nil
+  end
+end
+
+local function compare_challenge(method, code_verifier, code_challenge)
+  if code_verifier and code_challenge then
+    local digest = sha256:new()
+    digest:update(code_verifier)
+    local challenge = ngx_encode_base64(digest:final(), true)
+    challenge = string_gsub(challenge, "+", "-")
+    challenge = string_gsub(challenge, "/", "_")
+    if challenge == code_challenge then
+      return true
+    end
+  end -- else return nil
+end
 
 local function issue_token(conf)
   local response_params = {}
@@ -431,16 +504,27 @@ local function issue_token(conf)
       end
     end
 
-    if client and client.client_secret ~= client_secret then
-      response_params = {
-        [ERROR] = "invalid_client",
-        error_description = "Invalid client authentication"
-      }
-
-      if from_authorization_header then
-        invalid_client_properties = {
-          status = 401,
-          www_authenticate = "Basic realm=\"OAuth2.0\""
+    if client then
+      if client.client_type == CLIENT_TYPE_CONFIDENTIAL and client.client_secret ~= client_secret then
+        response_params = {
+          [ERROR] = "invalid_client",
+          error_description = "Invalid client authentication"
+        }
+        if from_authorization_header then
+          invalid_client_properties = {
+            status = 401,
+            www_authenticate = "Basic realm=\"OAuth2.0\""
+          }
+        end
+      elseif client.client_type == CLIENT_TYPE_PUBLIC and strip(client_secret) ~= "" then
+        response_params = {
+          [ERROR] = "invalid_request",
+          error_description = "client_secret is disallowed for " .. CLIENT_TYPE_PUBLIC .. " clients"
+        }
+      elseif client.client_type == CLIENT_TYPE_CONFIDENTIAL and parameters[CODE_VERIFIER] then
+        response_params = {
+          [ERROR] = "invalid_request",
+          error_description = "code_verifier is disallowed for " .. CLIENT_TYPE_CONFIDENTIAL .. " clients"
         }
       end
     end
@@ -457,6 +541,14 @@ local function issue_token(conf)
         local auth_code =
           code and kong.db.oauth2_authorization_codes:select_by_code(code)
 
+        local verifier, challenge_verified
+        if auth_code and client.client_type == CLIENT_TYPE_PUBLIC then
+          verifier = retrieve_verifier(parameters[CODE_VERIFIER])
+          challenge_verified = compare_challenge(auth_code.challenge_method,
+                                                 verifier,
+                                                 auth_code.challenge)
+        end
+
         if not auth_code or (service_id and service_id ~= auth_code.service.id)
         then
           response_params = {
@@ -467,6 +559,17 @@ local function issue_token(conf)
         elseif auth_code.credential.id ~= client.id then
           response_params = {
             [ERROR] = "invalid_request",
+            error_description = "Invalid " .. CODE
+          }
+
+        elseif client.client_type == CLIENT_TYPE_PUBLIC and not verifier then
+           response_params = {
+             [ERROR] = "invalid_request",
+             error_description = "code verifier must be between 43 and 128 characters" }
+
+        elseif client.client_type == CLIENT_TYPE_PUBLIC and not challenge_verified then
+          response_params = {
+            [ERROR] = "invalid_grant",
             error_description = "Invalid " .. CODE
           }
 

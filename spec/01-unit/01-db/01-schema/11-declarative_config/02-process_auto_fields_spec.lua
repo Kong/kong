@@ -698,10 +698,12 @@ describe("declarative config: process_auto_fields", function()
           _format_version = "1.1",
           oauth2_credentials = {
             {
+              client_type = "confidential",
               name = "my-credential",
               redirect_uris = { "https://example.com" },
             },
             {
+              client_type = "confidential",
               name = "another-credential",
               consumer = "foo",
               redirect_uris = { "https://example.test" },
@@ -753,10 +755,12 @@ describe("declarative config: process_auto_fields", function()
                 username = "bob",
                 oauth2_credentials = {
                   {
+                    client_type = "confidential",
                     name = "my-credential",
                     redirect_uris = { "https://example.com" },
                   },
                   {
+                    client_type = "confidential",
                     name = "another-credential",
                     redirect_uris = { "https://example.test" },
                   },
@@ -782,6 +786,7 @@ describe("declarative config: process_auto_fields", function()
             _format_version = "1.1",
             oauth2_credentials = {
               {
+                client_type = "confidential",
                 name = "my-credential",
                 redirect_uris = { "https://example.com" },
                 oauth2_tokens = {}
@@ -807,6 +812,7 @@ describe("declarative config: process_auto_fields", function()
             _format_version = "1.1",
             oauth2_credentials = {
               {
+                client_type = "confidential",
                 name = "my-credential",
                 redirect_uris = { "https://example.com" },
                 oauth2_tokens = {
