@@ -40,6 +40,17 @@ for _, strategy in helpers.each_strategy() do
           hosts         = { "preserved.com" },
           preserve_host = true,
         })
+
+        local mock_upstream = bp.services:insert {
+          host = helpers.mock_upstream_host,
+          port = helpers.mock_upstream_port,
+          protocol = helpers.mock_upstream_protocol,
+        }
+
+        bp.routes:insert {
+          service = mock_upstream,
+          protocols = { "http" },
+          hosts = { "mock-upstream.dev" },
         }
 
         assert(helpers.start_kong(config))
@@ -61,6 +72,77 @@ for _, strategy in helpers.each_strategy() do
       if proxy_client then
         proxy_client:close()
       end
+    end)
+
+    describe("Location header", function()
+      lazy_setup(start_kong {
+        database         = strategy,
+        nginx_conf       = "spec/fixtures/custom_nginx.template",
+        lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
+      })
+
+      lazy_teardown(stop_kong)
+
+      it("is not altered on non-redirect responses", function()
+        local new_location = ("%s://%s:%d/request"):format(
+          helpers.mock_upstream_protocol,
+          helpers.mock_upstream_host,
+          helpers.mock_upstream_port)
+
+        local res = proxy_client:get("/redirect/200", {
+          headers = {
+            host = "headers-inspect.com",
+            location = new_location,
+          },
+        })
+
+        assert.res_status(200, res)
+        local location_header = assert.header("location", res)
+        assert.equal(new_location, location_header) -- unaltered (status is not redirect)
+      end)
+
+      it("is not altered on redirect responses which don't match the service host", function()
+        local res = proxy_client:get("/redirect/301", {
+          headers = {
+            host = "mock-upstream.dev",
+            location = "http://unrelated.dev", -- this should be returned by the default mock-upstream response
+          },
+        })
+        assert.res_status(301, res)
+        local location_header = assert.header("location", res)
+        assert.equal("http://unrelated.dev", location_header) -- unaltered (unknown location)
+      end)
+
+      it("is not altered on redirect responses which match a the service host but not its port", function()
+        local new_location = "http://" .. helpers.mock_upstream_host .. ":12345/foo"
+        local res = proxy_client:get("/redirect/301", {
+          headers = {
+            host = "mock-upstream.dev",
+            location = new_location,
+          },
+        })
+        assert.res_status(301, res)
+        local location_header = assert.header("location", res)
+        assert.equal(new_location, location_header) -- unaltered (port is unknown)
+      end)
+
+      it("is replaced by router host when it's a redirect which coincides with the matched upstream of a route via host", function()
+        local new_location = ("%s://%s:%d/request"):format(
+          helpers.mock_upstream_protocol,
+          helpers.mock_upstream_host,
+          helpers.mock_upstream_port)
+
+        local res = proxy_client:get("/redirect/301", {
+          headers = {
+            host = "mock-upstream.dev",
+            location = new_location, -- contains the mock upstream host & port
+          },
+        })
+        assert.res_status(301, res)
+        local location_header = assert.header("location", res)
+        -- the host:port combination was transformed into the matched service host:port (mock-upstream.dev in this case)
+        assert.equal("http://mock-upstream.dev/request", location_header)
+      end)
     end)
 
     describe("hop-by-hop headers", function()

@@ -12,7 +12,7 @@ local singletons   = require "kong.singletons"
 local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
 local PluginsIterator = require "kong.runloop.plugins_iterator"
-
+local url          = require "socket.url"
 
 local kong         = kong
 local type         = type
@@ -1401,6 +1401,38 @@ return {
         header[upstream_status_header] = tonumber(sub(var.upstream_status or "", -3))
         if not header[upstream_status_header] then
           log(ERR, "failed to set ", upstream_status_header, " header")
+        end
+      end
+
+      -- translate redirection hosts for known upstreams into their upstream
+      local status = ngx.status
+      if (status == 301 or
+          status == 302 or
+          status == 307 or
+          status == 308) and
+         ctx.router_matches.host then
+
+        local resp_headers = ngx.resp.get_headers()
+        local location = resp_headers.location
+        -- if we receive more than one location, pick the last, ignore the rest
+        if type(location) == "table" then
+          location = location[#location]
+        end
+        if type(location) == "string" then
+          local parsed = url.parse(location)
+          local upstream_host, upstream_port = utils.check_hostname(var.upstream_host)
+
+          if parsed.host == upstream_host and
+             tonumber(parsed.port) == tonumber(upstream_port) then
+            parsed.host = ctx.router_matches.host
+            parsed.port = ctx.router_matches.port -- can be nil
+            ngx.header.location = url.build(parsed)
+
+            log(DEBUG, fmt("host match for redirect found, changing location header from %s to %s",
+                           location, ngx.header.location))
+
+            ngx.header.location = url.build(parsed)
+          end
         end
       end
 
