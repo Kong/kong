@@ -11,19 +11,6 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local bp, db
 
-    local function insert_routes(arr)
-      if type(arr) ~= "table" then
-        return error("expected arg #1 to be a table", 2)
-      end
-
-      for i = 1, #arr do
-        local service = assert(bp.services:insert())
-        local route   = arr[i]
-        route.service = service
-        bp.routes:insert(route)
-      end
-    end
-
     local function request_headers(headers)
       local res = assert(proxy_client:send {
         method  = "GET",
@@ -41,16 +28,18 @@ for _, strategy in helpers.each_strategy() do
         assert(db:truncate("routes"))
         assert(db:truncate("services"))
 
-        insert_routes {
-          {
-            protocols     = { "http" },
-            hosts         = { "headers-inspect.com" },
-          },
-          {
-            protocols     = { "http" },
-            hosts         = { "preserved.com" },
-            preserve_host = true,
-          },
+        bp.routes:insert({
+          service   = bp.services:insert(),
+          protocols = { "http" },
+          hosts     = { "headers-inspect.com" },
+        })
+
+        bp.routes:insert({
+          service       = bp.services:insert(),
+          protocols     = { "http" },
+          hosts         = { "preserved.com" },
+          preserve_host = true,
+        })
         }
 
         assert(helpers.start_kong(config))
