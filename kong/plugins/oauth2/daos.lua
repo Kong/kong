@@ -36,6 +36,7 @@ local oauth2_credentials = {
         custom_validator = validate_uri,
     }, }, },
     { tags = typedefs.tags },
+    { client_type = { type = "string", required = true, default = "confidential", one_of = { "confidential", "public" }, }, },
   },
 }
 
@@ -53,6 +54,8 @@ local oauth2_authorization_codes = {
     { code = { type = "string", required = false, unique = true, auto = true }, }, -- FIXME immutable
     { authenticated_userid = { type = "string", required = false }, },
     { scope = { type = "string" }, },
+    { challenge = { type = "string", required = false }},
+    { challenge_method = { type = "string", required = false }},
   },
 }
 

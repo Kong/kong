@@ -2,6 +2,15 @@ local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 local utils   = require "kong.tools.utils"
 local admin_api = require "spec.fixtures.admin_api"
+local sha256 = require "resty.sha256"
+
+local math_random = math.random
+local string_char = string.char
+local string_gsub = string.gsub
+local string_rep = string.rep
+
+
+local ngx_encode_base64 = ngx.encode_base64
 
 
 local kong = {
@@ -9,19 +18,25 @@ local kong = {
 }
 
 
-local function provision_code(host, extra_headers, client_id)
+local function provision_code(host, extra_headers, client_id, code_challenge)
   local request_client = helpers.proxy_ssl_client()
-  local res = assert(request_client:send {
-    method = "POST",
-    path = "/oauth2/authorize",
-    body = {
+  local body = {
       provision_key = "provision123",
       client_id = client_id or "clientid123",
       scope = "email",
       response_type = "code",
       state = "hello",
-      authenticated_userid = "userid123"
-    },
+      authenticated_userid = "userid123",
+  }
+  if code_challenge then
+    body["code_challenge"] = code_challenge
+    body["code_method"] = "S256"
+  end
+
+  local res = assert(request_client:send {
+    method = "POST",
+    path = "/oauth2/authorize",
+    body = body,
     headers = kong.table.merge({
       ["Host"] = host or "oauth2.com",
       ["Content-Type"] = "application/json"
@@ -41,26 +56,51 @@ local function provision_code(host, extra_headers, client_id)
 end
 
 
-local function provision_token(host, extra_headers, client_id, client_secret)
-  local code = provision_code(host, extra_headers, client_id)
+local function provision_token(host, extra_headers, client_id, client_secret, code_challenge, code_verifier, require_secret)
+  local code = provision_code(host, extra_headers, client_id, code_challenge)
   local request_client = helpers.proxy_ssl_client()
+  require_secret = require_secret == nil or require_secret
+  local body = { code = code,
+                 client_id = client_id or "clientid123",
+                 grant_type = "authorization_code" }
+  if client_secret or require_secret then
+    body["client_secret"] = client_secret or "secret123"
+  end
+  if code_verifier then
+    body["code_verifier"] = code_verifier
+  end
+
   local res = assert(request_client:send {
     method = "POST",
     path = "/oauth2/token",
-    body = { code = code,
-             client_id = client_id or "clientid123",
-             client_secret = client_secret or "secret123",
-             grant_type = "authorization_code" },
+    body = body,
     headers = kong.table.merge({
       ["Host"] = host or "oauth2.com",
       ["Content-Type"] = "application/json"
     }, extra_headers)
   })
+
   assert.response(res).has.status(200)
   local token = assert.response(res).has.jsonbody()
   assert.is_table(token)
   request_client:close()
   return token
+end
+
+
+local function get_pkce_tokens(code_verifier)
+  if not code_verifier then
+    code_verifier = ''
+    for i = 1, 50 do
+      code_verifier = code_verifier .. string_char(math_random(65, 90))
+    end
+  end
+  local digest = sha256:new()
+  digest:update(code_verifier)
+  local code_challenge = ngx_encode_base64(digest:final(), true)
+  code_challenge = string_gsub(code_challenge, "+", "-")
+  code_challenge = string_gsub(code_challenge, "/", "_")
+  return code_challenge, code_verifier
 end
 
 
@@ -153,6 +193,15 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         client_secret = "secret10112",
         redirect_uris = ngx.null,
         name          = "testapp311",
+        consumer      = { id = consumer.id },
+      }
+
+      admin_api.oauth2_credentials:insert {
+        client_id     = "clientid11211",
+        client_secret = "secret11211",
+        redirect_uris = { "http://google.com/kong", },
+        name          = "testapp50",
+        client_type   = "public",
         consumer      = { id = consumer.id },
       }
 
@@ -767,6 +816,130 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           assert.are.equal(m[1], data.code)
           assert.are.equal("userid123", data.authenticated_userid)
           assert.are.equal("user.email", data.scope)
+        end)
+        it("fails when code challenge method is not supported", function()
+          local res = assert(proxy_ssl_client:send {
+            method  = "POST",
+            path    = "/oauth2/authorize",
+            body    = {
+              provision_key         = "provision123",
+              client_id             = "clientid11211",
+              scope                 = "user.email",
+              response_type         = "code",
+              state                 = "hello",
+              authenticated_userid  = "userid123",
+              code_challenge        = "1234",
+              code_challenge_method = "foo",
+            },
+            headers = {
+              ["Host"]             = "oauth2.com",
+              ["Content-Type"]     = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same({ redirect_uri = "http://google.com/kong?error=invalid_request&error_description=transform%20algorithm%20not%20supported%2c%20must%20be%20S256&state=hello" }, json)
+        end)
+        it("fails when code challenge provided with confidential app", function()
+          local res = assert(proxy_ssl_client:send {
+            method  = "POST",
+            path    = "/oauth2/authorize",
+            body    = {
+              provision_key         = "provision123",
+              client_id             = "clientid123",
+              scope                 = "user.email",
+              response_type         = "code",
+              state                 = "hello",
+              authenticated_userid  = "userid123",
+              code_challenge        = "1234",
+            },
+            headers = {
+              ["Host"]             = "oauth2.com",
+              ["Content-Type"]     = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same({ redirect_uri = "http://google.com/kong?error=invalid_request&error_description=code_challenge%20and%20code_challenge_method%20are%20disallowed%20for%20confidential%20clients&state=hello" }, json)
+        end)
+        it("fails when code challenge method provided with confidential app", function()
+          local res = assert(proxy_ssl_client:send {
+            method  = "POST",
+            path    = "/oauth2/authorize",
+            body    = {
+              provision_key         = "provision123",
+              client_id             = "clientid123",
+              scope                 = "user.email",
+              response_type         = "code",
+              state                 = "hello",
+              authenticated_userid  = "userid123",
+              code_challenge_method = "S256",
+            },
+            headers = {
+              ["Host"]             = "oauth2.com",
+              ["Content-Type"]     = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same({ redirect_uri = "http://google.com/kong?error=invalid_request&error_description=code_challenge%20and%20code_challenge_method%20are%20disallowed%20for%20confidential%20clients&state=hello" }, json)
+        end)
+        it("returns success and defaults code method to S256 when not provided", function()
+          local res = assert(proxy_ssl_client:send {
+            method  = "POST",
+            path    = "/oauth2/authorize",
+            body    = {
+              provision_key         = "provision123",
+              client_id             = "clientid11211",
+              scope                 = "user.email",
+              response_type         = "code",
+              state                 = "hello",
+              authenticated_userid  = "userid123",
+              code_challenge        = "1234",
+            },
+            headers = {
+              ["Host"]             = "oauth2.com",
+              ["Content-Type"]     = "application/json"
+            }
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          local iterator, err = ngx.re.gmatch(json.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
+          assert.is_nil(err)
+          local m, err = iterator()
+          assert.is_nil(err)
+          local data = db.oauth2_authorization_codes:select_by_code(m[1])
+          assert.are.equal("1234", data.challenge)
+          assert.are.equal("S256", data.challenge_method)
+        end)
+        it("returns success and saves code challenge", function()
+          local res = assert(proxy_ssl_client:send {
+            method  = "POST",
+            path    = "/oauth2/authorize",
+            body    = {
+              provision_key         = "provision123",
+              client_id             = "clientid11211",
+              scope                 = "user.email",
+              response_type         = "code",
+              state                 = "hello",
+              authenticated_userid  = "userid123",
+              code_challenge        = "1234",
+              code_challenge_method = "S256",
+            },
+            headers = {
+              ["Host"]             = "oauth2.com",
+              ["Content-Type"]     = "application/json"
+            }
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          local iterator, err = ngx.re.gmatch(json.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
+          assert.is_nil(err)
+          local m, err = iterator()
+          assert.is_nil(err)
+          local data = db.oauth2_authorization_codes:select_by_code(m[1])
+          assert.are.equal("1234", data.challenge)
+          assert.are.equal("S256", data.challenge_method)
         end)
       end)
 
@@ -1718,6 +1891,419 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         local json = cjson.decode(body)
         assert.same({ error = "invalid_request", error_description = "Invalid code" }, json)
       end)
+      it("succeeds when using code challenge", function()
+        local challenge, verifier = get_pkce_tokens()
+        local code = provision_code(nil, nil, "clientid11211", challenge)
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            code            = code,
+            client_id       = "clientid11211",
+            grant_type      = "authorization_code",
+            code_verifier   = verifier
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(200, res)
+        assert.is_table(ngx.re.match(body, [[^\{"refresh_token":"[\w]{32,32}","token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
+      end)
+      it("succeeds when authorization header used for public app", function()
+        local challenge, verifier = get_pkce_tokens()
+        local code = provision_code(nil, nil, "clientid11211", challenge)
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            code             = code,
+            grant_type       = "authorization_code",
+            code_verifier    = verifier
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json",
+            Authorization    = "Basic Y2xpZW50aWQxMTIxMQ=="
+          }
+        })
+        local body = assert.res_status(200, res)
+        assert.is_table(ngx.re.match(body, [[^\{"refresh_token":"[\w]{32,32}","token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
+      end)
+      it("succeeds when authorization header used for public app with colon", function()
+        local challenge, verifier = get_pkce_tokens()
+        local code = provision_code(nil, nil, "clientid11211", challenge)
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            code             = code,
+            grant_type       = "authorization_code",
+            code_verifier    = verifier
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json",
+            Authorization    = "Basic Y2xpZW50aWQxMTIxMTo="
+          }
+        })
+        local body = assert.res_status(200, res)
+        assert.is_table(ngx.re.match(body, [[^\{"refresh_token":"[\w]{32,32}","token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
+      end)
+      it("succeeds when authorization header used for public app with empty secret", function()
+        local challenge, verifier = get_pkce_tokens()
+        local code = provision_code(nil, nil, "clientid11211", challenge)
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            code             = code,
+            grant_type       = "authorization_code",
+            code_verifier    = verifier
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json",
+            Authorization    = "Basic Y2xpZW50aWQxMTIxMTogICAg"
+          }
+        })
+        local body = assert.res_status(200, res)
+        assert.is_table(ngx.re.match(body, [[^\{"refresh_token":"[\w]{32,32}","token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
+      end)
+      it("fails when a secret provided for public app", function()
+        local challenge, verifier = get_pkce_tokens()
+        local code = provision_code(nil, nil, "clientid11211", challenge)
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            code             = code,
+            client_id        = "clientid11211",
+            grant_type       = "authorization_code",
+            code_verifier    = verifier,
+            client_secret    = "secret11211"
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "client_secret is disallowed for public clients", error = "invalid_request" }, json)
+      end)
+      it("fails when a secret provided for public app in header", function()
+        local challenge, verifier = get_pkce_tokens()
+        local code = provision_code(nil, nil, "clientid11211", challenge)
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            code             = code,
+            grant_type       = "authorization_code",
+            code_verifier    = verifier,
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json",
+            Authorization    = "Basic Y2xpZW50aWQxMTIxMTpzZWNyZXQxMTIxMQ=="
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "client_secret is disallowed for public clients", error = "invalid_request" }, json)
+      end)
+      it("fails when no code_verifier provided for public app", function()
+        local challenge, _ = get_pkce_tokens()
+        local code = provision_code(nil, nil, "clientid11211", challenge)
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            code             = code,
+            client_id        = "clientid11211",
+            grant_type       = "authorization_code",
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "code verifier must be between 43 and 128 characters", error = "invalid_request" }, json)
+      end)
+      it("fails when code_verifier provided for confidential app", function()
+        local _, verifier = get_pkce_tokens()
+        local code = provision_code(nil, nil, "clientid123")
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            code             = code,
+            client_id        = "clientid123",
+            client_secret    = "secret123",
+            grant_type       = "authorization_code",
+            code_verifier    = verifier,
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "code_verifier is disallowed for confidential clients", error = "invalid_request" }, json)
+      end)
+      it("success when code challenge contains padding", function()
+        local code_verifier = "abcdelfhigklmnopqrstuvwxyz0123456789abcdefg"
+        local code_challenge = "2aC4cMSkAsMRtZbhHhiZkDW3sddRf_iTRGil1r9gi8w="
+        local code = provision_code(nil, nil, "clientid11211", code_challenge)
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            code             = code,
+            client_id        = "clientid11211",
+            grant_type       = "authorization_code",
+            code_verifier    = code_verifier
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(200, res)
+        assert.is_table(ngx.re.match(body, [[^\{"refresh_token":"[\w]{32,32}","token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
+      end)
+      it("fails when code challenge contains + or / characters", function()
+        local code_verifier = "abcdelfhigklmnopqrstuvwxyz0123456789abcdefghijklmnop9"
+        local code_challenge = "0LoS6Gtrw16r07+ZXsCf8MeAi21QHmKc3LJdUCA5w/o="
+        local code = provision_code(nil, nil, "clientid11211", code_challenge)
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            code             = code,
+            client_id        = "clientid11211",
+            grant_type       = "authorization_code",
+            code_verifier    = code_verifier
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "Invalid code", error = "invalid_grant" }, json)
+      end)
+      it("fails when code verifier is greater than 128 characters", function()
+        local code_verifier = string_rep("abc123", 30)
+        local challenge, verifier = get_pkce_tokens(code_verifier)
+        local code = provision_code(nil, nil, "clientid11211", challenge)
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            code             = code,
+            client_id        = "clientid11211",
+            grant_type       = "authorization_code",
+            code_verifier    = verifier
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "code verifier must be between 43 and 128 characters", error = "invalid_request" }, json)
+      end)
+      it("fails when code verifier is less than 43 characters", function()
+        local challenge, verifier = get_pkce_tokens("abc123")
+        local code = provision_code(nil, nil, "clientid11211", challenge)
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body          = {
+            code             = code,
+            client_id        = "clientid11211",
+            grant_type       = "authorization_code",
+            code_verifier    = verifier
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "code verifier must be between 43 and 128 characters", error = "invalid_request" }, json)
+      end)
+      it("fails when code verifier is missing", function()
+        local challenge, _ = get_pkce_tokens("abc123")
+        local code = provision_code(nil, nil, "clientid11211", challenge)
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body          = {
+            code             = code,
+            client_id        = "clientid11211",
+            grant_type       = "authorization_code",
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "code verifier must be between 43 and 128 characters", error = "invalid_request" }, json)
+      end)
+      it("fails when secret does not match for non-authorization_code grant type", function()
+        local challenge, _ = get_pkce_tokens()
+        local code = provision_code(nil, nil, "clientid11211", challenge)
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            provision_key        = "provision123",
+            authenticated_userid = "id123",
+            client_id            = "clientid123",
+            scope                = "email",
+            grant_type           = "password",
+            client_secret        = "bogus",
+            code                 = code
+          },
+          headers = {
+            ["Host"]             = "oauth2_5.com",
+            ["Content-Type"]     = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "Invalid client authentication", error = "invalid_client" }, json)
+      end)
+      it("fails when code verifier is empty", function()
+        local code = provision_code(nil, nil, "clientid11211", "abc123")
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            code             = code,
+            client_id        = "clientid11211",
+            grant_type       = "authorization_code",
+            code_verifier    = ""
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "code verifier must be between 43 and 128 characters", error = "invalid_request" }, json)
+      end)
+      it("fails when code verifier is not a string", function()
+        local code = provision_code(nil, nil, "clientid11211", "abc123")
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            code             = code,
+            client_id        = "clientid11211",
+            grant_type       = "authorization_code",
+            code_verifier    = 12
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "code verifier must be between 43 and 128 characters", error = "invalid_request" }, json)
+      end)
+      it("fails when code verifier does not match challenge", function()
+        local code = provision_code(nil, nil, "clientid11211", "abc123")
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            code             = code,
+            client_id        = "clientid11211",
+            grant_type       = "authorization_code",
+            code_verifier    = "abcdelfhigklmnopqrstuvwxyz0123456789abcdefg"
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "Invalid code", error = "invalid_grant" }, json)
+      end)
+      it("fails when wrong auth code provided for public app", function()
+        local challenge, verifier = get_pkce_tokens()
+        local code = provision_code(nil, nil, "clientid11211", challenge)
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            code             = code .. "hello",
+            client_id        = "clientid11211",
+            grant_type       = "authorization_code",
+            code_verifier    = verifier,
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "Invalid code", error = "invalid_request" }, json)
+      end)
+      it("fails when no auth code provided for public app", function()
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            client_id        = "clientid11211",
+            grant_type       = "authorization_code",
+            code_verifier    = "verifier",
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "Invalid code", error = "invalid_request" }, json)
+      end)
+      it("fails when no secret provided for confidential app", function()
+        local code = provision_code()
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            code             = code,
+            client_id        = "clientid123",
+            grant_type       = "authorization_code",
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "Invalid client authentication", error = "invalid_client" }, json)
+      end)
     end)
 
     describe("Making a request", function()
@@ -2174,6 +2760,65 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         })
         local body = assert.res_status(200, res)
         assert.is_table(ngx.re.match(body, [[^\{"refresh_token":"[\w]{32,32}","token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
+      end)
+      it("refreshes public app without a secret", function()
+        local challenge, verifier = get_pkce_tokens()
+        local token = provision_token(nil, nil, "clientid11211", nil, challenge, verifier, false)
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            refresh_token    = token.refresh_token,
+            client_id        = "clientid11211",
+            grant_type       = "refresh_token"
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(200, res)
+        assert.is_table(ngx.re.match(body, [[^\{"refresh_token":"[\w]{32,32}","token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
+      end)
+      it("fails to refresh when a secret provided for public app", function()
+        local challenge, verifier = get_pkce_tokens()
+        local token = provision_token(nil, nil, "clientid11211", nil, challenge, verifier, false)
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            refresh_token    = token.refresh_token,
+            client_id        = "clientid11211",
+            client_secret    = "secret11211",
+            grant_type       = "refresh_token"
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "client_secret is disallowed for public clients", error = "invalid_request" }, json)
+      end)
+      it("fails to refresh when no secret provided for confidential app", function()
+        local token = provision_token(nil, nil, "clientid123")
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            refresh_token    = token.refresh_token,
+            client_id        = "clientid123",
+            grant_type       = "refresh_token"
+          },
+          headers = {
+            ["Host"]         = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "Invalid client authentication", error = "invalid_client" }, json)
       end)
       it("refreshes an valid access token and checks that it belongs to the application", function()
         local token = provision_token(nil, nil, "clientid333", "secret333")
