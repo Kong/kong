@@ -298,6 +298,7 @@ http {
                         ["/basic-auth/:user/:pass"]     = "Performs HTTP basic authentication with the given credentials",
                         ["/status/:code"]               = "Returns a response with the specified <status code>",
                         ["/stream/:num"]                = "Stream <num> chunks of JSON data via chunked Transfer Encoding",
+                        ["/redirect/:num"]              = "Returns a redirect code with <num> status. Responds with the request's location header",
                     },
                 })
             }
@@ -488,6 +489,28 @@ http {
             content_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
                 return mu.reset_log(ngx.var.logname)
+            }
+        }
+
+
+        location ~ "^/redirect/(?<code>\d{3})$" {
+            content_by_lua_block {
+                local code = tonumber(ngx.var.code)
+                if not code then
+                    return ngx.exit(ngx.HTTP_NOT_FOUND)
+                end
+                ngx.status = code
+
+                local response_headers = {}
+                local h = ngx.req.get_headers()
+                if h.location then
+                  response_headers.location = h.location
+                end
+
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.send_default_json_response({
+                  code = code,
+                }, response_headers)
             }
         }
     }
