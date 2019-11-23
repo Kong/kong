@@ -1,6 +1,6 @@
 # Kong ACME Plugin
 
-![Build Status](https://travis-ci.com/Kong/kong-plugin-letsencrypt.svg?branch=master)
+![Build Status](https://travis-ci.com/Kong/kong-plugin-acme.svg?branch=master)
 
 This plugin allows Kong to apply cerificates from Let's Encrypt or any other ACMEv2 service
 and serve dynamically. Renew is handled with a configurable threshold time.
