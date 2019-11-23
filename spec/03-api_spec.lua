@@ -128,17 +128,16 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_setup(function()
       local plugin_config = {
-        host = '127.0.0.1',
-        port = 5000,
-        https = false,
+        http_endpoint = "http://127.0.0.1:5000",
         log_bodies = true,
         queue_size = 1,
         flush_timeout = 1
       }
-      bp, db = helpers.get_db_utils(strategy, nil, { "collector" })
 
-      workspace1 = bp.workspaces:insert({ name = "workspace1"})
-      workspace2 = bp.workspaces:insert({ name = "workspace2"})
+      bp, db = helpers.get_db_utils(strategy)
+
+      workspace1 = db.workspaces:insert({ name = "workspace1"})
+      workspace2 = db.workspaces:insert({ name = "workspace2"})
 
       route1 = bp.routes:insert_ws(
         {
@@ -156,6 +155,7 @@ for _, strategy in helpers.each_strategy() do
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "collector" }, nil, nil, fixtures))
+
       admin_client = helpers.admin_client()
     end)
 

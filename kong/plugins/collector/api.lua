@@ -11,12 +11,7 @@ end
 local function collector_url()
   local rows = kong.db.plugins:select_all({ name = "collector" })
   if rows[1] then
-    local config = rows[1].config
-    if config.https then
-      return string.format("https://%s:%d", config.host, config.port)
-    else
-      return string.format("http://%s:%d", config.host, config.port)
-    end
+    return rows[1].config.http_endpoint
   end
   return nil, "No collector plugin found."
 end
