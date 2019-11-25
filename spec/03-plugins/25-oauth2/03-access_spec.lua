@@ -393,16 +393,16 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           hide_credentials   = true,
         },
       })
+    end)
 
+    before_each(function ()
       proxy_client     = helpers.proxy_client()
       proxy_ssl_client = helpers.proxy_ssl_client()
     end)
 
-    lazy_teardown(function()
-      if proxy_client and proxy_ssl_client then
-        proxy_client:close()
-        proxy_ssl_client:close()
-      end
+    after_each(function()
+      if proxy_client then proxy_client:close() end
+      if proxy_ssl_client then proxy_ssl_client:close() end
     end)
 
     describe("OAuth2 Authorization", function()
