@@ -46,6 +46,10 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "api7.request-termination.com" },
       })
 
+      local route8 = bp.routes:insert({
+        hosts = { "api8.request-termination.com" },
+      })
+
       bp.plugins:insert {
         name   = "request-termination",
         route  = { id = route1.id },
@@ -100,6 +104,14 @@ for _, strategy in helpers.each_strategy() do
         name   = "request-termination",
         route  = { id = route7.id },
         config = {},
+      }
+
+      bp.plugins:insert {
+        name   = "request-termination",
+        route  = { id = route8.id },
+        config = {
+          status_code = 204
+        },
       }
 
       assert(helpers.start_kong({
@@ -171,6 +183,19 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(406, res)
         local json = cjson.decode(body)
         assert.same({ message = "Invalid" }, json)
+      end)
+
+      it("returns 204 without content length header", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/204",
+          headers = {
+            ["Host"] = "api8.request-termination.com"
+          }
+        })
+
+        assert.res_status(204, res)
+        assert.is_nil(res.headers["Content-Length"])
       end)
 
     end)

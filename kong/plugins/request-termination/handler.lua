@@ -40,7 +40,8 @@ function RequestTerminationHandler:access(conf)
     return kong.response.exit(status, content, headers)
   end
 
-  return kong.response.exit(status, { message = conf.message or DEFAULT_RESPONSE[status] })
+  local message = conf.message or DEFAULT_RESPONSE[status]
+  return kong.response.exit(status, message and { message = message } or nil)
 end
 
 
