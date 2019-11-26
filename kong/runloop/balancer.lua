@@ -198,7 +198,7 @@ local function populate_healthchecker(hc, balancer, upstream)
         -- with data from another worker, and apply to the new balancer.
         local tgt_status = hc:get_target_status(ipaddr, port, host.hostname)
         if tgt_status ~= nil then
-          balancer:setAddressStatus(tgt_status, ipaddr, port)
+          balancer:setAddressStatus(tgt_status, ipaddr, port, host.hostname)
         end
 
       else
@@ -783,10 +783,13 @@ local function init()
 end
 
 
-local function do_upstream_event(operation, upstream_id, upstream_name)
+local function do_upstream_event(operation, upstream_id, upstream_name,
+                                 workspaces)
   if operation == "create" then
 
-    singletons.cache:invalidate_local("balancer:upstreams")
+    for _, workspace in ipairs(workspaces) do
+      singletons.cache:invalidate_local("balancer:upstreams:" .. workspace.id)
+    end
 
     local upstream = get_upstream_by_id(upstream_id)
     if not upstream then
@@ -802,7 +805,10 @@ local function do_upstream_event(operation, upstream_id, upstream_name)
   elseif operation == "delete" or operation == "update" then
 
     if singletons.db.strategy ~= "off" then
-      singletons.cache:invalidate_local("balancer:upstreams")
+      for _, workspace in ipairs(workspaces) do
+        singletons.cache:invalidate_local("balancer:upstreams:" .. workspace.id)
+      end
+
       singletons.cache:invalidate_local("balancer:upstreams:" .. upstream_id)
       singletons.cache:invalidate_local("balancer:targets:"   .. upstream_id)
     end
@@ -837,7 +843,7 @@ end
 -- Called on any changes to an upstream.
 -- @param operation "create", "update" or "delete"
 -- @param upstream_data table with `id` and `name` fields
-local function on_upstream_event(operation, upstream_data)
+local function on_upstream_event(operation, upstream_data, workspaces)
 
   if operation == "reset" then
     init()
@@ -845,11 +851,11 @@ local function on_upstream_event(operation, upstream_data)
   elseif operation == "delete_all" then
     local upstreams = get_all_upstreams()
     for name, id in pairs(upstreams) do
-      do_upstream_event("delete", id, name)
+      do_upstream_event("delete", id, name, workspaces)
     end
 
   else
-    do_upstream_event(operation, upstream_data.id, upstream_data.name)
+    do_upstream_event(operation, upstream_data.id, upstream_data.name, workspaces)
 
   end
 

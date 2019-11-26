@@ -414,7 +414,7 @@ local function register_events()
 
     -- => to balancer update
     workspaces.run_with_ws_scope({}, balancer.on_upstream_event, operation,
-                                  upstream, workspace_list)
+                                 upstream, workspace_list)
   end, "balancer", "upstreams")
 
 
