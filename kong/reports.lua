@@ -433,4 +433,6 @@ return {
   retrieve_redis_version = retrieve_redis_version,
   -- exposed for unit test
   _create_counter = create_counter,
+  -- exposed for integration test
+  _sync_counter = function() report_counter:sync() end,
 }
