@@ -104,16 +104,16 @@ local function set_consumer(consumer, credential, token)
     kong.ctx.shared.authenticated_jwt_token = token -- TODO: wrap in a PDK function?
     ngx.ctx.authenticated_jwt_token = token  -- backward compatibility only
 
-    if credential.username then
-      set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
+    if credential.key then
+      set_header(constants.HEADERS.CREDENTIAL_IDENTIFIER, credential.key)
     else
-      clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
+      clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
     end
 
     clear_header(constants.HEADERS.ANONYMOUS)
 
   else
-    clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
+    clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
     set_header(constants.HEADERS.ANONYMOUS, true)
   end
 end
