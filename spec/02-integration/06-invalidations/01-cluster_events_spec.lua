@@ -284,7 +284,7 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-      it("broadcasts an event with a `nbf` (not before) field", function()
+      it("broadcasts an event with a delay", function()
         local cluster_events_1 = assert(kong_cluster_events.new {
           db = db,
           node_id = uuid_1,
@@ -298,9 +298,8 @@ for _, strategy in helpers.each_strategy() do
         assert(cluster_events_1:subscribe("nbf_channel", cb, false)) -- false to not start auto polling
 
         local delay = 1
-        local nbf = ngx.now() + delay
 
-        assert(cluster_events_2:broadcast("nbf_channel", "hello world", nbf))
+        assert(cluster_events_2:broadcast("nbf_channel", "hello world", delay))
 
         assert(cluster_events_1:poll())
         assert.spy(spy_func).was_not_called() -- not called yet

@@ -10,7 +10,7 @@ function OffStrategy.should_use_polling()
 end
 
 
-function OffStrategy:insert(node_id, channel, at, data, nbf)
+function OffStrategy:insert(node_id, channel, at, data, delay)
   return true
 end
 
@@ -23,6 +23,11 @@ end
 
 function OffStrategy:truncate_events()
   return true
+end
+
+
+function OffStrategy:server_time()
+  return ngx.now()
 end
 
 
