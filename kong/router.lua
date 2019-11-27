@@ -1211,20 +1211,6 @@ function _M.new(routes)
     ctx.dst_port       = dst_port or ""
     ctx.sni            = sni or ""
 
-    -- cache lookup (except for headers-matched Routes)
-
-    local cache_key = req_method .. "|" .. req_uri .. "|" .. req_host ..
-                      "|" .. ctx.src_ip .. "|" .. ctx.src_port ..
-                      "|" .. ctx.dst_ip .. "|" .. ctx.dst_port ..
-                      "|" .. ctx.sni
-
-    do
-      local match_t = cache:get(cache_key)
-      if match_t then
-        return match_t
-      end
-    end
-
     -- input sanitization for matchers
 
     -- hosts
@@ -1250,6 +1236,31 @@ function _M.new(routes)
     --
     -- determine which category this request *might* be targeting
 
+    -- header match
+
+    for _, header_name in ipairs(plain_indexes.headers) do
+      if req_headers[header_name] then
+        req_category = bor(req_category, MATCH_RULES.HEADER)
+        hits.header_name = header_name
+        break
+      end
+    end
+
+    -- cache lookup (except for headers-matched Routes)
+    -- if trigger headers match rule, ignore routes cache
+
+    local cache_key = req_method .. "|" .. req_uri .. "|" .. req_host ..
+                      "|" .. ctx.src_ip .. "|" .. ctx.src_port ..
+                      "|" .. ctx.dst_ip .. "|" .. ctx.dst_port ..
+                      "|" .. ctx.sni
+
+    do
+      local match_t = cache:get(cache_key)
+      if match_t and (hits.header_name == nil and hits.header_name == '') then
+        return match_t
+      end
+    end
+
     -- host match
 
     if plain_indexes.hosts[ctx.req_host] then
@@ -1268,16 +1279,6 @@ function _M.new(routes)
           req_category = bor(req_category, MATCH_RULES.HOST)
           break
         end
-      end
-    end
-
-    -- header match
-
-    for _, header_name in ipairs(plain_indexes.headers) do
-      if req_headers[header_name] then
-        req_category = bor(req_category, MATCH_RULES.HEADER)
-        hits.header_name = header_name
-        break
       end
     end
 
