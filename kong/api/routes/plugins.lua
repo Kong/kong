@@ -16,7 +16,11 @@ local lower = string.lower
 local setmetatable = setmetatable
 
 
-local function post_process(data)
+local function reports_timer(premature, data)
+  if premature then
+    return
+  end
+
   local r_data = utils.deep_copy(data)
 
   r_data.config = nil
@@ -36,7 +40,11 @@ local function post_process(data)
   end
 
   reports.send("api", r_data)
+end
 
+
+local function post_process(data)
+  ngx.timer.at(0, reports_timer, data)
   return data
 end
 
