@@ -174,7 +174,6 @@ pipeline {
                         sh 'sudo ln -s $HOME/bin/kubectl /usr/local/bin/kubectl'
                         sh 'sudo ln -s $HOME/bin/kind /usr/local/bin/kind'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
-                        sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_TAG=trusty BUILDX=false make nightly-release'
                         sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_TAG=bionic BUILDX=false make nightly-release'
                     }
                 }

@@ -81,12 +81,6 @@ jobs:
       - make setup-kong-build-tools
       - pushd ../kong-build-tools && make setup-ci && popd
       - make release
-      env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=trusty KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-      if: tag IS present AND tag ~= 1.
-    - script:
-      - make setup-kong-build-tools
-      - pushd ../kong-build-tools && make setup-ci && popd
-      - make release
       env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=xenial KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
       if: tag IS present AND tag ~= 1.
     - script:
