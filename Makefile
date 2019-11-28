@@ -29,7 +29,7 @@ RESTY_VERSION ?= `grep RESTY_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk
 RESTY_LUAROCKS_VERSION ?= `grep RESTY_LUAROCKS_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 RESTY_OPENSSL_VERSION ?= `grep RESTY_OPENSSL_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 RESTY_PCRE_VERSION ?= `grep RESTY_PCRE_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
-KONG_BUILD_TOOLS ?= '2.0.4'
+KONG_BUILD_TOOLS ?= '2.0.8'
 KONG_VERSION ?= `cat $(KONG_SOURCE_LOCATION)/kong-*.rockspec | grep tag | awk '{print $$3}' | sed 's/"//g'`
 OPENRESTY_PATCHES_BRANCH ?= master
 KONG_NGINX_MODULE_BRANCH ?= master
@@ -43,8 +43,8 @@ setup-ci:
 	.ci/setup_env.sh
 
 setup-kong-build-tools:
-	-rm -rf kong-build-tools; \
-	git clone https://github.com/Kong/kong-build-tools.git $(KONG_BUILD_TOOLS_LOCATION); fi
+	-rm -rf $(KONG_BUILD_TOOLS_LOCATION)
+	-git clone https://github.com/Kong/kong-build-tools.git $(KONG_BUILD_TOOLS_LOCATION)
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
 	git reset --hard $(KONG_BUILD_TOOLS); \
 
@@ -55,8 +55,10 @@ functional-tests: setup-kong-build-tools
 	$(MAKE) test
 
 nightly-release:
-	sed -i -e '/return string\.format/,/\"\")/c\return "$(KONG_VERSION)\"' kong/meta.lua
-	$(MAKE) release
+	sed -i -e '/return string\.format/,/\"\")/c\return "$(KONG_VERSION)\"' kong/meta.lua && \
+	cd $(KONG_BUILD_TOOLS_LOCATION); \
+	$(MAKE) package-kong && \
+	$(MAKE) release-kong
 
 release: setup-kong-build-tools
 	cd $(KONG_BUILD_TOOLS_LOCATION); \

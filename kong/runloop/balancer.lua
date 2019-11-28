@@ -68,6 +68,7 @@ local function set_balancer(upstream_id, balancer)
     healthcheckers[prev] = nil
     healthchecker_callbacks[prev] = nil
     target_histories[prev] = nil
+    upstream_ids[prev] = nil
   end
   balancers[upstream_id] = balancer
 end

@@ -322,10 +322,28 @@ local function gen_notation(fname, finfo, field_data)
            table.concat(form_example, "&") ..
            [[`. With JSON, use an Array.]]
   elseif finfo.type == "foreign" then
-    return [[ With form-encoded, the notation is `]] ..
-           fname .. [[.id=<]] .. fname ..
-           [[_id>`. With JSON, use `"]] .. fname ..
-           [[":{"id":"<]] .. fname .. [[_id>"}`.]]
+    local fschema = assert(require("kong.db.schema.entities." .. finfo.reference))
+    local ek = fschema.endpoint_key
+    if ek then
+      return ([[With form-encoded, the notation is ]] ..
+              [[`$FNAME.id=<$FNAME id>` or ]] ..
+              [[`$FNAME.$ENDPOINT_KEY=<$FNAME $ENDPOINT_KEY>`. ]] ..
+              [[With JSON, use "]] ..
+              [[`"$FNAME":{"id":"<$FNAME id>"}` or ]] ..
+              [[`"$FNAME":{"$ENDPOINT_KEY":"<$FNAME $ENDPOINT_KEY>"}`.]]):
+              gsub("$([A-Z_]*)", {
+                FNAME = fname,
+                ENDPOINT_KEY = ek,
+              })
+    else
+      return ([[With form-encoded, the notation is ]] ..
+              [[`$FNAME.id=<$FNAME id>`. ]] ..
+              [[With JSON, use "]] ..
+              [[`"$FNAME":{"id":"<$FNAME id>"}`.]]):
+              gsub("$([A-Z_]*)", {
+                FNAME = fname,
+              })
+    end
   else
     return ""
   end
