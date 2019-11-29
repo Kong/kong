@@ -83,7 +83,6 @@ for _, strategy in helpers.each_strategy() do
       created_at = 1547047308,
       id = "389ad9bd-b158-4e19-aed7-c9b040f7f312",
       service = { id = service_def.id },
-      run_on = "first",
       enabled = true,
       name = "acl",
       config = {
@@ -180,7 +179,7 @@ for _, strategy in helpers.each_strategy() do
         local exported_str = table.concat(fake_file.buffer)
         local yaml = lyaml.load(exported_str)
 
-        -- ensure tags, cluster_ca & basicauth_credentials are not being exported
+        -- ensure tags & basicauth_credentials are not being exported
         local toplevel_keys = {}
         for k in pairs(yaml) do
           toplevel_keys[#toplevel_keys + 1] = k

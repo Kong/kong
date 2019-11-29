@@ -221,12 +221,6 @@ local function load_configuration(ctx,
     return
   end
 
-  if plugin.run_on ~= "all" then
-    if plugin.run_on == "second" then
-      return
-    end
-  end
-
   local cfg = plugin.config or {}
 
   cfg.route_id    = plugin.route and plugin.route.id

@@ -38,12 +38,10 @@ local re_match     = ngx.re.match
 local re_find      = ngx.re.find
 local subsystem    = ngx.config.subsystem
 local clear_header = ngx.req.clear_header
-local starttls     = ngx.req.starttls -- luacheck: ignore
-local unpack      = unpack
+local unpack       = unpack
 
 
 local ERR   = ngx.ERR
-local INFO  = ngx.INFO
 local WARN  = ngx.WARN
 local DEBUG = ngx.DEBUG
 local ERROR = ngx.ERROR
@@ -843,7 +841,6 @@ do
       port           = port,      -- final target port
       try_count      = 0,         -- retry counter
       tries          = {},        -- stores info per try
-      ssl_ctx        = kong.default_client_ssl_ctx, -- SSL_CTX* to use
       -- ip          = nil,       -- final target IP address
       -- balancer    = nil,       -- the balancer object, if any
       -- hostname    = nil,       -- hostname of the final target IP
@@ -1044,32 +1041,6 @@ return {
         return exit(500)
       end
 
-      local ssl_termination_ctx -- OpenSSL SSL_CTX to use for termination
-
-      -- TODO: stream router should decide if TLS is terminated or not
-      -- XXX: for now, use presence of SNI to terminate.
-      local sni = var.ssl_preread_server_name
-      if sni then
-        log(DEBUG, "SNI: ", sni)
-
-        local err
-        ssl_termination_ctx, err = certificate.find_certificate(sni)
-        if not ssl_termination_ctx then
-          log(ERR, err)
-          return exit(ERROR)
-        end
-
-        -- TODO Fake certificate phase?
-
-        log(INFO, "attempting to terminate TLS")
-      end
-
-      -- Terminate TLS
-      if ssl_termination_ctx and not starttls(ssl_termination_ctx) then
-        -- errors are logged by nginx core
-        return exit(ERROR)
-      end
-
       local route = match_t.route
       local service = match_t.service
       local upstream_url_t = match_t.upstream_url_t
@@ -1078,7 +1049,7 @@ return {
         -----------------------------------------------------------------------
         -- Serviceless stream route
         -----------------------------------------------------------------------
-        local service_scheme = ssl_termination_ctx and "tls" or "tcp"
+        local service_scheme = "tcp"
         local service_host   = var.server_addr
 
         match_t.upstream_scheme = service_scheme

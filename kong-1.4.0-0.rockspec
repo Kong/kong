@@ -46,14 +46,14 @@ dependencies = {
   "lua-resty-passwdqc == 1.1-1",
   -- external Kong plugins
   "kong-plugin-kubernetes-sidecar-injector ~> 0.2.1",
-  "kong-plugin-azure-functions ~> 0.4.0",
-  "kong-plugin-zipkin ~> 0.1.3",
+  "kong-plugin-azure-functions ~> 0.4.1",
   "kong-plugin-serverless-functions ~> 0.3.1",
   "kong-prometheus-plugin ~> 0.6.0",
   "kong-plugin-session == 2.2.0",
   "kong-proxy-cache-plugin ~> 1.2.2",
-  "kong-plugin-request-transformer ~> 1.2",
+  "kong-plugin-request-transformer ~> 1.2.4",
   "kong-plugin-aws-lambda ~> 3.1.0",
+  "kong-plugin-zipkin ~> 0.2",
 }
 build = {
   type = "builtin",
@@ -120,8 +120,6 @@ build = {
     ["kong.templates.kong_yml"] = "kong/templates/kong_yml.lua",
 
     ["kong.resty.ctx"] = "kong/resty/ctx.lua",
-    ["kong.resty.config"] = "kong/resty/config.lua",
-    ["kong.resty.getssl"] = "kong/resty/getssl.lua",
     ["kong.vendor.classic"] = "kong/vendor/classic.lua",
 
     ["kong.cmd"] = "kong/cmd/init.lua",
@@ -178,7 +176,6 @@ build = {
 
     ["kong.status"] = "kong/status/init.lua",
 
-    ["kong.tools.cluster_ca"] = "kong/tools/cluster_ca.lua",
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
     ["kong.tools.printable"] = "kong/tools/printable.lua",
@@ -278,7 +275,6 @@ build = {
     ["kong.db.declarative"] = "kong/db/declarative/init.lua",
     ["kong.db.schema"] = "kong/db/schema/init.lua",
     ["kong.db.schema.entities.admins"] = "kong/db/schema/entities/admins.lua",
-    ["kong.db.schema.entities.cluster_ca"] = "kong/db/schema/entities/cluster_ca.lua",
     ["kong.db.schema.entities.consumers"] = "kong/db/schema/entities/consumers.lua",
     ["kong.db.schema.entities.routes"] = "kong/db/schema/entities/routes.lua",
     ["kong.db.schema.entities.routes_subschemas"] = "kong/db/schema/entities/routes_subschemas.lua",

@@ -4,7 +4,6 @@ local typedefs = require "kong.db.schema.typedefs"
 return {
   name = "correlation-id",
   fields = {
-    { run_on = typedefs.run_on_first },
     { protocols = typedefs.protocols_http },
     { config = {
         type = "record",

@@ -80,7 +80,6 @@ audit_log_ignore_methods =
 audit_log_ignore_paths =
 audit_log_ignore_tables =
 audit_log_signing_key =
-service_mesh = off
 
 proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 http2 ssl
 stream_listen = off

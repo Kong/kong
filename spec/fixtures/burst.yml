@@ -85,7 +85,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -140,7 +139,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -253,7 +251,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -308,7 +305,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -421,7 +417,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -476,7 +471,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -589,7 +583,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -644,7 +637,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -757,7 +749,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -812,7 +803,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -925,7 +915,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -980,7 +969,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -1093,7 +1081,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -1148,7 +1135,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -1261,7 +1247,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -1316,7 +1301,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -1429,7 +1413,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -1484,7 +1467,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -1597,7 +1579,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -1652,7 +1633,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -1758,7 +1738,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -1810,7 +1789,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -1913,7 +1891,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -1968,7 +1945,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -2081,7 +2057,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -2136,7 +2111,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -2249,7 +2223,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -2304,7 +2277,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -2417,7 +2389,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -2472,7 +2443,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -2585,7 +2555,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -2640,7 +2609,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -2753,7 +2721,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -2808,7 +2775,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -2921,7 +2887,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -2976,7 +2941,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -3089,7 +3053,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -3144,7 +3107,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -3257,7 +3219,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -3312,7 +3273,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -3423,7 +3383,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -3477,7 +3436,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -3583,7 +3541,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -3635,7 +3592,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -3738,7 +3694,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -3793,7 +3748,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -3906,7 +3860,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -3961,7 +3914,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -4074,7 +4026,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -4129,7 +4080,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -4242,7 +4192,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -4297,7 +4246,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -4410,7 +4358,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -4465,7 +4412,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -4571,7 +4517,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -4623,7 +4568,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -4726,7 +4670,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -4781,7 +4724,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -4894,7 +4836,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -4949,7 +4890,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -5062,7 +5002,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -5117,7 +5056,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -5230,7 +5168,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -5285,7 +5222,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -5398,7 +5334,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -5453,7 +5388,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -5566,7 +5500,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -5621,7 +5554,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -5734,7 +5666,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -5789,7 +5720,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -5902,7 +5832,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -5957,7 +5886,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -6070,7 +5998,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -6125,7 +6052,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -6238,7 +6164,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -6293,7 +6218,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -6406,7 +6330,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -6461,7 +6384,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -6596,7 +6518,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -6651,7 +6572,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -6764,7 +6684,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -6819,7 +6738,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -6930,7 +6848,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -6984,7 +6901,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -7097,7 +7013,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -7152,7 +7067,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -7265,7 +7179,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -7320,7 +7233,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -7433,7 +7345,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -7488,7 +7399,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -7601,7 +7511,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -7656,7 +7565,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -7769,7 +7677,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -7824,7 +7731,6 @@ services:
         whitelist:
         - 0.0.0.0/0
       enabled: true
-      run_on: first
       protocols:
       - grpc
       - grpcs
@@ -23736,7 +23642,6 @@ upstreams:
 plugins:
 - name: prometheus
   enabled: true
-  run_on: first
   protocols:
   - grpc
   - grpcs

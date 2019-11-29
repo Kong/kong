@@ -73,7 +73,6 @@ for _, strategy in helpers.each_strategy() do
       created_at = 1547047308,
       id = "389ad9bd-b158-4e19-aed7-c9b040f7f312",
       service = { id = service_def.id },
-      run_on = "first",
       enabled = true,
       name = "basic-auth",
       config = {
