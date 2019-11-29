@@ -1,5 +1,5 @@
 package = "kong-plugin-zipkin"
-version = "0.2.0-0"
+version = "0.2.0-1"
 
 source = {
   url = "https://github.com/kong/kong-plugin-zipkin/archive/v0.2.0.zip";
@@ -16,7 +16,6 @@ dependencies = {
   "lua >= 5.1";
   "lua-cjson";
   "lua-resty-http >= 0.11";
-  "kong >= 0.15";
   "opentracing >= 0.0.2";
 }
 
