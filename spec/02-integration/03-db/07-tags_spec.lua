@@ -405,12 +405,6 @@ for _, strategy in helpers.each_strategy() do
         assert.match([[tags_cond: must be a either 'and' or 'or' when more than one tag is specified]], err)
       end)
 
-      it("errors on entity that doesn't support tagging", function()
-        local rows, err, _, _ = db.cluster_ca:page(nil, nil, { tags = { "foo" } })
-        assert.is_nil(rows)
-        assert.match([[tags: cannot be used with 'cluster_ca']], err)
-      end)
-
     end)
 
     describe("#db errors if tag value is invalid", function()

@@ -37,14 +37,14 @@ dependencies = {
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.0",
   -- external Kong plugins
-  "kong-plugin-azure-functions ~> 0.4",
-  "kong-plugin-zipkin ~> 0.1",
+  "kong-plugin-azure-functions ~> 0.4.1",
+  "kong-plugin-zipkin ~> 0.2",
   "kong-plugin-serverless-functions ~> 0.3",
   "kong-prometheus-plugin ~> 0.6",
   "kong-proxy-cache-plugin ~> 1.2",
-  "kong-plugin-request-transformer ~> 1.2",
+  "kong-plugin-request-transformer ~> 1.2.4",
   "kong-plugin-session ~> 2.2",
-  "kong-plugin-aws-lambda ~> 3.0",
+  "kong-plugin-aws-lambda ~> 3.0.1",
 }
 build = {
   type = "builtin",
@@ -75,8 +75,6 @@ build = {
     ["kong.templates.kong_yml"] = "kong/templates/kong_yml.lua",
 
     ["kong.resty.ctx"] = "kong/resty/ctx.lua",
-    ["kong.resty.config"] = "kong/resty/config.lua",
-    ["kong.resty.getssl"] = "kong/resty/getssl.lua",
     ["kong.vendor.classic"] = "kong/vendor/classic.lua",
 
     ["kong.cmd"] = "kong/cmd/init.lua",
@@ -118,7 +116,6 @@ build = {
 
     ["kong.status"] = "kong/status/init.lua",
 
-    ["kong.tools.cluster_ca"] = "kong/tools/cluster_ca.lua",
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
     ["kong.tools.printable"] = "kong/tools/printable.lua",
@@ -127,7 +124,6 @@ build = {
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
-    ["kong.runloop.mesh"] = "kong/runloop/mesh.lua",
     ["kong.runloop.plugins_iterator"] = "kong/runloop/plugins_iterator.lua",
     ["kong.runloop.balancer"] = "kong/runloop/balancer.lua",
 
@@ -142,7 +138,6 @@ build = {
     ["kong.db.dao.tags"] = "kong/db/dao/tags.lua",
     ["kong.db.declarative"] = "kong/db/declarative/init.lua",
     ["kong.db.schema"] = "kong/db/schema/init.lua",
-    ["kong.db.schema.entities.cluster_ca"] = "kong/db/schema/entities/cluster_ca.lua",
     ["kong.db.schema.entities.consumers"] = "kong/db/schema/entities/consumers.lua",
     ["kong.db.schema.entities.routes"] = "kong/db/schema/entities/routes.lua",
     ["kong.db.schema.entities.routes_subschemas"] = "kong/db/schema/entities/routes_subschemas.lua",
@@ -185,6 +180,7 @@ build = {
     ["kong.db.migrations.core.004_110_to_120"] = "kong/db/migrations/core/004_110_to_120.lua",
     ["kong.db.migrations.core.005_120_to_130"] = "kong/db/migrations/core/005_120_to_130.lua",
     ["kong.db.migrations.core.006_130_to_140"] = "kong/db/migrations/core/006_130_to_140.lua",
+    ["kong.db.migrations.core.007_140_to_200"] = "kong/db/migrations/core/007_140_to_200.lua",
 
     ["kong.pdk"] = "kong/pdk/init.lua",
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",

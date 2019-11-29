@@ -1,4 +1,3 @@
-local cluster_ca_tools = require "kong.tools.cluster_ca"
 local ssl_fixtures = require "spec.fixtures.ssl"
 local utils = require "kong.tools.utils"
 
@@ -345,15 +344,6 @@ function _M.new(db)
     return {
       name   = "rewriter",
       config = {},
-    }
-  end)
-
-  res.cluster_ca = new_blueprint(db.cluster_ca, function()
-    local ca_key = cluster_ca_tools.new_key()
-    local ca_cert = cluster_ca_tools.new_ca(ca_key)
-    return {
-      key = ca_key:toPEM("private"),
-      cert = ca_cert:toPEM(),
     }
   end)
 

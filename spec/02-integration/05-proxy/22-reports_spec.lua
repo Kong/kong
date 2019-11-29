@@ -188,7 +188,6 @@ for _, strategy in helpers.each_strategy() do
         stream_listen = helpers.get_proxy_ip(false) .. ":19000," ..
                         helpers.get_proxy_ip(false) .. ":19001," ..
                         helpers.get_proxy_ip(true)  .. ":19443",
-        service_mesh = "on",
 
       }))
 
@@ -403,7 +402,7 @@ for _, strategy in helpers.each_strategy() do
       assert.match("tls_streams=0", reports_data[1])
     end)
 
-    it("#stream reports tls streams", function()
+    pending("#stream reports tls streams", function()
       local tcp = require "socket".tcp()
       local ssl = require("ssl")
 
