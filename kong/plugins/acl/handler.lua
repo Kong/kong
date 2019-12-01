@@ -39,7 +39,7 @@ local ACLHandler = {}
 
 
 ACLHandler.PRIORITY = 950
-ACLHandler.VERSION = "2.1.0"
+ACLHandler.VERSION = "2.2.0"
 
 
 function ACLHandler:access(conf)
@@ -59,6 +59,10 @@ function ACLHandler:access(conf)
   end
 
   local to_be_blocked
+
+  if not kong.client.get_credential() and not ngx.ctx.authenticated_groups then
+    return kong.response.exit(401, { message = "Unauthorized" })
+  end
 
   -- get the consumer/credentials
   local consumer_id = groups.get_current_consumer_id()

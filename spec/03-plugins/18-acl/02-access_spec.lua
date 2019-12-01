@@ -758,9 +758,9 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "acl1.com"
           }
         }))
-        local body = assert.res_status(403, res)
+        local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-        assert.same({ message = "You cannot consume this service" }, json)
+        assert.same({ message = "Unauthorized" }, json)
       end)
 
       it("should fail when not in whitelist", function()
@@ -1259,9 +1259,9 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "acl13.com"
           }
         }))
-        local body = assert.res_status(403, res)
+        local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-        assert.same({ message = "You cannot consume this service" }, json)
+        assert.same({ message = "Unauthorized" }, json)
       end)
     end)
   end)
