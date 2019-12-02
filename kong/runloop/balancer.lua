@@ -468,7 +468,7 @@ local function check_target_history(upstream, balancer)
     return nil, err
   end
 
-  local old_history = target_histories[balancer]
+  local old_history = target_histories[balancer] or {}
 
   -- check history state
   local old_size = #old_history
