@@ -113,6 +113,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "http-log",
         config   = {
           queue_size = 5,
+          flush_timeout = 0.1,
           http_endpoint = "http://" .. helpers.mock_upstream_host
                                     .. ":"
                                     .. helpers.mock_upstream_port
@@ -324,6 +325,7 @@ for _, strategy in helpers.each_strategy() do
           name     = "http-log",
           config   = {
             queue_size = 5,
+            flush_timeout = 0.1,
             http_endpoint = "http://" .. helpers.mock_upstream_host
                                       .. ":"
                                       .. helpers.mock_upstream_port
@@ -341,6 +343,7 @@ for _, strategy in helpers.each_strategy() do
           name     = "http-log",
           config   = {
             queue_size = 5,
+            flush_timeout = 0.1,
             http_endpoint = "http://" .. helpers.mock_upstream_host
                                       .. ":"
                                       .. helpers.mock_upstream_port
@@ -397,10 +400,7 @@ for _, strategy in helpers.each_strategy() do
       it("logs to HTTP with a buffer", function()
         reset_log("http_queue")
 
-        local n = 100
-        if workers > 1 then
-          n = 500
-        end
+        local n = 200
 
         for i = 1, n do
           local client = helpers.proxy_client()
@@ -427,21 +427,19 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local count = assert.res_status(200, res)
+          client:close()
 
           if tonumber(count, 10) >= n then
             return true
           end
-        end, 30)
+        end, 60)
       end)
 
       it("does not mix buffers", function()
         reset_log("http_queue")
         reset_log("http_queue2")
 
-        local n = 100
-        if workers > 1 then
-          n = 500
-        end
+        local n = 200
 
         for i = 1, n do
           local client = helpers.proxy_client()
@@ -479,6 +477,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local raw = assert.res_status(200, res)
           local body = cjson.decode(raw)
+          client:close()
 
           local client2 = assert(helpers.http_client(helpers.mock_upstream_host,
                                                      helpers.mock_upstream_port))
@@ -491,19 +490,20 @@ for _, strategy in helpers.each_strategy() do
           })
           local raw2 = assert.res_status(200, res2)
           local body2 = cjson.decode(raw2)
+          client2:close()
 
           if body.count < n or body2.count < n then
             return false
           end
 
+          table.sort(body.entries, function(a, b)
+            return a.response.status < b.response.status
+          end)
+
           local i = 0
           for _, entry in ipairs(body.entries) do
             assert.same("127.0.0.1", entry.client_ip)
-
-            -- we only get a deterministic order with workers == 1
-            if workers == 1 then
-              assert.same(200 + ((i + 1) % 10), entry.response.status)
-            end
+            assert.same(200 + math.floor(i / (n / 10)), entry.response.status)
             i = i + 1
           end
 
@@ -511,14 +511,14 @@ for _, strategy in helpers.each_strategy() do
             return false
           end
 
-          local i = 0
+          table.sort(body2.entries, function(a, b)
+            return a.response.status < b.response.status
+          end)
+
+          i = 0
           for _, entry in ipairs(body2.entries) do
             assert.same("127.0.0.1", entry.client_ip)
-
-            -- we only get a deterministic order with workers == 1
-            if workers == 1 then
-              assert.same(300 + ((i + 1) % 10), entry.response.status)
-            end
+            assert.same(300 + math.floor(i / (n / 10)), entry.response.status)
             i = i + 1
           end
 
@@ -527,7 +527,7 @@ for _, strategy in helpers.each_strategy() do
           end
 
           return true
-        end, 30)
+        end, 60)
       end)
     end)
 
@@ -538,7 +538,11 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
 
       bp.plugins:insert {
         name     = "http-log",
