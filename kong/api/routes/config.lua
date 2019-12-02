@@ -2,8 +2,13 @@ local declarative = require("kong.db.declarative")
 local concurrency = require("kong.concurrency")
 local reports = require("kong.reports")
 local errors = require("kong.db.errors")
+
+
 local kong = kong
+local ngx = ngx
 local dc = declarative.new_config(kong.configuration)
+local table = table
+local tostring = tostring
 
 
 -- Do not accept Lua configurations from the Admin API
@@ -16,6 +21,15 @@ local accept = {
 local _reports = {
   decl_fmt_version = false,
 }
+
+
+local function reports_timer(premature)
+  if premature then
+    return
+  end
+
+  reports.send("dbless-reconfigure", _reports)
+end
 
 
 return {
@@ -97,7 +111,8 @@ return {
       end
 
       _reports.decl_fmt_version = vers
-      reports.send("dbless-reconfigure", _reports)
+
+      ngx.timer.at(0, reports_timer)
 
       return kong.response.exit(201, entities)
     end,
