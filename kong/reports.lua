@@ -89,7 +89,7 @@ local function serialize_report_value(v)
 end
 
 
--- UDP logger
+-- TCP logger
 
 
 local function send_report(signal_type, t, host, port)
@@ -124,21 +124,16 @@ local function send_report(signal_type, t, host, port)
   local sock = tcp_sock()
   sock:settimeouts(30000, 30000, 30000)
 
-  local ok, err = sock:connect(host, port)
+  -- errors are not logged to avoid false positives for users
+  -- who run Kong in an air-gapped environments
+
+  local ok = sock:connect(host, port)
   if not ok then
-    log(WARN, "could not connect to TCP socket: ", err)
     return
   end
 
-  local ok, err = sock:send(concat(_buffer, ";", 1, mutable_idx) .. "\n")
-  if not ok then
-    log(WARN, "could not send data: ", err)
-  end
-
-  ok, err = sock:setkeepalive()
-  if not ok then
-    log(WARN, "could not setkeepalive socket: ", err)
-  end
+  sock:send(concat(_buffer, ";", 1, mutable_idx) .. "\n")
+  sock:setkeepalive()
 end
 
 
