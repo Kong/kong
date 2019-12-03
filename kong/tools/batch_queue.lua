@@ -173,9 +173,9 @@ process = function(premature, self, batch)
   local next_retry_delay
 
   local ok, err = self.process(batch.entries)
-  if ok then -- success, set retry_delays to 1
+  if ok then -- success, reset retry delays
     self.retry_delay = 1
-    next_retry_delay = 1
+    next_retry_delay = 0
 
   else
     batch.retries = batch.retries + 1
