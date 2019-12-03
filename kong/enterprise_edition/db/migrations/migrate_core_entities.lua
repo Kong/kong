@@ -475,7 +475,12 @@ local function migrate_core_entities(connector, strategy, opts)
     assert(connector:query(concat(buffer, '\n')))
   -- Unfortunately counts cannot be batched on cassandra
   elseif strategy == "cassandra" then
-    assert(connector:batch(buffer, nil, "write", true))
+    -- running single queries instead of batch because it is more efficient in this case
+    for _, row in ipairs(buffer) do
+      local query = row[1]
+      local args = row[2]
+      assert(connector.cluster:execute(query, args, nil, "write"))
+    end
     local _, err, query
     for entity_type, count in pairs(ws_counters) do
       -- Update counts
