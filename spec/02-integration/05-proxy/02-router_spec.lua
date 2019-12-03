@@ -1,6 +1,7 @@
 local admin_api = require "spec.fixtures.admin_api"
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
+local path_handling_tests = require "spec.fixtures.router_path_handling_tests"
 
 
 local function insert_routes(bp, routes)
@@ -1541,112 +1542,20 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("slash handing", function()
-      local checks = {
-        -- upstream url    paths           request path    expected path           strip uri
-        {  "/",            "/",            "/",            "/",                    true      }, -- 1
-        {  "/",            "/",            "/foo/bar",     "/foo/bar",             true      },
-        {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            true      },
-        {  "/",            "/foo/bar",     "/foo/bar",     "/",                    true      },
-        {  "/",            "/foo/bar",     "/foo/bar/",    "/",                    true      },
-        {  "/",            "/foo/bar/",    "/foo/bar/",    "/",                    true      },
-        {  "/fee/bor",     "/",            "/",            "/fee/bor",             true      },
-        {  "/fee/bor",     "/",            "/foo/bar",     "/fee/bor/foo/bar",     true      },
-        {  "/fee/bor",     "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
-        {  "/fee/bor",     "/foo/bar",     "/foo/bar",     "/fee/bor",             true      }, -- 10
-        {  "/fee/bor",     "/foo/bar",     "/foo/bar/",    "/fee/bor/",            true      },
-        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/bor",             true      },
-        {  "/fee/bor/",    "/",            "/",            "/fee/bor",             true      },
-        {  "/fee/bor/",    "/",            "/foo/bar",     "/fee/bor/foo/bar",     true      },
-        {  "/fee/bor/",    "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
-        {  "/fee/bor/",    "/foo/bar",     "/foo/bar",     "/fee/bor",             true      },
-        {  "/fee/bor/",    "/foo/bar",     "/foo/bar/",    "/fee/bor/",            true      },
-        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/",    "/fee/bor",             true      },
-        {  "/fee",         "/foo",         "/foobar",      "/fee/bar",             true      }, -- 20
-        {  "/fee/",        "/foo",         "/foo",         "/fee",                 true      },
-        {  "/",            "/",            "/",            "/",                    false     },
-        {  "/",            "/",            "/foo/bar",     "/foo/bar",             false     },
-        {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            false     },
-        {  "/",            "/foo/bar",     "/foo/bar",     "/foo/bar",             false     },
-        {  "/",            "/foo/bar",     "/foo/bar/",    "/foo/bar/",            false     },
-        {  "/",            "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            false     },
-        {  "/fee/bor",     "/",            "/",            "/fee/bor",             false     },
-        {  "/fee/bor",     "/",            "/foo/bar",     "/fee/bor/foo/bar",     false     },
-        {  "/fee/bor",     "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    false     }, -- 30
-        {  "/fee/bor",     "/foo/bar",     "/foo/bar",     "/fee/bor/foo/bar",     false     },
-        {  "/fee/bor",     "/foo/bar",     "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
-        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
-        {  "/fee/bor/",    "/",            "/",            "/fee/bor/",            false     },
-        {  "/fee/bor/",    "/",            "/foo/bar",     "/fee/bor/foo/bar",     false     },
-        {  "/fee/bor/",    "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
-        {  "/fee/bor/",    "/foo/bar",     "/foo/bar",     "/fee/bor/foo/bar",     false     },
-        {  "/fee/bor/",    "/foo/bar",     "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
-        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
-        -- the following block runs the same tests, but with a request path that is longer
-        -- than the matched part, so either matches in the middle of a segment, or has an
-        -- additional segment.
-        {  "/",            "/",            "/foo/bars",    "/foo/bars",            true      }, -- 40
-        {  "/",            "/",            "/foo/bar/s",   "/foo/bar/s",           true      },
-        {  "/",            "/foo/bar",     "/foo/bars",    "/s",                   true      },
-        {  "/",            "/foo/bar/",    "/foo/bar/s",   "/s",                   true      },
-        {  "/fee/bor",     "/",            "/foo/bars",    "/fee/bor/foo/bars",    true      },
-        {  "/fee/bor",     "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   true      },
-        {  "/fee/bor",     "/foo/bar",     "/foo/bars",    "/fee/bor/s",           true      },
-        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/bor/s",           true      },
-        {  "/fee/bor/",    "/",            "/foo/bars",    "/fee/bor/foo/bars",    true      },
-        {  "/fee/bor/",    "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   true      },
-        {  "/fee/bor/",    "/foo/bar",     "/foo/bars",    "/fee/bor/s",           true      }, -- 50
-        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/s",   "/fee/bor/s",           true      },
-        {  "/",            "/",            "/foo/bars",    "/foo/bars",            false     },
-        {  "/",            "/",            "/foo/bar/s",   "/foo/bar/s",           false     },
-        {  "/",            "/foo/bar",     "/foo/bars",    "/foo/bars",            false     },
-        {  "/",            "/foo/bar/",    "/foo/bar/s",   "/foo/bar/s",           false     },
-        {  "/fee/bor",     "/",            "/foo/bars",    "/fee/bor/foo/bars",    false     },
-        {  "/fee/bor",     "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     },
-        {  "/fee/bor",     "/foo/bar",     "/foo/bars",    "/fee/bor/foo/bars",    false     },
-        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     },
-        {  "/fee/bor/",    "/",            "/foo/bars",    "/fee/bor/foo/bars",    false     }, -- 60
-        {  "/fee/bor/",    "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     },
-        {  "/fee/bor/",    "/foo/bar",     "/foo/bars",    "/fee/bor/foo/bars",    false     },
-        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     },
-        -- the following block matches on host, instead of path
-        {  "/",            nil,            "/",            "/",                    false     },
-        {  "/",            nil,            "/foo/bar",     "/foo/bar",             false     },
-        {  "/",            nil,            "/foo/bar/",    "/foo/bar/",            false     },
-        {  "/fee/bor",     nil,            "/",            "/fee/bor",             false     },
-        {  "/fee/bor",     nil,            "/foo/bar",     "/fee/bor/foo/bar",     false     },
-        {  "/fee/bor",     nil,            "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
-        {  "/fee/bor/",    nil,            "/",            "/fee/bor/",            false     }, -- 70
-        {  "/fee/bor/",    nil,            "/foo/bar",     "/fee/bor/foo/bar",     false     },
-        {  "/fee/bor/",    nil,            "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
-        {  "/",            nil,            "/",            "/",                    true      },
-        {  "/",            nil,            "/foo/bar",     "/foo/bar",             true      },
-        {  "/",            nil,            "/foo/bar/",    "/foo/bar/",            true      },
-        {  "/fee/bor",     nil,            "/",            "/fee/bor",             true      },
-        {  "/fee/bor",     nil,            "/foo/bar",     "/fee/bor/foo/bar",     true      },
-        {  "/fee/bor",     nil,            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
-        {  "/fee/bor/",    nil,            "/",            "/fee/bor",             true      },
-        {  "/fee/bor/",    nil,            "/foo/bar",     "/fee/bor/foo/bar",     true      },
-        {  "/fee/bor/",    nil,            "/foo/bar/",    "/fee/bor/foo/bar/",    true      }, -- 80
-      }
-
       describe("(plain)", function()
         local routes
 
         lazy_setup(function()
           routes = {}
 
-          for i, args in ipairs(checks) do
+          for i, test in ipairs(path_handling_tests) do
             routes[i] = {
-              strip_path   = args[5],
-              paths        = args[2] and {
-                args[2],
-              } or nil,
-              hosts        = {
-                "localbin-" .. i .. ".com",
-              },
+              strip_path   = test.strip_path,
+              paths        = test.route_path and { test.route_path } or nil,
+              hosts        = { "localbin-" .. i .. ".com" },
               service = {
                 name = "plain_" .. i,
-                path = args[1],
+                path = test.service_path,
               }
             }
           end
@@ -1660,27 +1569,27 @@ for _, strategy in helpers.each_strategy() do
           end
         end)
 
-        for i, args in ipairs(checks) do
-          local config = string.format("route.strip_path=%s", args[5] and "on" or "off")
+        for i, test in ipairs(path_handling_tests) do
+          local config = string.format("route.strip_path=%s", test.strip_path and "on" or "off")
 
           local description
-          if args[2] then
+          if test.route_path then
             description = string.format("(%d) (%s) %s with uri %s when requesting %s",
-                                        i, config, args[1], args[2], args[3])
+                                        i, config, test.service_path, test.route_path, test.request_path)
           else
             description = string.format("(%d) (%s) %s with host %s when requesting %s",
-                                        i, config, args[1], "localbin-" .. i .. ".com", args[3])
+                                        i, config, test.service_path, "localbin-" .. i .. ".com", test.request_path)
           end
 
           it(description, function()
-            local res = assert(proxy_client:get(args[3], {
+            local res = assert(proxy_client:get(test.request_path, {
               headers = {
                 ["Host"] = "localbin-" .. i .. ".com",
               }
             }))
 
             local data = assert.response(res).has.jsonbody()
-            assert.equal(args[4], data.vars.request_uri)
+            assert.equal(test.expected_path, data.vars.request_uri)
           end)
         end
       end)
@@ -1695,18 +1604,14 @@ for _, strategy in helpers.each_strategy() do
         lazy_setup(function()
           routes = {}
 
-          for i, args in ipairs(checks) do
+          for i, test in ipairs(path_handling_tests) do
             routes[i] = {
-              strip_path   = args[5],
-              paths        = args[2] and {
-                make_a_regex(args[2]),
-              } or nil,
-              hosts        = {
-                "localbin-" .. i .. ".com",
-              },
+              strip_path   = test.strip_path,
+              paths        = test.route_path and { make_a_regex(test.route_path) } or nil,
+              hosts        = { "localbin-" .. i .. ".com" },
               service = {
                 name = "make_regex_" .. i,
-                path = args[1],
+                path = test.service_path,
               }
             }
           end
@@ -1718,23 +1623,21 @@ for _, strategy in helpers.each_strategy() do
           remove_routes(strategy, routes)
         end)
 
-        for i, args in ipairs(checks) do
-          if args[2] then  -- skip if hostbased match
+        for i, test in ipairs(path_handling_tests) do
+          if test.route_path then  -- skip if hostbased match
 
-            local config = string.format("route.strip_path=%s", args[5] and "on" or "off")
+            local config = string.format("route.strip_path=%s", test.strip_path and "on" or "off")
 
             local description = string.format("(%d) (%s) %s with uri %s when requesting %s",
-                                              i, config, args[1], make_a_regex(args[2]), args[3])
+              i, config, test.service_path, make_a_regex(test.route_path), test.request_path)
 
             it(description, function()
-              local res = assert(proxy_client:get(args[3], {
-                headers = {
-                  ["Host"] = "localbin-" .. i .. ".com",
-                }
+              local res = assert(proxy_client:get(test.request_path, {
+                headers = { Host = "localbin-" .. i .. ".com" },
               }))
 
               local data = assert.response(res).has.jsonbody()
-              assert.equal(args[4], data.vars.request_uri)
+              assert.equal(test.expected_path, data.vars.request_uri)
             end)
           end
         end
