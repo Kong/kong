@@ -28,7 +28,7 @@ local ECSFullUri
 do
   if not (ENV_RELATIVE_URI or ENV_FULL_URI) then
     -- No variables found, so we're not running on ECS containers
-    kong.log.notice("No ECS environment variables found for IAM")
+    kong.log.debug("No ECS environment variables found for IAM")
   else
 
     -- construct the URL

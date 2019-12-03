@@ -1,8 +1,14 @@
-## aws-lambda 3.0.1
+# Kong AWS Lambda plugin changelog
+
+## aws-lambda 3.0.x unreleased
+
+- reduce notice-level message to debug, to reduce log noise
+
+## aws-lambda 3.0.1 13-Nov-2019
 
 - Remove the no-longer supported `run_on` field from plugin config schema
 
-## aws-lambda 3.0.0
+## aws-lambda 3.0.0 2-Oct-2019
 
 - Renamed from `liamp` to `aws-lambda` to supersede the `aws-lambda` plugin
   from Kong core.
@@ -11,7 +17,7 @@
   of the aws-lambda plugin to 3.0 (this) is the combined set of changes
   mentioned below for Liamp versions `0.1.0` and `0.2.0`.
 
-## Liamp 0.2.0
+## Liamp 0.2.0 23-Sep-2019
 
 - chore: convert the plugin to the PDK and new DB (developed against Kong 1.x)
 
