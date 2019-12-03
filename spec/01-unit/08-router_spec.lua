@@ -2951,24 +2951,19 @@ describe("Router", function()
     end)
 
 
-    describe("#slash handling", function()
+    describe("slash handling", function()
 
       for i, test in ipairs(path_handling_tests) do
-        local config
-        if test.strip_path == true then
-          config = "(strip = on, plain)"
+        local strip = test.strip_path and "on" or "off"
+        local route_uri_or_host
+        if test.route_path then
+          route_uri_or_host = "uri " .. test.route_path
         else
-          config = "(strip = off, plain)"
+          route_uri_or_host = "host localbin-" .. i .. ".com"
         end
 
-        local description
-        if test.route_path then
-          description = string.format("(%d) (%s) %s with uri %s when requesting %s",
-            i, config, test.service_path, test.route_path, test.request_path)
-        else
-          description = string.format("(%d) (%s) %s with host %s when requesting %s",
-            i, config, test.service_path, "localbin-" .. i .. ".com", test.request_path)
-        end
+        local description = string.format("(%d) plain, %s with %s, strip = %s, %s. req: %s",
+          i, test.service_path, route_uri_or_host, strip, test.path_handling, test.request_path)
 
         it(description, function()
           local use_case_routes = {
@@ -2980,6 +2975,7 @@ describe("Router", function()
               },
               route        = {
                 strip_path = test.strip_path,
+                path_handling = test.path_handling,
                 -- only add the header is no path is provided
                 hosts      = test.service_path == nil and nil or { "localbin-" .. i .. ".com" },
                 paths      = { test.route_path },
@@ -3000,25 +2996,14 @@ describe("Router", function()
       -- this is identical to the tests above, except that for the path we match
       -- with an injected regex sequence, effectively transforming the path
       -- match into a regex match
-      local function make_a_regex(path)
-        return "/[0]?" .. path:sub(2, -1)
-      end
-
       for i, test in ipairs(path_handling_tests) do
-        local config
-        if test.strip_path == true then
-          config = "(strip = on, regex)"
-        else
-          config = "(strip = off, regex)"
-        end
-
         if test.route_path then -- skip test cases which match on host
-          local description = string.format("(%d) (%s) %s with uri %s when requesting %s",
-            i, config, test.service_path, make_a_regex(test.route_path), test.request_path)
+          local strip = test.strip_path and "on" or "off"
+          local regex = "/[0]?" .. test.route_path:sub(2, -1)
+          local description = string.format("(%d) regex, %s with %s, strip = %s, %s. req: %s",
+            i, test.service_path, regex, strip, test.path_handling, test.request_path)
 
           it(description, function()
-
-
             local use_case_routes = {
               {
                 service      = {
@@ -3029,8 +3014,9 @@ describe("Router", function()
                 route        = {
                   strip_path = test.strip_path,
                   -- only add the header is no path is provided
-                  hosts      = test.route_path == nil and nil or { "localbin-" .. i .. ".com" },
-                  paths      = { make_a_regex(test.route_path) },
+                  path_handling = test.path_handling,
+                  hosts      = { "localbin-" .. i .. ".com" },
+                  paths      = { regex },
                 },
               }
             }
