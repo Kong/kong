@@ -8,6 +8,10 @@ local function validate_path(path)
     return nil, "path must not begin with a slash '/'"
   end
 
+  if match(path, "//") then
+    return false, "path must not contain '//'"
+  end
+
   local ext = match(path, "%.(%w+)$")
   if not ext then
     return false, "path must end with a file extension"
