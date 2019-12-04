@@ -652,6 +652,8 @@ return {
       end
 
       local cred_params = {}
+      
+      cred_params.consumer = { id = self.developer.consumer.id }
 
       if self.params.password then
         cred_params.password = self.params.password
