@@ -31,6 +31,17 @@ qq{
         phase_check_module = "service.request"
         phase_check_data = {
             {
+                method        = "enable_buffering",
+                args          = { "http" },
+                init_worker   = false,
+                certificate   = "pending",
+                rewrite       = true,
+                access        = true,
+                header_filter = "forced false",
+                body_filter   = "forced false",
+                log           = "forced false",
+                admin_api     = "forced false",
+            }, {
                 method        = "set_scheme",
                 args          = { "http" },
                 init_worker   = false,

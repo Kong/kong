@@ -73,6 +73,26 @@ local function new(self)
 
 
   ---
+  -- Enables buffered proxying that allows plugins to access service body and
+  -- response headers at the same time
+  -- @function kong.service.request.enable_buffering
+  -- @phases `rewrite`, `access`
+  -- @return Nothing
+  -- @usage
+  -- kong.service.request.enable_buffering()
+  request.enable_buffering = function()
+    check_phase(access_and_rewrite)
+
+    if ngx.req.http_version() >= 2 then
+      error("buffered proxying cannot currently be enabled with http/" ..
+            ngx.req.http_version() .. ", please use http/1.x instead", 2)
+    end
+
+
+    self.ctx.core.buffered_proxying = true
+  end
+
+  ---
   -- Sets the protocol to use when proxying the request to the Service.
   -- @function kong.service.request.set_scheme
   -- @phases `access`
