@@ -759,17 +759,17 @@ for _, strategy in helpers.each_strategy() do
           admin_credential = assert(db.basicauth_credentials:insert {
                                       consumer = { id = admin.id, },
                                       username = "admin",
-                                      password = "insert4321", })
+                                      password = "kong", })
 
           consumer_credential = assert(db.basicauth_credentials:insert {
                                       consumer = { id = consumer.id, },
                                       username = "consumer",
-                                      password = "insert4321", })
+                                      password = "kong", })
 
           developer_credential = assert(db.basicauth_credentials:insert {
                                       consumer = { id = developer.id, },
                                       username = "developer",
-                                      password = "insert4321", })
+                                      password = "kong", })
         end)
 
         teardown(function()
