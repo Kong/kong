@@ -758,15 +758,18 @@ for _, strategy in helpers.each_strategy() do
           db:truncate("basicauth_credentials")
           admin_credential = assert(db.basicauth_credentials:insert {
                                       consumer = { id = admin.id, },
-                                      username = "admin" })
+                                      username = "admin",
+                                      password = "insert4321", })
 
           consumer_credential = assert(db.basicauth_credentials:insert {
                                       consumer = { id = consumer.id, },
-                                      username = "consumer" })
+                                      username = "consumer",
+                                      password = "insert4321", })
 
           developer_credential = assert(db.basicauth_credentials:insert {
                                       consumer = { id = developer.id, },
-                                      username = "developer" })
+                                      username = "developer",
+                                      password = "insert4321", })
         end)
 
         teardown(function()
