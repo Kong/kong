@@ -97,6 +97,7 @@ initialized
 
 - Initial release of Prometheus plugin for Kong.
 
+[0.7.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.5.0...0.6.0
 [0.5.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.4.1...0.5.0
 [0.4.1]: https://github.com/Kong/kong-plugin-prometheus/compare/0.4.0...0.4.1
