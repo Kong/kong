@@ -88,8 +88,8 @@ function _M.new(opts)
     elseif opts.db.strategy == "postgres" then
       db_strategy = require "kong.cluster_events.strategies.postgres"
 
-    elseif opts.db.strategy == "memory" then
-      db_strategy = require "kong.cluster_events.strategies.memory"
+    elseif opts.db.strategy == "off" then
+      db_strategy = require "kong.cluster_events.strategies.off"
 
     else
       return error("no cluster_events strategy for " ..

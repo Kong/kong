@@ -10,12 +10,12 @@ local _M = {}
 _M.STRATEGIES   = {
   ["postgres"]  = true,
   ["cassandra"] = true,
-  ["memory"] = true,
+  ["off"] = true,
 }
 
 
 function _M.new(kong_config, database, schemas, errors)
-  local database = database or kong_config.storage
+  local database = database or kong_config.database
 
   if not _M.STRATEGIES[database] then
     error("unknown strategy: " .. database, 2)

@@ -17,12 +17,12 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         lua_ssl_trusted_certificate = "../spec/fixtures/kong_clustering.crt",
-        storage = strategy,
+        database = strategy,
       }))
 
       assert(helpers.start_kong({
         role = "proxy",
-        storage = "memory",
+        database = "off",
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",

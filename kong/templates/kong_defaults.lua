@@ -50,7 +50,7 @@ nginx_http_upstream_keepalive = 60
 nginx_http_upstream_keepalive_requests = 100
 nginx_http_upstream_keepalive_timeout = 60s
 
-storage = postgres
+database = postgres
 pg_host = 127.0.0.1
 pg_port = 5432
 pg_database = kong

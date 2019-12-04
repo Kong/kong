@@ -67,13 +67,13 @@ local function execute(args)
 
   args.command = args.command:gsub("%-", "_")
 
-  if args.command == "db_import" and conf.storage == "memory" then
+  if args.command == "db_import" and conf.database == "off" then
     error("'kong config db_import' only works with a database.\n" ..
-          "When using storage=memory, reload your declarative configuration\n" ..
+          "When using database=off, reload your declarative configuration\n" ..
           "using the /config endpoint.")
   end
 
-  if args.command == "db_export" and conf.storage == "memory" then
+  if args.command == "db_export" and conf.database == "off" then
     error("'kong config db_export' only works with a database.")
   end
 

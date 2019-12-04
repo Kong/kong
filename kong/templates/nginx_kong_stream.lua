@@ -18,12 +18,12 @@ lua_shared_dict stream_kong_db_cache       ${{MEM_CACHE_SIZE}};
 lua_shared_dict stream_kong_core_db_cache_miss   12m;
 lua_shared_dict stream_kong_db_cache_miss   12m;
 
-> if storage == "memory" then
+> if database == "off" then
 lua_shared_dict stream_kong_core_db_cache_2     ${{MEM_CACHE_SIZE}};
 lua_shared_dict stream_kong_db_cache_2     ${{MEM_CACHE_SIZE}};
 > end
 
-> if storage == "memory" then
+> if database == "off" then
 lua_shared_dict stream_kong_core_db_cache_miss_2     ${{MEM_CACHE_SIZE}};
 lua_shared_dict stream_kong_db_cache_miss_2 12m;
 > end
@@ -33,7 +33,7 @@ lua_shared_dict stream_kong_process_events 5m;
 lua_shared_dict stream_kong_cluster_events 5m;
 lua_shared_dict stream_kong_healthchecks   5m;
 lua_shared_dict stream_kong_rate_limiting_counters 12m;
-> if storage == "cassandra" then
+> if database == "cassandra" then
 lua_shared_dict stream_kong_cassandra      5m;
 > end
 lua_shared_dict stream_prometheus_metrics  5m;

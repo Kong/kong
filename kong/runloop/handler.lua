@@ -427,7 +427,7 @@ local function register_events()
   -- declarative config updates
 
 
-  if db.strategy == "memory" then
+  if db.strategy == "off" then
     worker_events.register(function()
       core_cache:flip()
     end, "declarative", "flip_config")
@@ -898,11 +898,11 @@ return {
       do
         local rebuild_timeout = 60
 
-        if kong.configuration.storage == "cassandra" then
+        if kong.configuration.database == "cassandra" then
           rebuild_timeout = kong.configuration.cassandra_timeout / 1000
         end
 
-        if kong.configuration.storage == "postgres" then
+        if kong.configuration.database == "postgres" then
           rebuild_timeout = kong.configuration.pg_timeout / 1000
         end
 

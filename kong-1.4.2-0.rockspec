@@ -68,7 +68,7 @@ build = {
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",
-    ["kong.cluster_events.strategies.memory"] = "kong/cluster_events/strategies/memory.lua",
+    ["kong.cluster_events.strategies.off"] = "kong/cluster_events/strategies/off.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
@@ -170,9 +170,9 @@ build = {
     ["kong.db.strategies.postgres.plugins"] = "kong/db/strategies/postgres/plugins.lua",
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
     ["kong.db.strategies.postgres.tags"] = "kong/db/strategies/postgres/tags.lua",
-    ["kong.db.strategies.memory"] = "kong/db/strategies/memory/init.lua",
-    ["kong.db.strategies.memory.connector"] = "kong/db/strategies/memory/connector.lua",
-    ["kong.db.strategies.memory.tags"] = "kong/db/strategies/memory/tags.lua",
+    ["kong.db.strategies.off"] = "kong/db/strategies/off/init.lua",
+    ["kong.db.strategies.off.connector"] = "kong/db/strategies/off/connector.lua",
+    ["kong.db.strategies.off.tags"] = "kong/db/strategies/off/tags.lua",
 
     ["kong.db.migrations.state"] = "kong/db/migrations/state.lua",
     ["kong.db.migrations.helpers"] = "kong/db/migrations/helpers.lua",
