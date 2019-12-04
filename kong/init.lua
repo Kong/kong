@@ -512,6 +512,9 @@ function Kong.init_worker()
   end
   kong.core_cache = core_cache
 
+  local clustering = require "kong.clustering"
+  clustering.init_worker(kong.configuration)
+
   ok, err = runloop.set_init_versions_in_cache()
   if not ok then
     stash_init_worker_error(err) -- 'err' fully formatted

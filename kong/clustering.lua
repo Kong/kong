@@ -45,7 +45,7 @@ local clients = setmetatable({}, WEAK_KEY_MT)
 local clients_n = 0
 local shdict = ngx.shared.kong_clustering -- only when role == "admin"
 local prefix = ngx.config.prefix()
-local CONFIG_CACHE = prefix .. "/data/config.cache.json"
+local CONFIG_CACHE = prefix .. "/config.cache.json"
 
 
 local function update_config(config_table, update_cache)
