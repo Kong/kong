@@ -516,6 +516,32 @@ return {
         * For `tls`, at least one of `sources`, `destinations` or `snis`;
         * For `grpc`, at least one of `hosts`, `headers` or `paths`;
         * For `grpcs`, at least one of `hosts`, `headers`, `paths` or `snis`.
+
+        #### Path handling algorithms
+
+        `"v0"` is the behavior used in Kong 0.x and 2.x. It treats `service.path`, `route.path` and request path as
+        *segments* of a url. It will always join them via slashes. Given a service path `/s`, route path `/r`
+        and request path `/re`, the concatenated path will be `/s/re`. If the resulting path is a single slash,
+        no further transformation is done to it. If it's longer, then the trailing slash is removed.
+
+        `"v1"` is the behavior used in Kong 1.x. It treats `service.path` as a *prefix*, and ignores the initial
+        slashes of the request and route paths. Given service path `/s`, route path `/r` and request path `/re`,
+        the concatenated path will be `/sre`.
+
+        Both versions of the algorithm detect "double slashes" when combining paths, replacing them by single
+        slashes.
+
+        | `service.path` | `route.path` | `route.strip_path` | `route.path_handling` | request path | proxied path  |
+        |----------------|--------------|--------------------|-----------------------|--------------|---------------|
+        | `/s`           | `/fv0`       | `false`            | `v0`                  | `/fv0req`    | `/s/fv0req`   |
+        | `/s`           | `/fv1`       | `false`            | `v1`                  | `/fv1req`    | `/sfv1req`    |
+        | `/s`           | `/tv0`       | `true`             | `v0`                  | `/tv0req`    | `/s/req`      |
+        | `/s`           | `/tv1`       | `true`             | `v1`                  | `/tv1req`    | `/sreq`       |
+        | `/s`           | `/fv0/`      | `false`            | `v0`                  | `/fv0/req`   | `/s/fv0/req`  |
+        | `/s`           | `/fv1/`      | `false`            | `v1`                  | `/fv1/req`   | `/sfv1/req`   |
+        | `/s`           | `/tv0/`      | `true`             | `v0`                  | `/tv0/req`   | `/s/req`      |
+        | `/s`           | `/tv1/`      | `true`             | `v1`                  | `/tv1/req    | `/sreq`       |
+
       ]],
       fields = {
         id = { skip = true },
@@ -608,6 +634,12 @@ return {
           description = [[
             When matching a Route via one of the `paths`,
             strip the matching prefix from the upstream request URL.
+          ]]
+        },
+        path_handling = {
+          description = [[
+            Controls how the Service path, Route path and requested path are combined when sending a request to the
+            upstream. See above for a detailed description of each behavior.
           ]]
         },
         preserve_host = {
