@@ -34,6 +34,7 @@ env:
     - KONG_TEST_PG_USER=postgres
     - JOBS=2
     - DOCKER_MACHINE_ARM64_NAME=travis-ci-kong-${TRAVIS_JOB_ID}
+    - OPENRESTY_PATCHES_BRANCH=chore/cosocket_mtls
   matrix:
     - KONG_TEST_DATABASE=postgres TEST_SUITE=integration
     - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2 TEST_SUITE=integration
