@@ -462,7 +462,7 @@ function _M.update_password(admin, params)
                  { id = creds.id },
                  { 
                    consumer = { id = admin.consumer.id },
-                   password = params.password 
+                   password = params.password,
                  }
   )
 
@@ -676,7 +676,7 @@ function _M.reset_password(plugin, collection, consumer, new_password, secret_id
       { id = row.id }, 
       { 
         consumer = { id = consumer.id },
-        [plugin.credential_key] = new_password 
+        [plugin.credential_key] = new_password, 
       }
     )
 
