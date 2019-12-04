@@ -488,7 +488,10 @@ return {
       end
 
       local cred_pk = { id = credential.id }
-      local entity = { [self.plugin.credential_key] = new_password }
+      local entity = { 
+        consumer = { id = consumer.id },
+        [self.plugin.credential_key] = new_password, 
+      }
       local ok, err = crud_helpers.update_login_credential(
                                               self.collection, cred_pk, entity)
       if err then
