@@ -5,6 +5,7 @@ local helpers    = require "spec.helpers"
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: http-log (log) [#" .. strategy .. "]", function()
     local proxy_client
+    local proxy_client_grpc, proxy_client_grpcs
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -141,10 +142,59 @@ for _, strategy in helpers.each_strategy() do
       local test_error_log_path = helpers.test_conf.nginx_err_logs
       os.execute(":> " .. test_error_log_path)
 
+      local grpc_service = assert(bp.services:insert {
+        name = "grpc-service",
+        url = "grpc://localhost:15002",
+      })
+
+      local route7 = assert(bp.routes:insert {
+        service = grpc_service,
+        protocols = { "grpc" },
+        hosts = { "http_logging_grpc.test" },
+      })
+
+      bp.plugins:insert {
+        route = { id = route7.id },
+        name     = "http-log",
+        config   = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                    .. ":"
+                                    .. helpers.mock_upstream_port
+                                    .. "/post_log/grpc",
+          timeout = 1
+        },
+      }
+
+      local grpcs_service = assert(bp.services:insert {
+        name = "grpcs-service",
+        url = "grpcs://localhost:15003",
+      })
+
+      local route8 = assert(bp.routes:insert {
+        service = grpcs_service,
+        protocols = { "grpcs" },
+        hosts = { "http_logging_grpcs.test" },
+      })
+
+      bp.plugins:insert {
+        route = { id = route8.id },
+        name     = "http-log",
+        config   = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                    .. ":"
+                                    .. helpers.mock_upstream_port
+                                    .. "/post_log/grpcs",
+          timeout = 1
+        },
+      }
+
       assert(helpers.start_kong({
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
+
+      proxy_client_grpc = helpers.proxy_client_grpc()
+      proxy_client_grpcs = helpers.proxy_client_grpcs()
     end)
 
     lazy_teardown(function()
@@ -191,6 +241,78 @@ for _, strategy in helpers.each_strategy() do
       end, 10)
     end)
 
+    it("logs to HTTP (#grpc)", function()
+      -- Making the request
+      local ok, resp = proxy_client_grpc({
+        service = "hello.HelloService.SayHello",
+        body = {
+          greeting = "world!"
+        },
+        opts = {
+          ["-authority"] = "http_logging_grpc.test",
+        }
+      })
+      assert.truthy(ok)
+      assert.truthy(resp)
+
+      helpers.wait_until(function()
+        local client = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                  helpers.mock_upstream_port))
+        local res = assert(client:send {
+          method  = "GET",
+          path    = "/read_log/grpc",
+          headers = {
+            Accept = "application/json"
+          }
+        })
+        local raw = assert.res_status(200, res)
+        local body = cjson.decode(raw)
+
+        if #body.entries == 1 then
+          assert.same("127.0.0.1", body.entries[1].client_ip)
+          assert.same("application/grpc", body.entries[1].request.headers["content-type"])
+          assert.same("application/grpc", body.entries[1].response.headers["content-type"])
+          return true
+        end
+      end, 10)
+    end)
+
+    it("logs to HTTP (#grpcs)", function()
+      -- Making the request
+      local ok, resp = proxy_client_grpcs({
+        service = "hello.HelloService.SayHello",
+        body = {
+          greeting = "world!"
+        },
+        opts = {
+          ["-authority"] = "http_logging_grpcs.test",
+        }
+      })
+      assert.truthy(ok)
+      assert.truthy(resp)
+
+      helpers.wait_until(function()
+        local client = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                  helpers.mock_upstream_port))
+        local res = assert(client:send {
+          method  = "GET",
+          path    = "/read_log/grpcs",
+          headers = {
+            Accept = "application/json"
+          }
+        })
+        local raw = assert.res_status(200, res)
+        local body = cjson.decode(raw)
+
+        if #body.entries == 1 then
+          assert.same("127.0.0.1", body.entries[1].client_ip)
+          assert.same("application/grpc", body.entries[1].request.headers["content-type"])
+          assert.same("application/grpc", body.entries[1].response.headers["content-type"])
+          return true
+        end
+      end, 10)
+    end)
+
     it("logs to HTTPS", function()
       local res = assert(proxy_client:send({
         method  = "GET",
@@ -221,7 +343,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("gracefully handles layer 4 failures", function()
-    	-- setup: cleanup logs
+      -- setup: cleanup logs
       local test_error_log_path = helpers.test_conf.nginx_err_logs
       os.execute(":> " .. test_error_log_path)
 
