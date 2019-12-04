@@ -111,9 +111,9 @@ describe("reports", function()
         assert.matches("database=cassandra", res, nil, true)
       end)
 
-      it("memory", function()
+      it("off", function()
         local conf = assert(conf_loader(nil, {
-          storage = "memory",
+          database = "off",
         }))
         reports.configure_ping(conf)
 
@@ -121,7 +121,7 @@ describe("reports", function()
         reports.send_ping("127.0.0.1", 8189)
 
         local _, res = assert(thread:join())
-        assert.matches("storage=memory", res, nil, true)
+        assert.matches("database=off", res, nil, true)
       end)
     end)
 

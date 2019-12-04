@@ -1022,7 +1022,7 @@ for _, strategy in helpers.each_strategy() do
             assert.same(0, server_fails)
           end)
 
-          -- #db == disabled for storage=memory, because it tests
+          -- #db == disabled for database=off, because it tests
           -- for a PATCH operation
           it("#db can have their config partially updated", function()
             begin_testcase_setup(strategy, bp)
@@ -1089,7 +1089,7 @@ for _, strategy in helpers.each_strategy() do
             assert.same(updated, upstream_data.healthchecks)
           end)
 
-          -- #db == disabled for storage=memory, because it tests
+          -- #db == disabled for database=off, because it tests
           -- for a PATCH operation.
           -- TODO produce an equivalent test when upstreams are preserved
           -- (not rebuilt) across declarative config updates.
@@ -1143,7 +1143,7 @@ for _, strategy in helpers.each_strategy() do
             assert.same({1, 0}, { server2_oks, server2_fails })
           end)
 
-          -- #db == disabled for storage=memory, because it tests
+          -- #db == disabled for database=off, because it tests
           -- for a PATCH operation.
           -- TODO produce an equivalent test when upstreams are preserved
           -- (not rebuilt) across declarative config updates.
@@ -2372,7 +2372,7 @@ for _, strategy in helpers.each_strategy() do
             assert.are.equal(0, fails)
           end)
 
-          -- #db == disabled for storage=memory, because healthcheckers
+          -- #db == disabled for database=off, because healthcheckers
           -- are currently reset when a new configuration is loaded
           -- TODO enable this test when upstreams are preserved (not rebuild)
           -- across a declarative config updates.

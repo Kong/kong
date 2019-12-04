@@ -229,7 +229,7 @@ local function get_db_utils(strategy, tables, plugins)
 
   -- blueprints
   local bp
-  if strategy ~= "memory" then
+  if strategy ~= "off" then
     bp = assert(Blueprints.new(db))
     dcbp = nil
   else
@@ -1761,7 +1761,7 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc)
 end
 
 
--- Restart Kong, reusing declarative config when using storage=memory
+-- Restart Kong, reusing declarative config when using storage=off
 local function restart_kong(env, tables, fixtures)
   stop_kong(env.prefix, true, true)
   return start_kong(env, tables, true, fixtures)

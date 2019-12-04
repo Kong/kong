@@ -227,7 +227,7 @@ describe("kong reload #" .. strategy, function()
     assert.equal(node_id_1, node_id_2)
   end)
 
-  if strategy == "memory" then
+  if strategy == "off" then
     it("reloads the declarative_config from kong.conf", function()
       local yaml_file = helpers.make_yaml_file [[
         _format_version: "1.1"
@@ -251,7 +251,7 @@ describe("kong reload #" .. strategy, function()
       end)
 
       assert(helpers.start_kong({
-        storage = "memory",
+        database = "off",
         declarative_config = yaml_file,
         nginx_worker_processes = 1,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -325,7 +325,7 @@ describe("kong reload #" .. strategy, function()
       end)
 
       assert(helpers.start_kong({
-        storage = "memory",
+        database = "off",
         nginx_worker_processes = 1,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
@@ -407,7 +407,7 @@ describe("kong reload #" .. strategy, function()
       end)
 
       assert(helpers.start_kong({
-        storage = "memory",
+        database = "off",
         declarative_config = yaml_file,
         nginx_worker_processes = 1,
         nginx_conf = "spec/fixtures/custom_nginx.template",
