@@ -160,6 +160,7 @@ describe("declarative config: flatten", function()
           _format_version: "1.1"
           routes:
           - name: foo
+            path_handling: v1
             protocols: ["tls"]
             snis:
             - "example.com"
@@ -185,6 +186,7 @@ describe("declarative config: flatten", function()
               snis = { "example.com" },
               sources = null,
               strip_path = true,
+              path_handling = "v1",
               updated_at = 1234567890
             }
           }
@@ -323,6 +325,7 @@ describe("declarative config: flatten", function()
               host: example.com
           routes:
             - name: r1
+              path_handling: v1
               paths: [/]
               service: svc1
           consumers:
@@ -415,6 +418,7 @@ describe("declarative config: flatten", function()
               snis = null,
               sources = null,
               strip_path = true,
+              path_handling = "v1",
               updated_at = 1234567890
             }
           },
@@ -656,7 +660,8 @@ describe("declarative config: flatten", function()
               host: example.com
               protocol: https
               routes:
-                - paths:
+                - path_handling: v1
+                  paths:
                   - /path
           ]]))
           config = DeclarativeConfig:flatten(config)
@@ -680,6 +685,7 @@ describe("declarative config: flatten", function()
                 snis = null,
                 sources = null,
                 strip_path = true,
+                path_handling = "v1",
                 tags = null,
                 updated_at = 1234567890
               } },
@@ -710,19 +716,23 @@ describe("declarative config: flatten", function()
               host: example.com
               protocol: https
               routes:
-                - paths:
+                - path_handling: v1
+                  paths:
                   - /path
                   name: r1
-                - hosts:
+                - path_handling: v1
+                  hosts:
                   - example.com
                   name: r2
-                - methods: ["GET", "POST"]
+                - path_handling: v1
+                  methods: ["GET", "POST"]
                   name: r3
             - name: bar
               host: example.test
               port: 3000
               routes:
-                - paths:
+                - path_handling: v1
+                  paths:
                   - /path
                   hosts:
                   - example.com
@@ -750,6 +760,7 @@ describe("declarative config: flatten", function()
                 snis = null,
                 sources = null,
                 strip_path = true,
+                path_handling = "v1",
                 tags = null,
                 updated_at = 1234567890
               }, {
@@ -771,6 +782,7 @@ describe("declarative config: flatten", function()
                 snis = null,
                 sources = null,
                 strip_path = true,
+                path_handling = "v1",
                 tags = null,
                 updated_at = 1234567890
               }, {
@@ -792,6 +804,7 @@ describe("declarative config: flatten", function()
                 snis = null,
                 sources = null,
                 strip_path = true,
+                path_handling = "v1",
                 tags = null,
                 updated_at = 1234567890
               }, {
@@ -813,6 +826,7 @@ describe("declarative config: flatten", function()
                 snis = null,
                 sources = null,
                 strip_path = true,
+                path_handling = "v1",
                 tags = null,
                 updated_at = 1234567890
               } },
@@ -861,6 +875,7 @@ describe("declarative config: flatten", function()
               protocol: https
               routes:
               - name: foo
+                path_handling: v1
                 methods: ["GET"]
                 plugins:
           ]]))
@@ -887,6 +902,7 @@ describe("declarative config: flatten", function()
                 snis = null,
                 sources = null,
                 strip_path = true,
+                path_handling = "v1",
                 updated_at = 1234567890
               }
             },
@@ -920,6 +936,7 @@ describe("declarative config: flatten", function()
               protocol: https
               routes:
               - name: foo
+                path_handling: v1
                 methods: ["GET"]
                 plugins:
                   - name: key-auth
@@ -931,6 +948,7 @@ describe("declarative config: flatten", function()
               port: 3000
               routes:
               - name: bar
+                path_handling: v1
                 paths:
                 - /
                 plugins:
@@ -1039,6 +1057,7 @@ describe("declarative config: flatten", function()
                 snis = null,
                 sources = null,
                 strip_path = true,
+                path_handling = "v1",
                 tags = null,
                 updated_at = 1234567890
               }, {
@@ -1060,6 +1079,7 @@ describe("declarative config: flatten", function()
                 snis = null,
                 sources = null,
                 strip_path = true,
+                path_handling = "v1",
                 tags = null,
                 updated_at = 1234567890
               } },
