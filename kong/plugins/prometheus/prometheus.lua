@@ -40,7 +40,6 @@
 -- https://github.com/knyar/nginx-lua-prometheus
 -- Released under MIT license.
 
-
 -- Default set of latency buckets, 5ms to 10s:
 local DEFAULT_BUCKETS = {0.005, 0.01, 0.02, 0.03, 0.05, 0.075, 0.1, 0.2, 0.3,
                          0.4, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 10}
@@ -177,7 +176,22 @@ function Gauge:inc(value, label_values)
     self.prometheus:log_error(err)
     return
   end
-  self.prometheus:inc(self.name, self.label_names, label_values, value or 1)
+  local key = full_metric_name(self.name, self.label_names, label_values)
+
+  local newval, err = self.dict:incr(key, value)
+  if newval then
+    return
+  end
+  -- Yes, this looks like a race, so I guess we might under-report some values
+  -- when multiple workers simultaneously try to create the same metric.
+  -- Hopefully this does not happen too often (shared dictionary does not get
+  -- reset during configuation reload).
+  if err == "not found" then
+    self:set_key(key, value)
+    return
+  end
+  -- Unexpected error
+  self:log_error_kv(key, value, err)
 end
 
 local Histogram = Metric:new()
@@ -338,6 +352,8 @@ function Prometheus.init(dict_name, prefix)
       "Please define the dictionary using `lua_shared_dict`.")
     return self
   end
+  -- by default resty_counter fallback to shdict
+  self.resty_counter = self.dict
   self.help = {}
   if prefix then
     self.prefix = prefix
@@ -354,6 +370,11 @@ function Prometheus.init(dict_name, prefix)
     "Number of nginx-lua-prometheus errors")
   self.dict:set("nginx_metric_errors_total", 0)
   return self
+end
+
+-- enable the use the lua-resty-counter for Counter and Histogram
+function Prometheus:set_resty_counter(counter)
+  self.resty_counter = counter
 end
 
 function Prometheus:log_error(...)
@@ -493,20 +514,7 @@ function Prometheus:inc(name, label_names, label_values, value)
   local key = full_metric_name(name, label_names, label_values)
   if value == nil then value = 1 end
 
-  local newval, err = self.dict:incr(key, value)
-  if newval then
-    return
-  end
-  -- Yes, this looks like a race, so I guess we might under-report some values
-  -- when multiple workers simultaneously try to create the same metric.
-  -- Hopefully this does not happen too often (shared dictionary does not get
-  -- reset during configuation reload).
-  if err == "not found" then
-    self:set_key(key, value)
-    return
-  end
-  -- Unexpected error
-  self:log_error_kv(key, value, err)
+  self.resty_counter:incr(key, value)
 end
 
 -- Set the current value of a gauge to `value`
