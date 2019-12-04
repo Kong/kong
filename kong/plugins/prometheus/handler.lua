@@ -11,7 +11,7 @@ prometheus.init()
 
 local PrometheusHandler = {
   PRIORITY = 13,
-  VERSION  = "0.6.0",
+  VERSION  = "0.7.0",
 }
 
 function PrometheusHandler:init_worker(_)
