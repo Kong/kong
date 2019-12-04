@@ -1,3 +1,5 @@
+[![Build Status][badge-travis-image]][badge-travis-url]
+
 # Getting Started
 
 ## Get a running Zipkin instance
@@ -90,3 +92,6 @@ For example, the `kong.rewrite`, `start` log would be transmitted as:
 
   - `{ "value" = "kong.rewrite.start", timestamp = <timestamp> }`
 
+
+[badge-travis-url]: https://travis-ci.com/Kong/kong-plugin-zipkin/branches
+[badge-travis-image]: https://travis-ci.com/Kong/kong-plugin-zipkin?branch=master

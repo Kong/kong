@@ -27,7 +27,9 @@ describe("integration tests with mock zipkin server [#" .. strategy .. "]", func
   local cb
   local proxy_port, proxy_host
   local zipkin_port, zipkin_host
-  local service, route
+  local proxy_client_grpc
+  local route, grpc_route
+
   after_each(function()
     cb = nil
   end)
@@ -139,24 +141,32 @@ describe("integration tests with mock zipkin server [#" .. strategy .. "]", func
       }
     })
 
-    -- create service+route pointing at the zipkin server
-    service = bp.services:insert({
-      name = "mock-zipkin",
-      url = string.format("http://%s:%d", zipkin_host, zipkin_port),
-    })
-
+    -- kong (http) mock upstream
     route = bp.routes:insert({
-      service = { id = service.id },
-      hosts = { "mock-zipkin-route" },
+      hosts = { "mock-http-route" },
       preserve_host = true,
     })
 
+    -- grpc upstream
+    local grpc_service = bp.services:insert {
+      name = "grpc-service",
+      url = "grpc://localhost:15002",
+    }
+
+    grpc_route = bp.routes:insert {
+      service = grpc_service,
+      protocols = { "grpc" },
+      hosts = { "mock-grpc-route" },
+    }
+
     helpers.start_kong({
       database = strategy,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     })
 
     proxy_host = helpers.get_proxy_ip(false)
     proxy_port = helpers.get_proxy_port(false)
+    proxy_client_grpc = helpers.proxy_client_grpc()
   end)
 
   teardown(function()
@@ -165,66 +175,118 @@ describe("integration tests with mock zipkin server [#" .. strategy .. "]", func
   end)
 
   it("generates spans, tags and annotations for regular requests", function()
-    assert.truthy(with_server(function(req_headers, res_headers, stream)
-      if req_headers:get(":authority") == "mock-zipkin-route" then
-        -- is the request itself
-        res_headers:upsert(":status", "204")
-      else
-        local spans = cjson.decode((assert(stream:get_body_as_string())))
-        assert.equals(3, #spans)
-        local balancer_span, proxy_span, request_span = spans[1], spans[2], spans[3]
-        -- common assertions for request_span and proxy_span
-        assert_span_invariants(request_span, proxy_span, "GET")
+    assert.truthy(with_server(function(_, _, stream)
+      local spans = cjson.decode((assert(stream:get_body_as_string())))
 
-        -- specific assertions for request_span
-        local request_tags = request_span.tags
-        assert.truthy(request_tags["kong.node.id"]:match("^[%x-]+$"))
-        request_tags["kong.node.id"] = nil
-        assert.same({
-          ["http.method"] = "GET",
-          ["http.path"] = "/",
-          ["http.status_code"] = "204", -- found (matches server status)
-          lc = "kong"
-        }, request_tags)
-        local peer_port = request_span.remoteEndpoint.port
-        assert.equals("number", type(peer_port))
-        assert.same({ ipv4 = "127.0.0.1", port = peer_port }, request_span.remoteEndpoint)
+      assert.equals(3, #spans)
+      local balancer_span, proxy_span, request_span = spans[1], spans[2], spans[3]
+      -- common assertions for request_span and proxy_span
+      assert_span_invariants(request_span, proxy_span, "GET")
 
-        -- specific assertions for proxy_span
-        assert.same({
-          ["kong.route"] = route.id,
-          ["kong.service"] = service.id,
-          ["peer.hostname"] = "127.0.0.1",
-        }, proxy_span.tags)
+      -- specific assertions for request_span
+      local request_tags = request_span.tags
+      assert.truthy(request_tags["kong.node.id"]:match("^[%x-]+$"))
+      request_tags["kong.node.id"] = nil
+      assert.same({
+        ["http.method"] = "GET",
+        ["http.path"] = "/",
+        ["http.status_code"] = "200", -- found (matches server status)
+        lc = "kong"
+      }, request_tags)
+      local peer_port = request_span.remoteEndpoint.port
+      assert.equals("number", type(peer_port))
+      assert.same({ ipv4 = "127.0.0.1", port = peer_port }, request_span.remoteEndpoint)
 
-        assert.same({ ipv4 = zipkin_host, port = zipkin_port }, proxy_span.remoteEndpoint)
-        assert.same({ serviceName = "mock-zipkin" }, proxy_span.localEndpoint)
+      -- specific assertions for proxy_span
+      assert.same(proxy_span.tags["kong.route"], route.id)
+      assert.same(proxy_span.tags["peer.hostname"], "127.0.0.1")
 
-        -- specific assertions for balancer_span
-        assert.equals(balancer_span.parentId, request_span.id)
-        assert.equals(request_span.name .. " (balancer try 1)", balancer_span.name)
-        assert.equals("number", type(balancer_span.timestamp))
-        assert.equals("number", type(balancer_span.duration))
-        assert.same({ ipv4 = zipkin_host, port = zipkin_port }, balancer_span.remoteEndpoint)
-        assert.equals(ngx.null, balancer_span.localEndpoint)
-        assert.same({
-          error = "false",
-          ["kong.balancer.try"] = "1",
-        }, balancer_span.tags)
+      assert.same({ ipv4 = helpers.mock_upstream_host, port = helpers.mock_upstream_port },
+        proxy_span.remoteEndpoint)
 
-        res_headers:upsert(":status", "204")
-      end
+      -- specific assertions for balancer_span
+      assert.equals(balancer_span.parentId, request_span.id)
+      assert.equals(request_span.name .. " (balancer try 1)", balancer_span.name)
+      assert.equals("number", type(balancer_span.timestamp))
+      assert.equals("number", type(balancer_span.duration))
+
+      assert.same({ ipv4 = helpers.mock_upstream_host, port = helpers.mock_upstream_port },
+        balancer_span.remoteEndpoint)
+      assert.equals(ngx.null, balancer_span.localEndpoint)
+      assert.same({
+        error = "false",
+        ["kong.balancer.try"] = "1",
+      }, balancer_span.tags)
     end, function()
       -- regular request which matches the existing route
-      local req = http_request.new_from_uri("http://mock-zipkin-route/")
+      local req = http_request.new_from_uri("http://mock-http-route/")
       req.host = proxy_host
       req.port = proxy_port
       assert(req:go())
     end))
   end)
 
+  it("generates spans, tags and annotations for regular requests (#grpc)", function()
+    assert.truthy(with_server(function(_, _, stream)
+      local spans = cjson.decode((assert(stream:get_body_as_string())))
+
+      --assert.equals(3, #spans)
+      local balancer_span, proxy_span, request_span = spans[1], spans[2], spans[3]
+      -- common assertions for request_span and proxy_span
+      assert_span_invariants(request_span, proxy_span, "POST")
+
+      -- specific assertions for request_span
+      local request_tags = request_span.tags
+      assert.truthy(request_tags["kong.node.id"]:match("^[%x-]+$"))
+      request_tags["kong.node.id"] = nil
+      assert.same({
+        ["http.method"] = "POST",
+        ["http.path"] = "/hello.HelloService/SayHello",
+        ["http.status_code"] = "200", -- found (matches server status)
+        lc = "kong"
+      }, request_tags)
+      local peer_port = request_span.remoteEndpoint.port
+      assert.equals("number", type(peer_port))
+      assert.same({ ipv4 = "127.0.0.1", port = peer_port }, request_span.remoteEndpoint)
+
+      -- specific assertions for proxy_span
+      assert.same(proxy_span.tags["kong.route"], grpc_route.id)
+      assert.same(proxy_span.tags["peer.hostname"], "localhost")
+
+      assert.same({ ipv4 = "127.0.0.1", port = 15002 },
+        proxy_span.remoteEndpoint)
+
+      -- specific assertions for balancer_span
+      assert.equals(balancer_span.parentId, request_span.id)
+      assert.equals(request_span.name .. " (balancer try 1)", balancer_span.name)
+      assert.equals("number", type(balancer_span.timestamp))
+      assert.equals("number", type(balancer_span.duration))
+
+      assert.same({ ipv4 = "127.0.0.1", port = 15002 },
+        balancer_span.remoteEndpoint)
+      assert.equals(ngx.null, balancer_span.localEndpoint)
+      assert.same({
+        error = "false",
+        ["kong.balancer.try"] = "1",
+      }, balancer_span.tags)
+    end, function()
+      -- Making the request
+      local ok, resp = proxy_client_grpc({
+        service = "hello.HelloService.SayHello",
+        body = {
+          greeting = "world!"
+        },
+        opts = {
+          ["-authority"] = "mock-grpc-route",
+        }
+      })
+      assert.truthy(ok)
+      assert.truthy(resp)
+    end))
+  end)
+
   it("generates spans, tags and annotations for non-matched requests", function()
-    assert.truthy(with_server(function(_, res_headers, stream)
+    assert.truthy(with_server(function(_, _, stream)
       local spans = cjson.decode((assert(stream:get_body_as_string())))
       assert.equals(2, #spans)
       local proxy_span, request_span = spans[1], spans[2]
@@ -250,8 +312,6 @@ describe("integration tests with mock zipkin server [#" .. strategy .. "]", func
 
       assert.equals(ngx.null, proxy_span.remoteEndpoint)
       assert.equals(ngx.null, proxy_span.localEndpoint)
-
-      res_headers:upsert(":status", "204") -- note the returned status by the server is 204
     end, function()
       -- This request reaches the proxy, but doesn't match any route.
       -- The plugin runs in "error mode": access phase doesn't run, but others, like header_filter, do run
@@ -263,20 +323,14 @@ describe("integration tests with mock zipkin server [#" .. strategy .. "]", func
 
   it("propagates b3 headers on routed request", function()
     local trace_id = "1234567890abcdef"
-    assert.truthy(with_server(function(req_headers, res_headers, stream)
-      if req_headers:get(":authority") == "mock-zipkin-route" then
-        -- is the request itself
-        res_headers:upsert(":status", "204")
-      else
-        local spans = cjson.decode((assert(stream:get_body_as_string())))
-        for _, v in ipairs(spans) do
-          assert.same(trace_id, v.traceId)
-        end
-        res_headers:upsert(":status", "204")
+    assert.truthy(with_server(function(_, _, stream)
+      local spans = cjson.decode((assert(stream:get_body_as_string())))
+      for _, v in ipairs(spans) do
+        assert.same(trace_id, v.traceId)
       end
     end, function()
       -- regular request, with extra headers
-      local req = http_request.new_from_uri("http://mock-zipkin-route/")
+      local req = http_request.new_from_uri("http://mock-http-route/")
       req.host = proxy_host
       req.port = proxy_port
       req.headers:upsert("x-b3-traceid", trace_id)
@@ -285,14 +339,15 @@ describe("integration tests with mock zipkin server [#" .. strategy .. "]", func
     end))
   end)
 
-  it("propagates b3 headers on routed request", function()
+  -- TODO add grpc counterpart of above test case
+
+  it("propagates b3 headers for non-matched requests", function()
     local trace_id = "1234567890abcdef"
-    assert.truthy(with_server(function(_, res_headers, stream)
+    assert.truthy(with_server(function(_, _, stream)
       local spans = cjson.decode((assert(stream:get_body_as_string())))
       for _, v in ipairs(spans) do
         assert.same(trace_id, v.traceId)
       end
-      res_headers:upsert(":status", "204")
     end, function()
       -- This request reaches the proxy, but doesn't match any route. The trace_id should be respected here too
       local uri = string.format("http://%s:%d/", proxy_host, proxy_port)
