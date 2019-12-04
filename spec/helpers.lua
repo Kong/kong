@@ -131,7 +131,7 @@ local each_strategy
 
 do
   local default_strategies = {"postgres", "cassandra"}
-  local env_var = os.getenv("KONG_DATABASE")
+  local env_var = os.getenv("KONG_STORAGE")
   if env_var then
     default_strategies = { env_var }
   end
@@ -186,7 +186,7 @@ local function bootstrap_database(db)
 end
 
 local function get_db_utils(strategy, tables, plugins)
-  strategy = strategy or conf.database
+  strategy = strategy or conf.storage
   if tables ~= nil and type(tables) ~= "table" then
     error("arg #2 must be a list of tables to truncate", 2)
   end
@@ -207,9 +207,9 @@ local function get_db_utils(strategy, tables, plugins)
   bootstrap_database(db)
 
   do
-    local database = conf.database
-    conf.database = strategy
-    conf.database = database
+    local storage = conf.storage
+    conf.storage = strategy
+    conf.storage = storage
   end
 
   db:truncate("plugins")
@@ -1761,7 +1761,7 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc)
 end
 
 
--- Restart Kong, reusing declarative config when using database=off
+-- Restart Kong, reusing declarative config when using storage=off
 local function restart_kong(env, tables, fixtures)
   stop_kong(env.prefix, true, true)
   return start_kong(env, tables, true, fixtures)
