@@ -19,6 +19,7 @@ for _, strategy in helpers.each_strategy() do
       local c1 = assert(bp.consumers:insert_ws({ username = "c1" }, w1))
       assert(bp.basicauth_credentials:insert_ws({
         username = "gruce",
+        password = "kong",
         consumer = { id = c1.id },
       }, w1))
 
@@ -42,6 +43,7 @@ for _, strategy in helpers.each_strategy() do
       local c1 = assert(bp.consumers:insert_ws({ username = "c1" }, w1))
       assert(bp.basicauth_credentials:insert_ws({
         username = "gruce",
+        password = "kong",
         consumer = { id = c1.id },
       }, w1))
 
