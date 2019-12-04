@@ -23,6 +23,15 @@ return {
 
       ALTER TABLE admins
       ALTER COLUMN rbac_token_enabled SET NOT NULL;
+
+      CREATE TABLE IF NOT EXISTS "dbus" (
+        "id"           UUID                         UNIQUE,
+        "created_at"   TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
+        "source"       TEXT NOT NULL,
+        "event"        TEXT,
+        "handler"      TEXT NOT NULL,
+        "config"       JSON                         NOT NULL
+      );
     ]],
 
     teardown = function(connector)

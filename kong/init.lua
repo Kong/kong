@@ -596,6 +596,13 @@ function Kong.init_worker()
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_plugins_iterator(plugins_iterator, "init_worker")
 
+  -- register dbus hooks
+  local databus = require "kong.enterprise_edition.databus"
+  for entity, err in kong.db.dbus:each(1000) do
+    databus.register(databus.webhook(entity.config), entity.source, entity.event)
+  end
+
+
   ee.handlers.init_worker.after(ngx.ctx)
 end
 

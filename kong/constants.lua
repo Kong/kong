@@ -131,6 +131,7 @@ return {
     "group_rbac_roles",
     "login_attempts",
     "keyring_meta",
+    "dbus",
   },
   RATELIMIT = {
     PERIODS = {

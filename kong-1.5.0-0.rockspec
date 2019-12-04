@@ -115,6 +115,7 @@ build = {
     ["kong.enterprise_edition.invoke_plugin"] = "kong/enterprise_edition/invoke_plugin.lua",
     ["kong.enterprise_edition.distributions_constants"] = "kong/enterprise_edition/distributions_constants.lua",
     ["kong.enterprise_edition.pdk.response"] = "kong/enterprise_edition/pdk/response.lua",
+    ["kong.enterprise_edition.databus"] = "kong/enterprise_edition/databus.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
@@ -309,6 +310,7 @@ build = {
     ["kong.db.schema.entities.ca_certificates"] = "kong/db/schema/entities/ca_certificates.lua",
     ["kong.db.schema.entities.groups"] = "kong/db/schema/entities/groups.lua",
     ["kong.db.schema.entities.group_rbac_roles"] = "kong/db/schema/entities/group_rbac_roles.lua",
+    ["kong.db.schema.entities.dbus"] = "kong/db/schema/entities/dbus.lua",
     ["kong.db.schema.others.migrations"] = "kong/db/schema/others/migrations.lua",
     ["kong.db.schema.others.declarative_config"] = "kong/db/schema/others/declarative_config.lua",
     ["kong.db.schema.entity"] = "kong/db/schema/entity.lua",
