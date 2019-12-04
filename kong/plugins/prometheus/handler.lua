@@ -14,6 +14,10 @@ local PrometheusHandler = {
   VERSION  = "0.6.0",
 }
 
+function PrometheusHandler:init_worker(_)
+  prometheus.init_worker()
+end
+
 
 function PrometheusHandler:log(_)
   local message = basic_serializer.serialize(ngx)
