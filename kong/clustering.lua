@@ -7,14 +7,12 @@ local ws_server = require("resty.websocket.server")
 local ssl = require("ngx.ssl")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
-local concurrency = require("kong.concurrency")
 local utils = require("kong.tools.utils")
 local openssl_x509 = require("openssl.x509")
 local assert = assert
 local setmetatable = setmetatable
 local type = type
 local ipairs = ipairs
-local tostring = tostring
 local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
 local cjson_decode = cjson.decode
@@ -42,7 +40,6 @@ local ROLE
 local CERT_DIGEST
 local CERT, CERT_KEY
 local clients = setmetatable({}, WEAK_KEY_MT)
-local clients_n = 0
 local shdict = ngx.shared.kong_clustering -- only when role == "admin"
 local prefix = ngx.config.prefix()
 local CONFIG_CACHE = prefix .. "/config.cache.json"
@@ -51,7 +48,7 @@ local CONFIG_CACHE = prefix .. "/config.cache.json"
 local function update_config(config_table, update_cache)
   assert(type(config_table) == "table")
 
-  local entities, _, err_t, ver, new_hash = dc:parse_table(config_table)
+  local entities, _, _, _, new_hash = dc:parse_table(config_table)
   if not entities then
     return nil, "bad config received from control plane"
   end
@@ -214,7 +211,7 @@ function _M.handle_cp_websocket()
   -- ensure they have latest version running
   res, err = declarative.export_config()
   if not res then
-    ngx_log(ngx_ERR, "unable to export config from database")
+    ngx_log(ngx_ERR, "unable to export config from database: ".. err)
   end
 
   table.insert(queue, res)
@@ -232,8 +229,8 @@ function _M.handle_cp_websocket()
       end
 
       assert(typ == "ping")
-      local ok
-      ok, err = wb:send_pong()
+      local _
+      local _, err = wb:send_pong()
       if err then
         ngx_log(ngx_ERR, "failed to send PONG back to data plane: ", err)
         -- return and let the main thread handle the error
@@ -242,6 +239,7 @@ function _M.handle_cp_websocket()
 
       ngx_log(ngx_DEBUG, "sent PONG packet to control plane")
 
+      local ok
       ok, err = shdict:safe_set(node_id,
                                 cjson_encode({
                                   last_seen = ngx_time(),
@@ -262,7 +260,7 @@ function _M.handle_cp_websocket()
       local config = table.remove(queue, 1)
       assert(config, "config queue can not be empty after semaphore returns")
 
-      local bytes, err = wb:send_binary(cjson_encode({ type = "reconfigure",
+      local _, err = wb:send_binary(cjson_encode({ type = "reconfigure",
                                                        config_table = config,
                                                      }))
       if err then
@@ -414,7 +412,7 @@ function _M.init_worker(conf)
     kong.worker_events.register(function(data)
       local res, err = declarative.export_config()
       if not res then
-        ngx_log(ngx_ERR, "unable to export config from database")
+        ngx_log(ngx_ERR, "unable to export config from database: " .. err)
       end
 
       push_config(res)
