@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [0.7.0](#070---20191204)
 - [0.6.0](#060---20190929)
 - [0.5.0](#050---20190916)
 - [0.4.1](#041---20190801)
@@ -11,6 +12,15 @@
 - [0.3.0](#030---20181015)
 - [0.2.0](#020---20180924)
 - [0.1.0](#010---20180615)
+
+##  [0.7.0] - 2019/12/04
+
+- **Performance improvements:** Reduced the number of writes (and hence locks)
+  to the shared dictionary using lua-resty-counter library.
+  (Status API is being shipped with Kong 1.4).
+  [#69](https://github.com/Kong/kong-plugin-prometheus/pull/69)
+- Update schema for the plugin for Kong 2.0 compatibility
+  [#72](https://github.com/Kong/kong-plugin-prometheus/pull/72)
 
 ##  [0.6.0] - 2019/09/29
 
