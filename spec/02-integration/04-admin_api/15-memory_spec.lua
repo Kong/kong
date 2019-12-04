@@ -18,12 +18,12 @@ local function it_content_types(title, fn)
   it(title .. " with application/json", test_json)
 end
 
-describe("Admin API #off", function()
+describe("Admin API #memory", function()
   local client
 
   lazy_setup(function()
     assert(helpers.start_kong({
-      database = "off",
+      storage = "memory",
       mem_cache_size = "10m",
     }))
   end)
@@ -634,12 +634,12 @@ describe("Admin API #off", function()
   end)
 end)
 
-describe("Admin API (concurrency tests) #off", function()
+describe("Admin API (concurrency tests) #memory", function()
   local client
 
   before_each(function()
     assert(helpers.start_kong({
-      database = "off",
+      storage = "memory",
       nginx_worker_processes = 8,
       mem_cache_size = "10m",
     }))
@@ -756,12 +756,12 @@ describe("Admin API (concurrency tests) #off", function()
   end)
 end)
 
-describe("Admin API #off with Unique Foreign #unique", function()
+describe("Admin API #memory with Unique Foreign #unique", function()
   local client
 
   lazy_setup(function()
     assert(helpers.start_kong({
-      database = "off",
+      database = "memory",
       plugins = "unique-foreign",
       nginx_worker_processes = 1,
       mem_cache_size = "10m",
@@ -842,7 +842,7 @@ describe("Admin API #off with Unique Foreign #unique", function()
       }
     })
 
-    local _, db = helpers.get_db_utils("off", {}, {
+    local _, db = helpers.get_db_utils("memory", {}, {
       "unique-foreign"
     })
 

@@ -216,7 +216,7 @@ describe("Configuration loader", function()
 
     local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
 
-    assert.equal("cassandra", conf.database)
+    assert.equal("cassandra", conf.storage)
     assert.equal("debug", conf.log_level)
   end)
   it("overcomes penlight's list_delim option", function()
@@ -508,9 +508,9 @@ describe("Configuration loader", function()
     end)
     it("enforces enums", function()
       local conf, err = conf_loader(nil, {
-        database = "mysql"
+        storage = "mysql"
       })
-      assert.equal("database has an invalid value: 'mysql' (postgres, cassandra, off)", err)
+      assert.equal("storage has an invalid value: 'mysql' (postgres, cassandra, memory)", err)
       assert.is_nil(conf)
 
       local conf, err = conf_loader(nil, {
@@ -612,7 +612,7 @@ describe("Configuration loader", function()
     end)
     it("errors when hosts have a bad format in cassandra_contact_points", function()
       local conf, err = conf_loader(nil, {
-          database                 = "cassandra",
+          storage                 = "cassandra",
           cassandra_contact_points = [[some/really\bad/host\name,addr2]]
       })
       assert.equal([[bad cassandra contact point 'some/really\bad/host\name': invalid hostname: some/really\bad/host\name]], err)
@@ -620,7 +620,7 @@ describe("Configuration loader", function()
     end)
     it("errors cassandra_refresh_frequency is < 0", function()
       local conf, err = conf_loader(nil, {
-          database                    = "cassandra",
+          storage                    = "cassandra",
           cassandra_refresh_frequency = -1,
       })
       assert.equal("cassandra_refresh_frequency must be 0 or greater", err)
@@ -628,7 +628,7 @@ describe("Configuration loader", function()
     end)
     it("errors when specifying a port in cassandra_contact_points", function()
       local conf, err = conf_loader(nil, {
-          database                 = "cassandra",
+          storage                 = "cassandra",
           cassandra_contact_points = "addr1:9042,addr2"
       })
       assert.equal("bad cassandra contact point 'addr1:9042': port must be specified in cassandra_port", err)
@@ -878,12 +878,12 @@ describe("Configuration loader", function()
       os.getenv = function() end -- luacheck: ignore
 
       local conf = assert(conf_loader(helpers.test_conf_path))
-      assert.equal("postgres", conf.database)
+      assert.equal("postgres", conf.storage)
     end)
     it("requires cassandra_local_datacenter if DCAware LB policy is in use", function()
       for _, policy in ipairs({ "DCAwareRoundRobin", "RequestDCAwareRoundRobin" }) do
         local conf, err = conf_loader(nil, {
-          database            = "cassandra",
+          storage            = "cassandra",
           cassandra_lb_policy = policy,
         })
         assert.is_nil(conf)
@@ -903,7 +903,7 @@ describe("Configuration loader", function()
       os.getenv = function() end -- luacheck: ignore
 
       local conf = assert(conf_loader(helpers.test_conf_path))
-      assert.equal("postgres", conf.database)
+      assert.equal("postgres", conf.storage)
     end)
   end)
 
