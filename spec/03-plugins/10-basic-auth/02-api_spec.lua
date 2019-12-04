@@ -538,9 +538,9 @@ for _, strategy in helpers.each_strategy() do
             }
           })
 
-          local body = assert.res_status(400, res)
+          local body = assert.res_status(404, res)
           local json = cjson.decode(body)
-          assert.same("schema violation (all or none of these fields must be set: 'password', 'consumer.id')", json.message)
+          assert.same("could not find the entity with '{username=\"bob\"}'", json.message)
         end)
       end)
 
