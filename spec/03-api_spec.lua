@@ -24,6 +24,13 @@ describe("Plugin: proxy-cache", function()
       },
     })
 
+    -- an additional plugin does not interfere with the iteration in
+    -- the global /proxy-cache API handler: regression test for
+    -- https://github.com/Kong/kong-plugin-proxy-cache/issues/12
+    assert(bp.plugins:insert {
+      name = "request-transformer",
+    })
+
     local route2 = assert(bp.routes:insert {
       hosts = { "route-2.com" },
     })
@@ -41,7 +48,7 @@ describe("Plugin: proxy-cache", function()
     })
 
     assert(helpers.start_kong({
-      plugins = "proxy-cache",
+      plugins = "proxy-cache,request-transformer",
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
 

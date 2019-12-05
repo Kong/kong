@@ -12,16 +12,32 @@ local function broadcast_purge(plugin_id, cache_key)
 end
 
 
+local function each_proxy_cache()
+  local iter = kong.db.plugins:each()
+
+  return function()
+    while true do
+      local plugin, err = iter()
+      if err then
+        return kong.response.exit(500, { message = err })
+      end
+      if not plugin then
+        return
+      end
+      if plugin.name == "proxy-cache" then
+        return plugin
+      end
+    end
+  end
+end
+
+
 return {
   ["/proxy-cache"] = {
     resource = "proxy-cache",
 
     DELETE = function()
-      for plugin, err in kong.db.plugins:each(1000,
-        { cache_key = "proxy-cache", }) do
-        if err then
-          return kong.response.exit(500, { message = err })
-        end
+      for plugin in each_proxy_cache() do
 
         local strategy = require(STRATEGY_PATH)({
           strategy_name = plugin.config.strategy,
@@ -51,11 +67,7 @@ return {
     resource = "proxy-cache",
 
     GET = function(self)
-      for plugin, err in kong.db.plugins:each(1000,
-        { cache_key = "proxy-cache", }) do
-        if err then
-          return kong.response.exit(500, { message = err })
-        end
+      for plugin in each_proxy_cache() do
 
         local strategy = require(STRATEGY_PATH)({
           strategy_name = plugin.config.strategy,
@@ -78,11 +90,7 @@ return {
     end,
 
     DELETE = function(self)
-      for plugin, err in kong.db.plugins:each(1000,
-        { cache_key = "proxy-cache", }) do
-        if err then
-          return kong.response.exit(500, { message = err })
-        end
+      for plugin in each_proxy_cache() do
 
         local strategy = require(STRATEGY_PATH)({
           strategy_name = plugin.config.strategy,
