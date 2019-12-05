@@ -261,6 +261,9 @@ return {
     config = {
       skip = true,
     },
+    clustering = {
+      skip = true,
+    },
     tags = {
       title = [[ Tags ]],
       description = [[
