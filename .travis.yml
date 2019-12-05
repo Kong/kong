@@ -43,6 +43,7 @@ env:
     - KONG_TEST_DATABASE=postgres TEST_SUITE=plugins
     - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2 TEST_SUITE=plugins
     - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=plugins
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=external_plugins
     - TEST_SUITE=pdk
 
 install:
