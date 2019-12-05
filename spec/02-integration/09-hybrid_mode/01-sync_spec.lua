@@ -67,15 +67,14 @@ for _, strategy in helpers.each_strategy() do
           body = { name = "mockbin-service", url = "https://mockbin.org/request", },
           headers = {["Content-Type"] = "application/json"}
         }))
-        local body = assert.res_status(201, res)
-        local json = cjson.decode(body)
+        assert.res_status(201, res)
 
         res = assert(client:post("/services/mockbin-service/routes", {
           body = { paths = { "/" }, },
           headers = {["Content-Type"] = "application/json"}
         }))
-        body = assert.res_status(201, res)
-        json = cjson.decode(body)
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
 
         route_id = json.id
 
@@ -83,7 +82,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
         }))
-        body = assert.res_status(200, res)
+        assert.res_status(200, res)
       end)
 
       it("cache invalidation works on config change", function()
@@ -91,7 +90,7 @@ for _, strategy in helpers.each_strategy() do
           method = "DELETE",
           path   = "/routes/" .. route_id,
         }))
-        body = assert.res_status(204, res)
+        assert.res_status(204, res)
 
         res = assert(proxy_client:send({
           method  = "GET",
@@ -99,7 +98,7 @@ for _, strategy in helpers.each_strategy() do
         }))
 
         -- should remove the route from DP immediately
-        body = assert.res_status(404, res)
+        assert.res_status(404, res)
       end)
     end)
   end)

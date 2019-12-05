@@ -230,7 +230,7 @@ function _M.handle_cp_websocket()
 
       assert(typ == "ping")
       local _
-      local _, err = wb:send_pong()
+      _, err = wb:send_pong()
       if err then
         ngx_log(ngx_ERR, "failed to send PONG back to data plane: ", err)
         -- return and let the main thread handle the error

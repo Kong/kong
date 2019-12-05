@@ -16,6 +16,7 @@ return {
       "kong/api/routes/health.lua",
       "kong/api/routes/config.lua",
       "kong/api/routes/tags.lua",
+      "kong/api/routes/clustering.lua",
     },
     nodoc_files = {
       "kong/api/routes/cache.lua", -- FIXME should we document this?
