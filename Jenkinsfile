@@ -148,7 +148,7 @@ pipeline {
                     }
                     post {
                         always {
-                            dir('../kong-build-tools'){ sh 'make cleanup_build' }
+                            dir('../kong-build-tools'){ sh 'make cleanup-build' }
                         }
                     }
                 }
