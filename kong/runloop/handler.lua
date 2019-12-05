@@ -188,20 +188,24 @@ local function register_events()
     -- caching key
 
     local cache_key = db[data.schema.name]:cache_key(data.entity)
+    local cache_obj
+    if constants.CORE_ENTITIES[data.schema.name] then
+      cache_obj = core_cache
+    else
+      cache_obj = cache
+    end
 
     if cache_key then
-      cache:invalidate(cache_key)
-      core_cache:invalidate(cache_key)
+      cache_obj:invalidate(cache_key)
     end
 
     -- if we had an update, but the cache key was part of what was updated,
     -- we need to invalidate the previous entity as well
 
     if data.old_entity then
-      cache_key = db[data.schema.name]:cache_key(data.old_entity)
-      if cache_key then
-        cache:invalidate(cache_key)
-        core_cache:invalidate(cache_key)
+      local old_cache_key = db[data.schema.name]:cache_key(data.old_entity)
+      if old_cache_key and cache_key ~= old_cache_key then
+        cache_obj:invalidate(old_cache_key)
       end
     end
 
