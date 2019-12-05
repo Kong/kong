@@ -1159,8 +1159,6 @@ function Kong.serve_cluster_listener(options)
 
   kong_global.set_phase(kong, PHASES.cluster_listener)
 
-  options = options or {}
-
   return clustering.handle_cp_websocket()
 end
 
