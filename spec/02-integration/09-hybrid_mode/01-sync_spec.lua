@@ -55,7 +55,7 @@ for _, strategy in helpers.each_strategy() do
           end
         end
 
-        assert(found)
+        assert(found, "DP did not connect to CP in time")
       end)
     end)
 
