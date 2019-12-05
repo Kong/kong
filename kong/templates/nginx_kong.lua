@@ -56,6 +56,9 @@ lua_shared_dict kong_rate_limiting_counters 12m;
 > if database == "cassandra" then
 lua_shared_dict kong_cassandra      5m;
 > end
+> if role == "admin" then
+lua_shared_dict kong_clustering     5m;
+> end
 lua_socket_log_errors off;
 > if lua_ssl_trusted_certificate then
 lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE}}';
@@ -260,9 +263,9 @@ server {
         }
     }
 }
-> end
+> end -- (role == "traditional" or role == "proxy") and #proxy_listeners > 0
 
-> if #admin_listeners > 0 then
+> if (role == "admin" or role == "traditional") and #admin_listeners > 0 then
 server {
     server_name kong_admin;
 > for i = 1, #admin_listeners do
@@ -310,7 +313,7 @@ server {
         return 200 'User-agent: *\nDisallow: /';
     }
 }
-> end
+> end -- (role == "admin" or role == "traditional") and #admin_listeners > 0
 
 > if #status_listeners > 0 then
 server {
@@ -348,4 +351,25 @@ server {
     }
 }
 > end
+
+> if role == "admin" then
+server {
+    server_name kong_cluster_listener;
+> for i = 1, #cluster_listeners do
+    listen $(cluster_listeners[i].listener) ssl;
+> end
+
+    access_log off;
+
+    ssl_verify_client   optional_no_ca;
+    ssl_certificate     ${{CLUSTER_CERT}};
+    ssl_certificate_key ${{CLUSTER_CERT_KEY}};
+
+    location = /v1/outlet {
+        content_by_lua_block {
+            Kong.serve_cluster_listener()
+        }
+    }
+}
+> end -- role == "admin"
 ]]
