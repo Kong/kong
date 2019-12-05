@@ -514,7 +514,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/basic-auths/:username_or_id", function()
+    describe("/basic-auths/:username_or_id #p1", function()
       describe("PATCH", function()
         local consumer2
 
