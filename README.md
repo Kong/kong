@@ -1,5 +1,8 @@
 # Kong Azure Functions Plugin
 
+[![Build Status][badge-travis-image]][badge-travis-url]
+
+
 This plugin invokes
 [Azure Functions](https://azure.microsoft.com/en-us/services/functions/).
 It can be used in combination with other request plugins to secure, manage
@@ -35,3 +38,5 @@ for details on installation and usage.
 
 0.1.0 Initial release
 
+[badge-travis-url]: https://travis-ci.com/Kong/kong-plugin-azure-functions/branches
+[badge-travis-image]: https://travis-ci.com/Kong/kong-plugin-azure-functions.svg?branch=master
