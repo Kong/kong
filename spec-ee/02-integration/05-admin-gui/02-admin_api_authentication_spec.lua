@@ -979,7 +979,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("max attempts", function()
-          local super_admin, read_only_admin1, read_only_admin2, read_only_admin3
+          local super_admin, read_only_admin1, read_only_admin2, read_only_admin3, upgrade_admin
 
           lazy_setup(function()
             truncate_tables(db)
@@ -1002,6 +1002,7 @@ for _, strategy in helpers.each_strategy() do
             read_only_admin1 = admin(db, ws, 'gruce1', 'read-only', 'test1@konghq.com')
             read_only_admin2 = admin(db, ws, 'gruce2', 'read-only', 'test2@konghq.com')
             read_only_admin3 = admin(db, ws, 'gruce3', 'read-only', 'test3@konghq.com')
+            upgrade_admin = admin(db, ws, "gruce4", "read-only", "test4@konghq.com")
 
             assert(db.basicauth_credentials:insert {
               username    = super_admin.username,
@@ -1034,6 +1035,14 @@ for _, strategy in helpers.each_strategy() do
                 id = read_only_admin3.consumer.id,
               },
             })
+
+            assert(db.basicauth_credentials:insert {
+              username    = upgrade_admin.username,
+              password    = "hunter2",
+              consumer = {
+                id = upgrade_admin.consumer.id,
+              },
+            })
           end)
 
           lazy_teardown(function()
@@ -1064,6 +1073,24 @@ for _, strategy in helpers.each_strategy() do
 
               assert.res_status(401, res)
               assert.equals(1, db.login_attempts:select({consumer = super_admin.consumer}).attempts["127.0.0.1"])
+            end)
+
+            it("user is denied access - upgrade path", function()
+              -- previous attempt on different IP
+              assert(db.login_attempts:insert({
+                consumer = upgrade_admin.consumer,
+                attempts = {
+                  ["1.2.3.4"] = 1
+                }
+              }, { ttl = 600 }))
+
+              local res = request_invalid(upgrade_admin.username)
+
+              assert.res_status(401, res)
+
+              local actual = assert(db.login_attempts:select({ consumer = upgrade_admin.consumer }))
+              assert.equals(1, actual.attempts["1.2.3.4"])
+              assert.equals(1, actual.attempts["127.0.0.1"])
             end)
 
             it("user is denied access - different consumer", function ()

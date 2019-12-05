@@ -7,6 +7,10 @@ local _M = {}
 -- By default, the attempts_ttl is one week (60 * 60 * 24 * 7)
 local LOGIN_ATTEMPTS_TTL = 604800
 
+-- login_attempts.attempts is a map of counts per IP address.
+-- For now, we don't lock out per IP, so just pick one for the map entry.
+local LOGIN_ATTEMPTS_IP = "127.0.0.1"
+
 -- user-friendly preset can be added to this table
 -- Kong Manager only supports the keywords: "min", "max" and "passphrase"
 -- since the existed password will be supported regardless it's complexity
@@ -31,12 +35,10 @@ end
 -- @tparam table|nil entity - admin or developer entity including entity.consumer
 -- @tparam number max - max attempts allowed
 function _M.plugin_res_handler(plugin_res, entity, max)
-  local ip = kong.client.get_ip()
-
   if type(plugin_res) == 'table' and
     plugin_res.status == 401
   then
-    local _, err = _M.unauthorized_login_attempt(entity, ip, max)
+    local _, err = _M.unauthorized_login_attempt(entity, max)
     if err then
       kong.response.exit(500, { message = "An unexpected error occurred" })
     end
@@ -45,7 +47,7 @@ function _M.plugin_res_handler(plugin_res, entity, max)
     kong.response.exit(plugin_res.status, { message = plugin_res.message })
   end
 
-  local _, err = _M.successful_login_attempt(entity, ip, max)
+  local _, err = _M.successful_login_attempt(entity, max)
   if err then
     kong.response.exit(500, { message = "An unexpected error occurred" })
   end
@@ -54,9 +56,8 @@ end
 
 -- Logic for login_attempts once user has been marked unauthorized
 -- @tparam table entity - admin or developer entity including entity.consumer
--- @tparam string ip - ip address of login attempt
 -- @tparam number max - max attempts allowed
-function _M.unauthorized_login_attempt(entity, ip, max)
+function _M.unauthorized_login_attempt(entity, max)
   if max == 0 then return end
 
   local login_attempts = kong.db.login_attempts
@@ -73,7 +74,7 @@ function _M.unauthorized_login_attempt(entity, ip, max)
     local _, err = login_attempts:insert({
       consumer = consumer,
       attempts = {
-        [ip] = 1
+        [LOGIN_ATTEMPTS_IP] = 1
       }
     }, { ttl = LOGIN_ATTEMPTS_TTL })
 
@@ -85,8 +86,8 @@ function _M.unauthorized_login_attempt(entity, ip, max)
     return
   end
 
-  -- Additional attempts
-  attempt.attempts[ip] = attempt.attempts[ip] + 1
+  -- Additional attempts. For upgrades, LOGIN_ATTEMPTS_IP may not be in the table
+  attempt.attempts[LOGIN_ATTEMPTS_IP] = (attempt.attempts[LOGIN_ATTEMPTS_IP] or 0) + 1
   local _, err = login_attempts:update({consumer = consumer}, {
     attempts = attempt.attempts
   })
@@ -97,19 +98,17 @@ function _M.unauthorized_login_attempt(entity, ip, max)
   end
 
   -- Final attempt
-  if attempt.attempts[ip] >= max then
+  if attempt.attempts[LOGIN_ATTEMPTS_IP] >= max then
     local user = entity.username or entity.email
-    kong.log.warn("Unauthorized, and login attempts exceed max for user:" ..
-      user .. ", account locked at ip address:", ip)
+    kong.log.warn("Unauthorized: login attempts exceed max for user " .. user)
   end
 end
 
 
 -- Logic for login_attempts once user successfully logs in
 -- @tparam table entity - admin or developer entity including entity.consumer
--- @tparam string ip - ip address of login attempt
 -- @tparam number max - max attempts allowed
-function _M.successful_login_attempt(entity, ip, max)
+function _M.successful_login_attempt(entity, max)
   if max == 0 then return end
 
   local login_attempts = kong.db.login_attempts
@@ -122,19 +121,19 @@ function _M.successful_login_attempt(entity, ip, max)
   end
 
   -- no failed attempts, good to proceed
-  if not attempt or not attempt.attempts[ip] then
+  if not attempt or not attempt.attempts[LOGIN_ATTEMPTS_IP] then
     return
   end
 
   -- User is authorized, but can be denied access if attempts exceed max
-  if attempt.attempts[ip] >= max then
+  if attempt.attempts[LOGIN_ATTEMPTS_IP] >= max then
     local user = entity.username or entity.email
-    kong.log.warn("Successful authorization, but login attempts exceed max for user:"
-     .. user .. ", account locked at ip address:", ip)
+    kong.log.warn("Authorized: login attempts exceed max for user " .. user)
     -- use the same response from basic-auth plugin
     kong.response.exit(401, { message = "Invalid authentication credentials" })
   end
 
+  -- Successful login before hitting max clears the counter
   local _, err = login_attempts:delete({consumer = consumer})
 
   if err then
