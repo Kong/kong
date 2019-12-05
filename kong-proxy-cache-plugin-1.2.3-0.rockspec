@@ -1,9 +1,9 @@
 package = "kong-proxy-cache-plugin"
-version = "1.2.2-0"
+version = "1.2.3-0"
 
 source = {
   url = "git://github.com/Kong/kong-plugin-proxy-cache",
-  tag = "1.2.2"
+  tag = "1.2.3"
 }
 
 supported_platforms = {"linux", "macosx"}
