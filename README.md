@@ -94,4 +94,4 @@ For example, the `kong.rewrite`, `start` log would be transmitted as:
 
 
 [badge-travis-url]: https://travis-ci.com/Kong/kong-plugin-zipkin/branches
-[badge-travis-image]: https://travis-ci.com/Kong/kong-plugin-zipkin?branch=master
+[badge-travis-image]: https://api.travis-ci.com/Kong/kong-plugin-zipkin.svg?branch=master
