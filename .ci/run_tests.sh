@@ -29,19 +29,30 @@ if [ "$TEST_SUITE" == "pdk" ]; then
     TEST_NGINX_RANDOMIZE=1 prove -I. -j$JOBS -r t/01-pdk
 fi
 if [ "$TEST_SUITE" == "external_plugins" ]; then
-    cat kong-*.rockspec | grep kong- | grep -v sidecar | grep -v zipkin | grep -v azure | grep "~" | while read line ; do
+    set +e
+    rm -f .failed
+    cat kong-*.rockspec | grep kong- | grep -v sidecar | grep -v zipkin | grep "~" | while read line ; do
         REPOSITORY=`echo $line | sed "s/\"/ /g" | awk -F" " '{print $1}'`
         VERSION=`luarocks show $REPOSITORY | grep $REPOSITORY | head -1 | awk -F" " '{print $2}' | cut -f1 -d"-"`
         REPOSITORY=`echo $REPOSITORY | sed -e 's/kong-prometheus-plugin/kong-plugin-prometheus/g'`
         REPOSITORY=`echo $REPOSITORY | sed -e 's/kong-proxy-cache-plugin/kong-plugin-proxy-cache/g'`
         echo $REPOSITORY
         echo $VERSION
-        git clone https://github.com/Kong/$REPOSITORY.git --branch $VERSION --single-branch /tmp/plugin-under-test
-        cp -R /tmp/plugin-under-test/spec/fixtures/* spec/fixtures/ || true
-        pushd /tmp/plugin-under-test
+        git clone https://github.com/Kong/$REPOSITORY.git --branch $VERSION --single-branch /tmp/test-$REPOSITORY
+        cp -R /tmp/test-$REPOSITORY/spec/fixtures/* spec/fixtures/ || true
+        pushd /tmp/test-$REPOSITORY
         luarocks make
         popd
-        bin/busted -o gtest -v --exclude-tags=flaky,ipv6 /tmp/plugin-under-test/spec/
-        rm -rf /tmp/plugin-under-test
+        bin/busted -o gtest -v --exclude-tags=flaky,ipv6 /tmp/test-$REPOSITORY/spec/ || echo $REPOSITORY >> .failed
+        rm -rf /tmp/test-$REPOSITORY
     done
+    if [ -f .failed ]; then
+        echo "--------------------------------------"
+        echo "Plugin test failure(s):"
+        echo "--------------------------------------"
+        cat .failed
+        exit 1
+    else
+        exit 0
+    fi
 fi
