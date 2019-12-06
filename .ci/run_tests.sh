@@ -23,14 +23,13 @@ if [ "$TEST_SUITE" == "dbless" ]; then
                      spec/02-integration/04-admin_api/15-off_spec.lua
 fi
 if [ "$TEST_SUITE" == "plugins" ]; then
-    eval "$TEST_CMD" spec/03-plugins/
-fi
-if [ "$TEST_SUITE" == "pdk" ]; then
-    TEST_NGINX_RANDOMIZE=1 prove -I. -j$JOBS -r t/01-pdk
-fi
-if [ "$TEST_SUITE" == "external_plugins" ]; then
     set +e
     rm -f .failed
+
+    for p in spec/03-plugins/*; do
+        $TEST_CMD $p || echo "* $p" >> .failed
+    done
+
     cat kong-*.rockspec | grep kong- | grep -v sidecar | grep -v zipkin | grep "~" | while read line ; do
         REPOSITORY=`echo $line | sed "s/\"/ /g" | awk -F" " '{print $1}'`
         VERSION=`luarocks show $REPOSITORY | grep $REPOSITORY | head -1 | awk -F" " '{print $2}' | cut -f1 -d"-"`
@@ -43,16 +42,22 @@ if [ "$TEST_SUITE" == "external_plugins" ]; then
         pushd /tmp/test-$REPOSITORY
         luarocks make
         popd
-        bin/busted -o gtest -v --exclude-tags=flaky,ipv6 /tmp/test-$REPOSITORY/spec/ || echo $REPOSITORY >> .failed
+
+        $TEST_CMD /tmp/test-$REPOSITORY/spec/ || echo "* $REPOSITORY" >> .failed
+
         rm -rf /tmp/test-$REPOSITORY
     done
+
     if [ -f .failed ]; then
         echo "--------------------------------------"
-        echo "Plugin test failure(s):"
+        echo "Plugin tests failed:"
         echo "--------------------------------------"
         cat .failed
         exit 1
     else
         exit 0
     fi
+fi
+if [ "$TEST_SUITE" == "pdk" ]; then
+    TEST_NGINX_RANDOMIZE=1 prove -I. -j$JOBS -r t/01-pdk
 fi
