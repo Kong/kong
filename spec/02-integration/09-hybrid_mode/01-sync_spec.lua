@@ -78,6 +78,8 @@ for _, strategy in helpers.each_strategy() do
 
         route_id = json.id
 
+        ngx.sleep(0.5)
+
         res = assert(proxy_client:send({
           method  = "GET",
           path    = "/",
@@ -91,6 +93,8 @@ for _, strategy in helpers.each_strategy() do
           path   = "/routes/" .. route_id,
         }))
         assert.res_status(204, res)
+
+        ngx.sleep(0.5)
 
         res = assert(proxy_client:send({
           method  = "GET",
