@@ -31,8 +31,6 @@ for _, strategy in helpers.each_strategy() do
 
       client = helpers.admin_client(10000)
       proxy_client = helpers.proxy_client()
-
-      ngx.sleep(0.5) -- wait for DP to connect
     end)
 
     lazy_teardown(function()
@@ -43,19 +41,19 @@ for _, strategy in helpers.each_strategy() do
 
     describe("status API", function()
       it("shows DP status", function()
-        local res = assert(client:get("/clustering/status"))
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
+        helpers.wait_until(function()
+          local res = assert(client:get("/clustering/status"))
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
 
-        local found = false
+          local found = false
 
-        for _, v in pairs(json) do
-          if v.ip == "127.0.0.1" then
-            found = true
+          for _, v in pairs(json) do
+            if v.ip == "127.0.0.1" then
+              return true
+            end
           end
-        end
-
-        assert(found, "DP did not connect to CP in time")
+        end, 5)
       end)
     end)
 
@@ -78,13 +76,18 @@ for _, strategy in helpers.each_strategy() do
 
         route_id = json.id
 
-        ngx.sleep(0.5)
+        helpers.wait_until(function()
+          proxy_client = helpers.proxy_client()
 
-        res = assert(proxy_client:send({
-          method  = "GET",
-          path    = "/",
-        }))
-        assert.res_status(200, res)
+          res = assert(proxy_client:send({
+            method  = "GET",
+            path    = "/",
+          }))
+
+          if res.status == 200 then
+            return true
+          end
+        end, 5)
       end)
 
       it("cache invalidation works on config change", function()
@@ -94,15 +97,19 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(204, res)
 
-        ngx.sleep(0.5)
+        helpers.wait_until(function()
+          proxy_client = helpers.proxy_client()
 
-        res = assert(proxy_client:send({
-          method  = "GET",
-          path    = "/",
-        }))
+          res = assert(proxy_client:send({
+            method  = "GET",
+            path    = "/",
+          }))
 
-        -- should remove the route from DP immediately
-        assert.res_status(404, res)
+          -- should remove the route from DP immediately
+          if res.status == 404 then
+            return true
+          end
+        end, 5)
       end)
     end)
   end)
