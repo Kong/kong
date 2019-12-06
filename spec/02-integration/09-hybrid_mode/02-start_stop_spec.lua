@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local cjson = require "cjson.safe"
 
 
 describe("invalid config are rejected", function()

@@ -46,8 +46,6 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
-          local found = false
-
           for _, v in pairs(json) do
             if v.ip == "127.0.0.1" then
               return true
