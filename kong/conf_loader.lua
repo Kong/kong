@@ -566,11 +566,11 @@ local function check_and_infer(conf)
   end
 
   if conf.role == "admin" then
-    if #conf.admin_listen < 1 then
+    if #conf.admin_listen < 1 or pl_stringx.strip(conf.admin_listen[1]) == "off" then
       errors[#errors + 1] = "admin_listen must be specified when role = \"admin\""
     end
 
-    if #conf.cluster_listen < 1 then
+    if #conf.cluster_listen < 1 or pl_stringx.strip(conf.cluster_listen[1]) == "off" then
       errors[#errors + 1] = "cluster_listen must be specified when role = \"admin\""
     end
 
@@ -579,16 +579,13 @@ local function check_and_infer(conf)
     end
 
   elseif conf.role == "proxy" then
-    if #conf.proxy_listen < 1 then
+    if #conf.proxy_listen < 1 or pl_stringx.strip(conf.proxy_listen[1]) == "off" then
       errors[#errors + 1] = "proxy_listen must be specified when role = \"proxy\""
     end
 
-    if not conf.cluster_control_plane then
-      errors[#errors + 1] = "cluster_control_plane must be specified when role = \"proxy\""
-    end
-
     if conf.database ~= "off" then
-      errors[#errors + 1] = "only in-memory storage can be used when role = \"proxy\""
+      errors[#errors + 1] = "only in-memory storage can be used when role = \"proxy\"\n" ..
+                            "Hint: set database = off in your kong.conf"
     end
   end
 
