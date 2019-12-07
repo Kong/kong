@@ -86,25 +86,6 @@ pipeline {
                         }
                     }
                 }
-                stage('external plugins') {
-                    agent {
-                        node {
-                            label 'docker-compose'
-                        }
-                    }
-                    environment {
-                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
-                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                        TEST_DATABASE = 'cassandra'
-                        TEST_SUITE = 'external_plugins'
-                    }
-                    steps {
-                        sh 'make setup-kong-build-tools'
-                        dir('../kong-build-tools'){
-                            sh 'make test-kong'
-                        }
-                    }
-                }
                 stage('cassandra') {
                     agent {
                         node {
