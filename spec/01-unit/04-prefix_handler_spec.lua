@@ -52,35 +52,6 @@ describe("NGINX conf compiler", function()
     end)
   end)
 
-  describe("#stream compile_kong_stream_conf()", function()
-    it("enables ssl_preread conditionally", function()
-      local save_nginx_configure = ngx.config.nginx_configure -- luacheck: ignore
-      finally(function()
-        ngx.config.nginx_configure = save_nginx_configure -- luacheck: ignore
-      end)
-
-      -- with ssl_preread enabled
-      ngx.config.nginx_configure = function() -- luacheck: ignore
-        return "--with-foo --with-stream_ssl_preread_module --with-bar"
-      end
-      local conf = assert(conf_loader(helpers.test_conf_path, {
-        stream_listen = "0.0.0.0:9100",
-      }))
-      local kong_nginx_stream_conf = prefix_handler.compile_kong_stream_conf(conf)
-      assert.matches("ssl_preread on", kong_nginx_stream_conf, nil, true)
-
-      -- without ssl_preread enabled
-      ngx.config.nginx_configure = function() -- luacheck: ignore
-        return " --with-foo --with-bar"
-      end
-      conf = assert(conf_loader(helpers.test_conf_path, {
-        stream_listen = "0.0.0.0:9100",
-      }))
-      kong_nginx_stream_conf = prefix_handler.compile_kong_stream_conf(conf)
-      assert.not_matches("ssl_preread on", kong_nginx_stream_conf, nil, true)
-    end)
-  end)
-
   describe("compile_kong_conf()", function()
     it("compiles the Kong NGINX conf chunk", function()
       local kong_nginx_conf = prefix_handler.compile_kong_conf(helpers.test_conf)
@@ -336,7 +307,8 @@ describe("NGINX conf compiler", function()
       end)
       it("set_real_ip_from (stream proxy)", function()
         local conf = assert(conf_loader(nil, {
-          trusted_ips = "192.168.1.0/24,192.168.2.1,2001:0db8::/32"
+          trusted_ips = "192.168.1.0/24,192.168.2.1,2001:0db8::/32",
+          stream_listen = "127.0.0.1:8888",
         }))
         local nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
         assert.matches("set_real_ip_from%s+192.168.1.0/24", nginx_conf)

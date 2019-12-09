@@ -25,6 +25,7 @@ local PHASES = phase_checker.phases
 
 
 local access_and_rewrite = phase_checker.new(PHASES.rewrite, PHASES.access)
+local preread_and_balancer = phase_checker.new(PHASES.preread, PHASES.balancer)
 
 
 ---
@@ -645,6 +646,33 @@ local function new(self)
       return true
     end
 
+  end
+
+
+  if ngx.config.subsystem == "stream" then
+    local disable_proxy_ssl = require("resty.kong.tls").disable_proxy_ssl
+
+    ---
+    -- Disables the TLS handshake to upstream for [ngx\_stream\_proxy\_module](https://nginx.org/en/docs/stream/ngx_stream_proxy_module.html).
+    -- Effectively this overrides [proxy\_ssl](https://nginx.org/en/docs/stream/ngx_stream_proxy_module.html#proxy_ssl) directive to `off` setting
+    -- for the current stream session.
+    --
+    -- Note that once this function has been called it is not possible to re-enable TLS handshake for the current session.
+    --
+    -- @function kong.service.request.disable_tls
+    -- @phases `preread`, `balancer`
+    -- @treturn boolean|nil `true` if the operation succeeded, `nil` if an error occurred
+    -- @treturn string|nil An error message describing the error if there was one.
+    -- @usage
+    -- local ok, err = kong.service.request.disable_tls()
+    -- if not ok then
+    --   -- do something with error
+    -- end
+    request.disable_tls = function()
+      check_phase(preread_and_balancer)
+
+      return disable_proxy_ssl()
+    end
   end
 
   return request

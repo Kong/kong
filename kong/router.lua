@@ -1715,14 +1715,14 @@ function _M.new(routes)
     end
 
   else -- stream
-    function self.exec()
+    function self.exec(ctx)
       local src_ip = var.remote_addr
       local src_port = tonumber(var.remote_port, 10)
       local dst_ip = var.server_addr
       local dst_port = tonumber(var.server_port, 10)
-      local sni = var.ssl_preread_server_name
+      local sni = ctx.sni_server_name
 
-      return find_route(nil, nil, nil, "tcp",
+      return find_route(nil, nil, nil, nil,
                         src_ip, src_port,
                         dst_ip, dst_port,
                         sni)

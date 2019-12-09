@@ -44,9 +44,6 @@ for _, strategy in helpers.each_strategy() do
       local tcp = require "socket".tcp()
       assert(tcp:connect(helpers.get_proxy_ip(false), 19001))
 
-      -- TODO: we need to get rid of the next line!
-      assert(tcp:send(MESSAGE))
-
       local body = assert(tcp:receive("*a"))
       assert.equal("ok", body)
 
@@ -187,7 +184,7 @@ for _, strategy in helpers.each_strategy() do
         plugins = "reports-api",
         stream_listen = helpers.get_proxy_ip(false) .. ":19000," ..
                         helpers.get_proxy_ip(false) .. ":19001," ..
-                        helpers.get_proxy_ip(true)  .. ":19443",
+                        helpers.get_proxy_ip(true)  .. ":19443 ssl",
 
       }))
 
@@ -382,10 +379,9 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("#stream reports tcp streams", function()
-      local tcp = require "socket".tcp()
+      local tcp = ngx.socket.tcp()
       assert(tcp:connect(helpers.get_proxy_ip(false), 19000))
 
-      -- TODO: we need to get rid of the next line!
       assert(tcp:send(MESSAGE))
 
       local body = assert(tcp:receive("*a"))
@@ -402,24 +398,13 @@ for _, strategy in helpers.each_strategy() do
       assert.match("tls_streams=0", reports_data[1])
     end)
 
-    pending("#stream reports tls streams", function()
-      local tcp = require "socket".tcp()
-      local ssl = require("ssl")
+    it("#stream reports tls streams", function()
+      local tcp = ngx.socket.tcp()
 
       assert(tcp:connect(helpers.get_proxy_ip(true), 19443))
 
-      tcp = ssl.wrap(tcp, {
-        mode     = "client",
-        verify   = "none",
-        protocol = "any",
-      })
+      assert(tcp:sslhandshake(nil, "this-is-needed.test", false))
 
-      -- TODO: should SNI really be mandatory?
-      tcp:sni("this-is-needed.test")
-
-      assert(tcp:dohandshake())
-
-      -- TODO: we need to get rid of the next line!
       assert(tcp:send(MESSAGE))
 
       local body = assert(tcp:receive("*a"))
