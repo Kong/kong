@@ -449,6 +449,41 @@ describe("Admin API #off", function()
         }, json)
       end)
 
+      it("returns 400 on a validation error", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            _format_version: "1.1"
+            services:
+            - port: -12
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        local body = assert.response(res).has.status(400)
+        local json = cjson.decode(body)
+        assert.same({
+          code = 14,
+          fields = {
+            services = {
+              {
+                host = "required field missing",
+                port = "value should be between 0 and 65535",
+              }
+            }
+          },
+          message = [[declarative config is invalid: ]] ..
+                    [[{services={{host="required field missing",]] ..
+                    [[port="value should be between 0 and 65535"}}}]],
+          name = "invalid declarative configuration",
+        }, json)
+      end)
+
       it("returns 400 when given no input", function()
         local res = assert(client:send {
           method = "POST",
