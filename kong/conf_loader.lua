@@ -1099,7 +1099,10 @@ local function load(path, custom_conf, opts)
   conf.prefix = pl_path.abspath(conf.prefix)
 
   conf.go_plugins_dir = pl_path.abspath(conf.go_plugins_dir)
-  conf.pluginserver_socket = pl_path.abspath(conf.pluginserver_socket)
+
+  if conf.pluginserver_socket ~= "off" then
+    conf.pluginserver_socket = pl_path.abspath(conf.pluginserver_socket)
+  end
 
   if conf.ssl_cert and conf.ssl_cert_key then
     conf.ssl_cert = pl_path.abspath(conf.ssl_cert)

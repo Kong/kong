@@ -120,7 +120,11 @@
 
 #pluginserver_socket = off
                                  # Path for the Unix domain socket used for
-                                 # IPC between Kong and the Go plugin server
+                                 # IPC between Kong and the out-of-process
+                                 # plugin server, used for Go plugins.
+                                 #
+                                 # This value can be set to `off`, thus disabling
+                                 # the plugin server and Go plugin loading.
 
 #anonymous_reports = on          # Send anonymous usage data such as error
                                  # stack traces to help improve Kong.

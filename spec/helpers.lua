@@ -25,7 +25,6 @@ local plugins_schema_def = require "kong.db.schema.entities.plugins"
 local routes_schema_def = require "kong.db.schema.entities.routes"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local dc_blueprints = require "spec.fixtures.dc_blueprints"
-local declarative = require "kong.db.declarative"
 local conf_loader = require "kong.conf_loader"
 local kong_global = require "kong.global"
 local Blueprints = require "spec.fixtures.blueprints"
@@ -1723,6 +1722,7 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
     if not config_yml then
       config_yml = prefix .. "/config.yml"
       local cfg = dcbp.done()
+      local declarative = require "kong.db.declarative"
       local ok, err = declarative.to_yaml_file(cfg, config_yml)
       if not ok then
         return nil, err
