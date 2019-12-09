@@ -1053,7 +1053,7 @@ local function load(path, custom_conf, opts)
   do
     local http_flags = { "ssl", "http2", "proxy_protocol", "deferred",
                          "bind", "reuseport", "backlog=%d+" }
-    local stream_flags = { "proxy_protocol", "bind", "reuseport" }
+    local stream_flags = { "ssl", "proxy_protocol", "bind", "reuseport" }
 
     -- extract ports/listen ips
     conf.proxy_listeners, err = parse_listeners(conf.proxy_listen, http_flags)
@@ -1077,6 +1077,14 @@ local function load(path, custom_conf, opts)
     end
 
     setmetatable(conf.stream_listeners, _nop_tostring_mt)
+    conf.stream_proxy_ssl_enabled = false
+
+    for _, listener in ipairs(conf.stream_listeners) do
+      if listener.ssl == true then
+        conf.stream_proxy_ssl_enabled = true
+        break
+      end
+    end
 
     conf.admin_listeners, err = parse_listeners(conf.admin_listen, http_flags)
     if err then
@@ -1106,15 +1114,6 @@ local function load(path, custom_conf, opts)
     end
 
     setmetatable(conf.cluster_listeners, _nop_tostring_mt)
-  end
-
-  do
-    -- is ssl_preread compiled in OpenResty?
-    conf.ssl_preread_enabled = false
-    local nginx_configuration = ngx.config.nginx_configure()
-    if nginx_configuration:find("with-stream_ssl_preread_module", 1, true) then
-      conf.ssl_preread_enabled = true
-    end
   end
 
   do

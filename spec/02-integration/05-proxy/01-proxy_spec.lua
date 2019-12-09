@@ -89,7 +89,7 @@ describe("#stream proxy interface listeners", function()
     assert(helpers.start_kong({
       stream_listen = "off",
     }))
-    assert.equals(1, count_server_blocks(helpers.test_conf.nginx_kong_stream_conf))
+    assert.equals(0, count_server_blocks(helpers.test_conf.nginx_kong_stream_conf))
     assert.is_nil(get_listeners(helpers.test_conf.nginx_kong_stream_conf).kong)
   end)
 

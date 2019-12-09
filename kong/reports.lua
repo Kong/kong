@@ -211,7 +211,7 @@ end
 -- or nil + error message if the suffix could not be determined
 local function get_current_suffix()
   if subsystem == "stream" then
-    if var.ssl_preread_protocol then
+    if var.ssl_protocol then
       return "tls"
     end
 
