@@ -21,7 +21,6 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
-        "apis",
         "routes",
         "services",
         "plugins",
@@ -1054,7 +1053,6 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
-        "apis",
         "routes",
         "services",
         "plugins",
@@ -1187,4 +1185,119 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
+  describe("core entities invalidations [#" .. strategy .. "]", function()
+    local admin_client
+
+    local proxy_client_1
+    local proxy_client_2
+
+    local wait_for_propagation
+
+    local service
+    local service_cache_key
+
+    lazy_setup(function()
+      local bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      }, {
+        "invalidations"
+      })
+
+      service = bp.services:insert()
+      service_cache_key = db.services:cache_key(service)
+
+      bp.routes:insert {
+        paths   = { "/" },
+        service = service,
+      }
+
+      bp.plugins:insert {
+        name    = "invalidations",
+        service = { id = service.id },
+      }
+
+      local db_update_propagation = strategy == "cassandra" and 0.1 or 0
+
+      assert(helpers.start_kong {
+        log_level             = "debug",
+        prefix                = "servroot1",
+        database              = strategy,
+        plugins               = "invalidations",
+        proxy_listen          = "0.0.0.0:8000, 0.0.0.0:8443 ssl",
+        admin_listen          = "0.0.0.0:8001",
+        db_update_frequency   = POLL_INTERVAL,
+        db_update_propagation = db_update_propagation,
+        nginx_conf            = "spec/fixtures/custom_nginx.template",
+      })
+
+      assert(helpers.start_kong {
+        log_level             = "debug",
+        prefix                = "servroot2",
+        database              = strategy,
+        plugins               = "invalidations",
+        proxy_listen          = "0.0.0.0:9000, 0.0.0.0:9443 ssl",
+        admin_listen          = "off",
+        db_update_frequency   = POLL_INTERVAL,
+        db_update_propagation = db_update_propagation,
+      })
+
+      wait_for_propagation = function()
+        ngx.sleep(POLL_INTERVAL * 2 + db_update_propagation * 2)
+      end
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong("servroot1", true)
+      helpers.stop_kong("servroot2", true)
+    end)
+
+    before_each(function()
+      admin_client = helpers.http_client("127.0.0.1", 8001)
+      proxy_client_1 = helpers.http_client("127.0.0.1", 8000)
+      proxy_client_2 = helpers.http_client("127.0.0.1", 9000)
+
+    end)
+
+    after_each(function()
+      admin_client:close()
+      proxy_client_1:close()
+      proxy_client_2:close()
+    end)
+
+    -----------
+    -- Services
+    -----------
+
+    describe("Services", function()
+      it("raises correct number of invalidation events", function()
+        local admin_res = assert(admin_client:send {
+          method = "PATCH",
+          path   = "/services/" .. service.id,
+          body   = {
+            path = "/new-path",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(200, admin_res)
+
+        wait_for_propagation()
+
+        local proxy_res = assert(proxy_client_1:get("/"))
+        local body = assert.res_status(200, proxy_res)
+        local json = cjson.decode(body)
+
+        assert.equal(nil, json[service_cache_key])
+
+        local proxy_res = assert(proxy_client_2:get("/"))
+        local body = assert.res_status(200, proxy_res)
+        local json = cjson.decode(body)
+
+        assert.equal(1, json[service_cache_key])
+      end)
+    end)
+  end)
 end
