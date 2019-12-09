@@ -9,6 +9,7 @@ local go = require "kong.db.dao.plugins.go"
 local Plugins = {}
 
 
+local kong = kong
 local fmt = string.format
 local null = ngx.null
 local pairs = pairs
@@ -146,8 +147,8 @@ local function load_plugin_handler(plugin)
 
   local plugin_handler = "kong.plugins." .. plugin .. ".handler"
   local ok, handler = utils.load_module_if_exists(plugin_handler)
-  if not ok then
-    ok, handler = go.load_plugin(plugin)
+  if not ok and kong.configuration.pluginserver_socket ~= "off" then
+      ok, handler = go.load_plugin(plugin)
   end
   if not ok then
     return nil, plugin .. " plugin is enabled but not installed;\n" .. handler
