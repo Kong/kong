@@ -331,6 +331,78 @@ for _, strategy in helpers.each_strategy() do
             end
           end)
 
+          it_content_types("updates with url", function(content_type)
+            return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
+              local service = bp.services:insert()
+
+              local res = client:patch("/services/" .. service.id, {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  url = "http://example.test:443"
+                },
+              })
+
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.equal("http",         json.protocol)
+              assert.equal("example.test", json.host)
+              assert.equal(443,            json.port)
+              assert.equal(cjson.null,     json.path)
+              assert.equal(service.id,     json.id)
+
+              local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
+              assert.same(json, in_db)
+
+
+              local res = client:patch("/services/" .. service.id, {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  url = "https://example2.test:80/"
+                },
+              })
+
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.equal("https",         json.protocol)
+              assert.equal("example2.test", json.host)
+              assert.equal(80,             json.port)
+              assert.equal("/",             json.path)
+              assert.equal(service.id,      json.id)
+
+              local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
+              assert.same(json, in_db)
+
+              local res = client:patch("/services/" .. service.id, {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  url = "http://example2.test"
+                },
+              })
+
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.equal("http",          json.protocol)
+              assert.equal("example2.test", json.host)
+              assert.equal(80,              json.port)
+              assert.equal(cjson.null,      json.path)
+              assert.equal(service.id,      json.id)
+
+              local in_db = assert(db.services:select({ id = service.id }, { nulls = true }))
+              assert.same(json, in_db)
+            end
+          end)
+
         end)
 
         describe("DELETE", function()
