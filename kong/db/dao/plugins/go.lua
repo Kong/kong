@@ -11,11 +11,13 @@ local go = {}
 local C = ffi.C
 local kong = kong
 local ngx = ngx
+local ngx_timer_at = ngx.timer.at
 local cjson_encode = cjson.encode
 local mp_pack = msgpack.pack
 local mp_unpacker = msgpack.unpacker
 
 local reset_instances   -- forward declaration
+local preloaded_stuff = {}
 
 
 -- Workaround: if cosockets aren't available, use raw glibc calls
@@ -124,7 +126,7 @@ do
     set = true,
     header_filter = true,
     body_filter = true,
-    log = true,
+--     log = true,
   }
 
   function get_connection(socket_path)
@@ -257,7 +259,7 @@ local function call_pdk_method(cmd, args)
   local res, err
 
   if cmd == "kong.log.serialize" then
-    res = cjson_encode(basic_serializer.serialize(ngx))
+    res = cjson_encode(preloaded_stuff.basic_serializer or basic_serializer.serialize(ngx))
 
   -- ngx API
   elseif cmd == "kong.nginx.get_var" then
@@ -443,9 +445,21 @@ local get_plugin do
     }
 
     for _, phase in ipairs(plugin_info.Phases) do
-      plugin[phase] = function (self, conf)
-        local instance_id = get_instance(plugin_name, conf)
-        bridge_loop(instance_id, phase)
+      if phase == "log" then
+        plugin[phase] = function (self, conf)
+          preloaded_stuff.basic_serializer = basic_serializer.serialize(ngx)
+          ngx_timer_at(0, function ()
+            local instance_id = get_instance(plugin_name, conf)
+            bridge_loop(instance_id, phase)
+            preloaded_stuff.basic_serializer = nil
+          end)
+        end
+
+      else
+        plugin[phase] = function (self, conf)
+          local instance_id = get_instance(plugin_name, conf)
+          bridge_loop(instance_id, phase)
+        end
       end
     end
 
