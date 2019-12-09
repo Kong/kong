@@ -4,6 +4,11 @@ local cjson = require "cjson"
 local lyaml = require "lyaml"
 
 
+local function trim(s)
+  return s:gsub("%s+", " "):gsub("^%s*", ""):gsub("%s*$", "")
+end
+
+
 local function sort_by_name(a, b)
   return a.name < b.name
 end
@@ -148,6 +153,44 @@ describe("kong config", function()
     assert(helpers.kong_exec("config db_import " .. filename, {
       prefix = helpers.test_conf.prefix,
     }))
+  end)
+
+  it("#db config db_import catches errors in input", function()
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
+
+    finally(function()
+      helpers.stop_kong()
+    end)
+
+    local filename = helpers.make_yaml_file([[
+      _format_version: "1.1"
+      services:
+      - name: foobar
+        host: []
+        port: -23
+        protocol: https
+        _comment: my comment
+        _ignore:
+        - foo: bar
+        routes: 123
+    ]])
+
+    local ok, err = helpers.kong_exec("config db_import " .. filename, {
+      prefix = helpers.test_conf.prefix,
+    })
+    assert.falsy(ok)
+
+    assert.same(trim([[
+      Error: Failed parsing:
+      in 'services':
+      - in entry 1 of 'services':
+        in 'host': expected a string
+        in 'port': value should be between 0 and 65535
+        in 'routes': expected an array
+      Run with --v (verbose) or --vv (debug) for more details
+    ]]), trim(err))
   end)
 
   it("#db config db_import is idempotent based on endpoint_key and cache_key", function()
