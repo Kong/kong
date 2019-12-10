@@ -36,7 +36,6 @@ local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
 local ngx_INFO = ngx.INFO
 local WEAK_KEY_MT = { __mode = "k", }
-local ROLE
 local CERT_DIGEST
 local CERT, CERT_KEY
 local clients = setmetatable({}, WEAK_KEY_MT)
@@ -363,7 +362,7 @@ function _M.init_worker(conf)
   assert(conf, "conf can not be nil", 2)
 
   if conf.role == "proxy" then
-    ROLE = "proxy"
+    -- ROLE = "proxy"
 
     if ngx.worker.id() == 0 then
       local f = io_open(CONFIG_CACHE, "r")
@@ -393,7 +392,7 @@ function _M.init_worker(conf)
   elseif conf.role == "admin" then
     assert(shdict, "kong_clustering shdict missing")
 
-    ROLE = "admin"
+    -- ROLE = "admin"
 
     kong.worker_events.register(function(data)
       local res, err = declarative.export_config()
