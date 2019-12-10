@@ -305,20 +305,6 @@ local function push_config(config_table)
 end
 
 
-function _M.broadcast_config(config_table)
-  if ROLE ~= "admin" then
-    return
-  end
-
-  local res, err = kong.worker_events.post("cp", "new_config", config_table)
-  if not res then
-    return nil, err
-  end
-
-  return true
-end
-
-
 local function init_mtls(conf)
   local f, err = io_open(conf.cluster_cert, "r")
   if not f then
