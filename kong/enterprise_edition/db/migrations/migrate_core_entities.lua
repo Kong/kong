@@ -1,8 +1,6 @@
 local workspaces  = require "kong.workspaces"
 local counters    = require "kong.workspaces.counters"
 local log         = require "kong.cmd.utils.log"
-local conf_loader = require "kong.conf_loader"
-local DB          = require "kong.db"
 
 local fmt = string.format
 local concat = table.concat
@@ -285,10 +283,10 @@ local function entity_correction(queries, entity_fixes, entity_schema, entity)
 end
 
 
-local function migrate_core_entities(connector, strategy, opts)
-
-  local conf = assert(conf_loader(opts.conf))
-  local db = assert(DB.new(conf))
+local function migrate_core_entities(db, opts)
+  local connector = db.connector
+  local strategy = db.strategy
+  local conf = opts.conf
 
   db.plugins:load_plugin_schemas(conf.loaded_plugins)
   local entities = workspaces.get_workspaceable_relations()
