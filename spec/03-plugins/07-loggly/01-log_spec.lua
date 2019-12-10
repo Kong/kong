@@ -8,6 +8,7 @@ local UDP_PORT = 20000
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: loggly (log) [#" .. strategy .. "]", function()
     local proxy_client
+    local proxy_client_grpc
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -80,10 +81,73 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      -- grpc [[
+      local grpc_service = bp.services:insert {
+        name = "grpc-service",
+        url = "grpc://localhost:15002",
+      }
+
+      local grpc_route1 = bp.routes:insert {
+        service = grpc_service,
+        hosts = { "grpc_logging.com" },
+      }
+
+      local grpc_route2 = bp.routes:insert {
+        service = grpc_service,
+        hosts = { "grpc_logging1.com" },
+      }
+
+      local grpc_route3 = bp.routes:insert {
+        service = grpc_service,
+        hosts = { "grpc_logging2.com" },
+      }
+
+      bp.plugins:insert {
+        route = { id = grpc_route1.id },
+        name     = "loggly",
+        config   = {
+          host                = "127.0.0.1",
+          port                = UDP_PORT,
+          key                 = "123456789",
+          log_level           = "info",
+          successful_severity = "warning"
+        }
+      }
+
+      bp.plugins:insert {
+        route = { id = grpc_route2.id },
+        name     = "loggly",
+        config   = {
+          host                = "127.0.0.1",
+          port                = UDP_PORT,
+          key                 = "123456789",
+          log_level           = "debug",
+          timeout             = 2000,
+          successful_severity = "info",
+        }
+      }
+
+      bp.plugins:insert {
+        route = { id = grpc_route3.id },
+        name     = "loggly",
+        config   = {
+          host                   = "127.0.0.1",
+          port                   = UDP_PORT,
+          key                    = "123456789",
+          log_level              = "crit",
+          successful_severity    = "crit",
+          client_errors_severity = "warning",
+        }
+      }
+
+      -- grpc ]]
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
+
+      proxy_client_grpc = helpers.proxy_client_grpc()
     end)
 
     lazy_teardown(function()
@@ -119,6 +183,31 @@ for _, strategy in helpers.each_strategy() do
       return pri, cjson.decode(json)
     end
 
+    local function run_grpc(host)
+      local thread   = assert(helpers.udp_server(UDP_PORT))
+
+      local ok, resp = proxy_client_grpc({
+        service = "hello.HelloService.SayHello",
+        body = {
+          greeting = "world!"
+        },
+        opts = {
+          ["-authority"] = host,
+        }
+      })
+      assert.truthy(ok)
+      assert.truthy(resp)
+
+      local ok, res = thread:join()
+      assert.truthy(ok)
+      assert.truthy(res)
+
+      local pri  = assert(res:match("^<(%d-)>"))
+      local json = assert(res:match("{.*}"))
+
+      return pri, cjson.decode(json)
+    end
+
     it("logs to UDP when severity is warning and log level info", function()
       local pri, message = run({
         method  = "GET",
@@ -127,6 +216,12 @@ for _, strategy in helpers.each_strategy() do
           host  = "logging.com"
         }
       })
+      assert.equal("12", pri)
+      assert.equal("127.0.0.1", message.client_ip)
+    end)
+
+    it("logs to UDP when severity is warning and log level info #grpc", function()
+      local pri, message = run_grpc("grpc_logging.com")
       assert.equal("12", pri)
       assert.equal("127.0.0.1", message.client_ip)
     end)
@@ -143,6 +238,12 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("127.0.0.1", message.client_ip)
     end)
 
+    it("logs to UDP when severity is info and log level debug #grpc", function()
+      local pri, message = run_grpc("grpc_logging1.com")
+      assert.equal("14", pri)
+      assert.equal("127.0.0.1", message.client_ip)
+    end)
+
     it("logs to UDP when severity is critical and log level critical", function()
       local pri, message = run({
         method  = "GET",
@@ -151,6 +252,12 @@ for _, strategy in helpers.each_strategy() do
           host  = "logging2.com"
         }
       })
+      assert.equal("10", pri)
+      assert.equal("127.0.0.1", message.client_ip)
+    end)
+
+    it("logs to UDP when severity is critical and log level critical #grpc", function()
+      local pri, message = run_grpc("grpc_logging2.com")
       assert.equal("10", pri)
       assert.equal("127.0.0.1", message.client_ip)
     end)
