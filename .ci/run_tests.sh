@@ -63,7 +63,6 @@ if [ "$TEST_SUITE" == "plugins" ]; then
 
         $TEST_CMD /tmp/test-$REPOSITORY/spec/ || echo "* $REPOSITORY" >> .failed
 
-        rm -rf /tmp/test-$REPOSITORY
     done
 
     if [ -f .failed ]; then
