@@ -364,9 +364,32 @@ local CONF_INFERENCES = {
   dns_not_found_ttl = { typ = "number" },
   dns_error_ttl = { typ = "number" },
   dns_no_sync = { typ = "boolean" },
-
-  router_consistency = { enum = { "strict", "eventual" } },
-  router_update_frequency = { typ = "number" },
+  worker_consistency = { enum = { "strict", "eventual" } },
+  router_consistency = {
+    enum = { "strict", "eventual" },
+    deprecated = {
+      replacement = "worker_consistency",
+      alias = function(conf)
+        if conf.worker_consistency == nil and
+           conf.router_consistency ~= nil then
+          conf.worker_consistency = conf.router_consistency
+        end
+      end,
+    }
+  },
+  worker_state_update_frequency = { typ = "number" },
+  router_update_frequency = {
+    typ = "number",
+    deprecated = {
+      replacement = "worker_state_update_frequency",
+      alias = function(conf)
+        if conf.worker_state_update_frequency == nil and
+           conf.router_update_frequency ~= nil then
+          conf.worker_state_update_frequency = conf.router_update_frequency
+        end
+      end,
+    }
+  },
 
   ssl_protocols = {
     typ = "string",
@@ -713,8 +736,8 @@ local function check_and_infer(conf)
     errors[#errors + 1] = "pg_semaphore_timeout must be an integer greater than 0"
   end
 
-  if conf.router_update_frequency <= 0 then
-    errors[#errors + 1] = "router_update_frequency must be greater than 0"
+  if conf.worker_state_update_frequency <= 0 then
+    errors[#errors + 1] = "worker_state_update_frequency must be greater than 0"
   end
 
   if conf.role == "control_plane" then

@@ -128,8 +128,8 @@ dns_not_found_ttl = 30
 dns_error_ttl = 1
 dns_no_sync = off
 
-router_consistency = strict
-router_update_frequency = 1
+worker_consistency = strict
+worker_state_update_frequency = 5
 
 lua_socket_pool_size = 30
 lua_ssl_trusted_certificate = NONE

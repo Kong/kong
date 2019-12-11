@@ -998,11 +998,14 @@
 # TUNING & BEHAVIOR
 #------------------------------------------------------------------------------
 
-#router_consistency = strict     # Defines whether this node should rebuild its
-                                 # router synchronously or asynchronously (the
-                                 # router is rebuilt every time a Route or a
-                                 # Service is updated via the Admin API or
-                                 # loading a declarative configuration file).
+#worker_consistency = strict
+                                 # Defines whether this node should rebuild its
+                                 # state synchronously or asynchronously (the
+                                 # balancers and the router are rebuilt on
+                                 # updates that affects them, e.g. updates to
+                                 # Routes, Services or Upstreams, via the Admin
+                                 # API or loading a declarative configuration
+                                 # file).
                                  #
                                  # Accepted values are:
                                  #
@@ -1026,14 +1029,15 @@
                                  # for a short period of time after Routes and
                                  # Services updates.
 
-#router_update_frequency = 1     # Defines how often the router changes are
+#worker_state_update_frequency = 5
+                                 # Defines how often the worker state changes are
                                  # checked with a background job. When a change
-                                 # is detected, a new router will be built. By
-                                 # default we check for changes every second.
-                                 # Raising this value will decrease the load on
-                                 # database servers and result in less jitter
-                                 # in proxy latency, with downside of longer
-                                 # converge time for router updates.
+                                 # is detected, a new router or balancer will be
+                                 # built, as needed. Raising this value will
+                                 # decrease the load on database servers and
+                                 # result in less jitter in proxy latency, but
+                                 # it might take more time to propagate changes
+                                 # to each individual worker.
 
 #------------------------------------------------------------------------------
 # DEVELOPMENT & MISCELLANEOUS
