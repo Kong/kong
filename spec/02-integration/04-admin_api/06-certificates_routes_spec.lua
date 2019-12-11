@@ -326,7 +326,7 @@ describe("Admin API: #" .. strategy, function()
         assert.same(json, in_db)
       end)
 
-      it("updates if found", function()
+      it("upserts if found", function()
         local res = client:put("/certificates/" .. certificate.id, {
           body = { cert = ssl_fixtures.cert_alt, key = ssl_fixtures.key_alt },
           headers = { ["Content-Type"] = "application/json" },
@@ -336,7 +336,7 @@ describe("Admin API: #" .. strategy, function()
         local json = cjson.decode(body)
         assert.same(ssl_fixtures.cert_alt, json.cert)
         assert.same(ssl_fixtures.key_alt, json.key)
-        assert.same({"bar.com", "foo.com"}, json.snis)
+        assert.same({}, json.snis)
 
         json.snis = nil
 
@@ -440,6 +440,20 @@ describe("Admin API: #" .. strategy, function()
         end
       end)
 
+      it_content_types("update by id returns full certificate", function(content_type)
+        return function()
+          local res = client:patch("/certificates/" .. cert_foo.id, {
+            body = {},
+            headers = { ["Content-Type"] = content_type }
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.same(cert_foo, json)
+        end
+      end)
+
       it_content_types("updates a certificate by sni", function(content_type)
         return function()
           local body
@@ -464,6 +478,20 @@ describe("Admin API: #" .. strategy, function()
           local json = cjson.decode(body)
 
           assert.equal(ssl_fixtures.cert_alt, json.cert)
+        end
+      end)
+
+      it_content_types("update by sni returns full certificate", function(content_type)
+        return function()
+          local res = client:patch("/certificates/foo.com", {
+            body = {},
+            headers = { ["Content-Type"] = content_type }
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.same(cert_foo, json)
         end
       end)
 
