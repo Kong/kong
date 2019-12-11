@@ -22,5 +22,5 @@ build = {
 }
 dependencies = {
   --"kong >= 1.2.0",
-  "lua-resty-acme >= 0.3.0"
+  "lua-resty-acme >= 0.4.0"
 }
