@@ -267,6 +267,13 @@ function Queue:add(entry)
     return nil, "entry must be a non-nil Lua value"
   end
 
+  if self.batch_max_size == 1 then
+    -- no batching
+    local batch = { entries = { entry }, retries = 0 }
+    schedule_process(self, batch, 0)
+    return true
+  end
+
   local cb = self.current_batch
   local new_size = #cb.entries + 1
   cb.entries[new_size] = entry
