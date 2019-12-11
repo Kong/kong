@@ -1,5 +1,4 @@
 local helpers        = require "spec.helpers"
-local timestamp      = require "kong.tools.timestamp"
 local cjson          = require "cjson"
 
 
@@ -11,17 +10,6 @@ local REDIS_DATABASE = 1
 
 local fmt = string.format
 local proxy_client = helpers.proxy_client
-
-
-local function wait(second_offset)
-  -- If the minute elapses in the middle of the test, then the test will
-  -- fail. So we give it this test 30 seconds to execute, and if the second
-  -- of the current minute is > 30, then we wait till the new minute kicks in
-  local current_second = timestamp.get_timetable().sec
-  if current_second > (second_offset or 0) then
-    ngx.sleep(60 - current_second)
-  end
-end
 
 
 local function GET(url, opts, res_status)
@@ -73,7 +61,7 @@ end
 
 for _, strategy in helpers.each_strategy() do
   for _, policy in ipairs({ "local", "cluster", "redis" }) do
-    describe(fmt("#flaky Plugin: rate-limiting (access) with policy: %s [#%s]", policy, strategy), function()
+    describe(fmt("Plugin: rate-limiting (access) with policy: %s [#%s]", policy, strategy), function()
       local bp
       local db
 
@@ -253,10 +241,6 @@ for _, strategy in helpers.each_strategy() do
         assert(db:truncate())
       end)
 
-      before_each(function()
-        wait(3)
-      end)
-
       describe("Without authentication (IP address)", function()
         it("blocks if exceeding limit", function()
           for i = 1, 6 do
@@ -269,11 +253,13 @@ for _, strategy in helpers.each_strategy() do
           end
 
           -- Additonal request, while limit is 6/minute
-          local res = GET("/status/200", {
+          local res, body = GET("/status/200", {
             headers = { Host = "test1.com" },
           }, 429)
 
-          local body = assert.res_status(429, res)
+          local retry = tonumber(res.headers["retry-after"])
+          assert.equal(true, retry <= 60 and retry >= 0)
+
           local json = cjson.decode(body)
           assert.same({ message = "API rate limit exceeded" }, json)
         end)
@@ -298,9 +284,12 @@ for _, strategy in helpers.each_strategy() do
           end
 
           -- Additonal request, while limit is 6/minute
-          local _, body = GET("/status/200", {
+          local res, body = GET("/status/200", {
             headers = { Host = "test-service1.com" },
           }, 429)
+
+          local retry = tonumber(res.headers["retry-after"])
+          assert.equal(true, retry <= 60 and retry >= 0)
 
           local json = cjson.decode(body)
           assert.same({ message = "API rate limit exceeded" }, json)
@@ -328,10 +317,13 @@ for _, strategy in helpers.each_strategy() do
             headers = { Host = "test2.com" },
           }, 429)
 
+          local retry = tonumber(res.headers["retry-after"])
+          assert.equal(true, retry <= 60 and retry >= 0)
+          assert.equal(2, tonumber(res.headers["x-ratelimit-remaining-hour"]))
+          assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+
           local json = cjson.decode(body)
           assert.same({ message = "API rate limit exceeded" }, json)
-          assert.are.equal(2, tonumber(res.headers["x-ratelimit-remaining-hour"]))
-          assert.are.equal(0, tonumber(res.headers["x-ratelimit-remaining-minute"]))
         end)
       end)
       describe("With authentication", function()
@@ -347,11 +339,13 @@ for _, strategy in helpers.each_strategy() do
             end
 
             -- Third query, while limit is 2/minute
-            local res = GET("/status/200?apikey=apikey123", {
+            local res, body = GET("/status/200?apikey=apikey123", {
               headers = { Host = "test3.com" },
             }, 429)
 
-            local body = assert.res_status(429, res)
+            local retry = tonumber(res.headers["retry-after"])
+            assert.equal(true, retry <= 60 and retry >= 0)
+
             local json = cjson.decode(body)
             assert.same({ message = "API rate limit exceeded" }, json)
 
@@ -372,9 +366,12 @@ for _, strategy in helpers.each_strategy() do
               assert.are.same(8 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
             end
 
-            local _, body = GET("/status/200?apikey=apikey122", {
+            local res, body = GET("/status/200?apikey=apikey122", {
               headers = { Host = "test3.com" },
             }, 429)
+
+            local retry = tonumber(res.headers["retry-after"])
+            assert.equal(true, retry <= 60 and retry >= 0)
 
             local json = cjson.decode(body)
             assert.same({ message = "API rate limit exceeded" }, json)
@@ -390,9 +387,12 @@ for _, strategy in helpers.each_strategy() do
               assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
             end
 
-            local _, body = GET("/status/200?apikey=apikey122", {
+            local res, body = GET("/status/200?apikey=apikey122", {
               headers = { Host = "test4.com" },
             }, 429)
+
+            local retry = tonumber(res.headers["retry-after"])
+            assert.equal(true, retry <= 60 and retry >= 0)
 
             local json = cjson.decode(body)
             assert.same({ message = "API rate limit exceeded" }, json)
@@ -412,7 +412,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       if policy == "cluster" then
-        describe("Fault tolerancy", function()
+        describe("#flaky Fault tolerancy", function()
 
           before_each(function()
             helpers.kill_all()
@@ -497,7 +497,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
       elseif policy == "redis" then
-        describe("Fault tolerancy", function()
+        describe("#flaky Fault tolerancy", function()
 
           before_each(function()
             helpers.kill_all()
@@ -594,7 +594,7 @@ for _, strategy in helpers.each_strategy() do
           }))
         end)
 
-        it("expires a counter", function()
+        it("#flaky expires a counter", function()
           local res = GET("/status/200", {
             headers = { Host = "expire1.com" },
           }, 200)
@@ -614,7 +614,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe(fmt("#flaky Plugin: rate-limiting (access - global for single consumer) with policy: %s [#%s]", policy, strategy), function()
+    describe(fmt("Plugin: rate-limiting (access - global for single consumer) with policy: %s [#%s]", policy, strategy), function()
       local bp
       local db
 
@@ -675,16 +675,19 @@ for _, strategy in helpers.each_strategy() do
         end
 
         -- Additonal request, while limit is 6/minute
-        local _, body = GET("/status/200?apikey=apikey125", {
+        local res, body = GET("/status/200?apikey=apikey125", {
           headers = { Host = "test1.com" },
         }, 429)
+
+        local retry = tonumber(res.headers["retry-after"])
+        assert.equal(true, retry <= 60 and retry >= 0)
 
         local json = cjson.decode(body)
         assert.same({ message = "API rate limit exceeded" }, json)
       end)
     end)
 
-    describe(fmt("#flaky Plugin: rate-limiting (access - global for service) with policy: %s [#%s]", policy, strategy), function()
+    describe(fmt("Plugin: rate-limiting (access - global for service) with policy: %s [#%s]", policy, strategy), function()
       local bp
       local db
 
@@ -733,16 +736,19 @@ for _, strategy in helpers.each_strategy() do
         end
 
         -- Additonal request, while limit is 6/minute
-        local _, body = GET("/status/200", {
+        local res, body = GET("/status/200", {
           headers = { Host = "test1.com" },
         }, 429)
+
+        local retry = tonumber(res.headers["retry-after"])
+        assert.equal(true, retry <= 60 and retry >= 0)
 
         local json = cjson.decode(body)
         assert.same({ message = "API rate limit exceeded" }, json)
       end)
     end)
 
-    describe(fmt("#flaky Plugin: rate-limiting (access - global) with policy: %s [#%s]", policy, strategy), function()
+    describe(fmt("Plugin: rate-limiting (access - global) with policy: %s [#%s]", policy, strategy), function()
       local bp
       local db
 
@@ -790,9 +796,12 @@ for _, strategy in helpers.each_strategy() do
         end
 
         -- Additonal request, while limit is 6/minute
-        local _, body = GET("/status/200", {
+        local res, body = GET("/status/200", {
           headers = { Host = "test1.com" },
         }, 429)
+
+        local retry = tonumber(res.headers["retry-after"])
+        assert.equal(true, retry <= 60 and retry >= 0)
 
         local json = cjson.decode(body)
         assert.same({ message = "API rate limit exceeded" }, json)

@@ -59,6 +59,7 @@ local EXPIRATIONS = {
 
 
 return {
+  ["EXPIRATIONS"] = EXPIRATIONS,
   ["local"] = {
     increment = function(conf, limits, identifier, current_timestamp, value)
       local periods = timestamp.get_timestamps(current_timestamp)
