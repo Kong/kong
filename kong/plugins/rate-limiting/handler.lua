@@ -1,4 +1,5 @@
 -- Copyright (C) Kong Inc.
+local timestamp = require "kong.tools.timestamp"
 local policies = require "kong.plugins.rate-limiting.policies"
 
 
@@ -6,14 +7,18 @@ local kong = kong
 local ngx = ngx
 local max = math.max
 local time = ngx.time
+local floor = math.floor
 local pairs = pairs
 local tostring = tostring
 local timer_at = ngx.timer.at
 
 
 local EMPTY = {}
+local EXPIRATIONS = policies.EXPIRATIONS
 local RATELIMIT_LIMIT = "X-RateLimit-Limit"
 local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
+local RETRY_AFTER = "Retry-After"
+
 
 local RateLimitingHandler = {}
 
@@ -107,15 +112,28 @@ function RateLimitingHandler:access(conf)
 
   if usage then
     -- Adding headers
+    local retry_after
     if not conf.hide_client_headers then
       local headers = {}
+      local timestamps
       for k, v in pairs(usage) do
         if stop == nil or stop == k then
           v.remaining = v.remaining - 1
         end
 
+        local remaining = max(0, v.remaining)
+
         headers[RATELIMIT_LIMIT .. "-" .. k] = v.limit
-        headers[RATELIMIT_REMAINING .. "-" .. k] = max(0, v.remaining)
+        headers[RATELIMIT_REMAINING .. "-" .. k] = remaining
+
+        if stop and remaining == 0 then
+          if not timestamps then
+            timestamps = timestamp.get_timestamps(current_timestamp)
+          end
+
+          local reset = EXPIRATIONS[k] - floor((current_timestamp - timestamps[k]) / 1000)
+          retry_after = max(retry_after or 1, reset)
+        end
       end
 
       kong.ctx.plugin.headers = headers
@@ -123,7 +141,14 @@ function RateLimitingHandler:access(conf)
 
     -- If limit is exceeded, terminate the request
     if stop then
-      return kong.response.exit(429, { message = "API rate limit exceeded" })
+      local headers
+      if retry_after then
+        headers = {
+          [RETRY_AFTER] = retry_after
+        }
+      end
+
+      return kong.response.exit(429, { message = "API rate limit exceeded" }, headers)
     end
   end
 
