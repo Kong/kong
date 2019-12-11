@@ -20,15 +20,6 @@ _M.handlers = {
       license_helpers.report_expired_license()
     end,
   },
-  balancer = {
-    after = function(ctx)
-      if not ctx.is_internal then
-        kong.vitals:log_latency(ctx.KONG_PROXY_LATENCY)
-        kong.vitals:log_request(ctx)
-        kong.sales_counters:log_request()
-      end
-    end
-  },
   header_filter = {
     after = function(ctx)
       if not ctx.is_internal then
@@ -39,6 +30,9 @@ _M.handlers = {
   log = {
     after = function(ctx, status)
       if not ctx.is_internal then
+        kong.vitals:log_latency(ctx.KONG_PROXY_LATENCY)
+        kong.vitals:log_request(ctx)
+        kong.sales_counters:log_request()
         kong.vitals:log_phase_after_plugins(ctx, status)
       end
     end

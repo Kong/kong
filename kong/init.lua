@@ -959,7 +959,7 @@ function Kong.balancer()
   ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_PROCESSING_START
 
   -- runloop.balancer.after(ctx)
-  ee.handlers.balancer.after(ctx)
+  -- ee.handlers.balancer.after(ctx)
   trace:finish()
 end
 
