@@ -5,7 +5,6 @@ return {
     dao = "kong.plugins.acl.acls",
     name = "acls",
     primary_key = { "id" },
-    endpoint_key = "group",
     cache_key = { "consumer", "group" },
     fields = {
       { id = typedefs.uuid },
