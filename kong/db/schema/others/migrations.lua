@@ -1,5 +1,20 @@
+local function validate_fn_or_string(fn_or_str)
+  if type(fn_or_str) == "function"
+  or type(fn_or_str) == "string" and #fn_or_str > 0
+  then
+    return true
+  end
+
+  return nil, "expected a non-empty string or function"
+end
+
+
 local strat_migration = {
-  { up = { type = "string", required = true, len_min = 0 } },
+  { up = { type = "any",
+           required = true,
+           custom_validator = validate_fn_or_string,
+         },
+  },
   { teardown = { type = "function" } },
 }
 

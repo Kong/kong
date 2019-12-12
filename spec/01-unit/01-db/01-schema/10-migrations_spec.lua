@@ -45,6 +45,18 @@ describe("migrations schema", function()
       assert.equal("required field missing", errs[strategy]["up"])
     end)
 
+    it("allows '<strategy>.up' property to be a function", function()
+      local t = {
+        name = "foo",
+        postgres = { up = function() end },
+        cassandra = { up = function() end },
+      }
+
+      local ok, errs = MigrationsSchema:validate(t)
+      assert.is_truthy(ok)
+      assert.is_nil(errs)
+    end)
+
     it("validates '<strategy>.teardown' property", function()
       local t = {
         postgres = { up = "" },

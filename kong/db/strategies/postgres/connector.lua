@@ -783,8 +783,16 @@ function _mt:run_up_migration(name, up_sql)
     error("name must be a string", 2)
   end
 
+  if type(up_sql) == "function" then
+    local ok, res, err = pcall(up_sql, self)
+    if ok then
+      return true
+    end
+    return nil, res or err
+  end
+
   if type(up_sql) ~= "string" then
-    error("up_sql must be a string", 2)
+    error("up_sql must be a string or a function", 2)
   end
 
   local conn = self:get_stored_connection()

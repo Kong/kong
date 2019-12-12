@@ -970,8 +970,16 @@ do
       error("name must be a string", 2)
     end
 
+    if type(up_cql) == "function" then
+      local ok, res, err = pcall(up_cql, self)
+      if ok then
+        return true
+      end
+      return nil, res or err
+    end
+
     if type(up_cql) ~= "string" then
-      error("up_cql must be a string", 2)
+      error("up_cql must be a string or a function", 2)
     end
 
     local conn = self:get_stored_connection()
