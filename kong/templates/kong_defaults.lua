@@ -10,9 +10,9 @@ status_error_log = logs/status_error.log
 plugins = bundled
 anonymous_reports = on
 
-proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 http2 ssl
+proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
 stream_listen = off
-admin_listen = 127.0.0.1:8001, 127.0.0.1:8444 http2 ssl
+admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 http2 ssl reuseport backlog=16384
 status_listen = off
 origins = NONE
 nginx_user = nobody nobody

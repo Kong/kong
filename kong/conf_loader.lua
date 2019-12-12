@@ -621,7 +621,13 @@ local function parse_option_flags(value, flags)
 
   for _, flag in ipairs(flags) do
     local count
-    local patt = "%s" .. flag .. "%s"
+    local patt = "%s(" .. flag .. ")%s"
+
+    local found = value:match(patt)
+    if found then
+      -- replace pattern like `backlog=%d+` with actual values
+      flag = found
+    end
 
     value, count = value:gsub(patt, " ")
 
@@ -987,7 +993,7 @@ local function load(path, custom_conf, opts)
 
   do
     local http_flags = { "ssl", "http2", "proxy_protocol", "transparent",
-                         "deferred", "bind", "reuseport" }
+                         "deferred", "bind", "reuseport", "backlog=%d+" }
     local stream_flags = { "proxy_protocol", "transparent", "bind",
                            "reuseport" }
 
