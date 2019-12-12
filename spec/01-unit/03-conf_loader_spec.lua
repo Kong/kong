@@ -21,8 +21,8 @@ describe("Configuration loader", function()
     assert.is_string(conf.lua_package_path)
     assert.is_nil(conf.nginx_user)
     assert.equal("auto", conf.nginx_worker_processes)
-    assert.same({"127.0.0.1:8001", "127.0.0.1:8444 http2 ssl"}, conf.admin_listen)
-    assert.same({"0.0.0.0:8000", "0.0.0.0:8443 http2 ssl"}, conf.proxy_listen)
+    assert.same({"127.0.0.1:8001 reuseport backlog=16384", "127.0.0.1:8444 http2 ssl reuseport backlog=16384"}, conf.admin_listen)
+    assert.same({"0.0.0.0:8000 reuseport backlog=16384", "0.0.0.0:8443 http2 ssl reuseport backlog=16384"}, conf.proxy_listen)
     assert.is_nil(conf.ssl_cert) -- check placeholder value
     assert.is_nil(conf.ssl_cert_key)
     assert.is_nil(conf.admin_ssl_cert)
@@ -100,25 +100,25 @@ describe("Configuration loader", function()
     assert.equal(8001, conf.admin_listeners[1].port)
     assert.equal(false, conf.admin_listeners[1].ssl)
     assert.equal(false, conf.admin_listeners[1].http2)
-    assert.equal("127.0.0.1:8001", conf.admin_listeners[1].listener)
+    assert.equal("127.0.0.1:8001 reuseport backlog=16384", conf.admin_listeners[1].listener)
 
     assert.equal("127.0.0.1", conf.admin_listeners[2].ip)
     assert.equal(8444, conf.admin_listeners[2].port)
     assert.equal(true, conf.admin_listeners[2].ssl)
     assert.equal(true, conf.admin_listeners[2].http2)
-    assert.equal("127.0.0.1:8444 ssl http2", conf.admin_listeners[2].listener)
+    assert.equal("127.0.0.1:8444 ssl http2 reuseport backlog=16384", conf.admin_listeners[2].listener)
 
     assert.equal("0.0.0.0", conf.proxy_listeners[1].ip)
     assert.equal(8000, conf.proxy_listeners[1].port)
     assert.equal(false, conf.proxy_listeners[1].ssl)
     assert.equal(false, conf.proxy_listeners[1].http2)
-    assert.equal("0.0.0.0:8000", conf.proxy_listeners[1].listener)
+    assert.equal("0.0.0.0:8000 reuseport backlog=16384", conf.proxy_listeners[1].listener)
 
     assert.equal("0.0.0.0", conf.proxy_listeners[2].ip)
     assert.equal(8443, conf.proxy_listeners[2].port)
     assert.equal(true, conf.proxy_listeners[2].ssl)
     assert.equal(true, conf.proxy_listeners[2].http2)
-    assert.equal("0.0.0.0:8443 ssl http2", conf.proxy_listeners[2].listener)
+    assert.equal("0.0.0.0:8443 ssl http2 reuseport backlog=16384", conf.proxy_listeners[2].listener)
   end)
   it("parses IPv6 from proxy_listen/admin_listen", function()
     local conf = assert(conf_loader(nil, {
@@ -533,26 +533,26 @@ describe("Configuration loader", function()
         admin_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport], [... next entry ...]", err)
+      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         proxy_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport], [... next entry ...]", err)
+      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
     end)
     it("rejects empty string in listen addresses", function()
       local conf, err = conf_loader(nil, {
         admin_listen = ""
       })
       assert.is_nil(conf)
-      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport], [... next entry ...]", err)
+      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         proxy_listen = ""
       })
       assert.is_nil(conf)
-      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport], [... next entry ...]", err)
+      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
     end)
     it("errors when dns_resolver is not a list in ipv4/6[:port] format", function()
       local conf, err = conf_loader(nil, {

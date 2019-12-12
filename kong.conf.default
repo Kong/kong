@@ -122,7 +122,7 @@
 # NGINX
 #------------------------------------------------------------------------------
 
-#proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
+#proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 ssl reuseport backlog=16384
                          # Comma-separated list of addresses and ports on
                          # which the proxy server should listen for
                          # HTTP/HTTPS traffic.
@@ -149,8 +149,19 @@
                          #   for a given address:port pair.
                          # - `reuseport` instructs to create an individual
                          #   listening socket for each worker process
-                         #   allowing a kernel to distribute incoming
+                         #   allowing the Kernel to better distribute incoming
                          #   connections between worker processes
+                         # - `backlog=N` sets the maximum length for the queue
+                         #   of pending TCP connections. This number should
+                         #   not be too small in order to prevent clients
+                         #   seeing "Connection refused" error connecting to
+                         #   a busy Kong instance.
+                         #   **Note:** on Linux, this value is limited by the
+                         #   setting of `net.core.somaxconn` Kernel parameter.
+                         #   In order for the larger `backlog` set here to take
+                         #   effect it is necessary to raise
+                         #   `net.core.somaxconn` at the same time to match or
+                         #   exceed the `backlog` number set.
                          #
                          # This value can be set to `off`, thus disabling
                          # the HTTP/HTTPS proxy port for this node.
@@ -190,8 +201,19 @@
                          #   for a given address:port pair.
                          # - `reuseport` instructs to create an individual
                          #   listening socket for each worker process
-                         #   allowing a kernel to distribute incoming
+                         #   allowing the Kernel to better distribute incoming
                          #   connections between worker processes
+                         # - `backlog=N` sets the maximum length for the queue
+                         #   of pending TCP connections. This number should
+                         #   not be too small in order to prevent clients
+                         #   seeing "Connection refused" error connecting to
+                         #   a busy Kong instance.
+                         #   **Note:** on Linux, this value is limited by the
+                         #   setting of `net.core.somaxconn` Kernel parameter.
+                         #   In order for the larger `backlog` set here to take
+                         #   effect it is necessary to raise
+                         #   `net.core.somaxconn` at the same time to match or
+                         #   exceed the `backlog` number set.
                          #
                          # **Note:** The `ssl` suffix is not supported,
                          # and each address/port will accept TCP with or
@@ -200,9 +222,9 @@
                          # Examples:
                          #
                          # ```
-                         # stream_listen = 127.0.0.1:7000
-                         # stream_listen = 0.0.0.0:989, 0.0.0.0:20
-                         # stream_listen = [::1]:1234
+                         # stream_listen = 127.0.0.1:7000 reuseport backlog=16384
+                         # stream_listen = 0.0.0.0:989 reuseport backlog=65536, 0.0.0.0:20
+                         # stream_listen = [::1]:1234 backlog=16384
                          # ```
                          #
                          # By default this value is set to `off`, thus
@@ -211,7 +233,7 @@
 # See http://nginx.org/en/docs/stream/ngx_stream_core_module.html#listen
 # for a description of the formats that Kong might accept in stream_listen.
 
-#admin_listen = 127.0.0.1:8001, 127.0.0.1:8444 ssl
+#admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 ssl reuseport backlog=16384
                          # Comma-separated list of addresses and ports on
                          # which the Admin interface should listen.
                          # The Admin interface is the API allowing you to
@@ -238,8 +260,19 @@
                          #   for a given address:port pair.
                          # - `reuseport` instructs to create an individual
                          #   listening socket for each worker process
-                         #   allowing a kernel to distribute incoming
+                         #   allowing the Kernel to better distribute incoming
                          #   connections between worker processes
+                         # - `backlog=N` sets the maximum length for the queue
+                         #   of pending TCP connections. This number should
+                         #   not be too small in order to prevent clients
+                         #   seeing "Connection refused" error connecting to
+                         #   a busy Kong instance.
+                         #   **Note:** on Linux, this value is limited by the
+                         #   setting of `net.core.somaxconn` Kernel parameter.
+                         #   In order for the larger `backlog` set here to take
+                         #   effect it is necessary to raise
+                         #   `net.core.somaxconn` at the same time to match or
+                         #   exceed the `backlog` number set.
                          #
                          # This value can be set to `off`, thus disabling
                          # the Admin interface for this node, enabling a
