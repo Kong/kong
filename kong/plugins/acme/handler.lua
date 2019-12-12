@@ -1,4 +1,3 @@
-local BasePlugin = require("kong.plugins.base_plugin")
 local kong_certificate = require("kong.runloop.certificate")
 
 local client = require("kong.plugins.acme.client")
@@ -13,18 +12,12 @@ local acme_challenge_path = [[^/\.well-known/acme-challenge/(.+)]]
 -- cache for dummy cert kong generated (it's a table)
 local default_cert_key
 
-local LetsencryptHandler = BasePlugin:extend()
+local LetsencryptHandler = {}
 
 LetsencryptHandler.PRIORITY = 1000
-LetsencryptHandler.VERSION = "0.0.1"
-
-function LetsencryptHandler:new()
-  LetsencryptHandler.super.new(self, "acme")
-end
+LetsencryptHandler.VERSION = "0.1.0"
 
 function LetsencryptHandler:init_worker()
-  LetsencryptHandler.super.init_worker(self, "acme")
-
   kong.log.info("acme renew timer started")
   ngx.timer.every(86400, client.renew_certificate)
 end
@@ -32,7 +25,6 @@ end
 
 -- access phase is to terminate the http-01 challenge request if necessary
 function LetsencryptHandler:access(conf)
-  LetsencryptHandler.super.access(self)
 
   local protocol = kong.client.get_protocol()
 
