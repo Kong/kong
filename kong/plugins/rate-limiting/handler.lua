@@ -19,6 +19,7 @@ local RATELIMIT_LIMIT = "X-RateLimit-Limit"
 local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
 local RETRY_AFTER = "Retry-After"
 
+local RATELIMIT_RESET = "X-RateLimit-Reset"
 
 local RateLimitingHandler = {}
 
@@ -116,6 +117,8 @@ function RateLimitingHandler:access(conf)
     if not conf.hide_client_headers then
       local headers = {}
       local timestamps
+      -- Find the closer limit.
+      local lowest = nil
       for k, v in pairs(usage) do
         if stop == nil or stop == k then
           v.remaining = v.remaining - 1
@@ -134,7 +137,21 @@ function RateLimitingHandler:access(conf)
           reset = max(reset or 0, EXPIRATIONS[k] - floor((current_timestamp -
                                                           timestamps[k]) / 1000))
         end
+
+        -- find the lowest limit in terms of remaining calls or time-window
+        if (lowest == nil
+            or usage[lowest].remaining > remaining
+            or (usage[lowest].remaining == remaining and EXPIRATIONS[k] > EXPIRATIONS[lowest])
+           ) then
+          lowest = k
+        end
       end
+
+      -- Set the normalized ratelimit values.
+      headers[RATELIMIT_LIMIT] = headers[RATELIMIT_LIMIT .. "-" .. lowest]
+      headers[RATELIMIT_REMAINING] = headers[RATELIMIT_REMAINING .. "-" .. lowest]
+      -- Set the expected reset time.
+      headers[RATELIMIT_RESET] = EXPIRATIONS[lowest] - (current_timestamp/1000 % EXPIRATIONS[lowest])
 
       kong.ctx.plugin.headers = headers
     end
