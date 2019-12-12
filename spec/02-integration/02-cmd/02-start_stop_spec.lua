@@ -208,24 +208,19 @@ describe("kong start/stop #" .. strategy, function()
       if not ok then
         error(stderr)
       end
+      
+      helpers.wait_until(function()
+        local cmd = string.format("%s health -p ./servroot", helpers.bin_path)
+        return pl_utils.executeex(cmd)
+      end, 10)
 
-      do
-        local proxy_client
+      local proxy_client = assert(helpers.proxy_client())
 
-        -- get a connection, retry until kong starts
-        helpers.wait_until(function()
-          local pok
-          pok, proxy_client = pcall(helpers.proxy_client)
-          return pok
-        end, 10)
-
-        local res = assert(proxy_client:send {
-          method = "GET",
-          path = "/hello",
-        })
-        assert.res_status(404, res) -- no Route configured
-      end
-
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/hello",
+      })
+      assert.res_status(404, res) -- no Route configured
       assert(helpers.stop_kong(helpers.test_conf.prefix))
 
       -- TEST: since nginx started in the foreground, the 'kong start' command

@@ -43,8 +43,8 @@ setup-ci:
 	.ci/setup_env.sh
 
 setup-kong-build-tools:
-	-rm -rf kong-build-tools; \
-	git clone https://github.com/Kong/kong-build-tools.git $(KONG_BUILD_TOOLS_LOCATION); fi
+	-rm -rf $(KONG_BUILD_TOOLS_LOCATION)
+	-git clone https://github.com/Kong/kong-build-tools.git $(KONG_BUILD_TOOLS_LOCATION)
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
 	git reset --hard $(KONG_BUILD_TOOLS); \
 

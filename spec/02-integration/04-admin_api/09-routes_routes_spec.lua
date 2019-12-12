@@ -1910,6 +1910,7 @@ for _, strategy in helpers.each_strategy() do
       describe("GET", function()
         describe("with data", function()
           lazy_setup(function()
+            db:truncate("services")
             db:truncate("routes")
             for i = 1, 10 do
               bp.routes:insert({ paths = { "/route-" .. i } })
@@ -1924,7 +1925,15 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
             assert.equal(10, #json.data)
+            assert.equal("ok", res.headers["Kong-Api-Override"])
 
+            local res = assert(client:send {
+              method = "GET",
+              path   = "/services"
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal(10, #json.data)
             assert.equal("ok", res.headers["Kong-Api-Override"])
           end)
         end)

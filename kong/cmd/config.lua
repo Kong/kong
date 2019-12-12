@@ -23,16 +23,6 @@ local function db_export(filename, conf)
     error(filename .. " already exists. Will not overwrite it.")
   end
 
-  _G.kong = kong_global.new()
-  kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
-
-  local db = assert(DB.new(conf))
-  assert(db:init_connector())
-  assert(db:connect())
-  assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
-
-  _G.kong.db = db
-
   local fd, err = io.open(filename, "w")
   if not fd then
     return nil, err
@@ -94,6 +84,16 @@ local function execute(args)
     error(err)
   end
 
+  _G.kong = kong_global.new()
+  kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
+
+  local db = assert(DB.new(conf))
+  assert(db:init_connector())
+  assert(db:connect())
+  assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
+
+  _G.kong.db = db
+
   if args.command == "db_export" then
     return db_export(pl_path.abspath(args[1] or DEFAULT_FILE), conf)
   end
@@ -112,16 +112,6 @@ local function execute(args)
 
     if args.command == "db_import" then
       log("parse successful, beginning import")
-
-      _G.kong = kong_global.new()
-      kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
-
-      local db = assert(DB.new(conf))
-      assert(db:init_connector())
-      assert(db:connect())
-      assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
-
-      _G.kong.db = db
 
       local ok, err = declarative.load_into_db(dc_table)
       if not ok then

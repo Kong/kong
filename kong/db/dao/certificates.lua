@@ -99,14 +99,11 @@ function _Certificates:update(cert_pk, cert, options)
     end
   end
 
-  -- update certificate if necessary
-  if cert.key or cert.cert then
     cert.snis = nil
     cert, err, err_t = self.super.update(self, cert_pk, cert, options)
     if err then
       return nil, err, err_t
     end
-  end
 
   if name_list then
     cert.snis = name_list

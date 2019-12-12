@@ -360,11 +360,14 @@ local function register_events()
 
   -- manual health updates
   cluster_events:subscribe("balancer:post_health", function(data)
-    local pattern = "([^|]+)|([^|]+)|([^|]+)|([^|]+)|(.*)"
-    local ip, port, health, id, name = data:match(pattern)
+    local pattern = "([^|]+)|([^|]*)|([^|]+)|([^|]+)|([^|]+)|(.*)"
+    local hostname, ip, port, health, id, name = data:match(pattern)
     port = tonumber(port)
     local upstream = { id = id, name = name }
-    local _, err = balancer.post_health(upstream, ip, port, health == "1")
+    if ip == "" then
+      ip = nil
+    end
+    local _, err = balancer.post_health(upstream, hostname, ip, port, health == "1")
     if err then
       log(ERR, "failed posting health of ", name, " to workers: ", err)
     end

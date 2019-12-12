@@ -68,6 +68,7 @@ local function set_balancer(upstream_id, balancer)
     healthcheckers[prev] = nil
     healthchecker_callbacks[prev] = nil
     target_histories[prev] = nil
+    upstream_ids[prev] = nil
   end
   balancers[upstream_id] = balancer
 end
@@ -160,7 +161,6 @@ end
 -- @param rb ring balancer object
 -- @param history list of targets/transactions to be applied
 -- @param start the index where to start in the `history` parameter
--- @return true
 local function apply_history(rb, history, start)
 
   for i = start, #history do
@@ -179,8 +179,6 @@ local function apply_history(rb, history, start)
       order = target.order,
     }
   end
-
-  return true
 end
 
 
@@ -230,6 +228,9 @@ do
     -- @param hostname string
     local function ring_balancer_callback(balancer, action, address, ip, port, hostname)
       local healthchecker = healthcheckers[balancer]
+      if not healthchecker then
+        return
+      end
 
       if action == "health" then
         local balancer_status
@@ -355,7 +356,6 @@ do
       })
 
       if not healthchecker then
-        log(ERR, "[healthchecks] error creating health checker: ", err)
         return nil, err
       end
 
@@ -365,6 +365,8 @@ do
 
       -- only enable the callback after the target history has been replayed.
       balancer:setCallback(ring_balancer_callback)
+
+      return true
     end
   end
 
@@ -389,12 +391,60 @@ do
     return nil, "timeout"
   end
 
-  local function invalidate_upstream_caches(upstream_id)
-    singletons.core_cache:invalidate_local("balancer:upstreams:" .. upstream_id)
-    singletons.core_cache:invalidate_local("balancer:targets:" .. upstream_id)
+  ------------------------------------------------------------------------------
+  -- The mutually-exclusive section used internally by the
+  -- 'create_balancer' operation.
+  -- @param upstream (table) A db.upstreams entity
+  -- @param history (table, optional) history of target updates
+  -- @param start (integer, optional) from where to start reading the history
+  -- @return The new balancer object, or nil+error
+  local function create_balancer_exclusive(upstream, history, start)
+    local health_threshold = upstream.healthchecks and
+                              upstream.healthchecks.threshold or nil
+
+    local balancer, err = balancer_types[upstream.algorithm].new({
+      wheelSize = upstream.slots,  -- will be ignored by least-connections
+      dns = dns_client,
+      healthThreshold = health_threshold,
+    })
+    if not balancer then
+      return nil, "failed creating balancer:" .. err
+    end
+
+    singletons.core_cache:invalidate_local("balancer:upstreams:" .. upstream.id)
+    singletons.core_cache:invalidate_local("balancer:targets:" .. upstream.id)
+
+    target_histories[balancer] = {}
+
+    if not history then
+      history, err = fetch_target_history(upstream)
+      if not history then
+        return nil, "failed fetching target history:" .. err
+      end
+      start = 1
+    end
+
+    apply_history(balancer, history, start)
+
+    upstream_ids[balancer] = upstream.id
+
+    local ok, err = create_healthchecker(balancer, upstream)
+    if not ok then
+      log(ERR, "[healthchecks] error creating health checker: ", err)
+    end
+
+    -- only make the new balancer available for other requests after it
+    -- is fully set up.
+    set_balancer(upstream.id, balancer)
+
+    return balancer
   end
 
   ------------------------------------------------------------------------------
+  -- Create a balancer object, its healthchecker and attach them to the
+  -- necessary data structures. The creation of the balancer happens in a
+  -- per-worker mutual exclusion section, such that no two requests create the
+  -- same balancer at the same time.
   -- @param upstream (table) A db.upstreams entity
   -- @param recreate (boolean, optional) create new balancer even if one exists
   -- @param history (table, optional) history of target updates
@@ -415,44 +465,12 @@ do
     end
 
     creating[upstream.id] = true
-    local health_threshold = upstream.healthchecks and
-                              upstream.healthchecks.threshold or nil
 
-    local balancer, err = balancer_types[upstream.algorithm].new({
-      wheelSize = upstream.slots,  -- will be ignored by least-connections
-      dns = dns_client,
-      healthThreshold = health_threshold,
-    })
-
-    if not balancer then
-      return nil, err
-    end
-
-    invalidate_upstream_caches(upstream.id)
-
-    target_histories[balancer] = {}
-
-    if not history then
-      history, err = fetch_target_history(upstream)
-      if not history then
-        return nil, err
-      end
-      start = 1
-    end
-
-    apply_history(balancer, history, start)
-
-    upstream_ids[balancer] = upstream.id
-
-    create_healthchecker(balancer, upstream)
-
-    -- only make the new balancer available for other requests after it
-    -- is fully set up.
-    set_balancer(upstream.id, balancer)
+    local balancer, err = create_balancer_exclusive(upstream, history, start)
 
     creating[upstream.id] = nil
 
-    return balancer
+    return balancer, err
   end
 end
 
@@ -491,7 +509,7 @@ local function check_target_history(upstream, balancer)
     end
   end
 
-  if last_equal_index == new_size then
+  if last_equal_index == new_size and new_size > 0 then
     -- No history update is necessary in the balancer object.
     return true
   elseif last_equal_index == old_size then

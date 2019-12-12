@@ -1,9 +1,9 @@
 package = "kong"
-version = "1.4.0-0"
+version = "1.4.2-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "1.4.0"
+  tag = "1.4.2"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -30,21 +30,21 @@ dependencies = {
   "luaossl == 20190731",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
-  "lua-resty-dns-client == 4.1.0",
+  "lua-resty-dns-client == 4.1.2",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-mediador == 0.1.2",
-  "lua-resty-healthcheck == 1.1.0",
+  "lua-resty-healthcheck == 1.1.1",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.0",
   -- external Kong plugins
-  "kong-plugin-azure-functions ~> 0.4.1",
+  "kong-plugin-azure-functions ~> 0.4",
   "kong-plugin-zipkin ~> 0.2",
   "kong-plugin-serverless-functions ~> 0.3",
   "kong-prometheus-plugin ~> 0.7",
   "kong-proxy-cache-plugin ~> 1.2",
-  "kong-plugin-request-transformer ~> 1.2.4",
+  "kong-plugin-request-transformer ~> 1.2",
   "kong-plugin-session ~> 2.2",
-  "kong-plugin-aws-lambda ~> 3.0.1",
+  "kong-plugin-aws-lambda ~> 3.0",
 }
 build = {
   type = "builtin",
@@ -291,6 +291,7 @@ build = {
     ["kong.plugins.acl.daos"] = "kong/plugins/acl/daos.lua",
     ["kong.plugins.acl.groups"] = "kong/plugins/acl/groups.lua",
     ["kong.plugins.acl.acls"] = "kong/plugins/acl/acls.lua",
+    ["kong.plugins.acl.api"] = "kong/plugins/acl/api.lua",
 
     ["kong.plugins.correlation-id.handler"] = "kong/plugins/correlation-id/handler.lua",
     ["kong.plugins.correlation-id.schema"] = "kong/plugins/correlation-id/schema.lua",

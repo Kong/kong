@@ -2,6 +2,8 @@
 
 
 - [2.0.0](#200)
+- [1.4.2](#142)
+- [1.4.1](#141)
 - [1.4.0](#140)
 - [1.3.0](#130)
 - [1.2.2](#122)
@@ -33,6 +35,7 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
+
 ## [2.0.0]
 
 > Released on
@@ -44,6 +47,75 @@
   - As Service Mesh has been deprecated, kubernetes-sidecar-injector plugin
     should not be used anymore and has been removed from bundled plugins.
     [#5199](https://github.com/Kong/kong/pull/5199)
+
+
+## [1.4.2]
+
+> Released 2019/12/10
+
+This is another patch release in the 1.4 series, and as such, strictly
+contains bugfixes. There are no new features nor breaking changes.
+
+### Fixes
+
+##### Core
+
+  - Fixes some corner cases in the balancer behavior
+    [#5318](https://github.com/Kong/kong/pull/5318)
+
+##### Plugins
+
+  - http-log: disable queueing when using the default
+    settings, to avoid memory consumption issues
+    [#5323](https://github.com/Kong/kong/pull/5323)
+  - prometheus: restore compatibility with version 0.6.0
+    [#5303](https://github.com/Kong/kong/pull/5303)
+
+
+[Back to TOC](#table-of-contents)
+
+
+## [1.4.1]
+
+> Released 2019/12/03
+
+This is a patch release in the 1.4 series, and as such, strictly contains
+bugfixes. There are no new features nor breaking changes.
+
+### Fixes
+
+##### Core
+
+  - Fixed a memory leak in the balancer
+    [#5229](https://github.com/Kong/kong/pull/5229) --
+    Thanks [zeeshen](https://github.com/zeeshen) for the patch!
+  - Removed arbitrary limit on worker connections.
+    [#5148](https://github.com/Kong/kong/pull/5148)
+  - Fixed `preserve_host` behavior for gRPC routes
+    [#5225](https://github.com/Kong/kong/pull/5225)
+  - Fix migrations for ttl for OAuth2 tokens
+    [#5253](https://github.com/Kong/kong/pull/5253)
+  - Improve handling of errors when creating balancers
+    [#5284](https://github.com/Kong/kong/pull/5284)
+
+##### CLI
+
+  - Fixed an issue with `kong config db_export` when reading
+    entities that are ttl-enabled and whose ttl value is `null`.
+    [#5185](https://github.com/Kong/kong/pull/5185)
+
+##### Admin API
+
+  - Various fixes for Admin API behavior
+    [#5174](https://github.com/Kong/kong/pull/5174),
+    [#5178](https://github.com/Kong/kong/pull/5178),
+    [#5191](https://github.com/Kong/kong/pull/5191),
+    [#5186](https://github.com/Kong/kong/pull/5186)
+
+##### Plugins
+
+  - http-log: do not impose a retry delay on successful sends
+    [#5282](https://github.com/Kong/kong/pull/5282)
 
 
 [Back to TOC](#table-of-contents)
@@ -4234,6 +4306,9 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.0.0]: https://github.com/Kong/kong/compare/1.4.2...2.0.0
+[1.4.2]: https://github.com/Kong/kong/compare/1.4.1...1.4.2
+[1.4.1]: https://github.com/Kong/kong/compare/1.4.0...1.4.1
 [1.4.0]: https://github.com/Kong/kong/compare/1.3.0...1.4.0
 [1.3.0]: https://github.com/Kong/kong/compare/1.2.2...1.3.0
 [1.2.2]: https://github.com/Kong/kong/compare/1.2.1...1.2.2
