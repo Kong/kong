@@ -1548,17 +1548,19 @@ for _, strategy in helpers.each_strategy() do
         lazy_setup(function()
           routes = {}
 
-          for i, test in ipairs(path_handling_tests) do
-            routes[i] = {
-              strip_path   = test.strip_path,
-              path_handling = test.path_handling,
-              paths        = test.route_path and { test.route_path } or nil,
-              hosts        = { "localbin-" .. i .. ".com" },
-              service = {
-                name = "plain_" .. i,
-                path = test.service_path,
+          for i, line in ipairs(path_handling_tests) do
+            for j, test in ipairs(line:expand()) do
+              routes[#routes + 1] = {
+                strip_path   = test.strip_path,
+                path_handling = test.path_handling,
+                paths        = test.route_path and { test.route_path } or nil,
+                hosts        = { "localbin-" .. i .. "-" .. j .. ".com" },
+                service = {
+                  name = "plain_" .. i .. "-" .. j,
+                  path = test.service_path,
+                }
               }
-            }
+            end
           end
 
           routes = insert_routes(bp, routes)
@@ -1570,28 +1572,30 @@ for _, strategy in helpers.each_strategy() do
           end
         end)
 
-        for i, test in ipairs(path_handling_tests) do
-          local strip = test.strip_path and "on" or "off"
-          local route_uri_or_host
-          if test.route_path then
-            route_uri_or_host = "uri " .. test.route_path
-          else
-            route_uri_or_host = "host localbin-" .. i .. ".com"
+        for i, line in ipairs(path_handling_tests) do
+          for j, test in ipairs(line:expand()) do
+            local strip = test.strip_path and "on" or "off"
+            local route_uri_or_host
+            if test.route_path then
+              route_uri_or_host = "uri " .. test.route_path
+            else
+              route_uri_or_host = "host localbin-" .. i .. "-" .. j .. ".com"
+            end
+
+            local description = string.format("(%d-%d) %s with %s, strip = %s, %s when requesting %s",
+              i, j, test.service_path, route_uri_or_host, strip, test.path_handling, test.request_path)
+
+            it(description, function()
+              local res = assert(proxy_client:get(test.request_path, {
+                headers = {
+                  ["Host"] = "localbin-" .. i .. "-" .. j .. ".com",
+                }
+              }))
+
+              local data = assert.response(res).has.jsonbody()
+              assert.equal(test.expected_path, data.vars.request_uri)
+            end)
           end
-
-          local description = string.format("(%d) %s with %s, strip = %s, %s when requesting %s",
-            i, test.service_path, route_uri_or_host, strip, test.path_handling, test.request_path)
-
-          it(description, function()
-            local res = assert(proxy_client:get(test.request_path, {
-              headers = {
-                ["Host"] = "localbin-" .. i .. ".com",
-              }
-            }))
-
-            local data = assert.response(res).has.jsonbody()
-            assert.equal(test.expected_path, data.vars.request_uri)
-          end)
         end
       end)
 
@@ -1605,17 +1609,21 @@ for _, strategy in helpers.each_strategy() do
         lazy_setup(function()
           routes = {}
 
-          for i, test in ipairs(path_handling_tests) do
-            routes[i] = {
-              strip_path   = test.strip_path,
-              paths        = test.route_path and { make_a_regex(test.route_path) } or nil,
-              path_handling = test.path_handling,
-              hosts        = { "localbin-" .. i .. ".com" },
-              service = {
-                name = "make_regex_" .. i,
-                path = test.service_path,
-              }
-            }
+          for i, line in ipairs(path_handling_tests) do
+            if line.route_path then  -- skip if hostbased match
+              for j, test in ipairs(line:expand()) do
+                routes[#routes + 1] = {
+                  strip_path   = test.strip_path,
+                  paths        = test.route_path and { make_a_regex(test.route_path) } or nil,
+                  path_handling = test.path_handling,
+                  hosts        = { "localbin-" .. i .. "-" .. j .. ".com" },
+                  service = {
+                    name = "make_regex_" .. i .. "-" .. j,
+                    path = test.service_path,
+                  }
+                }
+              end
+            end
           end
 
           routes = insert_routes(bp, routes)
@@ -1625,22 +1633,23 @@ for _, strategy in helpers.each_strategy() do
           remove_routes(strategy, routes)
         end)
 
-        for i, test in ipairs(path_handling_tests) do
-          if test.route_path then  -- skip if hostbased match
+        for i, line in ipairs(path_handling_tests) do
+          if line.route_path then  -- skip if hostbased match
+            for j, test in ipairs(line:expand()) do
+              local strip = test.strip_path and "on" or "off"
 
-            local strip = test.strip_path and "on" or "off"
+              local description = string.format("(%d-%d) %s with uri %s, strip = %s, %s when requesting %s",
+                i, j, test.service_path, make_a_regex(test.route_path), strip, test.path_handling, test.request_path)
 
-            local description = string.format("(%d) %s with uri %s, strip = %s, %s when requesting %s",
-              i, test.service_path, make_a_regex(test.route_path), strip, test.path_handling, test.request_path)
+              it(description, function()
+                local res = assert(proxy_client:get(test.request_path, {
+                  headers = { Host = "localbin-" .. i .. "-" .. j .. ".com" },
+                }))
 
-            it(description, function()
-              local res = assert(proxy_client:get(test.request_path, {
-                headers = { Host = "localbin-" .. i .. ".com" },
-              }))
-
-              local data = assert.response(res).has.jsonbody()
-              assert.equal(test.expected_path, data.vars.request_uri)
-            end)
+                local data = assert.response(res).has.jsonbody()
+                assert.equal(test.expected_path, data.vars.request_uri)
+              end)
+            end
           end
         end
       end)
