@@ -954,6 +954,17 @@ do
   end
 
 
+  -- returns wether an error can be while executing migration operations
+  function CassandraConnector:is_ignorable_during_migrations(err)
+    local sfind = string.find
+    return sfind(err, "Column .- was not found in table")
+        or sfind(err, "[Ii]nvalid column name")
+        or sfind(err, "[Uu]ndefined column name")
+        or sfind(err, "No column definition found for column")
+        or sfind(err, "Undefined name .- in selection clause")
+  end
+
+
   function CassandraConnector:run_up_migration(name, up_cql)
     if type(name) ~= "string" then
       error("name must be a string", 2)
@@ -975,12 +986,7 @@ do
       if cql ~= "" then
         local res, err = conn:execute(cql)
         if not res then
-          if string.find(err, "Column .- was not found in table")
-          or string.find(err, "[Ii]nvalid column name")
-          or string.find(err, "[Uu]ndefined column name")
-          or string.find(err, "No column definition found for column")
-          or string.find(err, "Undefined name .- in selection clause")
-          then
+          if self:is_ignorable_during_migrations(err) then
             log.warn("ignored error while running '%s' migration: %s (%s)",
                      name, err, cql:gsub("\n", " "):gsub("%s%s+", " "))
           else
