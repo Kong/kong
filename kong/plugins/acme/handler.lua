@@ -15,7 +15,7 @@ local default_cert_key
 local LetsencryptHandler = {}
 
 LetsencryptHandler.PRIORITY = 1000
-LetsencryptHandler.VERSION = "0.1.0"
+LetsencryptHandler.VERSION = "0.1.1"
 
 function LetsencryptHandler:init_worker()
   kong.log.info("acme renew timer started")
