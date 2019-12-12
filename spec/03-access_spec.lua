@@ -31,7 +31,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       db.acme_storage:insert {
-        key = dummy_id,
+        key = dummy_id .. "#http-01",
         value = "isme",
       }
 
