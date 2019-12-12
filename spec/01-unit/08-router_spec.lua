@@ -2513,57 +2513,20 @@ describe("Router", function()
     end)
 
 
-    describe("slash handling", function()
+    describe("#slash handling", function()
 
-      for i, test in ipairs(path_handling_tests) do
-        local strip = test.strip_path and "on" or "off"
-        local route_uri_or_host
-        if test.route_path then
-          route_uri_or_host = "uri " .. test.route_path
-        else
-          route_uri_or_host = "host localbin-" .. i .. ".com"
-        end
-
-        local description = string.format("(%d) plain, %s with %s, strip = %s, %s. req: %s",
-          i, test.service_path, route_uri_or_host, strip, test.path_handling, test.request_path)
-
-        it(description, function()
-          local use_case_routes = {
-            {
-              service      = {
-                protocol   = "http",
-                name       = "service-invalid",
-                path       = test.service_path,
-              },
-              route        = {
-                strip_path = test.strip_path,
-                path_handling = test.path_handling,
-                -- only add the header is no path is provided
-                hosts      = test.service_path == nil and nil or { "localbin-" .. i .. ".com" },
-                paths      = { test.route_path },
-              },
-            }
-          }
-
-          local router = assert(Router.new(use_case_routes) )
-          local _ngx = mock_ngx("GET", test.request_path, { host = "localbin-" .. i .. ".com" })
-          router._set_ngx(_ngx)
-          local match_t = router.exec()
-          assert.equal(use_case_routes[1].route, match_t.route)
-          assert.equal(test.service_path, match_t.upstream_url_t.path)
-          assert.equal(test.expected_path, match_t.upstream_uri)
-        end)
-      end
-
-      -- this is identical to the tests above, except that for the path we match
-      -- with an injected regex sequence, effectively transforming the path
-      -- match into a regex match
-      for i, test in ipairs(path_handling_tests) do
-        if test.route_path then -- skip test cases which match on host
+      for i, line in ipairs(path_handling_tests) do
+        for j, test in ipairs(line:expand()) do
           local strip = test.strip_path and "on" or "off"
-          local regex = "/[0]?" .. test.route_path:sub(2, -1)
-          local description = string.format("(%d) regex, %s with %s, strip = %s, %s. req: %s",
-            i, test.service_path, regex, strip, test.path_handling, test.request_path)
+          local route_uri_or_host
+          if test.route_path then
+            route_uri_or_host = "uri " .. test.route_path
+          else
+            route_uri_or_host = "host localbin-" .. i .. "-" .. j .. ".com"
+          end
+
+          local description = string.format("(%d-%d) plain, %s with %s, strip = %s, %s. req: %s",
+            i, j, test.service_path, route_uri_or_host, strip, test.path_handling, test.request_path)
 
           it(description, function()
             local use_case_routes = {
@@ -2575,22 +2538,63 @@ describe("Router", function()
                 },
                 route        = {
                   strip_path = test.strip_path,
-                  -- only add the header is no path is provided
                   path_handling = test.path_handling,
-                  hosts      = { "localbin-" .. i .. ".com" },
-                  paths      = { regex },
+                  -- only add the header is no path is provided
+                  hosts      = test.service_path == nil and nil or { "localbin-" .. i .. "-" .. j .. ".com" },
+                  paths      = { test.route_path },
                 },
               }
             }
 
             local router = assert(Router.new(use_case_routes) )
-            local _ngx = mock_ngx("GET", test.request_path, { host = "localbin-" .. i .. ".com" })
+            local _ngx = mock_ngx("GET", test.request_path, { host = "localbin-" .. i .. "-" .. j .. ".com" })
             router._set_ngx(_ngx)
             local match_t = router.exec()
             assert.equal(use_case_routes[1].route, match_t.route)
             assert.equal(test.service_path, match_t.upstream_url_t.path)
             assert.equal(test.expected_path, match_t.upstream_uri)
           end)
+        end
+      end
+
+      -- this is identical to the tests above, except that for the path we match
+      -- with an injected regex sequence, effectively transforming the path
+      -- match into a regex match
+      for i, line in ipairs(path_handling_tests) do
+        if line.route_path then -- skip test cases which match on host
+          for j, test in ipairs(line:expand()) do
+            local strip = test.strip_path and "on" or "off"
+            local regex = "/[0]?" .. test.route_path:sub(2, -1)
+            local description = string.format("(%d-%d) regex, %s with %s, strip = %s, %s. req: %s",
+              i, j, test.service_path, regex, strip, test.path_handling, test.request_path)
+
+            it(description, function()
+              local use_case_routes = {
+                {
+                  service      = {
+                    protocol   = "http",
+                    name       = "service-invalid",
+                    path       = test.service_path,
+                  },
+                  route        = {
+                    strip_path = test.strip_path,
+                    -- only add the header is no path is provided
+                    path_handling = test.path_handling,
+                    hosts      = { "localbin-" .. i .. ".com" },
+                    paths      = { regex },
+                  },
+                }
+              }
+
+              local router = assert(Router.new(use_case_routes) )
+              local _ngx = mock_ngx("GET", test.request_path, { host = "localbin-" .. i .. ".com" })
+              router._set_ngx(_ngx)
+              local match_t = router.exec()
+              assert.equal(use_case_routes[1].route, match_t.route)
+              assert.equal(test.service_path, match_t.upstream_url_t.path)
+              assert.equal(test.expected_path, match_t.upstream_uri)
+            end)
+          end
         end
       end
     end)
