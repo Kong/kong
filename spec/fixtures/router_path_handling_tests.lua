@@ -18,128 +18,123 @@ local utils = require "kong.tools.utils"
 --   can be expanded using the `line:expand()` method.
 
 local tests = {
-  -- service_path    route_path   strip_path  path_handling  request_path     expected_path
-  {  "/",            "/",         true,       {"v0", "v1"},  "/",             "/",                  },
-  {  "/",            "/",         true,       {"v0", "v1"},  "/route",        "/route",             },
-  {  "/",            "/",         true,       {"v0", "v1"},  "/route/",       "/route/",            },
-  {  "/",            "/route",    true,       {"v0", "v1"},  "/route",        "/",                  },
-  {  "/",            "/route",    true,       {"v0", "v1"},  "/route/",       "/",                  },
-  {  "/",            "/route/",   true,       {"v0", "v1"},  "/route/",       "/",                  },
-  {  "/service",     "/",         true,       {"v0", "v1"},  "/",             "/service",           },
-  {  "/service",     "/",         true,       "v0",          "/route",        "/service/route",     },
-  {  "/service",     "/",         true,       "v1",          "/route",        "/serviceroute",      }, -- !
-  {  "/service",     "/",         true,       "v0",          "/route/",       "/service/route/",    },
-  {  "/service",     "/",         true,       "v1",          "/route/",       "/serviceroute/",     }, -- !
-  {  "/service",     "/route",    true,       {"v0", "v1"},  "/route",        "/service",           },
-  {  "/service",     "/route",    true,       {"v0", "v1"},  "/route/",       "/service/",          },
-  {  "/service",     "/route/",   true,       {"v0", "v1"},  "/route/",       "/service",           },
-  {  "/service/",    "/",         true,       "v0",          "/",             "/service",           },
-  {  "/service/",    "/",         true,       "v1",          "/",             "/service/",          }, -- !
-  {  "/service/",    "/",         true,       {"v0", "v1"},  "/route",        "/service/route",     },
-  {  "/service/",    "/",         true,       {"v0", "v1"},  "/route/",       "/service/route/",    },
-  {  "/service/",    "/route",    true,       "v0",          "/route",        "/service",           },
-  {  "/service/",    "/route",    true,       "v1",          "/route",        "/service/",          }, -- !
-  {  "/service/",    "/route",    true,       {"v0", "v1"},  "/route/",       "/service/",          },
-  {  "/service/",    "/route/",   true,       "v0",          "/route/",       "/service",           },
-  {  "/service/",    "/route/",   true,       "v1",          "/route/",       "/service/"           }, -- !
-  {  "/srv",         "/rou",      true,       "v0",          "/roureq",       "/srv/req",           },
-  {  "/srv",         "/rou",      true,       "v1",          "/roureq",       "/srvreq",            }, -- !
-  {  "/srv/",        "/rou",      true,       "v0",          "/rou",          "/srv",               },
-  {  "/srv/",        "/rou",      true,       "v1",          "/rou",          "/srv/",              }, -- !
-  {  "/",            "/",         false,      {"v0", "v1"},  "/",             "/",                  },
-  {  "/",            "/",         false,      {"v0", "v1"},  "/route",        "/route",             },
-  {  "/",            "/",         false,      {"v0", "v1"},  "/route/",       "/route/",            },
-  {  "/",            "/route",    false,      {"v0", "v1"},  "/route",        "/route",             },
-  {  "/",            "/route",    false,      {"v0", "v1"},  "/route/",       "/route/",            },
-  {  "/",            "/route/",   false,      {"v0", "v1"},  "/route/",       "/route/",            },
-  {  "/service",     "/",         false,      {"v0", "v1"},  "/",             "/service",           },
-  {  "/service",     "/",         false,      "v0",          "/route",        "/service/route",     },
-  {  "/service",     "/",         false,      "v1",          "/route",        "/serviceroute",      }, --!
-  {  "/service",     "/",         false,      "v0",          "/route/",       "/service/route/",    },
-  {  "/service",     "/",         false,      "v1",          "/route/",       "/serviceroute/",     }, --!
-  {  "/service",     "/route",    false,      "v0",          "/route",        "/service/route",     },
-  {  "/service",     "/route",    false,      "v1",          "/route",        "/serviceroute",      }, --!
-  {  "/service",     "/route",    false,      "v0",          "/route/",       "/service/route/",    },
-  {  "/service",     "/route",    false,      "v1",          "/route/",       "/serviceroute/",     }, --!
-  {  "/service",     "/route/",   false,      "v0",          "/route/",       "/service/route/",    },
-  {  "/service",     "/route/",   false,      "v1",          "/route/",       "/serviceroute/",     }, --!
-  {  "/service/",    "/",         false,      {"v0", "v1"},  "/",             "/service/",          },
-  {  "/service/",    "/",         false,      {"v0", "v1"},  "/route",        "/service/route",     },
-  {  "/service/",    "/",         false,      {"v0", "v1"},  "/route/",       "/service/route/",    },
-  {  "/service/",    "/route",    false,      {"v0", "v1"},  "/route",        "/service/route",     },
-  {  "/service/",    "/route",    false,      {"v0", "v1"},  "/route/",       "/service/route/",    },
-  {  "/service/",    "/route/",   false,      {"v0", "v1"},  "/route/",       "/service/route/",    },
-  {  "/",            "/",         true,       {"v0", "v1"},  "/routereq",     "/routereq",          },
-  {  "/",            "/",         true,       {"v0", "v1"},  "/route/req",    "/route/req",         },
-  {  "/",            "/route",    true,       {"v0", "v1"},  "/routereq",     "/req",               },
-  {  "/",            "/route/",   true,       {"v0", "v1"},  "/route/req",    "/req",               },
-  {  "/service",     "/",         true,       "v0",          "/routereq",     "/service/routereq",  },
-  {  "/service",     "/",         true,       "v1",          "/routereq",     "/serviceroutereq",   }, -- !
-  {  "/service",     "/",         true,       "v0",          "/route/req",    "/service/route/req", },
-  {  "/service",     "/",         true,       "v1",          "/route/req",    "/serviceroute/req",  }, -- !
-  {  "/service",     "/route",    true,       "v0",          "/routereq",     "/service/req",       },
-  {  "/service",     "/route",    true,       "v1",          "/routereq",     "/servicereq",        }, -- !
-  {  "/service",     "/route/",   true,       "v0",          "/route/req",    "/service/req",       },
-  {  "/service",     "/route/",   true,       "v1",          "/route/req",    "/servicereq",        }, -- !
-  {  "/service/",    "/",         true,       {"v0", "v1"},  "/routereq",     "/service/routereq",  },
-  {  "/service/",    "/",         true,       {"v0", "v1"},  "/route/req",    "/service/route/req", },
-  {  "/service/",    "/route",    true,       {"v0", "v1"},  "/routereq",     "/service/req",       },
-  {  "/service/",    "/route/",   true,       {"v0", "v1"},  "/route/req",    "/service/req",       },
-  {  "/",            "/",         false,      {"v0", "v1"},  "/routereq",     "/routereq",          },
-  {  "/",            "/",         false,      {"v0", "v1"},  "/route/req",    "/route/req",         },
-  {  "/",            "/route",    false,      {"v0", "v1"},  "/routereq",     "/routereq",          },
-  {  "/",            "/route/",   false,      {"v0", "v1"},  "/route/req",    "/route/req",         },
-  {  "/service",     "/",         false,      "v0",          "/routereq",     "/service/routereq",  },
-  {  "/service",     "/",         false,      "v1",          "/routereq",     "/serviceroutereq",   }, -- !
-  {  "/service",     "/",         false,      "v0",          "/route/req",    "/service/route/req", },
-  {  "/service",     "/",         false,      "v1",          "/route/req",    "/serviceroute/req",  }, -- !
-  {  "/service",     "/route",    false,      "v0",          "/routereq",     "/service/routereq",  },
-  {  "/service",     "/route",    false,      "v1",          "/routereq",     "/serviceroutereq",   }, -- !
-  {  "/service",     "/route/",   false,      "v0",          "/route/req",    "/service/route/req", },
-  {  "/service",     "/route/",   false,      "v1",          "/route/req",    "/serviceroute/req",  }, -- !
-  {  "/service/",    "/",         false,      {"v0", "v1"},  "/routereq",     "/service/routereq",  },
-  {  "/service/",    "/",         false,      {"v0", "v1"},  "/route/req",    "/service/route/req", },
-  {  "/service/",    "/route",    false,      {"v0", "v1"},  "/routereq",     "/service/routereq",  },
-  {  "/service/",    "/route/",   false,      {"v0", "v1"},  "/route/req",    "/service/route/req", },
-  {  "/",            nil,         false,      {"v0", "v1"},  "/",             "/",                  },
-  {  "/",            nil,         false,      {"v0", "v1"},  "/route",        "/route",             },
-  {  "/",            nil,         false,      {"v0", "v1"},  "/route/",       "/route/",            },
-  {  "/service",     nil,         false,      {"v0", "v1"},  "/",             "/service",           },
-  {  "/service",     nil,         false,      "v0",          "/route",        "/service/route",     },
-  {  "/service",     nil,         false,      "v1",          "/route",        "/serviceroute",      }, -- !
-  {  "/service",     nil,         false,      "v0",          "/route/",       "/service/route/",    },
-  {  "/service",     nil,         false,      "v1",          "/route/",       "/serviceroute/",     }, -- !
-  {  "/service/",    nil,         false,      {"v0", "v1"},  "/",             "/service/",          },
-  {  "/service/",    nil,         false,      {"v0", "v1"},  "/route",        "/service/route",     },
-  {  "/service/",    nil,         false,      {"v0", "v1"},  "/route/",       "/service/route/",    },
-  {  "/",            nil,         true,       {"v0", "v1"},  "/",             "/",                  },
-  {  "/",            nil,         true,       {"v0", "v1"},  "/route",        "/route",             },
-  {  "/",            nil,         true,       {"v0", "v1"},  "/route/",       "/route/",            },
-  {  "/service",     nil,         true,       {"v0", "v1"},  "/",             "/service",           },
-  {  "/service",     nil,         true,       "v0",          "/route",        "/service/route",     },
-  {  "/service",     nil,         true,       "v1",          "/route",        "/serviceroute",      }, -- !
-  {  "/service",     nil,         true,       "v0",          "/route/",       "/service/route/",    },
-  {  "/service",     nil,         true,       "v1",          "/route/",       "/serviceroute/",     }, -- !
-  {  "/service/",    nil,         true,       "v0",          "/",             "/service",           },
-  {  "/service/",    nil,         true,       "v1",          "/",             "/service/",          }, -- !
-  {  "/service/",    nil,         true,       {"v0", "v1"},  "/route",        "/service/route",     },
-  {  "/service/",    nil,         true,       {"v0", "v1"},  "/route/",       "/service/route/",    },
+  -- service_path    route_path  strip_path     path_handling  request_path     expected_path
+  {  "/",            "/",        {false, true}, {"v0", "v1"},  "/",             "/",                  },
+  {  "/",            "/",        {false, true}, {"v0", "v1"},  "/route",        "/route",             },
+  {  "/",            "/",        {false, true}, {"v0", "v1"},  "/route/",       "/route/",            },
+  {  "/",            "/",        {false, true}, {"v0", "v1"},  "/routereq",     "/routereq",          },
+  {  "/",            "/",        {false, true}, {"v0", "v1"},  "/route/req",    "/route/req",         },
+  -- 5
+  {  "/",            "/route",   false,         {"v0", "v1"},  "/route",        "/route",             },
+  {  "/",            "/route",   false,         {"v0", "v1"},  "/route/",       "/route/",            },
+  {  "/",            "/route",   false,         {"v0", "v1"},  "/routereq",     "/routereq",          },
+  {  "/",            "/route",   true,          {"v0", "v1"},  "/route",        "/",                  },
+  {  "/",            "/route",   true,          {"v0", "v1"},  "/route/",       "/",                  },
+  {  "/",            "/route",   true,          {"v0", "v1"},  "/routereq",     "/req",               },
+  -- 11
+  {  "/",            "/route/",  false,         {"v0", "v1"},  "/route/",       "/route/",            },
+  {  "/",            "/route/",  false,         {"v0", "v1"},  "/route/req",    "/route/req",         },
+  {  "/",            "/route/",  true,          {"v0", "v1"},  "/route/",       "/",                  },
+  {  "/",            "/route/",  true,          {"v0", "v1"},  "/route/req",    "/req",               },
+  -- 15
+  {  "/srv",         "/rou",     false,         "v0",          "/roureq",       "/srv/roureq",        },
+  {  "/srv",         "/rou",     false,         "v1",          "/roureq",       "/srvroureq",         },
+  {  "/srv",         "/rou",     true,          "v0",          "/roureq",       "/srv/req",           },
+  {  "/srv",         "/rou",     true,          "v1",          "/roureq",       "/srvreq",            },
+  -- 19
+  {  "/srv/",        "/rou",     false,         {"v0", "v1"},  "/rou",          "/srv/rou",           },
+  {  "/srv/",        "/rou",     true,          "v0",          "/rou",          "/srv",               },
+  {  "/srv/",        "/rou",     true,          "v1",          "/rou",          "/srv/",              },
+  -- 22
+  {  "/service",     "/",        {false, true}, {"v0", "v1"},  "/",             "/service",           },
+  {  "/service",     "/",        {false, true}, "v0",          "/route",        "/service/route",     },
+  {  "/service",     "/",        {false, true}, "v1",          "/route",        "/serviceroute",      },
+  {  "/service",     "/",        {false, true}, "v0",          "/route/",       "/service/route/",    },
+  {  "/service",     "/",        {false, true}, "v1",          "/route/",       "/serviceroute/",     },
+  -- 27
+  {  "/service",     "/",        {false, true}, "v0",          "/routereq",     "/service/routereq",  },
+  {  "/service",     "/",        {false, true}, "v1",          "/routereq",     "/serviceroutereq",   },
+  {  "/service",     "/",        {false, true}, "v0",          "/route/req",    "/service/route/req", },
+  {  "/service",     "/",        {false, true}, "v1",          "/route/req",    "/serviceroute/req",  },
+  -- 31
+  {  "/service",     "/route",   false,         "v0",          "/route",        "/service/route",     },
+  {  "/service",     "/route",   false,         "v1",          "/route",        "/serviceroute",      },
+  {  "/service",     "/route",   false,         "v0",          "/route/",       "/service/route/",    },
+  {  "/service",     "/route",   false,         "v1",          "/route/",       "/serviceroute/",     },
+  {  "/service",     "/route",   false,         "v0",          "/routereq",     "/service/routereq",  },
+  {  "/service",     "/route",   false,         "v1",          "/routereq",     "/serviceroutereq",   },
+  {  "/service",     "/route",   true,          {"v0", "v1"},  "/route",        "/service",           },
+  {  "/service",     "/route",   true,          {"v0", "v1"},  "/route/",       "/service/",          },
+  {  "/service",     "/route",   true,          "v0",          "/routereq",     "/service/req",       },
+  {  "/service",     "/route",   true,          "v1",          "/routereq",     "/servicereq",        },
+  -- 41
+  {  "/service",     "/route/",  false,         "v0",          "/route/",       "/service/route/",    },
+  {  "/service",     "/route/",  false,         "v1",          "/route/",       "/serviceroute/",     },
+  {  "/service",     "/route/",  false,         "v0",          "/route/req",    "/service/route/req", },
+  {  "/service",     "/route/",  false,         "v1",          "/route/req",    "/serviceroute/req",  },
+  {  "/service",     "/route/",  true,          {"v0", "v1"},  "/route/",       "/service",           },
+  {  "/service",     "/route/",  true,          "v0",          "/route/req",    "/service/req",       },
+  {  "/service",     "/route/",  true,          "v1",          "/route/req",    "/servicereq",        },
+  -- 48
+  {  "/service/",    "/",        false ,        {"v0", "v1"},  "/",             "/service/",          },
+  {  "/service/",    "/",        true,          "v0",          "/",             "/service",           },
+  {  "/service/",    "/",        true,          "v1",          "/",             "/service/",          },
+  {  "/service/",    "/",        {false, true}, {"v0", "v1"},  "/route/",       "/service/route/",    },
+  {  "/service/",    "/",        {false, true}, {"v0", "v1"},  "/route",        "/service/route",     },
+  {  "/service/",    "/",        {false, true}, {"v0", "v1"},  "/routereq",     "/service/routereq",  },
+  {  "/service/",    "/",        {false, true}, {"v0", "v1"},  "/route/req",    "/service/route/req", },
+  -- 55
+  {  "/service/",    "/route",   false,         {"v0", "v1"},  "/route",        "/service/route",      },
+  {  "/service/",    "/route",   false,         {"v0", "v1"},  "/route/",       "/service/route/",     },
+  {  "/service/",    "/route",   false,         {"v0", "v1"},  "/routereq",     "/service/routereq",   },
+  {  "/service/",    "/route",   true,          "v0",          "/route",        "/service",            },
+  {  "/service/",    "/route",   true,          "v1",          "/route",        "/service/",           },
+  {  "/service/",    "/route",   true,          {"v0", "v1"},  "/route/",       "/service/",           },
+  {  "/service/",    "/route",   true,          {"v0", "v1"},  "/routereq",     "/service/req",        },
+  -- 62
+  {  "/service/",    "/route/",  false,         {"v0", "v1"},  "/route/",       "/service/route/",     },
+  {  "/service/",    "/route/",  false,         {"v0", "v1"},  "/route/req",    "/service/route/req",  },
+  {  "/service/",    "/route/",  true,          "v0",          "/route/",       "/service",            },
+  {  "/service/",    "/route/",  true,          "v1",          "/route/",       "/service/"            },
+  {  "/service/",    "/route/",  true,          {"v0", "v1"},  "/route/req",    "/service/req",        },
+  -- 67
+  -- The following cases match on host (not paths)
+  {  "/",            nil,        {false, true}, {"v0", "v1"},  "/",             "/",                  },
+  {  "/",            nil,        {false, true}, {"v0", "v1"},  "/route",        "/route",             },
+  {  "/",            nil,        {false, true}, {"v0", "v1"},  "/route/",       "/route/",            },
+  -- 70
+  {  "/service",     nil,        {false, true}, {"v0", "v1"},  "/",             "/service",           },
+  {  "/service",     nil,        {false, true}, "v0",          "/route",        "/service/route",     },
+  {  "/service",     nil,        {false, true}, "v1",          "/route",        "/serviceroute",      },
+  {  "/service",     nil,        {false, true}, "v0",          "/route/",       "/service/route/",    },
+  {  "/service",     nil,        {false, true}, "v1",          "/route/",       "/serviceroute/",     },
+  -- 75
+  {  "/service/",    nil,         false,        {"v0", "v1"},  "/",             "/service/",          },
+  {  "/service/",    nil,         true,         "v0",          "/",             "/service",           },
+  {  "/service/",    nil,         true,         "v1",          "/",             "/service/",          },
+  {  "/service/",    nil,        {false, true}, {"v0", "v1"},  "/route",        "/service/route",     },
+  {  "/service/",    nil,        {false, true}, {"v0", "v1"},  "/route/",       "/service/route/",    },
 }
 
 
-local function expand(test)
-  local expanded_tests
+local function expand(root_test)
+  local expanded_tests = { root_test }
 
-  if type(test.path_handling) == "table" then
-    expanded_tests = {}
-    for _, path_handling in ipairs(test.path_handling) do
-      local test_variant = utils.deep_copy(test)
-      test_variant.path_handling = path_handling
-      expanded_tests[#expanded_tests + 1] = test_variant
+  for _, field_name in ipairs({ "strip_path", "path_handling" }) do
+    local new_tests = {}
+    for _, test in ipairs(expanded_tests) do
+      if type(test[field_name]) == "table" then
+        for _, field_value in ipairs(test[field_name]) do
+          local et = utils.deep_copy(test)
+          et[field_name] = field_value
+          new_tests[#new_tests + 1] = et
+        end
+
+      else
+        new_tests[#new_tests + 1] = test
+      end
     end
-
-  else
-    expanded_tests = { test }
+    expanded_tests = new_tests
   end
 
   return expanded_tests
