@@ -567,8 +567,8 @@ local function transform_uri(conf)
               " coercable to a string (usually a table)")
     end
     if err then
-      return error("[request-transformer-advanced] failed to render the template ",
-        conf.replace.uri, ", error:", err)
+      error("[request-transformer-advanced] failed to render the template " ..
+        tostring(conf.replace.uri) .. ", error:" .. err)
     end
 
     kong.log.debug(DEBUG, "[request-transformer-advanced] template `", conf.replace.uri,
