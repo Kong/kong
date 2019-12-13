@@ -68,6 +68,7 @@ local utils = require "kong.tools.utils"
 local lapis = require "lapis"
 local runloop = require "kong.runloop.handler"
 local tracing = require "kong.tracing"
+local keyring = require "kong.keyring.startup"
 local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
 local ngx_balancer = require "ngx.balancer"
@@ -430,6 +431,8 @@ function Kong.init()
     certificate.init()
   end
 
+  keyring.init(config)
+
   -- Load plugins as late as possible so that everything is set up
   assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
 
@@ -553,6 +556,8 @@ function Kong.init_worker()
   -- /LEGACY
 
   kong.db:set_events_handler(worker_events)
+
+  keyring.init_worker(kong.configuration)
 
   ok, err = load_declarative_config(kong.configuration, declarative_entities)
   if not ok then

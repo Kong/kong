@@ -334,6 +334,16 @@ local CONF_INFERENCES = {
   tracing_debug_header = {typ = "string"},
   generate_trace_details = {typ = "boolean"},
 
+  keyring_enabled = { typ = "boolean" },
+  keyring_blob_path = { typ = "string" },
+  keyring_public_key = { typ = "string" },
+  keyring_private_key = { typ = "string" },
+  keyring_strategy = { enum = { "cluster", "vault" }, },
+  keyring_vault_host = { typ = "string" },
+  keyring_vault_mount = { typ = "string" },
+  keyring_vault_path = { typ = "string" },
+  keyring_vault_token = { typ = "string" },
+
   route_validation_strategy = { enum = {"smart", "path", "off"}},
   enforce_route_path_pattern = {typ = "string"},
 }

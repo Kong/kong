@@ -173,6 +173,7 @@ build = {
     ["kong.api.routes.groups"] = "kong/api/routes/groups.lua",
     ["kong.api.routes.license"] = "kong/api/routes/license.lua",
     ["kong.api.routes.entities"] = "kong/api/routes/entities.lua",
+    ["kong.api.routes.keyring"] = "kong/api/routes/keyring.lua",
 
     ["kong.tools.cluster_ca"] = "kong/tools/cluster_ca.lua",
     ["kong.tools.dns"] = "kong/tools/dns.lua",
@@ -270,6 +271,7 @@ build = {
     ["kong.db.dao.workspaces"] = "kong/db/dao/workspaces.lua",
     ["kong.db.dao.tags"] = "kong/db/dao/tags.lua",
     ["kong.db.dao.files"] = "kong/db/dao/files.lua",
+    ["kong.db.dao.keyring_meta"] = "kong/db/dao/keyring_meta.lua",
     ["kong.db.declarative"] = "kong/db/declarative/init.lua",
     ["kong.db.schema"] = "kong/db/schema/init.lua",
     ["kong.db.schema.entities.admins"] = "kong/db/schema/entities/admins.lua",
@@ -294,6 +296,7 @@ build = {
     ["kong.db.schema.entities.rbac_role_entities"] = "kong/db/schema/entities/rbac_role_entities.lua",
     ["kong.db.schema.entities.audit_objects"] = "kong/db/schema/entities/audit_objects.lua",
     ["kong.db.schema.entities.audit_requests"] = "kong/db/schema/entities/audit_requests.lua",
+    ["kong.db.schema.entities.keyring_meta"] = "kong/db/schema/entities/keyring_meta.lua",
     ["kong.db.schema.entities.tags"] = "kong/db/schema/entities/tags.lua",
     ["kong.db.schema.entities.ca_certificates"] = "kong/db/schema/entities/ca_certificates.lua",
     ["kong.db.schema.entities.groups"] = "kong/db/schema/entities/groups.lua",
@@ -312,6 +315,7 @@ build = {
     ["kong.db.strategies.cassandra.plugins"] = "kong/db/strategies/cassandra/plugins.lua",
     ["kong.db.strategies.cassandra.consumers"] = "kong/db/strategies/cassandra/consumers.lua",
     ["kong.db.strategies.cassandra.rbac_role_endpoints"] = "kong/db/strategies/cassandra/rbac_role_endpoints.lua",
+    ["kong.db.strategies.cassandra.keyring_meta"] = "kong/db/strategies/cassandra/keyring_meta.lua",
     ["kong.db.strategies.postgres"] = "kong/db/strategies/postgres/init.lua",
     ["kong.db.strategies.postgres.plugins"] = "kong/db/strategies/postgres/plugins.lua",
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
@@ -326,6 +330,7 @@ build = {
     ["kong.db.strategies.off.connector"] = "kong/db/strategies/off/connector.lua",
     ["kong.db.strategies.off.tags"] = "kong/db/strategies/off/tags.lua",
     ["kong.db.strategies.postgres.rbac_role_endpoints"] = "kong/db/strategies/postgres/rbac_role_endpoints.lua",
+    ["kong.db.strategies.postgres.keyring_meta"] = "kong/db/strategies/postgres/keyring_meta.lua",
 
     ["kong.db.migrations.state"] = "kong/db/migrations/state.lua",
     ["kong.db.migrations.helpers"] = "kong/db/migrations/helpers.lua",
@@ -355,6 +360,12 @@ build = {
     ["kong.pdk.table"] = "kong/pdk/table.lua",
     ["kong.pdk.node"] = "kong/pdk/node.lua",
     ["kong.pdk.nginx"] = "kong/pdk/nginx.lua",
+
+    ["kong.keyring"] = "kong/keyring/init.lua",
+    ["kong.keyring.startup"] = "kong/keyring/startup.lua",
+    ["kong.keyring.utils"] = "kong/keyring/utils.lua",
+    ["kong.keyring.strategies.cluster"] = "kong/keyring/strategies/cluster.lua",
+    ["kong.keyring.strategies.vault"] = "kong/keyring/strategies/vault.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 

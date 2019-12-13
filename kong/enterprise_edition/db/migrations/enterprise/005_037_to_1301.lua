@@ -3,6 +3,11 @@ local fmt = string.format
 return {
   postgres = {
     up = [[
+      CREATE TABLE IF NOT EXISTS keyring_meta (
+        id text PRIMARY KEY,
+        state text not null,
+        created_at timestamp with time zone not null
+      );
       DO $$
       BEGIN
         ALTER TABLE IF EXISTS ONLY admins ADD rbac_token_enabled BOOLEAN;
@@ -19,15 +24,27 @@ return {
       ALTER TABLE admins
       ALTER COLUMN rbac_token_enabled SET NOT NULL;
     ]],
+
     teardown = function(connector)
-    end
+
+    end,
   },
 
   cassandra = {
     up = [[
+      CREATE TABLE IF NOT EXISTS keyring_meta (
+        id            text PRIMARY KEY,
+        state         TEXT,
+        created_at    timestamp
+      );
+      CREATE TABLE IF NOT EXISTS keyring_meta_active (
+        active text PRIMARY KEY,
+        id text
+      );
       ALTER TABLE admins ADD rbac_token_enabled boolean;
     ]],
-    teardown = function(connector, helpers)
+
+    teardown = function(connector)
       local coordinator = connector:connect_migrations()
 
       for rows, err in coordinator:iterate("SELECT rbac_user_id, id FROM admins") do
@@ -45,7 +62,7 @@ return {
 
           _, err = connector:query(
             fmt("UPDATE admins SET rbac_token_enabled = %s WHERE id = %s",
-                rbac_users[1].enabled, admin.id)
+              rbac_users[1].enabled, admin.id)
           )
           if err then
             return nil, err
@@ -53,5 +70,5 @@ return {
         end
       end
     end
-  },
+  }
 }

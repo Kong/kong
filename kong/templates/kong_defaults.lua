@@ -196,4 +196,14 @@ tracing_debug_header =
 generate_trace_details = off
 route_validation_strategy = smart
 enforce_route_path_pattern = NONE
+
+keyring_enabled = off
+keyring_blob_path =
+keyring_public_key =
+keyring_private_key =
+keyring_strategy = cluster
+keyring_vault_host =
+keyring_vault_mount =
+keyring_vault_path =
+keyring_vault_token =
 ]]

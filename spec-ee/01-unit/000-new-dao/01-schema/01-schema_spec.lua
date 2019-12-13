@@ -85,4 +85,62 @@ describe("schema", function()
       assert.equals(values.config.bar, expected_values.config.bar)
     end)
   end)
+
+  describe("post_process_fields", function()
+    describe("should call the post process function accordingly for", function()
+      describe("encrypt = true", function()
+        local ref, Test
+        local MOCK_ENC = "mock encrypted"
+        local MOCK_DEC = "mock decrypted"
+
+        setup(function()
+          ref = package.loaded["kong.keyring"]
+          package.loaded["kong.keyring"] = {
+            encrypt = function()
+              return MOCK_ENC
+            end,
+
+            decrypt = function()
+              return MOCK_DEC
+            end,
+          }
+
+          package.loaded["kong.db.schema"] = nil
+          Schema = require "kong.db.schema"
+
+          Test = Schema.new({
+            name = "test",
+            fields = {
+              { foo = { type = "string" } },
+              { bar = { type = "string", encrypted = true } },
+            }
+          })
+        end)
+
+        teardown(function()
+          package.loaded["kong.keyring"] = ref
+        end)
+
+        for _, operation in ipairs({ "insert", "upsert", "update" }) do
+          it("on " .. operation, function()
+            local obj = Test:post_process_fields({
+              foo = "foo",
+              bar = "bar",
+            }, operation)
+
+            assert.same(obj.bar, MOCK_ENC)
+          end)
+        end
+
+        it("on select", function()
+          local obj = Test:post_process_fields({
+            foo = "foo",
+            bar = "bar",
+          }, "select")
+
+          assert.same(obj.bar, MOCK_DEC)
+        end)
+      end)
+    end)
+  end)
 end)
