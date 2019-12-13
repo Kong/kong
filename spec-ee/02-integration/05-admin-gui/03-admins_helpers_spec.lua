@@ -340,6 +340,7 @@ for _, strategy in helpers.each_strategy() do
           username = admins[3].username,
           email = admins[3].email,
           status = admins[3].status,
+          rbac_token_enabled = admins[3].rbac_token_enabled,
           created_at = admins[3].created_at,
         }
         res.body.updated_at = nil
@@ -404,6 +405,26 @@ for _, strategy in helpers.each_strategy() do
 
         local consumers = assert(db.admins:page_for_consumer(admin.consumer))
         assert.same(params.custom_id, consumers[1].custom_id)
+      end)
+
+      it("keeps admin.rbac_token_enabled and rbac_user.enabled in sync", function()
+        local params = {
+          rbac_token_enabled = false,
+        }
+
+        local res = assert(admins_helpers.update(params, admins[1], { db = db }))
+        assert.same(params.rbac_token_enabled, res.body.rbac_token_enabled)
+
+        local rbac_user = assert(db.rbac_users:select({ id = admins[1].rbac_user.id }))
+        assert.same(params.rbac_token_enabled, rbac_user.enabled)
+
+        params.rbac_token_enabled = true
+
+        res = assert(admins_helpers.update(params, admins[1], { db = db }))
+        assert.same(params.rbac_token_enabled, res.body.rbac_token_enabled)
+
+        rbac_user = assert(db.rbac_users:select({ id = admins[1].rbac_user.id }))
+        assert.same(params.rbac_token_enabled, rbac_user.enabled)
       end)
     end)
 

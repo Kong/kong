@@ -136,7 +136,27 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("cooper", json.admin.custom_id)
           assert.equal("twinpeaks@konghq.com", json.admin.email)
           assert.equal(enums.CONSUMERS.STATUS.INVITED, json.admin.status)
+          assert.is_true(json.admin.rbac_token_enabled)
           assert.is_nil(json.message)
+        end)
+
+        it("creates an admin - rbac_token disabled", function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/admins",
+            headers = {
+              ["Kong-Admin-Token"] = "letmein-default",
+              ["Content-Type"]     = "application/json",
+            },
+            body = {
+              username = utils.uuid(),
+              rbac_token_enabled = false,
+            },
+          })
+          res = assert.res_status(200, res)
+          local json = cjson.decode(res)
+
+          assert.is_false(json.admin.rbac_token_enabled)
         end)
 
         it("creates an admin when email fails", function()
@@ -175,7 +195,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/admins/:admin_id", function()
-      describe("#GET", function()
+      describe("GET", function()
         it("retrieves by id", function()
           local res = assert(client:send {
             method = "GET",
@@ -193,6 +213,8 @@ for _, strategy in helpers.each_strategy() do
           assert.same(admins[1].username, json.username)
           assert.same(admins[1].email, json.email)
           assert.same(admins[1].status, json.status)
+          assert.is_not_nil(json.rbac_token_enabled)
+          assert.same(admins[1].rbac_token_enabled, json.rbac_token_enabled)
 
           -- validate the admin is API-friendly
           assert.is_nil(json.consumer)
@@ -272,6 +294,7 @@ for _, strategy in helpers.each_strategy() do
               body = {
                 username = "alice",
                 email = "ALICE@kongHQ.com",
+                rbac_token_enabled = false,
               },
               headers = {
                 ["Kong-Admin-Token"] = "letmein-default",
@@ -282,6 +305,7 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(assert.res_status(200, res))
             assert.equal("alice", json.username)
             assert.equal("alice@konghq.com", json.email)
+            assert.is_false(json.rbac_token_enabled)
             assert.equal(admin.id, json.id)
           end
         end)
@@ -306,6 +330,28 @@ for _, strategy in helpers.each_strategy() do
 
           -- name has changed: keep in sync with db
           admin.username = new_name
+        end)
+
+        it("fails gracefully on bad types", function()
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/admins/" .. admin.id,
+            body = {
+              username = "alice",
+              email = "ALICE@kongHQ.com",
+              rbac_token_enabled = "false",
+            },
+            headers = {
+              ["Kong-Admin-Token"] = "letmein-default",
+              ["Content-Type"]     = "application/json",
+            },
+          })
+
+          local json = cjson.decode(assert.res_status(400, res))
+          local expected = {
+            message = "schema violation (rbac_token_enabled: expected a boolean)"
+          }
+          assert.same(expected, json)
         end)
 
         it("returns 404 if not found", function()
