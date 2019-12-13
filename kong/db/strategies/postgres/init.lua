@@ -735,6 +735,7 @@ local _M  = {
     plugins = require("kong.db.strategies.postgres.plugins"),
     consumers = require("kong.db.strategies.postgres.consumers"),
     rbac_role_endpoints = require("kong.db.strategies.postgres.rbac_role_endpoints"),
+    keyring_meta = require("kong.db.strategies.postgres.keyring_meta"),
     -- rbac_users = require("kong.db.strategies.postgres.rbac_users"),
   }
 }

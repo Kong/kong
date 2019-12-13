@@ -63,3 +63,15 @@ exclude_files = {
     "spec-old-api/**/*.lua",
 }
 
+files["kong/keyring/init.lua"] = {
+    read_globals = {
+        "table.pack",
+        "table.unpack",
+    }
+}
+
+files["spec-ee/01-unit/07-keyring/01-init_spec.lua"] = {
+    read_globals = {
+        "table.pack",
+    }
+}
