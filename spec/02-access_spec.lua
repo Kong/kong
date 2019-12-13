@@ -320,8 +320,8 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       name = "request-transformer-advanced",
       config = {
         add = {
-          -- not inserting a value, but the `uri_captures` table itself to provoke a rendering error
-          querystring = {[[q1:$(uri_captures)]]},
+          -- will trigger a runtime error
+          querystring = {[[q1:$(ERROR())]]},
         }
       }
     }
