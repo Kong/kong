@@ -492,8 +492,8 @@ local function transform_uri(conf)
 
     local res, err = param_value(conf.replace.uri, conf.replace)
     if err then
-      return error("[request-transformer] failed to render the template ",
-        conf.replace.uri, ", error:", err)
+      error("[request-transformer] failed to render the template " ..
+        tostring(conf.replace.uri) .. ", error:" .. err)
     end
 
     kong.log.debug(DEBUG, "[request-transformer] template `", conf.replace.uri,
