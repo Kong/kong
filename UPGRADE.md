@@ -735,7 +735,7 @@ plugins is now removed.
 - With the removal of the API entity, the `/apis` endpoint
   is removed; accordingly, other endpoints that accepted
   `api_id` no longer do so. Use Routes and Services instead.
-- All entity endpoints now use the new Admin API implementaion.
+- All entity endpoints now use the new Admin API implementation.
   This means their requests and responses now use the same
   syntax, which was already in use in endpoints such as
   `/routes` and `/services`.
@@ -974,7 +974,7 @@ functionality which was possibly used by custom plugins is now removed.
 
 ##### Admin API
 
-- All entity endpoints now use the new Admin API implementaion.
+- All entity endpoints now use the new Admin API implementation.
   This means their requests and responses now use the same
   syntax, which was already in use in endpoints such as
   `/routes` and `/services`.
