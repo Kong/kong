@@ -1,3 +1,10 @@
+## 1.2.5
+
+### Fixed
+
+- Fix the error message that is displayed in error logs when the template
+  is invalid (#13)
+
 ## 1.2.4
 
 ### Changed
