@@ -15,6 +15,7 @@ return {
     { custom_id      = { type = "string", unique = true }, },
     { email          = ee_typedefs.email { unique = true } },
     { status         = ee_typedefs.admin_status { required = true } },
+    { rbac_token_enabled = { type = "boolean", required = true, default = true } },
     { consumer       = { type = "foreign", reference = "consumers", required = true } },
     { rbac_user      = { type = "foreign", reference = "rbac_users", required = true } },
   },

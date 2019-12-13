@@ -4,6 +4,7 @@ local ee_helpers = require "spec-ee.helpers"
 local workspaces = require "kong.workspaces"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local utils = require "kong.tools.utils"
+local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 
 local client
 local db, dao
@@ -1179,6 +1180,109 @@ for _, strategy in helpers.each_strategy() do
               assert.is_nil(db.login_attempts:select({consumer = read_only_admin3.consumer}))
             end)
           end)
+        end)
+      end)
+    end)
+
+    describe("admins.rbac_token_enabled #token", function()
+      local super_admin, disabled_admin
+
+      lazy_setup(function()
+        truncate_tables(db)
+
+        assert(helpers.start_kong({
+          database   = strategy,
+          admin_gui_auth = "basic-auth",
+          admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
+          enforce_rbac = "on",
+          admin_gui_auth_config = "{ \"hide_credentials\": true }",
+          rbac_auth_header = "Kong-Admin-Token",
+          smtp_mock = true,
+        }))
+
+        client = assert(helpers.admin_client())
+
+        local ws = setup_ws_defaults(dao, db, workspaces.DEFAULT_WORKSPACE)
+        super_admin = admin(db, ws, "mars", "super-admin","test@konghq.com")
+        disabled_admin = admin(db, ws, "disabled", "super-admin","disabled@konghq.com")
+
+        assert(db.basicauth_credentials:insert {
+          username = super_admin.username,
+          password = "password",
+          consumer = {
+            id = super_admin.consumer.id,
+          },
+        })
+
+        assert(db.basicauth_credentials:insert {
+          username = disabled_admin.username,
+          password = "password",
+          consumer = {
+            id = disabled_admin.consumer.id,
+          },
+        })
+
+        assert(admins_helpers.update({ rbac_token_enabled = false }, disabled_admin, { db = db }))
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+        if client then
+          client:close()
+        end
+      end)
+
+      describe("when true", function()
+
+        it("allows Admin API access via token", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              ["Kong-Admin-Token"] = super_admin.rbac_user.raw_user_token,
+            }
+          })
+          assert.res_status(200, res)
+        end)
+
+        it("allows Admin API access via session", function()
+          local cookie = get_admin_cookie_basic_auth(client, super_admin.username, "password")
+          local res = client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = super_admin.username,
+            }
+          }
+
+          assert.res_status(200, res)
+        end)
+      end)
+      describe("when false", function()
+        it("prevents Admin API access via token", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              ["Kong-Admin-Token"] = disabled_admin.rbac_user.raw_user_token,
+            }
+          })
+          assert.res_status(401, res)
+        end)
+
+        it("allows Admin API access via session", function()
+          local cookie = get_admin_cookie_basic_auth(client, disabled_admin.username, "password")
+          local res = client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = disabled_admin.username,
+            }
+          }
+
+          assert.res_status(200, res)
         end)
       end)
     end)

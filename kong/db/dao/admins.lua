@@ -50,6 +50,7 @@ function _Admins:insert(admin, options)
   local rbac_user, err = self.db.rbac_users:insert({
     name = unique_name,
     user_token = utils.uuid(),
+    enabled = admin.rbac_token_enabled,
     comment = "User generated on creation of Admin.",
   })
 
@@ -76,6 +77,7 @@ function _Admins:insert(admin, options)
     status = admin.status or enums.CONSUMERS.STATUS.INVITED,
     username = admin.username,
     custom_id = admin.custom_id,
+    rbac_token_enabled = admin.rbac_token_enabled,
   }
 
   -- create admin
@@ -142,6 +144,10 @@ function _Admins:select_by_rbac_user(rbac_user)
 
   if err then
     return nil, err
+  end
+
+  if admins[1] then
+    admins[1].rbac_token_enabled = rbac_user.rbac_token_enabled
   end
 
   return admins[1]
