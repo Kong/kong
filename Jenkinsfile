@@ -64,6 +64,10 @@ pipeline {
             sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:7 --ee --custom ${env.RELEASE_SCOPE} --key-file $PRIVATE_KEY_FILE --key-password '${PRIVATE_KEY_PASSWORD}' -V"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:7 -e -R ${env.RELEASE_SCOPE}"
           },
+          centos8: {
+            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:8 --ee --custom ${env.RELEASE_SCOPE} --key-file $PRIVATE_KEY_FILE --key-password '${PRIVATE_KEY_PASSWORD}' -V"
+            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:8 -e -R ${env.RELEASE_SCOPE}"
+          },
           debian8: {
             sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:8 --ee --custom ${env.RELEASE_SCOPE} -V"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:8 -e -R ${env.RELEASE_SCOPE}"
