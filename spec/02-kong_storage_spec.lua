@@ -95,7 +95,7 @@ for _, strategy in helpers.each_strategy() do
         err = a:set(key, "setttl", 1)
         assert.is_nil(err)
 
-        v, err = a:get(key, "setttl")
+        v, err = a:get(key)
         assert.is_nil(err)
         assert.same("setttl", v)
       end)
@@ -103,15 +103,15 @@ for _, strategy in helpers.each_strategy() do
       it("cleans up expired key", function()
         ngx.sleep(1)
 
-        v, err = a:get(key, "setttl")
+        v, err = a:get(key)
         assert.is_nil(err)
         assert.is_nil(v)
       end)
     end)
 
-    describe("add with ttl", function()
+    describe("add without ttl", function()
       ngx.update_time()
-      local key = tostring(ngx.now()) .. "addttl"
+      local key = tostring(ngx.now()) .. "add"
       local a = storage.new()
       local err, v
       it("returns no error", function()
@@ -142,7 +142,7 @@ for _, strategy in helpers.each_strategy() do
         err = a:add(key, "addttl", 1)
         assert.is_nil(err)
 
-        v, err = a:get(key, "addttl")
+        v, err = a:get(key)
         assert.is_nil(err)
         assert.same("addttl", v)
       end)
@@ -150,7 +150,7 @@ for _, strategy in helpers.each_strategy() do
       it("cleans up expired key", function()
         ngx.sleep(1)
 
-        v, err = a:get(key, "addttl")
+        v, err = a:get(key)
         assert.is_nil(err)
         assert.is_nil(v)
       end)
