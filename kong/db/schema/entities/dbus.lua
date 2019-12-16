@@ -2,13 +2,11 @@ local typedefs = require "kong.db.schema.typedefs"
 
 local databus = require "kong.enterprise_edition.databus"
 
--- need crud event to re-add a new event
-
 return {
   name         = "dbus",
   primary_key  = { "id" },
   endpoint_key = "id",
-  -- foreign key like plugins:
+  -- XXX: foreign key like plugins:
   -- routes / services / consumers
   -- let's see if it works
   fields = {
@@ -20,5 +18,8 @@ return {
     -- Make this config abstract. It fails, but I suspect a bug
     -- ie { type = "record", abstract = true } },
     { config         = databus.schema.webhook },
-  }
+  },
+  -- XXX force read before write so we always have old_entity on the events
+  -- any other way of accomplishing the same thing?
+  entity_checks = {},
 }

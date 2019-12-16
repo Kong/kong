@@ -599,7 +599,7 @@ function Kong.init_worker()
   -- register dbus hooks
   local databus = require "kong.enterprise_edition.databus"
   for entity, err in kong.db.dbus:each(1000) do
-    databus.register(databus.webhook(entity.config), entity.source, entity.event)
+    databus.register(entity)
   end
 
 

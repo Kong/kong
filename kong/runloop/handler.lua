@@ -524,6 +524,21 @@ local function register_events()
   worker_events.register(function(data)
     singletons.portal_router.set_version(data.cache_key, data.cache_val)
   end, "portal", "router")
+
+
+  worker_events.register(function(data)
+    local databus = require "kong.enterprise_edition.databus"
+
+    if data.operation == "delete" then
+      databus.unregister(data.entity)
+    elseif data.operation == "update" then
+      databus.unregister(data.old_entity)
+      databus.register(data.entity)
+    elseif data.operation == "create" then
+      databus.register(data.entity)
+    end
+  end, "crud", "dbus")
+
 end
 
 
