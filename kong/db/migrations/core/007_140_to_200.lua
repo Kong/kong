@@ -21,8 +21,8 @@ local pg_path_handling_sql do
   end
   table.sort(v0_conds)
   table.sort(v1_conds)
-  v0_conds = table.concat(v0_conds, "\n      OR ")
-  v1_conds = table.concat(v1_conds, "\n         OR ")
+  v0_conds = table.concat(v0_conds, "\n        OR ")
+  v1_conds = table.concat(v1_conds, "\n           OR ")
 
   pg_path_handling_sql = fmt([[
     DO $$
@@ -35,16 +35,35 @@ local pg_path_handling_sql do
 
     DO $$
     DECLARE
+      preset_path_handling TEXT;
       migrating_from TEXT;
     BEGIN
-      SELECT last_executed INTO migrating_from FROM schema_meta WHERE subsystem = 'core';
-      IF %s
+      SELECT last_executed INTO preset_path_handling FROM schema_meta
+        WHERE key = '007_140_to_200' AND subsystem = 'path_handling';
+
+      IF preset_path_handling IS NULL
       THEN
-        UPDATE routes SET path_handling = 'v0';
-      ELSIF %s
-      THEN
-        UPDATE routes SET path_handling = 'v1';
+
+        SELECT last_executed INTO migrating_from FROM schema_meta
+          WHERE key = 'schema_meta' AND subsystem = 'core';
+
+        IF %s
+        THEN
+          preset_path_handling := 'v0';
+        ELSIF %s
+        THEN
+          preset_path_handling := 'v1';
+        ELSE
+          RETURN;
+        END IF;
+
       END IF;
+
+      INSERT INTO schema_meta (key, subsystem, last_executed)
+        VALUES('007_140_to_200', 'path_handling', preset_path_handling)
+        ON CONFLICT DO NOTHING;
+
+      UPDATE routes SET path_handling = preset_path_handling;
     END;
     $$;
   ]], v0_conds, v1_conds)
@@ -77,18 +96,16 @@ return {
 
   cassandra = {
     up = function(connector)
-      local res, err = connector:query([[
-        ALTER TABLE routes ADD path_handling text;
-      ]])
-
+      local cql = "ALTER TABLE routes ADD path_handling text";
+      local res, err = connector:query(cql);
       if not res then
         if connector:is_ignorable_during_migrations(err) then
           ngx.log(ngx.WARN, fmt(
             "ignored error while running '007_140_to_200' migration: %s (%s)",
-            err, "ALTER TABLE routes ADD path_handling text;"
+            err, cql
           ))
         else
-          return nil, err
+          error(err)
         end
       end
 
