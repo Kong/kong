@@ -36,6 +36,7 @@ dependencies = {
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.0",
   "lua-messagepack == 0.5.2",
+  "lua-resty-openssl == 0.3.0",
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 0.4",
   "kong-plugin-zipkin ~> 0.2",
@@ -92,6 +93,7 @@ build = {
     ["kong.cmd.migrations"] = "kong/cmd/migrations.lua",
     ["kong.cmd.health"] = "kong/cmd/health.lua",
     ["kong.cmd.version"] = "kong/cmd/version.lua",
+    ["kong.cmd.hybrid"] = "kong/cmd/hybrid.lua",
     ["kong.cmd.utils.log"] = "kong/cmd/utils/log.lua",
     ["kong.cmd.utils.kill"] = "kong/cmd/utils/kill.lua",
     ["kong.cmd.utils.env"] = "kong/cmd/utils/env.lua",
