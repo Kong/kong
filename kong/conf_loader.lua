@@ -4,7 +4,6 @@ local pl_stringx = require "pl.stringx"
 local constants = require "kong.constants"
 local pl_pretty = require "pl.pretty"
 local pl_config = require "pl.config"
-local http_tls = require "http.tls"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local tablex = require "pl.tablex"
@@ -18,10 +17,55 @@ local fmt = string.format
 local concat = table.concat
 
 
+-- Version 5: https://wiki.mozilla.org/Security/Server_Side_TLS
 local cipher_suites = {
-  modern = http_tls.modern_cipher_list,
-  intermediate = http_tls.intermediate_cipher_list,
-  old = http_tls.old_cipher_list,
+                   modern = {
+                protocols = "TLSv1.3",
+                  ciphers = nil,   -- all TLSv1.3 ciphers are considered safe
+    prefer_server_ciphers = "off", -- as all are safe, let client choose
+  },
+             intermediate = {
+                protocols = "TLSv1.2 TLSv1.3",
+                  ciphers = "ECDHE-ECDSA-AES128-GCM-SHA256:"
+                         .. "ECDHE-RSA-AES128-GCM-SHA256:"
+                         .. "ECDHE-ECDSA-AES256-GCM-SHA384:"
+                         .. "ECDHE-RSA-AES256-GCM-SHA384:"
+                         .. "ECDHE-ECDSA-CHACHA20-POLY1305:"
+                         .. "ECDHE-RSA-CHACHA20-POLY1305:"
+                         .. "DHE-RSA-AES128-GCM-SHA256:"
+                         .. "DHE-RSA-AES256-GCM-SHA384",
+    prefer_server_ciphers = "off",
+  },
+                      old = {
+                protocols = "TLSv1 TLSv1.1 TLSv1.2 TLSv1.3",
+                  ciphers = "ECDHE-ECDSA-AES128-GCM-SHA256:"
+                         .. "ECDHE-RSA-AES128-GCM-SHA256:"
+                         .. "ECDHE-ECDSA-AES256-GCM-SHA384:"
+                         .. "ECDHE-RSA-AES256-GCM-SHA384:"
+                         .. "ECDHE-ECDSA-CHACHA20-POLY1305:"
+                         .. "ECDHE-RSA-CHACHA20-POLY1305:"
+                         .. "DHE-RSA-AES128-GCM-SHA256:"
+                         .. "DHE-RSA-AES256-GCM-SHA384:"
+                         .. "DHE-RSA-CHACHA20-POLY1305:"
+                         .. "ECDHE-ECDSA-AES128-SHA256:"
+                         .. "ECDHE-RSA-AES128-SHA256:"
+                         .. "ECDHE-ECDSA-AES128-SHA:"
+                         .. "ECDHE-RSA-AES128-SHA:"
+                         .. "ECDHE-ECDSA-AES256-SHA384:"
+                         .. "ECDHE-RSA-AES256-SHA384:"
+                         .. "ECDHE-ECDSA-AES256-SHA:"
+                         .. "ECDHE-RSA-AES256-SHA:"
+                         .. "DHE-RSA-AES128-SHA256:"
+                         .. "DHE-RSA-AES256-SHA256:"
+                         .. "AES128-GCM-SHA256:"
+                         .. "AES256-GCM-SHA384:"
+                         .. "AES128-SHA256:"
+                         .. "AES256-SHA256:"
+                         .. "AES128-SHA:"
+                         .. "AES256-SHA:"
+                         .. "DES-CBC3-SHA",
+    prefer_server_ciphers = "on",
+  }
 }
 
 
@@ -428,9 +472,12 @@ local function check_and_infer(conf)
   end
 
   if conf.ssl_cipher_suite ~= "custom" then
-    local list = cipher_suites[conf.ssl_cipher_suite]
-    if list then
-      conf.ssl_ciphers = list
+    local suite = cipher_suites[conf.ssl_cipher_suite]
+    if suite then
+      conf.ssl_ciphers = suite.ciphers
+      conf.nginx_http_ssl_protocols = suite.protocols
+      conf.nginx_http_ssl_prefer_server_ciphers = suite.prefer_server_ciphers
+
     else
       errors[#errors + 1] = "Undefined cipher suite " .. tostring(conf.ssl_cipher_suite)
     end

@@ -322,7 +322,7 @@
                                  # `m`, with a minimum recommended value of
                                  # a few MBs.
 
-#ssl_cipher_suite = modern       # Defines the TLS ciphers served by Nginx.
+#ssl_cipher_suite = intermediate # Defines the TLS ciphers served by Nginx.
                                  # Accepted values are `modern`,
                                  # `intermediate`, `old`, or `custom`.
                                  #
@@ -547,7 +547,39 @@
                                  # supported protocol versions also depends
                                  # on the version of OpenSSL Kong was built
                                  # with.
+                                 #
+                                 # This value is ignored if `ssl_cipher_suite`
+                                 # is not `custom`.
+                                 #
                                  # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_protocols
+
+#nginx_http_ssl_prefer_server_ciphers = on
+                                 # Specifies that server ciphers should be
+                                 # preferred over client ciphers when using
+                                 # the SSLv3 and TLS protocols
+                                 #
+                                 # This value is ignored if `ssl_cipher_suite`
+                                 # is not `custom`.
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_prefer_server_ciphers
+
+#nginx_http_ssl_session_tickets = on
+                                 # Enables or disables session resumption through
+                                 # TLS session tickets. This is has no impact when
+                                 # used with TLSv1.3.
+                                 #
+                                 # Kong enables this by default for performance
+                                 # reasons, but it has security implications:
+                                 # https://github.com/mozilla/server-side-tls/issues/135
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_tickets
+
+#nginx_http_ssl_session_timeout = 1d
+                                 # Specifies a time during which a client may
+                                 # reuse the session parameters. See the rationale:
+                                 # https://github.com/mozilla/server-side-tls/issues/198
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_timeout
 
 #nginx_http_upstream_keepalive = 60
                                  # Sets the maximum number of idle keepalive
