@@ -57,7 +57,6 @@ http {
     lua_shared_dict kong_core_db_cache_2     ${{MEM_CACHE_SIZE}};
     lua_shared_dict kong_db_cache_2     ${{MEM_CACHE_SIZE}};
 > end
-
 > if database == "off" then
     lua_shared_dict kong_core_db_cache_miss_2     ${{MEM_CACHE_SIZE}};
     lua_shared_dict kong_db_cache_miss_2 12m;
@@ -124,6 +123,15 @@ http {
         ssl_certificate_by_lua_block {
             Kong.ssl_certificate()
         }
+
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 10m;
+        ssl_ciphers ${{SSL_CIPHERS}};
+> end
+
+> if client_ssl then
+        proxy_ssl_certificate ${{CLIENT_SSL_CERT}};
+        proxy_ssl_certificate_key ${{CLIENT_SSL_CERT_KEY}};
 > end
 
         real_ip_header     ${{REAL_IP_HEADER}};
@@ -158,7 +166,7 @@ http {
         }
 
         location / {
-            default_type '';
+            default_type                     '';
 
             set $ctx_ref                     '';
             set $upstream_te                 '';
@@ -174,6 +182,7 @@ http {
             set $kong_proxy_mode             'http';
 
             proxy_http_version 1.1;
+            proxy_set_header   TE                $upstream_te;
             proxy_set_header   Host              $upstream_host;
             proxy_set_header   Upgrade           $upstream_upgrade;
             proxy_set_header   Connection        $upstream_connection;
@@ -188,6 +197,34 @@ http {
             proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
         }
 
+        location @grpc {
+            internal;
+            set $kong_proxy_mode  'grpc';
+
+            grpc_set_header    Host              $upstream_host;
+            grpc_set_header    X-Forwarded-For   $upstream_x_forwarded_for;
+            grpc_set_header    X-Forwarded-Proto $upstream_x_forwarded_proto;
+            grpc_set_header    X-Forwarded-Host  $upstream_x_forwarded_host;
+            grpc_set_header    X-Forwarded-Port  $upstream_x_forwarded_port;
+            grpc_set_header    X-Real-IP         $remote_addr;
+
+            grpc_pass grpc://kong_upstream;
+        }
+
+        location @grpcs {
+            internal;
+            set $kong_proxy_mode  'grpc';
+
+            grpc_set_header    Host              $upstream_host;
+            grpc_set_header    X-Forwarded-For   $upstream_x_forwarded_for;
+            grpc_set_header    X-Forwarded-Proto $upstream_x_forwarded_proto;
+            grpc_set_header    X-Forwarded-Host  $upstream_x_forwarded_host;
+            grpc_set_header    X-Forwarded-Port  $upstream_x_forwarded_port;
+            grpc_set_header    X-Real-IP         $remote_addr;
+
+            grpc_pass grpcs://kong_upstream;
+        }
+
         location = /kong_error_handler {
             internal;
             uninitialized_variable_warn off;
@@ -199,20 +236,6 @@ http {
             content_by_lua_block {
                 Kong.handle_error()
             }
-        }
-
-        location @grpc {
-            internal;
-
-            set $kong_proxy_mode  'grpc';
-            grpc_pass grpc://kong_upstream;
-        }
-
-        location @grpcs {
-            internal;
-
-            set $kong_proxy_mode  'grpc';
-            grpc_pass grpcs://kong_upstream;
         }
     }
 > end
@@ -232,6 +255,10 @@ http {
 > if admin_ssl_enabled then
         ssl_certificate ${{ADMIN_SSL_CERT}};
         ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
+
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 10m;
+        ssl_ciphers ${{SSL_CIPHERS}};
 > end
 
         # injected nginx_admin_* directives
@@ -246,6 +273,43 @@ http {
             }
             header_filter_by_lua_block {
                 Kong.admin_header_filter()
+            }
+        }
+
+        location /nginx_status {
+            internal;
+            access_log off;
+            stub_status;
+        }
+
+        location /robots.txt {
+            return 200 'User-agent: *\nDisallow: /';
+        }
+    }
+> end
+
+> if #status_listeners > 0 then
+    server {
+        server_name kong_status;
+> for i = 1, #status_listeners do
+        listen $(status_listeners[i].listener);
+> end
+
+        access_log ${{STATUS_ACCESS_LOG}};
+        error_log ${{STATUS_ERROR_LOG}} ${{LOG_LEVEL}};
+
+        # injected nginx_http_status_* directives
+> for _, el in ipairs(nginx_http_status_directives) do
+        $(el.name) $(el.value);
+> end
+
+        location / {
+            default_type application/json;
+            content_by_lua_block {
+                Kong.status_content()
+            }
+            header_filter_by_lua_block {
+                Kong.status_header_filter()
             }
         }
 

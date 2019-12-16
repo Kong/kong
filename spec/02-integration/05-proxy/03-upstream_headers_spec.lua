@@ -109,11 +109,10 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(headers["proxy-connection"])
         assert.is_nil(headers["proxy-authenticate"])
         assert.is_nil(headers["proxy-authorization"])
-        assert.is_nil(headers["te"])
-        assert.is_nil(headers["trailer"])
         assert.is_nil(headers["upgrade"])
         assert.is_nil(headers["x-boo"])
         assert.is_nil(headers["x-bar"])
+        assert.equal("trailers", headers["te"]) -- trailers are kept
         assert.equal("Keep-Me", headers["x-foo-bar"])
         assert.equal("Keep-Me", headers["close"])
       end)
