@@ -63,7 +63,7 @@ lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE}}';
 lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
 
 # injected nginx_http_* directives
-> for _, el in ipairs(nginx_http_directives)  do
+> for _, el in ipairs(nginx_http_directives) do
 $(el.name) $(el.value);
 > end
 
@@ -75,7 +75,6 @@ init_by_lua_block {
 init_worker_by_lua_block {
     Kong.init_worker()
 }
-
 
 > if #proxy_listeners > 0 then
 upstream kong_upstream {
@@ -111,9 +110,9 @@ server {
     }
 
     ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 10m;
-    ssl_prefer_server_ciphers on;
+> if ssl_ciphers then
     ssl_ciphers ${{SSL_CIPHERS}};
+> end
 > end
 
 > if client_ssl then
@@ -245,9 +244,9 @@ server {
     ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
 
     ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 10m;
-    ssl_prefer_server_ciphers on;
+> if ssl_ciphers then
     ssl_ciphers ${{SSL_CIPHERS}};
+> end
 > end
 
     # injected nginx_admin_* directives

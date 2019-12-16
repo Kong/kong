@@ -125,8 +125,9 @@ http {
         }
 
         ssl_session_cache shared:SSL:10m;
-        ssl_session_timeout 10m;
+> if ssl_ciphers then
         ssl_ciphers ${{SSL_CIPHERS}};
+> end
 > end
 
 > if client_ssl then
@@ -257,8 +258,9 @@ http {
         ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
 
         ssl_session_cache shared:SSL:10m;
-        ssl_session_timeout 10m;
+> if ssl_ciphers then
         ssl_ciphers ${{SSL_CIPHERS}};
+> end
 > end
 
         # injected nginx_admin_* directives

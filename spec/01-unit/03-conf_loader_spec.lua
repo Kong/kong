@@ -702,8 +702,7 @@ describe("Configuration loader", function()
         it("defines ssl_ciphers by default", function()
           local conf, err = conf_loader(nil, {})
           assert.is_nil(err)
-          -- looks kinda like a cipher suite
-          assert.matches(":", conf.ssl_ciphers, nil, true)
+          assert.equal("ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384", conf.ssl_ciphers)
         end)
         it("explicitly defines ssl_ciphers", function()
           local conf, err = conf_loader(nil, {
@@ -730,12 +729,11 @@ describe("Configuration loader", function()
           assert.equals("foo:bar", conf.ssl_ciphers)
         end)
         it("doesn't override ssl_ciphers when undefined", function()
-          local http_tls = require "http.tls"
           local conf, err = conf_loader(nil, {
             ssl_cipher_suite = "custom",
           })
           assert.is_nil(err)
-          assert.same(http_tls.modern_cipher_list, conf.ssl_ciphers)
+          assert.same(nil, conf.ssl_ciphers)
         end)
       end)
       describe("client", function()
