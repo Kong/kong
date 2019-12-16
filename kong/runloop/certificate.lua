@@ -1,8 +1,5 @@
 local singletons = require "kong.singletons"
 local ngx_ssl = require "ngx.ssl"
-local http_tls = require "http.tls"
-local openssl_pkey = require "openssl.pkey"
-local openssl_x509 = require "openssl.x509"
 local pl_utils = require "pl.utils"
 local mlcache = require "resty.mlcache"
 
@@ -15,7 +12,6 @@ local find    = string.find
 
 
 local default_cert_and_key
-local parse_key_and_cert
 
 
 local function log(lvl, ...)
@@ -23,42 +19,27 @@ local function log(lvl, ...)
 end
 
 
-if ngx.config.subsystem == "http" then
-  parse_key_and_cert = function(row)
-    if row == false then
-      return default_cert_and_key
-    end
-
-    -- parse cert and priv key for later usage by ngx.ssl
-
-    local cert, err = ngx_ssl.parse_pem_cert(row.cert)
-    if not cert then
-      return nil, "could not parse PEM certificate: " .. err
-    end
-
-    local key, err = ngx_ssl.parse_pem_priv_key(row.key)
-    if not key then
-      return nil, "could not parse PEM private key: " .. err
-    end
-
-    return {
-      cert = cert,
-      key = key,
-    }
+local function parse_key_and_cert(row)
+  if row == false then
+    return default_cert_and_key
   end
 
-else
-  parse_key_and_cert = function(row)
-    if row == false then
-      return default_cert_and_key
-    end
+  -- parse cert and priv key for later usage by ngx.ssl
 
-    local ssl_termination_ctx = http_tls.new_server_context()
-    ssl_termination_ctx:setCertificate(openssl_x509.new(row.cert))
-    ssl_termination_ctx:setPrivateKey(openssl_pkey.new(row.key))
-
-    return ssl_termination_ctx
+  local cert, err = ngx_ssl.parse_pem_cert(row.cert)
+  if not cert then
+    return nil, "could not parse PEM certificate: " .. err
   end
+
+  local key, err = ngx_ssl.parse_pem_priv_key(row.key)
+  if not key then
+    return nil, "could not parse PEM private key: " .. err
+  end
+
+  return {
+    cert = cert,
+    key = key,
+  }
 end
 
 
@@ -187,7 +168,7 @@ local function find_certificate(sni)
     return nil, err
   end
 
-  for i, sni, err in mlcache.each_bulk_res(res) do
+  for _, sni, err in mlcache.each_bulk_res(res) do
     if err then
       log(ERR, "failed to fetch SNI: ", err)
 
