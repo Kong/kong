@@ -52,35 +52,34 @@ local function update_config(config_table, update_cache)
     return nil, "bad config received from control plane"
   end
 
-  if declarative.get_current_hash() ~= new_hash then
-    -- NOTE: no worker mutex needed as this code can only be
-    -- executed by worker 0
-    local res, err = declarative.load_into_cache_with_events(entities, new_hash)
-    if not res then
-      return nil, err
-    end
-
-    if update_cache then
-      -- local persistence only after load finishes without error
-      local f, err = io_open(CONFIG_CACHE, "w")
-      if not f then
-        ngx_log(ngx_ERR, "unable to open cache file: ", err)
-
-      else
-        local res
-        res, err = f:write(cjson_encode(config_table))
-        if not res then
-          ngx_log(ngx_ERR, "unable to write cache file: ", err)
-        end
-
-        f:close()
-      end
-    end
-
-  else -- get_current_hash() == new_hash
+  if declarative.get_current_hash() == new_hash then
     ngx_log(ngx_DEBUG, "same config received from control plane,",
             "no need to reload")
     return true
+  end
+
+  -- NOTE: no worker mutex needed as this code can only be
+  -- executed by worker 0
+  local res, err = declarative.load_into_cache_with_events(entities, new_hash)
+  if not res then
+    return nil, err
+  end
+
+  if update_cache then
+    -- local persistence only after load finishes without error
+    local f, err = io_open(CONFIG_CACHE, "w")
+    if not f then
+      ngx_log(ngx_ERR, "unable to open cache file: ", err)
+
+    else
+      local res
+      res, err = f:write(cjson_encode(config_table))
+      if not res then
+        ngx_log(ngx_ERR, "unable to write cache file: ", err)
+      end
+
+      f:close()
+    end
   end
 
   return true
@@ -92,10 +91,12 @@ local function send_ping(c)
   if err then
     ngx_log(ngx_ERR, "unable to ping control plane node: ", err)
     -- return and let the main thread handle the error
-    return
+    return nil
   end
 
   ngx_log(ngx_DEBUG, "sent PING packet to control plane")
+
+  return true
 end
 
 
@@ -130,7 +131,10 @@ local function communicate(premature, conf)
   -- ping thread
   ngx.thread.spawn(function()
     while true do
-      send_ping(c)
+      if not send_ping(c) then
+        return
+      end
+
       ngx_sleep(PING_INTERVAL)
     end
   end)
@@ -223,8 +227,7 @@ function _M.handle_cp_websocket()
       local data, typ, err = wb:recv_frame()
       if not data then
         ngx_log(ngx_ERR, "did not receive ping frame from data plane: ", err)
-        -- return and let the main thread handle the error
-        return
+        return ngx_exit()
       end
 
       assert(typ == "ping")
@@ -232,8 +235,7 @@ function _M.handle_cp_websocket()
       _, err = wb:send_pong()
       if err then
         ngx_log(ngx_ERR, "failed to send PONG back to data plane: ", err)
-        -- return and let the main thread handle the error
-        return
+        return ngx_exit()
       end
 
       ngx_log(ngx_DEBUG, "sent PONG packet to control plane")
@@ -313,6 +315,7 @@ local function init_mtls(conf)
   local cert
   cert, err = f:read("*a")
   if not cert then
+    f:close()
     return nil, "unable to read cluster cert file: " .. err
   end
 
@@ -335,6 +338,7 @@ local function init_mtls(conf)
   local key
   key, err = f:read("*a")
   if not key then
+    f:close()
     return nil, "unable to read cluster cert key file: " .. err
   end
 
@@ -378,10 +382,12 @@ function _M.init_worker(conf)
           ngx_log(ngx_INFO, "found cached copy of data-plane config, loading..")
           config = cjson_decode(config)
 
-          local res
-          res, err = update_config(config, false)
-          if not res then
-            ngx_log(ngx_ERR, "unable to running config from cache: ", err)
+          if config then
+            local res
+            res, err = update_config(config, false)
+            if not res then
+              ngx_log(ngx_ERR, "unable to running config from cache: ", err)
+            end
           end
         end
       end

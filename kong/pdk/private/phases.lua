@@ -22,7 +22,7 @@ local PHASES = {
   preread           = 0x00004000,
   error             = 0x01000000,
   admin_api         = 0x10000000,
-  cluster_listener  = 0x20000000,
+  cluster_listener  = 0x00000100,
 }
 
 

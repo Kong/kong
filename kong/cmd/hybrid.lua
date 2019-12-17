@@ -2,7 +2,6 @@ local log = require("kong.cmd.utils.log")
 local pkey = require("resty.openssl.pkey")
 local x509 = require("resty.openssl.x509")
 local name = require("resty.openssl.x509.name")
-local utils = require("kong.tools.utils")
 local pl_file = require("pl.file")
 local pl_path = require("pl.path")
 
@@ -39,7 +38,7 @@ local function generate_cert(duration, cert_file, key_file)
   assert(crt:set_not_after(time + duration))
 
   local cn = assert(name.new())
-  assert(cn:add("CN", "kong_cluster_" .. utils.random_string()))
+  assert(cn:add("CN", "kong_clustering"))
 
   assert(crt:set_subject_name(cn))
   assert(crt:set_issuer_name(cn))
@@ -79,7 +78,7 @@ local function execute(args)
 end
 
 local lapp = [[
-Usage: kong hybird COMMAND [OPTIONS]
+Usage: kong hybrid COMMAND [OPTIONS]
 
 Hybrid mode utilities for Kong.
 
