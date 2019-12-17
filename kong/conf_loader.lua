@@ -279,7 +279,7 @@ local CONF_INFERENCES = {
 
   lua_ssl_verify_depth = { typ = "number" },
   lua_socket_pool_size = { typ = "number" },
-  role = { enum = { "proxy", "admin", "traditional", }, },
+  role = { enum = { "data_plane", "control_plane", "traditional", }, },
   cluster_control_plane = { typ = "string", },
   cluster_cert = { typ = "string" },
   cluster_cert_key = { typ = "string" },
@@ -565,31 +565,31 @@ local function check_and_infer(conf)
     errors[#errors + 1] = "router_update_frequency must be greater than 0"
   end
 
-  if conf.role == "admin" then
+  if conf.role == "control_plane" then
     if #conf.admin_listen < 1 or pl_stringx.strip(conf.admin_listen[1]) == "off" then
-      errors[#errors + 1] = "admin_listen must be specified when role = \"admin\""
+      errors[#errors + 1] = "admin_listen must be specified when role = \"control_plane\""
     end
 
     if #conf.cluster_listen < 1 or pl_stringx.strip(conf.cluster_listen[1]) == "off" then
-      errors[#errors + 1] = "cluster_listen must be specified when role = \"admin\""
+      errors[#errors + 1] = "cluster_listen must be specified when role = \"control_plane\""
     end
 
     if conf.database == "off" then
-      errors[#errors + 1] = "in-memory storage can not be used when role = \"admin\""
+      errors[#errors + 1] = "in-memory storage can not be used when role = \"control_plane\""
     end
 
-  elseif conf.role == "proxy" then
+  elseif conf.role == "data_plane" then
     if #conf.proxy_listen < 1 or pl_stringx.strip(conf.proxy_listen[1]) == "off" then
-      errors[#errors + 1] = "proxy_listen must be specified when role = \"proxy\""
+      errors[#errors + 1] = "proxy_listen must be specified when role = \"data_plane\""
     end
 
     if conf.database ~= "off" then
-      errors[#errors + 1] = "only in-memory storage can be used when role = \"proxy\"\n" ..
+      errors[#errors + 1] = "only in-memory storage can be used when role = \"data_plane\"\n" ..
                             "Hint: set database = off in your kong.conf"
     end
   end
 
-  if conf.role == "admin" or conf.role == "proxy" then
+  if conf.role == "control_plane" or conf.role == "data_plane" then
     if not conf.cluster_cert or not conf.cluster_cert_key then
       errors[#errors + 1] = "cluster certificate and key must be provided to use Hybrid mode"
 

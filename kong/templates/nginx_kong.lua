@@ -56,7 +56,7 @@ lua_shared_dict kong_rate_limiting_counters 12m;
 > if database == "cassandra" then
 lua_shared_dict kong_cassandra      5m;
 > end
-> if role == "admin" then
+> if role == "control_plane" then
 lua_shared_dict kong_clustering     5m;
 > end
 lua_socket_log_errors off;
@@ -79,7 +79,7 @@ init_worker_by_lua_block {
     Kong.init_worker()
 }
 
-> if (role == "traditional" or role == "proxy") and #proxy_listeners > 0 then
+> if (role == "traditional" or role == "data_plane") and #proxy_listeners > 0 then
 upstream kong_upstream {
     server 0.0.0.1;
     balancer_by_lua_block {
@@ -263,9 +263,9 @@ server {
         }
     }
 }
-> end -- (role == "traditional" or role == "proxy") and #proxy_listeners > 0
+> end -- (role == "traditional" or role == "data_plane") and #proxy_listeners > 0
 
-> if (role == "admin" or role == "traditional") and #admin_listeners > 0 then
+> if (role == "control_plane" or role == "traditional") and #admin_listeners > 0 then
 server {
     server_name kong_admin;
 > for i = 1, #admin_listeners do
@@ -313,7 +313,7 @@ server {
         return 200 'User-agent: *\nDisallow: /';
     }
 }
-> end -- (role == "admin" or role == "traditional") and #admin_listeners > 0
+> end -- (role == "control_plane" or role == "traditional") and #admin_listeners > 0
 
 > if #status_listeners > 0 then
 server {
@@ -352,7 +352,7 @@ server {
 }
 > end
 
-> if role == "admin" then
+> if role == "control_plane" then
 server {
     server_name kong_cluster_listener;
 > for i = 1, #cluster_listeners do
@@ -371,5 +371,5 @@ server {
         }
     }
 }
-> end -- role == "admin"
+> end -- role == "control_plane"
 ]]

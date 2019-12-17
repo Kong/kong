@@ -39,7 +39,7 @@ local WEAK_KEY_MT = { __mode = "k", }
 local CERT_DIGEST
 local CERT, CERT_KEY
 local clients = setmetatable({}, WEAK_KEY_MT)
-local shdict = ngx.shared.kong_clustering -- only when role == "admin"
+local shdict = ngx.shared.kong_clustering -- only when role == "control_plane"
 local prefix = ngx.config.prefix()
 local CONFIG_CACHE = prefix .. "/config.cache.json"
 
@@ -352,7 +352,7 @@ end
 function _M.init(conf)
   assert(conf, "conf can not be nil", 2)
 
-  if conf.role == "proxy" or conf.role == "admin" then
+  if conf.role == "data_plane" or conf.role == "control_plane" then
     assert(init_mtls(conf))
   end
 end
@@ -361,8 +361,8 @@ end
 function _M.init_worker(conf)
   assert(conf, "conf can not be nil", 2)
 
-  if conf.role == "proxy" then
-    -- ROLE = "proxy"
+  if conf.role == "data_plane" then
+    -- ROLE = "data_plane"
 
     if ngx.worker.id() == 0 then
       local f = io_open(CONFIG_CACHE, "r")
@@ -389,10 +389,10 @@ function _M.init_worker(conf)
       assert(ngx.timer.at(0, communicate, conf))
     end
 
-  elseif conf.role == "admin" then
+  elseif conf.role == "control_plane" then
     assert(shdict, "kong_clustering shdict missing")
 
-    -- ROLE = "admin"
+    -- ROLE = "control_plane"
 
     kong.worker_events.register(function(data)
       local res, err = declarative.export_config()

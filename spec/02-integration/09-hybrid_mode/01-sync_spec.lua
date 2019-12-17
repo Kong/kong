@@ -13,7 +13,7 @@ for _, strategy in helpers.each_strategy() do
       }) -- runs migrations
 
       assert(helpers.start_kong({
-        role = "admin",
+        role = "control_plane",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         lua_ssl_trusted_certificate = "../spec/fixtures/kong_clustering.crt",
@@ -21,7 +21,7 @@ for _, strategy in helpers.each_strategy() do
       }))
 
       assert(helpers.start_kong({
-        role = "proxy",
+        role = "data_plane",
         database = "off",
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
