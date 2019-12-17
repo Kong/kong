@@ -15,8 +15,8 @@ proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reus
 stream_listen = off
 admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 http2 ssl reuseport backlog=16384
 status_listen = off
-cluster_listen = 0.0.0.0:8002
-cluster_control_plane = 127.0.0.1:8002
+cluster_listen = 0.0.0.0:8005
+cluster_control_plane = 127.0.0.1:8005
 cluster_cert = NONE
 cluster_cert_key = NONE
 nginx_user = nobody nobody
