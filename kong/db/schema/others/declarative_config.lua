@@ -204,7 +204,12 @@ end
 
 
 local function load_plugin_subschemas(fields, plugin_set, indent)
+  if not fields then
+    return true
+  end
+
   indent = indent or 0
+
   for _, f in ipairs(fields) do
     local fname, fdata = next(f)
 
