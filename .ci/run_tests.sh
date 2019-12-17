@@ -4,6 +4,8 @@ set -e
 function cyan() {
     echo -e "\033[1;36m$*\033[0m"
 }
+
+
 function red() {
     echo -e "\033[1;31m$*\033[0m"
 }
