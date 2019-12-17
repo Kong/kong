@@ -14,10 +14,15 @@ return setmetatable({
         return true
       end
 
-      local _, err = kong.db.keyring_meta:insert({
-        id = id,
-        state = "alive",
-      })
+      local _, err = kong.db.keyring_meta:upsert(
+        {
+          id = id
+        },
+        {
+          id = id,
+          state = "alive",
+        }
+      )
       if err then
         return false, err
       end
