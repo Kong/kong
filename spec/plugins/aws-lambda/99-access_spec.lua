@@ -4,6 +4,7 @@ local meta    = require "kong.meta"
 
 
 local server_tokens = meta._SERVER_TOKENS
+local null = ngx.null
 
 
 local fixtures = {
@@ -95,6 +96,15 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "lambda.com" },
       }
 
+      local route1_1 = bp.routes:insert {
+        hosts = { "lambda_ignore_service.com" },
+        service    = bp.services:insert({
+          protocol = "http",
+          host     = "httpbin.org",
+          port     = 80,
+        })
+      }
+
       local route2 = bp.routes:insert {
         hosts = { "lambda2.com" },
       }
@@ -126,64 +136,54 @@ for _, strategy in helpers.each_strategy() do
       local route9 = bp.routes:insert {
         hosts      = { "lambda9.com" },
         protocols  = { "http", "https" },
-        service    = bp.services:insert({
-          protocol = "http",
-          host     = "httpbin.org",
-          port     = 80,
-        })
+        service    = null,
       }
-
-      local service10 = bp.services:insert({
-        protocol = "http",
-        host     = "httpbin.org",
-        port     = 80,
-      })
 
       local route10 = bp.routes:insert {
         hosts       = { "lambda10.com" },
         protocols   = { "http", "https" },
-        service     = service10
+        service     = null,
       }
-
-      local service11 = bp.services:insert({
-        protocol = "http",
-        host     = "httpbin.org",
-        port     = 80,
-      })
 
       local route11 = bp.routes:insert {
         hosts       = { "lambda11.com" },
         protocols   = { "http", "https" },
-        service     = service11
+        service     = null,
       }
-
-      local service12 = bp.services:insert({
-        protocol = "http",
-        host     = "httpbin.org",
-        port     = 80,
-      })
 
       local route12 = bp.routes:insert {
         hosts       = { "lambda12.com" },
         protocols   = { "http", "https" },
-        service     = service12
+        service     = null,
       }
 
       local route13 = bp.routes:insert {
         hosts       = { "lambda13.com" },
         protocols   = { "http", "https" },
-        service     = service12,
+        service     = null,
       }
 
       local route14 = bp.routes:insert {
         hosts       = { "lambda14.com" },
         protocols   = { "http", "https" },
-        service     = ngx.null,
+        service     = null,
       }
 
       bp.plugins:insert {
         name     = "aws-lambda",
         route    = { id = route1.id },
+        config   = {
+          port          = 10001,
+          aws_key       = "mock-key",
+          aws_secret    = "mock-secret",
+          aws_region    = "us-east-1",
+          function_name = "kongLambdaTest",
+        },
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route1_1.id },
         config   = {
           port          = 10001,
           aws_key       = "mock-key",
@@ -401,6 +401,22 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("some_value1", body.key1)
       assert.is_nil(res.headers["X-Amz-Function-Error"])
     end)
+
+    it("invokes a Lambda function with GET, ignores route's service", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+        headers = {
+          ["Host"] = "lambda_ignore_service.com"
+        }
+      })
+      assert.res_status(200, res)
+      local body = assert.response(res).has.jsonbody()
+      assert.is_string(res.headers["x-amzn-RequestId"])
+      assert.equal("some_value1", body.key1)
+      assert.is_nil(res.headers["X-Amz-Function-Error"])
+    end)
+
     it("invokes a Lambda function with POST params", function()
       local res = assert(proxy_client:send {
         method  = "POST",
@@ -470,7 +486,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_string(res.headers["x-amzn-RequestId"])
       assert.equal("from_querystring", body.key1)
     end)
-    it("invokes a Lambda function with POST and xml payload, custom header and query partameter", function()
+    it("invokes a Lambda function with POST and xml payload, custom header and query parameter", function()
       local res = assert(proxy_client:send {
         method  = "POST",
         path    = "/post?key1=from_querystring",
@@ -500,7 +516,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("<xml/>", body.request_body)
       assert.is_table(body.request_body_args)
     end)
-    it("invokes a Lambda function with POST and json payload, custom header and query partameter", function()
+    it("invokes a Lambda function with POST and json payload, custom header and query parameter", function()
       local res = assert(proxy_client:send {
         method  = "POST",
         path    = "/post?key1=from_querystring",
@@ -530,7 +546,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("some_value", body.request_body_args.key2)
       assert.is_table(body.request_body_args)
     end)
-    it("invokes a Lambda function with POST and txt payload, custom header and query partameter", function()
+    it("invokes a Lambda function with POST and txt payload, custom header and query parameter", function()
       local res = assert(proxy_client:send {
         method  = "POST",
         path    = "/post?key1=from_querystring",
