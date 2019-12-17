@@ -101,7 +101,7 @@ function zipkin_reporter_methods:report(span)
         local log = span.logs[i]
         annotations[i] = {
           event = log.key .. "." .. log.value,
-          timestamp = log.timestamp,
+          timestamp = floor(log.timestamp),
         }
       end
     end
@@ -117,7 +117,7 @@ function zipkin_reporter_methods:report(span)
     parentId = span_context.parent_id and to_hex(span_context.parent_id) or nil,
     id = to_hex(span_context.span_id),
     kind = span_kind_map[span_kind],
-    timestamp = span.timestamp * 1000000,
+    timestamp = floor(span.timestamp * 1000000),
     duration = floor(span.duration * 1000000), -- zipkin wants integer
     -- shared = nil, -- We don't use shared spans (server reuses client generated spanId)
     -- TODO: debug?

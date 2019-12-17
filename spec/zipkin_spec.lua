@@ -19,6 +19,12 @@ local function annotations_to_hash(annotations)
   return hash
 end
 
+local function assert_is_integer(number)
+  assert.equals("number", type(number))
+  assert.equals(number, math.floor(number))
+end
+
+
 
 for _, strategy in helpers.each_strategy() do
 describe("integration tests with mock zipkin server [#" .. strategy .. "]", function()
@@ -68,13 +74,13 @@ describe("integration tests with mock zipkin server [#" .. strategy .. "]", func
 
     assert.same("string", type(request_span.traceId))
     assert.truthy(request_span.traceId:match("^%x+$"))
-    assert.same("number", type(request_span.timestamp))
+    assert_is_integer(request_span.timestamp)
     assert.truthy(request_span.duration >= proxy_span.duration)
 
     assert.equals(2, #request_span.annotations)
     local rann = annotations_to_hash(request_span.annotations)
-    assert.equals("number", type(rann["kong.rewrite.start"]))
-    assert.equals("number", type(rann["kong.rewrite.finish"]))
+    assert_is_integer(rann["kong.rewrite.start"])
+    assert_is_integer(rann["kong.rewrite.finish"])
     assert.truthy(rann["kong.rewrite.start"] <= rann["kong.rewrite.finish"])
 
     assert.same(ngx.null, request_span.localEndpoint)
@@ -89,18 +95,18 @@ describe("integration tests with mock zipkin server [#" .. strategy .. "]", func
 
     assert.same("string", type(proxy_span.traceId))
     assert.truthy(proxy_span.traceId:match("^%x+$"))
-    assert.same("number", type(proxy_span.timestamp))
+    assert_is_integer(proxy_span.timestamp)
     assert.truthy(proxy_span.duration >= 0)
 
     assert.equals(6, #proxy_span.annotations)
     local pann = annotations_to_hash(proxy_span.annotations)
 
-    assert.equals("number", type(pann["kong.access.start"]))
-    assert.equals("number", type(pann["kong.access.finish"]))
-    assert.equals("number", type(pann["kong.header_filter.start"]))
-    assert.equals("number", type(pann["kong.header_filter.finish"]))
-    assert.equals("number", type(pann["kong.body_filter.start"]))
-    assert.equals("number", type(pann["kong.body_filter.finish"]))
+    assert_is_integer(pann["kong.access.start"])
+    assert_is_integer(pann["kong.access.finish"])
+    assert_is_integer(pann["kong.header_filter.start"])
+    assert_is_integer(pann["kong.header_filter.finish"])
+    assert_is_integer(pann["kong.body_filter.start"])
+    assert_is_integer(pann["kong.body_filter.finish"])
 
     assert.truthy(pann["kong.access.start"]        <= pann["kong.access.finish"])
     assert.truthy(pann["kong.header_filter.start"] <= pann["kong.header_filter.finish"])
@@ -194,7 +200,7 @@ describe("integration tests with mock zipkin server [#" .. strategy .. "]", func
         lc = "kong"
       }, request_tags)
       local peer_port = request_span.remoteEndpoint.port
-      assert.equals("number", type(peer_port))
+      assert_is_integer(peer_port)
       assert.same({ ipv4 = "127.0.0.1", port = peer_port }, request_span.remoteEndpoint)
 
       -- specific assertions for proxy_span
@@ -207,8 +213,8 @@ describe("integration tests with mock zipkin server [#" .. strategy .. "]", func
       -- specific assertions for balancer_span
       assert.equals(balancer_span.parentId, request_span.id)
       assert.equals(request_span.name .. " (balancer try 1)", balancer_span.name)
-      assert.equals("number", type(balancer_span.timestamp))
-      assert.equals("number", type(balancer_span.duration))
+      assert_is_integer(balancer_span.timestamp)
+      assert_is_integer(balancer_span.duration)
 
       assert.same({ ipv4 = helpers.mock_upstream_host, port = helpers.mock_upstream_port },
         balancer_span.remoteEndpoint)
@@ -246,7 +252,7 @@ describe("integration tests with mock zipkin server [#" .. strategy .. "]", func
         lc = "kong"
       }, request_tags)
       local peer_port = request_span.remoteEndpoint.port
-      assert.equals("number", type(peer_port))
+      assert_is_integer(peer_port)
       assert.same({ ipv4 = "127.0.0.1", port = peer_port }, request_span.remoteEndpoint)
 
       -- specific assertions for proxy_span
@@ -259,8 +265,8 @@ describe("integration tests with mock zipkin server [#" .. strategy .. "]", func
       -- specific assertions for balancer_span
       assert.equals(balancer_span.parentId, request_span.id)
       assert.equals(request_span.name .. " (balancer try 1)", balancer_span.name)
-      assert.equals("number", type(balancer_span.timestamp))
-      assert.equals("number", type(balancer_span.duration))
+      assert_is_integer(balancer_span.timestamp)
+      assert_is_integer(balancer_span.duration)
 
       assert.same({ ipv4 = "127.0.0.1", port = 15002 },
         balancer_span.remoteEndpoint)
@@ -304,7 +310,7 @@ describe("integration tests with mock zipkin server [#" .. strategy .. "]", func
         lc = "kong"
       }, request_tags)
       local peer_port = request_span.remoteEndpoint.port
-      assert.equals("number", type(peer_port))
+      assert_is_integer(peer_port)
       assert.same({ ipv4 = "127.0.0.1", port = peer_port }, request_span.remoteEndpoint)
 
       -- specific assertions for proxy_span
