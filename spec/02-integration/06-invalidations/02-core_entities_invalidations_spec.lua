@@ -3,7 +3,7 @@ local helpers      = require "spec.helpers"
 local ssl_fixtures = require "spec.fixtures.ssl"
 
 
-local POLL_INTERVAL = 0.3
+local POLL_INTERVAL = 0.5
 
 
 for _, strategy in helpers.each_strategy() do
