@@ -1479,7 +1479,7 @@ function _M.new(routes)
     -- no match :'(
   end
 
-  find_route = function(req_method, req_uri, req_host, src_ip, src_port, dst_ip, dst_port, sni, req_headers)
+  local function find_route (req_method, req_uri, req_host, src_ip, src_port, dst_ip, dst_port, sni, req_headers)
     return find_route_ng(req_method, req_uri, req_uri, req_host, src_ip, src_port, dst_ip, dst_port, sni, req_headers)
   end
 
