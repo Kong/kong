@@ -24,6 +24,7 @@ local proxy_client = helpers.proxy_client
 local function it_with_retry(desc, test)
   return it(desc, function(...)
     if not pcall(test, ...) then
+      ngx.sleep(61 - (ngx.now() % 60))  -- Wait for minute to expire
       test(...)
     end
   end)
