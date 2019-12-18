@@ -1,5 +1,4 @@
 local typedefs = require "kong.db.schema.typedefs"
-local client = require("kong.plugins.acme.client")
 
 local CERT_TYPES = { "rsa", "ecc" }
 
@@ -33,21 +32,16 @@ local CONSUL_VAULT_STORAGE_SCHEMA = {
   { token = { type = "string", }, },
 }
 
-local function check_account(conf)
-  -- hack: create an account if it doesn't exist, during plugin creation time
-  -- TODO: remove from storage if schema check failed?
-  local err = client.create_account(conf)
-  return err == nil, err
-end
-
-return {
+local schema = {
   name = "acme",
   fields = {
+    -- global plugin only
     { consumer = typedefs.no_consumer },
+    { service = typedefs.no_service },
+    { route = typedefs.no_route },
     { protocols = typedefs.protocols_http },
     { config = {
       type = "record",
-      custom_validator = check_account,
       fields = {
         { account_email = {
           type = "string",

@@ -3,9 +3,15 @@ local util = require "resty.acme.util"
 local x509 = require "resty.openssl.x509"
 
 local cjson = require "cjson"
+local ngx_ssl = require "ngx.ssl"
+
+local dbless = kong.configuration.database == "off"
 
 local RENEW_KEY_PREFIX = "kong_acme:renew_config:"
 local RENEW_LAST_RUN_KEY = "kong_acme:renew_last_run"
+local CERTKEY_KEY_PREFIX = "kong_acme:cert_key:"
+
+local LOCK_TIMEOUT = 30 -- in seconds
 
 local function account_name(conf)
   return "kong_acme:account:" .. conf.api_uri .. ":" ..
@@ -20,21 +26,23 @@ local function deserialize_account(j)
   return j
 end
 
-local function cached_get(storage, key, deserializer)
+local function cached_get(storage, key, deserializer, ttl, neg_ttl)
   local cache_key = kong.db.acme_storage:cache_key(key)
   return kong.cache:get(cache_key, {
     l1_serializer = deserializer,
+    ttl = ttl,
+    neg_ttl = neg_ttl,
   }, storage.get, storage, key)
 end
 
 local function new_storage_adapter(conf)
   local storage = conf.storage
   if not storage then
-    return nil, nil, "storage is nil"
+    return nil, "storage is nil"
   end
   local storage_config = conf.storage_config[storage]
   if not storage_config then
-    return nil, nil, storage .. " is not defined in plugin storage config"
+    return nil, storage .. " is not defined in plugin storage config"
   end
   if storage == "kong" then
     storage = "kong.plugins.acme.storage.kong"
@@ -46,9 +54,8 @@ local function new_storage_adapter(conf)
   return storage, st, err
 end
 
--- TODO: cache me (note race condition over internal http client)
 local function new(conf)
-  local storage, st, err = new_storage_adapter(conf)
+  local storage_full_path, st, err = new_storage_adapter(conf)
   if err then
     return nil, err
   end
@@ -66,8 +73,8 @@ local function new(conf)
     account_email = conf.account_email,
     account_key = account.key,
     api_uri = conf.api_uri,
-    storage_adapter = storage,
-    storage_config = conf.storage_config[storage],
+    storage_adapter = storage_full_path,
+    storage_config = conf.storage_config[conf.storage],
   })
 end
 
@@ -182,23 +189,46 @@ local function create_account(conf)
 end
 
 local function update_certificate(conf, host, key)
-  local acme_client, err = new(conf)
+  local _, st, err = new_storage_adapter(conf)
   if err then
-    return err
+    kong.log.err("can't create storage adapter: ", err)
+    return
   end
   local lock_key = "kong_acme:update_lock:" .. host
   -- TODO: wait longer?
   -- This goes to the backend storage and may bring pressure, add a first pass shm cache?
-  local err = acme_client.storage:add(lock_key, "placeholder", 30)
+  local err = st:add(lock_key, "placeholder", LOCK_TIMEOUT)
   if err then
     kong.log.info("update_certificate for ", host, " is already running: ", err)
     return
   end
-  local cert, key, err = order(acme_client, host, key, conf.cert_type)
-  if not err then
-    err = save(host, key, cert)
+  local acme_client, cert, err
+  err = create_account(conf)
+  if err then
+    goto update_certificate_error
   end
-  local err_del = acme_client.storage:delete(lock_key)
+  acme_client, err = new(conf)
+  if err then
+    goto update_certificate_error
+  end
+  cert, key, err = order(acme_client, host, key, conf.cert_type)
+  if not err then
+    if dbless then
+      -- in dbless mode, we don't actively release lock
+      -- since we don't implement an IPC to purge potentially negatively
+      -- cached cert/key in other node, we set the cache to be same as
+      -- lock timeout, so that multiple node will not try to update certificate
+      -- at the same time because they are all seeing default cert is served
+      return st:set(CERTKEY_KEY_PREFIX .. host, cjson.encode({
+        key = key,
+        cert = cert,
+      }))
+    else
+      err = save(host, key, cert)
+    end
+  end
+::update_certificate_error::
+  local err_del = st:delete(lock_key)
   if err_del then
     kong.log.warn("failed to delete update_certificate lock for ", host, ": ", err_del)
   end
@@ -299,12 +329,46 @@ local function renew_certificate(premature)
   end
 end
 
+
+local function deserialize_certkey(j)
+  j = cjson.decode(j)
+  if not j.key or not j.key then
+    return nil, "key or cert found in storage"
+  end
+  local cert, err = ngx_ssl.cert_pem_to_der(j.cert)
+  if err then
+    return nil, err
+  end
+  local key, err = ngx_ssl.priv_key_pem_to_der(j.key)
+  if err then
+    return nil, err
+  end
+  return {
+    key = key,
+    cert = cert,
+  }
+end
+
+local function load_certkey(conf, host)
+  local _, st, err = new_storage_adapter(conf)
+  if err then
+    return nil, err
+  end
+  -- see L218: we set neg ttl to be same as LOCK_TIMEOUT
+  return cached_get(st,
+    CERTKEY_KEY_PREFIX .. host, deserialize_certkey,
+    nil, LOCK_TIMEOUT
+  )
+end
+
 return {
   new = new,
   create_account = create_account,
   update_certificate = update_certificate,
   renew_certificate = renew_certificate,
   store_renew_config = store_renew_config,
+  -- for dbless
+  load_certkey = load_certkey,
 
   -- for test only
   _save = save,
