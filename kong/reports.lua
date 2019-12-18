@@ -13,7 +13,6 @@ local subsystem = ngx.config.subsystem
 local concat = table.concat
 local tostring = tostring
 local lower = string.lower
-local ipairs = ipairs
 local pairs = pairs
 local error = error
 local type = type
@@ -340,23 +339,6 @@ local function configure_ping(kong_conf)
   add_immutable_value("_proxy", #kong_conf.proxy_listeners > 0 and 1 or 0)
   add_immutable_value("_stream", #kong_conf.stream_listeners > 0 and 1 or 0)
   add_immutable_value("_orig", #kong_conf.origins > 0 and 1 or 0)
-
-  local _tip = 0
-
-  for _, property in ipairs({ "proxy_listeners", "stream_listeners" }) do
-    if _tip == 1 then
-      break
-    end
-
-    for i = 1, #kong_conf[property] or {} do
-      if kong_conf[property][i].transparent then
-        _tip = 1
-        break
-      end
-    end
-  end
-
-  add_immutable_value("_tip", _tip)
 end
 
 

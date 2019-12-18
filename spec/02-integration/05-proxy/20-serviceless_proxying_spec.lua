@@ -143,22 +143,6 @@ for _, strategy in helpers.each_strategy() do
       -- TODO: needs https://github.com/chobits/ngx_http_proxy_connect_module
       pending("proxies https to https (connect)", function()
       end)
-
-      -- TODO: transparent needs iptables / pf to work on travis
-      pending("proxies http to http (transparent)", function()
-      end)
-
-      -- TODO: transparent needs iptables / pf to work on travis
-      pending("proxies https to http (transparent)", function()
-      end)
-
-      -- TODO: transparent needs iptables / pf to work on travis
-      pending("proxies http to https (transparent)", function()
-      end)
-
-      -- TODO: transparent needs iptables / pf to work on travis
-      pending("proxies https to https (transparent)", function()
-      end)
     end)
 
     describe("[http2]", function()
@@ -282,26 +266,6 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(HTTPS_UPSTREAM_HOST, json.headers["host"])
 
         stream:shutdown()
-      end)
-
-      -- TODO: needs https://github.com/chobits/ngx_http_proxy_connect_module
-      pending("proxies https to https (connect)", function()
-      end)
-
-      -- TODO: transparent needs iptables / pf to work on travis
-      pending("proxies http to http (transparent)", function()
-      end)
-
-      -- TODO: transparent needs iptables / pf to work on travis
-      pending("proxies https to http (transparent)", function()
-      end)
-
-      -- TODO: transparent needs iptables / pf to work on travis
-      pending("proxies http to https (transparent)", function()
-      end)
-
-      -- TODO: transparent needs iptables / pf to work on travis
-      pending("proxies https to https (transparent)", function()
       end)
     end)
 
