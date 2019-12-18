@@ -505,7 +505,7 @@ local function check_target_history(upstream, balancer)
     end
   end
 
-  if last_equal_index == new_size and new_size > 0 then
+  if last_equal_index == new_size and new_size == old_size then
     -- No history update is necessary in the balancer object.
     return true
   elseif last_equal_index == old_size then
