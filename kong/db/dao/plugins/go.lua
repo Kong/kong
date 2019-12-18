@@ -5,9 +5,6 @@ local basic_serializer = require "kong.plugins.log-serializers.basic"
 local msgpack = require "MessagePack"
 
 
-local go = {}
-
-
 local C = ffi.C
 local kong = kong
 local ngx = ngx
@@ -16,8 +13,28 @@ local cjson_encode = cjson.encode
 local mp_pack = msgpack.pack
 local mp_unpacker = msgpack.unpacker
 
+
+local go = {}
+
+
 local reset_instances   -- forward declaration
 local preloaded_stuff = {}
+
+
+--- is_on(): returns true if Go plugins is enabled
+function go.is_on()
+  return kong.configuration.go_plugins_dir ~= "off"
+end
+
+
+do
+  local __socket_path
+  --- socket_path(): returns the (hardcoded) socket pathname
+  function go.socket_path()
+    __socket_path = __socket_path or kong.configuration.prefix .. "go_pluginserver.sock"
+    return __socket_path
+  end
+end
 
 
 -- Workaround: if cosockets aren't available, use raw glibc calls
@@ -129,12 +146,12 @@ do
 --     log = true,
   }
 
-  function get_connection(socket_path)
+  function get_connection()
     if too_early[ngx.get_phase()] then
-      return ffi_sock(socket_path)
+      return ffi_sock(go.socket_path())
     end
 
-    return ngx.socket.connect("unix:" .. socket_path)
+    return ngx.socket.connect("unix:" .. go.socket_path())
   end
 end
 go.get_connection = get_connection
@@ -167,7 +184,7 @@ do
     msg_id = msg_id + 1
     local my_msg_id = msg_id
 
-    local c = assert(get_connection(kong.configuration.pluginserver_socket))
+    local c = assert(get_connection())
     local bytes, err = c:send(mp_pack({0, my_msg_id, method, {...}}))
     if not bytes then
       c:setkeepalive()
@@ -220,6 +237,7 @@ do
     current_plugin_dir = dir
   end
 end
+
 
 -- global method search and cache
 local function index_table(table, field)
@@ -350,6 +368,7 @@ local function bridge_loop(instance_id, phase)
   end
 end
 
+
 -- find a plugin instance for this specific configuration
 -- if it's a new config, start a new instance
 -- returns: the instance ID
@@ -478,6 +497,7 @@ function go.load_plugin(plugin_name)
   return nil, "not yet"
 end
 
+
 function go.load_schema(plugin_name)
   local plugin = get_plugin(plugin_name)
   if plugin and plugin.PRIORITY then
@@ -486,5 +506,6 @@ function go.load_schema(plugin_name)
 
   return nil, "not yet"
 end
+
 
 return go

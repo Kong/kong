@@ -115,13 +115,8 @@
                                  # cache (i.e. when the configured
                                  # `mem_cache_size`) is full.
 
-#go_plugins_dir = /usr/local/kong  # Directory for installing Kong plugins
-                                   # written in Go
-
-#pluginserver_socket = off
-                                 # Path for the Unix domain socket used for
-                                 # IPC between Kong and the out-of-process
-                                 # plugin server, used for Go plugins.
+#go_plugins_dir = off            # Directory for installing Kong plugins
+                                 # written in Go.
                                  #
                                  # This value can be set to `off`, thus disabling
                                  # the plugin server and Go plugin loading.
