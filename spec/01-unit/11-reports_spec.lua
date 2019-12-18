@@ -237,47 +237,6 @@ describe("reports", function()
       end)
     end)
 
-    describe("sends '_tip' for 'transparent'", function()
-      it("not specified", function()
-        local conf = assert(conf_loader(nil, {
-          stream_listen = "127.0.0.1:9000",
-        }))
-        reports.configure_ping(conf)
-
-        local thread = helpers.tcp_server(8189)
-        reports.send_ping("127.0.0.1", 8189)
-
-        local _, res = assert(thread:join())
-        assert.matches("_tip=0", res, nil, true)
-      end)
-
-      it("specified in 'stream_listen'", function()
-        local conf = assert(conf_loader(nil, {
-          stream_listen = "127.0.0.1:8000 transparent",
-        }))
-        reports.configure_ping(conf)
-
-        local thread = helpers.tcp_server(8189)
-        reports.send_ping("127.0.0.1", 8189)
-
-        local _, res = assert(thread:join())
-        assert.matches("_tip=1", res, nil, true)
-      end)
-
-      it("specified in 'proxy_listen'", function()
-        local conf = assert(conf_loader(nil, {
-          proxy_listen = "127.0.0.1:8000 transparent",
-        }))
-        reports.configure_ping(conf)
-
-        local thread = helpers.tcp_server(8189)
-        reports.send_ping("127.0.0.1", 8189)
-
-        local _, res = assert(thread:join())
-        assert.matches("_tip=1", res, nil, true)
-      end)
-    end)
-
     it("default configuration ping contents", function()
         local conf = assert(conf_loader())
         reports.configure_ping(conf)
@@ -291,7 +250,6 @@ describe("reports", function()
         assert.matches("_proxy=1", res, nil, true)
         assert.matches("_stream=0", res, nil, true)
         assert.matches("_orig=0", res, nil, true)
-        assert.matches("_tip=0", res, nil, true)
     end)
   end)
 

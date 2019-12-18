@@ -301,9 +301,9 @@ describe("Configuration loader", function()
                                    "lua_shared_dict", "custom_cache 5m"))
 
       assert.True(search_directive(conf.nginx_proxy_directives,
-                                   "proxy_bind", "127.0.0.1 transparent"))
+                                   "proxy_bind", "127.0.0.1"))
       assert.True(search_directive(conf.nginx_sproxy_directives,
-                                   "proxy_bind", "127.0.0.1 transparent"))
+                                   "proxy_bind", "127.0.0.1"))
 
       assert.True(search_directive(conf.nginx_admin_directives,
                                    "server_tokens", "off"))
@@ -325,8 +325,8 @@ describe("Configuration loader", function()
         ["nginx_stream_variables_hash_bucket_size"] = "256",
         ["nginx_http_lua_shared_dict"] = "custom_cache 2m",
         ["nginx_stream_lua_shared_dict"] = "custom_cache 2m",
-        ["nginx_proxy_proxy_bind"] = "127.0.0.2 transparent",
-        ["nginx_sproxy_proxy_bind"] = "127.0.0.2 transparent",
+        ["nginx_proxy_proxy_bind"] = "127.0.0.2",
+        ["nginx_sproxy_proxy_bind"] = "127.0.0.2",
         ["nginx_admin_server_tokens"] = "build",
         plugins = "off",
       }))
@@ -342,9 +342,9 @@ describe("Configuration loader", function()
                                    "lua_shared_dict", "custom_cache 2m"))
 
       assert.True(search_directive(conf.nginx_proxy_directives,
-                                   "proxy_bind", "127.0.0.2 transparent"))
+                                   "proxy_bind", "127.0.0.2"))
       assert.True(search_directive(conf.nginx_sproxy_directives,
-                                   "proxy_bind", "127.0.0.2 transparent"))
+                                   "proxy_bind", "127.0.0.2"))
 
       assert.True(search_directive(conf.nginx_admin_directives,
                                    "server_tokens", "build"))
@@ -533,26 +533,26 @@ describe("Configuration loader", function()
         admin_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
+      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         proxy_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
+      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
     end)
     it("rejects empty string in listen addresses", function()
       local conf, err = conf_loader(nil, {
         admin_listen = ""
       })
       assert.is_nil(conf)
-      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
+      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         proxy_listen = ""
       })
       assert.is_nil(conf)
-      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
+      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
     end)
     it("errors when dns_resolver is not a list in ipv4/6[:port] format", function()
       local conf, err = conf_loader(nil, {
