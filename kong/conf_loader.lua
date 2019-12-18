@@ -1173,6 +1173,7 @@ local function load(path, custom_conf, opts)
   if conf.lua_ssl_trusted_certificate then
     conf.lua_ssl_trusted_certificate =
       pl_path.abspath(conf.lua_ssl_trusted_certificate)
+  end
 
   if conf.cluster_cert and conf.cluster_cert_key then
     conf.cluster_cert = pl_path.abspath(conf.cluster_cert)
