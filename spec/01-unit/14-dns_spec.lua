@@ -23,8 +23,6 @@ describe("DNS", function()
     }
     --]]
 
-    singletons.origins = {}
-
     balancer = require "kong.runloop.balancer"
     balancer.init()
 

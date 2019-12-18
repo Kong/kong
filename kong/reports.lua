@@ -338,7 +338,6 @@ local function configure_ping(kong_conf)
   add_immutable_value("_admin", #kong_conf.admin_listeners > 0 and 1 or 0)
   add_immutable_value("_proxy", #kong_conf.proxy_listeners > 0 and 1 or 0)
   add_immutable_value("_stream", #kong_conf.stream_listeners > 0 and 1 or 0)
-  add_immutable_value("_orig", #kong_conf.origins > 0 and 1 or 0)
 end
 
 

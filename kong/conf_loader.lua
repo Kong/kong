@@ -161,7 +161,6 @@ local CONF_INFERENCES = {
   admin_listen = { typ = "array" },
   status_listen = { typ = "array" },
   stream_listen = { typ = "array" },
-  origins = { typ = "array" },
   db_update_frequency = {  typ = "number"  },
   db_update_propagation = {  typ = "number"  },
   db_cache_ttl = {  typ = "number"  },
@@ -538,46 +537,6 @@ local function check_and_infer(conf)
       errors[#errors + 1] = "trusted_ips must be a comma separated list in " ..
                             "the form of IPv4 or IPv6 address or CIDR "      ..
                             "block or 'unix:', got '" .. address .. "'"
-    end
-  end
-
-  -- Validate origins
-  local seen_origins = {}
-
-  for i, v in ipairs(conf.origins) do
-    local from_scheme, from_host_port, to_host_port =
-      v:match("^(%a[%w+.-]*)://([^=]+:[%d]+)=%a[%w+.-]*://([^/]+)$")
-
-    if not from_scheme then
-      errors[#errors + 1] = "an origin must be of the form " ..
-                            "'from_scheme://from_host:from_port=" ..
-                            "to_scheme://to_host:to_port', got '" ..
-                            v .. "'"
-
-    else
-      -- Validate 'from'
-      local from_authority, err =
-        utils.format_host(utils.normalize_ip(from_host_port))
-      if not from_authority then
-        errors[#errors + 1] = "failed to parse authority: " .. err ..
-                              "(" .. from_host_port .. ")"
-
-      else
-        -- Check for duplicates
-        local from_origin = from_scheme:lower() .. "://" .. from_authority
-
-        if seen_origins[from_origin] then
-          errors[#errors + 1] = "duplicate origin (" .. from_origin .. ")"
-        end
-
-        seen_origins[from_origin] = true
-      end
-
-      -- Validate 'to'
-      local to, err = utils.normalize_ip(to_host_port)
-      if not to then
-        errors[#errors + 1] = "failed to parse authority (" .. err .. ")"
-      end
     end
   end
 
