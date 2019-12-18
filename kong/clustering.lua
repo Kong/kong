@@ -119,7 +119,7 @@ local function communicate(premature, conf)
                                   }
                             )
   if not res then
-    local delay = 9 + math.random()
+    local delay = math.random(5, 10)
 
     ngx_log(ngx_ERR, "connection to control plane broken: ", err,
             " retrying after ", delay , " seconds")
