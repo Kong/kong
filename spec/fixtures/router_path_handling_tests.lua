@@ -72,14 +72,14 @@ local tests = {
   {  "/service",     "/route/",  false,         "v1",          "/route/",       "/serviceroute/",     },
   {  "/service",     "/route/",  false,         "v0",          "/route/req",    "/service/route/req", },
   {  "/service",     "/route/",  false,         "v1",          "/route/req",    "/serviceroute/req",  },
-  {  "/service",     "/route/",  true,          {"v0", "v1"},  "/route/",       "/service",           },
+  {  "/service",     "/route/",  true,          "v0",          "/route/",       "/service/",          },
+  {  "/service",     "/route/",  true,          "v1",          "/route/",       "/service",           },
   {  "/service",     "/route/",  true,          "v0",          "/route/req",    "/service/req",       },
   {  "/service",     "/route/",  true,          "v1",          "/route/req",    "/servicereq",        },
-  -- 48
-  {  "/service/",    "/",        false ,        {"v0", "v1"},  "/",             "/service/",          },
-  {  "/service/",    "/",        true,          "v0",          "/",             "/service",           },
-  {  "/service/",    "/",        true,          "v1",          "/",             "/service/",          },
-  {  "/service/",    "/",        {false, true}, {"v0", "v1"},  "/route/",       "/service/route/",    },
+  -- 49
+  {  "/service/",    "/",        {false, true}, "v0",          "/route/",       "/service/route/",    },
+  {  "/service/",    "/",        {false, true}, "v1",          "/route/",       "/service/route/",    },
+  {  "/service/",    "/",        {false, true}, {"v0", "v1"},  "/",             "/service/",          },
   {  "/service/",    "/",        {false, true}, {"v0", "v1"},  "/route",        "/service/route",     },
   {  "/service/",    "/",        {false, true}, {"v0", "v1"},  "/routereq",     "/service/routereq",  },
   {  "/service/",    "/",        {false, true}, {"v0", "v1"},  "/route/req",    "/service/route/req", },
@@ -94,24 +94,21 @@ local tests = {
   -- 62
   {  "/service/",    "/route/",  false,         {"v0", "v1"},  "/route/",       "/service/route/",     },
   {  "/service/",    "/route/",  false,         {"v0", "v1"},  "/route/req",    "/service/route/req",  },
-  {  "/service/",    "/route/",  true,          "v0",          "/route/",       "/service",            },
-  {  "/service/",    "/route/",  true,          "v1",          "/route/",       "/service/"            },
+  {  "/service/",    "/route/",  true,          {"v0", "v1"},  "/route/",       "/service/",           },
   {  "/service/",    "/route/",  true,          {"v0", "v1"},  "/route/req",    "/service/req",        },
-  -- 67
+  -- 66
   -- The following cases match on host (not paths)
   {  "/",            nil,        {false, true}, {"v0", "v1"},  "/",             "/",                  },
   {  "/",            nil,        {false, true}, {"v0", "v1"},  "/route",        "/route",             },
   {  "/",            nil,        {false, true}, {"v0", "v1"},  "/route/",       "/route/",            },
-  -- 70
+  -- 69
   {  "/service",     nil,        {false, true}, {"v0", "v1"},  "/",             "/service",           },
   {  "/service",     nil,        {false, true}, "v0",          "/route",        "/service/route",     },
   {  "/service",     nil,        {false, true}, "v1",          "/route",        "/serviceroute",      },
   {  "/service",     nil,        {false, true}, "v0",          "/route/",       "/service/route/",    },
   {  "/service",     nil,        {false, true}, "v1",          "/route/",       "/serviceroute/",     },
-  -- 75
-  {  "/service/",    nil,         false,        {"v0", "v1"},  "/",             "/service/",          },
-  {  "/service/",    nil,         true,         "v0",          "/",             "/service",           },
-  {  "/service/",    nil,         true,         "v1",          "/",             "/service/",          },
+  -- 74
+  {  "/service/",    nil,        {false, true}, {"v0", "v1"},  "/",             "/service/",          },
   {  "/service/",    nil,        {false, true}, {"v0", "v1"},  "/route",        "/service/route",     },
   {  "/service/",    nil,        {false, true}, {"v0", "v1"},  "/route/",       "/service/route/",    },
 }
