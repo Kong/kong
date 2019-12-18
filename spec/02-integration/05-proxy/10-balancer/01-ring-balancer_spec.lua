@@ -835,7 +835,7 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        lua_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt",
         stream_listen = "0.0.0.0:9100",
         db_update_frequency = 0.1,
         plugins = "bundled,fail-once-auth",
@@ -1360,7 +1360,7 @@ for _, strategy in helpers.each_strategy() do
             helpers.restart_kong({
               database = strategy,
               nginx_conf = "spec/fixtures/custom_nginx.template",
-              lua_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
+              lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt",
               db_update_frequency = 0.1,
               stream_listen = "0.0.0.0:9100",
               plugins = "bundled,fail-once-auth",
@@ -1735,7 +1735,7 @@ for _, strategy in helpers.each_strategy() do
               helpers.restart_kong({
                 database = strategy,
                 nginx_conf = "spec/fixtures/custom_nginx.template",
-                lua_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
+                lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt",
                 db_update_frequency = 0.1,
                 stream_listen = "0.0.0.0:9100",
                 plugins = "bundled,fail-once-auth",
@@ -1849,7 +1849,7 @@ for _, strategy in helpers.each_strategy() do
               helpers.restart_kong({
                 database = strategy,
                 nginx_conf = "spec/fixtures/custom_nginx.template",
-                lua_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
+                lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt",
                 db_update_frequency = 0.1,
                 stream_listen = "0.0.0.0:9100",
                 plugins = "bundled,fail-once-auth",
@@ -2091,7 +2091,7 @@ for _, strategy in helpers.each_strategy() do
             helpers.restart_kong({
               database   = strategy,
               nginx_conf = "spec/fixtures/custom_nginx.template",
-              lua_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
+              lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt",
               db_update_frequency = 0.1,
               stream_listen = "0.0.0.0:9100",
               plugins = "bundled,fail-once-auth",

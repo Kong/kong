@@ -471,6 +471,13 @@ local function check_and_infer(conf)
     end
   end
 
+  if conf.lua_ssl_trusted_certificate and
+     not pl_path.exists(conf.lua_ssl_trusted_certificate)
+  then
+    errors[#errors + 1] = "lua_ssl_trusted_certificate: no such file at " ..
+                        conf.lua_ssl_trusted_certificate
+  end
+
   if conf.ssl_cipher_suite ~= "custom" then
     local suite = cipher_suites[conf.ssl_cipher_suite]
     if suite then
@@ -1146,6 +1153,11 @@ local function load(path, custom_conf, opts)
   if conf.admin_ssl_cert and conf.admin_ssl_cert_key then
     conf.admin_ssl_cert = pl_path.abspath(conf.admin_ssl_cert)
     conf.admin_ssl_cert_key = pl_path.abspath(conf.admin_ssl_cert_key)
+  end
+
+  if conf.lua_ssl_trusted_certificate then
+    conf.lua_ssl_trusted_certificate =
+      pl_path.abspath(conf.lua_ssl_trusted_certificate)
   end
 
   -- attach prefix files paths

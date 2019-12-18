@@ -689,6 +689,14 @@ describe("Configuration loader", function()
           assert.contains("ssl_cert_key: no such file at /path/cert_key.pem", errors)
           assert.is_nil(conf)
         end)
+        it("requires trusted CA cert file to exist", function()
+          local conf, _, errors = conf_loader(nil, {
+            lua_ssl_trusted_certificate = "/path/cert.pem",
+          })
+          assert.equal(1, #errors)
+          assert.contains("lua_ssl_trusted_certificate: no such file at /path/cert.pem", errors)
+          assert.is_nil(conf)
+        end)
         it("resolves SSL cert/key to absolute path", function()
           local conf, err = conf_loader(nil, {
             ssl_cert = "spec/fixtures/kong_spec.crt",
