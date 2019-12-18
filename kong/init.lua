@@ -373,8 +373,8 @@ function Kong.init()
     certificate.init()
   end
 
-  if config.pluginserver_socket ~= "off" then
-    local conn, err = go.get_connection(config.pluginserver_socket)
+  if go.is_on() then
+    local conn, err = go.get_connection()
     if not conn then
       kong.log.err("failure connecting to go plugin server socket: ", err)
     else
