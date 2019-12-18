@@ -108,9 +108,7 @@ local tests = {
   {  "/service",     nil,        {false, true}, "v0",          "/route/",       "/service/route/",    },
   {  "/service",     nil,        {false, true}, "v1",          "/route/",       "/serviceroute/",     },
   -- 74
-  {  "/service/",    nil,         false,        {"v0", "v1"},  "/",             "/service/",          },
-  {  "/service/",    nil,         true,         "v0",          "/",             "/service",           },
-  {  "/service/",    nil,         true,         "v1",          "/",             "/service/",          },
+  {  "/service/",    nil,        {false, true}, {"v0", "v1"},  "/",             "/service/",          },
   {  "/service/",    nil,        {false, true}, {"v0", "v1"},  "/route",        "/service/route",     },
   {  "/service/",    nil,        {false, true}, {"v0", "v1"},  "/route/",       "/service/route/",    },
 }
