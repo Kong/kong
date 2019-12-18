@@ -1164,7 +1164,7 @@ function _M.new(routes)
 
   local grab_req_headers = #plain_indexes.headers > 0
 
-  local function find_route(req_method, req_uri, req_host,
+  local function find_route_ng(req_method, req_uri, orig_req_uri, req_host,
                             src_ip, src_port,
                             dst_ip, dst_port,
                             sni, req_headers)
@@ -1198,6 +1198,7 @@ function _M.new(routes)
 
     req_method = req_method or ""
     req_uri = req_uri or ""
+    orig_req_uri = orig_req_uri or ""
     req_host = req_host or ""
     req_headers = req_headers or EMPTY_T
 
@@ -1213,17 +1214,20 @@ function _M.new(routes)
 
     -- cache lookup (except for headers-matched Routes)
 
-    local cache_key = req_method .. "|" .. req_uri .. "|" .. req_host ..
+    local cache_key = ""
+    --[[                req_method .. "|" .. req_uri .. "|" .. req_host ..
                       "|" .. ctx.src_ip .. "|" .. ctx.src_port ..
                       "|" .. ctx.dst_ip .. "|" .. ctx.dst_port ..
                       "|" .. ctx.sni
-
+    --]]
+    --[[ disable cache
     do
       local match_t = cache:get(cache_key)
       if match_t then
         return match_t
       end
     end
+    --]]
 
     -- input sanitization for matchers
 
@@ -1243,6 +1247,8 @@ function _M.new(routes)
 
     local hits         = ctx.hits
     local req_category = 0x00
+    -- disallow cache
+    local allow_cache_flag = 0
 
     clear_tab(hits)
 
@@ -1296,7 +1302,7 @@ function _M.new(routes)
       end
 
       for i = 1, #regex_uris do
-        local from, _, err = re_find(req_uri, regex_uris[i].regex, "ajo")
+        local from, _, err = re_find(orig_req_uri, regex_uris[i].regex, "ajo")
         if err then
           log(ERR, "could not evaluate URI regex: ", err)
           return
@@ -1457,7 +1463,7 @@ function _M.new(routes)
               }
             }
 
-            if band(matched_route.match_rules, MATCH_RULES.HEADER) == 0 then
+            if band(matched_route.match_rules, MATCH_RULES.HEADER) == 0 and allow_cache_flag == 1 then
               cache:set(cache_key, match_t)
             end
 
@@ -1473,6 +1479,9 @@ function _M.new(routes)
     -- no match :'(
   end
 
+  find_route = function(req_method, req_uri, req_host, src_ip, src_port, dst_ip, dst_port, sni, req_headers)
+    return find_route_ng(req_method, req_uri, req_uri, req_host, src_ip, src_port, dst_ip, dst_port, sni, req_headers)
+  end
 
   self.select = find_route
   self._set_ngx = _set_ngx
@@ -1481,6 +1490,7 @@ function _M.new(routes)
     function self.exec()
       local req_method = get_method()
       local req_uri = var.request_uri
+      local orig_req_uri = req_uri
       local req_host = var.http_host or ""
       local sni = var.ssl_server_name
 
@@ -1504,7 +1514,7 @@ function _M.new(routes)
         end
       end
 
-      local match_t = find_route(req_method, req_uri, req_host,
+      local match_t = find_route_ng(req_method, req_uri, orig_req_uri, req_host,
                                  nil, nil, -- src_ip, src_port
                                  nil, nil, -- dst_ip, dst_port
                                  sni, headers)
