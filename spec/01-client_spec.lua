@@ -1,10 +1,11 @@
-local client = require("kong.plugins.acme.client")
 local util = require("resty.acme.util")
 
 local helpers = require "spec.helpers"
 
 local pkey = require("resty.openssl.pkey")
 local x509 = require("resty.openssl.x509")
+
+local client
 
 local function new_cert_key_pair()
   local key = pkey.new(nil, 'EC', 'prime256v1')
@@ -15,7 +16,13 @@ local function new_cert_key_pair()
   return key:to_PEM("private"), crt:to_PEM()
 end
 
+local strategies = {}
 for _, strategy in helpers.each_strategy() do
+  table.insert(strategies, strategy)
+end
+table.insert(strategies, "off")
+
+for _, strategy in ipairs(strategies) do
   local _, db
 
   local proper_config = {
@@ -27,19 +34,21 @@ for _, strategy in helpers.each_strategy() do
     }
   }
 
-  local account_name = client._account_name(proper_config)
-
-  local fake_cache = {
-    [account_name] = {
-      key = util.create_pkey(),
-      kid = "fake kid url",
-    },
-  }
-
   lazy_setup(function()
     _, db = helpers.get_db_utils(strategy, {
       "acme_storage"
     }, { "acme", })
+
+    client = require("kong.plugins.acme.client")
+
+    local account_name = client._account_name(proper_config)
+
+    local fake_cache = {
+      [account_name] = {
+        key = util.create_pkey(),
+        kid = "fake kid url",
+      },
+    }
 
     kong.cache = {
       get = function(_, _, _, f, _, k)
@@ -55,15 +64,17 @@ for _, strategy in helpers.each_strategy() do
   end)
 
   describe("Plugin: acme (client.new) [#" .. strategy .. "]", function()
-    it("rejects invalid storage config", function()
+    it("rejects invalid account config", function()
       local c, err = client.new({
         storage = "shm",
         storage_config = {
           shm = nil,
-        }
+        },
+        api_uri = proper_config.api_uri,
+        account_email = "notme@exmaple.com",
       })
       assert.is_nil(c)
-      assert.equal(err, "shm is not defined in plugin storage config")
+      assert.equal(err, "account notme@exmaple.com not found in storage")
     end)
 
     it("creates acme client properly", function()

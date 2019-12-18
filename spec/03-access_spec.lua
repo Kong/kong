@@ -3,9 +3,12 @@ local helpers = require "spec.helpers"
 local dummy_id = "ZR02iVO6PFywzFLj6igWHd6fnK2R07C-97dkQKC7vJo"
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: acme (client.save) [#" .. strategy .. "]", function()
+  describe("Plugin: acme (handler.access) [#" .. strategy .. "]", function()
     local bp, db
     local proxy_client
+
+    local do_domain = "acme.noatld"
+    local skip_domain = "notacme.noatld"
 
     lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy, {
@@ -17,17 +20,18 @@ for _, strategy in helpers.each_strategy() do
         "acme_storage",
       }, { "acme", })
 
-      local route = bp.routes:insert {
-        hosts = { "acme.test" },
+      bp.routes:insert {
+        hosts = { do_domain, skip_domain },
       }
 
       bp.plugins:insert {
-        route = route,
         name = "acme",
         config = {
           account_email = "test@test.com",
-          api_uri = "https://acme-staging-v02.api.letsencrypt.org",
-        }
+          api_uri = "https://api.acme.org",
+          storage = "kong",
+          domains = { do_domain },
+        },
       }
 
       db.acme_storage:insert {
@@ -56,7 +60,7 @@ for _, strategy in helpers.each_strategy() do
       local res = assert( proxy_client:send {
         method  = "GET",
         path    = "/.well-known/acme-challenge/yay",
-        headers =  { host = "acme.test" }
+        headers =  { host = do_domain }
       })
       assert.response(res).has.status(404)
       body = res:read_body()
@@ -65,11 +69,22 @@ for _, strategy in helpers.each_strategy() do
       res = assert( proxy_client:send {
         method  = "GET",
         path    = "/.well-known/acme-challenge/" .. dummy_id,
-        headers =  { host = "acme.test" }
+        headers =  { host = do_domain }
       })
       assert.response(res).has.status(200)
       body = res:read_body()
       assert.equal("isme\n", body)
+
+    end)
+
+    it("doesn't terminate validation path with host not in whitelist", function()
+      local res = assert( proxy_client:send {
+        method  = "GET",
+        path    = "/.well-known/acme-challenge/yay",
+        headers =  { host = skip_domain }
+      })
+      -- default behaviour for route without service
+      assert.response(res).has.status(502)
 
     end)
 

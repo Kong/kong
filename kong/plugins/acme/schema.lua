@@ -51,7 +51,11 @@ local schema = {
         }, },
         { api_uri = typedefs.url({ default = "https://acme-v02.api.letsencrypt.org" }),
         },
-        -- kong doesn't support multiple certificate chains yet
+        { tos_accepted = {
+          type = "boolean",
+          default = false,
+        }, },
+        -- Kong doesn't support multiple certificate chains yet
         { cert_type = {
           type = "string",
           default = 'rsa',
@@ -61,9 +65,10 @@ local schema = {
           type = "number",
           default = 14,
         }, },
+        { domains = typedefs.hosts },
         { storage = {
           type = "string",
-          default = "kong",
+          default = "shm",
           one_of = STORAGE_TYPES,
         }, },
         { storage_config = {
@@ -79,4 +84,25 @@ local schema = {
       },
     }, },
   },
+  entity_checks = {
+    { conditional = {
+      if_field = "config.api_uri", if_match = { one_of = {
+        "https://acme-v02.api.letsencrypt.org",
+        "https://acme-staging-v02.api.letsencrypt.org",
+      } },
+      then_field = "config.tos_accepted", then_match = { eq = true },
+      then_err = "terms of service must be accepted, see https://letsencrypt.org/repository/",
+    } },
+    { custom_entity_check = {
+      field_sources = { "config.storage", },
+      fn = function(entity)
+        if _G.kong and kong.configuration.database == "off" and entity == "kong" then
+          return nil, "\"kong\" storage can't be used with dbless mode"
+        end
+        return true
+      end
+    } },
+  },
 }
+
+return schema

@@ -7,35 +7,43 @@ local acme_challenge_path = [[^/\.well-known/acme-challenge/(.+)]]
 -- cache for dummy cert kong generated (it's a table)
 local default_cert_key
 
+-- cache for domain mapping
+local domains_matcher
+
 local LetsencryptHandler = {}
 
 LetsencryptHandler.PRIORITY = 1000
 LetsencryptHandler.VERSION = "0.2.0"
 
+local function build_domain_matcher(domains)
+  local domains_plain = {}
+  local domains_wildcard = {}
+  local domains_wildcard_count = 0
 
--- access phase is to terminate the http-01 challenge request if necessary
-function LetsencryptHandler:access(conf)
+  if domains == nil or domains == ngx.null then
+    return
+  end
 
-  local protocol = kong.client.get_protocol()
-
-  -- http-01 challenge only sends to http port
-  if protocol == 'http' then
-    local captures, err =
-      ngx.re.match(kong.request.get_path(), acme_challenge_path, "jo")
-    if err then
-      kong.log(kong.WARN, "error matching acme-challenge uri: ", err)
-      return
+  for _, d in ipairs(domains) do
+    if string.sub(d, 1, 1) == "*" then
+      table.insert(domains_wildcard, string.sub(d, 2))
+      domains_wildcard_count = domains_wildcard_count + 1
+    else
+      domains_plain[d] = true
     end
+  end
 
-    if captures then
-      local acme_client, err = client.new(conf)
+  local domains_pattern
+  if domains_wildcard_count > 0 then
+    domains_pattern = "(" .. table.concat(domains_wildcard, "|") .. ")$"
+  end
 
-      if err then
-        kong.log.err("failed to create acme client:", err)
-        return
+  domains_matcher = setmetatable(domains_plain, {
+    __index = function(_, k)
+      if not domains_pattern then
+        return false
       end
-
-      acme_client:serve_http_challenge()
+      return ngx.re.match(k, domains_pattern, "jo")
     end
   })
 end
@@ -57,8 +65,10 @@ function LetsencryptHandler:certificate(conf)
     return
   end
 
-  if protocol ~= 'https' and protocol ~= 'grpcs' then
-    kong.log.debug("skipping because request is protocol: ", protocol)
+  -- TODO: cache me
+  build_domain_matcher(conf.domains)
+  if not domains_matcher or not domains_matcher[host] then
+    kong.log.debug("ignoring because domain is not in whitelist")
     return
   end
 
