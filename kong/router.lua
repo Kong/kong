@@ -1560,10 +1560,10 @@ function _M.new(routes)
                   -- ends with / and strip_uri = true
                   if matched_route.strip_uri then
                     if request_postfix == "" then
-                      -- leave the slash if that's all there is, but remove the slash otherwise
-                      -- (i.e leave "/" but transform "/foo/bar/" into "/foo/bar")
                       if upstream_base == "/" then
                         upstream_uri = "/"
+                      elseif byte(req_uri, -1) == SLASH then
+                        upstream_uri = upstream_base
                       else
                         upstream_uri = sub(upstream_base, 1, -2)
                       end
@@ -1584,7 +1584,11 @@ function _M.new(routes)
                   -- does not end with / and strip_uri = true
                   if matched_route.strip_uri then
                     if request_postfix == "" then
-                      upstream_uri = upstream_base
+                      if #req_uri > 1 and byte(req_uri, -1) == SLASH then
+                        upstream_uri = upstream_base .. "/"
+                      else
+                        upstream_uri = upstream_base
+                      end
                     elseif byte(request_postfix, 1, 1) == SLASH then
                       upstream_uri = upstream_base .. request_postfix
                     else
