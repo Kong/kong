@@ -801,25 +801,11 @@ end
 
 local function balancer_execute(ctx)
   local balancer_data = ctx.balancer_data
-
-  do -- Check for KONG_ORIGINS override
-    local origin_key = balancer_data.scheme .. "://" ..
-                       utils.format_host(balancer_data)
-    local origin = singletons.origins[origin_key]
-    if origin then
-      balancer_data.scheme = origin.scheme
-      balancer_data.type = origin.type
-      balancer_data.host = origin.host
-      balancer_data.port = origin.port
-    end
-  end
-
   local ok, err, errcode = balancer.execute(balancer_data, ctx)
   if not ok and errcode == 500 then
     err = "failed the initial dns/balancer resolve for '" ..
           balancer_data.host .. "' with: " .. tostring(err)
   end
-
   return ok, err, errcode
 end
 

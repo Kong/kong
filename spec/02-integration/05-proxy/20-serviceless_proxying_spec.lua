@@ -20,9 +20,6 @@ local HTTP_UPSTREAM_URI = helpers.mock_upstream_url .. "/anything"
 local HTTPS_UPSTREAM_URI = helpers.mock_upstream_ssl_url .. "/anything"
 local HTTP_UPSTREAM_HOST = helpers.mock_upstream_host .. ":" .. helpers.mock_upstream_port
 local HTTPS_UPSTREAM_HOST = helpers.mock_upstream_host .. ":" .. helpers.mock_upstream_ssl_port
-local STREAM_UPSTREAM_HOST = helpers.mock_upstream_host
-local STREAM_UPSTREAM_PORT = helpers.mock_upstream_stream_port
-local STREAM_UPSTREAM_SSL_PORT = helpers.mock_upstream_stream_ssl_port
 
 
 for _, strategy in helpers.each_strategy() do
@@ -266,84 +263,6 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(HTTPS_UPSTREAM_HOST, json.headers["host"])
 
         stream:shutdown()
-      end)
-    end)
-
-    describe("[stream]", function()
-      local MESSAGE = "echo, ping, pong. echo, ping, pong. echo, ping, pong.\n"
-
-      lazy_setup(function()
-        local bp = helpers.get_db_utils(strategy, {
-          "routes",
-        })
-
-        assert(bp.routes:insert {
-          destinations = {
-            { port = 19000, },
-            { port = 19443, },
-          },
-          protocols = {
-            "tcp",
-            "tls",
-          },
-          service = null,
-        })
-
-        assert(helpers.start_kong({
-          stream_listen = HTTP_PROXY_HOST  .. ":19000," ..
-                          HTTPS_PROXY_HOST .. ":19443",
-          database      = strategy,
-          nginx_conf    = "spec/fixtures/custom_nginx.template",
-          proxy_listen  = "off",
-          admin_listen  = "off",
-          origins       = "tcp://127.0.0.1:19000=" ..
-                          "tcp://" .. STREAM_UPSTREAM_HOST ..  ":" .. STREAM_UPSTREAM_PORT .. "," ..
-                          "tls://127.0.0.1:19443=" ..
-                          "tls://" .. STREAM_UPSTREAM_HOST ..  ":" .. STREAM_UPSTREAM_SSL_PORT,
-        }))
-      end)
-
-      lazy_teardown(function()
-        helpers.stop_kong()
-      end)
-
-      it("proxies tcp to tcp (origins)", function()
-        local tcp = require "socket".tcp()
-        assert(tcp:connect(HTTP_PROXY_HOST, 19000))
-
-        -- TODO: we need to get rid of the next line!
-        assert(tcp:send(MESSAGE))
-
-        local body = assert(tcp:receive("*a"))
-        assert.equal(MESSAGE, body)
-
-        tcp:close()
-      end)
-
-      pending("proxies tls to tls (origins)", function()
-        local tcp = require "socket".tcp()
-        local ssl = require("ssl")
-
-        assert(tcp:connect(HTTPS_PROXY_HOST, 19443))
-
-        tcp = ssl.wrap(tcp, {
-          mode     = "client",
-          verify   = "none",
-          protocol = "any",
-        })
-
-        -- TODO: should SNI really be mandatory?
-        tcp:sni( "this-is-needed.org")
-
-        assert(tcp:dohandshake())
-
-        -- TODO: we need to get rid of the next line!
-        assert(tcp:send(MESSAGE))
-
-        local body = assert(tcp:receive("*a"))
-        assert.equal(MESSAGE, body)
-
-        tcp:close()
       end)
     end)
   end)
