@@ -1164,6 +1164,7 @@ function _M.new(routes)
 
   local grab_req_headers = #plain_indexes.headers > 0
 
+  -- add new func to pass orig_req_uri for regex path matching.
   local function find_route_ng(req_method, req_uri, orig_req_uri, req_host,
                             src_ip, src_port,
                             dst_ip, dst_port,
