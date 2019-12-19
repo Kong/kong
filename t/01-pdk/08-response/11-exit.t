@@ -471,7 +471,7 @@ Content-Type: application/json; charset=utf-8
 
 
 
-=== TEST 18: response.exit() sends json response when body is table overrides content-type
+=== TEST 18: response.exit() sends json response when body is table, but does not override content-type
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -481,15 +481,15 @@ Content-Type: application/json; charset=utf-8
             local pdk = PDK.new()
 
             pdk.response.exit(200, { message = "hello" }, {
-                ["Content-Type"] = "text/plain"
+                ["Content-Type"] = "application/jwk+json; charset=utf-8"
             })
         }
     }
 --- request
 GET /t
 --- error_code: 200
---- response_headers_like
-Content-Type: application/json; charset=utf-8
+--- response_headers
+Content-Type: application/jwk+json; charset=utf-8
 --- response_body chop
 {"message":"hello"}
 --- no_error_log
@@ -590,7 +590,7 @@ a
             local pdk = PDK.new()
 
             pdk.response.exit(200, { message = "hello" }, {
-                ["Content-Type"] = "text/plain",
+                ["Content-Type"] = "application/jwk+json; charset=utf-8",
                 ["Content-Length"] = "100"
             })
         }
@@ -598,8 +598,8 @@ a
 --- request
 GET /t
 --- error_code: 200
---- response_headers_like
-Content-Type: application/json; charset=utf-8
+--- response_headers
+Content-Type: application/jwk+json; charset=utf-8
 Content-Length: 19
 --- response_body chop
 {"message":"hello"}

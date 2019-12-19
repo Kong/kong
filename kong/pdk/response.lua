@@ -22,6 +22,7 @@ local ngx = ngx
 local fmt = string.format
 local type = type
 local find = string.find
+local lower = string.lower
 local error = error
 local pairs = pairs
 local coroutine = coroutine
@@ -491,9 +492,17 @@ local function new(self, major_version)
       ngx.header[SERVER_HEADER_NAME] = SERVER_HEADER_VALUE
     end
 
+    local has_content_type
     if headers ~= nil then
       for name, value in pairs(headers) do
         ngx.header[name] = normalize_multi_header(value)
+        if not has_content_type then
+          local lower_name = lower(name)
+          if lower_name == "content-type" or
+             lower_name == "content_type" then
+            has_content_type = true
+          end
+        end
       end
     end
 
@@ -507,7 +516,7 @@ local function new(self, major_version)
       is_grpc_output = is_grpc
     elseif req_ctype then
       is_grpc = find(req_ctype, CONTENT_TYPE_GRPC, 1, true) == 1
-                  and ngx.req.http_version() == 2
+                 and ngx.req.http_version() == 2
     end
 
     local grpc_status
@@ -555,7 +564,10 @@ local function new(self, major_version)
     local is_header_filter_phase = self.ctx.core.phase == PHASES.header_filter
 
     if json ~= nil then
-      ngx.header[CONTENT_TYPE_NAME]   = CONTENT_TYPE_JSON
+      if not has_content_type then
+        ngx.header[CONTENT_TYPE_NAME] = CONTENT_TYPE_JSON
+      end
+
       ngx.header[CONTENT_LENGTH_NAME] = #json
 
       if is_header_filter_phase then
@@ -569,7 +581,6 @@ local function new(self, major_version)
       if is_grpc and not is_grpc_output then
         ngx.header[CONTENT_LENGTH_NAME] = 0
         ngx.header[GRPC_MESSAGE_NAME] = body
-
 
         if is_header_filter_phase then
           self.ctx.core.response_body = ""

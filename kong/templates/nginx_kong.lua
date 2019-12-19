@@ -185,6 +185,7 @@ server {
 
     location @grpc {
         internal;
+        default_type          '';
         set $kong_proxy_mode  'grpc';
 
         grpc_set_header    TE                $upstream_te;
@@ -203,6 +204,7 @@ server {
 
     location @grpcs {
         internal;
+        default_type          '';
         set $kong_proxy_mode  'grpc';
 
         grpc_set_header    TE                $upstream_te;
@@ -221,6 +223,7 @@ server {
 
     location = /kong_error_handler {
         internal;
+        default_type                '';
         uninitialized_variable_warn off;
 
         rewrite_by_lua_block {;}
