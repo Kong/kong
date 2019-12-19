@@ -100,7 +100,7 @@ function zipkin_reporter_methods:report(span)
       for i = 1, n_logs do
         local log = span.logs[i]
         annotations[i] = {
-          event = log.key .. "." .. log.value,
+          value = log.key .. "." .. log.value,
           timestamp = floor(log.timestamp),
         }
       end

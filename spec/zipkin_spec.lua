@@ -7,14 +7,14 @@ local http_server = require "http.server"
 local new_headers = require "http.headers".new
 local cjson = require "cjson"
 
--- Transform zipkin annotations into a hash of timestamps. It assumes no repeated events
--- input: { { event = x, timestamp = y }, { event = x2, timestamp = y2 } }
+-- Transform zipkin annotations into a hash of timestamps. It assumes no repeated values
+-- input: { { value = x, timestamp = y }, { value = x2, timestamp = y2 } }
 -- output: { x = y, x2 = y2 }
 local function annotations_to_hash(annotations)
   local hash = {}
   for _, a in ipairs(annotations) do
-    assert(not hash[a.event], "duplicated annotation: " .. a.event)
-    hash[a.event] = a.timestamp
+    assert(not hash[a.value], "duplicated annotation: " .. a.value)
+    hash[a.value] = a.timestamp
   end
   return hash
 end
