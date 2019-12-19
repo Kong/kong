@@ -20,6 +20,7 @@ local PHASES = {
   --timer       = 0x00001000,
   log           = 0x00002000,
   preread       = 0x00004000,
+  error         = 0x01000000,
   admin_api     = 0x10000000,
 }
 
@@ -117,6 +118,7 @@ local public_phases = setmetatable({
                       PHASES.header_filter,
                       PHASES.body_filter,
                       PHASES.log,
+                      PHASES.error,
                       PHASES.admin_api),
 }, {
   __index = function(t, k)
