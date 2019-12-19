@@ -614,7 +614,7 @@ Content-Length: 19
     location = /t {
         default_type 'text/test';
         access_by_lua_block {
-            ngx.req.http_version = function() return "2" end
+            ngx.req.http_version = function() return 2 end
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
@@ -696,7 +696,7 @@ hello
     location = /t {
         default_type 'text/test';
         access_by_lua_block {
-            ngx.req.http_version = function() return "2" end
+            ngx.req.http_version = function() return 2 end
 
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
@@ -813,7 +813,7 @@ grpc-message: SHOW ME
     location = /t {
         default_type 'text/test';
         access_by_lua_block {
-            ngx.req.http_version = function() return "2" end
+            ngx.req.http_version = function() return 2 end
 
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
@@ -842,7 +842,7 @@ grpc-message: OK
     location = /t {
         default_type 'text/test';
         access_by_lua_block {
-            ngx.req.http_version = function() return "2" end
+            ngx.req.http_version = function() return 2 end
 
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
@@ -1006,7 +1006,7 @@ GET /t
     location = /t {
         default_type 'text/test';
         access_by_lua_block {
-            ngx.req.http_version = function() return "2" end
+            ngx.req.http_version = function() return 2 end
 
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
@@ -1034,7 +1034,7 @@ grpc-message: Unauthenticated
     location = /t {
         default_type 'text/test';
         access_by_lua_block {
-            ngx.req.http_version = function() return "2" end
+            ngx.req.http_version = function() return 2 end
 
             local PDK = require "kong.pdk"
             local pdk = PDK.new()

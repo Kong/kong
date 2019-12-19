@@ -31,8 +31,6 @@ local exit         = ngx.exit
 local header       = ngx.header
 local timer_at     = ngx.timer.at
 local timer_every  = ngx.timer.every
-local re_match     = ngx.re.match
-local re_find      = ngx.re.find
 local subsystem    = ngx.config.subsystem
 local clear_header = ngx.req.clear_header
 local unpack       = unpack
@@ -946,20 +944,6 @@ return {
       local service = match_t.service
       local upstream_url_t = match_t.upstream_url_t
 
-      if not service then
-        -----------------------------------------------------------------------
-        -- Serviceless stream route
-        -----------------------------------------------------------------------
-        local service_scheme = "tcp"
-        local service_host   = var.server_addr
-
-        match_t.upstream_scheme = service_scheme
-        upstream_url_t.scheme = service_scheme -- for completeness
-        upstream_url_t.type = utils.hostname_type(service_host)
-        upstream_url_t.host = service_host
-        upstream_url_t.port = tonumber(var.server_port, 10)
-      end
-
       balancer_prepare(ctx, match_t.upstream_scheme,
                        upstream_url_t.type,
                        upstream_url_t.host,
@@ -1087,106 +1071,6 @@ return {
           ["grpc-status"] = 1,
           ["grpc-message"] = "gRPC request matched gRPCs route",
         })
-      end
-
-      if not service then
-        -----------------------------------------------------------------------
-        -- Serviceless HTTP / HTTPS / HTTP2 route
-        -----------------------------------------------------------------------
-        local service_scheme
-        local service_host
-        local service_port
-
-        -- 1. try to find information from a request-line
-        local request_line = var.request
-        if request_line then
-          local matches, err = re_match(request_line, [[\w+ (https?)://([^/?#\s]+)]], "ajos")
-          if err then
-            log(WARN, "pcre runtime error when matching a request-line: ", err)
-
-          elseif matches then
-            local uri_scheme = lower(matches[1])
-            if uri_scheme == "https" or uri_scheme == "http" then
-              service_scheme = uri_scheme
-              service_host   = lower(matches[2])
-            end
-            --[[ TODO: check if these make sense here?
-            elseif uri_scheme == "wss" then
-              service_scheme = "https"
-              service_host   = lower(matches[2])
-            elseif uri_scheme == "ws" then
-              service_scheme = "http"
-              service_host   = lower(matches[2])
-            end
-            --]]
-          end
-        end
-
-        -- 2. try to find information from a host header
-        if not service_host then
-          local http_host = var.http_host
-          if http_host then
-            service_scheme = scheme
-            service_host   = lower(http_host)
-          end
-        end
-
-        -- 3. split host to host and port
-        if service_host then
-          -- remove possible userinfo
-          local pos = find(service_host, "@", 1, true)
-          if pos then
-            service_host = sub(service_host, pos + 1)
-          end
-
-          pos = find(service_host, ":", 2, true)
-          if pos then
-            service_port = sub(service_host, pos + 1)
-            service_host = sub(service_host, 1, pos - 1)
-
-            local found, _, err = re_find(service_port, [[[1-9]{1}\d{0,4}$]], "adjo")
-            if err then
-              log(WARN, "pcre runtime error when matching a port number: ", err)
-
-            elseif found then
-              service_port = tonumber(service_port, 10)
-              if not service_port or service_port > 65535 then
-                service_scheme = nil
-                service_host   = nil
-                service_port   = nil
-              end
-
-            else
-              service_scheme = nil
-              service_host   = nil
-              service_port   = nil
-            end
-          end
-        end
-
-        -- 4. use known defaults
-        if service_host and not service_port then
-          if service_scheme == "http" then
-            service_port = 80
-          elseif service_scheme == "https" then
-            service_port = 443
-          else
-            service_port = port
-          end
-        end
-
-        -- 5. fall-back to server address
-        if not service_host then
-          service_scheme = scheme
-          service_host   = var.server_addr
-          service_port   = port
-        end
-
-        match_t.upstream_scheme = service_scheme
-        upstream_url_t.scheme = service_scheme -- for completeness
-        upstream_url_t.type = utils.hostname_type(service_host)
-        upstream_url_t.host = service_host
-        upstream_url_t.port = service_port
       end
 
       balancer_prepare(ctx, match_t.upstream_scheme,
