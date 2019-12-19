@@ -42,11 +42,13 @@ local PHASES = phase_checker.phases
 local header_body_log = phase_checker.new(PHASES.header_filter,
                                           PHASES.body_filter,
                                           PHASES.log,
+                                          PHASES.error,
                                           PHASES.admin_api)
 
 local rewrite_access_header = phase_checker.new(PHASES.rewrite,
                                                 PHASES.access,
                                                 PHASES.header_filter,
+                                                PHASES.error,
                                                 PHASES.admin_api)
 
 
@@ -483,7 +485,9 @@ local function new(self, major_version)
 
     ngx.status = status
 
-    if self.ctx.core.phase == phase_checker.phases.admin_api then
+    if self.ctx.core.phase == phase_checker.phases.error or
+       self.ctx.core.phase == phase_checker.phases.admin_api
+    then
       ngx.header[SERVER_HEADER_NAME] = SERVER_HEADER_VALUE
     end
 

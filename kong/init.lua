@@ -985,6 +985,7 @@ end
 
 function Kong.handle_error()
   kong_resty_ctx.apply_ref()
+  kong_global.set_phase(kong, PHASES.error)
 
   local ctx = ngx.ctx
   ctx.KONG_UNEXPECTED = true
@@ -998,7 +999,7 @@ function Kong.handle_error()
     end
   end
 
-  return kong_error_handlers(ngx)
+  return kong_error_handlers(ctx)
 end
 
 

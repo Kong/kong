@@ -35,7 +35,7 @@ describe("Proxy error handlers", function()
     assert.res_status(494, res)
     local body = res:read_body()
     assert.matches("kong/", res.headers.server, nil, true)
-    assert.equal("Request Header Or Cookie Too Large\n", body)
+    assert.equal("Request header or cookie too large\n", body)
   end)
 
   it("does not expose OpenResty version", function()
