@@ -15,16 +15,38 @@ local timer_at = ngx.timer.at
 
 local EMPTY = {}
 local EXPIRATIONS = policies.EXPIRATIONS
-local RATELIMIT_LIMIT = "X-RateLimit-Limit"
-local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
-local RETRY_AFTER = "Retry-After"
+
+
+local RATELIMIT_LIMIT     = "RateLimit-Limit"
+local RATELIMIT_REMAINING = "RateLimit-Remaining"
+local RATELIMIT_RESET     = "RateLimit-Reset"
+local RETRY_AFTER         = "Retry-After"
+
+
+local X_RATELIMIT_LIMIT = {
+  second = "X-RateLimit-Limit-Second",
+  minute = "X-RateLimit-Limit-Minute",
+  hour   = "X-RateLimit-Limit-Hour",
+  day    = "X-RateLimit-Limit-Day",
+  month  = "X-RateLimit-Limit-Month",
+  year   = "X-RateLimit-Limit-Year",
+}
+
+local X_RATELIMIT_REMAINING = {
+  second = "X-RateLimit-Remaining-Second",
+  minute = "X-RateLimit-Remaining-Minute",
+  hour   = "X-RateLimit-Remaining-Hour",
+  day    = "X-RateLimit-Remaining-Day",
+  month  = "X-RateLimit-Remaining-Month",
+  year   = "X-RateLimit-Remaining-Year",
+}
 
 
 local RateLimitingHandler = {}
 
 
 RateLimitingHandler.PRIORITY = 901
-RateLimitingHandler.VERSION = "2.0.0"
+RateLimitingHandler.VERSION = "2.1.0"
 
 
 local function get_identifier(conf)
@@ -112,43 +134,53 @@ function RateLimitingHandler:access(conf)
 
   if usage then
     -- Adding headers
-    local retry_after
+    local reset
     if not conf.hide_client_headers then
       local headers = {}
       local timestamps
+      local limit
+      local window
+      local remaining
       for k, v in pairs(usage) do
+        local current_limit = v.limit
+        local current_window = EXPIRATIONS[k]
+        local current_remaining = v.remaining
         if stop == nil or stop == k then
-          v.remaining = v.remaining - 1
+          current_remaining = current_remaining - 1
         end
+        current_remaining = max(0, current_remaining)
 
-        local remaining = max(0, v.remaining)
+        if not limit or (current_remaining < remaining)
+                     or (current_remaining == remaining and
+                         current_window > window)
+        then
+          limit = current_limit
+          window = current_window
+          remaining = current_remaining
 
-        headers[RATELIMIT_LIMIT .. "-" .. k] = v.limit
-        headers[RATELIMIT_REMAINING .. "-" .. k] = remaining
-
-        if stop and remaining == 0 then
           if not timestamps then
             timestamps = timestamp.get_timestamps(current_timestamp)
           end
 
-          local reset = EXPIRATIONS[k] - floor((current_timestamp - timestamps[k]) / 1000)
-          retry_after = max(retry_after or 1, reset)
+          reset = max(1, window - floor((current_timestamp - timestamps[k]) / 1000))
         end
+
+        headers[X_RATELIMIT_LIMIT[k]] = current_limit
+        headers[X_RATELIMIT_REMAINING[k]] = current_remaining
       end
+
+      headers[RATELIMIT_LIMIT] = limit
+      headers[RATELIMIT_REMAINING] = remaining
+      headers[RATELIMIT_RESET] = reset
 
       kong.ctx.plugin.headers = headers
     end
 
     -- If limit is exceeded, terminate the request
     if stop then
-      local headers
-      if retry_after then
-        headers = {
-          [RETRY_AFTER] = retry_after
-        }
-      end
-
-      return kong.response.exit(429, { message = "API rate limit exceeded" }, headers)
+      return kong.response.exit(429, { message = "API rate limit exceeded" }, {
+        [RETRY_AFTER] = reset
+      })
     end
   end
 
