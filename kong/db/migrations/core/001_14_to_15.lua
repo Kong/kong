@@ -249,6 +249,16 @@ return {
         "key"   TEXT     NOT NULL,
         "cert"  TEXT     NOT NULL
       );
+
+
+      -- Migrating from 0.14.1 into 2.0: add path_handling with v0 as default
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "routes" ADD "path_handling" TEXT DEFAULT 'v0';
+      EXCEPTION WHEN DUPLICATE_COLUMN THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
     ]],
 
     teardown = function(connector, helpers)
@@ -311,9 +321,25 @@ return {
         key text,
         cert text
       );
+
+      ALTER TABLE routes ADD path_handling text;
     ]],
 
     teardown = function(connector, helpers)
+      local coordinator = assert(connector:connect_migrations())
+
+      for rows, err in coordinator:iterate([[SELECT * FROM routes]]) do
+        if err then
+          return nil, err
+        end
+
+        for _, row in ipairs(rows) do
+          assert(connector:query([[
+            UPDATE routes SET path_handling = 'v0'
+            WHERE partition = 'routes' AND id = ]] .. row.id))
+        end
+      end
+
       local plugins_def = {
         name = "plugins",
         columns = {
