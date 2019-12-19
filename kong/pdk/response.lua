@@ -507,7 +507,7 @@ local function new(self, major_version)
       is_grpc_output = is_grpc
     elseif req_ctype then
       is_grpc = find(req_ctype, CONTENT_TYPE_GRPC, 1, true) == 1
-                  and ngx.req.http_version() == "2"
+                  and ngx.req.http_version() == 2
     end
 
     local grpc_status

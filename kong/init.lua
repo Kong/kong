@@ -518,6 +518,14 @@ function Kong.preread()
   local plugins_iterator = runloop.get_updated_plugins_iterator()
   execute_plugins_iterator(plugins_iterator, "preread", ctx)
 
+  if not ctx.service then
+    ctx.KONG_PREREAD_ENDED_AT = get_now_ms()
+    ctx.KONG_PREREAD_TIME = ctx.KONG_PREREAD_ENDED_AT - ctx.KONG_PREREAD_START
+
+    ngx_log(ngx_WARN, "no Service found with those values")
+    return ngx.exit(503)
+  end
+
   runloop.preread.after(ctx)
 
   ctx.KONG_PREREAD_ENDED_AT = get_now_ms()
@@ -640,6 +648,14 @@ function Kong.access()
   end
 
   ctx.delay_response = false
+
+  if not ctx.service then
+    ctx.KONG_ACCESS_ENDED_AT = get_now_ms()
+    ctx.KONG_ACCESS_TIME = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_ACCESS_START
+    ctx.KONG_RESPONSE_LATENCY = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_PROCESSING_START
+
+    return kong.response.exit(503, { message = "no Service found with those values"})
+  end
 
   runloop.access.after(ctx)
 

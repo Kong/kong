@@ -17,21 +17,28 @@ local function insert_routes(bp, routes)
 
   for i = 1, #routes do
     local route = routes[i]
-    local service = route.service or {}
 
-    if not service.host then
-      service.host = helpers.mock_upstream_host
+    local service
+    if route.service == ngx.null then
+      service = route.service
+
+    else
+      service = route.service or {}
+
+      if not service.host then
+        service.host = helpers.mock_upstream_host
+      end
+
+      if not service.port then
+        service.port = helpers.mock_upstream_port
+      end
+
+      if not service.protocol then
+        service.protocol = helpers.mock_upstream_protocol
+      end
+
+      service = bp.named_services:insert(service)
     end
-
-    if not service.port then
-      service.port = helpers.mock_upstream_port
-    end
-
-    if not service.protocol then
-      service.protocol = helpers.mock_upstream_protocol
-    end
-
-    service = bp.named_services:insert(service)
     route.service = service
 
     if not route.protocols then
@@ -77,10 +84,12 @@ local function remove_routes(strategy, routes)
   local services = {}
 
   for _, route in ipairs(routes) do
-    local sid = route.service.id
-    if not services[sid] then
-      services[sid] = route.service
-      table.insert(services, services[sid])
+    if route.service ~= ngx.null then
+      local sid = route.service.id
+      if not services[sid] then
+        services[sid] = route.service
+        table.insert(services, services[sid])
+      end
     end
   end
 
@@ -96,13 +105,13 @@ end
 for _, strategy in helpers.each_strategy() do
   describe("Router [#" .. strategy .. "]" , function()
     local proxy_client
+    local proxy_ssl_client
     local bp
 
     lazy_setup(function()
       bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
-        "apis",
       })
 
       assert(helpers.start_kong({
@@ -117,11 +126,15 @@ for _, strategy in helpers.each_strategy() do
 
     before_each(function()
       proxy_client = helpers.proxy_client()
+      proxy_ssl_client = helpers.proxy_ssl_client()
     end)
 
     after_each(function()
       if proxy_client then
         proxy_client:close()
+      end
+      if proxy_ssl_client then
+        proxy_ssl_client:close()
       end
     end)
 
@@ -183,12 +196,39 @@ for _, strategy in helpers.each_strategy() do
               path     = "/anything",
             },
           },
+          {
+            protocols = { "http", "https" },
+            hosts     = { "serviceless-route-http.test" },
+            service   = ngx.null,
+          },
         })
         first_service_name = routes[1].service.name
       end)
 
       lazy_teardown(function()
         remove_routes(strategy, routes)
+      end)
+
+      it("responds 503 if no service found", function()
+        local res = assert(proxy_client:get("/", {
+          headers = {
+            Host = "serviceless-route-http.test",
+          },
+        }))
+        local body = assert.response(res).has_status(503)
+        local json = cjson.decode(body)
+
+        assert.equal("no Service found with those values", json.message)
+
+        local res = assert(proxy_ssl_client:get("/", {
+          headers = {
+            Host = "serviceless-route-http.test",
+          },
+        }))
+        local body = assert.response(res).has_status(503)
+        local json = cjson.decode(body)
+
+        assert.equal("no Service found with those values", json.message)
       end)
 
       it("restricts an route to its methods if specified", function()
@@ -382,6 +422,11 @@ for _, strategy in helpers.each_strategy() do
             protocols = { "grpc", "grpcs" },
             hosts = { "*.grpc.com" },
             service = service,
+          },
+          {
+            protocols = { "grpc", "grpcs" },
+            hosts     = { "serviceless-route-grpc.test" },
+            service   = ngx.null,
           }
         })
 
@@ -392,6 +437,39 @@ for _, strategy in helpers.each_strategy() do
       lazy_teardown(function()
         remove_routes(strategy, routes)
       end)
+
+      it("responds 503 if no service found", function()
+        local ok, resp = proxy_client_grpc({
+          service = "hello.HelloService.SayHello",
+          body = {
+            greeting = "world!"
+          },
+          opts = {
+            ["-v"] = true,
+            ["-H"] = "'kong-debug: 1'",
+            ["-authority"] = "serviceless-route-grpc.test",
+          }
+        })
+
+        assert.falsy(ok)
+        assert.equal("ERROR:\n  Code: Unavailable\n  Message: no Service found with those values\n", resp)
+
+        local ok, resp = proxy_client_grpcs({
+          service = "hello.HelloService.SayHello",
+          body = {
+            greeting = "world!"
+          },
+          opts = {
+            ["-v"] = true,
+            ["-H"] = "'kong-debug: 1'",
+            ["-authority"] = "serviceless-route-grpc.test",
+          }
+        })
+
+        assert.falsy(ok)
+        assert.equal("ERROR:\n  Code: Unavailable\n  Message: no Service found with those values\n", resp)
+      end)
+
 
       it("restricts a route to its 'hosts' if specified", function()
         local ok, resp = proxy_client_grpc({
