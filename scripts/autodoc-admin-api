@@ -298,12 +298,23 @@ local function gen_kind(finfo, field_data)
   end
 end
 
-local function gen_defaults(finfo)
-  if finfo.default then
-    return " Defaults to `" .. cjson_encode(finfo.default) .. "`."
-  else
-    return ""
+local function gen_field_info(finfo)
+  local out = {}
+
+  if finfo.one_of then
+    local vals = {}
+    for _, f in ipairs(finfo.one_of) do
+      local v = type(f) == "string" and ("%q"):format(f) or tostring(f)
+      table.insert(vals, "`" .. v .. "`")
+    end
+    table.insert(out, " Accepted values are: " .. table.concat(vals, ", ") .. ". ")
   end
+
+  if finfo.default then
+    table.insert(out, " Defaults to `" .. cjson_encode(finfo.default) .. "`.")
+  end
+
+  return table.concat(out)
 end
 
 local function gen_notation(fname, finfo, field_data)
@@ -354,10 +365,10 @@ local function write_field(outfd, fname, finfo, fullname, field_data, entity_nam
   local description = assert_data(field_data.description,
                                   "description for " .. entity_name .. "." .. fullname)
                       :gsub("%s+", " ")
-  local defaults = gen_defaults(finfo)
+  local field_info = gen_field_info(finfo)
   local notation = gen_notation(fname, finfo, field_data)
 
-  outfd:write("    `" .. fullname .. "`" .. kind .. " | " .. description .. defaults .. notation .. "\n")
+  outfd:write("    `" .. fullname .. "`" .. kind .. " | " .. description .. field_info .. notation .. "\n")
 end
 
 local function process_field(outfd, entity_data, entity_name, fname, finfo, prefix)
