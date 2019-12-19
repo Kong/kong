@@ -535,7 +535,10 @@ local function new(self)
   end
 
 
-  local before_content = phase_checker.new(PHASES.rewrite, PHASES.access, PHASES.admin_api)
+  local before_content = phase_checker.new(PHASES.rewrite,
+                                           PHASES.access,
+                                           PHASES.error,
+                                           PHASES.admin_api)
 
 
   ---
