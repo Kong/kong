@@ -16,6 +16,7 @@ local find = string.find
 local type = type
 local error = error
 local lower = string.lower
+local pairs = pairs
 local tonumber = tonumber
 local getmetatable = getmetatable
 local setmetatable = setmetatable
@@ -67,6 +68,55 @@ do
 end
 
 
+local attach_buffered_headers_mt
+
+do
+  local EMPTY = {}
+
+  attach_buffered_headers_mt = function(response_headers, max_headers)
+    if not response_headers then
+      return EMPTY
+    end
+
+    return setmetatable({}, { __index = function(_, name)
+      if type(name) ~= "string" then
+        return nil
+      end
+
+      if response_headers[name] then
+        return response_headers[name]
+      end
+
+      name = lower(name)
+
+      if response_headers[name] then
+        return response_headers[name]
+      end
+
+      name = gsub(name, "-", "_")
+
+      if response_headers[name] then
+        return response_headers[name]
+      end
+
+      local i = 1
+      for n, v in pairs(response_headers) do
+        if i > max_headers then
+          return nil
+        end
+
+        n = gsub(lower(n), "-", "_")
+        if n == name then
+          return v
+        end
+
+        i = i + 1
+      end
+    end })
+  end
+end
+
+
 local function new(pdk, major_version)
   local response = {}
 
@@ -98,6 +148,10 @@ local function new(pdk, major_version)
   -- kong.log.inspect(kong.service.response.get_status()) -- 418
   function response.get_status()
     check_phase(header_body_log)
+
+    if pdk.ctx.core.buffered_status then
+      return pdk.ctx.core.buffered_status
+    end
 
     return tonumber(sub(ngx.var.upstream_status or "", -3))
   end
@@ -139,7 +193,13 @@ local function new(pdk, major_version)
   function response.get_headers(max_headers)
     check_phase(header_body_log)
 
+    local buffered_headers = pdk.ctx.core.buffered_headers
+
     if max_headers == nil then
+      if buffered_headers then
+        return attach_buffered_headers_mt(buffered_headers, MAX_HEADERS_DEFAULT)
+      end
+
       return attach_resp_headers_mt(ngx.resp.get_headers(MAX_HEADERS_DEFAULT))
     end
 
@@ -151,6 +211,10 @@ local function new(pdk, major_version)
 
     elseif max_headers > MAX_HEADERS then
       error("max_headers must be <= " .. MAX_HEADERS, 2)
+    end
+
+    if buffered_headers then
+      return attach_buffered_headers_mt(buffered_headers, max_headers)
     end
 
     return attach_resp_headers_mt(ngx.resp.get_headers(max_headers))
