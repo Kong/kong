@@ -608,14 +608,16 @@ end
 -- @return success A boolean indicating wether the module was found.
 -- @return module The retrieved module, or the error in case of a failure
 function _M.load_module_if_exists(module_name)
-  local status, res = pcall(require, module_name)
+  local status, res = xpcall(require, function(err)
+                                        return debug.traceback(err)
+                                      end, module_name)
   if status then
     return true, res
   -- Here we match any character because if a module has a dash '-' in its name, we would need to escape it.
   elseif type(res) == "string" and find(res, "module '" .. module_name .. "' not found", nil, true) then
     return false, res
   else
-    error(res)
+    error("error loading module '" .. module_name .. "':\n" .. res)
   end
 end
 
