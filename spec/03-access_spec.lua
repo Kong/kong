@@ -64,7 +64,7 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.response(res).has.status(404)
       body = res:read_body()
-      assert.equal("Not found\n", body)
+      assert.match("Not found", body)
 
       res = assert( proxy_client:send {
         method  = "GET",
