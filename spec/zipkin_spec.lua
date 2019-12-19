@@ -79,9 +79,9 @@ describe("integration tests with mock zipkin server [#" .. strategy .. "]", func
 
     assert.equals(2, #request_span.annotations)
     local rann = annotations_to_hash(request_span.annotations)
-    assert_is_integer(rann["kong.rewrite.start"])
-    assert_is_integer(rann["kong.rewrite.finish"])
-    assert.truthy(rann["kong.rewrite.start"] <= rann["kong.rewrite.finish"])
+    assert_is_integer(rann["krs"])
+    assert_is_integer(rann["krf"])
+    assert.truthy(rann["krs"] <= rann["krf"])
 
     assert.same(ngx.null, request_span.localEndpoint)
 
@@ -101,18 +101,18 @@ describe("integration tests with mock zipkin server [#" .. strategy .. "]", func
     assert.equals(6, #proxy_span.annotations)
     local pann = annotations_to_hash(proxy_span.annotations)
 
-    assert_is_integer(pann["kong.access.start"])
-    assert_is_integer(pann["kong.access.finish"])
-    assert_is_integer(pann["kong.header_filter.start"])
-    assert_is_integer(pann["kong.header_filter.finish"])
-    assert_is_integer(pann["kong.body_filter.start"])
-    assert_is_integer(pann["kong.body_filter.finish"])
+    assert_is_integer(pann["kas"])
+    assert_is_integer(pann["kaf"])
+    assert_is_integer(pann["khs"])
+    assert_is_integer(pann["khf"])
+    assert_is_integer(pann["kbs"])
+    assert_is_integer(pann["kbf"])
 
-    assert.truthy(pann["kong.access.start"]        <= pann["kong.access.finish"])
-    assert.truthy(pann["kong.header_filter.start"] <= pann["kong.header_filter.finish"])
-    assert.truthy(pann["kong.body_filter.start"]   <= pann["kong.body_filter.finish"])
+    assert.truthy(pann["kas"] <= pann["kaf"])
+    assert.truthy(pann["khs"] <= pann["khf"])
+    assert.truthy(pann["kbs"] <= pann["kbf"])
 
-    assert.truthy(pann["kong.header_filter.start"] <= pann["kong.body_filter.start"])
+    assert.truthy(pann["khs"] <= pann["kbs"])
   end
 
 

@@ -4,6 +4,7 @@ local cjson = require "cjson".new()
 cjson.encode_number_precision(16)
 
 local floor = math.floor
+local gsub = string.gsub
 
 local zipkin_reporter_methods = {}
 local zipkin_reporter_mt = {
@@ -99,8 +100,14 @@ function zipkin_reporter_methods:report(span)
       annotations = kong.table.new(n_logs, 0)
       for i = 1, n_logs do
         local log = span.logs[i]
+
+        -- Shortens the log strings into annotation values
+        -- for Zipkin. "kong.access.start" becomes "kas"
+        local value = gsub(log.key .. "." .. log.value,
+                           "%.?(%w)[^%.]*",
+                           "%1")
         annotations[i] = {
-          value = log.key .. "." .. log.value,
+          value     = value,
           timestamp = floor(log.timestamp),
         }
       end
