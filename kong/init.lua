@@ -401,9 +401,6 @@ function Kong.init()
   assert(db:connect())
   assert(db.plugins:check_db_against_config(config.loaded_plugins))
 
-  local clustering = require "kong.clustering"
-  clustering.init(config)
-
   -- LEGACY
   singletons.dns = dns(config)
   singletons.configuration = config
