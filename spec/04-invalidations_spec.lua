@@ -17,8 +17,6 @@ describe("proxy-cache invalidations via: " .. strategy, function()
   local plugin2
   local bp
 
-  local wait_for_propagation
-
   setup(function()
     bp = helpers.get_db_utils(strategy, nil, {"proxy-cache"})
 
@@ -91,10 +89,6 @@ describe("proxy-cache invalidations via: " .. strategy, function()
     client_2       = helpers.http_client("127.0.0.1", 9000)
     admin_client_1 = helpers.http_client("127.0.0.1", 8001)
     admin_client_2 = helpers.http_client("127.0.0.1", 9001)
-
-    wait_for_propagation = function()
-      ngx.sleep(POLL_INTERVAL + db_update_propagation)
-    end
   end)
 
   teardown(function()
@@ -201,16 +195,15 @@ describe("proxy-cache invalidations via: " .. strategy, function()
 
       assert.res_status(204, res)
 
-      -- wait for propagation
-      wait_for_propagation()
-
-      -- assert that the entity was purged from the second instance
-      res = assert(admin_client_2:send {
-        method = "GET",
-        path = "/proxy-cache/" .. plugin1.id .. "/caches/" .. cache_key,
-      })
-
-      assert.res_status(404, res)
+      helpers.wait_until(function()
+        -- assert that the entity was purged from the second instance
+        res = admin_client_2:send {
+          method = "GET",
+          path = "/proxy-cache/" .. plugin1.id .. "/caches/" .. cache_key,
+        }
+  
+        return res and res.status == 404
+      end, 10)
 
       -- refresh and purge with our second endpoint
       res_1 = assert(client_1:send {
@@ -244,16 +237,15 @@ describe("proxy-cache invalidations via: " .. strategy, function()
 
       assert.res_status(204, res)
 
-      -- wait for propagation
-      wait_for_propagation()
-
-      -- assert that the entity was purged from the second instance
-      res = assert(admin_client_2:send {
-        method = "GET",
-        path = "/proxy-cache/" .. cache_key,
-      })
-
-      assert.res_status(404, res)
+      helpers.wait_until(function()
+        -- assert that the entity was purged from the second instance
+        res = admin_client_2:send {
+          method = "GET",
+          path = "/proxy-cache/" .. cache_key,
+        }
+  
+        return res and res.status == 404
+      end, 10)
 
     end)
 
@@ -265,7 +257,7 @@ describe("proxy-cache invalidations via: " .. strategy, function()
 
       assert.res_status(200, res)
 
-      local res = assert(admin_client_2:send {
+      res = assert(admin_client_2:send {
         method = "GET",
         path = "/proxy-cache/" .. plugin2.id .. "/caches/" .. cache_key2,
       })
@@ -274,28 +266,32 @@ describe("proxy-cache invalidations via: " .. strategy, function()
     end)
 
     it("propagates global purges", function()
-      local res = assert(admin_client_1:send {
-        method = "DELETE",
-        path = "/proxy-cache/",
-      })
+      do
+        local res = assert(admin_client_1:send {
+          method = "DELETE",
+          path = "/proxy-cache/",
+        })
+  
+        assert.res_status(204, res)
+      end
 
-      assert.res_status(204, res)
+      helpers.wait_until(function()
+        local res = admin_client_1:send {
+          method = "GET",
+          path = "/proxy-cache/" .. plugin2.id .. "/caches/" .. cache_key2,
+        }
+  
+        return res and res.status == 404
+      end, 10)
 
-      wait_for_propagation()
-
-      local res = assert(admin_client_1:send {
-        method = "GET",
-        path = "/proxy-cache/" .. plugin2.id .. "/caches/" .. cache_key2,
-      })
-
-      assert.res_status(404, res)
-
-      local res = assert(admin_client_2:send {
-        method = "GET",
-        path = "/proxy-cache/" .. plugin2.id .. "/caches/" .. cache_key2,
-      })
-
-      assert.res_status(404, res)
+      helpers.wait_until(function()
+        local res = admin_client_2:send {
+          method = "GET",
+          path = "/proxy-cache/" .. plugin2.id .. "/caches/" .. cache_key2,
+        }
+  
+        return res and res.status == 404
+      end, 10)
     end)
   end)
 end)
