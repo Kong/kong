@@ -310,6 +310,47 @@ local function list_migrations(migtable)
 end
 
 
+local buffered_proxy
+do
+  local HTTP_METHODS = {
+    GET       = ngx.HTTP_GET,
+    HEAD      = ngx.HTTP_HEAD,
+    PUT       = ngx.HTTP_PUT,
+    POST      = ngx.HTTP_POST,
+    DELETE    = ngx.HTTP_DELETE,
+    OPTIONS   = ngx.HTTP_OPTIONS,
+    MKCOL     = ngx.HTTP_MKCOL,
+    COPY      = ngx.HTTP_COPY,
+    MOVE      = ngx.HTTP_MOVE,
+    PROPFIND  = ngx.HTTP_PROPFIND,
+    PROPPATCH = ngx.HTTP_PROPPATCH,
+    LOCK      = ngx.HTTP_LOCK,
+    UNLOCK    = ngx.HTTP_UNLOCK,
+    PATCH     = ngx.HTTP_PATCH,
+    TRACE     = ngx.HTTP_TRACE,
+  }
+
+  buffered_proxy = function(ctx)
+    ngx.req.read_body()
+
+    local options = {
+      always_forward_body = true,
+      share_all_vars      = true,
+      method              = HTTP_METHODS[ngx.req.get_method()],
+      ctx                 = ctx,
+    }
+
+    local res = ngx.location.capture("/kong_buffered_http", options)
+    if res.truncated then
+      ngx.status = 502
+      return kong_error_handlers(ngx)
+    end
+
+    return kong.response.exit(res.status, res.body, res.header)
+  end
+end
+
+
 -- Kong public context handlers.
 -- @section kong_handlers
 
@@ -674,6 +715,10 @@ function Kong.access()
 
   -- we intent to proxy, though balancer may fail on that
   ctx.KONG_PROXIED = true
+
+  if kong.ctx.core.buffered_proxying then
+    return buffered_proxy(ctx)
+  end
 end
 
 
@@ -895,6 +940,11 @@ function Kong.body_filter()
   end
 
   kong_global.set_phase(kong, PHASES.body_filter)
+
+  if kong.ctx.core.response_body then
+    arg[1] = kong.ctx.core.response_body
+    arg[2] = true
+  end
 
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_plugins_iterator(plugins_iterator, "body_filter", ctx)
