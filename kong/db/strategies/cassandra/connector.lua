@@ -876,21 +876,23 @@ do
 
     -- create keyspace if not exists
 
-    log.debug("creating '%s' keyspace if not existing...",
-              kong_config.cassandra_keyspace)
+    local keyspace = kong_config.cassandra_keyspace
+    local ok = conn:change_keyspace(keyspace)
+    if not ok then
+      log.debug("creating '%s' keyspace if not existing...", keyspace)
 
-    local res, err = conn:execute(string.format([[
-      CREATE KEYSPACE IF NOT EXISTS %q
-      WITH REPLICATION = %s
-    ]], kong_config.cassandra_keyspace, cql_replication))
-    if not res then
-      return nil, err
+      local res, err = conn:execute(string.format([[
+        CREATE KEYSPACE IF NOT EXISTS %q
+        WITH REPLICATION = %s
+      ]], keyspace, cql_replication))
+      if not res then
+        return nil, err
+      end
+
+      log.debug("successfully created '%s' keyspace", keyspace)
     end
 
-    log.debug("successfully created '%s' keyspace",
-              kong_config.cassandra_keyspace)
-
-    local ok, err = conn:change_keyspace(kong_config.cassandra_keyspace)
+    local ok, err = conn:change_keyspace(keyspace)
     if not ok then
       return nil, err
     end
