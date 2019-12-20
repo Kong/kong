@@ -428,7 +428,6 @@ return {
         protocol = {
           description = [[
             The protocol used to communicate with the upstream.
-            It can be one of `http` or `https`.
           ]]
         },
         host = {
@@ -920,12 +919,11 @@ return {
         ]] },
         protocols = {
           description = [[
-            A list of the request protocols that will trigger this plugin. Possible values are
-            `"http"`, `"https"`, `"tcp"`, and `"tls"`.
+            A list of the request protocols that will trigger this plugin.
 
             The default value, as well as the possible values allowed on this field, may change
             depending on the plugin type. For example, plugins that only work in stream mode will
-            may only support `"tcp"` and `"tls"`.
+            only support `"tcp"` and `"tls"`.
           ]],
           examples = {
             { "http", "https" },
@@ -1167,9 +1165,9 @@ return {
         created_at = { skip = true },
         ["name"] = { description = [[This is a hostname, which must be equal to the `host` of a Service.]] },
         ["slots"] = { description = [[The number of slots in the loadbalancer algorithm (`10`-`65536`).]] },
-        ["algorithm"] = { description = [[Which load balancing algorithm to use. One of: `round-robin`, `consistent-hashing`, or `least-connections`.]] },
-        ["hash_on"] = { description = [[What to use as hashing input: `none` (resulting in a weighted-round-robin scheme with no hashing), `consumer`, `ip`, `header`, or `cookie`.]] },
-        ["hash_fallback"] = { description = [[What to use as hashing input if the primary `hash_on` does not return a hash (eg. header is missing, or no consumer identified). One of: `none`, `consumer`, `ip`, `header`, or `cookie`. Not available if `hash_on` is set to `cookie`.]] },
+        ["algorithm"] = { description = [[Which load balancing algorithm to use.]] },
+        ["hash_on"] = { description = [[What to use as hashing input. Using `none` results in a weighted-round-robin scheme with no hashing.]] },
+        ["hash_fallback"] = { description = [[What to use as hashing input if the primary `hash_on` does not return a hash (eg. header is missing, or no consumer identified). Not available if `hash_on` is set to `cookie`.]] },
         ["hash_on_header"] = { kind = "semi-optional", skip_in_example = true, description = [[The header name to take the value from as hash input. Only required when `hash_on` is set to `header`.]] },
         ["hash_fallback_header"] = { kind = "semi-optional", skip_in_example = true, description = [[The header name to take the value from as hash input. Only required when `hash_fallback` is set to `header`.]] },
         ["hash_on_cookie"] = { kind = "semi-optional", skip_in_example = true, description = [[The cookie name to take the value from as hash input. Only required when `hash_on` or `hash_fallback` is set to `cookie`. If the specified cookie is not in the request, Kong will generate a value and set the cookie in the response.]] },
@@ -1177,7 +1175,7 @@ return {
         ["host_header"] = { description = [[The hostname to be used as `Host` header when proxying requests through Kong.]], example = "example.com", },
         ["healthchecks.active.timeout"] = { description = [[Socket timeout for active health checks (in seconds).]] },
         ["healthchecks.active.concurrency"] = { description = [[Number of targets to check concurrently in active health checks.]] },
-        ["healthchecks.active.type"] = { description = [[Whether to perform active health checks using HTTP or HTTPS, or just attempt a TCP connection. Possible values are `tcp`, `http` or `https`.]] },
+        ["healthchecks.active.type"] = { description = [[Whether to perform active health checks using HTTP or HTTPS, or just attempt a TCP connection.]] },
         ["healthchecks.active.http_path"] = { description = [[Path to use in GET HTTP request to run as a probe on active health checks.]] },
         ["healthchecks.active.https_verify_certificate"] = { description = [[Whether to check the validity of the SSL certificate of the remote host when performing active health checks using HTTPS.]] },
         ["healthchecks.active.https_sni"] = { description = [[The hostname to use as an SNI (Server Name Identification) when performing active health checks using HTTPS. This is particularly useful when Targets are configured using IPs, so that the target host's certificate can be verified with the proper SNI.]], example = "example.com", },
@@ -1189,7 +1187,7 @@ return {
         ["healthchecks.active.unhealthy.tcp_failures"] = { description = [[Number of TCP failures in active probes to consider a target unhealthy.]] },
         ["healthchecks.active.unhealthy.timeouts"] = { description = [[Number of timeouts in active probes to consider a target unhealthy.]] },
         ["healthchecks.active.unhealthy.http_failures"] = { description = [[Number of HTTP failures in active probes (as defined by `healthchecks.active.unhealthy.http_statuses`) to consider a target unhealthy.]] },
-        ["healthchecks.passive.type"] = { description = [[Whether to perform passive health checks interpreting HTTP/HTTPS statuses, or just check for TCP connection success. Possible values are `tcp`, `http` or `https` (in passive checks, `http` and `https` options are equivalent.).]] },
+        ["healthchecks.passive.type"] = { description = [[Whether to perform passive health checks interpreting HTTP/HTTPS statuses, or just check for TCP connection success. In passive checks, `http` and `https` options are equivalent.]] },
         ["healthchecks.passive.healthy.http_statuses"] = { description = [[An array of HTTP statuses which represent healthiness when produced by proxied traffic, as observed by passive health checks.]] },
         ["healthchecks.passive.healthy.successes"] = { description = [[Number of successes in proxied traffic (as defined by `healthchecks.passive.healthy.http_statuses`) to consider a target healthy, as observed by passive health checks.]] },
         ["healthchecks.passive.unhealthy.http_statuses"] = { description = [[An array of HTTP statuses which represent unhealthiness when produced by proxied traffic, as observed by passive health checks.]] },

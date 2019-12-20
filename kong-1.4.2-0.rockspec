@@ -32,7 +32,7 @@ dependencies = {
   "lua-resty-dns-client == 4.1.2",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-mediador == 0.1.2",
-  "lua-resty-healthcheck == 1.1.1",
+  "lua-resty-healthcheck == 1.1.2",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.0",
   "lua-messagepack == 0.5.2",
