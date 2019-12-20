@@ -1153,6 +1153,9 @@ Kong.status_header_filter = Kong.admin_header_filter
 
 
 function Kong.serve_cluster_listener(options)
+  -- this has to be loaded later, as certain module `kong.clustering` uses
+  -- hasn't been initialized when `init.lua` loads and moving
+  -- it to the top level will cause the `require` to error out
   local clustering = require "kong.clustering"
 
   log_init_worker_errors()
