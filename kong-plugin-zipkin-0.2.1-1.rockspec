@@ -1,9 +1,9 @@
 package = "kong-plugin-zipkin"
-version = "0.2.0-1"
+version = "0.2.1-1"
 
 source = {
-  url = "https://github.com/kong/kong-plugin-zipkin/archive/v0.2.0.zip";
-  dir = "kong-plugin-zipkin-0.2.0";
+  url = "https://github.com/kong/kong-plugin-zipkin/archive/v0.2.1.zip";
+  dir = "kong-plugin-zipkin-0.2.1";
 }
 
 description = {

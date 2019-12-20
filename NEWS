@@ -1,3 +1,8 @@
+0.2.1 - 2019-12-20
+
+  - Fixed incompatibilities in timestamps and annotations. Shortened annotations (#60)
+
+
 0.2.0 - 2019-11-12
 
   - Remove dependency on BasePlugin (#50, #51)

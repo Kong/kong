@@ -6,7 +6,7 @@ local OpenTracingHandler = require "kong.plugins.zipkin.opentracing"
 
 -- Zipkin plugin derives from general opentracing one
 local ZipkinLogHandler = OpenTracingHandler:extend()
-ZipkinLogHandler.VERSION = "0.2.0"
+ZipkinLogHandler.VERSION = "0.2.1"
 
 
 function ZipkinLogHandler.new_tracer(conf)
