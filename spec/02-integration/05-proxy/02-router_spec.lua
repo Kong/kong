@@ -4,6 +4,10 @@ local cjson   = require "cjson"
 local path_handling_tests = require "spec.fixtures.router_path_handling_tests"
 
 
+local enable_buffering
+local enable_buffering_plugin
+
+
 local function insert_routes(bp, routes)
   if type(bp) ~= "table" then
     return error("expected arg #1 to be a table", 2)
@@ -15,6 +19,14 @@ local function insert_routes(bp, routes)
   if not bp.done then -- strategy ~= "off"
     bp = admin_api
   end
+
+  enable_buffering_plugin = bp.plugins:insert({
+    name = "enable-buffering",
+    protocols = { "http", "https", "grpc", "grpcs" },
+    service = ngx.null,
+    consumer = ngx.null,
+    route = ngx.null,
+  })
 
   for i = 1, #routes do
     local route = routes[i]
@@ -101,10 +113,13 @@ local function remove_routes(strategy, routes)
   for _, service in ipairs(services) do
     admin_api.services:remove(service)
   end
+
+  admin_api.plugins:remove(enable_buffering_plugin)
 end
 
+for _, b in ipairs({ false, true }) do enable_buffering = b
 for _, strategy in helpers.each_strategy() do
-  describe("Router [#" .. strategy .. "]" , function()
+  describe("Router [#" .. strategy .. "] with buffering [" .. (b and "on]" or "off]") , function()
     local proxy_client
     local proxy_ssl_client
     local bp
@@ -113,10 +128,14 @@ for _, strategy in helpers.each_strategy() do
       bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
+        "plugins",
+      }, {
+        "enable-buffering",
       })
 
       assert(helpers.start_kong({
         database = strategy,
+        plugins = "bundled,enable-buffering",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)
@@ -380,6 +399,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    if not enable_buffering then
     describe("use cases #grpc", function()
       local routes
       local service = {
@@ -630,6 +650,7 @@ for _, strategy in helpers.each_strategy() do
         assert.matches("kong-route-id: " .. routes[4].id, resp, nil, true)
       end)
     end)
+    end -- not enable_buffering
 
     describe("URI regexes order of evaluation with created_at", function()
       local routes
@@ -1399,6 +1420,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    if not enable_buffering then
     describe("[snis] for gRPCs connections", function()
       local routes
       local grpcs_proxy_ssl_client
@@ -1461,6 +1483,7 @@ for _, strategy in helpers.each_strategy() do
         assert.matches("kong-service-name: grpcs_2", resp, nil, true)
       end)
     end)
+    end -- not enable_buffering
 
     describe("[paths] + [methods]", function()
       local routes
@@ -1693,7 +1716,9 @@ for _, strategy in helpers.each_strategy() do
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
-        "apis",
+        "plugins",
+      }, {
+        "enable-buffering",
       })
 
       route = bp.routes:insert({
@@ -1702,9 +1727,17 @@ for _, strategy in helpers.each_strategy() do
         strip_path = false,
       })
 
+      if enable_buffering then
+        bp.plugins:insert {
+          name = "enable-buffering",
+          protocols = { "http", "https", "grpc", "grpcs" },
+        }
+      end
+
       assert(helpers.start_kong({
         database = strategy,
         nginx_worker_processes = 4,
+        plugins = "bundled,enable-buffering",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)
@@ -1740,4 +1773,5 @@ for _, strategy in helpers.each_strategy() do
     end)
 
   end)
+end
 end
