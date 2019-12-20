@@ -227,7 +227,7 @@ function _M.handle_cp_websocket()
       local data, typ, err = wb:recv_frame()
       if not data then
         ngx_log(ngx_ERR, "did not receive ping frame from data plane: ", err)
-        return ngx_exit()
+        return ngx_exit(ngx_ERR)
       end
 
       assert(typ == "ping")
@@ -235,7 +235,7 @@ function _M.handle_cp_websocket()
       _, err = wb:send_pong()
       if err then
         ngx_log(ngx_ERR, "failed to send PONG back to data plane: ", err)
-        return ngx_exit()
+        return ngx_exit(ngx_ERR)
       end
 
       ngx_log(ngx_DEBUG, "sent PONG packet to control plane")
