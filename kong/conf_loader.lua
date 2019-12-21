@@ -1151,6 +1151,8 @@ local function load(path, custom_conf, opts)
   -- load absolute paths
   conf.prefix = pl_path.abspath(conf.prefix)
 
+  conf.go_pluginserver_exe = pl_path.abspath(conf.go_pluginserver_exe)
+
   if conf.go_plugins_dir ~= "off" then
     conf.go_plugins_dir = pl_path.abspath(conf.go_plugins_dir)
   end

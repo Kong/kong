@@ -36,6 +36,48 @@ do
   end
 end
 
+do
+  local pluginserver_proc
+
+  function go.manage_pluginserver()
+    assert(not pluginserver_proc, "Don't call go.manage_pluginserver() more than once.")
+
+    if ngx.worker.id() ~= 0 then
+      -- only one manager
+      pluginserver_proc = true
+      return
+    end
+
+    ngx_timer_at(0, function(premature)
+      if premature then
+        return
+      end
+
+      local ngx_pipe = require "ngx.pipe"
+
+      while not ngx.worker.exiting() do
+        kong.log.notice("Starting go-pluginserver")
+        pluginserver_proc = assert(ngx_pipe.spawn({
+          kong.configuration.go_pluginserver_exe,
+          "-kong-prefix", kong.configuration.prefix,
+          "-plugins-directory", kong.configuration.go_plugins_dir,
+        }))
+        pluginserver_proc:set_timeouts(nil, nil, nil, 0)     -- block until something actually happens
+
+        while true do
+          local ok, reason, status = pluginserver_proc:wait()
+          if ok ~= nil or reason == "exited" then
+            kong.log.notice("go-pluginserver terminated: ", tostring(reason), " ", tostring(status))
+            break
+          end
+        end
+      end
+      kong.log.notice("Exiting: go-pluginserver not respawned.")
+    end)
+
+  end
+end
+
 
 -- Workaround: if cosockets aren't available, use raw glibc calls
 local get_connection
@@ -79,7 +121,7 @@ do
   end
 
   pcall(ffi.metatype, ffi_sock, {
-    __new = function (ct, path)
+    __new = function(ct, path)
       local fd = C.socket(C.AF_UNIX, C.SOCK_STREAM, 0)
       if fd < 0 then
         return nil, "can't create socket"
@@ -97,7 +139,7 @@ do
     end,
 
     __index = {
-      send = function (self, s)
+      send = function(self, s)
         local p = ffi.cast('const uint8_t *', s)
         local sent_bytes = 0
         while sent_bytes < #s do
@@ -111,7 +153,7 @@ do
         return sent_bytes
       end,
 
-      receiveany = function (self, n)
+      receiveany = function(self, n)
         local buf = ffi.new('uint8_t[?]', n)
         if buf == nil then
           return nil, "can't allocate buffer."
@@ -124,7 +166,7 @@ do
         return ffi.string(buf, rc)
       end,
 
-      setkeepalive = function (self)
+      setkeepalive = function(self)
         if self.fd ~= -1 then
           C.close(self.fd)
           self.fd = -1
@@ -132,7 +174,7 @@ do
       end,
     },
 
-    __gc = function (self)
+    __gc = function(self)
       self:setkeepalive()
     end,
   })
@@ -151,7 +193,14 @@ do
       return ffi_sock(go.socket_path())
     end
 
-    return ngx.socket.connect("unix:" .. go.socket_path())
+    local conn, err = ngx.socket.connect("unix:" .. go.socket_path())
+    if not conn and err == "connection refused" then
+      go.manage_pluginserver()
+      ngx.sleep(0.1)
+      conn, err = ngx.socket.connect("unix:" .. go.socket_path())
+    end
+
+    return conn, err
   end
 end
 go.get_connection = get_connection
@@ -159,13 +208,10 @@ go.get_connection = get_connection
 
 -- This is the MessagePack-RPC implementation
 local rpc_call
-local set_plugin_dir
 do
   local msg_id = 0
 
   local notifications = {}
-
-  local current_plugin_dir
 
   do
     local pluginserver_pid
@@ -173,7 +219,6 @@ do
       n = tonumber(n)
       if pluginserver_pid and n ~= pluginserver_pid then
         reset_instances()
-        current_plugin_dir = nil
       end
 
       pluginserver_pid = n
@@ -184,14 +229,19 @@ do
     msg_id = msg_id + 1
     local my_msg_id = msg_id
 
-    local c = assert(get_connection())
+    local c, err = get_connection()
+    if not c then
+      kong.log.err("trying to connect: ", err)
+      return nil, err
+    end
+
     local bytes, err = c:send(mp_pack({0, my_msg_id, method, {...}}))
     if not bytes then
       c:setkeepalive()
       return nil, err
     end
 
-    local reader = mp_unpacker(function ()
+    local reader = mp_unpacker(function()
       return c:receiveany(4096)
     end)
 
@@ -221,20 +271,6 @@ do
         return data[4]
       end
     end
-  end
-
-  function set_plugin_dir(dir)
-    if dir == current_plugin_dir then
-      return
-    end
-
-    local res, err = rpc_call("plugin.SetPluginDir", dir)
-    if not res then
-      kong.log.err("Setting Go plugin dir: ", err)
-      error(err)
-    end
-
-    current_plugin_dir = dir
   end
 end
 
@@ -414,7 +450,6 @@ do
       instance_info.id = nil
     end
 
-    set_plugin_dir(kong.configuration.go_plugins_dir)
     local status, err = rpc_call("plugin.StartInstance", {
       Name = plugin_name,
       Config = cjson_encode(conf)
@@ -446,8 +481,8 @@ local get_plugin do
 
   local function get_plugin_info(name)
     local cmd = string.format(
-        "bin/go-pluginserver -plugins-directory %q -dump-plugin-info %q",
-        kong.configuration.go_plugins_dir, name)
+        "%s -plugins-directory %q -dump-plugin-info %q",
+        kong.configuration.go_pluginserver_exe, kong.configuration.go_plugins_dir, name)
 
     local fd = assert(io.popen(cmd))
     local d = fd:read("*a")
@@ -472,9 +507,9 @@ local get_plugin do
 
     for _, phase in ipairs(plugin_info.Phases) do
       if phase == "log" then
-        plugin[phase] = function (self, conf)
+        plugin[phase] = function(self, conf)
           preloaded_stuff.basic_serializer = basic_serializer.serialize(ngx)
-          ngx_timer_at(0, function ()
+          ngx_timer_at(0, function()
             local instance_id = get_instance(plugin_name, conf)
             bridge_loop(instance_id, phase)
             preloaded_stuff.basic_serializer = nil
@@ -482,7 +517,7 @@ local get_plugin do
         end
 
       else
-        plugin[phase] = function (self, conf)
+        plugin[phase] = function(self, conf)
           local instance_id = get_instance(plugin_name, conf)
           bridge_loop(instance_id, phase)
         end

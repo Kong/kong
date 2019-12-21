@@ -115,6 +115,10 @@
                                  # cache (i.e. when the configured
                                  # `mem_cache_size`) is full.
 
+#go_pluginserver_exe = /usr/local/bin/go-pluginserver
+                                 # Path for the go-pluginserver executable,
+                                 # used for running Kong plugins written in Go.
+
 #go_plugins_dir = off            # Directory for installing Kong plugins
                                  # written in Go.
                                  #
