@@ -161,6 +161,7 @@ local CONF_INFERENCES = {
   admin_listen = { typ = "array" },
   status_listen = { typ = "array" },
   stream_listen = { typ = "array" },
+  cluster_listen = { typ = "array" },
   db_update_frequency = {  typ = "number"  },
   db_update_propagation = {  typ = "number"  },
   db_cache_ttl = {  typ = "number"  },
@@ -278,6 +279,10 @@ local CONF_INFERENCES = {
 
   lua_ssl_verify_depth = { typ = "number" },
   lua_socket_pool_size = { typ = "number" },
+  role = { enum = { "data_plane", "control_plane", "traditional", }, },
+  cluster_control_plane = { typ = "string", },
+  cluster_cert = { typ = "string" },
+  cluster_cert_key = { typ = "string" },
 }
 
 
@@ -558,6 +563,47 @@ local function check_and_infer(conf)
 
   if conf.router_update_frequency <= 0 then
     errors[#errors + 1] = "router_update_frequency must be greater than 0"
+  end
+
+  if conf.role == "control_plane" then
+    if #conf.admin_listen < 1 or pl_stringx.strip(conf.admin_listen[1]) == "off" then
+      errors[#errors + 1] = "admin_listen must be specified when role = \"control_plane\""
+    end
+
+    if #conf.cluster_listen < 1 or pl_stringx.strip(conf.cluster_listen[1]) == "off" then
+      errors[#errors + 1] = "cluster_listen must be specified when role = \"control_plane\""
+    end
+
+    if conf.database == "off" then
+      errors[#errors + 1] = "in-memory storage can not be used when role = \"control_plane\""
+    end
+
+  elseif conf.role == "data_plane" then
+    if #conf.proxy_listen < 1 or pl_stringx.strip(conf.proxy_listen[1]) == "off" then
+      errors[#errors + 1] = "proxy_listen must be specified when role = \"data_plane\""
+    end
+
+    if conf.database ~= "off" then
+      errors[#errors + 1] = "only in-memory storage can be used when role = \"data_plane\"\n" ..
+                            "Hint: set database = off in your kong.conf"
+    end
+  end
+
+  if conf.role == "control_plane" or conf.role == "data_plane" then
+    if not conf.cluster_cert or not conf.cluster_cert_key then
+      errors[#errors + 1] = "cluster certificate and key must be provided to use Hybrid mode"
+
+    else
+      if not pl_path.exists(conf.cluster_cert) then
+        errors[#errors + 1] = "cluster_cert: no such file at " ..
+                              conf.cluster_cert
+      end
+
+      if not pl_path.exists(conf.cluster_cert_key) then
+        errors[#errors + 1] = "cluster_cert_key: no such file at " ..
+                              conf.cluster_cert_key
+      end
+    end
   end
 
   return #errors == 0, errors[1], errors
@@ -1053,6 +1099,13 @@ local function load(path, custom_conf, opts)
     end
 
     setmetatable(conf.status_listeners, _nop_tostring_mt)
+
+    conf.cluster_listeners, err = parse_listeners(conf.cluster_listen, http_flags)
+    if err then
+      return nil, "cluster_listen " .. err
+    end
+
+    setmetatable(conf.cluster_listeners, _nop_tostring_mt)
   end
 
   do
@@ -1120,6 +1173,11 @@ local function load(path, custom_conf, opts)
   if conf.lua_ssl_trusted_certificate then
     conf.lua_ssl_trusted_certificate =
       pl_path.abspath(conf.lua_ssl_trusted_certificate)
+  end
+
+  if conf.cluster_cert and conf.cluster_cert_key then
+    conf.cluster_cert = pl_path.abspath(conf.cluster_cert)
+    conf.cluster_cert_key = pl_path.abspath(conf.cluster_cert_key)
   end
 
   -- attach prefix files paths

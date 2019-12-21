@@ -423,6 +423,9 @@ function Kong.init()
     end
   end
 
+  local clustering = require "kong.clustering"
+  clustering.init(config)
+
   -- Load plugins as late as possible so that everything is set up
   assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
 
@@ -547,6 +550,9 @@ function Kong.init_worker()
 
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_plugins_iterator(plugins_iterator, "init_worker")
+
+  local clustering = require "kong.clustering"
+  clustering.init_worker(kong.configuration)
 end
 
 
@@ -1141,6 +1147,20 @@ end
 
 
 Kong.status_header_filter = Kong.admin_header_filter
+
+
+function Kong.serve_cluster_listener(options)
+  -- this has to be loaded later, as certain module `kong.clustering` uses
+  -- hasn't been initialized when `init.lua` loads and moving
+  -- it to the top level will cause the `require` to error out
+  local clustering = require "kong.clustering"
+
+  log_init_worker_errors()
+
+  kong_global.set_phase(kong, PHASES.cluster_listener)
+
+  return clustering.handle_cp_websocket()
+end
 
 
 return Kong
