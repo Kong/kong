@@ -193,14 +193,7 @@ do
       return ffi_sock(go.socket_path())
     end
 
-    local conn, err = ngx.socket.connect("unix:" .. go.socket_path())
-    if not conn and err == "connection refused" then
-      go.manage_pluginserver()
-      ngx.sleep(0.1)
-      conn, err = ngx.socket.connect("unix:" .. go.socket_path())
-    end
-
-    return conn, err
+    return ngx.socket.connect("unix:" .. go.socket_path())
   end
 end
 go.get_connection = get_connection

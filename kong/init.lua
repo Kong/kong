@@ -415,15 +415,6 @@ function Kong.init()
     certificate.init()
   end
 
-  if go.is_on() then
-    local conn, err = go.get_connection()
-    if not conn then
-      kong.log.err("failure connecting to go plugin server socket: ", err)
-    else
-      conn:setkeepalive()
-    end
-  end
-
   clustering.init(config)
 
   -- Load plugins as late as possible so that everything is set up
@@ -550,6 +541,10 @@ function Kong.init_worker()
 
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_plugins_iterator(plugins_iterator, "init_worker")
+
+  if go.is_on() then
+    go.manage_pluginserver()
+  end
 
   clustering.init_worker(kong.configuration)
 end
