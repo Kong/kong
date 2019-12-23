@@ -3,7 +3,7 @@ local cjson = require "cjson.safe"
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("CP/DP sync works with " .. strategy .. " backend", function()
+  describe("CP/DP sync works with #" .. strategy .. " backend", function()
     local proxy_client, client
 
     lazy_setup(function()
