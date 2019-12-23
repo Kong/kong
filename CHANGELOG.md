@@ -1,7 +1,7 @@
 # Table of Contents
 
 
-- [2.0.0](#200)
+- [2.0.0rc1](#200rc1)
 - [1.4.2](#142)
 - [1.4.1](#141)
 - [1.4.0](#140)
@@ -36,17 +36,185 @@
 - [0.9.9 and prior](#099---20170202)
 
 
-## [2.0.0]
+## [2.0.0rc1]
 
-> Released on
+> Released 2019/12/23
+
+This is the first release candidate of the next major release of Kong.
+It includes major new features such as **Hybrid mode**, **Go language
+support for plugins** and **buffered proxying**, and much more.
+
+Kong 2.0.0rc1 removes the deprecated service mesh functionality, which was
+been retired in favor of [Kuma](https://kuma.io), as Kong continues to
+focus on its core gateway capabilities. This release also includes
+a few bug fixes added since Kong 1.4.2.
+
+### Dependencies
+
+- :warning: The required OpenResty version is
+  [1.15.8.2](http://openresty.org/en/changelog-1015008.html), and the
+  the set of patches included has changed, including the latest release of
+  [lua-kong-nginx-module](https://github.com/Kong/lua-kong-nginx-module).
+  If you are installing Kong from one of our distribution
+  packages, you are not affected by this change.
+
+**Note:** if you are not using one of our distribution packages and compiling
+OpenResty from source, you must still apply Kong's [OpenResty
+patches](https://github.com/Kong/kong-build-tools/tree/master/openresty-build-tools/openresty-patches)
+(and, as highlighted above, compile OpenResty with the new
+lua-kong-nginx-module). Our [kong-build-tools](https://github.com/Kong/kong-build-tools)
+repository will allow you to do both easily.
+
+
+### Additions
+
+##### Core
+
+  - :fireworks: **Hybrid mode** for management of control-plane and
+    data-plane nodes. This allows running control-plane nodes using a
+    database and have them deliver configuration updates to DB-less
+    data-plane nodes.
+    [#5294](https://github.com/Kong/kong/pull/5294)
+  - :fireworks: **Buffered proxying** - plugins can now request buffered
+    reading of the service response (as opposed to the streaming default),
+    allowing them to modify headers based on the contents of the body
+    [#5234](https://github.com/Kong/kong/pull/5234)
+  - New property `path_handling` for managing construction of paths in Routes,
+    including two different algorithms: `v0` (the new default, same algorithm
+    as Kong 0.x), and `v1` (algorithm used in Kong 1.x, maintained for
+    compatibility). Migrations automatically detect which version you are
+    migrating from and adjust the algorithm in your routes accordingly.
+    [#5360](https://github.com/Kong/kong/pull/5360)
+  - The `transformations` in DAO schemas now also support `on_read`,
+    allowing for two-way (read/write) data transformations between
+    Admin API input/output and database storage.
+    [#5100](https://github.com/Kong/kong/pull/5100)
+  - Added `threshold` attribute for health checks
+    [#5206](https://github.com/Kong/kong/pull/5206)
+  - Caches for core entities and plugin-controlled entities (such as
+    credentials, etc.) are now separated, protecting the core entities
+    from cache eviction caused by plugin behavior.
+    [#5114](https://github.com/Kong/kong/pull/5114)
+  - Cipher suite was updated to the Mozilla v5 release.
+    [#5342](https://github.com/Kong/kong/pull/5342)
+  - Better support for using already existing Cassandra keyspaces
+    when migrating
+    [#5361](https://github.com/Kong/kong/pull/5361)
+  - Better log messages when plugin modules fail to load
+    [#5357](https://github.com/Kong/kong/pull/5357)
+
+##### CLI
+
+  - `kong config init` now accepts a filename argument
+    [#4451](https://github.com/Kong/kong/pull/4451)
+
+##### Configuration
+
+  - Enable `reuseport` option in the listen directive by default
+    and allow specifying both `reuseport` and `backlog=N` in the
+    listener flags.
+    [#5332](https://github.com/Kong/kong/pull/5332)
+  - Check existence of `lua_ssl_trusted_certificate` at startup
+    [#5345](https://github.com/Kong/kong/pull/5345)
+
+##### Admin API
+
+  - Added `/upstreams/<id>/health?balancer_health=1` attribute for
+    detailed information about balancer health based on health
+    threshold configuration
+    [#5206](https://github.com/Kong/kong/pull/5206)
+
+##### PDK
+
+  - New functions `kong.service.request.enable_buffering`,
+    `kong.service.response.get_raw_body` and
+    `kong.service.response.get_body` for use with buffered proxying
+    [#5315](https://github.com/Kong/kong/pull/5315)
+
+##### Plugins
+
+  - :fireworks: **Go plugin support** - plugins can now be written in
+    Go as well as Lua, through the use of an out-of-process Go plugin server.
+    [#5326](https://github.com/Kong/kong/pull/5326)
+  - :fireworks: **New plugin: ACME** - Let's Encrypt and ACMEv2 integration with Kong
+    [#5333](https://github.com/Kong/kong/pull/5333)
+  - :fireworks: aws-lambda: bumped version to 3.0.1, with a number of new features!
+    [#5083](https://github.com/Kong/kong/pull/5083)
+  - :fireworks: prometheus: bumped to version 0.7.0 including major performance improvements
+    [#5295](https://github.com/Kong/kong/pull/5295)
+  - zipkin: bumped to version 0.2.1
+    [#5239](https://github.com/Kong/kong/pull/5239)
+  - session: bumped to version 2.2.0, adding `authenticated_groups` support
+    [#5108](https://github.com/Kong/kong/pull/5108)
+  - rate-limiting: added experimental support for standardized headers based on the
+    ongoing [RFC draft](https://tools.ietf.org/html/draft-polli-ratelimit-headers-01)
+    [#5335](https://github.com/Kong/kong/pull/5335)
+  - rate-limiting: added Retry-After header on HTTP 429 responses
+    [#5329](https://github.com/Kong/kong/pull/5329)
+  - datadog: report metrics with tags --
+    Thanks [mvanholsteijn](https://github.com/mvanholsteijn) for the patch!
+    [#5154](https://github.com/Kong/kong/pull/5154)
+  - request-size-limiting: added `size_unit` configuration option.
+    [#5214](https://github.com/Kong/kong/pull/5214)
+  - request-termination: add extra check for `conf.message` before sending
+    response back with body object included.
+    [#5202](https://github.com/Kong/kong/pull/5202)
+  - jwt: add `X-Credential-Identifier` header in response --
+    Thanks [davinwang](https://github.com/davinwang) for the patch!
+    [#4993](https://github.com/Kong/kong/pull/4993)
+
+### Fixes
+
+##### Core
+
+  - Correct detection of update upon deleting Targets --
+    Thanks [pyrl247](https://github.com/pyrl247) for the patch!
+  - Fix declarative config loading of entities with abstract records
+    [#5343](https://github.com/Kong/kong/pull/5343)
+
+##### Admin API
+
+  - Fixed behavior of PUT for `/certificates`
+    [#5321](https://github.com/Kong/kong/pull/5321)
+  - Corrected the behavior when overwriting a Service configuration using
+    the `url` shorthand
+    [#5315](https://github.com/Kong/kong/pull/5315)
+
+##### Plugins
+
+  - acl: Fixed error when retrieving ACL by group when consumers share
+    the same group
+    [#5322](https://github.com/Kong/kong/pull/5322)
 
 ### Changes
 
-#### Plugins
+##### Core
 
-  - As Service Mesh has been deprecated, kubernetes-sidecar-injector plugin
-    should not be used anymore and has been removed from bundled plugins.
+  - **Removed Service Mesh support** - That has been deprecated in Kong 1.4
+  and made off-by-default already, and the code is now be gone in 2.0.
+  For Service Mesh, we now have [Kuma](https://kuma.io), which is something
+  designed for Mesh patterns from day one, so we feel at peace with removing
+  Kong's native Service Mesh functionality and focus on its core capabilities
+  as a gateway.
+
+##### Configuration
+
+  - As part of service mesh removal, serviceless proxying was removed.
+    You can still set `service = null` when creating a route for use with
+    serverless plugins such as `aws-lambda`, or `request-termination`.
+    [#5353](https://github.com/Kong/kong/pull/5353)
+  - Removed the `origins` property which was used for service mesh.
+    [#5351](https://github.com/Kong/kong/pull/5351)
+  - Removed the `transparent` property which was used for service mesh.
+    [#5350](https://github.com/Kong/kong/pull/5350)
+
+##### Plugins
+
+  - Removed the Sidecar Injector plugin which was used for service mesh.
     [#5199](https://github.com/Kong/kong/pull/5199)
+
+
+[Back to TOC](#table-of-contents)
 
 
 ## [1.4.2]
@@ -4306,7 +4474,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[2.0.0]: https://github.com/Kong/kong/compare/1.4.2...2.0.0
+[2.0.0rc1]: https://github.com/Kong/kong/compare/1.4.2...2.0.0rc1
 [1.4.2]: https://github.com/Kong/kong/compare/1.4.1...1.4.2
 [1.4.1]: https://github.com/Kong/kong/compare/1.4.0...1.4.1
 [1.4.0]: https://github.com/Kong/kong/compare/1.3.0...1.4.0
