@@ -31,7 +31,7 @@ do
   local __socket_path
   --- socket_path(): returns the (hardcoded) socket pathname
   function go.socket_path()
-    __socket_path = __socket_path or kong.configuration.prefix .. "go_pluginserver.sock"
+    __socket_path = __socket_path or kong.configuration.prefix .. "/go_pluginserver.sock"
     return __socket_path
   end
 end
