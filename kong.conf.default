@@ -125,6 +125,57 @@
                                  # stack traces to help improve Kong.
 
 #------------------------------------------------------------------------------
+# HYBRID MODE
+#------------------------------------------------------------------------------
+
+#role = traditional              # Use this setting to enable Hybrid Mode,
+                                 # This allows running some Kong nodes in a
+                                 # control plane role with a database and
+                                 # have them deliver configuration updates
+                                 # to other nodes running to DB-less running in
+                                 # a Data Plane role.
+                                 #
+                                 # Valid values to this setting are:
+                                 #
+                                 # - `traditional`: do not use Hybrid Mode.
+                                 # - `control_plane`: this node runs in a
+                                 #   control plane role. It can use a database
+                                 #   and will deliver configuration updates
+                                 #   to data plane nodes.
+                                 # - `data_plane`: this is a data plane node.
+                                 #   It runs DB-less and receives configuration
+                                 #   updates from a control plane node.
+
+#cluster_cert =                  # Filename of the cluster certificate to use
+                                 # when establishing secure communication
+                                 # between control and data plane nodes.
+                                 # You can use the `kong hybrid` command to
+                                 # generate the certificate/key pair.
+
+#cluster_cert_key =              # Filename of the cluster certificate key to
+                                 # use when establishing secure communication
+                                 # between control and data plane nodes.
+                                 # You can use the `kong hybrid` command to
+                                 # generate the certificate/key pair.
+
+#cluster_control_plane =         # To be used by data plane nodes only:
+                                 # address of the control plane node from
+                                 # which configuration updates will be fetched,
+                                 # in `host:port` format.
+
+#cluster_listen = 0.0.0.0:8005
+                         # Comma-separated list of addresses and ports on
+                         # which the cluster control plane server should listen
+                         # for data plane connections.
+                         # The cluster communication port of the control plane
+                         # must be accessible by all the data planes
+                         # within the same cluster. This port is mTLS protected
+                         # to ensure end-to-end security and integrity.
+                         #
+                         # This setting has no effect if `role` is not set to
+                         # `control_plane`.
+
+#------------------------------------------------------------------------------
 # NGINX
 #------------------------------------------------------------------------------
 
