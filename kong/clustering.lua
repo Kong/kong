@@ -18,7 +18,6 @@ local ngx_sleep = ngx.sleep
 local cjson_decode = cjson.decode
 local cjson_encode = cjson.encode
 local kong = kong
-local dc = declarative.new_config(kong.configuration)
 local ngx_exit = ngx.exit
 local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
@@ -42,12 +41,17 @@ local clients = setmetatable({}, WEAK_KEY_MT)
 local shdict = ngx.shared.kong_clustering -- only when role == "control_plane"
 local prefix = ngx.config.prefix()
 local CONFIG_CACHE = prefix .. "/config.cache.json"
+local declarative_config
 
 
 local function update_config(config_table, update_cache)
   assert(type(config_table) == "table")
 
-  local entities, _, _, _, new_hash = dc:parse_table(config_table)
+  if not declarative_config then
+    declarative_config = declarative.new_config(kong.configuration)
+  end
+
+  local entities, _, _, _, new_hash = declarative_config:parse_table(config_table)
   if not entities then
     return nil, "bad config received from control plane"
   end
