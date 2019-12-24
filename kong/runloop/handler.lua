@@ -525,19 +525,22 @@ local function register_events()
     singletons.portal_router.set_version(data.cache_key, data.cache_val)
   end, "portal", "router")
 
+  -- XXX maybe wrap all this block within the databus module and only do things
+  -- if databus_enabled. That way we have this conditional in a single place.
+  if kong.configuration.databus_enabled then
+    worker_events.register(function(data)
+      local databus = require "kong.enterprise_edition.databus"
 
-  worker_events.register(function(data)
-    local databus = require "kong.enterprise_edition.databus"
-
-    if data.operation == "delete" then
-      databus.unregister(data.entity)
-    elseif data.operation == "update" then
-      databus.unregister(data.old_entity)
-      databus.register(data.entity)
-    elseif data.operation == "create" then
-      databus.register(data.entity)
-    end
-  end, "crud", "dbus")
+      if data.operation == "delete" then
+        databus.unregister(data.entity)
+      elseif data.operation == "update" then
+        databus.unregister(data.old_entity)
+        databus.register(data.entity)
+      elseif data.operation == "create" then
+        databus.register(data.entity)
+      end
+    end, "crud", "dbus")
+  end
 
 end
 

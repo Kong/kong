@@ -213,4 +213,6 @@ keyring_vault_host =
 keyring_vault_mount =
 keyring_vault_path =
 keyring_vault_token =
+
+databus_enabled = off
 ]]

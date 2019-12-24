@@ -359,6 +359,8 @@ local CONF_INFERENCES = {
   keyring_vault_path = { typ = "string" },
   keyring_vault_token = { typ = "string" },
 
+  databus_enabled = { typ = "boolean" },
+
   route_validation_strategy = { enum = {"smart", "path", "off"}},
   enforce_route_path_pattern = {typ = "string"},
 }

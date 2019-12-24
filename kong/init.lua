@@ -597,9 +597,13 @@ function Kong.init_worker()
   execute_plugins_iterator(plugins_iterator, "init_worker")
 
   -- register dbus hooks
-  local databus = require "kong.enterprise_edition.databus"
-  for entity, err in kong.db.dbus:each(1000) do
-    databus.register(entity)
+  -- XXX maybe wrap all this block within the databus module and only do things
+  -- if databus_enabled. That way we have this conditional in a single place.
+  if kong.configuration.databus_enabled then
+    local databus = require "kong.enterprise_edition.databus"
+    for entity, err in kong.db.dbus:each(1000) do
+      databus.register(entity)
+    end
   end
 
 
