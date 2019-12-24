@@ -3,6 +3,7 @@
 local BasePlugin   = require "kong.plugins.base_plugin"
 local ratelimiting = require "kong.tools.public.rate-limiting"
 local schema       = require "kong.plugins.rate-limiting-advanced.schema"
+local event_hooks  = require "kong.enterprise_edition.event_hooks"
 
 
 local kong     = kong
@@ -123,6 +124,11 @@ end
 
 function NewRLHandler:new()
   NewRLHandler.super.new(self, "new-rl")
+  event_hooks.publish("rate-limiting-advanced", "rate-limit-exceeded", {
+    fields = { "consumer", "ip", "service", "rate", "limit", "window" },
+    signature = { "consumer", "ip", "service", "window" },
+    description = "Run an event when a rate limit has been exceeded"
+  })
 end
 
 function NewRLHandler:init_worker()
@@ -263,6 +269,19 @@ function NewRLHandler:access(conf)
 
     if rate > limit then
       deny = true
+      -- only gets emitted when kong.configuration.databus_enabled = true
+      -- no need to if here
+      -- XXX we are doing it on this flow of code because it's easier to
+      -- get the rate and the limit that triggered it. Move it somewhere
+      -- general later.
+      event_hooks.emit("rate-limiting-advanced", "rate-limit-exceeded", {
+        consumer = kong.client.get_consumer() or {},
+        ip = kong.client.get_forwarded_ip(),
+        service = kong.router.get_service() or {},
+        rate = rate,
+        limit = limit,
+        window = window_name,
+      })
     end
   end
 
