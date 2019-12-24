@@ -311,6 +311,7 @@ build = {
     ["kong.db.schema.entities.groups"] = "kong/db/schema/entities/groups.lua",
     ["kong.db.schema.entities.group_rbac_roles"] = "kong/db/schema/entities/group_rbac_roles.lua",
     ["kong.db.schema.entities.dbus"] = "kong/db/schema/entities/dbus.lua",
+    ["kong.db.schema.entities.dbus_subschemas"] = "kong/db/schema/entities/dbus_subschemas.lua",
     ["kong.db.schema.others.migrations"] = "kong/db/schema/others/migrations.lua",
     ["kong.db.schema.others.declarative_config"] = "kong/db/schema/others/declarative_config.lua",
     ["kong.db.schema.entity"] = "kong/db/schema/entity.lua",
