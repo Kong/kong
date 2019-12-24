@@ -126,8 +126,8 @@ function NewRLHandler:new()
   NewRLHandler.super.new(self, "new-rl")
   event_hooks.publish("rate-limiting-advanced", "rate-limit-exceeded", {
     fields = { "consumer", "ip", "service", "rate", "limit", "window" },
-    signature = { "consumer", "ip", "service", "window" },
-    description = "Run an event when a rate limit has been exceeded"
+    unique = { "consumer", "ip", "service" },
+    description = "Run an event when a rate limit has been exceeded",
   })
 end
 
