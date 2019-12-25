@@ -85,7 +85,7 @@ end
 
 
 -- Loads entities from the database into the cache, for rapid subsequent
--- access. This function is intented to be used during worker initialization.
+-- access. This function is intended to be used during worker initialization.
 function cache_warmup.execute(entities)
   if not kong.cache then
     return true

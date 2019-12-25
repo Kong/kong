@@ -83,7 +83,7 @@ local function convert_legacy_schema(name, old_schema)
           new_fdata.type = v
 
         else
-          return nil, "unkown legacy field type: " .. v
+          return nil, "unknown legacy field type: " .. v
         end
 
       elseif k == "schema" then

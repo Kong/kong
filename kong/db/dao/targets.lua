@@ -157,7 +157,7 @@ end
 
 
 -- Paginate through the target history for an upstream,
--- including entries that have been since overriden, and those
+-- including entries that have been since overridden, and those
 -- with weight=0 (i.e. the "raw" representation of targets in
 -- the database)
 function _TARGETS:page_for_upstream_raw(upstream_pk, ...)
@@ -181,7 +181,7 @@ end
 
 
 -- Return the entire target history for an upstream,
--- including entries that have been since overriden, and those
+-- including entries that have been since overridden, and those
 -- with weight=0 (i.e. the "raw" representation of targets in
 -- the database)
 function _TARGETS:select_by_upstream_raw(upstream_pk, options)

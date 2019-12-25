@@ -32,8 +32,8 @@ local access_and_rewrite = phase_checker.new(PHASES.rewrite, PHASES.access)
 --
 -- @param args A table where keys are strings and values are strings, booleans,
 -- or an array of strings or booleans.
--- @treturn string|nil an URL-encoded query string, or nil if an error ocurred
--- @treturn string|nil and an error message if an error ocurred, or nil
+-- @treturn string|nil an URL-encoded query string, or nil if an error occurred
+-- @treturn string|nil and an error message if an error occurred, or nil
 local function make_ordered_args(args)
   local out = {}
   local t = {}
@@ -269,7 +269,7 @@ local function new(self)
   ---
   -- Adds a request header with the given value to the request to the Service. Unlike
   -- `kong.service.request.set_header()`, this function will not remove any existing
-  -- headers with the same name. Instead, several occurences of the header will be
+  -- headers with the same name. Instead, several occurrences of the header will be
   -- present in the request. The order in which headers are added is retained.
   --
   -- @function kong.service.request.add_header

@@ -41,7 +41,7 @@ _format_version: "1.1"
 # consumers:
 # - username: example-user
 #   # Custom entities from plugin can also be specified
-#   # If they specify a foreign-key relationshp, they can also be nested
+#   # If they specify a foreign-key relationships, they can also be nested
 #   keyauth_credentials:
 #   - key: my-key
 #   plugins:

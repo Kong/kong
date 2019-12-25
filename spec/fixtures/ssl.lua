@@ -82,7 +82,7 @@ N7D4w5wpK/SHbjZBvSNp5kNlnqfDPjmfAwlGW1J6CBDcWWaEHWIcc4n3l2bCg3At
 LTLKB76sourXcEDVvZA6xrYv9GJukUqmc5SlHhJZQOhu48ITKXH18U7iuy8=
 -----END RSA PRIVATE KEY-----]],
 
-  -- Issuer: C = US, ST = California, O = Kong Testing, CN = Kong Testing Intermidiate CA
+  -- Issuer: C = US, ST = California, O = Kong Testing, CN = Kong Testing Intermediate CA
   --     Validity
   --         Not Before: May  2 20:03:11 2019 GMT
   --         Not After : Apr 28 20:03:11 2029 GMT

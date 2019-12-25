@@ -160,9 +160,9 @@ local function load_plugin_entity_strategy(schema, db, plugin)
     return nil, err
   end
 
-  local custom_strat = fmt("kong.plugins.%s.strategies.%s.%s",
+  local custom_start = fmt("kong.plugins.%s.strategies.%s.%s",
                            plugin, db.strategy, schema.name)
-  local exists, mod = utils.load_module_if_exists(custom_strat)
+  local exists, mod = utils.load_module_if_exists(custom_start)
   if exists and mod then
     local parent_mt = getmetatable(strategy)
     local mt = {

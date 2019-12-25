@@ -3480,12 +3480,12 @@ describe("schema", function()
       assert.truthy(ok)
     end)
 
-    it("can assess if foriegn type immutable fields are similar", function()
+    it("can assess if foreign type immutable fields are similar", function()
       local test_schema = {
         name = "test",
 
         fields = {
-          { entity = { type = "foriegn", immutable = true }, },
+          { entity = { type = "foreign", immutable = true }, },
         },
       }
 
@@ -3532,12 +3532,12 @@ describe("schema", function()
       assert.equals(err.table, 'immutable field cannot be updated')
     end)
 
-    it("can assess if foriegn type immutable fields are not similar", function()
+    it("can assess if foreign type immutable fields are not similar", function()
       local test_schema = {
         name = "test",
 
         fields = {
-          { entity = { type = "foriegn", immutable = true }, },
+          { entity = { type = "foreign", immutable = true }, },
         },
       }
 

@@ -55,8 +55,8 @@ function _M.new(kong_config, database, schemas, errors)
       return nil, nil, err
     end
 
-    local custom_strat = fmt("kong.db.strategies.%s.%s", database, schema.name)
-    local exists, mod = utils.load_module_if_exists(custom_strat)
+    local custom_start = fmt("kong.db.strategies.%s.%s", database, schema.name)
+    local exists, mod = utils.load_module_if_exists(custom_start)
     if exists and mod then
       local parent_mt = getmetatable(strategy)
       local mt = {

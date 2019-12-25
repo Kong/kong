@@ -1183,7 +1183,7 @@ do
     end
 
     if next_offset and entity_count < size then
-      -- Note: don't cache ngx.log so we can test in 02-intergration/07-tags_spec.lua
+      -- Note: don't cache ngx.log so we can test in 02-integration/07-tags_spec.lua
       ngx.log(ngx.WARN, "maximum ", PAGING_MAX_QUERY_ROUNDS, " rounds exceeded ",
               "without retrieving required size of rows, ",
               "consider lower the sparsity of tags, or increase the paging size per request"

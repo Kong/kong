@@ -111,7 +111,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert.True(log_message.latencies.proxy < 3000)
 
-      -- Sometimes there's a split milisecond that makes numbers not
+      -- Sometimes there's a split millisecond that makes numbers not
       -- add up by 1. Adding an artificial 1 to make the test
       -- resilient to those.
       local is_latencies_sum_adding_up =
@@ -147,7 +147,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert.True(log_message.latencies.proxy < 3000)
 
-      -- Sometimes there's a split milisecond that makes numbers not
+      -- Sometimes there's a split millisecond that makes numbers not
       -- add up by 1. Adding an artificial 1 to make the test
       -- resilient to those.
       local is_latencies_sum_adding_up =
@@ -183,7 +183,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert.True(log_message.latencies.proxy < 3000)
 
-      -- Sometimes there's a split milisecond that makes numbers not
+      -- Sometimes there's a split millisecond that makes numbers not
       -- add up by 1. Adding an artificial 1 to make the test
       -- resilient to those.
       local is_latencies_sum_adding_up =

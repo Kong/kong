@@ -268,7 +268,7 @@ for _, strategy in helpers.each_strategy() do
             assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
           end
 
-          -- Additonal request, while limit is 6/minute
+          -- Additional request, while limit is 6/minute
           local res = GET("/status/200", {
             headers = { Host = "test1.com" },
           }, 429)
@@ -297,7 +297,7 @@ for _, strategy in helpers.each_strategy() do
             assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
           end
 
-          -- Additonal request, while limit is 6/minute
+          -- Additional request, while limit is 6/minute
           local _, body = GET("/status/200", {
             headers = { Host = "test-service1.com" },
           }, 429)
@@ -674,7 +674,7 @@ for _, strategy in helpers.each_strategy() do
           assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
         end
 
-        -- Additonal request, while limit is 6/minute
+        -- Additional request, while limit is 6/minute
         local _, body = GET("/status/200?apikey=apikey125", {
           headers = { Host = "test1.com" },
         }, 429)
@@ -732,7 +732,7 @@ for _, strategy in helpers.each_strategy() do
           assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
         end
 
-        -- Additonal request, while limit is 6/minute
+        -- Additional request, while limit is 6/minute
         local _, body = GET("/status/200", {
           headers = { Host = "test1.com" },
         }, 429)
@@ -789,7 +789,7 @@ for _, strategy in helpers.each_strategy() do
           assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
         end
 
-        -- Additonal request, while limit is 6/minute
+        -- Additional request, while limit is 6/minute
         local _, body = GET("/status/200", {
           headers = { Host = "test1.com" },
         }, 429)

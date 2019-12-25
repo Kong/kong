@@ -728,7 +728,7 @@ _M.normalize_ipv6 = function(address)
     -- expand double colon
     local _, count = gsub(check, ":", "")
     local ins = ":" .. string.rep("0:", 8 - count)
-    check = gsub(check, "::", ins, 1)  -- replace only 1 occurence!
+    check = gsub(check, "::", ins, 1)  -- replace only 1 occurrence!
   end
   local a,b,c,d,e,f,g,h = check:match("^(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?)$")
   if not a then
@@ -801,7 +801,7 @@ end
 --- Formats an ip address or hostname with an (optional) port for use in urls.
 -- Supports ipv4, ipv6 and names.
 --
--- Explictly accepts 'nil+error' as input, to pass through any errors from the normalizing and name checking functions.
+-- Explicitly accepts 'nil+error' as input, to pass through any errors from the normalizing and name checking functions.
 -- @param p1 address to format, either string with name/ip, table returned from `normalize_ip`, or from the `socket.url` library.
 -- @param p2 port (optional) if p1 is a table, then this port will be inserted if no port-field is in the table
 -- @return formatted address or nil+error

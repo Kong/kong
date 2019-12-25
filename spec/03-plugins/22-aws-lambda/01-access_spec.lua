@@ -758,7 +758,7 @@ for _, strategy in helpers.each_strategy() do
 
       it("override duplicated headers with value from the custom response from Lambda", function()
         -- the default "x-amzn-RequestId" returned is "foo"
-        -- let's check it is overriden with a custom value
+        -- let's check it is overridden with a custom value
         local headers = {
           ["x-amzn-RequestId"] = "bar",
         }

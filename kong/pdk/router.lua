@@ -42,7 +42,7 @@ local function new(self)
 
 
   ---
-  -- Returns the current `service` entity. The request will be targetted to this
+  -- Returns the current `service` entity. The request will be targeted to this
   -- upstream service.
   --
   -- @function kong.router.get_service

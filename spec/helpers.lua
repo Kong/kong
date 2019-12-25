@@ -1012,7 +1012,7 @@ luassert:register("assertion", "contains", contains,
 -- @return the response body as a string
 -- @usage
 -- local res = assert(client:send { .. your request params here .. })
--- local body = assert.has.status(200, res)             -- or alternativly
+-- local body = assert.has.status(200, res)             -- or alternatively
 -- local body = assert.response(res).has.status(200)    -- does the same
 local function res_status(state, args)
   assert(not rawget(state, "kong_request"),
