@@ -1053,7 +1053,8 @@ local function load(path, custom_conf, opts)
   do
     local http_flags = { "ssl", "http2", "proxy_protocol", "deferred",
                          "bind", "reuseport", "backlog=%d+" }
-    local stream_flags = { "ssl", "proxy_protocol", "bind", "reuseport" }
+    local stream_flags = { "ssl", "proxy_protocol", "bind", "reuseport",
+                           "backlog=%d+" }
 
     -- extract ports/listen ips
     conf.proxy_listeners, err = parse_listeners(conf.proxy_listen, http_flags)
