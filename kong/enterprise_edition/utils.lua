@@ -1,3 +1,8 @@
+local cjson = require "cjson"
+local inspect = require "inspect"
+local http = require "resty.http"
+
+local utils = require "kong.tools.utils"
 local ee_jwt = require "kong.enterprise_edition.jwt"
 local enums = require "kong.enterprise_edition.dao.enums"
 
@@ -124,5 +129,94 @@ _M.validate_reset_jwt = function(token_param)
   return jwt
 end
 
+-- Case insensitive lookup function, returns the value and the original key. Or
+-- if not found nil and the search key
+-- @usage -- sample usage
+-- local test = { SoMeKeY = 10 }
+-- print(lookup(test, "somekey"))  --> 10, "SoMeKeY"
+-- print(lookup(test, "NotFound")) --> nil, "NotFound"
+local function lookup(t, k)
+  local ok = k
+  if type(k) ~= "string" then
+    return t[k], k
+  else
+    k = k:lower()
+  end
+  for key, value in pairs(t) do
+    if tostring(key):lower() == k then
+      return value, key
+    end
+  end
+  return nil, ok
+end
+
+local function as_body(data, opts)
+  local body = ""
+
+  local headers = opts.headers or {}
+
+  -- build body
+  local content_type, content_type_name = lookup(headers, "Content-Type")
+  content_type = content_type or ""
+  local t_body_table = type(data) == "table"
+  if string.find(content_type, "application/json") and t_body_table then
+    body = cjson.encode(data)
+  elseif string.find(content_type, "www-form-urlencoded", nil, true) and t_body_table then
+    body = utils.encode_args(data, true, opts.no_array_indexes)
+  elseif string.find(content_type, "multipart/form-data", nil, true) and t_body_table then
+    local form = data
+    local boundary = "8fd84e9444e3946c"
+
+    for k, v in pairs(form) do
+      body = body .. "--" .. boundary .. "\r\nContent-Disposition: form-data; name=\"" .. k .. "\"\r\n\r\n" .. tostring(v) .. "\r\n"
+    end
+
+    if body ~= "" then
+      body = body .. "--" .. boundary .. "--\r\n"
+    end
+
+    local clength = lookup(headers, "content-length")
+    if not clength then
+      headers["content-length"] = #body
+    end
+
+    if not content_type:find("boundary=") then
+      headers[content_type_name] = content_type .. "; boundary=" .. boundary
+    end
+
+  end
+
+  return body
+end
+
+-- XXX: Ideally we make this a performant one
+_M.request = function(url, opts)
+  local opts = opts or {}
+  local method = opts.method or "GET"
+  local headers = opts.headers or {}
+  local body = opts.body or nil
+  local data = opts.data or nil
+
+  if method == "GET" and data then
+    url = url .. '?' .. utils.encode_args(data)
+  elseif method == "POST" or method == "PUT" or method == "PATCH" then
+    if data and not body or #body == 0 then
+      if not lookup(headers, "content-type") then
+        headers["Content-Type"] = "multipart/form-data"
+      end
+     body = as_body(data, { headers = headers })
+   end
+  end
+
+  local client = http.new()
+  local params = {
+    method = method,
+    body = body,
+    headers = headers,
+    ssl_verify = false,
+  }
+  kong.log.debug("http request ", params.method .. " ", inspect({url, params}))
+  return client:request_uri(url, params)
+end
 
 return _M
