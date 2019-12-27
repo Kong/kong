@@ -36,7 +36,8 @@ _M.register = function(entity)
   local callback = _M.callback(entity)
   local source = entity.source
   local event = entity.event
-  -- register null event
+
+  -- register null event (any event)
   if event == ngx.null then
     event = nil
   end
@@ -51,6 +52,11 @@ _M.unregister = function(entity)
   local callback = references[entity.id]
   local source = entity.source
   local event = entity.event
+
+  -- unregister null event (any event)
+  if event == ngx.null then
+    event = nil
+  end
 
   -- XXX This good? maybe check if the unregister was succesful
   references[entity.id] = nil
