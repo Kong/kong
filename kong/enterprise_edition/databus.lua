@@ -9,6 +9,13 @@ local string_gsub = string.gsub
 
 local kong = kong
 
+-- XXX TODO:
+-- payload webhook, can it be just a JSON blob?
+-- make slack nicer
+-- refactor http request into something useful
+-- use proper templating instead of regexing
+-- (does not support compount foo.bar fields)
+
 -- Case insensitive lookup function, returns the value and the original key. Or
 -- if not found nil and the search key
 -- @usage -- sample usage
@@ -147,7 +154,6 @@ _M.unregister = function(entity)
 end
 
 
--- XXX: Find out why these are blocking on the context!
 _M.emit = function(source, event, data)
   if not _M.enabled() then return end
   return kong.worker_events.post_local("dbus:" .. source, event, data)
@@ -157,8 +163,35 @@ _M.list = function()
   return events
 end
 
+-- XXX: hack to get asynchronous execution of callbacks. Check with thijs
+-- about this
+local BatchQueue = require "kong.tools.batch_queue"
+local queue
+
+local process_callback = function(batch)
+  local entry = batch[1]
+  return entry.callback(entry.data, entry.event, entry.source, entry.pid)
+end
+
 _M.callback = function(entity)
-  return _M.handlers[entity.handler](entity.config)
+  if not queue then
+    local opts = {
+      batch_max_size = 1,
+    }
+    queue = BatchQueue.new(process_callback, opts)
+  end
+  local callback = _M.handlers[entity.handler](entity.config)
+  local wrap = function(data, event, source, pid)
+    local blob = {
+      callback = callback,
+      data = data,
+      event = event,
+      source = source,
+      pid = pid,
+    }
+    return queue:add(blob)
+  end
+  return wrap
 end
 
 
@@ -189,6 +222,7 @@ _M.handlers = {
       kong.log.debug("webhook event data: ", inspect({data, event, source, pid}))
       local res, err = request(config.url, config.method, payload, headers)
       kong.log.debug("response: ", inspect({res and res.status or nil, err}))
+      return not err
     end
   end,
 
@@ -198,12 +232,14 @@ _M.handlers = {
     return function(data, event, source, pid)
       kong.log.debug("slack event data: ", inspect({data, event, source, pid}))
       kong.log.debug("slack callback not implemented")
+      return true
     end
   end,
 
   log = function(config)
     return function(data, event, source, pid)
       kong.log.notice("log callback ", inspect({event, source, data, pid}))
+      return true
     end
   end,
 }
