@@ -180,7 +180,7 @@ _M.callback = function(entity)
     }
     queue = BatchQueue.new(process_callback, opts)
   end
-  local callback = _M.handlers[entity.handler](entity.config)
+  local callback = _M.handlers[entity.handler](entity, entity.config)
   local wrap = function(data, event, source, pid)
     local blob = {
       callback = callback,
@@ -196,7 +196,7 @@ end
 
 
 _M.handlers = {
-  webhook = function(config)
+  webhook = function(entity, config)
     return function(data, event, source, pid)
       data.event = event
       data.source = source
@@ -228,7 +228,7 @@ _M.handlers = {
 
   -- This would be a specialized helper easier to configure than a webhook
   -- even though slack would use a webhook
-  slack = function(config)
+  slack = function(entity, config)
     return function(data, event, source, pid)
       kong.log.debug("slack event data: ", inspect({data, event, source, pid}))
       kong.log.debug("slack callback not implemented")
@@ -236,10 +236,52 @@ _M.handlers = {
     end
   end,
 
-  log = function(config)
+  log = function(entity, config)
     return function(data, event, source, pid)
       kong.log.notice("log callback ", inspect({event, source, data, pid}))
       return true
+    end
+  end,
+
+  lambda = function(entity, config)
+    local functions = {}
+
+    -- limit execution context
+    --local helper_ctx = {
+    --  require = require,
+    --  type = type,
+    --  print = print,
+    --  pairs = pairs,
+    --  ipairs = ipairs,
+    --  inspect = inspect,
+    --  request = request,
+    --  kong = kong,
+    --  ngx = ngx,
+    --  -- ... anything else useful ?
+    --}
+    -- or allow _anything_
+    local helper_ctx = _G
+
+    local chunk_name = "dbus:" .. entity.id
+
+    for i, fn_str in ipairs(config.functions) do
+      -- each function has its own context. We could let them share context
+      -- by not defining fn_ctx and just passing helper_ctx
+      local fn_ctx = {}
+      setmetatable(fn_ctx, { __index = helper_ctx })
+      -- t -> only text chunks
+      local fn = load(fn_str, chunk_name .. ":" .. i, "t", fn_ctx)     -- load
+      local _, actual_fn = pcall(fn)
+      table.insert(functions, actual_fn)
+    end
+
+    return function(data, event, source, pid)
+      -- reduce on functions with data
+      local err
+      for _, fn in ipairs(functions) do
+        data, err = fn(data, event, source, pid)
+      end
+      return not err
     end
   end,
 }
