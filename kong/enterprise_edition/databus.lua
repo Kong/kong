@@ -1,4 +1,5 @@
 local inspect = require "inspect"
+local template = require "resty.template"
 
 local request = require "kong.enterprise_edition.utils".request
 
@@ -109,29 +110,48 @@ end
 _M.handlers = {
   webhook = function(entity, config)
     return function(data, event, source, pid)
+      local payload, body, headers
+
       data.event = event
       data.source = source
 
-      local payload = {}
-      if config.payload_format then
-        for k, v in pairs(config.payload) do
-          payload[k] = format(v, data)
+      if config.payload and config.payload ~= ngx.null then
+        if config.payload_format then
+          payload = {}
+          for k, v in pairs(config.payload) do
+            payload[k] = template.compile(v)(data)
+          end
+        else
+          payload = config.payload
         end
-      else
-        payload = config.payload
       end
 
-      local headers = {}
-      if config.headers_format then
-        for k, v in pairs(config.headers) do
-          headers[k] = format(v, data)
+      if config.body and config.body ~= ngx.null then
+        if config.body_format then
+          body = template.compile(config.body)(data)
+        else
+          body = config.body
         end
-      else
-        headers = config.headers
+      end
+
+      if config.headers and config.headers ~= ngx.null then
+        if config.headers_format then
+          headers = {}
+          for k, v in pairs(config.headers) do
+            headers[k] = template.compile(v)(data)
+          end
+        else
+          headers = config.headers
+        end
       end
 
       kong.log.debug("webhook event data: ", inspect({data, event, source, pid}))
-      local res, err = request(config.url, config.method, payload, headers)
+      local res, err = request(config.url, {
+        method = config.method,
+        data = payload,
+        body = body,
+        headers = headers
+      })
       kong.log.debug("response: ", inspect({res and res.status or nil, err}))
       return not err
     end

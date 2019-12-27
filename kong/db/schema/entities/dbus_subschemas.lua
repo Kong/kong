@@ -7,21 +7,27 @@ local webhook_schema = {
       type = "record",
       required = true,
       fields = {
-        { url = typedefs.url, required = true },
+        { url = typedefs.url { required = true } },
         { method = typedefs.http_method { default = "GET" } },
+        -- payload as a data map of string:string ideally we allow here any
+        -- data structure, but I think that's not allowed
         { payload = { type = "map",
                       keys = { type = "string" },
                       values = { type = "string" },
-                      default = {} } },
-        -- hardcoded payload or something formatted with event data
+                      required = false } },
+        -- run resty templates on payload values
         { payload_format = { type = "boolean", default = true } },
+        -- raw body
+        { body = { type = "string", required = false, len_min = 0} },
+        -- run body as a resty template
+        { body_format = { type = "boolean", default = true} },
         { headers = { type = "map",
                       keys = { type = "string" },
                       values = { type = "string" },
                       default = {} } },
-        -- hardcoded headers or something formatted with event data
+        -- run resty template on header values
         { headers_format = { type = "boolean", default = false } },
-      }
+      },
     } }
   },
 }
