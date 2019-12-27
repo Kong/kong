@@ -116,6 +116,10 @@ _M.register = function(entity)
   local callback = _M.callback(entity)
   local source = entity.source
   local event = entity.event
+  -- register null event
+  if event == ngx.null then
+    event = nil
+  end
 
   references[entity.id] = callback
 
