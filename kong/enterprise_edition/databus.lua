@@ -1,10 +1,13 @@
 local cjson = require "cjson"
+local inspect = require "inspect"
 
 local http = require "resty.http"
 
 local utils = require "kong.tools.utils"
 
 local string_gsub = string.gsub
+
+local kong = kong
 
 -- Case insensitive lookup function, returns the value and the original key. Or
 -- if not found nil and the search key
@@ -85,8 +88,7 @@ local function request(url, method, data, headers)
     headers = headers,
     ssl_verify = false,
   }
-
-  ngx.log(ngx.ERR, [[self:request]], require("inspect")({url, params}))
+  kong.log.debug("http request ", params.method .. " ", inspect({url, params}))
   return client:request_uri(url, params)
 end
 
@@ -184,9 +186,9 @@ _M.handlers = {
         headers = config.headers
       end
 
-      ngx.log(ngx.ERR, [[self: event data ]], require("inspect")({data}))
+      kong.log.debug("webhook event data: ", inspect({data, event, source, pid}))
       local res, err = request(config.url, config.method, payload, headers)
-      ngx.log(ngx.ERR, [[self: response: ]], require("inspect")({res and res.status or nil, err}))
+      kong.log.debug("response: ", inspect({res and res.status or nil, err}))
     end
   end,
 
@@ -194,14 +196,14 @@ _M.handlers = {
   -- even though slack would use a webhook
   slack = function(config)
     return function(data, event, source, pid)
-      ngx.log(ngx.ERR, [[self:slack]], require("inspect")({config, data, event, source, pid}))
+      kong.log.debug("slack event data: ", inspect({data, event, source, pid}))
+      kong.log.debug("slack callback not implemented")
     end
   end,
 
   log = function(config)
     return function(data, event, source, pid)
-      -- Maybe this should be a proper "log", something useful
-      ngx.log(ngx.ERR, [[self:logggg]], require("inspect")({config, data, event, source, pid}))
+      kong.log.notice("log callback ", inspect({event, source, data, pid}))
     end
   end,
 }
