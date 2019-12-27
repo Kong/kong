@@ -16,26 +16,26 @@ OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
 
 DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml .requirements | md5sum | awk '{ print $1 }')
 DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
-BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/openresty-build-tools
+BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/kong-build-tools
 
 KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:=master}
 
 if [ $TRAVIS_BRANCH == "master" ] || [ ! -z "$TRAVIS_TAG" ]; then
-  OPENRESTY_PATCHES_BRANCH=${OPENRESTY_PATCHES_BRANCH:=master}
+  KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:=master}
 else
-  OPENRESTY_PATCHES_BRANCH=${OPENRESTY_PATCHES_BRANCH:=next}
+  KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:=next}
 fi
 
 if [ ! -d $BUILD_TOOLS_DOWNLOAD ]; then
-    git clone -q https://github.com/Kong/openresty-build-tools.git $BUILD_TOOLS_DOWNLOAD
+    git clone -b $KONG_BUILD_TOOLS_BRANCH https://github.com/Kong/kong-build-tools.git $BUILD_TOOLS_DOWNLOAD
 else
     pushd $BUILD_TOOLS_DOWNLOAD
         git fetch
-        git reset --hard origin/master
+        git reset --hard origin/$KONG_BUILD_TOOLS_BRANCH
     popd
 fi
 
-export PATH=$BUILD_TOOLS_DOWNLOAD:$PATH
+export PATH=$BUILD_TOOLS_DOWNLOAD/openresty-build-tools:$PATH
 
 #--------
 # Install
@@ -47,7 +47,6 @@ kong-ngx-build \
     --work $DOWNLOAD_ROOT \
     --prefix $INSTALL_ROOT \
     --openresty $OPENRESTY \
-    --openresty-patches $OPENRESTY_PATCHES_BRANCH \
     --kong-nginx-module $KONG_NGINX_MODULE_BRANCH \
     --luarocks $LUAROCKS \
     --openssl $OPENSSL \
