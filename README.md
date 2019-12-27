@@ -10,7 +10,7 @@ and serve dynamically. Renew is handled with a configurable threshold time.
 #### Configure Kong
 
 - Kong needs to listen 80 port or proxied by a load balancer that listens for 80 port.
-- `lua_ssl_trusted_certificate` needs to be set in `kong.conf` to ensure the plugin can properly
+- `nginx_proxy_lua_ssl_trusted_certificate` needs to be set in `kong.conf` to ensure the plugin can properly
 verify Let's Encrypt API. The CA-bundle file is usually `/etc/ssl/certs/ca-certificates.crt` for
 Ubuntu/Debian and `/etc/ssl/certs/ca-bundle.crt` for CentOS/Fedora/RHEL.
 
@@ -22,6 +22,9 @@ $ curl http://localhost:8001/plugins \
         -d config.tos_accepted=true \
         -d config.domains[]=my.secret.domains.com
 ```
+
+Note by setting `tos_accepted` to *true* implies that you have read and accepted
+[terms of service](https://letsencrypt.org/repository/).
 
 **This plugin can only be configured as a global plugin.** The plugin terminats
 `/.well-known/acme-challenge/` path for matching domains. To create certificate 
@@ -47,45 +50,36 @@ Name                | Required   | Default | Description
 config.account_email| Yes        |            | The account identifier, can be reused in different plugin instance.
 config.api_uri      |            |  `"https://acme-v02.api.letsencrypt.org"`   | The ACMEv2 API endpoint to use, user might use [Let's Encrypt staging environemnt](https://letsencrypt.org/docs/staging-environment/) during testing.
 config.cert_type    |            |  `"rsa"`   | The certificate type to create, choice of `"rsa"` for RSA certificate or `"ecc"` for EC certificate.
-config.domains      |            | `[]`       | The list of domains to create certificate for. Wildcard domain like `*.example.com` is also supported. Regex pattern is not supported.
+config.domains      |            | `[]`       | The list of domains to create certificate for. To match subdomains under `example.com`, use `*.example.com`. Regex pattern is not supported.
 config.renew_threshold_days|     |  `14`      | Days before expire to renew the certificate.
 config.storage      |            |  `"shm"`   | The backend storage type to use, choice of `"kong"`, `"shm"`, `"redis"`, `"consul"` or `"vault"`. In dbless mode, `"kong"` storage is unavailable.
 config.storage_config|           | (See below)| Storage configs for each backend storage.
 config.tos_accepted |            | `false`    | If you are using Let's Encrypt, you must set this to true to agree the [Terms of Service](https://letsencrypt.org/repository/).
 
 `config.storage_config` is a table for all posisble storage types, by default it is:
-```lua
-    storage_config = {
-        kong = {},
-        shm = {
-            shm_name = kong
+```json
+    "storage_config": {
+        "kong": {},
+        "shm": {
+            "shm_name": "kong"
         },
-        redis = {
-            host = '127.0.0.1',
-            port = 6379,
-            database = 0,
-            -- Redis authentication key
-            auth = nil,
+        "redis": {
+            "auth": null,
+            "port": 6379,
+            "database": 0,
+            "host": "127.0.0.1"
         },
-        consul = {
-            host = '127.0.0.1',
-            port = 8500,
-            -- kv prefix path
-            kv_path = "acme",
-            -- Consul ACL token
-            token = nil,
-            -- timeout in ms
-            timeout = 2000,
-        }
-        vault = {
-            host = '127.0.0.1',
-            port = 8200,
-            -- secrets kv prefix path
-            kv_path = "acme",
-            -- Vault token
-            token = nil,
-            -- timeout in ms
-            timeout = 2000,
+        "consul": {
+            "host": "127.0.0.1",
+            "port": 8500,
+            "token": null,
+            "kv_path": "acme"
+        },
+        "vault": {
+            "host": "127.0.0.1",
+            "port": 8200,
+            "token": null,
+            "kv_path": "acme"
         },
     }
 ```
