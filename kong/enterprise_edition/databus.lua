@@ -107,12 +107,18 @@ local events = {}
 -- we can properly unregister worker events
 local references = {}
 
+_M.enabled = function()
+  return kong.configuration.databus_enabled
+end
+
 _M.publish = function(source, event, help)
+  if not _M.enabled() then return end
   if not events[source] then events[source] = {} end
   events[source][#events[source] + 1] = { event, help }
 end
 
 _M.register = function(entity)
+  if not _M.enabled() then return end
   local callback = _M.callback(entity)
   local source = entity.source
   local event = entity.event
@@ -127,6 +133,7 @@ _M.register = function(entity)
 end
 
 _M.unregister = function(entity)
+  if not _M.enabled() then return end
   local callback = references[entity.id]
   local source = entity.source
   local event = entity.event
@@ -140,6 +147,7 @@ end
 
 -- XXX: Find out why these are blocking on the context!
 _M.emit = function(source, event, data)
+  if not _M.enabled() then return end
   return kong.worker_events.post_local("dbus:" .. source, event, data)
 end
 
