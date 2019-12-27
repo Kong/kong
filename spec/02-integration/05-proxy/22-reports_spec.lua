@@ -41,7 +41,7 @@ for _, strategy in helpers.each_strategy() do
     local reports_send_stream_ping = function()
       ngx.sleep(0.01) -- hand over the CPU so other threads can do work (processing the sent data)
 
-      local tcp = require "socket".tcp()
+      local tcp = ngx.socket.tcp()
       assert(tcp:connect(helpers.get_proxy_ip(false), 19001))
 
       local body = assert(tcp:receive("*a"))
