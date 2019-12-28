@@ -7,6 +7,7 @@ local constants  = require "kong.constants"
 local workspaces = require "kong.workspaces"
 local feature_flags   = require "kong.enterprise_edition.feature_flags"
 local license_helpers = require "kong.enterprise_edition.license_helpers"
+local databus = require "kong.enterprise_edition.databus"
 
 
 local kong = kong
@@ -18,6 +19,13 @@ _M.handlers = {
   init_worker = {
     after = function(ctx)
       license_helpers.report_expired_license()
+
+      -- register dbus hooks
+      if databus.enabled() then
+        for entity, err in kong.db.dbus:each(1000) do
+          databus.register(entity)
+        end
+      end
     end,
   },
   header_filter = {

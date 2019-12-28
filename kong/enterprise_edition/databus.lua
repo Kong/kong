@@ -26,6 +26,17 @@ _M.enabled = function()
   return kong.configuration.databus_enabled
 end
 
+_M.crud = function(data)
+  if data.operation == "delete" then
+    _M.unregister(data.entity)
+  elseif data.operation == "update" then
+    _M.unregister(data.old_entity)
+    _M.register(data.entity)
+  elseif data.operation == "create" then
+    _M.register(data.entity)
+  end
+end
+
 _M.publish = function(source, event, help)
   if not _M.enabled() then return end
   if not events[source] then events[source] = {} end
