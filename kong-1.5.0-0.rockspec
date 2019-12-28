@@ -178,6 +178,7 @@ build = {
     ["kong.api.routes.license"] = "kong/api/routes/license.lua",
     ["kong.api.routes.entities"] = "kong/api/routes/entities.lua",
     ["kong.api.routes.keyring"] = "kong/api/routes/keyring.lua",
+    ["kong.api.routes.dbus"] = "kong/api/routes/dbus.lua",
 
     ["kong.status"] = "kong/status/init.lua",
 
