@@ -29,7 +29,7 @@ end
 _M.publish = function(source, event, help)
   if not _M.enabled() then return end
   if not events[source] then events[source] = {} end
-  events[source][#events[source] + 1] = { event, help }
+  events[source][event] = help
 end
 
 _M.register = function(entity)
