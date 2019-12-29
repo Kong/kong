@@ -22,9 +22,15 @@ _M.handlers = {
 
       -- register dbus hooks
       if databus.enabled() then
-        for entity, err in kong.db.dbus:each(1000) do
-          databus.register(entity)
-        end
+        -- XXX not so sure this timer is good? the idea is to not hog kong
+        -- on startup for this secondary feature
+        ngx.timer.at(0, function()
+          for entity, err in kong.db.dbus:each(1000) do
+            if err then kong.log.err(err) else
+              databus.register(entity)
+            end
+          end
+        end)
       end
     end,
   },
