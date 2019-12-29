@@ -30,6 +30,8 @@ return {
         "source"       TEXT NOT NULL,
         "event"        TEXT,
         "handler"      TEXT NOT NULL,
+        "on_change"    BOOLEAN,
+        "snooze"       INTEGER,
         "config"       JSON                         NOT NULL
       );
     ]],

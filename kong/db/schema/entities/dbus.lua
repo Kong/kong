@@ -17,6 +17,8 @@ return {
     { created_at     = typedefs.auto_timestamp_s },
     { source         = { type = "string", required = true } },
     { event          = { type = "string" } },
+    { on_change      = { type = "boolean" } },
+    { snooze         = { type = "integer" } },
     { handler        = { type = "string", required = true,
                          default = "webhook" } },
     { config         = { type = "record", required = true, abstract = true } },

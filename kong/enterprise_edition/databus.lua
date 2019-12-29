@@ -1,9 +1,12 @@
+local cjson = require "cjson"
 local inspect = require "inspect"
 local template = require "resty.template"
 
 local request = require "kong.enterprise_edition.utils".request
 
 local kong = kong
+local md5 = ngx.md5
+local ngx_null = ngx.null
 
 -- XXX TODO:
 -- payload webhook, can it be just a JSON blob?
@@ -37,22 +40,21 @@ _M.crud = function(data)
   end
 end
 
-_M.publish = function(source, event, help)
+_M.publish = function(source, event, opts)
   if not _M.enabled() then return end
   if not events[source] then events[source] = {} end
-  events[source][event] = help
+  events[source][event] = {
+    description = opts.description,
+    fields = opts.fields,
+    signature = opts.signature,
+  }
 end
 
 _M.register = function(entity)
   if not _M.enabled() then return end
   local callback = _M.callback(entity)
   local source = entity.source
-  local event = entity.event
-
-  -- register null event (any event)
-  if event == ngx.null then
-    event = nil
-  end
+  local event = entity.event ~= ngx_null and entity.event or nil
 
   references[entity.id] = callback
 
@@ -63,19 +65,13 @@ _M.unregister = function(entity)
   if not _M.enabled() then return end
   local callback = references[entity.id]
   local source = entity.source
-  local event = entity.event
-
-  -- unregister null event (any event)
-  if event == ngx.null then
-    event = nil
-  end
+  local event = entity.event ~= ngx_null and entity.event or nil
 
   -- XXX This good? maybe check if the unregister was succesful
   references[entity.id] = nil
 
   return kong.worker_events.unregister(callback, "dbus:" .. source, event)
 end
-
 
 _M.emit = function(source, event, data)
   if not _M.enabled() then return end
@@ -86,10 +82,28 @@ _M.list = function()
   return events
 end
 
+_M.signature = function(source, event, data)
+  local hash
+  local signature_fields = events[source] and events[source][event] and
+                           events[source][event].signature
+  if signature_fields then
+    local signature_data = {}
+    for _, k in pairs(signature_fields) do
+      signature_data[k] = data[k]
+    end
+    hash = md5(cjson.encode(signature_data))
+  else
+    hash = md5(cjson.encode(data))
+  end
+
+  return hash
+end
+
 -- XXX: hack to get asynchronous execution of callbacks. Check with thijs
--- about this
+-- about this.
 local BatchQueue = require "kong.tools.batch_queue"
 local queue
+local fmt = string.format
 
 local process_callback = function(batch)
   local entry = batch[1]
@@ -105,6 +119,33 @@ _M.callback = function(entity)
   end
   local callback = _M.handlers[entity.handler](entity, entity.config)
   local wrap = function(data, event, source, pid)
+    local source = source:gsub("^dbus:", "")
+
+    local ttl = entity.snooze ~= ngx_null and entity.snooze or nil
+    local on_change = entity.on_change ~= ngx_null and entity.on_change or nil
+
+    if ttl or on_change then
+      -- kong:cache is used as a blacklist of events to not process:
+      -- > on_change: only enqueue an event that has changed (looks different)
+      -- > snooze: like an alarm clock, disable event for N seconds
+      local cache_key = fmt("dbus:%s:%s:%s", entity.id, source, event)
+
+      -- append digest of relevant fields in data to filter by same-ness
+      if on_change then
+        cache_key = cache_key .. ":" .. _M.signature(source, event, data)
+      end
+
+      local _, _, hit_lvl = kong.cache:get(cache_key, nil, function(ttl)
+        return true, nil, ttl
+      end, ttl)
+
+      -- either in L1 or L2, this event is to be ignored
+      if hit_lvl ~= 3 then
+        kong.log.warn("ignoring dbus event: ", cache_key)
+        return
+      end
+    end
+
     local blob = {
       callback = callback,
       data = data,
@@ -112,8 +153,10 @@ _M.callback = function(entity)
       source = source,
       pid = pid,
     }
-    return queue:add(blob)
+
+    queue:add(blob)
   end
+
   return wrap
 end
 
@@ -126,7 +169,7 @@ _M.handlers = {
       data.event = event
       data.source = source
 
-      if config.payload and config.payload ~= ngx.null then
+      if config.payload and config.payload ~= ngx_null then
         if config.payload_format then
           payload = {}
           for k, v in pairs(config.payload) do
@@ -137,7 +180,7 @@ _M.handlers = {
         end
       end
 
-      if config.body and config.body ~= ngx.null then
+      if config.body and config.body ~= ngx_null then
         if config.body_format then
           body = template.compile(config.body)(data)
         else
@@ -145,7 +188,7 @@ _M.handlers = {
         end
       end
 
-      if config.headers and config.headers ~= ngx.null then
+      if config.headers and config.headers ~= ngx_null then
         if config.headers_format then
           headers = {}
           for k, v in pairs(config.headers) do
