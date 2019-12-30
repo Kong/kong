@@ -1422,12 +1422,12 @@ for _, strategy in helpers.each_strategy() do
           {
             strip_path = true,
             hosts      = { "route.com" },
-            paths      = { "/root" },
+            paths      = { "/root/fixture", "/root/fixture/non-matching-but-longer" },
           },
           {
             strip_path = true,
             hosts      = { "route.com" },
-            paths      = { "/root/fixture" },
+            paths      = { "/root/fixture/get" },
           },
         })
       end)
