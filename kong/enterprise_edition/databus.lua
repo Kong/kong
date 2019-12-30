@@ -4,7 +4,7 @@ local template = require "resty.template"
 
 local request = require "kong.enterprise_edition.utils".request
 
-local kong = kong
+local fmt = string.format
 local md5 = ngx.md5
 local ngx_null = ngx.null
 
@@ -14,8 +14,6 @@ local ngx_null = ngx.null
 -- refactor http request into something useful
 -- use proper templating instead of regexing
 -- (does not support compount foo.bar fields)
-
-local kong = kong
 
 local _M = {}
 
@@ -41,6 +39,7 @@ _M.crud = function(data)
 end
 
 _M.publish = function(source, event, opts)
+  opts = opts or {}
   if not _M.enabled() then return end
   if not events[source] then events[source] = {} end
   events[source][event] = {
@@ -48,6 +47,7 @@ _M.publish = function(source, event, opts)
     fields = opts.fields,
     signature = opts.signature,
   }
+  return true
 end
 
 _M.register = function(entity)
@@ -102,21 +102,17 @@ end
 -- XXX: hack to get asynchronous execution of callbacks. Check with thijs
 -- about this.
 local BatchQueue = require "kong.tools.batch_queue"
-local queue
-local fmt = string.format
 
 local process_callback = function(batch)
   local entry = batch[1]
   return entry.callback(entry.data, entry.event, entry.source, entry.pid)
 end
 
+local queue = BatchQueue.new(process_callback, {
+  batch_max_size = 1
+})
+
 _M.callback = function(entity)
-  if not queue then
-    local opts = {
-      batch_max_size = 1,
-    }
-    queue = BatchQueue.new(process_callback, opts)
-  end
   local callback = _M.handlers[entity.handler](entity, entity.config)
   local wrap = function(data, event, source, pid)
     local source = source:gsub("^dbus:", "")
@@ -270,5 +266,10 @@ _M.handlers = {
     end
   end,
 }
+
+-- accessors to ease unit testing
+_M.events = events
+_M.references = references
+_M.queue = queue
 
 return _M
