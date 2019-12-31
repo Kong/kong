@@ -9,11 +9,8 @@ local md5 = ngx.md5
 local ngx_null = ngx.null
 
 -- XXX TODO:
--- payload webhook, can it be just a JSON blob?
 -- make slack nicer
 -- refactor http request into something useful
--- use proper templating instead of regexing
--- (does not support compount foo.bar fields)
 
 local _M = {}
 
