@@ -1,3 +1,11 @@
+-- preload utils module and patch it with a request mock
+-- XXX does this affect any other test?
+local utils = mock(require "kong.enterprise_edition.utils")
+package.loaded["kong.enterprise_edition.utils"] = utils
+package.loaded["kong.enterprise_edition.utils"].request = mock(function() end)
+
+local request = utils.request
+
 local function mock_cache()
   local store = {}
   local clock = 0
@@ -554,6 +562,171 @@ describe("databus", function()
           assert.stub(databus.queue.add).was.called(4)
         end)
       end)
+    end)
+
+    describe("[lambda]", function()
+
+    end)
+
+    describe("[webhook]", function()
+      describe("makes a request", function()
+        local entity
+        local handler = databus.handlers.webhook
+
+        before_each(function()
+          entity = {
+            id = "a4fbd24e-6a52-4937-bd78-2536713072d2",
+            source = "some_source",
+            event = "some_event",
+            handler = "webhook",
+            config = {},
+          }
+          -- reset mock counters
+          request:clear()
+        end)
+
+        it("to an url with a method", function()
+          entity.config = {
+            url = "http://foobar.com",
+            method = "GET",
+          }
+          local cb = handler(entity, entity.config)
+          cb({ some = "data"}, "some_event", "some_source", 1234)
+          assert.stub(request).was.called_with(entity.config.url, {
+            method = entity.config.method,
+          })
+
+          entity.config = {
+            url = "http://foobar.com",
+            method = "POST",
+          }
+          local cb = handler(entity, entity.config)
+          cb({ some = "data"}, "some_event", "some_source", 1234)
+          assert.stub(request).was.called_with(entity.config.url, {
+            method = entity.config.method,
+          })
+        end)
+
+        -- request responsability to do something with it
+        describe("payload and payload_format", function()
+          it("sends payload as a table", function()
+            entity.config = {
+              url = "http://foobar.com",
+              method = "POST",
+              payload = {
+                some = "params",
+                to = "convert",
+                as_a = "body",
+                -- but it's not our problem
+              }
+            }
+            local cb = handler(entity, entity.config)
+            cb({ some = "data"}, "some_event", "some_source", 1234)
+            assert.stub(request).was.called_with(entity.config.url, {
+              method = entity.config.method,
+              data = entity.config.payload,
+            })
+          end)
+
+          it("payload gets formatted", function()
+            entity.config = {
+              url = "http://foobar.com",
+              method = "POST",
+              payload_format = true,
+              payload = {
+                this_one = "is formatted with {{ some }}",
+                -- but it's not our problem
+              }
+            }
+            local cb = handler(entity, entity.config)
+            cb({ some = "data"}, "some_event", "some_source", 1234)
+            assert.stub(request).was.called_with(entity.config.url, {
+              method = entity.config.method,
+              data = {
+                this_one = "is formatted with data",
+              },
+            })
+          end)
+        end)
+
+        describe("body and body_format", function()
+          it("sends arbitrary body", function()
+            entity.config = {
+              url = "http://foobar.com",
+              method = "POST",
+              body = [[
+               { "some": "arbitrary body" }
+              ]],
+            }
+            local cb = handler(entity, entity.config)
+            cb({ some = "data"}, "some_event", "some_source", 1234)
+            assert.stub(request).was.called_with(entity.config.url, {
+              method = entity.config.method,
+              body = entity.config.body,
+            })
+          end)
+
+          it("body gets formatted", function()
+            entity.config = {
+              url = "http://foobar.com",
+              method = "POST",
+              body_format = true,
+              body = [[
+                { "some {{ some }}": "arbitrary body {{ some }}" }
+              ]]
+            }
+            local cb = handler(entity, entity.config)
+            cb({ some = "data"}, "some_event", "some_source", 1234)
+            assert.stub(request).was.called_with(entity.config.url, {
+              method = entity.config.method,
+              body = [[
+                { "some data": "arbitrary body data" }
+              ]],
+            })
+          end)
+        end)
+
+        describe("headers and headers_format", function()
+          it("sends headers", function()
+            entity.config = {
+              url = "http://foobar.com",
+              method = "GET",
+              headers = {
+                ["X-Give-Me"] = "some tests",
+              },
+            }
+            local cb = handler(entity, entity.config)
+            cb({ some = "data"}, "some_event", "some_source", 1234)
+            assert.stub(request).was.called_with(entity.config.url, {
+              method = entity.config.method,
+              headers = entity.config.headers,
+            })
+          end)
+
+          it("headers can be formatted with data", function()
+            entity.config = {
+              url = "http://foobar.com",
+              method = "GET",
+              headers = {
+                ["X-Give-Me"] = "some tests {{ some }}",
+              },
+              headers_format = true,
+            }
+            local cb = handler(entity, entity.config)
+            cb({ some = "data"}, "some_event", "some_source", 1234)
+            assert.stub(request).was.called_with(entity.config.url, {
+              method = entity.config.method,
+              headers = {
+                ["X-Give-Me"] = "some tests data",
+              },
+            })
+          end)
+        end)
+      end)
+    end)
+
+    describe("[log]", function()
+
     end)
   end)
 end)
