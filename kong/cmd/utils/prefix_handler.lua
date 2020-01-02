@@ -1,12 +1,12 @@
 local default_nginx_template = require "kong.templates.nginx"
 local kong_nginx_template = require "kong.templates.nginx_kong"
 local kong_nginx_stream_template = require "kong.templates.nginx_kong_stream"
-local openssl_bignum = require "openssl.bignum"
-local openssl_rand = require "openssl.rand"
-local openssl_pkey = require "openssl.pkey"
-local x509 = require "openssl.x509"
-local x509_extension = require "openssl.x509.extension"
-local x509_name = require "openssl.x509.name"
+local openssl_bignum = require "resty.openssl.bn"
+local openssl_rand = require "resty.openssl.rand"
+local openssl_pkey = require "resty.openssl.pkey"
+local x509 = require "resty.openssl.x509"
+local x509_extension = require "resty.openssl.x509.extension"
+local x509_name = require "resty.openssl.x509.name"
 local pl_template = require "pl.template"
 local pl_stringx = require "pl.stringx"
 local pl_tablex = require "pl.tablex"
@@ -45,50 +45,53 @@ local function gen_default_ssl_cert(kong_config, admin)
     local key = openssl_pkey.new { bits = 2048 }
 
     local crt = x509.new()
-    crt:setPublicKey(key)
-    crt:setVersion(3)
-    crt:setSerial(openssl_bignum.fromBinary(openssl_rand.bytes(16)))
+    assert(crt:set_pubkey(key))
+    assert(crt:set_version(3))
+    assert(crt:set_serial_number(openssl_bignum.from_binary(openssl_rand.bytes(16))))
 
-    -- last for 20 years
+    -- last for 20 days
     local now = os.time()
-    crt:setLifetime(now, now + 86400*20)
+    assert(crt:set_not_before(now))
+    assert(crt:set_not_after(now + 86400*20))
 
-    local name = x509_name.new()
+    local name = assert(x509_name.new()
       :add("C", "US")
       :add("ST", "California")
       :add("L", "San Francisco")
       :add("O", "Kong")
       :add("OU", "IT Department")
-      :add("CN", "localhost")
+      :add("CN", "localhost"))
 
-    crt:setSubject(name)
-    crt:setIssuer(name)
+    assert(crt:set_subject_name(name))
+    assert(crt:set_issuer_name(name))
 
     -- Not a CA
-    crt:setBasicConstraints { CA = false }
-    crt:setBasicConstraintsCritical(true)
+    assert(crt:set_basic_constraints { CA = false })
+    assert(crt:set_basic_constraints_critical(true))
 
     -- Only allowed to be used for TLS connections (client or server)
-    crt:addExtension(x509_extension.new("extendedKeyUsage",
-                                        "serverAuth,clientAuth"))
+    assert(crt:add_extension(x509_extension.new("extendedKeyUsage",
+                                                "serverAuth,clientAuth")))
 
     -- RFC-3280 4.2.1.2
-    crt:addExtension(x509_extension.new("subjectKeyIdentifier", "hash", {
+    assert(crt:add_extension(x509_extension.new("subjectKeyIdentifier", "hash", {
       subject = crt
-    }))
+    })))
 
     -- All done; sign
-    crt:sign(key)
+    assert(crt:sign(key))
 
     do -- write key out
       local fd = assert(io.open(ssl_cert_key, "w+b"))
-      assert(fd:write(key:toPEM("private")))
+      local pem = assert(key:to_PEM("private"))
+      assert(fd:write(pem))
       fd:close()
     end
 
     do -- write cert out
       local fd = assert(io.open(ssl_cert, "w+b"))
-      assert(fd:write(crt:toPEM()))
+      local pem = assert(crt:to_PEM("private"))
+      assert(fd:write(pem))
       fd:close()
     end
 
