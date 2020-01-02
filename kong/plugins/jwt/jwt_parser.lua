@@ -6,9 +6,9 @@
 -- @see https://github.com/x25/luajwt
 
 local json = require "cjson"
-local openssl_digest = require "openssl.digest"
-local openssl_hmac = require "openssl.hmac"
-local openssl_pkey = require "openssl.pkey"
+local openssl_digest = require "resty.openssl.digest"
+local openssl_hmac = require "resty.openssl.hmac"
+local openssl_pkey = require "resty.openssl.pkey"
 local asn_sequence = require "kong.plugins.jwt.asn_sequence"
 
 
@@ -36,11 +36,21 @@ local alg_sign = {
   HS256 = function(data, key) return openssl_hmac.new(key, "sha256"):final(data) end,
   HS384 = function(data, key) return openssl_hmac.new(key, "sha384"):final(data) end,
   HS512 = function(data, key) return openssl_hmac.new(key, "sha512"):final(data) end,
-  RS256 = function(data, key) return openssl_pkey.new(key):sign(openssl_digest.new("sha256"):update(data)) end,
-  RS512 = function(data, key) return openssl_pkey.new(key):sign(openssl_digest.new("sha512"):update(data)) end,
+  RS256 = function(data, key)
+    local digest = openssl_digest.new("sha256")
+    assert(digest:update(data))
+    return assert(openssl_pkey.new(key):sign(digest))
+  end,
+  RS512 = function(data, key)
+    local digest = openssl_digest.new("sha512")
+    assert(digest:update(data))
+    return assert(openssl_pkey.new(key):sign(digest))
+  end,
   ES256 = function(data, key)
     local pkey = openssl_pkey.new(key)
-    local signature = pkey:sign(openssl_digest.new("sha256"):update(data))
+    local digest = openssl_digest.new("sha256")
+    assert(digest:update(data))
+    local signature = assert(pkey:sign(digest))
 
     local derSequence = asn_sequence.parse_simple_sequence(signature)
     local r = asn_sequence.unsign_integer(derSequence[1], 32)
@@ -58,26 +68,29 @@ local alg_verify = {
   HS384 = function(data, signature, key) return signature == alg_sign.HS384(data, key) end,
   HS512 = function(data, signature, key) return signature == alg_sign.HS512(data, key) end,
   RS256 = function(data, signature, key)
-    local pkey_ok, pkey = pcall(openssl_pkey.new, key)
-    assert(pkey_ok, "Consumer Public Key is Invalid")
-    local digest = openssl_digest.new("sha256"):update(data)
+    local pkey, _ = openssl_pkey.new(key)
+    assert(pkey, "Consumer Public Key is Invalid")
+    local digest = openssl_digest.new("sha256")
+    assert(digest:update(data))
     return pkey:verify(signature, digest)
   end,
   RS512 = function(data, signature, key)
-    local pkey_ok, pkey = pcall(openssl_pkey.new, key)
-    assert(pkey_ok, "Consumer Public Key is Invalid")
-    local digest = openssl_digest.new("sha512"):update(data)
+    local pkey, _ = openssl_pkey.new(key)
+    assert(pkey, "Consumer Public Key is Invalid")
+    local digest = openssl_digest.new("sha512")
+    assert(digest:update(data))
     return pkey:verify(signature, digest)
   end,
   ES256 = function(data, signature, key)
-    local pkey_ok, pkey = pcall(openssl_pkey.new, key)
-    assert(pkey_ok, "Consumer Public Key is Invalid")
+    local pkey, _ = openssl_pkey.new(key)
+    assert(pkey, "Consumer Public Key is Invalid")
     assert(#signature == 64, "Signature must be 64 bytes.")
     local asn = {}
     asn[1] = asn_sequence.resign_integer(sub(signature, 1, 32))
     asn[2] = asn_sequence.resign_integer(sub(signature, 33, 64))
     local signatureAsn = asn_sequence.create_simple_sequence(asn)
-    local digest = openssl_digest.new("sha256"):update(data)
+    local digest = openssl_digest.new("sha256")
+    assert(digest:update(data))
     return pkey:verify(signatureAsn, digest)
   end
 }

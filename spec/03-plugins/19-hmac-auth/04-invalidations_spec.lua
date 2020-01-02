@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local openssl_hmac = require "openssl.hmac"
+local openssl_hmac = require "resty.openssl.hmac"
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: hmac-auth (invalidations) [#" .. strategy .. "]", function()
