@@ -26,7 +26,9 @@ _M.handlers = {
         -- on startup for this secondary feature
         ngx.timer.at(0, function()
           for entity, err in kong.db.dbus:each(1000) do
-            if err then kong.log.err(err) else
+            if err then
+              kong.log.err(err)
+            else
               databus.register(entity)
             end
           end
