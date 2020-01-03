@@ -1,12 +1,15 @@
 local cjson = require "cjson"
 local inspect = require "inspect"
-local template = require "resty.template"
 
 local request = require "kong.enterprise_edition.utils".request
 
 local fmt = string.format
 local md5 = ngx.md5
 local ngx_null = ngx.null
+
+-- Somehow initializing this fails when kong runs on stream only. Something
+-- missing on ngx.location. XXX: check back later
+local template
 
 -- XXX TODO:
 -- make slack nicer
@@ -156,6 +159,13 @@ end
 
 _M.handlers = {
   webhook = function(entity, config)
+
+    -- Somehow initializing this fails when kong runs on stream only. Something
+    -- missing on ngx.location. XXX: check back later
+    if not template then
+      template = require "resty.template"
+    end
+
     return function(data, event, source, pid)
       local payload, body, headers
 
