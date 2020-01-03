@@ -1256,7 +1256,7 @@ function _M.new(routes)
 
     do
       local match_t = cache:get(cache_key)
-      if match_t and (hits.header_name == nil and hits.header_name == '') then
+      if match_t and hits.header_name == nil then
         return match_t
       end
     end
