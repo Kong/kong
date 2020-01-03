@@ -1597,7 +1597,8 @@ function Schema:process_auto_fields(data, context, nulls)
         end
 
       elseif field.type == "string" then
-        if (context == "insert" or context == "upsert") and data[key] == nil then
+        if (context == "insert" or context == "upsert" or context == "update")
+          and (data[key] == nil or data[key] == null) then
           data[key] = utils.random_string()
         end
 
