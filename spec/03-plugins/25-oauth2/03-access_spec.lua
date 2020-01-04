@@ -895,40 +895,39 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           local json = cjson.decode(body)
           assert.same({ redirect_uri = "http://google.com/kong?error=invalid_request&error_description=transform%20algorithm%20not%20supported%2c%20must%20be%20S256&state=hello" }, json)
         end)
-        it("fails when code challenge provided with confidential app", function()
+        it("fails when code challenge method is is provided without code challenge", function()
           local res = assert(proxy_ssl_client:send {
             method  = "POST",
             path    = "/oauth2/authorize",
             body    = {
               provision_key         = "provision123",
-              client_id             = "clientid123",
+              client_id             = "clientid11211",
               scope                 = "user.email",
               response_type         = "code",
               state                 = "hello",
               authenticated_userid  = "userid123",
-              code_challenge        = "1234",
+              code_challenge_method = "H256",
             },
             headers = {
-              ["Host"]             = "oauth2.com",
-              ["Content-Type"]     = "application/json"
+              ["Host"]              = "oauth2.com",
+              ["Content-Type"]      = "application/json",
             }
           })
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
-          assert.same({ redirect_uri = "http://google.com/kong?error=invalid_request&error_description=code_challenge%20and%20code_challenge_method%20are%20disallowed%20for%20confidential%20clients&state=hello" }, json)
+          assert.same({ redirect_uri = "http://google.com/kong?error=invalid_request&error_description=code_challenge%20is%20required%20when%20code_method%20is%20present&state=hello" }, json)
         end)
-        it("fails when code challenge method provided with confidential app", function()
+        it("fails when code challenge is not included for public client", function()
           local res = assert(proxy_ssl_client:send {
             method  = "POST",
             path    = "/oauth2/authorize",
             body    = {
               provision_key         = "provision123",
-              client_id             = "clientid123",
+              client_id             = "clientid11211",
               scope                 = "user.email",
               response_type         = "code",
               state                 = "hello",
               authenticated_userid  = "userid123",
-              code_challenge_method = "S256",
             },
             headers = {
               ["Host"]             = "oauth2.com",
@@ -937,7 +936,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           })
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
-          assert.same({ redirect_uri = "http://google.com/kong?error=invalid_request&error_description=code_challenge%20and%20code_challenge_method%20are%20disallowed%20for%20confidential%20clients&state=hello" }, json)
+          assert.same({ redirect_uri = "http://google.com/kong?error=invalid_request&error_description=code_challenge%20is%20required%20for%20public%20clients&state=hello" }, json)
         end)
         it("returns success and defaults code method to S256 when not provided", function()
           local res = assert(proxy_ssl_client:send {
@@ -2095,29 +2094,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         })
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
-        assert.same({ error_description = "code verifier must be between 43 and 128 characters", error = "invalid_request" }, json)
-      end)
-      it("fails when code_verifier provided for confidential app", function()
-        local _, verifier = get_pkce_tokens()
-        local code = provision_code(nil, nil, "clientid123")
-        local res = assert(proxy_ssl_client:send {
-          method  = "POST",
-          path    = "/oauth2/token",
-          body    = {
-            code             = code,
-            client_id        = "clientid123",
-            client_secret    = "secret123",
-            grant_type       = "authorization_code",
-            code_verifier    = verifier,
-          },
-          headers = {
-            ["Host"]         = "oauth2.com",
-            ["Content-Type"] = "application/json"
-          }
-        })
-        local body = assert.res_status(400, res)
-        local json = cjson.decode(body)
-        assert.same({ error_description = "code_verifier is disallowed for confidential clients", error = "invalid_request" }, json)
+        assert.same({ error_description = "code verifier is required for PKCE authorization requests", error = "invalid_request" }, json)
       end)
       it("success when code challenge contains padding", function()
         local code_verifier = "abcdelfhigklmnopqrstuvwxyz0123456789abcdefg"
@@ -2223,7 +2200,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         })
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
-        assert.same({ error_description = "code verifier must be between 43 and 128 characters", error = "invalid_request" }, json)
+        assert.same({ error_description = "code verifier is required for PKCE authorization requests", error = "invalid_request" }, json)
       end)
       it("fails when secret does not match for non-authorization_code grant type", function()
         local challenge, _ = get_pkce_tokens()
@@ -2287,7 +2264,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         })
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
-        assert.same({ error_description = "code verifier must be between 43 and 128 characters", error = "invalid_request" }, json)
+        assert.same({ error_description = "code verifier is not a string", error = "invalid_request" }, json)
       end)
       it("fails when code verifier does not match challenge", function()
         local code = provision_code(nil, nil, "clientid11211", "abc123")
