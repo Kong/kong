@@ -115,7 +115,7 @@ Here's a list of all the parameters which can be used in this plugin's configura
 | `consumer_id` || The id of the Consumer which this plugin will target.
 |`config.aws_key` <br>*semi-optional* || The AWS key credential to be used when invoking the function. This value is required if `aws_secret` is defined.
 |`config.aws_secret` <br>*semi-optional* ||The AWS secret credential to be used when invoking the function. This value is required if `aws_key` is defined.
-|`config.aws_region` || The AWS region where the Lambda function is located. Regions supported are: `ap-northeast-1`, `ap-northeast-2`, `ap-south-1`, `ap-southeast-1`, `ap-southeast-2`, `ca-central-1`, `cn-north-1`, `cn-northwest-1`, `eu-central-1`, `eu-west-1`, `eu-west-2`, `sa-east-1`, `us-east-1`, `us-east-2`, `us-gov-west-1`, `us-west-1`, `us-west-2`.
+|`config.aws_region` || The AWS region where the Lambda function is located. Regions supported are: `ap-northeast-1`, `ap-northeast-2`, `ap-south-1`, `ap-southeast-1`, `ap-southeast-2`, `ca-central-1`, `cn-north-1`, `cn-northwest-1`, `eu-central-1`, `eu-north-1`, `eu-west-1`, `eu-west-2`, `eu-west-3`, `me-south-1`, `sa-east-1`, `us-east-1`, `us-east-2`, `us-gov-west-1`, `us-west-1`, `us-west-2`.
 |`config.function_name` || The AWS Lambda function name to invoke.
 |`config.timeout`| `60000` | Timeout protection in milliseconds when invoking the function.
 |`config.keepalive`| `60000` | Max idle timeout in milliseconds when invoking the function.
