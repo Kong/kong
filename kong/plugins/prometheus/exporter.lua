@@ -1,5 +1,7 @@
 local counter = require "resty.counter"
 
+local kong = kong
+local ngx = ngx
 local find = string.find
 local select = select
 

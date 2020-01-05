@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [0.7.1](#071---20200105)
 - [0.7.0](#070---20191204)
 - [0.6.0](#060---20190929)
 - [0.5.0](#050---20190916)
@@ -12,6 +13,12 @@
 - [0.3.0](#030---20181015)
 - [0.2.0](#020---20180924)
 - [0.1.0](#010---20180615)
+
+
+##  [0.7.1] - 2020/01/05
+
+- Fix `full_metric_name` function was not accessible
+- Fix linting issues
 
 ##  [0.7.0] - 2019/12/04
 
@@ -97,6 +104,7 @@ initialized
 
 - Initial release of Prometheus plugin for Kong.
 
+[0.7.1]: https://github.com/Kong/kong-plugin-prometheus/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.5.0...0.6.0
 [0.5.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.4.1...0.5.0

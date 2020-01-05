@@ -54,7 +54,7 @@ describe("Plugin: prometheus (access via status API)", function()
     }
 
     assert(helpers.start_kong {
-        nginx_conf = "spec/fixtures/prometheus/custom_nginx.template",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "bundled, prometheus",
         status_listen = "0.0.0.0:9500",
     })
