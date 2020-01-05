@@ -61,7 +61,7 @@ describe("Plugin: prometheus (custom server)",function()
     end)
     it("custom port returns 404 for anything other than /metrics", function()
       local client = helpers.http_client("127.0.0.1", 9542)
-      res = assert(client:send {
+      local res = assert(client:send {
         method  = "GET",
         path    = "/does-not-exists",
       })

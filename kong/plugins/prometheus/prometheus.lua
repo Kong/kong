@@ -44,6 +44,29 @@
 local DEFAULT_BUCKETS = {0.005, 0.01, 0.02, 0.03, 0.05, 0.075, 0.1, 0.2, 0.3,
                          0.4, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 10}
 
+-- Generate full metric name that includes all labels.
+--
+-- Args:
+--   name: string
+--   label_names: (array) a list of label keys.
+--   label_values: (array) a list of label values.
+-- Returns:
+--   (string) full metric name.
+local function full_metric_name(name, label_names, label_values)
+  if not label_names then
+    return name
+  end
+  local label_parts = {}
+  for idx, key in ipairs(label_names) do
+    local label_value = (string.format("%s", label_values[idx])
+      :gsub("[^\032-\126]", "")  -- strip non-printable characters
+      :gsub("\\", "\\\\")
+      :gsub('"', '\\"'))
+    table.insert(label_parts, key .. '="' .. label_value .. '"')
+  end
+  return name .. "{" .. table.concat(label_parts, ",") .. "}"
+end
+
 -- Metric is a "parent class" for all metrics.
 local Metric = {}
 function Metric:new(o)
@@ -217,29 +240,6 @@ end
 local Prometheus = {}
 Prometheus.__index = Prometheus
 Prometheus.initialized = false
-
--- Generate full metric name that includes all labels.
---
--- Args:
---   name: string
---   label_names: (array) a list of label keys.
---   label_values: (array) a list of label values.
--- Returns:
---   (string) full metric name.
-local function full_metric_name(name, label_names, label_values)
-  if not label_names then
-    return name
-  end
-  local label_parts = {}
-  for idx, key in ipairs(label_names) do
-    local label_value = (string.format("%s", label_values[idx])
-      :gsub("[^\032-\126]", "")  -- strip non-printable characters
-      :gsub("\\", "\\\\")
-      :gsub('"', '\\"'))
-    table.insert(label_parts, key .. '="' .. label_value .. '"')
-  end
-  return name .. "{" .. table.concat(label_parts, ",") .. "}"
-end
 
 -- Construct bucket format for a list of buckets.
 --

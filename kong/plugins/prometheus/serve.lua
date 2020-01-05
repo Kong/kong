@@ -2,6 +2,9 @@ local lapis = require "lapis"
 local prometheus = require "kong.plugins.prometheus.exporter"
 
 
+local kong = kong
+
+
 local app = lapis.Application()
 
 
