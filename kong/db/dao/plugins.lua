@@ -4,6 +4,7 @@ local DAO = require "kong.db.dao"
 local plugin_loader = require "kong.db.schema.plugin_loader"
 local BasePlugin = require "kong.plugins.base_plugin"
 local go = require "kong.db.dao.plugins.go"
+local reports = require "kong.reports"
 
 
 local Plugins = {}
@@ -148,6 +149,9 @@ local function load_plugin_handler(plugin)
   local ok, handler = utils.load_module_if_exists(plugin_handler)
   if not ok and go.is_on() then
       ok, handler = go.load_plugin(plugin)
+      if type(handler) == "table" then
+        handler._go = true
+      end
   end
   if not ok then
     return nil, plugin .. " plugin is enabled but not installed;\n" .. handler
@@ -262,6 +266,7 @@ end
 function Plugins:load_plugin_schemas(plugin_set)
   self.handlers = nil
 
+  local go_plugins_cnt = 0
   local handlers = {}
   local errs
 
@@ -277,6 +282,10 @@ function Plugins:load_plugin_schemas(plugin_set)
         handler = handler()
       end
 
+      if handler._go then
+        go_plugins_cnt = go_plugins_cnt + 1
+      end
+
       handlers[plugin] = handler
 
     else
@@ -288,6 +297,8 @@ function Plugins:load_plugin_schemas(plugin_set)
   if errs then
     return nil, "error loading plugin schemas: " .. table.concat(errs, "; ")
   end
+
+  reports.add_immutable_value("go_plugins_cnt", go_plugins_cnt)
 
   self.handlers = handlers
 
