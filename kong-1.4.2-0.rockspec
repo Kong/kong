@@ -45,7 +45,7 @@ dependencies = {
   "kong-proxy-cache-plugin ~> 1.2",
   "kong-plugin-request-transformer ~> 1.2",
   "kong-plugin-session ~> 2.2",
-  "kong-plugin-aws-lambda ~> 3.0",
+  "kong-plugin-aws-lambda ~> 3.1",
   "kong-plugin-acme ~> 0.2",
 }
 build = {
