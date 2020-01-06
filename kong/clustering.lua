@@ -116,12 +116,22 @@ local function communicate(premature, conf)
   local c = assert(ws_client:new(WS_OPTS))
   local uri = "wss://" .. address .. "/v1/outlet?node_id=" ..
               kong.node.get_id() .. "&node_hostname=" .. utils.get_hostname()
-  local res, err = c:connect(uri, { ssl_verify = true,
-                                    client_cert = CERT,
-                                    client_priv_key = CERT_KEY,
-                                    server_name = "kong_clustering",
-                                  }
-                            )
+
+  local opts = {
+    ssl_verify = true,
+    client_cert = CERT,
+    client_priv_key = CERT_KEY,
+  }
+  if conf.cluster_mtls == "shared" then
+    opts.server_name = "kong_clustering"
+  else
+    -- server_name will be set to the host if it is not explicitly defined here
+    if conf.cluster_server_name ~= "" then
+      opts.server_name = conf.cluster_server_name
+    end
+  end
+
+  local res, err = c:connect(uri, opts)
   if not res then
     local delay = math.random(5, 10)
 
@@ -175,8 +185,7 @@ local function communicate(premature, conf)
 end
 
 
-function _M.handle_cp_websocket()
-  -- use mutual TLS authentication
+local function validate_shared_cert()
   local cert = ngx_var.ssl_client_raw_cert
 
   if not cert then
@@ -193,6 +202,14 @@ function _M.handle_cp_websocket()
                      "during handshake, expected digest: " .. CERT_DIGEST ..
                      " got: " .. digest)
     return ngx_exit(444)
+  end
+end
+
+
+function _M.handle_cp_websocket()
+  -- use mutual TLS authentication
+  if kong.configuration.cluster_mtls == "shared" then
+    validate_shared_cert()
   end
 
   local node_id = ngx_var.arg_node_id
