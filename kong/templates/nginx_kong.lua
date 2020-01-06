@@ -345,7 +345,13 @@ server {
 
     access_log off;
 
+> if cluster_mtls == "shared" then
     ssl_verify_client   optional_no_ca;
+> else
+    ssl_verify_client   on;
+    ssl_client_certificate ${{CLUSTER_CA_CERT}};
+    ssl_verify_depth     4;
+> end
     ssl_certificate     ${{CLUSTER_CERT}};
     ssl_certificate_key ${{CLUSTER_CERT_KEY}};
     ssl_session_cache   shared:ClusterSSL:10m;
