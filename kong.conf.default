@@ -874,6 +874,13 @@
                                  # If set to 0 (default), such cached entities
                                  # or misses never expire.
 
+
+#db_cache_neg_ttl = 0            # Time-to-live (in seconds) of database misses
+                                 # where no entity is returned and nil is cached.
+                                 #
+                                 # If not set, the value of db_cache_ttl will be
+                                 # used.
+
 #db_resurrect_ttl = 30           # Time (in seconds) for which stale entities
                                  # from the datastore should be resurrected for
                                  # when they cannot be refreshed (e.g., the

@@ -151,9 +151,11 @@ do
 
   function _GLOBAL.init_cache(kong_config, cluster_events, worker_events)
     local db_cache_ttl = kong_config.db_cache_ttl
+    local db_cache_neg_ttl = kong_config.db_cache_neg_ttl
     local cache_pages = 1
     if kong_config.database == "off" then
       db_cache_ttl = 0
+      db_cache_neg_ttl = 0
       cache_pages = 2
     end
 
@@ -163,7 +165,7 @@ do
       worker_events     = worker_events,
       propagation_delay = kong_config.db_update_propagation,
       ttl               = db_cache_ttl,
-      neg_ttl           = db_cache_ttl,
+      neg_ttl           = db_cache_neg_ttl or db_cache_ttl,
       resurrect_ttl     = kong_config.resurrect_ttl,
       cache_pages       = cache_pages,
       resty_lock_opts   = {
@@ -176,9 +178,11 @@ do
 
   function _GLOBAL.init_core_cache(kong_config, cluster_events, worker_events)
     local db_cache_ttl = kong_config.db_cache_ttl
+    local db_cache_neg_ttl = kong_config.db_cache_neg_ttl
     local cache_pages = 1
     if kong_config.database == "off" then
       db_cache_ttl = 0
+      db_cache_neg_ttl = 0
       cache_pages = 2
     end
 
@@ -188,7 +192,7 @@ do
       worker_events     = worker_events,
       propagation_delay = kong_config.db_update_propagation,
       ttl               = db_cache_ttl,
-      neg_ttl           = db_cache_ttl,
+      neg_ttl           = db_cache_neg_ttl or db_cache_ttl,
       resurrect_ttl     = kong_config.resurrect_ttl,
       cache_pages       = cache_pages,
       resty_lock_opts   = {
