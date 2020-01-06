@@ -158,11 +158,24 @@ local function admin_log_handler()
   end
 
   local uri = ngx.var.request_uri
+
   if singletons.configuration.audit_log_ignore_paths then
+    local from, err
+
     for _, p in ipairs(singletons.configuration.audit_log_ignore_paths) do
-      if string.find(uri, p, nil, true) then
+      from, _, err = ngx.re.find(uri, p, "jo")
+
+      -- Match is found. Return and don't generate an audit log entry.
+      if from then
         return
+
+      -- Bad regex or PCRE error.
+      elseif err then
+        kong.log.err("could not evaluate the regex " .. p ..
+                     " in the configuration audit_log_ignore_paths: ", err)
       end
+
+      -- No match is found.
     end
   end
 
