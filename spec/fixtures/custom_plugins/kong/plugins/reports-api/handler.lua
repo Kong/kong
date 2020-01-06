@@ -4,6 +4,7 @@ local ReportsApiHandler = {
 
 function ReportsApiHandler:preread()
   local reports = require "kong.reports"
+  reports._sync_counter()
   reports.send_ping()
   ngx.print("ok")
   ngx.exit(200)
