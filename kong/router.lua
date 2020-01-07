@@ -1283,29 +1283,32 @@ function _M.new(routes)
 
     -- uri match
 
-    if plain_indexes.uris[req_uri] then
-      req_category = bor(req_category, MATCH_RULES.URI)
-
-    else
-      for i = 1, #prefix_uris do
-        if find(req_uri, prefix_uris[i].value, nil, true) == 1 then
-          hits.uri     = prefix_uris[i].value
-          req_category = bor(req_category, MATCH_RULES.URI)
-          break
-        end
+    for i = 1, #regex_uris do
+      local from, _, err = re_find(req_uri, regex_uris[i].regex, "ajo")
+      if err then
+        log(ERR, "could not evaluate URI regex: ", err)
+        return
       end
 
-      for i = 1, #regex_uris do
-        local from, _, err = re_find(req_uri, regex_uris[i].regex, "ajo")
-        if err then
-          log(ERR, "could not evaluate URI regex: ", err)
-          return
-        end
+      if from then
+        hits.uri     = regex_uris[i].value
+        req_category = bor(req_category, MATCH_RULES.URI)
+        break
+      end
+    end
 
-        if from then
-          hits.uri     = regex_uris[i].value
-          req_category = bor(req_category, MATCH_RULES.URI)
-          break
+    if not hits.uri then
+      if plain_indexes.uris[req_uri] then
+        hits.uri     = req_uri
+        req_category = bor(req_category, MATCH_RULES.URI)
+
+      else
+        for i = 1, #prefix_uris do
+          if find(req_uri, prefix_uris[i].value, nil, true) == 1 then
+            hits.uri     = prefix_uris[i].value
+            req_category = bor(req_category, MATCH_RULES.URI)
+            break
+          end
         end
       end
     end
