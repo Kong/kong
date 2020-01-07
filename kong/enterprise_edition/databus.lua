@@ -58,7 +58,7 @@ _M.register = function(entity)
 
   references[entity.id] = callback
 
-  return kong.worker_events.register(callback, "dbus:" .. source, event)
+  return kong.worker_events.register(callback, source, event)
 end
 
 _M.unregister = function(entity)
@@ -70,12 +70,12 @@ _M.unregister = function(entity)
   -- XXX This good? maybe check if the unregister was succesful
   references[entity.id] = nil
 
-  return kong.worker_events.unregister(callback, "dbus:" .. source, event)
+  return kong.worker_events.unregister(callback, source, event)
 end
 
 _M.emit = function(source, event, data)
   if not _M.enabled() then return end
-  return kong.worker_events.post_local("dbus:" .. source, event, data)
+  return kong.worker_events.post_local(source, event, data)
 end
 
 _M.list = function()
@@ -115,8 +115,6 @@ local queue = BatchQueue.new(process_callback, {
 _M.callback = function(entity)
   local callback = _M.handlers[entity.handler](entity, entity.config)
   local wrap = function(data, event, source, pid)
-    local source = source:gsub("^dbus:", "")
-
     local ttl = entity.snooze ~= ngx_null and entity.snooze or nil
     local on_change = entity.on_change ~= ngx_null and entity.on_change or nil
 

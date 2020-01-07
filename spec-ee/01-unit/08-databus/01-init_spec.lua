@@ -213,22 +213,22 @@ describe("databus", function()
     end)
 
     describe("receives an entity and registers a worker_event", function()
-      it("with a callback, a source (prefixed by dbus:) and an event", function()
+      it("with a callback, a source and an event", function()
         databus.register(some_entity)
         assert.stub(kong.worker_events.register)
-              .was.called_with(mock_function, "dbus:some_source", "some_event")
+              .was.called_with(mock_function, "some_source", "some_event")
       end)
       it("an entity can have a nil event", function()
         some_entity.event = nil
         databus.register(some_entity)
         assert.stub(kong.worker_events.register)
-              .was.called_with(mock_function, "dbus:some_source", nil)
+              .was.called_with(mock_function, "some_source", nil)
       end)
       it("an entity can have a ngx.null event that is nil too", function()
         some_entity.event = ngx.null
         databus.register(some_entity)
         assert.stub(kong.worker_events.register)
-              .was.called_with(mock_function, "dbus:some_source", nil)
+              .was.called_with(mock_function, "some_source", nil)
       end)
     end)
   end)
@@ -250,12 +250,12 @@ describe("databus", function()
     end)
 
     describe("receives an entity and unregisters an existing worker_event by id", function()
-      it("with the original callback, a source (prefixed by dbus:) and an event", function()
+      it("with the original callback, a source and an event", function()
         databus.register(some_entity)
         stub(databus, "callback").returns(function() end)
         databus.unregister(some_entity)
         assert.stub(kong.worker_events.unregister)
-              .was.called_with(mock_function, "dbus:some_source", "some_event")
+              .was.called_with(mock_function, "some_source", "some_event")
       end)
       it("an entity can have a nil event", function()
         some_entity.event = nil
@@ -263,7 +263,7 @@ describe("databus", function()
         stub(databus, "callback").returns(function() end)
         databus.unregister(some_entity)
         assert.stub(kong.worker_events.unregister)
-              .was.called_with(mock_function, "dbus:some_source", nil)
+              .was.called_with(mock_function, "some_source", nil)
       end)
       it("an entity can have a ngx.null event that is nil too", function()
         some_entity.event = ngx.null
@@ -271,7 +271,7 @@ describe("databus", function()
         stub(databus, "callback").returns(function() end)
         databus.unregister(some_entity)
         assert.stub(kong.worker_events.unregister)
-              .was.called_with(mock_function, "dbus:some_source", nil)
+              .was.called_with(mock_function, "some_source", nil)
       end)
     end)
   end)
@@ -285,7 +285,7 @@ describe("databus", function()
       it("calls worker_events post_local with the source prefixed as dbus:", function()
         databus.emit("some_source", "some_event", { some = "data" })
         assert.stub(kong.worker_events.post_local)
-              .was.called_with("dbus:some_source", "some_event", { some = "data" })
+              .was.called_with("some_source", "some_event", { some = "data" })
       end)
     end)
   end)
@@ -367,26 +367,6 @@ describe("databus", function()
                                  worker_event.event,
                                  worker_event.source,
                                  worker_event.pid)
-        local blob = {
-          callback = handler_cb,
-          data = worker_event.data,
-          event = worker_event.event,
-          source = worker_event.source,
-          pid = worker_event.pid,
-        }
-
-        assert.stub(databus.queue.add).was.called_with(databus.queue, blob)
-      end)
-
-      -- databus callback needs the source without the prefix to be able and
-      -- find it on the events list and try to find relevant fields for
-      -- on_change and snooze
-      it("':dbus' is removed from the source", function()
-        databus.callback(entity)(worker_event.data,
-                                 worker_event.event,
-                                 "dbus:" .. worker_event.source,
-                                 worker_event.pid)
-
         local blob = {
           callback = handler_cb,
           data = worker_event.data,
