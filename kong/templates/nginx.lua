@@ -19,11 +19,11 @@ events {
 > end
 }
 
+> if role == "control_plane" or #proxy_listeners > 0 or #admin_listeners > 0 or #status_listeners > 0 then
 http {
-> if #proxy_listeners > 0 or #admin_listeners > 0 then
     include 'nginx-kong.conf';
-> end
 }
+> end
 
 > if #stream_listeners > 0 then
 stream {
