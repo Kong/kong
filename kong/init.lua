@@ -190,6 +190,10 @@ local function execute_plugins_iterator(plugins_iterator, phase, ctx)
     kong_global.set_namespaced_log(kong, plugin.name)
     plugin.handler[phase](plugin.handler, configuration)
     kong_global.reset_log(kong)
+
+    if plugin.handler._go then
+      ngx.ctx.ran_go_plugin = true
+    end
   end
 end
 
