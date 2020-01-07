@@ -98,6 +98,17 @@ for _, strategy in helpers.each_strategy() do
       consumer = { id = consumer_def.id },
       group = "The A Team"
     }
+
+    -- XXX EE
+    local dbus_def = {
+      _tags = ngx.null,
+      created_at = 154796740,
+      id = "21698f76-e00b-4017-96e5-dd5ece1508a5",
+      handler  = "log",
+      source = "some_source",
+      config = {},
+    }
+
     before_each(function()
       db.acls:truncate()
       db.plugins:truncate()
@@ -115,6 +126,7 @@ for _, strategy in helpers.each_strategy() do
         consumers = { [consumer_def.id] = consumer_def },
         plugins = { [plugin_def.id] = plugin_def },
         acls = { [acl_def.id] = acl_def  },
+        dbus = { [dbus_def.id] = dbus_def },
       }))
     end)
 
@@ -190,6 +202,7 @@ for _, strategy in helpers.each_strategy() do
           "acls",
           "certificates",
           "consumers",
+          "dbus", -- XXX EE
           "plugins",
           "routes",
           "services",
