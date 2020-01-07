@@ -1096,7 +1096,7 @@ complete list of changes and new features.
 ##### Plugins
 - The Runscope plugin has been dropped, based on the EoL announcement made by Runscope about their Traffic Inspector product. [#3495](https://github.com/Kong/kong/pull/3495)
 
-#### Admin API
+##### Admin API
 - The SSL Certificates and SNI entities have moved to the new DAO implementation. As such, the /certificates and /snis endpoints have received notable usability improvements, but suffer from a few breaking changes. #3386
 
 - The Consumers entity has moved to the new DAO implementation. As such, the `/consumers` endpoint has received notable usability improvements, but suffers from a few breaking changes. [#3437](https://github.com/Kong/kong/pull/3437)
