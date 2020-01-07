@@ -537,16 +537,96 @@ describe("databus", function()
     end)
 
     describe("[webhook]", function()
+      local entity
+      local handler = databus.handlers.webhook
+
+      before_each(function()
+        entity = {
+          id = "a4fbd24e-6a52-4937-bd78-2536713072d2",
+          source = "some_source",
+          event = "some_event",
+          handler = "webhook",
+          config = {},
+        }
+        -- reset mock counters
+        request:clear()
+      end)
+
+      it("makes a POST request with whole event as JSON data payload", function()
+        entity.config = {
+          url = "http://foobar.com",
+        }
+        local cb = handler(entity, entity.config)
+        cb({ some = "data"}, "some_event", "some_source", 1234)
+
+        local expected_body = '{"event":"some_event","some":"data","source":"some_source"}'
+
+        local expected_headers = {
+          ["content-type"] = "application/json",
+        }
+
+        assert.stub(request).was.called_with(entity.config.url, {
+          method = "POST",
+          body = expected_body,
+          headers = expected_headers,
+        })
+      end)
+
+      describe("secret", function()
+        -- request responsability to use this function to add a header
+        it("sends a signing function to request", function()
+          entity.config = {
+            url = "http://foobar.com",
+            secret = "hunter2",
+          }
+          local cb = handler(entity, entity.config)
+          cb({ some = "data"}, "some_event", "some_source", 1234)
+          local blob = request.calls[1].refs[2]
+          assert.is_function(blob.sign_with)
+          local alg, hmac = blob.sign_with("foobar")
+          assert.equal("sha1", alg)
+          assert.equal("47632029fcc7936dc59ff90b5bb736a44c74ab62", hmac)
+        end)
+      end)
+
+      describe("headers", function()
+        it("sends headers", function()
+          entity.config = {
+            url = "http://foobar.com",
+            headers = {
+              ["X-Give-Me"] = "some tests",
+            },
+          }
+          local cb = handler(entity, entity.config)
+          cb({ some = "data"}, "some_event", "some_source", 1234)
+
+
+          local expected_body = '{"event":"some_event","some":"data","source":"some_source"}'
+
+          local expected_headers = {
+            ["content-type"] = "application/json",
+            ["X-Give-Me"] = "some tests",
+          }
+          assert.stub(request).was.called_with(entity.config.url, {
+            method = "POST",
+            headers = expected_headers,
+            body = expected_body,
+          })
+        end)
+      end)
+    end)
+
+    describe("[webhook-custom]", function()
       describe("makes a request", function()
         local entity
-        local handler = databus.handlers.webhook
+        local handler = databus.handlers["webhook-custom"]
 
         before_each(function()
           entity = {
             id = "a4fbd24e-6a52-4937-bd78-2536713072d2",
             source = "some_source",
             event = "some_event",
-            handler = "webhook",
+            handler = "webhook-custom",
             config = {},
           }
           -- reset mock counters

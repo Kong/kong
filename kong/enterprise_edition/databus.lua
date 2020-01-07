@@ -157,8 +157,44 @@ _M.callback = function(entity)
 end
 
 
+local function sign_body(secret)
+  return function(body)
+    return "sha1", to_hex(hmac_sha1(secret, body))
+  end
+end
+
+
 _M.handlers = {
+  -- Simple and opinionated webhook. No bells and whistles, 0 config
+  --    > method POST
+  --    > content-type: application/json
+  --    > body: json(data)
+  --    > arbitrary headers
+  --    > can be signed
   webhook = function(entity, config)
+    return function(data, event, source, pid)
+      local headers = config.headers ~= ngx_null and config.headers or {}
+      local method = "POST"
+
+      headers['content-type'] = "application/json"
+      data.event = event
+      data.source = source
+
+      local body = cjson.encode(data)
+
+      kong.log.debug("webhook event data: ", inspect({data, event, source, pid}))
+      local res, err = request(config.url, {
+        method = method,
+        body = body,
+        sign_with = config.secret and config.secret ~= ngx_null and sign_body(config.secret),
+        headers = headers
+      })
+      kong.log.debug("response: ", inspect({res and res.status or nil, err}))
+      return not err
+    end
+  end,
+
+  ["webhook-custom"] = function(entity, config)
 
     -- Somehow initializing this fails when kong runs on stream only. Something
     -- missing on ngx.location. XXX: check back later
@@ -167,7 +203,8 @@ _M.handlers = {
     end
 
     return function(data, event, source, pid)
-      local payload, body, headers, sign_with
+      local payload, body, headers
+      local method = config.method
 
       data.event = event
       data.source = source
@@ -202,18 +239,12 @@ _M.handlers = {
         end
       end
 
-      if config.secret and config.secret ~= ngx_null then
-        sign_with = function(body)
-          return "sha1", to_hex(hmac_sha1(config.secret, body))
-        end
-      end
-
       kong.log.debug("webhook event data: ", inspect({data, event, source, pid}))
       local res, err = request(config.url, {
-        method = config.method,
+        method = method,
         data = payload,
         body = body,
-        sign_with = sign_with,
+        sign_with = config.secret and config.secret ~= ngx_null and sign_body(config.secret),
         headers = headers
       })
       kong.log.debug("response: ", inspect({res and res.status or nil, err}))

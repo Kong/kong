@@ -1,7 +1,7 @@
 local typedefs = require "kong.db.schema.typedefs"
 
 local webhook_schema = {
-  name = "webhook",
+  name = "webhook-custom",
   fields = {
     { config = {
       type = "record",
@@ -27,6 +27,25 @@ local webhook_schema = {
                       default = {} } },
         -- run resty template on header values
         { headers_format = { type = "boolean", default = false } },
+        -- sign body with secret
+        { secret = { type = "string", required = false } },
+      },
+    } }
+  },
+}
+
+local simple_webhook_schema = {
+  name = "webhook",
+  fields = {
+    { config = {
+      type = "record",
+      required = true,
+      fields = {
+        { url = typedefs.url { required = true } },
+        { headers = { type = "map",
+                      keys = { type = "string" },
+                      values = { type = "string" },
+                      default = {} } },
         -- sign body with secret
         { secret = { type = "string", required = false } },
       },
@@ -99,7 +118,8 @@ local lambda_schema = {
 }
 
 return {
-  webhook = webhook_schema,
+  webhook = simple_webhook_schema,
+  ["webhook-custom"] = webhook_schema,
   log = log_schema,
   slack = slack_schema,
   lambda = lambda_schema,
