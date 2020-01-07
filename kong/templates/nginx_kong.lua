@@ -79,8 +79,8 @@ upstream kong_upstream {
         Kong.balancer()
     }
 
-    # injected nginx_http_upstream_* directives
-> for _, el in ipairs(nginx_http_upstream_directives) do
+    # injected nginx_upstream_* directives
+> for _, el in ipairs(nginx_upstream_directives) do
     $(el.name) $(el.value);
 > end
 }

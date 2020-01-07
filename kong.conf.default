@@ -574,7 +574,7 @@
 # - `nginx_http_<directive>`: Injects `<directive>` in Kong's `http {}` block.
 # - `nginx_proxy_<directive>`: Injects `<directive>` in Kong's proxy
 #   `server {}` block.
-# - `nginx_http_upstream_<directive>`: Injects `<directive>` in Kong's proxy
+# - `nginx_upstream_<directive>`: Injects `<directive>` in Kong's proxy
 #   `upstream {}` block.
 # - `nginx_admin_<directive>`: Injects `<directive>` in Kong's Admin API
 #   `server {}` block.
@@ -641,8 +641,7 @@
                                  #
                                  # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_timeout
 
-#nginx_http_upstream_keepalive = 60
-                                 # Sets the maximum number of idle keepalive
+#nginx_upstream_keepalive = 60   # Sets the maximum number of idle keepalive
                                  # connections to upstream servers that are
                                  # preserved in the cache of each worker
                                  # process. When this number is exceeded, the
@@ -652,14 +651,14 @@
                                  # to open a new connection.
                                  # See http://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive
 
-#nginx_http_upstream_keepalive_requests = 100
+#nginx_upstream_keepalive_requests = 100
                                  # Sets the maximum number of requests that can
                                  # be served through one keepalive connection.
                                  # After the maximum number of requests is
                                  # made, the connection is closed.
                                  # See http://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive_requests
 
-#nginx_http_upstream_keepalive_timeout = 60s
+#nginx_upstream_keepalive_timeout = 60s
                                  # Sets a timeout during which an idle
                                  # keepalive connection to an upstream server
                                  # will stay open.

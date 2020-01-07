@@ -88,52 +88,74 @@ local HEADER_KEY_TO_NAME = {
   [string.lower(HEADERS.UPSTREAM_STATUS)] = HEADERS.UPSTREAM_STATUS,
 }
 
+
+local EMPTY = {}
+
+
 -- NOTE! Prefixes should always follow `nginx_[a-z]+_`.
 local DYNAMIC_KEY_NAMESPACES = {
   {
     injected_conf_name = "nginx_main_directives",
     prefix = "nginx_main_",
+    ignore = EMPTY,
   },
   {
     injected_conf_name = "nginx_events_directives",
     prefix = "nginx_events_",
+    ignore = EMPTY,
   },
   {
     injected_conf_name = "nginx_status_directives",
     prefix = "nginx_status_",
+    ignore = EMPTY,
   },
   {
-    injected_conf_name = "nginx_http_upstream_directives",
-    prefix = "nginx_http_upstream_",
+    injected_conf_name = "nginx_upstream_directives",
+    prefix = "nginx_upstream_",
+    ignore = EMPTY,
   },
   {
     injected_conf_name = "nginx_http_directives",
     prefix = "nginx_http_",
+    ignore = {
+      upstream_keepalive          = true,
+      upstream_keepalive_timeout  = true,
+      upstream_keepalive_requests = true,
+    },
   },
   {
     injected_conf_name = "nginx_stream_directives",
     prefix = "nginx_stream_",
+    ignore = EMPTY,
   },
   {
     injected_conf_name = "nginx_proxy_directives",
     prefix = "nginx_proxy_",
+    ignore = EMPTY,
   },
   {
     injected_conf_name = "nginx_sproxy_directives",
     prefix = "nginx_sproxy_",
+    ignore = EMPTY,
   },
   {
     injected_conf_name = "nginx_admin_directives",
     prefix = "nginx_admin_",
+    ignore = EMPTY,
   },
   {
     injected_conf_name = "nginx_supstream_directives",
     prefix = "nginx_supstream_",
+    ignore = EMPTY,
   },
 }
 
 
 local DEPRECATED_DYNAMIC_KEY_NAMESPACES = {
+  {
+    injected_conf_name = "nginx_upstream_directives",
+    previous_conf_name = "nginx_http_upstream_directives",
+  },
   {
     injected_conf_name = "nginx_status_directives",
     previous_conf_name = "nginx_http_status_directives",
@@ -192,14 +214,46 @@ local CONF_INFERENCES = {
   upstream_keepalive = { -- TODO: remove since deprecated in 1.3
     typ = "number",
     deprecated = {
-      replacement = "nginx_http_upstream_keepalive",
+      replacement = "nginx_upstream_keepalive",
       alias = function(conf)
-        -- called before check_and_infer(), must parse ourselves
         if tonumber(conf.upstream_keepalive) == 0 then
-          conf.nginx_http_upstream_keepalive = "NONE"
+          conf.nginx_upstream_keepalive = "NONE"
 
-        elseif conf.nginx_http_upstream_keepalive == nil then
-          conf.nginx_http_upstream_keepalive = tostring(conf.upstream_keepalive)
+        elseif conf.nginx_upstream_keepalive == nil then
+          conf.nginx_upstream_keepalive = tostring(conf.upstream_keepalive)
+        end
+      end,
+    }
+  },
+  nginx_http_upstream_keepalive = { -- TODO: remove since deprecated in 2.0
+    typ = "string",
+    deprecated = {
+      replacement = "nginx_upstream_keepalive",
+      alias = function(conf)
+        if conf.nginx_upstream_keepalive == nil then
+          conf.nginx_upstream_keepalive = tostring(conf.nginx_http_upstream_keepalive)
+        end
+      end,
+    }
+  },
+  nginx_http_upstream_keepalive_timeout = { -- TODO: remove since deprecated in 2.0
+    typ = "string",
+    deprecated = {
+      replacement = "nginx_upstream_keepalive_timeout",
+      alias = function(conf)
+        if conf.nginx_upstream_keepalive_timeout == nil then
+          conf.nginx_upstream_keepalive_timeout = tostring(conf.nginx_http_upstream_keepalive_timeout)
+        end
+      end,
+    }
+  },
+  nginx_http_upstream_keepalive_requests = { -- TODO: remove since deprecated in 2.0
+    typ = "string",
+    deprecated = {
+      replacement = "nginx_upstream_keepalive_requests",
+      alias = function(conf)
+        if conf.nginx_upstream_keepalive_requests == nil then
+          conf.nginx_upstream_keepalive_requests = tostring(conf.nginx_http_upstream_keepalive_requests)
         end
       end,
     }
@@ -794,7 +848,7 @@ local function parse_nginx_directives(dyn_namespace, conf, injected_in_namespace
     if type(k) == "string" and not injected_in_namespace[k] then
       local directive = string.match(k, dyn_namespace.prefix .. "(.+)")
       if directive then
-        if v ~= "NONE" then
+        if v ~= "NONE" and not dyn_namespace.ignore[directive] then
           table.insert(directives, { name = directive, value = v })
         end
 
