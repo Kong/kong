@@ -49,6 +49,7 @@ return {
           { namespace = {
             type = "string",
             auto = true,
+            required = true,
           }},
           { strategy = {
             type = "string",
