@@ -420,9 +420,9 @@ describe("NGINX conf compiler", function()
         assert.matches("large_client_header_buffers%s+4 24k;", nginx_conf)
       end)
 
-      it("injects nginx_http_upstream_* directives", function()
+      it("injects nginx_upstream_* directives", function()
         local conf = assert(conf_loader(nil, {
-          nginx_http_upstream_keepalive = "120",
+          nginx_upstream_keepalive = "120",
         }))
         local nginx_conf = prefix_handler.compile_kong_conf(conf)
         assert.matches("keepalive%s+120;", nginx_conf)
@@ -499,7 +499,7 @@ describe("NGINX conf compiler", function()
 
       it("does not inject directives if value is 'NONE'", function()
         local conf = assert(conf_loader(nil, {
-          nginx_http_upstream_keepalive = "NONE",
+          nginx_upstream_keepalive = "NONE",
         }))
         local nginx_conf = prefix_handler.compile_kong_conf(conf)
         assert.not_matches("keepalive%s+%d+;", nginx_conf)
@@ -814,7 +814,7 @@ describe("NGINX conf compiler", function()
             assert.truthy(exists(conf.nginx_conf))
 
             local contents = helpers.file.read(tmp_config.nginx_conf)
-            assert.not_matches("keepalive%s+%d+;", contents)
+            assert.not_matches("keepalive%s+0;", contents)
 
             local conf = assert(conf_loader(helpers.test_conf_path, {
               prefix = tmp_config.prefix,
@@ -826,13 +826,27 @@ describe("NGINX conf compiler", function()
             assert.truthy(exists(conf.nginx_conf))
 
             local contents = helpers.file.read(tmp_config.nginx_conf)
-            assert.not_matches("keepalive%s+%d+;", contents)
-          end)
+            assert.not_matches("keepalive%s+0;", contents)
 
-          it("'nginx_http_upstream_keepalive' has second highest precedence", function()
             local conf = assert(conf_loader(helpers.test_conf_path, {
               prefix = tmp_config.prefix,
               nginx_http_upstream_keepalive = "120",
+              nginx_upstream_keepalive = "140",
+              upstream_keepalive = 0,
+            }))
+
+            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
+            assert.truthy(exists(conf.nginx_conf))
+
+            local contents = helpers.file.read(tmp_config.nginx_conf)
+            assert.not_matches("keepalive%s+0;", contents)
+          end)
+
+          it("'nginx_upstream_keepalive' has second highest precedence", function()
+            local conf = assert(conf_loader(helpers.test_conf_path, {
+              prefix = tmp_config.prefix,
+              nginx_upstream_keepalive = "120",
+              nginx_http_upstream_keepalive = "150",
               upstream_keepalive = 60,
             }))
 
@@ -844,7 +858,8 @@ describe("NGINX conf compiler", function()
 
             local conf = assert(conf_loader(helpers.test_conf_path, {
               prefix = tmp_config.prefix,
-              nginx_http_upstream_keepalive = "60",
+              nginx_upstream_keepalive = "60",
+              nginx_http_upstream_keepalive = "150",
               upstream_keepalive = 120,
             }))
 

@@ -208,7 +208,7 @@ describe("kong start/stop #" .. strategy, function()
       if not ok then
         error(stderr)
       end
-      
+
       helpers.wait_until(function()
         local cmd = string.format("%s health -p ./servroot", helpers.bin_path)
         return pl_utils.executeex(cmd)
@@ -457,7 +457,49 @@ describe("kong start/stop #" .. strategy, function()
         assert.matches("Kong started", stdout, nil, true)
         assert.matches(u([[
           [warn] the 'upstream_keepalive' configuration property is deprecated,
-          use 'nginx_http_upstream_keepalive' instead
+          use 'nginx_upstream_keepalive' instead
+        ]], nil, true), stderr, nil, true)
+
+        local _, stderr, stdout = assert(helpers.kong_exec("stop", opts))
+        assert.matches("Kong stopped", stdout, nil, true)
+        assert.equal("", stderr)
+      end)
+
+      it("'nginx_http_upstream_keepalive_timeout'", function()
+        local opts = {
+          prefix = helpers.test_conf.prefix,
+          database = helpers.test_conf.database,
+          pg_database = helpers.test_conf.pg_database,
+          cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+          nginx_http_upstream_keepalive_timeout = "30s",
+        }
+
+        local _, stderr, stdout = assert(helpers.kong_exec("start", opts))
+        assert.matches("Kong started", stdout, nil, true)
+        assert.matches(u([[
+          [warn] the 'nginx_http_upstream_keepalive_timeout' configuration property is deprecated,
+          use 'nginx_upstream_keepalive_timeout' instead
+        ]], nil, true), stderr, nil, true)
+
+        local _, stderr, stdout = assert(helpers.kong_exec("stop", opts))
+        assert.matches("Kong stopped", stdout, nil, true)
+        assert.equal("", stderr)
+      end)
+
+      it("'nginx_http_upstream_keepalive_requests'", function()
+        local opts = {
+          prefix = helpers.test_conf.prefix,
+          database = helpers.test_conf.database,
+          pg_database = helpers.test_conf.pg_database,
+          cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+          nginx_http_upstream_keepalive_requests = 50,
+        }
+
+        local _, stderr, stdout = assert(helpers.kong_exec("start", opts))
+        assert.matches("Kong started", stdout, nil, true)
+        assert.matches(u([[
+          [warn] the 'nginx_http_upstream_keepalive_requests' configuration property is deprecated,
+          use 'nginx_upstream_keepalive_requests' instead
         ]], nil, true), stderr, nil, true)
 
         local _, stderr, stdout = assert(helpers.kong_exec("stop", opts))
