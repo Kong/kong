@@ -8,6 +8,7 @@
 local BIN_PATH = "bin/kong"
 local TEST_CONF_PATH = "spec/kong_tests.conf"
 local CUSTOM_PLUGIN_PATH = "./spec/fixtures/custom_plugins/?.lua"
+local GO_PLUGIN_PATH = "./spec/fixtures/go"
 local MOCK_UPSTREAM_PROTOCOL = "http"
 local MOCK_UPSTREAM_SSL_PROTOCOL = "https"
 local MOCK_UPSTREAM_HOST = "127.0.0.1"
@@ -2030,4 +2031,5 @@ return {
   end,
 
   make_yaml_file = make_yaml_file,
+  go_plugin_path = GO_PLUGIN_PATH,
 }
