@@ -22,6 +22,10 @@ events {
     worker_connections ${{WORKER_CONNECTIONS}};
     multi_accept on;
 > end
+    # injected nginx_events_* directives
+> for _, el in ipairs(nginx_events_directives) do
+    $(el.name) $(el.value);
+> end
 }
 
 > if role == "control_plane" or #proxy_listeners > 0 or #admin_listeners > 0 or #status_listeners > 0 then

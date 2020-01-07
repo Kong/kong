@@ -358,6 +358,33 @@ describe("NGINX conf compiler", function()
         assert.matches("pcre_jit%s+off;", nginx_conf)
       end)
 
+      it("injects nginx_events_* directives", function()
+        local conf = assert(conf_loader(nil, {
+          nginx_events_accept_mutex = "on",
+        }))
+
+        local nginx_conf = prefix_handler.compile_nginx_conf(conf)
+        assert.matches("accept_mutex%s+on;", nginx_conf)
+
+        local conf = assert(conf_loader(nil, {
+          nginx_events_accept_mutex = true,
+        }))
+        local nginx_conf = prefix_handler.compile_nginx_conf(conf)
+        assert.matches("accept_mutex%s+on;", nginx_conf)
+
+        local conf = assert(conf_loader(nil, {
+          nginx_events_accept_mutex = "off",
+        }))
+        local nginx_conf = prefix_handler.compile_nginx_conf(conf)
+        assert.matches("accept_mutex%s+off;", nginx_conf)
+
+        local conf = assert(conf_loader(nil, {
+          nginx_events_accept_mutex = false,
+        }))
+        local nginx_conf = prefix_handler.compile_nginx_conf(conf)
+        assert.matches("accept_mutex%s+off;", nginx_conf)
+      end)
+
       it("injects nginx_http_* directives", function()
         local conf = assert(conf_loader(nil, {
           nginx_http_large_client_header_buffers = "8 24k",
