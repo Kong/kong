@@ -41,6 +41,9 @@ local TCP_STREAM_COUNT_KEY    = "events:streams:tcp"
 local TLS_STREAM_COUNT_KEY    = "events:streams:tls"
 
 
+local GO_PLUGINS_REQUEST_COUNT_KEY = "events:requests:go_plugins"
+
+
 local _buffer = {}
 local _ping_infos = {}
 local _enabled = false
@@ -257,25 +260,28 @@ local function send_ping(host, port)
     _ping_infos.streams     = get_counter(STREAM_COUNT_KEY)
     _ping_infos.tcp_streams = get_counter(TCP_STREAM_COUNT_KEY)
     _ping_infos.tls_streams = get_counter(TLS_STREAM_COUNT_KEY)
+    _ping_infos.go_plugin_reqs = get_counter(GO_PLUGINS_REQUEST_COUNT_KEY)
 
     send_report("ping", _ping_infos, host, port)
 
     reset_counter(STREAM_COUNT_KEY, _ping_infos.streams)
     reset_counter(TCP_STREAM_COUNT_KEY, _ping_infos.tcp_streams)
     reset_counter(TLS_STREAM_COUNT_KEY, _ping_infos.tls_streams)
+    reset_counter(GO_PLUGINS_REQUEST_COUNT_KEY, _ping_infos.go_plugin_reqs)
 
     return
   end
 
-  _ping_infos.requests   = get_counter(REQUEST_COUNT_KEY)
-  _ping_infos.http_reqs  = get_counter(HTTP_REQUEST_COUNT_KEY)
-  _ping_infos.https_reqs = get_counter(HTTPS_REQUEST_COUNT_KEY)
-  _ping_infos.h2c_reqs   = get_counter(H2C_REQUEST_COUNT_KEY)
-  _ping_infos.h2_reqs    = get_counter(H2_REQUEST_COUNT_KEY)
-  _ping_infos.grpc_reqs  = get_counter(GRPC_REQUEST_COUNT_KEY)
-  _ping_infos.grpcs_reqs = get_counter(GRPCS_REQUEST_COUNT_KEY)
-  _ping_infos.ws_reqs    = get_counter(WS_REQUEST_COUNT_KEY)
-  _ping_infos.wss_reqs   = get_counter(WSS_REQUEST_COUNT_KEY)
+  _ping_infos.requests       = get_counter(REQUEST_COUNT_KEY)
+  _ping_infos.http_reqs      = get_counter(HTTP_REQUEST_COUNT_KEY)
+  _ping_infos.https_reqs     = get_counter(HTTPS_REQUEST_COUNT_KEY)
+  _ping_infos.h2c_reqs       = get_counter(H2C_REQUEST_COUNT_KEY)
+  _ping_infos.h2_reqs        = get_counter(H2_REQUEST_COUNT_KEY)
+  _ping_infos.grpc_reqs      = get_counter(GRPC_REQUEST_COUNT_KEY)
+  _ping_infos.grpcs_reqs     = get_counter(GRPCS_REQUEST_COUNT_KEY)
+  _ping_infos.ws_reqs        = get_counter(WS_REQUEST_COUNT_KEY)
+  _ping_infos.wss_reqs       = get_counter(WSS_REQUEST_COUNT_KEY)
+  _ping_infos.go_plugin_reqs = get_counter(GO_PLUGINS_REQUEST_COUNT_KEY)
 
   send_report("ping", _ping_infos, host, port)
 
@@ -288,6 +294,7 @@ local function send_ping(host, port)
   reset_counter(GRPCS_REQUEST_COUNT_KEY, _ping_infos.grpcs_reqs)
   reset_counter(WS_REQUEST_COUNT_KEY,    _ping_infos.ws_reqs)
   reset_counter(WSS_REQUEST_COUNT_KEY,   _ping_infos.wss_reqs)
+  reset_counter(GO_PLUGINS_REQUEST_COUNT_KEY, _ping_infos.go_plugin_reqs)
 end
 
 
@@ -389,7 +396,7 @@ return {
     return _ping_infos[k]
   end,
   send_ping = send_ping,
-  log = function()
+  log = function(ctx)
     if not _enabled then
       return
     end
@@ -401,6 +408,10 @@ return {
     local suffix, err = get_current_suffix()
     if suffix then
       incr_counter(count_key .. ":" .. suffix)
+
+      if ctx.ran_go_plugin then
+        incr_counter(GO_PLUGINS_REQUEST_COUNT_KEY)
+      end
     else
       log(WARN, err)
     end
