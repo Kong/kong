@@ -9,7 +9,9 @@ describe("Plugin: response-transformer-advanced", function()
     describe("remove", function()
       local conf  = {
         remove    = {
-          headers = {"h1", "h2", "h3"}
+          headers = {
+            "h1", "h2", "h3", "h4:v1", "h4:v2", "h5:v1", "h6:v1", "h7:v1",
+          }
         },
         replace   = {
           headers = {}
@@ -32,6 +34,19 @@ describe("Plugin: response-transformer-advanced", function()
         local ngx_headers = {h1 = "value1", h2 = {"value2a", "value2b"}}
         header_transformer.transform_headers(conf, ngx_headers)
         assert.same({}, ngx_headers)
+      end)
+      it("specific header value", function()
+        local req_ngx_headers = {
+          h1 = {"v1", "v2", "v3"},
+          h2 = "v2",
+          h4 = {"v1", "v2", "v3"},
+          h5 = "v2",
+          h6 = "v1",
+          h7 = { "v1" }
+        }
+
+        header_transformer.transform_headers(conf, req_ngx_headers)
+        assert.same({ h4 = {"v3"}, h7 = {} }, req_ngx_headers)
       end)
       it("sets content-length nil", function()
         local ngx_headers = {h1 = "value1", h2 = {"value2a", "value2b"}, [CONTENT_LENGTH] = "100", ["content-type"] = "application/json"}

@@ -39,6 +39,21 @@ local function append_value(current_value, value)
   end
 end
 
+local function remove_value(ngx_header_value, header_value)
+  local ngx_header_value_type = type(ngx_header_value)
+
+  if ngx_header_value_type == "table" then
+    for k, v in ipairs(ngx_header_value) do
+      if v == header_value then
+        table.remove(ngx_header_value, k)
+        return ngx_header_value
+      end
+    end
+  else
+    return nil
+  end
+end
+
 local function is_json_body(content_type)
   return content_type and find(lower(content_type), "application/json", nil, true)
 end
@@ -65,7 +80,7 @@ function _M.transform_headers(conf, ngx_headers, resp_code)
   -- remove headers
   if not skip_transform(resp_code, conf.remove.if_status) then
     for _, header_name, header_value in iter(conf.remove.headers) do
-        ngx_headers[header_name] = nil
+      ngx_headers[header_name] = remove_value(ngx_headers[header_name], header_value)
     end
   end
 
