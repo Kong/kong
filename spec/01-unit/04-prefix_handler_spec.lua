@@ -470,7 +470,7 @@ describe("NGINX conf compiler", function()
 
       it("injects nginx_proxy_* directives", function()
         local conf = assert(conf_loader(nil, {
-          nginx_http_large_client_header_buffers = "16 24k",
+          nginx_proxy_large_client_header_buffers = "16 24k",
         }))
         local nginx_conf = prefix_handler.compile_kong_conf(conf)
         assert.matches("large_client_header_buffers%s+16 24k;", nginx_conf)
@@ -478,7 +478,7 @@ describe("NGINX conf compiler", function()
 
       it("injects nginx_admin_* directives", function()
         local conf = assert(conf_loader(nil, {
-          nginx_http_large_client_header_buffers = "4 24k",
+          nginx_admin_large_client_header_buffers = "4 24k",
         }))
         local nginx_conf = prefix_handler.compile_kong_conf(conf)
         assert.matches("large_client_header_buffers%s+4 24k;", nginx_conf)
