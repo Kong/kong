@@ -331,6 +331,33 @@ describe("NGINX conf compiler", function()
     end)
 
     describe("injected NGINX directives", function()
+      it("injects nginx_main_* directives", function()
+        local conf = assert(conf_loader(nil, {
+          nginx_main_pcre_jit = "on",
+        }))
+
+        local nginx_conf = prefix_handler.compile_nginx_conf(conf)
+        assert.matches("pcre_jit%s+on;", nginx_conf)
+
+        local conf = assert(conf_loader(nil, {
+          nginx_main_pcre_jit = true,
+        }))
+        local nginx_conf = prefix_handler.compile_nginx_conf(conf)
+        assert.matches("pcre_jit%s+on;", nginx_conf)
+
+        local conf = assert(conf_loader(nil, {
+          nginx_main_pcre_jit = "off",
+        }))
+        local nginx_conf = prefix_handler.compile_nginx_conf(conf)
+        assert.matches("pcre_jit%s+off;", nginx_conf)
+
+        local conf = assert(conf_loader(nil, {
+          nginx_main_pcre_jit = false,
+        }))
+        local nginx_conf = prefix_handler.compile_nginx_conf(conf)
+        assert.matches("pcre_jit%s+off;", nginx_conf)
+      end)
+
       it("injects nginx_http_* directives", function()
         local conf = assert(conf_loader(nil, {
           nginx_http_large_client_header_buffers = "8 24k",

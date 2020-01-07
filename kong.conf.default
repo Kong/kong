@@ -567,6 +567,8 @@
 #
 # The following namespaces are supported:
 #
+# - `nginx_main_<directive>`: Injects `<directive>` in Kong's configuration
+#   `main` context.
 # - `nginx_http_<directive>`: Injects `<directive>` in Kong's `http {}` block.
 # - `nginx_proxy_<directive>`: Injects `<directive>` in Kong's proxy
 #   `server {}` block.

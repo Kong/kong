@@ -91,6 +91,10 @@ local HEADER_KEY_TO_NAME = {
 
 local DYNAMIC_KEY_NAMESPACES = {
   {
+    injected_conf_name = "nginx_main_directives",
+    prefix = "nginx_main_",
+  },
+  {
     injected_conf_name = "nginx_http_status_directives",
     prefix = "nginx_http_status_",
   },
