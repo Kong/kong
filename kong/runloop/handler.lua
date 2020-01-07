@@ -1292,7 +1292,7 @@ return {
       update_lua_mem()
 
       if kong.configuration.anonymous_reports then
-        reports.log()
+        reports.log(ctx)
       end
 
       if not ctx.KONG_PROXIED then
