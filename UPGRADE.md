@@ -1099,7 +1099,7 @@ complete list of changes and new features.
 #### Admin API
 - The SSL Certificates and SNI entities have moved to the new DAO implementation. As such, the /certificates and /snis endpoints have received notable usability improvements, but suffer from a few breaking changes. #3386
 
-- The Consumers entity has moved to the new DAO implementation. As such, the /consumers endpoint has received notable usability improvements, but suffers from a few breaking changes. #3437
+- The Consumers entity has moved to the new DAO implementation. As such, the `/consumers` endpoint has received notable usability improvements, but suffers from a few breaking changes. [#3437](https://github.com/Kong/kong/pull/3437)
 
 <details>
 <summary><strong>Click here to see the Nginx configuration changes</strong></summary>
