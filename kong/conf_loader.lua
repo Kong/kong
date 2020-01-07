@@ -88,7 +88,7 @@ local HEADER_KEY_TO_NAME = {
   [string.lower(HEADERS.UPSTREAM_STATUS)] = HEADERS.UPSTREAM_STATUS,
 }
 
-
+-- NOTE! Prefixes should always follow `nginx_[a-z]+_`.
 local DYNAMIC_KEY_NAMESPACES = {
   {
     injected_conf_name = "nginx_main_directives",
@@ -99,8 +99,8 @@ local DYNAMIC_KEY_NAMESPACES = {
     prefix = "nginx_events_",
   },
   {
-    injected_conf_name = "nginx_http_status_directives",
-    prefix = "nginx_http_status_",
+    injected_conf_name = "nginx_status_directives",
+    prefix = "nginx_status_",
   },
   {
     injected_conf_name = "nginx_http_upstream_directives",
@@ -116,19 +116,27 @@ local DYNAMIC_KEY_NAMESPACES = {
   },
   {
     injected_conf_name = "nginx_proxy_directives",
-    prefix = "nginx_proxy_", -- TODO: nginx_http_proxy
+    prefix = "nginx_proxy_",
   },
   {
     injected_conf_name = "nginx_sproxy_directives",
-    prefix = "nginx_sproxy_", -- TODO: nginx_stream_proxy
+    prefix = "nginx_sproxy_",
   },
   {
     injected_conf_name = "nginx_admin_directives",
-    prefix = "nginx_admin_", -- TODO: nginx_http_admin (optional)
+    prefix = "nginx_admin_",
   },
   {
     injected_conf_name = "nginx_supstream_directives",
     prefix = "nginx_supstream_",
+  },
+}
+
+
+local DEPRECATED_DYNAMIC_KEY_NAMESPACES = {
+  {
+    injected_conf_name = "nginx_status_directives",
+    previous_conf_name = "nginx_http_status_directives",
   },
 }
 
@@ -1007,6 +1015,13 @@ local function load(path, custom_conf, opts)
                                                 injected_in_namespace)
       conf[dyn_namespace.injected_conf_name] = setmetatable(directives,
                                                             _nop_tostring_mt)
+    end
+
+    -- TODO: Deprecated, but kept for backward compatibility.
+    for _, dyn_namespace in ipairs(DEPRECATED_DYNAMIC_KEY_NAMESPACES) do
+      if conf[dyn_namespace.injected_conf_name] then
+        conf[dyn_namespace.previous_conf_name] = conf[dyn_namespace.injected_conf_name]
+      end
     end
   end
 
