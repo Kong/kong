@@ -53,6 +53,17 @@ return {
         id text
       );
       ALTER TABLE admins ADD rbac_token_enabled boolean;
+
+      CREATE TABLE IF NOT EXISTS dbus (
+        id             uuid PRIMARY KEY,
+        created_at     timestamp,
+        source         text,
+        event          text,
+        handler        text,
+        on_change      boolean,
+        snooze         int,
+        config         text
+      );
     ]],
 
     teardown = function(connector)
