@@ -480,6 +480,14 @@ describe("NGINX conf compiler", function()
         assert.matches("tcp_nodelay%s+off;", nginx_conf)
       end)
 
+      it("injects nginx_supstream_* directives", function()
+        local conf = assert(conf_loader(nil, {
+          nginx_supstream_keepalive = "120",
+        }))
+        local nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
+        assert.matches("keepalive%s120;", nginx_conf)
+      end)
+
       it("does not inject directives if value is 'NONE'", function()
         local conf = assert(conf_loader(nil, {
           nginx_http_upstream_keepalive = "NONE",

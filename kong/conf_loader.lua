@@ -126,6 +126,10 @@ local DYNAMIC_KEY_NAMESPACES = {
     injected_conf_name = "nginx_admin_directives",
     prefix = "nginx_admin_", -- TODO: nginx_http_admin (optional)
   },
+  {
+    injected_conf_name = "nginx_supstream_directives",
+    prefix = "nginx_supstream_",
+  },
 }
 
 
