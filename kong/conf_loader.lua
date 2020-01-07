@@ -105,16 +105,6 @@ local DYNAMIC_KEY_NAMESPACES = {
     ignore = EMPTY,
   },
   {
-    injected_conf_name = "nginx_status_directives",
-    prefix = "nginx_status_",
-    ignore = EMPTY,
-  },
-  {
-    injected_conf_name = "nginx_upstream_directives",
-    prefix = "nginx_upstream_",
-    ignore = EMPTY,
-  },
-  {
     injected_conf_name = "nginx_http_directives",
     prefix = "nginx_http_",
     ignore = {
@@ -124,8 +114,8 @@ local DYNAMIC_KEY_NAMESPACES = {
     },
   },
   {
-    injected_conf_name = "nginx_stream_directives",
-    prefix = "nginx_stream_",
+    injected_conf_name = "nginx_upstream_directives",
+    prefix = "nginx_upstream_",
     ignore = EMPTY,
   },
   {
@@ -134,8 +124,8 @@ local DYNAMIC_KEY_NAMESPACES = {
     ignore = EMPTY,
   },
   {
-    injected_conf_name = "nginx_sproxy_directives",
-    prefix = "nginx_sproxy_",
+    injected_conf_name = "nginx_status_directives",
+    prefix = "nginx_status_",
     ignore = EMPTY,
   },
   {
@@ -144,8 +134,18 @@ local DYNAMIC_KEY_NAMESPACES = {
     ignore = EMPTY,
   },
   {
+    injected_conf_name = "nginx_stream_directives",
+    prefix = "nginx_stream_",
+    ignore = EMPTY,
+  },
+  {
     injected_conf_name = "nginx_supstream_directives",
     prefix = "nginx_supstream_",
+    ignore = EMPTY,
+  },
+  {
+    injected_conf_name = "nginx_sproxy_directives",
+    prefix = "nginx_sproxy_",
     ignore = EMPTY,
   },
 }
@@ -360,6 +360,7 @@ local CONF_INFERENCES = {
   dns_not_found_ttl = { typ = "number" },
   dns_error_ttl = { typ = "number" },
   dns_no_sync = { typ = "boolean" },
+
   router_consistency = { enum = { "strict", "eventual" } },
   router_update_frequency = { typ = "number" },
 
@@ -391,6 +392,7 @@ local CONF_INFERENCES = {
 
   lua_ssl_verify_depth = { typ = "number" },
   lua_socket_pool_size = { typ = "number" },
+
   role = { enum = { "data_plane", "control_plane", "traditional", }, },
   cluster_control_plane = { typ = "string", },
   cluster_cert = { typ = "string" },
