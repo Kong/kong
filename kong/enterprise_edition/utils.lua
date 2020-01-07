@@ -208,12 +208,18 @@ _M.request = function(url, opts)
    end
   end
 
+  if opts.sign_with and body then
+    local sign_header = opts.sign_header or "X-Kong-Signature"
+    local alg, hmac = opts.sign_with(body)
+    headers[sign_header] = alg .. "=" .. hmac
+  end
+
   local client = http.new()
   local params = {
     method = method,
     body = body,
     headers = headers,
-    ssl_verify = false,
+    ssl_verify = opts.ssl_verify or false,
   }
   kong.log.debug("http request ", params.method .. " ", inspect({url, params}))
   return client:request_uri(url, params)

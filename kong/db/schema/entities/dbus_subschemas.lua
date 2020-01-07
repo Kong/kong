@@ -27,6 +27,8 @@ local webhook_schema = {
                       default = {} } },
         -- run resty template on header values
         { headers_format = { type = "boolean", default = false } },
+        -- sign body with secret
+        { secret = { type = "string", required = false } },
       },
     } }
   },

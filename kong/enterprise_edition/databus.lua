@@ -7,6 +7,8 @@ local request = require "kong.enterprise_edition.utils".request
 local fmt = string.format
 local ngx_null = ngx.null
 local md5 = ngx.md5
+local hmac_sha1 = ngx.hmac_sha1
+local to_hex = require "resty.string".to_hex
 
 -- Somehow initializing this fails when kong runs on stream only. Something
 -- missing on ngx.location. XXX: check back later
@@ -165,7 +167,7 @@ _M.handlers = {
     end
 
     return function(data, event, source, pid)
-      local payload, body, headers
+      local payload, body, headers, sign_with
 
       data.event = event
       data.source = source
@@ -200,11 +202,18 @@ _M.handlers = {
         end
       end
 
+      if config.secret and config.secret ~= ngx_null then
+        sign_with = function(body)
+          return "sha1", to_hex(hmac_sha1(config.secret, body))
+        end
+      end
+
       kong.log.debug("webhook event data: ", inspect({data, event, source, pid}))
       local res, err = request(config.url, {
         method = config.method,
         data = payload,
         body = body,
+        sign_with = sign_with,
         headers = headers
       })
       kong.log.debug("response: ", inspect({res and res.status or nil, err}))

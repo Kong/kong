@@ -654,6 +654,24 @@ describe("databus", function()
           end)
         end)
 
+        describe("secret", function()
+          -- request responsability to use this function to add a header
+          it("sends a signing function to request", function()
+            entity.config = {
+              url = "http://foobar.com",
+              method = "POST",
+              secret = "hunter2",
+            }
+            local cb = handler(entity, entity.config)
+            cb({ some = "data"}, "some_event", "some_source", 1234)
+            local blob = request.calls[1].refs[2]
+            assert.is_function(blob.sign_with)
+            local alg, hmac = blob.sign_with("foobar")
+            assert.equal("sha1", alg)
+            assert.equal("47632029fcc7936dc59ff90b5bb736a44c74ab62", hmac)
+          end)
+        end)
+
         describe("headers and headers_format", function()
           it("sends headers", function()
             entity.config = {
