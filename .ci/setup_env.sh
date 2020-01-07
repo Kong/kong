@@ -8,6 +8,7 @@ dep_version() {
 OPENRESTY=$(dep_version RESTY_VERSION)
 LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
 OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
+GO_PLUGINSERVER=$(dep_version KONG_GO_PLUGINSERVER_VERSION)
 
 
 #---------
@@ -17,6 +18,7 @@ OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
 DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml .requirements | md5sum | awk '{ print $1 }')
 DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
 BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/kong-build-tools
+GO_PLUGINSERVER_DOWNLOAD=$DOWNLOAD_ROOT/go-pluginserver
 
 KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:=master}
 
@@ -36,6 +38,24 @@ else
 fi
 
 export PATH=$BUILD_TOOLS_DOWNLOAD/openresty-build-tools:$PATH
+
+if [ ! -d $GO_PLUGINSERVER_DOWNLOAD ]; then
+  git clone -q https://github.com/Kong/go-pluginserver $GO_PLUGINSERVER_DOWNLOAD
+else
+  pushd $GO_PLUGINSERVER_DOWNLOAD
+    git fetch
+    git checkout $GO_PLUGINSERVER
+    git reset --hard origin/$GO_PLUGINSERVER
+  popd
+fi
+
+pushd $GO_PLUGINSERVER_DOWNLOAD
+  go get ./...
+  make
+popd
+
+export GO_PLUGINSERVER_DOWNLOAD
+export PATH=$GO_PLUGINSERVER_DOWNLOAD:$PATH
 
 #--------
 # Install
