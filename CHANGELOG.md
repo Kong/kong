@@ -1,6 +1,6 @@
 # Kong AWS Lambda plugin changelog
 
-## aws-lambda 3.1.0 unreleased
+## aws-lambda 3.1.0 6-Jan-2020
 
 - fix: reduce notice-level message to debug, to reduce log noise
 - feat: added 3 regions; eu-north-1, me-south-1, eu-west-3
