@@ -1093,7 +1093,7 @@ complete list of changes and new features.
   it if you are using a custom template. The changes are detailed in a diff
   included below.
 
-#### Plugins
+##### Plugins
 - The Runscope plugin has been dropped, based on the EoL announcement made by Runscope about their Traffic Inspector product. [#3495](https://github.com/Kong/kong/pull/3495)
 
 #### Admin API
