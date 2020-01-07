@@ -578,7 +578,7 @@
 #   `upstream {}` block.
 # - `nginx_admin_<directive>`: Injects `<directive>` in Kong's Admin API
 #   `server {}` block.
-# - `nginx_http_status_<directive>`: Injects `<directive>` in Kong's Status API
+# - `nginx_status_<directive>`: Injects `<directive>` in Kong's Status API
 #   `server {}` block  (only effective if `status_listen` is enabled).
 # - `nginx_stream_<directive>`: Injects `<directive>` in Kong's stream module
 #   `stream {}` block (only effective if `stream_listen` is enabled).

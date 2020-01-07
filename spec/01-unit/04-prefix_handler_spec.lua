@@ -411,6 +411,15 @@ describe("NGINX conf compiler", function()
         assert.matches("large_client_header_buffers%s+4 24k;", nginx_conf)
       end)
 
+      it("injects nginx_status_* directives", function()
+        local conf = assert(conf_loader(nil, {
+          status_listen = "0.0.0.0:8005",
+          nginx_status_large_client_header_buffers = "4 24k",
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("large_client_header_buffers%s+4 24k;", nginx_conf)
+      end)
+
       it("injects nginx_http_upstream_* directives", function()
         local conf = assert(conf_loader(nil, {
           nginx_http_upstream_keepalive = "120",
