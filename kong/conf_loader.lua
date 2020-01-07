@@ -910,6 +910,15 @@ local function load(path, custom_conf, opts)
         local directive = string.match(k, "(" .. dyn_prefix .. ".+)")
         if directive then
           dynamic_keys[directive] = true
+
+          if type(v) == "boolean" then
+            if v then
+              v = "on"
+            else
+              v = "off"
+            end
+          end
+
           t[k] = tostring(v)
         end
       end
