@@ -1066,6 +1066,25 @@ local function load(path, custom_conf, opts)
         value = "prometheus_metrics 5m",
       })
     end
+
+    local stream_directives = conf["nginx_stream_directives"]
+    local found = false
+
+    for _, directive in pairs(stream_directives) do
+      if directive.name == "lua_shared_dict"
+        and string.find(directive.value, "stream_prometheus_metrics", nil, true)
+      then
+        found = true
+        break
+      end
+    end
+
+    if not found then
+      table.insert(stream_directives, {
+        name  = "lua_shared_dict",
+        value = "stream_prometheus_metrics 5m",
+      })
+    end
   end
 
   do
