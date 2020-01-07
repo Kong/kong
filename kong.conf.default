@@ -584,6 +584,8 @@
 #   `stream {}` block (only effective if `stream_listen` is enabled).
 # - `nginx_sproxy_<directive>`: Injects `<directive>` in Kong's stream module
 #   `server {}` block (only effective if `stream_listen` is enabled).
+# - `nginx_supstream_<directive>`: Injects `<directive>` in Kong's stream
+#   module `upstream {}` block.
 #
 # As with other configuration properties, Nginx directives can be injected via
 # environment variables when capitalized and prefixed with `KONG_`.

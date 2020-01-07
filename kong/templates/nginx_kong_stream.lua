@@ -69,6 +69,11 @@ upstream kong_upstream {
     balancer_by_lua_block {
         Kong.balancer()
     }
+
+    # injected nginx_supstream_* directives
+> for _, el in ipairs(nginx_supstream_directives) do
+    $(el.name) $(el.value);
+> end
 }
 
 > if #stream_listeners > 0 then
