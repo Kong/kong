@@ -170,7 +170,7 @@ describe("databus", function()
         assert(databus.publish("some_source", "some_event", {
           description = "Some event that does something",
           fields = { "foo", "bar" },
-          signature = { "foo" },
+          unique = { "foo" },
         }))
       end)
     end)
@@ -179,7 +179,7 @@ describe("databus", function()
       assert(databus.publish("some_source", "some_event", {
           description = "Some event that does something",
           fields = { "foo", "bar" },
-          signature = { "foo" },
+          unique = { "foo" },
       }))
       assert(databus.publish("another_source", "another_event"))
       local expected = {
@@ -187,7 +187,7 @@ describe("databus", function()
           some_event = {
             description = "Some event that does something",
             fields = { "foo", "bar" },
-            signature = { "foo" },
+            unique = { "foo" },
           }
         },
         another_source = {
@@ -290,44 +290,32 @@ describe("databus", function()
     end)
   end)
 
-  describe("signature", function()
-    describe("generates the signature of a data message", function()
+  describe("digest", function()
+    describe("generates the digest of a data message", function()
       it("defaults to the whole data when an event has not been published", function()
         local data = { some = "data", with_more = "data" }
         assert.equal("fcd3b17e549f0a83f5bd14aa85d2f2cb",
-                     databus.signature("some_source", "some_event", data))
+                     databus.digest(data))
       end)
 
-      it("two data messages have the same signature if their relevant fields are the same", function()
-        local source = "some_source"
-        local event = "some_event"
+      it("two data messages have the same digest if their relevant fields are the same", function()
         local data = { some = "data", with_more = "data", and_more = "data" }
         local more_data = { some = "data", with_more = "data", and_more = "snowflake" }
+        local fields = { "some", "with_more" }
 
-        databus.publish("some_source", "some_event", {
-             description = "Some event that does something",
-             fields = { "some", "with_more", "and_more" },
-             signature = { "some", "with_more" },
-        })
         assert.equal("fcd3b17e549f0a83f5bd14aa85d2f2cb",
-                     databus.signature(source, event, data))
-        assert.equal(databus.signature(source, event, more_data),
-                     databus.signature(source, event, data))
+                     databus.digest(data, { fields = fields }))
+        assert.equal(databus.digest(more_data, { fields = fields }),
+                     databus.digest(data, { fields = fields }))
       end)
 
-      it("changes the signature when a relevant field changes", function()
-        local source = "some_source"
-        local event = "some_event"
+      it("changes digest when a relevant field changes", function()
         local data = { some = "data", with_more = "data", and_more = "data" }
         local more_data = { some = "data", with_more = "snowflake", and_more = "snowflake" }
+        local fields = { "somne", "with_more" }
 
-        databus.publish("some_source", "some_event", {
-             description = "Some event that does something",
-             fields = { "some", "with_more", "and_more" },
-             signature = { "some", "with_more" },
-        })
-        assert.not_equal(databus.signature(source, event, more_data),
-                     databus.signature(source, event, data))
+        assert.not_equal(databus.digest(data, { fields = fields }),
+                         databus.digest(more_data, { fields = fields }))
       end)
     end)
   end)

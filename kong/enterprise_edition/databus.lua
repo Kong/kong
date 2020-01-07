@@ -1,11 +1,12 @@
 local cjson = require "cjson"
+local tx = require "pl/tablex"
 local inspect = require "inspect"
 
 local request = require "kong.enterprise_edition.utils".request
 
 local fmt = string.format
-local md5 = ngx.md5
 local ngx_null = ngx.null
+local md5 = ngx.md5
 
 -- Somehow initializing this fails when kong runs on stream only. Something
 -- missing on ngx.location. XXX: check back later
@@ -45,7 +46,7 @@ _M.publish = function(source, event, opts)
   events[source][event] = {
     description = opts.description,
     fields = opts.fields,
-    signature = opts.signature,
+    unique = opts.unique,
   }
   return true
 end
@@ -82,21 +83,20 @@ _M.list = function()
   return events
 end
 
-_M.signature = function(source, event, data)
-  local hash
-  local signature_fields = events[source] and events[source][event] and
-                           events[source][event].signature
-  if signature_fields then
-    local signature_data = {}
-    for _, k in pairs(signature_fields) do
-      signature_data[k] = data[k]
-    end
-    hash = md5(cjson.encode(signature_data))
-  else
-    hash = md5(cjson.encode(data))
-  end
+-- Not to be used for security signing. This function is only used for
+-- differentiating different data payloads for caching and deduplicating
+-- purposes
+_M.digest = function(data, opts)
+  local opts = opts or {}
+  local fields = opts.fields
+  local data = fields and tx.intersection(data, tx.makeset(fields)) or data
+  return md5(cjson.encode(data))
+end
 
-  return hash
+local function field_digest(source, event, data)
+  local fields = events[source] and events[source][event] and
+                 events[source][event].unique
+  return _M.digest(data, { fields = fields })
 end
 
 -- XXX: hack to get asynchronous execution of callbacks. Check with thijs
@@ -126,7 +126,7 @@ _M.callback = function(entity)
 
       -- append digest of relevant fields in data to filter by same-ness
       if on_change then
-        cache_key = cache_key .. ":" .. _M.signature(source, event, data)
+        cache_key = cache_key .. ":" .. field_digest(source, event, data)
       end
 
       local _, _, hit_lvl = kong.cache:get(cache_key, nil, function(ttl)
