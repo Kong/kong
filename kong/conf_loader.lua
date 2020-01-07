@@ -95,6 +95,10 @@ local DYNAMIC_KEY_NAMESPACES = {
     prefix = "nginx_main_",
   },
   {
+    injected_conf_name = "nginx_events_directives",
+    prefix = "nginx_events_",
+  },
+  {
     injected_conf_name = "nginx_http_status_directives",
     prefix = "nginx_http_status_",
   },
