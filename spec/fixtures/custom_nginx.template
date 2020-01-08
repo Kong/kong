@@ -714,6 +714,9 @@ server {
 > if stream_proxy_ssl_enabled then
     ssl_certificate ${{SSL_CERT}};
     ssl_certificate_key ${{SSL_CERT_KEY}};
+> if ssl_ciphers then
+    ssl_ciphers ${{SSL_CIPHERS}};
+> end
     ssl_certificate_by_lua_block {
         Kong.ssl_certificate()
     }
