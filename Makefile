@@ -58,7 +58,7 @@ nightly-release:
 	sed -i -e '/return string\.format/,/\"\")/c\return "$(KONG_VERSION)\"' kong/meta.lua
 	$(MAKE) release
 
-release: setup-kong-build-tools
+release:
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
 	$(MAKE) package-kong && \
 	$(MAKE) release-kong
