@@ -2,6 +2,7 @@ local cjson = require("cjson.safe")
 local ngx_ssl = require("ngx.ssl")
 local basic_serializer = require "kong.plugins.log-serializers.basic"
 local msgpack = require "MessagePack"
+local reports = require "kong.reports"
 
 
 local kong = kong
@@ -35,10 +36,21 @@ do
 end
 
 do
+  local function get_pluginserver_go_version()
+    local cmd = string.format("%s -version", kong.configuration.go_pluginserver_exe)
+    local fd = assert(io.popen(cmd))
+    local out = fd:read("*a")
+    fd:close()
+
+    return out:match("Runtime Version: go(.+)\n$")
+  end
+
   local pluginserver_proc
 
   function go.manage_pluginserver()
     assert(not pluginserver_proc, "Don't call go.manage_pluginserver() more than once.")
+
+    reports.add_immutable_value("go_version", get_pluginserver_go_version())
 
     if ngx.worker.id() ~= 0 then
       -- only one manager
