@@ -1,11 +1,9 @@
-local ffi = require("ffi")
 local cjson = require("cjson.safe")
 local ngx_ssl = require("ngx.ssl")
 local basic_serializer = require "kong.plugins.log-serializers.basic"
 local msgpack = require "MessagePack"
 
 
-local C = ffi.C
 local kong = kong
 local ngx = ngx
 local ngx_timer_at = ngx.timer.at
@@ -79,126 +77,6 @@ do
 end
 
 
--- Workaround: if cosockets aren't available, use raw glibc calls
-local get_connection
-do
-  pcall(ffi.cdef, [[
-    static int const AF_UNIX = 1;
-    static int const SOCK_STREAM = 1;
-
-    struct sockaddr_un {
-      uint16_t  sun_family;               /* AF_UNIX */
-      char      sun_path[108];            /* pathname */
-    };
-
-    typedef struct ffi_sock {
-      int fd;
-    } ffi_sock;
-
-    int socket(int domain, int type, int protocol);
-    int connect(int sockfd, const void *addr, uint32_t addrlen);
-    ssize_t write(int fd, const void *buf, size_t count);
-    ssize_t read(int fd, void *buf, size_t count);
-    int close(int fd);
-  ]])
-
-  local ffi_sock = ffi.typeof("ffi_sock")
-
-  local function un_addr(path)
-    local conaddr = ffi.new('struct sockaddr_un')
-    if conaddr == nil then
-      return nil, "can't allocate sockaddr_un"
-    end
-
-    conaddr.sun_family = C.AF_UNIX
-
-    local len = #path + 1
-    if len > 107 then
-      len = 107
-    end
-    ffi.copy(conaddr.sun_path, path, len)
-    return conaddr
-  end
-
-  pcall(ffi.metatype, ffi_sock, {
-    __new = function(ct, path)
-      local fd = C.socket(C.AF_UNIX, C.SOCK_STREAM, 0)
-      if fd < 0 then
-        return nil, "can't create socket"
-      end
-
-      local conaddr = un_addr(path)
-      local res = C.connect(fd, conaddr, ffi.sizeof(conaddr))
-      if res < 0 then
-        C.close(fd)
-        local errno = ffi.errno()
-        return nil, "connect failure: " .. ffi.string(C.strerror(errno))
-      end
-
-      return ffi.new(ct, fd)
-    end,
-
-    __index = {
-      send = function(self, s)
-        local p = ffi.cast('const uint8_t *', s)
-        local sent_bytes = 0
-        while sent_bytes < #s do
-          local rc = C.write(self.fd, p+sent_bytes, #s-sent_bytes)
-          if rc < 0 then
-            local errno = ffi.errno()
-            return nil, "error writing to socket: " .. ffi.string(C.strerror(errno))
-          end
-          sent_bytes = sent_bytes + rc
-        end
-        return sent_bytes
-      end,
-
-      receiveany = function(self, n)
-        local buf = ffi.new('uint8_t[?]', n)
-        if buf == nil then
-          return nil, "can't allocate buffer."
-        end
-
-        local rc = C.read(self.fd, buf, n)
-        if rc < 0 then
-          return nil, "error reading"
-        end
-        return ffi.string(buf, rc)
-      end,
-
-      setkeepalive = function(self)
-        if self.fd ~= -1 then
-          C.close(self.fd)
-          self.fd = -1
-        end
-      end,
-    },
-
-    __gc = function(self)
-      self:setkeepalive()
-    end,
-  })
-
-  local too_early = {
-    init = true,
-    init_worker = true,
-    set = true,
-    header_filter = true,
-    body_filter = true,
---     log = true,
-  }
-
-  function get_connection()
-    if too_early[ngx.get_phase()] then
-      return ffi_sock(go.socket_path())
-    end
-
-    return ngx.socket.connect("unix:" .. go.socket_path())
-  end
-end
-go.get_connection = get_connection
-
-
 -- This is the MessagePack-RPC implementation
 local rpc_call
 do
@@ -222,7 +100,7 @@ do
     msg_id = msg_id + 1
     local my_msg_id = msg_id
 
-    local c, err = get_connection()
+    local c, err = ngx.socket.connect("unix:" .. go.socket_path())
     if not c then
       kong.log.err("trying to connect: ", err)
       return nil, err
