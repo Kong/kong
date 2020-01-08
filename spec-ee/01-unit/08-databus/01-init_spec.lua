@@ -945,8 +945,20 @@ describe("databus", function()
       end)
     end)
 
+    -- worth testing log handler?
     describe("[log]", function()
-
+      it("does not break", function()
+        local entity = {
+          id = "a4fbd24e-6a52-4937-bd78-2536713072d2",
+          source = "some_source",
+          event = "some_event",
+          handler = "log",
+          config = {},
+        }
+        local handler = databus.handlers.log
+        local cb = handler(entity, entity.config)
+        assert(cb({ some = "data"}, "some_event", "some_source", 1234))
+      end)
     end)
   end)
 end)
