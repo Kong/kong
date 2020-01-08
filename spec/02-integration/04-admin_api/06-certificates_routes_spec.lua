@@ -16,24 +16,13 @@ local function it_content_types(title, fn)
 end
 
 
-local function get_snis_lists(certs)
-  local lists = {}
-  for i=1, #certs do
-    lists[i] = certs[i].snis
+local get_name
+do
+  local n = 0
+  get_name = function()
+    n = n + 1
+    return string.format("name%04d.test", n)
   end
-
-  table.sort(lists, function(a,b)
-    if not a[1] then
-      return true
-    end
-    if not b[1] then
-      return false
-    end
-
-    return a[1] < b[1]
-  end)
-
-  return lists
 end
 
 
@@ -41,6 +30,31 @@ for _, strategy in helpers.each_strategy() do
 
 describe("Admin API: #" .. strategy, function()
   local client
+
+  local function add_certificate()
+    local n1 = get_name()
+    local n2 = get_name()
+    local names = { n1, n2 }
+
+    local res = client:post("/certificates", {
+      body    = {
+        cert  = ssl_fixtures.cert,
+        key   = ssl_fixtures.key,
+        snis  = names,
+      },
+      headers = { ["Content-Type"] = "application/json" },
+    })
+
+    local body = assert.res_status(201, res)
+    local certificate = cjson.decode(body)
+    return certificate, names
+  end
+
+  local function get_certificates()
+    local res  = client:get("/certificates")
+    local body = assert.res_status(200, res)
+    return cjson.decode(body)
+  end
 
   local bp, db
 
@@ -55,7 +69,10 @@ describe("Admin API: #" .. strategy, function()
   end)
 
   lazy_setup(function()
-    bp, db = helpers.get_db_utils(strategy, {})
+    bp, db = helpers.get_db_utils(strategy, {
+      "certificates",
+      "snis",
+    })
 
     assert(helpers.start_kong({
       database = strategy,
@@ -72,9 +89,6 @@ describe("Admin API: #" .. strategy, function()
 
       it("retrieves all certificates with snis", function()
 
-        assert(db:truncate("certificates"))
-        assert(db:truncate("snis"))
-
         local my_snis = {}
         for i = 1, 150 do
           table.insert(my_snis, string.format("my-sni-%03d.test", i))
@@ -90,9 +104,7 @@ describe("Admin API: #" .. strategy, function()
         })
         assert.res_status(201, res)
 
-        local res  = client:get("/certificates")
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
+        local json = get_certificates()
         assert.equal(1, #json.data)
         assert.is_string(json.data[1].cert)
         assert.is_string(json.data[1].key)
@@ -102,84 +114,89 @@ describe("Admin API: #" .. strategy, function()
 
     describe("POST", function()
 
-      before_each(function()
-        assert(db:truncate("certificates"))
-        assert(db:truncate("snis"))
-
+      it("returns a conflict when duplicated snis are present in the request", function()
+        local n1 = get_name()
+        local n2 = get_name()
         local res = client:post("/certificates", {
           body    = {
             cert  = ssl_fixtures.cert,
             key   = ssl_fixtures.key,
-            snis  = { "foo.com", "bar.com" },
+            snis  = { n1, n2, n1 },
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.equals("schema violation (snis: " .. n1 .. " is duplicated)", json.message)
+
+        -- make sure we didnt add the certificate, or any snis
+        local json = get_certificates()
+        for _, data in ipairs(json.data) do
+          for _, sni in ipairs(data.snis) do
+            assert.not_equal(n1, sni)
+            assert.not_equal(n2, sni)
+          end
+        end
+      end)
+
+      it("returns a conflict when a pre-existing sni is detected", function()
+        local n1 = get_name()
+        local n2 = get_name()
+        local res = client:post("/certificates", {
+          body    = {
+            cert  = ssl_fixtures.cert,
+            key   = ssl_fixtures.key,
+            snis  = { n1 },
           },
           headers = { ["Content-Type"] = "application/json" },
         })
         assert.res_status(201, res)
-      end)
 
-      it("returns a conflict when duplicated snis are present in the request", function()
         local res = client:post("/certificates", {
           body    = {
             cert  = ssl_fixtures.cert,
             key   = ssl_fixtures.key,
-            snis  = { "foobar.com", "baz.com", "foobar.com" },
+            snis  = { n1, n2 },
           },
           headers = { ["Content-Type"] = "application/json" },
         })
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
-        assert.equals("schema violation (snis: foobar.com is duplicated)", json.message)
+        assert.matches("snis: " .. n1 .. " already associated with existing certificate", json.message)
 
         -- make sure we didnt add the certificate, or any snis
-        res  = client:get("/certificates")
-        body = assert.res_status(200, res)
-        json = cjson.decode(body)
-        assert.equal(1, #json.data)
-        assert.same({ "bar.com", "foo.com" }, json.data[1].snis)
-      end)
-
-      it("returns a conflict when a pre-existing sni is detected", function()
-        local res = client:post("/certificates", {
-          body    = {
-            cert  = ssl_fixtures.cert,
-            key   = ssl_fixtures.key,
-            snis  = { "foo.com" },
-          },
-          headers = { ["Content-Type"] = "application/json" },
-        })
-        local body = assert.res_status(400, res)
-        local json = cjson.decode(body)
-        assert.matches("snis: foo.com already associated with existing certificate", json.message)
-
-        -- make sure we only have one certificate, with two snis
-        res  = client:get("/certificates")
-        body = assert.res_status(200, res)
-        json = cjson.decode(body)
-        assert.equal(1, #json.data)
-        assert.same({ "bar.com", "foo.com" }, json.data[1].snis)
+        local json = get_certificates()
+        for _, data in ipairs(json.data) do
+          for _, sni in ipairs(data.snis) do
+            assert.not_equal(n2, sni)
+          end
+        end
       end)
 
       it_content_types("creates a certificate and returns it with the snis pseudo-property", function(content_type)
         return function()
+          local n1 = get_name()
+          local n2 = get_name()
+
           local body
           if content_type == "multipart/form-data" then
             body = {
               cert        = ssl_fixtures.cert,
               key         = ssl_fixtures.key,
-              ["snis[1]"] = "foobar.com",
-              ["snis[2]"] = "baz.com",
+              ["snis[1]"] = n1,
+              ["snis[2]"] = n2,
             }
           elseif content_type == "application/x-www-form-urlencoded" then
             body = {
               cert = require "socket.url".escape(ssl_fixtures.cert),
               key  = require "socket.url".escape(ssl_fixtures.key),
-              snis = { "foobar.com", "baz.com", }
+              snis = { n1, n2 }
             }
           else
             body = {
               cert = ssl_fixtures.cert,
               key  = ssl_fixtures.key,
-              snis = { "foobar.com", "baz.com", }
+              snis = { n1, n2 }
             }
           end
 
@@ -192,7 +209,7 @@ describe("Admin API: #" .. strategy, function()
           local json = cjson.decode(body)
           assert.is_string(json.cert)
           assert.is_string(json.key)
-          assert.same({ "baz.com", "foobar.com" }, json.snis)
+          assert.same({ n1, n2 }, json.snis)
         end
       end)
 
@@ -227,48 +244,32 @@ describe("Admin API: #" .. strategy, function()
   end)
 
   describe("/certificates/cert_id_or_sni", function()
-    local certificate
-
-    before_each(function()
-      assert(db:truncate("certificates"))
-      assert(db:truncate("snis"))
-
-      local res = client:post("/certificates", {
-        body    = {
-          cert  = ssl_fixtures.cert,
-          key   = ssl_fixtures.key,
-          snis  = { "foo.com", "bar.com" },
-        },
-        headers = { ["Content-Type"] = "application/json" },
-      })
-
-      local body = assert.res_status(201, res)
-      certificate = cjson.decode(body)
-    end)
 
     describe("GET", function()
       it("retrieves a certificate by id", function()
+        local certificate, names = add_certificate()
         local res1  = client:get("/certificates/" .. certificate.id)
         local body1 = assert.res_status(200, res1)
         local json1 = cjson.decode(body1)
 
         assert.is_string(json1.cert)
         assert.is_string(json1.key)
-        assert.same({ "bar.com", "foo.com" }, json1.snis)
+        assert.same(names, json1.snis)
       end)
 
       it("retrieves a certificate by sni", function()
-        local res1  = client:get("/certificates/foo.com")
+        local _, names = add_certificate()
+        local res1  = client:get("/certificates/" .. names[1])
         local body1 = assert.res_status(200, res1)
         local json1 = cjson.decode(body1)
 
-        local res2  = client:get("/certificates/bar.com")
+        local res2  = client:get("/certificates/" .. names[2])
         local body2 = assert.res_status(200, res2)
         local json2 = cjson.decode(body2)
 
         assert.is_string(json1.cert)
         assert.is_string(json1.key)
-        assert.same({ "bar.com", "foo.com" }, json1.snis)
+        assert.same(names, json1.snis)
         assert.same(json1, json2)
       end)
 
@@ -285,12 +286,13 @@ describe("Admin API: #" .. strategy, function()
 
     describe("PUT", function()
       it("creates if not found", function()
+        local n1 = get_name()
         local id = utils.uuid()
         local res = client:put("/certificates/" .. id, {
           body = {
             cert = ssl_fixtures.cert,
             key = ssl_fixtures.key,
-            snis = { "example.com" },
+            snis = { n1 },
           },
           headers = { ["Content-Type"] = "application/json" },
         })
@@ -298,7 +300,7 @@ describe("Admin API: #" .. strategy, function()
         local json = cjson.decode(body)
         assert.same(ssl_fixtures.cert, json.cert)
 
-        assert.same({ "example.com" }, json.snis)
+        assert.same({ n1 }, json.snis)
         json.snis = nil
 
         local in_db = assert(db.certificates:select({ id = id }, { nulls = true }))
@@ -306,11 +308,13 @@ describe("Admin API: #" .. strategy, function()
       end)
 
       it("creates a new sni when provided in the url", function()
-        local res = client:put("/certificates/new-sni.com", {
+        local n1 = get_name()
+        local n2 = get_name()
+        local res = client:put("/certificates/" .. n1, {
           body = {
             cert = ssl_fixtures.cert,
             key = ssl_fixtures.key,
-            snis = { "example.com" },
+            snis = { n2 },
           },
           headers = { ["Content-Type"] = "application/json" },
         })
@@ -319,7 +323,7 @@ describe("Admin API: #" .. strategy, function()
         local json = cjson.decode(body)
         assert.same(ssl_fixtures.cert, json.cert)
 
-        assert.same({ "example.com", "new-sni.com" }, json.snis)
+        assert.same({ n1, n2 }, json.snis)
         json.snis = nil
 
         local in_db = assert(db.certificates:select({ id = json.id }, { nulls = true }))
@@ -327,6 +331,8 @@ describe("Admin API: #" .. strategy, function()
       end)
 
       it("upserts if found", function()
+        local certificate = add_certificate()
+
         local res = client:put("/certificates/" .. certificate.id, {
           body = { cert = ssl_fixtures.cert_alt, key = ssl_fixtures.key_alt },
           headers = { ["Content-Type"] = "application/json" },
@@ -383,38 +389,11 @@ describe("Admin API: #" .. strategy, function()
     end)
 
     describe("PATCH", function()
-      local cert_foo
-      local cert_bar
-
-      before_each(function()
-        assert(db:truncate("certificates"))
-        assert(db:truncate("snis"))
-
-        local res = client:post("/certificates", {
-          body    = {
-            cert  = ssl_fixtures.cert,
-            key   = ssl_fixtures.key,
-            snis  = { "foo.com" },
-          },
-          headers = { ["Content-Type"] = "application/json" },
-        })
-        local body = assert.res_status(201, res)
-        cert_foo = cjson.decode(body)
-
-        local res = client:post("/certificates", {
-          body    = {
-            cert  = ssl_fixtures.cert,
-            key   = ssl_fixtures.key,
-            snis  = { "bar.com" },
-          },
-          headers = { ["Content-Type"] = "application/json" },
-        })
-        local body = assert.res_status(201, res)
-        cert_bar = cjson.decode(body)
-      end)
 
       it_content_types("updates a certificate by cert id", function(content_type)
         return function()
+          local certificate = add_certificate()
+
           local body
           if content_type == "application/x-www-form-urlencoded" then
             body = {
@@ -428,7 +407,7 @@ describe("Admin API: #" .. strategy, function()
             }
           end
 
-          local res = client:patch("/certificates/" .. cert_foo.id, {
+          local res = client:patch("/certificates/" .. certificate.id, {
             body = body,
             headers = { ["Content-Type"] = content_type }
           })
@@ -442,7 +421,9 @@ describe("Admin API: #" .. strategy, function()
 
       it_content_types("update by id returns full certificate", function(content_type)
         return function()
-          local res = client:patch("/certificates/" .. cert_foo.id, {
+          local certificate = add_certificate()
+
+          local res = client:patch("/certificates/" .. certificate.id, {
             body = {},
             headers = { ["Content-Type"] = content_type }
           })
@@ -450,12 +431,14 @@ describe("Admin API: #" .. strategy, function()
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
-          assert.same(cert_foo, json)
+          assert.same(certificate, json)
         end
       end)
 
       it_content_types("updates a certificate by sni", function(content_type)
         return function()
+          local _, names = add_certificate()
+
           local body
           if content_type == "application/x-www-form-urlencoded" then
             body = {
@@ -469,7 +452,7 @@ describe("Admin API: #" .. strategy, function()
             }
           end
 
-          local res = client:patch("/certificates/foo.com", {
+          local res = client:patch("/certificates/" .. names[1], {
             body = body,
             headers = { ["Content-Type"] = content_type }
           })
@@ -483,7 +466,9 @@ describe("Admin API: #" .. strategy, function()
 
       it_content_types("update by sni returns full certificate", function(content_type)
         return function()
-          local res = client:patch("/certificates/foo.com", {
+          local certificate, names = add_certificate()
+
+          local res = client:patch("/certificates/" .. names[1], {
             body = {},
             headers = { ["Content-Type"] = content_type }
           })
@@ -491,16 +476,17 @@ describe("Admin API: #" .. strategy, function()
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
-          assert.same(cert_foo, json)
+          assert.same(certificate, json)
         end
       end)
 
       it("returns 404 for a random non-existing id", function()
+        local n1 = get_name()
         local res = client:patch("/certificates/" .. utils.uuid(), {
           body    = {
             cert  = ssl_fixtures.cert,
             key   = ssl_fixtures.key,
-            snis  = { "baz.com" },
+            snis  = { n1 },
           },
           headers = { ["Content-Type"] = "application/json" },
         })
@@ -508,88 +494,104 @@ describe("Admin API: #" .. strategy, function()
         assert.res_status(404, res)
 
         -- make sure we did not add any certificate or sni
-        res  = client:get("/certificates")
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.equal(2, #json.data)
-        assert.same({ { "bar.com" }, { "foo.com" } }, get_snis_lists(json.data))
+        local json = get_certificates()
+        for _, data in ipairs(json.data) do
+          for _, sni in ipairs(data.snis) do
+            assert.not_equal(n1, sni)
+          end
+        end
       end)
 
       it("updates snis associated with a certificate", function()
-        local res = client:patch("/certificates/" .. cert_foo.id, {
-          body    = { snis = { "baz.com" }, },
+        local certificate = add_certificate()
+        local n1 = get_name()
+
+        local json_before = get_certificates()
+
+        local res = client:patch("/certificates/" .. certificate.id, {
+          body    = { snis = { n1 }, },
           headers = { ["Content-Type"] = "application/json" },
         })
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.same({ "baz.com" }, json.snis)
+        assert.same({ n1 }, json.snis)
 
         -- make sure we did not add any certificate, and that the snis
         -- are correct
-        res  = client:get("/certificates")
-        body = assert.res_status(200, res)
-        json = cjson.decode(body)
-        assert.equal(2, #json.data)
-        assert.same({ { "bar.com" }, { "baz.com" } }, get_snis_lists(json.data))
+        local json = get_certificates()
+        assert.equal(#json_before.data, #json.data)
+        for i, data in ipairs(json.data) do
+          if data.id == certificate.id then
+            assert.same({ n1 }, data.snis)
+          else
+            assert.same(json_before.data[i].snis, data.snis)
+          end
+        end
       end)
 
       it("updates only the certificate if no snis are specified", function()
-        local res = client:patch( "/certificates/" .. cert_bar.id, {
+        local certificate, names = add_certificate()
+
+        local json_before = get_certificates()
+
+        local res = client:patch( "/certificates/" .. certificate.id, {
           body    = {
             cert  = ssl_fixtures.cert,
             key   = ssl_fixtures.key,
           },
           headers = { ["Content-Type"] = "application/json" },
         })
-
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
         -- make sure certificate got updated and sni remains the same
-        assert.same({ "bar.com" }, json.snis)
+        assert.same(names, json.snis)
         assert.same(ssl_fixtures.cert, json.cert)
         assert.same(ssl_fixtures.key, json.key)
 
         -- make sure the certificate got updated in DB
-        res  = client:get("/certificates/" .. cert_bar.id)
+        res  = client:get("/certificates/" .. certificate.id)
         body = assert.res_status(200, res)
         json = cjson.decode(body)
         assert.equal(ssl_fixtures.cert, json.cert)
         assert.equal(ssl_fixtures.key, json.key)
 
         -- make sure we did not add any certificate or sni
-        res  = client:get("/certificates")
-        body = assert.res_status(200, res)
-        json = cjson.decode(body)
-        assert.same({ { "bar.com" }, { "foo.com" } }, get_snis_lists(json.data))
+        local json = get_certificates()
+        assert.same(json_before, json)
       end)
 
       it("returns a conflict when duplicated snis are present in the request", function()
-        local res = client:patch("/certificates/" .. cert_bar.id, {
+        local certificate = add_certificate()
+        local json_before = get_certificates()
+        local n1 = get_name()
+
+        local res = client:patch("/certificates/" .. certificate.id, {
           body    = {
-            snis  = { "baz.com", "baz.com" },
+            snis  = { n1, n1 },
           },
           headers = { ["Content-Type"] = "application/json" },
         })
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
 
-        assert.equals("schema violation (snis: baz.com is duplicated)", json.message)
+        assert.equals("schema violation (snis: " .. n1 .. " is duplicated)", json.message)
 
         -- make sure we did not change certificates or snis
-        res = client:get("/certificates")
-        body = assert.res_status(200, res)
-        json = cjson.decode(body)
-        assert.equal(2, #json.data)
-        assert.same({ { "bar.com" }, { "foo.com" } }, get_snis_lists(json.data))
+        local json = get_certificates()
+        assert.same(json_before, json)
       end)
 
       it("returns a conflict when a pre-existing sni present in " ..
          "the request is associated with another certificate", function()
-        local res = client:patch("/certificates/" .. cert_bar.id, {
+        local certificate = add_certificate()
+        local certificate2, names2 = add_certificate()
+        local json_before = get_certificates()
+
+        local res = client:patch("/certificates/" .. certificate.id, {
           body    = {
-            snis  = { "foo.com", "baz.com" },
+            snis  = names2,
           },
           headers = { ["Content-Type"] = "application/json" },
         })
@@ -597,16 +599,13 @@ describe("Admin API: #" .. strategy, function()
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
 
-        assert.equals("schema violation (snis: foo.com already associated with " ..
-                      "existing certificate '" .. cert_foo.id .. "')",
+        assert.equals("schema violation (snis: " .. names2[1] .. " already associated with " ..
+                      "existing certificate '" .. certificate2.id .. "')",
                       json.message)
 
         -- make sure we did not add any certificate or sni
-        res  = client:get("/certificates")
-        body = assert.res_status(200, res)
-        json = cjson.decode(body)
-        assert.equal(2, #json.data)
-        assert.same({ { "bar.com" }, { "foo.com" } }, get_snis_lists(json.data))
+        local json = get_certificates()
+        assert.same(json_before, json)
       end)
 
       it("deletes all snis from a certificate if snis field is JSON null", function()
@@ -614,7 +613,10 @@ describe("Admin API: #" .. strategy, function()
         -- form-urlencoded requests. This depends on upcoming work
         -- to the Admin API. We here follow the road taken by:
         -- https://github.com/Kong/kong/pull/2700
-        local res = client:patch("/certificates/" .. cert_bar.id, {
+        local certificate = add_certificate()
+        local json_before = get_certificates()
+
+        local res = client:patch("/certificates/" .. certificate.id, {
           body    = {
             snis  = ngx.null,
           },
@@ -627,43 +629,39 @@ describe("Admin API: #" .. strategy, function()
         assert.matches('"snis":[]', body, nil, true)
 
         -- make sure we did not add any certificate and the sni was deleted
-        res  = client:get("/certificates")
-        body = assert.res_status(200, res)
-        json = cjson.decode(body)
-        assert.equal(2, #json.data)
-        assert.same({ {}, { "foo.com" } }, get_snis_lists(json.data))
+        local json = get_certificates()
+        assert.equal(#json_before.data, #json.data)
+        for i, data in ipairs(json.data) do
+          if data.id == certificate.id then
+            assert.same({}, data.snis)
+          else
+            assert.same(json_before.data[i].snis, data.snis)
+          end
+        end
       end)
     end)
 
     describe("DELETE", function()
       it("deletes a certificate and all related snis", function()
-        local res = client:delete("/certificates/foo.com")
+        local json_before = get_certificates()
+        local _, names = add_certificate()
+
+        local res = client:delete("/certificates/" .. names[1])
         assert.res_status(204, res)
 
-        res = client:get("/certificates")
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.equal(0, #json.data)
+        local json = get_certificates()
+        assert.same(json_before, json)
       end)
 
       it("deletes a certificate by id", function()
-        local res = client:post("/certificates", {
-          body = {
-            cert = ssl_fixtures.cert,
-            key = ssl_fixtures.key,
-          },
-          headers = { ["Content-Type"] = "application/json" }
-        })
-        local body = assert.res_status(201, res)
-        local json = cjson.decode(body)
+        local json_before = get_certificates()
+        local certificate = add_certificate()
 
-        local res = client:delete("/certificates/" .. json.id)
+        local res = client:delete("/certificates/" .. certificate.id)
         assert.res_status(204, res)
 
-        res = client:get("/certificates")
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.equal(1, #json.data)
+        local json = get_certificates()
+        assert.same(json_before, json)
       end)
     end)
   end)
@@ -672,23 +670,11 @@ describe("Admin API: #" .. strategy, function()
   describe("/certificates/:certificate/snis", function()
     describe("POST", function()
 
-      local certificate
-      before_each(function()
-        assert(db:truncate("certificates"))
-        assert(db:truncate("snis"))
-
-        certificate = bp.certificates:insert()
-        bp.snis:insert({
-          name = "ttt.com",
-          certificate = { id = certificate.id }
-        })
-      end)
-
       describe("errors", function()
         it("certificate doesn't exist", function()
           local res = client:post("/certificates/585e4c16-c656-11e6-8db9-5f512d8a12cd/snis", {
             body = {
-              name = "bar.com",
+              name = get_name(),
             },
             headers = { ["Content-Type"] = "application/json" },
           })
@@ -701,45 +687,46 @@ describe("Admin API: #" .. strategy, function()
 
       it_content_types("creates a sni using a certificate id", function(content_type)
         return function()
+          local certificate = add_certificate()
+          local n1 = get_name()
           local res = client:post("/certificates/" .. certificate.id .. "/snis", {
             body = {
-              name = "foo.com",
+              name = n1,
             },
             headers = { ["Content-Type"] = content_type },
           })
 
           local body = assert.res_status(201, res)
           local json = cjson.decode(body)
-          assert.equal("foo.com", json.name)
+          assert.equal(n1, json.name)
           assert.equal(certificate.id, json.certificate.id)
         end
       end)
 
       it_content_types("creates a sni using a sni to id the certificate", function(content_type)
         return function()
-          local res = client:post("/certificates/ttt.com/snis", {
+          local certificate, names = add_certificate()
+          local n1 = get_name()
+          local res = client:post("/certificates/" .. names[1] .. "/snis", {
             body = {
-              name = "foo.com",
+              name = n1,
             },
             headers = { ["Content-Type"] = content_type },
           })
 
           local body = assert.res_status(201, res)
           local json = cjson.decode(body)
-          assert.equal("foo.com", json.name)
+          assert.equal(n1, json.name)
           assert.equal(certificate.id, json.certificate.id)
         end
       end)
 
       it("returns a conflict when an sni already exists", function()
-        bp.snis:insert {
-          name = "foo.com",
-          certificate = certificate,
-        }
+        local certificate, names = add_certificate()
 
         local res = client:post("/certificates/" .. certificate.id .. "/snis", {
           body    = {
-            name = "foo.com",
+            name = names[1],
           },
           headers = { ["Content-Type"] = "application/json" },
         })
@@ -752,12 +739,11 @@ describe("Admin API: #" .. strategy, function()
 
     describe("GET", function()
       it("retrieves a list of snis", function()
-        assert(db:truncate("certificates"))
-        assert(db:truncate("snis"))
+        local n1 = get_name()
 
         local certificate = bp.certificates:insert()
         bp.snis:insert {
-          name        = "foo.com",
+          name        = n1,
           certificate = certificate,
         }
 
@@ -765,39 +751,24 @@ describe("Admin API: #" .. strategy, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equal(1, #json.data)
-        assert.equal("foo.com", json.data[1].name)
+        assert.equal(n1, json.data[1].name)
         assert.equal(certificate.id, json.data[1].certificate.id)
       end)
     end)
   end)
 
   describe("/snis/:name", function()
-    local certificate, sni
-
-    before_each(function()
-      assert(db:truncate("certificates"))
-      assert(db:truncate("snis"))
-
-      certificate = bp.certificates:insert()
-      sni = bp.snis:insert {
-        name        = "foo.com",
-        certificate = certificate,
-      }
-    end)
 
     describe("wildcard snis", function()
-      lazy_setup(function()
-        assert(db:truncate("certificates"))
-        assert(db:truncate("snis"))
-
-        certificate = bp.certificates:insert()
-      end)
 
       describe("POST", function()
         it("creates with prefix wildcard", function()
+          local certificate = add_certificate()
+          local n1 = get_name()
+
           local res = client:post("/snis", {
             body = {
-              name = "*.wildcard.com",
+              name = "*." .. n1,
               certificate = { id = certificate.id },
             },
             headers = { ["Content-Type"] = "application/json" },
@@ -805,14 +776,17 @@ describe("Admin API: #" .. strategy, function()
 
           local body = assert.res_status(201, res)
           local json = cjson.decode(body)
-          assert.equal("*.wildcard.com", json.name)
+          assert.equal("*." .. n1, json.name)
           assert.equal(certificate.id, json.certificate.id)
         end)
 
         it("creates with suffix wildcard", function()
+          local certificate = add_certificate()
+          local n1 = get_name()
+
           local res = client:post("/snis", {
             body = {
-              name = "wildcard.*",
+              name = n1 .. ".*",
               certificate = { id = certificate.id },
             },
             headers = { ["Content-Type"] = "application/json" },
@@ -820,11 +794,13 @@ describe("Admin API: #" .. strategy, function()
 
           local body = assert.res_status(201, res)
           local json = cjson.decode(body)
-          assert.equal("wildcard.*", json.name)
+          assert.equal(n1 .. ".*", json.name)
           assert.equal(certificate.id, json.certificate.id)
         end)
 
         it("rejects invalid SNIs", function()
+          local certificate = add_certificate()
+
           local res = client:post("/snis", {
             body = {
               name = "*.wildcard.*",
@@ -840,11 +816,10 @@ describe("Admin API: #" .. strategy, function()
       end)
 
       describe("GET", function()
-        lazy_setup(function()
-          assert(db:truncate("snis"))
-        end)
 
         it("retrieves a wildcard SNI using the name", function()
+          local certificate = add_certificate()
+
           bp.snis:insert({
             name = "*.wildcard.com",
             certificate = { id = certificate.id },
@@ -860,43 +835,61 @@ describe("Admin API: #" .. strategy, function()
 
     describe("GET", function()
       it("retrieves a sni using the name", function()
-        local res  = client:get("/snis/foo.com")
+        local certificate, names = add_certificate()
+        local res  = client:get("/snis/" .. names[1])
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("foo.com", json.name)
+        assert.equal(names[1], json.name)
         assert.equal(certificate.id, json.certificate.id)
       end)
       it("retrieves a sni using the id", function()
+        local certificate = add_certificate()
+        local n1 = get_name()
+        local sni = bp.snis:insert({
+          name = n1,
+          certificate = { id = certificate.id },
+        })
+
         local res  = client:get("/snis/" .. sni.id)
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("foo.com", json.name)
+        assert.equal(n1, json.name)
         assert.equal(certificate.id, json.certificate.id)
       end)
     end)
 
     describe("PUT", function()
       it("creates if not found", function()
+        local certificate = add_certificate()
+        local n1 = get_name()
         local id = utils.uuid()
         local res = client:put("/snis/" .. id, {
           body = {
             certificate = { id = certificate.id },
-            name = "created.com",
+            name = n1,
           },
           headers = { ["Content-Type"] = "application/json" },
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.same("created.com", json.name)
+        assert.same(n1, json.name)
 
         local in_db = assert(db.snis:select({ id = id }, { nulls = true }))
         assert.same(json, in_db)
       end)
 
       it("updates if found", function()
+        local certificate = add_certificate()
+        local n1 = get_name()
+        local sni = bp.snis:insert({
+          name = n1,
+          certificate = { id = certificate.id },
+        })
+        local n2 = get_name()
+
         local res = client:put("/snis/" .. sni.id, {
           body = {
-            name = "updated.com",
+            name = n2,
             certificate = { id = certificate.id },
           },
           headers = { ["Content-Type"] = "application/json" },
@@ -904,7 +897,7 @@ describe("Admin API: #" .. strategy, function()
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.same("updated.com", json.name)
+        assert.same(n2, json.name)
 
         local in_db = assert(db.snis:select({ id = sni.id }, { nulls = true }))
         assert.same(json, in_db)
@@ -931,12 +924,14 @@ describe("Admin API: #" .. strategy, function()
 
     describe("PATCH", function()
       it("updates a sni", function()
+        local certificate, names = add_certificate()
+
         local certificate_2 = bp.certificates:insert {
           cert = ssl_fixtures.cert_alt,
           key = ssl_fixtures.key_alt,
         }
 
-        local res = client:patch("/snis/foo.com", {
+        local res = client:patch("/snis/" .. names[1], {
           body = {
             certificate = { id = certificate_2.id },
           },
@@ -950,18 +945,25 @@ describe("Admin API: #" .. strategy, function()
         local res = client:get("/certificates/" .. certificate.id)
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.same({}, json.snis)
+        assert.same({ names[2] }, json.snis)
 
         local res = client:get("/certificates/" .. certificate_2.id)
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.same({ "foo.com" }, json.snis)
+        assert.same({ names[1] }, json.snis)
       end)
     end)
 
     describe("DELETE", function()
       it("deletes a sni", function()
-        local res = client:delete("/snis/foo.com")
+        local certificate = add_certificate()
+        local n1 = get_name()
+        bp.snis:insert({
+          name = n1,
+          certificate = { id = certificate.id },
+        })
+
+        local res = client:delete("/snis/" .. n1)
         assert.res_status(204, res)
       end)
     end)
