@@ -1,4 +1,5 @@
 local transform_utils = require "kong.plugins.response-transformer-advanced.transform_utils"
+local pl_stringx = require "pl.stringx"
 
 local skip_transform = transform_utils.skip_transform
 local insert = table.insert
@@ -39,19 +40,76 @@ local function append_value(current_value, value)
   end
 end
 
-local function remove_value(ngx_header_value, header_value)
-  local ngx_header_value_type = type(ngx_header_value)
-
-  if ngx_header_value_type == "table" then
-    for k, v in ipairs(ngx_header_value) do
-      if v == header_value then
-        table.remove(ngx_header_value, k)
-        return ngx_header_value
-      end
-    end
-  else
+local function remove_value(ngx_header_value, header_name, header_value)
+  if not header_value then
     return nil
   end
+
+  local new_ngx_headers = {}
+
+  -- Implements the following part of
+  -- https://httpwg.org/specs/rfc7230.html#rfc.section.3.2.2
+  --
+  -- A sender MUST NOT generate multiple header fields with the same field name
+  -- in a message unless either the entire field value for that header field is
+  -- defined as a comma-separated list [i.e., #(values)] or the header field is
+  -- a well-known exception (as noted below).
+  if type(ngx_header_value) == "string" then
+    local ngx_values = pl_stringx.split(ngx_header_value, ",")
+
+    for k, v in pairs(ngx_values) do
+      if v and v == header_value then
+        ngx_values[k] = nil
+      end
+    end
+
+    for k, v in pairs(ngx_values) do
+      if v then
+        table.insert(new_ngx_headers, v)
+      end
+    end
+
+    if #new_ngx_headers == 0 then
+      return nil
+    end
+
+    if #new_ngx_headers == 1 then
+      return new_ngx_headers[1]
+    end
+
+    return pl_stringx.join(',', new_ngx_headers)
+  end
+
+  -- Implements the following part of
+  -- https://httpwg.org/specs/rfc7230.html#rfc.section.3.2.2
+
+  -- In practice, the "Set-Cookie" header field ([RFC6265]) often appears
+  -- multiple times in a response message and does not use the list syntax,
+  -- violating the above requirements on multiple header fields with the same
+  -- name. Since it cannot be combined into a single field-value, recipients
+  -- ought to handle "Set-Cookie" as a special case while processing header
+  -- fields.
+  if header_name == "Set-Cookie" or type(ngx_header_value) == "table" then
+    for k, v in pairs(ngx_header_value) do
+      if v and v == header_value then
+        ngx_header_value[k] = nil
+      end
+    end
+
+    for k, v in pairs(ngx_header_value) do
+      if v then
+        table.insert(new_ngx_headers, v)
+      end
+    end
+
+    if #new_ngx_headers == 0 then
+      return nil
+    end
+
+    return new_ngx_headers
+  end
+
+  return nil
 end
 
 local function is_json_body(content_type)
@@ -80,7 +138,8 @@ function _M.transform_headers(conf, ngx_headers, resp_code)
   -- remove headers
   if not skip_transform(resp_code, conf.remove.if_status) then
     for _, header_name, header_value in iter(conf.remove.headers) do
-      ngx_headers[header_name] = remove_value(ngx_headers[header_name], header_value)
+      ngx_headers[header_name] = remove_value(ngx_headers[header_name],
+                                              header_name, header_value)
     end
   end
 
