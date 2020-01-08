@@ -96,6 +96,12 @@ do
     end
   end
 
+  -- This function makes a RPC call to the Go plugin server. The Go plugin
+  -- server communication is request driven from the Kong side. Kong first
+  -- sends the RPC request, then it executes any PDK calls from Go code
+  -- in the while loop below. The boundary of a RPC call is reached once
+  -- the RPC response (type 1) message is seen. After that the connection
+  -- is kept alive waiting for the next RPC call to be initiated by Kong.
   function rpc_call(method, ...)
     msg_id = msg_id + 1
     local my_msg_id = msg_id
@@ -129,18 +135,23 @@ do
         if f then
           f(data[3])
         end
-      end
 
-      if data[1] == 1 and data[2] == my_msg_id then
+      else
+        assert(data[1] == 1, "RPC response expected from Go plugin server")
+        assert(data[2] == my_msg_id,
+               "unexpected RPC response ID from Go plugin server")
+
         -- it's our answer
+        c:setkeepalive()
+
         if data[3] ~= nil then
-          c:setkeepalive()
           return nil, data[3]
         end
 
-        c:setkeepalive()
         return data[4]
       end
+
+      assert(false, "unreachable")
     end
   end
 end
