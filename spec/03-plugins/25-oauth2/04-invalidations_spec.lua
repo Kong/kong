@@ -1,5 +1,6 @@
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
+local admin_api = require "spec.fixtures.admin_api"
 
 
 for _, strategy in helpers.each_strategy() do
@@ -7,10 +8,10 @@ for _, strategy in helpers.each_strategy() do
     local admin_client
     local proxy_ssl_client
     local db
-    local bp
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy, {
+      local _
+      _, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
         "consumers",
@@ -19,26 +20,33 @@ for _, strategy in helpers.each_strategy() do
         "oauth2_credentials",
         "oauth2_authorization_codes",
       })
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
     end)
 
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    local service
+    local route
+    local plugin
+    local consumer
+    local credential
+
     before_each(function()
-      assert(db:truncate("routes"))
-      assert(db:truncate("services"))
-      assert(db:truncate("consumers"))
-      assert(db:truncate("plugins"))
-      assert(db:truncate("oauth2_tokens"))
-      assert(db:truncate("oauth2_credentials"))
-      assert(db:truncate("oauth2_authorization_codes"))
+      service = admin_api.services:insert()
 
-      local service = bp.services:insert()
-
-      local route = assert(db.routes:insert {
+      route = assert(admin_api.routes:insert {
         hosts     = { "oauth2.com" },
         protocols = { "http", "https" },
         service   = service,
       })
 
-      db.plugins:insert {
+      plugin = admin_api.plugins:insert {
         name     = "oauth2",
         route = { id = route.id },
         config   = {
@@ -51,11 +59,11 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      local consumer = bp.consumers:insert {
+      consumer = admin_api.consumers:insert {
         username = "bob",
       }
 
-      db.oauth2_credentials:insert {
+      credential = admin_api.oauth2_credentials:insert {
         client_id      = "clientid123",
         client_secret  = "secret123",
         redirect_uris  = { "http://google.com/kong" },
@@ -63,22 +71,21 @@ for _, strategy in helpers.each_strategy() do
         consumer       = { id = consumer.id },
       }
 
-      assert(helpers.start_kong({
-        database   = strategy,
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
-
       admin_client     = helpers.admin_client()
       proxy_ssl_client = helpers.proxy_ssl_client()
     end)
 
     after_each(function()
+      admin_api.oauth2_credentials:remove({ id = credential.id })
+      admin_api.consumers:remove({ id = consumer.id })
+      admin_api.plugins:remove({ id = plugin.id })
+      admin_api.routes:remove({ id = route.id })
+      admin_api.services:remove({ id = service.id })
+
       if admin_client and proxy_ssl_client then
         admin_client:close()
         proxy_ssl_client:close()
       end
-
-      helpers.stop_kong()
     end)
 
     local function provision_code(client_id)
