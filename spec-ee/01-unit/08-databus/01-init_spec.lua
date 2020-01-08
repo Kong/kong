@@ -532,6 +532,61 @@ describe("databus", function()
       end)
     end)
 
+    -- process_callback is the function that executes callbacks on the
+    -- batch queue. It must not kill the worker on unhandled errors
+    describe("#process_callback", function()
+      it("does gracefully return false on unhandled errors", function()
+        local blob = {
+          callback = function(data, event, source, pid)
+            error("something bad")
+          end,
+          data = { some = "data" },
+          event = "some_event",
+          source = "some_source",
+          pid = 1234,
+        }
+        local ok, res, err = databus.process_callback({ blob })
+        assert.is_false(ok)
+        assert.matches("something bad", err)
+        assert.is_nil(res)
+      end)
+
+      it("returns true on correct execution", function()
+        local blob = {
+          callback = function(data, event, source, pid)
+            return "hello world"
+          end,
+          data = { some = "data" },
+          event = "some_event",
+          source = "some_source",
+          pid = 1234,
+        }
+        local ok, res, err = databus.process_callback({ blob })
+        assert.is_true(ok)
+        assert.equal("hello world", res)
+        assert.is_nil(err)
+      end)
+
+      it("sends data, event, source and pid to a callback from a blob", function()
+        local data = { some = "data" }
+        local event = "some_event"
+        local source = "some_source"
+        local pid = 1234
+        local blob = {
+          callback = function(data, event, source, pid)
+            return { data, event, source, pid }
+          end,
+          data = data,
+          event = event,
+          source = source,
+          pid = pid,
+        }
+        local ok, res, _ = databus.process_callback({ blob })
+        assert.is_true(ok)
+        assert.same({ data, event, source, pid }, res)
+      end)
+    end)
+
     describe("[#lambda]", function()
       local entity
       local handler = databus.handlers.lambda

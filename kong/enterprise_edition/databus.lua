@@ -107,12 +107,12 @@ local BatchQueue = require "kong.tools.batch_queue"
 
 local process_callback = function(batch)
   local entry = batch[1]
-  local ok, res = pcall(entry.callback, entry.data, entry.event, entry.source, entry.pid)
+  local ok, res_or_err = pcall(entry.callback, entry.data, entry.event, entry.source, entry.pid)
   if not ok then
-    kong.log.err(res)
-    return false, res
+    kong.log.err(res_or_err)
+    return false, nil, res_or_err
   end
-  return res
+  return true, res_or_err
 end
 
 local queue = BatchQueue.new(process_callback, {
@@ -329,5 +329,6 @@ _M.handlers = {
 _M.events = events
 _M.references = references
 _M.queue = queue
+_M.process_callback = process_callback
 
 return _M
