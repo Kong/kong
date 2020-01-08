@@ -311,8 +311,11 @@ _M.handlers = {
       local err
       for _, fn in ipairs(functions) do
         data, err = fn(data, event, source, pid)
+        if err then
+          break
+        end
       end
-      return not err
+      return not err, data, err
     end
   end,
 }
