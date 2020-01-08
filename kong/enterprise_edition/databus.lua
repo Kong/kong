@@ -302,8 +302,13 @@ _M.handlers = {
       setmetatable(fn_ctx, { __index = helper_ctx })
       -- t -> only text chunks
       local fn = load(fn_str, chunk_name .. ":" .. i, "t", fn_ctx)     -- load
-      local _, actual_fn = pcall(fn)
-      table.insert(functions, actual_fn)
+      local ok, actual_fn_or_err = pcall(fn)
+      if not ok then
+        return function()
+          return false, nil, actual_fn_or_err
+        end
+      end
+      table.insert(functions, actual_fn_or_err)
     end
 
     return function(data, event, source, pid)
