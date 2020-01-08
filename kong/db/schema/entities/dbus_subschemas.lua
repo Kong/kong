@@ -100,7 +100,8 @@ end
 local functions_array = {
   type = "array",
   required = true,
-  elements = { type = "string", custom_validator = validate_function }
+  elements = { type = "string", custom_validator = validate_function },
+  default = {},
 }
 
 

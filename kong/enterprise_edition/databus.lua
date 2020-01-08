@@ -295,7 +295,7 @@ _M.handlers = {
 
     local chunk_name = "dbus:" .. entity.id
 
-    for i, fn_str in ipairs(config.functions) do
+    for i, fn_str in ipairs(config.functions or {}) do
       -- each function has its own context. We could let them share context
       -- by not defining fn_ctx and just passing helper_ctx
       local fn_ctx = {}
