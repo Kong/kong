@@ -250,6 +250,30 @@ describe("NGINX conf compiler", function()
       end)
       it("is not included when 'nobody'", function()
         local conf = assert(conf_loader(helpers.test_conf_path, {
+          nginx_main_user = "nobody"
+        }))
+        local nginx_conf = prefix_handler.compile_nginx_conf(conf)
+        assert.not_matches("user%s+[^;]*;", nginx_conf)
+      end)
+      it("is not included when 'nobody nobody'", function()
+        local conf = assert(conf_loader(helpers.test_conf_path, {
+          nginx_main_user = "nobody nobody"
+        }))
+        local nginx_conf = prefix_handler.compile_nginx_conf(conf)
+        assert.not_matches("user%s+[^;]*;", nginx_conf)
+      end)
+      it("is included when otherwise", function()
+        local conf = assert(conf_loader(helpers.test_conf_path, {
+          nginx_main_user = "www_data www_data"
+        }))
+        local nginx_conf = prefix_handler.compile_nginx_conf(conf)
+        assert.matches("user%s+www_data www_data;", nginx_conf)
+      end)
+    end)
+
+    describe("user directive (alias)", function()
+      it("is not included when 'nobody'", function()
+        local conf = assert(conf_loader(helpers.test_conf_path, {
           nginx_user = "nobody"
         }))
         local nginx_conf = prefix_handler.compile_nginx_conf(conf)
