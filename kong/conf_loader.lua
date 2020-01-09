@@ -787,6 +787,25 @@ local function parse_nginx_directives(dyn_namespace, conf, injected_in_namespace
 end
 
 
+local function aliased_properties(conf)
+  for property_name, v_schema in pairs(CONF_INFERENCES) do
+    local alias = v_schema.alias
+
+    if alias and conf[property_name] ~= nil and conf[alias.replacement] == nil then
+      if alias.alias then
+        conf[alias.replacement] = alias.alias(conf)
+      else
+        local value = conf[property_name]
+        if type(value) == "boolean" then
+          value = value and "on" or "off"
+        end
+        conf[alias.replacement] = tostring(value)
+      end
+    end
+  end
+end
+
+
 local function deprecated_properties(conf, opts)
   for property_name, v_schema in pairs(CONF_INFERENCES) do
     local deprecated = v_schema.deprecated
@@ -935,6 +954,7 @@ local function load(path, custom_conf, opts)
     log.disable()
   end
 
+  aliased_properties(user_conf)
   deprecated_properties(user_conf, opts)
 
   -- merge user_conf with defaults
