@@ -394,6 +394,39 @@
                                  # This value is ignored if `ssl_cipher_suite`
                                  # is not `custom`.
 
+#ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
+                                 # Enables the specified protocols for
+                                 # client-side connections. The set of
+                                 # supported protocol versions also depends
+                                 # on the version of OpenSSL Kong was built
+                                 # with. This value is ignored if
+                                 # `ssl_cipher_suite` is not `custom`.
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_protocols
+
+#ssl_prefer_server_ciphers = on  # Specifies that server ciphers should be
+                                 # preferred over client ciphers when using
+                                 # the SSLv3 and TLS protocols. This value is
+                                 # ignored if `ssl_cipher_suite` is not `custom`.
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_prefer_server_ciphers
+
+#ssl_session_tickets = on        # Enables or disables session resumption through
+                                 # TLS session tickets. This is has no impact when
+                                 # used with TLSv1.3.
+                                 #
+                                 # Kong enables this by default for performance
+                                 # reasons, but it has security implications:
+                                 # https://github.com/mozilla/server-side-tls/issues/135
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_tickets
+
+#ssl_session_timeout = 1d        # Specifies a time during which a client may
+                                 # reuse the session parameters. See the rationale:
+                                 # https://github.com/mozilla/server-side-tls/issues/198
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_timeout
+
 #ssl_cert =                      # The absolute path to the SSL certificate for
                                  # `proxy_listen` values with SSL enabled.
 
@@ -612,46 +645,6 @@
 #   server, you may specify `nginx_proxy_ssl_protocols` and/or
 #   `nginx_admin_ssl_protocols`, both of which taking precedence over the
 #   `http {}` block.
-
-#nginx_http_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
-                                 # Enables the specified protocols for
-                                 # client-side connections. The set of
-                                 # supported protocol versions also depends
-                                 # on the version of OpenSSL Kong was built
-                                 # with.
-                                 #
-                                 # This value is ignored if `ssl_cipher_suite`
-                                 # is not `custom`.
-                                 #
-                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_protocols
-
-#nginx_http_ssl_prefer_server_ciphers = on
-                                 # Specifies that server ciphers should be
-                                 # preferred over client ciphers when using
-                                 # the SSLv3 and TLS protocols
-                                 #
-                                 # This value is ignored if `ssl_cipher_suite`
-                                 # is not `custom`.
-                                 #
-                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_prefer_server_ciphers
-
-#nginx_http_ssl_session_tickets = on
-                                 # Enables or disables session resumption through
-                                 # TLS session tickets. This is has no impact when
-                                 # used with TLSv1.3.
-                                 #
-                                 # Kong enables this by default for performance
-                                 # reasons, but it has security implications:
-                                 # https://github.com/mozilla/server-side-tls/issues/135
-                                 #
-                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_tickets
-
-#nginx_http_ssl_session_timeout = 1d
-                                 # Specifies a time during which a client may
-                                 # reuse the session parameters. See the rationale:
-                                 # https://github.com/mozilla/server-side-tls/issues/198
-                                 #
-                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_timeout
 
 #nginx_upstream_keepalive = 60   # Sets the maximum number of idle keepalive
                                  # connections to upstream servers that are

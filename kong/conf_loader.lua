@@ -367,6 +367,35 @@ local CONF_INFERENCES = {
   router_consistency = { enum = { "strict", "eventual" } },
   router_update_frequency = { typ = "number" },
 
+  ssl_protocols = {
+    typ = "string",
+    directives = {
+      "nginx_http_ssl_protocols",
+      "nginx_stream_ssl_protocols",
+    },
+  },
+  ssl_prefer_server_ciphers = {
+    typ = "ngx_boolean",
+    directives = {
+      "nginx_http_ssl_prefer_server_ciphers",
+      "nginx_stream_ssl_prefer_server_ciphers",
+    },
+  },
+  ssl_session_tickets = {
+    typ = "ngx_boolean",
+    directives = {
+      "nginx_http_ssl_session_tickets",
+      "nginx_stream_ssl_session_tickets",
+    },
+  },
+  ssl_session_timeout = {
+    typ = "string",
+    directives = {
+      "nginx_http_ssl_session_timeout",
+      "nginx_stream_ssl_session_timeout",
+    },
+  },
+
   client_ssl = { typ = "boolean" },
 
   proxy_access_log = { typ = "string" },
@@ -605,6 +634,8 @@ local function check_and_infer(conf)
       conf.ssl_ciphers = suite.ciphers
       conf.nginx_http_ssl_protocols = suite.protocols
       conf.nginx_http_ssl_prefer_server_ciphers = suite.prefer_server_ciphers
+      conf.nginx_stream_ssl_protocols = suite.protocols
+      conf.nginx_stream_ssl_prefer_server_ciphers = suite.prefer_server_ciphers
 
     else
       errors[#errors + 1] = "Undefined cipher suite " .. tostring(conf.ssl_cipher_suite)
@@ -946,6 +977,26 @@ local function deprecated_properties(conf, opts)
 end
 
 
+local function dynamic_properties(conf)
+  for property_name, v_schema in pairs(CONF_INFERENCES) do
+    local value = conf[property_name]
+    if value ~= nil then
+      local directives = v_schema.directives
+      if directives then
+        for _, directive in ipairs(directives) do
+          if not conf[directive] then
+            if type(value) == "boolean" then
+              value = value and "on" or "off"
+            end
+            conf[directive] = value
+          end
+        end
+      end
+    end
+  end
+end
+
+
 --- Load Kong configuration file
 -- The loaded configuration will only contain properties read from the
 -- passed configuration file (properties are not merged with defaults or
@@ -1041,6 +1092,29 @@ local function load(path, custom_conf, opts)
     -- find dynamic keys that need to be loaded
     local dynamic_keys = {}
 
+    local function add_dynamic_keys(t)
+      t = t or {}
+
+      for property_name, v_schema in pairs(CONF_INFERENCES) do
+        local directives = v_schema.directives
+        if directives then
+          local v = t[property_name]
+          if v then
+            if type(v) == "boolean" then
+              v = v and "on" or "off"
+            end
+
+            tostring(v)
+
+            for _, directive in ipairs(directives) do
+              dynamic_keys[directive] = true
+              t[directive] = v
+            end
+          end
+        end
+      end
+    end
+
     local function find_dynamic_keys(dyn_prefix, t)
       t = t or {}
 
@@ -1050,11 +1124,7 @@ local function load(path, custom_conf, opts)
           dynamic_keys[directive] = true
 
           if type(v) == "boolean" then
-            if v then
-              v = "on"
-            else
-              v = "off"
-            end
+            v = v and "on" or "off"
           end
 
           t[k] = tostring(v)
@@ -1080,6 +1150,11 @@ local function load(path, custom_conf, opts)
       end
     end
 
+    add_dynamic_keys(defaults)
+    add_dynamic_keys(custom_conf)
+    add_dynamic_keys(kong_env_vars)
+    add_dynamic_keys(from_file_conf)
+
     for _, dyn_namespace in ipairs(DYNAMIC_KEY_NAMESPACES) do
       find_dynamic_keys(dyn_namespace.prefix, defaults) -- tostring() defaults
       find_dynamic_keys(dyn_namespace.prefix, custom_conf)
@@ -1102,6 +1177,7 @@ local function load(path, custom_conf, opts)
   end
 
   aliased_properties(user_conf)
+  dynamic_properties(user_conf)
   deprecated_properties(user_conf, opts)
 
   -- merge user_conf with defaults
@@ -1243,6 +1319,12 @@ local function load(path, custom_conf, opts)
         value = "stream_prometheus_metrics 5m",
       })
     end
+  end
+
+  for _, dyn_namespace in ipairs(DYNAMIC_KEY_NAMESPACES) do
+    table.sort(conf[dyn_namespace.injected_conf_name], function(a, b)
+      return a.name < b.name
+    end)
   end
 
   do
