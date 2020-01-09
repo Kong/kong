@@ -1770,8 +1770,10 @@ end
 local function stop_kong(prefix, preserve_prefix, preserve_dc)
   prefix = prefix or conf.prefix
 
-  local running_conf = get_running_conf(prefix)
-  if not running_conf then return end
+  local running_conf, err = get_running_conf(prefix)
+  if not running_conf then
+    return nil, err
+  end
 
   local ok, err = kong_exec("stop --prefix " .. prefix)
 
