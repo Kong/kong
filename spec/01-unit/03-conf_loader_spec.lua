@@ -19,7 +19,7 @@ describe("Configuration loader", function()
   it("loads the defaults", function()
     local conf = assert(conf_loader())
     assert.is_string(conf.lua_package_path)
-    assert.is_nil(conf.nginx_user)
+    assert.is_nil(conf.nginx_main_user)
     assert.equal("auto", conf.nginx_worker_processes)
     assert.same({"127.0.0.1:8001 reuseport backlog=16384", "127.0.0.1:8444 http2 ssl reuseport backlog=16384"}, conf.admin_listen)
     assert.same({"0.0.0.0:8000 reuseport backlog=16384", "0.0.0.0:8443 http2 ssl reuseport backlog=16384"}, conf.proxy_listen)
@@ -34,7 +34,7 @@ describe("Configuration loader", function()
     -- defaults
     assert.equal("on", conf.nginx_daemon)
     -- overrides
-    assert.is_nil(conf.nginx_user)
+    assert.is_nil(conf.nginx_main_user)
     assert.equal("1",            conf.nginx_worker_processes)
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
     assert.same({"0.0.0.0:9000", "0.0.0.0:9443 http2 ssl",
@@ -53,7 +53,7 @@ describe("Configuration loader", function()
     -- defaults
     assert.equal("on", conf.nginx_daemon)
     -- overrides
-    assert.is_nil(conf.nginx_user)
+    assert.is_nil(conf.nginx_main_user)
     assert.equal("auto",           conf.nginx_worker_processes)
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
     assert.same({"0.0.0.0:9000", "0.0.0.0:9443 http2 ssl",
@@ -385,11 +385,32 @@ describe("Configuration loader", function()
     end)
   end)
 
-  describe("nginx_user", function()
+  describe("nginx_main_user", function()
     it("is nil by default", function()
       local conf = assert(conf_loader(helpers.test_conf_path))
-      assert.is_nil(conf.nginx_user)
+      assert.is_nil(conf.nginx_main_user)
     end)
+    it("is nil when 'nobody'", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        nginx_main_user = "nobody"
+      }))
+      assert.is_nil(conf.nginx_main_user)
+    end)
+    it("is nil when 'nobody nobody'", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        nginx_main_user = "nobody nobody"
+      }))
+      assert.is_nil(conf.nginx_main_user)
+    end)
+    it("is 'www_data www_data' when 'www_data www_data'", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        nginx_main_user = "www_data www_data"
+      }))
+      assert.equal("www_data www_data", conf.nginx_main_user)
+    end)
+  end)
+
+  describe("nginx_user", function()
     it("is nil when 'nobody'", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         nginx_user = "nobody"

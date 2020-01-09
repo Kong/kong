@@ -209,7 +209,12 @@ local CONF_INFERENCES = {
   db_cache_ttl = {  typ = "number"  },
   db_resurrect_ttl = {  typ = "number"  },
   db_cache_warmup_entities = { typ = "array" },
-  nginx_user = { typ = "string" },
+  nginx_user = {
+    typ = "string",
+    alias = {
+      replacement = "nginx_main_user",
+    }
+  },
   nginx_worker_processes = { typ = "string" },
   upstream_keepalive = { -- TODO: remove since deprecated in 1.3
     typ = "number",
@@ -1059,6 +1064,19 @@ local function load(path, custom_conf, opts)
   conf = tablex.merge(conf, defaults) -- intersection (remove extraneous properties)
 
   do
+    -- nginx 'user' directive
+    local user = utils.strip(conf.nginx_main_user):gsub("%s+", " ")
+    if user == "nobody" or user == "nobody nobody" then
+      conf.nginx_main_user = nil
+    end
+
+    local user = utils.strip(conf.nginx_user):gsub("%s+", " ")
+    if user == "nobody" or user == "nobody nobody" then
+      conf.nginx_user = nil
+    end
+  end
+
+  do
     local injected_in_namespace = {}
 
     -- nginx directives from conf
@@ -1165,17 +1183,6 @@ local function load(path, custom_conf, opts)
         name  = "lua_shared_dict",
         value = "stream_prometheus_metrics 5m",
       })
-    end
-  end
-
-  do
-    -- nginx 'user' directive
-    local user = conf.nginx_user:gsub("^%s*", "")
-                                :gsub("%s$", "")
-                                :gsub("%s+", " ")
-
-    if user == "nobody" or user == "nobody nobody" then
-      conf.nginx_user = nil
     end
   end
 
