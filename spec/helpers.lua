@@ -1572,16 +1572,26 @@ local function wait_for_invalidation(key, timeout)
   end, timeout)
 end
 
+
+local function get_pid_from_file(pid_path)
+  local pid
+  local fd, err = io.open(pid_path)
+  if not fd then
+    return nil, err
+  end
+
+  pid = fd:read("*l")
+  fd:close()
+
+  return pid
+end
+
+
 --- Waits for the termination of a pid.
 -- @param pid_path Filename of the pid file.
 -- @param timeout (optional) in seconds, defaults to 10.
 local function wait_pid(pid_path, timeout, is_retry)
-  local pid
-  local fd = io.open(pid_path)
-  if fd then
-    pid = fd:read("*l")
-    fd:close()
-  end
+  local pid = get_pid_from_file(pid_path)
 
   if pid then
     local max_time = ngx.now() + (timeout or 10)
@@ -1775,7 +1785,15 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc)
     return nil, err
   end
 
-  local ok, err = kong_exec("stop --prefix " .. prefix)
+  local pid, err = get_pid_from_file(running_conf.nginx_pid)
+  if not pid then
+    return nil, err
+  end
+
+  local ok, _, _, err = pl_utils.executeex("kill -TERM " .. pid)
+  if not ok then
+    return nil, err
+  end
 
   wait_pid(running_conf.nginx_pid)
 
@@ -1788,7 +1806,7 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc)
     config_yml = nil
   end
 
-  return ok, err
+  return true
 end
 
 
