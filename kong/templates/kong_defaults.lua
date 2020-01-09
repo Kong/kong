@@ -35,13 +35,13 @@ headers = server_tokens, latency_tokens
 trusted_ips = NONE
 real_ip_header = X-Real-IP
 real_ip_recursive = off
-client_max_body_size = 0
-client_body_buffer_size = 8k
 error_default_type = text/plain
 
 nginx_main_daemon = on
 nginx_main_user = nobody nobody
 nginx_main_worker_processes = auto
+nginx_http_client_max_body_size = 0
+nginx_http_client_body_buffer_size = 8k
 nginx_http_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
 nginx_http_ssl_prefer_server_ciphers = on
 nginx_http_ssl_session_tickets = on
@@ -57,6 +57,8 @@ upstream_keepalive = 60
 nginx_http_upstream_keepalive = 60
 nginx_http_upstream_keepalive_requests = 100
 nginx_http_upstream_keepalive_timeout = 60s
+client_max_body_size = 0
+client_body_buffer_size = 8k
 
 database = postgres
 pg_host = 127.0.0.1

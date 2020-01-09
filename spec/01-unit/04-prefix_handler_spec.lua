@@ -210,6 +210,13 @@ describe("NGINX conf compiler", function()
     end)
     it("writes the client_max_body_size as defined", function()
       local conf = assert(conf_loader(nil, {
+        nginx_http_client_max_body_size = "1m",
+      }))
+      local nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("client_max_body_size%s+1m", nginx_conf)
+    end)
+    it("writes the client_max_body_size as defined", function()
+      local conf = assert(conf_loader(nil, {
         client_max_body_size = "1m",
       }))
       local nginx_conf = prefix_handler.compile_kong_conf(conf)
@@ -219,6 +226,13 @@ describe("NGINX conf compiler", function()
       local conf = assert(conf_loader(nil, {}))
       local nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("client_body_buffer_size%s+8k", nginx_conf)
+    end)
+    it("writes the client_body_buffer_size directive as defined", function()
+      local conf = assert(conf_loader(nil, {
+        nginx_http_client_body_buffer_size = "128k",
+      }))
+      local nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("client_body_buffer_size%s+128k", nginx_conf)
     end)
     it("writes the client_body_buffer_size directive as defined", function()
       local conf = assert(conf_loader(nil, {

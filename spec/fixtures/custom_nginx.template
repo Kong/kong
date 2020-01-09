@@ -125,9 +125,6 @@ http {
         access_log ${{PROXY_ACCESS_LOG}};
         error_log  ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
-        client_max_body_size    ${{CLIENT_MAX_BODY_SIZE}};
-        client_body_buffer_size ${{CLIENT_BODY_BUFFER_SIZE}};
-
 > if proxy_ssl_enabled then
         ssl_certificate     ${{SSL_CERT}};
         ssl_certificate_key ${{SSL_CERT_KEY}};
