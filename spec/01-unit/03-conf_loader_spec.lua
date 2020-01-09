@@ -20,7 +20,7 @@ describe("Configuration loader", function()
     local conf = assert(conf_loader())
     assert.is_string(conf.lua_package_path)
     assert.is_nil(conf.nginx_main_user)
-    assert.equal("auto", conf.nginx_worker_processes)
+    assert.equal("auto", conf.nginx_main_worker_processes)
     assert.same({"127.0.0.1:8001 reuseport backlog=16384", "127.0.0.1:8444 http2 ssl reuseport backlog=16384"}, conf.admin_listen)
     assert.same({"0.0.0.0:8000 reuseport backlog=16384", "0.0.0.0:8443 http2 ssl reuseport backlog=16384"}, conf.proxy_listen)
     assert.is_nil(conf.ssl_cert) -- check placeholder value
@@ -35,7 +35,7 @@ describe("Configuration loader", function()
     assert.equal("on", conf.nginx_main_daemon)
     -- overrides
     assert.is_nil(conf.nginx_main_user)
-    assert.equal("1",            conf.nginx_worker_processes)
+    assert.equal("1", conf.nginx_main_worker_processes)
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
     assert.same({"0.0.0.0:9000", "0.0.0.0:9443 http2 ssl",
                  "0.0.0.0:9002 http2"}, conf.proxy_listen)
@@ -48,13 +48,13 @@ describe("Configuration loader", function()
   it("accepts custom params, with highest precedence", function()
     local conf = assert(conf_loader(helpers.test_conf_path, {
       admin_listen = "127.0.0.1:9001",
-      nginx_worker_processes = "auto"
+      nginx_main_worker_processes = "auto"
     }))
     -- defaults
     assert.equal("on", conf.nginx_main_daemon)
     -- overrides
     assert.is_nil(conf.nginx_main_user)
-    assert.equal("auto",           conf.nginx_worker_processes)
+    assert.equal("auto", conf.nginx_main_worker_processes)
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
     assert.same({"0.0.0.0:9000", "0.0.0.0:9443 http2 ssl",
                  "0.0.0.0:9002 http2"}, conf.proxy_listen)
