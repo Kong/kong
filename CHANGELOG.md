@@ -37,15 +37,15 @@
 - [0.9.9 and prior](#099---20170202)
 
 
-## [2.0.0rc1]
+## [2.0.0rc2]
 
-> Released 2019/12/23
+> Released 2020/01/10
 
-This is the first release candidate of the next major release of Kong.
+This is the second release candidate of the next major release of Kong.
 It includes major new features such as **Hybrid mode**, **Go language
 support for plugins** and **buffered proxying**, and much more.
 
-Kong 2.0.0rc1 removes the deprecated service mesh functionality, which was
+Kong 2.0.0rc2 removes the deprecated service mesh functionality, which was
 been retired in favor of [Kuma](https://kuma.io), as Kong continues to
 focus on its core gateway capabilities. This release also includes
 a few bug fixes added since Kong 1.4.2.
@@ -103,6 +103,8 @@ repository will allow you to do both easily.
     [#5361](https://github.com/Kong/kong/pull/5361)
   - Better log messages when plugin modules fail to load
     [#5357](https://github.com/Kong/kong/pull/5357)
+  - `stream_listen` now supports the `backlog` option.
+    [#5346](https://github.com/Kong/kong/pull/5346)
 
 ##### CLI
 
@@ -111,6 +113,12 @@ repository will allow you to do both easily.
 
 ##### Configuration
 
+  - :fireworks: **Extended support for Nginx directive injections**
+    via Kong configurations, reducing the needs for custom Nginx
+    templates. New injection contexts were added: `nginx_main_`,
+    `nginx_events` and `nginx_supstream_` (`upstream` in `stream`
+    mode).
+    [#5390](https://github.com/Kong/kong/pull/5390)
   - Enable `reuseport` option in the listen directive by default
     and allow specifying both `reuseport` and `backlog=N` in the
     listener flags.
@@ -137,6 +145,9 @@ repository will allow you to do both easily.
   - :fireworks: **Go plugin support** - plugins can now be written in
     Go as well as Lua, through the use of an out-of-process Go plugin server.
     [#5326](https://github.com/Kong/kong/pull/5326)
+  - The lifecycle of the Plugin Server daemon for Go language support is
+    managed by Kong itself.
+    [#5366](https://github.com/Kong/kong/pull/5366)
   - :fireworks: **New plugin: ACME** - Let's Encrypt and ACMEv2 integration with Kong
     [#5333](https://github.com/Kong/kong/pull/5333)
   - :fireworks: aws-lambda: bumped version to 3.0.1, with a number of new features!
@@ -172,6 +183,10 @@ repository will allow you to do both easily.
     Thanks [pyrl247](https://github.com/pyrl247) for the patch!
   - Fix declarative config loading of entities with abstract records
     [#5343](https://github.com/Kong/kong/pull/5343)
+  - Fix sort priority when matching routes by longest prefix
+    [#5430](https://github.com/Kong/kong/pull/5430)
+  - Detect changes in Routes that happen halfway through a router update
+    [#5431](https://github.com/Kong/kong/pull/5431)
 
 ##### Admin API
 
@@ -181,15 +196,18 @@ repository will allow you to do both easily.
 
 ##### Core
 
-  - **Removed Service Mesh support** - That has been deprecated in Kong 1.4
-  and made off-by-default already, and the code is now be gone in 2.0.
-  For Service Mesh, we now have [Kuma](https://kuma.io), which is something
-  designed for Mesh patterns from day one, so we feel at peace with removing
-  Kong's native Service Mesh functionality and focus on its core capabilities
-  as a gateway.
+  - :warning: **Removed Service Mesh support** - That has been deprecated in
+    Kong 1.4 and made off-by-default already, and the code is now gone in 2.0.
+    For Service Mesh, we now have [Kuma](https://kuma.io), which is something
+    designed for Mesh patterns from day one, so we feel at peace with removing
+    Kong's native Service Mesh functionality and focus on its core capabilities
+    as a gateway.
 
 ##### Configuration
 
+  - Routes using `tls` are now supported in stream mode by adding an
+    entry in `stream_listen` with the `ssl` keyword enabled.
+    [#5346](https://github.com/Kong/kong/pull/5346)
   - As part of service mesh removal, serviceless proxying was removed.
     You can still set `service = null` when creating a route for use with
     serverless plugins such as `aws-lambda`, or `request-termination`.
@@ -198,6 +216,13 @@ repository will allow you to do both easily.
     [#5351](https://github.com/Kong/kong/pull/5351)
   - Removed the `transparent` property which was used for service mesh.
     [#5350](https://github.com/Kong/kong/pull/5350)
+  - Removed the `nginx_optimizations` property; the equivalent settings
+    can be performed via Nginx directive injections.
+    [#5390](https://github.com/Kong/kong/pull/5390)
+  - The Nginx directive injection prefixes `nginx_http_upstream_`
+    and `nginx_http_status_` were renamed to `nginx_upstream_` and
+    `nginx_status_` respectively.
+    [#5390](https://github.com/Kong/kong/pull/5390)
 
 ##### Plugins
 
@@ -4509,7 +4534,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[2.0.0rc1]: https://github.com/Kong/kong/compare/1.4.3...2.0.0rc1
+[2.0.0rc2]: https://github.com/Kong/kong/compare/1.4.3...2.0.0rc2
 [1.4.3]: https://github.com/Kong/kong/compare/1.4.2...1.4.3
 [1.4.2]: https://github.com/Kong/kong/compare/1.4.1...1.4.2
 [1.4.1]: https://github.com/Kong/kong/compare/1.4.0...1.4.1
