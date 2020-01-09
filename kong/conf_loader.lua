@@ -943,6 +943,33 @@ local function deprecated_properties(conf, opts)
 end
 
 
+--- Load Kong configuration file
+-- The loaded configuration will only contain properties read from the
+-- passed configuration file (properties are not merged with defaults or
+-- environment variables)
+-- @param[type=string] Path to a configuration file.
+local function load_config_file(path)
+  assert(type(path) == "string")
+
+  local f, err = pl_file.read(path)
+  if not f then
+    return nil, err
+  end
+
+  local s = pl_stringio.open(f)
+  local conf, err = pl_config.read(s, {
+    smart = false,
+    list_delim = "_blank_" -- mandatory but we want to ignore it
+  })
+  s:close()
+  if not conf then
+    return nil, err
+  end
+
+  return conf
+end
+
+
 --- Load Kong configuration
 -- The loaded configuration will have all properties from the default config
 -- merged with the (optionally) specified config file, environment variables
@@ -998,22 +1025,9 @@ local function load(path, custom_conf, opts)
     log.verbose("no config file, skip loading")
 
   else
-    local f, err = pl_file.read(path)
-    if not f then
-      return nil, err
-    end
-
     log.verbose("reading config file at %s", path)
 
-    local s = pl_stringio.open(f)
-    from_file_conf, err = pl_config.read(s, {
-      smart = false,
-      list_delim = "_blank_" -- mandatory but we want to ignore it
-    })
-    s:close()
-    if not from_file_conf then
-      return nil, err
-    end
+    from_file_conf = load_config_file(path)
   end
 
   -----------------------
@@ -1377,6 +1391,8 @@ end
 
 return setmetatable({
   load = load,
+
+  load_config_file = load_config_file,
 
   add_default_path = function(path)
     DEFAULT_PATHS[#DEFAULT_PATHS+1] = path
