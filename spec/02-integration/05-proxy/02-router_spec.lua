@@ -1574,7 +1574,6 @@ for _, strategy in helpers.each_strategy() do
           for i, test in ipairs(path_handling_tests) do
             routes[i] = {
               strip_path   = test.strip_path,
-              path_handling = test.path_handling,
               paths        = test.route_path and { test.route_path } or nil,
               hosts        = { "localbin-" .. i .. ".com" },
               service = {
@@ -1594,16 +1593,16 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         for i, test in ipairs(path_handling_tests) do
-          local strip = test.strip_path and "on" or "off"
-          local route_uri_or_host
-          if test.route_path then
-            route_uri_or_host = "uri " .. test.route_path
-          else
-            route_uri_or_host = "host localbin-" .. i .. ".com"
-          end
+          local config = string.format("route.strip_path=%s", test.strip_path and "on" or "off")
 
-          local description = string.format("(%d) %s with %s, strip = %s, %s when requesting %s",
-            i, test.service_path, route_uri_or_host, strip, test.path_handling, test.request_path)
+          local description
+          if test.route_path then
+            description = string.format("(%d) (%s) %s with uri %s when requesting %s",
+                                        i, config, test.service_path, test.route_path, test.request_path)
+          else
+            description = string.format("(%d) (%s) %s with host %s when requesting %s",
+                                        i, config, test.service_path, "localbin-" .. i .. ".com", test.request_path)
+          end
 
           it(description, function()
             local res = assert(proxy_client:get(test.request_path, {
@@ -1632,7 +1631,6 @@ for _, strategy in helpers.each_strategy() do
             routes[i] = {
               strip_path   = test.strip_path,
               paths        = test.route_path and { make_a_regex(test.route_path) } or nil,
-              path_handling = test.path_handling,
               hosts        = { "localbin-" .. i .. ".com" },
               service = {
                 name = "make_regex_" .. i,
@@ -1651,10 +1649,10 @@ for _, strategy in helpers.each_strategy() do
         for i, test in ipairs(path_handling_tests) do
           if test.route_path then  -- skip if hostbased match
 
-            local strip = test.strip_path and "on" or "off"
+            local config = string.format("route.strip_path=%s", test.strip_path and "on" or "off")
 
-            local description = string.format("(%d) %s with uri %s, strip = %s, %s when requesting %s",
-              i, test.service_path, make_a_regex(test.route_path), strip, test.path_handling, test.request_path)
+            local description = string.format("(%d) (%s) %s with uri %s when requesting %s",
+              i, config, test.service_path, make_a_regex(test.route_path), test.request_path)
 
             it(description, function()
               local res = assert(proxy_client:get(test.request_path, {

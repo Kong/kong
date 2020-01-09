@@ -396,20 +396,16 @@ describe("declarative config: process_auto_fields", function()
               host: example.com
               protocol: https
               routes:
-                - path_handling: v1
-                  paths:
+                - paths:
                   - /path
-                - path_handling: v1
-                  hosts:
+                - hosts:
                   - example.com
-                - path_handling: v1
-                  methods: ["GET", "POST"]
+                - methods: ["GET", "POST"]
             - name: bar
               host: example.test
               port: 3000
               routes:
-                - path_handling: v1
-                  paths:
+                - paths:
                   - /path
                   hosts:
                   - example.com
@@ -434,7 +430,6 @@ describe("declarative config: process_auto_fields", function()
                     preserve_host = false,
                     regex_priority = 0,
                     strip_path = true,
-                    path_handling = "v1",
                     protocols = { "http", "https" },
                     https_redirect_status_code = 426,
                   },
@@ -443,7 +438,6 @@ describe("declarative config: process_auto_fields", function()
                     preserve_host = false,
                     regex_priority = 0,
                     strip_path = true,
-                    path_handling = "v1",
                     protocols = { "http", "https" },
                     https_redirect_status_code = 426,
                   },
@@ -452,7 +446,6 @@ describe("declarative config: process_auto_fields", function()
                     preserve_host = false,
                     regex_priority = 0,
                     strip_path = true,
-                    path_handling = "v1",
                     protocols = { "http", "https" },
                     https_redirect_status_code = 426,
                   },
@@ -475,7 +468,6 @@ describe("declarative config: process_auto_fields", function()
                     preserve_host = false,
                     regex_priority = 0,
                     strip_path = true,
-                    path_handling = "v1",
                     protocols = { "http", "https" },
                     https_redirect_status_code = 426,
                   },
@@ -496,7 +488,6 @@ describe("declarative config: process_auto_fields", function()
               protocol: https
               routes:
               - name: foo
-                path_handling: v1
                 methods: ["GET"]
                 plugins:
           ]]))
@@ -519,7 +510,6 @@ describe("declarative config: process_auto_fields", function()
                     methods = { "GET" },
                     preserve_host = false,
                     strip_path = true,
-                    path_handling = "v1",
                     protocols = { "http", "https" },
                     regex_priority = 0,
                     https_redirect_status_code = 426,
@@ -540,7 +530,6 @@ describe("declarative config: process_auto_fields", function()
               protocol: https
               routes:
               - name: foo
-                path_handling: v1
                 methods: ["GET"]
                 plugins:
                   - name: key-auth
@@ -552,7 +541,6 @@ describe("declarative config: process_auto_fields", function()
               port: 3000
               routes:
               - name: bar
-                path_handling: v1
                 paths:
                 - /
                 plugins:
@@ -581,7 +569,6 @@ describe("declarative config: process_auto_fields", function()
                     methods = { "GET" },
                     preserve_host = false,
                     strip_path = true,
-                    path_handling = "v1",
                     protocols = { "http", "https" },
                     regex_priority = 0,
                     https_redirect_status_code = 426,
@@ -631,7 +618,6 @@ describe("declarative config: process_auto_fields", function()
                     paths = { "/" },
                     preserve_host = false,
                     strip_path = true,
-                    path_handling = "v1",
                     protocols = { "http", "https" },
                     regex_priority = 0,
                     https_redirect_status_code = 426,
