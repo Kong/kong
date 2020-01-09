@@ -1613,7 +1613,7 @@ end
 -- @return The conf table of the running instance, or nil on error.
 local function get_running_conf(prefix)
   local default_conf = conf_loader(nil, {prefix = prefix or conf.prefix})
-  return conf_loader(default_conf.kong_env)
+  return conf_loader.load_config_file(default_conf.kong_env)
 end
 
 
