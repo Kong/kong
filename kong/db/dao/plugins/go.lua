@@ -150,8 +150,6 @@ do
 
         return data[4]
       end
-
-      assert(false, "unreachable")
     end
   end
 end
