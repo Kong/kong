@@ -2,20 +2,12 @@ return [[
 pid pids/nginx.pid;
 error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
-> if nginx_optimizations then
-worker_rlimit_nofile ${{WORKER_RLIMIT}};
-> end
-
 # injected nginx_main_* directives
 > for _, el in ipairs(nginx_main_directives) do
 $(el.name) $(el.value);
 > end
 
 events {
-> if nginx_optimizations then
-    worker_connections ${{WORKER_CONNECTIONS}};
-    multi_accept on;
-> end
     # injected nginx_events_* directives
 > for _, el in ipairs(nginx_events_directives) do
     $(el.name) $(el.value);

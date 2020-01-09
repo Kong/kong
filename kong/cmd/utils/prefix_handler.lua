@@ -18,6 +18,7 @@ local socket = require "socket"
 local log = require "kong.cmd.utils.log"
 local constants = require "kong.constants"
 local ffi = require "ffi"
+local bit = require "bit"
 local fmt = string.format
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 
@@ -116,20 +117,6 @@ local function get_ulimit()
   end
 end
 
-local function gather_system_infos()
-  local infos = {}
-
-  local ulimit, err = get_ulimit()
-  if not ulimit then
-    return nil, err
-  end
-
-  infos.worker_rlimit = ulimit
-  infos.worker_connections = ulimit
-
-  return infos
-end
-
 local function compile_conf(kong_config, conf_template)
   -- computed config properties for templating
   local compile_env = {
@@ -143,12 +130,48 @@ local function compile_conf(kong_config, conf_template)
     compile_env["syslog_reports"] = fmt("error_log syslog:server=%s:%d error;",
                                         constants.REPORTS.ADDRESS, constants.REPORTS.SYSLOG_PORT)
   end
-  if kong_config.nginx_optimizations then
-    local infos, err = gather_system_infos()
-    if not infos then
-      return nil, err
+
+  do
+    local worker_rlimit_nofile
+    if kong_config.nginx_main_directives then
+      for _, directive in pairs(kong_config.nginx_main_directives) do
+        if directive.name == "worker_rlimit_nofile" then
+          if directive.value == "auto" then
+            worker_rlimit_nofile = directive
+          end
+          break
+        end
+      end
     end
-    compile_env = pl_tablex.merge(compile_env, infos,  true) -- union
+
+    local worker_connections
+    if kong_config.nginx_events_directives then
+      for _, directive in pairs(kong_config.nginx_events_directives) do
+        if directive.name == "worker_connections" then
+          if directive.value == "auto" then
+            worker_connections = directive
+          end
+          break
+        end
+      end
+    end
+
+    if worker_connections or worker_rlimit_nofile then
+      local value, err = get_ulimit()
+      if not value then
+        return nil, err
+      end
+
+      value = math.min(value, 16384)
+
+      if worker_rlimit_nofile then
+        worker_rlimit_nofile.value = value
+      end
+
+      if worker_connections then
+        worker_connections.value = value
+      end
+    end
   end
 
   compile_env = pl_tablex.merge(compile_env, kong_config, true) -- union

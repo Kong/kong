@@ -384,7 +384,10 @@ local CONF_INFERENCES = {
               },
   plugins = { typ = "array" },
   anonymous_reports = { typ = "boolean" },
-  nginx_optimizations = { typ = "boolean" },
+  nginx_optimizations = {
+    typ = "boolean",
+    deprecated = { replacement = false }
+  },
 
   lua_ssl_verify_depth = { typ = "number" },
   lua_socket_pool_size = { typ = "number" },
@@ -921,11 +924,18 @@ local function deprecated_properties(conf, opts)
 
     if deprecated and conf[property_name] ~= nil then
       if not opts.from_kong_env then
-        log.warn("the '%s' configuration property is deprecated, use " ..
-                 "'%s' instead", property_name, v_schema.deprecated.replacement)
+        if deprecated.replacement then
+          log.warn("the '%s' configuration property is deprecated, use " ..
+                     "'%s' instead", property_name, deprecated.replacement)
+        else
+          log.warn("the '%s' configuration property is deprecated",
+                   property_name)
+        end
       end
 
-      v_schema.deprecated.alias(conf)
+      if deprecated.alias then
+        deprecated.alias(conf)
+      end
     end
   end
 end

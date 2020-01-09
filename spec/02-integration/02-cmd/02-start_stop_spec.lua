@@ -486,6 +486,26 @@ describe("kong start/stop #" .. strategy, function()
     describe("prints a warning to stderr", function()
       local u = helpers.unindent
 
+      it("'nginx_optimizations'", function()
+        local opts = {
+          prefix = helpers.test_conf.prefix,
+          database = helpers.test_conf.database,
+          pg_database = helpers.test_conf.pg_database,
+          cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+          nginx_optimizations = true,
+        }
+
+        local _, stderr, stdout = assert(helpers.kong_exec("start", opts))
+        assert.matches("Kong started", stdout, nil, true)
+        assert.matches(u([[
+          [warn] the 'nginx_optimizations' configuration property is deprecated
+        ]], nil, true), stderr, nil, true)
+
+        local _, stderr, stdout = assert(helpers.kong_exec("stop", opts))
+        assert.matches("Kong stopped", stdout, nil, true)
+        assert.equal("", stderr)
+      end)
+
       it("'upstream_keepalive'", function()
         local opts = {
           prefix = helpers.test_conf.prefix,
