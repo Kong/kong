@@ -1,7 +1,5 @@
 # This is a custom nginx configuration template for Kong specs
 
-worker_processes ${{NGINX_WORKER_PROCESSES}};
-
 pid pids/nginx.pid; # mandatory even for custom config templates
 error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 

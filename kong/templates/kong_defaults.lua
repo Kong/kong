@@ -20,7 +20,6 @@ cluster_listen = 0.0.0.0:8005
 cluster_control_plane = 127.0.0.1:8005
 cluster_cert = NONE
 cluster_cert_key = NONE
-nginx_worker_processes = auto
 nginx_optimizations = on
 mem_cache_size = 128m
 ssl_cert = NONE
@@ -42,6 +41,7 @@ error_default_type = text/plain
 
 nginx_main_daemon = on
 nginx_main_user = nobody nobody
+nginx_main_worker_processes = auto
 nginx_http_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
 nginx_http_ssl_prefer_server_ciphers = on
 nginx_http_ssl_session_tickets = on
@@ -52,6 +52,7 @@ nginx_upstream_keepalive_timeout = 60s
 
 nginx_daemon = on
 nginx_user = nobody nobody
+nginx_worker_processes = auto
 upstream_keepalive = 60
 nginx_http_upstream_keepalive = 60
 nginx_http_upstream_keepalive_requests = 100

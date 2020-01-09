@@ -221,7 +221,12 @@ local CONF_INFERENCES = {
       replacement = "nginx_main_daemon",
     }
   },
-  nginx_worker_processes = { typ = "string" },
+  nginx_worker_processes = {
+    typ = "string",
+    alias = {
+      replacement = "nginx_main_worker_processes",
+    },
+  },
   upstream_keepalive = { -- TODO: remove since deprecated in 1.3
     typ = "number",
     deprecated = {

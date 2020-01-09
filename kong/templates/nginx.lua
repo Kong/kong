@@ -1,6 +1,4 @@
 return [[
-worker_processes ${{NGINX_WORKER_PROCESSES}};
-
 pid pids/nginx.pid;
 error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
