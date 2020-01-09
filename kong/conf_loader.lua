@@ -278,8 +278,18 @@ local CONF_INFERENCES = {
   trusted_ips = { typ = "array" },
   real_ip_header = { typ = "string" },
   real_ip_recursive = { typ = "ngx_boolean" },
-  client_max_body_size = { typ = "string" },
-  client_body_buffer_size = { typ = "string" },
+  client_max_body_size = {
+    typ = "string",
+    alias = {
+      replacement = "nginx_http_client_max_body_size",
+    }
+  },
+  client_body_buffer_size = {
+    typ = "string",
+    alias = {
+      replacement = "nginx_http_client_body_buffer_size",
+    }
+  },
   error_default_type = { enum = {
                            "application/json",
                            "application/xml",
