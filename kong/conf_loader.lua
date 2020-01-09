@@ -276,8 +276,18 @@ local CONF_INFERENCES = {
   },
   headers = { typ = "array" },
   trusted_ips = { typ = "array" },
-  real_ip_header = { typ = "string" },
-  real_ip_recursive = { typ = "ngx_boolean" },
+  real_ip_header = {
+    typ = "string",
+    alias = {
+      replacement = "nginx_proxy_real_ip_header",
+    }
+  },
+  real_ip_recursive = {
+    typ = "ngx_boolean",
+    alias = {
+      replacement = "nginx_proxy_real_ip_recursive",
+    }
+  },
   client_max_body_size = {
     typ = "string",
     alias = {
