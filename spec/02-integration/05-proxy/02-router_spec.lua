@@ -1348,6 +1348,71 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(routes[3].service.id,   res.headers["kong-service-id"])
         assert.equal(routes[3].service.name, res.headers["kong-service-name"])
       end)
+
+      it("caching do not ignore headers (regression)", function()
+        routes = insert_routes(bp, {
+          {
+            service    = {
+              name     = "first",
+            },
+            hosts      = { "example.test" },
+            paths      = { "/test" },
+            headers    = { headertest = { "itsatest" } },
+          },
+          {
+            service    = {
+              name     = "second",
+            },
+            hosts      = { "example.test" },
+            paths      = { "/test" },
+          },
+        })
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = routes[1].paths[1],
+          headers = {
+            ["Host"]       = routes[1].hosts[1],
+            ["headertest"] = "itsatest",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.equal(routes[1].id,           res.headers["kong-route-id"])
+        assert.equal(routes[1].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[1].service.name, res.headers["kong-service-name"])
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = routes[2].paths[1],
+          headers = {
+            ["Host"]       = routes[2].hosts[1],
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.equal(routes[2].id,           res.headers["kong-route-id"])
+        assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[2].service.name, res.headers["kong-service-name"])
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = routes[1].paths[1],
+          headers = {
+            ["Host"]       = routes[1].hosts[1],
+            ["headertest"] = "itsatest",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.equal(routes[1].id,           res.headers["kong-route-id"])
+        assert.equal(routes[1].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[1].service.name, res.headers["kong-service-name"])
+
+      end)
     end)
 
     describe("[paths] + [headers]", function()
@@ -1532,12 +1597,12 @@ for _, strategy in helpers.each_strategy() do
           {
             strip_path = true,
             hosts      = { "route.com" },
-            paths      = { "/root" },
+            paths      = { "/root/fixture", "/root/fixture/non-matching-but-longer" },
           },
           {
             strip_path = true,
             hosts      = { "route.com" },
-            paths      = { "/root/fixture" },
+            paths      = { "/root/fixture/get" },
           },
         })
       end)

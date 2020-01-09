@@ -1328,20 +1328,6 @@ function _M.new(routes)
     ctx.dst_port       = dst_port or ""
     ctx.sni            = sni or ""
 
-    -- cache lookup (except for headers-matched Routes)
-
-    local cache_key = req_method .. "|" .. req_uri .. "|" .. req_host ..
-                      "|" .. ctx.src_ip .. "|" .. ctx.src_port ..
-                      "|" .. ctx.dst_ip .. "|" .. ctx.dst_port ..
-                      "|" .. ctx.sni
-
-    do
-      local match_t = cache:get(cache_key)
-      if match_t then
-        return match_t
-      end
-    end
-
     -- input sanitization for matchers
 
     -- hosts
@@ -1369,6 +1355,31 @@ function _M.new(routes)
     --
     -- determine which category this request *might* be targeting
 
+    -- header match
+
+    for _, header_name in ipairs(plain_indexes.headers) do
+      if req_headers[header_name] then
+        req_category = bor(req_category, MATCH_RULES.HEADER)
+        hits.header_name = header_name
+        break
+      end
+    end
+
+    -- cache lookup (except for headers-matched Routes)
+    -- if trigger headers match rule, ignore routes cache
+
+    local cache_key = req_method .. "|" .. req_uri .. "|" .. req_host ..
+                      "|" .. ctx.src_ip .. "|" .. ctx.src_port ..
+                      "|" .. ctx.dst_ip .. "|" .. ctx.dst_port ..
+                      "|" .. ctx.sni
+
+    do
+      local match_t = cache:get(cache_key)
+      if match_t and hits.header_name == nil then
+        return match_t
+      end
+    end
+
     -- host match
 
     if plain_indexes.hosts[host_with_port]
@@ -1393,41 +1404,34 @@ function _M.new(routes)
       end
     end
 
-    -- header match
+    -- uri match
 
-    for _, header_name in ipairs(plain_indexes.headers) do
-      if req_headers[header_name] then
-        req_category = bor(req_category, MATCH_RULES.HEADER)
-        hits.header_name = header_name
+    for i = 1, #regex_uris do
+      local from, _, err = re_find(req_uri, regex_uris[i].regex, "ajo")
+      if err then
+        log(ERR, "could not evaluate URI regex: ", err)
+        return
+      end
+
+      if from then
+        hits.uri     = regex_uris[i].value
+        req_category = bor(req_category, MATCH_RULES.URI)
         break
       end
     end
 
-    -- uri match
+    if not hits.uri then
+      if plain_indexes.uris[req_uri] then
+        hits.uri     = req_uri
+        req_category = bor(req_category, MATCH_RULES.URI)
 
-    if plain_indexes.uris[req_uri] then
-      req_category = bor(req_category, MATCH_RULES.URI)
-
-    else
-      for i = 1, #prefix_uris do
-        if find(req_uri, prefix_uris[i].value, nil, true) == 1 then
-          hits.uri     = prefix_uris[i].value
-          req_category = bor(req_category, MATCH_RULES.URI)
-          break
-        end
-      end
-
-      for i = 1, #regex_uris do
-        local from, _, err = re_find(req_uri, regex_uris[i].regex, "ajo")
-        if err then
-          log(ERR, "could not evaluate URI regex: ", err)
-          return
-        end
-
-        if from then
-          hits.uri     = regex_uris[i].value
-          req_category = bor(req_category, MATCH_RULES.URI)
-          break
+      else
+        for i = 1, #prefix_uris do
+          if find(req_uri, prefix_uris[i].value, nil, true) == 1 then
+            hits.uri     = prefix_uris[i].value
+            req_category = bor(req_category, MATCH_RULES.URI)
+            break
+          end
         end
       end
     end
