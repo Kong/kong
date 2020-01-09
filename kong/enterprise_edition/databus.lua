@@ -295,20 +295,31 @@ _M.handlers = {
 
     local chunk_name = "dbus:" .. entity.id
 
+    local function err_fn(err)
+      return function()
+        return nil, err
+      end
+    end
+
     for i, fn_str in ipairs(config.functions or {}) do
       -- each function has its own context. We could let them share context
       -- by not defining fn_ctx and just passing helper_ctx
       local fn_ctx = {}
       setmetatable(fn_ctx, { __index = helper_ctx })
       -- t -> only text chunks
-      local fn = load(fn_str, chunk_name .. ":" .. i, "t", fn_ctx)     -- load
-      local ok, actual_fn_or_err = pcall(fn)
-      if not ok then
-        return function()
-          return false, nil, actual_fn_or_err
+      local fn, err = load(fn_str, chunk_name .. ":" .. i, "t", fn_ctx)     -- load
+      if fn then
+        local ok, actual_fn_or_err = pcall(fn)
+        if ok then
+          table.insert(functions, actual_fn_or_err)
+        else
+          err = actual_fn_or_err
         end
       end
-      table.insert(functions, actual_fn_or_err)
+
+      if err then
+        table.insert(functions, err_fn(err))
+      end
     end
 
     return function(data, event, source, pid)

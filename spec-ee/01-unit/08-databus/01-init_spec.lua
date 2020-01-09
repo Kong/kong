@@ -629,7 +629,7 @@ describe("databus", function()
         assert.equal("HELLO WORLD", res)
       end)
 
-      it("returns an false and error when a manual error happens", function()
+      it("returns false and error when a manual error happens", function()
         entity.config.functions = {
           [[
             return function(data, event, source, pid)
@@ -651,8 +651,7 @@ describe("databus", function()
       it("syntax errors return false and an error", function()
         entity.config.functions = {
           [[
-            return function(data, event, source, pid)
-              U MAD BRO
+            retarn finction(data, event, source, pid)
               return true
             end
           ]],
@@ -665,7 +664,7 @@ describe("databus", function()
         local cb = handler(entity, entity.config)
         local ok, _, err = cb({ some = "data"}, "some_event", "some_source", 1234)
         assert.is_false(ok)
-        assert.equal("attempt to call a nil value", err)
+        assert.match("'=' expected near 'finction'", err)
       end)
 
       -- XXX this is by design at the moment. Code to use a sandboxed
