@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [1.2.3](#123)
 - [1.2.2](#122)
 - [1.2.1](#121)
 - [1.2.0](#120)
@@ -28,6 +29,30 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+
+## [1.2.3]
+
+> Released 2020/01/09
+
+:warning: This release includes a security fix to address potentially
+sensitive information being written to the error log file. This affects
+certain uses of the Admin API for DB-less mode, described below.
+
+This is a patch release in the 1.2 series, and as such, strictly contains
+bugfixes. There are no new features nor breaking changes.
+
+### Fixes
+
+##### Admin API
+
+- Do not make a debugging dump of the declarative config input into
+  `error.log` when posting it with `/config` and using `_format_version`
+  as a top-level parameter (instead of embedded in the `config` parameter).
+  [#5411](https://github.com/kong/kong/issues/5411)
+
+
+[Back to TOC](#table-of-contents)
 
 ## [1.2.2]
 
@@ -3860,6 +3885,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[1.2.3]: https://github.com/Kong/kong/compare/1.2.2...1.2.3
 [1.2.2]: https://github.com/Kong/kong/compare/1.2.1...1.2.2
 [1.2.1]: https://github.com/Kong/kong/compare/1.2.0...1.2.1
 [1.2.0]: https://github.com/Kong/kong/compare/1.1.2...1.2.0
