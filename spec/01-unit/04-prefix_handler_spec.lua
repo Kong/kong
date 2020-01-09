@@ -107,6 +107,15 @@ describe("NGINX conf compiler", function()
     it("enables proxy_protocol", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         proxy_listen = "0.0.0.0:9000 proxy_protocol",
+        nginx_proxy_real_ip_header = "proxy_protocol",
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("listen%s+0%.0%.0%.0:9000 proxy_protocol;", kong_nginx_conf)
+      assert.matches("real_ip_header%s+proxy_protocol;", kong_nginx_conf)
+    end)
+    it("enables proxy_protocol", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        proxy_listen = "0.0.0.0:9000 proxy_protocol",
         real_ip_header = "proxy_protocol",
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
@@ -320,10 +329,26 @@ describe("NGINX conf compiler", function()
 
       it("real_ip_recursive on", function()
         local conf = assert(conf_loader(nil, {
+          nginx_proxy_real_ip_recursive = true,
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("real_ip_recursive%s+on;", nginx_conf)
+      end)
+
+      it("real_ip_recursive on", function()
+        local conf = assert(conf_loader(nil, {
           real_ip_recursive = true,
         }))
         local nginx_conf = prefix_handler.compile_kong_conf(conf)
         assert.matches("real_ip_recursive%s+on;", nginx_conf)
+      end)
+
+      it("real_ip_recursive off", function()
+        local conf = assert(conf_loader(nil, {
+          nginx_proxy_real_ip_recursive = false,
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("real_ip_recursive%s+off;", nginx_conf)
       end)
 
       it("real_ip_recursive off", function()
@@ -355,6 +380,16 @@ describe("NGINX conf compiler", function()
         assert.matches("set_real_ip_from%s+192%.168%.1%.0/24", nginx_conf)
         assert.matches("set_real_ip_from%s+192%.168%.1%.0",    nginx_conf)
         assert.matches("set_real_ip_from%s+2001:0db8::/32", nginx_conf)
+      end)
+      it("proxy_protocol", function()
+        local conf = assert(conf_loader(nil, {
+          proxy_listen = "0.0.0.0:8000 proxy_protocol, 0.0.0.0:8443 ssl",
+          nginx_proxy_real_ip_header = "proxy_protocol",
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("real_ip_header%s+proxy_protocol", nginx_conf)
+        assert.matches("listen%s0%.0%.0%.0:8000 proxy_protocol;", nginx_conf)
+        assert.matches("listen%s0%.0%.0%.0:8443 ssl;", nginx_conf)
       end)
       it("proxy_protocol", function()
         local conf = assert(conf_loader(nil, {
