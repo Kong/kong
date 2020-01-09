@@ -152,7 +152,6 @@ function Config:parse_table(dc_table, hash)
   end
 
   if not hash then
-    print(cjson.encode(dc_table))
     hash = md5(cjson.encode(dc_table))
   end
 
