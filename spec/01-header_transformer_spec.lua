@@ -9,21 +9,7 @@ describe("Plugin: response-transformer-advanced", function()
     describe("remove", function()
       local conf  = {
         remove    = {
-          headers = {
-            "h1", "h2",
-            "h3:v1",
-            "h4:v1", "h4:v2",
-            "h5:v1",
-            "h6:v1",
-            "h7:v1",
-            "h8:v1",
-            "h9:v1",
-            "h10:v1",
-            "h10:v2",
-            "h11:v1",
-            "h12:v1",
-            "h13:v1",
-          }
+          headers = {"h1", "h2", "h3"}
         },
         replace   = {
           headers = {}
@@ -46,39 +32,6 @@ describe("Plugin: response-transformer-advanced", function()
         local ngx_headers = {h1 = "value1", h2 = {"value2a", "value2b"}}
         header_transformer.transform_headers(conf, ngx_headers)
         assert.same({}, ngx_headers)
-      end)
-      it("specific header value #a", function()
-        local req_ngx_headers = {
-          h1 = {"v1", "v2", "v3"},
-          h2 = {"v2"},
-          h3 = {"v1"},
-          h4 = {"v1", "v2", "v3"},
-          h5 = {"v1", "v2"},
-          h6 = {"v2"},
-          h7 = "v1",
-          h8 = "v2",
-          h9 = "v1,v2",
-          h10 = "v1,v2,v3",
-          h11 = "v1, v2, v3",
-          h12 = "v1;v2;v3",
-          h13 = "v1; v2; v3",
-        }
-
-        header_transformer.transform_headers(conf, req_ngx_headers)
-        assert.same({
-          h4 = {"v3"},
-          h5 = {"v2"},
-          h6 = {"v2"},
-          h8 = "v2",
-          h9 = "v2",
-          h10 = "v3",
-          h11 = " v2, v3",
-          h12 = "v1;v2;v3",
-          h13 = "v1; v2; v3",
-          --h12 = "jsession=abcd123",
-          --h13 = "/status/service",
-          --h14 = {"jsession=abcd123"}
-        }, req_ngx_headers)
       end)
       it("sets content-length nil", function()
         local ngx_headers = {h1 = "value1", h2 = {"value2a", "value2b"}, [CONTENT_LENGTH] = "100", ["content-type"] = "application/json"}

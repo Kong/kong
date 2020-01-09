@@ -40,12 +40,43 @@ local function append_value(current_value, value)
   end
 end
 
-local function remove_value(ngx_header_value, header_name, header_value)
-  if not header_value then
-    return nil
+local function regex_match(ngx_header_value, header_value)
+  local is_regex = header_value:sub(1, 1) == '/' and header_value:sub(-1) == '/'
+
+  if is_regex then
+    header_value = header_value:sub(2, -2)
   end
 
   local new_ngx_headers = {}
+
+  for k, v in pairs(ngx_header_value) do
+    local capture, _, err
+
+    if is_regex then
+      capture, _, err = ngx.re.find(v, header_value, "jo")
+    else
+      capture = v == header_value
+    end
+
+    -- Match. Insert the uncaptured header values in a new table
+    if not capture and not err then
+      table.insert(new_ngx_headers, v)
+
+    -- Bad regex or PCRE error. Do not remove this nginx header value
+    elseif err then
+      kong.log.err("could not evaluate the regex " .. header_value)
+    end
+
+    -- No match. Do not remove this nginx header value
+  end
+
+  return new_ngx_headers
+end
+
+local function remove_value(ngx_header_value, header_name, header_value)
+  if not header_value or not ngx_header_value then
+    return nil
+  end
 
   -- Implements the following part of
   -- https://httpwg.org/specs/rfc7230.html#rfc.section.3.2.2
@@ -55,29 +86,15 @@ local function remove_value(ngx_header_value, header_name, header_value)
   -- defined as a comma-separated list [i.e., #(values)] or the header field is
   -- a well-known exception (as noted below).
   if type(ngx_header_value) == "string" then
-    local ngx_values = pl_stringx.split(ngx_header_value, ",")
+    local splitted_value = pl_stringx.split(ngx_header_value, ",")
 
-    for k, v in pairs(ngx_values) do
-      if v and v == header_value then
-        ngx_values[k] = nil
-      end
-    end
+    ngx_header_value = regex_match(splitted_value, header_value)
 
-    for k, v in pairs(ngx_values) do
-      if v then
-        table.insert(new_ngx_headers, v)
-      end
-    end
-
-    if #new_ngx_headers == 0 then
+    if #ngx_header_value == 0 then
       return nil
     end
 
-    if #new_ngx_headers == 1 then
-      return new_ngx_headers[1]
-    end
-
-    return pl_stringx.join(',', new_ngx_headers)
+    return pl_stringx.join(',', ngx_header_value)
   end
 
   -- Implements the following part of
@@ -90,23 +107,13 @@ local function remove_value(ngx_header_value, header_name, header_value)
   -- ought to handle "Set-Cookie" as a special case while processing header
   -- fields.
   if header_name == "Set-Cookie" or type(ngx_header_value) == "table" then
-    for k, v in pairs(ngx_header_value) do
-      if v and v == header_value then
-        ngx_header_value[k] = nil
-      end
-    end
+    ngx_header_value = regex_match(ngx_header_value, header_value)
 
-    for k, v in pairs(ngx_header_value) do
-      if v then
-        table.insert(new_ngx_headers, v)
-      end
-    end
-
-    if #new_ngx_headers == 0 then
+    if #ngx_header_value == 0 then
       return nil
     end
 
-    return new_ngx_headers
+    return ngx_header_value
   end
 
   return nil
