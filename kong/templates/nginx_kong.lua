@@ -7,18 +7,6 @@ ${{SYSLOG_REPORTS}}
 > end
 error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
-> if nginx_optimizations then
->-- send_timeout 60s;          # default value
->-- keepalive_timeout 75s;     # default value
->-- client_body_timeout 60s;   # default value
->-- client_header_timeout 60s; # default value
->-- tcp_nopush on;             # disabled until benchmarked
->-- proxy_buffer_size 128k;    # disabled until benchmarked
->-- proxy_buffers 4 256k;      # disabled until benchmarked
->-- proxy_busy_buffers_size 256k; # disabled until benchmarked
->-- reset_timedout_connection on; # disabled until benchmarked
-> end
-
 lua_package_path       '${{LUA_PACKAGE_PATH}};;';
 lua_package_cpath      '${{LUA_PACKAGE_CPATH}};;';
 lua_socket_pool_size   ${{LUA_SOCKET_POOL_SIZE}};

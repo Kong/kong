@@ -612,7 +612,9 @@ describe("NGINX conf compiler", function()
     end)
     it("compiles without opinionated nginx optimizations", function()
       local conf = assert(conf_loader(nil, {
-        nginx_optimizations = false,
+        nginx_main_worker_rlimit_nofile = "NONE",
+        nginx_events_worker_connections = "NONE",
+        nginx_events_multi_accept = "NONE",
       }))
       local nginx_conf = prefix_handler.compile_nginx_conf(conf)
       assert.not_matches("worker_rlimit_nofile%s+%d+;", nginx_conf)
@@ -620,9 +622,7 @@ describe("NGINX conf compiler", function()
       assert.not_matches("multi_accept%s+on;", nginx_conf)
     end)
     it("compiles with opinionated nginx optimizations", function()
-      local conf = assert(conf_loader(nil, {
-        nginx_optimizations = true,
-      }))
+      local conf = assert(conf_loader())
       local nginx_conf = prefix_handler.compile_nginx_conf(conf)
       assert.matches("worker_rlimit_nofile%s+%d+;", nginx_conf)
       assert.matches("worker_connections%s+%d+;", nginx_conf)
@@ -696,7 +696,9 @@ describe("NGINX conf compiler", function()
       local conf = assert(conf_loader(nil, {
         pg_database = "foobar",
         pg_schema   = "foo",
-        prefix = tmp_config.prefix
+        prefix = tmp_config.prefix,
+        nginx_main_worker_rlimit_nofile = 65536,
+        nginx_events_worker_connections = 65536,
       }))
       assert.equal("foobar", conf.pg_database)
       assert.equal("foo", conf.pg_schema)
