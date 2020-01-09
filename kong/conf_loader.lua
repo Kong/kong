@@ -215,6 +215,12 @@ local CONF_INFERENCES = {
       replacement = "nginx_main_user",
     }
   },
+  nginx_daemon = {
+    typ = "ngx_boolean",
+    alias = {
+      replacement = "nginx_main_daemon",
+    }
+  },
   nginx_worker_processes = { typ = "string" },
   upstream_keepalive = { -- TODO: remove since deprecated in 1.3
     typ = "number",
@@ -353,7 +359,6 @@ local CONF_INFERENCES = {
               },
   plugins = { typ = "array" },
   anonymous_reports = { typ = "boolean" },
-  nginx_daemon = { typ = "ngx_boolean" },
   nginx_optimizations = { typ = "boolean" },
 
   lua_ssl_verify_depth = { typ = "number" },

@@ -549,6 +549,13 @@ describe("NGINX conf compiler", function()
     end)
     it("compiles with custom conf", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
+        nginx_main_daemon = "off"
+      }))
+      local nginx_conf = prefix_handler.compile_nginx_conf(conf)
+      assert.matches("daemon%s+off;", nginx_conf)
+    end)
+    it("compiles with custom conf (alias)", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
         nginx_daemon = "off"
       }))
       local nginx_conf = prefix_handler.compile_nginx_conf(conf)

@@ -32,7 +32,7 @@ describe("Configuration loader", function()
   it("loads a given file, with higher precedence", function()
     local conf = assert(conf_loader(helpers.test_conf_path))
     -- defaults
-    assert.equal("on", conf.nginx_daemon)
+    assert.equal("on", conf.nginx_main_daemon)
     -- overrides
     assert.is_nil(conf.nginx_main_user)
     assert.equal("1",            conf.nginx_worker_processes)
@@ -51,7 +51,7 @@ describe("Configuration loader", function()
       nginx_worker_processes = "auto"
     }))
     -- defaults
-    assert.equal("on", conf.nginx_daemon)
+    assert.equal("on", conf.nginx_main_daemon)
     -- overrides
     assert.is_nil(conf.nginx_main_user)
     assert.equal("auto",           conf.nginx_worker_processes)
@@ -434,7 +434,7 @@ describe("Configuration loader", function()
   describe("inferences", function()
     it("infer booleans (on/off/true/false strings)", function()
       local conf = assert(conf_loader())
-      assert.equal("on", conf.nginx_daemon)
+      assert.equal("on", conf.nginx_main_daemon)
       assert.equal(30, conf.lua_socket_pool_size)
       assert.True(conf.anonymous_reports)
       assert.False(conf.cassandra_ssl)
@@ -476,19 +476,19 @@ describe("Configuration loader", function()
     end)
     it("infer ngx_boolean", function()
       local conf = assert(conf_loader(nil, {
-        nginx_daemon = true
+        nginx_main_daemon = true
       }))
-      assert.equal("on", conf.nginx_daemon)
+      assert.equal("on", conf.nginx_main_daemon)
 
       conf = assert(conf_loader(nil, {
-        nginx_daemon = false
+        nginx_main_daemon = false
       }))
-      assert.equal("off", conf.nginx_daemon)
+      assert.equal("off", conf.nginx_main_daemon)
 
       conf = assert(conf_loader(nil, {
-        nginx_daemon = "off"
+        nginx_main_daemon = "off"
       }))
-      assert.equal("off", conf.nginx_daemon)
+      assert.equal("off", conf.nginx_main_daemon)
     end)
   end)
 

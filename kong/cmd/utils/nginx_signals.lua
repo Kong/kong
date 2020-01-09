@@ -84,7 +84,7 @@ function _M.start(kong_conf)
 
   log.debug("starting nginx: %s", cmd)
 
-  if kong_conf.nginx_daemon == "on" then
+  if kong_conf.nginx_main_daemon == "on" then
     -- running as daemon: capture command output to temp files using the
     -- "executeex" method
     local ok, _, _, stderr = pl_utils.executeex(cmd)
