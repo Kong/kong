@@ -55,8 +55,22 @@ end
 
 _M.test = function(entity, data)
   -- Get an unwrapped callback, since we want it sync
-  local callback = _M.handlers[entity.handler](entity, entity.config)
+  local callback = _M.handlers[entity.handler](entity, entity.config).callback
   return callback(data, entity.event, entity.source, 1234)
+end
+
+_M.has_ping = function(entity)
+  return _M.handlers[entity.handler](entity, entity.config).ping
+end
+
+_M.ping = function(entity)
+  local handler = _M.handlers[entity.handler](entity, entity.config)
+
+  if not handler.ping then
+    return false, fmt("handler '%s' does not support 'ping'", entity.handler)
+  end
+
+  return handler.ping(entity)
 end
 
 _M.register = function(entity)
@@ -126,7 +140,7 @@ local queue = BatchQueue.new(process_callback, {
 })
 
 _M.callback = function(entity)
-  local callback = _M.handlers[entity.handler](entity, entity.config)
+  local callback = _M.handlers[entity.handler](entity, entity.config).callback
   local wrap = function(data, event, source, pid)
     local ttl = entity.snooze ~= ngx_null and entity.snooze or nil
     local on_change = entity.on_change ~= ngx_null and entity.on_change or nil
@@ -183,26 +197,51 @@ _M.handlers = {
   --    > arbitrary headers
   --    > can be signed
   webhook = function(entity, config)
-    return function(data, event, source, pid)
-      local headers = config.headers ~= ngx_null and config.headers or {}
-      local method = "POST"
+    return {
+      callback = function(data, event, source, pid)
+        local headers = config.headers ~= ngx_null and config.headers or {}
+        local method = "POST"
 
-      headers['content-type'] = "application/json"
-      data.event = event
-      data.source = source
+        headers['content-type'] = "application/json"
+        data.event = event
+        data.source = source
 
-      local body = cjson.encode(data)
+        local body = cjson.encode(data)
 
-      kong.log.debug("webhook event data: ", inspect({data, event, source, pid}))
-      local res, err = request(config.url, {
-        method = method,
-        body = body,
-        sign_with = config.secret and config.secret ~= ngx_null and sign_body(config.secret),
-        headers = headers
-      })
-      kong.log.debug("response: ", inspect({res and res.status or nil, err}))
-      return not err
-    end
+        kong.log.debug("webhook event data: ", inspect({data, event, source, pid}))
+        local res, err = request(config.url, {
+          method = method,
+          body = body,
+          sign_with = config.secret and config.secret ~= ngx_null and sign_body(config.secret),
+          headers = headers
+        })
+        kong.log.debug("response: ", inspect({res and res.status or nil, err}))
+        return not err
+      end,
+      ping = function()
+        local headers = config.headers ~= ngx_null and config.headers or {}
+        local method = "POST"
+
+        headers['content-type'] = "application/json"
+
+        local data = {
+          source = entity.source,
+          event = "ping",
+          dbus = entity,
+        }
+
+        local body = cjson.encode(data)
+
+        local res, err = request(config.url, {
+          method = method,
+          body = body,
+          sign_with = config.secret and config.secret ~= ngx_null and sign_body(config.secret),
+          headers = headers
+        })
+
+        return not err, res
+      end,
+    }
   end,
 
   ["webhook-custom"] = function(entity, config)
@@ -213,71 +252,77 @@ _M.handlers = {
       template = require "resty.template"
     end
 
-    return function(data, event, source, pid)
-      local payload, body, headers
-      local method = config.method
+    return {
+      callback = function(data, event, source, pid)
+        local payload, body, headers
+        local method = config.method
 
-      data.event = event
-      data.source = source
+        data.event = event
+        data.source = source
 
-      if config.payload and config.payload ~= ngx_null then
-        if config.payload_format then
-          payload = {}
-          for k, v in pairs(config.payload) do
-            payload[k] = template.compile(v)(data)
+        if config.payload and config.payload ~= ngx_null then
+          if config.payload_format then
+            payload = {}
+            for k, v in pairs(config.payload) do
+              payload[k] = template.compile(v)(data)
+            end
+          else
+            payload = config.payload
           end
-        else
-          payload = config.payload
         end
-      end
 
-      if config.body and config.body ~= ngx_null then
-        if config.body_format then
-          body = template.compile(config.body)(data)
-        else
-          body = config.body
-        end
-      end
-
-      if config.headers and config.headers ~= ngx_null then
-        if config.headers_format then
-          headers = {}
-          for k, v in pairs(config.headers) do
-            headers[k] = template.compile(v)(data)
+        if config.body and config.body ~= ngx_null then
+          if config.body_format then
+            body = template.compile(config.body)(data)
+          else
+            body = config.body
           end
-        else
-          headers = config.headers
         end
-      end
 
-      kong.log.debug("webhook event data: ", inspect({data, event, source, pid}))
-      local res, err = request(config.url, {
-        method = method,
-        data = payload,
-        body = body,
-        sign_with = config.secret and config.secret ~= ngx_null and sign_body(config.secret),
-        headers = headers
-      })
-      kong.log.debug("response: ", inspect({res and res.status or nil, err}))
-      return not err
-    end
+        if config.headers and config.headers ~= ngx_null then
+          if config.headers_format then
+            headers = {}
+            for k, v in pairs(config.headers) do
+              headers[k] = template.compile(v)(data)
+            end
+          else
+            headers = config.headers
+          end
+        end
+
+        kong.log.debug("webhook event data: ", inspect({data, event, source, pid}))
+        local res, err = request(config.url, {
+          method = method,
+          data = payload,
+          body = body,
+          sign_with = config.secret and config.secret ~= ngx_null and sign_body(config.secret),
+          headers = headers
+        })
+        kong.log.debug("response: ", inspect({res and res.status or nil, err}))
+        return not err
+      end,
+    }
   end,
 
   -- This would be a specialized helper easier to configure than a webhook
   -- even though slack would use a webhook
   slack = function(entity, config)
-    return function(data, event, source, pid)
-      kong.log.debug("slack event data: ", inspect({data, event, source, pid}))
-      kong.log.debug("slack callback not implemented")
-      return true
-    end
+    return {
+      callback = function(data, event, source, pid)
+        kong.log.debug("slack event data: ", inspect({data, event, source, pid}))
+        kong.log.debug("slack callback not implemented")
+        return true
+      end,
+    }
   end,
 
   log = function(entity, config)
-    return function(data, event, source, pid)
-      kong.log.notice("log callback ", inspect({event, source, data, pid}))
-      return true
-    end
+    return {
+      callback = function(data, event, source, pid)
+        kong.log.notice("log callback ", inspect({event, source, data, pid}))
+        return true
+      end,
+    }
   end,
 
   lambda = function(entity, config)
@@ -328,17 +373,19 @@ _M.handlers = {
       end
     end
 
-    return function(data, event, source, pid)
-      -- reduce on functions with data
-      local err
-      for _, fn in ipairs(functions) do
-        data, err = fn(data, event, source, pid)
-        if err then
-          break
+    return {
+      callback = function(data, event, source, pid)
+        -- reduce on functions with data
+        local err
+        for _, fn in ipairs(functions) do
+          data, err = fn(data, event, source, pid)
+          if err then
+            break
+          end
         end
-      end
-      return not err, data, err
-    end
+        return not err, data, err
+      end,
+    }
   end,
 }
 

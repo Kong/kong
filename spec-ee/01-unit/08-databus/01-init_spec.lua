@@ -336,7 +336,7 @@ describe("databus", function()
 
         handler = "some_handler"
         handler_cb = function(data, event, source, pid) end
-        stub(databus.handlers, handler).returns(handler_cb)
+        stub(databus.handlers, handler).returns({ callback = handler_cb })
 
         entity = {
           id = "a4fbd24e-6a52-4937-bd78-2536713072d2",
@@ -545,6 +545,7 @@ describe("databus", function()
           source = "some_source",
           pid = 1234,
         }
+
         local ok, res, err = databus.process_callback({ blob })
         assert.is_false(ok)
         assert.matches("something bad", err)
@@ -606,7 +607,7 @@ describe("databus", function()
       -- subschema does not handle defaults and required nested fields very
       -- well, so we have to assume an empty config might happen.
       it("does not break on empty config", function()
-        local cb = handler(entity, entity.config)
+        local cb = handler(entity, entity.config).callback
         assert(cb({ some = "data"}, "some_event", "some_source", 1234))
       end)
 
@@ -623,7 +624,7 @@ describe("databus", function()
             end
           ]],
         }
-        local cb = handler(entity, entity.config)
+        local cb = handler(entity, entity.config).callback
         local ok, res = cb({ some = "data"}, "some_event", "some_source", 1234)
         assert.is_true(ok)
         assert.equal("HELLO WORLD", res)
@@ -642,7 +643,7 @@ describe("databus", function()
             end
           ]],
         }
-        local cb = handler(entity, entity.config)
+        local cb = handler(entity, entity.config).callback
         local ok, _, err = cb({ some = "data"}, "some_event", "some_source", 1234)
         assert.is_false(ok)
         assert.equal("some bad error", err)
@@ -661,7 +662,7 @@ describe("databus", function()
             end
           ]],
         }
-        local cb = handler(entity, entity.config)
+        local cb = handler(entity, entity.config).callback
         local ok, _, err = cb({ some = "data"}, "some_event", "some_source", 1234)
         assert.is_false(ok)
         assert.match("'=' expected near 'finction'", err)
@@ -680,7 +681,7 @@ describe("databus", function()
             end
           ]],
         }
-        local cb = handler(entity, entity.config)
+        local cb = handler(entity, entity.config).callback
         local ok, res, _ = cb({ some = "data"}, "some_event", "some_source", 1234)
         assert.is_true(ok)
         assert.equal("hello world", res)
@@ -709,7 +710,7 @@ describe("databus", function()
         entity.config = {
           url = "http://foobar.com",
         }
-        local cb = handler(entity, entity.config)
+        local cb = handler(entity, entity.config).callback
         cb({ some = "data"}, "some_event", "some_source", 1234)
 
         local expected_body = '{"event":"some_event","some":"data","source":"some_source"}'
@@ -732,7 +733,7 @@ describe("databus", function()
             url = "http://foobar.com",
             secret = "hunter2",
           }
-          local cb = handler(entity, entity.config)
+          local cb = handler(entity, entity.config).callback
           cb({ some = "data"}, "some_event", "some_source", 1234)
           local blob = request.calls[1].refs[2]
           assert.is_function(blob.sign_with)
@@ -750,7 +751,7 @@ describe("databus", function()
               ["X-Give-Me"] = "some tests",
             },
           }
-          local cb = handler(entity, entity.config)
+          local cb = handler(entity, entity.config).callback
           cb({ some = "data"}, "some_event", "some_source", 1234)
 
 
@@ -791,7 +792,7 @@ describe("databus", function()
             url = "http://foobar.com",
             method = "GET",
           }
-          local cb = handler(entity, entity.config)
+          local cb = handler(entity, entity.config).callback
           cb({ some = "data"}, "some_event", "some_source", 1234)
           assert.stub(request).was.called_with(entity.config.url, {
             method = entity.config.method,
@@ -801,7 +802,7 @@ describe("databus", function()
             url = "http://foobar.com",
             method = "POST",
           }
-          local cb = handler(entity, entity.config)
+          local cb = handler(entity, entity.config).callback
           cb({ some = "data"}, "some_event", "some_source", 1234)
           assert.stub(request).was.called_with(entity.config.url, {
             method = entity.config.method,
@@ -821,7 +822,7 @@ describe("databus", function()
                 -- but it's not our problem
               }
             }
-            local cb = handler(entity, entity.config)
+            local cb = handler(entity, entity.config).callback
             cb({ some = "data"}, "some_event", "some_source", 1234)
             assert.stub(request).was.called_with(entity.config.url, {
               method = entity.config.method,
@@ -839,7 +840,7 @@ describe("databus", function()
                 -- but it's not our problem
               }
             }
-            local cb = handler(entity, entity.config)
+            local cb = handler(entity, entity.config).callback
             cb({ some = "data"}, "some_event", "some_source", 1234)
             assert.stub(request).was.called_with(entity.config.url, {
               method = entity.config.method,
@@ -859,7 +860,7 @@ describe("databus", function()
                { "some": "arbitrary body" }
               ]],
             }
-            local cb = handler(entity, entity.config)
+            local cb = handler(entity, entity.config).callback
             cb({ some = "data"}, "some_event", "some_source", 1234)
             assert.stub(request).was.called_with(entity.config.url, {
               method = entity.config.method,
@@ -876,7 +877,7 @@ describe("databus", function()
                 { "some {{ some }}": "arbitrary body {{ some }}" }
               ]]
             }
-            local cb = handler(entity, entity.config)
+            local cb = handler(entity, entity.config).callback
             cb({ some = "data"}, "some_event", "some_source", 1234)
             assert.stub(request).was.called_with(entity.config.url, {
               method = entity.config.method,
@@ -895,7 +896,7 @@ describe("databus", function()
               method = "POST",
               secret = "hunter2",
             }
-            local cb = handler(entity, entity.config)
+            local cb = handler(entity, entity.config).callback
             cb({ some = "data"}, "some_event", "some_source", 1234)
             local blob = request.calls[1].refs[2]
             assert.is_function(blob.sign_with)
@@ -914,7 +915,7 @@ describe("databus", function()
                 ["X-Give-Me"] = "some tests",
               },
             }
-            local cb = handler(entity, entity.config)
+            local cb = handler(entity, entity.config).callback
             cb({ some = "data"}, "some_event", "some_source", 1234)
             assert.stub(request).was.called_with(entity.config.url, {
               method = entity.config.method,
@@ -931,7 +932,7 @@ describe("databus", function()
               },
               headers_format = true,
             }
-            local cb = handler(entity, entity.config)
+            local cb = handler(entity, entity.config).callback
             cb({ some = "data"}, "some_event", "some_source", 1234)
             assert.stub(request).was.called_with(entity.config.url, {
               method = entity.config.method,
@@ -955,7 +956,7 @@ describe("databus", function()
           config = {},
         }
         local handler = databus.handlers.log
-        local cb = handler(entity, entity.config)
+        local cb = handler(entity, entity.config).callback
         assert(cb({ some = "data"}, "some_event", "some_source", 1234))
       end)
     end)
