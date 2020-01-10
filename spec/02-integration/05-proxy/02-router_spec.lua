@@ -1448,12 +1448,20 @@ for _, strategy in helpers.each_strategy() do
           {
             strip_path = true,
             methods    = { "GET" },
-            paths      = { "/root" },
+            paths      = { "/unrelated/longer/uri/that/should/not/match", "/root/fixture" },
+            hosts      = { "ahost.test" },
           },
           {
             strip_path = true,
             methods    = { "GET" },
-            paths      = { "/root/fixture" },
+            paths      = { "/root/fixture/get" },
+            hosts      = { "ahost.test" },
+          },
+          {
+            strip_path = true,
+            methods    = { "GET" },
+            paths      = { "/root/fixture/get" },
+            hosts      = { "anotherhost.test" },
           },
         })
       end)
@@ -1468,6 +1476,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/root/fixture/get",
           headers = {
             ["kong-debug"] = 1,
+            ["host"] = "ahost.test",
           }
         })
 
