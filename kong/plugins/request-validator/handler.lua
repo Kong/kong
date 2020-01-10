@@ -20,6 +20,7 @@ local ngx_null = ngx.null
 local type = type
 local string_find = string.find
 local ngx_re_match = ngx.re.match
+local fmt = string.format
 
 
 cjson.decode_array_with_array_mt(true)
@@ -238,34 +239,18 @@ local function validate_data(location, parameter)
 end
 
 
-local validate_parameters = {
-  path = function(parameter)
-    if not validate_required("path", parameter) or
-            not validate_data("path", parameter) then
-      return false
-    end
+local function validate_parameters(location, parameter)
+  if not validate_required(location, parameter) then
+    return false
+  end
 
-    return true
-  end,
+  local ok, err = validate_data(location, parameter)
+  if not ok then
+    return false, err
+  end
 
-  header = function(parameter)
-    if not validate_required("header", parameter) or
-            not validate_data("header", parameter) then
-      return false
-    end
-
-    return true
-  end,
-
-  query = function(parameter)
-    if not validate_required("query", parameter) or
-            not validate_data("query", parameter) then
-      return false
-    end
-
-    return true
-  end,
-}
+  return true
+end
 
 
 local RequestValidator = BasePlugin:extend()
@@ -284,8 +269,12 @@ function RequestValidator:access(conf)
   -- validate parameters
   clear_environment()
   for _, parameter in ipairs(conf.parameter_schema or EMPTY) do
-    local ok = validate_parameters[parameter["in"]](parameter)
+    local ok, err = validate_parameters(parameter["in"], parameter)
     if not ok then
+      if err and conf.verbose_response then
+        return kong.response.exit(400, { message = fmt("%s '%s' validation failed, [error] %s", parameter["in"],
+                                                       parameter.name, err)})
+      end
       return kong.response.exit(400, { message = DENY_PARAM_MESSAGE })
     end
   end
@@ -310,8 +299,11 @@ function RequestValidator:access(conf)
     end
 
     -- try to validate body against schema
-    local ok, _ = validator(body)
+    local ok, err = validator(body)
     if not ok then
+      if err and conf.verbose_response then
+        return kong.response.exit(400, { message = err })
+      end
       return kong.response.exit(400, { message = DENY_BODY_MESSAGE })
     end
   end

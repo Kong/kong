@@ -1906,6 +1906,65 @@ for _, strategy in helpers.each_strategy()do
         })
         assert.res_status(200, res)
       end)
+
+      it("verbose response for body schema validation", function()
+        local body_schema = [[
+          [
+            {
+              "f1": {
+                "type": "string",
+                "required": true
+              }
+            },
+            {
+              "arr": {
+                "type": "array",
+                "required": true,
+                "elements": {
+                  "type": "string"
+                }
+              }
+            }
+          ]
+        ]]
+
+        add_plugin(admin_client, {body_schema = body_schema, verbose_response = true }, 201)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/anything",
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["Host"] = "path.com",
+          },
+          body = {
+            f1 = true,
+            arr = {
+              "a",
+              "b"
+            }
+          }
+        })
+        local json = cjson.decode(assert.res_status(400, res))
+        assert.same("expected a string", json.message["f1"])
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/anything",
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["Host"] = "path.com",
+          },
+          body = {
+            f1 = "value",
+            arr = {
+              true,
+            }
+          }
+        })
+        local json = cjson.decode(assert.res_status(400, res))
+        assert.same("expected a string", json.message["arr"][1])
+      end)
     end)
   end)
 end

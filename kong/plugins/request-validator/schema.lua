@@ -126,6 +126,11 @@ return {
               }
             },
           }},
+          { verbose_response = {
+            type = "boolean",
+            default = false,
+            required = true,
+          }},
         },
         entity_checks = {
           { at_least_one_of = { "body_schema", "parameter_schema" } },

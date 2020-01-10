@@ -279,6 +279,102 @@ for _, strategy in helpers.each_strategy()do
         assert.res_status(400, res)
       end)
 
+      it("verbose response for body schema validation", function()
+        local body_schema = [[
+            {
+              "properties": {
+                "f1": {
+                  "type": "string"
+                },
+                "arr" : {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [ "f1", "arr" ]
+            }
+        ]]
+
+        add_plugin(admin_client, {body_schema = body_schema, verbose_response = true }, 201)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/anything",
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["Host"] = "path.com",
+          },
+          body = {
+            f1 = true,
+            arr = {
+              "a",
+              "b"
+            }
+          }
+        })
+        local json = cjson.decode(assert.res_status(400, res))
+        assert.same("property f1 validation failed: wrong type: expected string, got boolean", json.message)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/anything",
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["Host"] = "path.com",
+          },
+          body = {
+            f1 = "value",
+            arr = {
+              true,
+            }
+          }
+        })
+        local json = cjson.decode(assert.res_status(400, res))
+        assert.same("property arr validation failed: failed to validate item 1: wrong type: expected string, got boolean", json.message)
+      end)
+
+
+      it("verbose response for parameter schema validation", function()
+        local body_schema = [[
+            {
+              "properties": {
+                "f1": {
+                  "type": "string"
+                }
+               }
+            }
+        ]]
+
+        local param_schema = {
+          {
+            name = "x-kong-name",
+            ["in"] = "header",
+            required = true,
+            schema = '{"type": "array", "items": {"type": "integer"}}',
+            style = "simple",
+            explode = false,
+          }
+        }
+
+        add_plugin(admin_client, {body_schema = body_schema, parameter_schema = param_schema, verbose_response = true }, 201)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["x-kong-name"] = "a,b,c",
+          },
+          body = {
+            f1 = "abc"
+          }
+        })
+        local json = cjson.decode(assert.res_status(400, res))
+        assert.same("header 'x-kong-name' validation failed, [error] failed to validate item 1: wrong type: expected integer, got string", json.message)
+      end)
+
     end)
   end)
 end
