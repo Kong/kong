@@ -22,7 +22,7 @@ local bit = require "bit"
 local fmt = string.format
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 
-local function gen_default_ssl_cert(kong_config, admin)
+local function gen_default_ssl_cert(kong_config, target)
   -- create SSL folder
   local ok, err = pl_dir.makepath(pl_path.join(kong_config.prefix, "ssl"))
   if not ok then
@@ -30,9 +30,13 @@ local function gen_default_ssl_cert(kong_config, admin)
   end
 
   local ssl_cert, ssl_cert_key
-  if admin then
+  if target == "admin" then
     ssl_cert = kong_config.admin_ssl_cert_default
     ssl_cert_key = kong_config.admin_ssl_cert_key_default
+
+  elseif target == "status" then
+    ssl_cert = kong_config.status_ssl_cert_default
+    ssl_cert_key = kong_config.status_ssl_cert_key_default
 
   else
     ssl_cert = kong_config.ssl_cert_default
@@ -40,8 +44,7 @@ local function gen_default_ssl_cert(kong_config, admin)
   end
 
   if not pl_path.exists(ssl_cert) and not pl_path.exists(ssl_cert_key) then
-    log.verbose("generating %s SSL certificate and key",
-                admin and "admin" or "default")
+    log.verbose("generating %s SSL certificate and key", target or "default")
 
     local key = openssl_pkey.new { bits = 2048 }
 
@@ -97,8 +100,7 @@ local function gen_default_ssl_cert(kong_config, admin)
     end
 
   else
-    log.verbose("%s SSL certificate found at %s",
-                admin and "admin" or "default", ssl_cert)
+    log.verbose("%s SSL certificate found at %s", target or "default", ssl_cert)
   end
 
   return true
@@ -283,15 +285,27 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     kong_config.ssl_cert = kong_config.ssl_cert_default
     kong_config.ssl_cert_key = kong_config.ssl_cert_key_default
   end
+
   if kong_config.admin_ssl_enabled and not kong_config.admin_ssl_cert and
      not kong_config.admin_ssl_cert_key then
     log.verbose("Admin SSL enabled, no custom certificate set: using default certificate")
-    local ok, err = gen_default_ssl_cert(kong_config, true)
+    local ok, err = gen_default_ssl_cert(kong_config, "admin")
     if not ok then
       return nil, err
     end
     kong_config.admin_ssl_cert = kong_config.admin_ssl_cert_default
     kong_config.admin_ssl_cert_key = kong_config.admin_ssl_cert_key_default
+  end
+
+  if kong_config.status_ssl_enabled and not kong_config.status_ssl_cert and
+     not kong_config.status_ssl_cert_key then
+    log.verbose("Status SSL enabled, no custom certificate set: using default certificate")
+    local ok, err = gen_default_ssl_cert(kong_config, "status")
+    if not ok then
+      return nil, err
+    end
+    kong_config.status_ssl_cert = kong_config.status_ssl_cert_default
+    kong_config.status_ssl_cert_key = kong_config.status_ssl_cert_key_default
   end
 
   -- check ulimit
