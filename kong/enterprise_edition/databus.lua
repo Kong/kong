@@ -53,6 +53,12 @@ _M.publish = function(source, event, opts)
   return true
 end
 
+_M.test = function(entity, data)
+  -- Get an unwrapped callback, since we want it sync
+  local callback = _M.handlers[entity.handler](entity, entity.config)
+  return callback(data, entity.event, entity.source, 1234)
+end
+
 _M.register = function(entity)
   if not _M.enabled() then return end
   local callback = _M.callback(entity)
