@@ -298,7 +298,7 @@ local function load_declarative_config(kong_config, entities)
     kong.log.notice("declarative config loaded from ",
                     kong_config.declarative_config)
 
-    ok, err = runloop.build_plugins_iterator(utils.uuid())
+    ok, err = runloop.build_plugins_iterator("init")
     if not ok then
       error("error building initial plugins iterator: " .. err)
     end
