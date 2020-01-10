@@ -1,5 +1,6 @@
 local BasePlugin   = require "kong.plugins.base_plugin"
 local constants    = require "kong.constants"
+local utils        = require "kong.tools.utils"
 
 
 local kong         = kong
@@ -12,6 +13,7 @@ local tostring     = tostring
 
 
 local EMPTY_T      = {}
+local TTL_ZERO     = { ttl = 0 }
 
 
 local COMBO_R      = 1
@@ -312,9 +314,22 @@ function PluginsIterator.new(version)
     }
   end
 
+  local counter = 0
+  local page_size = constants.DEFAULT_ITERATION_SIZE
   for plugin, err in kong.db.plugins:each() do
     if err then
       return nil, err
+    end
+
+    if kong.cache and counter > 0 and counter % page_size == 0 then
+      local new_version, err = kong.cache:get("plugins_iterator:version", TTL_ZERO,  utils.uuid)
+      if err then
+        return nil, "failed to retrieve plugins iterator version: " .. err
+      end
+
+      if new_version ~= version then
+        return nil, "plugins iterator was changed while rebuilding it"
+      end
     end
 
     if should_process_plugin(plugin) then
