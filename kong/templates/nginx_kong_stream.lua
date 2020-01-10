@@ -35,7 +35,7 @@ lua_shared_dict stream_kong_db_cache_2             ${{MEM_CACHE_SIZE}};
 lua_shared_dict stream_kong_db_cache_miss_2        12m;
 > end
 > if database == "cassandra" then
-lua_shared_dict  stream_kong_cassandra             5m;
+lua_shared_dict stream_kong_cassandra              5m;
 > end
 
 > if ssl_ciphers then
