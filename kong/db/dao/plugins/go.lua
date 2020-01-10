@@ -245,7 +245,7 @@ do
       return "plugin.StepError", pdk_err
     end
 
-    return ((pdk_res and pdk_res._method)
+    return ((type(pdk_res) == "table" and pdk_res._method)
         or by_pdk_method[step_in.Data.Method]
         or "plugin.Step"), pdk_res
   end
