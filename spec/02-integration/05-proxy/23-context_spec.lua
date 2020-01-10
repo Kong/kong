@@ -76,8 +76,9 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local service = assert(bp.services:insert {
-            host = helpers.mock_upstream_host,
-            port = helpers.mock_upstream_stream_port,
+            host     = helpers.mock_upstream_host,
+            port     = helpers.mock_upstream_stream_port,
+            protocol = "tcp",
           })
 
           assert(bp.routes:insert {
@@ -115,7 +116,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         before_each(function()
-          tcp_client = require "socket".tcp()
+          tcp_client = ngx.socket.tcp()
           assert(tcp_client:connect(helpers.get_proxy_ip(false), 19000))
         end)
 

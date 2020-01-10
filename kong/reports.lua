@@ -1,6 +1,7 @@
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
+local counter = require "resty.counter"
 
 
 local kong_dict = ngx.shared.kong
@@ -40,12 +41,17 @@ local TCP_STREAM_COUNT_KEY    = "events:streams:tcp"
 local TLS_STREAM_COUNT_KEY    = "events:streams:tls"
 
 
+local GO_PLUGINS_REQUEST_COUNT_KEY = "events:requests:go_plugins"
+
+
 local _buffer = {}
 local _ping_infos = {}
 local _enabled = false
 local _unique_str = utils.random_string()
 local _buffer_immutable_idx
 
+-- the resty.counter instance, will be initialized in `init_worker`
+local report_counter = nil
 
 do
   -- initialize immutable buffer data (the same for each report)
@@ -162,36 +168,26 @@ local function create_timer(...)
   end
 end
 
+-- @param interval exposed for unit test only
+local function create_counter(interval)
+  local err
+  -- create a counter instance which syncs to `kong` shdict every 10 minutes
+  report_counter, err = counter.new('kong', interval or 600)
+  return err
+end
+
 
 local function get_counter(key)
-  local count, err = kong_dict:get(key)
+  local count, err = report_counter:get(key)
   if err then
     log(WARN, "could not get ", key, " from 'kong' shm: ", err)
   end
   return count or 0
 end
 
--- For counter resetting we use `incr` instead of `set` because we want to
--- preserve measurements which might get received while we send the
--- report from worker A:
---
---                   Flow of Time
---                       |||
---                       VVV
---
---         Worker A       |     Worker B
---                        |
---   get_counter -> 100   |
---                        |
---                        |  <log phase> incr_counter(1) -> 101
---                        |
---   reset_counter(-100)  |
---
--- Final counter value after reset: 1 (correct, the worker B increment was preserved)
--- `reset_counter` was set to 0 (with `kong_dict:set(key, 0)` we would lose the increment
--- done by Worker B.
+
 local function reset_counter(key, amount)
-  local ok, err = kong_dict:incr(key, -amount, amount)
+  local ok, err = report_counter:reset(key, amount)
   if not ok then
     log(WARN, "could not reset ", key, " in 'kong' shm: ", err)
   end
@@ -199,7 +195,7 @@ end
 
 
 local function incr_counter(key)
-  local ok, err = kong_dict:incr(key, 1, 0)
+  local ok, err = report_counter:incr(key, 1)
   if not ok then
     log(WARN, "could not increment ", key, " in 'kong' shm: ", err)
   end
@@ -211,7 +207,7 @@ end
 -- or nil + error message if the suffix could not be determined
 local function get_current_suffix()
   if subsystem == "stream" then
-    if var.ssl_preread_protocol then
+    if var.ssl_protocol then
       return "tls"
     end
 
@@ -264,25 +260,28 @@ local function send_ping(host, port)
     _ping_infos.streams     = get_counter(STREAM_COUNT_KEY)
     _ping_infos.tcp_streams = get_counter(TCP_STREAM_COUNT_KEY)
     _ping_infos.tls_streams = get_counter(TLS_STREAM_COUNT_KEY)
+    _ping_infos.go_plugin_reqs = get_counter(GO_PLUGINS_REQUEST_COUNT_KEY)
 
     send_report("ping", _ping_infos, host, port)
 
     reset_counter(STREAM_COUNT_KEY, _ping_infos.streams)
     reset_counter(TCP_STREAM_COUNT_KEY, _ping_infos.tcp_streams)
     reset_counter(TLS_STREAM_COUNT_KEY, _ping_infos.tls_streams)
+    reset_counter(GO_PLUGINS_REQUEST_COUNT_KEY, _ping_infos.go_plugin_reqs)
 
     return
   end
 
-  _ping_infos.requests   = get_counter(REQUEST_COUNT_KEY)
-  _ping_infos.http_reqs  = get_counter(HTTP_REQUEST_COUNT_KEY)
-  _ping_infos.https_reqs = get_counter(HTTPS_REQUEST_COUNT_KEY)
-  _ping_infos.h2c_reqs   = get_counter(H2C_REQUEST_COUNT_KEY)
-  _ping_infos.h2_reqs    = get_counter(H2_REQUEST_COUNT_KEY)
-  _ping_infos.grpc_reqs  = get_counter(GRPC_REQUEST_COUNT_KEY)
-  _ping_infos.grpcs_reqs = get_counter(GRPCS_REQUEST_COUNT_KEY)
-  _ping_infos.ws_reqs    = get_counter(WS_REQUEST_COUNT_KEY)
-  _ping_infos.wss_reqs   = get_counter(WSS_REQUEST_COUNT_KEY)
+  _ping_infos.requests       = get_counter(REQUEST_COUNT_KEY)
+  _ping_infos.http_reqs      = get_counter(HTTP_REQUEST_COUNT_KEY)
+  _ping_infos.https_reqs     = get_counter(HTTPS_REQUEST_COUNT_KEY)
+  _ping_infos.h2c_reqs       = get_counter(H2C_REQUEST_COUNT_KEY)
+  _ping_infos.h2_reqs        = get_counter(H2_REQUEST_COUNT_KEY)
+  _ping_infos.grpc_reqs      = get_counter(GRPC_REQUEST_COUNT_KEY)
+  _ping_infos.grpcs_reqs     = get_counter(GRPCS_REQUEST_COUNT_KEY)
+  _ping_infos.ws_reqs        = get_counter(WS_REQUEST_COUNT_KEY)
+  _ping_infos.wss_reqs       = get_counter(WSS_REQUEST_COUNT_KEY)
+  _ping_infos.go_plugin_reqs = get_counter(GO_PLUGINS_REQUEST_COUNT_KEY)
 
   send_report("ping", _ping_infos, host, port)
 
@@ -295,6 +294,7 @@ local function send_ping(host, port)
   reset_counter(GRPCS_REQUEST_COUNT_KEY, _ping_infos.grpcs_reqs)
   reset_counter(WS_REQUEST_COUNT_KEY,    _ping_infos.ws_reqs)
   reset_counter(WSS_REQUEST_COUNT_KEY,   _ping_infos.wss_reqs)
+  reset_counter(GO_PLUGINS_REQUEST_COUNT_KEY, _ping_infos.go_plugin_reqs)
 end
 
 
@@ -383,6 +383,11 @@ return {
     end
 
     create_timer(PING_INTERVAL, ping_handler)
+
+    local err = create_counter()
+    if err then
+      error(err)
+    end
   end,
   add_immutable_value = add_immutable_value,
   configure_ping = configure_ping,
@@ -391,7 +396,7 @@ return {
     return _ping_infos[k]
   end,
   send_ping = send_ping,
-  log = function()
+  log = function(ctx)
     if not _enabled then
       return
     end
@@ -403,6 +408,10 @@ return {
     local suffix, err = get_current_suffix()
     if suffix then
       incr_counter(count_key .. ":" .. suffix)
+
+      if ctx.ran_go_plugin then
+        incr_counter(GO_PLUGINS_REQUEST_COUNT_KEY)
+      end
     else
       log(WARN, err)
     end
@@ -414,4 +423,8 @@ return {
   end,
   send = send_report,
   retrieve_redis_version = retrieve_redis_version,
+  -- exposed for unit test
+  _create_counter = create_counter,
+  -- exposed for integration test
+  _sync_counter = function() report_counter:sync() end,
 }

@@ -2,6 +2,7 @@
 
 
 - [2.0.0rc1](#200rc1)
+- [1.4.3](#143)
 - [1.4.2](#142)
 - [1.4.1](#141)
 - [1.4.0](#140)
@@ -174,19 +175,9 @@ repository will allow you to do both easily.
 
 ##### Admin API
 
-  - Fixed behavior of PUT for `/certificates`
-    [#5321](https://github.com/Kong/kong/pull/5321)
   - Corrected the behavior when overwriting a Service configuration using
     the `url` shorthand
     [#5315](https://github.com/Kong/kong/pull/5315)
-
-##### Plugins
-
-  - acl: Fixed error when retrieving ACL by group when consumers share
-    the same group
-    [#5322](https://github.com/Kong/kong/pull/5322)
-
-### Changes
 
 ##### Core
 
@@ -212,6 +203,50 @@ repository will allow you to do both easily.
 
   - Removed the Sidecar Injector plugin which was used for service mesh.
     [#5199](https://github.com/Kong/kong/pull/5199)
+
+
+[Back to TOC](#table-of-contents)
+
+
+## [1.4.3]
+
+> Released 2020/01/09
+
+:warning: This release includes a security fix to address potentially
+sensitive information being written to the error log file. This affects
+certain uses of the Admin API for DB-less mode, described below.
+
+This is a patch release in the 1.4 series, and as such, strictly contains
+bugfixes. There are no new features nor breaking changes.
+
+### Fixes
+
+##### Core
+
+  - Fix the detection of the need for balancer updates
+    when deleting targets
+    [#5352](https://github.com/kong/kong/issues/5352) --
+    Thanks [zeeshen](https://github.com/zeeshen) for the patch!
+  - Fix behavior of longest-path criteria when matching routes
+    [#5383](https://github.com/kong/kong/issues/5383)
+  - Fix incorrect use of cache when using header-based routing
+    [#5267](https://github.com/kong/kong/issues/5267) --
+    Thanks [marlonfan](https://github.com/marlonfan) for the patch!
+
+##### Admin API
+
+  - Do not make a debugging dump of the declarative config input into
+    `error.log` when posting it with `/config` and using `_format_version`
+    as a top-level parameter (instead of embedded in the `config` parameter).
+    [#5411](https://github.com/kong/kong/issues/5411)
+  - Fix incorrect behavior of PUT for /certificates
+    [#5321](https://github.com/kong/kong/issues/5321)
+
+##### Plugins
+
+  - acl: fixed an issue where getting ACLs by group failed when multiple
+    consumers share the same group
+    [#5322](https://github.com/kong/kong/issues/5322)
 
 
 [Back to TOC](#table-of-contents)
@@ -4474,7 +4509,8 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[2.0.0rc1]: https://github.com/Kong/kong/compare/1.4.2...2.0.0rc1
+[2.0.0rc1]: https://github.com/Kong/kong/compare/1.4.3...2.0.0rc1
+[1.4.3]: https://github.com/Kong/kong/compare/1.4.2...1.4.3
 [1.4.2]: https://github.com/Kong/kong/compare/1.4.1...1.4.2
 [1.4.1]: https://github.com/Kong/kong/compare/1.4.0...1.4.1
 [1.4.0]: https://github.com/Kong/kong/compare/1.3.0...1.4.0

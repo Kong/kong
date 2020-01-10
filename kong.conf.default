@@ -115,6 +115,10 @@
                                  # cache (i.e. when the configured
                                  # `mem_cache_size`) is full.
 
+#go_pluginserver_exe = /usr/local/bin/go-pluginserver
+                                 # Path for the go-pluginserver executable,
+                                 # used for running Kong plugins written in Go.
+
 #go_plugins_dir = off            # Directory for installing Kong plugins
                                  # written in Go.
                                  #
@@ -179,7 +183,7 @@
 # NGINX
 #------------------------------------------------------------------------------
 
-#proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 ssl reuseport backlog=16384
+#proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
                          # Comma-separated list of addresses and ports on
                          # which the proxy server should listen for
                          # HTTP/HTTPS traffic.
@@ -284,7 +288,7 @@
 # See http://nginx.org/en/docs/stream/ngx_stream_core_module.html#listen
 # for a description of the formats that Kong might accept in stream_listen.
 
-#admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 ssl reuseport backlog=16384
+#admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 http2 ssl reuseport backlog=16384
                          # Comma-separated list of addresses and ports on
                          # which the Admin interface should listen.
                          # The Admin interface is the API allowing you to
@@ -563,17 +567,25 @@
 #
 # The following namespaces are supported:
 #
+# - `nginx_main_<directive>`: Injects `<directive>` in Kong's configuration
+#   `main` context.
+# - `nginx_events_<directive>`: Injects `<directive>` in Kong's `events {}`
+#    block.
 # - `nginx_http_<directive>`: Injects `<directive>` in Kong's `http {}` block.
 # - `nginx_proxy_<directive>`: Injects `<directive>` in Kong's proxy
 #   `server {}` block.
-# - `nginx_http_upstream_<directive>`: Injects `<directive>` in Kong's proxy
+# - `nginx_upstream_<directive>`: Injects `<directive>` in Kong's proxy
 #   `upstream {}` block.
 # - `nginx_admin_<directive>`: Injects `<directive>` in Kong's Admin API
 #   `server {}` block.
+# - `nginx_status_<directive>`: Injects `<directive>` in Kong's Status API
+#   `server {}` block  (only effective if `status_listen` is enabled).
 # - `nginx_stream_<directive>`: Injects `<directive>` in Kong's stream module
 #   `stream {}` block (only effective if `stream_listen` is enabled).
 # - `nginx_sproxy_<directive>`: Injects `<directive>` in Kong's stream module
 #   `server {}` block (only effective if `stream_listen` is enabled).
+# - `nginx_supstream_<directive>`: Injects `<directive>` in Kong's stream
+#   module `upstream {}` block.
 #
 # As with other configuration properties, Nginx directives can be injected via
 # environment variables when capitalized and prefixed with `KONG_`.
@@ -629,8 +641,7 @@
                                  #
                                  # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_timeout
 
-#nginx_http_upstream_keepalive = 60
-                                 # Sets the maximum number of idle keepalive
+#nginx_upstream_keepalive = 60   # Sets the maximum number of idle keepalive
                                  # connections to upstream servers that are
                                  # preserved in the cache of each worker
                                  # process. When this number is exceeded, the
@@ -640,14 +651,14 @@
                                  # to open a new connection.
                                  # See http://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive
 
-#nginx_http_upstream_keepalive_requests = 100
+#nginx_upstream_keepalive_requests = 100
                                  # Sets the maximum number of requests that can
                                  # be served through one keepalive connection.
                                  # After the maximum number of requests is
                                  # made, the connection is closed.
                                  # See http://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive_requests
 
-#nginx_http_upstream_keepalive_timeout = 60s
+#nginx_upstream_keepalive_timeout = 60s
                                  # Sets a timeout during which an idle
                                  # keepalive connection to an upstream server
                                  # will stay open.

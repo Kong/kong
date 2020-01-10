@@ -26,7 +26,6 @@ dependencies = {
   "lua_system_constants == 0.1.4",
   "lyaml == 6.2.4",
   "lua-resty-iputils == 0.3.0",
-  "luaossl == 20190731",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
   "lua-resty-dns-client == 4.1.2",
@@ -36,7 +35,8 @@ dependencies = {
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.0",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.3.0",
+  "lua-resty-openssl == 0.4.2",
+  "lua-resty-counter == 0.2.0",
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 0.4",
   "kong-plugin-zipkin ~> 0.2",
@@ -45,7 +45,7 @@ dependencies = {
   "kong-proxy-cache-plugin ~> 1.2",
   "kong-plugin-request-transformer ~> 1.2",
   "kong-plugin-session ~> 2.2",
-  "kong-plugin-aws-lambda ~> 3.0",
+  "kong-plugin-aws-lambda ~> 3.1",
   "kong-plugin-acme ~> 0.2",
 }
 build = {

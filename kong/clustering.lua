@@ -8,7 +8,7 @@ local ssl = require("ngx.ssl")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local utils = require("kong.tools.utils")
-local openssl_x509 = require("openssl.x509")
+local openssl_x509 = require("resty.openssl.x509")
 local assert = assert
 local setmetatable = setmetatable
 local type = type
@@ -186,9 +186,9 @@ function _M.handle_cp_websocket()
   end
 
   cert = assert(openssl_x509.new(cert, "PEM"))
-  local digest = cert:digest("sha256")
+  local digest = assert(cert:digest("sha256"))
 
-  if CERT_DIGEST and digest ~= CERT_DIGEST then
+  if digest ~= CERT_DIGEST then
     ngx_log(ngx_ERR, "Data Plane presented incorrect client certificate " ..
                      "during handshake, expected digest: " .. CERT_DIGEST ..
                      " got: " .. digest)

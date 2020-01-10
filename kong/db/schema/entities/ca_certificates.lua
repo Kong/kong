@@ -1,5 +1,5 @@
 local typedefs = require "kong.db.schema.typedefs"
-local openssl_x509 = require "openssl.x509"
+local openssl_x509 = require "resty.openssl.x509"
 
 return {
   name        = "ca_certificates",
@@ -26,14 +26,14 @@ return {
         end
 
         local cert = openssl_x509.new(entity.cert)
-        local _, not_after = cert:getLifetime()
+        local not_after = cert:get_not_after()
         local now = ngx.time()
 
         if not_after < now then
           return nil, "certificate expired, \"Not After\" time is in the past"
         end
 
-        if not cert:getBasicConstraints("CA") then
+        if not cert:get_basic_constraints("CA") then
           return nil, "certificate does not appear to be a CA because " ..
                       "it is missing the \"CA\" basic constraint"
         end

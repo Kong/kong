@@ -1,13 +1,14 @@
 ------------------------------------------------------------------
 -- Collection of utilities to help testing Kong features and plugins.
 --
--- @copyright Copyright 2016-2019 Kong Inc. All rights reserved.
+-- @copyright Copyright 2016-2020 Kong Inc. All rights reserved.
 -- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
 -- @module spec.helpers
 
 local BIN_PATH = "bin/kong"
 local TEST_CONF_PATH = "spec/kong_tests.conf"
 local CUSTOM_PLUGIN_PATH = "./spec/fixtures/custom_plugins/?.lua"
+local GO_PLUGIN_PATH = "./spec/fixtures/go"
 local MOCK_UPSTREAM_PROTOCOL = "http"
 local MOCK_UPSTREAM_SSL_PROTOCOL = "https"
 local MOCK_UPSTREAM_HOST = "127.0.0.1"
@@ -1571,16 +1572,26 @@ local function wait_for_invalidation(key, timeout)
   end, timeout)
 end
 
+
+local function get_pid_from_file(pid_path)
+  local pid
+  local fd, err = io.open(pid_path)
+  if not fd then
+    return nil, err
+  end
+
+  pid = fd:read("*l")
+  fd:close()
+
+  return pid
+end
+
+
 --- Waits for the termination of a pid.
 -- @param pid_path Filename of the pid file.
 -- @param timeout (optional) in seconds, defaults to 10.
 local function wait_pid(pid_path, timeout, is_retry)
-  local pid
-  local fd = io.open(pid_path)
-  if fd then
-    pid = fd:read("*l")
-    fd:close()
-  end
+  local pid = get_pid_from_file(pid_path)
 
   if pid then
     local max_time = ngx.now() + (timeout or 10)
@@ -1612,7 +1623,7 @@ end
 -- @return The conf table of the running instance, or nil on error.
 local function get_running_conf(prefix)
   local default_conf = conf_loader(nil, {prefix = prefix or conf.prefix})
-  return conf_loader(default_conf.kong_env)
+  return conf_loader.load_config_file(default_conf.kong_env)
 end
 
 
@@ -1696,12 +1707,40 @@ local function render_fixtures(conf, env, prefix, fixtures)
   return true
 end
 
+
+local function build_go_plugins(path)
+  for _, plugin_path in ipairs(pl_dir.getfiles(path, "*.go")) do
+    local plugin_name = pl_path.basename(plugin_path):match("(.+).go")
+
+    local ok, _, _, stderr = pl_utils.executeex(
+      string.format("go build -buildmode plugin -o %s %s",
+      path .. "/" .. plugin_name .. ".so", plugin_path)
+    )
+    assert(ok, stderr)
+  end
+end
+
 local function start_kong(env, tables, preserve_prefix, fixtures)
   if tables ~= nil and type(tables) ~= "table" then
     error("arg #2 must be a list of tables to truncate")
   end
   env = env or {}
   local prefix = env.prefix or conf.prefix
+
+  -- go plugins are enabled
+  --  set pluginserver dir (making sure it's in the PATH)
+  --  compile fixture go plugins
+  if env.go_plugins_dir then
+    if env.go_plugins_dir == GO_PLUGIN_PATH then
+      build_go_plugins(GO_PLUGIN_PATH)
+    end
+
+    if not env.go_pluginserver_exe and not os.getenv("KONG_GO_PLUGINSERVER_EXE") then
+      local ok, _, pluginserver_path, _ = pl_utils.executeex(string.format("which go-pluginserver"))
+      assert(ok, "did not find go-pluginserver in PATH")
+      env.go_pluginserver_exe = pluginserver_path
+    end
+  end
 
   -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
   if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
@@ -1741,10 +1780,20 @@ end
 local function stop_kong(prefix, preserve_prefix, preserve_dc)
   prefix = prefix or conf.prefix
 
-  local running_conf = get_running_conf(prefix)
-  if not running_conf then return end
+  local running_conf, err = get_running_conf(prefix)
+  if not running_conf then
+    return nil, err
+  end
 
-  local ok, err = kong_exec("stop --prefix " .. prefix)
+  local pid, err = get_pid_from_file(running_conf.nginx_pid)
+  if not pid then
+    return nil, err
+  end
+
+  local ok, _, _, err = pl_utils.executeex("kill -TERM " .. pid)
+  if not ok then
+    return nil, err
+  end
 
   wait_pid(running_conf.nginx_pid)
 
@@ -1757,7 +1806,7 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc)
     config_yml = nil
   end
 
-  return ok, err
+  return true
 end
 
 
@@ -2030,4 +2079,5 @@ return {
   end,
 
   make_yaml_file = make_yaml_file,
+  go_plugin_path = GO_PLUGIN_PATH,
 }

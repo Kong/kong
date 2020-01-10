@@ -19,8 +19,8 @@ describe("Configuration loader", function()
   it("loads the defaults", function()
     local conf = assert(conf_loader())
     assert.is_string(conf.lua_package_path)
-    assert.is_nil(conf.nginx_user)
-    assert.equal("auto", conf.nginx_worker_processes)
+    assert.is_nil(conf.nginx_main_user)
+    assert.equal("auto", conf.nginx_main_worker_processes)
     assert.same({"127.0.0.1:8001 reuseport backlog=16384", "127.0.0.1:8444 http2 ssl reuseport backlog=16384"}, conf.admin_listen)
     assert.same({"0.0.0.0:8000 reuseport backlog=16384", "0.0.0.0:8443 http2 ssl reuseport backlog=16384"}, conf.proxy_listen)
     assert.is_nil(conf.ssl_cert) -- check placeholder value
@@ -32,10 +32,10 @@ describe("Configuration loader", function()
   it("loads a given file, with higher precedence", function()
     local conf = assert(conf_loader(helpers.test_conf_path))
     -- defaults
-    assert.equal("on", conf.nginx_daemon)
+    assert.equal("on", conf.nginx_main_daemon)
     -- overrides
-    assert.is_nil(conf.nginx_user)
-    assert.equal("1",            conf.nginx_worker_processes)
+    assert.is_nil(conf.nginx_main_user)
+    assert.equal("1", conf.nginx_main_worker_processes)
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
     assert.same({"0.0.0.0:9000", "0.0.0.0:9443 http2 ssl",
                  "0.0.0.0:9002 http2"}, conf.proxy_listen)
@@ -48,13 +48,13 @@ describe("Configuration loader", function()
   it("accepts custom params, with highest precedence", function()
     local conf = assert(conf_loader(helpers.test_conf_path, {
       admin_listen = "127.0.0.1:9001",
-      nginx_worker_processes = "auto"
+      nginx_main_worker_processes = "auto"
     }))
     -- defaults
-    assert.equal("on", conf.nginx_daemon)
+    assert.equal("on", conf.nginx_main_daemon)
     -- overrides
-    assert.is_nil(conf.nginx_user)
-    assert.equal("auto",           conf.nginx_worker_processes)
+    assert.is_nil(conf.nginx_main_user)
+    assert.equal("auto", conf.nginx_main_worker_processes)
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
     assert.same({"0.0.0.0:9000", "0.0.0.0:9443 http2 ssl",
                  "0.0.0.0:9002 http2"}, conf.proxy_listen)
@@ -348,7 +348,7 @@ describe("Configuration loader", function()
 
       assert.True(search_directive(conf.nginx_admin_directives,
                                    "server_tokens", "build"))
-      assert.True(search_directive(conf.nginx_http_status_directives,
+      assert.True(search_directive(conf.nginx_status_directives,
                                    "client_body_buffer_size", "8k"))
     end)
   end)
@@ -385,38 +385,32 @@ describe("Configuration loader", function()
     end)
   end)
 
-  describe("#stream ssl_preread", function()
-    it("is injected if enabled in nginx configuration", function()
-      local save_nginx_configure = ngx.config.nginx_configure
-      finally(function()
-        ngx.config.nginx_configure = save_nginx_configure -- luacheck: ignore
-      end)
-
-      ngx.config.nginx_configure = function() -- luacheck: ignore
-        return "configure arguments: --with-stream_ssl_preread_module --with-stream"
-      end
-      local conf = assert(conf_loader())
-      assert.True(conf.ssl_preread_enabled)
+  describe("nginx_main_user", function()
+    it("is nil by default", function()
+      local conf = assert(conf_loader(helpers.test_conf_path))
+      assert.is_nil(conf.nginx_main_user)
     end)
-    it("is not injected if not enabled in nginx configuration", function()
-      local save_nginx_configure = ngx.config.nginx_configure
-      finally(function()
-        ngx.config.nginx_configure = save_nginx_configure -- luacheck: ignore
-      end)
-
-      ngx.config.nginx_configure = function() -- luacheck: ignore
-        return "configure arguments: --with-stream"
-      end
-      local conf = assert(conf_loader())
-      assert.False(conf.ssl_preread_enabled)
+    it("is nil when 'nobody'", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        nginx_main_user = "nobody"
+      }))
+      assert.is_nil(conf.nginx_main_user)
+    end)
+    it("is nil when 'nobody nobody'", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        nginx_main_user = "nobody nobody"
+      }))
+      assert.is_nil(conf.nginx_main_user)
+    end)
+    it("is 'www_data www_data' when 'www_data www_data'", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        nginx_main_user = "www_data www_data"
+      }))
+      assert.equal("www_data www_data", conf.nginx_main_user)
     end)
   end)
 
   describe("nginx_user", function()
-    it("is nil by default", function()
-      local conf = assert(conf_loader(helpers.test_conf_path))
-      assert.is_nil(conf.nginx_user)
-    end)
     it("is nil when 'nobody'", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         nginx_user = "nobody"
@@ -440,7 +434,7 @@ describe("Configuration loader", function()
   describe("inferences", function()
     it("infer booleans (on/off/true/false strings)", function()
       local conf = assert(conf_loader())
-      assert.equal("on", conf.nginx_daemon)
+      assert.equal("on", conf.nginx_main_daemon)
       assert.equal(30, conf.lua_socket_pool_size)
       assert.True(conf.anonymous_reports)
       assert.False(conf.cassandra_ssl)
@@ -482,19 +476,19 @@ describe("Configuration loader", function()
     end)
     it("infer ngx_boolean", function()
       local conf = assert(conf_loader(nil, {
-        nginx_daemon = true
+        nginx_main_daemon = true
       }))
-      assert.equal("on", conf.nginx_daemon)
+      assert.equal("on", conf.nginx_main_daemon)
 
       conf = assert(conf_loader(nil, {
-        nginx_daemon = false
+        nginx_main_daemon = false
       }))
-      assert.equal("off", conf.nginx_daemon)
+      assert.equal("off", conf.nginx_main_daemon)
 
       conf = assert(conf_loader(nil, {
-        nginx_daemon = "off"
+        nginx_main_daemon = "off"
       }))
-      assert.equal("off", conf.nginx_daemon)
+      assert.equal("off", conf.nginx_main_daemon)
     end)
   end)
 

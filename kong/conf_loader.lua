@@ -89,34 +89,76 @@ local HEADER_KEY_TO_NAME = {
 }
 
 
+local EMPTY = {}
+
+
+-- NOTE! Prefixes should always follow `nginx_[a-z]+_`.
 local DYNAMIC_KEY_NAMESPACES = {
   {
-    injected_conf_name = "nginx_http_status_directives",
-    prefix = "nginx_http_status_",
+    injected_conf_name = "nginx_main_directives",
+    prefix = "nginx_main_",
+    ignore = EMPTY,
   },
   {
-    injected_conf_name = "nginx_http_upstream_directives",
-    prefix = "nginx_http_upstream_",
+    injected_conf_name = "nginx_events_directives",
+    prefix = "nginx_events_",
+    ignore = EMPTY,
   },
   {
     injected_conf_name = "nginx_http_directives",
     prefix = "nginx_http_",
+    ignore = {
+      upstream_keepalive          = true,
+      upstream_keepalive_timeout  = true,
+      upstream_keepalive_requests = true,
+    },
+  },
+  {
+    injected_conf_name = "nginx_upstream_directives",
+    prefix = "nginx_upstream_",
+    ignore = EMPTY,
+  },
+  {
+    injected_conf_name = "nginx_proxy_directives",
+    prefix = "nginx_proxy_",
+    ignore = EMPTY,
+  },
+  {
+    injected_conf_name = "nginx_status_directives",
+    prefix = "nginx_status_",
+    ignore = EMPTY,
+  },
+  {
+    injected_conf_name = "nginx_admin_directives",
+    prefix = "nginx_admin_",
+    ignore = EMPTY,
   },
   {
     injected_conf_name = "nginx_stream_directives",
     prefix = "nginx_stream_",
+    ignore = EMPTY,
   },
   {
-    injected_conf_name = "nginx_proxy_directives",
-    prefix = "nginx_proxy_", -- TODO: nginx_http_proxy
+    injected_conf_name = "nginx_supstream_directives",
+    prefix = "nginx_supstream_",
+    ignore = EMPTY,
   },
   {
     injected_conf_name = "nginx_sproxy_directives",
-    prefix = "nginx_sproxy_", -- TODO: nginx_stream_proxy
+    prefix = "nginx_sproxy_",
+    ignore = EMPTY,
+  },
+}
+
+
+local DEPRECATED_DYNAMIC_KEY_NAMESPACES = {
+  {
+    injected_conf_name = "nginx_upstream_directives",
+    previous_conf_name = "nginx_http_upstream_directives",
   },
   {
-    injected_conf_name = "nginx_admin_directives",
-    prefix = "nginx_admin_", -- TODO: nginx_http_admin (optional)
+    injected_conf_name = "nginx_status_directives",
+    previous_conf_name = "nginx_http_status_directives",
   },
 }
 
@@ -167,29 +209,97 @@ local CONF_INFERENCES = {
   db_cache_ttl = {  typ = "number"  },
   db_resurrect_ttl = {  typ = "number"  },
   db_cache_warmup_entities = { typ = "array" },
-  nginx_user = { typ = "string" },
-  nginx_worker_processes = { typ = "string" },
+  nginx_user = {
+    typ = "string",
+    alias = {
+      replacement = "nginx_main_user",
+    }
+  },
+  nginx_daemon = {
+    typ = "ngx_boolean",
+    alias = {
+      replacement = "nginx_main_daemon",
+    }
+  },
+  nginx_worker_processes = {
+    typ = "string",
+    alias = {
+      replacement = "nginx_main_worker_processes",
+    },
+  },
   upstream_keepalive = { -- TODO: remove since deprecated in 1.3
     typ = "number",
     deprecated = {
-      replacement = "nginx_http_upstream_keepalive",
+      replacement = "nginx_upstream_keepalive",
       alias = function(conf)
-        -- called before check_and_infer(), must parse ourselves
         if tonumber(conf.upstream_keepalive) == 0 then
-          conf.nginx_http_upstream_keepalive = "NONE"
+          conf.nginx_upstream_keepalive = "NONE"
 
-        elseif conf.nginx_http_upstream_keepalive == nil then
-          conf.nginx_http_upstream_keepalive = tostring(conf.upstream_keepalive)
+        elseif conf.nginx_upstream_keepalive == nil then
+          conf.nginx_upstream_keepalive = tostring(conf.upstream_keepalive)
+        end
+      end,
+    }
+  },
+  nginx_http_upstream_keepalive = { -- TODO: remove since deprecated in 2.0
+    typ = "string",
+    deprecated = {
+      replacement = "nginx_upstream_keepalive",
+      alias = function(conf)
+        if conf.nginx_upstream_keepalive == nil then
+          conf.nginx_upstream_keepalive = tostring(conf.nginx_http_upstream_keepalive)
+        end
+      end,
+    }
+  },
+  nginx_http_upstream_keepalive_timeout = { -- TODO: remove since deprecated in 2.0
+    typ = "string",
+    deprecated = {
+      replacement = "nginx_upstream_keepalive_timeout",
+      alias = function(conf)
+        if conf.nginx_upstream_keepalive_timeout == nil then
+          conf.nginx_upstream_keepalive_timeout = tostring(conf.nginx_http_upstream_keepalive_timeout)
+        end
+      end,
+    }
+  },
+  nginx_http_upstream_keepalive_requests = { -- TODO: remove since deprecated in 2.0
+    typ = "string",
+    deprecated = {
+      replacement = "nginx_upstream_keepalive_requests",
+      alias = function(conf)
+        if conf.nginx_upstream_keepalive_requests == nil then
+          conf.nginx_upstream_keepalive_requests = tostring(conf.nginx_http_upstream_keepalive_requests)
         end
       end,
     }
   },
   headers = { typ = "array" },
   trusted_ips = { typ = "array" },
-  real_ip_header = { typ = "string" },
-  real_ip_recursive = { typ = "ngx_boolean" },
-  client_max_body_size = { typ = "string" },
-  client_body_buffer_size = { typ = "string" },
+  real_ip_header = {
+    typ = "string",
+    alias = {
+      replacement = "nginx_proxy_real_ip_header",
+    }
+  },
+  real_ip_recursive = {
+    typ = "ngx_boolean",
+    alias = {
+      replacement = "nginx_proxy_real_ip_recursive",
+    }
+  },
+  client_max_body_size = {
+    typ = "string",
+    alias = {
+      replacement = "nginx_http_client_max_body_size",
+    }
+  },
+  client_body_buffer_size = {
+    typ = "string",
+    alias = {
+      replacement = "nginx_http_client_body_buffer_size",
+    }
+  },
   error_default_type = { enum = {
                            "application/json",
                            "application/xml",
@@ -250,6 +360,7 @@ local CONF_INFERENCES = {
   dns_not_found_ttl = { typ = "number" },
   dns_error_ttl = { typ = "number" },
   dns_no_sync = { typ = "boolean" },
+
   router_consistency = { enum = { "strict", "eventual" } },
   router_update_frequency = { typ = "number" },
 
@@ -274,11 +385,14 @@ local CONF_INFERENCES = {
               },
   plugins = { typ = "array" },
   anonymous_reports = { typ = "boolean" },
-  nginx_daemon = { typ = "ngx_boolean" },
-  nginx_optimizations = { typ = "boolean" },
+  nginx_optimizations = {
+    typ = "boolean",
+    deprecated = { replacement = false }
+  },
 
   lua_ssl_verify_depth = { typ = "number" },
   lua_socket_pool_size = { typ = "number" },
+
   role = { enum = { "data_plane", "control_plane", "traditional", }, },
   cluster_control_plane = { typ = "string", },
   cluster_cert = { typ = "string" },
@@ -774,7 +888,7 @@ local function parse_nginx_directives(dyn_namespace, conf, injected_in_namespace
     if type(k) == "string" and not injected_in_namespace[k] then
       local directive = string.match(k, dyn_namespace.prefix .. "(.+)")
       if directive then
-        if v ~= "NONE" then
+        if v ~= "NONE" and not dyn_namespace.ignore[directive] then
           table.insert(directives, { name = directive, value = v })
         end
 
@@ -787,19 +901,72 @@ local function parse_nginx_directives(dyn_namespace, conf, injected_in_namespace
 end
 
 
+local function aliased_properties(conf)
+  for property_name, v_schema in pairs(CONF_INFERENCES) do
+    local alias = v_schema.alias
+
+    if alias and conf[property_name] ~= nil and conf[alias.replacement] == nil then
+      if alias.alias then
+        conf[alias.replacement] = alias.alias(conf)
+      else
+        local value = conf[property_name]
+        if type(value) == "boolean" then
+          value = value and "on" or "off"
+        end
+        conf[alias.replacement] = tostring(value)
+      end
+    end
+  end
+end
+
+
 local function deprecated_properties(conf, opts)
   for property_name, v_schema in pairs(CONF_INFERENCES) do
     local deprecated = v_schema.deprecated
 
     if deprecated and conf[property_name] ~= nil then
       if not opts.from_kong_env then
-        log.warn("the '%s' configuration property is deprecated, use " ..
-                 "'%s' instead", property_name, v_schema.deprecated.replacement)
+        if deprecated.replacement then
+          log.warn("the '%s' configuration property is deprecated, use " ..
+                     "'%s' instead", property_name, deprecated.replacement)
+        else
+          log.warn("the '%s' configuration property is deprecated",
+                   property_name)
+        end
       end
 
-      v_schema.deprecated.alias(conf)
+      if deprecated.alias then
+        deprecated.alias(conf)
+      end
     end
   end
+end
+
+
+--- Load Kong configuration file
+-- The loaded configuration will only contain properties read from the
+-- passed configuration file (properties are not merged with defaults or
+-- environment variables)
+-- @param[type=string] Path to a configuration file.
+local function load_config_file(path)
+  assert(type(path) == "string")
+
+  local f, err = pl_file.read(path)
+  if not f then
+    return nil, err
+  end
+
+  local s = pl_stringio.open(f)
+  local conf, err = pl_config.read(s, {
+    smart = false,
+    list_delim = "_blank_" -- mandatory but we want to ignore it
+  })
+  s:close()
+  if not conf then
+    return nil, err
+  end
+
+  return conf
 end
 
 
@@ -858,22 +1025,9 @@ local function load(path, custom_conf, opts)
     log.verbose("no config file, skip loading")
 
   else
-    local f, err = pl_file.read(path)
-    if not f then
-      return nil, err
-    end
-
     log.verbose("reading config file at %s", path)
 
-    local s = pl_stringio.open(f)
-    from_file_conf, err = pl_config.read(s, {
-      smart = false,
-      list_delim = "_blank_" -- mandatory but we want to ignore it
-    })
-    s:close()
-    if not from_file_conf then
-      return nil, err
-    end
+    from_file_conf = load_config_file(path)
   end
 
   -----------------------
@@ -891,6 +1045,15 @@ local function load(path, custom_conf, opts)
         local directive = string.match(k, "(" .. dyn_prefix .. ".+)")
         if directive then
           dynamic_keys[directive] = true
+
+          if type(v) == "boolean" then
+            if v then
+              v = "on"
+            else
+              v = "off"
+            end
+          end
+
           t[k] = tostring(v)
         end
       end
@@ -935,6 +1098,7 @@ local function load(path, custom_conf, opts)
     log.disable()
   end
 
+  aliased_properties(user_conf)
   deprecated_properties(user_conf, opts)
 
   -- merge user_conf with defaults
@@ -956,6 +1120,19 @@ local function load(path, custom_conf, opts)
   conf = tablex.merge(conf, defaults) -- intersection (remove extraneous properties)
 
   do
+    -- nginx 'user' directive
+    local user = utils.strip(conf.nginx_main_user):gsub("%s+", " ")
+    if user == "nobody" or user == "nobody nobody" then
+      conf.nginx_main_user = nil
+    end
+
+    local user = utils.strip(conf.nginx_user):gsub("%s+", " ")
+    if user == "nobody" or user == "nobody nobody" then
+      conf.nginx_user = nil
+    end
+  end
+
+  do
     local injected_in_namespace = {}
 
     -- nginx directives from conf
@@ -966,6 +1143,13 @@ local function load(path, custom_conf, opts)
                                                 injected_in_namespace)
       conf[dyn_namespace.injected_conf_name] = setmetatable(directives,
                                                             _nop_tostring_mt)
+    end
+
+    -- TODO: Deprecated, but kept for backward compatibility.
+    for _, dyn_namespace in ipairs(DEPRECATED_DYNAMIC_KEY_NAMESPACES) do
+      if conf[dyn_namespace.injected_conf_name] then
+        conf[dyn_namespace.previous_conf_name] = conf[dyn_namespace.injected_conf_name]
+      end
     end
   end
 
@@ -1037,23 +1221,32 @@ local function load(path, custom_conf, opts)
         value = "prometheus_metrics 5m",
       })
     end
-  end
 
-  do
-    -- nginx 'user' directive
-    local user = conf.nginx_user:gsub("^%s*", "")
-                                :gsub("%s$", "")
-                                :gsub("%s+", " ")
+    local stream_directives = conf["nginx_stream_directives"]
+    local found = false
 
-    if user == "nobody" or user == "nobody nobody" then
-      conf.nginx_user = nil
+    for _, directive in pairs(stream_directives) do
+      if directive.name == "lua_shared_dict"
+        and string.find(directive.value, "stream_prometheus_metrics", nil, true)
+      then
+        found = true
+        break
+      end
+    end
+
+    if not found then
+      table.insert(stream_directives, {
+        name  = "lua_shared_dict",
+        value = "stream_prometheus_metrics 5m",
+      })
     end
   end
 
   do
     local http_flags = { "ssl", "http2", "proxy_protocol", "deferred",
                          "bind", "reuseport", "backlog=%d+" }
-    local stream_flags = { "proxy_protocol", "bind", "reuseport" }
+    local stream_flags = { "ssl", "proxy_protocol", "bind", "reuseport",
+                           "backlog=%d+" }
 
     -- extract ports/listen ips
     conf.proxy_listeners, err = parse_listeners(conf.proxy_listen, http_flags)
@@ -1077,6 +1270,14 @@ local function load(path, custom_conf, opts)
     end
 
     setmetatable(conf.stream_listeners, _nop_tostring_mt)
+    conf.stream_proxy_ssl_enabled = false
+
+    for _, listener in ipairs(conf.stream_listeners) do
+      if listener.ssl == true then
+        conf.stream_proxy_ssl_enabled = true
+        break
+      end
+    end
 
     conf.admin_listeners, err = parse_listeners(conf.admin_listen, http_flags)
     if err then
@@ -1106,15 +1307,6 @@ local function load(path, custom_conf, opts)
     end
 
     setmetatable(conf.cluster_listeners, _nop_tostring_mt)
-  end
-
-  do
-    -- is ssl_preread compiled in OpenResty?
-    conf.ssl_preread_enabled = false
-    local nginx_configuration = ngx.config.nginx_configure()
-    if nginx_configuration:find("with-stream_ssl_preread_module", 1, true) then
-      conf.ssl_preread_enabled = true
-    end
   end
 
   do
@@ -1150,6 +1342,8 @@ local function load(path, custom_conf, opts)
 
   -- load absolute paths
   conf.prefix = pl_path.abspath(conf.prefix)
+
+  conf.go_pluginserver_exe = pl_path.abspath(conf.go_pluginserver_exe)
 
   if conf.go_plugins_dir ~= "off" then
     conf.go_plugins_dir = pl_path.abspath(conf.go_plugins_dir)
@@ -1197,6 +1391,8 @@ end
 
 return setmetatable({
   load = load,
+
+  load_config_file = load_config_file,
 
   add_default_path = function(path)
     DEFAULT_PATHS[#DEFAULT_PATHS+1] = path
