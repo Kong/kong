@@ -24,12 +24,12 @@ return {
     end,
   },
   ["/dbus/sources"] = {
-    GET = function(self, db, helpers, parent)
+    GET = function(self, db)
       return kong.response.exit(200, { data = databus.list() })
     end
   },
   ["/dbus/sources/:source"] = {
-    GET = function(self, db, helpers, parent)
+    GET = function(self, db)
       local source = self.params.source
       local sources = databus.list()
 
