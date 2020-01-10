@@ -1697,12 +1697,40 @@ local function render_fixtures(conf, env, prefix, fixtures)
   return true
 end
 
+
+local function build_go_plugins(path)
+  for _, plugin_path in ipairs(pl_dir.getfiles(path, "*.go")) do
+    local plugin_name = pl_path.basename(plugin_path):match("(.+).go")
+
+    local ok, _, _, stderr = pl_utils.executeex(
+      string.format("go build -buildmode plugin -o %s %s",
+      path .. "/" .. plugin_name .. ".so", plugin_path)
+    )
+    assert(ok, stderr)
+  end
+end
+
 local function start_kong(env, tables, preserve_prefix, fixtures)
   if tables ~= nil and type(tables) ~= "table" then
     error("arg #2 must be a list of tables to truncate")
   end
   env = env or {}
   local prefix = env.prefix or conf.prefix
+
+  -- go plugins are enabled
+  --  set pluginserver dir (making sure it's in the PATH)
+  --  compile fixture go plugins
+  if env.go_plugins_dir then
+    if env.go_plugins_dir == GO_PLUGIN_PATH then
+      build_go_plugins(GO_PLUGIN_PATH)
+    end
+
+    if not env.go_pluginserver_exe and not os.getenv("KONG_GO_PLUGINSERVER_EXE") then
+      local ok, _, pluginserver_path, _ = pl_utils.executeex(string.format("which go-pluginserver"))
+      assert(ok, "did not find go-pluginserver in PATH")
+      env.go_pluginserver_exe = pluginserver_path
+    end
+  end
 
   -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
   if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
