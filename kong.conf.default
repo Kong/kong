@@ -341,6 +341,12 @@
                          # healthiness, and other non-sensitive information
                          # of the current Kong node.
                          #
+                         # The following suffix can be specified for each pair:
+                         #
+                         # - `ssl` will require that all connections made
+                         #   through a particular address/port be made with TLS
+                         #   enabled.
+                         #
                          # This value can be set to `off`, disabling
                          # the Status API for this node.
                          #
@@ -416,6 +422,12 @@
 
 #admin_ssl_cert_key =            # The absolute path to the SSL key for
                                  # `admin_listen` values with SSL enabled.
+
+#status_ssl_cert =               # The absolute path to the SSL certificate for
+                                 # `status_listen` values with SSL enabled.
+
+#status_ssl_cert_key =           # The absolute path to the SSL key for
+                                 # `status_listen` values with SSL enabled.
 
 #headers = server_tokens, latency_tokens
                                  # Comma-separated list of headers Kong should

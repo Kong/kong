@@ -323,6 +323,12 @@ http {
         access_log ${{STATUS_ACCESS_LOG}};
         error_log  ${{STATUS_ERROR_LOG}} ${{LOG_LEVEL}};
 
+> if status_ssl_enabled then
+        ssl_certificate     ${{STATUS_SSL_CERT}};
+        ssl_certificate_key ${{STATUS_SSL_CERT_KEY}};
+        ssl_session_cache   shared:StatusSSL:1m;
+> end
+
         # injected nginx_status_* directives
 > for _, el in ipairs(nginx_status_directives) do
         $(el.name) $(el.value);

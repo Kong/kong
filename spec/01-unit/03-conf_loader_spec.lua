@@ -206,6 +206,8 @@ describe("Configuration loader", function()
     assert.equal("/usr/local/kong/ssl/kong-default.key", conf.ssl_cert_key_default)
     assert.equal("/usr/local/kong/ssl/admin-kong-default.crt", conf.admin_ssl_cert_default)
     assert.equal("/usr/local/kong/ssl/admin-kong-default.key", conf.admin_ssl_cert_key_default)
+    assert.equal("/usr/local/kong/ssl/status-kong-default.crt", conf.status_ssl_cert_default)
+    assert.equal("/usr/local/kong/ssl/status-kong-default.key", conf.status_ssl_cert_key_default)
   end)
   it("strips comments ending settings", function()
     local _os_getenv = os.getenv

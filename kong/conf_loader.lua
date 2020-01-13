@@ -183,6 +183,9 @@ local PREFIX_PATHS = {
 
   admin_ssl_cert_default = {"ssl", "admin-kong-default.crt"},
   admin_ssl_cert_key_default = {"ssl", "admin-kong-default.key"},
+
+  status_ssl_cert_default = {"ssl", "status-kong-default.crt"},
+  status_ssl_cert_key_default = {"ssl", "status-kong-default.key"},
 }
 
 
@@ -1253,10 +1256,9 @@ local function load(path, custom_conf, opts)
     if err then
       return nil, "proxy_listen " .. err
     end
-
     setmetatable(conf.proxy_listeners, _nop_tostring_mt)
-    conf.proxy_ssl_enabled = false
 
+    conf.proxy_ssl_enabled = false
     for _, listener in ipairs(conf.proxy_listeners) do
       if listener.ssl == true then
         conf.proxy_ssl_enabled = true
@@ -1268,10 +1270,9 @@ local function load(path, custom_conf, opts)
     if err then
       return nil, "stream_listen " .. err
     end
-
     setmetatable(conf.stream_listeners, _nop_tostring_mt)
-    conf.stream_proxy_ssl_enabled = false
 
+    conf.stream_proxy_ssl_enabled = false
     for _, listener in ipairs(conf.stream_listeners) do
       if listener.ssl == true then
         conf.stream_proxy_ssl_enabled = true
@@ -1283,10 +1284,9 @@ local function load(path, custom_conf, opts)
     if err then
       return nil, "admin_listen " .. err
     end
-
     setmetatable(conf.admin_listeners, _nop_tostring_mt)
-    conf.admin_ssl_enabled = false
 
+    conf.admin_ssl_enabled = false
     for _, listener in ipairs(conf.admin_listeners) do
       if listener.ssl == true then
         conf.admin_ssl_enabled = true
@@ -1298,14 +1298,20 @@ local function load(path, custom_conf, opts)
     if err then
       return nil, "status_listen " .. err
     end
-
     setmetatable(conf.status_listeners, _nop_tostring_mt)
+
+    conf.status_ssl_enabled = false
+    for _, listener in ipairs(conf.status_listeners) do
+      if listener.ssl == true then
+        conf.status_ssl_enabled = true
+        break
+      end
+    end
 
     conf.cluster_listeners, err = parse_listeners(conf.cluster_listen, http_flags)
     if err then
       return nil, "cluster_listen " .. err
     end
-
     setmetatable(conf.cluster_listeners, _nop_tostring_mt)
   end
 
