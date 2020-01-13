@@ -19,6 +19,20 @@ local OpenTracingHandler = {
 
 local tracer_cache = setmetatable({}, {__mode = "k"})
 
+local function tag_with_service_and_route(span)
+  local service = kong.router.get_service()
+  if service and service.id then
+    span:set_tag("kong.service", service.id)
+    local route = kong.router.get_route()
+    if route and route.id then
+      span:set_tag("kong.route", route.id)
+    end
+    if type(service.name) == "string" then
+      span:set_tag("peer.service", service.name)
+    end
+  end
+end
+
 
 function OpenTracingHandler:get_tracer(conf)
   local tracer = tracer_cache[conf]
@@ -240,6 +254,9 @@ function OpenTracingHandler:log(conf)
         span:set_tag("kong.balancer.state", try.state)
         span:set_tag("http.status_code", try.code)
       end
+
+      tag_with_service_and_route(span)
+
       span:finish((try.balancer_start + try.balancer_latency) / 1000)
     end
     proxy_span:set_tag("peer.hostname", balancer_data.hostname) -- could be nil
@@ -259,18 +276,8 @@ function OpenTracingHandler:log(conf)
     request_span:set_tag("kong.credential", ctx.authenticated_credential.id)
   end
   request_span:set_tag("kong.node.id", kong.node.get_id())
-  -- TODO: should we add these tags to the request span and/or the balancer spans?
-  if ctx.service and ctx.service.id then
-    proxy_span:set_tag("kong.service", ctx.service.id)
-    if ctx.route and ctx.route.id then
-      proxy_span:set_tag("kong.route", ctx.route.id)
-    end
-    if type(ctx.service.name) == "string" then
-      proxy_span:set_tag("peer.service", ctx.service.name)
-    end
-  elseif ctx.api and ctx.api.id then
-    proxy_span:set_tag("kong.api", ctx.api.id)
-  end
+
+  tag_with_service_and_route(proxy_span)
 
   proxy_span:finish(proxy_finish)
   request_span:finish(now)

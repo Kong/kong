@@ -59,7 +59,7 @@ describe("integration tests with zipkin server [#" .. strategy .. "]", function(
     assert_is_integer(rann["krf"])
     assert.truthy(rann["krs"] <= rann["krf"])
 
-    assert.is_nil(request_span.localEndpoint)
+    assert.same({ serviceName = "kong" }, request_span.localEndpoint)
 
     -- proxy_span
     assert.same("table", type(proxy_span))
@@ -107,8 +107,13 @@ describe("integration tests with zipkin server [#" .. strategy .. "]", function(
       }
     })
 
+    local service = bp.services:insert {
+      name = "mock-http-service",
+    }
+
     -- kong (http) mock upstream
     route = bp.routes:insert({
+      service = service,
       hosts = { "mock-http-route" },
       preserve_host = true,
     })
@@ -174,15 +179,22 @@ describe("integration tests with zipkin server [#" .. strategy .. "]", function(
       ["http.status_code"] = "200", -- found (matches server status)
       lc = "kong"
     }, request_tags)
-    local peer_port = request_span.remoteEndpoint.port
-    assert.equals("number", type(peer_port))
-    assert.same({ ipv4 = "127.0.0.1", port = peer_port }, request_span.remoteEndpoint)
+    local consumer_port = request_span.remoteEndpoint.port
+    assert_is_integer(consumer_port)
+    assert.same({
+      ipv4 = "127.0.0.1",
+      port = consumer_port,
+    }, request_span.remoteEndpoint)
 
     -- specific assertions for proxy_span
     assert.same(proxy_span.tags["kong.route"], route.id)
     assert.same(proxy_span.tags["peer.hostname"], "127.0.0.1")
 
-    assert.same({ ipv4 = helpers.mock_upstream_host, port = helpers.mock_upstream_port },
+    assert.same({
+      ipv4 = helpers.mock_upstream_host,
+      port = helpers.mock_upstream_port,
+      serviceName = "mock-http-service",
+    },
     proxy_span.remoteEndpoint)
 
     -- specific assertions for balancer_span
@@ -194,11 +206,17 @@ describe("integration tests with zipkin server [#" .. strategy .. "]", function(
       assert.equals("number", type(balancer_span.duration))
     end
 
-    assert.same({ ipv4 = helpers.mock_upstream_host, port = helpers.mock_upstream_port },
+    assert.same({
+      ipv4 = helpers.mock_upstream_host,
+      port = helpers.mock_upstream_port,
+      serviceName = "mock-http-service",
+    },
     balancer_span.remoteEndpoint)
-    assert.is_nil(balancer_span.localEndpoint)
+    assert.same({ serviceName = "kong" }, balancer_span.localEndpoint)
     assert.same({
       ["kong.balancer.try"] = "1",
+      ["kong.route"] = route.id,
+      ["kong.service"] = route.service.id,
     }, balancer_span.tags)
   end)
 
@@ -233,21 +251,29 @@ describe("integration tests with zipkin server [#" .. strategy .. "]", function(
     local request_tags = request_span.tags
     assert.truthy(request_tags["kong.node.id"]:match("^[%x-]+$"))
     request_tags["kong.node.id"] = nil
+
     assert.same({
       ["http.method"] = "POST",
       ["http.path"] = "/hello.HelloService/SayHello",
       ["http.status_code"] = "200", -- found (matches server status)
       lc = "kong"
     }, request_tags)
-    local peer_port = request_span.remoteEndpoint.port
-    assert_is_integer(peer_port)
-    assert.same({ ipv4 = "127.0.0.1", port = peer_port }, request_span.remoteEndpoint)
+    local consumer_port = request_span.remoteEndpoint.port
+    assert_is_integer(consumer_port)
+    assert.same({
+      ipv4 = "127.0.0.1",
+      port = consumer_port,
+    }, request_span.remoteEndpoint)
 
     -- specific assertions for proxy_span
     assert.same(proxy_span.tags["kong.route"], grpc_route.id)
     assert.same(proxy_span.tags["peer.hostname"], "localhost")
 
-    assert.same({ ipv4 = "127.0.0.1", port = 15002 },
+    assert.same({
+      ipv4 = "127.0.0.1",
+      port = 15002,
+      serviceName = "grpc-service",
+    },
     proxy_span.remoteEndpoint)
 
     -- specific assertions for balancer_span
@@ -259,11 +285,17 @@ describe("integration tests with zipkin server [#" .. strategy .. "]", function(
       assert_is_integer(balancer_span.duration)
     end
 
-    assert.same({ ipv4 = "127.0.0.1", port = 15002 },
+    assert.same({
+      ipv4 = "127.0.0.1",
+      port = 15002,
+      serviceName = "grpc-service",
+    },
     balancer_span.remoteEndpoint)
-    assert.is_nil(balancer_span.localEndpoint)
+    assert.same({ serviceName = "kong" }, balancer_span.localEndpoint)
     assert.same({
       ["kong.balancer.try"] = "1",
+      ["kong.service"] = grpc_route.service.id,
+      ["kong.route"] = grpc_route.id,
     }, balancer_span.tags)
   end)
 
@@ -302,14 +334,14 @@ describe("integration tests with zipkin server [#" .. strategy .. "]", function(
       ["http.status_code"] = "404", -- note that this was "not found"
       lc = "kong"
     }, request_tags)
-    local peer_port = request_span.remoteEndpoint.port
-    assert_is_integer(peer_port)
-    assert.same({ ipv4 = "127.0.0.1", port = peer_port }, request_span.remoteEndpoint)
+    local consumer_port = request_span.remoteEndpoint.port
+    assert_is_integer(consumer_port)
+    assert.same({ ipv4 = "127.0.0.1", port = consumer_port }, request_span.remoteEndpoint)
 
     -- specific assertions for proxy_span
     assert.is_nil(proxy_span.tags)
     assert.is_nil(proxy_span.remoteEndpoint)
-    assert.is_nil(proxy_span.localEndpoint)
+    assert.same({ serviceName = "kong" }, proxy_span.localEndpoint)
   end)
 
   it("propagates b3 headers for non-matched requests", function()

@@ -57,36 +57,24 @@ function zipkin_reporter_methods:report(span)
   zipkin_tags["component"] = nil
   zipkin_tags["lc"] = component
 
-  local localEndpoint do
-    local serviceName = zipkin_tags["peer.service"]
-    if serviceName then
-      zipkin_tags["peer.service"] = nil
-      localEndpoint = {
-        serviceName = serviceName,
-        -- TODO: ip/port from ngx.var.server_name/ngx.var.server_port?
-      }
-    else
-      -- configurable override of the unknown-service-name spans
-      if self.default_service_name then
-        localEndpoint = {
-          serviceName = self.default_service_name,
-        }
-        -- needs to be null, not the empty object
-      else
-        localEndpoint = cjson.null
-      end
-    end
-  end
+  local localEndpoint = {
+    serviceName = "kong"
+  }
 
   local remoteEndpoint do
+    local serviceName = zipkin_tags["peer.service"] or
+                        self.default_service_name -- can be nil
+
     local peer_port = span:get_tag "peer.port" -- get as number
-    if peer_port then
-      zipkin_tags["peer.port"] = nil
+    if peer_port or serviceName then
       remoteEndpoint = {
+        serviceName = serviceName,
         ipv4 = zipkin_tags["peer.ipv4"],
         ipv6 = zipkin_tags["peer.ipv6"],
-        port = peer_port, -- port is *not* optional
+        port = peer_port,
       }
+      zipkin_tags["peer.service"] = nil
+      zipkin_tags["peer.port"] = nil
       zipkin_tags["peer.ipv4"] = nil
       zipkin_tags["peer.ipv6"] = nil
     else
