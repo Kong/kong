@@ -101,6 +101,27 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local route1b = bp.routes:insert {
+        hosts = { "acl1b.com" },
+      }
+
+      bp.plugins:insert {
+        name = "acl",
+        route = { id = route1b.id },
+        config = {
+          whitelist = { "admin" },
+        }
+      }
+
+      bp.plugins:insert {
+        name = "ctx-checker",
+        route = { id = route1b.id },
+        config = {
+          ctx_set_field = "authenticated_credential",
+          ctx_set_value = "dummy-credential",
+        }
+      }
+
       local route2 = bp.routes:insert {
         hosts = { "acl2.com" },
       }
@@ -756,6 +777,17 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:get("/status/200", {
           headers = {
             ["Host"] = "acl1.com"
+          }
+        }))
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "You cannot consume this service" }, json)
+      end)
+
+      it("should fail when an authentication plugin is missing (with credential)", function()
+        local res = assert(proxy_client:get("/status/200", {
+          headers = {
+            ["Host"] = "acl1b.com"
           }
         }))
         local body = assert.res_status(403, res)
