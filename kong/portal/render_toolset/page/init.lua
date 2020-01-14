@@ -29,7 +29,13 @@ return function()
 
   local page = {}
   page.body = markdownify(route_config.body or "", route_config)
-  page.parsed_body = yaml_load(page.body) or {}
+
+  local ok, parsed = pcall(yaml_load, page.body)
+  if ok then
+    page.parsed_body = parsed
+  else
+    page.parsed_body = {}
+  end
 
   -- Helper variables
   local route_config = render_ctx.route_config or {}
