@@ -1046,21 +1046,32 @@ function _M.new(routes)
     local marshalled_routes = {}
 
     for i = 1, #routes do
-      local route_t, err = marshall_route(routes[i])
-      if not route_t then
-        return nil, err
+
+      local paths = routes[i].route.paths
+      if paths ~= nil and #paths > 1 then
+        -- split routes by paths to sort properly
+        for j = 1, #paths do
+          local route = routes[i]
+          local index = #marshalled_routes + 1
+          local err
+
+          route.route.paths = { paths[j] }
+          marshalled_routes[index], err = marshall_route(route)
+          if not marshalled_routes[index] then
+            return nil, err
+          end
+        end
+
+      else
+        local index = #marshalled_routes + 1
+        local err
+
+        marshalled_routes[index], err = marshall_route(routes[i])
+        if not marshalled_routes[index] then
+          return nil, err
+        end
       end
 
-      if route_t.route.paths ~= nil and #route_t.route.paths > 1 then
-        -- split routes by paths to sort properly
-        for j = 1, #route_t.route.paths do
-          local index = #marshalled_routes + 1
-          marshalled_routes[index] = route_t
-          marshalled_routes[index].route.paths = { route_t.route.paths[j] }
-        end
-      else
-        marshalled_routes[#marshalled_routes + 1] = route_t
-      end
     end
 
     -- sort wildcard hosts and uri regexes since those rules

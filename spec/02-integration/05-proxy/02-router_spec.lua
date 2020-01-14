@@ -1463,6 +1463,12 @@ for _, strategy in helpers.each_strategy() do
             paths      = { "/root/fixture/get" },
             hosts      = { "anotherhost.test" },
           },
+          {
+            strip_path = true,
+            methods    = { "GET" },
+            paths      = { "/root/fixture/get" },
+            hosts      = { "onemorehost.test" },
+          },
         })
       end)
 
@@ -1485,6 +1491,36 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(routes[2].id,           res.headers["kong-route-id"])
         assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
         assert.equal(routes[2].service.name, res.headers["kong-service-name"])
+      end)
+
+      it("prioritizes host over longer URIs", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/root/fixture/get",
+          headers = {
+            ["kong-debug"] = 1,
+            ["host"] = "anotherhost.test",
+          }
+        })
+
+        assert.res_status(200, res)
+
+        assert.equal(routes[3].id,           res.headers["kong-route-id"])
+        assert.equal(routes[3].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[3].service.name, res.headers["kong-service-name"])
+      end)
+
+      it("do not match incomplete URIs", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            ["kong-debug"] = 1,
+            ["host"] = "ahost.test",
+          }
+        })
+
+        assert.res_status(404, res)
       end)
     end)
 
