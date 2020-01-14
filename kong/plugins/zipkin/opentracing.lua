@@ -239,8 +239,6 @@ function OpenTracingHandler:log(conf)
         span:set_tag("error", true)
         span:set_tag("kong.balancer.state", try.state)
         span:set_tag("http.status_code", try.code)
-      else
-        span:set_tag("error", false)
       end
       span:finish((try.balancer_start + try.balancer_latency) / 1000)
     end

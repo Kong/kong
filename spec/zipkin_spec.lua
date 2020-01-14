@@ -198,7 +198,6 @@ describe("integration tests with zipkin server [#" .. strategy .. "]", function(
     balancer_span.remoteEndpoint)
     assert.is_nil(balancer_span.localEndpoint)
     assert.same({
-      error = "false",
       ["kong.balancer.try"] = "1",
     }, balancer_span.tags)
   end)
@@ -264,7 +263,6 @@ describe("integration tests with zipkin server [#" .. strategy .. "]", function(
     balancer_span.remoteEndpoint)
     assert.is_nil(balancer_span.localEndpoint)
     assert.same({
-      error = "false",
       ["kong.balancer.try"] = "1",
     }, balancer_span.tags)
   end)
