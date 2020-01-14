@@ -7,7 +7,7 @@ local constants  = require "kong.constants"
 local workspaces = require "kong.workspaces"
 local feature_flags   = require "kong.enterprise_edition.feature_flags"
 local license_helpers = require "kong.enterprise_edition.license_helpers"
-local databus = require "kong.enterprise_edition.databus"
+local event_hooks = require "kong.enterprise_edition.event_hooks"
 
 
 local kong = kong
@@ -20,16 +20,16 @@ _M.handlers = {
     after = function(ctx)
       license_helpers.report_expired_license()
 
-      -- register dbus hooks
-      if databus.enabled() then
+      -- register event_hooks hooks
+      if event_hooks.enabled() then
         -- XXX not so sure this timer is good? the idea is to not hog kong
         -- on startup for this secondary feature
         ngx.timer.at(0, function()
-          for entity, err in kong.db.dbus:each(1000) do
+          for entity, err in kong.db.event_hooks:each(1000) do
             if err then
               kong.log.err(err)
             else
-              databus.register(entity)
+              event_hooks.register(entity)
             end
           end
         end)

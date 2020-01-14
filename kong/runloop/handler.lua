@@ -14,7 +14,7 @@ local tracing     = require "kong.tracing"
 local concurrency  = require "kong.concurrency"
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 local file_helpers = require "kong.portal.file_helpers"
-local databus = require "kong.enterprise_edition.databus"
+local event_hooks = require "kong.enterprise_edition.event_hooks"
 
 
 local kong         = kong
@@ -526,8 +526,8 @@ local function register_events()
     singletons.portal_router.set_version(data.cache_key, data.cache_val)
   end, "portal", "router")
 
-  if databus.enabled() then
-    worker_events.register(databus.crud, "crud", "dbus")
+  if event_hooks.enabled() then
+    worker_events.register(event_hooks.crud, "crud", "event_hooks")
   end
 
 end

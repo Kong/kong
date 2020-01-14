@@ -24,7 +24,7 @@ return {
       ALTER TABLE admins
       ALTER COLUMN rbac_token_enabled SET NOT NULL;
 
-      CREATE TABLE IF NOT EXISTS "dbus" (
+      CREATE TABLE IF NOT EXISTS "event_hooks" (
         "id"           UUID                         UNIQUE,
         "created_at"   TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
         "source"       TEXT NOT NULL,
@@ -54,7 +54,7 @@ return {
       );
       ALTER TABLE admins ADD rbac_token_enabled boolean;
 
-      CREATE TABLE IF NOT EXISTS dbus (
+      CREATE TABLE IF NOT EXISTS event_hooks (
         id             uuid PRIMARY KEY,
         created_at     timestamp,
         source         text,

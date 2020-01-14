@@ -116,30 +116,30 @@ describe("mock_cache", function()
   end)
 end)
 
-describe("databus", function()
+describe("event-hooks", function()
 
-  local databus = require "kong.enterprise_edition.databus"
+  local event_hooks = require "kong.enterprise_edition.event_hooks"
 
-  -- reset any mocks, stubs, whatever was messed up on _G.kong and databus
+  -- reset any mocks, stubs, whatever was messed up on _G.kong and event-hooks
   before_each(function()
     _G.kong = {
       configuration = {
-        databus_enabled = true,
+        event_hooks_enabled = true,
       },
       worker_events = {},
       cache = mock_cache(),
       log = mock(setmetatable({}, { __index = function() return function() end end })),
     }
 
-    for k, v in pairs(databus.events) do
-      databus.events[k] = nil
+    for k, v in pairs(event_hooks.events) do
+      event_hooks.events[k] = nil
     end
 
-    for k, v in pairs(databus.references) do
-      databus.references[k] = nil
+    for k, v in pairs(event_hooks.references) do
+      event_hooks.references[k] = nil
     end
 
-    mock.revert(databus)
+    mock.revert(event_hooks)
     mock.revert(kong)
   end)
 
@@ -147,27 +147,27 @@ describe("databus", function()
     before_each(function()
       _G.kong = {
         configuration = {
-          databus_enabled = false,
+          event_hooks_enabled = false,
         }
       }
     end)
 
     it("does nothing", function()
-      assert.is_nil(databus.publish())
-      assert.is_nil(databus.register())
-      assert.is_nil(databus.unregister())
-      assert.is_nil(databus.emit())
+      assert.is_nil(event_hooks.publish())
+      assert.is_nil(event_hooks.register())
+      assert.is_nil(event_hooks.unregister())
+      assert.is_nil(event_hooks.emit())
     end)
   end)
 
   describe("publish / #list", function()
     describe("any code can publish a source/event", function()
       it("with a source and an event", function()
-        assert(databus.publish("some_source", "some_event"))
+        assert(event_hooks.publish("some_source", "some_event"))
       end)
 
       it("with source, event and opts", function()
-        assert(databus.publish("some_source", "some_event", {
+        assert(event_hooks.publish("some_source", "some_event", {
           description = "Some event that does something",
           fields = { "foo", "bar" },
           unique = { "foo" },
@@ -176,12 +176,12 @@ describe("databus", function()
     end)
 
     it("publish stores them, and list lists them", function()
-      assert(databus.publish("some_source", "some_event", {
+      assert(event_hooks.publish("some_source", "some_event", {
           description = "Some event that does something",
           fields = { "foo", "bar" },
           unique = { "foo" },
       }))
-      assert(databus.publish("another_source", "another_event"))
+      assert(event_hooks.publish("another_source", "another_event"))
       local expected = {
         some_source = {
           some_event = {
@@ -194,7 +194,7 @@ describe("databus", function()
           another_event = {}
         },
       }
-      assert.same(expected, databus.list())
+      assert.same(expected, event_hooks.list())
     end)
   end)
 
@@ -204,7 +204,7 @@ describe("databus", function()
 
     before_each(function()
       stub(kong.worker_events, "register")
-      stub(databus, "callback").returns(mock_function)
+      stub(event_hooks, "callback").returns(mock_function)
       some_entity = {
         id = "a4fbd24e-6a52-4937-bd78-2536713072d2",
         source = "some_source",
@@ -214,19 +214,19 @@ describe("databus", function()
 
     describe("receives an entity and registers a worker_event", function()
       it("with a callback, a source and an event", function()
-        databus.register(some_entity)
+        event_hooks.register(some_entity)
         assert.stub(kong.worker_events.register)
               .was.called_with(mock_function, "some_source", "some_event")
       end)
       it("an entity can have a nil event", function()
         some_entity.event = nil
-        databus.register(some_entity)
+        event_hooks.register(some_entity)
         assert.stub(kong.worker_events.register)
               .was.called_with(mock_function, "some_source", nil)
       end)
       it("an entity can have a ngx.null event that is nil too", function()
         some_entity.event = ngx.null
-        databus.register(some_entity)
+        event_hooks.register(some_entity)
         assert.stub(kong.worker_events.register)
               .was.called_with(mock_function, "some_source", nil)
       end)
@@ -238,7 +238,7 @@ describe("databus", function()
     local some_entity
 
     before_each(function()
-      stub(databus, "callback").returns(mock_function)
+      stub(event_hooks, "callback").returns(mock_function)
       stub(kong.worker_events, "register")
       stub(kong.worker_events, "unregister")
 
@@ -251,25 +251,25 @@ describe("databus", function()
 
     describe("receives an entity and unregisters an existing worker_event by id", function()
       it("with the original callback, a source and an event", function()
-        databus.register(some_entity)
-        stub(databus, "callback").returns(function() end)
-        databus.unregister(some_entity)
+        event_hooks.register(some_entity)
+        stub(event_hooks, "callback").returns(function() end)
+        event_hooks.unregister(some_entity)
         assert.stub(kong.worker_events.unregister)
               .was.called_with(mock_function, "some_source", "some_event")
       end)
       it("an entity can have a nil event", function()
         some_entity.event = nil
-        databus.register(some_entity)
-        stub(databus, "callback").returns(function() end)
-        databus.unregister(some_entity)
+        event_hooks.register(some_entity)
+        stub(event_hooks, "callback").returns(function() end)
+        event_hooks.unregister(some_entity)
         assert.stub(kong.worker_events.unregister)
               .was.called_with(mock_function, "some_source", nil)
       end)
       it("an entity can have a ngx.null event that is nil too", function()
         some_entity.event = ngx.null
-        databus.register(some_entity)
-        stub(databus, "callback").returns(function() end)
-        databus.unregister(some_entity)
+        event_hooks.register(some_entity)
+        stub(event_hooks, "callback").returns(function() end)
+        event_hooks.unregister(some_entity)
         assert.stub(kong.worker_events.unregister)
               .was.called_with(mock_function, "some_source", nil)
       end)
@@ -282,8 +282,8 @@ describe("databus", function()
     end)
 
     describe("receives a source, an event and some data", function()
-      it("calls worker_events post_local with the source prefixed as dbus:", function()
-        databus.emit("some_source", "some_event", { some = "data" })
+      it("calls worker_events post_local", function()
+        event_hooks.emit("some_source", "some_event", { some = "data" })
         assert.stub(kong.worker_events.post_local)
               .was.called_with("some_source", "some_event", { some = "data" })
       end)
@@ -295,7 +295,7 @@ describe("databus", function()
       it("defaults to the whole data when an event has not been published", function()
         local data = { some = "data", with_more = "data" }
         assert.equal("fcd3b17e549f0a83f5bd14aa85d2f2cb",
-                     databus.digest(data))
+                     event_hooks.digest(data))
       end)
 
       it("two data messages have the same digest if their relevant fields are the same", function()
@@ -304,9 +304,9 @@ describe("databus", function()
         local fields = { "some", "with_more" }
 
         assert.equal("fcd3b17e549f0a83f5bd14aa85d2f2cb",
-                     databus.digest(data, { fields = fields }))
-        assert.equal(databus.digest(more_data, { fields = fields }),
-                     databus.digest(data, { fields = fields }))
+                     event_hooks.digest(data, { fields = fields }))
+        assert.equal(event_hooks.digest(more_data, { fields = fields }),
+                     event_hooks.digest(data, { fields = fields }))
       end)
 
       it("changes digest when a relevant field changes", function()
@@ -314,18 +314,18 @@ describe("databus", function()
         local more_data = { some = "data", with_more = "snowflake", and_more = "snowflake" }
         local fields = { "somne", "with_more" }
 
-        assert.not_equal(databus.digest(data, { fields = fields }),
-                         databus.digest(more_data, { fields = fields }))
+        assert.not_equal(event_hooks.digest(data, { fields = fields }),
+                         event_hooks.digest(more_data, { fields = fields }))
       end)
     end)
   end)
 
   describe("handlers and callbacks", function()
-    describe("given a worker_event, a dbus handler and a dbus entity", function()
+    describe("given a worker_event, a event_hooks handler and a event_hooks entity", function()
       local handler, handler_cb, entity, worker_event
 
       before_each(function()
-        stub(databus.queue, "add")
+        stub(event_hooks.queue, "add")
 
         worker_event = {
           data = { some = "data" },
@@ -336,7 +336,7 @@ describe("databus", function()
 
         handler = "some_handler"
         handler_cb = function(data, event, source, pid) end
-        stub(databus.handlers, handler).returns({ callback = handler_cb })
+        stub(event_hooks.handlers, handler).returns({ callback = handler_cb })
 
         entity = {
           id = "a4fbd24e-6a52-4937-bd78-2536713072d2",
@@ -351,114 +351,111 @@ describe("databus", function()
       end)
 
       it("a blob with the handler function as a callback is enqueued", function()
-        databus.callback(entity)(worker_event.data,
+        event_hooks.callback(entity)(worker_event.data,
                                  worker_event.event,
                                  worker_event.source,
                                  worker_event.pid)
         local blob = {
           callback = handler_cb,
-          data = worker_event.data,
-          event = worker_event.event,
-          source = worker_event.source,
-          pid = worker_event.pid,
+          args = { worker_event.data, worker_event.event, worker_event.source, worker_event.pid },
         }
 
-        assert.stub(databus.queue.add).was.called_with(databus.queue, blob)
+        assert.stub(event_hooks.queue.add).was.called_with(event_hooks.queue, blob)
       end)
 
       describe("on_change", function()
-        it("when false, enqueues dbus job as many times as called", function()
+        it("when false, enqueues event_hooks job as many times as called", function()
           entity.on_change = false
-          databus.callback(entity)(worker_event.data,
+          event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(databus.queue.add).was.called(1)
+          assert.stub(event_hooks.queue.add).was.called(1)
 
-          databus.callback(entity)(worker_event.data,
+          event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(databus.queue.add).was.called(2)
+          assert.stub(event_hooks.queue.add).was.called(2)
         end)
-        it("when true, enqueues dbus job only if data signature has changed", function()
+        it("when true, enqueues event_hooks job only if data signature has changed", function()
           entity.on_change = true
-          databus.callback(entity)(worker_event.data,
+          event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(databus.queue.add).was.called(1)
+          assert.stub(event_hooks.queue.add).was.called(1)
 
-          databus.callback(entity)(worker_event.data,
+          event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(databus.queue.add).was.called(1)
-
-          worker_event.data = { different = "data" }
-          databus.callback(entity)(worker_event.data,
-                                   worker_event.event,
-                                   worker_event.source,
-                                   worker_event.pid)
-          assert.stub(databus.queue.add).was.called(2)
+          assert.stub(event_hooks.queue.add).was.called(1)
 
           worker_event.data = { different = "data" }
-          databus.callback(entity)(worker_event.data,
+          event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(databus.queue.add).was.called(2)
+          assert.stub(event_hooks.queue.add).was.called(2)
+
+          worker_event.data = { different = "data" }
+          event_hooks.callback(entity)(worker_event.data,
+                                   worker_event.event,
+                                   worker_event.source,
+                                   worker_event.pid)
+          assert.stub(event_hooks.queue.add).was.called(2)
         end)
       end)
 
       describe("snooze", function()
-        it("when set, disables a databus event for 'snooze' seconds", function()
+        it("when set, disables a event_hooks event for 'snooze' seconds", function()
           entity.snooze = 60
 
-          databus.callback(entity)(worker_event.data,
+          event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(databus.queue.add).was.called(1)
+          assert.stub(event_hooks.queue.add).was.called(1)
 
-          databus.callback(entity)(worker_event.data,
+          event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(databus.queue.add).was.called(1)
+          assert.stub(event_hooks.queue.add).was.called(1)
 
           -- 50 seconds pass
           kong.cache._travel(50)
-          databus.callback(entity)(worker_event.data,
+          event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(databus.queue.add).was.called(1)
+          assert.stub(event_hooks.queue.add).was.called(1)
 
           -- 20 more seconds pass (70 seconds)
           kong.cache._travel(20)
-          databus.callback(entity)(worker_event.data,
+          event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(databus.queue.add).was.called(2)
+          assert.stub(event_hooks.queue.add).was.called(2)
 
           -- now it should be snoozed for 60 more seconds (130 seconds)
           -- 30 seconds pass
           kong.cache._travel(30)
-          databus.callback(entity)(worker_event.data,
+          event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(databus.queue.add).was.called(2)
+          assert.stub(event_hooks.queue.add).was.called(2)
 
           -- 31 seconds pass
           kong.cache._travel(31)
-          databus.callback(entity)(worker_event.data,
+          event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(databus.queue.add).was.called(3)
+          assert.stub(event_hooks.queue.add).was.called(3)
         end)
       end)
 
@@ -470,64 +467,64 @@ describe("databus", function()
           local different_data = { different = "data" }
 
           -- first event
-          databus.callback(entity)(worker_event.data,
+          event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(databus.queue.add).was.called(1)
+          assert.stub(event_hooks.queue.add).was.called(1)
 
           -- 10 seconds
           kong.cache._travel(10)
 
           -- same as first
-          databus.callback(entity)(worker_event.data,
+          event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(databus.queue.add).was.called(1)
+          assert.stub(event_hooks.queue.add).was.called(1)
 
           -- different data
-          databus.callback(entity)(different_data,
+          event_hooks.callback(entity)(different_data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(databus.queue.add).was.called(2)
+          assert.stub(event_hooks.queue.add).was.called(2)
 
           -- 20 seconds
           kong.cache._travel(10)
 
           -- different data
-          databus.callback(entity)(different_data,
+          event_hooks.callback(entity)(different_data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(databus.queue.add).was.called(2)
+          assert.stub(event_hooks.queue.add).was.called(2)
 
           -- 61 seconds
           kong.cache._travel(41)
 
           -- first event
-          databus.callback(entity)(worker_event.data,
+          event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(databus.queue.add).was.called(3)
+          assert.stub(event_hooks.queue.add).was.called(3)
 
           -- different data
-          databus.callback(entity)(worker_event.data,
+          event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(databus.queue.add).was.called(3)
+          assert.stub(event_hooks.queue.add).was.called(3)
 
           -- 71 seconds
           kong.cache._travel(71)
 
-          databus.callback(entity)(worker_event.data,
+          event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
-          assert.stub(databus.queue.add).was.called(4)
+          assert.stub(event_hooks.queue.add).was.called(4)
         end)
       end)
     end)
@@ -540,13 +537,10 @@ describe("databus", function()
           callback = function(data, event, source, pid)
             error("something bad")
           end,
-          data = { some = "data" },
-          event = "some_event",
-          source = "some_source",
-          pid = 1234,
+          args = { { some = "data" }, "some_event", "some_source", 1234 },
         }
 
-        local ok, res, err = databus.process_callback({ blob })
+        local ok, res, err = event_hooks.process_callback({ blob })
         assert.is_false(ok)
         assert.matches("something bad", err)
         assert.is_nil(res)
@@ -557,12 +551,9 @@ describe("databus", function()
           callback = function(data, event, source, pid)
             return "hello world"
           end,
-          data = { some = "data" },
-          event = "some_event",
-          source = "some_source",
-          pid = 1234,
+          args = { { some = "data" }, "some_event", "some_source", 1234 },
         }
-        local ok, res, err = databus.process_callback({ blob })
+        local ok, res, err = event_hooks.process_callback({ blob })
         assert.is_true(ok)
         assert.equal("hello world", res)
         assert.is_nil(err)
@@ -577,12 +568,9 @@ describe("databus", function()
           callback = function(data, event, source, pid)
             return { data, event, source, pid }
           end,
-          data = data,
-          event = event,
-          source = source,
-          pid = pid,
+          args = { data, event, source, pid },
         }
-        local ok, res, _ = databus.process_callback({ blob })
+        local ok, res, _ = event_hooks.process_callback({ blob })
         assert.is_true(ok)
         assert.same({ data, event, source, pid }, res)
       end)
@@ -590,7 +578,7 @@ describe("databus", function()
 
     describe("[#lambda]", function()
       local entity
-      local handler = databus.handlers.lambda
+      local handler = event_hooks.handlers.lambda
 
       before_each(function()
         entity = {
@@ -692,7 +680,7 @@ describe("databus", function()
 
     describe("[webhook]", function()
       local entity
-      local handler = databus.handlers.webhook
+      local handler = event_hooks.handlers.webhook
 
       before_each(function()
         entity = {
@@ -773,7 +761,7 @@ describe("databus", function()
     describe("[webhook-custom]", function()
       describe("makes a request", function()
         local entity
-        local handler = databus.handlers["webhook-custom"]
+        local handler = event_hooks.handlers["webhook-custom"]
 
         before_each(function()
           entity = {
@@ -955,7 +943,7 @@ describe("databus", function()
           handler = "log",
           config = {},
         }
-        local handler = databus.handlers.log
+        local handler = event_hooks.handlers.log
         local cb = handler(entity, entity.config).callback
         assert(cb({ some = "data"}, "some_event", "some_source", 1234))
       end)

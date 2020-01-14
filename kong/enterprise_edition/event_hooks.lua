@@ -27,7 +27,7 @@ local events = {}
 local references = {}
 
 _M.enabled = function()
-  return kong.configuration.databus_enabled
+  return kong.configuration.event_hooks_enabled
 end
 
 _M.crud = function(data)
@@ -38,6 +38,15 @@ _M.crud = function(data)
     _M.register(data.entity)
   elseif data.operation == "create" then
     _M.register(data.entity)
+  end
+
+  -- ping if available
+  if _M.has_ping(data.entity) then
+    -- schedule a ping
+    _M.queue:add({
+      callback = _M.ping,
+      args = { data.entity, data.operation },
+    })
   end
 end
 
@@ -63,14 +72,14 @@ _M.has_ping = function(entity)
   return _M.handlers[entity.handler](entity, entity.config).ping
 end
 
-_M.ping = function(entity)
+_M.ping = function(entity, operation)
   local handler = _M.handlers[entity.handler](entity, entity.config)
 
   if not handler.ping then
     return false, fmt("handler '%s' does not support 'ping'", entity.handler)
   end
 
-  return handler.ping(entity)
+  return handler.ping(operation)
 end
 
 _M.register = function(entity)
@@ -127,7 +136,7 @@ local BatchQueue = require "kong.tools.batch_queue"
 
 local process_callback = function(batch)
   local entry = batch[1]
-  local ok, res_or_err = pcall(entry.callback, entry.data, entry.event, entry.source, entry.pid)
+  local ok, res_or_err = pcall(entry.callback, unpack(entry.args))
   if not ok then
     kong.log.err(res_or_err)
     return false, nil, res_or_err
@@ -149,7 +158,7 @@ _M.callback = function(entity)
       -- kong:cache is used as a blacklist of events to not process:
       -- > on_change: only enqueue an event that has changed (looks different)
       -- > snooze: like an alarm clock, disable event for N seconds
-      local cache_key = fmt("dbus:%s:%s:%s", entity.id, source, event)
+      local cache_key = fmt("event_hooks:%s:%s:%s", entity.id, source, event)
 
       -- append digest of relevant fields in data to filter by same-ness
       if on_change then
@@ -162,17 +171,14 @@ _M.callback = function(entity)
 
       -- either in L1 or L2, this event is to be ignored
       if hit_lvl ~= 3 then
-        kong.log.warn("ignoring dbus event: ", cache_key)
+        kong.log.warn("ignoring event_hooks event: ", cache_key)
         return
       end
     end
 
     local blob = {
       callback = callback,
-      data = data,
-      event = event,
-      source = source,
-      pid = pid,
+      args = { data, event, source, pid },
     }
 
     queue:add(blob)
@@ -218,16 +224,17 @@ _M.handlers = {
         kong.log.debug("response: ", inspect({res and res.status or nil, err}))
         return not err
       end,
-      ping = function()
+      ping = function(operation)
         local headers = config.headers ~= ngx_null and config.headers or {}
         local method = "POST"
 
         headers['content-type'] = "application/json"
 
         local data = {
-          source = entity.source,
+          source = "kong:event_hooks",
           event = "ping",
-          dbus = entity,
+          operation = operation,
+          event_hooks = entity,
         }
 
         local body = cjson.encode(data)
@@ -344,7 +351,7 @@ _M.handlers = {
     -- or allow _anything_
     local helper_ctx = _G
 
-    local chunk_name = "dbus:" .. entity.id
+    local chunk_name = "event_hooks:" .. entity.id
 
     local function err_fn(err)
       return function()

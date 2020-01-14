@@ -214,5 +214,5 @@ keyring_vault_mount =
 keyring_vault_path =
 keyring_vault_token =
 
-databus_enabled = off
+event_hooks_enabled = off
 ]]

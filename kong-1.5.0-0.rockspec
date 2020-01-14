@@ -115,7 +115,7 @@ build = {
     ["kong.enterprise_edition.invoke_plugin"] = "kong/enterprise_edition/invoke_plugin.lua",
     ["kong.enterprise_edition.distributions_constants"] = "kong/enterprise_edition/distributions_constants.lua",
     ["kong.enterprise_edition.pdk.response"] = "kong/enterprise_edition/pdk/response.lua",
-    ["kong.enterprise_edition.databus"] = "kong/enterprise_edition/databus.lua",
+    ["kong.enterprise_edition.event_hooks"] = "kong/enterprise_edition/event_hooks.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
@@ -178,7 +178,7 @@ build = {
     ["kong.api.routes.license"] = "kong/api/routes/license.lua",
     ["kong.api.routes.entities"] = "kong/api/routes/entities.lua",
     ["kong.api.routes.keyring"] = "kong/api/routes/keyring.lua",
-    ["kong.api.routes.dbus"] = "kong/api/routes/dbus.lua",
+    ["kong.api.routes.event_hooks"] = "kong/api/routes/event_hooks.lua",
 
     ["kong.status"] = "kong/status/init.lua",
 
@@ -311,8 +311,8 @@ build = {
     ["kong.db.schema.entities.ca_certificates"] = "kong/db/schema/entities/ca_certificates.lua",
     ["kong.db.schema.entities.groups"] = "kong/db/schema/entities/groups.lua",
     ["kong.db.schema.entities.group_rbac_roles"] = "kong/db/schema/entities/group_rbac_roles.lua",
-    ["kong.db.schema.entities.dbus"] = "kong/db/schema/entities/dbus.lua",
-    ["kong.db.schema.entities.dbus_subschemas"] = "kong/db/schema/entities/dbus_subschemas.lua",
+    ["kong.db.schema.entities.event_hooks"] = "kong/db/schema/entities/event_hooks.lua",
+    ["kong.db.schema.entities.event_hooks_subschemas"] = "kong/db/schema/entities/event_hooks_subschemas.lua",
     ["kong.db.schema.others.migrations"] = "kong/db/schema/others/migrations.lua",
     ["kong.db.schema.others.declarative_config"] = "kong/db/schema/others/declarative_config.lua",
     ["kong.db.schema.entity"] = "kong/db/schema/entity.lua",
