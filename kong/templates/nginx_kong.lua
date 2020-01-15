@@ -98,8 +98,8 @@ server {
 > for _, el in ipairs(nginx_proxy_directives) do
     $(el.name) $(el.value);
 > end
-> for i = 1, #trusted_ips do
-    set_real_ip_from  $(trusted_ips[i]);
+> for _, ip in ipairs(trusted_ips) do
+    set_real_ip_from $(ip);
 > end
 
     rewrite_by_lua_block {
