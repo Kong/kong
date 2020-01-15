@@ -35,7 +35,7 @@ dependencies = {
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.0",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.4.2",
+  "lua-resty-openssl == 0.4.3",
   "lua-resty-counter == 0.2.0",
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 0.4",
