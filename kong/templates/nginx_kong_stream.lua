@@ -85,8 +85,8 @@ server {
     access_log ${{PROXY_ACCESS_LOG}} basic;
     error_log  ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
-> for i = 1, #trusted_ips do
-    set_real_ip_from $(trusted_ips[i]);
+> for _, ip in ipairs(trusted_ips) do
+    set_real_ip_from $(ip);
 > end
 
     # injected nginx_sproxy_* directives
