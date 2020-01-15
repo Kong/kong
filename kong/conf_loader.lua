@@ -1321,10 +1321,87 @@ local function load(path, custom_conf, opts)
     end
   end
 
-  for _, dyn_namespace in ipairs(DYNAMIC_KEY_NAMESPACES) do
-    table.sort(conf[dyn_namespace.injected_conf_name], function(a, b)
-      return a.name < b.name
-    end)
+  do
+    local sub  = string.sub
+    local byte = string.byte
+    local find = string.find
+
+    local COMMA        = byte(",")
+    local SINGLE_QUOTE = byte("'")
+    local DOUBLE_QUOTE = byte('"')
+    local BACKSLASH    = byte("\\")
+
+    for _, dyn_namespace in ipairs(DYNAMIC_KEY_NAMESPACES) do
+      local directives = conf[dyn_namespace.injected_conf_name]
+      local directive_count = #directives
+      for i = 1, directive_count do
+        local directive = directives[i]
+        local value = directive.value
+        if find(value, ",", 1, true) then
+          local escaped = false
+          local single_quoted = false
+          local double_quoted = false
+          local length = #value
+          local start_position = 1
+          local is_first = true
+          for j = 1, length do
+            local b = byte(value, j)
+            if b == BACKSLASH then
+              escaped = not escaped
+
+            else
+              if not escaped then
+                if b == SINGLE_QUOTE then
+                  single_quoted = not single_quoted
+
+                elseif b == DOUBLE_QUOTE then
+                  double_quoted = not double_quoted
+
+                elseif b == COMMA and not single_quoted and not double_quoted then
+                  local v = utils.strip(sub(value, start_position, j - 1))
+                  if is_first then
+                    directive.value = v
+                    is_first = false
+
+                  else
+                    table.insert(directives, {
+                      name  = directive.name,
+                      value = v,
+                    })
+                  end
+
+                  start_position = j + 1
+                end
+              end
+
+              escaped = false
+            end
+          end
+
+          if not is_first and start_position <= length then
+            local v = utils.strip(sub(value, start_position))
+            table.insert(directives, {
+              name  = directive.name,
+              value = v,
+            })
+          end
+        end
+      end
+
+      table.sort(directives, function(a, b)
+        if a.name < b.name then
+          return true
+        elseif a.name > b.name then
+          return false
+        end
+
+        if a.value < b.value then
+          return true
+        end
+
+        return false
+      end)
+    end
   end
 
   do
