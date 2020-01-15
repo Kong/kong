@@ -13,17 +13,17 @@ pipeline {
     REDHAT = credentials('redhat')
     PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
     PRIVATE_KEY_PASSWORD = credentials('kong.private.gpg-key.asc.password')
-    KONG_VERSION = """${sh(
-      returnStdout: true,
-      script: '[ -n $TAG_NAME ] && echo $TAG_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+" || echo -n $BRANCH_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+"'
-    )}"""
+    //KONG_VERSION = """${sh(
+    //  returnStdout: true,
+    //  script: '[ -n $TAG_NAME ] && echo $TAG_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+" || echo -n $BRANCH_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+"'
+    //)}"""
   }
   stages {
     // choice between internal, rc1, rc2, rc3, rc4 ....,  GA
     stage('Checkpoint') {
       steps {
         script {
-          def input_params = input(message: "Kong version: $KONG_VERSION\nShould I continue this build?",
+          def input_params = input(message: "Should I continue this build?",
           parameters: [
             // [$class: 'TextParameterDefinition', defaultValue: '', description: 'custom build', name: 'customername'],
             choice(name: 'RELEASE_SCOPE',
@@ -35,14 +35,14 @@ pipeline {
       }
     }
     stage('Prepare Kong Distributions') {
-      when {
-        expression { BRANCH_NAME ==~ /^(release\/)?.*/}
-      }
+      //when {
+      //  expression { BRANCH_NAME ==~ /^(release\/)?.*/}
+      //}
       steps {
-        echo "Kong version: $KONG_VERSION"
+        //echo "Kong version: $KONG_VERSION"
         echo "Release scope ${env.RELEASE_SCOPE}"
         checkout([$class: 'GitSCM',
-          branches: [[name: env.BRANCH_NAME]],
+          branches: [[name: 'refactor/ft-1151']],
           extensions: [[$class: 'WipeWorkspace']],
           userRemoteConfigs: [[url: 'git@github.com:Kong/kong-distributions.git',
             credentialsId: 'kong-distributions-deploy-key']]
@@ -51,9 +51,9 @@ pipeline {
       }
     }
     stage('Build & Push Packages') {
-      when {
-        expression { BRANCH_NAME ==~ /^(release\/)?.*/ }
-      }
+      //when {
+      //  expression { BRANCH_NAME ==~ /^(release\/)?.*/ }
+      //}
       steps {
         parallel (
           centos6: {
@@ -116,9 +116,9 @@ pipeline {
       }
     }
     stage("Prepare Docker Kong EE") {
-      when {
-        expression { BRANCH_NAME ==~ /^(release\/)?.*/ }
-      }
+      //when {
+      //  expression { BRANCH_NAME ==~ /^(release\/)?.*/ }
+      //}
       steps {
         checkout([$class: 'GitSCM',
             extensions: [[$class: 'WipeWorkspace']],
@@ -128,11 +128,11 @@ pipeline {
       }
     }
     stage("Build & Push Docker Images") {
-      when {
-        expression {
-          expression { BRANCH_NAME ==~ /^release\/.*/ }
-        }
-      }
+      //when {
+      //  expression {
+      //    expression { BRANCH_NAME ==~ /^release\/.*/ }
+      //  }
+      //}
       steps {
         parallel (
           // beware! $KONG_VERSION might have an ending \n that swallows everything after it
