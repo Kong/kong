@@ -514,4 +514,53 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
+
+  describe("SSL [#" .. strategy .. "]", function()
+
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "certificates",
+        "snis",
+      })
+
+      local service = bp.services:insert {
+        name = "default-cert",
+      }
+
+      bp.routes:insert {
+        protocols = { "https" },
+        hosts     = { "example.com" },
+        service   = service,
+      }
+
+      local cert = bp.certificates:insert {
+        cert  = ssl_fixtures.cert,
+        key   = ssl_fixtures.key,
+      }
+
+      bp.snis:insert {
+        name = "*",
+        certificate = cert,
+      }
+
+      assert(helpers.start_kong {
+        database    = strategy,
+        nginx_conf  = "spec/fixtures/custom_nginx.template",
+      })
+
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    describe("handshake", function()
+      it("sets the default certificate of '*' SNI", function()
+        local cert = get_cert("example.com")
+        assert.cn("ssl-example.com", cert)
+      end)
+    end)
+  end)
 end

@@ -19,6 +19,7 @@ local set_priv_key = ngx_ssl.set_priv_key
 
 local default_cert_and_key
 
+local DEFAULT_SNI = "*"
 
 local function log(lvl, ...)
   ngx_log(lvl, "[ssl] ", ...)
@@ -156,7 +157,7 @@ local function find_certificate(sni)
 
   local sni_wild_pref, sni_wild_suf = produce_wild_snis(sni)
 
-  local bulk = mlcache.new_bulk(3)
+  local bulk = mlcache.new_bulk(4)
 
   bulk:add("snis:" .. sni, nil, fetch_sni, sni)
 
@@ -167,6 +168,8 @@ local function find_certificate(sni)
   if sni_wild_suf then
     bulk:add("snis:" .. sni_wild_suf, nil, fetch_sni, sni_wild_suf)
   end
+
+  bulk:add("snis:" .. DEFAULT_SNI, nil, fetch_sni, DEFAULT_SNI)
 
   local res, err = kong.core_cache:get_bulk(bulk)
   if err then
