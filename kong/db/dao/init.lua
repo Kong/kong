@@ -164,8 +164,8 @@ local function validate_options_value(options, schema, context)
       end
     elseif #options.tags > 5 then
       errors.tags = "cannot query more than 5 tags"
-    elseif not match(concat(options.tags), "^[%w%.%-%_~]+$") then
-      errors.tags = "must only contain alphanumeric and '., -, _, ~' characters"
+    elseif not match(concat(options.tags), "^[%w%.%-%_~:]+$") then
+      errors.tags = "must only contain alphanumeric and '., -, _, ~, :' characters"
     elseif #options.tags > 1 and options.tags_cond ~= "and" and options.tags_cond ~= "or" then
       errors.tags_cond = "must be a either 'and' or 'or' when more than one tag is specified"
     end

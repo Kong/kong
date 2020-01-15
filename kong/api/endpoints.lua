@@ -143,11 +143,11 @@ local function extract_options(args, schema, context)
         tags = tags[1]
       end
 
-      if re_match(tags, [=[^([a-zA-Z0-9\.\-\_~]+(?:,|$))+$]=], 'jo') then
+      if re_match(tags, [=[^([a-zA-Z0-9\.\-\_~:]+(?:,|$))+$]=], 'jo') then
         -- 'a,b,c' or 'a'
         options.tags_cond = 'and'
         options.tags = split(tags, ',')
-      elseif re_match(tags, [=[^([a-zA-Z0-9\.\-\_~]+(?:/|$))+$]=], 'jo') then
+      elseif re_match(tags, [=[^([a-zA-Z0-9\.\-\_~:]+(?:/|$))+$]=], 'jo') then
         -- 'a/b/c'
         options.tags_cond = 'or'
         options.tags = split(tags, '/')

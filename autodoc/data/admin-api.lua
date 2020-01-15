@@ -264,7 +264,7 @@ return {
       title = [[ Tags ]],
       description = [[
         Tags are strings associated to entities in Kong. Each tag must be composed of one or more
-        alphanumeric characters, `_`, `-`, `.` or `~`.
+        alphanumeric characters, `_`, `-`, `.`, `~` or `:`.
 
         Most core entities can be *tagged* via their `tags` attribute, upon creation or edition.
 
