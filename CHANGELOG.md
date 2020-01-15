@@ -105,6 +105,13 @@ repository will allow you to do both easily.
     [#5357](https://github.com/Kong/kong/pull/5357)
   - `stream_listen` now supports the `backlog` option.
     [#5346](https://github.com/Kong/kong/pull/5346)
+  - The internal cache was split into two independent structures,
+    `kong.core_cache` and `kong.cache`, meant to be used respectively by the
+    Kong's core and by external users, like plugins. :warning: Note that both
+    structures rely on the already existent `mem_cache_size` configuration
+    option to set their size, so when upgrading from a previous Kong version,
+    the cache memory consumption might double if this value is not adjusted.
+    [#5114](https://github.com/Kong/kong/pull/5114)
 
 ##### CLI
 
