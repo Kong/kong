@@ -39,7 +39,7 @@ local ACLHandler = {}
 
 
 ACLHandler.PRIORITY = 950
-ACLHandler.VERSION = "2.1.0"
+ACLHandler.VERSION = "3.0.0"
 
 
 function ACLHandler:access(conf)
@@ -65,10 +65,8 @@ function ACLHandler:access(conf)
   if not consumer_id then
     local authenticated_groups = groups.get_authenticated_groups()
     if not authenticated_groups then
-      kong.log.err("Cannot identify the consumer, add an authentication ",
-                   "plugin to use the ACL plugin")
-
-      return kong.response.exit(403, {
+      local status = kong.client.get_credential() and 403 or 401
+      return kong.response.exit(status, {
         message = "You cannot consume this service"
       })
     end
@@ -93,10 +91,17 @@ function ACLHandler:access(conf)
       -- get the consumer groups, since we need those as cache-keys to make sure
       -- we invalidate properly if they change
       local consumer_groups, err = groups.get_consumer_groups(consumer_id)
-      if not consumer_groups then
+      if err then
         kong.log.err(err)
         return kong.response.exit(500, {
           message = "An unexpected error occurred"
+        })
+      end
+
+      if not consumer_groups then
+        local status = kong.client.get_credential() and 403 or 401
+        return kong.response.exit(status, {
+          message = "You cannot consume this service"
         })
       end
 
