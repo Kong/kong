@@ -51,7 +51,7 @@ local function gen_default_ssl_cert(kong_config, admin)
 
     -- last for 20 years
     local now = os.time()
-    crt:setLifetime(now, now + 86400*20)
+    crt:setLifetime(now, now + 86400*20*365)
 
     local name = x509_name.new()
       :add("C", "US")
