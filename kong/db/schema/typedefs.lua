@@ -304,13 +304,6 @@ typedefs.auto_timestamp_ms = Schema.define {
 }
 
 
-typedefs.no_api = Schema.define {
-  type = "foreign",
-  reference = "apis",
-  eq = null,
-}
-
-
 typedefs.no_route = Schema.define {
   type = "foreign",
   reference = "routes",
