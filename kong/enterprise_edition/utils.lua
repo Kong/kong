@@ -204,6 +204,8 @@ _M.request = function(url, opts)
 
   if opts.sign_with and body then
     local sign_header = opts.sign_header or "X-Kong-Signature"
+    -- sign with must be provided with a function that gets the body and
+    -- returns the name of the hmac algorithm and the hmac of the body
     local alg, hmac = opts.sign_with(body)
     headers[sign_header] = alg .. "=" .. hmac
   end
