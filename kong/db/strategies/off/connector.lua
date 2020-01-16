@@ -65,11 +65,4 @@ function OffConnector:schema_migrations(subsystems)
 end
 
 
-function OffConnector:is_014()
-  return {
-    is_014 = false,
-  }
-end
-
-
 return OffConnector
