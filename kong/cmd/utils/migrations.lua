@@ -12,7 +12,7 @@ local function check_state(schema_state, db)
   if not schema_state:is_up_to_date() then
     if schema_state.needs_bootstrap then
       if schema_state.legacy_invalid_state then
-        error(fmt("Cannot start Kong 1.x with a legacy %s, upgrade to 0.14 " ..
+        error(fmt("Cannot start Kong 1.x with a legacy %s, upgrade to 0.14.1 " ..
                   "first, and run 'kong migrations up'", db.infos.db_desc))
       end
 
@@ -35,7 +35,7 @@ local function bootstrap(schema_state, db, ttl)
     end
 
     if schema_state.legacy_invalid_state then
-      error(fmt("Cannot bootstrap a non-empty %s, upgrade to 0.14 first, " ..
+      error(fmt("Cannot bootstrap a non-empty %s, upgrade to 0.14.1 first, " ..
                 "and run 'kong migrations up'", db.infos.db_desc))
     end
 
@@ -72,28 +72,28 @@ end
 local function up(schema_state, db, opts)
   if schema_state.needs_bootstrap then
     if schema_state.legacy_invalid_state then
-      -- legacy: migration from 0.14 to 1.0 cannot be performed
+      -- legacy: migration from 0.14.1 to 1.0 cannot be performed
       if schema_state.legacy_missing_component then
-        error(fmt("Migration to 1.0 can only be performed from a 0.14 %s " ..
+        error(fmt("Migration to 1.0 can only be performed from a 0.14.1 %s " ..
                   "%s, but the current %s seems to be older (missing "     ..
-                  "migrations for '%s'). Migrate to 0.14 first, or "       ..
+                  "migrations for '%s'). Migrate to 0.14.1 first, or "       ..
                   "install 1.0 on a fresh %s", db.strategy, db.infos.db_desc,
                   db.infos.db_desc, schema_state.legacy_missing_component,
                   db.infos.db_desc))
       end
 
       if schema_state.legacy_missing_migration then
-        error(fmt("Migration to 1.0 can only be performed from a 0.14 %s " ..
+        error(fmt("Migration to 1.0 can only be performed from a 0.14.1 %s " ..
                   "%s, but the current %s seems to be older (missing "     ..
-                  "migration '%s' for '%s'). Migrate to 0.14 first, or "   ..
+                  "migration '%s' for '%s'). Migrate to 0.14.1 first, or "   ..
                   "install 1.0 on a fresh %s", db.strategy, db.infos.db_desc,
                   db.infos.db_desc, schema_state.legacy_missing_migration,
                   schema_state.legacy_missing_component, db.infos.db_desc))
       end
 
-      error(fmt("Migration to 1.0 can only be performed from a 0.14 %s " ..
+      error(fmt("Migration to 1.0 can only be performed from a 0.14.1 %s " ..
                 "%s, but the current %s seems to be older (missing "     ..
-                "migrations). Migrate to 0.14 first, or install 1.0 "    ..
+                "migrations). Migrate to 0.14.1 first, or install 1.0 "    ..
                 "on a fresh %s", db.strategy, db.infos.db_desc,
                 db.infos.db_desc, db.infos.db_desc))
     end
@@ -111,8 +111,8 @@ local function up(schema_state, db, opts)
               "automatically.")
       end
 
-      -- legacy: migration from 0.14 to 1.0 can be performed
-      log("Upgrading from 0.14, bootstrapping database...")
+      -- legacy: migration from 0.14.1 to 1.0 can be performed
+      log("Upgrading from 0.14.1, bootstrapping database...")
       assert(db:schema_bootstrap())
 
     else
@@ -181,7 +181,7 @@ end
 local function finish(schema_state, db, opts)
   if schema_state.needs_bootstrap then
     if schema_state.legacy_invalid_state then
-      -- legacy: migration from 0.14 to 1.0 cannot be performed
+      -- legacy: migration from 0.14.1 to 1.0 cannot be performed
       error(fmt("Cannot run migrations on a legacy %s", db.infos.db_desc))
     end
 
@@ -276,34 +276,34 @@ end
 local function migrate_apis(schema_state, db, opts)
   if schema_state.needs_bootstrap then
     if schema_state.legacy_invalid_state then
-      -- legacy: migration from 0.14 to 1.0 cannot be performed
+      -- legacy: migration from 0.14.1 to 1.0 cannot be performed
       if schema_state.legacy_missing_component then
-        error(fmt("Migration of APIs can only be performed from a 0.14 %s " ..
+        error(fmt("Migration of APIs can only be performed from a 0.14.1 %s " ..
                   "%s, but the current %s seems to be older (missing "      ..
-                   "migrations for '%s'). Migrate to 0.14 first.",
+                   "migrations for '%s'). Migrate to 0.14.1 first.",
                    db.strategy,  db.infos.db_desc, db.infos.db_desc,
                    schema_state.legacy_missing_component, db.infos.db_desc))
       end
 
       if schema_state.legacy_missing_migration then
-        error(fmt("Migration of APIs can only be performed from a 0.14 %s " ..
+        error(fmt("Migration of APIs can only be performed from a 0.14.1 %s " ..
                   "%s, but the current %s seems to be older (missing "      ..
-                  "migration '%s' for '%s'). Migrate to 0.14 first.",
+                  "migration '%s' for '%s'). Migrate to 0.14.1 first.",
                   db.strategy, db.infos.db_desc, db.infos.db_desc,
                   schema_state.legacy_missing_migration,
                   schema_state.legacy_missing_component, db.infos.db_desc))
       end
 
-      error(fmt("Migration of APIs can only be performed from a 0.14 %s " ..
+      error(fmt("Migration of APIs can only be performed from a 0.14.1 %s " ..
                 "%s, but the current %s seems to be older (missing "      ..
-                "migrations). Migrate to 0.14 first.",
+                "migrations). Migrate to 0.14.1 first.",
                 db.strategy, db.infos.db_desc, db.infos.db_desc,
                 db.infos.db_desc), 2)
     end
   end
 
   if not schema_state.legacy_is_014 then
-    error(fmt("APIs can only be migrated on Kong 0.14 %s %s, but the current " ..
+    error(fmt("APIs can only be migrated on Kong 0.14.1 %s %s, but the current " ..
               "%s seems to be more recent.", db.strategy, db.infos.db_desc,
               db.infos.db_desc))
   end
@@ -319,8 +319,8 @@ local function migrate_apis(schema_state, db, opts)
   end
 
   if schema_state.needs_bootstrap then
-    -- legacy: migration from 0.14 to 1.0 can be performed
-    log("Upgrading from 0.14, bootstrapping database...")
+    -- legacy: migration from 0.14.1 to 1.0 can be performed
+    log("Upgrading from 0.14.1, bootstrapping database...")
     assert(db:schema_bootstrap())
   end
 
