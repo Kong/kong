@@ -174,11 +174,6 @@ local function as_body(data, opts)
       body = body .. "--" .. boundary .. "--\r\n"
     end
 
-    local clength = lookup(headers, "content-length")
-    if not clength then
-      headers["content-length"] = #body
-    end
-
     if not content_type:find("boundary=") then
       headers[content_type_name] = content_type .. "; boundary=" .. boundary
     end
@@ -203,7 +198,7 @@ _M.request = function(url, opts)
       if not lookup(headers, "content-type") then
         headers["Content-Type"] = "multipart/form-data"
       end
-     body = as_body(data, { headers = headers })
+      body = as_body(data, { headers = headers })
    end
   end
 
