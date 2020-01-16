@@ -87,26 +87,6 @@ return {
 
 
 
-      CREATE TABLE IF NOT EXISTS "apis" (
-        "id"                        UUID                         PRIMARY KEY,
-        "created_at"                TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(3) AT TIME ZONE 'UTC'),
-        "name"                      TEXT                         UNIQUE,
-        "upstream_url"              TEXT,
-        "preserve_host"             BOOLEAN                      NOT NULL,
-        "retries"                   SMALLINT                     DEFAULT 5,
-        "https_only"                BOOLEAN,
-        "http_if_terminated"        BOOLEAN,
-        "hosts"                     TEXT,
-        "uris"                      TEXT,
-        "methods"                   TEXT,
-        "strip_uri"                 BOOLEAN,
-        "upstream_connect_timeout"  INTEGER,
-        "upstream_send_timeout"     INTEGER,
-        "upstream_read_timeout"     INTEGER
-      );
-
-
-
       CREATE TABLE IF NOT EXISTS "certificates" (
         "id"          UUID                       PRIMARY KEY,
         "created_at"  TIMESTAMP WITH TIME ZONE   DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
@@ -155,7 +135,6 @@ return {
         "consumer_id"  UUID                         REFERENCES "consumers" ("id") ON DELETE CASCADE,
         "service_id"   UUID                         REFERENCES "services"  ("id") ON DELETE CASCADE,
         "route_id"     UUID                         REFERENCES "routes"    ("id") ON DELETE CASCADE,
-        "api_id"       UUID                         REFERENCES "apis"      ("id") ON DELETE CASCADE,
         "config"       JSONB                        NOT NULL,
         "enabled"      BOOLEAN                      NOT NULL,
         "cache_key"    TEXT                         UNIQUE,
@@ -195,13 +174,6 @@ return {
       DO $$
       BEGIN
         CREATE INDEX IF NOT EXISTS "plugins_run_on_idx" ON "plugins" ("run_on");
-      EXCEPTION WHEN UNDEFINED_COLUMN THEN
-        -- Do nothing, accept existing state
-      END$$;
-
-      DO $$
-      BEGIN
-        CREATE INDEX IF NOT EXISTS "plugins_api_id_idx" ON "plugins" ("api_id");
       EXCEPTION WHEN UNDEFINED_COLUMN THEN
         -- Do nothing, accept existing state
       END$$;
@@ -397,7 +369,6 @@ return {
       CREATE TABLE IF NOT EXISTS plugins(
         id          uuid,
         created_at  timestamp,
-        api_id      uuid,
         route_id    uuid,
         service_id  uuid,
         consumer_id uuid,
@@ -409,7 +380,6 @@ return {
         PRIMARY KEY (id)
       );
       CREATE INDEX IF NOT EXISTS plugins_name_idx ON plugins(name);
-      CREATE INDEX IF NOT EXISTS plugins_api_id_idx ON plugins(api_id);
       CREATE INDEX IF NOT EXISTS plugins_route_id_idx ON plugins(route_id);
       CREATE INDEX IF NOT EXISTS plugins_service_id_idx ON plugins(service_id);
       CREATE INDEX IF NOT EXISTS plugins_consumer_id_idx ON plugins(consumer_id);
@@ -450,26 +420,6 @@ return {
         key text,
         cert text
       );
-
-
-      CREATE TABLE IF NOT EXISTS apis(
-        id                       uuid PRIMARY KEY,
-        created_at               timestamp,
-        hosts                    text,
-        http_if_terminated       boolean,
-        https_only               boolean,
-        methods                  text,
-        name                     text,
-        preserve_host            boolean,
-        retries                  int,
-        strip_uri                boolean,
-        upstream_connect_timeout int,
-        upstream_read_timeout    int,
-        upstream_send_timeout    int,
-        upstream_url             text,
-        uris                     text
-      );
-      CREATE INDEX IF NOT EXISTS apis_name_idx ON apis(name);
     ]],
   },
 }

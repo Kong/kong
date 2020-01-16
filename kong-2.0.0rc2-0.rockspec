@@ -180,7 +180,6 @@ build = {
     ["kong.db.migrations.helpers"] = "kong/db/migrations/helpers.lua",
     ["kong.db.migrations.core"] = "kong/db/migrations/core/init.lua",
     ["kong.db.migrations.core.000_base"] = "kong/db/migrations/core/000_base.lua",
-    ["kong.db.migrations.core.002_15_to_1"] = "kong/db/migrations/core/002_15_to_1.lua",
     ["kong.db.migrations.core.003_100_to_110"] = "kong/db/migrations/core/003_100_to_110.lua",
     ["kong.db.migrations.core.004_110_to_120"] = "kong/db/migrations/core/004_110_to_120.lua",
     ["kong.db.migrations.core.005_120_to_130"] = "kong/db/migrations/core/005_120_to_130.lua",
