@@ -245,7 +245,8 @@ _M.handlers = {
           body = body,
           sign_with = config.secret and config.secret ~= ngx_null and
                       sign_body(config.secret),
-          headers = headers
+          headers = headers,
+          ssl_verify = config.ssl_verify,
         })
 
         return not err
@@ -271,7 +272,8 @@ _M.handlers = {
           body = body,
           sign_with = config.secret and config.secret ~= ngx_null and
                       sign_body(config.secret),
-          headers = headers
+          headers = headers,
+          ssl_verify = config.ssl_verify,
         })
 
         return not err, res
@@ -330,7 +332,8 @@ _M.handlers = {
           body = body,
           sign_with = config.secret and config.secret ~= ngx_null and
                       sign_body(config.secret),
-          headers = headers
+          headers = headers,
+          ssl_verify = config.ssl_verify,
         })
 
         return not err

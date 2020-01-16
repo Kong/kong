@@ -733,6 +733,29 @@ describe("event-hooks", function()
         end)
       end)
 
+      it("ssl verification can be disabled with ssl_verify", function()
+        entity.config = {
+          url = "https://not-really-secure.com",
+          ssl_verify = false,
+        }
+        local cb = handler(entity, entity.config).callback
+        cb({ some = "data"}, "some_event", "some_source", 1234)
+
+        local expected_body = '{"event":"some_event","some":"data","source":"some_source"}'
+
+        local expected_headers = {
+          ["content-type"] = "application/json",
+        }
+
+        assert.stub(request).was.called_with(entity.config.url, {
+          method = "POST",
+          body = expected_body,
+          headers = expected_headers,
+          ssl_verify = false,
+        })
+
+      end)
+
       describe("ping", function()
         it("sends the event_hook entity to the url", function()
           entity.config = {
@@ -984,6 +1007,20 @@ describe("event-hooks", function()
               },
             })
           end)
+        end)
+
+        it("ssl verification can be disabled with ssl_verify", function()
+          entity.config = {
+            url = "https://not-really-secure.com",
+            ssl_verify = false,
+          }
+          local cb = handler(entity, entity.config).callback
+          cb({ some = "data"}, "some_event", "some_source", 1234)
+
+          assert.stub(request).was.called_with(entity.config.url, {
+            ssl_verify = false,
+          })
+
         end)
       end)
     end)

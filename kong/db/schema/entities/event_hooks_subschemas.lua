@@ -29,6 +29,7 @@ local webhook_schema = {
         { headers_format = { type = "boolean", default = false } },
         -- sign body with secret
         { secret = { type = "string", required = false } },
+        { ssl_verify = { type = "boolean", default = true } },
       },
     } }
   },
@@ -48,6 +49,7 @@ local simple_webhook_schema = {
                       default = {} } },
         -- sign body with secret
         { secret = { type = "string", required = false } },
+        { ssl_verify = { type = "boolean", default = true } },
       },
     } }
   },
