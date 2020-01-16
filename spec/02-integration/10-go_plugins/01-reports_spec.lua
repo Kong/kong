@@ -9,15 +9,21 @@ for _, strategy in helpers.each_strategy() do
   local reports_server
 
   describe("anonymous reports for go plugins #" .. strategy, function()
-    local reports_send_ping = function()
+    local reports_send_ping = function(port)
       ngx.sleep(0.01) -- hand over the CPU so other threads can do work (processing the sent data)
       local admin_client = helpers.admin_client()
-      local res = admin_client:post("/reports/send-ping")
+      local res = admin_client:post("/reports/send-ping" .. (port and "?port=" .. port or ""))
       assert.response(res).has_status(200)
       admin_client:close()
     end
 
+    local OLD_STATS_PORT = constants.REPORTS.STATS_PORT
+    local NEW_STATS_PORT
+
     lazy_setup(function()
+      NEW_STATS_PORT = OLD_STATS_PORT + math.random(1, 50)
+      constants.REPORTS.STATS_PORT = NEW_STATS_PORT
+
       dns_hostsfile = assert(os.tmpname())
       local fd = assert(io.open(dns_hostsfile, "w"))
       assert(fd:write("127.0.0.1 " .. constants.REPORTS.ADDRESS))
@@ -71,6 +77,7 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_teardown(function()
       os.remove(dns_hostsfile)
+      constants.REPORTS.STATS_PORT = OLD_STATS_PORT
 
       helpers.stop_kong()
     end)
@@ -84,7 +91,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("logs number of enabled go plugins", function()
-      reports_send_ping()
+      reports_send_ping(NEW_STATS_PORT)
 
       local _, reports_data = assert(reports_server:stop())
       reports_data = cjson.encode(reports_data)
@@ -99,7 +106,7 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-      reports_send_ping()
+      reports_send_ping(NEW_STATS_PORT)
 
       local _, reports_data = assert(reports_server:stop())
       reports_data = cjson.encode(reports_data)
@@ -116,7 +123,7 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-      reports_send_ping()
+      reports_send_ping(NEW_STATS_PORT)
 
       local _, reports_data = assert(reports_server:stop())
       reports_data = cjson.encode(reports_data)
