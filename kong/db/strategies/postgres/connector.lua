@@ -1006,6 +1006,7 @@ function _mt:run_api_migrations(opts)
       regex_priority = regex_priority,
       strip_path     = strip_path,
       preserve_host  = preserve_host,
+      path_handling  = "v0",
     }
 
     migrations[i] = {
@@ -1096,8 +1097,8 @@ BEGIN;
   INSERT INTO services (id, created_at, updated_at, name, retries, protocol, host, port, path, connect_timeout, write_timeout, read_timeout)
        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
 
-  INSERT INTO routes (id, created_at, updated_at, service_id, protocols, methods, hosts, paths, regex_priority, strip_path, preserve_host)
-       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+  INSERT INTO routes (id, created_at, updated_at, service_id, protocols, methods, hosts, paths, regex_priority, strip_path, preserve_host, path_handling)
+       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
 %s
   DELETE FROM apis
         WHERE id = %s;
@@ -1125,6 +1126,7 @@ COMMIT;]],
       escape(route.regex_priority),
       escape(route.strip_path),
       escape(route.preserve_host),
+      escape(route.path_handling),
       concat(plugins_sql),
       escape(api.id)
     )

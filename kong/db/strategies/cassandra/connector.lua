@@ -1191,6 +1191,7 @@ do
         regex_priority = regex_priority,
         strip_path     = strip_path,
         preserve_host  = preserve_host,
+        path_handling  = "v0",
       }
 
       migrations[i] = {
@@ -1278,8 +1279,8 @@ do
             escape(service.read_timeout, "integer"),
           },
         }, { [[
-  INSERT INTO routes (partition, id, created_at, updated_at, service_id, protocols, methods, hosts, paths, regex_priority, strip_path, preserve_host)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]], {
+  INSERT INTO routes (partition, id, created_at, updated_at, service_id, protocols, methods, hosts, paths, regex_priority, strip_path, preserve_host, path_handling)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]], {
             escape("routes", "string"),
             escape(route.id, "uuid"),
             escape(route.created_at, "timestamp"),
@@ -1292,6 +1293,7 @@ do
             escape(route.regex_priority, "integer"),
             escape(route.strip_path, "boolean"),
             escape(route.preserve_host, "boolean"),
+            escape(route.path_handling, "string"),
           },
         },
       }
