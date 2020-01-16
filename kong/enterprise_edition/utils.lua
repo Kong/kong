@@ -1,5 +1,4 @@
 local cjson = require "cjson"
-local inspect = require "inspect"
 local http = require "resty.http"
 
 local utils = require "kong.tools.utils"
@@ -221,7 +220,7 @@ _M.request = function(url, opts)
     headers = headers,
     ssl_verify = opts.ssl_verify or false,
   }
-  kong.log.debug("http request ", params.method .. " ", inspect({url, params}))
+
   return client:request_uri(url, params)
 end
 

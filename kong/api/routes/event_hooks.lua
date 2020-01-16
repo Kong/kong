@@ -1,7 +1,8 @@
-local event_hooks = require "kong.enterprise_edition.event_hooks"
-local event_hooks_schema = kong.db.event_hooks.schema
 local endpoints = require "kong.api.endpoints"
+local event_hooks = require "kong.enterprise_edition.event_hooks"
+
 local kong = kong
+local event_hooks_schema = kong.db.event_hooks.schema
 
 return {
   ["/event-hooks"] = {

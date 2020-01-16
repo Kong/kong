@@ -9,9 +9,10 @@ return {
   primary_key  = { "id" },
   endpoint_key = "id",
   subschema_key = "handler",
-  -- XXX: foreign key like plugins:
-  -- routes / services / consumers
-  -- let's see if it works
+  -- disable auto admin API to manually map /event-hooks routes
+  generate_admin_api = false,
+  -- XXX: foreign key support like plugins:
+  -- routes / services / consumers ?
   fields = {
     { id             = typedefs.uuid, },
     { created_at     = typedefs.auto_timestamp_s },
@@ -23,9 +24,11 @@ return {
                          default = "webhook" } },
     { config         = { type = "record", required = true, abstract = true } },
   },
-  -- XXX if no entity check, then always have an empty entity_checks
-  -- force read before write so we always have old_entity on the events
-  -- any other way of accomplishing the same thing?
+  -- XXX: This entity check makes sure the source and the event exist, assuming
+  -- they have been published using event_hooks.publish.
+  -- To connect to any event triggered in kong, (let's say, crud) this needs to
+  -- be disabled. Either that or register any events triggered so we can also
+  -- list them.
   -- entity_checks = {
   --   { custom_entity_check = {
   --     field_sources = { "source", "event" },
