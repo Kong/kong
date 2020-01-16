@@ -1,3 +1,5 @@
+local cjson = require "cjson"
+
 -- preload utils module and patch it with a request mock
 -- XXX does this affect any other test?
 local utils = mock(require "kong.enterprise_edition.utils")
@@ -321,7 +323,7 @@ describe("event-hooks", function()
   end)
 
   describe("handlers and callbacks", function()
-    describe("given a worker_event, a event_hooks handler and a event_hooks entity", function()
+    describe("given a worker_event, an event_hooks handler and an event_hooks entity", function()
       local handler, handler_cb, entity, worker_event
 
       before_each(function()
@@ -731,6 +733,59 @@ describe("event-hooks", function()
         end)
       end)
 
+      describe("ping", function()
+        it("sends the event_hook entity to the url", function()
+          entity.config = {
+            url = "http://foobar.com",
+            headers = { ["some-header"] = "some value" },
+          }
+
+          local ping = handler(entity, entity.config).ping
+          assert(ping())
+
+          local expected_body = cjson.encode({
+            event_hooks = entity,
+            event = "ping",
+            source = "kong:event_hooks",
+          })
+          local expected_headers = {
+            ["content-type"] = "application/json",
+            ["some-header"] = "some value",
+          }
+          assert.stub(request).was.called_with(entity.config.url, {
+            method = "POST",
+            headers = expected_headers,
+            body = expected_body,
+          })
+        end)
+
+        it("has an operation argument", function()
+          entity.config = {
+            url = "http://foobar.com",
+            headers = { ["some-header"] = "some value" },
+          }
+
+          local ping = handler(entity, entity.config).ping
+          assert(ping("create"))
+
+          local expected_body = cjson.encode({
+            operation = "create",
+            event_hooks = entity,
+            event = "ping",
+            source = "kong:event_hooks",
+          })
+          local expected_headers = {
+            ["content-type"] = "application/json",
+            ["some-header"] = "some value",
+          }
+          assert.stub(request).was.called_with(entity.config.url, {
+            method = "POST",
+            headers = expected_headers,
+            body = expected_body,
+          })
+        end)
+      end)
+
       describe("headers", function()
         it("sends headers", function()
           entity.config = {
@@ -949,4 +1004,49 @@ describe("event-hooks", function()
       end)
     end)
   end)
+
+  describe("ping", function()
+    local handler, ping_spy, entity, worker_event
+    local op = "create"
+
+    before_each(function()
+      worker_event = {
+        data = { some = "data" },
+        event = "some_event",
+        source = "some_source",
+        pid = 1234,
+      }
+
+      handler = "some_handler"
+      ping_spy = spy.new(function(operation) return true end)
+      stub(event_hooks.handlers, handler).returns({
+        callback = function() end,
+        ping = ping_spy,
+      })
+
+      entity = {
+        id = "a4fbd24e-6a52-4937-bd78-2536713072d2",
+        source = worker_event.source,
+        event = worker_event.event,
+        handler = handler,
+        config = {
+          some = "configuration",
+        }
+      }
+    end)
+
+    it("returns a handler's ping function if it's defined", function()
+      assert(event_hooks.ping(entity, op))
+      assert.spy(ping_spy).was.called_with(op)
+    end)
+
+    it("returns nil and an error if it's not defined", function()
+      stub(event_hooks.handlers, handler).returns({
+        callback = function() end,
+      })
+      local _, err = event_hooks.ping(entity, op)
+      assert.equal("handler 'some_handler' does not support 'ping'", err)
+    end)
+  end)
+
 end)
