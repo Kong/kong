@@ -11,7 +11,6 @@ local floor = math.floor
 local pairs = pairs
 local error = error
 local tostring = tostring
-local timer_at = ngx.timer.at
 
 
 local EMPTY = {}
@@ -107,15 +106,6 @@ local function get_usage(conf, identifier, current_timestamp, limits)
 end
 
 
-local function increment(premature, conf, ...)
-  if premature then
-    return
-  end
-
-  policies[conf.policy].increment(conf, ...)
-end
-
-
 function RateLimitingHandler:access(conf)
   local current_timestamp = time() * 1000
 
@@ -145,8 +135,9 @@ function RateLimitingHandler:access(conf)
   if usage then
     -- Adding headers
     local reset
+    local headers
     if not conf.hide_client_headers then
-      local headers = {}
+      headers = {}
       local timestamps
       local limit
       local window
@@ -182,38 +173,23 @@ function RateLimitingHandler:access(conf)
       headers[RATELIMIT_LIMIT] = limit
       headers[RATELIMIT_REMAINING] = remaining
       headers[RATELIMIT_RESET] = reset
-
-      kong.ctx.plugin.headers = headers
     end
 
     -- If limit is exceeded, terminate the request
     if stop then
-      return kong.response.error(429, "API rate limit exceeded", {
-        [RETRY_AFTER] = reset
-      })
+      headers = headers or {}
+      headers[RETRY_AFTER] = reset
+      return kong.response.error(429, "API rate limit exceeded", headers)
+    end
+
+    if headers then
+      kong.response.set_headers(headers)
     end
   end
 
-  kong.ctx.plugin.timer = function()
-    local ok, err = timer_at(0, increment, conf, limits, identifier, current_timestamp, 1)
-    if not ok then
-      kong.log.err("failed to create timer: ", err)
-    end
-  end
-end
-
-
-function RateLimitingHandler:header_filter(_)
-  local headers = kong.ctx.plugin.headers
-  if headers then
-    kong.response.set_headers(headers)
-  end
-end
-
-
-function RateLimitingHandler:log(_)
-  if kong.ctx.plugin.timer then
-    kong.ctx.plugin.timer()
+  local _, err = policies[conf.policy].increment(conf, limits, identifier, current_timestamp, 1)
+  if err then
+    kong.log.notice("incrementing rate-limits failed: ", err)
   end
 end
 

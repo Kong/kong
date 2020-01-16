@@ -32,8 +32,6 @@ end
 
 
 local function GET(url, opts, res_status)
-  ngx.sleep(0.010)
-
   local client = proxy_client()
   local res, err  = client:get(url, opts)
   if not res then
