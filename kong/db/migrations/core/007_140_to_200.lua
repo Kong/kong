@@ -57,11 +57,18 @@ return {
 
       assert(connector:query([[
         DROP INDEX IF EXISTS plugins_run_on_idx;
-        ALTER TABLE plugins DROP run_on;
 
 
         DROP TABLE IF EXISTS cluster_ca;
       ]]))
+
+      -- no need to drop the actual row from the database
+      -- (this operation is not reentrant in Cassandra)
+      --[===[
+      assert(connector:query([[
+        ALTER TABLE plugins DROP run_on;
+      ]]))
+      ]===]
     end,
   },
 }
