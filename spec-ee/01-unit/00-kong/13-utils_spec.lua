@@ -21,7 +21,7 @@ describe("request", function()
     opts = {
       headers = {},
       method = "GET",
-      ssl_verify  = true,
+      ssl_verify  = false,
     }
   end)
 
@@ -55,7 +55,7 @@ describe("request", function()
 
               opts = {
                 method = method,
-                ssl_verify = true,
+                ssl_verify = false,
                 body = "--8fd84e9444e3946c\r\nContent-Disposition: form-data; name=\"foo\"\r\n\r\nbar\r\n--8fd84e9444e3946c\r\nContent-Disposition: form-data; name=\"bar\"\r\n\r\nbaz\r\n--8fd84e9444e3946c--\r\n",
                 headers = {
                   ["Content-Type"] = "multipart/form-data; boundary=8fd84e9444e3946c",
@@ -74,7 +74,7 @@ describe("request", function()
 
               opts = {
                 method = method,
-                ssl_verify = true,
+                ssl_verify = false,
                 body = cjson.encode(data),
                 headers = {
                   ["Content-Type"] = "application/json",
@@ -94,7 +94,7 @@ describe("request", function()
 
               opts = {
                 method = method,
-                ssl_verify = true,
+                ssl_verify = false,
                 body = cjson.encode(data),
                 headers = {
                   ["Content-Type"] = "application/json",
@@ -116,7 +116,7 @@ describe("request", function()
 
               opts = {
                 method = method,
-                ssl_verify = true,
+                ssl_verify = false,
                 body = "bar=baz&foo=bar",
                 headers = {
                   ["Content-Type"] = "application/x-www-form-urlencoded",

@@ -215,7 +215,7 @@ _M.request = function(url, opts)
     method = method,
     body = body,
     headers = headers,
-    ssl_verify = opts.ssl_verify or true,
+    ssl_verify = opts.ssl_verify or false,
   }
 
   return client:request_uri(url, params)
