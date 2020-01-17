@@ -244,7 +244,6 @@ build = {
 
     ["kong.plugins.rate-limiting.migrations"] = "kong/plugins/rate-limiting/migrations/init.lua",
     ["kong.plugins.rate-limiting.migrations.000_base_rate_limiting"] = "kong/plugins/rate-limiting/migrations/000_base_rate_limiting.lua",
-    ["kong.plugins.rate-limiting.migrations.001_14_to_15"] = "kong/plugins/rate-limiting/migrations/001_14_to_15.lua",
     ["kong.plugins.rate-limiting.migrations.002_15_to_10"] = "kong/plugins/rate-limiting/migrations/002_15_to_10.lua",
     ["kong.plugins.rate-limiting.migrations.003_10_to_112"] = "kong/plugins/rate-limiting/migrations/003_10_to_112.lua",
     ["kong.plugins.rate-limiting.handler"] = "kong/plugins/rate-limiting/handler.lua",
