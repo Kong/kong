@@ -32,7 +32,6 @@ return {
         "created_at"            TIMESTAMP WITH TIME ZONE     DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
         "credential_id"         UUID                         REFERENCES "oauth2_credentials" ("id") ON DELETE CASCADE,
         "service_id"            UUID                         REFERENCES "services" ("id") ON DELETE CASCADE,
-        "api_id"                UUID                         REFERENCES "apis" ("id") ON DELETE CASCADE,
         "code"                  TEXT                         UNIQUE,
         "authenticated_userid"  TEXT,
         "scope"                 TEXT,
@@ -69,7 +68,6 @@ return {
         "created_at"            TIMESTAMP WITH TIME ZONE     DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
         "credential_id"         UUID                         REFERENCES "oauth2_credentials" ("id") ON DELETE CASCADE,
         "service_id"            UUID                         REFERENCES "services" ("id") ON DELETE CASCADE,
-        "api_id"                UUID                         REFERENCES "apis" ("id") ON DELETE CASCADE,
         "access_token"          TEXT                         UNIQUE,
         "refresh_token"         TEXT                         UNIQUE,
         "token_type"            TEXT,
@@ -125,14 +123,12 @@ return {
         id                   uuid PRIMARY KEY,
         created_at           timestamp,
         service_id           uuid,
-        api_id               uuid,
         credential_id        uuid,
         authenticated_userid text,
         code                 text,
         scope                text
       ) WITH default_time_to_live = 300;
       CREATE INDEX IF NOT EXISTS ON oauth2_authorization_codes(code);
-      CREATE INDEX IF NOT EXISTS ON oauth2_authorization_codes(api_id);
       CREATE INDEX IF NOT EXISTS ON oauth2_authorization_codes(service_id);
       CREATE INDEX IF NOT EXISTS ON oauth2_authorization_codes(credential_id);
       CREATE INDEX IF NOT EXISTS ON oauth2_authorization_codes(authenticated_userid);
@@ -143,7 +139,6 @@ return {
         id                   uuid PRIMARY KEY,
         created_at           timestamp,
         service_id           uuid,
-        api_id               uuid,
         credential_id        uuid,
         access_token         text,
         authenticated_userid text,
@@ -152,7 +147,6 @@ return {
         token_type           text,
         expires_in           int
       );
-      CREATE INDEX IF NOT EXISTS ON oauth2_tokens(api_id);
       CREATE INDEX IF NOT EXISTS ON oauth2_tokens(service_id);
       CREATE INDEX IF NOT EXISTS ON oauth2_tokens(access_token);
       CREATE INDEX IF NOT EXISTS ON oauth2_tokens(refresh_token);
