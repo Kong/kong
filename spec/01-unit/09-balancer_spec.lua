@@ -91,28 +91,28 @@ describe("Balancer", function()
         id = "a1",
         created_at = "003",
         upstream = { id = "a" },
-        target = "mashape.com:80",
+        target = "localhost:80",
         weight = 10,
       },
       {
         id = "a2",
         created_at = "002",
         upstream = { id = "a" },
-        target = "mashape.com:80",
+        target = "localhost:80",
         weight = 10,
       },
       {
         id = "a3",
         created_at = "001",
         upstream = { id = "a" },
-        target = "mashape.com:80",
+        target = "localhost:80",
         weight = 10,
       },
       {
         id = "a4",
         created_at = "002",  -- same timestamp as "a2"
         upstream = { id = "a" },
-        target = "mashape.com:80",
+        target = "localhost:80",
         weight = 10,
       },
       -- 2nd upstream; b
@@ -120,7 +120,7 @@ describe("Balancer", function()
         id = "b1",
         created_at = "003",
         upstream = { id = "b" },
-        target = "mashape.com:80",
+        target = "localhost:80",
         weight = 10,
       },
       -- 3rd upstream: e (removed and re-added)
@@ -270,10 +270,10 @@ describe("Balancer", function()
       local my_balancer = assert(balancer._create_balancer(UPSTREAMS_FIXTURES[1]))
       local hc = assert(balancer._get_healthchecker(my_balancer))
       local target_history = {
-        { name = "mashape.com", port = 80, order = "1000:a3", weight = 10 },
-        { name = "mashape.com", port = 80, order = "2000:a2", weight = 10 },
-        { name = "mashape.com", port = 80, order = "2000:a4", weight = 10 },
-        { name = "mashape.com", port = 80, order = "3000:a1", weight = 10 },
+        { name = "localhost", port = 80, order = "1000:a3", weight = 10 },
+        { name = "localhost", port = 80, order = "2000:a2", weight = 10 },
+        { name = "localhost", port = 80, order = "2000:a4", weight = 10 },
+        { name = "localhost", port = 80, order = "3000:a1", weight = 10 },
       }
       assert.same(target_history, balancer._get_target_history(my_balancer))
       hc:stop()
@@ -296,10 +296,10 @@ describe("Balancer", function()
       local hc2 = balancer._get_healthchecker(b2)
       assert(hc2:stop())
       local target_history = {
-        { name = "mashape.com", port = 80, order = "1000:a3", weight = 10 },
-        { name = "mashape.com", port = 80, order = "2000:a2", weight = 10 },
-        { name = "mashape.com", port = 80, order = "2000:a4", weight = 10 },
-        { name = "mashape.com", port = 80, order = "3000:a1", weight = 10 },
+        { name = "localhost", port = 80, order = "1000:a3", weight = 10 },
+        { name = "localhost", port = 80, order = "2000:a2", weight = 10 },
+        { name = "localhost", port = 80, order = "2000:a4", weight = 10 },
+        { name = "localhost", port = 80, order = "3000:a1", weight = 10 },
       }
       assert.not_same(b1, b2)
       assert.same(target_history, b1_target_history)
