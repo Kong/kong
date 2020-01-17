@@ -24,13 +24,13 @@ return {
         return kong.response.exit(404, { message = "Not found" })
       end
 
-      local ok, data, err = event_hooks.test(row, self.args.post)
+      local ok, res, err = event_hooks.test(row, self.args.post)
 
       if not ok then
         return kong.response.exit(500, { message = "An unexpected error ocurred", err = err })
       end
 
-      return kong.response.exit(200, { data = data })
+      return kong.response.exit(200, { data = self.args.post, result = res })
     end,
   },
   ["/event-hooks/:event_hooks/ping"] = {
