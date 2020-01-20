@@ -91,6 +91,14 @@ related to the removal of service mesh:
   `upstream_keepalive` change, the new gRPC support, and to make `ssl_protocols`
   load via injected directives. The changes are detailed in a diff
   included below.
+  - :warning: Note that the `kong_cache` shm was split into two
+    shms: `kong_core_cache` and `kong_cache`. If you are using a
+    custom Nginx template, make sure core cache shared dictionaries
+    are defined, including db-less mode shadow definitions.
+    Both cache values rely on the already existent `mem_cache_size`
+    configuration option to set their size, so when upgrading from
+    a previous Kong version, the cache memory consumption might
+    double if this value is not adjusted.
 
 <details>
 <summary><strong>Click here to see the Nginx configuration changes</strong></summary>
