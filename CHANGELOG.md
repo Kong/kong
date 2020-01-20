@@ -1,6 +1,7 @@
 # Table of Contents
 
 
+- [1.5.0](#150)
 - [1.4.3](#143)
 - [1.4.2](#142)
 - [1.4.1](#141)
@@ -34,6 +35,37 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+
+## [1.5.0]
+
+> Released 2020/01/20
+
+### Additions
+
+##### Core
+
+  - New `path_handling` attribute in Routes entities, which selects the behavior
+    the router will have when combining the Service Path, the Route Path, and
+    the Request path into a single path sent to the upstream. This attribute
+    accepts two values, `v0` or `v1`, making the router behave as in Kong 0.x or
+    Kong 1.x, respectively. [#5463](https://github.com/Kong/kong/pull/5463)
+
+### Fixes
+
+##### Core
+
+  - Fixed the routing prioritization that could lead to a match in a lower
+    priority path. [#5443](https://github.com/Kong/kong/pull/5443)
+  - Changes in router or plugins entities while the rebuild is in progress now
+    are treated in the next rebuild, avoiding to build invalid iterators.
+    [#5431](https://github.com/Kong/kong/pull/5431)
+  - Fixed invalid incorrect calculation of certificate validity period.
+    [#5449](https://github.com/Kong/kong/pull/5449) -- Thanks
+    [Bevisy](https://github.com/Bevisy) for the patch!
+
+
+[Back to TOC](#table-of-contents)
 
 
 ## [1.4.3]
