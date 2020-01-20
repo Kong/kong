@@ -13,15 +13,24 @@ local consumer_in_groups_cache = setmetatable({}, mt_cache)
 
 
 local function load_groups_into_memory(consumer_pk)
-  local groups = {}
-  local len    = 0
+  local groups
+  local len = 0
 
   for row, err in kong.db.acls:each_for_consumer(consumer_pk) do
     if err then
       return nil, err
     end
+
+    if not groups then
+      groups = {}
+    end
+
     len = len + 1
     groups[len] = row
+  end
+
+  if len == 0 then
+    return EMPTY
   end
 
   return groups
@@ -40,9 +49,13 @@ local function get_consumer_groups_raw(consumer_id)
     return nil, err
   end
 
+  if raw_groups and #raw_groups > 0 then
+    return raw_groups
+  end
+
   -- use EMPTY to be able to use it as a cache key, since a new table would
   -- immediately be collected again and not allow for negative caching.
-  return raw_groups or EMPTY
+  return EMPTY
 end
 
 
@@ -57,7 +70,7 @@ end
 -- }
 -- If there are no groups defined, it will return an empty table
 -- @param consumer_id (string) the consumer for which to fetch the groups it belongs to
--- @return table with groups (empty table if none) or nil+error
+-- @return table with groups, nil or nil+error
 local function get_consumer_groups(consumer_id)
   local raw_groups, err = get_consumer_groups_raw(consumer_id)
   if not raw_groups then
@@ -66,14 +79,24 @@ local function get_consumer_groups(consumer_id)
 
   local groups = consumer_groups_cache[raw_groups]
   if not groups then
-    groups = {}
-    consumer_groups_cache[raw_groups] = groups
-    for i = 1, #raw_groups do
-      local group = raw_groups[i].group
-      groups[i] = group
-      groups[group] = group
+    if raw_groups == EMPTY then
+      consumer_groups_cache[raw_groups] = EMPTY
+
+    else
+      groups = {}
+      consumer_groups_cache[raw_groups] = groups
+      for i = 1, #raw_groups do
+        local group = raw_groups[i].group
+        groups[i] = group
+        groups[group] = group
+      end
     end
   end
+
+  if groups == EMPTY then
+    return nil
+  end
+
   return groups
 end
 

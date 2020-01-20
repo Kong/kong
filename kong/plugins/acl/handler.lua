@@ -65,9 +65,14 @@ function ACLHandler:access(conf)
   if not consumer_id then
     local authenticated_groups = groups.get_authenticated_groups()
     if not authenticated_groups then
-      local status = kong.client.get_credential() and 403 or 401
-      return kong.response.exit(status, {
-        message = "You cannot consume this service"
+      if kong.client.get_credential() then
+        return kong.response.exit(403, {
+          message = "You cannot consume this service"
+        })
+      end
+
+      return kong.response.exit(401, {
+        message = "Unauthorized"
       })
     end
 
@@ -75,8 +80,9 @@ function ACLHandler:access(conf)
     to_be_blocked = get_to_be_blocked(config, authenticated_groups, in_group)
 
   else
+    local credential = kong.client.get_credential()
     local authenticated_groups
-    if not kong.client.get_credential() then
+    if not credential then
       -- authenticated groups overrides anonymous groups
       authenticated_groups = groups.get_authenticated_groups()
     end
@@ -99,10 +105,20 @@ function ACLHandler:access(conf)
       end
 
       if not consumer_groups then
-        local status = kong.client.get_credential() and 403 or 401
-        return kong.response.exit(status, {
-          message = "You cannot consume this service"
-        })
+        if config.type == BLACK and credential then
+          consumer_groups = EMPTY
+
+        else
+          if credential then
+            return kong.response.exit(403, {
+              message = "You cannot consume this service"
+            })
+          end
+
+          return kong.response.exit(401, {
+            message = "Unauthorized"
+          })
+        end
       end
 
       -- 'to_be_blocked' is either 'true' if it's to be blocked, or the header
