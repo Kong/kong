@@ -1,7 +1,7 @@
 # Table of Contents
 
 
-- [2.0.0rc1](#200rc1)
+- [2.0.0](#200)
 - [1.5.0](#150)
 - [1.4.3](#143)
 - [1.4.2](#142)
@@ -38,18 +38,24 @@
 - [0.9.9 and prior](#099---20170202)
 
 
-## [2.0.0rc2]
+## [2.0.0]
 
-> Released 2020/01/10
+> Released 2020/01/20
 
-This is the second release candidate of the next major release of Kong.
-It includes major new features such as **Hybrid mode**, **Go language
-support for plugins** and **buffered proxying**, and much more.
+This is a new major release of Kong, including new features such as **Hybrid
+mode**, **Go language support for plugins** and **buffered proxying**, and
+much more.
 
-Kong 2.0.0rc2 removes the deprecated service mesh functionality, which was
+Kong 2.0.0 removes the deprecated service mesh functionality, which was
 been retired in favor of [Kuma](https://kuma.io), as Kong continues to
-focus on its core gateway capabilities. This release also includes
-a few bug fixes added since Kong 1.4.2.
+focus on its core gateway capabilities.
+
+Please note that Kong 2.0.0 also removes support for migrating from versions
+below 1.0.0. If you are running Kong 0.x versions below 0.14.1, you need to
+migrate to 0.14.1 first, and once you are running 0.14.1, you can migrate to
+Kong 1.5.0, which includes special provisions for migrating from Kong 0.x,
+such as the `kong migrations migrate-apis` command, and then finally to Kong
+2.0.0.
 
 ### Dependencies
 
@@ -67,6 +73,12 @@ patches](https://github.com/Kong/kong-build-tools/tree/master/openresty-build-to
 lua-kong-nginx-module). Our [kong-build-tools](https://github.com/Kong/kong-build-tools)
 repository will allow you to do both easily.
 
+### Packaging
+
+- RPM packages are now signed with our own GPG keys. You can download our public
+  key at https://bintray.com/user/downloadSubjectPublicKey?username=kong
+- Kong now ships with a systemd unit file
+
 ### Additions
 
 ##### Core
@@ -80,12 +92,6 @@ repository will allow you to do both easily.
     reading of the service response (as opposed to the streaming default),
     allowing them to modify headers based on the contents of the body
     [#5234](https://github.com/Kong/kong/pull/5234)
-  - New property `path_handling` for managing construction of paths in Routes,
-    including two different algorithms: `v0` (the new default, same algorithm
-    as Kong 0.x), and `v1` (algorithm used in Kong 1.x, maintained for
-    compatibility). Migrations automatically detect which version you are
-    migrating from and adjust the algorithm in your routes accordingly.
-    [#5360](https://github.com/Kong/kong/pull/5360)
   - The `transformations` in DAO schemas now also support `on_read`,
     allowing for two-way (read/write) data transformations between
     Admin API input/output and database storage.
@@ -4594,7 +4600,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[2.0.0rc2]: https://github.com/Kong/kong/compare/1.5.0...2.0.0rc2
+[2.0.0]: https://github.com/Kong/kong/compare/1.5.0...2.0.0
 [1.5.0]: https://github.com/Kong/kong/compare/1.4.3...1.5.0
 [1.4.3]: https://github.com/Kong/kong/compare/1.4.2...1.4.3
 [1.4.2]: https://github.com/Kong/kong/compare/1.4.1...1.4.2
