@@ -1151,6 +1151,334 @@ describe("declarative config: flatten", function()
   end)
 
   describe("custom entities", function()
+    describe("basicauth_credentials:", function()
+      it("accepts an empty list", function()
+        local config = assert(lyaml.load([[
+          _format_version: "1.1"
+          basicauth_credentials:
+        ]]))
+        config = DeclarativeConfig:flatten(config)
+        assert.same({}, idempotent(config))
+
+        local config = assert(lyaml.load([[
+          _format_version: "1.1"
+          consumers:
+          basicauth_credentials:
+        ]]))
+        config = DeclarativeConfig:flatten(config)
+        assert.same({}, idempotent(config))
+
+        local config = assert(lyaml.load([[
+          _format_version: "1.1"
+          consumers:
+          - username: consumer
+            basicauth_credentials:
+        ]]))
+        config = DeclarativeConfig:flatten(config)
+        assert.same({
+          consumers = {
+            {
+              id = 'UUID',
+              username = 'consumer',
+              custom_id = null,
+              created_at = 1234567890,
+              tags = null,
+            },
+          },
+        }, idempotent(config))
+      end)
+
+      it("accepts as a nested entity", function()
+        local config = assert(lyaml.load([[
+          _format_version: "1.1"
+          consumers:
+          - username: consumer
+            basicauth_credentials:
+            - username: username
+              password: password
+        ]]))
+        config = DeclarativeConfig:flatten(config)
+        assert.same({
+          consumers = {
+            {
+              id = 'UUID',
+              username = 'consumer',
+              custom_id = null,
+              created_at = 1234567890,
+              tags = null,
+            },
+          },
+          basicauth_credentials = {
+            {
+              id = 'UUID',
+              consumer = {
+                id = 'UUID',
+              },
+              username = 'username',
+              password = 'password',
+              created_at = 1234567890,
+              tags = null,
+            },
+          },
+        }, idempotent(config))
+      end)
+
+      it("accepts as a nested entity by id", function()
+        local config = assert(lyaml.load([[
+          _format_version: "1.1"
+          consumers:
+          - id: 0fe87b4a-ce29-515a-88ec-8547e66550b9
+            username: consumer
+            basicauth_credentials:
+            - username: username
+              password: password
+              consumer: 0fe87b4a-ce29-515a-88ec-8547e66550b9
+        ]]))
+        config = DeclarativeConfig:flatten(config)
+        assert.same({
+          consumers = {
+            {
+              id = 'UUID',
+              username = 'consumer',
+              custom_id = null,
+              created_at = 1234567890,
+              tags = null,
+            },
+          },
+          basicauth_credentials = {
+            {
+              id = 'UUID',
+              consumer = {
+                id = 'UUID',
+              },
+              username = 'username',
+              password = 'password',
+              created_at = 1234567890,
+              tags = null,
+            },
+          },
+        }, idempotent(config))
+      end)
+
+      it("fails as a nested entity by incorrect id", function()
+        local config = assert(lyaml.load([[
+          _format_version: "1.1"
+          consumers:
+          - id: 0fe87b4a-ce29-515a-88ec-8547e66550b9
+            username: consumer
+            basicauth_credentials:
+            - username: username
+              password: password
+              consumer: 00000000-0000-0000-0000-000000000000
+        ]]))
+        local config, err = DeclarativeConfig:flatten(config)
+
+        assert.equal(nil, config)
+        assert.same({
+          consumers = {
+            {
+              basicauth_credentials = {
+                {
+                  ["@entity"] = {
+                    "all or none of these fields must be set: 'password', 'consumer.id'",
+                  },
+                  consumer = 'value must be null',
+                },
+              },
+            },
+          },
+        }, idempotent(err))
+      end)
+
+      it("accepts as a nested entity by username", function()
+        local config = assert(lyaml.load([[
+          _format_version: "1.1"
+          consumers:
+          - username: consumer
+            basicauth_credentials:
+            - username: username
+              password: password
+              consumer: consumer
+        ]]))
+        config = DeclarativeConfig:flatten(config)
+        assert.same({
+          consumers = {
+            {
+              id = 'UUID',
+              username = 'consumer',
+              custom_id = null,
+              created_at = 1234567890,
+              tags = null,
+            },
+          },
+          basicauth_credentials = {
+            {
+              id = 'UUID',
+              consumer = {
+                id = 'UUID',
+              },
+              username = 'username',
+              password = 'password',
+              created_at = 1234567890,
+              tags = null,
+            },
+          },
+        }, idempotent(config))
+      end)
+
+      it("fails as a nested entity by incorrect username", function()
+        local config = assert(lyaml.load([[
+          _format_version: "1.1"
+          consumers:
+          - username: consumer
+            basicauth_credentials:
+            - username: username
+              password: password
+              consumer: incorrect
+        ]]))
+        local config, err = DeclarativeConfig:flatten(config)
+        assert.equal(nil, config)
+        assert.same({
+          consumers = {
+            {
+              basicauth_credentials = {
+                {
+                  ["@entity"] = {
+                    "all or none of these fields must be set: 'password', 'consumer.id'",
+                  },
+                  consumer = 'value must be null',
+                },
+              },
+            },
+          },
+        }, idempotent(err))
+      end)
+
+      it("accepts as an unnested entity by id", function()
+        local config = assert(lyaml.load([[
+          _format_version: "1.1"
+          consumers:
+          - id: 0fe87b4a-ce29-515a-88ec-8547e66550b9
+            username: consumer
+          basicauth_credentials:
+          - consumer: 0fe87b4a-ce29-515a-88ec-8547e66550b9
+            username: username
+            password: password
+
+        ]]))
+        config = DeclarativeConfig:flatten(config)
+        assert.same({
+          consumers = {
+            {
+              id = 'UUID',
+              username = 'consumer',
+              custom_id = null,
+              created_at = 1234567890,
+              tags = null,
+            },
+          },
+          basicauth_credentials = {
+            {
+              id = 'UUID',
+              consumer = {
+                id = 'UUID',
+              },
+              username = 'username',
+              password = 'password',
+              created_at = 1234567890,
+              tags = null,
+            },
+          },
+        }, idempotent(config))
+      end)
+
+      it("fails as an unnested entity by incorrect id", function()
+        local config = assert(lyaml.load([[
+          _format_version: "1.1"
+          consumers:
+          - id: 0fe87b4a-ce29-515a-88ec-8547e66550b9
+            username: consumer
+          basicauth_credentials:
+          - consumer: 00000000-0000-0000-0000-000000000000
+            username: username
+            password: password
+
+        ]]))
+        local config, err = DeclarativeConfig:flatten(config)
+        assert.equal(nil, config)
+        assert.same({
+          basicauth_credentials = {
+            {
+              ["@entity"] = {
+                "all or none of these fields must be set: 'password', 'consumer.id'",
+              },
+            },
+          },
+        }, idempotent(err))
+      end)
+
+      it("accepts as an unnested entity by username", function()
+        local config = assert(lyaml.load([[
+          _format_version: "1.1"
+          consumers:
+          - username: consumer
+          basicauth_credentials:
+          - consumer: consumer
+            username: username
+            password: password
+
+        ]]))
+        config = DeclarativeConfig:flatten(config)
+        assert.same({
+          consumers = {
+            {
+              id = 'UUID',
+              username = 'consumer',
+              custom_id = null,
+              created_at = 1234567890,
+              tags = null,
+            },
+          },
+          basicauth_credentials = {
+            {
+              id = 'UUID',
+              consumer = {
+                id = 'UUID',
+              },
+              username = 'username',
+              password = 'password',
+              created_at = 1234567890,
+              tags = null,
+            },
+          },
+        }, idempotent(config))
+      end)
+
+      it("fails as an unnested entity by incorrect username", function()
+        local config = assert(lyaml.load([[
+          _format_version: "1.1"
+          consumers:
+          - username: consumer
+          basicauth_credentials:
+          - consumer: incorrect
+            username: username
+            password: password
+
+        ]]))
+        local config, err = DeclarativeConfig:flatten(config)
+        assert.equal(nil, config)
+        assert.same({
+          basicauth_credentials = {
+            {
+              ["@entity"] = {
+                "all or none of these fields must be set: 'password', 'consumer.id'",
+              },
+            },
+          },
+        }, idempotent(err))
+      end)
+    end)
+
     describe("oauth2_credentials:", function()
       it("accepts an empty list", function()
         local config = assert(lyaml.load([[
