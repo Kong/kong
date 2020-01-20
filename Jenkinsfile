@@ -5,8 +5,7 @@ pipeline {
         DOCKER_CREDENTIALS = credentials('dockerhub')
         DOCKER_USERNAME = "${env.DOCKER_CREDENTIALS_USR}"
         DOCKER_PASSWORD = "${env.DOCKER_CREDENTIALS_PSW}"
-        KONG_PACKAGE_NAME = 'kong'
-        REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
+        KONG_PACKAGE_NAME = "kong"
     }
     triggers {
         cron('@daily')
@@ -23,8 +22,9 @@ pipeline {
                 KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
             }
             steps {
-                sh 'make setup-kong-build-tools'
+                sh 'printenv'
                 sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
+                sh 'make setup-kong-build-tools'
                 dir('../kong-build-tools') { sh 'make kong-test-container' }
             }
         }
@@ -120,9 +120,6 @@ pipeline {
                             label 'docker-compose'
                         }
                     }
-                    options {
-                        retry(2)
-                    }
                     environment {
                         PACKAGE_TYPE = 'deb'
                         RESTY_IMAGE_BASE = 'ubuntu'
@@ -137,17 +134,17 @@ pipeline {
                         AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
                         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
                         DOCKER_MACHINE_ARM64_NAME = "jenkins-kong-${env.BUILD_NUMBER}"
+                        REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
+                        PATH = "/home/ubuntu/bin/:${env.PATH}"
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
                         sh 'mkdir -p $HOME/bin'
-                        sh 'sudo ln -s $HOME/bin/kubectl /usr/local/bin/kubectl'
-                        sh 'sudo ln -s $HOME/bin/kind /usr/local/bin/kind'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly KONG_VERSION=`date +%Y-%m-%d` make nightly-release'
                     }
                     post {
-                        always {
+                        cleanup {
                             dir('../kong-build-tools'){ sh 'make cleanup-build' }
                         }
                     }
@@ -161,18 +158,17 @@ pipeline {
                     environment {
                         PACKAGE_TYPE = 'deb'
                         RESTY_IMAGE_BASE = 'ubuntu'
-                        RESTY_IMAGE_TAG = 'xenial'
+                        RESTY_IMAGE_TAG = 'bionic'
                         KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                         BINTRAY_USR = 'kong-inc_travis-ci@kong'
                         BINTRAY_KEY = credentials('bintray_travis_key')
-                        DOCKER_MACHINE_ARM64_NAME = "jenkins-kong-${env.BUILD_NUMBER}"
+                        REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
+                        PATH = "/home/ubuntu/bin/:${env.PATH}"
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
                         sh 'mkdir -p $HOME/bin'
-                        sh 'sudo ln -s $HOME/bin/kubectl /usr/local/bin/kubectl'
-                        sh 'sudo ln -s $HOME/bin/kind /usr/local/bin/kind'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_TAG=bionic BUILDX=false make nightly-release'
                     }
@@ -188,6 +184,34 @@ pipeline {
                         RESTY_IMAGE_BASE = 'centos'
                         KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                        BINTRAY_USR = 'kong-inc_travis-ci@kong'
+                        BINTRAY_KEY = credentials('bintray_travis_key')
+                        PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
+                        PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
+                        REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
+                        PATH = "/home/ubuntu/bin/:${env.PATH}"
+                    }
+                    steps {
+                        sh 'make setup-kong-build-tools'
+                        sh 'mkdir -p $HOME/bin'
+                        dir('../kong-build-tools'){ sh 'make setup-ci' }
+                        sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
+                        sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_TAG=6 make nightly-release'
+                        sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_TAG=7 make nightly-release'
+                        sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_TAG=8 make nightly-release'
+                    }
+                }
+                stage('RedHat Releases') {
+                    agent {
+                        node {
+                            label 'docker-compose'
+                        }
+                    }
+                    environment {
+                        PACKAGE_TYPE = 'rpm'
+                        RESTY_IMAGE_BASE = 'rhel'
+                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
+                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                         REDHAT_CREDENTIALS = credentials('redhat')
                         REDHAT_USERNAME = "${env.REDHAT_USR}"
                         REDHAT_PASSWORD = "${env.REDHAT_PSW}"
@@ -195,16 +219,16 @@ pipeline {
                         BINTRAY_KEY = credentials('bintray_travis_key')
                         PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
                         PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
+                        REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
+                        PATH = "/home/ubuntu/bin/:${env.PATH}"
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
                         sh 'mkdir -p $HOME/bin'
-                        sh 'sudo ln -s $HOME/bin/kubectl /usr/local/bin/kubectl'
-                        sh 'sudo ln -s $HOME/bin/kind /usr/local/bin/kind'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
-                        sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_TAG=6 make nightly-release'
                         sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_TAG=7 make nightly-release'
+                        sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_TAG=8 make nightly-release'
                     }
                 }
                 stage('Debian Releases') {
@@ -220,16 +244,206 @@ pipeline {
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                         BINTRAY_USR = 'kong-inc_travis-ci@kong'
                         BINTRAY_KEY = credentials('bintray_travis_key')
+                        REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
+                        PATH = "/home/ubuntu/bin/:${env.PATH}"
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
                         sh 'mkdir -p $HOME/bin'
-                        sh 'sudo ln -s $HOME/bin/kubectl /usr/local/bin/kubectl'
-                        sh 'sudo ln -s $HOME/bin/kind /usr/local/bin/kind'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_TAG=jessie make nightly-release'
                         sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_TAG=stretch make nightly-release'
                         sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_TAG=buster make nightly-release'
+                        sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_TAG=bullseye make nightly-release'
+                    }
+                }
+                stage('Other Releases'){
+                    agent {
+                        node {
+                            label 'docker-compose'
+                        }
+                    }
+                    environment {
+                        PACKAGE_TYPE = 'deb'
+                        RESTY_IMAGE_BASE = 'debian'
+                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
+                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                        BINTRAY_USR = 'kong-inc_travis-ci@kong'
+                        BINTRAY_KEY = credentials('bintray_travis_key')
+                        PATH = "/home/ubuntu/bin/:${env.PATH}"
+                    }
+                    steps {
+                        sh 'make setup-kong-build-tools'
+                        sh 'mkdir -p $HOME/bin'
+                        dir('../kong-build-tools'){ sh 'make setup-ci' }
+                        sh 'PACKAGE_TYPE=src RESTY_IMAGE_BASE=src KONG_VERSION=`date +%Y-%m-%d` make nightly-release'
+                        sh 'PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=1 KONG_VERSION=`date +%Y-%m-%d` make nightly-release'
+                        sh 'PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=1 KONG_VERSION=`date +%Y-%m-%d` make nightly-release'
+                    }
+                }
+            }
+        }
+        stage('Release') {
+            when {
+                buildingTag()
+            }
+            parallel {
+                stage('Ubuntu Xenial Release') {
+                    agent {
+                        node {
+                            label 'docker-compose'
+                        }
+                    }
+                    environment {
+                        PACKAGE_TYPE = 'deb'
+                        RESTY_IMAGE_BASE = 'ubuntu'
+                        RESTY_IMAGE_TAG = 'xenial'
+                        CACHE = 'false'
+                        UPDATE_CACHE = 'true'
+                        USER = 'travis'
+                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
+                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                        BINTRAY_USR = 'kong-inc_travis-ci@kong'
+                        BINTRAY_KEY = credentials('bintray_travis_key')
+                        AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
+                        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+                        PATH = "/home/ubuntu/bin/:${env.PATH}"
+                    }
+                    steps {
+                        sh 'make setup-kong-build-tools'
+                        sh 'mkdir -p $HOME/bin'
+                        dir('../kong-build-tools'){ sh 'make setup-ci' }
+                        sh 'make release'
+                    }
+                    post {
+                        cleanup {
+                            dir('../kong-build-tools'){ sh 'make cleanup-build' }
+                        }
+                    }
+                }
+                stage('Ubuntu Releases') {
+                    agent {
+                        node {
+                            label 'docker-compose'
+                        }
+                    }
+                    environment {
+                        PACKAGE_TYPE = 'deb'
+                        RESTY_IMAGE_BASE = 'ubuntu'
+                        RESTY_IMAGE_TAG = 'bionic'
+                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
+                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                        BINTRAY_USR = 'kong-inc_travis-ci@kong'
+                        BINTRAY_KEY = credentials('bintray_travis_key')
+                        PATH = "/home/ubuntu/bin/:${env.PATH}"
+                    }
+                    steps {
+                        sh 'make setup-kong-build-tools'
+                        sh 'mkdir -p $HOME/bin'
+                        dir('../kong-build-tools'){ sh 'make setup-ci' }
+                        sh 'RESTY_IMAGE_TAG=bionic make release'
+                    }
+                }
+                stage('Centos Releases') {
+                    agent {
+                        node {
+                            label 'docker-compose'
+                        }
+                    }
+                    environment {
+                        PACKAGE_TYPE = 'rpm'
+                        RESTY_IMAGE_BASE = 'centos'
+                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
+                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                        BINTRAY_USR = 'kong-inc_travis-ci@kong'
+                        BINTRAY_KEY = credentials('bintray_travis_key')
+                        PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
+                        PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
+                        PATH = "/home/ubuntu/bin/:${env.PATH}"
+                    }
+                    steps {
+                        sh 'make setup-kong-build-tools'
+                        sh 'mkdir -p $HOME/bin'
+                        dir('../kong-build-tools'){ sh 'make setup-ci' }
+                        sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
+                        sh 'RESTY_IMAGE_TAG=6 make release'
+                        sh 'RESTY_IMAGE_TAG=7 make release'
+                        sh 'RESTY_IMAGE_TAG=8 make release'
+                    }
+                }
+                stage('RedHat Releases') {
+                    agent {
+                        node {
+                            label 'docker-compose'
+                        }
+                    }
+                    environment {
+                        PACKAGE_TYPE = 'rpm'
+                        RESTY_IMAGE_BASE = 'rhel'
+                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
+                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                        BINTRAY_USR = 'kong-inc_travis-ci@kong'
+                        BINTRAY_KEY = credentials('bintray_travis_key')
+                        PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
+                        PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
+                        PATH = "/home/ubuntu/bin/:${env.PATH}"
+                    }
+                    steps {
+                        sh 'make setup-kong-build-tools'
+                        sh 'mkdir -p $HOME/bin'
+                        dir('../kong-build-tools'){ sh 'make setup-ci' }
+                        sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
+                        sh 'RESTY_IMAGE_TAG=7 make release'
+                        sh 'RESTY_IMAGE_TAG=8 make release'
+                    }
+                }
+                stage('Debian Releases') {
+                    agent {
+                        node {
+                            label 'docker-compose'
+                        }
+                    }
+                    environment {
+                        PACKAGE_TYPE = 'deb'
+                        RESTY_IMAGE_BASE = 'debian'
+                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
+                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                        BINTRAY_USR = 'kong-inc_travis-ci@kong'
+                        BINTRAY_KEY = credentials('bintray_travis_key')
+                        PATH = "/home/ubuntu/bin/:${env.PATH}"
+                    }
+                    steps {
+                        sh 'make setup-kong-build-tools'
+                        sh 'mkdir -p $HOME/bin'
+                        dir('../kong-build-tools'){ sh 'make setup-ci' }
+                        sh 'RESTY_IMAGE_TAG=jessie make release'
+                        sh 'RESTY_IMAGE_TAG=stretch make release'
+                        sh 'RESTY_IMAGE_TAG=buster make release'
+                        sh 'RESTY_IMAGE_TAG=bullseye make release'
+                    }
+                }
+                stage('Other Releases'){
+                    agent {
+                        node {
+                            label 'docker-compose'
+                        }
+                    }
+                    environment {
+                        PACKAGE_TYPE = 'deb'
+                        RESTY_IMAGE_BASE = 'debian'
+                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
+                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                        BINTRAY_USR = 'kong-inc_travis-ci@kong'
+                        BINTRAY_KEY = credentials('bintray_travis_key')
+                        PATH = "/home/ubuntu/bin/:${env.PATH}"
+                    }
+                    steps {
+                        sh 'make setup-kong-build-tools'
+                        sh 'mkdir -p $HOME/bin'
+                        dir('../kong-build-tools'){ sh 'make setup-ci' }
+                        sh 'PACKAGE_TYPE=src RESTY_IMAGE_BASE=src make release'
+                        sh 'PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=1 make release'
+                        sh 'PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=1 make release'
                     }
                 }
             }
