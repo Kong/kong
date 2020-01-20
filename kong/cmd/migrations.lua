@@ -25,6 +25,9 @@ The available commands are:
 
   reset                             Reset the database.
 
+  migrate-apis                      Migrates API entities to Routes and
+                                    Services.
+
 Options:
  -y,--yes                           Assume "yes" to prompts and run
                                     non-interactively.
@@ -33,6 +36,10 @@ Options:
 
  -f,--force                         Run migrations even if database reports
                                     as already executed.
+
+                                    With 'migrate-apis' command, it also forces
+                                    migration of APIs that have custom plugins
+                                    applied, and which are otherwise skipped.
 
  --db-timeout     (default 60)      Timeout, in seconds, for all database
                                     operations (including schema consensus for
@@ -179,6 +186,12 @@ local function execute(args)
       force = args.force,
     })
 
+  elseif args.command == "migrate-apis" then
+    migrations_utils.migrate_apis(schema_state, db, {
+      ttl = args.lock_timeout,
+      force = args.force,
+    })
+
   else
     error("unreachable")
   end
@@ -194,5 +207,6 @@ return {
     finish = true,
     list = true,
     reset = true,
+    ["migrate-apis"] = true,
   }
 }

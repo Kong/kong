@@ -50,10 +50,10 @@ local function gen_default_ssl_cert(kong_config, admin)
     assert(crt:set_version(3))
     assert(crt:set_serial_number(openssl_bignum.from_binary(openssl_rand.bytes(16))))
 
-    -- last for 20 days
+    -- last for 20 years
     local now = os.time()
     assert(crt:set_not_before(now))
-    assert(crt:set_not_after(now + 86400*20))
+    assert(crt:set_not_after(now + 86400 * 20 * 365))
 
     local name = assert(x509_name.new()
       :add("C", "US")

@@ -6,7 +6,7 @@
 -- @module spec.helpers
 
 local BIN_PATH = "bin/kong"
-local TEST_CONF_PATH = "spec/kong_tests.conf"
+local TEST_CONF_PATH = os.getenv("KONG_SPEC_TEST_CONF_PATH") or "spec/kong_tests.conf"
 local CUSTOM_PLUGIN_PATH = "./spec/fixtures/custom_plugins/?.lua"
 local GO_PLUGIN_PATH = "./spec/fixtures/go"
 local MOCK_UPSTREAM_PROTOCOL = "http"

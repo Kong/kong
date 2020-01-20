@@ -151,6 +151,12 @@ function Connector:run_up_migration()
 end
 
 
+function Connector:run_api_migrations()
+  error(fmt("run_api_migrations() not implemented for '%s' strategy",
+            self.database))
+end
+
+
 function Connector:wait_for_schema_consensus()
   return true
 end
