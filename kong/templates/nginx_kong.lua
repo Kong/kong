@@ -294,6 +294,9 @@ server {
     listen $(portal_gui_listeners[i].listener);
 > end
 
+    access_log ${{PORTAL_GUI_ACCESS_LOG}};
+    error_log ${{PORTAL_GUI_ERROR_LOG}} ${{LOG_LEVEL}};
+
 > if portal_gui_ssl_enabled then
     ssl_certificate ${{PORTAL_GUI_SSL_CERT}};
     ssl_certificate_key ${{PORTAL_GUI_SSL_CERT_KEY}};

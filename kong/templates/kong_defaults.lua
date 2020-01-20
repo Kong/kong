@@ -31,13 +31,15 @@ portal_cors_origins = NONE
 portal_gui_use_subdomains = off
 portal_gui_ssl_cert = NONE
 portal_gui_ssl_cert_key = NONE
+portal_gui_access_log = logs/portal_gui_access.log
+portal_gui_error_log = logs/portal_gui_error.log
 
 portal_api_listen = 0.0.0.0:8004, 0.0.0.0:8447 ssl
 portal_api_url = NONE
 portal_api_ssl_cert = NONE
 portal_api_ssl_cert_key = NONE
 portal_api_access_log = logs/portal_api_access.log
-portal_api_error_log = logs/error.log
+portal_api_error_log = logs/portal_api_error.log
 
 portal_auto_approve = off
 portal_auth = NONE

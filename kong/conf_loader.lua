@@ -96,7 +96,11 @@ local PREFIX_PATHS = {
   ;
 
   -- EE code [[
-  nginx_portal_api_acc_logs = {"logs", "portal_api_access.log"}
+  nginx_portal_api_acc_logs = {"logs", "portal_api_access.log"},
+  nginx_portal_api_err_logs = {"logs", "portal_api_error.log"}
+  ;
+  nginx_portal_gui_acc_logs = {"logs", "portal_gui_access.log"},
+  nginx_portal_gui_err_logs = {"logs", "portal_gui_error.log"}
   ;
   admin_gui_ssl_cert_default = {"ssl", "admin-gui-kong-default.crt"},
   admin_gui_ssl_cert_key_default = {"ssl", "admin-gui-kong-default.key"}
@@ -277,7 +281,7 @@ local CONF_INFERENCES = {
   admin_gui_session_conf = {typ = "string"},
   admin_gui_auth_login_attempts = {typ = "number"},
   admin_emails_from = {typ = "string"},
-  admin_emails_reply_to = {typ = "string"}, 
+  admin_emails_reply_to = {typ = "string"},
   admin_invitation_expiry = {typ = "number"},
 
   portal = {typ = "boolean"},
