@@ -613,15 +613,6 @@ do
     return true
   end
 
-  function DB:run_api_migrations(opts)
-    local ok, err = self.connector:connect_migrations()
-    if not ok then
-      return nil, prefix_err(self, err)
-    end
-
-    return self.connector:run_api_migrations(opts)
-  end
-
 
   --[[
   function DB:load_pending_migrations(migrations)
