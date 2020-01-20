@@ -1,7 +1,7 @@
 local version = setmetatable({
   major = 1,
-  minor = 4,
-  patch = 3,
+  minor = 5,
+  patch = 0,
   -- suffix = "",
 }, {
   __tostring = function(t)
