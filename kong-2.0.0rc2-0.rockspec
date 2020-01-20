@@ -33,7 +33,7 @@ dependencies = {
   "lua-resty-mediador == 0.1.2",
   "lua-resty-healthcheck == 1.1.2",
   "lua-resty-cookie == 0.1.0",
-  "lua-resty-mlcache == 2.4.0",
+  "lua-resty-mlcache == 2.4.1",
   "lua-messagepack == 0.5.2",
   "lua-resty-openssl == 0.4.2",
   "lua-resty-counter == 0.2.0",

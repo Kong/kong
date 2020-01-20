@@ -2,6 +2,7 @@
 
 
 - [2.0.0rc1](#200rc1)
+- [1.5.0](#150)
 - [1.4.3](#143)
 - [1.4.2](#142)
 - [1.4.1](#141)
@@ -65,7 +66,6 @@ patches](https://github.com/Kong/kong-build-tools/tree/master/openresty-build-to
 (and, as highlighted above, compile OpenResty with the new
 lua-kong-nginx-module). Our [kong-build-tools](https://github.com/Kong/kong-build-tools)
 repository will allow you to do both easily.
-
 
 ### Additions
 
@@ -241,6 +241,53 @@ repository will allow you to do both easily.
 
   - Removed the Sidecar Injector plugin which was used for service mesh.
     [#5199](https://github.com/Kong/kong/pull/5199)
+
+
+[Back to TOC](#table-of-contents)
+
+
+## [1.5.0]
+
+> Released 2020/01/20
+
+Kong 1.5.0 is the last release in the Kong 1.x series, and it was designed to
+help Kong 0.x users upgrade out of that series and into more current releases.
+Kong 1.5.0 includes two features designed to ease the transition process: the
+new `kong migrations migrate-apis` commands, to help users migrate away from
+old `apis` entities which were deprecated in Kong 0.13.0 and removed in Kong
+1.0.0, and a compatibility flag to provide better router compatibility across
+Kong versions.
+
+### Additions
+
+##### Core
+
+  - New `path_handling` attribute in Routes entities, which selects the behavior
+    the router will have when combining the Service Path, the Route Path, and
+    the Request path into a single path sent to the upstream. This attribute
+    accepts two values, `v0` or `v1`, making the router behave as in Kong 0.x or
+    Kong 1.x, respectively. [#5360](https://github.com/Kong/kong/pull/5360)
+
+##### CLI
+
+  - New command `kong migrations migrate-apis`, which converts any existing
+    `apis` from an old Kong 0.x installation and generates Route, Service and
+    Plugin entities with equivalent configurations. The converted routes are
+    set to use `path_handling = v0`, to ensure compatibility.
+    [#5176](https://github.com/Kong/kong/pull/5176)
+
+### Fixes
+
+##### Core
+
+  - Fixed the routing prioritization that could lead to a match in a lower
+    priority path. [#5443](https://github.com/Kong/kong/pull/5443)
+  - Changes in router or plugins entities while the rebuild is in progress now
+    are treated in the next rebuild, avoiding to build invalid iterators.
+    [#5431](https://github.com/Kong/kong/pull/5431)
+  - Fixed invalid incorrect calculation of certificate validity period.
+    [#5449](https://github.com/Kong/kong/pull/5449) -- Thanks
+    [Bevisy](https://github.com/Bevisy) for the patch!
 
 
 [Back to TOC](#table-of-contents)
@@ -4547,7 +4594,8 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[2.0.0rc2]: https://github.com/Kong/kong/compare/1.4.3...2.0.0rc2
+[2.0.0rc2]: https://github.com/Kong/kong/compare/1.5.0...2.0.0rc2
+[1.5.0]: https://github.com/Kong/kong/compare/1.4.3...1.5.0
 [1.4.3]: https://github.com/Kong/kong/compare/1.4.2...1.4.3
 [1.4.2]: https://github.com/Kong/kong/compare/1.4.1...1.4.2
 [1.4.1]: https://github.com/Kong/kong/compare/1.4.0...1.4.1
