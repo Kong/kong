@@ -8,7 +8,7 @@ for _, strategy in helpers.each_strategy() do
   local dns_hostsfile
   local reports_server
 
-  describe("anonymous reports for go plugins #" .. strategy, function()
+  describe("anonymous reports for go plugins #flaky #" .. strategy, function()
     local reports_send_ping = function()
       ngx.sleep(0.01) -- hand over the CPU so other threads can do work (processing the sent data)
       local admin_client = helpers.admin_client()
