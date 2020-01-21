@@ -94,7 +94,7 @@ do
 
       local ok, err = kong_shm:safe_set("kong:mem:" .. pid(), count)
       if not ok then
-        log(ERROR, "could not record Lua VM allocated memory: ", err)
+        log(ERR, "could not record Lua VM allocated memory: ", err)
       end
 
       last = ngx.time()
