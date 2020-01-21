@@ -1,14 +1,15 @@
 local STRATEGY_PATH = "kong.plugins.proxy-cache-advanced.strategies"
 
 
+local require = require
 local kong = kong
-local cluster_events = kong.cluster_events
+local fmt = string.format
 
 
 local function broadcast_purge(plugin_id, cache_key)
-  local data = string.format("%s:%s", plugin_id, cache_key or "nil")
-  ngx.log(ngx.DEBUG, "[proxy-cache-advanced] broadcasting purge '", data, "'")
-  return cluster_events:broadcast("proxy-cache-advanced:purge", data)
+  local data = fmt("%s:%s", plugin_id, cache_key or "nil")
+  kong.log.debug("broadcasting purge '", data, "'")
+  return kong.cluster_events:broadcast("proxy-cache-advanced:purge", data)
 end
 
 
@@ -37,8 +38,7 @@ return {
         if require(STRATEGY_PATH).LOCAL_DATA_STRATEGIES[conf.strategy] then
           local ok, err = broadcast_purge(row.id, nil)
           if not ok then
-            ngx.log(ngx.ERR, "failed broadcasting proxy cache purge to cluster: ",
-                    err)
+            kong.log.err("failed broadcasting proxy cache purge to cluster: ", err)
           end
         end
       end
@@ -105,8 +105,7 @@ return {
           if require(STRATEGY_PATH).LOCAL_DATA_STRATEGIES[conf.strategy] then
             local ok, err = broadcast_purge(plugin.id, self.params.cache_key)
             if not ok then
-              ngx.log(ngx.ERR, "failed broadcasting proxy cache purge to cluster: ",
-                      err)
+              kong.log.err("failed broadcasting proxy cache purge to cluster: ", err)
             end
           end
 
@@ -179,8 +178,7 @@ return {
       if require(STRATEGY_PATH).LOCAL_DATA_STRATEGIES[conf.strategy] then
         local ok, err = broadcast_purge(row.id, self.params.cache_key)
         if not ok then
-          ngx.log(ngx.ERR, "failed broadcasting proxy cache purge to cluster: ",
-                  err)
+          kong.log.err("failed broadcasting proxy cache purge to cluster: ", err)
         end
       end
 

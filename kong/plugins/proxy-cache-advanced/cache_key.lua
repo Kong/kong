@@ -1,7 +1,14 @@
 local fmt = string.format
 local md5 = ngx.md5
+local type = type
+local pairs = pairs
+local sort = table.sort
+local insert = table.insert
+local concat = table.concat
+
 
 local _M = {}
+
 
 local EMPTY = {}
 
@@ -28,16 +35,16 @@ local function generate_key_from(args, vary_fields)
     local arg = args[field]
     if arg then
       if type(arg) == "table" then
-        table.sort(arg)
-        table.insert(cache_key, field .. "=" .. table.concat(arg, ","))
+        sort(arg)
+        insert(cache_key, field .. "=" .. concat(arg, ","))
 
       else
-        table.insert(cache_key, field .. "=" .. arg)
+        insert(cache_key, field .. "=" .. arg)
       end
     end
   end
 
-  return table.concat(cache_key, ":")
+  return concat(cache_key, ":")
 end
 
 
@@ -48,7 +55,7 @@ end
 local function params_key(params, plugin_config)
   if not (plugin_config.vary_query_params or EMPTY)[1] then
     local actual_keys = keys(params)
-    table.sort(actual_keys)
+    sort(actual_keys)
     return generate_key_from(params, actual_keys)
   end
 

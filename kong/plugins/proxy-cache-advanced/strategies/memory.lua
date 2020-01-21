@@ -5,8 +5,7 @@ local ngx          = ngx
 local type         = type
 local time         = ngx.time
 local shared       = ngx.shared
-local cjson_encode = cjson.encode
-local cjson_decode = cjson.decode
+local setmetatable = setmetatable
 
 
 local _M = {}
@@ -42,7 +41,7 @@ function _M:store(key, req_obj, req_ttl)
   end
 
   -- encode request table representation as JSON
-  local req_json = cjson_encode(req_obj)
+  local req_json = cjson.encode(req_obj)
   if not req_json then
     return nil, "could not encode request object"
   end
@@ -72,7 +71,7 @@ function _M:fetch(key)
   end
 
   -- decode object from JSON to table
-  local req_obj = cjson_decode(req_json)
+  local req_obj = cjson.decode(req_json)
   if not req_json then
     return nil, "could not decode request object"
   end
@@ -111,7 +110,7 @@ function _M:touch(key, req_ttl, timestamp)
   end
 
   -- decode object from JSON to table
-  local req_obj = cjson_decode(req_json)
+  local req_obj = cjson.decode(req_json)
   if not req_json then
     return nil, "could not decode request object"
   end

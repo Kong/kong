@@ -1,3 +1,7 @@
+local require = require
+local setmetatable = setmetatable
+
+
 local _M = {}
 
 _M.STRATEGY_TYPES = {

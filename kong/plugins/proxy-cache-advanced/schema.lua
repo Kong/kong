@@ -2,6 +2,10 @@ local strategies = require "kong.plugins.proxy-cache-advanced.strategies"
 local redis      = require "kong.enterprise_edition.redis"
 
 
+
+local ngx = ngx
+
+
 local function check_shdict(name)
   if not ngx.shared[name] then
     return false, "missing shared dict '" .. name .. "'"
