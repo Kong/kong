@@ -175,8 +175,12 @@ local process_callback = function(batch)
   return true, res_or_err
 end
 
-local queue = BatchQueue.new(process_callback, { batch_max_size = 1 })
+local queue_opts = {
+  batch_max_size = 1,
+  process_delay = 0,
+}
 
+local queue = BatchQueue.new(process_callback, queue_opts)
 
 _M.callback = function(entity)
   local callback = _M.handlers[entity.handler](entity, entity.config).callback
