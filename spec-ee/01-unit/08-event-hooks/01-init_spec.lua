@@ -13,6 +13,13 @@ local function mock_cache()
   local clock = 0
 
   return {
+    mlcache = {
+      lru = {
+        set = function(self, key, value)
+          store[key] = { value = value, opts = {} }
+        end,
+      },
+    },
     get = function(self, key, opts, callback, ...)
       local args = { ... }
       local thing = store[key]
@@ -382,12 +389,15 @@ describe("event-hooks", function()
         end)
         it("when true, enqueues event_hooks job only if data signature has changed", function()
           entity.on_change = true
+
+          worker_event.data = { some = "data" }
           event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
                                    worker_event.pid)
           assert.stub(event_hooks.queue.add).was.called(1)
 
+          worker_event.data = { some = "data" }
           event_hooks.callback(entity)(worker_event.data,
                                    worker_event.event,
                                    worker_event.source,
@@ -407,6 +417,13 @@ describe("event-hooks", function()
                                    worker_event.source,
                                    worker_event.pid)
           assert.stub(event_hooks.queue.add).was.called(2)
+
+          worker_event.data = { some = "data" }
+          event_hooks.callback(entity)(worker_event.data,
+                                   worker_event.event,
+                                   worker_event.source,
+                                   worker_event.pid)
+          assert.stub(event_hooks.queue.add).was.called(3)
         end)
       end)
 

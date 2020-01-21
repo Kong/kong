@@ -183,21 +183,37 @@ _M.callback = function(entity)
       -- > on_change: only enqueue an event that has changed (looks different)
       -- > snooze: like an alarm clock, disable event for N seconds
       local cache_key = fmt("event_hooks:%s:%s:%s", entity.id, source, event)
+      local digest = field_digest(source, event, data)
 
       -- append digest of relevant fields in data to filter by same-ness
-      if on_change then
-        cache_key = cache_key .. ":" .. field_digest(source, event, data)
+      if on_change and ttl then
+        cache_key = cache_key .. ":" .. digest
       end
 
-      local _, _, hit_lvl = kong.cache:get(cache_key, nil, function(ttl)
-        return true, nil, ttl
+      local c_digest, _, hit_lvl = kong.cache:get(cache_key, nil, function(ttl)
+        return digest, nil, ttl
       end, ttl)
 
-      -- either in L1 or L2, this event is to be ignored
-      if hit_lvl ~= 3 then
-        kong.log.warn("ignoring event_hooks event: ", cache_key)
 
-        return
+      -- either in L1 or L2, this event might be ignored
+      if hit_lvl ~= 3 then
+        -- for on_change only, compare digest with cached digest
+        if on_change and not ttl then
+          -- same, ignore
+          if c_digest == digest then
+            kong.log.warn("ignoring event_hooks event: ", cache_key)
+
+            return
+          -- update digest
+          else
+            kong.cache.mlcache.lru:set(cache_key, digest)
+          end
+
+        else
+          kong.log.warn("ignoring event_hooks event: ", cache_key)
+
+          return
+        end
       end
     end
 
