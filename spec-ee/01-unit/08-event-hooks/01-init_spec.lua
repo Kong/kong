@@ -326,6 +326,13 @@ describe("event-hooks", function()
         assert.not_equal(event_hooks.digest(data, { fields = fields }),
                          event_hooks.digest(more_data, { fields = fields }))
       end)
+
+      it("does safely break when data is not serializable", function()
+        local data = { non_serializable = function() end }
+        local digest, err = event_hooks.digest(data)
+        assert.is_nil(digest)
+        assert.not_nil(err)
+      end)
     end)
   end)
 
@@ -425,6 +432,21 @@ describe("event-hooks", function()
                                    worker_event.pid)
           assert.stub(event_hooks.queue.add).was.called(3)
         end)
+        it("does ignore on_change if event data is not serializable", function()
+          entity.on_change = true
+          worker_event.data = { some = function() end }
+          event_hooks.callback(entity)(worker_event.data,
+                                   worker_event.event,
+                                   worker_event.source,
+                                   worker_event.pid)
+          assert.stub(event_hooks.queue.add).was.called(1)
+
+          event_hooks.callback(entity)(worker_event.data,
+                                   worker_event.event,
+                                   worker_event.source,
+                                   worker_event.pid)
+          assert.stub(event_hooks.queue.add).was.called(2)
+        end)
       end)
 
       describe("snooze", function()
@@ -475,6 +497,22 @@ describe("event-hooks", function()
                                    worker_event.source,
                                    worker_event.pid)
           assert.stub(event_hooks.queue.add).was.called(3)
+        end)
+
+        it("does ignore snooze if event data is not serializable", function()
+          entity.snooze = 60
+          worker_event.data = { some = function() end }
+          event_hooks.callback(entity)(worker_event.data,
+                                   worker_event.event,
+                                   worker_event.source,
+                                   worker_event.pid)
+          assert.stub(event_hooks.queue.add).was.called(1)
+
+          event_hooks.callback(entity)(worker_event.data,
+                                   worker_event.event,
+                                   worker_event.source,
+                                   worker_event.pid)
+          assert.stub(event_hooks.queue.add).was.called(2)
         end)
       end)
 

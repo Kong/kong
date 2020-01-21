@@ -1,4 +1,4 @@
-local cjson = require "cjson"
+local cjson = require "cjson.safe"
 local tx = require "pl/tablex"
 local to_hex = require "resty.string".to_hex
 
@@ -144,7 +144,13 @@ _M.digest = function(data, opts)
   local fields = opts.fields
   local data = fields and tx.intersection(data, tx.makeset(fields)) or data
 
-  return md5(cjson.encode(data))
+  local str, err = cjson.encode(data)
+
+  if err then
+    return nil, err
+  end
+
+  return md5(str)
 end
 
 
@@ -183,36 +189,42 @@ _M.callback = function(entity)
       -- > on_change: only enqueue an event that has changed (looks different)
       -- > snooze: like an alarm clock, disable event for N seconds
       local cache_key = fmt("event_hooks:%s:%s:%s", entity.id, source, event)
-      local digest = field_digest(source, event, data)
+      local digest, err = field_digest(source, event, data)
 
-      -- append digest of relevant fields in data to filter by same-ness
-      if on_change and ttl then
-        cache_key = cache_key .. ":" .. digest
-      end
+      if err then
+        kong.log.err(fmt("cannot serialize '%s:%s' event data. err: '%s'. " ..
+                         "Ignoring on_change/snooze for this event-hook",
+                         source, event, err))
+      else
+        -- append digest of relevant fields in data to filter by same-ness
+        if on_change and ttl then
+          cache_key = cache_key .. ":" .. digest
+        end
 
-      local c_digest, _, hit_lvl = kong.cache:get(cache_key, nil, function(ttl)
-        return digest, nil, ttl
-      end, ttl)
+        local c_digest, _, hit_lvl = kong.cache:get(cache_key, nil, function(ttl)
+          return digest, nil, ttl
+        end, ttl)
 
 
-      -- either in L1 or L2, this event might be ignored
-      if hit_lvl ~= 3 then
-        -- for on_change only, compare digest with cached digest
-        if on_change and not ttl then
-          -- same, ignore
-          if c_digest == digest then
+        -- either in L1 or L2, this event might be ignored
+        if hit_lvl ~= 3 then
+          -- for on_change only, compare digest with cached digest
+          if on_change and not ttl then
+            -- same, ignore
+            if c_digest == digest then
+              kong.log.warn("ignoring event_hooks event: ", cache_key)
+
+              return
+            -- update digest
+            else
+              kong.cache.mlcache.lru:set(cache_key, digest)
+            end
+
+          else
             kong.log.warn("ignoring event_hooks event: ", cache_key)
 
             return
-          -- update digest
-          else
-            kong.cache.mlcache.lru:set(cache_key, digest)
           end
-
-        else
-          kong.log.warn("ignoring event_hooks event: ", cache_key)
-
-          return
         end
       end
     end
