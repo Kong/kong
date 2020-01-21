@@ -266,9 +266,12 @@ _M.handlers = {
         data.event = event
         data.source = source
 
-        local body = cjson.encode(data)
+        local body, err = cjson.encode(data)
+        if err then
+          error(err)
+        end
 
-        local _, err = request(config.url, {
+        local res, err = request(config.url, {
           method = method,
           body = body,
           sign_with = config.secret and config.secret ~= ngx_null and
@@ -277,7 +280,7 @@ _M.handlers = {
           ssl_verify = config.ssl_verify,
         })
 
-        return not err
+        return not err, res, err
       end,
 
       ping = function(operation)
@@ -293,7 +296,10 @@ _M.handlers = {
           event_hooks = entity,
         }
 
-        local body = cjson.encode(data)
+        local body, err = cjson.encode(data)
+        if err then
+          error(err)
+        end
 
         local res, err = request(config.url, {
           method = method,
@@ -304,7 +310,7 @@ _M.handlers = {
           ssl_verify = config.ssl_verify,
         })
 
-        return not err, res
+        return not err, res, err
       end,
     }
   end,
@@ -354,7 +360,7 @@ _M.handlers = {
           end
         end
 
-        local _, err = request(config.url, {
+        local res, err = request(config.url, {
           method = method,
           data = payload,
           body = body,
@@ -364,7 +370,7 @@ _M.handlers = {
           ssl_verify = config.ssl_verify,
         })
 
-        return not err
+        return not err, res, err
       end,
     }
   end,
