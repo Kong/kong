@@ -249,7 +249,7 @@ end
 
 
 local ProxyCacheHandler = {
-  VERSION  = "1.2.3",
+  VERSION  = "1.3.0",
   PRIORITY = 100,
 }
 
@@ -308,10 +308,9 @@ function ProxyCacheHandler:access(conf)
 
   local ctx = ngx.ctx
   local consumer_id = ctx.authenticated_consumer and ctx.authenticated_consumer.id
-  local api_id = ctx.api and ctx.api.id
   local route_id = ctx.route and ctx.route.id
 
-  local cache_key = cache_key.build_cache_key(consumer_id, api_id, route_id,
+  local cache_key = cache_key.build_cache_key(consumer_id, route_id,
     get_method(),
     ngx_re_sub(ngx.var.request, "\\?.*", "", "oj"),
     ngx_get_uri_args(),
@@ -394,8 +393,8 @@ end
 
 function ProxyCacheHandler:header_filter(conf)
   local ctx = ngx.ctx.proxy_cache
-  -- dont look at our headers if
-  -- a). the request wasnt cachable or
+  -- don't look at our headers if
+  -- a). the request wasn't cachable or
   -- b). the request was served from cache
   if not ctx then
     return

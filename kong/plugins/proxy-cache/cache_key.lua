@@ -71,21 +71,11 @@ end
 _M.headers_key = headers_key
 
 
-local function prefix_uuid(consumer_id, api_id, route_id)
-
-  -- authenticated api
-  if consumer_id and api_id then
-    return fmt("%s:%s", consumer_id, api_id)
-  end
+local function prefix_uuid(consumer_id, route_id)
 
   -- authenticated route
   if consumer_id and route_id then
     return fmt("%s:%s", consumer_id, route_id)
-  end
-
-  -- unauthenticated api
-  if api_id then
-    return api_id
   end
 
   -- unauthenticated route
@@ -99,11 +89,11 @@ end
 _M.prefix_uuid = prefix_uuid
 
 
-function _M.build_cache_key(consumer_id, api_id, route_id, method, uri,
+function _M.build_cache_key(consumer_id, route_id, method, uri,
                             params_table, headers_table, conf)
 
   -- obtain cache key components
-  local prefix_digest  = prefix_uuid(consumer_id, api_id, route_id)
+  local prefix_digest  = prefix_uuid(consumer_id, route_id)
   local params_digest  = params_key(params_table, conf)
   local headers_digest = headers_key(headers_table, conf)
 
