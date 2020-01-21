@@ -39,7 +39,6 @@ local unpack       = unpack
 local ERR   = ngx.ERR
 local WARN  = ngx.WARN
 local DEBUG = ngx.DEBUG
-local ERROR = ngx.ERROR
 local COMMA = byte(",")
 local SPACE = byte(" ")
 
@@ -89,7 +88,7 @@ do
 
       local ok, err = kong_shm:safe_set("kong:mem:" .. pid(), count)
       if not ok then
-        log(ERROR, "could not record Lua VM allocated memory: ", err)
+        log(ERR, "could not record Lua VM allocated memory: ", err)
       end
 
       last = ngx.time()
