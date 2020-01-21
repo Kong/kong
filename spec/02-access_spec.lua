@@ -463,7 +463,7 @@ do
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
-      local cache_key = res.headers["X-Cache-Key"]
+      --local cache_key = res.headers["X-Cache-Key"]
 
       -- wait until the underlying strategy converges
       --strategy_wait_until(policy, function()

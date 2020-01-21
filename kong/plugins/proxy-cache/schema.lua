@@ -1,5 +1,9 @@
 local strategies = require "kong.plugins.proxy-cache.strategies"
 
+
+local ngx = ngx
+
+
 local function check_shdict(name)
   if not ngx.shared[name] then
     return false, "missing shared dict '" .. name .. "'"
@@ -7,6 +11,7 @@ local function check_shdict(name)
 
   return true
 end
+
 
 return {
   name = "proxy-cache",
