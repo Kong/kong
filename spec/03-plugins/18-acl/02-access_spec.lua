@@ -781,7 +781,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-        assert.same({ message = "You cannot consume this service" }, json)
+        assert.same({ message = "Unauthorized" }, json)
       end)
 
       it("should fail when an authentication plugin is missing (with credential)", function()
@@ -1294,6 +1294,389 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
         assert.same({ message = "You cannot consume this service" }, json)
+      end)
+    end)
+  end)
+
+  describe("Plugin: ACL (access) [#" .. strategy .. "] anonymous", function()
+    local proxy_client
+    local admin_client
+    local bp
+
+    lazy_setup(function()
+      bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "acls",
+        "keyauth_credentials",
+      }, { "ctx-checker" })
+
+      local anonymous = bp.consumers:insert {
+        username = "anonymous",
+      }
+
+      local anonymous_with_group = bp.consumers:insert {
+        username = "anonymous_with_group",
+      }
+      bp.acls:insert {
+        group    = "everyone",
+        consumer = { id = anonymous_with_group.id },
+      }
+
+      do
+        local whitelist_everyone = bp.routes:insert {
+          hosts = { "whitelist-everyone.test" },
+        }
+        bp.plugins:insert {
+          name = "acl",
+          route = { id = whitelist_everyone.id },
+          config = {
+            whitelist = { "everyone" },
+          },
+        }
+      end
+
+      do
+        local whitelist_none = bp.routes:insert {
+          hosts = { "whitelist-none.test" },
+        }
+        bp.plugins:insert {
+          name = "acl",
+          route = { id = whitelist_none.id },
+          config = {
+            whitelist = { "none" },
+          },
+        }
+      end
+
+      do
+        local blacklist_everyone = bp.routes:insert {
+          hosts = { "blacklist-everyone.test" },
+        }
+        bp.plugins:insert {
+          name = "acl",
+          route = { id = blacklist_everyone.id },
+          config = {
+            whitelist = { "everyone" },
+          },
+        }
+      end
+
+      do
+        local blacklist_none = bp.routes:insert {
+          hosts = { "blacklist-none.test" },
+        }
+        bp.plugins:insert {
+          name = "acl",
+          route = { id = blacklist_none.id },
+          config = {
+            whitelist = { "none" },
+          },
+        }
+      end
+
+      do
+        local whitelist_everyone_anonymous = bp.routes:insert {
+          hosts = { "whitelist-everyone-anonymous.test" },
+        }
+        bp.plugins:insert {
+          name = "acl",
+          route = { id = whitelist_everyone_anonymous.id },
+          config = {
+            whitelist = { "everyone" },
+          },
+        }
+        bp.plugins:insert {
+          name = "key-auth",
+          route = { id = whitelist_everyone_anonymous.id },
+          config = {
+            anonymous = anonymous.id,
+          }
+        }
+      end
+
+      do
+        local whitelist_everyone_anonymous_with_group = bp.routes:insert {
+          hosts = { "whitelist-everyone-anonymous-with-group.test" },
+        }
+        bp.plugins:insert {
+          name = "acl",
+          route = { id = whitelist_everyone_anonymous_with_group.id },
+          config = {
+            whitelist = { "everyone" },
+          },
+        }
+        bp.plugins:insert {
+          name = "key-auth",
+          route = { id = whitelist_everyone_anonymous_with_group.id },
+          config = {
+            anonymous = anonymous_with_group.id,
+          }
+        }
+      end
+
+      do
+        local whitelist_none_anonymous = bp.routes:insert {
+          hosts = { "whitelist-none-anonymous.test" },
+        }
+        bp.plugins:insert {
+          name = "acl",
+          route = { id = whitelist_none_anonymous.id },
+          config = {
+            whitelist = { "none" },
+          },
+        }
+        bp.plugins:insert {
+          name = "key-auth",
+          route = { id = whitelist_none_anonymous.id },
+          config = {
+            anonymous = anonymous.id,
+          }
+        }
+      end
+
+      do
+        local whitelist_none_anonymous_with_group = bp.routes:insert {
+          hosts = { "whitelist-none-anonymous-with-group.test" },
+        }
+        bp.plugins:insert {
+          name = "acl",
+          route = { id = whitelist_none_anonymous_with_group.id },
+          config = {
+            whitelist = { "none" },
+          },
+        }
+        bp.plugins:insert {
+          name = "key-auth",
+          route = { id = whitelist_none_anonymous_with_group.id },
+          config = {
+            anonymous = anonymous_with_group.id,
+          }
+        }
+      end
+
+      do
+        local blacklist_everyone_anonymous = bp.routes:insert {
+          hosts = { "blacklist-everyone-anonymous.test" },
+        }
+        bp.plugins:insert {
+          name = "acl",
+          route = { id = blacklist_everyone_anonymous.id },
+          config = {
+            blacklist = { "everyone" },
+          },
+        }
+        bp.plugins:insert {
+          name = "key-auth",
+          route = { id = blacklist_everyone_anonymous.id },
+          config = {
+            anonymous = anonymous.id,
+          }
+        }
+      end
+
+      do
+        local blacklist_everyone_anonymous_with_group = bp.routes:insert {
+          hosts = { "blacklist-everyone-anonymous-with-group.test" },
+        }
+        bp.plugins:insert {
+          name = "acl",
+          route = { id = blacklist_everyone_anonymous_with_group.id },
+          config = {
+            blacklist = { "everyone" },
+          },
+        }
+        bp.plugins:insert {
+          name = "key-auth",
+          route = { id = blacklist_everyone_anonymous_with_group.id },
+          config = {
+            anonymous = anonymous_with_group.id,
+          }
+        }
+      end
+
+      do
+        local blacklist_none_anonymous = bp.routes:insert {
+          hosts = { "blacklist-none-anonymous.test" },
+        }
+        bp.plugins:insert {
+          name = "acl",
+          route = { id = blacklist_none_anonymous.id },
+          config = {
+            blacklist = { "none" },
+          },
+        }
+        bp.plugins:insert {
+          name = "key-auth",
+          route = { id = blacklist_none_anonymous.id },
+          config = {
+            anonymous = anonymous.id,
+          }
+        }
+      end
+
+      do
+        local blacklist_none_anonymous_with_group = bp.routes:insert {
+          hosts = { "blacklist-none-anonymous-with-group.test" },
+        }
+        bp.plugins:insert {
+          name = "acl",
+          route = { id = blacklist_none_anonymous_with_group.id },
+          config = {
+            blacklist = { "none" },
+          },
+        }
+        bp.plugins:insert {
+          name = "key-auth",
+          route = { id = blacklist_none_anonymous_with_group.id },
+          config = {
+            anonymous = anonymous_with_group.id,
+          }
+        }
+      end
+
+      assert(helpers.start_kong({
+        plugins    = "bundled, ctx-checker",
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+    end)
+
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
+    end)
+
+    after_each(function ()
+      proxy_client:close()
+      admin_client:close()
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    describe("without authentication", function()
+      it("returns 401", function()
+        local res = assert(proxy_client:get("/request", {
+          headers = {
+            Host = "whitelist-everyone.test"
+          }
+        }))
+        local body = cjson.decode(assert.res_status(401, res))
+        assert.equal(nil, body.headers)
+        assert.equal("Unauthorized", body.message)
+
+        local res = assert(proxy_client:get("/request", {
+          headers = {
+            Host = "whitelist-none.test"
+          }
+        }))
+        local body = cjson.decode(assert.res_status(401, res))
+        assert.equal(nil, body.headers)
+        assert.equal("Unauthorized", body.message)
+
+        local res = assert(proxy_client:get("/request", {
+          headers = {
+            Host = "blacklist-everyone.test"
+          }
+        }))
+        local body = cjson.decode(assert.res_status(401, res))
+        assert.equal(nil, body.headers)
+        assert.equal("Unauthorized", body.message)
+
+        local res = assert(proxy_client:get("/request", {
+          headers = {
+            Host = "blacklist-none.test"
+          }
+        }))
+        local body = cjson.decode(assert.res_status(401, res))
+        assert.equal(nil, body.headers)
+        assert.equal("Unauthorized", body.message)
+      end)
+    end)
+
+    describe("with authentication without groups", function()
+      it("returns 401", function()
+        local res = assert(proxy_client:get("/request", {
+          headers = {
+            Host = "whitelist-everyone-anonymous.test"
+          }
+        }))
+        local body = cjson.decode(assert.res_status(401, res))
+        assert.equal(nil, body.headers)
+        assert.equal("Unauthorized", body.message)
+
+        local res = assert(proxy_client:get("/request", {
+          headers = {
+            Host = "whitelist-none-anonymous.test"
+          }
+        }))
+        local body = cjson.decode(assert.res_status(401, res))
+        assert.equal(nil, body.headers)
+        assert.equal("Unauthorized", body.message)
+
+        local res = assert(proxy_client:get("/request", {
+          headers = {
+            Host = "blacklist-everyone-anonymous.test"
+          }
+        }))
+        local body = cjson.decode(assert.res_status(401, res))
+        assert.equal(nil, body.headers)
+        assert.equal("Unauthorized", body.message)
+
+        local res = assert(proxy_client:get("/request", {
+          headers = {
+            Host = "blacklist-none-anonymous.test"
+          }
+        }))
+        local body = cjson.decode(assert.res_status(401, res))
+        assert.equal(nil, body.headers)
+        assert.equal("Unauthorized", body.message)
+      end)
+    end)
+
+    describe("with authentication with group", function()
+      it("returns 200", function()
+        local res = assert(proxy_client:get("/request", {
+          headers = {
+            Host = "whitelist-everyone-anonymous-with-group.test"
+          }
+        }))
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.equal(nil, body.headers["x-authenticated-groups"])
+        assert.equal("everyone", body.headers["x-consumer-groups"])
+
+        local res = assert(proxy_client:get("/request", {
+          headers = {
+            Host = "blacklist-none-anonymous-with-group.test"
+          }
+        }))
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.equal(nil, body.headers["x-authenticated-groups"])
+        assert.equal("everyone", body.headers["x-consumer-groups"])
+      end)
+
+      it("returns 403", function()
+        local res = assert(proxy_client:get("/request", {
+          headers = {
+            Host = "whitelist-none-anonymous-with-group.test"
+          }
+        }))
+        local body = cjson.decode(assert.res_status(403, res))
+        assert.equal(nil, body.headers)
+        assert.equal("You cannot consume this service", body.message)
+
+        local res = assert(proxy_client:get("/request", {
+          headers = {
+            Host = "blacklist-everyone-anonymous-with-group.test"
+          }
+        }))
+        local body = cjson.decode(assert.res_status(403, res))
+        assert.equal(nil, body.headers)
+        assert.equal("You cannot consume this service", body.message)
       end)
     end)
   end)
