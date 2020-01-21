@@ -242,6 +242,14 @@ do
       return ngx.ctx[v]
     end,
 
+    ["kong.get_ctx_shared"] = function(k)
+      return kong.ctx.shared[k]
+    end,
+
+    ["kong.set_ctx_shared"] = function(k, v)
+      kong.ctx.shared[k] = v
+    end,
+
     ["kong.nginx.req_start_time"] = ngx.req.start_time,
 
     ["kong.request.get_query"] = function(max)
