@@ -92,7 +92,7 @@ for _, strategy in helpers.each_strategy() do
       local err, v
       it("returns no error", function()
 
-        err = a:set(key, "setttl", 1)
+        err = a:set(key, "setttl", 2)
         assert.is_nil(err)
 
         v, err = a:get(key)
@@ -101,7 +101,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("cleans up expired key", function()
-        ngx.sleep(1)
+        ngx.sleep(2)
 
         v, err = a:get(key)
         assert.is_nil(err)
@@ -139,7 +139,7 @@ for _, strategy in helpers.each_strategy() do
       local err, v
       it("returns no error", function()
 
-        err = a:add(key, "addttl", 1)
+        err = a:add(key, "addttl", 2)
         assert.is_nil(err)
 
         v, err = a:get(key)
@@ -148,7 +148,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("cleans up expired key", function()
-        ngx.sleep(1)
+        ngx.sleep(2)
 
         v, err = a:get(key)
         assert.is_nil(err)
