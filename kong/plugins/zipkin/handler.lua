@@ -1,7 +1,8 @@
 local opentracing_new_tracer = require "opentracing.tracer".new
-local zipkin_codec = require "kong.plugins.zipkin.codec"
+local extractor = require "kong.plugins.zipkin.extractor"
 local new_random_sampler = require "kong.plugins.zipkin.random_sampler".new
 local new_zipkin_reporter = require "kong.plugins.zipkin.reporter".new
+local to_hex = require "resty.string".to_hex
 
 local subsystem = ngx.config.subsystem
 local fmt = string.format
@@ -16,11 +17,26 @@ local ZipkinLogHandler = {
 
 local tracer_cache = setmetatable({}, {__mode = "k"})
 
+local function injector(span_context, headers)
+  -- We want to remove headers if already present
+  headers["x-b3-traceid"] = to_hex(span_context.trace_id)
+  headers["x-b3-parentspanid"] = span_context.parent_id and to_hex(span_context.parent_id) or nil
+  headers["x-b3-spanid"] = to_hex(span_context.span_id)
+  local Flags = kong.request.get_header("x-b3-flags") -- Get from request headers
+  headers["x-b3-flags"] = Flags
+  headers["x-b3-sampled"] = (not Flags) and (span_context.should_sample and "1" or "0") or nil
+  for key, value in span_context:each_baggage_item() do
+    -- XXX: https://github.com/opentracing/specification/issues/117
+    headers["uberctx-"..key] = ngx.escape_uri(value)
+  end
+end
+
 
 local function new_tracer(conf)
   local tracer = opentracing_new_tracer(new_zipkin_reporter(conf), new_random_sampler(conf))
-  tracer:register_injector("http_headers", zipkin_codec.new_injector())
-  tracer:register_extractor("http_headers", zipkin_codec.new_extractor(kong.log.warn))
+
+  tracer:register_injector("http_headers", injector)
+  tracer:register_extractor("http_headers", extractor)
   return tracer
 end
 
