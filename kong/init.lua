@@ -184,7 +184,7 @@ end
 local function execute_plugins_iterator(plugins_iterator, phase, ctx)
   for plugin, configuration in plugins_iterator:iterate(phase, ctx) do
     if ctx then
-      kong_global.set_named_ctx(kong, "plugin", configuration)
+      kong_global.set_named_ctx(kong, "plugin", plugin.handler)
     end
 
     kong_global.set_namespaced_log(kong, plugin.name)
@@ -677,7 +677,7 @@ function Kong.access()
     end
 
     if not ctx.delayed_response then
-      kong_global.set_named_ctx(kong, "plugin", plugin_conf)
+      kong_global.set_named_ctx(kong, "plugin", plugin.handler)
       kong_global.set_namespaced_log(kong, plugin.name)
 
       local err = coroutine.wrap(plugin.handler.access)(plugin.handler, plugin_conf)
