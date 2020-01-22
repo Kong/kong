@@ -1,4 +1,4 @@
-local new_tracer = require "opentracing.tracer".new
+local opentracing_new_tracer = require "opentracing.tracer".new
 local zipkin_codec = require "kong.plugins.zipkin.codec"
 local new_random_sampler = require "kong.plugins.zipkin.random_sampler".new
 local new_zipkin_reporter = require "kong.plugins.zipkin.reporter".new
@@ -17,6 +17,22 @@ local ZipkinLogHandler = {
 local tracer_cache = setmetatable({}, {__mode = "k"})
 
 
+local function new_tracer(conf)
+  local tracer = opentracing_new_tracer(new_zipkin_reporter(conf), new_random_sampler(conf))
+  tracer:register_injector("http_headers", zipkin_codec.new_injector())
+  tracer:register_extractor("http_headers", zipkin_codec.new_extractor(kong.log.warn))
+  return tracer
+end
+
+
+local function get_tracer(conf)
+  if tracer_cache[conf] == nil then
+    tracer_cache[conf] = new_tracer(conf)
+  end
+  return tracer_cache[conf]
+end
+
+
 local function tag_with_service_and_route(span)
   local service = kong.router.get_service()
   if service and service.id then
@@ -32,16 +48,16 @@ local function tag_with_service_and_route(span)
 end
 
 
--- adds the proxy span to the opentracing context, unless it already exists
-local function get_or_add_proxy_span(opentracing, timestamp)
-  if not opentracing.proxy_span then
-    local request_span = opentracing.request_span
-    opentracing.proxy_span = request_span:start_child_span(
+-- adds the proxy span to the zipkin context, unless it already exists
+local function get_or_add_proxy_span(zipkin, timestamp)
+  if not zipkin.proxy_span then
+    local request_span = zipkin.request_span
+    zipkin.proxy_span = request_span:start_child_span(
       request_span.name .. " (proxy)",
       timestamp)
-    opentracing.proxy_span:set_tag("span.kind", "client")
+    zipkin.proxy_span:set_tag("span.kind", "client")
   end
-  return opentracing.proxy_span
+  return zipkin.proxy_span
 end
 
 
@@ -58,30 +74,6 @@ local function timer_log(premature, reporter)
 end
 
 
-
-
-function ZipkinLogHandler:get_tracer(conf)
-  local tracer = tracer_cache[conf]
-  if tracer == nil then
-    assert(self.new_tracer, "derived class must implement .new_tracer()")
-    tracer = self.new_tracer(conf)
-    assert(type(tracer) == "table", ".new_tracer() must return an opentracing tracer object")
-    tracer_cache[conf] = tracer
-  end
-  return tracer
-end
-
-
-function ZipkinLogHandler:get_context(conf, ctx)
-  local opentracing = ctx.opentracing
-  if not opentracing then
-    self:initialise_request(conf, ctx)
-    opentracing = ctx.opentracing
-  end
-  return opentracing
-end
-
-
 -- Utility function to set either ipv4 or ipv6 tags
 -- nginx apis don't have a flag to indicate whether an address is v4 or v6
 local function ip_tag(addr)
@@ -94,9 +86,22 @@ local function ip_tag(addr)
 end
 
 
+local initialize_request
+
+
+local function get_context(conf, ctx)
+  local zipkin = ctx.zipkin
+  if not zipkin then
+    initialize_request(conf, ctx)
+    zipkin = ctx.zipkin
+  end
+  return zipkin
+end
+
+
 if subsystem == "http" then
-  function ZipkinLogHandler:initialise_request(conf, ctx)
-    local tracer = self:get_tracer(conf)
+  initialize_request = function(conf, ctx)
+    local tracer = get_tracer(conf)
     local req = kong.request
     local wire_context = tracer:extract("http_headers", req.get_headers()) -- could be nil
     local method = req.get_method()
@@ -114,7 +119,7 @@ if subsystem == "http" then
         ["peer.port"] = kong.client.get_forwarded_port(),
       }
     })
-    ctx.opentracing = {
+    ctx.zipkin = {
       tracer = tracer,
       wire_context = wire_context,
       request_span = request_span,
@@ -126,22 +131,22 @@ if subsystem == "http" then
 
   function ZipkinLogHandler:rewrite(conf)
     local ctx = ngx.ctx
-    local opentracing = self:get_context(conf, ctx)
+    local zipkin = get_context(conf, ctx)
     -- note: rewrite is logged on the request_span, not on the proxy span
     local rewrite_start = ctx.KONG_REWRITE_START / 1000
-    opentracing.request_span:log("kong.rewrite", "start", rewrite_start)
+    zipkin.request_span:log("kong.rewrite", "start", rewrite_start)
   end
 
 
   function ZipkinLogHandler:access(conf)
     local ctx = ngx.ctx
-    local opentracing = self:get_context(conf, ctx)
+    local zipkin = get_context(conf, ctx)
 
-    get_or_add_proxy_span(opentracing, ctx.KONG_ACCESS_START / 1000)
+    get_or_add_proxy_span(zipkin, ctx.KONG_ACCESS_START / 1000)
 
     -- Want to send headers to upstream
     local outgoing_headers = {}
-    opentracing.tracer:inject(opentracing.proxy_span, "http_headers", outgoing_headers)
+    zipkin.tracer:inject(zipkin.proxy_span, "http_headers", outgoing_headers)
     local set_header = kong.service.request.set_header
     for k, v in pairs(outgoing_headers) do
       set_header(k, v)
@@ -151,34 +156,34 @@ if subsystem == "http" then
 
   function ZipkinLogHandler:header_filter(conf)
     local ctx = ngx.ctx
-    local opentracing = self:get_context(conf, ctx)
+    local zipkin = get_context(conf, ctx)
     local header_filter_start =
       ctx.KONG_HEADER_FILTER_STARTED_AT and ctx.KONG_HEADER_FILTER_STARTED_AT / 1000
       or ngx.now()
 
-    local proxy_span = get_or_add_proxy_span(opentracing, header_filter_start)
+    local proxy_span = get_or_add_proxy_span(zipkin, header_filter_start)
     proxy_span:log("kong.header_filter", "start", header_filter_start)
   end
 
 
   function ZipkinLogHandler:body_filter(conf)
     local ctx = ngx.ctx
-    local opentracing = self:get_context(conf, ctx)
+    local zipkin = get_context(conf, ctx)
 
     -- Finish header filter when body filter starts
-    if not opentracing.header_filter_finished then
+    if not zipkin.header_filter_finished then
       local now = ngx.now()
 
-      opentracing.proxy_span:log("kong.header_filter", "finish", now)
-      opentracing.header_filter_finished = true
-      opentracing.proxy_span:log("kong.body_filter", "start", now)
+      zipkin.proxy_span:log("kong.header_filter", "finish", now)
+      zipkin.header_filter_finished = true
+      zipkin.proxy_span:log("kong.body_filter", "start", now)
     end
   end
 
 elseif subsystem == "stream" then
 
-  function ZipkinLogHandler:initialise_request(conf, ctx)
-    local tracer = self:get_tracer(conf)
+  initialize_request = function(conf, ctx)
+    local tracer = get_tracer(conf)
     local wire_context = nil
     local forwarded_ip = kong.client.get_forwarded_ip()
     local request_span = tracer:start_span("kong.stream", {
@@ -191,7 +196,7 @@ elseif subsystem == "stream" then
         ["peer.port"] = kong.client.get_forwarded_port(),
       }
     })
-    ctx.opentracing = {
+    ctx.zipkin = {
       tracer = tracer,
       wire_context = wire_context,
       request_span = request_span,
@@ -202,29 +207,21 @@ elseif subsystem == "stream" then
 
   function ZipkinLogHandler:preread(conf)
     local ctx = ngx.ctx
-    local opentracing = self:get_context(conf, ctx)
+    local zipkin = get_context(conf, ctx)
     local preread_start = ctx.KONG_PREREAD_START / 1000
 
-    local proxy_span = get_or_add_proxy_span(opentracing, preread_start)
+    local proxy_span = get_or_add_proxy_span(zipkin, preread_start)
     proxy_span:log("kong.preread", "start", preread_start)
   end
-end
-
-
-function ZipkinLogHandler.new_tracer(conf)
-  local tracer = new_tracer(new_zipkin_reporter(conf), new_random_sampler(conf))
-  tracer:register_injector("http_headers", zipkin_codec.new_injector())
-  tracer:register_extractor("http_headers", zipkin_codec.new_extractor(kong.log.warn))
-  return tracer
 end
 
 
 function ZipkinLogHandler:log(conf)
   local now = ngx.now()
   local ctx = ngx.ctx
-  local opentracing = self:get_context(conf, ctx)
-  local request_span = opentracing.request_span
-  local proxy_span = get_or_add_proxy_span(opentracing, now)
+  local zipkin = get_context(conf, ctx)
+  local request_span = zipkin.request_span
+  local proxy_span = get_or_add_proxy_span(zipkin, now)
 
   local proxy_finish =
     ctx.KONG_BODY_FILTER_ENDED_AT and ctx.KONG_BODY_FILTER_ENDED_AT / 1000 or now
@@ -232,7 +229,7 @@ function ZipkinLogHandler:log(conf)
   if ctx.KONG_REWRITE_TIME then
     -- note: rewrite is logged on the request span, not on the proxy span
     local rewrite_finish = (ctx.KONG_REWRITE_START + ctx.KONG_REWRITE_TIME) / 1000
-    opentracing.request_span:log("kong.rewrite", "finish", rewrite_finish)
+    zipkin.request_span:log("kong.rewrite", "finish", rewrite_finish)
   end
 
   if subsystem == "http" then
@@ -247,9 +244,9 @@ function ZipkinLogHandler:log(conf)
       ctx.KONG_ACCESS_ENDED_AT and ctx.KONG_ACCESS_ENDED_AT / 1000 or proxy_finish
     proxy_span:log("kong.access", "finish", access_finish)
 
-    if not opentracing.header_filter_finished then
+    if not zipkin.header_filter_finished then
       proxy_span:log("kong.header_filter", "finish", now)
-      opentracing.header_filter_finished = true
+      zipkin.header_filter_finished = true
     end
 
     proxy_span:log("kong.body_filter", "finish", now)
@@ -303,8 +300,8 @@ function ZipkinLogHandler:log(conf)
   proxy_span:finish(proxy_finish)
   request_span:finish(now)
 
-  local tracer = self:get_tracer(conf)
-  local zipkin_reporter = tracer.reporter -- XXX: not guaranteed by opentracing-lua?
+  local tracer = get_tracer(conf)
+  local zipkin_reporter = tracer.reporter -- XXX: not guaranteed by zipkin-lua?
   local ok, err = ngx.timer.at(0, timer_log, zipkin_reporter)
   if not ok then
     kong.log.err("failed to create timer: ", err)
