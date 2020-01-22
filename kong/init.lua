@@ -184,16 +184,16 @@ end
 local function execute_plugins_iterator(plugins_iterator, phase, ctx)
   for plugin, configuration in plugins_iterator:iterate(phase, ctx) do
     if ctx then
+      if plugin.handler._go then
+        ctx.ran_go_plugin = true
+      end
+
       kong_global.set_named_ctx(kong, "plugin", plugin.handler)
     end
 
     kong_global.set_namespaced_log(kong, plugin.name)
     plugin.handler[phase](plugin.handler, configuration)
     kong_global.reset_log(kong)
-
-    if plugin.handler._go then
-      ctx.ran_go_plugin = true
-    end
   end
 end
 
