@@ -20,6 +20,21 @@ local reset_instances   -- forward declaration
 local preloaded_stuff = {}
 
 
+-- add MessagePack empty array/map
+
+msgpack.packers['function'] = function (buffer, f)
+  f(buffer)
+end
+
+local function mp_empty_array(buffer)
+  msgpack.packers['array'](buffer, {}, 0)
+end
+
+local function mp_empty_map(buffer)
+  msgpack.packers['map'](buffer, {}, 0)
+end
+
+
 --- is_on(): returns true if Go plugins is enabled
 function go.is_on()
   return kong.configuration.go_plugins_dir ~= "off"
@@ -167,8 +182,36 @@ do
 end
 
 
+local function fix_mmap(t)
+  local o, empty = {}, true
+
+  for k, v in pairs(t) do
+    empty = false
+    if v == true then
+      o[k] = mp_empty_array
+
+    elseif type(v) == "string" then
+      o[k] = { v }
+
+    else
+      o[k] = v
+    end
+  end
+
+  if empty then
+    return mp_empty_map
+  end
+
+  return o
+end
+
+
 -- global method search and cache
 local function index_table(table, field)
+  if table[field] then
+    return table[field]
+  end
+
   local res = table
   for segment, e in ngx.re.gmatch(field, "\\w+", "o") do
     if res[segment[0]] then
@@ -185,6 +228,37 @@ local get_field
 do
   local exposed_api = {
     kong = kong,
+    ["kong.log.serialize"] = function()
+      return cjson_encode(preloaded_stuff.basic_serializer or basic_serializer.serialize(ngx))
+    end,
+
+    ["kong.nginx.get_var"] = function(v)
+      return ngx.var[v]
+    end,
+
+    ["kong.nginx.get_tls1_version_str"] = ngx_ssl.get_tls1_version_str,
+
+    ["kong.nginx.get_ctx"] = function(v)
+      return ngx.ctx[v]
+    end,
+
+    ["kong.nginx.req_start_time"] = ngx.req.start_time,
+
+    ["kong.request.get_query"] = function(max)
+      return fix_mmap(kong.request.get_query(max))
+    end,
+
+    ["kong.request.get_headers"] = function(max)
+      return fix_mmap(kong.request.get_headers(max))
+    end,
+
+    ["kong.response.get_headers"] = function(max)
+      return fix_mmap(kong.response.get_headers(max))
+    end,
+
+    ["kong.service.response.get_headers"] = function(max)
+      return fix_mmap(kong.service.response.get_headers(max))
+    end,
   }
 
   local method_cache = {}
@@ -202,40 +276,17 @@ end
 
 
 local function call_pdk_method(cmd, args)
-  local res, err
-
-  if cmd == "kong.log.serialize" then
-    res = cjson_encode(preloaded_stuff.basic_serializer or basic_serializer.serialize(ngx))
-
-  -- ngx API
-  elseif cmd == "kong.nginx.get_var" then
-    res = ngx.var[args[1]]
-
-  elseif cmd == "kong.nginx.get_tls1_version_str" then
-    res = ngx_ssl.get_tls1_version_str()
-
-  elseif cmd == "kong.nginx.get_ctx" then
-    res = ngx.ctx[args[1]]
-
-  elseif cmd == "kong.nginx.req_start_time" then
-    res = ngx.req.start_time()
-
-  -- PDK
-  else
-    local method = get_field(cmd)
-    if not method then
-      kong.log.err("could not find pdk method: ", cmd)
-      return
-    end
-
-    if type(args) == "table" then
-      res, err = method(unpack(args))
-    else
-      res, err = method(args)
-    end
+  local method = get_field(cmd)
+  if not method then
+    kong.log.err("could not find pdk method: ", cmd)
+    return
   end
 
-  return res, err
+  if type(args) == "table" then
+    return method(unpack(args))
+  end
+
+  return method(args)
 end
 
 
@@ -250,6 +301,10 @@ do
     ["kong.node.get_memory_stats"] = "plugin.StepMemoryStats",
     ["kong.router.get_route"] = "plugin.StepRoute",
     ["kong.router.get_service"] = "plugin.StepService",
+    ["kong.request.get_query"] = "plugin.StepMultiMap",
+    ["kong.request.get_headers"] = "plugin.StepMultiMap",
+    ["kong.response.get_headers"] = "plugin.StepMultiMap",
+    ["kong.service.response.get_headers"] = "plugin.StepMultiMap",
   }
 
   function get_step_method(step_in, pdk_res, pdk_err)

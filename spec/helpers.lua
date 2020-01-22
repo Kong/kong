@@ -6,7 +6,7 @@
 -- @module spec.helpers
 
 local BIN_PATH = "bin/kong"
-local TEST_CONF_PATH = "spec/kong_tests.conf"
+local TEST_CONF_PATH = os.getenv("KONG_SPEC_TEST_CONF_PATH") or "spec/kong_tests.conf"
 local CUSTOM_PLUGIN_PATH = "./spec/fixtures/custom_plugins/?.lua"
 local GO_PLUGIN_PATH = "./spec/fixtures/go"
 local MOCK_UPSTREAM_PROTOCOL = "http"
@@ -1713,8 +1713,8 @@ local function build_go_plugins(path)
     local plugin_name = pl_path.basename(plugin_path):match("(.+).go")
 
     local ok, _, _, stderr = pl_utils.executeex(
-      string.format("go build -buildmode plugin -o %s %s",
-      path .. "/" .. plugin_name .. ".so", plugin_path)
+      string.format("cd %s; go build -buildmode plugin -o %s %s",
+      path, plugin_name .. ".so", plugin_name .. ".go")
     )
     assert(ok, stderr)
   end

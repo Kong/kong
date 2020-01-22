@@ -1,9 +1,6 @@
 dist: xenial
 
-language: generic
-
-jdk:
-  - oraclejdk8
+language: go
 
 go:
   - "1.13.x"
@@ -60,7 +57,6 @@ cache:
 stages:
   - lint and unit
   - test
-  - Release
 
 jobs:
   include:
@@ -71,79 +67,6 @@ jobs:
       - bin/busted -v -o gtest spec/01-unit
       env:
         - KONG_DATABASE=none
-    - stage: release
-      install: skip
-      script:
-      - make setup-kong-build-tools
-      - pushd ../kong-build-tools && make setup-ci && popd
-      - make release
-      env: PACKAGE_TYPE=src RESTY_IMAGE_BASE=src KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-      if: tag IS present AND tag ~= 1.
-    - script:
-      - make setup-kong-build-tools
-      - pushd ../kong-build-tools && make setup-ci && popd
-      - make release
-      env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=xenial KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-      if: tag IS present AND tag ~= 1.
-    - script:
-      - make setup-kong-build-tools
-      - pushd ../kong-build-tools && make setup-ci && popd
-      - make release
-      env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=bionic KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-      if: tag IS present AND tag ~= 1.
-    - script:
-      - make setup-kong-build-tools
-      - pushd ../kong-build-tools && make setup-ci && popd
-      - make release
-      env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=stretch KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-      if: tag IS present AND tag ~= 1.
-    - script:
-      - make setup-kong-build-tools
-      - pushd ../kong-build-tools && make setup-ci && popd
-      - make release
-      env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=jessie KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-      if: tag IS present AND tag ~= 1.
-    - script:
-      - make setup-kong-build-tools
-      - pushd ../kong-build-tools && make setup-ci && popd
-      - make release
-      env: PACKAGE_TYPE=deb RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=buster KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-      if: tag IS present AND tag ~= 1.
-    - script:
-      - make setup-kong-build-tools
-      - pushd ../kong-build-tools && make setup-ci && popd
-      - make release
-      env: PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=centos RESTY_IMAGE_TAG=6 KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-      if: tag IS present AND tag ~= 1.
-    - script:
-      - make setup-kong-build-tools
-      - pushd ../kong-build-tools && make setup-ci && popd
-      - make release
-      env: PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=centos RESTY_IMAGE_TAG=7 KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-      if: tag IS present AND tag ~= 1.
-    - script:
-      - make setup-kong-build-tools
-      - pushd ../kong-build-tools && make setup-ci && popd
-      - make release
-      env: PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=1 KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-      if: tag IS present AND tag ~= 1.
-    - script:
-      - make setup-kong-build-tools
-      - pushd ../kong-build-tools && make setup-ci && popd
-      - make release
-      env: PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=6 KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-      if: tag IS present AND tag ~= 1.
-    - script:
-      - make setup-kong-build-tools
-      - pushd ../kong-build-tools && make setup-ci && popd
-      - make release
-      env: PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=7 KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-      if: tag IS present AND tag ~= 1.
-    - script:
-      - make setup-kong-build-tools
-      - pushd ../kong-build-tools && make setup-ci && popd
-      - make release
-      env: PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=1 KONG_PACKAGE_NAME=${PWD##*/} KONG_VERSION=${TRAVIS_TAG}
-      if: tag IS present AND tag ~= 1.
+
 script:
   - .ci/run_tests.sh
