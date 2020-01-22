@@ -84,14 +84,6 @@ for _, strategy in helpers.each_strategy() do
   end)
 
   describe(string.format("blueprints for #%s", strategy), function()
-    pending("inserts apis", function()
-      -- TODO: remove this test when APIs are removed
-      local a = bp.apis:insert({ hosts = { "localhost" } })
-      assert.matches(UUID_PATTERN, a.id)
-      assert.equal("number", type(a.created_at))
-      assert.equal(helpers.mock_upstream_url, a.upstream_url)
-    end)
-
     it("inserts oauth2 plugins", function()
       local s = bp.services:insert()
       local p = bp.oauth2_plugins:insert({ service = { id = s.id } })

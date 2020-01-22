@@ -18,7 +18,6 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy, {
-        "apis",
         "routes",
         "services",
         "plugins",
