@@ -27,7 +27,7 @@
 -- running node.
 --
 -- @field kong.version
--- @usage print(kong.version) -- "0.14.0"
+-- @usage print(kong.version) -- "2.0.0"
 
 
 ---
