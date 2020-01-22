@@ -5,6 +5,9 @@ language: generic
 jdk:
   - oraclejdk8
 
+go:
+  - "1.13.x"
+
 notifications:
   email: false
   slack:

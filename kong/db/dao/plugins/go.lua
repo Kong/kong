@@ -1,11 +1,10 @@
-local ffi = require("ffi")
 local cjson = require("cjson.safe")
 local ngx_ssl = require("ngx.ssl")
 local basic_serializer = require "kong.plugins.log-serializers.basic"
 local msgpack = require "MessagePack"
+local reports = require "kong.reports"
 
 
-local C = ffi.C
 local kong = kong
 local ngx = ngx
 local ngx_timer_at = ngx.timer.at
@@ -36,136 +35,66 @@ do
   end
 end
 
-
--- Workaround: if cosockets aren't available, use raw glibc calls
-local get_connection
 do
-  pcall(ffi.cdef, [[
-    static int const AF_UNIX = 1;
-    static int const SOCK_STREAM = 1;
+  local function get_pluginserver_go_version()
+    local cmd = string.format("%s -version", kong.configuration.go_pluginserver_exe)
+    local fd = assert(io.popen(cmd))
+    local out = fd:read("*a")
+    fd:close()
 
-    struct sockaddr_un {
-      uint16_t  sun_family;               /* AF_UNIX */
-      char      sun_path[108];            /* pathname */
-    };
-
-    typedef struct ffi_sock {
-      int fd;
-    } ffi_sock;
-
-    int socket(int domain, int type, int protocol);
-    int connect(int sockfd, const void *addr, uint32_t addrlen);
-    ssize_t write(int fd, const void *buf, size_t count);
-    ssize_t read(int fd, void *buf, size_t count);
-    int close(int fd);
-  ]])
-
-  local ffi_sock = ffi.typeof("ffi_sock")
-
-  local function un_addr(path)
-    local conaddr = ffi.new('struct sockaddr_un')
-    if conaddr == nil then
-      return nil, "can't allocate sockaddr_un"
-    end
-
-    conaddr.sun_family = C.AF_UNIX
-
-    local len = #path + 1
-    if len > 107 then
-      len = 107
-    end
-    ffi.copy(conaddr.sun_path, path, len)
-    return conaddr
+    return out:match("Runtime Version: go(.+)\n$")
   end
 
-  pcall(ffi.metatype, ffi_sock, {
-    __new = function (ct, path)
-      local fd = C.socket(C.AF_UNIX, C.SOCK_STREAM, 0)
-      if fd < 0 then
-        return nil, "can't create socket"
-      end
+  local pluginserver_proc
 
-      local conaddr = un_addr(path)
-      local res = C.connect(fd, conaddr, ffi.sizeof(conaddr))
-      if res < 0 then
-        C.close(fd)
-        local errno = ffi.errno()
-        return nil, "connect failure: " .. ffi.string(C.strerror(errno))
-      end
+  function go.manage_pluginserver()
+    assert(not pluginserver_proc, "Don't call go.manage_pluginserver() more than once.")
 
-      return ffi.new(ct, fd)
-    end,
+    reports.add_immutable_value("go_version", get_pluginserver_go_version())
 
-    __index = {
-      send = function (self, s)
-        local p = ffi.cast('const uint8_t *', s)
-        local sent_bytes = 0
-        while sent_bytes < #s do
-          local rc = C.write(self.fd, p+sent_bytes, #s-sent_bytes)
-          if rc < 0 then
-            local errno = ffi.errno()
-            return nil, "error writing to socket: " .. ffi.string(C.strerror(errno))
-          end
-          sent_bytes = sent_bytes + rc
-        end
-        return sent_bytes
-      end,
-
-      receiveany = function (self, n)
-        local buf = ffi.new('uint8_t[?]', n)
-        if buf == nil then
-          return nil, "can't allocate buffer."
-        end
-
-        local rc = C.read(self.fd, buf, n)
-        if rc < 0 then
-          return nil, "error reading"
-        end
-        return ffi.string(buf, rc)
-      end,
-
-      setkeepalive = function (self)
-        if self.fd ~= -1 then
-          C.close(self.fd)
-          self.fd = -1
-        end
-      end,
-    },
-
-    __gc = function (self)
-      self:setkeepalive()
-    end,
-  })
-
-  local too_early = {
-    init = true,
-    init_worker = true,
-    set = true,
-    header_filter = true,
-    body_filter = true,
---     log = true,
-  }
-
-  function get_connection()
-    if too_early[ngx.get_phase()] then
-      return ffi_sock(go.socket_path())
+    if ngx.worker.id() ~= 0 then
+      -- only one manager
+      pluginserver_proc = true
+      return
     end
 
-    return ngx.socket.connect("unix:" .. go.socket_path())
+    ngx_timer_at(0, function(premature)
+      if premature then
+        return
+      end
+
+      local ngx_pipe = require "ngx.pipe"
+
+      while not ngx.worker.exiting() do
+        kong.log.notice("Starting go-pluginserver")
+        pluginserver_proc = assert(ngx_pipe.spawn({
+          kong.configuration.go_pluginserver_exe,
+          "-kong-prefix", kong.configuration.prefix,
+          "-plugins-directory", kong.configuration.go_plugins_dir,
+        }))
+        pluginserver_proc:set_timeouts(nil, nil, nil, 0)     -- block until something actually happens
+
+        while true do
+          local ok, reason, status = pluginserver_proc:wait()
+          if ok ~= nil or reason == "exited" then
+            kong.log.notice("go-pluginserver terminated: ", tostring(reason), " ", tostring(status))
+            break
+          end
+        end
+      end
+      kong.log.notice("Exiting: go-pluginserver not respawned.")
+    end)
+
   end
 end
-go.get_connection = get_connection
 
 
 -- This is the MessagePack-RPC implementation
 local rpc_call
-local set_plugin_dir
 do
   local msg_id = 0
 
   local notifications = {}
-
-  local current_plugin_dir
 
   do
     local pluginserver_pid
@@ -173,25 +102,35 @@ do
       n = tonumber(n)
       if pluginserver_pid and n ~= pluginserver_pid then
         reset_instances()
-        current_plugin_dir = nil
       end
 
       pluginserver_pid = n
     end
   end
 
+  -- This function makes a RPC call to the Go plugin server. The Go plugin
+  -- server communication is request driven from the Kong side. Kong first
+  -- sends the RPC request, then it executes any PDK calls from Go code
+  -- in the while loop below. The boundary of a RPC call is reached once
+  -- the RPC response (type 1) message is seen. After that the connection
+  -- is kept alive waiting for the next RPC call to be initiated by Kong.
   function rpc_call(method, ...)
     msg_id = msg_id + 1
     local my_msg_id = msg_id
 
-    local c = assert(get_connection())
+    local c, err = ngx.socket.connect("unix:" .. go.socket_path())
+    if not c then
+      kong.log.err("trying to connect: ", err)
+      return nil, err
+    end
+
     local bytes, err = c:send(mp_pack({0, my_msg_id, method, {...}}))
     if not bytes then
       c:setkeepalive()
       return nil, err
     end
 
-    local reader = mp_unpacker(function ()
+    local reader = mp_unpacker(function()
       return c:receiveany(4096)
     end)
 
@@ -208,33 +147,22 @@ do
         if f then
           f(data[3])
         end
-      end
 
-      if data[1] == 1 and data[2] == my_msg_id then
+      else
+        assert(data[1] == 1, "RPC response expected from Go plugin server")
+        assert(data[2] == my_msg_id,
+               "unexpected RPC response ID from Go plugin server")
+
         -- it's our answer
+        c:setkeepalive()
+
         if data[3] ~= nil then
-          c:setkeepalive()
           return nil, data[3]
         end
 
-        c:setkeepalive()
         return data[4]
       end
     end
-  end
-
-  function set_plugin_dir(dir)
-    if dir == current_plugin_dir then
-      return
-    end
-
-    local res, err = rpc_call("plugin.SetPluginDir", dir)
-    if not res then
-      kong.log.err("Setting Go plugin dir: ", err)
-      error(err)
-    end
-
-    current_plugin_dir = dir
   end
 end
 
@@ -329,7 +257,7 @@ do
       return "plugin.StepError", pdk_err
     end
 
-    return ((pdk_res and pdk_res._method)
+    return ((type(pdk_res) == "table" and pdk_res._method)
         or by_pdk_method[step_in.Data.Method]
         or "plugin.Step"), pdk_res
   end
@@ -414,7 +342,6 @@ do
       instance_info.id = nil
     end
 
-    set_plugin_dir(kong.configuration.go_plugins_dir)
     local status, err = rpc_call("plugin.StartInstance", {
       Name = plugin_name,
       Config = cjson_encode(conf)
@@ -444,18 +371,25 @@ end
 local get_plugin do
   local loaded_plugins = {}
 
+  local function get_plugin_info(name)
+    local cmd = string.format(
+        "%s -plugins-directory %q -dump-plugin-info %q",
+        kong.configuration.go_pluginserver_exe, kong.configuration.go_plugins_dir, name)
+
+    local fd = assert(io.popen(cmd))
+    local d = fd:read("*a")
+    fd:close()
+
+    return assert(msgpack.unpack(d))
+  end
+
   function get_plugin(plugin_name)
     local plugin = loaded_plugins[plugin_name]
     if plugin and plugin.PRIORITY then
       return plugin
     end
 
-    set_plugin_dir(kong.configuration.go_plugins_dir)
-    local plugin_info, err = rpc_call("plugin.GetPluginInfo", plugin_name)
-    if not plugin_info then
-      kong.log.err("calling GetPluginInfo: ", err)
-      return nil, err
-    end
+    local plugin_info = get_plugin_info(plugin_name)
 
     plugin = {
       PRIORITY = plugin_info.Priority,
@@ -465,9 +399,9 @@ local get_plugin do
 
     for _, phase in ipairs(plugin_info.Phases) do
       if phase == "log" then
-        plugin[phase] = function (self, conf)
+        plugin[phase] = function(self, conf)
           preloaded_stuff.basic_serializer = basic_serializer.serialize(ngx)
-          ngx_timer_at(0, function ()
+          ngx_timer_at(0, function()
             local instance_id = get_instance(plugin_name, conf)
             bridge_loop(instance_id, phase)
             preloaded_stuff.basic_serializer = nil
@@ -475,7 +409,7 @@ local get_plugin do
         end
 
       else
-        plugin[phase] = function (self, conf)
+        plugin[phase] = function(self, conf)
           local instance_id = get_instance(plugin_name, conf)
           bridge_loop(instance_id, phase)
         end

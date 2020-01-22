@@ -190,6 +190,10 @@ local function execute_plugins_iterator(plugins_iterator, phase, ctx)
     kong_global.set_namespaced_log(kong, plugin.name)
     plugin.handler[phase](plugin.handler, configuration)
     kong_global.reset_log(kong)
+
+    if plugin.handler._go then
+      ctx.ran_go_plugin = true
+    end
   end
 end
 
@@ -280,7 +284,7 @@ local function load_declarative_config(kong_config, entities)
     kong.log.notice("declarative config loaded from ",
                     kong_config.declarative_config)
 
-    ok, err = runloop.build_plugins_iterator(utils.uuid())
+    ok, err = runloop.build_plugins_iterator("init")
     if not ok then
       error("error building initial plugins iterator: " .. err)
     end
@@ -415,15 +419,6 @@ function Kong.init()
     certificate.init()
   end
 
-  if go.is_on() then
-    local conn, err = go.get_connection()
-    if not conn then
-      kong.log.err("failure connecting to go plugin server socket: ", err)
-    else
-      conn:setkeepalive()
-    end
-  end
-
   clustering.init(config)
 
   -- Load plugins as late as possible so that everything is set up
@@ -551,6 +546,10 @@ function Kong.init_worker()
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_plugins_iterator(plugins_iterator, "init_worker")
 
+  if go.is_on() then
+    go.manage_pluginserver()
+  end
+
   clustering.init_worker(kong.configuration)
 end
 
@@ -673,6 +672,10 @@ function Kong.access()
 
   local plugins_iterator = runloop.get_plugins_iterator()
   for plugin, plugin_conf in plugins_iterator:iterate("access", ctx) do
+    if plugin.handler._go then
+      ctx.ran_go_plugin = true
+    end
+
     if not ctx.delayed_response then
       kong_global.set_named_ctx(kong, "plugin", plugin_conf)
       kong_global.set_namespaced_log(kong, plugin.name)

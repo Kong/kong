@@ -82,6 +82,7 @@ describe("reports", function()
       package.loaded["kong.reports"] = nil
       reports = require "kong.reports"
       reports.toggle(true)
+      reports._create_counter()
     end)
 
     describe("sends 'database'", function()
@@ -122,6 +123,50 @@ describe("reports", function()
 
         local _, res = assert(thread:join())
         assert.matches("database=off", res, nil, true)
+      end)
+    end)
+
+    describe("sends 'role'", function()
+      it("traditional", function()
+        local conf = assert(conf_loader(nil))
+        reports.configure_ping(conf)
+
+        local thread = helpers.tcp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert._matches("role=traditional", res, nil, true)
+      end)
+
+      it("control_plane", function()
+        local conf = assert(conf_loader(nil, {
+          role = "control_plane",
+          cluster_cert = "spec/fixtures/kong_spec.crt",
+          cluster_cert_key = "spec/fixtures/kong_spec.key",
+        }))
+        reports.configure_ping(conf)
+
+        local thread = helpers.tcp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert.matches("role=control_plane", res, nil, true)
+      end)
+
+      it("data_plane", function()
+        local conf = assert(conf_loader(nil, {
+          role = "data_plane",
+          database = "off",
+          cluster_cert = "spec/fixtures/kong_spec.crt",
+          cluster_cert_key = "spec/fixtures/kong_spec.key",
+        }))
+        reports.configure_ping(conf)
+
+        local thread = helpers.tcp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert.matches("role=data_plane", res, nil, true)
       end)
     end)
 
@@ -237,6 +282,7 @@ describe("reports", function()
       package.loaded["kong.reports"] = nil
       reports = require "kong.reports"
       reports.toggle(true)
+      reports._create_counter()
     end)
 
     it("does not query Redis if not enabled", function()

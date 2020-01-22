@@ -618,6 +618,11 @@ do
   end
 
 
+  local function get_router_version()
+    return kong.core_cache:get("router:version", TTL_ZERO, utils.uuid)
+  end
+
+
   build_router = function(version)
     local db = kong.db
     local routes, i = {}, 0
@@ -635,9 +640,22 @@ do
       end
     end
 
+    local counter = 0
+    local page_size = db.routes.pagination.page_size
     for route, err in db.routes:each() do
       if err then
         return nil, "could not load routes: " .. err
+      end
+
+      if kong.core_cache and counter > 0 and counter % page_size == 0 then
+        local new_version, err = get_router_version()
+        if err then
+          return nil, "failed to retrieve router version: " .. err
+        end
+
+        if new_version ~= version then
+          return nil, "router was changed while rebuilding it"
+        end
       end
 
       if should_process_route(route) then
@@ -654,6 +672,8 @@ do
         i = i + 1
         routes[i] = r
       end
+
+      counter = counter + 1
     end
 
     local new_router, err = Router.new(routes)
@@ -679,7 +699,7 @@ do
     -- we might not need to rebuild the router (if we were not
     -- the first request in this process to enter this code path)
     -- check again and rebuild only if necessary
-    local version, err = kong.core_cache:get("router:version", TTL_ZERO, utils.uuid)
+    local version, err = get_router_version()
     if err then
       return nil, "failed to retrieve router version: " .. err
     end
@@ -744,6 +764,7 @@ end
 local balancer_prepare
 do
   local get_certificate = certificate.get_certificate
+  local subsystem = ngx.config.subsystem
 
   function balancer_prepare(ctx, scheme, host_type, host, port,
                             service, route)
@@ -791,6 +812,13 @@ do
           log(ERR, "unable to apply upstream client TLS certificate ",
                    client_certificate.id, ": ", err)
         end
+      end
+    end
+
+    if subsystem == "stream" and scheme == "tcp" then
+      local res, err = kong.service.request.disable_tls()
+      if not res then
+        log(ERR, "unable to disable upstream TLS handshake: ", err)
       end
     end
   end
@@ -934,7 +962,7 @@ return {
     before = function(ctx)
       local router = get_updated_router()
 
-      local match_t = router.exec()
+      local match_t = router.exec(ctx)
       if not match_t then
         log(ERR, "no Route found with those values")
         return exit(500)
@@ -959,8 +987,8 @@ return {
     end
   },
   certificate = {
-    before = function(_)
-      certificate.execute()
+    before = function(ctx)
+      certificate.execute(ctx)
     end
   },
   rewrite = {
@@ -1284,7 +1312,7 @@ return {
       update_lua_mem()
 
       if kong.configuration.anonymous_reports then
-        reports.log()
+        reports.log(ctx)
       end
 
       if not ctx.KONG_PROXIED then

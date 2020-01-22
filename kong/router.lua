@@ -1165,7 +1165,16 @@ function _M.new(routes)
         return nil, err
       end
 
-      marshalled_routes[i] = route_t
+      if route_t.route.paths ~= nil and #route_t.route.paths > 1 then
+        -- split routes by paths to sort properly
+        for j = 1, #route_t.route.paths do
+          local index = #marshalled_routes + 1
+          marshalled_routes[index] = route_t
+          marshalled_routes[index].route.paths = { route_t.route.paths[j] }
+        end
+      else
+        marshalled_routes[#marshalled_routes + 1] = route_t
+      end
     end
 
     -- sort wildcard hosts and uri regexes since those rules
@@ -1328,20 +1337,6 @@ function _M.new(routes)
     ctx.dst_port       = dst_port or ""
     ctx.sni            = sni or ""
 
-    -- cache lookup (except for headers-matched Routes)
-
-    local cache_key = req_method .. "|" .. req_uri .. "|" .. req_host ..
-                      "|" .. ctx.src_ip .. "|" .. ctx.src_port ..
-                      "|" .. ctx.dst_ip .. "|" .. ctx.dst_port ..
-                      "|" .. ctx.sni
-
-    do
-      local match_t = cache:get(cache_key)
-      if match_t then
-        return match_t
-      end
-    end
-
     -- input sanitization for matchers
 
     -- hosts
@@ -1369,6 +1364,31 @@ function _M.new(routes)
     --
     -- determine which category this request *might* be targeting
 
+    -- header match
+
+    for _, header_name in ipairs(plain_indexes.headers) do
+      if req_headers[header_name] then
+        req_category = bor(req_category, MATCH_RULES.HEADER)
+        hits.header_name = header_name
+        break
+      end
+    end
+
+    -- cache lookup (except for headers-matched Routes)
+    -- if trigger headers match rule, ignore routes cache
+
+    local cache_key = req_method .. "|" .. req_uri .. "|" .. req_host ..
+                      "|" .. ctx.src_ip .. "|" .. ctx.src_port ..
+                      "|" .. ctx.dst_ip .. "|" .. ctx.dst_port ..
+                      "|" .. ctx.sni
+
+    do
+      local match_t = cache:get(cache_key)
+      if match_t and hits.header_name == nil then
+        return match_t
+      end
+    end
+
     -- host match
 
     if plain_indexes.hosts[host_with_port]
@@ -1393,41 +1413,34 @@ function _M.new(routes)
       end
     end
 
-    -- header match
+    -- uri match
 
-    for _, header_name in ipairs(plain_indexes.headers) do
-      if req_headers[header_name] then
-        req_category = bor(req_category, MATCH_RULES.HEADER)
-        hits.header_name = header_name
+    for i = 1, #regex_uris do
+      local from, _, err = re_find(req_uri, regex_uris[i].regex, "ajo")
+      if err then
+        log(ERR, "could not evaluate URI regex: ", err)
+        return
+      end
+
+      if from then
+        hits.uri     = regex_uris[i].value
+        req_category = bor(req_category, MATCH_RULES.URI)
         break
       end
     end
 
-    -- uri match
+    if not hits.uri then
+      if plain_indexes.uris[req_uri] then
+        hits.uri     = req_uri
+        req_category = bor(req_category, MATCH_RULES.URI)
 
-    if plain_indexes.uris[req_uri] then
-      req_category = bor(req_category, MATCH_RULES.URI)
-
-    else
-      for i = 1, #prefix_uris do
-        if find(req_uri, prefix_uris[i].value, nil, true) == 1 then
-          hits.uri     = prefix_uris[i].value
-          req_category = bor(req_category, MATCH_RULES.URI)
-          break
-        end
-      end
-
-      for i = 1, #regex_uris do
-        local from, _, err = re_find(req_uri, regex_uris[i].regex, "ajo")
-        if err then
-          log(ERR, "could not evaluate URI regex: ", err)
-          return
-        end
-
-        if from then
-          hits.uri     = regex_uris[i].value
-          req_category = bor(req_category, MATCH_RULES.URI)
-          break
+      else
+        for i = 1, #prefix_uris do
+          if find(req_uri, prefix_uris[i].value, nil, true) == 1 then
+            hits.uri     = prefix_uris[i].value
+            req_category = bor(req_category, MATCH_RULES.URI)
+            break
+          end
         end
       end
     end
@@ -1715,14 +1728,14 @@ function _M.new(routes)
     end
 
   else -- stream
-    function self.exec()
+    function self.exec(ctx)
       local src_ip = var.remote_addr
       local src_port = tonumber(var.remote_port, 10)
       local dst_ip = var.server_addr
       local dst_port = tonumber(var.server_port, 10)
-      local sni = var.ssl_preread_server_name
+      local sni = ctx.sni_server_name
 
-      return find_route(nil, nil, nil, "tcp",
+      return find_route(nil, nil, nil, nil,
                         src_ip, src_port,
                         dst_ip, dst_port,
                         sni)

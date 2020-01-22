@@ -115,6 +115,10 @@
                                  # cache (i.e. when the configured
                                  # `mem_cache_size`) is full.
 
+#go_pluginserver_exe = /usr/local/bin/go-pluginserver
+                                 # Path for the go-pluginserver executable,
+                                 # used for running Kong plugins written in Go.
+
 #go_plugins_dir = off            # Directory for installing Kong plugins
                                  # written in Go.
                                  #
@@ -179,7 +183,7 @@
 # NGINX
 #------------------------------------------------------------------------------
 
-#proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 ssl reuseport backlog=16384
+#proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
                          # Comma-separated list of addresses and ports on
                          # which the proxy server should listen for
                          # HTTP/HTTPS traffic.
@@ -284,7 +288,7 @@
 # See http://nginx.org/en/docs/stream/ngx_stream_core_module.html#listen
 # for a description of the formats that Kong might accept in stream_listen.
 
-#admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 ssl reuseport backlog=16384
+#admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 http2 ssl reuseport backlog=16384
                          # Comma-separated list of addresses and ports on
                          # which the Admin interface should listen.
                          # The Admin interface is the API allowing you to
@@ -337,6 +341,12 @@
                          # healthiness, and other non-sensitive information
                          # of the current Kong node.
                          #
+                         # The following suffix can be specified for each pair:
+                         #
+                         # - `ssl` will require that all connections made
+                         #   through a particular address/port be made with TLS
+                         #   enabled.
+                         #
                          # This value can be set to `off`, disabling
                          # the Status API for this node.
                          #
@@ -384,6 +394,39 @@
                                  # This value is ignored if `ssl_cipher_suite`
                                  # is not `custom`.
 
+#ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
+                                 # Enables the specified protocols for
+                                 # client-side connections. The set of
+                                 # supported protocol versions also depends
+                                 # on the version of OpenSSL Kong was built
+                                 # with. This value is ignored if
+                                 # `ssl_cipher_suite` is not `custom`.
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_protocols
+
+#ssl_prefer_server_ciphers = on  # Specifies that server ciphers should be
+                                 # preferred over client ciphers when using
+                                 # the SSLv3 and TLS protocols. This value is
+                                 # ignored if `ssl_cipher_suite` is not `custom`.
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_prefer_server_ciphers
+
+#ssl_session_tickets = on        # Enables or disables session resumption through
+                                 # TLS session tickets. This is has no impact when
+                                 # used with TLSv1.3.
+                                 #
+                                 # Kong enables this by default for performance
+                                 # reasons, but it has security implications:
+                                 # https://github.com/mozilla/server-side-tls/issues/135
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_tickets
+
+#ssl_session_timeout = 1d        # Specifies a time during which a client may
+                                 # reuse the session parameters. See the rationale:
+                                 # https://github.com/mozilla/server-side-tls/issues/198
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_timeout
+
 #ssl_cert =                      # The absolute path to the SSL certificate for
                                  # `proxy_listen` values with SSL enabled.
 
@@ -412,6 +455,12 @@
 
 #admin_ssl_cert_key =            # The absolute path to the SSL key for
                                  # `admin_listen` values with SSL enabled.
+
+#status_ssl_cert =               # The absolute path to the SSL certificate for
+                                 # `status_listen` values with SSL enabled.
+
+#status_ssl_cert_key =           # The absolute path to the SSL key for
+                                 # `status_listen` values with SSL enabled.
 
 #headers = server_tokens, latency_tokens
                                  # Comma-separated list of headers Kong should
@@ -563,17 +612,25 @@
 #
 # The following namespaces are supported:
 #
+# - `nginx_main_<directive>`: Injects `<directive>` in Kong's configuration
+#   `main` context.
+# - `nginx_events_<directive>`: Injects `<directive>` in Kong's `events {}`
+#    block.
 # - `nginx_http_<directive>`: Injects `<directive>` in Kong's `http {}` block.
 # - `nginx_proxy_<directive>`: Injects `<directive>` in Kong's proxy
 #   `server {}` block.
-# - `nginx_http_upstream_<directive>`: Injects `<directive>` in Kong's proxy
+# - `nginx_upstream_<directive>`: Injects `<directive>` in Kong's proxy
 #   `upstream {}` block.
 # - `nginx_admin_<directive>`: Injects `<directive>` in Kong's Admin API
 #   `server {}` block.
+# - `nginx_status_<directive>`: Injects `<directive>` in Kong's Status API
+#   `server {}` block  (only effective if `status_listen` is enabled).
 # - `nginx_stream_<directive>`: Injects `<directive>` in Kong's stream module
 #   `stream {}` block (only effective if `stream_listen` is enabled).
 # - `nginx_sproxy_<directive>`: Injects `<directive>` in Kong's stream module
 #   `server {}` block (only effective if `stream_listen` is enabled).
+# - `nginx_supstream_<directive>`: Injects `<directive>` in Kong's stream
+#   module `upstream {}` block.
 #
 # As with other configuration properties, Nginx directives can be injected via
 # environment variables when capitalized and prefixed with `KONG_`.
@@ -589,48 +646,7 @@
 #   `nginx_admin_ssl_protocols`, both of which taking precedence over the
 #   `http {}` block.
 
-#nginx_http_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
-                                 # Enables the specified protocols for
-                                 # client-side connections. The set of
-                                 # supported protocol versions also depends
-                                 # on the version of OpenSSL Kong was built
-                                 # with.
-                                 #
-                                 # This value is ignored if `ssl_cipher_suite`
-                                 # is not `custom`.
-                                 #
-                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_protocols
-
-#nginx_http_ssl_prefer_server_ciphers = on
-                                 # Specifies that server ciphers should be
-                                 # preferred over client ciphers when using
-                                 # the SSLv3 and TLS protocols
-                                 #
-                                 # This value is ignored if `ssl_cipher_suite`
-                                 # is not `custom`.
-                                 #
-                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_prefer_server_ciphers
-
-#nginx_http_ssl_session_tickets = on
-                                 # Enables or disables session resumption through
-                                 # TLS session tickets. This is has no impact when
-                                 # used with TLSv1.3.
-                                 #
-                                 # Kong enables this by default for performance
-                                 # reasons, but it has security implications:
-                                 # https://github.com/mozilla/server-side-tls/issues/135
-                                 #
-                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_tickets
-
-#nginx_http_ssl_session_timeout = 1d
-                                 # Specifies a time during which a client may
-                                 # reuse the session parameters. See the rationale:
-                                 # https://github.com/mozilla/server-side-tls/issues/198
-                                 #
-                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_timeout
-
-#nginx_http_upstream_keepalive = 60
-                                 # Sets the maximum number of idle keepalive
+#nginx_upstream_keepalive = 60   # Sets the maximum number of idle keepalive
                                  # connections to upstream servers that are
                                  # preserved in the cache of each worker
                                  # process. When this number is exceeded, the
@@ -640,14 +656,14 @@
                                  # to open a new connection.
                                  # See http://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive
 
-#nginx_http_upstream_keepalive_requests = 100
+#nginx_upstream_keepalive_requests = 100
                                  # Sets the maximum number of requests that can
                                  # be served through one keepalive connection.
                                  # After the maximum number of requests is
                                  # made, the connection is closed.
                                  # See http://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive_requests
 
-#nginx_http_upstream_keepalive_timeout = 60s
+#nginx_upstream_keepalive_timeout = 60s
                                  # Sets a timeout during which an idle
                                  # keepalive connection to an upstream server
                                  # will stay open.

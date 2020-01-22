@@ -186,9 +186,9 @@ function _M.handle_cp_websocket()
   end
 
   cert = assert(openssl_x509.new(cert, "PEM"))
-  local digest = cert:digest("sha256")
+  local digest = assert(cert:digest("sha256"))
 
-  if CERT_DIGEST and digest ~= CERT_DIGEST then
+  if digest ~= CERT_DIGEST then
     ngx_log(ngx_ERR, "Data Plane presented incorrect client certificate " ..
                      "during handshake, expected digest: " .. CERT_DIGEST ..
                      " got: " .. digest)

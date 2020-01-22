@@ -39,7 +39,7 @@ local ACLHandler = {}
 
 
 ACLHandler.PRIORITY = 950
-ACLHandler.VERSION = "2.1.0"
+ACLHandler.VERSION = "3.0.0"
 
 
 function ACLHandler:access(conf)
@@ -65,11 +65,14 @@ function ACLHandler:access(conf)
   if not consumer_id then
     local authenticated_groups = groups.get_authenticated_groups()
     if not authenticated_groups then
-      kong.log.err("Cannot identify the consumer, add an authentication ",
-                   "plugin to use the ACL plugin")
+      if kong.client.get_credential() then
+        return kong.response.exit(403, {
+          message = "You cannot consume this service"
+        })
+      end
 
-      return kong.response.exit(403, {
-        message = "You cannot consume this service"
+      return kong.response.exit(401, {
+        message = "Unauthorized"
       })
     end
 
@@ -77,8 +80,9 @@ function ACLHandler:access(conf)
     to_be_blocked = get_to_be_blocked(config, authenticated_groups, in_group)
 
   else
+    local credential = kong.client.get_credential()
     local authenticated_groups
-    if not kong.client.get_credential() then
+    if not credential then
       -- authenticated groups overrides anonymous groups
       authenticated_groups = groups.get_authenticated_groups()
     end
@@ -93,11 +97,28 @@ function ACLHandler:access(conf)
       -- get the consumer groups, since we need those as cache-keys to make sure
       -- we invalidate properly if they change
       local consumer_groups, err = groups.get_consumer_groups(consumer_id)
-      if not consumer_groups then
+      if err then
         kong.log.err(err)
         return kong.response.exit(500, {
           message = "An unexpected error occurred"
         })
+      end
+
+      if not consumer_groups then
+        if config.type == BLACK and credential then
+          consumer_groups = EMPTY
+
+        else
+          if credential then
+            return kong.response.exit(403, {
+              message = "You cannot consume this service"
+            })
+          end
+
+          return kong.response.exit(401, {
+            message = "Unauthorized"
+          })
+        end
       end
 
       -- 'to_be_blocked' is either 'true' if it's to be blocked, or the header
