@@ -1,6 +1,5 @@
 local opentracing_new_tracer = require "opentracing.tracer".new
 local extractor = require "kong.plugins.zipkin.extractor"
-local new_random_sampler = require "kong.plugins.zipkin.random_sampler".new
 local new_zipkin_reporter = require "kong.plugins.zipkin.reporter".new
 local to_hex = require "resty.string".to_hex
 
@@ -33,7 +32,13 @@ end
 
 
 local function new_tracer(conf)
-  local tracer = opentracing_new_tracer(new_zipkin_reporter(conf), new_random_sampler(conf))
+  local sampler = {
+    sample = function()
+      return math.random() < conf.sample_ratio
+    end
+  }
+
+  local tracer = opentracing_new_tracer(new_zipkin_reporter(conf), sampler)
 
   tracer:register_injector("http_headers", injector)
   tracer:register_extractor("http_headers", extractor)
