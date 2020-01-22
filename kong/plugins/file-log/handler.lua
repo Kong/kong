@@ -64,11 +64,10 @@ local function log(conf, message)
 end
 
 
-local FileLogHandler = {}
-
-
-FileLogHandler.PRIORITY = 9
-FileLogHandler.VERSION = "2.0.2"
+local FileLogHandler = {
+  PRIORITY = 9,
+  VERSION = "2.0.2",
+}
 
 
 function FileLogHandler:log(conf)
