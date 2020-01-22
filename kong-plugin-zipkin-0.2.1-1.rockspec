@@ -24,7 +24,6 @@ build = {
   modules = {
     ["kong.plugins.zipkin.codec"] = "kong/plugins/zipkin/codec.lua";
     ["kong.plugins.zipkin.handler"] = "kong/plugins/zipkin/handler.lua";
-    ["kong.plugins.zipkin.opentracing"] = "kong/plugins/zipkin/opentracing.lua";
     ["kong.plugins.zipkin.random_sampler"] = "kong/plugins/zipkin/random_sampler.lua";
     ["kong.plugins.zipkin.reporter"] = "kong/plugins/zipkin/reporter.lua";
     ["kong.plugins.zipkin.schema"] = "kong/plugins/zipkin/schema.lua";
