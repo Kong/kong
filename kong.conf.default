@@ -250,6 +250,9 @@
                          #
                          # This value accepts IPv4, IPv6, and hostnames.
                          # Some suffixes can be specified for each pair:
+                         # - `ssl` will require that all connections made
+                         #   through a particular address/port be made with TLS
+                         #   enabled.
                          # - `proxy_protocol` will enable usage of the
                          #   PROXY protocol for a given address/port.
                          # - `bind` instructs to make a separate bind() call
