@@ -9,7 +9,6 @@ for _, strategy in helpers.each_strategy() do
 
         lazy_setup(function()
           local bp = helpers.get_db_utils(strategy, {
-            "apis",
             "routes",
             "services",
             "plugins",
@@ -67,7 +66,6 @@ for _, strategy in helpers.each_strategy() do
 
         lazy_setup(function()
           local bp = helpers.get_db_utils(strategy, {
-            "apis",
             "routes",
             "services",
             "plugins",
@@ -125,7 +123,6 @@ for _, strategy in helpers.each_strategy() do
 
         lazy_setup(function()
           local bp = helpers.get_db_utils(strategy, {
-            "apis",
             "routes",
             "services",
             "plugins",
