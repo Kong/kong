@@ -68,6 +68,8 @@ for _, strategy in helpers.each_strategy() do
         "services",
         "routes",
         "plugins",
+        "certificates",
+        "snis",
       }, { "reports-api" }))
 
       local http_srv = assert(bp.services:insert {
