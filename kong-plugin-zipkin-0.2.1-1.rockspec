@@ -17,7 +17,6 @@ dependencies = {
   "lua-cjson";
   "lua-resty-http >= 0.11";
   "luatz";
-  "luaossl";
 }
 
 build = {

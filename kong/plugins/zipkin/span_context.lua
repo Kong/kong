@@ -2,7 +2,8 @@
 Span contexts should be immutable
 ]]
 
-local rand_bytes = require "openssl.rand".bytes
+local utils = require "kong.tools.utils"
+local rand_bytes = utils.get_rand_bytes
 
 -- For zipkin compat, use 128 bit trace ids
 local function generate_trace_id()
