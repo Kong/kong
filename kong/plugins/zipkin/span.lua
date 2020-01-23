@@ -6,55 +6,92 @@ You can find it documented in this OpenAPI spec:
 https://github.com/openzipkin/zipkin-api/blob/7e33e977/zipkin2-api.yaml#L280
 ]]
 
+local utils = require "kong.tools.utils"
+local rand_bytes = utils.get_rand_bytes
+
 local span_methods = {}
 local span_mt = {
   __index = span_methods,
 }
 
+local floor = math.floor
+
 local ngx_now = ngx.now
 
-local function is(object)
-  return getmetatable(object) == span_mt
+
+local baggage_mt = {
+  __newindex = function()
+    error("attempt to set immutable baggage")
+  end,
+}
+
+
+local function generate_trace_id()
+  return rand_bytes(16)
 end
 
-local function new(tracer, context, name, start_timestamp)
-  assert(tracer, "missing tracer")
-  assert(context, "missing context")
-  assert(type(name) == "string", "name should be a string")
-  assert(type(start_timestamp) == "number", "invalid starting timestamp")
+
+local function generate_span_id()
+  return rand_bytes(8)
+end
+
+
+local function new(kind, name, start_timestamp,
+                   should_sample, trace_id, span_id, parent_id, baggage)
+  assert(kind == "SERVER" or kind == "CLIENT", "invalid kind")
+
+  if trace_id == nil then
+    trace_id = generate_trace_id()
+  else
+    assert(type(trace_id) == "string", "invalid trace id")
+  end
+
+  if span_id == nil then
+    span_id = generate_span_id()
+  else
+    assert(type(span_id) == "string", "invalid span id")
+  end
+
+  if parent_id ~= nil then
+    assert(type(parent_id) == "string", "invalid parent id")
+  end
+
+  if baggage then
+    setmetatable(baggage, baggage_mt)
+  end
+
+  if start_timestamp == nil then
+    start_timestamp = ngx_now()
+  end
+
   return setmetatable({
-    tracer_ = tracer,
-    context_ = context,
+    kind = kind,
+    trace_id = trace_id,
+    span_id = span_id,
+    parent_id = parent_id,
     name = name,
     timestamp = start_timestamp,
-    duration = nil,
-    -- Avoid allocations until needed
-    baggage = nil,
-    tags = nil,
-    logs = nil,
+    should_sample = should_sample,
+    baggage = baggage,
     n_logs = 0,
   }, span_mt)
 end
 
-function span_methods:context()
-  return self.context_
+
+function span_methods:new_child(kind, name, start_timestamp)
+  return new(
+    kind,
+    name,
+    start_timestamp,
+    self.should_sample,
+    self.trace_id,
+    generate_span_id(),
+    self.span_id,
+    self.sample_ratio,
+    self.baggage
+  )
 end
 
-function span_methods:tracer()
-  return self.tracer_
-end
-
-function span_methods:set_operation_name(name)
-  assert(type(name) == "string", "name should be a string")
-  self.name = name
-end
-
-function span_methods:start_child_span(name, start_timestamp)
-  return self.tracer_:start_span(name, {
-    start_timestamp = start_timestamp,
-    child_of = self,
-  })
-end
 
 function span_methods:finish(finish_timestamp)
   assert(self.duration == nil, "span already finished")
@@ -66,11 +103,9 @@ function span_methods:finish(finish_timestamp)
     assert(duration >= 0, "invalid finish timestamp")
     self.duration = duration
   end
-  if self.context_.should_sample then
-    self.tracer_:report(self)
-  end
   return true
 end
+
 
 function span_methods:set_tag(key, value)
   assert(type(key) == "string", "invalid tag key")
@@ -91,15 +126,6 @@ function span_methods:set_tag(key, value)
   return true
 end
 
-function span_methods:get_tag(key)
-  assert(type(key) == "string", "invalid tag key")
-  local tags = self.tags
-  if tags then
-    return tags[key]
-  else
-    return nil
-  end
-end
 
 function span_methods:each_tag()
   local tags = self.tags
@@ -107,92 +133,33 @@ function span_methods:each_tag()
   return next, tags
 end
 
-function span_methods:log(key, value, timestamp)
-  assert(type(key) == "string", "invalid log key")
-  -- `value` is allowed to be anything.
-  if timestamp == nil then
-    timestamp = ngx_now()
-  else
-    assert(type(timestamp) == "number", "invalid timestamp for log")
-  end
 
-  local log = {
-    key = key,
+function span_methods:annotate(value, timestamp)
+  assert(type(value) == "string", "invalid annotation value")
+  timestamp = timestamp or ngx_now()
+
+  local annotation = {
     value = value,
-    timestamp = timestamp,
+    timestamp = floor(timestamp),
   }
 
-  local logs = self.logs
-  if logs then
-    local i = self.n_logs + 1
-    logs[i] = log
-    self.n_logs = i
+  local annotations = self.annotations
+  if annotations then
+    annotations[#annotations + 1] = annotation
   else
-    logs = { log }
-    self.logs = logs
-    self.n_logs = 1
+    self.annotations = { annotation }
   end
   return true
 end
 
-function span_methods:log_kv(key_values, timestamp)
-  if timestamp == nil then
-    timestamp = self.tracer_:time()
-  else
-    assert(type(timestamp) == "number", "invalid timestamp for log")
-  end
-
-  local logs = self.logs
-  local n_logs
-  if logs then
-    n_logs = 0
-  else
-    n_logs = self.n_logs
-    logs = { }
-    self.logs = logs
-  end
-
-  for key, value in pairs(key_values) do
-    n_logs = n_logs + 1
-    logs[n_logs] = {
-      key = key,
-      value = value,
-      timestamp = timestamp,
-    }
-  end
-
-  self.n_logs = n_logs
-  return true
-end
-
-function span_methods:each_log()
-  local i = 0
-  return function(logs)
-    if i >= self.n_logs then
-      return
-    end
-    i = i + 1
-    local log = logs[i]
-    return log.key, log.value, log.timestamp
-  end, self.logs
-end
-
-function span_methods:set_baggage_item(key, value)
-  -- Create new context so that baggage is immutably passed around
-  local newcontext = self.context_:clone_with_baggage_item(key, value)
-  self.context_ = newcontext
-  return true
-end
-
-function span_methods:get_baggage_item(key)
-  return self.context_:get_baggage_item(key)
-end
 
 function span_methods:each_baggage_item()
-  return self.context_:each_baggage_item()
+  local baggage = self.baggage
+  if baggage == nil then return function() end end
+  return next, baggage
 end
+
 
 return {
   new = new,
-  is = is,
 }

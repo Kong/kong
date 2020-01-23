@@ -4,18 +4,29 @@ local cjson = require "cjson".new()
 cjson.encode_number_precision(16)
 
 local floor = math.floor
-local gsub = string.gsub
 
 local zipkin_reporter_methods = {}
 local zipkin_reporter_mt = {
   __index = zipkin_reporter_methods,
 }
 
+local localEndpoint = {
+  serviceName = "kong"
+}
 
-local function new_zipkin_reporter(conf)
-  local http_endpoint = conf.http_endpoint
-  local default_service_name = conf.default_service_name
-  assert(type(http_endpoint) == "string", "invalid http endpoint")
+-- Utility function to set either ipv4 or ipv6 tags
+-- nginx apis don't have a flag to indicate whether an address is v4 or v6
+local function ip_kind(addr)
+  -- use the presence of ":" to signal v6 (v4 has no colons)
+  if addr:find(":", 1, true) then
+    return "ipv6"
+  else
+    return "ipv4"
+  end
+end
+
+
+local function new(http_endpoint, default_service_name)
   return setmetatable({
     default_service_name = default_service_name,
     http_endpoint = http_endpoint,
@@ -25,16 +36,10 @@ local function new_zipkin_reporter(conf)
 end
 
 
-local span_kind_map = {
-  client = "CLIENT",
-  server = "SERVER",
-  producer = "PRODUCER",
-  consumer = "CONSUMER",
-}
-
-
 function zipkin_reporter_methods:report(span)
-  local span_context = span:context()
+  if not span.should_sample then
+    return
+  end
 
   local zipkin_tags = {}
   for k, v in span:each_tag() do
@@ -48,69 +53,32 @@ function zipkin_reporter_methods:report(span)
     end
   end
 
-  local span_kind = zipkin_tags["span.kind"]
-  zipkin_tags["span.kind"] = nil
-
-  -- rename component tag to lc ("local component")
-  local component = zipkin_tags["component"]
-  zipkin_tags["component"] = nil
-  zipkin_tags["lc"] = component
-
-  local localEndpoint = {
-    serviceName = "kong"
-  }
-
   local remoteEndpoint do
-    local serviceName = zipkin_tags["peer.service"] or
-                        self.default_service_name -- can be nil
-
-    local peer_port = span:get_tag "peer.port" -- get as number
-    if peer_port or serviceName then
+    local serviceName = span.service_name or self.default_service_name -- can be nil
+    if span.port or serviceName then
       remoteEndpoint = {
         serviceName = serviceName,
-        ipv4 = zipkin_tags["peer.ipv4"],
-        ipv6 = zipkin_tags["peer.ipv6"],
-        port = peer_port,
+        port = span.port,
       }
-      zipkin_tags["peer.service"] = nil
-      zipkin_tags["peer.port"] = nil
-      zipkin_tags["peer.ipv4"] = nil
-      zipkin_tags["peer.ipv6"] = nil
+      if span.ip then
+        remoteEndpoint[ip_kind(span.ip)] = span.ip
+      end
     else
       remoteEndpoint = cjson.null
     end
   end
 
-  local annotations do
-    local n_logs = span.n_logs
-    if n_logs > 0 then
-      annotations = kong.table.new(n_logs, 0)
-      for i = 1, n_logs do
-        local log = span.logs[i]
-
-        -- Shortens the log strings into annotation values
-        -- for Zipkin. "kong.access.start" becomes "kas"
-        local value = gsub(log.key .. "." .. log.value,
-                           "%.?(%w)[^%.]*",
-                           "%1")
-        annotations[i] = {
-          value     = value,
-          timestamp = floor(log.timestamp),
-        }
-      end
-    end
-  end
 
   if not next(zipkin_tags) then
     zipkin_tags = nil
   end
 
   local zipkin_span = {
-    traceId = to_hex(span_context.trace_id),
+    traceId = to_hex(span.trace_id),
     name = span.name,
-    parentId = span_context.parent_id and to_hex(span_context.parent_id) or nil,
-    id = to_hex(span_context.span_id),
-    kind = span_kind_map[span_kind],
+    parentId = span.parent_id and to_hex(span.parent_id) or nil,
+    id = to_hex(span.span_id),
+    kind = span.kind,
     timestamp = floor(span.timestamp * 1000000),
     duration = floor(span.duration * 1000000), -- zipkin wants integer
     -- shared = nil, -- We don't use shared spans (server reuses client generated spanId)
@@ -118,7 +86,7 @@ function zipkin_reporter_methods:report(span)
     localEndpoint = localEndpoint,
     remoteEndpoint = remoteEndpoint,
     tags = zipkin_tags,
-    annotations = annotations,
+    annotations = span.annotations,
   }
 
   local i = self.pending_spans_n + 1
@@ -155,5 +123,5 @@ end
 
 
 return {
-  new = new_zipkin_reporter,
+  new = new,
 }
