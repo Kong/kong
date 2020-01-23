@@ -16,7 +16,8 @@ dependencies = {
   "lua >= 5.1";
   "lua-cjson";
   "lua-resty-http >= 0.11";
-  "opentracing >= 0.0.2";
+  "luatz";
+  "luaossl";
 }
 
 build = {
@@ -25,6 +26,9 @@ build = {
     ["kong.plugins.zipkin.extractor"] = "kong/plugins/zipkin/extractor.lua";
     ["kong.plugins.zipkin.handler"] = "kong/plugins/zipkin/handler.lua";
     ["kong.plugins.zipkin.reporter"] = "kong/plugins/zipkin/reporter.lua";
+    ["kong.plugins.zipkin.span"] = "kong/plugins/zipkin/span.lua";
+    ["kong.plugins.zipkin.span_context"] = "kong/plugins/zipkin/span_context.lua";
+    ["kong.plugins.zipkin.tracer"] = "kong/plugins/zipkin/tracer.lua";
     ["kong.plugins.zipkin.schema"] = "kong/plugins/zipkin/schema.lua";
   };
 }

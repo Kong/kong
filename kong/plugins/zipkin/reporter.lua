@@ -8,7 +8,6 @@ local gsub = string.gsub
 
 local zipkin_reporter_methods = {}
 local zipkin_reporter_mt = {
-  __name = "kong.plugins.zipkin.reporter",
   __index = zipkin_reporter_methods,
 }
 

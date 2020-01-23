@@ -1,4 +1,4 @@
-local new_span_context = require "opentracing.span_context".new
+local new_span_context = require "kong.plugins.zipkin.span_context".new
 
 
 local function hex_to_char(c)

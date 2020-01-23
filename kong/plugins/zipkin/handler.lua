@@ -1,4 +1,4 @@
-local opentracing_new_tracer = require "opentracing.tracer".new
+local zipkin_new_tracer = require "kong.plugins.zipkin.tracer".new
 local extractor = require "kong.plugins.zipkin.extractor"
 local new_zipkin_reporter = require "kong.plugins.zipkin.reporter".new
 local to_hex = require "resty.string".to_hex
@@ -38,7 +38,7 @@ local function new_tracer(conf)
     end
   }
 
-  local tracer = opentracing_new_tracer(new_zipkin_reporter(conf), sampler)
+  local tracer = zipkin_new_tracer(new_zipkin_reporter(conf), sampler)
 
   tracer:register_injector("http_headers", injector)
   tracer:register_extractor("http_headers", extractor)
