@@ -1,4 +1,5 @@
-local gettime = require "luatz.gettime".gettime
+local ngx_now = ngx.now
+
 local zipkin_span = require "kong.plugins.zipkin.span"
 local zipkin_span_context = require "kong.plugins.zipkin.span_context"
 
@@ -66,7 +67,7 @@ function tracer_methods:start_span(name, options)
     -- Allow zipkin_span.new to validate
   end
   if start_timestamp == nil then
-    start_timestamp = self:time()
+    start_timestamp = ngx_now()
   end
   if child_of then
     context = child_of:child()
@@ -87,12 +88,6 @@ function tracer_methods:start_span(name, options)
     end
   end
   return span
-end
-
--- Spans belonging to this tracer will get timestamps via this method
--- Can be overridden for e.g. testing
-function tracer_methods:time() -- luacheck: ignore 212
-  return gettime()
 end
 
 function tracer_methods:report(span)

@@ -11,6 +11,8 @@ local span_mt = {
   __index = span_methods,
 }
 
+local ngx_now = ngx.now
+
 local function is(object)
   return getmetatable(object) == span_mt
 end
@@ -57,7 +59,7 @@ end
 function span_methods:finish(finish_timestamp)
   assert(self.duration == nil, "span already finished")
   if finish_timestamp == nil then
-    self.duration = self.tracer_:time() - self.timestamp
+    self.duration = ngx_now() - self.timestamp
   else
     assert(type(finish_timestamp) == "number")
     local duration = finish_timestamp - self.timestamp
@@ -109,7 +111,7 @@ function span_methods:log(key, value, timestamp)
   assert(type(key) == "string", "invalid log key")
   -- `value` is allowed to be anything.
   if timestamp == nil then
-    timestamp = self.tracer_:time()
+    timestamp = ngx_now()
   else
     assert(type(timestamp) == "number", "invalid timestamp for log")
   end
