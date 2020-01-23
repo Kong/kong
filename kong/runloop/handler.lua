@@ -1321,7 +1321,7 @@ return {
       -- If response was produced by an upstream (ie, not by a Kong plugin)
       -- Report HTTP status for health checks
       local balancer_data = ctx.balancer_data
-      if balancer_data and balancer_data.balancer and balancer_data.ip then
+      if balancer_data and balancer_data.balancer_handle then
         local status = ngx.status
         if status == 504 then
           balancer_data.balancer.report_timeout(balancer_data.balancer_handle)
