@@ -10,7 +10,7 @@ end
 
 
 LdapAuthHandler.PRIORITY = 1002
-LdapAuthHandler.VERSION = "2.0.1"
+LdapAuthHandler.VERSION = "2.1.0"
 
 
 return LdapAuthHandler

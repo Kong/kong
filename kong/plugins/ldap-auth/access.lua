@@ -5,6 +5,8 @@ local ldap = require "kong.plugins.ldap-auth.ldap"
 
 local kong = kong
 local decode_base64 = ngx.decode_base64
+local sha1_bin = ngx.sha1_bin
+local to_hex = require "resty.string".to_hex
 local tostring =  tostring
 local match = string.match
 local lower = string.lower
@@ -13,14 +15,10 @@ local find = string.find
 local sub = string.sub
 local fmt = string.format
 local tcp = ngx.socket.tcp
-local md5 = ngx.md5
 
 
 local AUTHORIZATION = "authorization"
 local PROXY_AUTHORIZATION = "proxy-authorization"
-
-
-local ldap_config_cache = setmetatable({}, { __mode = "k" })
 
 
 local _M = {}
@@ -105,17 +103,16 @@ end
 
 
 local function cache_key(conf, username, password)
-  if not ldap_config_cache[conf] then
-    ldap_config_cache[conf] = md5(fmt("%s:%u:%s:%s:%u",
-                                      lower(conf.ldap_host),
-                                      conf.ldap_port,
-                                      conf.base_dn,
-                                      conf.attribute,
-                                      conf.cache_ttl))
-  end
+  local hash = to_hex(sha1_bin(fmt("%s:%u:%s:%s:%u:%s:%s",
+                                   lower(conf.ldap_host),
+                                   conf.ldap_port,
+                                   conf.base_dn,
+                                   conf.attribute,
+                                   conf.cache_ttl,
+                                   username,
+                                   password)))
 
-  return fmt("ldap_auth_cache:%s:%s:%s", ldap_config_cache[conf],
-             username, password)
+  return "ldap_auth_cache:" .. hash
 end
 
 
