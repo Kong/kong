@@ -403,7 +403,8 @@ for _, strategy in helpers.each_strategy() do
       assert.match("tls_streams=0", reports_data[1])
     end)
 
-    it("#stream reports tls streams", function()
+    -- XXX: set to it once service mesh revert from core comes in
+    pending("#stream reports tls streams", function()
       local tcp = require "socket".tcp()
       local ssl = require("ssl")
 
