@@ -103,6 +103,22 @@ local function ldap_authenticate(given_username, given_password, conf)
   return is_authenticated, err
 end
 
+
+local function cache_key(conf, username, password)
+  if not ldap_config_cache[conf] then
+    ldap_config_cache[conf] = md5(fmt("%s:%u:%s:%s:%u",
+                                      lower(conf.ldap_host),
+                                      conf.ldap_port,
+                                      conf.base_dn,
+                                      conf.attribute,
+                                      conf.cache_ttl))
+  end
+
+  return fmt("ldap_auth_cache:%s:%s:%s", ldap_config_cache[conf],
+             username, password)
+end
+
+
 local function load_credential(given_username, given_password, conf)
   local ok, err = ldap_authenticate(given_username, given_password, conf)
   if err ~= nil then
@@ -117,22 +133,11 @@ local function load_credential(given_username, given_password, conf)
     return false
   end
 
-  return { username = given_username, password = given_password }
-end
-
-
-local function cache_key(conf, username, password)
-  if not ldap_config_cache[conf] then
-    ldap_config_cache[conf] = md5(fmt("%s:%u:%s:%s:%u",
-                                      lower(conf.ldap_host),
-                                      conf.ldap_port,
-                                      conf.base_dn,
-                                      conf.attribute,
-                                      conf.cache_ttl))
-  end
-
-  return fmt("ldap_auth_cache:%s:%s:%s", ldap_config_cache[conf],
-             username, password)
+  return {
+    id = cache_key(conf, given_username, given_password),
+    username = given_username,
+    password = given_password,
+  }
 end
 
 
@@ -151,6 +156,7 @@ local function authenticate(conf, given_credentials)
     kong.log.err(err)
     return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
+
 
   return credential and credential.password == given_password, credential
 end
