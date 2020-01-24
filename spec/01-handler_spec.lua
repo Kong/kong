@@ -26,7 +26,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert_ws({
         name = "collector",
-        config = { http_endpoint = mock_url .. "/post_log/http", queue_size = 2 }
+        config = { http_endpoint = mock_url .. "/post_log/", queue_size = 2 }
       }, workspace1)
 
       assert(helpers.start_kong({
@@ -44,7 +44,7 @@ for _, strategy in helpers.each_strategy() do
 
     before_each(function()
       local client = helpers.http_client(helpers.mock_upstream_host, helpers.mock_upstream_port)
-      client:delete("/reset_log/http")
+      client:delete("/reset_log/hars")
       client:close()
     end)
 
@@ -66,7 +66,7 @@ for _, strategy in helpers.each_strategy() do
       local client = helpers.http_client(helpers.mock_upstream_host, helpers.mock_upstream_port)
       local res = assert(client:send {
         method = "GET",
-        path = "/read_log/http",
+        path = "/read_log/hars",
         headers = {
           Accept = "application/json"
         }

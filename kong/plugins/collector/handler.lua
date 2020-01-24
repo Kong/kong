@@ -96,7 +96,8 @@ local function send_payload(self, conf, payload)
   local client = http.new()
   local headers = { ["Content-Type"] = "application/json", ["Content-Length"] = #payload }
   local params = { method = "POST", body = payload, headers = headers }
-  local res, err = client:request_uri(conf.http_endpoint, params)
+  local trimmed_endpoint = conf.http_endpoint:gsub("(.-)/$", "%1")
+  local res, err = client:request_uri(trimmed_endpoint .. '/hars' , params)
 
   if not res then
     return nil, "failed request to " .. conf.http_endpoint .. ": " .. err
