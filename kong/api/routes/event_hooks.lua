@@ -69,4 +69,22 @@ return {
       return kong.response.exit(200, { data = sources[source] })
     end
   },
+  ["/event-hooks/sources/:source/:event"] = {
+    GET = function(self, db)
+      local source = self.params.source
+      local event = self.params.event
+
+      local sources = event_hooks.list()
+
+      if not sources[source] then
+        return kong.response.exit(404, { message = "Not Found" })
+      end
+
+      if not sources[source][event] then
+        return kong.response.exit(404, { message = "Not Found" })
+      end
+
+      return kong.response.exit(200, { data = sources[source][event] })
+    end
+  },
 }
