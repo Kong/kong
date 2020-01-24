@@ -22,6 +22,34 @@ _M.handlers = {
 
       -- register event_hooks hooks
       if event_hooks.enabled() then
+        local dao_adapter = function(data)
+          return {
+            entity = data.entity,
+            old_entity = data.old_entity,
+            schema = data.schema and data.schema.name,
+            operation = data.operation,
+          }
+        end
+        -- publish all kong events
+        local operations = { "create", "update", "delete" }
+        for _, op in ipairs(operations) do
+          event_hooks.publish("dao:crud", op, {
+            fields = { "operation", "entity", "old_entity", "schema" },
+            adapter = dao_adapter,
+          })
+        end
+        for name, _ in pairs(kong.db.daos) do
+          event_hooks.publish("crud", name, {
+            fields = { "operation", "entity", "old_entity", "schema" },
+            adapter = dao_adapter,
+          })
+          for _, op in ipairs(operations) do
+            event_hooks.publish("crud", name .. ":" .. op, {
+              fields = { "operation", "entity", "old_entity", "schema" },
+              adapter = dao_adapter,
+            })
+          end
+        end
         -- XXX not so sure this timer is good? the idea is to not hog kong
         -- on startup for this secondary feature
         ngx.timer.at(0, function()

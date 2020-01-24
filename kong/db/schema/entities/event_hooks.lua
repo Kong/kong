@@ -1,8 +1,8 @@
 local typedefs = require "kong.db.schema.typedefs"
--- local event_hooks = require "kong.enterprise_edition.event_hooks"
---
--- local fmt = string.format
--- local ngx_null = ngx.null
+local event_hooks = require "kong.enterprise_edition.event_hooks"
+
+local fmt = string.format
+local ngx_null = ngx.null
 
 return {
   name         = "event_hooks",
@@ -24,31 +24,28 @@ return {
                          default = "webhook" } },
     { config         = { type = "record", required = true, abstract = true } },
   },
-  -- XXX: This entity check makes sure the source and the event exist, assuming
+  -- This entity check makes sure the source and the event exist, assuming
   -- they have been published using event_hooks.publish.
-  -- To connect to any event triggered in kong, (let's say, crud) this needs to
-  -- be disabled. Either that or register any events triggered so we can also
-  -- list them.
-  -- entity_checks = {
-  --   { custom_entity_check = {
-  --     field_sources = { "source", "event" },
-  --     -- Force source and event to exist. This is nice, but at the same time
-  --     -- it can be limiting, since lambdas would not be able to register
-  --     -- events. ?
-  --     fn = function(entity)
-  --       local events = event_hooks.list()
-  --       local source = entity.source
-  --       local event = entity.event ~= ngx_null and entity.event or nil
-  --       if not events[source] then
-  --         return nil, fmt("source '%s' is not registered", source)
-  --       end
+  entity_checks = {
+    { custom_entity_check = {
+      field_sources = { "source", "event" },
+      -- Force source and event to exist. This is nice, but at the same time
+      -- it can be limiting, since lambdas would not be able to register
+      -- events. ?
+      fn = function(entity)
+        local events = event_hooks.list()
+        local source = entity.source
+        local event = entity.event ~= ngx_null and entity.event or nil
+        if not events[source] then
+          return nil, fmt("source '%s' is not registered", source)
+        end
 
-  --       if event and not events[source][event] then
-  --         return nil, fmt("source '%s' has no '%s' event", source, event)
-  --       end
+        if event and not events[source][event] then
+          return nil, fmt("source '%s' has no '%s' event", source, event)
+        end
 
-  --       return true
-  --     end
-  --   } }
-  -- }
+        return true
+      end
+    } }
+  }
 }
