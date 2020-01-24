@@ -15,6 +15,8 @@ local check_https = utils.check_https
 local encode_args = utils.encode_args
 local random_string = utils.random_string
 local table_contains = utils.table_contains
+local sha1_bin = ngx.sha1_bin
+local to_hex = require "resty.string".to_hex
 
 
 local ngx_decode_args = ngx.decode_args
@@ -605,7 +607,8 @@ local function retrieve_token(conf, access_token)
   local token, err
 
   if access_token then
-    local token_cache_key = kong.db.oauth2_tokens:cache_key(access_token)
+    local token_hash = to_hex(sha1_bin(access_token))
+    local token_cache_key = kong.db.oauth2_tokens:cache_key(token_hash)
     token, err = kong.cache:get(token_cache_key, nil,
                                 load_token, conf,
                                 kong.router.get_service(),

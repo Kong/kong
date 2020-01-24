@@ -62,7 +62,6 @@ local oauth2_tokens = {
   primary_key = { "id" },
   name = "oauth2_tokens",
   endpoint_key = "access_token",
-  cache_key = { "access_token" },
   ttl = true,
   fields = {
     { id = typedefs.uuid },

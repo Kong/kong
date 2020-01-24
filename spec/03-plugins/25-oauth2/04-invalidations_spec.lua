@@ -3,6 +3,10 @@ local helpers = require "spec.helpers"
 local admin_api = require "spec.fixtures.admin_api"
 
 
+local sha1_bin = ngx.sha1_bin
+local to_hex = require "resty.string".to_hex
+
+
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: oauth2 (invalidations) [#" .. strategy .. "]", function()
     local admin_client
@@ -348,7 +352,8 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = db.oauth2_tokens:cache_key(token.access_token)
+        local cache_key = db.oauth2_tokens:cache_key(to_hex(sha1_bin(token.access_token)))
+
         local res = assert(admin_client:send {
           method  = "GET",
           path    = "/cache/" .. cache_key,
@@ -415,7 +420,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = db.oauth2_tokens:cache_key(token.access_token)
+        local cache_key = db.oauth2_tokens:cache_key(to_hex(sha1_bin(token.access_token)))
 
         local res = assert(admin_client:send {
           method  = "GET",
@@ -500,7 +505,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = db.oauth2_tokens:cache_key(token.access_token)
+        local cache_key = db.oauth2_tokens:cache_key(to_hex(sha1_bin(token.access_token)))
 
         local res = assert(admin_client:send {
           method  = "GET",
