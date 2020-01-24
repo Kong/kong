@@ -35,6 +35,7 @@ local function transmogrify(admin)
       custom_id = admin.custom_id,
       email = admin.email,
       status = admin.status,
+      rbac_token_enabled = admin.rbac_token_enabled,
       created_at = admin.created_at,
       updated_at = admin.updated_at,
     }
@@ -60,6 +61,7 @@ local function sanitize_params(params)
     username = params.username,
     custom_id = params.custom_id,
     status = params.status,
+    rbac_token_enabled = params.rbac_token_enabled,
   }
 
   if params.email and type(params.email) == "string" then
@@ -352,7 +354,19 @@ function _M.update(params, admin_to_update, opts)
     { id = admin_to_update.id },
     safe_params
   )
+
+  -- run_with_ws_scope() doesn't return the errors table
+  -- from db.admins.update, so parse the error message
   if err then
+    -- schema violation? don't 500
+    local i, _ = err:find("schema violation")
+    if i then
+      return {
+        code = 400,
+        body = { message = err:sub(i, #err) },
+      }
+    end
+
     return nil, err
   end
 
@@ -391,6 +405,22 @@ function _M.update(params, admin_to_update, opts)
         if err then
           return nil, err
         end
+      end
+    end
+
+    -- keep rbac_user in sync
+    if params.rbac_token_enabled ~= nil then
+      local _, err = workspaces.run_with_ws_scope(
+        {},
+        db.rbac_users.update,
+        db.rbac_users,
+        { id = admin_to_update.rbac_user.id },
+        {
+          enabled = params.rbac_token_enabled,
+        }
+      )
+      if err then
+        return nil, err
       end
     end
   end

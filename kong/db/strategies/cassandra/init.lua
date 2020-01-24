@@ -56,6 +56,7 @@ local _M  = {
     plugins = require("kong.db.strategies.cassandra.plugins"),
     consumers = require("kong.db.strategies.cassandra.consumers"),
     rbac_role_endpoints = require("kong.db.strategies.cassandra.rbac_role_endpoints"),
+    keyring_meta = require("kong.db.strategies.cassandra.keyring_meta"),
     -- rbac_users = require("kong.db.strategies.cassandra.rbac_users"),
   }
 }

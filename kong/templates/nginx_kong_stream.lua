@@ -26,6 +26,7 @@ lua_shared_dict stream_kong_rate_limiting_counters 12m;
 lua_shared_dict stream_kong_vitals_counters 50m;
 lua_shared_dict stream_kong_counters 50m;
 lua_shared_dict stream_kong_vitals_lists     1m;
+lua_shared_dict stream_kong_keyring 5m;
 
 
 

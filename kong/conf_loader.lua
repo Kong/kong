@@ -102,7 +102,11 @@ local PREFIX_PATHS = {
   ;
 
   -- EE code [[
-  nginx_portal_api_acc_logs = {"logs", "portal_api_access.log"}
+  nginx_portal_api_acc_logs = {"logs", "portal_api_access.log"},
+  nginx_portal_api_err_logs = {"logs", "portal_api_error.log"}
+  ;
+  nginx_portal_gui_acc_logs = {"logs", "portal_gui_access.log"},
+  nginx_portal_gui_err_logs = {"logs", "portal_gui_error.log"}
   ;
   admin_gui_ssl_cert_default = {"ssl", "admin-gui-kong-default.crt"},
   admin_gui_ssl_cert_key_default = {"ssl", "admin-gui-kong-default.key"}
@@ -343,6 +347,16 @@ local CONF_INFERENCES = {
   tracing_types = {typ = "array"},
   tracing_debug_header = {typ = "string"},
   generate_trace_details = {typ = "boolean"},
+
+  keyring_enabled = { typ = "boolean" },
+  keyring_blob_path = { typ = "string" },
+  keyring_public_key = { typ = "string" },
+  keyring_private_key = { typ = "string" },
+  keyring_strategy = { enum = { "cluster", "vault" }, },
+  keyring_vault_host = { typ = "string" },
+  keyring_vault_mount = { typ = "string" },
+  keyring_vault_path = { typ = "string" },
+  keyring_vault_token = { typ = "string" },
 
   route_validation_strategy = { enum = {"smart", "path", "off"}},
   enforce_route_path_pattern = {typ = "string"},

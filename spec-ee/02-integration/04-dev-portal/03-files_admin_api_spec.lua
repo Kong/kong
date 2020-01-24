@@ -1161,7 +1161,12 @@ for _, strategy in helpers.each_strategy() do
                   method = "PATCH",
                   path = "/files/_inexistent_.txt",
                   body = {
-                    path = "alice.md"
+                    path = "alice.md",
+                    contents = [[
+                      ---
+                      title: "this contents must be here to pass entity check"
+                      ---
+                    ]]
                   },
                   headers = {["Content-Type"] = content_type}
                 })
@@ -1175,7 +1180,12 @@ for _, strategy in helpers.each_strategy() do
                   method = "PATCH",
                   path = "/files/stub/_inexistent_.txt",
                   body = {
-                    path = "alice.md"
+                    path = "alice.md",
+                    contents = [[
+                      ---
+                      title: "this contents must be here to pass entity check"
+                      ---
+                    ]]
                   },
                   headers = {["Content-Type"] = content_type}
                 })

@@ -2,6 +2,7 @@ local pl_stringx = require "pl.stringx"
 local lyaml      = require "lyaml"
 local singletons = require "kong.singletons"
 local constants  = require "kong.constants"
+local emails     = require "kong.portal.emails"
 local cjson      = require "cjson.safe"
 
 local decode_base64 = ngx.decode_base64
@@ -77,6 +78,9 @@ local function is_content_path(path)
   return get_prefix(path) == "content"
 end
 
+local function is_email_path(path)
+  return get_prefix(path) == "emails"
+end
 
 local function is_spec_path(path)
   return get_prefix(path) == "specs"
@@ -169,7 +173,7 @@ local function get_path_meta(path)
     path = string.gsub(path, "specs/", "content/_specs/")
   end
 
-  if not is_content_path(path) then
+  if not is_content_path(path) and not is_email_path(path) then
     return nil, "can only set path with prefix of 'content'"
   end
 
@@ -202,9 +206,15 @@ local function get_path_meta(path)
 end
 
 
-local function parse_file_contents(contents)
+local function parse_file_contents(contents, email_tokens)
   local content
   local err = nil
+
+  -- templating in email tokens
+  if email_tokens then
+    contents = emails:replace_tokens(contents, email_tokens)
+  end
+
   local split_contents = pl_stringx.split(contents, "---")
   content = split_contents[3]
 
@@ -310,7 +320,7 @@ local function get_collection_conf(route)
 end
 
 
-local function parse_content(file)
+local function parse_content(file, email_tokens)
   local output = true
   local route_type = ROUTE_TYPES.DEFAULT
   local path_meta, err = get_path_meta(file.path)
@@ -323,7 +333,7 @@ local function parse_content(file)
     local ext = get_ext(file.path)
     headmatter, body, parsed, err = parse_spec_contents(file.contents, ext)
   else
-    headmatter, body, _, err = parse_file_contents(file.contents)
+    headmatter, body, _, err = parse_file_contents(file.contents, email_tokens)
   end
 
   -- not erroring out on strictly err here in favor of
@@ -420,11 +430,13 @@ return {
   is_partial_path = is_partial_path,
   is_asset        = is_asset,
   is_asset_path   = is_asset_path,
+  is_email_path   = is_email_path,
   is_html_ext     = is_html_ext,
   get_prefix      = get_prefix,
   get_ext         = get_ext,
   decode_file     = decode_file,
   get_path_meta   = get_path_meta,
   parse_content   = parse_content,
+  parse_file_contents = parse_file_contents,
   get_conf        = get_conf,
 }

@@ -7,6 +7,8 @@ local timer_at = ngx.timer.at
 local EXTENSION_LIST = constants.PORTAL_RENDERER.EXTENSION_LIST
 local ROUTE_TYPES    = constants.PORTAL_RENDERER.ROUTE_TYPES
 
+local _log_prefix = "[portal] "
+
 
 local function is_route_priority(content_router, route_item)
   local route = route_item.route
@@ -57,8 +59,13 @@ end
 
 local function generate_router_by_conf(db, ws_router, router_conf)
   for route, path in pairs(router_conf) do
-    local file = db.files:select_by_path(path)
-    ws_router[route] = file_helpers.parse_content(file)
+    local file, err = db.files:select_by_path(path)
+    if file then
+      ws_router[route] = file_helpers.parse_content(file)
+    else
+      ngx.log(ngx.ERR, _log_prefix, err, "\n", "failed to find file from router.conf.yaml for ", path)
+    end
+
   end
 
   return ws_router
@@ -120,7 +127,7 @@ local function get_ws_router(router, ws)
     router[ws_name] = {}
   end
 
-  return router[ws_name]	
+  return router[ws_name]
 end
 
 
@@ -186,7 +193,7 @@ return {
           if not route_obj then
             route_obj = ws_router.custom["/*"]
           end
-      
+
           if not route then
             route_obj = {}
           end

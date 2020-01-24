@@ -8,6 +8,10 @@ local function validate_path(path)
     return nil, "path must not begin with a slash '/'"
   end
 
+  if match(path, "//") then
+    return false, "path must not contain '//'"
+  end
+
   local ext = match(path, "%.(%w+)$")
   if not ext then
     return false, "path must end with a file extension"
@@ -34,21 +38,113 @@ local function validate_path(path)
   return true
 end
 
+local function get_keys(table)
+  local key_string = ""
+  for key in pairs(table) do
+    key_string = key_string .. ", " .. key
+  end
+
+  return key_string
+end
+
+local function is_match(token, view)
+  local match_token = "{{%s*" .. token .. "%s*}}"
+  return match(view, match_token)
+end
+
+
+local email_paths = {
+  ["emails/invite.txt"] = {
+    "portal.url",
+  },
+  ["emails/request-access.txt"] = {
+    "portal.url",
+    "email.developer_email"
+  },
+  ["emails/approved-access.txt"] = {
+    "portal.url",
+  },
+  ["emails/password-reset.txt"] = {
+    "portal.url",
+    {"email.token", "email.reset_url"}
+  },
+  ["emails/password-reset-success.txt"] = {
+    "portal.url",
+  },
+  ["emails/account-verification-approved.txt"] = {
+    "portal.url",
+  },
+  ["emails/account-verification-pending.txt"] = {
+    "portal.url",
+  },
+  ["emails/account-verification.txt"] = {
+    "portal.url",
+    {"email.token", "email.verify_url"},
+    {"email.token", "email.invalidate_url"}
+  },
+}
+
 return {
   name = "files",
-  primary_key = { "id" },
+  primary_key = {"id"},
   workspaceable = true,
-  endpoint_key  = "path",
-  dao           = "kong.db.dao.files",
-
+  endpoint_key = "path",
+  dao = "kong.db.dao.files",
   fields = {
-    { id         = typedefs.uuid, },
-    { created_at = typedefs.auto_timestamp_s },
-    { path       = { type = "string",
-                     required = true,
-                     unique = true,
-                     custom_validator = validate_path } },
-    { contents   = { type = "string", len_min = 0, required = true } },
-    { checksum   = { type = "string", len_min = 0 } },
+    {id = typedefs.uuid},
+    {created_at = typedefs.auto_timestamp_s},
+    {
+      path = {
+        type = "string",
+        required = true,
+        unique = true,
+        custom_validator = validate_path
+      }
+    },
+    {contents = {type = "string", len_min = 0, required = true}},
+    {checksum = {type = "string", len_min = 0}}
   },
+  entity_checks = {
+    {
+      custom_entity_check = {
+        field_sources = {"path", "contents"},
+        fn = function(entity)
+          local entity_path = entity.path
+
+          if entity_path:sub(1, #"emails/") ~= "emails/" then
+            return true
+          end
+
+          if email_paths[entity_path] == nil then
+            return nil, "only: " .. get_keys(email_paths) .. " email paths supported"
+          end
+
+          local tokens = email_paths[entity_path]
+          for _, token in ipairs(tokens) do
+            if type(token) == "table" then
+              -- only needs to match one
+              local ok = false
+              for _, or_token in ipairs(token) do
+                if is_match(or_token, entity.contents) then
+                  ok = true
+                end
+              end
+              if not ok then
+                return nil, entity_path .. " template must contain either '{{" ..
+                          token[1] .. "}}' or '{{" .. token[2] .. "}}' tokens"
+              end
+
+            else
+              local ok = is_match(token, entity.contents)
+              if not ok then
+                return nil, entity_path .. " template must contain token: '{{" .. token .. "}}'"
+              end
+            end
+          end
+
+          return true
+        end
+      }
+    }
+  }
 }

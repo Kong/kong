@@ -670,7 +670,8 @@ do
       return nil, prefix_err(self, err)
     end
 
-    return self.connector:migrate_core_entities(opts)
+    local migrate_core_entities = require "kong.enterprise_edition.db.migrations.migrate_core_entities"
+    return migrate_core_entities(self, opts)
   end
 
 

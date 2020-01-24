@@ -1,7 +1,6 @@
 local workspaces  = require "kong.workspaces"
+local counters    = require "kong.workspaces.counters"
 local log         = require "kong.cmd.utils.log"
-local conf_loader = require "kong.conf_loader"
-local DB          = require "kong.db"
 
 local fmt = string.format
 local concat = table.concat
@@ -151,19 +150,6 @@ local strategies = function(connector)
         )
       end,
 
-      incr_workspace_counter = function(workspace, entity_type, count)
-        return fmt([[
-          INSERT INTO workspace_entity_counters (workspace_id, entity_type, count)
-          VALUES (%s, %s, %d)
-          ON CONFLICT (workspace_id, entity_type)
-          DO UPDATE SET COUNT = workspace_entity_counters.count + excluded.count;
-          ]],
-          pg_escape_literal(workspace.id),
-          pg_escape_literal(entity_type),
-          pg_escape_literal(count)
-        )
-      end,
-
       update_cache_key = function(entity_type, entity_id, cache_key)
         return fmt([[ UPDATE %s SET cache_key = %s WHERE id = %s; ]],
                    pg_escape_identifier(entity_type),
@@ -265,17 +251,6 @@ local strategies = function(connector)
         }
       end,
 
-      incr_workspace_counter = function(workspace, entity_type, count)
-        return {
-          [[ UPDATE workspace_entity_counters set
-             count = count + ? where workspace_id = ? and entity_type = ?; ]], {
-            c_escape(count, "counter"),
-            c_escape(workspace.id, "uuid"),
-            c_escape(entity_type, "string"),
-          }
-        }
-      end,
-
       update_cache_key = function(entity_type, entity_id, cache_key)
         local query = { [[ UPDATE %s SET cache_key = ? WHERE id = ? ]] }
         if is_partitioned(entity_type) then
@@ -308,10 +283,10 @@ local function entity_correction(queries, entity_fixes, entity_schema, entity)
 end
 
 
-local function migrate_core_entities(connector, strategy, opts)
-
-  local conf = assert(conf_loader(opts.conf))
-  local db = assert(DB.new(conf))
+local function migrate_core_entities(db, opts)
+  local connector = db.connector
+  local strategy = db.strategy
+  local conf = opts.conf
 
   db.plugins:load_plugin_schemas(conf.loaded_plugins)
   local entities = workspaces.get_workspaceable_relations()
@@ -433,10 +408,6 @@ local function migrate_core_entities(connector, strategy, opts)
     log("Also applying %d fixes", #entity_fixes)
   end
 
-  local ws_counters = setmetatable({}, {
-    __index = function() return 0 end
-  })
-
   local buffer = {}
   if strategy == "postgres" then
     buffer[#buffer + 1] = "BEGIN;"
@@ -445,8 +416,6 @@ local function migrate_core_entities(connector, strategy, opts)
   for _, entity in ipairs(workspace_entities) do
     -- Add entity
     buffer[#buffer + 1] = queries.add_entity(default_workspace, entity)
-
-    ws_counters[entity.entity_type] = ws_counters[entity.entity_type] + 1
 
     -- Update unique_key values (not pk)
     if not entity.pk and entity.unique_field_value
@@ -465,28 +434,19 @@ local function migrate_core_entities(connector, strategy, opts)
   end
 
   if strategy == "postgres" then
-    for entity_type, count in pairs(ws_counters) do
-      -- Update counts
-      buffer[#buffer + 1] = queries.incr_workspace_counter(
-        default_workspace, entity_type, count
-      )
-    end
     buffer[#buffer + 1] = "COMMIT;"
     assert(connector:query(concat(buffer, '\n')))
   -- Unfortunately counts cannot be batched on cassandra
   elseif strategy == "cassandra" then
-    assert(connector:batch(buffer, nil, "write", true))
-    local _, err, query
-    for entity_type, count in pairs(ws_counters) do
-      -- Update counts
-      query = queries.incr_workspace_counter(default_workspace, entity_type, count)
-      _, err = connector.cluster:execute(query[1], query[2], {
-        counter = true,
-        prepared = true,
-      })
-      if err then return nil, err end
+    -- running single queries instead of batch because it is more efficient in this case
+    for _, row in ipairs(buffer) do
+      local query = row[1]
+      local args = row[2]
+      assert(connector.cluster:execute(query, args, nil, "write"))
     end
   end
+
+  counters.initialize_counters(db)
 
   if entity_log_counters.__all > 0 then
     log("Migrated %d entities to the %s workspace", entity_log_counters.__all,

@@ -1321,6 +1321,33 @@
                         # The absolute path to the SSL key for
                         # `portal_gui_listen` values with SSL enabled.
 
+#portal_gui_access_log = logs/portal_gui_access.log
+                        # Developer Portal GUI Access Log location
+                        #
+                        # Here you can set an absolute or relative path for your
+                        # Portal GUI access logs.
+                        #
+                        # Setting this value to `off` will disable logging
+                        # Portal GUI access logs.
+                        #
+                        # When using relative pathing, logs will be placed under
+                        # the `prefix` location.
+
+#portal_gui_error_log = logs/portal_gui_error.log
+                        # Developer Portal GUI Error Log location
+                        #
+                        # Here you can set an absolute or relative path for your
+                        # Portal GUI error logs.
+                        #
+                        # Setting this value to `off` will disable logging
+                        # Portal GUI error logs.
+                        #
+                        # When using relative pathing, logs will be placed under
+                        # the `prefix` location.
+                        #
+                        # Granularity can be adjusted through the `log_level`
+                        # directive.
+
 #portal_api_listen = 0.0.0.0:8004, 0.0.0.0:8447 ssl
                         # Developer Portal API Listeners
                         #
@@ -1384,14 +1411,14 @@
                         # When using relative pathing, logs will be placed under
                         # the `prefix` location.
 
-#portal_api_error_log = logs/error.log
+#portal_api_error_log = logs/portal_api_error.log
                         # Developer Portal API Error Log location
                         #
                         # Here you can set an absolute or relative path for your
-                        # Portal API access logs.
+                        # Portal API error logs.
                         #
                         # Setting this value to `off` will disable logging
-                        # Portal API access logs.
+                        # Portal API error logs.
                         #
                         # When using relative pathing, logs will be placed under
                         # the `prefix` location.
@@ -1822,3 +1849,66 @@
                                 #   workspace 'group1'.
                                 # 2. '/group2/v1/some_path' if route belongs to
                                 #   workspace 'group2'.
+
+
+#-------------------------------------------------------------------------------
+# DATABASE ENCRYPTION & KEYRING MANAGEMENT
+#-------------------------------------------------------------------------------
+
+# When enabled, Kong will transparently encrypt sensitive fields, such as Consumer
+# credentials, TLS private keys, and RBAC user tokens, among others. A full list
+# of encrypted fields is available from the Kong Enterprise documentation site.
+# Encrypted data is transparently decrypted before being displayed to the Admin
+# API or made available to plugins or core routing logic.
+#
+# Do note that this feature is currently alpha quality. It is strongly recommended
+# that this not be enabled on production clusters. No guarantees about forward-
+# compatability or stability are provided with this, and mis-management of keyring
+# data will result in irrecoverable data loss.
+
+# keyring_enabled = off          # When enabled, Kong will encrypt sensitive
+                                 # field values before writing them to the
+                                 # database, and subsuquently decrypt them when
+                                 # retrieving data for the Admin API, Developer
+                                 # Portal, or proxy business logic. Symmetric
+                                 # encryption keys are managed based on the
+                                 # strategy defined below.
+
+# keyring_strategy = cluster     # Defines the strategy implementation by which
+                                 # Kong nodes will manage symmetric encryption
+                                 # keys. Please see the Kong Enterprise
+                                 # documentation for a detailed description of
+                                 # each strategies. Acceptable values for this
+                                 # option are 'cluster' and 'vault'.
+
+# keyring_public_key =           # Defines the filesystem path at which the
+                                 # public key of an RSA keypair resides. This
+                                 # keypair is used for symmetric keyring import/
+                                 # export, e.g., for disaster recovery and
+                                 # optional bootstrapping.
+
+# keyring_private_key =          # Defines the filesystem path at which the
+                                 # private key of an RSA keypair resides. This
+                                 # keypair is used for symmetric keyring import/
+                                 # export, e.g., for disaster recovery and
+                                 # optional bootstrapping.
+
+# keyring_blob_path =            # Defines the filesystem path at which Kong
+                                 # will backup the initial keyring material.
+                                 # This option is useful largely for development
+                                 # purposes.
+
+# keyring_vault_host =           # Defines the Vault host at which Kong will
+                                 # fetch the encryption material. This value
+                                 # should be defined in the format:
+                                 #
+                                 # <scheme>://<IP / HOSTNAME>:<PORT>
+
+# keyring_vault_mount =          # Defines the name of the Vault v2 KV secrets
+                                 # engine at which symmetric keys are found.
+
+# keyring_vault_path =           # Defines the names of the Vault v2 KV path
+                                 # at which symmetric keys are found.
+
+# keyring_vault_token =          # Defines the token value used to communicate
+                                 # with the v2 KV Vault HTTP(S) API.

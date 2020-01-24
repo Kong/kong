@@ -4,6 +4,7 @@ local ee_helpers = require "spec-ee.helpers"
 local workspaces = require "kong.workspaces"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local utils = require "kong.tools.utils"
+local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 
 local client
 local db, dao
@@ -979,7 +980,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("max attempts", function()
-          local super_admin, read_only_admin1, read_only_admin2, read_only_admin3
+          local super_admin, read_only_admin1, read_only_admin2, read_only_admin3, upgrade_admin
 
           lazy_setup(function()
             truncate_tables(db)
@@ -1002,6 +1003,7 @@ for _, strategy in helpers.each_strategy() do
             read_only_admin1 = admin(db, ws, 'gruce1', 'read-only', 'test1@konghq.com')
             read_only_admin2 = admin(db, ws, 'gruce2', 'read-only', 'test2@konghq.com')
             read_only_admin3 = admin(db, ws, 'gruce3', 'read-only', 'test3@konghq.com')
+            upgrade_admin = admin(db, ws, "gruce4", "read-only", "test4@konghq.com")
 
             assert(db.basicauth_credentials:insert {
               username    = super_admin.username,
@@ -1034,6 +1036,14 @@ for _, strategy in helpers.each_strategy() do
                 id = read_only_admin3.consumer.id,
               },
             })
+
+            assert(db.basicauth_credentials:insert {
+              username    = upgrade_admin.username,
+              password    = "hunter2",
+              consumer = {
+                id = upgrade_admin.consumer.id,
+              },
+            })
           end)
 
           lazy_teardown(function()
@@ -1064,6 +1074,24 @@ for _, strategy in helpers.each_strategy() do
 
               assert.res_status(401, res)
               assert.equals(1, db.login_attempts:select({consumer = super_admin.consumer}).attempts["127.0.0.1"])
+            end)
+
+            it("user is denied access - upgrade path", function()
+              -- previous attempt on different IP
+              assert(db.login_attempts:insert({
+                consumer = upgrade_admin.consumer,
+                attempts = {
+                  ["1.2.3.4"] = 1
+                }
+              }, { ttl = 600 }))
+
+              local res = request_invalid(upgrade_admin.username)
+
+              assert.res_status(401, res)
+
+              local actual = assert(db.login_attempts:select({ consumer = upgrade_admin.consumer }))
+              assert.equals(1, actual.attempts["1.2.3.4"])
+              assert.equals(1, actual.attempts["127.0.0.1"])
             end)
 
             it("user is denied access - different consumer", function ()
@@ -1152,6 +1180,109 @@ for _, strategy in helpers.each_strategy() do
               assert.is_nil(db.login_attempts:select({consumer = read_only_admin3.consumer}))
             end)
           end)
+        end)
+      end)
+    end)
+
+    describe("admins.rbac_token_enabled #token", function()
+      local super_admin, disabled_admin
+
+      lazy_setup(function()
+        truncate_tables(db)
+
+        assert(helpers.start_kong({
+          database   = strategy,
+          admin_gui_auth = "basic-auth",
+          admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
+          enforce_rbac = "on",
+          admin_gui_auth_config = "{ \"hide_credentials\": true }",
+          rbac_auth_header = "Kong-Admin-Token",
+          smtp_mock = true,
+        }))
+
+        client = assert(helpers.admin_client())
+
+        local ws = setup_ws_defaults(dao, db, workspaces.DEFAULT_WORKSPACE)
+        super_admin = admin(db, ws, "mars", "super-admin","test@konghq.com")
+        disabled_admin = admin(db, ws, "disabled", "super-admin","disabled@konghq.com")
+
+        assert(db.basicauth_credentials:insert {
+          username = super_admin.username,
+          password = "password",
+          consumer = {
+            id = super_admin.consumer.id,
+          },
+        })
+
+        assert(db.basicauth_credentials:insert {
+          username = disabled_admin.username,
+          password = "password",
+          consumer = {
+            id = disabled_admin.consumer.id,
+          },
+        })
+
+        assert(admins_helpers.update({ rbac_token_enabled = false }, disabled_admin, { db = db }))
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+        if client then
+          client:close()
+        end
+      end)
+
+      describe("when true", function()
+
+        it("allows Admin API access via token", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              ["Kong-Admin-Token"] = super_admin.rbac_user.raw_user_token,
+            }
+          })
+          assert.res_status(200, res)
+        end)
+
+        it("allows Admin API access via session", function()
+          local cookie = get_admin_cookie_basic_auth(client, super_admin.username, "password")
+          local res = client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = super_admin.username,
+            }
+          }
+
+          assert.res_status(200, res)
+        end)
+      end)
+      describe("when false", function()
+        it("prevents Admin API access via token", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              ["Kong-Admin-Token"] = disabled_admin.rbac_user.raw_user_token,
+            }
+          })
+          assert.res_status(401, res)
+        end)
+
+        it("allows Admin API access via session", function()
+          local cookie = get_admin_cookie_basic_auth(client, disabled_admin.username, "password")
+          local res = client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = disabled_admin.username,
+            }
+          }
+
+          assert.res_status(200, res)
         end)
       end)
     end)

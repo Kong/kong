@@ -139,9 +139,7 @@ local function retrieve_user(id)
     return nil, nil
   end
 
-  if user.enabled then
-    return user
-  end
+  return user
 end
 
 

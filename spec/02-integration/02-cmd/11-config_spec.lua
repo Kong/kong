@@ -116,7 +116,7 @@ describe("kong config", function()
     local filename = helpers.make_yaml_file([[
       _format_version: "1.1"
       services:
-      - name: foo
+      - name: foobar
         host: example.com
         protocol: https
         _comment: my comment
@@ -302,6 +302,23 @@ describe("kong config", function()
     assert(helpers.stop_kong())
   end)
 
+  it("#db config db_import can import resources that require database checks", function()
+    local filename = helpers.make_yaml_file([[
+      _format_version: "1.1"
+      rbac_users:
+      - user_token_ident: 0beec
+        user_token: $2b$09$Shxh6hHpoyEj9STVLx4Sz.WYT/XHocnccETcJVcMxF3iGFquOdP7C
+        id: d0d2f130-23bb-4f43-b8ac-9917ac1f3c72
+        enabled: true
+        name: foo
+        created_at: 1574889958
+    ]])
+
+    assert(helpers.kong_exec("config db_import " .. filename, {
+      prefix = helpers.test_conf.prefix,
+    }))
+  end)
+
   it("#flaky #db config db_export exports a yaml file", function() -- XXX EE: db export
     assert(db.plugins:truncate())
     assert(db.routes:truncate())
@@ -333,6 +350,8 @@ describe("kong config", function()
     local consumer = bp.consumers:insert()
     local acls = bp.acls:insert({ consumer = consumer })
 
+    local keyauth = bp.keyauth_credentials:insert({ consumer = consumer, key = "hello" })
+
     assert(helpers.kong_exec("config db_export " .. filename, {
       prefix = helpers.test_conf.prefix,
     }))
@@ -355,6 +374,7 @@ describe("kong config", function()
       "_format_version",
       "acls",
       "consumers",
+      "keyauth_credentials",
       "plugins",
       "routes",
       "services",
@@ -396,6 +416,10 @@ describe("kong config", function()
     assert.equals(1, #yaml.acls)
     assert.equals(acls.group, yaml.acls[1].group)
     assert.equals(consumer.id, yaml.acls[1].consumer)
+
+    assert.equals(1, #yaml.keyauth_credentials)
+    assert.equals(keyauth.key, yaml.keyauth_credentials[1].key)
+    assert.equals(consumer.id, yaml.keyauth_credentials[1].consumer)
   end)
 
   it("#db config db_import works when foreign keys need to be resolved", function()

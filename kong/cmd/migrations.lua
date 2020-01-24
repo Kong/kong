@@ -251,9 +251,9 @@ local function execute(args)
     end
 
     local _, err = migrations_utils.migrate_core_entities(schema_state, db, {
+      conf = conf,
       ttl = args.lock_timeout,
       force = args.force,
-      conf = args.conf,
     })
     if err then
       error(err)

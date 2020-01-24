@@ -298,9 +298,10 @@ describe("portal_router", function()
             path = "router.conf.yaml",
             contents =
               [[
-                "*": "content/home/index.html"
-                "dogs/cats": "content/dogs/cats/bats.md"
-                "documentation/doc1": "content/docs/1.json"
+                "/*": "content/home/index.html"
+                "/dogs/cats": "content/dogs/cats/bats.md"
+                "/documentation/doc1": "content/docs/1.json"
+                "/invalid_test" : "doesnotexist.txt"
               ]]
           },
         })
@@ -311,9 +312,11 @@ describe("portal_router", function()
         local router_state = router.introspect()
         local ws_router = router_state.router.default
 
-        assert.equal("content/home/index.html", ws_router.custom["*"].path_meta.full_path)
-        assert.equal("content/dogs/cats/bats.md", ws_router.custom["dogs/cats"].path_meta.full_path)
-        assert.equal("content/docs/1.json", ws_router.custom["documentation/doc1"].path_meta.full_path)
+        assert.equal("content/home/index.html", ws_router.custom["/*"].path_meta.full_path)
+        assert.equal("content/dogs/cats/bats.md", ws_router.custom["/dogs/cats"].path_meta.full_path)
+        assert.equal("content/docs/1.json", ws_router.custom["/documentation/doc1"].path_meta.full_path)
+        assert.is_nil(ws_router.custom["/invalid_test"])
+
       end)
     end)
 
@@ -356,6 +359,7 @@ describe("portal_router", function()
                 "/*": "content/home/index.html"
                 "/dogs/cats": "content/dogs/cats/bats.md"
                 "/documentation/doc1": "content/docs/1.json"
+                "/invalid_test" : "doesnotexist.txt"
               ]]
           },
         })
@@ -363,9 +367,9 @@ describe("portal_router", function()
 
       it("can get wildcard content based off incoming routes", function()
         local router = build_router(singletons.db)
-        local content1 = router.get("a/b/c")
-        local content2 = router.get("dogs/cats/bath")
-        local content3 = router.get("whatever")
+        local content1 = router.get("/a/b/c")
+        local content2 = router.get("/dogs/cats/bath")
+        local content3 = router.get("/whatever")
 
         assert.equal("content/home/index.html", content1.path_meta.full_path)
         assert.equal("content/home/index.html", content2.path_meta.full_path)
@@ -379,6 +383,62 @@ describe("portal_router", function()
 
         assert.equal("content/dogs/cats/bats.md", content1.path_meta.full_path)
         assert.equal("content/docs/1.json", content2.path_meta.full_path)
+      end)
+
+      it("ignores invalid paths and does not blow up on rebuild", function()
+        local router = build_router(singletons.db)
+        local invalid = router.get("/invalid_test")
+        local wildcard_route = router.get("/whatever")
+
+        -- note this will show ngx.log errs when running, this is fine
+        assert.equal(invalid.path_meta.full_path, wildcard_route.path_meta.full_path)
+
+        -- now we fix our files
+        populate_files({
+          ["content/home/index.html"] = {
+            path = "content/home/index.html",
+            contents = [[
+              ---
+              name: index
+              ---
+            ]]
+          },
+          ["content/dogs/cats/bats.md"] = {
+            path = "content/dogs/cats/bats.md",
+            contents = [[
+              ---
+              name: bats
+              ---
+            ]]
+          },
+          ["content/docs/1.json"] = {
+            path = "content/docs/1.json",
+            contents = [[
+              ---
+              name: 1
+              ---
+            ]]
+          },
+          ["router.conf.yaml"] = {
+            path = "router.conf.yaml",
+            contents =
+              [[
+                "/*": "content/home/index.html"
+                "/dogs/cats": "content/dogs/cats/bats.md"
+                "/documentation/doc1": "content/docs/1.json"
+                "/invalid_test" : "content/dogs/cats/bats.md"
+              ]]
+          },
+        })
+
+        -- needed to let router know files changed, normally handled by runloop
+        router.set_version("portal_router-default:version", "new")
+        router.get("/")
+        ngx.sleep(0.1)
+
+        local now_valid = router.get("/invalid_test")
+        assert.equal(now_valid.path_meta.full_path, "content/dogs/cats/bats.md")
+
       end)
     end)
   end)

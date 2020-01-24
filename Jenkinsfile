@@ -15,7 +15,7 @@ pipeline {
     PRIVATE_KEY_PASSWORD = credentials('kong.private.gpg-key.asc.password')
     KONG_VERSION = """${sh(
       returnStdout: true,
-      script: '[ -n $TAG_NAME ] && echo $TAG_NAME | grep -o -P "\\d+\\.\\d+([.-]\\d+)?" || echo -n $BRANCH_NAME | grep -o -P "\\d+\\.\\d+([.-]\\d+)?"'
+      script: '[ -n $TAG_NAME ] && echo $TAG_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+" || echo -n $BRANCH_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+"'
     )}"""
   }
   stages {
@@ -64,6 +64,10 @@ pipeline {
             sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:7 --ee --custom ${env.RELEASE_SCOPE} --key-file $PRIVATE_KEY_FILE --key-password '${PRIVATE_KEY_PASSWORD}' -V"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:7 -e -R ${env.RELEASE_SCOPE}"
           },
+          centos8: {
+            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:8 --ee --custom ${env.RELEASE_SCOPE} --key-file $PRIVATE_KEY_FILE --key-password '${PRIVATE_KEY_PASSWORD}' -V"
+            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:8 -e -R ${env.RELEASE_SCOPE}"
+          },
           debian8: {
             sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:8 --ee --custom ${env.RELEASE_SCOPE} -V"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:8 -e -R ${env.RELEASE_SCOPE}"
@@ -104,6 +108,10 @@ pipeline {
             sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW --redhat-username $REDHAT_USR --redhat-password $REDHAT_PSW -p rhel:7 --ee --custom ${env.RELEASE_SCOPE} --key-file $PRIVATE_KEY_FILE --key-password '${PRIVATE_KEY_PASSWORD}' -V"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel:7 -e -R ${env.RELEASE_SCOPE}"
           },
+          rhel8: {
+            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW --redhat-username $REDHAT_USR --redhat-password $REDHAT_PSW -p rhel:8 --ee --custom ${env.RELEASE_SCOPE} --key-file $PRIVATE_KEY_FILE --key-password '${PRIVATE_KEY_PASSWORD}' -V"
+            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel:8 -e -R ${env.RELEASE_SCOPE}"
+          },
         )
       }
     }
@@ -130,12 +138,15 @@ pipeline {
           // beware! $KONG_VERSION might have an ending \n that swallows everything after it
           alpine: {
             sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
+            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
           },
           centos7: {
             sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
+            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
           },
           rhel: {
             sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
+            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
           },
         )
       }

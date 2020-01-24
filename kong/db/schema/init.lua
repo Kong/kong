@@ -2,6 +2,7 @@ local tablex       = require "pl.tablex"
 local pretty       = require "pl.pretty"
 local utils        = require "kong.tools.utils"
 local cjson        = require "cjson"
+local keyring      = require "kong.keyring"
 
 
 local setmetatable = setmetatable
@@ -1493,7 +1494,8 @@ local function adjust_field_for_context(field, value, context, nulls)
       value = value or handle_missing_field(field, value)
       if type(value) == "table" then
         local field_schema = get_field_schema(field)
-        return field_schema:process_auto_fields(value, context, nulls)
+        field = field_schema:process_auto_fields(value, context, nulls)
+        return field_schema:post_process_fields(field, context)
       end
     end
 
@@ -1523,6 +1525,25 @@ local function adjust_field_for_context(field, value, context, nulls)
   end
 
   return value
+end
+
+
+function Schema:post_process_fields(input, context)
+  --ngx.update_time()
+
+  --local output = tablex.deepcopy(input)
+
+  for key, field in self:each_field(input) do
+    if field.encrypted then
+      if (context == "insert" or context == "upsert" or context == "update") then
+        input[key] = keyring.encrypt(input[key])
+      elseif context == "select" then
+        input[key] = keyring.decrypt(input[key])
+      end
+    end
+  end
+
+  return input
 end
 
 
@@ -1667,6 +1688,10 @@ function Schema:process_auto_fields(data, context, nulls)
 
       check_immutable_fields = true
     end
+  end
+
+  if self.ttl and context == "select" and data.ttl == null and not nulls then
+    data.ttl = nil
   end
 
   --[[

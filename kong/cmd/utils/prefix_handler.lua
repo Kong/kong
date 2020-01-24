@@ -179,7 +179,7 @@ end
 local function write_env_file(path, data)
   local c = require "lua_system_constants"
 
-  local flags = bit.bor(c.O_CREAT(), c.O_WRONLY())
+  local flags = bit.bor(c.O_CREAT(), c.O_WRONLY(), c.O_TRUNC())
   local mode  = bit.bor(c.S_IRUSR(), c.S_IWUSR(), c.S_IRGRP())
 
   local fd = ffi.C.open(path, flags, mode)
@@ -260,11 +260,14 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     end
   end
 
-  -- Portal API Logs
+  -- Portal API and GUI Logs
   local log_files = {
     kong_config.nginx_portal_api_acc_logs,
     kong_config.nginx_portal_api_err_logs,
+    kong_config.nginx_portal_gui_acc_logs,
+    kong_config.nginx_portal_gui_err_logs,
   }
+
   for _, log_file in ipairs(log_files) do
     if not pl_path.exists(log_file) then
       local ok, err = pl_file.write(log_file, "")

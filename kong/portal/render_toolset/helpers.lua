@@ -1,13 +1,17 @@
 local lyaml      = require "lyaml"
-local cjson      = require "cjson.safe"
+local cjson      = require "cjson.safe".new()
 local tablex     = require "pl.tablex"
 local stringx    = require "pl.stringx"
 local inspect    = require "inspect"
 local markdown   = require "kong.portal.render_toolset.markdown"
 local file_helpers = require "kong.portal.file_helpers"
 
+
 local yaml_load   = lyaml.load
 local EXTENSION_LIST = file_helpers.content_extension_list
+
+
+cjson.encode_sparse_array(true)
 
 
 local function extension_priority(ext)

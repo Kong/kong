@@ -267,6 +267,12 @@ local function check_insert(self, entity, options)
     return nil, tostring(err_t), err_t
   end
 
+  entity_to_insert, err = self.schema:post_process_fields(entity_to_insert, "insert")
+  if not entity_to_insert then
+    local err_t = self.errors:schema_violation(err)
+    return nil, tostring(err_t), err_t
+  end
+
   entity_to_insert, err = self.schema:transform(entity_to_insert, entity)
   if not entity_to_insert then
     err_t = self.errors:transformation_error(err)
@@ -319,6 +325,7 @@ local function check_update(self, key, entity, options, name)
     end
 
     if rbw_entity then
+      workspaces.remove_ws_prefix(self.schema.name, rbw_entity)
       entity_to_update = self.schema:merge_values(entity_to_update, rbw_entity)
     else
       local err_t = name
@@ -328,8 +335,6 @@ local function check_update(self, key, entity, options, name)
     end
   end
 
-  workspaces.remove_ws_prefix(self.schema.name, entity_to_update)
-
   local ok, err, err_t = resolve_foreign(self, entity_to_update)
   if not ok then
     return nil, err, err_t
@@ -338,6 +343,13 @@ local function check_update(self, key, entity, options, name)
   local ok, errors = self.schema:validate_update(entity_to_update, entity, rbw_entity)
   if not ok then
     local err_t = self.errors:schema_violation(errors)
+    return nil, nil, tostring(err_t), err_t
+  end
+
+  entity_to_update, err =
+    self.schema:post_process_fields(entity_to_update, "update")
+  if not entity_to_update then
+    local err_t = self.errors:schema_violation(err)
     return nil, nil, tostring(err_t), err_t
   end
 
@@ -414,6 +426,12 @@ local function check_upsert(self, entity, options, name, value)
 
   if name then
     entity_to_upsert[name] = nil
+  end
+
+  entity_to_upsert, err = self.schema:post_process_fields(entity_to_upsert, "upsert")
+  if not entity_to_upsert then
+    local err_t = self.errors:schema_violation(err)
+    return nil, tostring(err_t), err_t
   end
 
   entity_to_upsert, err = self.schema:transform(entity_to_upsert, entity)
@@ -1254,7 +1272,6 @@ function DAO:update(primary_key, entity, options)
     end
   end
 
-  workspaces.remove_ws_prefix(self.schema.name, rbw_entity)
   self:post_crud_event("update", row, rbw_entity, options)
 
   return row
@@ -1500,6 +1517,12 @@ function DAO:row_to_entity(row, options)
   end
 
   workspaces.remove_ws_prefix(self.schema.name, entity, options and options.include_ws)
+
+  entity, errors = self.schema:post_process_fields(entity, "select")
+  if not entity then
+    local err_t = self.errors:schema_violation(errors)
+    return nil, tostring(err_t), err_t
+  end
 
   return entity
 end

@@ -1541,6 +1541,8 @@ return {
         reports.log()
       end
 
+      tracing.flush()
+
       if not ctx.KONG_PROXIED then
         return
       end
@@ -1559,8 +1561,6 @@ return {
         -- release the handle, so the balancer can update its statistics
         balancer_data.balancer_handle:release()
       end
-
-      tracing.flush()
     end
   }
 }

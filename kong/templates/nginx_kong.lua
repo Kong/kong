@@ -50,6 +50,7 @@ lua_shared_dict kong_reports_consumers       10m;
 lua_shared_dict kong_reports_routes          1m;
 lua_shared_dict kong_reports_services        1m;
 lua_shared_dict kong_reports_workspaces 1m;
+lua_shared_dict kong_keyring 5m;
 > if database == "cassandra" then
 lua_shared_dict kong_cassandra      5m;
 > end
@@ -293,6 +294,9 @@ server {
 > for i = 1, #portal_gui_listeners do
     listen $(portal_gui_listeners[i].listener);
 > end
+
+    access_log ${{PORTAL_GUI_ACCESS_LOG}};
+    error_log ${{PORTAL_GUI_ERROR_LOG}} ${{LOG_LEVEL}};
 
 > if portal_gui_ssl_enabled then
     ssl_certificate ${{PORTAL_GUI_SSL_CERT}};

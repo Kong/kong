@@ -129,6 +129,7 @@ return {
     "groups",
     "group_rbac_roles",
     "login_attempts",
+    "keyring_meta",
   },
   RATELIMIT = {
     PERIODS = {
@@ -202,6 +203,19 @@ return {
     FALLBACK_404 = '<html><head><title>404 Not Found</title></head><body>' ..
       '<h1>404 Not Found</h1><p>The page you are requesting cannot be found.</p>' ..
       '</body></html>',
+    FALLBACK_EMAIL = [[
+      <!DOCTYPE html>
+      <html>
+        <head>
+        </head>
+        <body>
+          <h4>{{page.heading}}</h4>
+          <p>
+            {*page.body*}
+          </p>
+        </body>
+      </html>
+    ]],
     SITEMAP = [[<?xml version="1.0" encoding="UTF-8"?>
 
       <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

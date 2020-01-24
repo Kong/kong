@@ -1,0 +1,66 @@
+local helpers = require "spec.helpers"
+local kong_counters_sales = require "kong.counters.sales"
+
+for _, strategy in helpers.each_strategy() do
+  describe("Sales counters with db: #" .. strategy, function()
+    local counters, bp, db
+
+    setup(function()
+      bp, db = helpers.get_db_utils(strategy, {
+        "services",
+      })
+
+      assert(helpers.start_kong({
+        database = strategy,
+      }))
+
+      local counters_strategy = require("kong.counters.sales.strategies." .. strategy):new(db)
+      counters = kong_counters_sales.new({ strategy = counters_strategy })
+    end)
+
+    teardown(function()
+      helpers.stop_kong(nil, true)
+      assert(db:truncate())
+    end)
+
+    describe("get_workspace_entity_counters_count()", function()
+      it("should return the number of services", function()
+        local services_count
+
+        for i = 1, 10 do
+          bp.services:insert {
+            name = "service-" .. i,
+            url = "http://httpbin.org",
+          }
+        end
+
+        services_count = counters:get_license_report().services_count
+        assert.equals(10, services_count)
+
+        assert(db:truncate())
+
+        services_count = counters:get_license_report().services_count
+        assert.equals(0, services_count)
+      end)
+
+      it("should return the number of rbac_users", function()
+        local rbac_users
+
+        for i = 1, 10 do
+          db.rbac_users:insert {
+            name = "rbac_user-" .. i,
+            user_token = "rbac_user-" .. i,
+          }
+        end
+
+        rbac_users = counters:get_license_report().rbac_users
+        assert.equals(10, rbac_users)
+
+        assert(db:truncate())
+
+        rbac_users = counters:get_license_report().rbac_users
+        assert.equals(0, rbac_users)
+      end)
+    end)
+  end)
+end
