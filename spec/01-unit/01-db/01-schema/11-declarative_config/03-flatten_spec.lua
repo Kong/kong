@@ -233,7 +233,8 @@ describe("declarative config: flatten", function()
         assert.same({}, idempotent(config))
       end)
 
-      it("accepts entities", function()
+      -- XXX EE: Set to pending whilst we accept run-on
+      pending("accepts entities", function()
         local config = assert(lyaml.load([[
           _format_version: "1.1"
           plugins:
@@ -315,7 +316,8 @@ describe("declarative config: flatten", function()
         }, idempotent(err))
       end)
 
-      it("succeeds with present foreign relationships", function()
+      -- XXX EE: Set to pending whilst we accept run-on
+      pending("succeeds with present foreign relationships", function()
         local config = lyaml.load([[
           _format_version: "1.1"
           services:
@@ -474,7 +476,8 @@ describe("declarative config: flatten", function()
           }, idempotent(config))
         end)
 
-        it("accepts entities", function()
+        -- XXX EE: Set to pending whilst we accept run-on
+        pending("accepts entities", function()
           local config = assert(lyaml.load([[
             _format_version: "1.1"
             services:
@@ -912,7 +915,8 @@ describe("declarative config: flatten", function()
           }, idempotent(config))
         end)
 
-        it("accepts entities", function()
+        -- XXX EE: Set to pending whilst we accept run-on
+        pending("accepts entities", function()
           local config = assert(lyaml.load([[
             _format_version: "1.1"
             services:

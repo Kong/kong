@@ -20,6 +20,8 @@ return {
     { service = { type = "foreign", reference = "services", default = null, on_delete = "cascade", }, },
     { consumer = { type = "foreign", reference = "consumers", default = null, on_delete = "cascade", }, },
     { config = { type = "record", abstract = true, }, },
+    -- XXX EE: keep run_on, does nothing. Remove on 2.0
+    { run_on = typedefs.run_on },
     { protocols = typedefs.protocols },
     { enabled = { type = "boolean", default = true, }, },
     { tags           = typedefs.tags },
