@@ -1192,6 +1192,7 @@ describe("declarative config: flatten", function()
               custom_id = null,
               created_at = 1234567890,
               tags = null,
+              type = 0, -- XXX EE
             },
           },
         }, idempotent(config))
@@ -1215,6 +1216,7 @@ describe("declarative config: flatten", function()
               custom_id = null,
               created_at = 1234567890,
               tags = null,
+              type = 0, -- XXX EE
             },
           },
           basicauth_credentials = {
@@ -1252,6 +1254,7 @@ describe("declarative config: flatten", function()
               custom_id = null,
               created_at = 1234567890,
               tags = null,
+              type = 0, -- XXX EE
             },
           },
           basicauth_credentials = {
@@ -1318,6 +1321,7 @@ describe("declarative config: flatten", function()
               custom_id = null,
               created_at = 1234567890,
               tags = null,
+              type = 0, -- XXX EE
             },
           },
           basicauth_credentials = {
@@ -1384,6 +1388,7 @@ describe("declarative config: flatten", function()
               custom_id = null,
               created_at = 1234567890,
               tags = null,
+              type = 0, -- XXX EE
             },
           },
           basicauth_credentials = {
@@ -1438,6 +1443,7 @@ describe("declarative config: flatten", function()
 
         ]]))
         config = DeclarativeConfig:flatten(config)
+
         assert.same({
           consumers = {
             {
@@ -1446,6 +1452,7 @@ describe("declarative config: flatten", function()
               custom_id = null,
               created_at = 1234567890,
               tags = null,
+              type = 0, -- XXX EE
             },
           },
           basicauth_credentials = {
