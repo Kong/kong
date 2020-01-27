@@ -122,6 +122,7 @@ return {
             client_id = {
               required = false,
               type     = "array",
+              encrypted = true,
               elements = {
                 type = "string",
               },
@@ -131,6 +132,7 @@ return {
             client_secret = {
               required = false,
               type     = "array",
+              encrypted = true,
               elements = {
                 type = "string",
               },
