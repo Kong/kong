@@ -4,6 +4,13 @@
  - [1.5.0](#150---20190813)
 
 ## Unreleased
+2019/09/26
+### Aded
+- Consumer information to har
+
+### Removed
+- Legacy code for har generation. Now we use log features from Kong
+
 
 ## [1.5.1] - 2019/09/26
 
