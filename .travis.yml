@@ -78,6 +78,7 @@ jobs:
     - stage: lint and unit
       script:
       - luacheck -q .
+      # - scripts/autodoc-admin-api
       - bin/busted -v -o gtest spec/01-unit
       - bin/busted -v -o gtest spec-ee/01-unit
       env:

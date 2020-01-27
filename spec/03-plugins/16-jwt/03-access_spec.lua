@@ -221,6 +221,22 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.same({ message = "No mandatory 'iss' in claims" }, json)
       end)
+      it("returns 401 if the claims do not contain a valid key to identify a secret", function()
+        PAYLOAD.iss = ""
+        local jwt = jwt_encoder.encode(PAYLOAD, "foo")
+        local authorization = "Bearer " .. jwt
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Authorization"] = authorization,
+            ["Host"]          = "jwt1.com",
+          }
+        })
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Invalid 'iss' in claims" }, json)
+      end)
       it("returns 401 Unauthorized if the iss does not match a credential", function()
         PAYLOAD.iss = "123456789"
         local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)

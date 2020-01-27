@@ -26,7 +26,6 @@ end
 return {
   name = "rate-limiting",
   fields = {
-    { run_on = typedefs.run_on { one_of = { "first", "second" } } },
     { protocols = typedefs.protocols_http },
     { config = {
         type = "record",
@@ -40,7 +39,7 @@ return {
           { limit_by = {
               type = "string",
               default = "consumer",
-              one_of = { "consumer", "credential", "ip" },
+              one_of = { "consumer", "credential", "ip", "service" },
           }, },
           { policy = {
               type = "string",

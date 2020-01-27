@@ -490,7 +490,10 @@ function _M.update_password(admin, params)
                  kong.db.basicauth_credentials.update,
                  kong.db.basicauth_credentials,
                  { id = creds.id },
-                 { password = params.password }
+                 { 
+                   consumer = { id = admin.consumer.id },
+                   password = params.password,
+                 }
   )
 
   if err then
@@ -699,7 +702,14 @@ function _M.reset_password(plugin, collection, consumer, new_password, secret_id
       return nil, err
     end
 
-    local _, err = collection:update({ id = row.id }, { [plugin.credential_key] = new_password })
+    local _, err = collection:update(
+      { id = row.id }, 
+      { 
+        consumer = { id = consumer.id },
+        [plugin.credential_key] = new_password, 
+      }
+    )
+
     if err then
       return nil, err
     end

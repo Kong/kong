@@ -5,6 +5,8 @@ proxy_access_log = logs/access.log
 proxy_error_log = logs/error.log
 admin_access_log = logs/admin_access.log
 admin_error_log = logs/error.log
+status_access_log = off
+status_error_log = logs/status_error.log
 plugins = bundled
 anonymous_reports = on
 enforce_rbac = off
@@ -79,9 +81,8 @@ audit_log_ignore_paths =
 audit_log_ignore_tables =
 audit_log_signing_key =
 
-proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
+proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 http2 ssl
 stream_listen = off
-admin_listen = 127.0.0.1:8001, 127.0.0.1:8444 ssl
 
 admin_api_uri = NONE
 admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
@@ -100,6 +101,8 @@ admin_emails_from = ""
 admin_emails_reply_to = NONE
 admin_invitation_expiry = 259200
 
+admin_listen = 127.0.0.1:8001, 127.0.0.1:8444 http2 ssl
+status_listen = off
 origins = NONE
 nginx_user = nobody nobody
 nginx_worker_processes = auto
@@ -177,6 +180,7 @@ dns_error_ttl = 1
 dns_no_sync = off
 
 router_consistency = strict
+router_update_frequency = 1
 
 lua_socket_pool_size = 30
 lua_ssl_trusted_certificate = NONE

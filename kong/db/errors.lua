@@ -42,6 +42,7 @@ local ERRORS            = {
   OPERATION_UNSUPPORTED   = 12, -- operation is not supported with this strategy
   FOREIGN_KEYS_UNRESOLVED = 13, -- foreign key(s) could not be resolved
   DECLARATIVE_CONFIG      = 14, -- error parsing declarative configuration
+  TRANSFORMATION_ERROR    = 15, -- error with dao transformations
 }
 
 
@@ -63,6 +64,7 @@ local ERRORS_NAMES               = {
   [ERRORS.OPERATION_UNSUPPORTED]   = "operation unsupported",
   [ERRORS.FOREIGN_KEYS_UNRESOLVED] = "foreign keys unresolved",
   [ERRORS.DECLARATIVE_CONFIG]      = "invalid declarative configuration",
+  [ERRORS.TRANSFORMATION_ERROR]    = "transformation error",
 }
 
 local function add_ee_error(name, code, message)
@@ -421,6 +423,11 @@ function _M:unauthorized_operation(rbac_ctx)
   return new_err_t(self, ERRORS.RBAC_ERROR, message)
 end
 
+
+function _M:transformation_error(err)
+  err = err or ERRORS_NAMES[ERRORS.TRANSFORMATION_ERROR]
+  return new_err_t(self, ERRORS.TRANSFORMATION_ERROR, err)
+end
 
 function _M:invalid_size(err)
   if type(err) ~= "string" then

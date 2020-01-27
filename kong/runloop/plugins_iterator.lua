@@ -1,6 +1,5 @@
 local BasePlugin   = require "kong.plugins.base_plugin"
 local constants    = require "kong.constants"
-local reports      = require "kong.reports"
 
 
 local kong         = kong
@@ -44,20 +43,7 @@ local loaded_plugins
 
 
 local function get_loaded_plugins()
-  local loaded = assert(kong.db.plugins:get_handlers())
-
-  if kong.configuration.anonymous_reports then
-    reports.configure_ping(kong.configuration)
-    reports.add_ping_value("database_version", kong.db.infos.db_ver)
-    reports.toggle(true)
-
-    loaded[#loaded + 1] = {
-      name = "reports",
-      handler = reports,
-    }
-  end
-
-  return loaded
+  return assert(kong.db.plugins:get_handlers())
 end
 
 
@@ -235,12 +221,6 @@ local function load_configuration(ctx,
     return
   end
 
-  if plugin.run_on ~= "all" then
-    if plugin.run_on == "second" then
-      return
-    end
-  end
-
   local cfg = plugin.config or {}
 
   cfg.route_id    = plugin.route and plugin.route.id
@@ -285,30 +265,41 @@ local function load_configuration_through_combos(ctx, combos, plugin)
     local  service_id = service  and  service.id or nil
     local consumer_id = consumer and consumer.id or nil
 
-  if route_id and service_id and consumer_id and combos[COMBO_RSC] then
-    plugin_configuration = load_configuration(ctx, name, route_id, service_id, consumer_id)
-        if plugin_configuration then
+  if route_id and service_id and consumer_id and combos[COMBO_RSC]
+    and combos.both[route_id] == service_id
+  then
+    plugin_configuration = load_configuration(ctx, name, route_id, service_id,
+                                              consumer_id)
+    if plugin_configuration then
       return plugin_configuration
         end
       end
 
-  if route_id and consumer_id and combos[COMBO_RC] then
-    plugin_configuration = load_configuration(ctx, name, route_id, nil, consumer_id)
-        if plugin_configuration then
+  if route_id and consumer_id and combos[COMBO_RC]
+    and combos.routes[route_id]
+  then
+    plugin_configuration = load_configuration(ctx, name, route_id, nil,
+                                              consumer_id)
+    if plugin_configuration then
       return plugin_configuration
         end
       end
 
-  if service_id and consumer_id and combos[COMBO_SC] then
-    plugin_configuration = load_configuration(ctx, name, nil, service_id, consumer_id)
-        if plugin_configuration then
+  if service_id and consumer_id and combos[COMBO_SC]
+    and combos.services[service_id]
+  then
+    plugin_configuration = load_configuration(ctx, name, nil, service_id,
+                                              consumer_id)
+    if plugin_configuration then
       return plugin_configuration
         end
       end
 
-  if route_id and service_id and combos[COMBO_RS] then
-    plugin_configuration = load_configuration(ctx, name, route_id, service_id, nil)
-        if plugin_configuration then
+  if route_id and service_id and combos[COMBO_RS]
+    and combos.both[route_id] == service_id
+  then
+    plugin_configuration = load_configuration(ctx, name, route_id, service_id)
+    if plugin_configuration then
       return plugin_configuration
         end
       end
@@ -320,22 +311,22 @@ local function load_configuration_through_combos(ctx, combos, plugin)
         end
       end
 
-  if route_id and combos[COMBO_R] then
-    plugin_configuration = load_configuration(ctx, name, route_id, nil, nil)
-        if plugin_configuration then
+  if route_id and combos[COMBO_R] and combos.routes[route_id] then
+    plugin_configuration = load_configuration(ctx, name, route_id)
+    if plugin_configuration then
       return plugin_configuration
         end
       end
 
-  if service_id and combos[COMBO_S] then
-    plugin_configuration = load_configuration(ctx, name, nil, service_id, nil)
-        if plugin_configuration then
+  if service_id and combos[COMBO_S] and combos.services[service_id] then
+    plugin_configuration = load_configuration(ctx, name, nil, service_id)
+    if plugin_configuration then
       return plugin_configuration
         end
       end
 
   if combos[COMBO_GLOBAL] then
-    return load_configuration(ctx, name, nil, nil, nil)
+    return load_configuration(ctx, name)
   end
 end
 
@@ -485,20 +476,36 @@ function PluginsIterator.new(version)
     }
   end
 
-  for plugin, err in kong.db.plugins:each(1000) do
+  for plugin, err in kong.db.plugins:each() do
     if err then
       return nil, err
     end
 
     if should_process_plugin(plugin) then
-      map[plugin.name] = true
+      local name = plugin.name
+
+      map[name] = true
 
       local combo_key = (plugin.route    and 1 or 0)
                       + (plugin.service  and 2 or 0)
                       + (plugin.consumer and 4 or 0)
 
-      combos[plugin.name] = combos[plugin.name] or {}
-      combos[plugin.name][combo_key] = true
+      combos[name]          = combos[name]          or {}
+      combos[name].both     = combos[name].both     or {}
+      combos[name].routes   = combos[name].routes   or {}
+      combos[name].services = combos[name].services or {}
+
+      combos[name][combo_key] = true
+
+      if plugin.route and plugin.service then
+        combos[name].both[plugin.route.id] = plugin.service.id
+
+      elseif plugin.route then
+        combos[name].routes[plugin.route.id] = true
+
+      elseif plugin.service then
+        combos[name].services[plugin.service.id] = true
+      end
     end
   end
 

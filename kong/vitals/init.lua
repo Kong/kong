@@ -1367,6 +1367,7 @@ end
 
 
 function _M:log_latency(latency)
+  latency = latency or 1
   if not self:enabled() then
     return "vitals not enabled"
   end

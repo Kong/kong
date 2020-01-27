@@ -25,7 +25,18 @@ qq{
     }
 
     init_worker_by_lua_block {
-
+        _G.kong = {
+          db = {
+            consumers = {
+              select = function(self, query)
+                return { username = "bob" }, nil
+              end,
+              select_by_username = function(self, query)
+                return { username = "bob" }, nil
+              end,
+            },
+          },
+        }
         phases = require("kong.pdk.private.phases").phases
 
         phase_check_module = "client"
@@ -110,6 +121,17 @@ qq{
             }, {
                 method        = "get_protocol",
                 args          = {},
+                init_worker   = "forced false",
+                certificate   = "pending",
+                rewrite       = "forced false",
+                access        = true,
+                header_filter = true,
+                body_filter   = true,
+                log           = true,
+                admin_api     = "forced false",
+            }, {
+                method        = "load_consumer",
+                args          = { "bob", true },
                 init_worker   = "forced false",
                 certificate   = "pending",
                 rewrite       = "forced false",

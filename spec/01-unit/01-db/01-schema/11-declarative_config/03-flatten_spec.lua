@@ -260,7 +260,6 @@ describe("declarative config: flatten", function()
               route = null,
               name = "http-log",
               enabled = true,
-              run_on = "first",
               protocols = { "grpc", "grpcs", "http", "https" },
               config = {
                 http_endpoint = "https://example.com",
@@ -282,7 +281,6 @@ describe("declarative config: flatten", function()
               route = null,
               name = "key-auth",
               enabled = true,
-              run_on = "first",
               protocols = { "grpc", "grpcs", "http", "https" },
               config = {
                 anonymous = null,
@@ -371,7 +369,6 @@ describe("declarative config: flatten", function()
               id = "UUID",
               name = "http-log",
               route = null,
-              run_on = "first",
               protocols = { "grpc", "grpcs", "http", "https" },
               service = {
                 id = "UUID"
@@ -394,7 +391,6 @@ describe("declarative config: flatten", function()
               route = {
                 id = "UUID"
               },
-              run_on = "first",
               protocols = { "grpc", "grpcs", "http", "https" },
               service = null
             },
@@ -520,7 +516,6 @@ describe("declarative config: flatten", function()
                 name = "basic-auth",
                 protocols = { "grpc", "grpcs", "http", "https" },
                 route = null,
-                run_on = "first",
                 service = {
                   id = "UUID"
                 },
@@ -543,7 +538,6 @@ describe("declarative config: flatten", function()
                 name = "http-log",
                 protocols = { "grpc", "grpcs", "http", "https" },
                 route = null,
-                run_on = "first",
                 service = {
                   id = "UUID"
                 },
@@ -563,7 +557,6 @@ describe("declarative config: flatten", function()
                 name = "key-auth",
                 protocols = { "grpc", "grpcs", "http", "https" },
                 route = null,
-                run_on = "first",
                 service = {
                   id = "UUID"
                 },
@@ -584,7 +577,6 @@ describe("declarative config: flatten", function()
                 name = "tcp-log",
                 protocols = { "grpc", "grpcs", "http", "https" },
                 route = null,
-                run_on = "first",
                 service = {
                   id = "UUID"
                 },
@@ -965,7 +957,6 @@ describe("declarative config: flatten", function()
                 route = {
                   id = "UUID"
                 },
-                run_on = "first",
                 service = null,
                 tags = null
               }, {
@@ -988,7 +979,6 @@ describe("declarative config: flatten", function()
                 route = {
                   id = "UUID"
                 },
-                run_on = "first",
                 service = null,
                 tags = null
               }, {
@@ -1008,7 +998,6 @@ describe("declarative config: flatten", function()
                 route = {
                   id = "UUID"
                 },
-                run_on = "first",
                 service = null,
                 tags = null
               }, {
@@ -1029,7 +1018,6 @@ describe("declarative config: flatten", function()
                 route = {
                   id = "UUID"
                 },
-                run_on = "first",
                 service = null,
                 tags = null
               } },
@@ -1198,9 +1186,13 @@ describe("declarative config: flatten", function()
             - name: my-credential
               redirect_uris:
               - https://example.com
+              tags:
+              - tag1
             - name: another-credential
               redirect_uris:
               - https://example.test
+              tags:
+              - tag2
         ]]))
         config = DeclarativeConfig:flatten(config)
         config.consumers = nil
@@ -1214,7 +1206,8 @@ describe("declarative config: flatten", function()
               created_at = 1234567890,
               id = "UUID",
               name = "another-credential",
-              redirect_uris = { "https://example.test" }
+              redirect_uris = { "https://example.test" },
+              tags = { "tag2" },
             }, {
               client_id = "RANDOM",
               client_secret = "RANDOM",
@@ -1224,9 +1217,198 @@ describe("declarative config: flatten", function()
               created_at = 1234567890,
               id = "UUID",
               name = "my-credential",
-              redirect_uris = { "https://example.com" }
+              redirect_uris = { "https://example.com" },
+              tags = { "tag1" },
             } }
         }, idempotent(config))
+      end)
+    end)
+
+    describe("flat relationships:", function()
+      describe("jwt_secrets (globally unique) to consumers", function()
+        it("accepts entities", function()
+          local key = "-----BEGIN PUBLIC KEY-----\\n" ..
+                      "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDMYfnvWtC8Id5bPKae5yXSxQTt\\n" ..
+                      "+Zpul6AnnZWfI2TtIarvjHBFUtXRo96y7hoL4VWOPKGCsRqMFDkrbeUjRrx8iL91\\n" ..
+                      "4/srnyf6sh9c8Zk04xEOpK1ypvBz+Ks4uZObtjnnitf0NBGdjMKxveTq+VE7BWUI\\n" ..
+                      "yQjtQ8mbDOsiLLvh7wIDAQAB\\n" ..
+                      "-----END PUBLIC KEY-----"
+          local config = assert(lyaml.load([[
+            _format_version: "1.1"
+            consumers:
+              - username: foo
+            jwt_secrets:
+              - consumer: foo
+                key: "https://keycloak/auth/realms/foo"
+                algorithm: RS256
+                rsa_public_key: "]] .. key .. [["
+          ]]))
+
+          config = DeclarativeConfig:flatten(config)
+          config.jwt_secrets[next(config.jwt_secrets)].secret = nil
+          assert.same({
+            consumers = { {
+                created_at = 1234567890,
+                custom_id = null,
+                id = "UUID",
+                tags = null,
+                type = 0,
+                username = "foo"
+              } },
+            jwt_secrets = { {
+                algorithm = "RS256",
+                consumer = {
+                  id = "UUID"
+                },
+                created_at = 1234567890,
+                id = "UUID",
+                key = "https://keycloak/auth/realms/foo",
+                rsa_public_key = key:gsub("\\n", "\n"),
+                tags = null,
+              } }
+          }, idempotent(config))
+        end)
+      end)
+
+      describe("targets (not globally unique) to upstreams", function()
+        it("accepts entities", function()
+          local config = assert(lyaml.load([[
+            _format_version: '1.1'
+            upstreams:
+            - name: first-upstream
+            - name: second-upstream
+            targets:
+            - upstream: first-upstream
+              target: 127.0.0.1:6661
+              weight: 1
+            - upstream: second-upstream
+              target: 127.0.0.1:6661
+              weight: 1
+          ]]))
+
+          config = DeclarativeConfig:flatten(config)
+          assert.same({
+            targets = { {
+                created_at = 1234567890,
+                id = "UUID",
+                tags = null,
+                target = "127.0.0.1:6661",
+                upstream = {
+                  id = "UUID"
+                },
+                weight = 1
+              }, {
+                created_at = 1234567890,
+                id = "UUID",
+                tags = null,
+                target = "127.0.0.1:6661",
+                upstream = {
+                  id = "UUID"
+                },
+                weight = 1
+              } },
+            upstreams = { {
+                algorithm = "round-robin",
+                created_at = 1234567890,
+                hash_fallback = "none",
+                hash_fallback_header = null,
+                hash_on = "none",
+                hash_on_cookie = null,
+                hash_on_cookie_path = "/",
+                hash_on_header = null,
+                healthchecks = {
+                  active = {
+                    concurrency = 10,
+                    healthy = {
+                      http_statuses = { 200, 302 },
+                      interval = 0,
+                      successes = 0
+                    },
+                    http_path = "/",
+                    https_sni = null,
+                    https_verify_certificate = true,
+                    timeout = 1,
+                    type = "http",
+                    unhealthy = {
+                      http_failures = 0,
+                      http_statuses = { 429, 404, 500, 501, 502, 503, 504, 505 },
+                      interval = 0,
+                      tcp_failures = 0,
+                      timeouts = 0
+                    }
+                  },
+                  passive = {
+                    healthy = {
+                      http_statuses = { 200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 300, 301, 302, 303, 304, 305, 306, 307, 308 },
+                      successes = 0
+                    },
+                    type = "http",
+                    unhealthy = {
+                      http_failures = 0,
+                      http_statuses = { 429, 500, 503 },
+                      tcp_failures = 0,
+                      timeouts = 0
+                    }
+                  }
+                },
+                host_header = null,
+                id = "UUID",
+                name = "first-upstream",
+                slots = 10000,
+                tags = null
+              }, {
+                algorithm = "round-robin",
+                created_at = 1234567890,
+                hash_fallback = "none",
+                hash_fallback_header = null,
+                hash_on = "none",
+                hash_on_cookie = null,
+                hash_on_cookie_path = "/",
+                hash_on_header = null,
+                healthchecks = {
+                  active = {
+                    concurrency = 10,
+                    healthy = {
+                      http_statuses = { 200, 302 },
+                      interval = 0,
+                      successes = 0
+                    },
+                    http_path = "/",
+                    https_sni = null,
+                    https_verify_certificate = true,
+                    timeout = 1,
+                    type = "http",
+                    unhealthy = {
+                      http_failures = 0,
+                      http_statuses = { 429, 404, 500, 501, 502, 503, 504, 505 },
+                      interval = 0,
+                      tcp_failures = 0,
+                      timeouts = 0
+                    }
+                  },
+                  passive = {
+                    healthy = {
+                      http_statuses = { 200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 300, 301, 302, 303, 304, 305, 306, 307, 308 },
+                      successes = 0
+                    },
+                    type = "http",
+                    unhealthy = {
+                      http_failures = 0,
+                      http_statuses = { 429, 500, 503 },
+                      tcp_failures = 0,
+                      timeouts = 0
+                    }
+                  }
+                },
+                host_header = null,
+                id = "UUID",
+                name = "second-upstream",
+                slots = 10000,
+                tags = null
+              } }
+          }, idempotent(config))
+
+        end)
       end)
     end)
 
@@ -1285,7 +1467,8 @@ describe("declarative config: flatten", function()
                 created_at = 1234567890,
                 id = "UUID",
                 name = "another-credential",
-                redirect_uris = { "https://example.test" }
+                redirect_uris = { "https://example.test" },
+                tags = null,
               }, {
                 client_id = "RANDOM",
                 client_secret = "RANDOM",
@@ -1295,7 +1478,8 @@ describe("declarative config: flatten", function()
                 created_at = 1234567890,
                 id = "UUID",
                 name = "my-credential",
-                redirect_uris = { "https://example.com" }
+                redirect_uris = { "https://example.com" },
+                tags = null,
               } }
           }, idempotent(config))
         end)
@@ -1326,7 +1510,8 @@ describe("declarative config: flatten", function()
                 created_at = 1234567890,
                 id = "UUID",
                 name = "my-credential",
-                redirect_uris = { "https://example.com" }
+                redirect_uris = { "https://example.com" },
+                tags = null
               } }
           }, idempotent(config))
         end)
@@ -1359,7 +1544,8 @@ describe("declarative config: flatten", function()
                 created_at = 1234567890,
                 id = "UUID",
                 name = "my-credential",
-                redirect_uris = { "https://example.com" }
+                redirect_uris = { "https://example.com" },
+                tags = null,
               } },
             oauth2_tokens = {
               {

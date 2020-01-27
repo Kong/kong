@@ -47,7 +47,7 @@ return {
         --]] EE
 
         return kong.response.exit(200, {
-          data = { consumer },
+          data = setmetatable({ consumer }, cjson.array_mt),
           next = null,
         })
       end

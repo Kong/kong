@@ -185,11 +185,6 @@ for _, strategy in helpers.each_strategy() do
               headers = { ["Content-Type"] = content_type }
             })
 
-            -- TODO: For some reason the body which arrives to the server is
-            -- incorrectly parsed on this test: self.params.methods is the string
-            -- "PATCH" instead of an array, for example. I could not find the
-            -- cause
-
             local body = assert.res_status(201, res)
             local json = cjson.decode(body)
             assert.same({ "foo.api.com", "bar.api.com" }, json.hosts)
@@ -216,11 +211,6 @@ for _, strategy in helpers.each_strategy() do
               },
               headers = { ["Content-Type"] = content_type }
             })
-
-            -- TODO: For some reason the body which arrives to the server is
-            -- incorrectly parsed on this test: self.params.methods is the string
-            -- "PATCH" instead of an array, for example. I could not find the
-            -- cause
 
             local body = assert.res_status(201, res)
             local json = cjson.decode(body)
@@ -250,11 +240,6 @@ for _, strategy in helpers.each_strategy() do
               headers = { ["Content-Type"] = content_type }
             })
 
-            -- TODO: For some reason the body which arrives to the server is
-            -- incorrectly parsed on this test: self.params.methods is the string
-            -- "PATCH" instead of an array, for example. I could not find the
-            -- cause
-
             local body = assert.res_status(201, res)
             local json = cjson.decode(body)
             assert.same({ "foo.api.com", "bar.api.com" }, json.hosts)
@@ -281,11 +266,6 @@ for _, strategy in helpers.each_strategy() do
               },
               headers = { ["Content-Type"] = content_type }
             })
-
-            -- TODO: For some reason the body which arrives to the server is
-            -- incorrectly parsed on this test: self.params.methods is the string
-            -- "PATCH" instead of an array, for example. I could not find the
-            -- cause
 
             local body = assert.res_status(201, res)
             local json = cjson.decode(body)

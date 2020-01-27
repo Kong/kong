@@ -37,4 +37,16 @@ describe("Proxy error handlers", function()
     assert.matches("kong/", res.headers.server, nil, true)
     assert.equal("Request Header Or Cookie Too Large\n", body)
   end)
+
+  it("does not expose OpenResty version", function()
+    local res = assert(proxy_client:send {
+      method = "TRACE",
+      path = "/",
+    })
+
+    assert.res_status(405, res)
+    local body = res:read_body()
+    assert.matches("kong/", res.headers.server, nil, true)
+    assert.not_matches("openresty/", body, nil, true)
+  end)
 end)

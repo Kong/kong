@@ -1,6 +1,7 @@
 local cjson = require "cjson"
 local iteration = require "kong.db.iteration"
 local utils = require "kong.tools.utils"
+local constants = require "kong.constants"
 
 
 local setmetatable = setmetatable
@@ -54,10 +55,12 @@ end
 
 
 local function validate_size_value(size)
+  local max = constants.MAX_PAGE_SIZE
+
   if floor(size) ~= size or
            size < 1 or
-           size > 1000 then
-    return nil, "size must be an integer between 1 and 1000"
+           size > max then
+    return nil, "size must be an integer between 1 and " .. max
   end
 
   return true
@@ -258,7 +261,7 @@ local function check_insert(self, entity, options)
     return nil, err, err_t
   end
 
-  local ok, errors = self.schema:validate_insert(entity_to_insert)
+  local ok, errors = self.schema:validate_insert(entity_to_insert, entity)
   if not ok then
     local err_t = self.errors:schema_violation(errors)
     return nil, tostring(err_t), err_t
@@ -267,6 +270,12 @@ local function check_insert(self, entity, options)
   entity_to_insert, err = self.schema:post_process_fields(entity_to_insert, "insert")
   if not entity_to_insert then
     local err_t = self.errors:schema_violation(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  entity_to_insert, err = self.schema:transform(entity_to_insert, entity)
+  if not entity_to_insert then
+    err_t = self.errors:transformation_error(err)
     return nil, tostring(err_t), err_t
   end
 
@@ -331,7 +340,7 @@ local function check_update(self, key, entity, options, name)
     return nil, err, err_t
   end
 
-  local ok, errors = self.schema:validate_update(entity_to_update)
+  local ok, errors = self.schema:validate_update(entity_to_update, entity, rbw_entity)
   if not ok then
     local err_t = self.errors:schema_violation(errors)
     return nil, nil, tostring(err_t), err_t
@@ -341,6 +350,12 @@ local function check_update(self, key, entity, options, name)
     self.schema:post_process_fields(entity_to_update, "update")
   if not entity_to_update then
     local err_t = self.errors:schema_violation(err)
+    return nil, nil, tostring(err_t), err_t
+  end
+
+  entity_to_update, err = self.schema:transform(entity_to_update, entity)
+  if not entity_to_update then
+    err_t = self.errors:transformation_error(err)
     return nil, nil, tostring(err_t), err_t
   end
 
@@ -403,7 +418,7 @@ local function check_upsert(self, entity, options, name, value)
     return nil, err, err_t
   end
 
-  local ok, errors = self.schema:validate_upsert(entity_to_upsert)
+  local ok, errors = self.schema:validate_upsert(entity_to_upsert, entity)
   if not ok then
     local err_t = self.errors:schema_violation(errors)
     return nil, tostring(err_t), err_t
@@ -416,6 +431,12 @@ local function check_upsert(self, entity, options, name, value)
   entity_to_upsert, err = self.schema:post_process_fields(entity_to_upsert, "upsert")
   if not entity_to_upsert then
     local err_t = self.errors:schema_violation(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  entity_to_upsert, err = self.schema:transform(entity_to_upsert, entity)
+  if not entity_to_upsert then
+    err_t = self.errors:transformation_error(err)
     return nil, tostring(err_t), err_t
   end
 
@@ -446,7 +467,7 @@ local function find_cascade_delete_entities(self, entity)
 
     local dao = self.db.daos[constraint.schema.name]
     local method = "each_for_" .. constraint.field_name
-    for row, err in dao[method](dao, pk, 1000) do
+    for row, err in dao[method](dao, pk) do
       if not row then
         log(ERR, "[db] failed to traverse entities for cascade-delete: ", err)
         break
@@ -507,7 +528,7 @@ local function generate_foreign_key_methods(schema)
           end
 
         else
-          size = 100
+          size = constants.DEFAULT_PAGE_SIZE
         end
 
         if options ~= nil then
@@ -559,7 +580,7 @@ local function generate_foreign_key_methods(schema)
           end
 
         else
-          size = 100
+          size = constants.DEFAULT_ITERATION_SIZE
         end
 
         if options ~= nil then
@@ -1051,7 +1072,7 @@ function DAO:page(size, offset, options)
     end
 
   else
-    size = 100
+    size = constants.DEFAULT_PAGE_SIZE
   end
 
   if options ~= nil then
@@ -1098,7 +1119,7 @@ function DAO:each(size, options)
     end
 
   else
-    size = 100
+    size = constants.DEFAULT_ITERATION_SIZE
   end
 
   if options ~= nil then

@@ -4,9 +4,9 @@ local utils = require "kong.tools.utils"
 
 describe("Log Serializer", function()
   before_each(function()
-    ngx = {
+    _G.ngx = {
       ctx = {
-        balancer_address = {
+        balancer_data = {
           tries = {
             {
               ip = "127.0.0.1",
@@ -36,12 +36,18 @@ describe("Log Serializer", function()
         get_headers = function() return {"respheader1", "respheader2"} end
       }
     }
+
+    kong = kong or {}
+    package.loaded["kong.pdk.request"] = nil
+    local pdk_request = require "kong.pdk.request"
+    kong.request = pdk_request.new(kong)
   end)
+
   describe("Basic", function()
     it("serializes the workspaces information", function()
       local req_workspaces = {{id = utils.uuid(), name = "default"}}
       ngx.ctx.log_request_workspaces = req_workspaces
-      local res = basic.serialize(ngx)
+      local res = basic.serialize(ngx, kong)
       assert.same(req_workspaces,  res.workspaces)
     end)
   end)

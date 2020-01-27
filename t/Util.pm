@@ -74,8 +74,6 @@ our $HttpConfig = <<_EOC_;
                 end
             end
 
-            kong = nil
-
             local entries = {}
             for _, entry in ipairs(phase_check_data) do
                 entries[entry.method] = true
@@ -102,7 +100,10 @@ our $HttpConfig = <<_EOC_;
                             fname .. " expected "
 
                 -- Run function with phase checked disabled
-                kong = nil
+		if kong then
+		  kong.ctx = nil
+		end
+		-- kong = nil
 
                 local expected = fdata[phases[phase]]
 
@@ -132,7 +133,10 @@ our $HttpConfig = <<_EOC_;
                 end
 
                 -- Re-enable phase checking and compare results
-                kong = { ctx = { core = { phase = phase } } }
+		if not kong then
+		  kong = {}
+		end
+                kong.ctx = { core = { phase = phase } }
 
                 if forced_false then
                     ok1, err1 = false, ""

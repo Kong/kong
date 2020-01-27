@@ -447,7 +447,7 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(404, res)
         end)
 
-        it("returns 200 for developers by id", function()
+        it("returns 200 for consumers by id", function()
           local res = assert(admin_client:send {
             method  = "PATCH",
             path    = "/consumers/consumer/basic-auth/" .. consumer_credential.id,
@@ -461,7 +461,7 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(200, res)
         end)
 
-        it("returns 200 for developers by username", function()
+        it("returns 200 for consumers by username", function()
           local res = assert(admin_client:send {
             method  = "PATCH",
             path    = "/consumers/consumer/basic-auth/" .. consumer_credential.username,
@@ -758,15 +758,18 @@ for _, strategy in helpers.each_strategy() do
           db:truncate("basicauth_credentials")
           admin_credential = assert(db.basicauth_credentials:insert {
                                       consumer = { id = admin.id, },
-                                      username = "admin" })
+                                      username = "admin",
+                                      password = "kong", })
 
           consumer_credential = assert(db.basicauth_credentials:insert {
                                       consumer = { id = consumer.id, },
-                                      username = "consumer" })
+                                      username = "consumer",
+                                      password = "kong", })
 
           developer_credential = assert(db.basicauth_credentials:insert {
                                       consumer = { id = developer.id, },
-                                      username = "developer" })
+                                      username = "developer",
+                                      password = "kong", })
         end)
 
         teardown(function()

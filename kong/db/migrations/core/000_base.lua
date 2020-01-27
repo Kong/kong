@@ -198,7 +198,8 @@ return {
         "hash_on_cookie"        TEXT,
         "hash_on_cookie_path"   TEXT,
         "slots"                 INTEGER                      NOT NULL,
-        "healthchecks"          JSON
+        "healthchecks"          JSON,
+        "host_header"              TEXT
       );
 
 
@@ -385,7 +386,8 @@ return {
         hash_on_header       text,
         healthchecks         text,
         name                 text,
-        slots                int
+        slots                int,
+        host_header          text
       );
       CREATE INDEX IF NOT EXISTS upstreams_name_idx ON upstreams(name);
 

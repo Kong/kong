@@ -9,7 +9,6 @@ end
 return {
   name = "request-termination",
   fields = {
-    { run_on = typedefs.run_on_first },
     { protocols = typedefs.protocols_http },
     { config = {
         type = "record",

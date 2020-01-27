@@ -1,4 +1,5 @@
 local cassandra = require "cassandra"
+local constants = require "kong.constants"
 
 
 local fmt          = string.format
@@ -26,7 +27,7 @@ local mt = { __index = _M }
 function _M.new(db, page_size, event_ttl)
   local self  = {
     cluster   = db.connector.cluster,
-    page_size = page_size or 100,
+    page_size = page_size or constants.DEFAULT_CLUSTER_EVENTS_PAGE_SIZE,
     event_ttl = event_ttl,
   }
 
@@ -74,9 +75,9 @@ function _M:select_interval(channels, min_at, max_at)
 
   local args = { cassandra.set(channels), c_min_at, c_max_at }
   local opts = {
-    prepared      = true,
-    page_size     = self.page_size,
-    consistencies = cassandra.consistencies.local_one,
+    prepared    = true,
+    page_size   = self.page_size,
+    consistency = cassandra.consistencies.local_one,
   }
 
   local iter, b, c = self.cluster:iterate(SELECT_INTERVAL_QUERY, args, opts)

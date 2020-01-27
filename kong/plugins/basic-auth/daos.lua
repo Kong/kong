@@ -1,9 +1,9 @@
 local typedefs = require "kong.db.schema.typedefs"
+local crypto = require "kong.plugins.basic-auth.crypto"
 
 
 return {
   basicauth_credentials = {
-    dao = "kong.plugins.basic-auth.basicauth_credentials",
     name = "basicauth_credentials",
     primary_key = { "id" },
     cache_key = { "username" },
@@ -18,9 +18,19 @@ return {
     fields = {
       { id = typedefs.uuid },
       { created_at = typedefs.auto_timestamp_s },
-      { consumer = { type = "foreign", reference = "consumers", required = true, on_delete = "cascade", }, },
+      { consumer = { type = "foreign", reference = "consumers", required = true, on_delete = "cascade" }, },
       { username = { type = "string", required = true, unique = true }, },
-      { password = { type = "string", required = true, encrypted = true }, },
+      { password = { type = "string", required = true , encrypted = true }, },
+      { tags     = typedefs.tags },
+    },
+    transformations = {
+      {
+        input = { "password" },
+        needs = { "consumer.id" },
+        on_write = function(password, consumer_id)
+          return { password = crypto.hash(consumer_id, password) }
+        end,
+      },
     },
   },
 }

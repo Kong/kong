@@ -66,7 +66,10 @@ return {
         self.args.post.consumer = { id = self.consumer.id }
         return endpoints.put_entity_endpoint(credentials_schema)(self, ...)
       end,
-      PATCH  = endpoints.patch_entity_endpoint(credentials_schema),
+      PATCH  = function(self, ...)
+        self.args.post.consumer = { id = self.consumer.id }
+        return endpoints.patch_entity_endpoint(credentials_schema)(self, ...)
+      end,
       DELETE = endpoints.delete_entity_endpoint(credentials_schema),
     },
   },

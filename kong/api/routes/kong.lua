@@ -1,6 +1,5 @@
 local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
-local workspaces = require "kong.workspaces"
 local conf_loader = require "kong.conf_loader"
 local ee_api = require "kong.enterprise_edition.api_helpers"
 local admins = require "kong.enterprise_edition.admins_helpers"
@@ -10,11 +9,10 @@ local rbac = require "kong.rbac"
 local api_helpers = require "kong.api.api_helpers"
 local Schema = require "kong.db.schema"
 local Errors = require "kong.db.errors"
+local workspaces = require "kong.workspaces"
+
 
 local sub = string.sub
-local find = string.find
-local select = select
-local tonumber = tonumber
 local kong = kong
 local knode  = (kong and kong.node) and kong.node or
                require "kong.pdk.node".new()
@@ -39,6 +37,93 @@ local strip_foreign_schemas = function(fields)
   end
 end
 
+local function ws_and_rbac_helper(self, dao_factory, helpers)
+  local admin_auth = singletons.configuration.admin_gui_auth
+
+  if not admin_auth and not ngx.ctx.rbac then
+    return kong.response.exit(404, { message = "Not found" })
+  end
+
+  -- For when only RBAC token comes in
+  if not self.admin then
+    local admins, err = kong.db.admins:page_for_rbac_user({
+      id = ngx.ctx.rbac.user.id
+    })
+
+    if err then
+      return kong.response.exit(500, err)
+    end
+
+    if not admins[1] then
+      -- no admin associated with this rbac_user
+      return kong.response.exit(404, { message = "Not found" })
+    end
+
+    ee_api.attach_consumer_and_workspaces(self, admins[1].consumer.id)
+    self.admin = admins[1]
+  end
+
+  -- now to get the right permission set
+  self.permissions = {
+    endpoints = {
+      ["*"] = {
+        ["*"] = {
+          actions = { "delete", "create", "update", "read", },
+          negative = false,
+        }
+      }
+    },
+    entities = {
+      ["*"] = {
+        actions = { "delete", "create", "update", "read", },
+        negative = false,
+      }
+    },
+  }
+
+  -- get roles across all workspaces
+  local roles, err = workspaces.run_with_ws_scope({}, rbac.get_user_roles,
+    kong.db,
+    ngx.ctx.rbac.user)
+  local group_roles = workspaces.run_with_ws_scope({}, rbac.get_groups_roles,
+    kong.db,
+    ngx.ctx.authenticated_groups)
+  roles = rbac.merge_roles(roles, group_roles)
+  ee_api.attach_workspaces_roles(self, roles)
+
+  if err then
+    log(ERR, "[userinfo] ", err)
+    return kong.response.exit(500, err)
+  end
+
+  local rbac_enabled = singletons.configuration.rbac
+  if rbac_enabled == "on" or rbac_enabled == "both" then
+    self.permissions.endpoints = rbac.readable_endpoints_permissions(roles)
+  end
+
+  if rbac_enabled == "entity" or rbac_enabled == "both" then
+    self.permissions.entities = rbac.readable_entities_permissions(roles)
+  end
+
+  -- fetch workspace resources from workspace entities
+  self.workspaces = {}
+
+  local ws_dict = {} -- dict to keep track of which workspaces we have added
+  local ws, err
+  for k, v in ipairs(self.workspace_entities) do
+    if not ws_dict[v.workspace_id] then
+      ws, err = kong.db.workspaces:select({id = v.workspace_id})
+      if err then
+        return helpers.yield_error(err)
+      end
+      ws_dict[v.workspace_id] = true
+      if ws then
+        self.workspaces[#self.workspaces + 1] = ws
+      end
+    end
+  end
+end
+
 
 return {
   ["/"] = {
@@ -48,7 +133,7 @@ return {
 
       do
         local set = {}
-        for row, err in kong.db.plugins:each(1000) do
+        for row, err in kong.db.plugins:each() do
           if err then
             kong.log.err(err)
             return kong.response.exit(500, { message = "An unexpected error happened" })
@@ -112,164 +197,14 @@ return {
       })
     end
   },
-  ["/status"] = {
-    GET = function(self, dao, helpers)
-      local query = self.req.params_get
-      local unit = "m"
-      local scale
-
-      if query then
-        if query.unit then
-          unit = query.unit
-        end
-
-        if query.scale then
-          scale = tonumber(query.scale)
-        end
-
-        -- validate unit and scale arguments
-
-        local pok, perr = pcall(utils.bytes_to_str, 0, unit, scale)
-        if not pok then
-          return kong.response.exit(400, { message = perr })
-        end
-      end
-
-      -- nginx stats
-
-      local r = ngx.location.capture "/nginx_status"
-      if r.status ~= 200 then
-        kong.log.err(r.body)
-        return kong.response.exit(500, { message = "An unexpected error happened" })
-      end
-
-      local var = ngx.var
-      local accepted, handled, total = select(3, find(r.body, "accepts handled requests\n (%d*) (%d*) (%d*)"))
-
-      local status_response = {
-        memory = knode.get_memory_stats(unit, scale),
-        server = {
-          connections_active = tonumber(var.connections_active),
-          connections_reading = tonumber(var.connections_reading),
-          connections_writing = tonumber(var.connections_writing),
-          connections_waiting = tonumber(var.connections_waiting),
-          connections_accepted = tonumber(accepted),
-          connections_handled = tonumber(handled),
-          total_requests = tonumber(total)
-        },
-        database = {
-          reachable = true,
-        },
-      }
-
-      -- TODO: no way to bypass connection pool
-      local ok, err = kong.db:connect()
-      if not ok then
-        ngx.log(ngx.ERR, "failed to connect to ", kong.db.infos.strategy,
-                         " during /status endpoint check: ", err)
-        status_response.database.reachable = false
-      end
-
-      kong.db:close() -- ignore errors
-
-      return kong.response.exit(200, status_response)
-    end
-  },
-
   --- Retrieves current user info, either an admin or an rbac user
   -- This route is whitelisted from RBAC validation. It requires that an admin
   -- is set on the headers, but should only work for a consumer that is set when
   -- an authentication plugin has set the admin_gui_auth_header.
   -- See for reference: kong.rbac.authorize_request_endpoint()
   ["/userinfo"] = {
-    before = function(self, dao_factory, helpers)
-      local admin_auth = singletons.configuration.admin_gui_auth
-
-      if not admin_auth and not ngx.ctx.rbac then
-        return kong.response.exit(404, { message = "Not found" })
-      end
-
-      -- For when only RBAC token comes in
-      if not self.admin then
-        local admins, err = kong.db.admins:page_for_rbac_user({
-          id = ngx.ctx.rbac.user.id
-        })
-
-        if err then
-          return kong.response.exit(500, err)
-        end
-
-        if not admins[1] then
-          -- no admin associated with this rbac_user
-          return kong.response.exit(404, { message = "Not found" })
-        end
-
-        ee_api.attach_consumer_and_workspaces(self, admins[1].consumer.id)
-        self.admin = admins[1]
-      end
-
-      -- now to get the right permission set
-      self.permissions = {
-        endpoints = {
-          ["*"] = {
-            ["*"] = {
-              actions = { "delete", "create", "update", "read", },
-              negative = false,
-            }
-          }
-        },
-        entities = {
-          ["*"] = {
-            actions = { "delete", "create", "update", "read", },
-            negative = false,
-          }
-        },
-      }
-
-      -- get roles across all workspaces
-      local roles, err = workspaces.run_with_ws_scope({}, rbac.get_user_roles,
-                                                      kong.db,
-                                                      ngx.ctx.rbac.user)
-      local group_roles = workspaces.run_with_ws_scope({}, rbac.get_groups_roles,
-                                                       kong.db,
-                                                       ngx.ctx.authenticated_groups)
-      roles = rbac.merge_roles(roles, group_roles)
-      ee_api.attach_workspaces_roles(self, roles)
-
-      if err then
-        log(ERR, "[userinfo] ", err)
-        return kong.response.exit(500, err)
-      end
-
-      local rbac_enabled = singletons.configuration.rbac
-      if rbac_enabled == "on" or rbac_enabled == "both" then
-        self.permissions.endpoints = rbac.readable_endpoints_permissions(roles)
-      end
-
-      if rbac_enabled == "entity" or rbac_enabled == "both" then
-        self.permissions.entities = rbac.readable_entities_permissions(roles)
-      end
-
-      -- fetch workspace resources from workspace entities
-      self.workspaces = {}
-
-      local ws_dict = {} -- dict to keep track of which workspaces we have added
-      local ws, err
-      for k, v in ipairs(self.workspace_entities) do
-        if not ws_dict[v.workspace_id] then
-          ws, err = kong.db.workspaces:select({id = v.workspace_id})
-          if err then
-            return helpers.yield_error(err)
-          end
-          ws_dict[v.workspace_id] = true
-          if ws then
-            self.workspaces[#self.workspaces + 1] = ws
-          end
-        end
-      end
-    end,
-
     GET = function(self, dao, helpers)
+      ws_and_rbac_helper(self, dao, helpers)
       return kong.response.exit(200, {
         admin = admins.transmogrify(self.admin),
         groups = self.groups,
@@ -278,7 +213,6 @@ return {
       })
     end,
   },
-
   ["/schemas/:name"] = {
     GET = function(self, db, helpers)
       local entity = kong.db[self.params.name]
@@ -437,4 +371,5 @@ return {
       return kong.response.exit(200)
     end,
   },
+
 }

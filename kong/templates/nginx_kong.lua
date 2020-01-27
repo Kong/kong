@@ -1,5 +1,6 @@
 return [[
 charset UTF-8;
+server_tokens off;
 
 > if anonymous_reports then
 ${{SYSLOG_REPORTS}}
@@ -184,14 +185,14 @@ server {
     location @grpc {
         internal;
 
-        set $kong_proxy_mode       'grpc';
+        set $kong_proxy_mode  'grpc';
         grpc_pass grpc://kong_upstream;
     }
 
     location @grpcs {
         internal;
 
-        set $kong_proxy_mode       'grpcs';
+        set $kong_proxy_mode  'grpc';
         grpc_pass grpcs://kong_upstream;
     }
 
@@ -470,7 +471,7 @@ server {
     location / {
         default_type application/json;
         content_by_lua_block {
-            Kong.serve_admin_api({
+            Kong.admin_content({
                 acah = "Content-Type, ${{RBAC_AUTH_HEADER}}, Kong-Request-Type, Cache-Control",
             })
         }
@@ -479,6 +480,46 @@ server {
             local audit_log = require "kong.enterprise_edition.audit_log"
             audit_log.admin_log_handler()
             require("kong.tracing").flush()
+        }
+        header_filter_by_lua_block {
+            Kong.admin_header_filter()
+        }
+    }
+
+    location /nginx_status {
+        internal;
+        access_log off;
+        stub_status;
+    }
+
+    location /robots.txt {
+        return 200 'User-agent: *\nDisallow: /';
+    }
+}
+> end
+
+> if #status_listeners > 0 then
+server {
+    server_name kong_status;
+> for i = 1, #status_listeners do
+    listen $(status_listeners[i].listener);
+> end
+
+    access_log ${{STATUS_ACCESS_LOG}};
+    error_log ${{STATUS_ERROR_LOG}} ${{LOG_LEVEL}};
+
+    # injected nginx_http_status_* directives
+> for _, el in ipairs(nginx_http_status_directives) do
+    $(el.name) $(el.value);
+> end
+
+    location / {
+        default_type application/json;
+        content_by_lua_block {
+            Kong.status_content()
+        }
+        header_filter_by_lua_block {
+            Kong.status_header_filter()
         }
     }
 

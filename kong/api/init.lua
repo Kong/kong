@@ -1,345 +1,41 @@
 local lapis       = require "lapis"
 local utils       = require "kong.tools.utils"
-local tablex      = require "pl.tablex"
-local pl_pretty   = require "pl.pretty"
 local singletons  = require "kong.singletons"
 local app_helpers = require "lapis.application"
 local api_helpers = require "kong.api.api_helpers"
 
 local Endpoints   = require "kong.api.endpoints"
-local arguments   = require "kong.api.arguments"
-local Errors      = require "kong.db.errors"
 
-local rbac = require "kong.rbac"
-local workspaces = require "kong.workspaces"
 local ee_api      = require "kong.enterprise_edition.api_helpers"
 
 local ngx      = ngx
-local sub      = string.sub
-local find     = string.find
 local type     = type
 local pairs    = pairs
 local ipairs   = ipairs
-local fmt      = string.format
 
 
 local app = lapis.Application()
 
 
-local NEEDS_BODY = tablex.readonly({ PUT = 1, POST = 2, PATCH = 3 })
-
-
-local function parse_params(fn)
-  return app_helpers.json_params(function(self, ...)
-    if NEEDS_BODY[ngx.req.get_method()] then
-      local content_type = self.req.headers["content-type"]
-      if content_type then
-        content_type = content_type:lower()
-
-        if find(content_type, "application/json", 1, true) and not self.json then
-          return kong.response.exit(400, { message = "Cannot parse JSON body" })
-
-        elseif find(content_type, "application/x-www-form-urlencode", 1, true) then
-          self.params = utils.decode_args(self.params)
-        end
-      end
-    end
-
-    self.params = api_helpers.normalize_nested_params(self.params)
-
-    local res, err = fn(self, ...)
-
-    if err then
-      kong.log.err(err)
-      return ngx.exit(500)
-    end
-
-    if res == nil and ngx.status >= 200 then
-      return ngx.exit(0)
-    end
-
-    return res
-  end)
-end
-
-
--- new DB
-local function new_db_on_error(self)
-  local err = self.errors[1]
-
-  if type(err) ~= "table" then
-    kong.log.err(err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
-  end
-
-  if err.strategy then
-    err.strategy = nil
-  end
-
-  if err.code == Errors.codes.SCHEMA_VIOLATION
-  or err.code == Errors.codes.INVALID_PRIMARY_KEY
-  or err.code == Errors.codes.FOREIGN_KEY_VIOLATION
-  or err.code == Errors.codes.INVALID_OFFSET
-  or err.code == Errors.codes.FOREIGN_KEYS_UNRESOLVED
-  then
-    return kong.response.exit(400, err)
-  end
-
-  if err.code == Errors.codes.NOT_FOUND then
-    return kong.response.exit(404, err)
-  end
-
-  if err.code == Errors.codes.OPERATION_UNSUPPORTED then
-    kong.log.err(err)
-    return kong.response.exit(405, err)
-  end
-
-  if err.code == Errors.codes.PRIMARY_KEY_VIOLATION
-  or err.code == Errors.codes.UNIQUE_VIOLATION
-  then
-    return kong.response.exit(409, err)
-  end
-
-  kong.log.err(err)
-  return kong.response.exit(500, { message = "An unexpected error occurred" })
-end
-
-
--- old DAO
-local function on_error(self)
-  local err = self.errors[1]
-
-  if type(err) ~= "table" then
-    kong.log.err(err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
-  end
-
-  if err.forbidden then
-    return kong.response.exit(403, { message = err.tbl.message })
-  end
-
-  if err.name then
-    return new_db_on_error(self)
-  end
-
-  if err.db then
-    kong.log.err(err.message)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
-  end
-
-  if err.unique then
-    return kong.response.exit(409, err.tbl)
-  end
-
-  if err.foreign then
-    return kong.response.exit(404, err.tbl or { message = "Not found" })
-  end
-
-  return kong.response.exit(400, err.tbl or err.message)
-end
-
-
-app.default_route = function(self)
-  local path = self.req.parsed_url.path:match("^(.*)/$")
-
-  if path and self.app.router:resolve(path, self) then
-    return
-
-  elseif self.app.router:resolve(self.req.parsed_url.path .. "/", self) then
-    return
-  end
-
-  return self.app.handle_404(self)
-end
-
-
-app.handle_404 = function(self)
-  return kong.response.exit(404, { message = "Not found" })
-end
-
-
-app.handle_error = function(self, err, trace)
-  if err then
-    if type(err) ~= "string" then
-      err = pl_pretty.write(err)
-    end
-    if find(err, "don't know how to respond to", nil, true) then
-      return kong.response.exit(405, { message = "Method not allowed" })
-    end
-  end
-
-  ngx.log(ngx.ERR, err, "\n", trace)
-
-  -- We just logged the error so no need to give it to responses and log it
-  -- twice
-  return kong.response.exit(500, { message = "An unexpected error occurred" })
-end
-
-
-app:before_filter(function(self)
-  local req_id = utils.random_string()
-  local invoke_plugin = singletons.invoke_plugin
-
-  ngx.ctx.admin_api = {
-    req_id = req_id,
-  }
-  ngx.header["X-Kong-Admin-Request-ID"] = req_id
-
-  do
-    -- in case of endpoint with missing `/`, this block is executed twice.
-    -- So previous workspace should be dropped
-    ngx.ctx.admin_api_request = true
-    ngx.ctx.workspaces = nil
-    ngx.ctx.rbac = nil
-
-    -- workspace name: if no workspace name was provided as the first segment
-    -- in the path (:8001/:workspace/), consider it is the default workspace
-    local ws_name = self.params.workspace_name or workspaces.DEFAULT_WORKSPACE
-
-    -- fetch the workspace for current request
-    local workspace, err = workspaces.fetch_workspace(ws_name)
-    if err then
-      ngx.log(ngx.ERR, err)
-      return kong.response.exit(500, { message = "And unexpected error occurred" })
-    end
-    if not workspace then
-      kong.response.exit(404, {message = fmt("Workspace '%s' not found", ws_name)})
-    end
-
-    -- set fetched workspace reference into the context
-    ngx.ctx.workspaces = { workspace }
-    self.params.workspace_name = nil
-
-    local origin = singletons.configuration.admin_gui_url or "*"
-
-    local cors_conf = {
-      origins = { origin },
-      methods = { "GET", "PUT", "PATCH", "DELETE", "POST" },
-      credentials = true,
-    }
-
-    local ok, err = invoke_plugin({
-      name = "cors",
-      config = cors_conf,
-      phases = { "access", "header_filter" },
-      api_type = ee_api.apis.ADMIN,
-      db = singletons.db,
-    })
-
-    if not ok then
-      return app_helpers.yield_error(err)
-    end
-
-    local rbac_auth_header = singletons.configuration.rbac_auth_header
-    local rbac_token = ngx.req.get_headers()[rbac_auth_header]
-
-    if not rbac_token then
-      ee_api.authenticate(self,
-                          singletons.configuration.enforce_rbac ~= "off",
-                          singletons.configuration.admin_gui_auth)
-    end
-    -- ngx.var.uri is used to look for exact matches
-    -- self.route_name is used to look for wildcard matches,
-    -- by replacing named parameters with *
-    rbac.validate_user(self.rbac_user, self.groups)
-    rbac.validate_endpoint(self.route_name, ngx.var.uri, self.rbac_user, self.groups)
-  end
-
-  if not NEEDS_BODY[ngx.req.get_method()] then
-    return
-  end
-
-  local content_type = self.req.headers["content-type"]
-  if not content_type then
-    local content_length = self.req.headers["content-length"]
-    if content_length == "0" then
-      return
-    end
-
-    if not content_length then
-      local _, err = ngx.req.socket()
-      if err == "no body" then
-        return
-      end
-    end
-
-  elseif sub(content_type, 1, 16) == "application/json"                  or
-         sub(content_type, 1, 19) == "multipart/form-data"               or
-         sub(content_type, 1, 33) == "application/x-www-form-urlencoded" then
-    return
-  end
-
-  return kong.response.exit(415)
-end)
-
-
-local handler_helpers = {
-  yield_error = app_helpers.yield_error
-}
-
-local function attach_routes(routes)
-  for route_path, methods in pairs(routes) do
-    methods.on_error = methods.on_error or on_error
-
-    for method_name, method_handler in pairs(methods) do
-      local wrapped_handler = function(self)
-        return method_handler(self, {}, handler_helpers)
-      end
-
-      methods[method_name] = parse_params(wrapped_handler)
-    end
-
-    app:match(route_path, route_path, app_helpers.respond_to(methods))
-    if route_path ~= "/" then
-      app:match("workspace_" .. route_path, "/:workspace_name" .. route_path,
-        app_helpers.respond_to(methods))
-    end
-  end
-end
-
-
-local function attach_new_db_routes(routes)
-  for route_path, definition in pairs(routes) do
-    local schema  = definition.schema
-    local methods = definition.methods
-
-    methods.on_error = methods.on_error or new_db_on_error
-
-    for method_name, method_handler in pairs(methods) do
-      local wrapped_handler = function(self)
-        self.args = arguments.load({
-          schema  = schema,
-          request = self.req,
-        })
-
-        return method_handler(self, singletons.db, handler_helpers)
-      end
-
-      methods[method_name] = parse_params(wrapped_handler)
-    end
-
-    app:match(route_path, route_path, app_helpers.respond_to(methods))
-    if route_path ~= "/" then
-      app:match("workspace_" .. route_path, "/:workspace_name" .. route_path,
-                app_helpers.respond_to(methods))
-    end
-  end
-end
+app.default_route = api_helpers.default_route
+app.handle_404 = api_helpers.handle_404
+app.handle_error = api_helpers.handle_error
+app:before_filter(api_helpers.before_filter)
 
 
 ngx.log(ngx.DEBUG, "Loading Admin API endpoints")
 
 
 -- Load core routes
-for _, v in ipairs({"kong", "cache", "config"}) do
+for _, v in ipairs({"kong", "health", "cache", "config"}) do
   local routes = require("kong.api.routes." .. v)
-  attach_routes(routes)
+  api_helpers.attach_routes(app, routes)
 end
 
 -- XXX EE, move elsewhere
 for _, v in ipairs({"vitals", "oas_config", "license", "entities", "keyring"}) do
   local routes = require("kong.api.routes." .. v)
-  attach_routes(routes)
+  api_helpers.attach_routes(app, routes)
 end
 
 
@@ -391,10 +87,8 @@ do
     end
   end
 
-  -- Assign files entity handlers to files splat route
   ee_api.splatify_entity_route("files", routes)
-
-  attach_new_db_routes(routes)
+  api_helpers.attach_new_db_routes(app, routes)
 end
 
 
@@ -415,9 +109,9 @@ if singletons.configuration and singletons.configuration.loaded_plugins then
     if loaded then
       ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: ", k)
       if is_new_db_routes(mod) then
-        attach_new_db_routes(mod)
+        api_helpers.attach_new_db_routes(app, mod)
       else
-        attach_routes(mod)
+        api_helpers.attach_routes(app, mod)
       end
 
     else
@@ -432,9 +126,9 @@ for _, k in ipairs({"rbac", "audit"}) do
   if loaded then
     ngx.log(ngx.DEBUG, "Loading API endpoints for module: ", k)
     if is_new_db_routes(mod) then
-      attach_new_db_routes(mod)
+      api_helpers.attach_new_db_routes(app, mod)
     else
-      attach_routes(mod)
+      api_helpers.attach_routes(app, mod)
     end
 
   else
