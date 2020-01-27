@@ -3,6 +3,8 @@ local Schema   = require "kong.db.schema"
 local lp_email = require "lpeg_patterns.email"
 local typedefs = require "kong.db.schema.typedefs"
 
+
+local is_regex = Schema.validators.is_regex
 local EOF = lpeg.P(-1)
 local email_validator_pattern = lp_email.email_nocfws * EOF
 
@@ -28,6 +30,15 @@ local function validate_portal_auth(portal_auth)
 end
 
 
+local function validate_asterisk_or_regex(value)
+  if value == "*" or is_regex(value) then
+    return true
+  end
+
+  return nil, string.format("'%s' is not a valid regex", tostring(value))
+end
+
+
 local config_schema = {
   type = "record",
 
@@ -48,7 +59,7 @@ local config_schema = {
     { portal_reset_success_email = { type = "boolean" } },
     { portal_emails_from = email },
     { portal_emails_reply_to = email },
-    { portal_cors_origins = { type = "array", elements = { type = "string", is_regex = true } } },
+    { portal_cors_origins = { type = "array", elements = { type = "string", custom_validator = validate_asterisk_or_regex } } },
     { portal_developer_meta_fields = { type  = "string" , default =
       "[{\"label\":\"Full Name\",\"title\":\"full_name\",\"validator\":{\"required\":true,\"type\":\"string\"}}]"} },
     { portal_session_conf = { type = "string" } },

@@ -154,5 +154,49 @@ describe("workspace config", function()
       assert.equals(values.config.portal, expected_values.config.portal)
       assert.equals(values.config.portal_auth, expected_values.config.portal_auth)
     end)
+
+    it("should accept valid regex for portal_cors_origins", function()
+      local values = {
+        name = "test",
+        config = {
+          portal_cors_origins = { "wee" },
+        },
+      }
+
+      assert.truthy(schema:validate(values))
+    end)
+
+    it("should accept '*' for portal_cors_origins", function()
+      local values = {
+        name = "test",
+        config = {
+          portal_cors_origins = { "*" },
+        },
+      }
+
+      assert.truthy(schema:validate(values))
+    end)
+
+    it("should reject invalid regex (other than star) for portal_cors_origins", function()
+      local values = {
+        name = "test",
+        config = {
+          portal_cors_origins = { "[" },
+        },
+      }
+
+      assert.falsy(schema:validate(values))
+    end)
+
+    it("should reject non string values for portal_cors_origins", function()
+      local values = {
+        name = "test",
+        config = {
+          portal_cors_origins = { 9000 },
+        },
+      }
+
+      assert.falsy(schema:validate(values))
+    end)
   end)
 end)
