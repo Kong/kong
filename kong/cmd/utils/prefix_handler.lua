@@ -66,7 +66,7 @@ local function gen_default_ssl_cert(kong_config, pair_type)
 
     -- last for 20 years
     local now = os.time()
-    crt:setLifetime(now, now + 86400*20)
+    crt:setLifetime(now, now + 86400*20*365)
 
     local name = x509_name.new()
       :add("C", "US")
@@ -136,7 +136,7 @@ local function gather_system_infos()
   end
 
   infos.worker_rlimit = ulimit
-  infos.worker_connections = math.min(16384, ulimit)
+  infos.worker_connections = ulimit
 
   return infos
 end

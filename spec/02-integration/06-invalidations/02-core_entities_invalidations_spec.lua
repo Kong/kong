@@ -3,7 +3,33 @@ local helpers      = require "spec.helpers"
 local ssl_fixtures = require "spec.fixtures.ssl"
 
 
-local POLL_INTERVAL = 0.3
+local POLL_INTERVAL = 0.1
+
+
+local function assert_proxy_2_wait(request, res_status, res_headers)
+  helpers.wait_until(function()
+    local proxy_client_2 = helpers.http_client("127.0.0.1", 9000)
+    finally(function()
+      proxy_client_2:close()
+    end)
+
+    local res = proxy_client_2:send(request)
+    if not res then
+      return false
+    end
+    if res.status ~= res_status then
+      return false
+    end
+    if res_headers then
+      for k,v in pairs(res_headers) do
+        if res.headers[k] ~= (v ~= ngx.null and v or nil) then
+          return false
+        end
+      end
+    end
+    return true
+  end, 10)
+end
 
 
 for _, strategy in helpers.each_strategy() do
@@ -14,8 +40,6 @@ for _, strategy in helpers.each_strategy() do
 
     local proxy_client_1
     local proxy_client_2
-
-    local wait_for_propagation
 
     local service_fixture
 
@@ -46,9 +70,10 @@ for _, strategy in helpers.each_strategy() do
         db_update_frequency   = POLL_INTERVAL,
         db_update_propagation = db_update_propagation,
         nginx_conf            = "spec/fixtures/custom_nginx.template",
+        router_update_frequency = POLL_INTERVAL,
       })
 
-      local r, e = helpers.start_kong {
+      assert(helpers.start_kong {
         log_level             = "debug",
         prefix                = "servroot2",
         database              = strategy,
@@ -56,16 +81,14 @@ for _, strategy in helpers.each_strategy() do
         admin_listen          = "0.0.0.0:9001",
         db_update_frequency   = POLL_INTERVAL,
         db_update_propagation = db_update_propagation,
-      }
+        router_update_frequency = POLL_INTERVAL,
+        router_update_frequency = POLL_INTERVAL,
+      })
 
       admin_client_1 = helpers.http_client("127.0.0.1", 8001)
       admin_client_2 = helpers.http_client("127.0.0.1", 9001)
       proxy_client_1 = helpers.http_client("127.0.0.1", 8000)
       proxy_client_2 = helpers.http_client("127.0.0.1", 9000)
-
-      wait_for_propagation = function()
-        ngx.sleep(POLL_INTERVAL * 2 + db_update_propagation * 2)
-      end
     end)
 
     lazy_teardown(function()
@@ -106,14 +129,14 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(404, res_1)
 
-        local res_2 = assert(proxy_client_2:send {
+        local res = assert(proxy_client_2:send {
           method  = "GET",
           path    = "/status/200",
           headers = {
             host = "example.com",
           }
         })
-        assert.res_status(404, res_2)
+        assert.res_status(404, res)
       end)
 
       local route_fixture_id
@@ -140,26 +163,24 @@ for _, strategy in helpers.each_strategy() do
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
 
-        local res_1 = assert(proxy_client_1:send {
+        do
+          local res = assert(proxy_client_1:send {
+            method  = "GET",
+            path    = "/status/200",
+            headers = {
+              host = "example.com",
+            }
+          })
+          assert.res_status(200, res)
+        end
+
+        assert_proxy_2_wait({
           method  = "GET",
           path    = "/status/200",
           headers = {
             host = "example.com",
           }
-        })
-        assert.res_status(200, res_1)
-
-
-        wait_for_propagation()
-
-        local res_2 = assert(proxy_client_2:send {
-          method  = "GET",
-          path    = "/status/200",
-          headers = {
-            host = "example.com",
-          }
-        })
-        assert.res_status(200, res_2)
+        }, 200)
       end)
 
       it("on update", function()
@@ -202,29 +223,25 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(404, res_1_old)
 
-        wait_for_propagation()
-
         -- TEST: ensure new host value maps to our Service
 
-        local res_2 = assert(proxy_client_2:send {
+        assert_proxy_2_wait({
           method  = "GET",
           path    = "/",
           headers = {
             host = "updated-example.com",
           }
-        })
-        assert.res_status(200, res_2)
+        }, 200)
 
         -- TEST: ensure old host value does not map anywhere
 
-        local res_2_old = assert(proxy_client_2:send {
+        assert_proxy_2_wait({
           method  = "GET",
           path    = "/",
           headers = {
             host = "example.com",
           }
-        })
-        assert.res_status(404, res_2_old)
+        }, 404)
       end)
 
       it("on delete", function()
@@ -246,16 +263,13 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(404, res_1)
 
-        wait_for_propagation()
-
-        local res_2 = assert(proxy_client_2:send {
+        assert_proxy_2_wait({
           method  = "GET",
           path    = "/",
           headers = {
             host = "updated-example.com",
           }
-        })
-        assert.res_status(404, res_2)
+        }, 404)
       end)
     end)
 
@@ -294,20 +308,17 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res_1)
 
-        wait_for_propagation()
-
-        local res_2 = assert(proxy_client_2:send {
+        assert_proxy_2_wait({
           method  = "GET",
           path    = "/status/200",
           headers = {
             host = "service.com",
           }
-        })
-        assert.res_status(200, res_2)
+        }, 200)
 
         -- update the Service
 
-        local admin_res = assert(admin_client_1:send {
+        admin_res = assert(admin_client_1:send {
           method = "PATCH",
           path   = "/services/" .. service_fixture.id,
           body   = {
@@ -331,16 +342,13 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(418, res_1)
 
-        wait_for_propagation()
-
-        local res_2 = assert(proxy_client_2:send {
+        assert_proxy_2_wait({
           method  = "GET",
           path    = "/",
           headers = {
             host = "service.com",
           }
-        })
-        assert.res_status(418, res_2)
+        }, 418)
       end)
 
       pending("on delete", function()
@@ -366,16 +374,13 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(404, res_1)
 
-        wait_for_propagation()
-
-        local res_2 = assert(proxy_client_2:send {
+        assert_proxy_2_wait({
           method  = "GET",
           path    = "/",
           headers = {
             host = "service.com",
           }
-        })
-        assert.res_status(404, res_2)
+        }, 404)
       end)
     end)
 
@@ -436,10 +441,12 @@ for _, strategy in helpers.each_strategy() do
         local cert_1 = get_cert(8443, "ssl-example.com")
         assert.cn("ssl-example.com", cert_1)
 
-        wait_for_propagation()
-
-        local cert_2 = get_cert(9443, "ssl-example.com")
-        assert.cn("ssl-example.com", cert_2)
+        helpers.wait_until(function()
+          local cert_2 = get_cert(9443, "ssl-example.com")
+          return pcall(function()
+            assert.cn("ssl-example.com", cert_2)
+          end)
+        end)
       end)
 
       it("on certificate delete+re-creation", function()
@@ -471,10 +478,12 @@ for _, strategy in helpers.each_strategy() do
         local cert_1b = get_cert(8443, "new-ssl-example.com")
         assert.cn("ssl-example.com", cert_1b)
 
-        wait_for_propagation()
-
-        local cert_2a = get_cert(9443, "ssl-example.com")
-        assert.cn("localhost", cert_2a)
+        helpers.wait_until(function()
+          local cert_2a = get_cert(9443, "ssl-example.com")
+          return pcall(function()
+            assert.cn("localhost", cert_2a)
+          end)
+        end)
 
         local cert_2b = get_cert(9443, "new-ssl-example.com")
         assert.cn("ssl-example.com", cert_2b)
@@ -503,10 +512,12 @@ for _, strategy in helpers.each_strategy() do
         local cert_1 = get_cert(8443, "new-ssl-example.com")
         assert.cn("ssl-alt.com", cert_1)
 
-        wait_for_propagation()
-
-        local cert_2 = get_cert(9443, "new-ssl-example.com")
-        assert.cn("ssl-alt.com", cert_2)
+        helpers.wait_until(function()
+          local cert_2 = get_cert(9443, "new-ssl-example.com")
+          return pcall(function()
+            assert.cn("ssl-alt.com", cert_2)
+          end)
+        end)
       end)
 
       it("on sni update via id", function()
@@ -526,10 +537,12 @@ for _, strategy in helpers.each_strategy() do
         local cert_1_new = get_cert(8443, "updated-sn-via-id.com")
         assert.cn("ssl-alt.com", cert_1_new)
 
-        wait_for_propagation()
-
-        local cert_2_old = get_cert(9443, "new-ssl-example.com")
-        assert.cn("localhost", cert_2_old)
+        helpers.wait_until(function()
+          local cert_2_old = get_cert(9443, "new-ssl-example.com")
+          return pcall(function()
+            assert.cn("localhost", cert_2_old)
+          end)
+        end)
 
         local cert_2_new = get_cert(9443, "updated-sn-via-id.com")
         assert.cn("ssl-alt.com", cert_2_new)
@@ -548,10 +561,12 @@ for _, strategy in helpers.each_strategy() do
         local cert_1_new = get_cert(8443, "updated-sn.com")
         assert.cn("ssl-alt.com", cert_1_new)
 
-        wait_for_propagation()
-
-        local cert_2_old = get_cert(9443, "updated-sn-via-id.com")
-        assert.cn("localhost", cert_2_old)
+        helpers.wait_until(function()
+          local cert_2_old = get_cert(9443, "updated-sn-via-id.com")
+          return pcall(function()
+            assert.cn("localhost", cert_2_old)
+          end)
+        end)
 
         local cert_2_new = get_cert(9443, "updated-sn.com")
         assert.cn("ssl-alt.com", cert_2_new)
@@ -569,10 +584,12 @@ for _, strategy in helpers.each_strategy() do
         local cert_1 = get_cert(8443, "updated-sn.com")
         assert.cn("localhost", cert_1)
 
-        wait_for_propagation()
-
-        local cert_2 = get_cert(9443, "updated-sn.com")
-        assert.cn("localhost", cert_2)
+        helpers.wait_until(function()
+          local cert_2 = get_cert(9443, "updated-sn.com")
+          return pcall(function()
+            assert.cn("localhost", cert_2)
+          end)
+        end)
       end)
 
       describe("wildcard snis", function()
@@ -605,12 +622,19 @@ for _, strategy in helpers.each_strategy() do
           cert = get_cert(8443, "test2.wildcard.com")
           assert.cn("ssl-alt.com", cert)
 
-          wait_for_propagation()
+          helpers.wait_until(function()
+            cert = get_cert(9443, "test.wildcard.com")
+            return pcall(function()
+              assert.cn("ssl-alt.com", cert)
+            end)
+          end)
 
-          cert = get_cert(9443, "test.wildcard.com")
-          assert.cn("ssl-alt.com", cert)
-          cert = get_cert(9443, "test2.wildcard.com")
-          assert.cn("ssl-alt.com", cert)
+          helpers.wait_until(function()
+            cert = get_cert(9443, "test2.wildcard.com")
+            return pcall(function()
+              assert.cn("ssl-alt.com", cert)
+            end)
+          end)
 
           cert = get_cert(8443, "wildcard.org")
           assert.cn("ssl-alt-alt.com", cert)
@@ -643,12 +667,14 @@ for _, strategy in helpers.each_strategy() do
           cert = get_cert(8443, "test2.wildcard.com")
           assert.cn("ssl-alt-alt.com", cert)
 
-          wait_for_propagation()
-
-          local cert = get_cert(9443, "test.wildcard.com")
-          assert.cn("ssl-alt-alt.com", cert)
-          cert = get_cert(9443, "test2.wildcard.com")
-          assert.cn("ssl-alt-alt.com", cert)
+          helpers.wait_until(function()
+            local cert1 = get_cert(9443, "test.wildcard.com")
+            local cert2 = get_cert(9443, "test2.wildcard.com")
+            return pcall(function()
+              assert.cn("ssl-alt-alt.com", cert1)
+              assert.cn("ssl-alt-alt.com", cert2)
+            end)
+          end)
         end)
 
         it("on sni update via id", function()
@@ -672,12 +698,14 @@ for _, strategy in helpers.each_strategy() do
           cert_1_new = get_cert(8443, "test2.wildcard_updated.com")
           assert.cn("ssl-alt-alt.com", cert_1_new)
 
-          wait_for_propagation()
-
-          local cert_2_old = get_cert(9443, "test.wildcard.com")
-          assert.cn("localhost", cert_2_old)
-          cert_2_old = get_cert(9443, "test2.wildcard.com")
-          assert.cn("localhost", cert_2_old)
+          helpers.wait_until(function()
+            local cert_2_old_1 = get_cert(9443, "test.wildcard.com")
+            local cert_2_old_2 = get_cert(9443, "test2.wildcard.com")
+            return pcall(function()
+              assert.cn("localhost", cert_2_old_1)
+              assert.cn("localhost", cert_2_old_2)
+            end)
+          end)
 
           local cert_2_new = get_cert(9443, "test.wildcard_updated.com")
           assert.cn("ssl-alt-alt.com", cert_2_new)
@@ -702,12 +730,14 @@ for _, strategy in helpers.each_strategy() do
           cert_1_new = get_cert(8443, "test2.wildcard.org")
           assert.cn("ssl-alt-alt.com", cert_1_new)
 
-          wait_for_propagation()
-
-          local cert_2_old = get_cert(9443, "test.wildcard_updated.com")
-          assert.cn("localhost", cert_2_old)
-          cert_2_old = get_cert(9443, "test2.wildcard_updated.com")
-          assert.cn("localhost", cert_2_old)
+          helpers.wait_until(function()
+            local cert_2_old_1 = get_cert(9443, "test.wildcard_updated.com")
+            local cert_2_old_2 = get_cert(9443, "test2.wildcard_updated.com")
+            return pcall(function()
+              assert.cn("localhost", cert_2_old_1)
+              assert.cn("localhost", cert_2_old_2)
+            end)
+          end)
 
           local cert_2_new = get_cert(9443, "test.wildcard.org")
           assert.cn("ssl-alt-alt.com", cert_2_new)
@@ -729,12 +759,14 @@ for _, strategy in helpers.each_strategy() do
           cert_1 = get_cert(8443, "test2.wildcard.org")
           assert.cn("localhost", cert_1)
 
-          wait_for_propagation()
-
-          local cert_2 = get_cert(9443, "test.wildcard.org")
-          assert.cn("localhost", cert_2)
-          cert_2 = get_cert(9443, "test2.wildcard.org")
-          assert.cn("localhost", cert_2)
+          helpers.wait_until(function()
+            local cert_2_1 = get_cert(9443, "test.wildcard.org")
+            local cert_2_2 = get_cert(9443, "test2.wildcard.org")
+            return pcall(function()
+              assert.cn("localhost", cert_2_1)
+              assert.cn("localhost", cert_2_2)
+            end)
+          end)
         end)
       end)
     end)
@@ -798,17 +830,21 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res_1)
         assert.is_nil(res_1.headers["Dummy-Plugin"])
 
-        wait_for_propagation()
-
-        local res_2 = assert(proxy_client_2:send {
+        assert_proxy_2_wait({
           method  = "GET",
           path    = "/status/200",
           headers = {
             host = "dummy.com",
           }
-        })
-        assert.res_status(200, res_2)
-        assert.is_nil(res_2.headers["Dummy-Plugin"])
+        }, 200, { ["Dummy-Plugin"] = ngx.null })
+
+        assert_proxy_2_wait({
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            host = "dummy.com",
+          }
+        }, 200, { ["Dummy-Plugin"] = ngx.null })
 
         -- create Plugin
 
@@ -839,17 +875,13 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res_1)
         assert.equal("1", res_1.headers["Dummy-Plugin"])
 
-        wait_for_propagation()
-
-        local res_2 = assert(proxy_client_2:send {
+        assert_proxy_2_wait({
           method  = "GET",
           path    = "/status/200",
           headers = {
             host = "dummy.com",
           }
-        })
-        assert.res_status(200, res_2)
-        assert.equal("1", res_2.headers["Dummy-Plugin"])
+        }, 200, { ["Dummy-Plugin"] = "1" })
       end)
 
       it("on update", function()
@@ -880,17 +912,13 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res_1)
         assert.equal("2", res_1.headers["Dummy-Plugin"])
 
-        wait_for_propagation()
-
-        local res_2 = assert(proxy_client_2:send {
+        assert_proxy_2_wait({
           method  = "GET",
           path    = "/status/200",
           headers = {
             host = "dummy.com",
           }
-        })
-        assert.res_status(200, res_2)
-        assert.equal("2", res_2.headers["Dummy-Plugin"])
+        }, 200, { ["Dummy-Plugin"] = "2" })
       end)
 
       it("on delete", function()
@@ -913,17 +941,13 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res_1)
         assert.is_nil(res_1.headers["Dummy-Plugin"])
 
-        wait_for_propagation()
-
-        local res_2 = assert(proxy_client_2:send {
+        assert_proxy_2_wait({
           method  = "GET",
           path    = "/status/200",
           headers = {
             host = "dummy.com",
           }
-        })
-        assert.res_status(200, res_2)
-        assert.is_nil(res_2.headers["Dummy-Plugin"])
+        }, 200, { ["Dummy-Plugin"] = ngx.null })
       end)
     end)
 
@@ -945,15 +969,17 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res_1)
         assert.is_nil(res_1.headers["Dummy-Plugin"])
 
-        local res_2 = assert(proxy_client_2:send {
-          method  = "GET",
-          path    = "/status/200",
-          headers = {
-            host = "dummy.com",
-          }
-        })
-        assert.res_status(200, res_2)
-        assert.is_nil(res_2.headers["Dummy-Plugin"])
+        do
+          local res = assert(proxy_client_2:send {
+            method  = "GET",
+            path    = "/status/200",
+            headers = {
+              host = "dummy.com",
+            }
+          })
+          assert.res_status(200, res)
+          assert.is_nil(res.headers["Dummy-Plugin"])
+        end
 
         local admin_res_plugin = assert(admin_client_1:send {
           method = "POST",
@@ -982,17 +1008,13 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res_1)
         assert.equal("1", res_1.headers["Dummy-Plugin"])
 
-        wait_for_propagation()
-
-        local res_2 = assert(proxy_client_2:send {
+        assert_proxy_2_wait({
           method  = "GET",
           path    = "/status/200",
           headers = {
             host = "dummy.com",
           }
-        })
-        assert.res_status(200, res_2)
-        assert.equal("1", res_2.headers["Dummy-Plugin"])
+        }, 200, { ["Dummy-Plugin"] = "1" })
       end)
 
       it("on delete", function()
@@ -1025,17 +1047,13 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res_1)
         assert.is_nil(res_1.headers["Dummy-Plugin"])
 
-        wait_for_propagation()
-
-        local res_2 = assert(proxy_client_2:send {
+        assert_proxy_2_wait({
           method  = "GET",
           path    = "/status/200",
           headers = {
             host = "dummy.com",
           }
-        })
-        assert.res_status(200, res_2)
-        assert.is_nil(res_2.headers["Dummy-Plugin"])
+        }, 200, { ["Dummy-Plugin"] = ngx.null })
       end)
     end)
   end)
@@ -1049,8 +1067,6 @@ for _, strategy in helpers.each_strategy() do
 
     local proxy_client_1
     local proxy_client_2
-
-    local wait_for_propagation
 
     local service_fixture
 
@@ -1096,10 +1112,6 @@ for _, strategy in helpers.each_strategy() do
       admin_client_2 = helpers.http_client("127.0.0.1", 9001)
       proxy_client_1 = helpers.http_client("127.0.0.1", 8000)
       proxy_client_2 = helpers.http_client("127.0.0.1", 9000)
-
-      wait_for_propagation = function()
-        ngx.sleep(POLL_INTERVAL * 2 + db_update_propagation * 2)
-      end
     end)
 
     lazy_teardown(function()
@@ -1135,14 +1147,14 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(404, res_1)
 
-        local res_2 = assert(proxy_client_2:send {
+        local res = assert(proxy_client_2:send {
           method  = "GET",
           path    = "/status/200",
           headers = {
             host = "propagation.test",
           }
         })
-        assert.res_status(404, res_2)
+        assert.res_status(404, res)
       end)
 
       it("on create", function()
@@ -1174,17 +1186,13 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res_1)
 
-
-        wait_for_propagation()
-
-        local res_2 = assert(proxy_client_2:send {
+        assert_proxy_2_wait({
           method  = "GET",
           path    = "/status/200",
           headers = {
             host = "propagation.test",
           }
-        })
-        assert.res_status(200, res_2)
+        }, 200)
       end)
     end)
   end)

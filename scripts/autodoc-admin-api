@@ -298,12 +298,23 @@ local function gen_kind(finfo, field_data)
   end
 end
 
-local function gen_defaults(finfo)
-  if finfo.default then
-    return " Defaults to `" .. cjson_encode(finfo.default) .. "`."
-  else
-    return ""
+local function gen_field_info(finfo)
+  local out = {}
+
+  if finfo.one_of then
+    local vals = {}
+    for _, f in ipairs(finfo.one_of) do
+      local v = type(f) == "string" and ("%q"):format(f) or tostring(f)
+      table.insert(vals, "`" .. v .. "`")
+    end
+    table.insert(out, " Accepted values are: " .. table.concat(vals, ", ") .. ". ")
   end
+
+  if finfo.default then
+    table.insert(out, " Defaults to `" .. cjson_encode(finfo.default) .. "`.")
+  end
+
+  return table.concat(out)
 end
 
 local function gen_notation(fname, finfo, field_data)
@@ -322,10 +333,28 @@ local function gen_notation(fname, finfo, field_data)
            table.concat(form_example, "&") ..
            [[`. With JSON, use an Array.]]
   elseif finfo.type == "foreign" then
-    return [[ With form-encoded, the notation is `]] ..
-           fname .. [[.id=<]] .. fname ..
-           [[_id>`. With JSON, use `"]] .. fname ..
-           [[":{"id":"<]] .. fname .. [[_id>"}`.]]
+    local fschema = assert(require("kong.db.schema.entities." .. finfo.reference))
+    local ek = fschema.endpoint_key
+    if ek then
+      return ([[With form-encoded, the notation is ]] ..
+              [[`$FNAME.id=<$FNAME id>` or ]] ..
+              [[`$FNAME.$ENDPOINT_KEY=<$FNAME $ENDPOINT_KEY>`. ]] ..
+              [[With JSON, use "]] ..
+              [[`"$FNAME":{"id":"<$FNAME id>"}` or ]] ..
+              [[`"$FNAME":{"$ENDPOINT_KEY":"<$FNAME $ENDPOINT_KEY>"}`.]]):
+              gsub("$([A-Z_]*)", {
+                FNAME = fname,
+                ENDPOINT_KEY = ek,
+              })
+    else
+      return ([[With form-encoded, the notation is ]] ..
+              [[`$FNAME.id=<$FNAME id>`. ]] ..
+              [[With JSON, use "]] ..
+              [[`"$FNAME":{"id":"<$FNAME id>"}`.]]):
+              gsub("$([A-Z_]*)", {
+                FNAME = fname,
+              })
+    end
   else
     return ""
   end
@@ -336,10 +365,10 @@ local function write_field(outfd, fname, finfo, fullname, field_data, entity_nam
   local description = assert_data(field_data.description,
                                   "description for " .. entity_name .. "." .. fullname)
                       :gsub("%s+", " ")
-  local defaults = gen_defaults(finfo)
+  local field_info = gen_field_info(finfo)
   local notation = gen_notation(fname, finfo, field_data)
 
-  outfd:write("    `" .. fullname .. "`" .. kind .. " | " .. description .. defaults .. notation .. "\n")
+  outfd:write("    `" .. fullname .. "`" .. kind .. " | " .. description .. field_info .. notation .. "\n")
 end
 
 local function process_field(outfd, entity_data, entity_name, fname, finfo, prefix)

@@ -428,7 +428,6 @@ return {
         protocol = {
           description = [[
             The protocol used to communicate with the upstream.
-            It can be one of `http` or `https`.
           ]]
         },
         host = {
@@ -517,6 +516,32 @@ return {
         * For `tls`, at least one of `sources`, `destinations` or `snis`;
         * For `grpc`, at least one of `hosts`, `headers` or `paths`;
         * For `grpcs`, at least one of `hosts`, `headers`, `paths` or `snis`.
+
+        #### Path handling algorithms
+
+        `"v0"` is the behavior used in Kong 0.x and 2.x. It treats `service.path`, `route.path` and request path as
+        *segments* of a url. It will always join them via slashes. Given a service path `/s`, route path `/r`
+        and request path `/re`, the concatenated path will be `/s/re`. If the resulting path is a single slash,
+        no further transformation is done to it. If it's longer, then the trailing slash is removed.
+
+        `"v1"` is the behavior used in Kong 1.x. It treats `service.path` as a *prefix*, and ignores the initial
+        slashes of the request and route paths. Given service path `/s`, route path `/r` and request path `/re`,
+        the concatenated path will be `/sre`.
+
+        Both versions of the algorithm detect "double slashes" when combining paths, replacing them by single
+        slashes.
+
+        | `service.path` | `route.path` | `route.strip_path` | `route.path_handling` | request path | proxied path  |
+        |----------------|--------------|--------------------|-----------------------|--------------|---------------|
+        | `/s`           | `/fv0`       | `false`            | `v0`                  | `/fv0req`    | `/s/fv0req`   |
+        | `/s`           | `/fv1`       | `false`            | `v1`                  | `/fv1req`    | `/sfv1req`    |
+        | `/s`           | `/tv0`       | `true`             | `v0`                  | `/tv0req`    | `/s/req`      |
+        | `/s`           | `/tv1`       | `true`             | `v1`                  | `/tv1req`    | `/sreq`       |
+        | `/s`           | `/fv0/`      | `false`            | `v0`                  | `/fv0/req`   | `/s/fv0/req`  |
+        | `/s`           | `/fv1/`      | `false`            | `v1`                  | `/fv1/req`   | `/sfv1/req`   |
+        | `/s`           | `/tv0/`      | `true`             | `v0`                  | `/tv0/req`   | `/s/req`      |
+        | `/s`           | `/tv1/`      | `true`             | `v1`                  | `/tv1/req    | `/sreq`       |
+
       ]],
       fields = {
         id = { skip = true },
@@ -609,6 +634,12 @@ return {
           description = [[
             When matching a Route via one of the `paths`,
             strip the matching prefix from the upstream request URL.
+          ]]
+        },
+        path_handling = {
+          description = [[
+            Controls how the Service path, Route path and requested path are combined when sending a request to the
+            upstream. See above for a detailed description of each behavior.
           ]]
         },
         preserve_host = {
@@ -888,12 +919,11 @@ return {
         ]] },
         protocols = {
           description = [[
-            A list of the request protocols that will trigger this plugin. Possible values are
-            `"http"`, `"https"`, `"tcp"`, and `"tls"`.
+            A list of the request protocols that will trigger this plugin.
 
             The default value, as well as the possible values allowed on this field, may change
             depending on the plugin type. For example, plugins that only work in stream mode will
-            may only support `"tcp"` and `"tls"`.
+            only support `"tcp"` and `"tls"`.
           ]],
           examples = {
             { "http", "https" },
@@ -1109,9 +1139,9 @@ return {
         created_at = { skip = true },
         ["name"] = { description = [[This is a hostname, which must be equal to the `host` of a Service.]] },
         ["slots"] = { description = [[The number of slots in the loadbalancer algorithm (`10`-`65536`).]] },
-        ["algorithm"] = { description = [[Which load balancing algorithm to use. One of: `round-robin`, `consistent-hashing`, or `least-connections`.]] },
-        ["hash_on"] = { description = [[What to use as hashing input: `none` (resulting in a weighted-round-robin scheme with no hashing), `consumer`, `ip`, `header`, or `cookie`.]] },
-        ["hash_fallback"] = { description = [[What to use as hashing input if the primary `hash_on` does not return a hash (eg. header is missing, or no consumer identified). One of: `none`, `consumer`, `ip`, `header`, or `cookie`. Not available if `hash_on` is set to `cookie`.]] },
+        ["algorithm"] = { description = [[Which load balancing algorithm to use.]] },
+        ["hash_on"] = { description = [[What to use as hashing input. Using `none` results in a weighted-round-robin scheme with no hashing.]] },
+        ["hash_fallback"] = { description = [[What to use as hashing input if the primary `hash_on` does not return a hash (eg. header is missing, or no consumer identified). Not available if `hash_on` is set to `cookie`.]] },
         ["hash_on_header"] = { kind = "semi-optional", skip_in_example = true, description = [[The header name to take the value from as hash input. Only required when `hash_on` is set to `header`.]] },
         ["hash_fallback_header"] = { kind = "semi-optional", skip_in_example = true, description = [[The header name to take the value from as hash input. Only required when `hash_fallback` is set to `header`.]] },
         ["hash_on_cookie"] = { kind = "semi-optional", skip_in_example = true, description = [[The cookie name to take the value from as hash input. Only required when `hash_on` or `hash_fallback` is set to `cookie`. If the specified cookie is not in the request, Kong will generate a value and set the cookie in the response.]] },
@@ -1119,7 +1149,7 @@ return {
         ["host_header"] = { description = [[The hostname to be used as `Host` header when proxying requests through Kong.]], example = "example.com", },
         ["healthchecks.active.timeout"] = { description = [[Socket timeout for active health checks (in seconds).]] },
         ["healthchecks.active.concurrency"] = { description = [[Number of targets to check concurrently in active health checks.]] },
-        ["healthchecks.active.type"] = { description = [[Whether to perform active health checks using HTTP or HTTPS, or just attempt a TCP connection. Possible values are `tcp`, `http` or `https`.]] },
+        ["healthchecks.active.type"] = { description = [[Whether to perform active health checks using HTTP or HTTPS, or just attempt a TCP connection.]] },
         ["healthchecks.active.http_path"] = { description = [[Path to use in GET HTTP request to run as a probe on active health checks.]] },
         ["healthchecks.active.https_verify_certificate"] = { description = [[Whether to check the validity of the SSL certificate of the remote host when performing active health checks using HTTPS.]] },
         ["healthchecks.active.https_sni"] = { description = [[The hostname to use as an SNI (Server Name Identification) when performing active health checks using HTTPS. This is particularly useful when Targets are configured using IPs, so that the target host's certificate can be verified with the proper SNI.]], example = "example.com", },
@@ -1131,7 +1161,7 @@ return {
         ["healthchecks.active.unhealthy.tcp_failures"] = { description = [[Number of TCP failures in active probes to consider a target unhealthy.]] },
         ["healthchecks.active.unhealthy.timeouts"] = { description = [[Number of timeouts in active probes to consider a target unhealthy.]] },
         ["healthchecks.active.unhealthy.http_failures"] = { description = [[Number of HTTP failures in active probes (as defined by `healthchecks.active.unhealthy.http_statuses`) to consider a target unhealthy.]] },
-        ["healthchecks.passive.type"] = { description = [[Whether to perform passive health checks interpreting HTTP/HTTPS statuses, or just check for TCP connection success. Possible values are `tcp`, `http` or `https` (in passive checks, `http` and `https` options are equivalent.).]] },
+        ["healthchecks.passive.type"] = { description = [[Whether to perform passive health checks interpreting HTTP/HTTPS statuses, or just check for TCP connection success. In passive checks, `http` and `https` options are equivalent.]] },
         ["healthchecks.passive.healthy.http_statuses"] = { description = [[An array of HTTP statuses which represent healthiness when produced by proxied traffic, as observed by passive health checks.]] },
         ["healthchecks.passive.healthy.successes"] = { description = [[Number of successes in proxied traffic (as defined by `healthchecks.passive.healthy.http_statuses`) to consider a target healthy, as observed by passive health checks.]] },
         ["healthchecks.passive.unhealthy.http_statuses"] = { description = [[An array of HTTP statuses which represent unhealthiness when produced by proxied traffic, as observed by passive health checks.]] },
@@ -1741,6 +1771,12 @@ return {
               Attributes | Description
               ---:| ---
               `config`<br>**required** | The config data (in YAML or JSON format) to be loaded.
+            ]],
+
+            request_query = [[
+              Attributes | Description
+              ---:| ---
+              `check_hash`<br>*optional* | If set to 1, Kong will compare the hash of the input config data against that of the previous one. If the configuration is identical, it will not reload it and will return HTTP 304.
             ]],
 
             description = [[

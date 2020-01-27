@@ -12,6 +12,7 @@ local FILE_LOG_PATH = os.tmpname()
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: file-log (log) [#" .. strategy .. "]", function()
     local proxy_client
+    local proxy_client_grpc, proxy_client_grpcs
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -33,11 +34,55 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      local grpc_service = assert(bp.services:insert {
+        name = "grpc-service",
+        url = "grpc://localhost:15002",
+      })
+
+      local route2 = assert(bp.routes:insert {
+        service = grpc_service,
+        protocols = { "grpc" },
+        hosts = { "tcp_logging_grpc.test" },
+      })
+
+      bp.plugins:insert {
+        route = { id = route2.id },
+        name     = "file-log",
+        config   = {
+          path   = FILE_LOG_PATH,
+          reopen = true,
+        },
+      }
+
+      local grpcs_service = assert(bp.services:insert {
+        name = "grpcs-service",
+        url = "grpcs://localhost:15003",
+      })
+
+      local route3 = assert(bp.routes:insert {
+        service = grpcs_service,
+        protocols = { "grpcs" },
+        hosts = { "tcp_logging_grpcs.test" },
+      })
+
+      bp.plugins:insert {
+        route = { id = route3.id },
+        name     = "file-log",
+        config   = {
+          path   = FILE_LOG_PATH,
+          reopen = true,
+        },
+      }
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
+
+      proxy_client_grpc = helpers.proxy_client_grpc()
+      proxy_client_grpcs = helpers.proxy_client_grpcs()
     end)
+
     lazy_teardown(function()
       helpers.stop_kong()
     end)
@@ -67,6 +112,60 @@ for _, strategy in helpers.each_strategy() do
         }
       }))
       assert.res_status(200, res)
+
+      helpers.wait_until(function()
+        return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
+      end, 10)
+
+      local file_log = pl_file.read(FILE_LOG_PATH)
+      local log_message = cjson.decode(pl_stringx.strip(file_log))
+      assert.same("127.0.0.1", log_message.client_ip)
+      assert.same(uuid, log_message.request.headers["file-log-uuid"])
+    end)
+
+    it("logs to file #grpc", function()
+      local uuid = utils.random_string()
+
+      -- Making the request
+      local ok, resp = proxy_client_grpc({
+        service = "hello.HelloService.SayHello",
+        body = {
+          greeting = "world!"
+        },
+        opts = {
+          ["-H"] = "'file-log-uuid: " .. uuid .. "'",
+          ["-authority"] = "tcp_logging_grpc.test",
+        }
+      })
+      assert.truthy(ok)
+      assert.truthy(resp)
+
+      helpers.wait_until(function()
+        return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
+      end, 10)
+
+      local file_log = pl_file.read(FILE_LOG_PATH)
+      local log_message = cjson.decode(pl_stringx.strip(file_log))
+      assert.same("127.0.0.1", log_message.client_ip)
+      assert.same(uuid, log_message.request.headers["file-log-uuid"])
+    end)
+
+    it("logs to file #grpcs", function()
+      local uuid = utils.random_string()
+
+      -- Making the request
+      local ok, resp = proxy_client_grpcs({
+        service = "hello.HelloService.SayHello",
+        body = {
+          greeting = "world!"
+        },
+        opts = {
+          ["-H"] = "'file-log-uuid: " .. uuid .. "'",
+          ["-authority"] = "tcp_logging_grpcs.test",
+        }
+      })
+      assert.truthy(ok)
+      assert.truthy(resp)
 
       helpers.wait_until(function()
         return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0

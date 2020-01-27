@@ -1,4 +1,5 @@
 local Router = require "kong.router"
+local path_handling_tests = require "spec.fixtures.router_path_handling_tests"
 
 local function reload_router()
   package.loaded["kong.router"] = nil
@@ -2362,185 +2363,238 @@ describe("Router", function()
       end)
     end)
 
-
-    describe("slash handling", function()
-      local checks = {
-        -- upstream url    paths           request path    expected path           strip uri
-        {  "/",            "/",            "/",            "/",                    true      }, -- 1
-        {  "/",            "/",            "/foo/bar",     "/foo/bar",             true      },
-        {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            true      },
-        {  "/",            "/foo/bar",     "/foo/bar",     "/",                    true      },
-        {  "/",            "/foo/bar",     "/foo/bar/",    "/",                    true      },
-        {  "/",            "/foo/bar/",    "/foo/bar/",    "/",                    true      },
-        {  "/fee/bor",     "/",            "/",            "/fee/bor",             true      },
-        {  "/fee/bor",     "/",            "/foo/bar",     "/fee/borfoo/bar",      true      },
-        {  "/fee/bor",     "/",            "/foo/bar/",    "/fee/borfoo/bar/",     true      },
-        {  "/fee/bor",     "/foo/bar",     "/foo/bar",     "/fee/bor",             true      }, -- 10
-        {  "/fee/bor",     "/foo/bar",     "/foo/bar/",    "/fee/bor/",            true      },
-        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/bor",             true      },
-        {  "/fee/bor/",    "/",            "/",            "/fee/bor/",            true      },
-        {  "/fee/bor/",    "/",            "/foo/bar",     "/fee/bor/foo/bar",     true      },
-        {  "/fee/bor/",    "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
-        {  "/fee/bor/",    "/foo/bar",     "/foo/bar",     "/fee/bor/",            true      },
-        {  "/fee/bor/",    "/foo/bar",     "/foo/bar/",    "/fee/bor/",            true      },
-        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/",    "/fee/bor/",            true      },
-        {  "/",            "/",            "/",            "/",                    false     },
-        {  "/",            "/",            "/foo/bar",     "/foo/bar",             false     }, -- 20
-        {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            false     },
-        {  "/",            "/foo/bar",     "/foo/bar",     "/foo/bar",             false     },
-        {  "/",            "/foo/bar",     "/foo/bar/",    "/foo/bar/",            false     },
-        {  "/",            "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            false     },
-        {  "/fee/bor",     "/",            "/",            "/fee/bor",             false     },
-        {  "/fee/bor",     "/",            "/foo/bar",     "/fee/borfoo/bar",      false     },
-        {  "/fee/bor",     "/",            "/foo/bar/",    "/fee/borfoo/bar/",     false     },
-        {  "/fee/bor",     "/foo/bar",     "/foo/bar",     "/fee/borfoo/bar",      false     },
-        {  "/fee/bor",     "/foo/bar",     "/foo/bar/",    "/fee/borfoo/bar/",     false     },
-        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/borfoo/bar/",     false     }, -- 30
-        {  "/fee/bor/",    "/",            "/",            "/fee/bor/",            false     },
-        {  "/fee/bor/",    "/",            "/foo/bar",     "/fee/bor/foo/bar",     false     },
-        {  "/fee/bor/",    "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
-        {  "/fee/bor/",    "/foo/bar",     "/foo/bar",     "/fee/bor/foo/bar",     false     },
-        {  "/fee/bor/",    "/foo/bar",     "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
-        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
-        -- the following block runs the same tests, but with a request path that is longer
-        -- than the matched part, so either matches in the middle of a segment, or has an
-        -- additional segment.
-        {  "/",            "/",            "/foo/bars",    "/foo/bars",            true      },
-        {  "/",            "/",            "/foo/bar/s",   "/foo/bar/s",           true      },
-        {  "/",            "/foo/bar",     "/foo/bars",    "/s",                   true      },
-        {  "/",            "/foo/bar/",    "/foo/bar/s",   "/s",                   true      }, -- 40
-        {  "/fee/bor",     "/",            "/foo/bars",    "/fee/borfoo/bars",     true      },
-        {  "/fee/bor",     "/",            "/foo/bar/s",   "/fee/borfoo/bar/s",    true      },
-        {  "/fee/bor",     "/foo/bar",     "/foo/bars",    "/fee/bors",            true      },
-        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/bors",            true      },
-        {  "/fee/bor/",    "/",            "/foo/bars",    "/fee/bor/foo/bars",    true      },
-        {  "/fee/bor/",    "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   true      },
-        {  "/fee/bor/",    "/foo/bar",     "/foo/bars",    "/fee/bor/s",           true      },
-        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/s",   "/fee/bor/s",           true      },
-        {  "/",            "/",            "/foo/bars",    "/foo/bars",            false     },
-        {  "/",            "/",            "/foo/bar/s",   "/foo/bar/s",           false     }, -- 50
-        {  "/",            "/foo/bar",     "/foo/bars",    "/foo/bars",            false     },
-        {  "/",            "/foo/bar/",    "/foo/bar/s",   "/foo/bar/s",           false     },
-        {  "/fee/bor",     "/",            "/foo/bars",    "/fee/borfoo/bars",     false     },
-        {  "/fee/bor",     "/",            "/foo/bar/s",   "/fee/borfoo/bar/s",    false     },
-        {  "/fee/bor",     "/foo/bar",     "/foo/bars",    "/fee/borfoo/bars",     false     },
-        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/borfoo/bar/s",    false     },
-        {  "/fee/bor/",    "/",            "/foo/bars",    "/fee/bor/foo/bars",    false     },
-        {  "/fee/bor/",    "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     },
-        {  "/fee/bor/",    "/foo/bar",     "/foo/bars",    "/fee/bor/foo/bars",    false     },
-        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     }, -- 60
-        -- the following block matches on host, instead of path
-        {  "/",            nil,            "/",            "/",                    false     },
-        {  "/",            nil,            "/foo/bar",     "/foo/bar",             false     },
-        {  "/",            nil,            "/foo/bar/",    "/foo/bar/",            false     },
-        {  "/fee/bor",     nil,            "/",            "/fee/bor",             false     },
-        {  "/fee/bor",     nil,            "/foo/bar",     "/fee/borfoo/bar",      false     },
-        {  "/fee/bor",     nil,            "/foo/bar/",    "/fee/borfoo/bar/",     false     },
-        {  "/fee/bor/",    nil,            "/",            "/fee/bor/",            false     },
-        {  "/fee/bor/",    nil,            "/foo/bar",     "/fee/bor/foo/bar",     false     },
-        {  "/fee/bor/",    nil,            "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
-        {  "/",            nil,            "/",            "/",                    true      }, -- 70
-        {  "/",            nil,            "/foo/bar",     "/foo/bar",             true      },
-        {  "/",            nil,            "/foo/bar/",    "/foo/bar/",            true      },
-        {  "/fee/bor",     nil,            "/",            "/fee/bor",             true      },
-        {  "/fee/bor",     nil,            "/foo/bar",     "/fee/borfoo/bar",      true      },
-        {  "/fee/bor",     nil,            "/foo/bar/",    "/fee/borfoo/bar/",     true      },
-        {  "/fee/bor/",    nil,            "/",            "/fee/bor/",            true      },
-        {  "/fee/bor/",    nil,            "/foo/bar",     "/fee/bor/foo/bar",     true      },
-        {  "/fee/bor/",    nil,            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
+    describe("preserve Host header #grpc", function()
+      local router
+      local use_case_routes = {
+        -- use the request's Host header
+        {
+          service         = {
+            name          = "service-invalid",
+            host          = "example.org",
+            protocol      = "grpc"
+          },
+          route           = {
+            preserve_host = true,
+            hosts         = { "preserve.com" },
+          },
+        },
+        -- use the route's upstream_url's Host
+        {
+          service         = {
+            name          = "service-invalid",
+            host          = "example.org",
+            protocol      = "grpc"
+          },
+          route           = {
+            preserve_host = false,
+            hosts         = { "discard.com" },
+          },
+        },
       }
 
-      for i, args in ipairs(checks) do
+      lazy_setup(function()
+        router = assert(Router.new(use_case_routes))
+      end)
 
-        local config
-        if args[5] == true then
-          config = "(strip = on, plain)"
-        else
-          config = "(strip = off, plain)"
-        end
+      describe("when preserve_host is true", function()
+        local host = "preserve.com"
 
-        local description
-        if args[2] then
-          description = string.format("(%d) (%s) %s with uri %s when requesting %s",
-            i, config, args[1], args[2], args[3])
-        else
-          description = string.format("(%d) (%s) %s with host %s when requesting %s",
-            i, config, args[1], "localbin-" .. i .. ".com", args[3])
-        end
-
-        it(description, function()
-          local use_case_routes = {
-            {
-              service      = {
-                protocol   = "http",
-                name       = "service-invalid",
-                path       = args[1],
-              },
-              route        = {
-                strip_path = args[5],
-                -- only add the header is no path is provided
-                hosts      = args[2] == nil and nil or { "localbin-" .. i .. ".com" },
-                paths      = { args[2] },
-              },
-            }
-          }
-
-          local router = assert(Router.new(use_case_routes) )
-          local _ngx = mock_ngx("GET", args[3], { host = "localbin-" .. i .. ".com" })
+        it("uses the request's Host header", function()
+          local _ngx = mock_ngx("GET", "/", { host = host })
           router._set_ngx(_ngx)
           local match_t = router.exec()
           assert.equal(use_case_routes[1].route, match_t.route)
-          assert.equal(args[1], match_t.upstream_url_t.path)
-          assert.equal(args[4], match_t.upstream_uri)
+          assert.equal(host, match_t.upstream_host)
+          assert.equal("grpc", match_t.service.protocol)
         end)
-      end
 
-      -- this is identical to the tests above, except that for the path we match
-      -- with an injected regex sequence, effectively transforming the path
-      -- match into a regex match
-      local function make_a_regex(path)
-        return "/[0]?" .. path:sub(2, -1)
-      end
+        it("uses the request's Host header incl. port", function()
+          local _ngx = mock_ngx("GET", "/", { host = host .. ":123" })
+          router._set_ngx(_ngx)
+          local match_t = router.exec()
+          assert.equal(use_case_routes[1].route, match_t.route)
+          assert.equal(host .. ":123", match_t.upstream_host)
+          assert.equal("grpc", match_t.service.protocol)
+        end)
 
-      for i, args in ipairs(checks) do
-        local config
-        if args[5] == true then
-          config = "(strip = on, regex)"
-        else
-          config = "(strip = off, regex)"
-        end
+        it("does not change the target upstream", function()
+          local _ngx = mock_ngx("GET", "/", { host = host })
+          router._set_ngx(_ngx)
+          local match_t = router.exec()
+          assert.equal(use_case_routes[1].route, match_t.route)
+          assert.equal("example.org", match_t.upstream_url_t.host)
+          assert.equal("grpc", match_t.service.protocol)
+        end)
 
-        if args[2] then -- skip test cases which match on host
-          local description = string.format("(%d) (%s) %s with uri %s when requesting %s",
-                                            i, config, args[1], make_a_regex(args[2]), args[3])
+        it("uses the request's Host header when `grab_header` is disabled", function()
+          local use_case_routes = {
+            {
+              service         = {
+                name = "service-invalid",
+                protocol = "grpc",
+              },
+              route           = {
+                name          = "route-1",
+                preserve_host = true,
+                paths         = { "/foo" },
+              },
+              upstream_url    = "http://example.org",
+            },
+          }
+
+          local router = assert(Router.new(use_case_routes))
+          local _ngx = mock_ngx("GET", "/foo", { host = "preserve.com" })
+          router._set_ngx(_ngx)
+          local match_t = router.exec()
+          assert.equal(use_case_routes[1].route, match_t.route)
+          assert.equal("preserve.com", match_t.upstream_host)
+          assert.equal("grpc", match_t.service.protocol)
+        end)
+
+        it("uses the request's Host header if an route with no host was cached", function()
+          -- This is a regression test for:
+          -- https://github.com/Kong/kong/issues/2825
+          -- Ensure cached routes (in the LRU cache) still get proxied with the
+          -- correct Host header when preserve_host = true and no registered
+          -- route has a `hosts` property.
+
+          local use_case_routes = {
+            {
+              service         = {
+                name = "service-invalid",
+                protocol = "grpc",
+              },
+              route           = {
+                name          = "no-host",
+                paths         = { "/nohost" },
+                preserve_host = true,
+              },
+            },
+          }
+
+          local router = assert(Router.new(use_case_routes))
+          local _ngx = mock_ngx("GET", "/nohost", { host = "domain1.com" })
+          router._set_ngx(_ngx)
+          local match_t = router.exec()
+          assert.equal(use_case_routes[1].route, match_t.route)
+          assert.equal("domain1.com", match_t.upstream_host)
+          assert.equal("grpc", match_t.service.protocol)
+
+          _ngx = mock_ngx("GET", "/nohost", { host = "domain2.com" })
+          router._set_ngx(_ngx)
+          match_t = router.exec()
+          assert.equal(use_case_routes[1].route, match_t.route)
+          assert.equal("domain2.com", match_t.upstream_host)
+          assert.equal("grpc", match_t.service.protocol)
+        end)
+      end)
+
+      describe("when preserve_host is false", function()
+        local host = "discard.com"
+
+        it("does not change the target upstream", function()
+          local _ngx = mock_ngx("GET", "/", { host = host })
+          router._set_ngx(_ngx)
+          local match_t = router.exec()
+          assert.equal(use_case_routes[2].route, match_t.route)
+          assert.equal("example.org", match_t.upstream_url_t.host)
+          assert.equal("grpc", match_t.service.protocol)
+        end)
+
+        it("does not set the host_header", function()
+          local _ngx = mock_ngx("GET", "/", { host = host })
+          router._set_ngx(_ngx)
+          local match_t = router.exec()
+          assert.equal(use_case_routes[2].route, match_t.route)
+          assert.is_nil(match_t.upstream_host)
+          assert.equal("grpc", match_t.service.protocol)
+        end)
+      end)
+    end)
+
+
+    describe("#slash handling", function()
+
+      for i, line in ipairs(path_handling_tests) do
+        for j, test in ipairs(line:expand()) do
+          local strip = test.strip_path and "on" or "off"
+          local route_uri_or_host
+          if test.route_path then
+            route_uri_or_host = "uri " .. test.route_path
+          else
+            route_uri_or_host = "host localbin-" .. i .. "-" .. j .. ".com"
+          end
+
+          local description = string.format("(%d-%d) plain, %s with %s, strip = %s, %s. req: %s",
+            i, j, test.service_path, route_uri_or_host, strip, test.path_handling, test.request_path)
 
           it(description, function()
-
-
             local use_case_routes = {
               {
                 service      = {
                   protocol   = "http",
                   name       = "service-invalid",
-                  path       = args[1],
+                  path       = test.service_path,
                 },
                 route        = {
-                  strip_path = args[5],
+                  strip_path = test.strip_path,
+                  path_handling = test.path_handling,
                   -- only add the header is no path is provided
-                  hosts      = args[2] == nil and nil or { "localbin-" .. i .. ".com" },
-                  paths      = { make_a_regex(args[2]) },
+                  hosts      = test.service_path == nil and nil or { "localbin-" .. i .. "-" .. j .. ".com" },
+                  paths      = { test.route_path },
                 },
               }
             }
 
             local router = assert(Router.new(use_case_routes) )
-            local _ngx = mock_ngx("GET", args[3], { host = "localbin-" .. i .. ".com" })
+            local _ngx = mock_ngx("GET", test.request_path, { host = "localbin-" .. i .. "-" .. j .. ".com" })
             router._set_ngx(_ngx)
             local match_t = router.exec()
             assert.equal(use_case_routes[1].route, match_t.route)
-            assert.equal(args[1], match_t.upstream_url_t.path)
-            assert.equal(args[4], match_t.upstream_uri)
+            assert.equal(test.service_path, match_t.upstream_url_t.path)
+            assert.equal(test.expected_path, match_t.upstream_uri)
           end)
+        end
+      end
+
+      -- this is identical to the tests above, except that for the path we match
+      -- with an injected regex sequence, effectively transforming the path
+      -- match into a regex match
+      for i, line in ipairs(path_handling_tests) do
+        if line.route_path then -- skip test cases which match on host
+          for j, test in ipairs(line:expand()) do
+            local strip = test.strip_path and "on" or "off"
+            local regex = "/[0]?" .. test.route_path:sub(2, -1)
+            local description = string.format("(%d-%d) regex, %s with %s, strip = %s, %s. req: %s",
+              i, j, test.service_path, regex, strip, test.path_handling, test.request_path)
+
+            it(description, function()
+              local use_case_routes = {
+                {
+                  service      = {
+                    protocol   = "http",
+                    name       = "service-invalid",
+                    path       = test.service_path,
+                  },
+                  route        = {
+                    strip_path = test.strip_path,
+                    -- only add the header is no path is provided
+                    path_handling = test.path_handling,
+                    hosts      = { "localbin-" .. i .. ".com" },
+                    paths      = { regex },
+                  },
+                }
+              }
+
+              local router = assert(Router.new(use_case_routes) )
+              local _ngx = mock_ngx("GET", test.request_path, { host = "localbin-" .. i .. ".com" })
+              router._set_ngx(_ngx)
+              local match_t = router.exec()
+              assert.equal(use_case_routes[1].route, match_t.route)
+              assert.equal(test.service_path, match_t.upstream_url_t.path)
+              assert.equal(test.expected_path, match_t.upstream_uri)
+            end)
+          end
         end
       end
     end)

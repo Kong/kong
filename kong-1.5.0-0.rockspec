@@ -1,9 +1,9 @@
 package = "kong"
-version = "1.4.0-0"
+version = "1.5.0-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "1.4.0"
+  tag = "1.5.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -36,12 +36,13 @@ dependencies = {
   "lua-resty-rsa == 0.04",
   "lyaml == 6.2.4",
   "bcrypt == 2.1",
-  "lua-resty-dns-client == 4.1.0",
+  "lua-resty-dns-client == 4.1.2",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-mediador == 0.1.2",
-  "lua-resty-healthcheck == 1.1.0",
+  "lua-resty-healthcheck == 1.1.2",
   "lua-resty-cookie == 0.1.0",
-  "lua-resty-mlcache == 2.4.0",
+  "lua-resty-mlcache == 2.4.1",
+  "lua-resty-counter == 0.2.0",
   "lua-resty-template == 1.9-1",
   "lua-resty-passwdqc == 1.1-1",
   -- external Kong plugins
@@ -342,6 +343,7 @@ build = {
     ["kong.db.migrations.core.004_110_to_120"] = "kong/db/migrations/core/004_110_to_120.lua",
     ["kong.db.migrations.core.005_120_to_130"] = "kong/db/migrations/core/005_120_to_130.lua",
     ["kong.db.migrations.core.006_130_to_140"] = "kong/db/migrations/core/006_130_to_140.lua",
+    ["kong.db.migrations.core.007_140_to_150"] = "kong/db/migrations/core/007_140_to_150.lua",
 
     ["kong.pdk"] = "kong/pdk/init.lua",
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",
@@ -461,6 +463,7 @@ build = {
     ["kong.plugins.acl.daos"] = "kong/plugins/acl/daos.lua",
     ["kong.plugins.acl.groups"] = "kong/plugins/acl/groups.lua",
     ["kong.plugins.acl.acls"] = "kong/plugins/acl/acls.lua",
+    ["kong.plugins.acl.api"] = "kong/plugins/acl/api.lua",
 
     ["kong.plugins.correlation-id.handler"] = "kong/plugins/correlation-id/handler.lua",
     ["kong.plugins.correlation-id.schema"] = "kong/plugins/correlation-id/schema.lua",
