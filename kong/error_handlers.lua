@@ -1,5 +1,4 @@
 local kong = kong
-local type = type
 local find = string.find
 local fmt  = string.format
 
@@ -84,19 +83,11 @@ local BODIES = {
 
 return function(ctx)
   local accept_header = kong.request.get_header(ACCEPT)
-  if type(accept_header) == "table" then
-    accept_header = accept_header[1]
-  end
-
   if accept_header == nil then
     accept_header = kong.request.get_header(CONTENT_TYPE)
-    if type(accept_header) == "table" then
-      accept_header = accept_header[1]
+    if accept_header == nil then
+      accept_header = kong.configuration.error_default_type
     end
-  end
-
-  if accept_header == nil then
-    accept_header = kong.configuration.error_default_type
   end
 
   local status = kong.response.get_status()
