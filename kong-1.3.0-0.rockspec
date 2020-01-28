@@ -32,7 +32,7 @@ dependencies = {
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
   "lua-resty-mail == 1.0.2",
-  "lua-resty-redis-connector == 0.03",
+  "lua-resty-redis-connector == 0.08",
   "lua-resty-rsa == 0.04",
   "lyaml == 6.2.3",
   "bcrypt == 2.1",
