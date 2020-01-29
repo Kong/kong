@@ -889,10 +889,19 @@
                                  # the datastore when cached by this node.
                                  #
                                  # Database misses (no entity) are also cached
-                                 # according to this setting.
+                                 # according to this setting if you do not
+                                 # configure `db_cache_neg_ttl`.
                                  #
                                  # If set to 0 (default), such cached entities
-                                 # or misses never expire.
+                                 # or misses never expire
+
+#db_cache_neg_ttl =              # Time-to-live (in seconds) of a datastore
+                                 # miss (no entity).
+                                 #
+                                 # If not specified (default), `db_cache_ttl`
+                                 # value will be used instead.
+                                 #
+                                 # If set to 0, misses will never expire.
 
 #db_resurrect_ttl = 30           # Time (in seconds) for which stale entities
                                  # from the datastore should be resurrected for

@@ -115,6 +115,7 @@ declarative_config = NONE
 db_update_frequency = 5
 db_update_propagation = 0
 db_cache_ttl = 0
+db_cache_neg_ttl = NONE
 db_resurrect_ttl = 30
 db_cache_warmup_entities = services, plugins
 

@@ -210,6 +210,7 @@ local CONF_INFERENCES = {
   db_update_frequency = {  typ = "number"  },
   db_update_propagation = {  typ = "number"  },
   db_cache_ttl = {  typ = "number"  },
+  db_cache_neg_ttl = {  typ = "number"  },
   db_resurrect_ttl = {  typ = "number"  },
   db_cache_warmup_entities = { typ = "array" },
   nginx_user = {
