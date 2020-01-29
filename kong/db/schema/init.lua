@@ -4,12 +4,15 @@ local utils        = require "kong.tools.utils"
 local cjson        = require "cjson"
 
 
+local kong         = kong
+local ngx          = ngx
 local setmetatable = setmetatable
+local getmetatable = getmetatable
 local re_match     = ngx.re.match
 local re_find      = ngx.re.find
+local tostring     = tostring
 local concat       = table.concat
 local insert       = table.insert
-local format       = string.format
 local unpack       = unpack
 local assert       = assert
 local ipairs       = ipairs
@@ -755,8 +758,8 @@ Schema.entity_checkers = {
       end
 
       if #nonempty1 > 0 and #nonempty2 > 0 then
-        return nil, format("(%s), (%s)", quoted_list(nonempty1),
-                                         quoted_list(nonempty2))
+        return nil, ("(%s), (%s)"):format(quoted_list(nonempty1),
+                                          quoted_list(nonempty2))
       end
 
       return true
@@ -1538,35 +1541,12 @@ function Schema:process_auto_fields(data, context, nulls)
   local now_s  = ngx_time()
   local now_ms = ngx_now()
 
-  local read_before_write = false
-  if context == "update" and self.transformations then
-    for _, transformation in ipairs(self.transformations) do
-      if transformation.needs then
-        for _, input_field_name in ipairs(transformation.needs) do
-          read_before_write = is_nonempty(get_field(data, input_field_name))
-        end
-
-        if read_before_write then
-          break
-        end
-      end
-    end
-  end
-
-  local cache_key_modified = false
   local check_immutable_fields = false
+  local is_select = context == "select"
+  local is_update = context == "update"
+  local is_insert_or_upsert = context == "insert" or context == "upsert"
 
   data = tablex.deepcopy(data)
-
-  --[[
-  if context == "select" and self.translations then
-    for _, translation in ipairs(self.translations) do
-      if type(translation.read) == "function" then
-        output = translation.read(output)
-      end
-    end
-  end
-  --]]
 
   if self.shorthands then
     for _, shorthand in ipairs(self.shorthands) do
@@ -1585,34 +1565,30 @@ function Schema:process_auto_fields(data, context, nulls)
   end
 
   for key, field in self:each_field(data) do
-
     if field.legacy and field.uuid and data[key] == "" then
       data[key] = null
     end
 
     if field.auto then
       if field.uuid then
-        if (context == "insert" or context == "upsert") and data[key] == nil then
+        if is_insert_or_upsert and data[key] == nil then
           data[key] = utils.uuid()
         end
 
       elseif field.type == "string" then
-        if (context == "insert" or context == "upsert") and data[key] == nil then
+        if is_insert_or_upsert and data[key] == nil then
           data[key] = utils.random_string()
         end
 
-      elseif key == "created_at"
-             and (context == "insert" or context == "upsert")
-             and (data[key] == null or data[key] == nil) then
+      elseif key == "created_at" and is_insert_or_upsert and (data[key] == null or
+                                                              data[key] == nil) then
         if field.type == "number" then
           data[key] = now_ms
         elseif field.type == "integer" then
           data[key] = now_s
         end
 
-      elseif key == "updated_at" and (context == "insert" or
-                                      context == "upsert" or
-                                      context == "update") then
+      elseif key == "updated_at" and (is_insert_or_upsert or is_update) then
         if field.type == "number" then
           data[key] = now_ms
         elseif field.type == "integer" then
@@ -1623,74 +1599,24 @@ function Schema:process_auto_fields(data, context, nulls)
 
     data[key] = adjust_field_for_context(field, data[key], context, nulls)
 
-    if data[key] ~= nil then
-      if self.cache_key_set and self.cache_key_set[key] then
-        cache_key_modified = true
-      end
-    end
-
-    if context == "select" and data[key] == null and not nulls then
+    if is_select and data[key] == null and not nulls then
       data[key] = nil
     end
 
-    if context == "select" and field.type == "integer" and type(data[key]) == "number" then
+    if is_select and field.type == "integer" and type(data[key]) == "number" then
       data[key] = floor(data[key])
     end
 
-    if not read_before_write then
-      -- Set read_before_write to true,
-      -- to handle deep merge of record object on update.
-      if context == "update" and field.type == "record"
-         and data[key] ~= nil and data[key] ~= null then
-        read_before_write = true
-      end
-    end
-
-    if context == 'update' and field.immutable then
-      if not read_before_write then
-        -- if entity schema contains immutable fields,
-        -- we need to preform a read-before-write and
-        -- check the existing record to insure update
-        -- is valid.
-        read_before_write = true
-      end
-
+    if is_update and field.immutable then
       check_immutable_fields = true
     end
   end
 
-  if self.ttl and context == "select" and data.ttl == null and not nulls then
+  if self.ttl and is_select and data.ttl == null and not nulls then
     data.ttl = nil
   end
 
-  --[[
-  if context ~= "select" and self.translations then
-    for _, translation in ipairs(self.translations) do
-      if type(translation.write) == "function" then
-        data = translation.write(data)
-      end
-    end
-  end
-  --]]
-
-  if context == "update" and (
-    -- If a partial update does not provide the subschema key,
-    -- we need to do a read-before-write to get it and be
-    -- able to properly validate the entity.
-    (self.subschema_key and data[self.subschema_key] == nil)
-    -- If we're resetting the value of a composite cache key,
-    -- we to do a read-before-write to get the rest of the cache key
-    -- and be able to properly update it.
-    or cache_key_modified
-    -- Entity checks validate across fields, and the field
-    -- that is necessary for validating may not be present.
-    or self.entity_checks)
-  then
-    if not read_before_write then
-      read_before_write = true
-    end
-
-  elseif context == "select" then
+  if is_select then
     for key in pairs(data) do
       -- set non defined fields to nil, except meta fields (ttl) if enabled
       if not self.fields[key] then
@@ -1701,7 +1627,7 @@ function Schema:process_auto_fields(data, context, nulls)
     end
   end
 
-  return data, nil, read_before_write, check_immutable_fields
+  return data, nil, is_update, check_immutable_fields
 end
 
 
@@ -2167,7 +2093,7 @@ function Schema.new(definition, is_subschema)
       if not is_subschema then
         -- Store the inverse relation for implementing constraints
         local constraints = assert(_cache[field.reference]).constraints
-        table.insert(constraints, {
+        insert(constraints, {
           schema     = self,
           field_name = key,
           on_delete  = field.on_delete,
