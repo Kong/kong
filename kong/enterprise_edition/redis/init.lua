@@ -53,6 +53,7 @@ _M.config_schema = {
     { port = typedefs.port },
     { timeout = typedefs.timeout { default = 2000 } },
     { password = { type = "string", } },
+    { sentinel_password = { type = "string", } },
     { database = { type = "integer", default = 0 } },
     { sentinel_master = { type = "string", } },
     { sentinel_role = { type = "string", one_of = { "master", "slave", "any" }, } },
@@ -161,11 +162,12 @@ function _M.connection(conf)
 
     local err
     red, err = rc:connect_via_sentinel({
-      master_name = conf.sentinel_master,
-      role        = conf.sentinel_role,
-      sentinels   = conf.parsed_sentinel_addresses,
-      password    = conf.password,
-      db          = conf.database,
+      master_name       = conf.sentinel_master,
+      role              = conf.sentinel_role,
+      sentinels         = conf.parsed_sentinel_addresses,
+      password          = conf.password,
+      sentinel_password = conf.sentinel_password,
+      db                = conf.database,
     })
     if err then
       log(ERR, "failed to connect to redis sentinel: ", err)

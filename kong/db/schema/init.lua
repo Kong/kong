@@ -1534,11 +1534,22 @@ function Schema:post_process_fields(input, context)
   --local output = tablex.deepcopy(input)
 
   for key, field in self:each_field(input) do
-    if field.encrypted then
+    if field.encrypted and field.type == "string" then
       if (context == "insert" or context == "upsert" or context == "update") then
         input[key] = keyring.encrypt(input[key])
       elseif context == "select" then
         input[key] = keyring.decrypt(input[key])
+      end
+
+    elseif field.encrypted and field.type == "array" then
+      if (context == "insert" or context == "upsert" or context == "update") then
+        for i = 1, #input[key] do
+          input[key][i] = keyring.encrypt(input[key][i])
+        end
+      elseif context == "select" then
+        for i = 1, #input[key] do
+          input[key][i] = keyring.decrypt(input[key][i])
+        end
       end
     end
   end

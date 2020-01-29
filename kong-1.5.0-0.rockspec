@@ -32,7 +32,7 @@ dependencies = {
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
   "lua-resty-mail == 1.0.2",
-  "lua-resty-redis-connector == 0.03",
+  "lua-resty-redis-connector == 0.08",
   "lua-resty-rsa == 0.04",
   "lyaml == 6.2.4",
   "bcrypt == 2.1",
@@ -198,6 +198,7 @@ build = {
     ["kong.enterprise_edition.db.migrations.enterprise.003_035-1_to_036-2"] = "kong/enterprise_edition/db/migrations/enterprise/003_035-1_to_036-2.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.004_036-2_to_037"] = "kong/enterprise_edition/db/migrations/enterprise/004_036-2_to_037.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.005_037_to_1301"] = "kong/enterprise_edition/db/migrations/enterprise/005_037_to_1301.lua",
+    ["kong.enterprise_edition.db.migrations.enterprise.006_1301_to_1400"] = "kong/enterprise_edition/db/migrations/enterprise/006_1301_to_1400.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
