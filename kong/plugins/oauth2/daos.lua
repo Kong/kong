@@ -63,6 +63,7 @@ local oauth2_tokens = {
   name = "oauth2_tokens",
   endpoint_key = "access_token",
   cache_key = { "access_token" },
+  dao = "kong.plugins.oauth2.daos.oauth2_tokens",
   ttl = true,
   fields = {
     { id = typedefs.uuid },
