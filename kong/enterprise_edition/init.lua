@@ -8,6 +8,7 @@ local workspaces = require "kong.workspaces"
 local feature_flags   = require "kong.enterprise_edition.feature_flags"
 local license_helpers = require "kong.enterprise_edition.license_helpers"
 local event_hooks = require "kong.enterprise_edition.event_hooks"
+local balancer  = require "kong.runloop.balancer"
 
 
 local kong = kong
@@ -50,6 +51,23 @@ _M.handlers = {
             })
           end
         end
+
+        -- register a callback to trigger an event_hook balanacer health
+        -- event
+        balancer.subscribe_to_healthcheck_events(function(upstream_id, ip, port, hostname, health)
+          event_hooks.emit("balancer", "health", {
+            upstream_id = upstream_id,
+            ip = ip,
+            port = port,
+            hostname = hostname,
+            health = health,
+          })
+        end)
+
+        event_hooks.publish("balancer", "health", {
+          fields = { "upstream_id", "ip", "port", "hostname", "health" },
+        })
+
         -- XXX not so sure this timer is good? the idea is to not hog kong
         -- on startup for this secondary feature
         ngx.timer.at(0, function()
