@@ -88,12 +88,6 @@ return {
     before = function(self, db)
       ee_api.routes_consumers_before(self, self.args.post)
     end,
-    methods = {
-      GET = endpoints.get_entity_endpoint(consumers_schema),
-      PUT  = endpoints.put_entity_endpoint(consumers_schema),
-      PATCH  = endpoints.patch_entity_endpoint(consumers_schema),
-      DELETE = endpoints.delete_entity_endpoint(consumers_schema),
-    },
   },
   --]] EE
 
