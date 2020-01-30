@@ -101,7 +101,7 @@ return {
           end
         end
         return endpoints.get_entity_endpoint(credentials_schema,
-                                             consumers_schema, "consumer")
+                                             consumers_schema, "consumer", nil, true)
                                              (self, db, helpers, post_process)
       end
       --]] EE
