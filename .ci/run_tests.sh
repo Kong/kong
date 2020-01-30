@@ -21,8 +21,22 @@ else
 fi
 
 if [ "$TEST_SUITE" == "integration" ]; then
-    eval "$TEST_CMD" spec/02-integration/
+    if [ "$TEST_SPLIT" == "first" ]; then
+        # GitHub Actions, run first half of integration tests
+        eval "$TEST_CMD" $(ls -d spec/02-integration/* | head -n4)
+
+    elif [ "$TEST_SPLIT" == "second" ]; then
+        # GitHub Actions, run second half of integration tests
+        # In case of odd number of directories, the second half will be
+        # running one more directory than the first
+        eval "$TEST_CMD" $(ls -d spec/02-integration/* | tail -n+5)
+
+    else
+        # Non GitHub Actions
+        eval "$TEST_CMD" spec/02-integration/
+    fi
 fi
+
 if [ "$TEST_SUITE" == "dbless" ]; then
     eval "$TEST_CMD" spec/02-integration/02-cmd \
                      spec/02-integration/05-proxy \
@@ -77,5 +91,5 @@ if [ "$TEST_SUITE" == "plugins" ]; then
     fi
 fi
 if [ "$TEST_SUITE" == "pdk" ]; then
-    TEST_NGINX_RANDOMIZE=1 prove -I. -j$JOBS -r t/01-pdk
+    TEST_NGINX_RANDOMIZE=1 prove -I. -j`nproc` -r t/01-pdk
 fi
