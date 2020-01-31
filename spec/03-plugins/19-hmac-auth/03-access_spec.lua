@@ -723,6 +723,7 @@ for _, strategy in helpers.each_strategy() do
         local parsed_body = cjson.decode(body)
         assert.equal(consumer.id, parsed_body.headers["x-consumer-id"])
         assert.equal(consumer.username, parsed_body.headers["x-consumer-username"])
+        assert.equal(credential.username, parsed_body.headers["x-credential-identifier"])
         assert.equal(credential.username, parsed_body.headers["x-credential-username"])
         assert.is_nil(parsed_body.headers["x-anonymous-consumer"])
       end)
@@ -909,6 +910,8 @@ for _, strategy in helpers.each_strategy() do
         body = cjson.decode(body)
         assert.equal(hmacAuth, body.headers["authorization"])
         assert.equal("bob", body.headers["x-consumer-username"])
+        assert.equal(credential.username, body.headers["x-credential-identifier"])
+        assert.equal(credential.username, body.headers["x-credential-username"])
         assert.is_nil(body.headers["x-anonymous-consumer"])
       end)
 
@@ -992,6 +995,9 @@ for _, strategy in helpers.each_strategy() do
         body = cjson.decode(body)
         assert.equal("true", body.headers["x-anonymous-consumer"])
         assert.equal('no-body', body.headers["x-consumer-username"])
+        assert.equal(nil, body.headers["x-credential-identifier"])
+        assert.equal(nil, body.headers["x-credential-username"])
+
       end)
       it("errors when anonymous user doesn't exist", function()
         finally(function()
