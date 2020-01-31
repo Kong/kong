@@ -5,14 +5,13 @@ local kong = kong
 local type = type
 
 
+local KeyAuthHandler = {
+  PRIORITY = 1003,
+  VERSION = "2.2.0",
+}
+
+
 local _realm = 'Key realm="' .. _KONG._NAME .. '"'
-
-
-local KeyAuthHandler = {}
-
-
-KeyAuthHandler.PRIORITY = 1003
-KeyAuthHandler.VERSION = "2.1.0"
 
 
 local function load_credential(key)
@@ -26,6 +25,8 @@ end
 
 
 local function set_consumer(consumer, credential)
+  kong.client.authenticate(consumer, credential)
+
   local set_header = kong.service.request.set_header
   local clear_header = kong.service.request.clear_header
 
@@ -47,19 +48,17 @@ local function set_consumer(consumer, credential)
     clear_header(constants.HEADERS.CONSUMER_USERNAME)
   end
 
-  kong.client.authenticate(consumer, credential)
+  if credential and credential.id then
+    set_header(constants.HEADERS.CREDENTIAL_IDENTIFIER, credential.id)
+  else
+    clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
+  end
+
+  clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
 
   if credential then
-    if credential.username then
-      set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
-    else
-      clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
-    end
-
     clear_header(constants.HEADERS.ANONYMOUS)
-
   else
-    clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
     set_header(constants.HEADERS.ANONYMOUS, true)
   end
 end
@@ -194,7 +193,7 @@ function KeyAuthHandler:access(conf)
         return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 
-      set_consumer(consumer, nil)
+      set_consumer(consumer)
 
     else
       return kong.response.exit(err.status, { message = err.message }, err.headers)
