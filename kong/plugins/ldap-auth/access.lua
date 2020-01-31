@@ -165,42 +165,37 @@ local function set_consumer(consumer, credential)
   local set_header = kong.service.request.set_header
   local clear_header = kong.service.request.clear_header
 
-  if consumer then
-    -- this can only be the Anonymous user in this case
-    if consumer.id then
-      set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
-    else
-      clear_header(constants.HEADERS.CONSUMER_ID)
-    end
+  if consumer and consumer.id then
+    set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+  else
+    clear_header(constants.HEADERS.CONSUMER_ID)
+  end
 
-    if consumer.custom_id then
-      set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
-    else
-      clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
-    end
+  if consumer and consumer.custom_id then
+    set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  else
+    clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
+  end
 
-    if consumer.username then
-      set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
-    else
-      clear_header(constants.HEADERS.CONSUMER_USERNAME)
-    end
-
-    set_header(constants.HEADERS.ANONYMOUS, true)
-
-    return
+  if consumer and consumer.username then
+    set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  else
+    clear_header(constants.HEADERS.CONSUMER_USERNAME)
   end
 
   if credential and credential.username then
+    set_header(constants.HEADERS.CREDENTIAL_IDENTIFIER, credential.username)
     set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
   else
+    clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
     clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
   end
 
-  -- in case of auth plugins concatenation, remove remnants of anonymous
-  clear_header(constants.HEADERS.ANONYMOUS)
-  clear_header(constants.HEADERS.CONSUMER_ID)
-  clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
-  clear_header(constants.HEADERS.CONSUMER_USERNAME)
+  if credential then
+    clear_header(constants.HEADERS.ANONYMOUS)
+  else
+    set_header(constants.HEADERS.ANONYMOUS, true)
+  end
 end
 
 
@@ -264,7 +259,7 @@ function _M.execute(conf)
         return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 
-      set_consumer(consumer, nil)
+      set_consumer(consumer)
 
     else
       return kong.response.exit(err.status, { message = err.message }, err.headers)
