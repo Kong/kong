@@ -1772,6 +1772,17 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         })
         assert.res_status(200, res)
       end)
+      it("fails when missing access_token is being sent in the custom header", function()
+        local res = assert(proxy_ssl_client:send {
+          method = "GET",
+          path = "/request",
+          headers = {
+            ["Host"] = "oauth2_11.com",
+            ["custom_header_name"] = "",
+          }
+        })
+        assert.res_status(401, res)
+      end)
       it("fails when a correct access_token is being sent in the wrong header", function()
         local token = provision_token("oauth2_11.com",nil,"clientid1011","secret1011")
 
