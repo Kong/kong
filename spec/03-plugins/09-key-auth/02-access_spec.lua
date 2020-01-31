@@ -6,6 +6,7 @@ local utils   = require "kong.tools.utils"
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: key-auth (access) [#" .. strategy .. "]", function()
     local proxy_client
+    local kong_cred
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -81,7 +82,7 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.keyauth_credentials:insert {
+      kong_cred = bp.keyauth_credentials:insert {
         key      = "kong",
         consumer = { id = consumer.id },
       }
@@ -455,6 +456,8 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.is_string(json.headers["x-consumer-id"])
         assert.equal("bob", json.headers["x-consumer-username"])
+        assert.equal(kong_cred.id, json.headers["x-credential-identifier"])
+        assert.equal(nil, json.headers["x-credential-username"])
         assert.is_nil(json.headers["x-anonymous-consumer"])
       end)
     end)
@@ -581,6 +584,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal('bob', body.headers["x-consumer-username"])
+        assert.equal(kong_cred.id, body.headers["x-credential-identifier"])
+        assert.equal(nil, body.headers["x-credential-username"])
         assert.is_nil(body.headers["x-anonymous-consumer"])
       end)
       it("works with wrong credentials and anonymous", function()
@@ -593,6 +598,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal('true', body.headers["x-anonymous-consumer"])
+        assert.equal(nil, body.headers["x-credential-identifier"])
+        assert.equal(nil, body.headers["x-credential-username"])
         assert.equal('no-body', body.headers["x-consumer-username"])
       end)
       it("errors when anonymous user doesn't exist", function()
