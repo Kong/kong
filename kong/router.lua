@@ -2,7 +2,6 @@ local lrucache      = require "resty.lrucache"
 local utils         = require "kong.tools.utils"
 local px            = require "resty.mediador.proxy"
 local bit           = require "bit"
-local reports       = require "kong.reports"
 
 
 local hostname_type = utils.hostname_type
