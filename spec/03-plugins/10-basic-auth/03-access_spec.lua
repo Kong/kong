@@ -215,6 +215,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal('bob', body.headers["x-consumer-username"])
+        assert.equal('user123', body.headers["x-credential-identifier"])
+        assert.equal('user123', body.headers["x-credential-username"])
       end)
 
       it("authenticates with a password containing ':'", function()
@@ -228,6 +230,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal("bob", body.headers["x-consumer-username"])
+        assert.equal("user321", body.headers["x-credential-identifier"])
+        assert.equal('user321', body.headers["x-credential-username"])
       end)
 
       it("returns 401 for valid Base64 encoding", function()
@@ -273,6 +277,8 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.is_string(json.headers["x-consumer-id"])
         assert.equal("bob", json.headers["x-consumer-username"])
+        assert.equal("bob", json.headers["x-credential-identifier"])
+        assert.equal('bob', json.headers["x-credential-username"])
       end)
 
     end)
@@ -323,6 +329,8 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal('bob', body.headers["x-consumer-username"])
+        assert.equal('user123', body.headers["x-credential-identifier"])
+        assert.equal('user123', body.headers["x-credential-username"])
         assert.is_nil(body.headers["x-anonymous-consumer"])
       end)
 
@@ -337,6 +345,8 @@ for _, strategy in helpers.each_strategy() do
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal('true', body.headers["x-anonymous-consumer"])
         assert.equal('no-body', body.headers["x-consumer-username"])
+        assert.equal(nil, body.headers["x-credential-identifier"])
+        assert.equal(nil, body.headers["x-credential-username"])
       end)
 
       it("errors when anonymous user doesn't exist", function()
