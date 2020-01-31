@@ -97,6 +97,7 @@ local function generate_token(conf, service, credential, authenticated_userid,
   }
 end
 
+
 local function load_oauth2_credential_by_client_id(client_id)
   local credential, err = kong.db.oauth2_credentials:select_by_client_id(client_id)
   if err then
@@ -105,6 +106,7 @@ local function load_oauth2_credential_by_client_id(client_id)
 
   return credential
 end
+
 
 local function get_redirect_uris(client_id)
   local client, err
@@ -121,6 +123,7 @@ local function get_redirect_uris(client_id)
   return client and client.redirect_uris or nil, client
 end
 
+
 local function retrieve_parameters()
   -- OAuth2 parameters could be in both the querystring or body
   local uri_args = kong.request.get_query()
@@ -134,6 +137,7 @@ local function retrieve_parameters()
 
   return uri_args
 end
+
 
 local function retrieve_scope(parameters, conf)
   local scope = parameters[SCOPE]
@@ -160,6 +164,7 @@ local function retrieve_scope(parameters, conf)
     return table.concat(scopes, " ")
   end -- else return nil
 end
+
 
 local function authorize(conf)
   local response_params = {}
@@ -309,6 +314,7 @@ local function authorize(conf)
   })
 end
 
+
 local function retrieve_client_credentials(parameters, conf)
   local client_id, client_secret, from_authorization_header
   local authorization_header = kong.request.get_header(conf.auth_header_name)
@@ -345,6 +351,7 @@ local function retrieve_client_credentials(parameters, conf)
 
   return client_id, client_secret, from_authorization_header
 end
+
 
 local function issue_token(conf)
   local response_params = {}
@@ -561,16 +568,17 @@ local function issue_token(conf)
 
   -- Sending response in JSON format
   return kong.response.exit(response_params[ERROR] and
-                             (invalid_client_properties and
-                              invalid_client_properties.status or 400) or 200,
-                              response_params, {
-                                ["cache-control"] = "no-store",
-                                ["pragma"] = "no-cache",
-                                ["www-authenticate"] = invalid_client_properties and
-                                                       invalid_client_properties.www_authenticate
-                              }
-                            )
+                            (invalid_client_properties and
+                             invalid_client_properties.status or 400) or 200,
+                             response_params, {
+                               ["cache-control"] = "no-store",
+                               ["pragma"] = "no-cache",
+                               ["www-authenticate"] = invalid_client_properties and
+                                                      invalid_client_properties.www_authenticate
+                             }
+                           )
 end
+
 
 local function load_token(conf, service, access_token)
   local credentials, err =
@@ -601,6 +609,7 @@ local function load_token(conf, service, access_token)
   return credentials
 end
 
+
 local function retrieve_token(conf, access_token)
   local token, err
 
@@ -617,6 +626,7 @@ local function retrieve_token(conf, access_token)
 
   return token
 end
+
 
 local function parse_access_token(conf)
   local found_in = {}
@@ -667,6 +677,7 @@ local function parse_access_token(conf)
   return access_token
 end
 
+
 local function load_oauth2_credential_into_memory(credential_id)
   local result, err = kong.db.oauth2_credentials:select { id = credential_id }
   if err then
@@ -676,7 +687,10 @@ local function load_oauth2_credential_into_memory(credential_id)
   return result
 end
 
+
 local function set_consumer(consumer, credential, token)
+  kong.client.authenticate(consumer, credential)
+
   local set_header = kong.service.request.set_header
   local clear_header = kong.service.request.clear_header
 
@@ -698,30 +712,33 @@ local function set_consumer(consumer, credential, token)
     clear_header(constants.HEADERS.CONSUMER_USERNAME)
   end
 
-  kong.client.authenticate(consumer, credential)
-
-  if credential then
-    if token.scope then
-      set_header("x-authenticated-scope", token.scope)
-    else
-      clear_header("x-authenticated-scope")
-    end
-
-    if token.authenticated_userid then
-      set_header("x-authenticated-userid", token.authenticated_userid)
-    else
-      clear_header("x-authenticated-userid")
-    end
-
-    clear_header(constants.HEADERS.ANONYMOUS) -- in case of auth plugins concatenation
-
+  if credential and credential.client_id then
+    set_header(constants.HEADERS.CREDENTIAL_IDENTIFIER, credential.client_id)
   else
-    set_header(constants.HEADERS.ANONYMOUS, true)
-    clear_header("x-authenticated-scope")
-    clear_header("x-authenticated-userid")
+    clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
   end
 
+  clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
+
+  if credential then
+    clear_header(constants.HEADERS.ANONYMOUS)
+  else
+    set_header(constants.HEADERS.ANONYMOUS, true)
+  end
+
+  if token and token.scope then
+    set_header("X-Authenticated-Scope", token.scope)
+  else
+    clear_header("X-Authenticated-Scope")
+  end
+
+  if token and token.authenticated_userid then
+    set_header("X-Authenticated-UserId", token.authenticated_userid)
+  else
+    clear_header("X-Authenticated-UserId")
+  end
 end
+
 
 local function do_authentication(conf)
   local access_token = parse_access_token(conf);
@@ -852,7 +869,7 @@ function _M.execute(conf)
         return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 
-      set_consumer(consumer, nil, nil)
+      set_consumer(consumer)
 
     else
       return kong.response.exit(err.status, err.message, err.headers)
