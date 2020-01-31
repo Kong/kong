@@ -9,6 +9,7 @@ source = {
 supported_platforms = {"linux", "macosx"}
 description = {
   summary = "Kong Request Transformer Plugin",
+  license = "Apache 2.0",
 }
 
 build = {
