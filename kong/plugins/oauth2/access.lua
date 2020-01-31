@@ -725,7 +725,7 @@ end
 
 local function do_authentication(conf)
   local access_token = parse_access_token(conf);
-  if not access_token then
+  if not access_token or access_token == "" then
     return nil, {
       status = 401,
       message = {
