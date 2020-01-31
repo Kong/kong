@@ -17,6 +17,7 @@ local lower            = string.lower
 local concat           = table.concat
 local time             = ngx.time
 local resp_get_headers = ngx.resp and ngx.resp.get_headers
+local ngx_now          = ngx.now
 local timer_at         = ngx.timer.at
 local ngx_re_gmatch    = ngx.re.gmatch
 local ngx_re_sub       = ngx.re.gsub
@@ -30,6 +31,11 @@ local tab_new = require("table.new")
 local STRATEGY_PATH = "kong.plugins.proxy-cache-advanced.strategies"
 local CACHE_VERSION = 1
 local EMPTY = {}
+
+
+local function get_now()
+  return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
+end
 
 
 -- http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html#sec13.5.1
@@ -362,9 +368,18 @@ function ProxyCacheHandler:access(conf)
 
   local nctx = ngx.ctx
   nctx.proxy_cache_hit = response_data -- TODO: deprecated
+
+  local now = get_now()
+
+  nctx.KONG_ACCESS_TIME = now - nctx.KONG_ACCESS_START
+  nctx.KONG_ACCESS_ENDED_AT = now
+
+  local proxy_latency = now - ngx.req.start_time() * 1000
+
+  nctx.KONG_PROXY_LATENCY = proxy_latency
   nctx.KONG_PROXIED = true
 
-  ee.handlers.log.after(nctx)
+  ee.handlers.access.after(nctx)
 
   for k in pairs(res.headers) do
     if not overwritable_header(k) then
