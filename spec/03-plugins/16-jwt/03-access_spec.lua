@@ -358,6 +358,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(authorization, body.headers.authorization)
         assert.equal("jwt_tests_consumer", body.headers["x-consumer-username"])
         assert.equal(jwt_secret.key, body.headers["x-credential-identifier"])
+        assert.equal(nil, body.headers["x-credential-username"])
         assert.is_nil(body.headers["x-anonymous-consumer"])
       end)
       it("proxies the request if the key is found in headers", function()
@@ -390,6 +391,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(authorization, body.headers.authorization)
         assert.equal("jwt_tests_consumer", body.headers["x-consumer-username"])
         assert.equal(jwt_secret.key, body.headers["x-credential-identifier"])
+        assert.equal(nil, body.headers["x-credential-username"])
       end)
       it("proxies the request if secret is base64", function()
         PAYLOAD.iss = base64_jwt_secret.key
@@ -421,6 +423,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(authorization, body.headers.authorization)
         assert.equal("jwt_tests_base64_consumer", body.headers["x-consumer-username"])
         assert.equal(base64_jwt_secret.key, body.headers["x-credential-identifier"])
+        assert.equal(nil, body.headers["x-credential-username"])
       end)
       it("returns 200 the JWT is found in the cookie crumble", function()
         PAYLOAD.iss = jwt_secret.key
@@ -569,6 +572,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(authorization, body.headers.authorization)
         assert.equal("jwt_tests_rsa_consumer_1", body.headers["x-consumer-username"])
         assert.equal(rsa_jwt_secret_1.key, body.headers["x-credential-identifier"])
+        assert.equal(nil, body.headers["x-credential-username"])
       end)
       it("identifies Consumer", function()
         PAYLOAD.iss = rsa_jwt_secret_2.key
@@ -586,6 +590,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(authorization, body.headers.authorization)
         assert.equal("jwt_tests_rsa_consumer_2", body.headers["x-consumer-username"])
         assert.equal(rsa_jwt_secret_2.key, body.headers["x-credential-identifier"])
+        assert.equal(nil, body.headers["x-credential-username"])
       end)
     end)
 
@@ -606,6 +611,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(authorization, body.headers.authorization)
         assert.equal("jwt_tests_rsa_consumer_5", body.headers["x-consumer-username"])
         assert.equal(rsa_jwt_secret_3.key, body.headers["x-credential-identifier"])
+        assert.equal(nil, body.headers["x-credential-username"])
       end)
       it("identifies Consumer", function()
         PAYLOAD.iss = rsa_jwt_secret_3.key
@@ -623,6 +629,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(authorization, body.headers.authorization)
         assert.equal("jwt_tests_rsa_consumer_5", body.headers["x-consumer-username"])
         assert.equal(rsa_jwt_secret_3.key, body.headers["x-credential-identifier"])
+        assert.equal(nil, body.headers["x-credential-username"])
       end)
     end)
 
@@ -644,6 +651,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("jwt_tests_hs_consumer_7", body.headers["x-consumer-username"])
         assert.equal(hs_jwt_secret_1.key, body.headers["x-credential-identifier"])
         assert.is_nil(body.headers["x-anonymous-consumer"])
+        assert.equal(nil, body.headers["x-credential-username"])
       end)
     end)
 
@@ -664,6 +672,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(authorization, body.headers.authorization)
         assert.equal("jwt_tests_hs_consumer_8", body.headers["x-consumer-username"])
         assert.equal(hs_jwt_secret_2.key, body.headers["x-credential-identifier"])
+        assert.equal(nil, body.headers["x-credential-username"])
         assert.is_nil(body.headers["x-anonymous-consumer"])
       end)
     end)
@@ -755,6 +764,7 @@ for _, strategy in helpers.each_strategy() do
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal('jwt_tests_consumer', body.headers["x-consumer-username"])
         assert.equal(jwt_secret.key, body.headers["x-credential-identifier"])
+        assert.equal(nil, body.headers["x-credential-username"])
         assert.is_nil(body.headers["x-anonymous-consumer"])
       end)
       it("works with wrong credentials and anonymous", function()
@@ -769,6 +779,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal('true', body.headers["x-anonymous-consumer"])
         assert.equal('no-body', body.headers["x-consumer-username"])
         assert.equal(nil, body.headers["x-credential-identifier"])
+        assert.equal(nil, body.headers["x-credential-username"])
       end)
       it("errors when anonymous user doesn't exist", function()
         local res = assert(proxy_client:send {
@@ -791,6 +802,7 @@ for _, strategy in helpers.each_strategy() do
     local user2
     local anonymous
     local jwt_token
+    local key_auth
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -858,7 +870,7 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.keyauth_credentials:insert {
+      key_auth = bp.keyauth_credentials:insert {
         key      = "Mouse",
         consumer = { id = user1.id },
       }
@@ -902,9 +914,10 @@ for _, strategy in helpers.each_strategy() do
         assert.request(res).has.no.header("x-anonymous-consumer")
         local id = assert.request(res).has.header("x-consumer-id")
         local key = assert.request(res).has.header("x-credential-identifier")
+        assert.request(res).has.no.header("x-credential-username")
         assert.not_equal(id, anonymous.id)
         assert(id == user1.id or id == user2.id)
-        assert.equal(PAYLOAD.iss, key)
+        assert.equal(key_auth.id, key)
       end)
 
       it("fails 401, with only the first credential provided", function()
@@ -960,6 +973,7 @@ for _, strategy in helpers.each_strategy() do
         assert.request(res).has.no.header("x-anonymous-consumer")
         local id = assert.request(res).has.header("x-consumer-id")
         local key = assert.request(res).has.header("x-credential-identifier")
+        assert.request(res).has.no.header("x-credential-username")
         assert.not_equal(id, anonymous.id)
         assert(id == user1.id or id == user2.id)
         assert.equal(PAYLOAD.iss, key)
@@ -980,6 +994,7 @@ for _, strategy in helpers.each_strategy() do
         assert.not_equal(id, anonymous.id)
         assert.equal(user1.id, id)
         assert.not_equal(PAYLOAD.iss, res.headers["x-credential-identifier"])
+        assert.equal(nil, res.headers["x-credential-username"])
       end)
 
       it("passes with only the second credential provided", function()
@@ -995,6 +1010,7 @@ for _, strategy in helpers.each_strategy() do
         assert.request(res).has.no.header("x-anonymous-consumer")
         local id = assert.request(res).has.header("x-consumer-id")
         local key = assert.request(res).has.header("x-credential-identifier")
+        assert.request(res).has.no.header("x-credential-username")
         assert.not_equal(id, anonymous.id)
         assert.equal(user2.id, id)
         assert.equal(PAYLOAD.iss, key)
@@ -1012,6 +1028,7 @@ for _, strategy in helpers.each_strategy() do
         assert.request(res).has.header("x-anonymous-consumer")
         local id = assert.request(res).has.header("x-consumer-id")
         assert.not_equal(PAYLOAD.iss, res.headers["x-credential-identifier"])
+        assert.request(res).has.no.header("x-credential-username")
         assert.equal(id, anonymous.id)
       end)
     end)
