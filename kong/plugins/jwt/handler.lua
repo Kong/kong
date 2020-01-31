@@ -10,11 +10,10 @@ local tostring = tostring
 local re_gmatch = ngx.re.gmatch
 
 
-local JwtHandler = {}
-
-
-JwtHandler.PRIORITY = 1005
-JwtHandler.VERSION = "2.1.0"
+local JwtHandler = {
+  PRIORITY = 1005,
+  VERSION = "2.2.0",
+}
 
 
 --- Retrieve a JWT in a request.
@@ -77,6 +76,8 @@ end
 
 
 local function set_consumer(consumer, credential, token)
+  kong.client.authenticate(consumer, credential)
+
   local set_header = kong.service.request.set_header
   local clear_header = kong.service.request.clear_header
 
@@ -98,23 +99,26 @@ local function set_consumer(consumer, credential, token)
     clear_header(constants.HEADERS.CONSUMER_USERNAME)
   end
 
-  kong.client.authenticate(consumer, credential)
-
-  if credential then
-    kong.ctx.shared.authenticated_jwt_token = token -- TODO: wrap in a PDK function?
-    ngx.ctx.authenticated_jwt_token = token  -- backward compatibility only
-
-    if credential.key then
-      set_header(constants.HEADERS.CREDENTIAL_IDENTIFIER, credential.key)
-    else
-      clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
-    end
-
-    clear_header(constants.HEADERS.ANONYMOUS)
-
+  if credential and credential.key then
+    set_header(constants.HEADERS.CREDENTIAL_IDENTIFIER, credential.key)
   else
     clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
+  end
+
+  clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
+
+  if credential then
+    clear_header(constants.HEADERS.ANONYMOUS)
+  else
     set_header(constants.HEADERS.ANONYMOUS, true)
+  end
+
+  if token then
+    kong.ctx.shared.authenticated_jwt_token = token -- TODO: wrap in a PDK function?
+    ngx.ctx.authenticated_jwt_token = token  -- backward compatibility only
+  else
+    kong.ctx.shared.authenticated_jwt_token = nil
+    ngx.ctx.authenticated_jwt_token = nil  -- backward compatibility only
   end
 end
 
@@ -170,7 +174,7 @@ local function do_authentication(conf)
 
   -- Verify "alg"
   if jwt.header.alg ~= algorithm then
-    return false, {status = 401, message = "Invalid algorithm"}
+    return false, { status = 401, message = "Invalid algorithm" }
   end
 
   local jwt_secret_value = algorithm ~= nil and algorithm:sub(1, 2) == "HS" and
@@ -251,7 +255,7 @@ function JwtHandler:access(conf)
         return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 
-      set_consumer(consumer, nil, nil)
+      set_consumer(consumer)
 
     else
       return kong.response.exit(err.status, err.errors or { message = err.message })
