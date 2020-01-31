@@ -75,7 +75,7 @@ return {
     CONSUMER_ID = "X-Consumer-ID",
     CONSUMER_CUSTOM_ID = "X-Consumer-Custom-ID",
     CONSUMER_USERNAME = "X-Consumer-Username",
-    CREDENTIAL_USERNAME = "X-Credential-Username",
+    CREDENTIAL_USERNAME = "X-Credential-Username", -- TODO: deprecated, use CREDENTIAL_IDENTIFIER instead
     CREDENTIAL_IDENTIFIER = "X-Credential-Identifier",
     RATELIMIT_LIMIT = "X-RateLimit-Limit",
     RATELIMIT_REMAINING = "X-RateLimit-Remaining",
