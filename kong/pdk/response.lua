@@ -633,129 +633,219 @@ local function new(self, major_version)
     return send(response.status_code, response.content, response.headers)
   end
 
+  if ngx and ngx.config.subsystem == 'http' then
+    ---
+    -- This function interrupts the current processing and produces a response.
+    -- It is typical to see plugins using it to produce a response before Kong
+    -- has a chance to proxy the request (e.g. an authentication plugin rejecting
+    -- a request, or a caching plugin serving a cached response).
+    --
+    -- It is recommended to use this function in conjunction with the `return`
+    -- operator, to better reflect its meaning:
+    --
+    -- ```lua
+    -- return kong.response.exit(200, "Success")
+    -- ```
+    --
+    -- Calling `kong.response.exit()` will interrupt the execution flow of
+    -- plugins in the current phase. Subsequent phases will still be invoked.
+    -- E.g. if a plugin called `kong.response.exit()` in the `access` phase, no
+    -- other plugin will be executed in that phase, but the `header_filter`,
+    -- `body_filter`, and `log` phases will still be executed, along with their
+    -- plugins. Plugins should thus be programmed defensively against cases when
+    -- a request was **not** proxied to the Service, but instead was produced by
+    -- Kong itself.
+    --
+    -- The first argument `status` will set the status code of the response that
+    -- will be seen by the client.
+    --
+    -- The second, optional, `body` argument will set the response body. If it is
+    -- a string, no special processing will be done, and the body will be sent
+    -- as-is.  It is the caller's responsibility to set the appropriate
+    -- Content-Type header via the third argument.  As a convenience, `body` can
+    -- be specified as a table; in which case, it will be JSON-encoded and the
+    -- `application/json` Content-Type header will be set. On gRPC we cannot send
+    -- the `body` with this function at the moment at least, so what it does
+    -- instead is that it sends "body" in `grpc-message` header instead. If the
+    -- body is a table it looks for a field `message` in it, and uses that as a
+    -- `grpc-message` header. Though, if you have specified `Content-Type` header
+    -- starting with `application/grpc`, the body will be sent.
+    --
+    -- The third, optional, `headers` argument can be a table specifying response
+    -- headers to send. If specified, its behavior is similar to
+    -- `kong.response.set_headers()`.
+    --
+    -- Unless manually specified, this method will automatically set the
+    -- Content-Length header in the produced response for convenience.
+    -- @function kong.response.exit
+    -- @phases rewrite, access, admin_api, header_filter (only if `body` is nil)
+    -- @tparam number status The status to be used
+    -- @tparam[opt] table|string body The body to be used
+    -- @tparam[opt] table headers The headers to be used
+    -- @return Nothing; throws an error on invalid input.
+    -- @usage
+    -- return kong.response.exit(403, "Access Forbidden", {
+    --   ["Content-Type"] = "text/plain",
+    --   ["WWW-Authenticate"] = "Basic"
+    -- })
+    --
+    -- ---
+    --
+    -- return kong.response.exit(403, [[{"message":"Access Forbidden"}]], {
+    --   ["Content-Type"] = "application/json",
+    --   ["WWW-Authenticate"] = "Basic"
+    -- })
+    --
+    -- ---
+    --
+    -- return kong.response.exit(403, { message = "Access Forbidden" }, {
+    --   ["WWW-Authenticate"] = "Basic"
+    -- })
+    function _RESPONSE.exit(status, body, headers)
+      local is_buffered_exit = self.ctx.core.buffered_proxying
+                           and self.ctx.core.phase == PHASES.balancer
+                           and ngx.get_phase()     == "access"
 
-  ---
-  -- This function interrupts the current processing and produces a response.
-  -- It is typical to see plugins using it to produce a response before Kong
-  -- has a chance to proxy the request (e.g. an authentication plugin rejecting
-  -- a request, or a caching plugin serving a cached response).
-  --
-  -- It is recommended to use this function in conjunction with the `return`
-  -- operator, to better reflect its meaning:
-  --
-  -- ```lua
-  -- return kong.response.exit(200, "Success")
-  -- ```
-  --
-  -- Calling `kong.response.exit()` will interrupt the execution flow of
-  -- plugins in the current phase. Subsequent phases will still be invoked.
-  -- E.g. if a plugin called `kong.response.exit()` in the `access` phase, no
-  -- other plugin will be executed in that phase, but the `header_filter`,
-  -- `body_filter`, and `log` phases will still be executed, along with their
-  -- plugins. Plugins should thus be programmed defensively against cases when
-  -- a request was **not** proxied to the Service, but instead was produced by
-  -- Kong itself.
-  --
-  -- The first argument `status` will set the status code of the response that
-  -- will be seen by the client.
-  --
-  -- The second, optional, `body` argument will set the response body. If it is
-  -- a string, no special processing will be done, and the body will be sent
-  -- as-is.  It is the caller's responsibility to set the appropriate
-  -- Content-Type header via the third argument.  As a convenience, `body` can
-  -- be specified as a table; in which case, it will be JSON-encoded and the
-  -- `application/json` Content-Type header will be set. On gRPC we cannot send
-  -- the `body` with this function at the moment at least, so what it does
-  -- instead is that it sends "body" in `grpc-message` header instead. If the
-  -- body is a table it looks for a field `message` in it, and uses that as a
-  -- `grpc-message` header. Though, if you have specified `Content-Type` header
-  -- starting with `application/grpc`, the body will be sent.
-  --
-  -- The third, optional, `headers` argument can be a table specifying response
-  -- headers to send. If specified, its behavior is similar to
-  -- `kong.response.set_headers()`.
-  --
-  -- Unless manually specified, this method will automatically set the
-  -- Content-Length header in the produced response for convenience.
-  -- @function kong.response.exit
-  -- @phases rewrite, access, admin_api, header_filter (only if `body` is nil)
-  -- @tparam number status The status to be used
-  -- @tparam[opt] table|string body The body to be used
-  -- @tparam[opt] table headers The headers to be used
-  -- @return Nothing; throws an error on invalid input.
-  -- @usage
-  -- return kong.response.exit(403, "Access Forbidden", {
-  --   ["Content-Type"] = "text/plain",
-  --   ["WWW-Authenticate"] = "Basic"
-  -- })
-  --
-  -- ---
-  --
-  -- return kong.response.exit(403, [[{"message":"Access Forbidden"}]], {
-  --   ["Content-Type"] = "application/json",
-  --   ["WWW-Authenticate"] = "Basic"
-  -- })
-  --
-  -- ---
-  --
-  -- return kong.response.exit(403, { message = "Access Forbidden" }, {
-  --   ["WWW-Authenticate"] = "Basic"
-  -- })
-  function _RESPONSE.exit(status, body, headers)
-    local is_buffered_exit = self.ctx.core.buffered_proxying
-                         and self.ctx.core.phase == PHASES.balancer
-                         and ngx.get_phase()     == "access"
+      if not is_buffered_exit then
+        check_phase(rewrite_access_header)
+      end
 
-    if not is_buffered_exit then
-      check_phase(rewrite_access_header)
+      if ngx.headers_sent then
+        error("headers have already been sent", 2)
+      end
+
+      if type(status) ~= "number" then
+        error("code must be a number", 2)
+
+      elseif status < MIN_STATUS_CODE or status > MAX_STATUS_CODE then
+        error(fmt("code must be a number between %u and %u", MIN_STATUS_CODE, MAX_STATUS_CODE), 2)
+      end
+
+      if body ~= nil and type(body) ~= "string" and type(body) ~= "table" then
+        error("body must be a nil, string or table", 2)
+      end
+
+      if headers ~= nil and type(headers) ~= "table" then
+        error("headers must be a nil or table", 2)
+      end
+
+      if headers ~= nil then
+        validate_headers(headers)
+      end
+
+      local ctx = ngx.ctx
+
+      if is_buffered_exit then
+        self.ctx.core.buffered_status = status
+        self.ctx.core.buffered_headers = headers
+        self.ctx.core.buffered_body = body
+
+      else
+        ctx.KONG_EXITED = true
+      end
+
+      if ctx.delay_response and not ctx.delayed_response then
+        ctx.delayed_response = {
+          status_code = status,
+          content     = body,
+          headers     = headers,
+        }
+
+        ctx.delayed_response_callback = flush
+        coroutine.yield()
+
+      else
+        return send(status, body, headers)
+      end
     end
 
-    if ngx.headers_sent then
-      error("headers have already been sent", 2)
-    end
+  else
+    local VALID_CODES = {
+      [200] = true,
+      [400] = true,
+      [403] = true,
+      [500] = true,
+      [502] = true,
+      [503] = true,
+      -- NOTE: when adding new code, change the documentation and error
+      -- message raised below accordingly
+      --
+      -- Code are from http://lxr.nginx.org/source/src/stream/ngx_stream.h#0029
+    }
 
-    if type(status) ~= "number" then
-      error("code must be a number", 2)
+    ---
+    -- This function interrupts the current processing and produces a response.
+    -- It is typical to see plugins using it to produce a response before Kong
+    -- has a chance to proxy the request (e.g. an authentication plugin rejecting
+    -- a request, or a caching plugin serving a cached response).
+    --
+    -- It is recommended to use this function in conjunction with the `return`
+    -- operator, to better reflect its meaning:
+    --
+    -- ```lua
+    -- return kong.response.exit(200, "Success")
+    -- ```
+    --
+    -- The first argument `status` will set the status code of the response that
+    -- will be seen by the client. Only the following status codes are supported
+    -- in L4 proxy mode:
+    --
+    -- * 200 - OK
+    -- * 400 - Bad request
+    -- * 403 - Forbidden
+    -- * 500 - Internal server error
+    -- * 502 - Bad gateway
+    -- * 503 - Service unavailable
+    --
+    -- Note the `status` provided here will not be sent to the client directly.
+    -- Instead they will be written to the stream access log to aid
+    -- troubleshooting and aggregation.
+    --
+    -- The second, optional `body` argument will be sent to the client when
+    -- `status` if not 500, 502 or 503. If the `status` is one of those, then
+    -- `body` will be written into the error log to aid troubleshooting.
+    --
+    -- Note that if this method is called prior to all the data sent by the
+    -- client are read, the client may receive "Connection reset by peer" error.
+    --
+    -- @function kong.response.exit
+    -- @phases preread
+    -- @tparam number status The status to be used
+    -- @tparam[opt] table|string body The body to be used
+    -- @return Nothing; throws an error on invalid input.
+    -- @usage
+    -- return kong.response.exit(200)
+    --
+    -- ---
+    --
+    -- return kong.response.exit(403, "Access Forbidden")
+    function _RESPONSE.exit(status, body, headers)
+      if type(status) ~= "number" then
+        error("code must be a number", 2)
 
-    elseif status < MIN_STATUS_CODE or status > MAX_STATUS_CODE then
-      error(fmt("code must be a number between %u and %u", MIN_STATUS_CODE, MAX_STATUS_CODE), 2)
-    end
+      elseif not VALID_CODES[status] then
+        error("unacceptable code, only 200, 400, 403, 500, 502 and 503 " ..
+              "are accepted", 2)
+      end
 
-    if body ~= nil and type(body) ~= "string" and type(body) ~= "table" then
-      error("body must be a nil, string or table", 2)
-    end
+      if body ~= nil and type(body) ~= "string" then
+        error("body must be a nil or a string", 2)
+      end
 
-    if headers ~= nil and type(headers) ~= "table" then
-      error("headers must be a nil or table", 2)
-    end
+      if body then
+        if status < 500 then
+          local res, err =  ngx.print(body)
+          if not res then
+            error("unable to send body to client: " .. err, 2)
+          end
 
-    if headers ~= nil then
-      validate_headers(headers)
-    end
+        elseif body then
+          self.log.err("unable to proxy stream connection, " ..
+                       "status: " .. status .. ", err: ", body)
+        end
+      end
 
-    local ctx = ngx.ctx
-
-    if is_buffered_exit then
-      self.ctx.core.buffered_status = status
-      self.ctx.core.buffered_headers = headers
-      self.ctx.core.buffered_body = body
-
-    else
-      ctx.KONG_EXITED = true
-    end
-
-    if ctx.delay_response and not ctx.delayed_response then
-      ctx.delayed_response = {
-        status_code = status,
-        content     = body,
-        headers     = headers,
-      }
-
-      ctx.delayed_response_callback = flush
-      coroutine.yield()
-
-    else
-      return send(status, body, headers)
+      return ngx.exit(status)
     end
   end
 
