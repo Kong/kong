@@ -510,9 +510,9 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
 
       local conf, err = conf_loader(nil, {
-        router_consistency = "magical"
+        worker_consistency = "magical"
       })
-      assert.equal("router_consistency has an invalid value: 'magical' (strict, eventual)", err)
+      assert.equal("worker_consistency has an invalid value: 'magical' (strict, eventual)", err)
       assert.is_nil(conf)
 
       conf, err = conf_loader(nil, {
@@ -937,26 +937,26 @@ describe("Configuration loader", function()
     end)
   end)
 
-  describe("router_update_frequency option", function()
+  describe("worker_state_update_frequency option", function()
     it("is rejected with a zero", function()
       local conf, err = conf_loader(nil, {
-        router_update_frequency = 0,
+        worker_state_update_frequency = 0,
       })
       assert.is_nil(conf)
-      assert.equal("router_update_frequency must be greater than 0", err)
+      assert.equal("worker_state_update_frequency must be greater than 0", err)
     end)
     it("is rejected with a negative number", function()
       local conf, err = conf_loader(nil, {
-        router_update_frequency = -1,
+        worker_state_update_frequency = -1,
       })
       assert.is_nil(conf)
-      assert.equal("router_update_frequency must be greater than 0", err)
+      assert.equal("worker_state_update_frequency must be greater than 0", err)
     end)
     it("accepts decimal numbers", function()
       local conf, err = conf_loader(nil, {
-        router_update_frequency = 0.01,
+        worker_state_update_frequency = 0.01,
       })
-      assert.equal(conf.router_update_frequency, 0.01)
+      assert.equal(conf.worker_state_update_frequency, 0.01)
       assert.is_nil(err)
     end)
   end)

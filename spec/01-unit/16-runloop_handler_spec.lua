@@ -36,7 +36,7 @@ local function setup_it_block()
       },
       configuration = {
         database = "dummy",
-        router_consistency = "strict",
+        worker_consistency = "strict",
       },
       db = {
         strategy = "dummy",
@@ -163,10 +163,10 @@ describe("runloop handler", function()
       assert.equal(1, semaphores[1].value)
     end)
 
-    it("does not call update_router if router_consistency is eventual", function()
+    it("does not call update_router if worker_consistency is eventual", function()
       setup_it_block()
 
-      kong.configuration.router_consistency = "eventual"
+      kong.configuration.worker_consistency = "eventual"
 
       local handler = require "kong.runloop.handler"
 
@@ -182,10 +182,10 @@ describe("runloop handler", function()
       assert.equal(mock_router, handler._get_updated_router())
     end)
 
-    it("calls build_router if router version changes and router_consistency is strict", function()
+    it("calls build_router if router version changes and worker_consistency is strict", function()
       setup_it_block()
 
-      kong.configuration.router_consistency = "strict"
+      kong.configuration.worker_consistency = "strict"
 
       local handler = require "kong.runloop.handler"
 
@@ -220,10 +220,10 @@ describe("runloop handler", function()
       assert.not_equal(saved_router, latest_router)
     end)
 
-    it("does not call build_router if router version does not change and router_consistency is strict", function()
+    it("does not call build_router if router version does not change and worker_consistency is strict", function()
       setup_it_block()
 
-      kong.configuration.router_consistency = "strict"
+      kong.configuration.worker_consistency = "strict"
 
       local handler = require "kong.runloop.handler"
 

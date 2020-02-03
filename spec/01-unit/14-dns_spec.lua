@@ -1,3 +1,44 @@
+local mocker = require "spec.fixtures.mocker"
+local balancer = require "kong.runloop.balancer"
+
+local function setup_it_block()
+  local cache_table = {}
+
+  local function mock_cache(cache_table, limit)
+    return {
+      safe_set = function(self, k, v)
+        if limit then
+          local n = 0
+          for _, _ in pairs(cache_table) do
+            n = n + 1
+          end
+          if n >= limit then
+            return nil, "no memory"
+          end
+        end
+        cache_table[k] = v
+        return true
+      end,
+      get = function(self, k, _, fn, arg)
+        if cache_table[k] == nil then
+          cache_table[k] = fn(arg)
+        end
+        return cache_table[k]
+      end,
+    }
+  end
+
+  mocker.setup(finally, {
+    kong = {
+      configuration = {
+        worker_consistency = "strict",
+      },
+      core_cache = mock_cache(cache_table),
+    }
+  })
+  balancer.init()
+end
+
 -- simple debug function
 local function dump(...)
   print(require("pl.pretty").write({...}))
@@ -5,7 +46,7 @@ end
 
 
 describe("DNS", function()
-  local balancer, resolver, query_func, old_new
+  local resolver, query_func, old_new
   local mock_records, singletons, client
 
   lazy_setup(function()
@@ -23,8 +64,7 @@ describe("DNS", function()
     }
     --]]
 
-    balancer = require "kong.runloop.balancer"
-    balancer.init()
+    singletons.origins = {}
 
     resolver = require "resty.dns.resolver"
     client = require "resty.dns.client"
@@ -86,6 +126,7 @@ describe("DNS", function()
   end)
 
   it("returns an error and 503 on a Name Error (3)", function()
+    setup_it_block()
     mock_records = {
       ["konghq.com:" .. resolver.TYPE_A] = { errcode = 3, errstr = "name error" },
       ["konghq.com:" .. resolver.TYPE_AAAA] = { errcode = 3, errstr = "name error" },
@@ -104,22 +145,25 @@ describe("DNS", function()
     assert.equals(503, code)
   end)
 
-  it("returns an error and 503 on an empty record", function()
-    mock_records = {
-      ["konghq.com:" .. resolver.TYPE_A] = {},
-      ["konghq.com:" .. resolver.TYPE_AAAA] = {},
-      ["konghq.com:" .. resolver.TYPE_CNAME] = {},
-      ["konghq.com:" .. resolver.TYPE_SRV] = {},
-    }
+  for _, consistency in ipairs({"strict", "eventual"}) do
+    it("returns an error and 503 on an empty record", function()
+      setup_it_block(consistency)
+      mock_records = {
+        ["konghq.com:" .. resolver.TYPE_A] = {},
+        ["konghq.com:" .. resolver.TYPE_AAAA] = {},
+        ["konghq.com:" .. resolver.TYPE_CNAME] = {},
+        ["konghq.com:" .. resolver.TYPE_SRV] = {},
+      }
 
-    local ip, port, code = balancer.execute({
-      type = "name",
-      port = nil,
-      host = "konghq.com",
-      try_count = 0,
-    })
-    assert.is_nil(ip)
-    assert.equals("name resolution failed", port)
-    assert.equals(503, code)
-  end)
+      local ip, port, code = balancer.execute({
+        type = "name",
+        port = nil,
+        host = "konghq.com",
+        try_count = 0,
+      })
+      assert.is_nil(ip)
+      assert.equals("name resolution failed", port)
+      assert.equals(503, code)
+    end)
+  end
 end)
