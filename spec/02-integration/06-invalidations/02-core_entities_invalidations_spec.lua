@@ -1278,7 +1278,7 @@ for _, strategy in helpers.each_strategy() do
     -----------
 
     describe("Services", function()
-      it("raises correct number of invalidation events", function()
+      it("#flaky raises correct number of invalidation events", function()
         local admin_res = assert(admin_client:send {
           method = "PATCH",
           path   = "/services/" .. service.id,
