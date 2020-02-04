@@ -659,6 +659,18 @@ local function new(self, major_version)
     -- The first argument `status` will set the status code of the response that
     -- will be seen by the client.
     --
+    -- **In L4 proxy mode**, **only** the following status code are supported:
+    --
+    -- * 200 - OK
+    -- * 400 - Bad request
+    -- * 403 - Forbidden
+    -- * 500 - Internal server error
+    -- * 502 - Bad gateway
+    -- * 503 - Service unavailable
+    --
+    -- For **L4 proxy mode** the `status` code provided is primarily for logging
+    -- and statistical purpose, and is not visible to the client directly.
+    --
     -- The second, optional, `body` argument will set the response body. If it is
     -- a string, no special processing will be done, and the body will be sent
     -- as-is.  It is the caller's responsibility to set the appropriate
@@ -671,14 +683,21 @@ local function new(self, major_version)
     -- `grpc-message` header. Though, if you have specified `Content-Type` header
     -- starting with `application/grpc`, the body will be sent.
     --
+    -- **In L4 proxy mode**, `body` can only be `nil` or a string. Automatic JSON
+    -- encoding is not available. When provided, depends on the value of `status`,
+    -- the following will happen:
+    --
+    -- When `status` is 500, 502 or 503, then `body` will be logged in the Kong
+    -- error log file. Otherwise `body` will be sent back to the L4 client.
+    --
     -- The third, optional, `headers` argument can be a table specifying response
     -- headers to send. If specified, its behavior is similar to
-    -- `kong.response.set_headers()`.
+    -- `kong.response.set_headers()`. This argument is ignored in L4 proxy mode.
     --
     -- Unless manually specified, this method will automatically set the
     -- Content-Length header in the produced response for convenience.
     -- @function kong.response.exit
-    -- @phases rewrite, access, admin_api, header_filter (only if `body` is nil)
+    -- @phases preread, rewrite, access, admin_api, header_filter (only if `body` is nil)
     -- @tparam number status The status to be used
     -- @tparam[opt] table|string body The body to be used
     -- @tparam[opt] table headers The headers to be used
@@ -701,6 +720,13 @@ local function new(self, major_version)
     -- return kong.response.exit(403, { message = "Access Forbidden" }, {
     --   ["WWW-Authenticate"] = "Basic"
     -- })
+    --
+    -- ---
+    --
+    -- ```lua
+    -- -- In L4 proxy mode
+    -- return kong.response.exit(200, "Success")
+    -- ```
     function _RESPONSE.exit(status, body, headers)
       local is_buffered_exit = self.ctx.core.buffered_proxying
                            and self.ctx.core.phase == PHASES.balancer
@@ -773,52 +799,6 @@ local function new(self, major_version)
       -- Code are from http://lxr.nginx.org/source/src/stream/ngx_stream.h#0029
     }
 
-    ---
-    -- This function interrupts the current processing and produces a response.
-    -- It is typical to see plugins using it to produce a response before Kong
-    -- has a chance to proxy the request (e.g. an authentication plugin rejecting
-    -- a request, or a caching plugin serving a cached response).
-    --
-    -- It is recommended to use this function in conjunction with the `return`
-    -- operator, to better reflect its meaning:
-    --
-    -- ```lua
-    -- return kong.response.exit(200, "Success")
-    -- ```
-    --
-    -- The first argument `status` will set the status code of the response that
-    -- will be seen by the client. Only the following status codes are supported
-    -- in L4 proxy mode:
-    --
-    -- * 200 - OK
-    -- * 400 - Bad request
-    -- * 403 - Forbidden
-    -- * 500 - Internal server error
-    -- * 502 - Bad gateway
-    -- * 503 - Service unavailable
-    --
-    -- Note the `status` provided here will not be sent to the client directly.
-    -- Instead they will be written to the stream access log to aid
-    -- troubleshooting and aggregation.
-    --
-    -- The second, optional `body` argument will be sent to the client when
-    -- `status` if not 500, 502 or 503. If the `status` is one of those, then
-    -- `body` will be written into the error log to aid troubleshooting.
-    --
-    -- Note that if this method is called prior to all the data sent by the
-    -- client are read, the client may receive "Connection reset by peer" error.
-    --
-    -- @function kong.response.exit
-    -- @phases preread
-    -- @tparam number status The status to be used
-    -- @tparam[opt] table|string body The body to be used
-    -- @return Nothing; throws an error on invalid input.
-    -- @usage
-    -- return kong.response.exit(200)
-    --
-    -- ---
-    --
-    -- return kong.response.exit(403, "Access Forbidden")
     function _RESPONSE.exit(status, body, headers)
       if type(status) ~= "number" then
         error("code must be a number", 2)
