@@ -53,7 +53,7 @@ dependencies = {
   "kong-plugin-session == 2.2.0",
   "kong-proxy-cache-plugin ~> 1.2.2",
   "kong-plugin-request-transformer ~> 1.2",
-  "kong-plugin-aws-lambda ~> 3.0.1",
+  "kong-plugin-aws-lambda ~> 3.1.0",
 }
 build = {
   type = "builtin",
