@@ -228,6 +228,9 @@ build = {
     ["kong.plugins.oauth2.schema"] = "kong/plugins/oauth2/schema.lua",
     ["kong.plugins.oauth2.daos"] = "kong/plugins/oauth2/daos.lua",
 
+    ["kong.plugins.grpc-web.handler"] = "kong/plugins/grpc-web/handler.lua",
+    ["kong.plugins.grpc-web.schema"] = "kong/plugins/grpc-web/schema.lua",
+    ["kong.plugins.grpc-web.frames"] = "kong/plugins/grpc-web/frames.lua",
 
     ["kong.plugins.log-serializers.basic"] = "kong/plugins/log-serializers/basic.lua",
 
