@@ -918,7 +918,7 @@ for _, strategy in helpers.each_strategy() do
               healthchecks = healthchecks_config {}
             })
             local port = add_target(bp, upstream_id, localhost)
-            wait_for_router_update(old_rv, localhost, proxy_port_2, admin_port_2)
+            wait_for_router_update(bp, old_rv, localhost, proxy_port_2, admin_port_2)
             end_testcase_setup(strategy, bp)
 
             local health1 = get_upstream_health(upstream_id, admin_port_1)
