@@ -1,3 +1,9 @@
+## v1.2.6
+
+- Fix header encoding to use base64 (non-url variant) with padding
+- Add support for keyring encryption of client_id and client_secret
+
+
 ## v1.2.5
 
 - Enable db-less & declarative mode for OpenID Connect plugin
