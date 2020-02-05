@@ -96,9 +96,15 @@ return {
   ["/certificates/:certificates"] = {
     before = prepare_params,
 
+    -- XXX EE [[ wrap function within dropping parent, so we can still support
+    -- post_process on parent for get_entity_endpoint
     -- override to include the snis list when getting an individual certificate
-    GET = endpoints.get_entity_endpoint(kong.db.certificates.schema,
-                                        nil, nil, "select_with_name_list"),
+    GET = function(self, db, helpers, parent)
+      return endpoints.get_entity_endpoint(
+        kong.db.certificates.schema, nil, nil, "select_with_name_list"
+      )(self, db, helpers)
+    end,
+    -- XXX EE ]]
 
     PUT = function(self, _, _, parent)
       prepare_args(self)
