@@ -20,6 +20,7 @@ local null            = ngx.null
 local header          = ngx.header
 local set_header      = ngx.req.set_header
 local escape_uri      = ngx.escape_uri
+local encode_base64   = ngx.encode_base64
 local tonumber        = tonumber
 local tostring        = tostring
 local ipairs          = ipairs
@@ -29,7 +30,6 @@ local find            = string.find
 local type            = type
 local sub             = string.sub
 local json            = codec.json
-local base64          = codec.base64
 local base64url       = codec.base64url
 
 
@@ -582,7 +582,7 @@ local function get_header_value(header_value)
   if val_type == "table" then
     header_value = json.encode(header_value)
     if header_value then
-      header_value = base64.encode(header_value)
+      header_value = encode_base64(header_value)
     end
 
   elseif val_type ~= "string" then
@@ -1004,7 +1004,7 @@ function OICHandler:access(conf)
     if not secret then
       secret = issuer.secret
     elseif #secret ~= 32 then
-      secret = sub(base64.encode(hash.S256(secret)), 1, 32)
+      secret = sub(encode_base64(hash.S256(secret)), 1, 32)
     end
   end
 
