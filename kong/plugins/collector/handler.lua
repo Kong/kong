@@ -117,7 +117,7 @@ end
 local CollectorHandler = BasePlugin:extend()
 
 CollectorHandler.PRIORITY = 3
-CollectorHandler.VERSION = "1.6.1"
+CollectorHandler.VERSION = "1.7.0"
 
 function CollectorHandler:new()
   if string.match(kong.version, "enterprise") then
