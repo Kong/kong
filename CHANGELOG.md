@@ -1,16 +1,33 @@
 # Table of Contents
 
+ - [1.7.0](#151---20200502)
+ - [1.6.1](#151---20191021)
  - [1.5.1](#151---20190926)
  - [1.5.0](#150---20190813)
 
 ## Unreleased
-2019/09/26
-### Aded
-- Consumer information to har
 
-### Removed
-- Legacy code for har generation. Now we use log features from Kong
+## [1.7.0] - 2020/02/05
 
+#### Summary
+
+- Added Consumer information to har
+- Removed legacy code for har generation. Now we use log features from Kong
+
+#### Breaking changes
+
+- Plugin configuration takes a http_endpoint parameter rather than https, host and port.
+
+## [1.6.1] - 2019/10/21
+
+#### Summary
+
+This release includes bug fixes and non breaking changes.
+
+#### Under the hood
+
+- `/collector/status` and `/collector/alerts` returns response_code returned by collector server
+- `/service_maps` API endpioint proxies the request to `collector` and no longer relies on local storage
 
 ## [1.5.1] - 2019/09/26
 
