@@ -79,8 +79,7 @@ return {
       ---EE [[
       -- post process credentials to filter out non-proxy consumers
       GET = function(self, db, helpers, parent)
-        return endpoints.get_collection_endpoint(credentials_schema)(self, db,
-          helpers, ee_crud.post_process_credential)
+        return parent(ee_crud.post_process_credential)
       end,
       POST = function(self, db, helpers, parent)
         return endpoints.post_collection_endpoint(credentials_schema)(self, db,
@@ -100,9 +99,7 @@ return {
             kong.response.exit(404, { message = "Not Found" })
           end
         end
-        return endpoints.get_entity_endpoint(credentials_schema,
-                                             consumers_schema, "consumer", nil, true)
-                                             (self, db, helpers, post_process)
+        return parent(post_process)
       end
       --]] EE
     }
