@@ -42,6 +42,9 @@ local function validate_issuer(conf)
 end
 
 
+local ENCRYPTED = kong.configuration.keyring_enabled and true or nil
+
+
 return {
   name = "openid-connect",
   fields = {
@@ -122,7 +125,7 @@ return {
             client_id = {
               required = false,
               type     = "array",
-              encrypted = true,
+              encrypted = ENCRYPTED,
               elements = {
                 type = "string",
               },
@@ -132,7 +135,7 @@ return {
             client_secret = {
               required = false,
               type     = "array",
-              encrypted = true,
+              encrypted = ENCRYPTED,
               elements = {
                 type = "string",
               },
