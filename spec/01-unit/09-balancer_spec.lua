@@ -461,9 +461,17 @@ describe("Balancer", function()
     end)
 
     it("requires hostname if that was used in the Target", function()
-      local ok, err = balancer.post_health(upstream_ph, "127.0.0.1", nil, 1111, true)
-      assert.falsy(ok)
-      assert.match(err, "No host found by: '127.0.0.1:1111'")
+      local ok = balancer.post_health(upstream_ph, "127.0.0.1", nil, 1111, true)
+      assert.truthy(ok) -- healthchecker does not report error...
+      local health_info = assert(balancer.get_upstream_health("ph"))
+      -- ...but health does not update
+      assert.same("UNHEALTHY", health_info["localhost:1111"].addresses[1].health)
+
+      ok = balancer.post_health(upstream_ph, "localhost", nil, 1111, true)
+      assert.truthy(ok) -- healthcheck returns true...
+      health_info = assert(balancer.get_upstream_health("ph"))
+      -- ...and health updates
+      assert.same("HEALTHY", health_info["localhost:1111"].addresses[1].health)
     end)
 
     it("fails if upstream/balancer doesn't exist", function()
