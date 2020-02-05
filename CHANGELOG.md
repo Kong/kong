@@ -27,7 +27,7 @@ This release includes bug fixes and non breaking changes.
 #### Under the hood
 
 - `/collector/status` and `/collector/alerts` returns response_code returned by collector server
-- `/service_maps` API endpioint proxies the request to `collector` and no longer relies on local storage
+- `/service_maps` API endpoint proxies the request to `collector` and no longer relies on local storage
 
 ## [1.5.1] - 2019/09/26
 
@@ -38,7 +38,7 @@ This release includes bug fixes and non breaking changes.
 #### Under the hood
 
 - `/collector/status` and `/collector/alerts` returns response_code returned by collector server
-- `/service_maps` API endpioint proxies the request to `collector` and no longer relies on local storage
+- `/service_maps` API endpoint proxies the request to `collector` and no longer relies on local storage
 
 ## [1.5.0] - 2019/08/13
 
