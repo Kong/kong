@@ -14,7 +14,7 @@ local timer_at = ngx.timer.at
 
 
 local EMPTY = {}
-local EXPIRATIONS = policies.EXPIRATIONS
+local EXPIRATION = require "kong.plugins.rate-limiting.expiration"
 
 
 local RATELIMIT_LIMIT     = "RateLimit-Limit"
@@ -143,7 +143,7 @@ function RateLimitingHandler:access(conf)
       local remaining
       for k, v in pairs(usage) do
         local current_limit = v.limit
-        local current_window = EXPIRATIONS[k]
+        local current_window = EXPIRATION[k]
         local current_remaining = v.remaining
         if stop == nil or stop == k then
           current_remaining = current_remaining - 1
