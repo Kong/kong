@@ -961,7 +961,7 @@ return {
     before = function(ctx)
       local router = get_updated_router()
 
-      local match_t = router.exec(ctx)
+      local match_t = router.exec()
       if not match_t then
         log(ERR, "no Route found with those values")
         return exit(500)
@@ -986,8 +986,8 @@ return {
     end
   },
   certificate = {
-    before = function(ctx)
-      certificate.execute(ctx)
+    before = function(_)
+      certificate.execute()
     end
   },
   rewrite = {

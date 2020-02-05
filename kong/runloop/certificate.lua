@@ -186,14 +186,12 @@ local function find_certificate(sni)
 end
 
 
-local function execute(ctx)
+local function execute()
   local sn, err = server_name()
   if err then
     log(ERR, "could not retrieve SNI: ", err)
     return ngx.exit(ngx.ERROR)
   end
-
-  ctx.sni_server_name = sn
 
   local cert_and_key, err = find_certificate(sn)
   if err then

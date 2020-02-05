@@ -1739,12 +1739,15 @@ function _M.new(routes)
     end
 
   else -- stream
-    function self.exec(ctx)
+    local server_name = require("ngx.ssl").server_name
+
+    function self.exec()
       local src_ip = var.remote_addr
       local src_port = tonumber(var.remote_port, 10)
       local dst_ip = var.server_addr
       local dst_port = tonumber(var.server_port, 10)
-      local sni = ctx.sni_server_name
+      -- error value for non-TLS connections ignored intentionally
+      local sni, _ = server_name()
 
       return find_route(nil, nil, nil, nil,
                         src_ip, src_port,
