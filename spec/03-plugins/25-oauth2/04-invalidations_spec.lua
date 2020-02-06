@@ -31,6 +31,12 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
+    local service
+    local route
+    local plugin
+    local consumer
+    local credential
+
     before_each(function()
       service = admin_api.services:insert()
 
