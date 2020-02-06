@@ -136,6 +136,7 @@ pipeline {
                         DOCKER_MACHINE_ARM64_NAME = "jenkins-kong-${env.BUILD_NUMBER}"
                         REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
                         PATH = "/home/ubuntu/bin/:${env.PATH}"
+                        KONG_PACKAGE_NAME = "kong-${env.BRANCH_NAME}"
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
@@ -165,6 +166,7 @@ pipeline {
                         BINTRAY_KEY = credentials('bintray_travis_key')
                         REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
                         PATH = "/home/ubuntu/bin/:${env.PATH}"
+                        KONG_PACKAGE_NAME = "kong-${env.BRANCH_NAME}"
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
@@ -190,6 +192,7 @@ pipeline {
                         PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
                         REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
                         PATH = "/home/ubuntu/bin/:${env.PATH}"
+                        KONG_PACKAGE_NAME = "kong-${env.BRANCH_NAME}"
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
@@ -221,6 +224,7 @@ pipeline {
                         PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
                         REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
                         PATH = "/home/ubuntu/bin/:${env.PATH}"
+                        KONG_PACKAGE_NAME = "kong-${env.BRANCH_NAME}"
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
@@ -246,6 +250,7 @@ pipeline {
                         BINTRAY_KEY = credentials('bintray_travis_key')
                         REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
                         PATH = "/home/ubuntu/bin/:${env.PATH}"
+                        KONG_PACKAGE_NAME = "kong-${env.BRANCH_NAME}"
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
@@ -271,14 +276,15 @@ pipeline {
                         BINTRAY_USR = 'kong-inc_travis-ci@kong'
                         BINTRAY_KEY = credentials('bintray_travis_key')
                         PATH = "/home/ubuntu/bin/:${env.PATH}"
+                        KONG_PACKAGE_NAME = "kong-${env.BRANCH_NAME}"
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
                         sh 'mkdir -p $HOME/bin'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
-                        sh 'PACKAGE_TYPE=src RESTY_IMAGE_BASE=src KONG_VERSION=`date +%Y-%m-%d` make nightly-release'
-                        sh 'PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=1 KONG_VERSION=`date +%Y-%m-%d` make nightly-release'
-                        sh 'PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=1 KONG_VERSION=`date +%Y-%m-%d` make nightly-release'
+                        sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly PACKAGE_TYPE=src RESTY_IMAGE_BASE=src KONG_VERSION=`date +%Y-%m-%d` make nightly-release'
+                        sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=1 KONG_VERSION=`date +%Y-%m-%d` make nightly-release'
+                        sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=1 KONG_VERSION=`date +%Y-%m-%d` make nightly-release'
                     }
                 }
             }
