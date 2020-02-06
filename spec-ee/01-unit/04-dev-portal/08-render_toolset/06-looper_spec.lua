@@ -12,38 +12,6 @@ describe("base helpers", function()
   end)
 
   describe("looper", function()
-    it("can index strings in nested table", function()
-      local object = {}
-      looper.set_node(object)
-
-      object.a = { b = "c" }
-
-      assert.equals(object.a.b, "c")
-      assert.is_nil(object.b)
-      assert.is_nil(object.b.c.d)
-    end)
-
-    it("can index numbers in nested table", function()
-      local object = {}
-      looper.set_node(object)
-
-      object.a = { b = 0 }
-
-      assert.equals(object.a.b, 0)
-      assert.is_nil(object.a.b.c.d)
-      assert.is_nil(object.b.c.d)
-    end)
-
-    it("can index strings in nested table added when items added after instantiation", function()
-      local object = {}
-      looper.set_node(object)
-      object.a = { b = "c" }
-
-      assert.equals(object.a.b, "c")
-      assert.is_nil(object.b)
-      assert.is_nil(object.b.c.d)
-    end)
-
     it("can index functions that take no arg", function()
       local object = {}
       looper.set_node(object)
@@ -57,7 +25,6 @@ describe("base helpers", function()
       assert.equals(object.b, "dog")
       assert.equals(object.b, "dog")
       assert.equals(object.c.d, "dog")
-      assert.is_nil(object.c.d.e.f)
     end)
 
     it("can call functions that take args", function()
@@ -73,8 +40,6 @@ describe("base helpers", function()
       assert.is_nil(object.b.c)
       assert.equals(object.b("dog"), "dog")
       assert.equals(object.c.d("dog"), "dog")
-      assert.is_nil(object.b("dog").a)
-      assert.is_nil(object.b("dog").a.b.c)
     end)
 
     it("can deal with mixed tables", function()
@@ -100,8 +65,6 @@ describe("base helpers", function()
       end
 
       assert.equals(object.a, "x")
-      assert.is_nil(object.a.b.c, nil)
-
       assert.equals(object.b(), "y")
       assert.is_nil(object.b().a, nil)
       assert.is_nil(object.b.a, nil)
@@ -116,6 +79,52 @@ describe("base helpers", function()
       assert.equals(object.d.f(), "m")
       assert.is_nil(object.d.e.a)
       assert.is_nil(object.d.f().a)
+    end)
+
+    it("does not override global types", function()
+      local object = {}
+      looper.set_node(object)
+      local get = function()
+        return "x"
+      end
+
+      object.a = get
+      object.b = "x"
+      object.c = 1
+      object.d = true
+      object.e = nil
+
+      assert.equals(object.a, "x")
+      assert.equals(type(object.a), "string")
+      local ok, _ = pcall(function() return object.b.c.d end)
+      assert.falsy(ok)
+      local ok, _ = pcall(function() return object.c.c.d end)
+      assert.falsy(ok)
+      local ok, _ = pcall(function() return object.d.c.d end)
+      assert.falsy(ok)
+      local ok, _ = pcall(function() return object.e.c.d end)
+      assert.falsy(ok)
+
+      local object_b = {}
+      local get = function()
+        return "x"
+      end
+
+      object_b.a = get
+      object_b.b = "x"
+      object_b.c = 1
+      object_b.d = true
+      object_b.e = nil
+
+      assert.equals(type(object_b.a), "function")
+      local ok, _ = pcall(function() return object_b.b.c.d end)
+      assert.falsy(ok)
+      local ok, _ = pcall(function() return object_b.c.c.d end)
+      assert.falsy(ok)
+      local ok, _ = pcall(function() return object_b.d.c.d end)
+      assert.falsy(ok)
+      local ok, _ = pcall(function() return object_b.e.c.d end)
+      assert.falsy(ok)
     end)
   end)
 end)

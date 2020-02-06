@@ -234,6 +234,7 @@ build = {
     ["kong.portal.file_helpers"] = "kong/portal/file_helpers.lua",
     ["kong.portal.gui_helpers"] = "kong/portal/gui_helpers.lua",
     ["kong.portal.router"] = "kong/portal/router.lua",
+    ["kong.portal.template"] = "kong/portal/template.lua",
     ["kong.portal.legacy_renderer"] = "kong/portal/legacy_renderer.lua",
     ["kong.portal.render_toolset.base"] = "kong/portal/render_toolset/base/init.lua",
     ["kong.portal.render_toolset.looper"] = "kong/portal/render_toolset/looper.lua",
