@@ -36,7 +36,7 @@ dependencies = {
   "lua-resty-rsa == 0.04",
   "lyaml == 6.2.4",
   "bcrypt == 2.1",
-  "lua-resty-dns-client == 4.1.2",
+  "lua-resty-dns-client == 4.1.3",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-mediador == 0.1.2",
   "lua-resty-healthcheck == 1.1.2",
@@ -187,7 +187,6 @@ build = {
     ["kong.tools.public.rate-limiting.strategies.cassandra"] = "kong/tools/public/rate-limiting/strategies/cassandra.lua",
     ["kong.tools.public.rate-limiting.strategies.postgres"] = "kong/tools/public/rate-limiting/strategies/postgres.lua",
     ["kong.tools.public.rate-limiting.strategies.redis"] = "kong/tools/public/rate-limiting/strategies/redis.lua",
-    ["kong.tools.public.rate-limiting"] = "kong/tools/public/rate-limiting/init.lua",
 
     -- XXX merge - files added or modified by enterprise, all of which no longer exist
     -- upstream (in 0.15.0)
