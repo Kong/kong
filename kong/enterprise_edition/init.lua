@@ -52,6 +52,14 @@ _M.handlers = {
           end
         end
 
+        kong.worker_events.register(function(data, event, source, pid)
+          event_hooks.emit(source, event, dao_adapter(data))
+        end, "crud")
+
+        kong.worker_events.register(function(data, event, source, pid)
+          event_hooks.emit(source, event, dao_adapter(data))
+        end, "dao:crud")
+
         -- register a callback to trigger an event_hook balanacer health
         -- event
         balancer.subscribe_to_healthcheck_events(function(upstream_id, ip, port, hostname, health)

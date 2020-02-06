@@ -22,6 +22,16 @@ local events = {}
 local references = {}
 
 
+local function prefix(source)
+  return "event-hooks:" .. source
+end
+
+
+local function unprefix(source)
+  return source:gsub("^event%-hooks%:", "", 1)
+end
+
+
 _M.enabled = function()
   return kong.configuration.event_hooks_enabled
 end
@@ -103,7 +113,7 @@ _M.register = function(entity)
 
   references[entity.id] = callback
 
-  return kong.worker_events.register(callback, source, event)
+  return kong.worker_events.register(callback, prefix(source), event)
 end
 
 
@@ -118,7 +128,15 @@ _M.unregister = function(entity)
 
   references[entity.id] = nil
 
-  return kong.worker_events.unregister(callback, source, event)
+  return kong.worker_events.unregister(callback, prefix(source), event)
+end
+
+
+local function field_digest(source, event, data)
+  local fields = events[source] and events[source][event] and
+                 events[source][event].unique
+
+  return _M.digest(data, { fields = fields })
 end
 
 
@@ -127,7 +145,10 @@ _M.emit = function(source, event, data)
     return
   end
 
-  return kong.worker_events.post_local(source, event, data)
+  local digest = field_digest(source, event, data)
+  local unique = source .. ":" .. event .. ":" .. digest
+
+  return kong.worker_events.post(prefix(source), event, data, unique)
 end
 
 
@@ -151,14 +172,6 @@ _M.digest = function(data, opts)
   end
 
   return md5(str)
-end
-
-
-local function field_digest(source, event, data)
-  local fields = events[source] and events[source][event] and
-                 events[source][event].unique
-
-  return _M.digest(data, { fields = fields })
 end
 
 
@@ -187,6 +200,8 @@ _M.callback = function(entity)
   local wrap = function(data, event, source, pid)
     local ttl = entity.snooze ~= ngx_null and entity.snooze or nil
     local on_change = entity.on_change ~= ngx_null and entity.on_change or nil
+
+    local source = unprefix(source)
 
     if ttl or on_change then
       -- kong:cache is used as a blacklist of events to not process:
