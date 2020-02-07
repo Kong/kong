@@ -3,7 +3,7 @@ local pl_stringx   = require "pl.stringx"
 local workspaces   = require "kong.workspaces"
 local permissions  = require "kong.portal.permissions"
 local file_helpers = require "kong.portal.file_helpers"
-local template     = require "resty.template"
+local template     = require "kong.portal.template"
 local lyaml        = require "lyaml"
 local handler      = require "kong.portal.render_toolset.handler"
 local constants    = require "kong.constants"
@@ -34,6 +34,21 @@ local portal_conf_values = {
 
 
 template.caching(false)
+
+template.safe = function(cb)
+  local ok, res = pcall(cb)
+  if not ok then
+    ngx.log(ngx.DEBUG, "Portal Renderer: " .. res)
+    return nil
+  end
+
+  return res
+end
+
+template.eval = function(exp)
+  return "template.safe(function() return " .. exp .. " end)"
+end
+
 template.load = function(path)
   -- look into alternative ways of passing info
   local ctx = singletons.render_ctx or {}

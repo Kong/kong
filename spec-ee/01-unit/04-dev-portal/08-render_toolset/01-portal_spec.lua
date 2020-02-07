@@ -1,4 +1,4 @@
-local handler    = require "kong.portal.render_toolset.handler"
+local handler = require "kong.portal.render_toolset.handler"
 
 describe("portal", function()
   local portal, snapshot, singletons, workspaces
@@ -44,6 +44,8 @@ describe("portal", function()
         }
       end
     }
+
+    singletons.portal_router = { introspect = {} }
 
     workspaces.get_workspace = function()
       return {
