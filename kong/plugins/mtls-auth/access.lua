@@ -364,7 +364,7 @@ local function do_authentication(conf)
     kong.log.debug("names = ", tb_concat(names, ", "))
 
     if conf.skip_consumer_lookup then
-      if conf.consumer_id_by then
+      if conf.consumer_by then
         local group , err = authenticate_group_by[conf.authenticated_group_by](cn)
         if not group then
           return nil, err
