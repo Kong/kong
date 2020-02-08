@@ -73,28 +73,27 @@ local function write_kconfig(configs, filename)
 end
 
 
-local function prepare_interface(interface_dir, interface_env, kong_config)
-  local interface_path = kong_config.prefix .. "/" .. interface_dir
-  local compile_env = interface_env
-  local config_filename = interface_path .. "/kconfig.js"
+local function prepare_interface(interface_dir, interface_conf_dir, interface_env, kong_config)
   local usr_interface_path = "/usr/local/kong/" .. interface_dir
+  local interface_path = kong_config.prefix .. "/" .. interface_dir
+  local interface_conf_path = kong_config.prefix .. "/" .. interface_conf_dir
+  local compile_env = interface_env
+  local config_filename = interface_conf_path .. "/kconfig.js"
 
-  if not pl_path.exists(interface_path)
-     and not pl_path.exists(usr_interface_path) then
-
-      if not pl_path.mkdir(interface_path) then
-        log.warn("Could not create directory " .. interface_path .. ". " ..
+  if not pl_path.exists(interface_conf_path) then
+      if not pl_path.mkdir(interface_conf_path) then
+        log.warn("Could not create directory " .. interface_conf_path .. ". " ..
                  "Ensure that the Kong CLI user has permissions to create " ..
                  "this directory.")
       end
   end
 
-  -- if the interface directory does not exist, try symlinking it to its default
-  -- prefix location. This occurs in development environments where the
-  -- gui does not exist (it is bundled at build time), so this effectively
-  -- serves to quiet useless warnings in kong-ee development
-  if usr_interface_path ~= interface_path
+  -- if the interface directory is not exist in custom prefix directory
+  -- try symlinking to the default prefix location
+  -- ensure user can access the interface appliation
+  if not pl_path.exists(interface_path)
      and pl_path.exists(usr_interface_path) then
+
     local ln_cmd = "ln -s " .. usr_interface_path .. " " .. interface_path
     pl_utils.executeex(ln_cmd)
   end
@@ -153,7 +152,7 @@ function _M.prepare_admin(kong_config)
   local rbac_enforced = kong_config.rbac == "both" or kong_config.rbac == "on"
   local anonymous_reports = kong_config.anonymous_reports == "on"
 
-  return prepare_interface("gui", {
+  return prepare_interface("gui", "gui_config", {
     ADMIN_GUI_AUTH = prepare_variable(kong_config.admin_gui_auth),
     ADMIN_GUI_URL = prepare_variable(kong_config.admin_gui_url),
     ADMIN_GUI_PORT = prepare_variable(gui_port),
