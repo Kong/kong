@@ -3,6 +3,7 @@ local socket_url = require "socket.url"
 local typedefs = require "kong.db.schema.typedefs"
 local Entity = require "kong.db.schema.entity"
 local utils = require "kong.tools.utils"
+local go = require "kong.db.dao.plugins.go"
 
 
 local plugin_loader = {}
@@ -180,6 +181,10 @@ end
 function plugin_loader.load_subschema(parent_schema, plugin, errors)
   local plugin_schema = "kong.plugins." .. plugin .. ".schema"
   local ok, schema = utils.load_module_if_exists(plugin_schema)
+  if not ok and go.is_on() then
+    ok, schema = go.load_schema(plugin)
+  end
+
   if not ok then
     return nil, "no configuration schema found for plugin: " .. plugin
   end

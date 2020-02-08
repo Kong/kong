@@ -77,7 +77,8 @@ describe("cache_warmup", function()
         my_entity = mock_entity(db_data, "my_entity", "aaa"),
         another_entity = mock_entity(db_data, "another_entity", "xxx"),
       },
-      cache = mock_cache(cache_table),
+      core_cache = mock_cache(cache_table),
+      cache = mock_cache({}),
     }
 
     cache_warmup._mock_kong(kong)
@@ -109,7 +110,8 @@ describe("cache_warmup", function()
         my_entity = mock_entity(db_data, "my_entity", "aaa"),
         routes = mock_entity(db_data, "routes", "xxx"),
       },
-      cache = mock_cache(cache_table),
+      core_cache = mock_cache(cache_table),
+      cache = mock_cache({}),
       log = mock_log(nil, logged_notices),
     }
 
@@ -145,7 +147,8 @@ describe("cache_warmup", function()
         my_entity = mock_entity(db_data, "my_entity", "aaa"),
         services = mock_entity(db_data, "services", "name"),
       },
-      cache = mock_cache(cache_table),
+      core_cache = mock_cache(cache_table),
+      cache = mock_cache({}),
       dns = {
         toip = function(query)
           table.insert(dns_queries, query)
@@ -159,11 +162,13 @@ describe("cache_warmup", function()
 
     ngx.sleep(0) -- yield so that async DNS caching happens
 
+    -- `my_entity` isn't a core entity; lookup is on client cache
     assert.same(kong.cache:get("111").bbb, 222)
     assert.same(kong.cache:get("333").bbb, 444)
-    assert.same(kong.cache:get("a").host, "example.com")
-    assert.same(kong.cache:get("b").host, "1.2.3.4")
-    assert.same(kong.cache:get("c").host, "example.test")
+
+    assert.same(kong.core_cache:get("a").host, "example.com")
+    assert.same(kong.core_cache:get("b").host, "1.2.3.4")
+    assert.same(kong.core_cache:get("c").host, "example.test")
 
     -- skipped IP entry
     assert.same({ "example.com", "example.test" }, dns_queries)
@@ -174,6 +179,7 @@ describe("cache_warmup", function()
 
     local kong = {
       db = {},
+      core_cache = {},
       cache = {},
       log = mock_log(logged_warnings),
     }
@@ -205,7 +211,8 @@ describe("cache_warmup", function()
         my_entity = mock_entity(db_data, "my_entity", "aaa"),
         another_entity = mock_entity(db_data, "another_entity", "xxx"),
       },
-      cache = mock_cache(cache_table, 3),
+      core_cache = mock_cache(cache_table, 3),
+      cache = mock_cache({}, 3),
       log = mock_log(logged_warnings),
       configuration = {
         mem_cache_size = 12345,

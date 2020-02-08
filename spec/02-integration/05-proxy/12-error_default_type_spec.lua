@@ -2,8 +2,30 @@ local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 
 
+local XML_TEMPLATE = [[
+<?xml version="1.0" encoding="UTF-8"?>
+<error>
+  <message>%s</message>
+</error>]]
+
+
+local HTML_TEMPLATE = [[
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Kong Error</title>
+  </head>
+  <body>
+    <h1>Kong Error</h1>
+    <p>%s.</p>
+  </body>
+</html>]]
+
+
 local RESPONSE_CODE    = 504
 local RESPONSE_MESSAGE = "The upstream server is timing out"
+
 
 for _, strategy in helpers.each_strategy() do
   describe("Proxy errors Content-Type [#" .. strategy .. "]", function()
@@ -61,10 +83,7 @@ for _, strategy in helpers.each_strategy() do
         })
 
         local body = assert.res_status(RESPONSE_CODE, res)
-        local html_template = "<html><head><title>Kong Error</title></head>" ..
-                              "<body><h1>Kong Error</h1><p>%s.</p>"          ..
-                              "</body></html>"
-        local html_message = string.format(html_template, RESPONSE_MESSAGE)
+        local html_message = string.format(HTML_TEMPLATE, RESPONSE_MESSAGE)
         assert.equal(html_message, body)
       end)
 
@@ -144,10 +163,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local body = assert.res_status(RESPONSE_CODE, res)
-          local html_template = "<html><head><title>Kong Error</title></head>" ..
-                                "<body><h1>Kong Error</h1><p>%s.</p>"          ..
-                                "</body></html>"
-          local html_message = string.format(html_template, RESPONSE_MESSAGE)
+          local html_message = string.format(HTML_TEMPLATE, RESPONSE_MESSAGE)
           assert.equal(html_message, body)
         end)
 
@@ -175,9 +191,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local body = assert.res_status(RESPONSE_CODE, res)
-          local xml_template = '<?xml version="1.0" encoding="UTF-8"?>\n' ..
-                               '<error><message>%s</message></error>'
-          local xml_message = string.format(xml_template, RESPONSE_MESSAGE)
+          local xml_message = string.format(XML_TEMPLATE, RESPONSE_MESSAGE)
           assert.equal(xml_message, body)
         end)
       end)

@@ -43,7 +43,7 @@ describe("Plugin: datadog (schema)", function()
       }
     }
     _, err = v({ metrics = metrics_input }, schema_def)
-    assert.same({ { name = "field required for entity check" } }, err.config.metrics)
+    assert.same({ { name = "required field missing" } }, err.config.metrics)
   end)
   it("rejects counters without sample rate", function()
     local metrics_input = {
@@ -76,42 +76,10 @@ describe("Plugin: datadog (schema)", function()
     local _, err = v({ metrics = metrics_input }, schema_def)
     assert.match("expected one of: counter", err.config.metrics[1].stat_type)
   end)
-  it("rejects if customer identifier missing", function()
-    local metrics_input = {
-      {
-        name = "status_count_per_user",
-        stat_type = "counter",
-        sample_rate = 1
-      }
-    }
-    local _, err = v({ metrics = metrics_input }, schema_def)
-    assert.equals("required field missing", err.config.metrics[1].consumer_identifier)
-  end)
-  it("rejects if metric has wrong stat type", function()
-    local metrics_input = {
-      {
-        name = "unique_users",
-        stat_type = "counter"
-      }
-    }
-    local _, err = v({ metrics = metrics_input }, schema_def)
-    assert.not_nil(err)
-    assert.equals("required field missing", err.config.metrics[1].sample_rate)
-    metrics_input = {
-      {
-        name = "status_count",
-        stat_type = "set",
-        sample_rate = 1
-      }
-    }
-    _, err = v({ metrics = metrics_input }, schema_def)
-    assert.not_nil(err)
-    assert.equal("value must be counter", err.config.metrics[1].stat_type)
-  end)
   it("rejects if tags malformed", function()
     local metrics_input = {
       {
-        name = "status_count",
+        name = "request_count",
         stat_type = "counter",
         sample_rate = 1,
         tags = {"T1:"}
@@ -120,10 +88,10 @@ describe("Plugin: datadog (schema)", function()
     local _, err = v({ metrics = metrics_input }, schema_def)
     assert.same({ { tags = { "invalid value: T1:" } } }, err.config.metrics)
   end)
-  it("accept if tags is aempty list", function()
+  it("accept if tags is an empty list", function()
     local metrics_input = {
       {
-        name = "status_count",
+        name = "request_count",
         stat_type = "counter",
         sample_rate = 1,
         tags = {}

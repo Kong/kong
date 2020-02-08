@@ -1,7 +1,7 @@
 OS := $(shell uname | awk '{print tolower($$0)}')
 MACHINE := $(shell uname -m)
 
-DEV_ROCKS = "busted 2.0.rc13" "luacheck 0.20.0" "lua-llthreads2 0.1.5"
+DEV_ROCKS = "busted 2.0.0" "luacheck 0.23.0" "lua-llthreads2 0.1.5" "http 0.3"
 WIN_SCRIPTS = "bin/busted" "bin/kong"
 BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
@@ -28,7 +28,7 @@ RESTY_VERSION ?= `grep RESTY_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk
 RESTY_LUAROCKS_VERSION ?= `grep RESTY_LUAROCKS_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 RESTY_OPENSSL_VERSION ?= `grep RESTY_OPENSSL_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 RESTY_PCRE_VERSION ?= `grep RESTY_PCRE_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
-KONG_BUILD_TOOLS ?= '2.1.0'
+KONG_BUILD_TOOLS ?= '3.0.0'
 KONG_VERSION ?= `cat $(KONG_SOURCE_LOCATION)/kong-*.rockspec | grep tag | awk '{print $$3}' | sed 's/"//g'`
 OPENRESTY_PATCHES_BRANCH ?= `grep OPENRESTY_PATCHES_BRANCH $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 KONG_NGINX_MODULE_BRANCH ?= `grep KONG_NGINX_MODULE_BRANCH $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
@@ -54,12 +54,10 @@ functional-tests: setup-kong-build-tools
 	$(MAKE) test
 
 nightly-release:
-	sed -i -e '/return string\.format/,/\"\")/c\return "$(KONG_VERSION)\"' kong/meta.lua && \
-	cd $(KONG_BUILD_TOOLS_LOCATION); \
-	$(MAKE) package-kong && \
-	$(MAKE) release-kong
+	sed -i -e '/return string\.format/,/\"\")/c\return "$(KONG_VERSION)\"' kong/meta.lua
+	$(MAKE) release
 
-release: setup-kong-build-tools
+release:
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
 	$(MAKE) package-kong && \
 	$(MAKE) release-kong

@@ -3,7 +3,7 @@ local helpers = require "spec.helpers"
 local utils   = require "kong.tools.utils"
 
 
-local POLL_INTERVAL = 0.1
+local POLL_INTERVAL = 0.3
 
 
 local function assert_admin_2_wait(request, res_status, res_not_message)

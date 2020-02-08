@@ -6,11 +6,11 @@ local utils        = require "kong.tools.utils"
 local Router       = require "kong.router"
 local balancer     = require "kong.runloop.balancer"
 local reports      = require "kong.reports"
-local constants   = require "kong.constants"
-local singletons  = require "kong.singletons"
-local certificate = require "kong.runloop.certificate"
-local workspaces  = require "kong.workspaces"
-local tracing     = require "kong.tracing"
+local constants    = require "kong.constants"
+local singletons   = require "kong.singletons"
+local certificate  = require "kong.runloop.certificate"
+local workspaces   = require "kong.workspaces"
+local tracing      = require "kong.tracing"
 local concurrency  = require "kong.concurrency"
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 local file_helpers = require "kong.portal.file_helpers"
@@ -34,8 +34,6 @@ local exit         = ngx.exit
 local header       = ngx.header
 local timer_at     = ngx.timer.at
 local timer_every  = ngx.timer.every
-local re_match     = ngx.re.match
-local re_find      = ngx.re.find
 local subsystem    = ngx.config.subsystem
 local clear_header = ngx.req.clear_header
 local unpack       = unpack
@@ -168,6 +166,7 @@ local function register_events()
   -- initialize local local_events hooks
   local db             = kong.db
   local cache          = kong.cache
+  local core_cache     = kong.core_cache
   local worker_events  = kong.worker_events
   local cluster_events = kong.cluster_events
 
@@ -196,8 +195,15 @@ local function register_events()
     local cache_key = db[data.schema.name]:cache_key(data.entity, nil, nil,
                                                      nil, nil, true)
 
+    local cache_obj
+    if constants.CORE_ENTITIES[data.schema.name] then
+      cache_obj = core_cache
+    else
+      cache_obj = cache
+    end
+
     if cache_key then
-      cache:invalidate(cache_key, workspaces)
+      cache_obj:invalidate(cache_key)
     end
 
     -- if we had an update, but the cache key was part of what was updated,
@@ -206,8 +212,9 @@ local function register_events()
     if data.old_entity then
       cache_key = db[data.schema.name]:cache_key(data.old_entity, nil, nil,
                                                  nil, nil, true)
-      if cache_key then
-        cache:invalidate(cache_key, workspaces)
+      local old_cache_key = db[data.schema.name]:cache_key(data.old_entity)
+      if old_cache_key and cache_key ~= old_cache_key then
+        cache_obj:invalidate(old_cache_key, workspaces)
       end
     end
 
@@ -243,7 +250,7 @@ local function register_events()
 
   worker_events.register(function()
     log(DEBUG, "[events] Route updated, invalidating router")
-    cache:invalidate("router:version")
+    core_cache:invalidate("router:version")
   end, "crud", "routes")
 
 
@@ -256,14 +263,14 @@ local function register_events()
       -- ditto for deletion: if a Service if being deleted, it is
       -- only allowed because no Route is pointing to it anymore.
       log(DEBUG, "[events] Service updated, invalidating router")
-      cache:invalidate("router:version")
+      core_cache:invalidate("router:version")
     end
   end, "crud", "services")
 
 
   worker_events.register(function(data)
     log(DEBUG, "[events] Plugin updated, invalidating plugins iterator")
-    cache:invalidate("plugins_iterator:version")
+    core_cache:invalidate("plugins_iterator:version")
   end, "crud", "plugins")
 
 
@@ -274,14 +281,14 @@ local function register_events()
     log(DEBUG, "[events] SNI updated, invalidating cached certificates")
     local sni = data.old_entity or data.entity
     local sni_wild_pref, sni_wild_suf = certificate.produce_wild_snis(sni.name)
-    cache:invalidate("snis:" .. sni.name)
+    core_cache:invalidate("snis:" .. sni.name)
 
     if sni_wild_pref then
-      cache:invalidate("snis:" .. sni_wild_pref)
+      core_cache:invalidate("snis:" .. sni_wild_pref)
     end
 
     if sni_wild_suf then
-      cache:invalidate("snis:" .. sni_wild_suf)
+      core_cache:invalidate("snis:" .. sni_wild_suf)
     end
   end, "crud", "snis")
 
@@ -298,7 +305,7 @@ local function register_events()
       end
 
       local cache_key = "certificates:" .. sni.certificate.id
-      cache:invalidate(cache_key)
+      core_cache:invalidate(cache_key)
     end
   end, "crud", "certificates")
 
@@ -475,7 +482,7 @@ local function register_events()
 
   if db.strategy == "off" then
     worker_events.register(function()
-      cache:flip()
+      core_cache:flip()
     end, "declarative", "flip_config")
   end
 
@@ -537,8 +544,8 @@ end
 -- or an error happened).
 -- @returns error message as a second return value in case of failure/error
 local function rebuild(name, callback, version, opts)
-  local current_version, err = kong.cache:get(name .. ":version", TTL_ZERO,
-                                              utils.uuid)
+  local current_version, err = kong.core_cache:get(name .. ":version", TTL_ZERO,
+                                                   utils.uuid)
   if err then
     return nil, "failed to retrieve " .. name .. " version: " .. err
   end
@@ -566,7 +573,7 @@ do
 
 
   update_plugins_iterator = function()
-    local version, err = kong.cache:get("plugins_iterator:version", TTL_ZERO,
+    local version, err = kong.core_cache:get("plugins_iterator:version", TTL_ZERO,
                                         utils.uuid)
     if err then
       return nil, "failed to retrieve plugins iterator version: " .. err
@@ -619,11 +626,11 @@ end
 
 
 do
-  -- Given a protocol, return the subsystem that handles it
   local router
   local router_version
 
 
+  -- Given a protocol, return the subsystem that handles it
   local function should_process_route(route)
     for _, protocol in ipairs(route.protocols) do
       if SUBSYSTEMS[protocol] == subsystem then
@@ -674,13 +681,13 @@ do
 
     local err
 
-    -- kong.cache is not available on init phase
-    if kong.cache then
+    -- kong.core_cache is available, not in init phase
+    if kong.core_cache then
       local cache_key = db.services:cache_key(service_pk.id)
-      service, err = kong.cache:get(cache_key, TTL_ZERO,
+      service, err = kong.core_cache:get(cache_key, TTL_ZERO,
                                     load_service_from_db, service_pk)
 
-    else -- init phase, not present on init cache
+    else -- init phase, kong.core_cache not available
 
       -- A new service/route has been inserted while the initial route
       -- was being created, on init (perhaps by a different Kong node).
@@ -711,7 +718,7 @@ do
 
 
   local function get_router_version()
-    return kong.cache:get("router:version", TTL_ZERO, utils.uuid)
+    return kong.core_cache:get("router:version", TTL_ZERO, utils.uuid)
   end
 
 
@@ -720,10 +727,11 @@ do
     local routes, i = {}, 0
 
     local err
-    -- The router is initially created on init phase, where kong.cache is still not ready
-    -- For those cases, use a plain Lua table as a cache instead
+    -- The router is initially created on init phase, where kong.core_cache is
+    -- still not ready. For those cases, use a plain Lua table as a cache
+    -- instead
     local services_init_cache = {}
-    if not kong.cache then
+    if not kong.core_cache then
       services_init_cache, err = build_services_init_cache(db)
       if err then
         services_init_cache = {}
@@ -732,13 +740,13 @@ do
     end
 
     local counter = 0
-    local page_size = constants.DEFAULT_ITERATION_SIZE
+    local page_size = db.routes.pagination.page_size
     for route, err in db.routes:each() do
       if err then
         return nil, "could not load routes: " .. err
       end
 
-      if kong.cache and counter > 0 and counter % page_size == 0 then
+      if kong.core_cache and counter > 0 and counter % page_size == 0 then
         local new_version, err = get_router_version()
         if err then
           return nil, "failed to retrieve router version: " .. err
@@ -779,7 +787,9 @@ do
       router_version = version
     end
 
+    -- LEGACY - singletons module is deprecated
     singletons.router = router
+    -- /LEGACY
 
     return true
   end
@@ -854,6 +864,7 @@ end
 local balancer_prepare
 do
   local get_certificate = certificate.get_certificate
+  local subsystem = ngx.config.subsystem
 
   function balancer_prepare(ctx, scheme, host_type, host, port,
                             service, route)
@@ -903,44 +914,37 @@ do
         end
       end
     end
+
+    if subsystem == "stream" and scheme == "tcp" then
+      local res, err = kong.service.request.disable_tls()
+      if not res then
+        log(ERR, "unable to disable upstream TLS handshake: ", err)
+      end
+    end
   end
 end
 
 
 local function balancer_execute(ctx)
   local balancer_data = ctx.balancer_data
-
-  do -- Check for KONG_ORIGINS override
-    local origin_key = balancer_data.scheme .. "://" ..
-                       utils.format_host(balancer_data)
-    local origin = singletons.origins[origin_key]
-    if origin then
-      balancer_data.scheme = origin.scheme
-      balancer_data.type = origin.type
-      balancer_data.host = origin.host
-      balancer_data.port = origin.port
-    end
-  end
-
   local ok, err, errcode = balancer.execute(balancer_data, ctx)
   if not ok and errcode == 500 then
     err = "failed the initial dns/balancer resolve for '" ..
           balancer_data.host .. "' with: " .. tostring(err)
   end
-
   return ok, err, errcode
 end
 
 
 local function set_init_versions_in_cache()
-  local ok, err = kong.cache:get("router:version", TTL_ZERO, function()
+  local ok, err = kong.core_cache:get("router:version", TTL_ZERO, function()
     return "init"
   end)
   if not ok then
     return nil, "failed to set router version in cache: " .. tostring(err)
   end
 
-  local ok, err = kong.cache:get("plugins_iterator:version", TTL_ZERO, function()
+  local ok, err = kong.core_cache:get("plugins_iterator:version", TTL_ZERO, function()
     return "init"
   end)
   if not ok then
@@ -1058,7 +1062,7 @@ return {
     before = function(ctx)
       local router = get_updated_router()
 
-      local match_t = router.exec()
+      local match_t = router.exec(ctx)
       if not match_t then
         log(ERR, "no Route found with those values")
         return exit(500)
@@ -1067,20 +1071,6 @@ return {
       local route = match_t.route
       local service = match_t.service
       local upstream_url_t = match_t.upstream_url_t
-
-      if not service then
-        -----------------------------------------------------------------------
-        -- Serviceless stream route
-        -----------------------------------------------------------------------
-        local service_scheme = "tcp"
-        local service_host   = var.server_addr
-
-        match_t.upstream_scheme = service_scheme
-        upstream_url_t.scheme = service_scheme -- for completeness
-        upstream_url_t.type = utils.hostname_type(service_host)
-        upstream_url_t.host = service_host
-        upstream_url_t.port = tonumber(var.server_port, 10)
-      end
 
       balancer_prepare(ctx, match_t.upstream_scheme,
                        upstream_url_t.type,
@@ -1097,8 +1087,8 @@ return {
     end
   },
   certificate = {
-    before = function(_)
-      certificate.execute()
+    before = function(ctx)
+      certificate.execute(ctx)
     end
   },
   rewrite = {
@@ -1209,106 +1199,6 @@ return {
           ["grpc-status"] = 1,
           ["grpc-message"] = "gRPC request matched gRPCs route",
         })
-      end
-
-      if not service then
-        -----------------------------------------------------------------------
-        -- Serviceless HTTP / HTTPS / HTTP2 route
-        -----------------------------------------------------------------------
-        local service_scheme
-        local service_host
-        local service_port
-
-        -- 1. try to find information from a request-line
-        local request_line = var.request
-        if request_line then
-          local matches, err = re_match(request_line, [[\w+ (https?)://([^/?#\s]+)]], "ajos")
-          if err then
-            log(WARN, "pcre runtime error when matching a request-line: ", err)
-
-          elseif matches then
-            local uri_scheme = lower(matches[1])
-            if uri_scheme == "https" or uri_scheme == "http" then
-              service_scheme = uri_scheme
-              service_host   = lower(matches[2])
-            end
-            --[[ TODO: check if these make sense here?
-            elseif uri_scheme == "wss" then
-              service_scheme = "https"
-              service_host   = lower(matches[2])
-            elseif uri_scheme == "ws" then
-              service_scheme = "http"
-              service_host   = lower(matches[2])
-            end
-            --]]
-          end
-        end
-
-        -- 2. try to find information from a host header
-        if not service_host then
-          local http_host = var.http_host
-          if http_host then
-            service_scheme = scheme
-            service_host   = lower(http_host)
-          end
-        end
-
-        -- 3. split host to host and port
-        if service_host then
-          -- remove possible userinfo
-          local pos = find(service_host, "@", 1, true)
-          if pos then
-            service_host = sub(service_host, pos + 1)
-          end
-
-          pos = find(service_host, ":", 2, true)
-          if pos then
-            service_port = sub(service_host, pos + 1)
-            service_host = sub(service_host, 1, pos - 1)
-
-            local found, _, err = re_find(service_port, [[[1-9]{1}\d{0,4}$]], "adjo")
-            if err then
-              log(WARN, "pcre runtime error when matching a port number: ", err)
-
-            elseif found then
-              service_port = tonumber(service_port, 10)
-              if not service_port or service_port > 65535 then
-                service_scheme = nil
-                service_host   = nil
-                service_port   = nil
-              end
-
-            else
-              service_scheme = nil
-              service_host   = nil
-              service_port   = nil
-            end
-          end
-        end
-
-        -- 4. use known defaults
-        if service_host and not service_port then
-          if service_scheme == "http" then
-            service_port = 80
-          elseif service_scheme == "https" then
-            service_port = 443
-          else
-            service_port = port
-          end
-        end
-
-        -- 5. fall-back to server address
-        if not service_host then
-          service_scheme = scheme
-          service_host   = var.server_addr
-          service_port   = port
-        end
-
-        match_t.upstream_scheme = service_scheme
-        upstream_url_t.scheme = service_scheme -- for completeness
-        upstream_url_t.type = utils.hostname_type(service_host)
-        upstream_url_t.host = service_host
-        upstream_url_t.port = service_port
       end
 
       balancer_prepare(ctx, match_t.upstream_scheme,
@@ -1532,7 +1422,7 @@ return {
       update_lua_mem()
 
       if kong.configuration.anonymous_reports then
-        reports.log()
+        reports.log(ctx)
       end
 
       tracing.flush()

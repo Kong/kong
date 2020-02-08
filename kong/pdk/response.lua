@@ -22,6 +22,7 @@ local ngx = ngx
 local fmt = string.format
 local type = type
 local find = string.find
+local lower = string.lower
 local error = error
 local pairs = pairs
 local coroutine = coroutine
@@ -42,15 +43,13 @@ local PHASES = phase_checker.phases
 local header_body_log = phase_checker.new(PHASES.header_filter,
                                           PHASES.body_filter,
                                           PHASES.log,
+                                          PHASES.error,
                                           PHASES.admin_api)
-
-local rewrite_access = phase_checker.new(PHASES.rewrite,
-                                         PHASES.access,
-                                         PHASES.admin_api)
 
 local rewrite_access_header = phase_checker.new(PHASES.rewrite,
                                                 PHASES.access,
                                                 PHASES.header_filter,
+                                                PHASES.error,
                                                 PHASES.admin_api)
 
 
@@ -487,13 +486,23 @@ local function new(self, major_version)
 
     ngx.status = status
 
-    if self.ctx.core.phase == phase_checker.phases.admin_api then
+    if self.ctx.core.phase == phase_checker.phases.error or
+       self.ctx.core.phase == phase_checker.phases.admin_api
+    then
       ngx.header[SERVER_HEADER_NAME] = SERVER_HEADER_VALUE
     end
 
+    local has_content_type
     if headers ~= nil then
       for name, value in pairs(headers) do
         ngx.header[name] = normalize_multi_header(value)
+        if not has_content_type then
+          local lower_name = lower(name)
+          if lower_name == "content-type" or
+             lower_name == "content_type" then
+            has_content_type = true
+          end
+        end
       end
     end
 
@@ -507,7 +516,7 @@ local function new(self, major_version)
       is_grpc_output = is_grpc
     elseif req_ctype then
       is_grpc = find(req_ctype, CONTENT_TYPE_GRPC, 1, true) == 1
-                  and ngx.req.http_version() == "2"
+                 and ngx.req.http_version() == 2
     end
 
     local grpc_status
@@ -552,17 +561,33 @@ local function new(self, major_version)
       end
     end
 
+    local is_header_filter_phase = self.ctx.core.phase == PHASES.header_filter
+
     if json ~= nil then
-      ngx.header[CONTENT_TYPE_NAME]   = CONTENT_TYPE_JSON
+      if not has_content_type then
+        ngx.header[CONTENT_TYPE_NAME] = CONTENT_TYPE_JSON
+      end
+
       ngx.header[CONTENT_LENGTH_NAME] = #json
-      ngx.print(json)
+
+      if is_header_filter_phase then
+        self.ctx.core.response_body = json
+
+      else
+        ngx.print(json)
+      end
 
     elseif body ~= nil then
       if is_grpc and not is_grpc_output then
         ngx.header[CONTENT_LENGTH_NAME] = 0
         ngx.header[GRPC_MESSAGE_NAME] = body
 
-        ngx.print() -- avoid default content
+        if is_header_filter_phase then
+          self.ctx.core.response_body = ""
+
+        else
+          ngx.print() -- avoid default content
+        end
 
       else
         ngx.header[CONTENT_LENGTH_NAME] = #body
@@ -570,7 +595,12 @@ local function new(self, major_version)
           ngx.header[GRPC_MESSAGE_NAME] = GRPC_MESSAGES[grpc_status]
         end
 
-        ngx.print(body)
+        if is_header_filter_phase then
+          self.ctx.core.response_body = body
+
+        else
+          ngx.print(body)
+        end
       end
 
     else
@@ -580,8 +610,17 @@ local function new(self, major_version)
       end
 
       if is_grpc then
-        ngx.print() -- avoid default content
+        if is_header_filter_phase then
+          self.ctx.core.response_body = ""
+
+        else
+          ngx.print() -- avoid default content
+        end
       end
+    end
+
+    if is_header_filter_phase then
+      return ngx.exit(ngx.OK)
     end
 
     return ngx.exit(status)
@@ -663,10 +702,12 @@ local function new(self, major_version)
   --   ["WWW-Authenticate"] = "Basic"
   -- })
   function _RESPONSE.exit(status, body, headers)
-    if body == nil then
+    local is_buffered_exit = self.ctx.core.buffered_proxying
+                         and self.ctx.core.phase == PHASES.balancer
+                         and ngx.get_phase()     == "access"
+
+    if not is_buffered_exit then
       check_phase(rewrite_access_header)
-    else
-      check_phase(rewrite_access)
     end
 
     if ngx.headers_sent then
@@ -693,7 +734,16 @@ local function new(self, major_version)
     end
 
     local ctx = ngx.ctx
-    ctx.KONG_EXITED = true
+
+    if is_buffered_exit then
+      self.ctx.core.buffered_status = status
+      self.ctx.core.buffered_headers = headers
+      self.ctx.core.buffered_body = body
+
+    else
+      ctx.KONG_EXITED = true
+    end
+
     if ctx.delay_response and not ctx.delayed_response then
       ctx.delayed_response = {
         status_code = status,

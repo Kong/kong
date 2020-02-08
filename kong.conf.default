@@ -115,14 +115,76 @@
                                  # cache (i.e. when the configured
                                  # `mem_cache_size`) is full.
 
+#go_pluginserver_exe = /usr/local/bin/go-pluginserver
+                                 # Path for the go-pluginserver executable,
+                                 # used for running Kong plugins written in Go.
+
+#go_plugins_dir = off            # Directory for installing Kong plugins
+                                 # written in Go.
+                                 #
+                                 # This value can be set to `off`, thus disabling
+                                 # the plugin server and Go plugin loading.
+
 #anonymous_reports = on          # Send anonymous usage data such as error
                                  # stack traces to help improve Kong.
 
 #------------------------------------------------------------------------------
+# HYBRID MODE
+#------------------------------------------------------------------------------
+
+#role = traditional              # Use this setting to enable Hybrid Mode,
+                                 # This allows running some Kong nodes in a
+                                 # control plane role with a database and
+                                 # have them deliver configuration updates
+                                 # to other nodes running to DB-less running in
+                                 # a Data Plane role.
+                                 #
+                                 # Valid values to this setting are:
+                                 #
+                                 # - `traditional`: do not use Hybrid Mode.
+                                 # - `control_plane`: this node runs in a
+                                 #   control plane role. It can use a database
+                                 #   and will deliver configuration updates
+                                 #   to data plane nodes.
+                                 # - `data_plane`: this is a data plane node.
+                                 #   It runs DB-less and receives configuration
+                                 #   updates from a control plane node.
+
+#cluster_cert =                  # Filename of the cluster certificate to use
+                                 # when establishing secure communication
+                                 # between control and data plane nodes.
+                                 # You can use the `kong hybrid` command to
+                                 # generate the certificate/key pair.
+
+#cluster_cert_key =              # Filename of the cluster certificate key to
+                                 # use when establishing secure communication
+                                 # between control and data plane nodes.
+                                 # You can use the `kong hybrid` command to
+                                 # generate the certificate/key pair.
+
+#cluster_control_plane =         # To be used by data plane nodes only:
+                                 # address of the control plane node from
+                                 # which configuration updates will be fetched,
+                                 # in `host:port` format.
+
+#cluster_listen = 0.0.0.0:8005
+                         # Comma-separated list of addresses and ports on
+                         # which the cluster control plane server should listen
+                         # for data plane connections.
+                         # The cluster communication port of the control plane
+                         # must be accessible by all the data planes
+                         # within the same cluster. This port is mTLS protected
+                         # to ensure end-to-end security and integrity.
+                         #
+                         # This setting has no effect if `role` is not set to
+                         # `control_plane`.
+
+>>>>>>> 2.0.0
+#------------------------------------------------------------------------------
 # NGINX
 #------------------------------------------------------------------------------
 
-#proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
+#proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
                          # Comma-separated list of addresses and ports on
                          # which the proxy server should listen for
                          # HTTP/HTTPS traffic.
@@ -140,17 +202,25 @@
                          #   connections to Kong's proxy server.
                          # - `proxy_protocol` will enable usage of the
                          #   PROXY protocol for a given address/port.
-                         # - `transparent` will cause kong to listen to, and
-                         #   respond from, any and all IP addresses and ports
-                         #   you configure in iptables.
                          # - `deferred` instructs to use a deferred accept on
                          #   Linux (the TCP_DEFER_ACCEPT socket option).
                          # - `bind` instructs to make a separate bind() call
                          #   for a given address:port pair.
                          # - `reuseport` instructs to create an individual
                          #   listening socket for each worker process
-                         #   allowing a kernel to distribute incoming
+                         #   allowing the Kernel to better distribute incoming
                          #   connections between worker processes
+                         # - `backlog=N` sets the maximum length for the queue
+                         #   of pending TCP connections. This number should
+                         #   not be too small in order to prevent clients
+                         #   seeing "Connection refused" error connecting to
+                         #   a busy Kong instance.
+                         #   **Note:** on Linux, this value is limited by the
+                         #   setting of `net.core.somaxconn` Kernel parameter.
+                         #   In order for the larger `backlog` set here to take
+                         #   effect it is necessary to raise
+                         #   `net.core.somaxconn` at the same time to match or
+                         #   exceed the `backlog` number set.
                          #
                          # This value can be set to `off`, thus disabling
                          # the HTTP/HTTPS proxy port for this node.
@@ -211,15 +281,23 @@
                          # Some suffixes can be specified for each pair:
                          # - `proxy_protocol` will enable usage of the
                          #   PROXY protocol for a given address/port.
-                         # - `transparent` will cause kong to listen to, and
-                         #   respond from, any and all IP addresses and ports
-                         #   you configure in iptables.
                          # - `bind` instructs to make a separate bind() call
                          #   for a given address:port pair.
                          # - `reuseport` instructs to create an individual
                          #   listening socket for each worker process
-                         #   allowing a kernel to distribute incoming
+                         #   allowing the Kernel to better distribute incoming
                          #   connections between worker processes
+                         # - `backlog=N` sets the maximum length for the queue
+                         #   of pending TCP connections. This number should
+                         #   not be too small in order to prevent clients
+                         #   seeing "Connection refused" error connecting to
+                         #   a busy Kong instance.
+                         #   **Note:** on Linux, this value is limited by the
+                         #   setting of `net.core.somaxconn` Kernel parameter.
+                         #   In order for the larger `backlog` set here to take
+                         #   effect it is necessary to raise
+                         #   `net.core.somaxconn` at the same time to match or
+                         #   exceed the `backlog` number set.
                          #
                          # **Note:** The `ssl` suffix is not supported,
                          # and each address/port will accept TCP with or
@@ -228,9 +306,9 @@
                          # Examples:
                          #
                          # ```
-                         # stream_listen = 127.0.0.1:7000
-                         # stream_listen = 0.0.0.0:989, 0.0.0.0:20
-                         # stream_listen = [::1]:1234
+                         # stream_listen = 127.0.0.1:7000 reuseport backlog=16384
+                         # stream_listen = 0.0.0.0:989 reuseport backlog=65536, 0.0.0.0:20
+                         # stream_listen = [::1]:1234 backlog=16384
                          # ```
                          #
                          # By default this value is set to `off`, thus
@@ -246,7 +324,7 @@
                          # use the window protocol + host and append the
                          # resolved admin_listen HTTP/HTTPS port.
 
-#admin_listen = 127.0.0.1:8001, 127.0.0.1:8444 ssl
+#admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 http2 ssl reuseport backlog=16384
                          # Comma-separated list of addresses and ports on
                          # which the Admin interface should listen.
                          # The Admin interface is the API allowing you to
@@ -264,17 +342,25 @@
                          #   connections to Kong's proxy server.
                          # - `proxy_protocol` will enable usage of the
                          #   PROXY protocol for a given address/port.
-                         # - `transparent` will cause kong to listen to, and
-                         #   respond from, any and all IP addresses and ports
-                         #   you configure in iptables.
                          # - `deferred` instructs to use a deferred accept on
                          #   Linux (the TCP_DEFER_ACCEPT socket option).
                          # - `bind` instructs to make a separate bind() call
                          #   for a given address:port pair.
                          # - `reuseport` instructs to create an individual
                          #   listening socket for each worker process
-                         #   allowing a kernel to distribute incoming
+                         #   allowing the Kernel to better distribute incoming
                          #   connections between worker processes
+                         # - `backlog=N` sets the maximum length for the queue
+                         #   of pending TCP connections. This number should
+                         #   not be too small in order to prevent clients
+                         #   seeing "Connection refused" error connecting to
+                         #   a busy Kong instance.
+                         #   **Note:** on Linux, this value is limited by the
+                         #   setting of `net.core.somaxconn` Kernel parameter.
+                         #   In order for the larger `backlog` set here to take
+                         #   effect it is necessary to raise
+                         #   `net.core.somaxconn` at the same time to match or
+                         #   exceed the `backlog` number set.
                          #
                          # This value can be set to `off`, thus disabling
                          # the Admin interface for this node, enabling a
@@ -319,12 +405,16 @@
                                  #
                                  # See http://nginx.org/en/docs/ngx_core_module.html#daemon.
 
-#mem_cache_size = 128m           # Size of the in-memory cache for database
-                                 # entities. The accepted units are `k` and
-                                 # `m`, with a minimum recommended value of
+#mem_cache_size = 128m           # Size of each of the two in-memory caches
+                                 # for database entities. The accepted units are
+                                 # `k` and `m`, with a minimum recommended value of
                                  # a few MBs.
+                                 #
+                                 # **Note**: As this option controls the size of two
+                                 # different cache entries, the total memory Kong
+                                 # uses to cache entities might be double this value.
 
-#ssl_cipher_suite = modern       # Defines the TLS ciphers served by Nginx.
+#ssl_cipher_suite = intermediate # Defines the TLS ciphers served by Nginx.
                                  # Accepted values are `modern`,
                                  # `intermediate`, `old`, or `custom`.
                                  #
@@ -517,17 +607,25 @@
 #
 # The following namespaces are supported:
 #
+# - `nginx_main_<directive>`: Injects `<directive>` in Kong's configuration
+#   `main` context.
+# - `nginx_events_<directive>`: Injects `<directive>` in Kong's `events {}`
+#    block.
 # - `nginx_http_<directive>`: Injects `<directive>` in Kong's `http {}` block.
 # - `nginx_proxy_<directive>`: Injects `<directive>` in Kong's proxy
 #   `server {}` block.
-# - `nginx_http_upstream_<directive>`: Injects `<directive>` in Kong's proxy
+# - `nginx_upstream_<directive>`: Injects `<directive>` in Kong's proxy
 #   `upstream {}` block.
 # - `nginx_admin_<directive>`: Injects `<directive>` in Kong's Admin API
 #   `server {}` block.
+# - `nginx_status_<directive>`: Injects `<directive>` in Kong's Status API
+#   `server {}` block  (only effective if `status_listen` is enabled).
 # - `nginx_stream_<directive>`: Injects `<directive>` in Kong's stream module
 #   `stream {}` block (only effective if `stream_listen` is enabled).
 # - `nginx_sproxy_<directive>`: Injects `<directive>` in Kong's stream module
 #   `server {}` block (only effective if `stream_listen` is enabled).
+# - `nginx_supstream_<directive>`: Injects `<directive>` in Kong's stream
+#   module `upstream {}` block.
 #
 # As with other configuration properties, Nginx directives can be injected via
 # environment variables when capitalized and prefixed with `KONG_`.
@@ -549,10 +647,41 @@
                                  # supported protocol versions also depends
                                  # on the version of OpenSSL Kong was built
                                  # with.
+                                 #
+                                 # This value is ignored if `ssl_cipher_suite`
+                                 # is not `custom`.
+                                 #
                                  # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_protocols
 
-#nginx_http_upstream_keepalive = 60
-                                 # Sets the maximum number of idle keepalive
+#nginx_http_ssl_prefer_server_ciphers = on
+                                 # Specifies that server ciphers should be
+                                 # preferred over client ciphers when using
+                                 # the SSLv3 and TLS protocols
+                                 #
+                                 # This value is ignored if `ssl_cipher_suite`
+                                 # is not `custom`.
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_prefer_server_ciphers
+
+#nginx_http_ssl_session_tickets = on
+                                 # Enables or disables session resumption through
+                                 # TLS session tickets. This is has no impact when
+                                 # used with TLSv1.3.
+                                 #
+                                 # Kong enables this by default for performance
+                                 # reasons, but it has security implications:
+                                 # https://github.com/mozilla/server-side-tls/issues/135
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_tickets
+
+#nginx_http_ssl_session_timeout = 1d
+                                 # Specifies a time during which a client may
+                                 # reuse the session parameters. See the rationale:
+                                 # https://github.com/mozilla/server-side-tls/issues/198
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_timeout
+
+#nginx_upstream_keepalive = 60   # Sets the maximum number of idle keepalive
                                  # connections to upstream servers that are
                                  # preserved in the cache of each worker
                                  # process. When this number is exceeded, the
@@ -562,14 +691,14 @@
                                  # to open a new connection.
                                  # See http://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive
 
-#nginx_http_upstream_keepalive_requests = 100
+#nginx_upstream_keepalive_requests = 100
                                  # Sets the maximum number of requests that can
                                  # be served through one keepalive connection.
                                  # After the maximum number of requests is
                                  # made, the connection is closed.
                                  # See http://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive_requests
 
-#nginx_http_upstream_keepalive_timeout = 60s
+#nginx_upstream_keepalive_timeout = 60s
                                  # Sets a timeout during which an idle
                                  # keepalive connection to an upstream server
                                  # will stay open.

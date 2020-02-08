@@ -7,20 +7,22 @@ local ngx_get_phase = ngx.get_phase
 
 
 local PHASES = {
-  --init        = 0x00000001,
-  init_worker   = 0x00000001,
-  certificate   = 0x00000002,
-  --set         = 0x00000004,
-  rewrite       = 0x00000010,
-  access        = 0x00000020,
-  balancer      = 0x00000040,
-  --content     = 0x00000100,
-  header_filter = 0x00000200,
-  body_filter   = 0x00000400,
-  --timer       = 0x00001000,
-  log           = 0x00002000,
-  preread       = 0x00004000,
-  admin_api     = 0x10000000,
+  --init            = 0x00000001,
+  init_worker       = 0x00000001,
+  certificate       = 0x00000002,
+  --set             = 0x00000004,
+  rewrite           = 0x00000010,
+  access            = 0x00000020,
+  balancer          = 0x00000040,
+  --content         = 0x00000100,
+  header_filter     = 0x00000200,
+  body_filter       = 0x00000400,
+  --timer           = 0x00001000,
+  log               = 0x00002000,
+  preread           = 0x00004000,
+  error             = 0x01000000,
+  admin_api         = 0x10000000,
+  cluster_listener  = 0x00000100,
 }
 
 
@@ -117,7 +119,9 @@ local public_phases = setmetatable({
                       PHASES.header_filter,
                       PHASES.body_filter,
                       PHASES.log,
-                      PHASES.admin_api),
+                      PHASES.error,
+                      PHASES.admin_api,
+                      PHASES.cluster_listener),
 }, {
   __index = function(t, k)
     error("unknown phase or phase alias: " .. k)

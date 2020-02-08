@@ -1,64 +1,50 @@
 local singletons = require "kong.singletons"
 local ngx_ssl = require "ngx.ssl"
-local http_tls = require "http.tls"
-local openssl_pkey = require "openssl.pkey"
-local openssl_x509 = require "openssl.x509"
 local pl_utils = require "pl.utils"
 local mlcache = require "resty.mlcache"
 
 
-local ngx_log = ngx.log
-local ERR     = ngx.ERR
-local DEBUG   = ngx.DEBUG
-local re_sub  = ngx.re.sub
-local find    = string.find
+local ngx_log     = ngx.log
+local ERR         = ngx.ERR
+local DEBUG       = ngx.DEBUG
+local re_sub      = ngx.re.sub
+local find        = string.find
+local server_name = ngx_ssl.server_name
+local clear_certs = ngx_ssl.clear_certs
+local parse_pem_cert = ngx_ssl.parse_pem_cert
+local parse_pem_priv_key = ngx_ssl.parse_pem_priv_key
+local set_cert = ngx_ssl.set_cert
+local set_priv_key = ngx_ssl.set_priv_key
 
 
 local default_cert_and_key
-local parse_key_and_cert
 
 
 local function log(lvl, ...)
   ngx_log(lvl, "[ssl] ", ...)
 end
 
-
-if ngx.config.subsystem == "http" then
-  parse_key_and_cert = function(row)
-    if row == false then
-      return default_cert_and_key
-    end
-
-    -- parse cert and priv key for later usage by ngx.ssl
-
-    local cert, err = ngx_ssl.parse_pem_cert(row.cert)
-    if not cert then
-      return nil, "could not parse PEM certificate: " .. err
-    end
-
-    local key, err = ngx_ssl.parse_pem_priv_key(row.key)
-    if not key then
-      return nil, "could not parse PEM private key: " .. err
-    end
-
-    return {
-      cert = cert,
-      key = key,
-    }
+local function parse_key_and_cert(row)
+  if row == false then
+    return default_cert_and_key
   end
 
-else
-  parse_key_and_cert = function(row)
-    if row == false then
-      return default_cert_and_key
-    end
+  -- parse cert and priv key for later usage by ngx.ssl
 
-    local ssl_termination_ctx = http_tls.new_server_context()
-    ssl_termination_ctx:setCertificate(openssl_x509.new(row.cert))
-    ssl_termination_ctx:setPrivateKey(openssl_pkey.new(row.key))
-
-    return ssl_termination_ctx
+  local cert, err = parse_pem_cert(row.cert)
+  if not cert then
+    return nil, "could not parse PEM certificate: " .. err
   end
+
+  local key, err = parse_pem_priv_key(row.key)
+  if not key then
+    return nil, "could not parse PEM private key: " .. err
+  end
+
+  return {
+    cert = cert,
+    key = key,
+  }
 end
 
 
@@ -156,7 +142,7 @@ end
 
 
 local function get_certificate(pk, sni_name)
-  return kong.cache:get("certificates:" .. pk.id,
+  return kong.core_cache:get("certificates:" .. pk.id,
                         get_certificate_opts, fetch_certificate,
                         pk, sni_name)
 end
@@ -182,12 +168,12 @@ local function find_certificate(sni)
     bulk:add("snis:" .. sni_wild_suf, nil, fetch_sni, sni_wild_suf)
   end
 
-  local res, err = kong.cache:get_bulk(bulk)
+  local res, err = kong.core_cache:get_bulk(bulk)
   if err then
     return nil, err
   end
 
-  for i, sni, err in mlcache.each_bulk_res(res) do
+  for _, sni, err in mlcache.each_bulk_res(res) do
     if err then
       log(ERR, "failed to fetch SNI: ", err)
 
@@ -200,12 +186,14 @@ local function find_certificate(sni)
 end
 
 
-local function execute()
-  local sn, err = ngx_ssl.server_name()
+local function execute(ctx)
+  local sn, err = server_name()
   if err then
     log(ERR, "could not retrieve SNI: ", err)
     return ngx.exit(ngx.ERROR)
   end
+
+  ctx.sni_server_name = sn
 
   local cert_and_key, err = find_certificate(sn)
   if err then
@@ -220,19 +208,19 @@ local function execute()
 
   -- set the certificate for this connection
 
-  local ok, err = ngx_ssl.clear_certs()
+  local ok, err = clear_certs()
   if not ok then
     log(ERR, "could not clear existing (default) certificates: ", err)
     return ngx.exit(ngx.ERROR)
   end
 
-  ok, err = ngx_ssl.set_cert(cert_and_key.cert)
+  ok, err = set_cert(cert_and_key.cert)
   if not ok then
     log(ERR, "could not set configured certificate: ", err)
     return ngx.exit(ngx.ERROR)
   end
 
-  ok, err = ngx_ssl.set_priv_key(cert_and_key.key)
+  ok, err = set_priv_key(cert_and_key.key)
   if not ok then
     log(ERR, "could not set configured private key: ", err)
     return ngx.exit(ngx.ERROR)

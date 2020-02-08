@@ -12,7 +12,7 @@ describe("Balancer", function()
   local upstream_ote
 
   lazy_teardown(function()
-    ngx.log:revert()
+    ngx.log:revert() -- luacheck: ignore
   end)
 
 
@@ -250,7 +250,7 @@ describe("Balancer", function()
       }
     }
 
-    singletons.cache = {
+    singletons.core_cache = {
       _cache = {},
       get = function(self, key, _, loader, arg)
         local v = self._cache[key]

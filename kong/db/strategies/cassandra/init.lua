@@ -1,5 +1,4 @@
 local iteration = require "kong.db.iteration"
-local constants = require "kong.constants"
 local cassandra = require "cassandra"
 local workspaces = require "kong.workspaces"
 local utils      = require "kong.tools.utils"
@@ -1034,14 +1033,23 @@ function _mt:select_by_field(field_name, field_value, options)
   if err then
     return nil, err
   end
-  local select_cql = fmt(cql, field_name .. " = ?")
-  local bind_args = new_tab(1, 0)
-  local field = self.schema.fields[field_name]
 
+  local field
   if field_name == "cache_key" then
     field = cache_key_field
+  else
+    field = self.schema.fields[field_name]
+    if field
+      and field.reference
+      and self.foreign_keys_db_columns[field_name]
+      and self.foreign_keys_db_columns[field_name][1]
+    then
+      field_name = self.foreign_keys_db_columns[field_name][1].col_name
+    end
   end
 
+  local select_cql = fmt(cql, field_name .. " = ?")
+  local bind_args = new_tab(1, 0)
   bind_args[1] = serialize_arg(field, field_value)
 
   return _select(self, select_cql, bind_args)
@@ -1402,7 +1410,9 @@ do
   end
 
   function _mt:page(size, offset, options, foreign_key, foreign_key_db_columns)
-    size = size or constants.DEFAULT_PAGE_SIZE
+    if not size then
+      size = self.connector:get_page_size(options)
+    end
 
     if offset then
       local offset_decoded = decode_base64(offset)
@@ -1470,6 +1480,13 @@ do
 
     for _, field_name, field in self.each_non_pk_field() do
       if entity[field_name] ~= nil then
+        if field.unique and entity[field_name] ~= null then
+          local _, err_t = check_unique(self, primary_key, entity, field_name)
+          if err_t then
+            return nil, err_t
+          end
+        end
+
         if field.type == "foreign" then
           local foreign_pk = entity[field_name]
 
@@ -1485,13 +1502,6 @@ do
           serialize_foreign_pk(db_columns, args, args_names, foreign_pk)
 
         else
-          if field.unique and entity[field_name] ~= null then
-            local _, err_t = check_unique(self, primary_key, entity, field_name)
-            if err_t then
-              return nil, err_t
-            end
-          end
-
           insert(args, serialize_arg(field, entity[field_name]))
           insert(args_names, field_name)
         end

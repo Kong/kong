@@ -20,3 +20,5 @@ autodoc/output
 
 kong-build-tools
 bin/grpcurl
+
+*.so

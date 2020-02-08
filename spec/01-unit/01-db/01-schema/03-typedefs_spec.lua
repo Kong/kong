@@ -1,7 +1,7 @@
 local Schema = require "kong.db.schema"
 local typedefs = require("kong.db.schema.typedefs")
-local openssl_pkey = require "openssl.pkey"
-local openssl_x509 = require "openssl.x509"
+local openssl_pkey = require "resty.openssl.pkey"
+local openssl_x509 = require "resty.openssl.x509"
 local ssl_fixtures = require "spec.fixtures.ssl"
 
 
@@ -32,9 +32,9 @@ describe("typedefs", function()
     do
       local key = openssl_pkey.new { bits = 2048 }
       local crt = openssl_x509.new()
-      crt:setPublicKey(key)
+      crt:set_pubkey(key)
       crt:sign(key)
-      assert.truthy(Test:validate({ f = crt:toPEM() }))
+      assert.truthy(Test:validate({ f = crt:to_PEM() }))
     end
     do
       local ok, err = Test:validate({ f = 42 })
@@ -64,8 +64,8 @@ describe("typedefs", function()
     })
     assert.truthy(Test:validate({ f = ssl_fixtures.key }))
     local tmpkey = openssl_pkey.new { bits = 2048 }
-    assert.truthy(Test:validate({ f = tmpkey:toPEM("private") }))
-    assert.truthy(Test:validate({ f = tmpkey:toPEM("public") }))
+    assert.truthy(Test:validate({ f = tmpkey:to_PEM("private") }))
+    assert.truthy(Test:validate({ f = tmpkey:to_PEM("public") }))
     do
       local ok, err = Test:validate({ f = 42 })
       assert.falsy(ok)

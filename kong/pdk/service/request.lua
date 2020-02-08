@@ -25,6 +25,7 @@ local PHASES = phase_checker.phases
 
 
 local access_and_rewrite = phase_checker.new(PHASES.rewrite, PHASES.access)
+local preread_and_balancer = phase_checker.new(PHASES.preread, PHASES.balancer)
 
 
 ---
@@ -71,6 +72,26 @@ local function new(self)
   local CONTENT_TYPE_JSON      = "application/json"
   local CONTENT_TYPE_FORM_DATA = "multipart/form-data"
 
+
+  ---
+  -- Enables buffered proxying that allows plugins to access service body and
+  -- response headers at the same time
+  -- @function kong.service.request.enable_buffering
+  -- @phases `rewrite`, `access`
+  -- @return Nothing
+  -- @usage
+  -- kong.service.request.enable_buffering()
+  request.enable_buffering = function()
+    check_phase(access_and_rewrite)
+
+    if ngx.req.http_version() >= 2 then
+      error("buffered proxying cannot currently be enabled with http/" ..
+            ngx.req.http_version() .. ", please use http/1.x instead", 2)
+    end
+
+
+    self.ctx.core.buffered_proxying = true
+  end
 
   ---
   -- Sets the protocol to use when proxying the request to the Service.
@@ -625,6 +646,33 @@ local function new(self)
       return true
     end
 
+  end
+
+
+  if ngx.config.subsystem == "stream" then
+    local disable_proxy_ssl = require("resty.kong.tls").disable_proxy_ssl
+
+    ---
+    -- Disables the TLS handshake to upstream for [ngx\_stream\_proxy\_module](https://nginx.org/en/docs/stream/ngx_stream_proxy_module.html).
+    -- Effectively this overrides [proxy\_ssl](https://nginx.org/en/docs/stream/ngx_stream_proxy_module.html#proxy_ssl) directive to `off` setting
+    -- for the current stream session.
+    --
+    -- Note that once this function has been called it is not possible to re-enable TLS handshake for the current session.
+    --
+    -- @function kong.service.request.disable_tls
+    -- @phases `preread`, `balancer`
+    -- @treturn boolean|nil `true` if the operation succeeded, `nil` if an error occurred
+    -- @treturn string|nil An error message describing the error if there was one.
+    -- @usage
+    -- local ok, err = kong.service.request.disable_tls()
+    -- if not ok then
+    --   -- do something with error
+    -- end
+    request.disable_tls = function()
+      check_phase(preread_and_balancer)
+
+      return disable_proxy_ssl()
+    end
   end
 
   return request

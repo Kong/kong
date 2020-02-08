@@ -71,6 +71,7 @@ local lapis = require "lapis"
 local runloop = require "kong.runloop.handler"
 local tracing = require "kong.tracing"
 local keyring = require "kong.keyring.startup"
+local clustering = require "kong.clustering"
 local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
 local ngx_balancer = require "ngx.balancer"
@@ -81,6 +82,7 @@ local cache_warmup = require "kong.cache_warmup"
 local balancer_execute = require("kong.runloop.balancer").execute
 local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
+local go = require "kong.db.dao.plugins.go"
 
 
 local internal_proxies = require "kong.enterprise_edition.proxies"
@@ -206,6 +208,10 @@ local function execute_plugins_iterator(plugins_iterator, phase, ctx)
     if ctx then
       ctx.workspaces = old_ws
     end
+
+    if plugin.handler._go then
+      ctx.ran_go_plugin = true
+    end
   end
 end
 
@@ -327,6 +333,47 @@ local function list_migrations(migtable)
 end
 
 
+local buffered_proxy
+do
+  local HTTP_METHODS = {
+    GET       = ngx.HTTP_GET,
+    HEAD      = ngx.HTTP_HEAD,
+    PUT       = ngx.HTTP_PUT,
+    POST      = ngx.HTTP_POST,
+    DELETE    = ngx.HTTP_DELETE,
+    OPTIONS   = ngx.HTTP_OPTIONS,
+    MKCOL     = ngx.HTTP_MKCOL,
+    COPY      = ngx.HTTP_COPY,
+    MOVE      = ngx.HTTP_MOVE,
+    PROPFIND  = ngx.HTTP_PROPFIND,
+    PROPPATCH = ngx.HTTP_PROPPATCH,
+    LOCK      = ngx.HTTP_LOCK,
+    UNLOCK    = ngx.HTTP_UNLOCK,
+    PATCH     = ngx.HTTP_PATCH,
+    TRACE     = ngx.HTTP_TRACE,
+  }
+
+  buffered_proxy = function(ctx)
+    ngx.req.read_body()
+
+    local options = {
+      always_forward_body = true,
+      share_all_vars      = true,
+      method              = HTTP_METHODS[ngx.req.get_method()],
+      ctx                 = ctx,
+    }
+
+    local res = ngx.location.capture("/kong_buffered_http", options)
+    if res.truncated then
+      ngx.status = 502
+      return kong_error_handlers(ngx)
+    end
+
+    return kong.response.exit(res.status, res.body, res.header)
+  end
+end
+
+
 -- Kong public context handlers.
 -- @section kong_handlers
 
@@ -367,7 +414,7 @@ function Kong.init()
   assert(db:init_connector())
 
   schema_state = assert(db:schema_state())
-  migrations_utils.check_state(schema_state, db)
+  migrations_utils.check_state(schema_state)
 
   if schema_state.missing_migrations or schema_state.pending_migrations then
     if schema_state.missing_migrations then
@@ -390,6 +437,10 @@ function Kong.init()
   singletons.db = db
   -- /LEGACY
 
+  kong.db = db
+  kong.dns = singletons.dns
+
+  -- XXX EE [[
   kong.license = ee.read_license_info()
   singletons.internal_proxies = internal_proxies.new()
   singletons.portal_emails = portal_emails.new(config)
@@ -415,50 +466,20 @@ function Kong.init()
       ttl_minutes    = config.vitals_ttl_minutes,
   }
 
-  do
-    local origins = {}
-
-    for _, v in ipairs(config.origins) do
-      -- Validated in conf_loader
-      local from_scheme, from_authority, to_scheme, to_authority =
-        v:match("^(%a[%w+.-]*)://([^=]+:[%d]+)=(%a[%w+.-]*)://(.+)$")
-
-      local from = assert(utils.normalize_ip(from_authority))
-      local to = assert(utils.normalize_ip(to_authority))
-      local from_origin = from_scheme:lower() .. "://" .. utils.format_host(from)
-
-      to.scheme = to_scheme
-
-      if to.port == nil then
-        if to_scheme == "http" then
-          to.port = 80
-
-        elseif to_scheme == "https" then
-          to.port = 443
-
-        else
-          error("scheme has unknown default port")
-        end
-      end
-
-      origins[from_origin] = to
-    end
-
-    singletons.origins = origins
-  end
-
-  kong.db = db
-  kong.dns = singletons.dns
 
   local counters_strategy = require("kong.counters.sales.strategies." .. kong.db.strategy):new(kong.db)
   kong.sales_counters = sales_counters.new({ strategy = counters_strategy })
+  -- ]]
 
 
   if subsystem == "stream" or config.proxy_ssl_enabled then
     certificate.init()
   end
 
+  -- XXX EE [[
   keyring.init(config)
+  clustering.init(config)
+  -- ]]
 
   -- Load plugins as late as possible so that everything is set up
   assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
@@ -556,6 +577,14 @@ function Kong.init_worker()
   end
   kong.cache = cache
 
+  local core_cache, err = kong_global.init_core_cache(kong.configuration, cluster_events, worker_events)
+  if not cache then
+    stash_init_worker_error("failed to instantiate 'kong.core_cache' module: " ..
+                            err)
+    return
+  end
+  kong.core_cache = core_cache
+
   ok, err = runloop.set_init_versions_in_cache()
   if not ok then
     stash_init_worker_error(err) -- 'err' fully formatted
@@ -564,6 +593,7 @@ function Kong.init_worker()
 
   -- LEGACY
   singletons.cache          = cache
+  singletons.core_cache     = core_cache
   singletons.worker_events  = worker_events
   singletons.cluster_events = cluster_events
   -- /LEGACY
@@ -596,7 +626,15 @@ function Kong.init_worker()
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_plugins_iterator(plugins_iterator, "init_worker")
 
+  -- XXX EE [[
   ee.handlers.init_worker.after(ngx.ctx)
+  -- ]]
+
+  if go.is_on() then
+    go.manage_pluginserver()
+  end
+
+  clustering.init_worker(kong.configuration)
 end
 
 
@@ -618,6 +656,14 @@ function Kong.preread()
 
   local plugins_iterator = runloop.get_updated_plugins_iterator()
   execute_plugins_iterator(plugins_iterator, "preread", ctx)
+
+  if not ctx.service then
+    ctx.KONG_PREREAD_ENDED_AT = get_now_ms()
+    ctx.KONG_PREREAD_TIME = ctx.KONG_PREREAD_ENDED_AT - ctx.KONG_PREREAD_START
+
+    ngx_log(ngx_WARN, "no Service found with those values")
+    return ngx.exit(503)
+  end
 
   runloop.preread.after(ctx)
 
@@ -711,6 +757,10 @@ function Kong.access()
   local old_ws = ctx.workspaces
   local plugins_iterator = runloop.get_plugins_iterator()
   for plugin, plugin_conf in plugins_iterator:iterate("access", ctx) do
+    if plugin.handler._go then
+      ctx.ran_go_plugin = true
+    end
+
     if not ctx.delayed_response then
       kong_global.set_named_ctx(kong, "plugin", plugin_conf)
       kong_global.set_namespaced_log(kong, plugin.name)
@@ -750,6 +800,14 @@ function Kong.access()
 
   ctx.delay_response = false
 
+  if not ctx.service then
+    ctx.KONG_ACCESS_ENDED_AT = get_now_ms()
+    ctx.KONG_ACCESS_TIME = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_ACCESS_START
+    ctx.KONG_RESPONSE_LATENCY = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_PROCESSING_START
+
+    return kong.response.exit(503, { message = "no Service found with those values"})
+  end
+
   runloop.access.after(ctx)
 
   ctx.KONG_ACCESS_ENDED_AT = get_now_ms()
@@ -757,6 +815,10 @@ function Kong.access()
 
   -- we intent to proxy, though balancer may fail on that
   ctx.KONG_PROXIED = true
+
+  if kong.ctx.core.buffered_proxying then
+    return buffered_proxy(ctx)
+  end
 end
 
 
@@ -989,6 +1051,11 @@ function Kong.body_filter()
 
   kong_global.set_phase(kong, PHASES.body_filter)
 
+  if kong.ctx.core.response_body then
+    arg[1] = kong.ctx.core.response_body
+    arg[2] = true
+  end
+
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_plugins_iterator(plugins_iterator, "body_filter", ctx)
 
@@ -1089,6 +1156,7 @@ end
 
 function Kong.handle_error()
   kong_resty_ctx.apply_ref()
+  kong_global.set_phase(kong, PHASES.error)
 
   local ctx = ngx.ctx
   ctx.KONG_UNEXPECTED = true
@@ -1104,7 +1172,7 @@ function Kong.handle_error()
     end
   end
 
-  return kong_error_handlers(ngx)
+  return kong_error_handlers(ctx)
 end
 
 
@@ -1220,6 +1288,15 @@ end
 
 
 Kong.status_header_filter = Kong.admin_header_filter
+
+
+function Kong.serve_cluster_listener(options)
+  log_init_worker_errors()
+
+  kong_global.set_phase(kong, PHASES.cluster_listener)
+
+  return clustering.handle_cp_websocket()
+end
 
 
 return Kong

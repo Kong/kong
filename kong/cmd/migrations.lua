@@ -25,9 +25,6 @@ The available commands are:
 
   reset                             Reset the database.
 
-  migrate-apis                      Migrates API entities to Routes and
-                                    Services.
-
   migrate-community-to-enterprise   Migrates CE entities to EE on the default
                                     workspace
 
@@ -42,10 +39,6 @@ Options:
 
  -f,--force                         Run migrations even if database reports
                                     as already executed.
-
-                                    With 'migrate-apis' command, it also forces
-                                    migration of APIs that have custom plugins
-                                    applied, and which are otherwise skipped.
 
                                     With 'migrate-community-to-enterprise' it
                                     disables the workspace entities check.
@@ -112,40 +105,8 @@ local function execute(args)
 
   if args.command == "list" then
     if schema_state.needs_bootstrap then
-      if schema_state.legacy_invalid_state then
-        -- legacy: migration from 0.14 to 1.0 cannot be performed
-        if schema_state.legacy_missing_component then
-          log("Migrations can only be listed on a %s %s that has been " ..
-              "upgraded to 1.0, but the current %s seems to be older "  ..
-              "than 0.14 (missing migrations for '%s')",
-              db.strategy, db.infos.db_desc, db.infos.db_desc,
-              schema_state.legacy_missing_component)
-
-          os.exit(2)
-        end
-
-        if schema_state.legacy_missing_migration then
-          log("Migrations can only be listed on a %s %s that has been " ..
-              "upgraded to 1.0, but the current %s seems to be older "  ..
-              "than 0.14 (missing migration '%s' for '%s')",
-              db.strategy, db.infos.db_desc, db.infos.db_desc,
-              schema_state.legacy_missing_migration,
-              schema_state.legacy_missing_component)
-
-          os.exit(2)
-        end
-
-        log("Migrations can only be listed on a %s %s that has been "     ..
-            "upgraded to 1.0, but the current %s seems to be older than " ..
-            "0.14 (missing migrations)", db.strategy, db.infos.db_desc,
-            db.infos.db_desc)
-
-        os.exit(2)
-
-      elseif not schema_state.legacy_is_014 then
-        log("Database needs bootstrapping; run 'kong migrations bootstrap'")
-        os.exit(3)
-      end
+      log(migrations_utils.NEEDS_BOOTSTRAP_MSG)
+      os.exit(3)
     end
 
     local r = ""
@@ -231,12 +192,6 @@ local function execute(args)
       force = args.force,
     })
 
-  elseif args.command == "migrate-apis" then
-    migrations_utils.migrate_apis(schema_state, db, {
-      ttl = args.lock_timeout,
-      force = args.force,
-    })
-
   elseif args.command == "migrate-community-to-enterprise" then
     if not args.yes then
       if not tty.isatty() then
@@ -278,7 +233,6 @@ return {
     finish = true,
     list = true,
     reset = true,
-    ["migrate-apis"] = true,
     ["migrate-community-to-enterprise"] = true,
     ["reinitialize-workspace-entity-counters"]=true,
   }

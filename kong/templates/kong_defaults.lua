@@ -8,6 +8,8 @@ admin_error_log = logs/error.log
 status_access_log = off
 status_error_log = logs/status_error.log
 plugins = bundled
+go_pluginserver_exe = /usr/local/bin/go-pluginserver
+go_plugins_dir = off
 anonymous_reports = on
 enforce_rbac = off
 rbac_auth_header = Kong-Admin-Token
@@ -81,7 +83,7 @@ audit_log_ignore_paths =
 audit_log_ignore_tables =
 audit_log_signing_key =
 
-proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 http2 ssl
+proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
 stream_listen = off
 
 admin_api_uri = NONE
@@ -101,35 +103,55 @@ admin_emails_from = ""
 admin_emails_reply_to = NONE
 admin_invitation_expiry = 259200
 
-admin_listen = 127.0.0.1:8001, 127.0.0.1:8444 http2 ssl
+admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 http2 ssl reuseport backlog=16384
 status_listen = off
-origins = NONE
-nginx_user = nobody nobody
-nginx_worker_processes = auto
-nginx_optimizations = on
-nginx_daemon = on
+cluster_listen = 0.0.0.0:8005
+cluster_control_plane = 127.0.0.1:8005
+cluster_cert = NONE
+cluster_cert_key = NONE
 mem_cache_size = 128m
 ssl_cert = NONE
 ssl_cert_key = NONE
 client_ssl = off
 client_ssl_cert = NONE
 client_ssl_cert_key = NONE
-ssl_cipher_suite = modern
-ssl_ciphers = ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256
+ssl_cipher_suite = intermediate
+ssl_ciphers = NONE
 admin_ssl_cert = NONE
 admin_ssl_cert_key = NONE
 admin_gui_ssl_cert = NONE
 admin_gui_ssl_cert_key = NONE
-upstream_keepalive = 60
 headers = server_tokens, latency_tokens
 trusted_ips = NONE
-real_ip_header = X-Real-IP
-real_ip_recursive = off
-client_max_body_size = 0
-client_body_buffer_size = 8k
 error_default_type = text/plain
 
+nginx_main_daemon = on
+nginx_main_user = nobody nobody
+nginx_main_worker_processes = auto
+nginx_main_worker_rlimit_nofile = auto
+nginx_events_worker_connections = auto
+nginx_events_multi_accept = on
+nginx_http_client_max_body_size = 0
+nginx_http_client_body_buffer_size = 8k
 nginx_http_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
+nginx_http_ssl_prefer_server_ciphers = on
+nginx_http_ssl_session_tickets = on
+nginx_http_ssl_session_timeout = 1d
+nginx_proxy_real_ip_header = X-Real-IP
+nginx_proxy_real_ip_recursive = off
+nginx_upstream_keepalive = 60
+nginx_upstream_keepalive_requests = 100
+nginx_upstream_keepalive_timeout = 60s
+
+nginx_daemon = on
+nginx_user = nobody nobody
+nginx_worker_processes = auto
+nginx_optimizations = on
+client_max_body_size = 0
+client_body_buffer_size = 8k
+real_ip_header = X-Real-IP
+real_ip_recursive = off
+upstream_keepalive = 60
 nginx_http_upstream_keepalive = 60
 nginx_http_upstream_keepalive_requests = 100
 nginx_http_upstream_keepalive_timeout = 60s
@@ -212,4 +234,6 @@ keyring_vault_host =
 keyring_vault_mount =
 keyring_vault_path =
 keyring_vault_token =
+
+role = traditional
 ]]

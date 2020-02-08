@@ -1,25 +1,20 @@
 local log = require "kong.cmd.utils.log"
 
 
-local fmt = string.format
-
-
 local MIGRATIONS_MUTEX_KEY = "migrations"
 local NOT_LEADER_MSG = "aborted: another node is performing database changes"
+local NEEDS_BOOTSTRAP_MSG = "Database needs bootstrapping or is older than Kong 1.0.\n\n" ..
+  "To start a new installation from scratch, run 'kong migrations bootstrap'.\n\n" ..
+  "To migrate from a version older than 1.0, migrated to Kong 1.5.0 first. \n" ..
+  "If you still have 'apis' entities, you can convert them to Routes and Services\n" ..
+  "using the 'kong migrations migrate-apis' command in Kong 1.5.0.\n\n"
 
 
-local function check_state(schema_state, db)
+local function check_state(schema_state)
   if not schema_state:is_up_to_date() then
-  if schema_state.needs_bootstrap then
-      if schema_state.legacy_invalid_state then
-        error(fmt("Cannot start Kong 1.x with a legacy %s, upgrade to 0.14.1 " ..
-                  "first, and run 'kong migrations up'", db.infos.db_desc))
-  end
-
-      if not schema_state.legacy_is_014 then
-        error("Database needs bootstrapping; run 'kong migrations bootstrap'")
-  end
-  end
+    if schema_state.needs_bootstrap then
+      error(NEEDS_BOOTSTRAP_MSG)
+    end
 
   if schema_state.new_migrations then
       error("New migrations available; run 'kong migrations up' to proceed")
@@ -29,16 +24,6 @@ end
 
 local function bootstrap(schema_state, db, ttl)
   if schema_state.needs_bootstrap then
-    if schema_state.legacy_is_034 then
-      error(fmt("cannot bootstrap a non-empty %s, run 'kong migrations " ..
-                "up' instead", db.infos.db_desc))
-    end
-
-    if schema_state.legacy_invalid_state then
-      error(fmt("Cannot bootstrap a non-empty %s, upgrade to 0.14.1 first, " ..
-                "and run 'kong migrations up'", db.infos.db_desc))
-    end
-
     log("Bootstrapping database...")
     assert(db:schema_bootstrap())
 
@@ -71,55 +56,8 @@ end
 
 local function up(schema_state, db, opts)
   if schema_state.needs_bootstrap then
-    if schema_state.legacy_invalid_state then
-      -- legacy: migration from 0.14.1 to 1.0 cannot be performed
-      if schema_state.legacy_missing_component then
-        error(fmt("Migration to 1.0 can only be performed from a 0.14.1 %s " ..
-                  "%s, but the current %s seems to be older (missing "     ..
-                  "migrations for '%s'). Migrate to 0.14.1 first, or "       ..
-                  "install 1.0 on a fresh %s", db.strategy, db.infos.db_desc,
-                  db.infos.db_desc, schema_state.legacy_missing_component,
-                  db.infos.db_desc))
-      end
-
-      if schema_state.legacy_missing_migration then
-        error(fmt("Migration to 1.0 can only be performed from a 0.14.1 %s " ..
-                  "%s, but the current %s seems to be older (missing "     ..
-                  "migration '%s' for '%s'). Migrate to 0.14.1 first, or "   ..
-                  "install 1.0 on a fresh %s", db.strategy, db.infos.db_desc,
-                  db.infos.db_desc, schema_state.legacy_missing_migration,
-                  schema_state.legacy_missing_component, db.infos.db_desc))
-      end
-
-      error(fmt("Migration to 1.0 can only be performed from a 0.14.1 %s " ..
-                "%s, but the current %s seems to be older (missing "     ..
-                "migrations). Migrate to 0.14.1 first, or install 1.0 "    ..
-                "on a fresh %s", db.strategy, db.infos.db_desc,
-                db.infos.db_desc, db.infos.db_desc))
-    end
-
-    if schema_state.legacy_is_034 then
-      local present, err = db:are_014_apis_present()
-      if err then
-        error(err)
-      end
-
-      if present then
-        error("Cannot run migrations: you have `api` entities in your database.\n" ..
-              "Please convert them to `routes` and `services` prior to migrating " ..
-              "to Kong 1.0.\n\nRun 'kong migrations migrate-apis' to migrate "     ..
-              "automatically.")
-      end
-
-      -- legacy: migration from 0.14.1 to 1.0 can be performed
-      log("Upgrading from 0.14.1, bootstrapping database...")
-      assert(db:schema_bootstrap())
-
-    else
-      -- fresh install: must bootstrap (which will run migrations up)
-      error("Cannot run migrations: database needs bootstrapping; " ..
-            "run 'kong migrations bootstrap'")
-    end
+    -- fresh install: must bootstrap (which will run migrations up)
+    error("Cannot run migrations: " .. NEEDS_BOOTSTRAP_MSG)
   end
 
   local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
@@ -180,17 +118,7 @@ end
 
 local function finish(schema_state, db, opts)
   if schema_state.needs_bootstrap then
-    if schema_state.legacy_invalid_state then
-      -- legacy: migration from 0.14.1 to 1.0 cannot be performed
-      error(fmt("Cannot run migrations on a legacy %s", db.infos.db_desc))
-  end
-
-    if schema_state.legacy_is_014 then
-      error(fmt("Cannot run migrations on a legacy %s; run 'kong " ..
-                "migrations up' to proceed", db.infos.db_desc))
-    end
-
-    error("Cannot run migrations; run 'kong migrations bootstrap' instead")
+    error("Cannot run migrations: " .. NEEDS_BOOTSTRAP_MSG)
   end
 
   opts.no_wait = true -- exit the mutex if another node acquired it
@@ -273,72 +201,6 @@ local function reset(schema_state, db, ttl)
 end
 
 
-local function migrate_apis(schema_state, db, opts)
-  if schema_state.needs_bootstrap then
-    if schema_state.legacy_invalid_state then
-      -- legacy: migration from 0.14 to 1.0 cannot be performed
-      if schema_state.legacy_missing_component then
-        error(fmt("Migration of APIs can only be performed from a 0.34 %s " ..
-                  "%s, but the current %s seems to be older (missing "      ..
-                   "migrations for '%s'). Migrate to 0.34 first.",
-                   db.strategy,  db.infos.db_desc, db.infos.db_desc,
-                   schema_state.legacy_missing_component, db.infos.db_desc))
-      end
-
-      if schema_state.legacy_missing_migration then
-        error(fmt("Migration of APIs can only be performed from a 0.34 %s " ..
-                  "%s, but the current %s seems to be older (missing "      ..
-                  "migration '%s' for '%s'). Migrate to 0.34 first.",
-                  db.strategy, db.infos.db_desc, db.infos.db_desc,
-                  schema_state.legacy_missing_migration,
-                  schema_state.legacy_missing_component, db.infos.db_desc))
-      end
-
-      error(fmt("Migration of APIs can only be performed from a 0.34 %s " ..
-                "%s, but the current %s seems to be older (missing "      ..
-                "migrations). Migrate to 0.34 first.",
-                db.strategy, db.infos.db_desc, db.infos.db_desc,
-                db.infos.db_desc), 2)
-    end
-  end
-
-  if not schema_state.legacy_is_034 then
-    error(fmt("APIs can only be migrated on Kong 0.34 %s %s, but the current " ..
-              "%s seems to be more recent.", db.strategy, db.infos.db_desc,
-              db.infos.db_desc))
-  end
-
-  local present, err = db:are_014_apis_present()
-  if err then
-    error(err, 2)
-  end
-
-  if not present then
-    log("No APIs found for migration")
-    return true
-  end
-
-  if schema_state.needs_bootstrap then
-    -- legacy: migration from 0.34 to 0.35 can be performed
-    log("Upgrading from 0.34, bootstrapping database...")
-    assert(db:schema_bootstrap())
-  end
-
-  local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
-    assert(db:run_api_migrations(opts))
-  end)
-  if err then
-    error(err)
-  end
-
-  if not ok then
-    log(NOT_LEADER_MSG)
-  end
-
-  return ok
-end
-
-
 local function migrate_core_entities(schema_state, db, opts)
 
   check_state(schema_state)
@@ -375,5 +237,5 @@ return {
   bootstrap = bootstrap,
   check_state = check_state,
   migrate_core_entities = migrate_core_entities,
-  migrate_apis = migrate_apis,
+  NEEDS_BOOTSTRAP_MSG = NEEDS_BOOTSTRAP_MSG,
 }

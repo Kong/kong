@@ -4,6 +4,10 @@ local cjson   = require "cjson"
 local path_handling_tests = require "spec.fixtures.router_path_handling_tests"
 
 
+local enable_buffering
+local enable_buffering_plugin
+
+
 local function insert_routes(bp, routes)
   if type(bp) ~= "table" then
     return error("expected arg #1 to be a table", 2)
@@ -16,23 +20,38 @@ local function insert_routes(bp, routes)
     bp = admin_api
   end
 
+  enable_buffering_plugin = bp.plugins:insert({
+    name = "enable-buffering",
+    protocols = { "http", "https", "grpc", "grpcs" },
+    service = ngx.null,
+    consumer = ngx.null,
+    route = ngx.null,
+  })
+
   for i = 1, #routes do
     local route = routes[i]
-    local service = route.service or {}
 
-    if not service.host then
-      service.host = helpers.mock_upstream_host
+    local service
+    if route.service == ngx.null then
+      service = route.service
+
+    else
+      service = route.service or {}
+
+      if not service.host then
+        service.host = helpers.mock_upstream_host
+      end
+
+      if not service.port then
+        service.port = helpers.mock_upstream_port
+      end
+
+      if not service.protocol then
+        service.protocol = helpers.mock_upstream_protocol
+      end
+
+      service = bp.named_services:insert(service)
     end
-
-    if not service.port then
-      service.port = helpers.mock_upstream_port
-    end
-
-    if not service.protocol then
-      service.protocol = helpers.mock_upstream_protocol
-    end
-
-    service = bp.named_services:insert(service)
     route.service = service
 
     if not route.protocols then
@@ -78,10 +97,12 @@ local function remove_routes(strategy, routes)
   local services = {}
 
   for _, route in ipairs(routes) do
-    local sid = route.service.id
-    if not services[sid] then
-      services[sid] = route.service
-      table.insert(services, services[sid])
+    if route.service ~= ngx.null then
+      local sid = route.service.id
+      if not services[sid] then
+        services[sid] = route.service
+        table.insert(services, services[sid])
+      end
     end
   end
 
@@ -92,22 +113,29 @@ local function remove_routes(strategy, routes)
   for _, service in ipairs(services) do
     admin_api.services:remove(service)
   end
+
+  admin_api.plugins:remove(enable_buffering_plugin)
 end
 
+for _, b in ipairs({ false, true }) do enable_buffering = b
 for _, strategy in helpers.each_strategy() do
-  describe("Router [#" .. strategy .. "]" , function()
+  describe("Router [#" .. strategy .. "] with buffering [" .. (b and "on]" or "off]") , function()
     local proxy_client
+    local proxy_ssl_client
     local bp
 
     lazy_setup(function()
       bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
-        "apis",
+        "plugins",
+      }, {
+        "enable-buffering",
       })
 
       assert(helpers.start_kong({
         database = strategy,
+        plugins = "bundled,enable-buffering",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)
@@ -118,11 +146,15 @@ for _, strategy in helpers.each_strategy() do
 
     before_each(function()
       proxy_client = helpers.proxy_client()
+      proxy_ssl_client = helpers.proxy_ssl_client()
     end)
 
     after_each(function()
       if proxy_client then
         proxy_client:close()
+      end
+      if proxy_ssl_client then
+        proxy_ssl_client:close()
       end
     end)
 
@@ -184,12 +216,39 @@ for _, strategy in helpers.each_strategy() do
               path     = "/anything",
             },
           },
+          {
+            protocols = { "http", "https" },
+            hosts     = { "serviceless-route-http.test" },
+            service   = ngx.null,
+          },
         })
         first_service_name = routes[1].service.name
       end)
 
       lazy_teardown(function()
         remove_routes(strategy, routes)
+      end)
+
+      it("responds 503 if no service found", function()
+        local res = assert(proxy_client:get("/", {
+          headers = {
+            Host = "serviceless-route-http.test",
+          },
+        }))
+        local body = assert.response(res).has_status(503)
+        local json = cjson.decode(body)
+
+        assert.equal("no Service found with those values", json.message)
+
+        local res = assert(proxy_ssl_client:get("/", {
+          headers = {
+            Host = "serviceless-route-http.test",
+          },
+        }))
+        local body = assert.response(res).has_status(503)
+        local json = cjson.decode(body)
+
+        assert.equal("no Service found with those values", json.message)
       end)
 
       it("restricts an route to its methods if specified", function()
@@ -340,6 +399,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    if not enable_buffering then
     describe("use cases #grpc", function()
       local routes
       local service = {
@@ -353,12 +413,20 @@ for _, strategy in helpers.each_strategy() do
         routes = insert_routes(bp, {
           {
             protocols = { "grpc", "grpcs" },
-            hosts = { "grpc1" },
+            hosts = {
+              "grpc1",
+              "grpc1:" .. helpers.get_proxy_port(false, true),
+              "grpc1:" .. helpers.get_proxy_port(true, true),
+            },
             service = service,
           },
           {
             protocols = { "grpc", "grpcs" },
-            hosts = { "grpc2" },
+            hosts = {
+              "grpc2",
+              "grpc2:" .. helpers.get_proxy_port(false, true),
+              "grpc2:" .. helpers.get_proxy_port(true, true),
+            },
             service = service,
           },
           {
@@ -375,6 +443,11 @@ for _, strategy in helpers.each_strategy() do
             protocols = { "grpc", "grpcs" },
             hosts = { "*.grpc.com" },
             service = service,
+          },
+          {
+            protocols = { "grpc", "grpcs" },
+            hosts     = { "serviceless-route-grpc.test" },
+            service   = ngx.null,
           }
         })
 
@@ -385,6 +458,39 @@ for _, strategy in helpers.each_strategy() do
       lazy_teardown(function()
         remove_routes(strategy, routes)
       end)
+
+      it("responds 503 if no service found", function()
+        local ok, resp = proxy_client_grpc({
+          service = "hello.HelloService.SayHello",
+          body = {
+            greeting = "world!"
+          },
+          opts = {
+            ["-v"] = true,
+            ["-H"] = "'kong-debug: 1'",
+            ["-authority"] = "serviceless-route-grpc.test",
+          }
+        })
+
+        assert.falsy(ok)
+        assert.equal("ERROR:\n  Code: Unavailable\n  Message: no Service found with those values\n", resp)
+
+        local ok, resp = proxy_client_grpcs({
+          service = "hello.HelloService.SayHello",
+          body = {
+            greeting = "world!"
+          },
+          opts = {
+            ["-v"] = true,
+            ["-H"] = "'kong-debug: 1'",
+            ["-authority"] = "serviceless-route-grpc.test",
+          }
+        })
+
+        assert.falsy(ok)
+        assert.equal("ERROR:\n  Code: Unavailable\n  Message: no Service found with those values\n", resp)
+      end)
+
 
       it("restricts a route to its 'hosts' if specified", function()
         local ok, resp = proxy_client_grpc({
@@ -544,6 +650,7 @@ for _, strategy in helpers.each_strategy() do
         assert.matches("kong-route-id: " .. routes[4].id, resp, nil, true)
       end)
     end)
+    end -- not enable_buffering
 
     describe("URI regexes order of evaluation with created_at", function()
       local routes
@@ -866,7 +973,7 @@ for _, strategy in helpers.each_strategy() do
         routes = insert_routes(bp, {
           {
             preserve_host = true,
-            hosts         = { "preserved.com" },
+            hosts         = { "preserved.com", "preserved.com:123" },
             service       = {
               path        = "/request"
             },
@@ -1378,6 +1485,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    if not enable_buffering then
     describe("[snis] for #grpcs connections", function()
       local routes
       local grpcs_proxy_ssl_client
@@ -1440,6 +1548,7 @@ for _, strategy in helpers.each_strategy() do
         assert.matches("kong-service-name: grpcs_2", resp, nil, true)
       end)
     end)
+    end -- not enable_buffering
 
     describe("[paths] + [methods]", function()
       local routes
@@ -1850,7 +1959,9 @@ for _, strategy in helpers.each_strategy() do
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
-        "apis",
+        "plugins",
+      }, {
+        "enable-buffering",
       })
 
       route = bp.routes:insert({
@@ -1859,9 +1970,17 @@ for _, strategy in helpers.each_strategy() do
         strip_path = false,
       })
 
+      if enable_buffering then
+        bp.plugins:insert {
+          name = "enable-buffering",
+          protocols = { "http", "https", "grpc", "grpcs" },
+        }
+      end
+
       assert(helpers.start_kong({
         database = strategy,
         nginx_worker_processes = 4,
+        plugins = "bundled,enable-buffering",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)
@@ -1897,4 +2016,5 @@ for _, strategy in helpers.each_strategy() do
     end)
 
   end)
+end
 end

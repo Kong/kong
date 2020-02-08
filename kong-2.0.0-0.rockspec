@@ -1,9 +1,9 @@
 package = "kong"
-version = "1.5.0-0"
+version = "2.0.0-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "1.5.0"
+  tag = "2.0.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -12,23 +12,21 @@ description = {
 }
 dependencies = {
   "inspect == 3.1.1",
-  "luasec == 0.8",
+  "luasec == 0.9",
   "luasocket == 3.0-rc1",
-  "penlight == 1.5.4",
+  "penlight == 1.7.0",
   "lua-resty-http == 0.15",
   "lua-resty-jit-uuid == 0.0.7",
-  "multipart == 0.5.5",
+  "multipart == 0.5.6",
   "version == 1.0.1",
   "kong-redis-cluster == 1.1-0",
   "kong-lapis == 1.7.0.1",
   "lua-cassandra == 1.5.0",
   "pgmoon == 1.10.0",
   "luatz == 0.4",
-  "http == 0.3",
   "lua_system_constants == 0.1.4",
   "lyaml == 6.2.4",
   "lua-resty-iputils == 0.3.0",
-  "luaossl == 20190731",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
   "lua-resty-mail == 1.0.2",
@@ -42,6 +40,8 @@ dependencies = {
   "lua-resty-healthcheck == 1.1.2",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.1",
+  "lua-messagepack == 0.5.2",
+  "lua-resty-openssl == 0.4.2",
   "lua-resty-counter == 0.2.0",
   "lua-resty-template == 1.9-1",
   "lua-resty-passwdqc == 1.1-1",
@@ -49,12 +49,13 @@ dependencies = {
   "kong-plugin-kubernetes-sidecar-injector ~> 0.2.1",
   "kong-plugin-azure-functions ~> 0.4.1",
   "kong-plugin-serverless-functions ~> 0.3.1",
-  "kong-prometheus-plugin ~> 0.6.0",
+  "kong-prometheus-plugin ~> 0.7",
   "kong-plugin-session == 2.2.0",
   "kong-proxy-cache-plugin ~> 1.2.2",
   "kong-plugin-request-transformer ~> 1.2.4",
   "kong-plugin-aws-lambda ~> 3.1.0",
   "kong-plugin-zipkin ~> 0.2",
+  "kong-plugin-acme ~> 0.2",
 }
 build = {
   type = "builtin",
@@ -72,6 +73,7 @@ build = {
     ["kong.cache_warmup"] = "kong/cache_warmup.lua",
     ["kong.globalpatches"] = "kong/globalpatches.lua",
     ["kong.error_handlers"] = "kong/error_handlers.lua",
+    ["kong.clustering"] = "kong/clustering.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
@@ -137,6 +139,7 @@ build = {
     ["kong.cmd.health"] = "kong/cmd/health.lua",
     ["kong.cmd.version"] = "kong/cmd/version.lua",
     ["kong.cmd.runner"] = "kong/cmd/runner.lua",
+    ["kong.cmd.hybrid"] = "kong/cmd/hybrid.lua",
     ["kong.cmd.utils.log"] = "kong/cmd/utils/log.lua",
     ["kong.cmd.utils.kill"] = "kong/cmd/utils/kill.lua",
     ["kong.cmd.utils.env"] = "kong/cmd/utils/env.lua",
@@ -174,6 +177,7 @@ build = {
     ["kong.api.routes.license"] = "kong/api/routes/license.lua",
     ["kong.api.routes.entities"] = "kong/api/routes/entities.lua",
     ["kong.api.routes.keyring"] = "kong/api/routes/keyring.lua",
+    ["kong.api.routes.clustering"] = "kong/api/routes/clustering.lua",
 
     ["kong.status"] = "kong/status/init.lua",
 
@@ -271,6 +275,7 @@ build = {
     ["kong.db.dao.plugins"] = "kong/db/dao/plugins.lua",
     ["kong.db.dao.rbac_role_endpoints"] = "kong/db/dao/rbac_role_endpoints.lua",
     ["kong.db.dao.workspaces"] = "kong/db/dao/workspaces.lua",
+    ["kong.db.dao.plugins.go"] = "kong/db/dao/plugins/go.lua",
     ["kong.db.dao.tags"] = "kong/db/dao/tags.lua",
     ["kong.db.dao.files"] = "kong/db/dao/files.lua",
     ["kong.db.dao.keyring_meta"] = "kong/db/dao/keyring_meta.lua",
@@ -313,20 +318,19 @@ build = {
     ["kong.db.strategies.connector"] = "kong/db/strategies/connector.lua",
     ["kong.db.strategies.cassandra"] = "kong/db/strategies/cassandra/init.lua",
     ["kong.db.strategies.cassandra.connector"] = "kong/db/strategies/cassandra/connector.lua",
+    ["kong.db.strategies.cassandra.tags"] = "kong/db/strategies/cassandra/tags.lua",
+    -- [[ XXX EE
     ["kong.db.strategies.cassandra.plugins"] = "kong/db/strategies/cassandra/plugins.lua",
     ["kong.db.strategies.cassandra.consumers"] = "kong/db/strategies/cassandra/consumers.lua",
     ["kong.db.strategies.cassandra.rbac_role_endpoints"] = "kong/db/strategies/cassandra/rbac_role_endpoints.lua",
     ["kong.db.strategies.cassandra.keyring_meta"] = "kong/db/strategies/cassandra/keyring_meta.lua",
+    -- EE ]]
     ["kong.db.strategies.postgres"] = "kong/db/strategies/postgres/init.lua",
-    ["kong.db.strategies.postgres.plugins"] = "kong/db/strategies/postgres/plugins.lua",
-    ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
-
-    ["kong.db.strategies.postgres.consumers"] = "kong/db/strategies/postgres/consumers.lua",
-    ["kong.db.strategies.cassandra.tags"] = "kong/db/strategies/cassandra/tags.lua",
-    ["kong.db.strategies.postgres"] = "kong/db/strategies/postgres/init.lua",
-    ["kong.db.strategies.postgres.plugins"] = "kong/db/strategies/postgres/plugins.lua",
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
     ["kong.db.strategies.postgres.tags"] = "kong/db/strategies/postgres/tags.lua",
+    -- XXX EE [[
+    ["kong.db.strategies.postgres.consumers"] = "kong/db/strategies/postgres/consumers.lua",
+    -- EE ]]
     ["kong.db.strategies.off"] = "kong/db/strategies/off/init.lua",
     ["kong.db.strategies.off.connector"] = "kong/db/strategies/off/connector.lua",
     ["kong.db.strategies.off.tags"] = "kong/db/strategies/off/tags.lua",
@@ -337,14 +341,12 @@ build = {
     ["kong.db.migrations.helpers"] = "kong/db/migrations/helpers.lua",
     ["kong.db.migrations.core"] = "kong/db/migrations/core/init.lua",
     ["kong.db.migrations.core.000_base"] = "kong/db/migrations/core/000_base.lua",
-    ["kong.db.migrations.core.001_13_to_14"] = "kong/db/migrations/core/001_13_to_14.lua",
-    ["kong.db.migrations.core.001_14_to_15"] = "kong/db/migrations/core/001_14_to_15.lua",
-    ["kong.db.migrations.core.002_15_to_1"] = "kong/db/migrations/core/002_15_to_1.lua",
     ["kong.db.migrations.core.003_100_to_110"] = "kong/db/migrations/core/003_100_to_110.lua",
     ["kong.db.migrations.core.004_110_to_120"] = "kong/db/migrations/core/004_110_to_120.lua",
     ["kong.db.migrations.core.005_120_to_130"] = "kong/db/migrations/core/005_120_to_130.lua",
     ["kong.db.migrations.core.006_130_to_140"] = "kong/db/migrations/core/006_130_to_140.lua",
     ["kong.db.migrations.core.007_140_to_150"] = "kong/db/migrations/core/007_140_to_150.lua",
+    ["kong.db.migrations.core.008_150_to_200"] = "kong/db/migrations/core/008_150_to_200.lua",
 
     ["kong.pdk"] = "kong/pdk/init.lua",
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",
@@ -374,7 +376,6 @@ build = {
 
     ["kong.plugins.basic-auth.migrations"] = "kong/plugins/basic-auth/migrations/init.lua",
     ["kong.plugins.basic-auth.migrations.000_base_basic_auth"] = "kong/plugins/basic-auth/migrations/000_base_basic_auth.lua",
-    ["kong.plugins.basic-auth.migrations.001_14_to_15"] = "kong/plugins/basic-auth/migrations/001_14_to_15.lua",
     ["kong.plugins.basic-auth.migrations.002_130_to_140"] = "kong/plugins/basic-auth/migrations/002_130_to_140.lua",
     ["kong.plugins.basic-auth.crypto"] = "kong/plugins/basic-auth/crypto.lua",
     ["kong.plugins.basic-auth.handler"] = "kong/plugins/basic-auth/handler.lua",
@@ -385,7 +386,6 @@ build = {
 
     ["kong.plugins.key-auth.migrations"] = "kong/plugins/key-auth/migrations/init.lua",
     ["kong.plugins.key-auth.migrations.000_base_key_auth"] = "kong/plugins/key-auth/migrations/000_base_key_auth.lua",
-    ["kong.plugins.key-auth.migrations.001_14_to_15"] = "kong/plugins/key-auth/migrations/001_14_to_15.lua",
     ["kong.plugins.key-auth.migrations.002_130_to_140"] = "kong/plugins/key-auth/migrations/002_130_to_140.lua",
     ["kong.plugins.key-auth.handler"] = "kong/plugins/key-auth/handler.lua",
     ["kong.plugins.key-auth.schema"] = "kong/plugins/key-auth/schema.lua",
@@ -393,8 +393,6 @@ build = {
 
     ["kong.plugins.oauth2.migrations"] = "kong/plugins/oauth2/migrations/init.lua",
     ["kong.plugins.oauth2.migrations.000_base_oauth2"] = "kong/plugins/oauth2/migrations/000_base_oauth2.lua",
-    ["kong.plugins.oauth2.migrations.001_14_to_15"] = "kong/plugins/oauth2/migrations/001_14_to_15.lua",
-    ["kong.plugins.oauth2.migrations.002_15_to_10"] = "kong/plugins/oauth2/migrations/002_15_to_10.lua",
     ["kong.plugins.oauth2.migrations.003_130_to_140"] = "kong/plugins/oauth2/migrations/003_130_to_140.lua",
     ["kong.plugins.oauth2.handler"] = "kong/plugins/oauth2/handler.lua",
     ["kong.plugins.oauth2.access"] = "kong/plugins/oauth2/access.lua",
@@ -418,8 +416,6 @@ build = {
 
     ["kong.plugins.rate-limiting.migrations"] = "kong/plugins/rate-limiting/migrations/init.lua",
     ["kong.plugins.rate-limiting.migrations.000_base_rate_limiting"] = "kong/plugins/rate-limiting/migrations/000_base_rate_limiting.lua",
-    ["kong.plugins.rate-limiting.migrations.001_14_to_15"] = "kong/plugins/rate-limiting/migrations/001_14_to_15.lua",
-    ["kong.plugins.rate-limiting.migrations.002_15_to_10"] = "kong/plugins/rate-limiting/migrations/002_15_to_10.lua",
     ["kong.plugins.rate-limiting.migrations.003_10_to_112"] = "kong/plugins/rate-limiting/migrations/003_10_to_112.lua",
     ["kong.plugins.rate-limiting.handler"] = "kong/plugins/rate-limiting/handler.lua",
     ["kong.plugins.rate-limiting.schema"] = "kong/plugins/rate-limiting/schema.lua",
@@ -429,8 +425,6 @@ build = {
 
     ["kong.plugins.response-ratelimiting.migrations"] = "kong/plugins/response-ratelimiting/migrations/init.lua",
     ["kong.plugins.response-ratelimiting.migrations.000_base_response_rate_limiting"] = "kong/plugins/response-ratelimiting/migrations/000_base_response_rate_limiting.lua",
-    ["kong.plugins.response-ratelimiting.migrations.001_14_to_15"] = "kong/plugins/response-ratelimiting/migrations/001_14_to_15.lua",
-    ["kong.plugins.response-ratelimiting.migrations.002_15_to_10"] = "kong/plugins/response-ratelimiting/migrations/002_15_to_10.lua",
     ["kong.plugins.response-ratelimiting.handler"] = "kong/plugins/response-ratelimiting/handler.lua",
     ["kong.plugins.response-ratelimiting.access"] = "kong/plugins/response-ratelimiting/access.lua",
     ["kong.plugins.response-ratelimiting.header_filter"] = "kong/plugins/response-ratelimiting/header_filter.lua",
@@ -457,7 +451,6 @@ build = {
 
     ["kong.plugins.acl.migrations"] = "kong/plugins/acl/migrations/init.lua",
     ["kong.plugins.acl.migrations.000_base_acl"] = "kong/plugins/acl/migrations/000_base_acl.lua",
-    ["kong.plugins.acl.migrations.001_14_to_15"] = "kong/plugins/acl/migrations/001_14_to_15.lua",
     ["kong.plugins.acl.migrations.002_130_to_140"] = "kong/plugins/acl/migrations/002_130_to_140.lua",
     ["kong.plugins.acl.handler"] = "kong/plugins/acl/handler.lua",
     ["kong.plugins.acl.schema"] = "kong/plugins/acl/schema.lua",
@@ -471,7 +464,6 @@ build = {
 
     ["kong.plugins.jwt.migrations"] = "kong/plugins/jwt/migrations/init.lua",
     ["kong.plugins.jwt.migrations.000_base_jwt"] = "kong/plugins/jwt/migrations/000_base_jwt.lua",
-    ["kong.plugins.jwt.migrations.001_14_to_15"] = "kong/plugins/jwt/migrations/001_14_to_15.lua",
     ["kong.plugins.jwt.migrations.002_130_to_140"] = "kong/plugins/jwt/migrations/002_130_to_140.lua",
     ["kong.plugins.jwt.handler"] = "kong/plugins/jwt/handler.lua",
     ["kong.plugins.jwt.schema"] = "kong/plugins/jwt/schema.lua",
@@ -481,7 +473,6 @@ build = {
 
     ["kong.plugins.hmac-auth.migrations"] = "kong/plugins/hmac-auth/migrations/init.lua",
     ["kong.plugins.hmac-auth.migrations.000_base_hmac_auth"] = "kong/plugins/hmac-auth/migrations/000_base_hmac_auth.lua",
-    ["kong.plugins.hmac-auth.migrations.001_14_to_15"] = "kong/plugins/hmac-auth/migrations/001_14_to_15.lua",
     ["kong.plugins.hmac-auth.migrations.002_130_to_140"] = "kong/plugins/hmac-auth/migrations/002_130_to_140.lua",
     ["kong.plugins.hmac-auth.handler"] = "kong/plugins/hmac-auth/handler.lua",
     ["kong.plugins.hmac-auth.access"] = "kong/plugins/hmac-auth/access.lua",

@@ -47,6 +47,10 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "api7.request-termination.com" },
       })
 
+      local route8 = bp.routes:insert({
+        hosts = { "api8.request-termination.com" },
+      })
+
       bp.plugins:insert {
         name     = "request-termination",
         route = { id = route1.id },
@@ -101,6 +105,14 @@ for _, strategy in helpers.each_strategy() do
         name   = "request-termination",
         route  = { id = route7.id },
         config = {},
+      }
+
+      bp.plugins:insert {
+        name   = "request-termination",
+        route  = { id = route8.id },
+        config = {
+          status_code = 204
+        },
       }
 
       assert(helpers.start_kong({
@@ -174,33 +186,17 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "Invalid" }, json)
       end)
 
-      it("patch config to use message", function()
-        local res = assert(admin_client:send {
-          method = "PATCH",
-          path = "/plugins/" .. plugin_message.id,
-          body = {
-            config = {
-              message = ngx.null,
-              body = '{"code": 1, "message": "Service unavailable"}',
-            }
-          },
-          headers = {
-            ["Content-type"] = "application/json"
-          }
-        })
-        local body = assert.res_status(200, res)
-        local plugin = cjson.decode(body)
-        assert.equal(ngx.null, plugin.config.message)
+      it("returns 204 without content length header", function()
         local res = assert(proxy_client:send {
           method = "GET",
-          path = "/status/200",
+          path = "/status/204",
           headers = {
-            ["Host"] = "api3.request-termination.com"
+            ["Host"] = "api8.request-termination.com"
           }
         })
-        local body = assert.res_status(406, res)
-        local json = cjson.decode(body)
-        assert.same({ code = 1, message = "Service unavailable" }, json)
+
+        assert.res_status(204, res)
+        assert.is_nil(res.headers["Content-Length"])
       end)
 
     end)

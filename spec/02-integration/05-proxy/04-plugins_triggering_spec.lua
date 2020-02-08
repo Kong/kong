@@ -1022,7 +1022,12 @@ for _, strategy in helpers.each_strategy() do
             proxy_client:close()
           end
 
-          bp, db = helpers.get_db_utils()
+          helpers.stop_kong()
+
+          db:truncate("routes")
+          db:truncate("services")
+          db:truncate("plugins")
+
           -- never used as the plugins short-circuit
           local service = assert(bp.services:insert {
             name = "mock-service",

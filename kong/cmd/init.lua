@@ -24,7 +24,8 @@ local cmds = {
   version = true,
   config = true,
   runner = true,
-  roar = true
+  roar = true,
+  hybrid = true,
 }
 
 for k in pairs(cmds) do

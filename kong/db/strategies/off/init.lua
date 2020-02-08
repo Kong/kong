@@ -1,9 +1,11 @@
 local declarative_config = require "kong.db.schema.others.declarative_config"
-local constants = require "kong.constants"
 
 
 local kong = kong
 local fmt = string.format
+local type = type
+local next = next
+local pairs = pairs
 local tostring = tostring
 local tonumber = tonumber
 local encode_base64 = ngx.encode_base64
@@ -34,7 +36,7 @@ end
 -- @tparam string|nil tags_cond either "or", "and". `nil` means "or"
 -- @treturn table|nil returns a table with entity_ids as values, and `true` as keys
 local function get_entity_ids_tagged(key, tag_names, tags_cond)
-  local cache = kong.cache
+  local cache = kong.core_cache
   local tag_name, list, err
   local dict = {} -- keys are entity_ids, values are true
 
@@ -86,7 +88,9 @@ end
 
 
 local function page_for_key(self, key, size, offset, options)
-  size = size or constants.DEFAULT_PAGE_SIZE
+  if not size then
+    size = self.connector:get_page_size(options)
+  end
 
   if offset then
     local token = decode_base64(offset)
@@ -105,7 +109,7 @@ local function page_for_key(self, key, size, offset, options)
     offset = 1
   end
 
-  local cache = kong.cache
+  local cache = kong.core_cache
   if not cache then
     return {}
   end
@@ -161,11 +165,11 @@ end
 
 
 local function select_by_key(self, key)
-  if not kong.cache then
+  if not kong.core_cache then
     return nil
   end
 
-  return kong.cache:get(key, nil, nil_cb)
+  return kong.core_cache:get(key, nil, nil_cb)
 end
 
 
@@ -183,6 +187,11 @@ end
 
 
 local function select_by_field(self, field, value)
+  if type(value) == "table" then
+    local _
+    _, value = next(value)
+  end
+
   local key = self.schema.name .. "|" .. field .. ":" .. value
   return select_by_key(self, key)
 end
