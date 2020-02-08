@@ -338,9 +338,9 @@ function _M:invalidate(key, workspaces)
     self:invalidate_local(key_ws)
 
     log(DEBUG, "broadcasting (cluster) invalidation for key: '", key_ws, "' ",
-               "with nbf: '", nbf or "none", "'")
+               "with delay: '", delay or "none", "'")
 
-    local ok, err = self.cluster_events:broadcast("invalidations", key_ws, nbf)
+    local ok, err = self.cluster_events:broadcast("invalidations", key_ws, delay)
     if not ok then
       log(ERR, "failed to broadcast cached entity invalidation: ", err)
     end
