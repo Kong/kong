@@ -404,6 +404,11 @@ function _M.routes_consumers_before(self, params, is_collection)
     return
   end
 
+  -- DELETE always returns 204 exists or not, exit early
+  if kong.request.get_method() == "DELETE" then
+    return
+  end
+
   local consumer, _, err_t = endpoints.select_entity(self, kong.db,
                                                      kong.db.consumers.schema)
   if err_t then

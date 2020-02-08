@@ -1,6 +1,7 @@
 local admin_api = require "spec.fixtures.admin_api"
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
+local path_handling_tests = require "spec.fixtures.router_path_handling_tests"
 
 
 local function insert_routes(bp, routes)
@@ -1094,7 +1095,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("[headers]", function()
+    describe("[#headers]", function()
       local routes
 
       after_each(function()
@@ -1240,9 +1241,74 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(routes[3].service.id,   res.headers["kong-service-id"])
         assert.equal(routes[3].service.name, res.headers["kong-service-name"])
       end)
+
+      it("caching do not ignore headers (regression)", function()
+        routes = insert_routes(bp, {
+          {
+            service    = {
+              name     = "first",
+            },
+            hosts      = { "example.test" },
+            paths      = { "/test" },
+            headers    = { headertest = { "itsatest" } },
+          },
+          {
+            service    = {
+              name     = "second",
+            },
+            hosts      = { "example.test" },
+            paths      = { "/test" },
+          },
+        })
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = routes[1].paths[1],
+          headers = {
+            ["Host"]       = routes[1].hosts[1],
+            ["headertest"] = "itsatest",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.equal(routes[1].id,           res.headers["kong-route-id"])
+        assert.equal(routes[1].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[1].service.name, res.headers["kong-service-name"])
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = routes[2].paths[1],
+          headers = {
+            ["Host"]       = routes[2].hosts[1],
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.equal(routes[2].id,           res.headers["kong-route-id"])
+        assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[2].service.name, res.headers["kong-service-name"])
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = routes[1].paths[1],
+          headers = {
+            ["Host"]       = routes[1].hosts[1],
+            ["headertest"] = "itsatest",
+            ["kong-debug"] = 1,
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.equal(routes[1].id,           res.headers["kong-route-id"])
+        assert.equal(routes[1].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[1].service.name, res.headers["kong-service-name"])
+
+      end)
     end)
 
-    describe("[paths] + [headers]", function()
+    describe("[paths] + [#headers]", function()
       local routes
 
       lazy_setup(function()
@@ -1312,7 +1378,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("[snis] [#grpc] for gRPCs connections", function()
+    describe("[snis] for #grpcs connections", function()
       local routes
       local grpcs_proxy_ssl_client
 
@@ -1380,21 +1446,168 @@ for _, strategy in helpers.each_strategy() do
 
       lazy_setup(function()
         routes = insert_routes(bp, {
-          {
+          [1] = {
             strip_path = true,
             methods    = { "GET" },
-            paths      = { "/root" },
+            paths      = { "/unrelated/longer/uri/that/should/not/match", "/root/fixture" },
+            hosts      = { "ahost.test" },
+            service    = { path = "/status/201" },
           },
-          {
+          [2] = {
             strip_path = true,
             methods    = { "GET" },
-            paths      = { "/root/fixture" },
+            paths      = { "/root/fixture/get" },
+            hosts      = { "ahost.test" },
+            service    = { path = "/status/202" },
           },
+          [3] = {
+            strip_path = true,
+            methods    = { "GET" },
+            paths      = { "/root/fixture/get" },
+            hosts      = { "anotherhost.test" },
+            service    = { path = "/status/203" },
+          },
+          [4] = {
+            strip_path = true,
+            methods    = { "GET" },
+            paths      = { "/root/fixture/get" },
+            hosts      = { "onemorehost.test" },
+            service    = { path = "/status/204" },
+          },
+
+          [5] = {
+            strip_path = true,
+            name       = "public-apiv1",
+            paths      = { "/rest/devportal/api/v1", "/rest/devportal" },
+            hosts      = { "api.local" },
+            service    = { path = "/status/205" },
+          },
+          [6] = {
+            strip_path = true,
+            name       = "aux",
+            paths      = { "/rest/devportal/aux" },
+            hosts      = { "api.local" },
+            service    = { path = "/status/206" },
+          },
+          [7] = {
+            strip_path = true,
+            name       = "aux-host",
+            paths      = { "/rest/devportal/aux" },
+            hosts      = { "test-api.local" },
+            service    = { path = "/status/207" },
+          },
+          [8] = {
+            strip_path = true,
+            name       = "aux-host2",
+            paths      = { "/rest/devportal/aux" },
+            hosts      = { "atest-api.local" },
+            service    = { path = "/status/208" },
+          },
+          [9] = {
+            strip_path = true,
+            name       = "devportal-route-2",
+            paths      = { "/rest/devportal" },
+            hosts      = { "atest-api.local" },
+            service    = { path = "/status/209" },
+          },
+
+          [10] = {
+            strip_path = true,
+            name       = "concat_test-public-apiv1",
+            paths      = { "/concat_test/devportal/api/v1", "/concat_test/devportal" },
+            hosts      = { "api.local" },
+          },
+          [11] = {
+            strip_path = true,
+            name       = "concat_test-aux",
+            paths      = { "/concat_test/devportal/aux" },
+            hosts      = { "api.local" },
+          },
+          [12] = {
+            strip_path = true,
+            name       = "concat_test-aux-host",
+            paths      = { "/concat_test/devportal/aux" },
+            hosts      = { "test-api.local" },
+          },
+          [13] = {
+            strip_path = true,
+            name       = "concat_test-aux-host2",
+            paths      = { "/concat_test/devportal/aux" },
+            hosts      = { "atest-api.local" },
+          },
+          [14] = {
+            strip_path = true,
+            name       = "concat_test-devportal-route-2",
+            paths      = { "/concat_test/devportal" },
+            hosts      = { "atest-api.local" },
+          },
+
         })
       end)
 
       lazy_teardown(function()
         remove_routes(strategy, routes)
+      end)
+
+      it("regression test for #5438", function()
+        for i = 1, 9 do
+          for j = 1, #routes[i].paths do
+            local res = assert(proxy_client:send {
+              method  = "GET",
+              path    = routes[i].paths[j],
+              headers = {
+                ["kong-debug"] = 1,
+                ["host"] = routes[i].hosts[1],
+              }
+            })
+
+            assert.res_status(200 + i, res)
+
+            assert.equal(routes[i].id,           res.headers["kong-route-id"])
+            assert.equal(routes[i].service.id,   res.headers["kong-service-id"])
+            assert.equal(routes[i].service.name, res.headers["kong-service-name"])
+
+          end
+        end
+      end)
+
+      it("regression test for #5438 concatenating paths", function()
+        for i = 10, 14 do
+          for j = 1, #routes[i].paths do
+            local res = assert(proxy_client:send {
+              method  = "GET",
+              path    = routes[i].paths[j] .. "/status/418",
+              headers = {
+                ["kong-debug"] = 1,
+                ["host"] = routes[i].hosts[1],
+              }
+            })
+
+            assert.res_status(418, res)
+
+            assert.equal(routes[i].id,           res.headers["kong-route-id"])
+            assert.equal(routes[i].service.id,   res.headers["kong-service-id"])
+            assert.equal(routes[i].service.name, res.headers["kong-service-name"])
+
+          end
+        end
+      end)
+
+      it("regression test for #5438 part 2", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/rest/devportal",
+          headers = {
+            ["kong-debug"] = 1,
+            ["host"] = "atest-api.local",
+          }
+        })
+
+        assert.res_status(209, res)
+
+        assert.equal(routes[9].id,           res.headers["kong-route-id"])
+        assert.equal(routes[9].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[9].service.name, res.headers["kong-service-name"])
       end)
 
       it("prioritizes longer URIs", function()
@@ -1403,14 +1616,45 @@ for _, strategy in helpers.each_strategy() do
           path    = "/root/fixture/get",
           headers = {
             ["kong-debug"] = 1,
+            ["host"] = "ahost.test",
           }
         })
 
-        assert.res_status(200, res)
+        assert.res_status(202, res)
 
         assert.equal(routes[2].id,           res.headers["kong-route-id"])
         assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
         assert.equal(routes[2].service.name, res.headers["kong-service-name"])
+      end)
+
+      it("prioritizes host over longer URIs", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/root/fixture/get",
+          headers = {
+            ["kong-debug"] = 1,
+            ["host"] = "anotherhost.test",
+          }
+        })
+
+        assert.res_status(203, res)
+
+        assert.equal(routes[3].id,           res.headers["kong-route-id"])
+        assert.equal(routes[3].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[3].service.name, res.headers["kong-service-name"])
+      end)
+
+      it("do not match incomplete URIs", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            ["kong-debug"] = 1,
+            ["host"] = "ahost.test",
+          }
+        })
+
+        assert.res_status(404, res)
       end)
     end)
 
@@ -1422,12 +1666,12 @@ for _, strategy in helpers.each_strategy() do
           {
             strip_path = true,
             hosts      = { "route.com" },
-            paths      = { "/root" },
+            paths      = { "/root/fixture", "/root/fixture/non-matching-but-longer" },
           },
           {
             strip_path = true,
             hosts      = { "route.com" },
-            paths      = { "/root/fixture" },
+            paths      = { "/root/fixture/get" },
           },
         })
       end)
@@ -1454,113 +1698,26 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("slash handing", function()
-      local checks = {
-        -- upstream url    paths           request path    expected path           strip uri
-        {  "/",            "/",            "/",            "/",                    true      }, -- 1
-        {  "/",            "/",            "/foo/bar",     "/foo/bar",             true      },
-        {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            true      },
-        {  "/",            "/foo/bar",     "/foo/bar",     "/",                    true      },
-        {  "/",            "/foo/bar",     "/foo/bar/",    "/",                    true      },
-        {  "/",            "/foo/bar/",    "/foo/bar/",    "/",                    true      },
-        {  "/fee/bor",     "/",            "/",            "/fee/bor",             true      },
-        {  "/fee/bor",     "/",            "/foo/bar",     "/fee/borfoo/bar",      true      },
-        {  "/fee/bor",     "/",            "/foo/bar/",    "/fee/borfoo/bar/",     true      },
-        {  "/fee/bor",     "/foo/bar",     "/foo/bar",     "/fee/bor",             true      }, -- 10
-        {  "/fee/bor",     "/foo/bar",     "/foo/bar/",    "/fee/bor/",            true      },
-        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/bor",             true      },
-        {  "/fee/bor/",    "/",            "/",            "/fee/bor/",            true      },
-        {  "/fee/bor/",    "/",            "/foo/bar",     "/fee/bor/foo/bar",     true      },
-        {  "/fee/bor/",    "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
-        {  "/fee/bor/",    "/foo/bar",     "/foo/bar",     "/fee/bor/",            true      },
-        {  "/fee/bor/",    "/foo/bar",     "/foo/bar/",    "/fee/bor/",            true      },
-        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/",    "/fee/bor/",            true      },
-        {  "/",            "/",            "/",            "/",                    false     },
-        {  "/",            "/",            "/foo/bar",     "/foo/bar",             false     }, -- 20
-        {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            false     },
-        {  "/",            "/foo/bar",     "/foo/bar",     "/foo/bar",             false     },
-        {  "/",            "/foo/bar",     "/foo/bar/",    "/foo/bar/",            false     },
-        {  "/",            "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            false     },
-        {  "/fee/bor",     "/",            "/",            "/fee/bor",             false     },
-        {  "/fee/bor",     "/",            "/foo/bar",     "/fee/borfoo/bar",      false     },
-        {  "/fee/bor",     "/",            "/foo/bar/",    "/fee/borfoo/bar/",     false     },
-        {  "/fee/bor",     "/foo/bar",     "/foo/bar",     "/fee/borfoo/bar",      false     },
-        {  "/fee/bor",     "/foo/bar",     "/foo/bar/",    "/fee/borfoo/bar/",     false     },
-        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/",    "/fee/borfoo/bar/",     false     }, -- 30
-        {  "/fee/bor/",    "/",            "/",            "/fee/bor/",            false     },
-        {  "/fee/bor/",    "/",            "/foo/bar",     "/fee/bor/foo/bar",     false     },
-        {  "/fee/bor/",    "/",            "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
-        {  "/fee/bor/",    "/foo/bar",     "/foo/bar",     "/fee/bor/foo/bar",     false     },
-        {  "/fee/bor/",    "/foo/bar",     "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
-        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
-        -- the following block runs the same tests, but with a request path that is longer
-        -- than the matched part, so either matches in the middle of a segment, or has an
-        -- additional segment.
-        {  "/",            "/",            "/foo/bars",    "/foo/bars",            true      },
-        {  "/",            "/",            "/foo/bar/s",   "/foo/bar/s",           true      },
-        {  "/",            "/foo/bar",     "/foo/bars",    "/s",                   true      },
-        {  "/",            "/foo/bar/",    "/foo/bar/s",   "/s",                   true      }, -- 40
-        {  "/fee/bor",     "/",            "/foo/bars",    "/fee/borfoo/bars",     true      },
-        {  "/fee/bor",     "/",            "/foo/bar/s",   "/fee/borfoo/bar/s",    true      },
-        {  "/fee/bor",     "/foo/bar",     "/foo/bars",    "/fee/bors",            true      },
-        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/bors",            true      },
-        {  "/fee/bor/",    "/",            "/foo/bars",    "/fee/bor/foo/bars",    true      },
-        {  "/fee/bor/",    "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   true      },
-        {  "/fee/bor/",    "/foo/bar",     "/foo/bars",    "/fee/bor/s",           true      },
-        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/s",   "/fee/bor/s",           true      },
-        {  "/",            "/",            "/foo/bars",    "/foo/bars",            false     },
-        {  "/",            "/",            "/foo/bar/s",   "/foo/bar/s",           false     }, -- 50
-        {  "/",            "/foo/bar",     "/foo/bars",    "/foo/bars",            false     },
-        {  "/",            "/foo/bar/",    "/foo/bar/s",   "/foo/bar/s",           false     },
-        {  "/fee/bor",     "/",            "/foo/bars",    "/fee/borfoo/bars",     false     },
-        {  "/fee/bor",     "/",            "/foo/bar/s",   "/fee/borfoo/bar/s",    false     },
-        {  "/fee/bor",     "/foo/bar",     "/foo/bars",    "/fee/borfoo/bars",     false     },
-        {  "/fee/bor",     "/foo/bar/",    "/foo/bar/s",   "/fee/borfoo/bar/s",    false     },
-        {  "/fee/bor/",    "/",            "/foo/bars",    "/fee/bor/foo/bars",    false     },
-        {  "/fee/bor/",    "/",            "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     },
-        {  "/fee/bor/",    "/foo/bar",     "/foo/bars",    "/fee/bor/foo/bars",    false     },
-        {  "/fee/bor/",    "/foo/bar/",    "/foo/bar/s",   "/fee/bor/foo/bar/s",   false     }, -- 60
-        -- the following block matches on host, instead of path
-        {  "/",            nil,            "/",            "/",                    false     },
-        {  "/",            nil,            "/foo/bar",     "/foo/bar",             false     },
-        {  "/",            nil,            "/foo/bar/",    "/foo/bar/",            false     },
-        {  "/fee/bor",     nil,            "/",            "/fee/bor",             false     },
-        {  "/fee/bor",     nil,            "/foo/bar",     "/fee/borfoo/bar",      false     },
-        {  "/fee/bor",     nil,            "/foo/bar/",    "/fee/borfoo/bar/",     false     },
-        {  "/fee/bor/",    nil,            "/",            "/fee/bor/",            false     },
-        {  "/fee/bor/",    nil,            "/foo/bar",     "/fee/bor/foo/bar",     false     },
-        {  "/fee/bor/",    nil,            "/foo/bar/",    "/fee/bor/foo/bar/",    false     },
-        {  "/",            nil,            "/",            "/",                    true      }, -- 70
-        {  "/",            nil,            "/foo/bar",     "/foo/bar",             true      },
-        {  "/",            nil,            "/foo/bar/",    "/foo/bar/",            true      },
-        {  "/fee/bor",     nil,            "/",            "/fee/bor",             true      },
-        {  "/fee/bor",     nil,            "/foo/bar",     "/fee/borfoo/bar",      true      },
-        {  "/fee/bor",     nil,            "/foo/bar/",    "/fee/borfoo/bar/",     true      },
-        {  "/fee/bor/",    nil,            "/",            "/fee/bor/",            true      },
-        {  "/fee/bor/",    nil,            "/foo/bar",     "/fee/bor/foo/bar",     true      },
-        {  "/fee/bor/",    nil,            "/foo/bar/",    "/fee/bor/foo/bar/",    true      },
-      }
-
+    describe("slash handling", function()
       describe("(plain)", function()
         local routes
 
         lazy_setup(function()
           routes = {}
 
-          for i, args in ipairs(checks) do
-            routes[i] = {
-              strip_path   = args[5],
-              paths        = args[2] and {
-                args[2],
-              } or nil,
-              hosts        = {
-                "localbin-" .. i .. ".com",
-              },
-              service = {
-                name = "plain_" .. i,
-                path = args[1],
+          for i, line in ipairs(path_handling_tests) do
+            for j, test in ipairs(line:expand()) do
+              routes[#routes + 1] = {
+                strip_path   = test.strip_path,
+                path_handling = test.path_handling,
+                paths        = test.route_path and { test.route_path } or nil,
+                hosts        = { "localbin-" .. i .. "-" .. j .. ".com" },
+                service = {
+                  name = "plain_" .. i .. "-" .. j,
+                  path = test.service_path,
+                }
               }
-            }
+            end
           end
 
           routes = insert_routes(bp, routes)
@@ -1572,28 +1729,30 @@ for _, strategy in helpers.each_strategy() do
           end
         end)
 
-        for i, args in ipairs(checks) do
-          local config = string.format("route.strip_path=%s", args[5] and "on" or "off")
+        for i, line in ipairs(path_handling_tests) do
+          for j, test in ipairs(line:expand()) do
+            local strip = test.strip_path and "on" or "off"
+            local route_uri_or_host
+            if test.route_path then
+              route_uri_or_host = "uri " .. test.route_path
+            else
+              route_uri_or_host = "host localbin-" .. i .. "-" .. j .. ".com"
+            end
 
-          local description
-          if args[2] then
-            description = string.format("(%d) (%s) %s with uri %s when requesting %s",
-                                        i, config, args[1], args[2], args[3])
-          else
-            description = string.format("(%d) (%s) %s with host %s when requesting %s",
-                                        i, config, args[1], "localbin-" .. i .. ".com", args[3])
+            local description = string.format("(%d-%d) %s with %s, strip = %s, %s when requesting %s",
+              i, j, test.service_path, route_uri_or_host, strip, test.path_handling, test.request_path)
+
+            it(description, function()
+              local res = assert(proxy_client:get(test.request_path, {
+                headers = {
+                  ["Host"] = "localbin-" .. i .. "-" .. j .. ".com",
+                }
+              }))
+
+              local data = assert.response(res).has.jsonbody()
+              assert.equal(test.expected_path, data.vars.request_uri)
+            end)
           end
-
-          it(description, function()
-            local res = assert(proxy_client:get(args[3], {
-              headers = {
-                ["Host"] = "localbin-" .. i .. ".com",
-              }
-            }))
-
-            local data = assert.response(res).has.jsonbody()
-            assert.equal(args[4], data.vars.request_uri)
-          end)
         end
       end)
 
@@ -1607,20 +1766,21 @@ for _, strategy in helpers.each_strategy() do
         lazy_setup(function()
           routes = {}
 
-          for i, args in ipairs(checks) do
-            routes[i] = {
-              strip_path   = args[5],
-              paths        = args[2] and {
-                make_a_regex(args[2]),
-              } or nil,
-              hosts        = {
-                "localbin-" .. i .. ".com",
-              },
-              service = {
-                name = "make_regex_" .. i,
-                path = args[1],
-              }
-            }
+          for i, line in ipairs(path_handling_tests) do
+            if line.route_path then  -- skip if hostbased match
+              for j, test in ipairs(line:expand()) do
+                routes[#routes + 1] = {
+                  strip_path   = test.strip_path,
+                  paths        = test.route_path and { make_a_regex(test.route_path) } or nil,
+                  path_handling = test.path_handling,
+                  hosts        = { "localbin-" .. i .. "-" .. j .. ".com" },
+                  service = {
+                    name = "make_regex_" .. i .. "-" .. j,
+                    path = test.service_path,
+                  }
+                }
+              end
+            end
           end
 
           routes = insert_routes(bp, routes)
@@ -1630,24 +1790,23 @@ for _, strategy in helpers.each_strategy() do
           remove_routes(strategy, routes)
         end)
 
-        for i, args in ipairs(checks) do
-          if args[2] then  -- skip if hostbased match
+        for i, line in ipairs(path_handling_tests) do
+          if line.route_path then  -- skip if hostbased match
+            for j, test in ipairs(line:expand()) do
+              local strip = test.strip_path and "on" or "off"
 
-            local config = string.format("route.strip_path=%s", args[5] and "on" or "off")
+              local description = string.format("(%d-%d) %s with uri %s, strip = %s, %s when requesting %s",
+                i, j, test.service_path, make_a_regex(test.route_path), strip, test.path_handling, test.request_path)
 
-            local description = string.format("(%d) (%s) %s with uri %s when requesting %s",
-                                              i, config, args[1], make_a_regex(args[2]), args[3])
+              it(description, function()
+                local res = assert(proxy_client:get(test.request_path, {
+                  headers = { Host = "localbin-" .. i .. "-" .. j .. ".com" },
+                }))
 
-            it(description, function()
-              local res = assert(proxy_client:get(args[3], {
-                headers = {
-                  ["Host"] = "localbin-" .. i .. ".com",
-                }
-              }))
-
-              local data = assert.response(res).has.jsonbody()
-              assert.equal(args[4], data.vars.request_uri)
-            end)
+                local data = assert.response(res).has.jsonbody()
+                assert.equal(test.expected_path, data.vars.request_uri)
+              end)
+            end
           end
         end
       end)

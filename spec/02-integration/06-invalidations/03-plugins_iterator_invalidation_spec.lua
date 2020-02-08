@@ -3,8 +3,42 @@ local helpers = require "spec.helpers"
 local utils   = require "kong.tools.utils"
 
 
-local POLL_INTERVAL = 0.3
-local TIMER_REBUILDS = 1
+local POLL_INTERVAL = 0.1
+
+
+local function assert_admin_2_wait(request, res_status, res_not_message)
+  local ret
+  helpers.wait_until(function()
+    local admin_client_2 = helpers.http_client("127.0.0.1", 9001)
+    finally(function()
+      admin_client_2:close()
+    end)
+
+    local res = admin_client_2:send(request)
+    if not res then
+      return false
+    end
+    if res.status ~= res_status then
+      return false
+    end
+    local body = res:read_body()
+    if not body then
+      return false
+    end
+    local json = cjson.decode(body)
+    if res_not_message then
+      if not json.message:match("^[%w-]+$") then
+        return false
+      end
+      if json.message == res_not_message then
+        return false
+      end
+    end
+    ret = json
+    return true
+  end, 10)
+  return ret
+end
 
 
 for _, strategy in helpers.each_strategy() do
@@ -15,8 +49,6 @@ for _, strategy in helpers.each_strategy() do
 
     local proxy_client_1
     local proxy_client_2
-
-    local wait_for_propagation
 
     local service_fixture
 
@@ -43,6 +75,7 @@ for _, strategy in helpers.each_strategy() do
         db_update_frequency   = POLL_INTERVAL,
         db_update_propagation = db_update_propagation,
         nginx_conf            = "spec/fixtures/custom_nginx.template",
+        router_update_frequency = POLL_INTERVAL,
       })
 
       assert(helpers.start_kong {
@@ -53,6 +86,7 @@ for _, strategy in helpers.each_strategy() do
         admin_listen          = "0.0.0.0:9001",
         db_update_frequency   = POLL_INTERVAL,
         db_update_propagation = db_update_propagation,
+        router_update_frequency = POLL_INTERVAL,
       })
 
       local admin_client = helpers.http_client("127.0.0.1", 8001)
@@ -72,10 +106,6 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(201, admin_res)
       admin_client:close()
-
-      wait_for_propagation = function()
-        ngx.sleep(TIMER_REBUILDS + POLL_INTERVAL * 2 + db_update_propagation * 2)
-      end
     end)
 
     lazy_teardown(function()
@@ -141,18 +171,14 @@ for _, strategy in helpers.each_strategy() do
         local plugin = cjson.decode(body)
         service_plugin_id = plugin.id
 
-        wait_for_propagation()
-
-        local admin_res_after = admin_client_2:get("/cache/plugins_iterator:version")
-        local body_after = assert.res_status(200, admin_res_after)
-        local msg_after  = cjson.decode(body_after)
-        assert.matches("^[%w-]+$", msg_after.message)
-
-        -- the version has changed
-        assert.not_equal(msg_before.message, msg_after.message)
+        assert_admin_2_wait({
+          method = "GET",
+          path = "/cache/plugins_iterator:version",
+        }, 200, msg_before.message)
       end)
 
       it("changes on proxied request or timer", function()
+        -- issue a request
         local res_1 = assert(proxy_client_1:send {
           method  = "GET",
           path    = "/status/200",
@@ -171,18 +197,11 @@ for _, strategy in helpers.each_strategy() do
 
         assert.matches("^[%w-]+$", msg_1.message)
 
-        wait_for_propagation() -- this gives time for node 2 to self-update via timer
-
-        local admin_res_2 = assert(admin_client_2:send {
+        -- each node has their own version
+        local msg_2 = assert_admin_2_wait({
           method = "GET",
-          path   = "/cache/plugins_iterator:version",
-        })
-        local body_2 = assert.res_status(200, admin_res_2)
-        local msg_2  = cjson.decode(body_2)
-        assert.matches("^[%w-]+$", msg_2.message)
-
-        -- each node has their own map version
-        assert.not_equal(msg_1.message, msg_2.message)
+          path = "/cache/plugins_iterator:version",
+        }, 200)
 
         -- check that node 2 was already up to date via its timer
         local res_2 = assert(proxy_client_2:send {
@@ -226,22 +245,18 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, admin_res_plugin)
 
-        wait_for_propagation()
-
-        local admin_res_after = admin_client_2:get("/cache/plugins_iterator:version")
-        local body_after = assert.res_status(200, admin_res_after)
-        local msg_after  = cjson.decode(body_after)
-        assert.matches("^[%w-]+$", msg_after.message)
-
         -- the version has changed
-        assert.not_equal(msg_before.message, msg_after.message)
+        assert_admin_2_wait({
+          method = "GET",
+          path = "/cache/plugins_iterator:version",
+        }, 200, msg_before.message)
       end)
 
       it("changes on plugin DELETE", function()
-        local admin_res_before = admin_client_2:get("/cache/plugins_iterator:version")
-        local body_before = assert.res_status(200, admin_res_before)
-        local msg_before  = cjson.decode(body_before)
-        assert.matches("^[%w-]+$", msg_before.message)
+        local msg_before = assert_admin_2_wait({
+          method = "GET",
+          path = "/cache/plugins_iterator:version",
+        }, 200)
 
         local admin_res_plugin = assert(admin_client_1:send {
           method = "DELETE",
@@ -249,22 +264,18 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(204, admin_res_plugin)
 
-        wait_for_propagation()
-
-        local admin_res_after = admin_client_2:get("/cache/plugins_iterator:version")
-        local body_after = assert.res_status(200, admin_res_after)
-        local msg_after  = cjson.decode(body_after)
-        assert.matches("^[%w-]+$", msg_after.message)
-
         -- the version has changed
-        assert.not_equal(msg_before.message, msg_after.message)
+        assert_admin_2_wait({
+          method = "GET",
+          path = "/cache/plugins_iterator:version",
+        }, 200, msg_before.message)
       end)
 
       it("changes on plugin PUT", function()
-        local admin_res_before = admin_client_2:get("/cache/plugins_iterator:version")
-        local body_before = assert.res_status(200, admin_res_before)
-        local msg_before  = cjson.decode(body_before)
-        assert.matches("^[%w-]+$", msg_before.message)
+        local msg_before = assert_admin_2_wait({
+          method = "GET",
+          path = "/cache/plugins_iterator:version",
+        }, 200)
 
         -- A regression test for https://github.com/Kong/kong/issues/4191
         local admin_res_plugin = assert(admin_client_1:send {
@@ -280,15 +291,11 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, admin_res_plugin)
 
-        wait_for_propagation()
-
-        local admin_res_after = admin_client_2:get("/cache/plugins_iterator:version")
-        local body_after = assert.res_status(200, admin_res_after)
-        local msg_after  = cjson.decode(body_after)
-        assert.matches("^[%w-]+$", msg_after.message)
-
         -- the version has changed
-        assert.not_equal(msg_before.message, msg_after.message)
+        assert_admin_2_wait({
+          method = "GET",
+          path = "/cache/plugins_iterator:version",
+        }, 200, msg_before.message)
       end)
     end)
   end)

@@ -47,11 +47,12 @@ export PATH=$BUILD_TOOLS_DOWNLOAD:$PATH
 INSTALL_CACHE=${INSTALL_CACHE:=/install-cache}
 INSTALL_ROOT=$INSTALL_CACHE/$DEPS_HASH
 
+#    XXX no longer supported, for next release, use kong-build-tools
+#    --openresty-patches $OPENRESTY_PATCHES_BRANCH \
 kong-ngx-build \
     --work $DOWNLOAD_ROOT \
     --prefix $INSTALL_ROOT \
     --openresty $OPENRESTY \
-    --openresty-patches $OPENRESTY_PATCHES_BRANCH \
     --kong-nginx-module $KONG_NGINX_MODULE_BRANCH \
     --luarocks $LUAROCKS \
     --openssl $OPENSSL \

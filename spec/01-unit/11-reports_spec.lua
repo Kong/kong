@@ -82,6 +82,7 @@ describe("reports", function()
       package.loaded["kong.reports"] = nil
       reports = require "kong.reports"
       reports.toggle(true)
+      reports._create_counter()
     end)
 
     describe("sends 'database'", function()
@@ -308,6 +309,7 @@ describe("reports", function()
       package.loaded["kong.reports"] = nil
       reports = require "kong.reports"
       reports.toggle(true)
+      reports._create_counter()
     end)
 
     it("does not query Redis if not enabled", function()

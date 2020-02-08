@@ -173,9 +173,9 @@ process = function(premature, self, batch)
   local next_retry_delay
 
   local ok, err = self.process(batch.entries)
-  if ok then -- success, set retry_delays to 1
+  if ok then -- success, reset retry delays
     self.retry_delay = 1
-    next_retry_delay = 1
+    next_retry_delay = 0
 
   else
     batch.retries = batch.retries + 1
@@ -265,6 +265,13 @@ end
 function Queue:add(entry)
   if entry == nil then
     return nil, "entry must be a non-nil Lua value"
+  end
+
+  if self.batch_max_size == 1 then
+    -- no batching
+    local batch = { entries = { entry }, retries = 0 }
+    schedule_process(self, batch, 0)
+    return true
   end
 
   local cb = self.current_batch

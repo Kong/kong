@@ -495,6 +495,7 @@ for _, strategy in helpers.each_strategy() do
             protocols = { "http" },
             hosts = { "example.com" },
             service = assert(db.services:insert({ host = "service.com" })),
+            path_handling = "v1",
           }, { nulls = true })
           assert.is_nil(err_t)
           assert.is_nil(err)
@@ -520,6 +521,7 @@ for _, strategy in helpers.each_strategy() do
             regex_priority  = 0,
             preserve_host   = false,
             strip_path      = true,
+            path_handling   = "v1",
             tags            = ngx.null,
             service         = route.service,
             https_redirect_status_code = 426,
@@ -534,6 +536,7 @@ for _, strategy in helpers.each_strategy() do
             paths           = { "/example" },
             regex_priority  = 3,
             strip_path      = true,
+            path_handling   = "v1",
             service         = bp.services:insert(),
           }, { nulls = true })
           assert.is_nil(err_t)
@@ -559,6 +562,7 @@ for _, strategy in helpers.each_strategy() do
             destinations    = ngx.null,
             regex_priority  = 3,
             strip_path      = true,
+            path_handling   = "v1",
             tags            = ngx.null,
             preserve_host   = false,
             service         = route.service,
@@ -573,6 +577,7 @@ for _, strategy in helpers.each_strategy() do
             paths           = { "/example" },
             regex_priority  = 3,
             strip_path      = true,
+            path_handling   = "v1",
           }, { nulls = true })
           assert.is_nil(err_t)
           assert.is_nil(err)
@@ -598,6 +603,7 @@ for _, strategy in helpers.each_strategy() do
             tags            = ngx.null,
             regex_priority  = 3,
             strip_path      = true,
+            path_handling   = "v1",
             preserve_host   = false,
             service         = ngx.null,
             https_redirect_status_code = 426,
@@ -894,6 +900,7 @@ for _, strategy in helpers.each_strategy() do
             protocols = { "https" },
             hosts = { "example.com" },
             regex_priority = 5,
+            path_handling = "v1"
           })
           assert.is_nil(err_t)
           assert.is_nil(err)
@@ -907,6 +914,7 @@ for _, strategy in helpers.each_strategy() do
             paths           = route.paths,
             regex_priority  = 5,
             strip_path      = route.strip_path,
+            path_handling   = "v1",
             preserve_host   = route.preserve_host,
             tags            = route.tags,
             service         = route.service,
@@ -923,6 +931,7 @@ for _, strategy in helpers.each_strategy() do
             local route = bp.routes:insert({
               hosts   = { "example.com" },
               methods = { "GET" },
+              path_handling = "v1",
             })
 
             local new_route, err, err_t = db.routes:update({ id = route.id }, {
@@ -938,6 +947,7 @@ for _, strategy in helpers.each_strategy() do
               hosts           = route.hosts,
               regex_priority  = route.regex_priority,
               strip_path      = route.strip_path,
+              path_handling   = "v1",
               preserve_host   = route.preserve_host,
               tags            = route.tags,
               service         = route.service,
@@ -1687,6 +1697,7 @@ for _, strategy in helpers.each_strategy() do
           protocols = { "http" },
           hosts     = { "example.com" },
           service   = service,
+          path_handling = "v1",
         }, { nulls = true })
         assert.is_nil(err_t)
         assert.is_nil(err)
@@ -1705,6 +1716,7 @@ for _, strategy in helpers.each_strategy() do
           destinations     = ngx.null,
           regex_priority   = 0,
           strip_path       = true,
+          path_handling    = "v1",
           preserve_host    = false,
           tags             = ngx.null,
           service          = {

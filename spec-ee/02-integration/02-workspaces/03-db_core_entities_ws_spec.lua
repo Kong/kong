@@ -53,6 +53,7 @@ for _, strategy in helpers.each_strategy() do
             regex_priority  = 0,
             preserve_host   = false,
             strip_path      = true,
+            path_handling   = "v1",
             service         = route.service,
             https_redirect_status_code = 426,
           }, route)
@@ -105,6 +106,7 @@ for _, strategy in helpers.each_strategy() do
               regex_priority  = 0,
               preserve_host   = false,
               strip_path      = true,
+              path_handling   = "v1",
               service         = route.service,
               https_redirect_status_code = 426,
             }, route)
@@ -247,6 +249,7 @@ for _, strategy in helpers.each_strategy() do
               paths           = route.paths,
               regex_priority  = 5,
               strip_path      = route.strip_path,
+              path_handling   = "v1",
               preserve_host   = route.preserve_host,
               service         = route.service,
               https_redirect_status_code = 426,
@@ -291,6 +294,7 @@ for _, strategy in helpers.each_strategy() do
               paths           = route.paths,
               regex_priority  = 5,
               strip_path      = route.strip_path,
+              path_handling   = "v1",
               preserve_host   = route.preserve_host,
               service         = route.service,
               https_redirect_status_code = 426,
@@ -1031,6 +1035,7 @@ for _, strategy in helpers.each_strategy() do
             hosts            = { "example.com" },
             regex_priority   = 0,
             strip_path       = true,
+            path_handling   = "v1",
             preserve_host    = false,
             service          = {
               id = service.id

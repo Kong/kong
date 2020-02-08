@@ -19,11 +19,6 @@ return {
         ee_api.routes_consumers_before(self, self.args.post)
       end,
       --]] EE
-      GET = endpoints.get_collection_endpoint(
-              credentials_schema, consumers_schema, "consumer"),
-
-      POST = endpoints.post_collection_endpoint(
-              credentials_schema, consumers_schema, "consumer"),
     },
   },
   ["/consumers/:consumers/basic-auth/:basicauth_credentials"] = {
@@ -60,17 +55,6 @@ return {
           self.params.basicauth_credentials = cred.id
         end
       end,
-
-      GET  = endpoints.get_entity_endpoint(credentials_schema),
-      PUT  = function(self, ...)
-        self.args.post.consumer = { id = self.consumer.id }
-        return endpoints.put_entity_endpoint(credentials_schema)(self, ...)
-      end,
-      PATCH  = function(self, ...)
-        self.args.post.consumer = { id = self.consumer.id }
-        return endpoints.patch_entity_endpoint(credentials_schema)(self, ...)
-      end,
-      DELETE = endpoints.delete_entity_endpoint(credentials_schema),
     },
   },
   ["/basic-auths"] = {
@@ -79,12 +63,7 @@ return {
       ---EE [[
       -- post process credentials to filter out non-proxy consumers
       GET = function(self, db, helpers, parent)
-        return endpoints.get_collection_endpoint(credentials_schema)(self, db,
-          helpers, ee_crud.post_process_credential)
-      end,
-      POST = function(self, db, helpers, parent)
-        return endpoints.post_collection_endpoint(credentials_schema)(self, db,
-          helpers)
+        return parent(ee_crud.post_process_credential)
       end,
       --]] EE
     }
@@ -100,9 +79,7 @@ return {
             kong.response.exit(404, { message = "Not Found" })
           end
         end
-        return endpoints.get_entity_endpoint(credentials_schema,
-                                             consumers_schema, "consumer")
-                                             (self, db, helpers, post_process)
+        return parent(post_process)
       end
       --]] EE
     }

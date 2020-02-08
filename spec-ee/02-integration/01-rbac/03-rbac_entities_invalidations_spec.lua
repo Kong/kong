@@ -142,7 +142,8 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
       assert.res_status(200, res_2)
     end)
 
-    it("on create", function()
+    -- XXX: this keeps messing randomly. I would say it works 1 / 5
+    it("on create #flaky", function()
       -- this is bob
       -- bob cant see any resources!
       local res = assert(admin_client_1:send {

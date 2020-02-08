@@ -24,7 +24,6 @@ describe("Admin API #off", function()
   lazy_setup(function()
     assert(helpers.start_kong({
       database = "off",
-      nginx_worker_processes = 8,
       mem_cache_size = "10m",
     }))
   end)
@@ -323,106 +322,6 @@ describe("Admin API #off", function()
 
       end)
 
-      it("succeeds with 200 and replaces previous cache if config fits in cache", function()
-        -- stress test to check for worker concurrency issues
-        for k = 1, 100 do
-          if client then
-            client:close()
-            client = helpers.admin_client()
-          end
-          local res = assert(client:send {
-            method = "POST",
-            path = "/config",
-            body = {
-              config = [[
-              {
-                "_format_version" : "1.1",
-                "consumers" : [
-                  {
-                    "username" : "previous",
-                  },
-                ],
-              }
-              ]],
-            },
-            headers = {
-              ["Content-Type"] = "application/json"
-            }
-          })
-
-          assert.response(res).has.status(201)
-          client:close()
-
-          local consumers = {}
-          for i = 1, 10 do
-            table.insert(consumers, [[
-              {
-                "username" : "bobby-]] .. k .. "-" .. i .. [[",
-              }
-            ]])
-          end
-          local config = [[
-          {
-            "_format_version" : "1.1",
-            "consumers" : [
-          ]] .. table.concat(consumers, ", ") .. [[
-            ]
-          }
-          ]]
-
-          client = assert(helpers.admin_client())
-          res = assert(client:send {
-            method = "POST",
-            path = "/config",
-            body = {
-              config = config,
-            },
-            headers = {
-              ["Content-Type"] = "application/json"
-            }
-          })
-
-          assert.response(res).has.status(201)
-
-          client:close()
-
-          helpers.wait_until(function()
-            client = assert(helpers.admin_client())
-            res = assert(client:send {
-              method = "GET",
-              path = "/consumers/previous",
-              headers = {
-                ["Content-Type"] = "application/json"
-              }
-            })
-            client:close()
-
-            return res.status == 404
-          end, WORKER_SYNC_TIMEOUT)
-
-          helpers.wait_until(function()
-            client = assert(helpers.admin_client())
-
-            res = assert(client:send {
-              method = "GET",
-              path = "/consumers/bobby-" .. k .. "-10",
-              headers = {
-                ["Content-Type"] = "application/json"
-              }
-            })
-            local body = res:read_body()
-            client:close()
-
-            if res.status ~= 200 then
-              return false
-            end
-
-            local json = cjson.decode(body)
-            return "bobby-" .. k .. "-10" == json.username
-          end, WORKER_SYNC_TIMEOUT)
-        end
-      end)
-
       it("accepts configuration as a YAML string", function()
         local res = assert(client:send {
           method = "POST",
@@ -546,6 +445,41 @@ describe("Admin API #off", function()
           message = [[declarative config is invalid: ]] ..
                     [[{error="failed parsing declarative configuration: ]] ..
                     [[expected an object"}]],
+          name = "invalid declarative configuration",
+        }, json)
+      end)
+
+      it("returns 400 on a validation error", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            _format_version: "1.1"
+            services:
+            - port: -12
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        local body = assert.response(res).has.status(400)
+        local json = cjson.decode(body)
+        assert.same({
+          code = 14,
+          fields = {
+            services = {
+              {
+                host = "required field missing",
+                port = "value should be between 0 and 65535",
+              }
+            }
+          },
+          message = [[declarative config is invalid: ]] ..
+                    [[{services={{host="required field missing",]] ..
+                    [[port="value should be between 0 and 65535"}}}]],
           name = "invalid declarative configuration",
         }, json)
       end)
@@ -697,5 +631,127 @@ describe("Admin API #off", function()
 
       client:close()
     end)
+  end)
+end)
+
+describe("Admin API (concurrency tests) #off", function()
+  local client
+
+  before_each(function()
+    assert(helpers.start_kong({
+      database = "off",
+      nginx_worker_processes = 8,
+      mem_cache_size = "10m",
+    }))
+
+    client = assert(helpers.admin_client())
+  end)
+
+  after_each(function()
+    helpers.stop_kong(nil, true)
+
+    if client then
+      client:close()
+    end
+  end)
+
+  it("succeeds with 200 and replaces previous cache if config fits in cache", function()
+    -- stress test to check for worker concurrency issues
+    for k = 1, 100 do
+      if client then
+        client:close()
+        client = helpers.admin_client()
+      end
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = [[
+          {
+            "_format_version" : "1.1",
+            "consumers" : [
+              {
+                "username" : "previous",
+              },
+            ],
+          }
+          ]],
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+      client:close()
+
+      local consumers = {}
+      for i = 1, 10 do
+        table.insert(consumers, [[
+          {
+            "username" : "bobby-]] .. k .. "-" .. i .. [[",
+          }
+        ]])
+      end
+      local config = [[
+      {
+        "_format_version" : "1.1",
+        "consumers" : [
+      ]] .. table.concat(consumers, ", ") .. [[
+        ]
+      }
+      ]]
+
+      client = assert(helpers.admin_client())
+      res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = config,
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+
+      client:close()
+
+      helpers.wait_until(function()
+        client = assert(helpers.admin_client())
+        res = assert(client:send {
+          method = "GET",
+          path = "/consumers/previous",
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        client:close()
+
+        return res.status == 404
+      end, WORKER_SYNC_TIMEOUT)
+
+      helpers.wait_until(function()
+        client = assert(helpers.admin_client())
+
+        res = assert(client:send {
+          method = "GET",
+          path = "/consumers/bobby-" .. k .. "-10",
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = res:read_body()
+        client:close()
+
+        if res.status ~= 200 then
+          return false
+        end
+
+        local json = cjson.decode(body)
+        return "bobby-" .. k .. "-10" == json.username
+      end, WORKER_SYNC_TIMEOUT)
+    end
   end)
 end)

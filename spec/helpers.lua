@@ -1,12 +1,12 @@
 ------------------------------------------------------------------
 -- Collection of utilities to help testing Kong features and plugins.
 --
--- @copyright Copyright 2016-2019 Kong Inc. All rights reserved.
+-- @copyright Copyright 2016-2020 Kong Inc. All rights reserved.
 -- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
 -- @module spec.helpers
 
 local BIN_PATH = "bin/kong"
-local TEST_CONF_PATH = "spec/kong_tests.conf"
+local TEST_CONF_PATH = os.getenv("KONG_SPEC_TEST_CONF_PATH") or "spec/kong_tests.conf"
 local CUSTOM_PLUGIN_PATH = "./spec/fixtures/custom_plugins/?.lua"
 local MOCK_UPSTREAM_PROTOCOL = "http"
 local MOCK_UPSTREAM_SSL_PROTOCOL = "https"
@@ -811,7 +811,14 @@ local function mock_reports_server(opts)
       local server = assert(socket.tcp())
       server:settimeout(360)
       assert(server:setoption("reuseaddr", true))
-      assert(server:bind(host, port))
+      local counter = 0
+      while not server:bind(host, port) do
+        counter = counter + 1
+        if counter > 5 then
+          error('could not bind successfully')
+        end
+        socket.sleep(1)
+      end
       assert(server:listen())
       local data = {}
       local handshake_done = false
@@ -867,7 +874,9 @@ local function mock_reports_server(opts)
   local sock = ngx.socket.tcp()
   sock:settimeout(0.01)
   while true do
-    if sock:connect(localhost, server_port) then
+    if not thread:alive() then
+      error('the reports thread died')
+    elseif sock:connect(localhost, server_port) then
       sock:send("\\START\n")
       local ok = sock:receive()
       sock:close()

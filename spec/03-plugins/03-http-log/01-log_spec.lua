@@ -5,6 +5,7 @@ local helpers    = require "spec.helpers"
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: http-log (log) [#" .. strategy .. "]", function()
     local proxy_client
+    local proxy_client_grpc, proxy_client_grpcs
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -113,6 +114,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "http-log",
         config   = {
           queue_size = 5,
+          flush_timeout = 0.1,
           http_endpoint = "http://" .. helpers.mock_upstream_host
                                     .. ":"
                                     .. helpers.mock_upstream_port
@@ -140,10 +142,59 @@ for _, strategy in helpers.each_strategy() do
       local test_error_log_path = helpers.test_conf.nginx_err_logs
       os.execute(":> " .. test_error_log_path)
 
+      local grpc_service = assert(bp.services:insert {
+        name = "grpc-service",
+        url = "grpc://localhost:15002",
+      })
+
+      local route7 = assert(bp.routes:insert {
+        service = grpc_service,
+        protocols = { "grpc" },
+        hosts = { "http_logging_grpc.test" },
+      })
+
+      bp.plugins:insert {
+        route = { id = route7.id },
+        name     = "http-log",
+        config   = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                    .. ":"
+                                    .. helpers.mock_upstream_port
+                                    .. "/post_log/grpc",
+          timeout = 1
+        },
+      }
+
+      local grpcs_service = assert(bp.services:insert {
+        name = "grpcs-service",
+        url = "grpcs://localhost:15003",
+      })
+
+      local route8 = assert(bp.routes:insert {
+        service = grpcs_service,
+        protocols = { "grpcs" },
+        hosts = { "http_logging_grpcs.test" },
+      })
+
+      bp.plugins:insert {
+        route = { id = route8.id },
+        name     = "http-log",
+        config   = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                    .. ":"
+                                    .. helpers.mock_upstream_port
+                                    .. "/post_log/grpcs",
+          timeout = 1
+        },
+      }
+
       assert(helpers.start_kong({
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
+
+      proxy_client_grpc = helpers.proxy_client_grpc()
+      proxy_client_grpcs = helpers.proxy_client_grpcs()
     end)
 
     lazy_teardown(function()
@@ -190,6 +241,78 @@ for _, strategy in helpers.each_strategy() do
       end, 10)
     end)
 
+    it("logs to HTTP (#grpc)", function()
+      -- Making the request
+      local ok, resp = proxy_client_grpc({
+        service = "hello.HelloService.SayHello",
+        body = {
+          greeting = "world!"
+        },
+        opts = {
+          ["-authority"] = "http_logging_grpc.test",
+        }
+      })
+      assert.truthy(ok)
+      assert.truthy(resp)
+
+      helpers.wait_until(function()
+        local client = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                  helpers.mock_upstream_port))
+        local res = assert(client:send {
+          method  = "GET",
+          path    = "/read_log/grpc",
+          headers = {
+            Accept = "application/json"
+          }
+        })
+        local raw = assert.res_status(200, res)
+        local body = cjson.decode(raw)
+
+        if #body.entries == 1 then
+          assert.same("127.0.0.1", body.entries[1].client_ip)
+          assert.same("application/grpc", body.entries[1].request.headers["content-type"])
+          assert.same("application/grpc", body.entries[1].response.headers["content-type"])
+          return true
+        end
+      end, 10)
+    end)
+
+    it("logs to HTTP (#grpcs)", function()
+      -- Making the request
+      local ok, resp = proxy_client_grpcs({
+        service = "hello.HelloService.SayHello",
+        body = {
+          greeting = "world!"
+        },
+        opts = {
+          ["-authority"] = "http_logging_grpcs.test",
+        }
+      })
+      assert.truthy(ok)
+      assert.truthy(resp)
+
+      helpers.wait_until(function()
+        local client = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                  helpers.mock_upstream_port))
+        local res = assert(client:send {
+          method  = "GET",
+          path    = "/read_log/grpcs",
+          headers = {
+            Accept = "application/json"
+          }
+        })
+        local raw = assert.res_status(200, res)
+        local body = cjson.decode(raw)
+
+        if #body.entries == 1 then
+          assert.same("127.0.0.1", body.entries[1].client_ip)
+          assert.same("application/grpc", body.entries[1].request.headers["content-type"])
+          assert.same("application/grpc", body.entries[1].response.headers["content-type"])
+          return true
+        end
+      end, 10)
+    end)
+
     it("logs to HTTPS", function()
       local res = assert(proxy_client:send({
         method  = "GET",
@@ -220,7 +343,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("gracefully handles layer 4 failures", function()
-    	-- setup: cleanup logs
+      -- setup: cleanup logs
       local test_error_log_path = helpers.test_conf.nginx_err_logs
       os.execute(":> " .. test_error_log_path)
 
@@ -324,6 +447,7 @@ for _, strategy in helpers.each_strategy() do
           name     = "http-log",
           config   = {
             queue_size = 5,
+            flush_timeout = 0.1,
             http_endpoint = "http://" .. helpers.mock_upstream_host
                                       .. ":"
                                       .. helpers.mock_upstream_port
@@ -341,6 +465,7 @@ for _, strategy in helpers.each_strategy() do
           name     = "http-log",
           config   = {
             queue_size = 5,
+            flush_timeout = 0.1,
             http_endpoint = "http://" .. helpers.mock_upstream_host
                                       .. ":"
                                       .. helpers.mock_upstream_port
@@ -397,10 +522,7 @@ for _, strategy in helpers.each_strategy() do
       it("logs to HTTP with a buffer", function()
         reset_log("http_queue")
 
-        local n = 100
-        if workers > 1 then
-          n = 500
-        end
+        local n = 200
 
         for i = 1, n do
           local client = helpers.proxy_client()
@@ -427,21 +549,19 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local count = assert.res_status(200, res)
+          client:close()
 
           if tonumber(count, 10) >= n then
             return true
           end
-        end, 30)
+        end, 60)
       end)
 
       it("does not mix buffers", function()
         reset_log("http_queue")
         reset_log("http_queue2")
 
-        local n = 100
-        if workers > 1 then
-          n = 500
-        end
+        local n = 200
 
         for i = 1, n do
           local client = helpers.proxy_client()
@@ -479,6 +599,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local raw = assert.res_status(200, res)
           local body = cjson.decode(raw)
+          client:close()
 
           local client2 = assert(helpers.http_client(helpers.mock_upstream_host,
                                                      helpers.mock_upstream_port))
@@ -491,19 +612,20 @@ for _, strategy in helpers.each_strategy() do
           })
           local raw2 = assert.res_status(200, res2)
           local body2 = cjson.decode(raw2)
+          client2:close()
 
           if body.count < n or body2.count < n then
             return false
           end
 
+          table.sort(body.entries, function(a, b)
+            return a.response.status < b.response.status
+          end)
+
           local i = 0
           for _, entry in ipairs(body.entries) do
             assert.same("127.0.0.1", entry.client_ip)
-
-            -- we only get a deterministic order with workers == 1
-            if workers == 1 then
-              assert.same(200 + ((i + 1) % 10), entry.response.status)
-            end
+            assert.same(200 + math.floor(i / (n / 10)), entry.response.status)
             i = i + 1
           end
 
@@ -511,14 +633,14 @@ for _, strategy in helpers.each_strategy() do
             return false
           end
 
-          local i = 0
+          table.sort(body2.entries, function(a, b)
+            return a.response.status < b.response.status
+          end)
+
+          i = 0
           for _, entry in ipairs(body2.entries) do
             assert.same("127.0.0.1", entry.client_ip)
-
-            -- we only get a deterministic order with workers == 1
-            if workers == 1 then
-              assert.same(300 + ((i + 1) % 10), entry.response.status)
-            end
+            assert.same(300 + math.floor(i / (n / 10)), entry.response.status)
             i = i + 1
           end
 
@@ -527,7 +649,7 @@ for _, strategy in helpers.each_strategy() do
           end
 
           return true
-        end, 30)
+        end, 60)
       end)
     end)
 
@@ -538,7 +660,11 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
 
       bp.plugins:insert {
         name     = "http-log",

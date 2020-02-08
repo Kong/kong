@@ -354,7 +354,7 @@ function _TARGETS:post_health(upstream_pk, target, address, is_healthy)
   end
 
   local health = is_healthy and 1 or 0
-  local packet = ("%s|%d|%d|%s|%s"):format(ip, port, health,
+  local packet = ("%s|%s|%d|%d|%s|%s"):format(hostname, ip or "", port, health,
                                            upstream.id,
                                            upstream.name)
 

@@ -43,7 +43,8 @@ return {
       DO $$
       BEGIN
         UPDATE "oauth2_tokens"
-           SET "ttl" = "created_at" + (COALESCE("expires_in", 0)::TEXT || ' seconds')::INTERVAL;
+           SET "ttl" = "created_at" + (COALESCE("expires_in", 0)::TEXT || ' seconds')::INTERVAL
+         WHERE "expires_in" > 0;
       EXCEPTION WHEN UNDEFINED_COLUMN OR UNDEFINED_TABLE THEN
         -- Do nothing, accept existing state
       END$$;

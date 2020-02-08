@@ -1,8 +1,8 @@
+local constants     = require "kong.constants"
 local lrucache      = require "resty.lrucache"
 local utils         = require "kong.tools.utils"
 local px            = require "resty.mediador.proxy"
 local bit           = require "bit"
-local reports       = require "kong.reports"
 
 
 local hostname_type = utils.hostname_type
@@ -19,6 +19,7 @@ local sort          = table.sort
 local upper         = string.upper
 local lower         = string.lower
 local find          = string.find
+local byte          = string.byte
 local sub           = string.sub
 local tonumber      = tonumber
 local ipairs        = ipairs
@@ -29,6 +30,7 @@ local max           = math.max
 local band          = bit.band
 local bor           = bit.bor
 
+local SLASH         = byte("/")
 
 local ERR           = ngx.ERR
 local WARN          = ngx.WARN
@@ -157,12 +159,8 @@ local function has_capturing_groups(subj)
 end
 
 
-local protocol_subsystem = {
-  http = "http",
-  https = "http",
-  tcp = "stream",
-  tls = "stream",
-}
+local protocol_subsystem = constants.PROTOCOLS_WITH_SUBSYSTEM
+
 
 local function marshall_route(r)
   local route        = r.route
@@ -1050,12 +1048,32 @@ function _M.new(routes)
     local marshalled_routes = {}
 
     for i = 1, #routes do
-      local route_t, err = marshall_route(routes[i])
-      if not route_t then
-        return nil, err
+
+      local paths = routes[i].route.paths
+      if paths ~= nil and #paths > 1 then
+        -- split routes by paths to sort properly
+        for j = 1, #paths do
+          local route = routes[i]
+          local index = #marshalled_routes + 1
+          local err
+
+          route.route.paths = { paths[j] }
+          marshalled_routes[index], err = marshall_route(route)
+          if not marshalled_routes[index] then
+            return nil, err
+          end
+        end
+
+      else
+        local index = #marshalled_routes + 1
+        local err
+
+        marshalled_routes[index], err = marshall_route(routes[i])
+        if not marshalled_routes[index] then
+          return nil, err
+        end
       end
 
-      marshalled_routes[i] = route_t
     end
 
     -- sort wildcard hosts and uri regexes since those rules
@@ -1215,22 +1233,6 @@ function _M.new(routes)
     ctx.dst_port       = dst_port or ""
     ctx.sni            = sni or ""
 
-    -- cache lookup (except for headers-matched Routes)
-
-    local cache_key = req_method .. "|" .. req_uri .. "|" .. req_host ..
-                      "|" .. ctx.src_ip .. "|" .. ctx.src_port ..
-                      "|" .. ctx.dst_ip .. "|" .. ctx.dst_port ..
-                      "|" .. ctx.sni
-
-    do
-      local match_t = cache:get(cache_key)
-      if match_t then
-        reports.report_cached_entity(match_t)
-
-        return match_t
-      end
-    end
-
     -- input sanitization for matchers
 
     -- hosts
@@ -1256,6 +1258,31 @@ function _M.new(routes)
     --
     -- determine which category this request *might* be targeting
 
+    -- header match
+
+    for _, header_name in ipairs(plain_indexes.headers) do
+      if req_headers[header_name] then
+        req_category = bor(req_category, MATCH_RULES.HEADER)
+        hits.header_name = header_name
+        break
+      end
+    end
+
+    -- cache lookup (except for headers-matched Routes)
+    -- if trigger headers match rule, ignore routes cache
+
+    local cache_key = req_method .. "|" .. req_uri .. "|" .. req_host ..
+                      "|" .. ctx.src_ip .. "|" .. ctx.src_port ..
+                      "|" .. ctx.dst_ip .. "|" .. ctx.dst_port ..
+                      "|" .. ctx.sni
+
+    do
+      local match_t = cache:get(cache_key)
+      if match_t and hits.header_name == nil then
+        return match_t
+      end
+    end
+
     -- host match
 
     if plain_indexes.hosts[ctx.req_host] then
@@ -1277,41 +1304,34 @@ function _M.new(routes)
       end
     end
 
-    -- header match
+    -- uri match
 
-    for _, header_name in ipairs(plain_indexes.headers) do
-      if req_headers[header_name] then
-        req_category = bor(req_category, MATCH_RULES.HEADER)
-        hits.header_name = header_name
+    for i = 1, #regex_uris do
+      local from, _, err = re_find(req_uri, regex_uris[i].regex, "ajo")
+      if err then
+        log(ERR, "could not evaluate URI regex: ", err)
+        return
+      end
+
+      if from then
+        hits.uri     = regex_uris[i].value
+        req_category = bor(req_category, MATCH_RULES.URI)
         break
       end
     end
 
-    -- uri match
+    if not hits.uri then
+      if plain_indexes.uris[req_uri] then
+        hits.uri     = req_uri
+        req_category = bor(req_category, MATCH_RULES.URI)
 
-    if plain_indexes.uris[req_uri] then
-      req_category = bor(req_category, MATCH_RULES.URI)
-
-    else
-      for i = 1, #prefix_uris do
-        if find(req_uri, prefix_uris[i].value, nil, true) == 1 then
-          hits.uri     = prefix_uris[i].value
-          req_category = bor(req_category, MATCH_RULES.URI)
-          break
-        end
-      end
-
-      for i = 1, #regex_uris do
-        local from, _, err = re_find(req_uri, regex_uris[i].regex, "ajo")
-        if err then
-          log(ERR, "could not evaluate URI regex: ", err)
-          return
-        end
-
-        if from then
-          hits.uri     = regex_uris[i].value
-          req_category = bor(req_category, MATCH_RULES.URI)
-          break
+      else
+        for i = 1, #prefix_uris do
+          if find(req_uri, prefix_uris[i].value, nil, true) == 1 then
+            hits.uri     = prefix_uris[i].value
+            req_category = bor(req_category, MATCH_RULES.URI)
+            break
+          end
         end
       end
     end
@@ -1417,21 +1437,72 @@ function _M.new(routes)
               local request_postfix = matches.uri_postfix or sub(req_uri, 2, -1)
               local upstream_base = upstream_url_t.path or "/"
 
-              if matched_route.strip_uri then
-                -- we drop the matched part, replacing it with the upstream path
-                if sub(upstream_base, -1, -1) == "/" and
-                   sub(request_postfix, 1, 1) == "/" then
-                  -- double "/", so drop the first
-                  upstream_uri = sub(upstream_base, 1, -2) .. request_postfix
+              if matched_route.route.path_handling == "v1" then
+                if matched_route.strip_uri then
+                  -- we drop the matched part, replacing it with the upstream path
+                  if byte(upstream_base, -1) == SLASH and
+                     byte(request_postfix, 1) == SLASH then
+                    -- double "/", so drop the first
+                    upstream_uri = sub(upstream_base, 1, -2) .. request_postfix
+
+                  else
+                    upstream_uri = upstream_base .. request_postfix
+                  end
 
                 else
-                  upstream_uri = upstream_base .. request_postfix
+                  -- we retain the incoming path, just prefix it with the upstream
+                  -- path, but skip the initial slash
+                  upstream_uri = upstream_base .. sub(req_uri, 2, -1)
                 end
 
-              else
-                -- we retain the incoming path, just prefix it with the upstream
-                -- path, but skip the initial slash
-                upstream_uri = upstream_base .. sub(req_uri, 2, -1)
+              else -- matched_route.route.path_handling == "v0"
+                if byte(upstream_base, -1) == SLASH then
+                  -- ends with / and strip_uri = true
+                  if matched_route.strip_uri then
+                    if request_postfix == "" then
+                      if upstream_base == "/" then
+                        upstream_uri = "/"
+                      elseif byte(req_uri, -1) == SLASH then
+                        upstream_uri = upstream_base
+                      else
+                        upstream_uri = sub(upstream_base, 1, -2)
+                      end
+                    elseif byte(request_postfix, 1, 1) == SLASH then
+                      -- double "/", so drop the first
+                      upstream_uri = sub(upstream_base, 1, -2) .. request_postfix
+                    else -- ends with / and strip_uri = true, no double slash
+                      upstream_uri = upstream_base .. request_postfix
+                    end
+
+                  else -- ends with / and strip_uri = false
+                    -- we retain the incoming path, just prefix it with the upstream
+                    -- path, but skip the initial slash
+                    upstream_uri = upstream_base .. sub(req_uri, 2)
+                  end
+
+                else -- does not end with /
+                  -- does not end with / and strip_uri = true
+                  if matched_route.strip_uri then
+                    if request_postfix == "" then
+                      if #req_uri > 1 and byte(req_uri, -1) == SLASH then
+                        upstream_uri = upstream_base .. "/"
+                      else
+                        upstream_uri = upstream_base
+                      end
+                    elseif byte(request_postfix, 1, 1) == SLASH then
+                      upstream_uri = upstream_base .. request_postfix
+                    else
+                      upstream_uri = upstream_base .. "/" .. request_postfix
+                    end
+
+                  else -- does not end with / and strip_uri = false
+                    if req_uri == "/" then
+                      upstream_uri = upstream_base
+                    else
+                      upstream_uri = upstream_base .. req_uri
+                    end
+                  end
+                end
               end
 
               -- preserve_host header logic

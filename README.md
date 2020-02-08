@@ -55,6 +55,8 @@ transformations, and more through plugins.
 - **Serverless**: Invoke and secure AWS Lambda or OpenWhisk functions directly
   from Kong.
 - **WebSockets**: Communicate to your upstream services via WebSockets.
+- **gRPC**: Communicate to your gRPC services and observe your traffic with logging
+  and observability plugins
 - **OAuth2.0**: Easily add OAuth2.0 authentication to your APIs.
 - **Logging**: Log requests and responses to your system over HTTP, TCP, UDP,
   or to disk.
@@ -243,7 +245,7 @@ Enterprise](https://konghq.com/kong-enterprise-edition/).
 ## License
 
 ```
-Copyright 2016-2019 Kong Inc.
+Copyright 2016-2020 Kong Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

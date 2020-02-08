@@ -1,6 +1,10 @@
 # Table of Contents
 
 
+- [1.5.0](#150)
+- [1.4.3](#143)
+- [1.4.2](#142)
+- [1.4.1](#141)
 - [1.4.0](#140)
 - [1.3.0](#130)
 - [1.2.2](#122)
@@ -31,6 +35,169 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+
+## [1.5.0]
+
+> Released 2020/01/20
+
+Kong 1.5.0 is the last release in the Kong 1.x series, and it was designed to
+help Kong 0.x users upgrade out of that series and into more current releases.
+Kong 1.5.0 includes two features designed to ease the transition process: the
+new `kong migrations migrate-apis` commands, to help users migrate away from
+old `apis` entities which were deprecated in Kong 0.13.0 and removed in Kong
+1.0.0, and a compatibility flag to provide better router compatibility across
+Kong versions.
+
+### Additions
+
+##### Core
+
+  - New `path_handling` attribute in Routes entities, which selects the behavior
+    the router will have when combining the Service Path, the Route Path, and
+    the Request path into a single path sent to the upstream. This attribute
+    accepts two values, `v0` or `v1`, making the router behave as in Kong 0.x or
+    Kong 1.x, respectively. [#5360](https://github.com/Kong/kong/pull/5360)
+
+##### CLI
+
+  - New command `kong migrations migrate-apis`, which converts any existing
+    `apis` from an old Kong 0.x installation and generates Route, Service and
+    Plugin entities with equivalent configurations. The converted routes are
+    set to use `path_handling = v0`, to ensure compatibility.
+    [#5176](https://github.com/Kong/kong/pull/5176)
+
+### Fixes
+
+##### Core
+
+  - Fixed the routing prioritization that could lead to a match in a lower
+    priority path. [#5443](https://github.com/Kong/kong/pull/5443)
+  - Changes in router or plugins entities while the rebuild is in progress now
+    are treated in the next rebuild, avoiding to build invalid iterators.
+    [#5431](https://github.com/Kong/kong/pull/5431)
+  - Fixed invalid incorrect calculation of certificate validity period.
+    [#5449](https://github.com/Kong/kong/pull/5449) -- Thanks
+    [Bevisy](https://github.com/Bevisy) for the patch!
+
+
+[Back to TOC](#table-of-contents)
+
+
+## [1.4.3]
+
+> Released 2020/01/09
+
+:warning: This release includes a security fix to address potentially
+sensitive information being written to the error log file. This affects
+certain uses of the Admin API for DB-less mode, described below.
+
+This is a patch release in the 1.4 series, and as such, strictly contains
+bugfixes. There are no new features nor breaking changes.
+
+### Fixes
+
+##### Core
+
+  - Fix the detection of the need for balancer updates
+    when deleting targets
+    [#5352](https://github.com/kong/kong/issues/5352) --
+    Thanks [zeeshen](https://github.com/zeeshen) for the patch!
+  - Fix behavior of longest-path criteria when matching routes
+    [#5383](https://github.com/kong/kong/issues/5383)
+  - Fix incorrect use of cache when using header-based routing
+    [#5267](https://github.com/kong/kong/issues/5267) --
+    Thanks [marlonfan](https://github.com/marlonfan) for the patch!
+
+##### Admin API
+
+  - Do not make a debugging dump of the declarative config input into
+    `error.log` when posting it with `/config` and using `_format_version`
+    as a top-level parameter (instead of embedded in the `config` parameter).
+    [#5411](https://github.com/kong/kong/issues/5411)
+  - Fix incorrect behavior of PUT for /certificates
+    [#5321](https://github.com/kong/kong/issues/5321)
+
+##### Plugins
+
+  - acl: fixed an issue where getting ACLs by group failed when multiple
+    consumers share the same group
+    [#5322](https://github.com/kong/kong/issues/5322)
+
+
+[Back to TOC](#table-of-contents)
+
+
+## [1.4.2]
+
+> Released 2019/12/10
+
+This is another patch release in the 1.4 series, and as such, strictly
+contains bugfixes. There are no new features nor breaking changes.
+
+### Fixes
+
+##### Core
+
+  - Fixes some corner cases in the balancer behavior
+    [#5318](https://github.com/Kong/kong/pull/5318)
+
+##### Plugins
+
+  - http-log: disable queueing when using the default
+    settings, to avoid memory consumption issues
+    [#5323](https://github.com/Kong/kong/pull/5323)
+  - prometheus: restore compatibility with version 0.6.0
+    [#5303](https://github.com/Kong/kong/pull/5303)
+
+
+[Back to TOC](#table-of-contents)
+
+
+## [1.4.1]
+
+> Released 2019/12/03
+
+This is a patch release in the 1.4 series, and as such, strictly contains
+bugfixes. There are no new features nor breaking changes.
+
+### Fixes
+
+##### Core
+
+  - Fixed a memory leak in the balancer
+    [#5229](https://github.com/Kong/kong/pull/5229) --
+    Thanks [zeeshen](https://github.com/zeeshen) for the patch!
+  - Removed arbitrary limit on worker connections.
+    [#5148](https://github.com/Kong/kong/pull/5148)
+  - Fixed `preserve_host` behavior for gRPC routes
+    [#5225](https://github.com/Kong/kong/pull/5225)
+  - Fix migrations for ttl for OAuth2 tokens
+    [#5253](https://github.com/Kong/kong/pull/5253)
+  - Improve handling of errors when creating balancers
+    [#5284](https://github.com/Kong/kong/pull/5284)
+
+##### CLI
+
+  - Fixed an issue with `kong config db_export` when reading
+    entities that are ttl-enabled and whose ttl value is `null`.
+    [#5185](https://github.com/Kong/kong/pull/5185)
+
+##### Admin API
+
+  - Various fixes for Admin API behavior
+    [#5174](https://github.com/Kong/kong/pull/5174),
+    [#5178](https://github.com/Kong/kong/pull/5178),
+    [#5191](https://github.com/Kong/kong/pull/5191),
+    [#5186](https://github.com/Kong/kong/pull/5186)
+
+##### Plugins
+
+  - http-log: do not impose a retry delay on successful sends
+    [#5282](https://github.com/Kong/kong/pull/5282)
+
+
+[Back to TOC](#table-of-contents)
 
 ## [1.4.0]
 
@@ -4218,6 +4385,10 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[1.5.0]: https://github.com/Kong/kong/compare/1.4.3...1.5.0
+[1.4.3]: https://github.com/Kong/kong/compare/1.4.2...1.4.3
+[1.4.2]: https://github.com/Kong/kong/compare/1.4.1...1.4.2
+[1.4.1]: https://github.com/Kong/kong/compare/1.4.0...1.4.1
 [1.4.0]: https://github.com/Kong/kong/compare/1.3.0...1.4.0
 [1.3.0]: https://github.com/Kong/kong/compare/1.2.2...1.3.0
 [1.2.2]: https://github.com/Kong/kong/compare/1.2.1...1.2.2

@@ -10,6 +10,7 @@ local UDP_PORT = 20000
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: statsd (log) [#" .. strategy .. "]", function()
     local proxy_client
+    local proxy_client_grpc
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -235,12 +236,49 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      -- grpc
+      local grpc_routes = {}
+      for i = 1, 2 do
+        local service = bp.services:insert {
+          url = "grpc://localhost:15002",
+          name     = fmt("grpc_statsd%s", i)
+        }
+        grpc_routes[i] = bp.routes:insert {
+          hosts   = { fmt("grpc_logging%d.com", i) },
+          service = service
+        }
+      end
+
+      bp.statsd_plugins:insert {
+        route = { id = grpc_routes[1].id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+        },
+      }
+
+      bp.statsd_plugins:insert {
+        route = { id = grpc_routes[2].id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          metrics  = {
+            {
+              name        = "latency",
+              stat_type   = "gauge",
+              sample_rate = 1,
+            }
+          },
+        },
+      }
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
 
       proxy_client = helpers.proxy_client()
+      proxy_client_grpc = helpers.proxy_client_grpc()
     end)
 
     lazy_teardown(function()
@@ -473,6 +511,53 @@ for _, strategy in helpers.each_strategy() do
         local ok, res = thread:join()
         assert.True(ok)
         assert.matches("kong%.statsd12%.latency:%d+|g", res)
+      end)
+    end)
+    describe("metrics #grpc", function()
+      it("logs over UDP with default metrics", function()
+        local thread = helpers.udp_server(UDP_PORT, 8)
+
+        local ok, resp = proxy_client_grpc({
+          service = "hello.HelloService.SayHello",
+          body = {
+            greeting = "world!"
+          },
+          opts = {
+            ["-authority"] = "grpc_logging1.com",
+          }
+        })
+        assert.truthy(ok)
+        assert.truthy(resp)
+
+        local ok, metrics = thread:join()
+        assert.True(ok)
+        assert.contains("kong.grpc_statsd1.request.count:1|c", metrics)
+        assert.contains("kong.grpc_statsd1.latency:%d+|ms", metrics, true)
+        assert.contains("kong.grpc_statsd1.request.size:%d+|ms", metrics, true)
+        assert.contains("kong.grpc_statsd1.request.status.200:1|c", metrics)
+        assert.contains("kong.grpc_statsd1.request.status.total:1|c", metrics)
+        assert.contains("kong.grpc_statsd1.response.size:%d+|ms", metrics, true)
+        assert.contains("kong.grpc_statsd1.upstream_latency:%d*|ms", metrics, true)
+        assert.contains("kong.grpc_statsd1.kong_latency:%d*|ms", metrics, true)
+      end)
+      it("latency as gauge", function()
+        local thread = helpers.udp_server(UDP_PORT)
+
+        local ok, resp = proxy_client_grpc({
+          service = "hello.HelloService.SayHello",
+          body = {
+            greeting = "world!"
+          },
+          opts = {
+            ["-authority"] = "grpc_logging2.com",
+          }
+        })
+        assert.truthy(ok)
+        assert.truthy(resp)
+
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.matches("kong%.grpc_statsd2%.latency:%d+|g", res)
       end)
     end)
   end)

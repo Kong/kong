@@ -1047,7 +1047,6 @@ do
     return self:escape_literal(literal)
   end
 
-
   function CassandraConnector:run_api_migrations(opts)
     local conn = self:get_stored_connection()
     if not conn then
@@ -1060,7 +1059,6 @@ do
       migrated = {},
       skipped  = {},
       failed   = {},
-      script   = nil,
     }
 
     local constants = require "kong.constants"
@@ -1172,7 +1170,6 @@ do
         end
       end
     end
-
 
     local migrations = { n = apis.n }
     for i = 1, apis.n do
@@ -1324,6 +1321,7 @@ do
         regex_priority = regex_priority,
         strip_path     = strip_path,
         preserve_host  = preserve_host,
+        path_handling  = "v0",
       }
 
       migrations[i] = {
@@ -1342,9 +1340,6 @@ do
     if opts then
       force = not not opts.force
     end
-
-    --TODO: not implemented for Cassandra
-    --local migration_script = {}
 
     for i = 1, migrations.n do
       local migration = migrations[i]
@@ -1380,8 +1375,8 @@ do
             escape(service.read_timeout, "integer"),
           },
         }, { [[
-  INSERT INTO routes (partition, id, created_at, updated_at, service_id, protocols, methods, hosts, paths, regex_priority, strip_path, preserve_host)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]], {
+  INSERT INTO routes (partition, id, created_at, updated_at, service_id, protocols, methods, hosts, paths, regex_priority, strip_path, preserve_host, path_handling)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]], {
             escape("routes", "string"),
             escape(route.id, "uuid"),
             escape(route.created_at, "timestamp"),
@@ -1394,6 +1389,7 @@ do
             escape(route.regex_priority, "integer"),
             escape(route.strip_path, "boolean"),
             escape(route.preserve_host, "boolean"),
+            escape(route.path_handling, "string"),
           },
         },
       }
@@ -1552,9 +1548,6 @@ do
     if failed > 0 then
       log("%d/%d migrations failed", skipped, migrations.n)
     end
-
-    --migration_script = concat(migration_script, "\n\n")
-    --results.script = migration_script
 
     return results
   end
