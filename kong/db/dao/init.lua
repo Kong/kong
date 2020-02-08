@@ -1032,7 +1032,7 @@ function DAO:select_all(fields, options)
     validate_options_type(options)
 
     local errors
-    ok, errors = validate_options_value(options, schema, "select")
+    ok, errors = validate_options_value(self, options)
     if not ok then
       local err_t = self.errors:invalid_options(errors)
       return nil, tostring(err_t), err_t

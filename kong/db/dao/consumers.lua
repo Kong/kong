@@ -9,8 +9,9 @@ local next         = next
 local fmt          = string.format
 local match        = string.match
 
-local function validate_options_value(options, schema, context)
+local function validate_options_value(self, options)
   local errors = {}
+  local schema = self.schema
 
   if schema.ttl == true and options.ttl ~= nil then
     if floor(options.ttl) ~= options.ttl or
@@ -55,7 +56,7 @@ end
 
 function Consumers:page_by_type(db, size, offset, options)
   if options ~= nil then
-    local ok, errors = validate_options_value(options, self.schema, "select")
+    local ok, errors = validate_options_value(self, options)
     if not ok then
       local err_t = self.errors:invalid_options(errors)
       return nil, tostring(err_t), err_t
