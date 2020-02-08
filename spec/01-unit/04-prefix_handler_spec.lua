@@ -713,9 +713,9 @@ describe("NGINX conf compiler", function()
       }))
 
       -- Workaround for random iteration of pairs in find_dynamic_keys
-      table.sort(conf.nginx_http_upstream_directives,
+      table.sort(conf.nginx_proxy_directives,
         function(a, b) return a.name <= b.name end)
-      table.sort(in_prefix_kong_conf.nginx_http_upstream_directives,
+      table.sort(in_prefix_kong_conf.nginx_proxy_directives,
         function(a, b) return a.name <= b.name end)
 
       assert.same(conf, in_prefix_kong_conf)
