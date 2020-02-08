@@ -40,7 +40,7 @@ describe("admin_gui template", function()
 
   describe("prepare_admin() - proxied", function()
     local mock_prefix  = "servroot"
-    local idx_filename = mock_prefix .. "/gui/kconfig.js"
+    local idx_filename = mock_prefix .. "/gui_config/kconfig.js"
 
     local conf = {
       prefix = mock_prefix,
@@ -147,7 +147,7 @@ describe("admin_gui template", function()
 
   describe("prepare_admin() - not proxied", function()
     local mock_prefix  = "servroot"
-    local idx_filename = mock_prefix .. "/gui/kconfig.js"
+    local idx_filename = mock_prefix .. "/gui_config/kconfig.js"
 
     local conf = {
       prefix = mock_prefix,

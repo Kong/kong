@@ -281,7 +281,7 @@ server {
     }
 
     location = /kconfig.js {
-        root gui;
+        root gui_config;
         expires -1;
     }
 }
