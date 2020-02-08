@@ -12,7 +12,7 @@ describe(".flush", function()
       tracing_write_endpoint = "mock_endpoint",
     })
 
-    ngx.get_phase = function() return "foo" end
+    ngx.get_phase = function() return "foo" end -- luacheck: ignore
   end)
 
   it("flushes traces via configured write strategy/endpoint", function()

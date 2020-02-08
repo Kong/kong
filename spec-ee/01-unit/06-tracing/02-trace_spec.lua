@@ -12,7 +12,7 @@ describe(".trace", function()
         generate_trace_details = true,
       })
 
-      ngx.get_phase = function() return "foo" end
+      ngx.get_phase = function() return "foo" end -- luacheck: ignore
     end)
 
     it("creates a trace object", function()
@@ -156,7 +156,7 @@ describe(".trace", function()
 
     describe("in an invalid phase", function()
       setup(function()
-        ngx.get_phase = function() return "timer" end
+        ngx.get_phase = function() return "timer" end -- luacheck: ignore
       end)
 
       it("creates an empty object", function()
@@ -175,7 +175,7 @@ describe(".trace", function()
         tracing_time_threshold = 0,
       })
 
-      ngx.get_phase = function() return "foo" end
+      ngx.get_phase = function() return "foo" end -- luacheck: ignore
     end)
 
     it("creates a trace object with a configured type", function()
@@ -200,7 +200,7 @@ describe(".trace", function()
         generate_trace_data = false
       })
 
-      ngx.get_phase = function() return "foo" end
+      ngx.get_phase = function() return "foo" end -- luacheck: ignore
     end)
 
     it("creates a trace object without any initialized data", function()
