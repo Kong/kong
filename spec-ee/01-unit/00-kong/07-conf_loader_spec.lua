@@ -46,7 +46,7 @@ describe("Configuration loader - enterprise", function()
     assert.equal(8002, conf.admin_gui_listeners[1].port)
     assert.equal(false, conf.admin_gui_listeners[1].ssl)
     assert.equal(false, conf.admin_gui_listeners[1].http2)
-    assert.equal("0.0.0.0:8000", conf.proxy_listeners[1].listener)
+    assert.equal("0.0.0.0:8000 reuseport backlog=16384", conf.proxy_listeners[1].listener)
 
     assert.equal("0.0.0.0", conf.admin_gui_listeners[2].ip)
     assert.equal(8445, conf.admin_gui_listeners[2].port)
