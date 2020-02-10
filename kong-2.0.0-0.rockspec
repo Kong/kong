@@ -28,6 +28,7 @@ dependencies = {
   "lua-resty-iputils == 0.3.0",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
+  "lua-protobuf == 0.3.1-0",
   "lua-resty-dns-client == 4.1.2",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-mediador == 0.1.2",
@@ -230,7 +231,7 @@ build = {
 
     ["kong.plugins.grpc-web.handler"] = "kong/plugins/grpc-web/handler.lua",
     ["kong.plugins.grpc-web.schema"] = "kong/plugins/grpc-web/schema.lua",
-    ["kong.plugins.grpc-web.frames"] = "kong/plugins/grpc-web/frames.lua",
+    ["kong.plugins.grpc-web.deco"] = "kong/plugins/grpc-web/deco.lua",
 
     ["kong.plugins.log-serializers.basic"] = "kong/plugins/log-serializers/basic.lua",
 

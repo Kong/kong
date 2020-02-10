@@ -3,7 +3,15 @@ return {
   fields = {
     { config = {
       type = "record",
-      fields = {},
+      fields = {
+        {
+          proto = {
+            type = "string",
+            required = false,
+            default = nil,
+          },
+        },
+      },
     }, },
   },
 }

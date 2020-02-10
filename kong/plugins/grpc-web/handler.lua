@@ -1,13 +1,13 @@
 -- Copyright (c) Kong Inc. 2020
 
-local to_hex = require "resty.string".to_hex
-local frames = require "kong.plugins.grpc-web.frames"
+local deco = require "kong.plugins.grpc-web.deco"
 
 local ngx = ngx
 local kong = kong
 
 local string_format = string.format
 local ngx_req_get_method = ngx.req.get_method
+local kong_request_get_path = kong.request.get_path
 local kong_request_get_header = kong.request.get_header
 local kong_request_get_raw_body = kong.request.get_raw_body
 local kong_response_exit = kong.response.exit
@@ -23,7 +23,6 @@ local grpc_web = {
 
 
 function grpc_web:access(conf)
---   kong.log.debug("access method: ", ngx.req.get_method())
   kong_response_set_header("Access-Control-Allow-Origin", "*")
 
   if ngx_req_get_method() == "OPTIONS" then
@@ -35,28 +34,21 @@ function grpc_web:access(conf)
     })
   end
 
-  local body_frames = frames.new(
-      kong_request_get_header("Content-Type"),
-      kong_request_get_raw_body())
 
-  kong.ctx.plugin.framer = body_frames
+  local dec, err = deco.new(
+    kong_request_get_header("Content-Type"),
+    kong_request_get_path(), conf.proto)
 
-  local new_req, n = {}, 0
-
-  for msg_type, msg in body_frames:iter() do
-    if msg_type == "pb" then
-      n = n + 1
-      new_req[n] = msg
-
-    elseif msg_type == "trailer" then
-      kong.log.debug("trailer: ", to_hex(msg))
-      -- add to headers? hope they get into trailers?
-    end
+  if not dec then
+    kong.log.err(err)
+    return kong_response_exit(500, err, {})
   end
+
+  kong.ctx.plugin.dec = dec
 
   kong_service_request_set_header("Content-Type", "application/grpc")
   kong_service_request_set_header("TE", "trailers")
-  kong_service_request_set_raw_body(table.concat(new_req))
+  kong_service_request_set_raw_body(dec:upstream(kong_request_get_raw_body()))
 end
 
 
@@ -65,21 +57,28 @@ function grpc_web:header_filter(conf)
     return
   end
 
-  kong_response_set_header("Content-Type", kong.ctx.plugin.framer.mimetype)
+  local dec = kong.ctx.plugin.dec
+  if dec then
+    kong_response_set_header("Content-Type", dec.mimetype)
+  end
 end
+
 
 function grpc_web:body_filter(conf)
   if ngx_req_get_method() ~= "POST" then
     return
   end
+  local dec = kong.ctx.plugin.dec
+  if not dec then
+    return
+  end
 
   local chunk, eof = ngx.arg[1], ngx.arg[2]
 
-  local framer = kong.ctx.plugin.framer
-  chunk = framer:encode(chunk)
+  chunk = dec:downstream(chunk)
 
-  if eof then
-    chunk = chunk .. framer:frame(0x80, string_format(
+  if eof and dec.framing == "grpc" then
+    chunk = chunk .. dec:frame(0x80, string_format(
       "grpc-status:%s\r\ngrpc-message:%s\r\n",
       ngx.var["sent_trailer_grpc_status"] or "0",
       ngx.var["sent_trailer_grpc_message"] or ""))
