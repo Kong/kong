@@ -17,6 +17,10 @@ local REGIONS = {
   "us-west-1", "us-west-2",
 }
 
+-- symmetrically encrypt IAM access keys, if configured. this is available
+-- in Kong Enterprise: https://docs.konghq.com/enterprise/1.3-x/db-encryption/
+local ENCRYPTED = kong.configuration.keyring_enabled and true or nil
+
 return {
   name = "aws-lambda",
   fields = {
@@ -36,9 +40,11 @@ return {
         } },
         { aws_key = {
           type = "string",
+          encrypted = ENCRYPTED,
         } },
         { aws_secret = {
           type = "string",
+          encrypted = ENCRYPTED,
         } },
         { aws_region = {
           type = "string",
