@@ -6,9 +6,13 @@ local ngx = ngx
 local kong = kong
 
 local string_format = string.format
-local ngx_req_get_method = ngx.req.get_method
+
+local ngx_arg = ngx.arg
+local ngx_var = ngx.var
+
 local kong_request_get_path = kong.request.get_path
 local kong_request_get_header = kong.request.get_header
+local kong_request_get_method = kong.request.get_method
 local kong_request_get_raw_body = kong.request.get_raw_body
 local kong_response_exit = kong.response.exit
 local kong_response_set_header = kong.response.set_header
@@ -17,21 +21,23 @@ local kong_service_request_set_raw_body = kong.service.request.set_raw_body
 
 
 local grpc_web = {
-  PRIORITY = 1,
+  PRIORITY = 3,
   VERSION = '0.1.0',
 }
 
 
+local CORS_HEADERS = {
+  ["Content-Type"] = "application/grpc-web-text+proto",
+  ["Access-Control-Allow-Origin"] = "*",
+  ["Access-Control-Allow-Methods"] = "POST",
+  ["Access-Control-Allow-Headers"] = "content-type,x-grpc-web,x-user-agent",
+}
+
 function grpc_web:access(conf)
   kong_response_set_header("Access-Control-Allow-Origin", "*")
 
-  if ngx_req_get_method() == "OPTIONS" then
-    return kong_response_exit(200, "OK", {
-      ["Content-Type"] = "application/grpc-web-text+proto",
-      ["Access-Control-Allow-Origin"] = "*",
-      ["Access-Control-Allow-Methods"] = "POST",
-      ["Access-Control-Allow-Headers"] = "content-type,x-grpc-web,x-user-agent",
-    })
+  if kong_request_get_method() == "OPTIONS" then
+    return kong_response_exit(200, "OK", CORS_HEADERS)
   end
 
 
@@ -41,7 +47,7 @@ function grpc_web:access(conf)
 
   if not dec then
     kong.log.err(err)
-    return kong_response_exit(500, err, {})
+    return kong_response_exit(400, err)
   end
 
   kong.ctx.plugin.dec = dec
@@ -53,7 +59,7 @@ end
 
 
 function grpc_web:header_filter(conf)
-  if ngx_req_get_method() == "OPTIONS" then
+  if kong_request_get_method() == "OPTIONS" then
     return
   end
 
@@ -65,7 +71,7 @@ end
 
 
 function grpc_web:body_filter(conf)
-  if ngx_req_get_method() ~= "POST" then
+  if kong_request_get_method() ~= "POST" then
     return
   end
   local dec = kong.ctx.plugin.dec
@@ -73,18 +79,18 @@ function grpc_web:body_filter(conf)
     return
   end
 
-  local chunk, eof = ngx.arg[1], ngx.arg[2]
+  local chunk, eof = ngx_arg[1], ngx_arg[2]
 
   chunk = dec:downstream(chunk)
 
   if eof and dec.framing == "grpc" then
     chunk = chunk .. dec:frame(0x80, string_format(
       "grpc-status:%s\r\ngrpc-message:%s\r\n",
-      ngx.var["sent_trailer_grpc_status"] or "0",
-      ngx.var["sent_trailer_grpc_message"] or ""))
+      ngx_var["sent_trailer_grpc_status"] or "0",
+      ngx_var["sent_trailer_grpc_message"] or ""))
   end
 
-  ngx.arg[1] = chunk
+  ngx_arg[1] = chunk
 end
 
 
