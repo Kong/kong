@@ -169,6 +169,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       local service10   = admin_api.services:insert()
       local service11   = admin_api.services:insert()
       local service12   = admin_api.services:insert()
+      local service13   = admin_api.services:insert()
 
       local route1 = assert(admin_api.routes:insert({
         hosts     = { "oauth2.com" },
@@ -246,6 +247,12 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         hosts       = { "oauth2_12.com" },
         protocols   = { "http", "https" },
         service     = service12,
+      }))
+
+      local route13 = assert(admin_api.routes:insert({
+        hosts       = { "oauth2_13.com" },
+        protocols   = { "http", "https" },
+        service     = service13,
       }))
 
       admin_api.oauth2_plugins:insert({
@@ -342,6 +349,14 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           global_credentials = true,
           auth_header_name   = "custom_header_name",
           hide_credentials   = true,
+        },
+      })
+
+      admin_api.oauth2_plugins:insert({
+        route = { id = route13.id },
+        config   = {
+          scopes    = { "email", "profile", "user.email" },
+          anonymous = anonymous_user.username,
         },
       })
 
@@ -1959,6 +1974,18 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.are.equal("true", body.headers["x-anonymous-consumer"])
         assert.equal('no-body', body.headers["x-consumer-username"])
       end)
+      it("works with wrong credentials and username in anonymous", function()
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/request",
+          headers = {
+            ["Host"] = "oauth2_13.com"
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.are.equal("true", body.headers["x-anonymous-consumer"])
+        assert.equal('no-body', body.headers["x-consumer-username"])
+      end)
       it("errors when anonymous user doesn't exist", function()
         finally(function()
           if proxy_ssl_client then
@@ -2644,7 +2671,6 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           enable_authorization_code = true,
           mandatory_scope = false,
           provision_key = "provision123",
-          anonymous = "",
           global_credentials = false,
           refresh_token_ttl = 2
         }
@@ -2663,7 +2689,6 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           enable_authorization_code = true,
           mandatory_scope = false,
           provision_key = "provision123",
-          anonymous = "",
           global_credentials = false,
           refresh_token_ttl = 0
         }
