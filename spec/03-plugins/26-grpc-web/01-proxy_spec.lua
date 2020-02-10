@@ -47,7 +47,7 @@ for _, strategy in helpers.each_strategy() do
         route = route1,
         name = "grpc-web",
         config = {
-          proto = "spec/fixtures/hello.proto",
+          proto = "spec/fixtures/grpc/hello.proto",
         },
       })
 
@@ -80,7 +80,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_nil(err)
     end)
 
-    test("Call gRCP-bas64 via HTTPS", function()
+    test("Call gRCP-base64 via HTTPS", function()
       local res, err = proxy_client_ssl:post("/hello.HelloService/SayHello", {
         headers = {
           ["Content-Type"] = "application/grpc-web-text",
@@ -144,7 +144,6 @@ for _, strategy in helpers.each_strategy() do
       local res, err = proxy_client:post("/hello.HelloService/SayHello", {
         headers = {
           ["Content-Type"] = "application/json",
---           ["Content-Length"] = tostring(#req)
         },
         body = cjson.encode{ greeting = "heya" },
       })

@@ -5,7 +5,14 @@ local cjson = require "cjson"
 local protoc = require "protoc"
 local pb = require "pb"
 
+local setmetatable = setmetatable
+local ffi_cast = ffi.cast
+local ffi_string = ffi.string
+
 local ngx = ngx
+local decode_base64 = ngx.decode_base64
+local encode_base64 = ngx.encode_base64
+
 local encode_json = cjson.encode
 local decode_json = cjson.decode
 
@@ -57,7 +64,7 @@ local msg_encodign_from_mime = {
 
 
 -- parse, compile and load .proto file
--- returns the parsed info as a table
+-- returns a table mapping valid request URLs to input/output types
 local _proto_info = {}
 local function get_proto_info(fname)
   local info = _proto_info[fname]
@@ -66,11 +73,22 @@ local function get_proto_info(fname)
   end
 
   local p = protoc.new()
-  info = p:parsefile(fname)
+  local parsed = p:parsefile(fname)
+
+  info = {}
+
+  for _, srvc in ipairs(parsed.service) do
+    for _, mthd in ipairs(srvc.method) do
+      info[("/%s.%s/%s"):format(parsed.package, srvc.name, mthd.name)] = {
+        mthd.input_type,
+        mthd.output_type,
+      }
+    end
+  end
+
   _proto_info[fname] = info
 
   p:loadfile(fname)
-
   return info
 end
 
@@ -82,26 +100,12 @@ local function rpc_types(path, protofile)
   end
 
   local info = get_proto_info(protofile)
-  local pkg_name, service_name, method_name = path:match("^/([%w_]+)%.([%w_]+)/([%w_]+)")
-  if not pkg_name then
-    return nil, "malformed gRPC request path"
+  local types = info[path]
+  if not types then
+    return nil, ("Unkown path %q"):format(path)
   end
 
-  if pkg_name ~= info.package then
-    return nil, string.format("unknown package %q, expecting %q", pkg_name, info.package)
-  end
-
-  for _, srvc in ipairs(info.service) do
-    if srvc.name == service_name then
-      for _, mthd in ipairs(srvc.method) do
-        if mthd.name == method_name then
-          return mthd.input_type, mthd.output_type
-        end
-      end
-      return nil, string.format("method %q not found in service %q", method_name, service_name)
-    end
-  end
-  return nil, string.format("service %q not found in package %q", service_name, pkg_name)
+  return types[1], types[2]
 end
 
 
@@ -115,8 +119,9 @@ function deco.new(mimetype, path, protofile)
     if not protofile then
       return nil, "transcoding requests require a .proto file defining the service"
     end
+
     input_type, output_type = rpc_types(path, protofile)
-    if input_type == nil and output_type ~= nil then
+    if not input_type then
       return nil, output_type
     end
   end
@@ -132,17 +137,19 @@ function deco.new(mimetype, path, protofile)
 end
 
 
+local f_hdr = frame_hdr()
 local function frame(ftype, msg)
-  local f_hdr = ffi.new(frame_hdr, ftype, bit.bswap(#msg))
-  return ffi.string(f_hdr, ffi.sizeof(f_hdr)) .. msg
+  f_hdr.frametype = ftype
+  f_hdr.be_framesize = bit.bswap(#msg)
+  return ffi_string(f_hdr, HEADER_SIZE) .. msg
 end
 
 local function unframe(body)
-  if not body then
-    return
+  if not body or #body <= HEADER_SIZE then
+    return nil, body
   end
 
-  local hdr = ffi.cast(frame_hdr_p, body)
+  local hdr = ffi_cast(frame_hdr_p, body)
   local sz = bit.bswap(hdr.be_framesize)
 
   local frame_end = HEADER_SIZE + sz
@@ -151,7 +158,6 @@ local function unframe(body)
 
   elseif frame_end == #body then
     return body:sub(HEADER_SIZE + 1)
-
   end
 
   return body:sub(HEADER_SIZE + 1, frame_end), body:sub(frame_end + 1)
@@ -160,7 +166,7 @@ end
 
 function deco:upstream(body)
   if self.text_encoding == "base64" then
-    body = ngx.decode_base64(body)
+    body = decode_base64(body)
   end
 
   if self.msg_encoding == "json" then
@@ -168,6 +174,7 @@ function deco:upstream(body)
     if self.framing == "grpc" then
       msg = unframe(body)
     end
+
     body = frame(0x0, pb.encode(self.input_type, decode_json(msg)))
   end
 
@@ -181,21 +188,24 @@ function deco:downstream(chunk)
 
     local out, n = {}, 1
     local msg, body = unframe(body)
+
     while msg do
       msg = encode_json(pb.decode(self.output_type, msg))
       if self.framing == "grpc" then
         msg = frame(0x0, msg)
       end
+
       out[n] = msg
       n = n + 1
       msg, body = unframe(body)
     end
+
     self.downstream_body = body
     chunk = table.concat(out)
   end
 
   if self.text_encoding == "base64" then
-    chunk = ngx.encode_base64(chunk)
+    chunk = encode_base64(chunk)
   end
 
   return chunk
