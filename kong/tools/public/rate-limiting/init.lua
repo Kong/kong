@@ -11,6 +11,7 @@ local timer_at = ngx.timer.at
 
 local DEBUG = ngx.DEBUG
 local ERR   = ngx.ERR
+local WARN  = ngx.WARN
 
 
 local locks_shm = ngx.shared.kong_locks
@@ -305,6 +306,11 @@ local function sliding_window(key, window_size, cur_diff, namespace, weight)
 
   local cur = cur_diff or dict:incr(cur_prefix .. "|diff", 0, 0)
   log(DEBUG, "cur diff: ", cur)
+
+  if cur == nil then
+    cur = 0
+    log(WARN, "rate limit counters shared dict is possibly out of space", "Setting 'cur' to 0")
+  end
 
   cur = cur + dict:incr(cur_prefix .. "|sync", 0, 0)
   log(DEBUG, "cur sum: ", cur)
