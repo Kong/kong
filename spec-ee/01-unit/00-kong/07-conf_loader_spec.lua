@@ -27,7 +27,7 @@ describe("Configuration loader - enterprise", function()
     -- defaults
     assert.equal("on", conf.nginx_daemon)
     -- overrides
-    assert.same({"0.0.0.0:9002"}, conf.admin_gui_listen)
+    assert.same({"0.0.0.0:9999"}, conf.admin_gui_listen)
     assert.same({"0.0.0.0:9003", "0.0.0.0:9446 ssl"}, conf.portal_gui_listen)
     assert.equal("127.0.0.1:9003", conf.portal_gui_host)
     assert.equal("http", conf.portal_gui_protocol)
