@@ -14,8 +14,8 @@ core values are high performance and extensibility.
 Actively maintained, Kong is widely used in production at companies ranging
 from startups to Global 5000 as well as government organizations.
 
-[Installation](https://konghq.com/install) |
-[Documentation](https://docs.konghq.com) |
+[Installation](https://docs.konghq.com/enterprise/latest/deployment/installation/overview/) |
+[Documentation](https://docs.konghq.com/enterprise) |
 [Forum](https://discuss.konghq.com) |
 [Blog](https://konghq.com/blog) |
 IRC (freenode): [#kong](https://webchat.freenode.net/?channels=kong) |
