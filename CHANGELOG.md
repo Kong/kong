@@ -1,4 +1,4 @@
-## NEXT
+## 0.4.1
 
 - Add configuration to plugin which allow it to return validation error back
   to the client as part of request response 
