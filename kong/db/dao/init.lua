@@ -267,15 +267,15 @@ local function check_insert(self, entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  entity_to_insert, err = self.schema:post_process_fields(entity_to_insert, "insert")
-  if not entity_to_insert then
-    local err_t = self.errors:schema_violation(err)
-    return nil, tostring(err_t), err_t
-  end
-
   entity_to_insert, err = self.schema:transform(entity_to_insert, entity)
   if not entity_to_insert then
     err_t = self.errors:transformation_error(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  entity_to_insert, err = self.schema:post_process_fields(entity_to_insert, "insert")
+  if not entity_to_insert then
+    local err_t = self.errors:schema_violation(err)
     return nil, tostring(err_t), err_t
   end
 
@@ -346,16 +346,16 @@ local function check_update(self, key, entity, options, name)
     return nil, nil, tostring(err_t), err_t
   end
 
+  entity_to_update, err = self.schema:transform(entity_to_update, entity)
+  if not entity_to_update then
+    err_t = self.errors:transformation_error(err)
+    return nil, nil, tostring(err_t), err_t
+  end
+
   entity_to_update, err =
     self.schema:post_process_fields(entity_to_update, "update")
   if not entity_to_update then
     local err_t = self.errors:schema_violation(err)
-    return nil, nil, tostring(err_t), err_t
-  end
-
-  entity_to_update, err = self.schema:transform(entity_to_update, entity)
-  if not entity_to_update then
-    err_t = self.errors:transformation_error(err)
     return nil, nil, tostring(err_t), err_t
   end
 
@@ -428,15 +428,15 @@ local function check_upsert(self, entity, options, name, value)
     entity_to_upsert[name] = nil
   end
 
-  entity_to_upsert, err = self.schema:post_process_fields(entity_to_upsert, "upsert")
-  if not entity_to_upsert then
-    local err_t = self.errors:schema_violation(err)
-    return nil, tostring(err_t), err_t
-  end
-
   entity_to_upsert, err = self.schema:transform(entity_to_upsert, entity)
   if not entity_to_upsert then
     err_t = self.errors:transformation_error(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  entity_to_upsert, err = self.schema:post_process_fields(entity_to_upsert, "upsert")
+  if not entity_to_upsert then
+    local err_t = self.errors:schema_violation(err)
     return nil, tostring(err_t), err_t
   end
 
