@@ -384,6 +384,7 @@ local config = {
               one_of   = {
                 "Strict",
                 "Lax",
+                "None",
                 "off",
               },
             },
@@ -626,6 +627,7 @@ local config = {
               one_of   = {
                 "Strict",
                 "Lax",
+                "None",
                 "off"
               },
             },
