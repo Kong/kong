@@ -1,3 +1,9 @@
+## 0.3.2
+
+### Added
+
+- Added support for removal of specific header including with regex
+
 ## 0.3.1
 
 ### Fixed
