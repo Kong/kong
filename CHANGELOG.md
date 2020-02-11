@@ -1,5 +1,9 @@
 # Kong AWS Lambda plugin changelog
 
+## aws-lambda 3.2.0 11-Feb-2020
+
+- Encrypt IAM access and secret keys when relevant
+
 ## aws-lambda 3.1.0 6-Jan-2020
 
 - fix: reduce notice-level message to debug, to reduce log noise
