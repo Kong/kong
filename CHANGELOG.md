@@ -3,6 +3,7 @@
 - Fix header encoding to use base64 (non-url variant) with padding
 - Add support for keyring encryption of client_id and client_secret
 - Add support for `None` with `config.session_cookie_samesite` and `config.authorization_cookie_samesite` 
+- Add support for `config.session_cookie_maxsize`
 - Bump `lua-resty-session` dependency to `2.26`
 
 

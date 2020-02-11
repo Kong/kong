@@ -646,6 +646,13 @@ local config = {
             },
           },
           {
+            session_cookie_maxsize = {
+              required = false,
+              type     = "integer",
+              default  = 4000,
+            },
+          },
+          {
             session_storage = {
               required = false,
               type     = "string",

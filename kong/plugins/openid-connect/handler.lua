@@ -1057,6 +1057,7 @@ function OICHandler:access(conf)
         domain   = args.get_conf_arg("session_cookie_domain"),
         samesite = args.get_conf_arg("session_cookie_samesite", "Lax"),
         httponly = args.get_conf_arg("session_cookie_httponly", true),
+        maxsize  = args.get_conf_arg("session_cookie_maxsize", 4000),
         secure   = session_secure,
       },
     }
