@@ -329,6 +329,7 @@ build = {
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
     ["kong.db.strategies.postgres.tags"] = "kong/db/strategies/postgres/tags.lua",
     -- XXX EE [[
+    ["kong.db.strategies.postgres.plugins"] = "kong/db/strategies/postgres/plugins.lua",
     ["kong.db.strategies.postgres.consumers"] = "kong/db/strategies/postgres/consumers.lua",
     -- EE ]]
     ["kong.db.strategies.off"] = "kong/db/strategies/off/init.lua",
