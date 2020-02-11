@@ -3,6 +3,7 @@ local cache     = require "kong.plugins.openid-connect.cache"
 local arguments = require "kong.plugins.openid-connect.arguments"
 
 
+local table = table
 local get_phase = ngx.get_phase
 
 
@@ -45,11 +46,10 @@ end
 local ENCRYPTED = kong.configuration.keyring_enabled and true or nil
 
 
-return {
+local config = {
   name = "openid-connect",
   fields = {
     { consumer  = typedefs.no_consumer    },
-    { run_on    = typedefs.run_on_first   },
     { protocols = typedefs.protocols_http },
     { config    = {
         type             = "record",
@@ -1356,3 +1356,21 @@ return {
     },
   },
 }
+
+
+do
+  local ok, run_on_first = pcall(function()
+    return typedefs.run_on_first
+  end)
+
+  if ok then
+    if typedefs.run_on_first then
+      table.insert(config.fields, {
+        run_on = run_on_first,
+      })
+    end
+  end
+end
+
+
+return config
