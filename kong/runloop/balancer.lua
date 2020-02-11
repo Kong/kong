@@ -69,6 +69,7 @@ local function set_balancer(upstream_id, balancer)
     healthcheckers[prev] = nil
     healthchecker_callbacks[prev] = nil
     target_histories[prev] = nil
+    upstream_ids[prev] = nil
   end
   balancers[upstream_id] = balancer
 end
@@ -471,7 +472,7 @@ local function check_target_history(upstream, balancer)
     end
   end
 
-  if last_equal_index == new_size then
+  if last_equal_index == new_size and new_size > 0 then
     -- No history update is necessary in the balancer object.
     return true
   elseif last_equal_index == old_size then

@@ -4,6 +4,7 @@ local admin_api = require "spec.fixtures.admin_api"
 local pl_file = require "pl.file"
 
 local fmt = string.format
+local TEST_CONF = helpers.test_conf
 
 local function fetch_all(dao)
   local rows = {}
@@ -11,6 +12,21 @@ local function fetch_all(dao)
     table.insert(rows, row)
   end
   return rows
+end
+
+local function find_in_file(pat)
+  local f = assert(io.open(TEST_CONF.prefix .. "/" .. TEST_CONF.proxy_error_log, "r"))
+  local line = f:read("*l")
+
+  while line do
+    if line:match(pat) then
+      return true
+    end
+
+    line = f:read("*l")
+  end
+
+  return false
 end
 
 
@@ -405,7 +421,8 @@ for _, strategy in helpers.each_strategy() do
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         audit_log  = "on",
-        audit_log_ignore_paths = "/consumers,/foo",
+        audit_log_ignore_paths = "/consumers,/foo,^/status,/routes$," ..
+                                 "/one/.+/two,/[bad-regex,/.*/plugins"
       }))
     end)
 
@@ -446,6 +463,65 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
 
         assert.same(0, #json.data)
+
+        db:truncate("audit_objects")
+        db:truncate("audit_requests")
+
+        res = assert(admin_client:send({
+            method = "GET",
+            path   = "/status",
+        }))
+        assert.res_status(200, res)
+
+        helpers.wait_until(function()
+          local rows = fetch_all(db.audit_requests)
+          return 0 == #rows
+        end)
+
+        db:truncate("audit_objects")
+        db:truncate("audit_requests")
+
+        res = assert(admin_client:send({
+            method = "GET",
+            path   = "/routes",
+        }))
+        assert.res_status(200, res)
+
+        helpers.wait_until(function()
+          local rows = fetch_all(db.audit_requests)
+          return 0 == #rows
+        end)
+
+        db:truncate("audit_objects")
+        db:truncate("audit_requests")
+
+        res = assert(admin_client:send({
+            method = "GET",
+            path   = "/service/status/routes",
+        }))
+        assert.res_status(404, res)
+
+        helpers.wait_until(function()
+          local rows = fetch_all(db.audit_requests)
+          return 0 == #rows
+        end)
+
+        db:truncate("audit_objects")
+        db:truncate("audit_requests")
+
+        res = assert(admin_client:send({
+            method = "GET",
+            path   = "/one/status/two",
+        }))
+        assert.res_status(404, res)
+
+        helpers.wait_until(function()
+          local rows = fetch_all(db.audit_requests)
+          return 0 == #rows
+        end)
+
+        -- error log corresponding to the regex '/[bad-regex'
+        assert(find_in_file("could not evaluate the regex"))
       end)
     end)
 
@@ -484,6 +560,23 @@ for _, strategy in helpers.each_strategy() do
         helpers.wait_until(function()
           return 1 == #fetch_all(db.audit_requests)
         end)
+
+        res = assert(admin_client:send({
+          method = "GET",
+          path   = "/foo/plugins",
+          body   = {
+            name = "test",
+            host = "example.com",
+          },
+          headers = {
+            ["content-type"] = "application/json",
+          }
+        }))
+        assert.res_status(200, res)
+
+        helpers.wait_until(function()
+          return 1 == #fetch_all(db.audit_requests)
+        end)
       end)
     end)
 
@@ -511,6 +604,51 @@ for _, strategy in helpers.each_strategy() do
           local rows = fetch_all(db.audit_requests)
           return 1 == #rows
         end)
+
+        db:truncate("audit_objects")
+        db:truncate("audit_requests")
+
+        res = assert(admin_client:send({
+            method = "GET",
+            path   = "/bad-actor-request/status",
+        }))
+        assert.res_status(404, res)
+
+        helpers.wait_until(function()
+          local rows = fetch_all(db.audit_requests)
+          return 1 == #rows
+        end)
+
+        db:truncate("audit_objects")
+        db:truncate("audit_requests")
+
+        res = assert(admin_client:send({
+            method = "GET",
+            path   = "/routes/test",
+        }))
+        assert.res_status(404, res)
+
+        helpers.wait_until(function()
+          local rows = fetch_all(db.audit_requests)
+          return 1 == #rows
+        end)
+
+        db:truncate("audit_objects")
+        db:truncate("audit_requests")
+
+        res = assert(admin_client:send({
+            method = "GET",
+            path   = "/one/two",
+        }))
+        assert.res_status(404, res)
+
+        helpers.wait_until(function()
+          local rows = fetch_all(db.audit_requests)
+          return 1 == #rows
+        end)
+
+        -- error log corresponding to the regex '/[bad-regex'
+        assert(find_in_file("could not evaluate the regex"))
       end)
     end)
 

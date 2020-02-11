@@ -89,7 +89,7 @@ describe("schema", function()
   describe("post_process_fields", function()
     describe("should call the post process function accordingly for", function()
       describe("encrypt = true", function()
-        local ref, Test
+        local ref, Test, Test_Arrays
         local MOCK_ENC = "mock encrypted"
         local MOCK_DEC = "mock decrypted"
 
@@ -115,6 +115,47 @@ describe("schema", function()
               { bar = { type = "string", encrypted = true } },
             }
           })
+
+          Test_Arrays = Schema.new({
+            name = "test_arrays",
+            fields = {
+              {
+                foo = {
+                  type = "string",
+                  encrypted = true,
+                }
+              },
+              {
+                bar = {
+                  type = "array",
+                  elements = {
+                    type = "string",
+                    encrypted = true,
+                  }
+                }
+              },
+              {
+                three = {
+                  type = "array",
+                  encrypted = true,
+                  elements = {
+                    type = "string",
+                  }
+                }
+              },
+              {
+                four = {
+                  type = "array",
+                  encrypted = true,
+                  elements = {
+                    type = "string",
+                    encrypted = true,
+                    random_field = true,
+                  }
+                }
+              },
+            }
+          })
         end)
 
         teardown(function()
@@ -129,6 +170,21 @@ describe("schema", function()
             }, operation)
 
             assert.same(obj.bar, MOCK_ENC)
+
+            obj = Test_Arrays:post_process_fields({
+              foo = "foo",
+              bar = { "bar", "bar2" },
+              three = { "one", "two" },
+              four = { "one", "two" }
+            }, operation)
+
+            assert.same(obj.foo, MOCK_ENC)
+            assert.same(obj.bar[1], "bar")
+            assert.same(obj.bar[2], "bar2")
+            assert.same(obj.three[2], MOCK_ENC)
+            assert.same(obj.three[1], MOCK_ENC)
+            assert.same(obj.four[1], MOCK_ENC)
+            assert.same(obj.four[2], MOCK_ENC)
           end)
         end
 
@@ -139,6 +195,21 @@ describe("schema", function()
           }, "select")
 
           assert.same(obj.bar, MOCK_DEC)
+
+          obj = Test_Arrays:post_process_fields({
+            foo = "foo",
+            bar = { "bar", "bar2" },
+            three = { "one", "two" },
+            four = { "one", "two" }
+          }, "select")
+
+          assert.same(obj.foo, MOCK_DEC)
+          assert.same(obj.bar[1], "bar")
+          assert.same(obj.bar[2], "bar2")
+          assert.same(obj.three[1], MOCK_DEC)
+          assert.same(obj.three[2], MOCK_DEC)
+          assert.same(obj.four[1], MOCK_DEC)
+          assert.same(obj.four[2], MOCK_DEC)
         end)
       end)
     end)
