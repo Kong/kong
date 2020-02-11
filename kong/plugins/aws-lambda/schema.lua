@@ -17,9 +17,17 @@ local REGIONS = {
   "us-west-1", "us-west-2",
 }
 
+local function keyring_enabled()
+  local ok, enabled = pcall(function()
+    return kong.configuration.keyring_enabled
+  end)
+
+  return ok and enabled or nil
+end
+
 -- symmetrically encrypt IAM access keys, if configured. this is available
 -- in Kong Enterprise: https://docs.konghq.com/enterprise/1.3-x/db-encryption/
-local ENCRYPTED = kong.configuration.keyring_enabled and true or nil
+local ENCRYPTED = keyring_enabled()
 
 return {
   name = "aws-lambda",
