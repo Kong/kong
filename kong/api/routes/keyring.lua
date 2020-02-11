@@ -3,6 +3,7 @@ local utils = require "kong.tools.utils"
 local resty_rsa = require "resty.rsa"
 local pl_file = require "pl.file"
 local cjson = require "cjson"
+local cipher = require "openssl.cipher"
 
 
 local function cluster_only()
@@ -54,21 +55,88 @@ return {
         return kong.response.exit(500, { error = err })
       end
 
-      local data = {
+      local key = utils.get_rand_bytes(32, true)
+      local nonce = utils.get_rand_bytes(12, true)
+
+      local cp, err = cipher.new("id-aes256-GCM")
+      if not cp then
+        return kong.response.exit(500, { error = err })
+      end
+      cp:encrypt(key, nonce)
+      local c = cp:update(cjson.encode({
         keys = keyring.get_keys(),
         active = keyring.active_key_id(),
-      }
+      }))
 
-      local k_enc, err = rsa:encrypt(cjson.encode(data))
+      local k_enc, err = rsa:encrypt(key)
       if err then
         return kong.response.exit(500, { error = err })
       end
 
-      return kong.response.exit(200, { data = ngx.encode_base64(k_enc) })
+      local m = {
+        k = ngx.encode_base64(k_enc),
+        n = ngx.encode_base64(nonce),
+        d = ngx.encode_base64(c),
+      }
+
+      return kong.response.exit(200, { data = ngx.encode_base64(cjson.encode(m)) } )
     end,
   },
 
   ["/keyring/import"] = {
+    before = cluster_only,
+
+    POST = function(self, db, helpers, parent)
+      local d = self.params.data
+      local data = cjson.decode(ngx.decode_base64(d))
+
+      -- decrypt the wrapped secret
+      local rsa, err = resty_rsa:new({
+        private_key = pl_file.read(kong.configuration.keyring_private_key),
+        key_type = resty_rsa.KEY_TYPE.PKCS8,
+      })
+      if err then
+        return kong.response.exit(500, { error = err })
+      end
+
+
+      local nonce = ngx.decode_base64(data.n)
+      local key, err = rsa:decrypt(ngx.decode_base64(data.k))
+      if err then
+        return kong.response.exit(500, { error = err })
+      end
+
+      local cp, err = cipher.new("id-aes256-GCM")
+      if err then
+        return kong.response.exit(500, { error = err })
+      end
+      cp:decrypt(key, nonce)
+
+      local plaintext = cp:update(ngx.decode_base64(data.d))
+      local imported_keyring = cjson.decode(plaintext)
+
+      for id, key in pairs(imported_keyring.keys) do
+        local ok = keyring.keyring_add(id, ngx.decode_base64(key), true)
+        if not ok then
+          return kong.response.exit(500, { error = "failure to add to keyring" })
+        end
+      end
+
+      local ok, err = keyring.activate(imported_keyring.active)
+      if not ok then
+        return kong.response.exit(500, { error = err })
+      end
+
+      local k = {
+        ids = keyring.get_key_ids(),
+        active = keyring.active_key_id(),
+      }
+
+      return kong.response.exit(200, k)
+    end,
+  },
+
+  ["/keyring/import/raw"] = {
     before = cluster_only,
 
     POST = function(self, db, helpers, parent)
