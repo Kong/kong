@@ -1,4 +1,5 @@
 local Errors  = require "kong.db.errors"
+local defaults = require "kong.db.strategies.connector".defaults
 local utils   = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 
@@ -389,6 +390,15 @@ for _, strategy in helpers.each_strategy() do
                 bp.routes:insert({ hosts = { "example-" .. i .. ".com" } })
               end
             end, db)
+
+
+            db.routes.pagination.page_size = 100
+            db.routes.pagination.max_page_size = 1000
+          end)
+
+          lazy_teardown(function()
+            db.routes.pagination.page_size = defaults.pagination.page_size
+            db.routes.pagination.max_page_size = defaults.pagination.max_page_size
           end)
 
           it("defaults page_size = 100", function()
