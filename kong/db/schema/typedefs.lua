@@ -480,7 +480,7 @@ typedefs.paths = Schema.define {
     custom_validator = validate_path_with_regexes,
     match_none = {
       {
-        pattern = "path//",
+        pattern = "//",
         err = "must not have empty segments"
       },
     },
@@ -521,7 +521,7 @@ typedefs.x_forwarded_host = Schema.define {
 }
 
 typedefs.x_forwarded_port = Schema.define {
-  type = "string",
+  type = "integer",
   between = { 0, 65535 }
 }
 
