@@ -63,6 +63,7 @@ describe("Plugins", function()
       "ldap-auth",
       "basic-auth",
       "hmac-auth",
+      "acme",
       "ip-restriction",
       "request-size-limiting",
       "acl",
