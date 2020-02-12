@@ -193,7 +193,7 @@ function KeyAuthHandler:access(conf)
       set_consumer(consumer)
 
     else
-      return kong.response.exit(err.status, { message = err.message }, err.headers)
+      return kong.response.error(err.status, err.message, err.headers)
     end
   end
 end
