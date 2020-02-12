@@ -3,7 +3,7 @@ local x509 = require("resty.openssl.x509")
 local pl_file = require("pl.file")
 
 
-describe("kong hybrid", function()
+pending("kong hybrid", function()
   lazy_setup(function()
     helpers.get_db_utils(nil, {}) -- runs migrations
     helpers.prepare_prefix()
