@@ -480,7 +480,7 @@ typedefs.paths = Schema.define {
     custom_validator = validate_path_with_regexes,
     match_none = {
       {
-        pattern = "//",
+        pattern = "path//",
         err = "must not have empty segments"
       },
     },
@@ -509,6 +509,21 @@ typedefs.headers = Schema.define {
 }
 
 typedefs.no_headers = Schema.define(typedefs.headers { eq = null } )
+
+typedefs.x_forwarded_proto = Schema.define {
+  type = "string",
+  one_of = constants.PROTOCOLS,
+}
+
+typedefs.x_forwarded_host = Schema.define {
+  type = "string",
+  custom_validator = validate_host,
+}
+
+typedefs.x_forwarded_port = Schema.define {
+  type = "string",
+  between = { 0, 65535 }
+}
 
 setmetatable(typedefs, {
   __index = function(_, k)

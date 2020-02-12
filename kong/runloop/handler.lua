@@ -1041,14 +1041,14 @@ return {
 
       local trusted_ip = kong.ip.is_trusted(realip_remote_addr)
       if trusted_ip then
-        forwarded_proto = var.http_x_forwarded_proto or scheme
-        forwarded_host  = var.http_x_forwarded_host  or host
-        forwarded_port  = var.http_x_forwarded_port  or port
+        forwarded_proto = route.x_forwarded_proto or service.x_forwarded_proto or var.http_x_forwarded_proto or scheme
+        forwarded_host  = route.x_forwarded_host or service.x_forwarded_host or var.http_x_forwarded_host  or host
+        forwarded_port  = route.x_forwarded_port or service.x_forwarded_port or var.http_x_forwarded_port  or port
 
       else
-        forwarded_proto = scheme
-        forwarded_host  = host
-        forwarded_port  = port
+        forwarded_proto = route.x_forwarded_proto or service.x_forwarded_proto or scheme
+        forwarded_host  = route.x_forwarded_host or service.x_forwarded_host or host
+        forwarded_port  = route.x_forwarded_port or service.x_forwarded_port or port
       end
 
       local protocols = route.protocols
