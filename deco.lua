@@ -1,13 +1,14 @@
 -- Copyright (c) Kong Inc. 2020
 
-local ffi = require "ffi"
+require"lua_pack"
 local cjson = require "cjson"
 local protoc = require "protoc"
 local pb = require "pb"
 
 local setmetatable = setmetatable
-local ffi_cast = ffi.cast
-local ffi_string = ffi.string
+
+local bpack=string.pack         -- luacheck: ignore string
+local bunpack=string.unpack     -- luacheck: ignore string
 
 local ngx = ngx
 local decode_base64 = ngx.decode_base64
@@ -18,17 +19,6 @@ local decode_json = cjson.decode
 
 local deco = {}
 deco.__index = deco
-
-ffi.cdef [[
-  typedef struct __attribute__ ((__packed__)) frame_hdr {
-    uint8_t frametype;
-    uint32_t be_framesize;
-  } frame_hdr;
-]]
-
-local frame_hdr = ffi.typeof("frame_hdr")
-local frame_hdr_p = ffi.typeof("const frame_hdr *")
-local HEADER_SIZE = ffi.sizeof("frame_hdr")
 
 
 local text_encoding_from_mime = {
@@ -60,7 +50,6 @@ local msg_encodign_from_mime = {
   ["application/grpc-web-text+json"] = "json",
   ["application/json"] = "json",
 }
-
 
 
 -- parse, compile and load .proto file
@@ -137,30 +126,22 @@ function deco.new(mimetype, path, protofile)
 end
 
 
-local f_hdr = frame_hdr()
 local function frame(ftype, msg)
-  f_hdr.frametype = ftype
-  f_hdr.be_framesize = bit.bswap(#msg)
-  return ffi_string(f_hdr, HEADER_SIZE) .. msg
+  return bpack("C>I", ftype, #msg) .. msg
 end
 
 local function unframe(body)
-  if not body or #body <= HEADER_SIZE then
+  if not body or #body <= 5 then
     return nil, body
   end
 
-  local hdr = ffi_cast(frame_hdr_p, body)
-  local sz = bit.bswap(hdr.be_framesize)
-
-  local frame_end = HEADER_SIZE + sz
+  local pos, ftype, sz = bunpack(body, "C>I")       -- luacheck: ignore ftype
+  local frame_end = pos + sz - 1
   if frame_end > #body then
     return nil, body
-
-  elseif frame_end == #body then
-    return body:sub(HEADER_SIZE + 1)
   end
 
-  return body:sub(HEADER_SIZE + 1, frame_end), body:sub(frame_end + 1)
+  return body:sub(pos, frame_end), body:sub(frame_end + 1)
 end
 
 
