@@ -203,16 +203,17 @@ local function register_events()
     end
 
     if cache_key then
-      cache_obj:invalidate(cache_key)
+      cache_obj:invalidate(cache_key, workspaces)
     end
 
     -- if we had an update, but the cache key was part of what was updated,
     -- we need to invalidate the previous entity as well
 
     if data.old_entity then
-      cache_key = db[data.schema.name]:cache_key(data.old_entity, nil, nil,
-                                                 nil, nil, true)
-      local old_cache_key = db[data.schema.name]:cache_key(data.old_entity)
+      local old_cache_key = db[data.schema.name]:cache_key(
+        data.old_entity, nil, nil, nil, nil, true
+      )
+
       if old_cache_key and cache_key ~= old_cache_key then
         cache_obj:invalidate(old_cache_key, workspaces)
       end
