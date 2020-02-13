@@ -133,7 +133,10 @@ describe("declarative config: flatten", function()
               write_timeout = 60000,
               retries = 5,
               tags = {"hello", "world"},
-              client_certificate = null
+              client_certificate = null,
+              x_forwarded_host = null,
+              x_forwarded_port = null,
+              x_forwarded_proto = null
             },
             {
               id = "UUID",
@@ -149,7 +152,10 @@ describe("declarative config: flatten", function()
               write_timeout = 60000,
               retries = 5,
               tags = null,
-              client_certificate = null
+              client_certificate = null,
+              x_forwarded_host = null,
+              x_forwarded_port = null,
+              x_forwarded_proto = null
             },
           }
         }, idempotent(config))
@@ -218,7 +224,10 @@ describe("declarative config: flatten", function()
               read_timeout = 60000,
               write_timeout = 60000,
               retries = 5,
-              client_certificate = null
+              client_certificate = null,
+              x_forwarded_host = null,
+              x_forwarded_port = null,
+              x_forwarded_proto = null
             }
           }
         }, idempotent(config))
@@ -437,7 +446,10 @@ describe("declarative config: flatten", function()
               retries = 5,
               updated_at = 1234567890,
               write_timeout = 60000,
-              client_certificate = null
+              client_certificate = null,
+              x_forwarded_host = null,
+              x_forwarded_port = null,
+              x_forwarded_proto = null
             }
           }
         }, idempotent(config))
@@ -471,7 +483,10 @@ describe("declarative config: flatten", function()
                 retries = 5,
                 updated_at = 1234567890,
                 write_timeout = 60000,
-                client_certificate = null
+                client_certificate = null,
+                x_forwarded_host = null,
+                x_forwarded_port = null,
+                x_forwarded_proto = null
               }
             }
           }, idempotent(config))
@@ -599,7 +614,10 @@ describe("declarative config: flatten", function()
                 tags = null,
                 updated_at = 1234567890,
                 write_timeout = 60000,
-                client_certificate = null
+                client_certificate = null,
+                x_forwarded_host = null,
+                x_forwarded_port = null,
+                x_forwarded_proto = null
               }, {
                 connect_timeout = 60000,
                 created_at = 1234567890,
@@ -614,7 +632,10 @@ describe("declarative config: flatten", function()
                 tags = null,
                 updated_at = 1234567890,
                 write_timeout = 60000,
-                client_certificate = null
+                client_certificate = null,
+                x_forwarded_host = null,
+                x_forwarded_port = null,
+                x_forwarded_proto = null
               } }
           }, idempotent(config))
         end)
@@ -646,7 +667,10 @@ describe("declarative config: flatten", function()
                 retries = 5,
                 updated_at = 1234567890,
                 write_timeout = 60000,
-                client_certificate = null
+                client_certificate = null,
+                x_forwarded_host = null,
+                x_forwarded_port = null,
+                x_forwarded_proto = null
               }
             }
           }, idempotent(config))
@@ -703,7 +727,10 @@ describe("declarative config: flatten", function()
                 tags = null,
                 updated_at = 1234567890,
                 write_timeout = 60000,
-                client_certificate = null
+                client_certificate = null,
+                x_forwarded_host = null,
+                x_forwarded_port = null,
+                x_forwarded_proto = null
               } }
           }, idempotent(config))
         end)
@@ -844,7 +871,10 @@ describe("declarative config: flatten", function()
                 tags = null,
                 updated_at = 1234567890,
                 write_timeout = 60000,
-                client_certificate = null
+                client_certificate = null,
+                x_forwarded_host = null,
+                x_forwarded_port = null,
+                x_forwarded_proto = null
               }, {
                 connect_timeout = 60000,
                 created_at = 1234567890,
@@ -859,7 +889,10 @@ describe("declarative config: flatten", function()
                 tags = null,
                 updated_at = 1234567890,
                 write_timeout = 60000,
-                client_certificate = null
+                client_certificate = null,
+                x_forwarded_host = null,
+                x_forwarded_port = null,
+                x_forwarded_proto = null
               } }
           }, idempotent(config))
         end)
@@ -921,7 +954,10 @@ describe("declarative config: flatten", function()
                 retries = 5,
                 updated_at = 1234567890,
                 write_timeout = 60000,
-                client_certificate = null
+                client_certificate = null,
+                x_forwarded_host = null,
+                x_forwarded_port = null,
+                x_forwarded_proto = null
               }
             }
           }, idempotent(config))
@@ -1097,7 +1133,10 @@ describe("declarative config: flatten", function()
                 tags = null,
                 updated_at = 1234567890,
                 write_timeout = 60000,
-                client_certificate = null
+                client_certificate = null,
+                x_forwarded_host = null,
+                x_forwarded_port = null,
+                x_forwarded_proto = null
               }, {
                 connect_timeout = 60000,
                 created_at = 1234567890,
@@ -1112,7 +1151,10 @@ describe("declarative config: flatten", function()
                 tags = null,
                 updated_at = 1234567890,
                 write_timeout = 60000,
-                client_certificate = null
+                client_certificate = null,
+                x_forwarded_host = null,
+                x_forwarded_port = null,
+                x_forwarded_proto = null
               } }
           }, idempotent(config))
         end)
