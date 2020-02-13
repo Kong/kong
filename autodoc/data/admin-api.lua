@@ -485,6 +485,21 @@ return {
           },
         },
       },
+      x_forwarded_port = {
+        description = [[
+          An optional X-Forwarded-Port header send to the upstream.
+        ]]
+      },
+      x_forwarded_proto = {
+        description = [[
+          An optional X-Forwarded-Proto header send to the upstream.
+        ]]
+      },
+      x_forwarded_host = {
+        description = [[
+          An optional X-Forwarded-Host header send to the upstream.
+        ]]
+      },
       extra_fields = {
         { url = {
           kind = "shorthand-attribute",
