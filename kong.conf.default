@@ -619,6 +619,9 @@
 #pg_ssl = off                    # Toggles client-server TLS connections
                                  # between Kong and PostgreSQL.
 
+#pg_ssl_required = off           # When `pg_ssl` is on this determines if
+                                 # TLS must be used between Kong and PostgreSQL.
+
 #pg_ssl_verify = off             # Toggles server certificate verification if
                                  # `pg_ssl` is enabled.
                                  # See the `lua_ssl_trusted_certificate`

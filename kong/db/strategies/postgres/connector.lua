@@ -2015,6 +2015,7 @@ function _M.new(kong_config)
     database   = kong_config.pg_database,
     schema      = kong_config.pg_schema or "",
     ssl        = kong_config.pg_ssl,
+    ssl_required = kong_config.pg_ssl_required,
     ssl_verify = kong_config.pg_ssl_verify,
     cafile     = kong_config.lua_ssl_trusted_certificate,
     sem_max     = kong_config.pg_max_concurrent_queries or 0,
