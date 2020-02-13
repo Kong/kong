@@ -1,7 +1,7 @@
 local keyring = require "kong.keyring"
+local keyring_cluster = require "kong.keyring.strategies.cluster"
 local utils = require "kong.tools.utils"
 local resty_rsa = require "resty.rsa"
-local pl_file = require "pl.file"
 local cjson = require "cjson"
 local cipher = require "openssl.cipher"
 
@@ -48,7 +48,7 @@ return {
       end
 
       local rsa, err = resty_rsa:new({
-        public_key = pl_file.read(kong.configuration.keyring_public_key),
+        public_key = keyring_cluster.envelope_key_pub(),
         key_type = resty_rsa.KEY_TYPE.PKCS8
       })
       if err then
@@ -92,7 +92,7 @@ return {
 
       -- decrypt the wrapped secret
       local rsa, err = resty_rsa:new({
-        private_key = pl_file.read(kong.configuration.keyring_private_key),
+        private_key = keyring_cluster.envelope_key_priv(),
         key_type = resty_rsa.KEY_TYPE.PKCS8,
       })
       if err then
