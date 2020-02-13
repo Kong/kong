@@ -138,6 +138,7 @@ pg_timeout = 5000
 pg_user = kong
 pg_password = NONE
 pg_ssl = off
+pg_ssl_required = off
 pg_ssl_verify = off
 pg_max_concurrent_queries = 0
 pg_semaphore_timeout = 60000
