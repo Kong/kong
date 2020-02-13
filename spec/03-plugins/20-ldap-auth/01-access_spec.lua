@@ -35,7 +35,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
         local admin_client
         local route2
         local plugin2
-    
+
         lazy_setup(function()
           local bp = helpers.get_db_utils(strategy, {
             "routes",
@@ -43,35 +43,39 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             "plugins",
             "consumers",
           })
-    
+
           local route1 = bp.routes:insert {
             hosts = { "ldap.com" },
           }
-    
+
           route2 = bp.routes:insert {
             hosts = { "ldap2.com" },
           }
-    
+
           local route3 = bp.routes:insert {
             hosts = { "ldap3.com" },
           }
-    
+
           local route4 = bp.routes:insert {
             hosts = { "ldap4.com" },
           }
-    
+
           local route5 = bp.routes:insert {
             hosts = { "ldap5.com" },
           }
-    
+
           bp.routes:insert {
             hosts = { "ldap6.com" },
           }
-    
+
+          local route7 = bp.routes:insert {
+            hosts = { "ldap7.com" },
+          }
+
           local anonymous_user = bp.consumers:insert {
             username = "no-body"
           }
-    
+
           bp.plugins:insert {
             route = { id = route1.id },
             name     = "ldap-auth",
@@ -83,7 +87,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               attribute = "uid"
             }
           }
-    
+
           plugin2 = bp.plugins:insert {
             route = { id = route2.id },
             name     = "ldap-auth",
@@ -97,7 +101,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               cache_ttl        = 2,
             }
           }
-    
+
           bp.plugins:insert {
             route = { id = route3.id },
             name     = "ldap-auth",
@@ -110,7 +114,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               anonymous = anonymous_user.id,
             }
           }
-    
+
           bp.plugins:insert {
             route = { id = route4.id },
             name     = "ldap-auth",
@@ -124,7 +128,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               anonymous = utils.uuid(), -- non existing consumer
             }
           }
-    
+
           bp.plugins:insert {
             route = { id = route5.id },
             name     = "ldap-auth",
@@ -137,7 +141,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               header_type = "Basic",
             }
           }
-    
+
           bp.plugins:insert {
             name     = "ldap-auth",
             config   = {
@@ -148,32 +152,45 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               attribute = "uid"
             }
           }
-    
+
+          bp.plugins:insert {
+            route = { id = route7.id },
+            name     = "ldap-auth",
+            config   = {
+              ldap_host = ldap_host_aws,
+              ldap_port = 389,
+              start_tls = ldap_strategy.start_tls,
+              base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
+              attribute = "uid",
+              anonymous = anonymous_user.username,
+            }
+          }
+
           assert(helpers.start_kong({
             database   = strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
           }))
         end)
-    
+
         lazy_teardown(function()
           helpers.stop_kong()
         end)
-    
+
         before_each(function()
           proxy_client = helpers.proxy_client()
           admin_client = helpers.admin_client()
         end)
-    
+
         after_each(function()
           if proxy_client then
             proxy_client:close()
           end
-    
+
           if admin_client then
             admin_client:close()
           end
         end)
-    
+
         it("returns 'invalid credentials' and www-authenticate header when the credential is missing", function()
           local res = assert(proxy_client:send {
             method  = "GET",
@@ -380,7 +397,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             }
           })
           assert.response(res).has.status(401)
-    
+
           local value = assert.response(res).has.header("www-authenticate")
           assert.equal('Basic realm="kong"', value)
           local json = assert.response(res).has.jsonbody()
@@ -423,10 +440,10 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             }
           })
           assert.response(res).has.status(200)
-    
+
           -- Check that cache is populated
           local key = cache_key(plugin2.config, "einstein", "password")
-    
+
           helpers.wait_until(function()
             local res = assert(admin_client:send {
               method  = "GET",
@@ -435,7 +452,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             res:read_body()
             return res.status == 200
           end)
-    
+
           -- Check that cache is invalidated
           helpers.wait_until(function()
             local res = admin_client:send {
@@ -449,7 +466,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             return res.status == 404
           end, plugin2.config.cache_ttl + 10)
         end)
-    
+
         describe("config.anonymous", function()
           it("works with right credentials and anonymous", function()
             local res = assert(proxy_client:send {
@@ -461,7 +478,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               }
             })
             assert.response(res).has.status(200)
-    
+
             local value = assert.request(res).has.header("x-credential-username")
             assert.are.equal("einstein", value)
             assert.request(res).has_not.header("x-anonymous-username")
@@ -472,6 +489,20 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               path    = "/request",
               headers = {
                 host  = "ldap3.com"
+              }
+            })
+            assert.response(res).has.status(200)
+            local value = assert.request(res).has.header("x-anonymous-consumer")
+            assert.are.equal("true", value)
+            value = assert.request(res).has.header("x-consumer-username")
+            assert.equal('no-body', value)
+          end)
+          it("works with wrong credentials and username in anonymous", function()
+            local res = assert(proxy_client:send {
+              method  = "GET",
+              path    = "/request",
+              headers = {
+                host  = "ldap7.com"
               }
             })
             assert.response(res).has.status(200)
@@ -492,12 +523,12 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           end)
         end)
       end)
-    
+
       describe("Plugin: ldap-auth (access) [#" .. strategy .. "]", function()
         local proxy_client
         local user
         local anonymous
-    
+
         lazy_setup(function()
           local bp = helpers.get_db_utils(strategy, {
             "routes",
@@ -506,16 +537,16 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             "consumers",
             "keyauth_credentials",
           })
-    
+
           local service1 = bp.services:insert({
             path = "/request"
           })
-    
+
           local route1 = bp.routes:insert {
             hosts   = { "logical-and.com" },
             service = service1,
           }
-    
+
           bp.plugins:insert {
             route = { id = route1.id },
             name     = "ldap-auth",
@@ -527,29 +558,29 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               attribute = "uid",
             },
           }
-    
+
           bp.plugins:insert {
             name     = "key-auth",
             route = { id = route1.id },
           }
-    
+
           anonymous = bp.consumers:insert {
             username = "Anonymous",
           }
-    
+
           user = bp.consumers:insert {
             username = "Mickey",
           }
-    
+
           local service2 = bp.services:insert({
             path = "/request"
           })
-    
+
           local route2 = bp.routes:insert {
             hosts   = { "logical-or.com" },
             service = service2
           }
-    
+
           bp.plugins:insert {
             route = { id = route2.id },
             name     = "ldap-auth",
@@ -562,7 +593,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               anonymous = anonymous.id,
             },
           }
-    
+
           bp.plugins:insert {
             name     = "key-auth",
             route = { id = route2.id },
@@ -570,31 +601,31 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               anonymous = anonymous.id,
             },
           }
-    
+
           bp.keyauth_credentials:insert {
             key      = "Mouse",
             consumer = { id = user.id },
           }
-    
+
           assert(helpers.start_kong({
             database   = strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
           }))
-    
+
           proxy_client = helpers.proxy_client()
         end)
-    
-    
+
+
         lazy_teardown(function()
           if proxy_client then
             proxy_client:close()
           end
-    
+
           helpers.stop_kong()
         end)
-    
+
         describe("multiple auth without anonymous, logical AND", function()
-    
+
           it("passes with all credentials provided", function()
             local res = assert(proxy_client:send {
               method  = "GET",
@@ -608,7 +639,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             assert.response(res).has.status(200)
             assert.request(res).has.no.header("x-anonymous-consumer")
           end)
-    
+
           it("fails 401, with only the first credential provided", function()
             local res = assert(proxy_client:send {
               method  = "GET",
@@ -620,7 +651,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             })
             assert.response(res).has.status(401)
           end)
-    
+
           it("fails 401, with only the second credential provided", function()
             local res = assert(proxy_client:send {
               method  = "GET",
@@ -632,7 +663,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             })
             assert.response(res).has.status(401)
           end)
-    
+
           it("fails 401, with no credential provided", function()
             local res = assert(proxy_client:send {
               method  = "GET",
@@ -643,11 +674,11 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             })
             assert.response(res).has.status(401)
           end)
-    
+
         end)
-    
+
         describe("multiple auth with anonymous, logical OR", function()
-    
+
           it("passes with all credentials provided", function()
             local res = assert(proxy_client:send {
               method  = "GET",
@@ -664,7 +695,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             assert.not_equal(id, anonymous.id)
             assert(id == user.id)
           end)
-    
+
           it("passes with only the first credential provided", function()
             local res = assert(proxy_client:send {
               method  = "GET",
@@ -680,7 +711,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             assert.not_equal(id, anonymous.id)
             assert.equal(user.id, id)
           end)
-    
+
           it("passes with only the second credential provided", function()
             local res = assert(proxy_client:send {
               method  = "GET",
@@ -695,7 +726,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             local id = assert.request(res).has.header("x-credential-username")
             assert.equal("einstein", id)
           end)
-    
+
           it("passes with no credential provided", function()
             local res = assert(proxy_client:send {
               method  = "GET",
