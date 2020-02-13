@@ -813,13 +813,14 @@ local function new(self, major_version)
       end
 
       if body then
-        if status < 500 then
-          local res, err =  ngx.print(body)
+        if status < 400 then
+          -- only sends body to the client for 200 status code
+          local res, err = ngx.print(body)
           if not res then
             error("unable to send body to client: " .. err, 2)
           end
 
-        elseif body then
+        else
           self.log.err("unable to proxy stream connection, " ..
                        "status: " .. status .. ", err: ", body)
         end

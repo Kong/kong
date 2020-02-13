@@ -1109,3 +1109,20 @@ unacceptable code, only 200, 400, 403, 500, 502 and 503 are accepted
 --- error_log
 finalize stream session: 500
 unable to proxy stream connection, status: 500, err: error message
+
+
+
+=== TEST 43: response.exit() logs 4xx error instead of returning it to the client
+--- stream_server_config
+    preread_by_lua_block {
+        local PDK = require "kong.pdk"
+        local pdk = PDK.new()
+
+        pdk.response.exit(400, "error message")
+    }
+
+    return "nope";
+--- stream_response
+--- error_log
+finalize stream session: 400
+unable to proxy stream connection, status: 400, err: error message
