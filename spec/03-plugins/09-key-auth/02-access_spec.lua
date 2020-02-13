@@ -68,6 +68,10 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "key-auth9.com" },
       }
 
+      local route10 = bp.routes:insert {
+        hosts = { "key-auth10.com" },
+      }
+
       bp.plugins:insert {
         name     = "key-auth",
         route = { id = route1.id },
@@ -140,6 +144,14 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route9.id },
         config = {
           key_names = { "api-key", },
+        },
+      }
+
+      bp.plugins:insert {
+        name     = "key-auth",
+        route = { id = route10.id },
+        config = {
+          anonymous = anonymous_user.username,
         },
       }
 
@@ -589,6 +601,18 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Host"] = "key-auth3.com"
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.equal('true', body.headers["x-anonymous-consumer"])
+        assert.equal('no-body', body.headers["x-consumer-username"])
+      end)
+      it("works with wrong credentials and username as anonymous", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"] = "key-auth10.com"
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
