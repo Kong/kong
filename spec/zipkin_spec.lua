@@ -3,6 +3,7 @@ local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 local to_hex = require "resty.string".to_hex
 
+local fmt = string.format
 
 -- Transform zipkin annotations into a hash of timestamps. It assumes no repeated values
 -- input: { { value = x, timestamp = y }, { value = x2, timestamp = y2 } }
@@ -24,7 +25,12 @@ end
 
 
 local function gen_trace_id()
-  return to_hex(utils.get_rand_bytes(8, true))
+  return to_hex(utils.get_rand_bytes(16))
+end
+
+
+local function gen_span_id()
+  return to_hex(utils.get_rand_bytes(8))
 end
 
 
@@ -35,8 +41,20 @@ describe("integration tests with zipkin server [#" .. strategy .. "]", function(
   local zipkin_client
   local proxy_client
 
+
+  local function wait_for_spans(trace_id, number_of_spans)
+    local spans = {}
+    helpers.wait_until(function()
+      local res = assert(zipkin_client:get("/api/v2/trace/" .. trace_id))
+      spans = cjson.decode(assert.response(res).has.status(200))
+      return #spans == number_of_spans
+    end)
+    return utils.unpack(spans)
+  end
+
+
   -- the following assertions should be true on any span list, even in error mode
-  local function assert_span_invariants(request_span, proxy_span, expected_name)
+  local function assert_span_invariants(request_span, proxy_span, expected_name, trace_id)
     -- request_span
     assert.same("table", type(request_span))
     assert.same("string", type(request_span.id))
@@ -46,7 +64,7 @@ describe("integration tests with zipkin server [#" .. strategy .. "]", function(
     assert.same("SERVER", request_span.kind)
 
     assert.same("string", type(request_span.traceId))
-    assert.truthy(request_span.traceId:match("^%x+$"))
+    assert.equals(trace_id, request_span.traceId)
     assert_is_integer(request_span.timestamp)
 
     if request_span.duration and proxy_span.duration then
@@ -70,7 +88,7 @@ describe("integration tests with zipkin server [#" .. strategy .. "]", function(
     assert.same("CLIENT", proxy_span.kind)
 
     assert.same("string", type(proxy_span.traceId))
-    assert.truthy(proxy_span.traceId:match("^%x+$"))
+    assert.equals(trace_id, proxy_span.traceId)
     assert_is_integer(proxy_span.timestamp)
 
     if request_span.duration and proxy_span.duration then
@@ -158,16 +176,9 @@ describe("integration tests with zipkin server [#" .. strategy .. "]", function(
     })
     assert.response(r).has.status(200)
 
-    local spans
-    helpers.wait_until(function()
-      local res = assert(zipkin_client:get("/api/v2/trace/" .. trace_id))
-      spans = cjson.decode(assert.response(res).has.status(200))
-      return #spans == 3
-    end)
-
-    local balancer_span, proxy_span, request_span = spans[1], spans[2], spans[3]
+    local balancer_span, proxy_span, request_span = wait_for_spans(trace_id, 3)
     -- common assertions for request_span and proxy_span
-    assert_span_invariants(request_span, proxy_span, "get")
+    assert_span_invariants(request_span, proxy_span, "get", trace_id)
 
     -- specific assertions for request_span
     local request_tags = request_span.tags
@@ -236,16 +247,9 @@ describe("integration tests with zipkin server [#" .. strategy .. "]", function(
     assert.truthy(ok)
     assert.truthy(resp)
 
-    local spans
-    helpers.wait_until(function()
-      local res = assert(zipkin_client:get("/api/v2/trace/" .. trace_id))
-      spans = cjson.decode(assert.response(res).has.status(200))
-      return #spans == 3
-    end)
-
-    local balancer_span, proxy_span, request_span = spans[1], spans[2], spans[3]
+    local balancer_span, proxy_span, request_span = wait_for_spans(trace_id, 3)
     -- common assertions for request_span and proxy_span
-    assert_span_invariants(request_span, proxy_span, "post")
+    assert_span_invariants(request_span, proxy_span, "post", trace_id)
 
     -- specific assertions for request_span
     local request_tags = request_span.tags
@@ -312,17 +316,10 @@ describe("integration tests with zipkin server [#" .. strategy .. "]", function(
     })
     assert.response(r).has.status(404)
 
-    local spans
-    helpers.wait_until(function()
-      local res = assert(zipkin_client:get("/api/v2/trace/" .. trace_id))
-      spans = cjson.decode(assert.response(res).has.status(200))
-      return #spans == 2
-    end)
-
-    local proxy_span, request_span = spans[1], spans[2]
+    local proxy_span, request_span = wait_for_spans(trace_id, 2)
 
     -- common assertions for request_span and proxy_span
-    assert_span_invariants(request_span, proxy_span, "get")
+    assert_span_invariants(request_span, proxy_span, "get", trace_id)
 
     -- specific assertions for request_span
     local request_tags = request_span.tags
@@ -357,16 +354,115 @@ describe("integration tests with zipkin server [#" .. strategy .. "]", function(
     })
     assert.response(r).has.status(404)
 
-    local spans
-    helpers.wait_until(function()
-      local res = assert(zipkin_client:get("/api/v2/trace/" .. trace_id))
-      spans = cjson.decode(assert.response(res).has.status(200))
-      return #spans == 2
+    local proxy_span, request_span = wait_for_spans(trace_id, 2)
+
+    assert.equals(trace_id, proxy_span.traceId)
+    assert.equals(trace_id, request_span.traceId)
+  end)
+
+  describe("b3 single header propagation", function()
+    it("works on regular calls", function()
+      local trace_id = gen_trace_id()
+      local span_id = gen_span_id()
+      local parent_id = gen_span_id()
+
+      local r = proxy_client:get("/", {
+        headers = {
+          b3 = fmt("%s-%s-%s-%s", trace_id, span_id, "1", parent_id),
+          host = "mock-http-route",
+        },
+      })
+      assert.response(r).has.status(200)
+
+      local balancer_span, proxy_span, request_span = wait_for_spans(trace_id, 3)
+
+      assert.equals(trace_id, request_span.traceId)
+      assert.equals(span_id, request_span.id)
+      assert.equals(parent_id, request_span.parentId)
+
+      assert.equals(trace_id, proxy_span.traceId)
+      assert.not_equals(span_id, proxy_span.id)
+      assert.equals(span_id, proxy_span.parentId)
+
+      assert.equals(trace_id, balancer_span.traceId)
+      assert.not_equals(span_id, balancer_span.id)
+      assert.equals(span_id, balancer_span.parentId)
     end)
 
-    for _, v in ipairs(spans) do
-      assert.same(trace_id, v.traceId)
-    end
+    it("works without parent_id", function()
+      local trace_id = gen_trace_id()
+      local span_id = gen_span_id()
+
+      local r = proxy_client:get("/", {
+        headers = {
+          b3 = fmt("%s-%s-1", trace_id, span_id),
+          host = "mock-http-route",
+        },
+      })
+      assert.response(r).has.status(200)
+
+      local balancer_span, proxy_span, request_span = wait_for_spans(trace_id, 3)
+
+      assert.equals(trace_id, request_span.traceId)
+      assert.equals(span_id, request_span.id)
+
+      assert.equals(trace_id, proxy_span.traceId)
+      assert.not_equals(span_id, proxy_span.id)
+      assert.equals(span_id, proxy_span.parentId)
+
+      assert.equals(trace_id, balancer_span.traceId)
+      assert.not_equals(span_id, balancer_span.id)
+      assert.equals(span_id, balancer_span.parentId)
+    end)
+
+    it("works with only trace_id and span_id", function()
+      local trace_id = gen_trace_id()
+      local span_id = gen_span_id()
+
+      local r = proxy_client:get("/", {
+        headers = {
+          b3 = fmt("%s-%s", trace_id, span_id),
+          ["x-b3-sampled"] = "1",
+          host = "mock-http-route",
+        },
+      })
+      assert.response(r).has.status(200)
+
+      local balancer_span, proxy_span, request_span = wait_for_spans(trace_id, 3)
+
+      assert.equals(trace_id, request_span.traceId)
+      assert.equals(span_id, request_span.id)
+
+      assert.equals(trace_id, proxy_span.traceId)
+      assert.not_equals(span_id, proxy_span.id)
+      assert.equals(span_id, proxy_span.parentId)
+
+      assert.equals(trace_id, balancer_span.traceId)
+      assert.not_equals(span_id, balancer_span.id)
+      assert.equals(span_id, balancer_span.parentId)
+    end)
+
+    it("works on non-matched requests", function()
+      local trace_id = gen_trace_id()
+      local span_id = gen_span_id()
+
+      local r = proxy_client:get("/foobar", {
+        headers = {
+          b3 = fmt("%s-%s-1", trace_id, span_id)
+        },
+      })
+      assert.response(r).has.status(404)
+
+      local proxy_span, request_span = wait_for_spans(trace_id, 2)
+
+      assert.equals(trace_id, request_span.traceId)
+      assert.equals(span_id, request_span.id)
+
+      assert.equals(trace_id, proxy_span.traceId)
+      assert.not_equals(span_id, proxy_span.id)
+      assert.equals(span_id, proxy_span.parentId)
+    end)
   end)
+
 end)
 end
