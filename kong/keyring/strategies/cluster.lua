@@ -37,6 +37,39 @@ end
 local pub, priv
 
 
+-- import/export key references
+local envelope_rsa = {}
+
+
+local function load_envelope_keys(config)
+  if config.keyring_private_key then
+    local err
+    envelope_rsa.priv, err = pl_file.read(config.keyring_private_key)
+    if err ~= nil then
+      ngx.log(ngx.ERR, "error loading private key: ", err)
+    end
+  end
+
+  if config.keyring_public_key then
+    local err
+    envelope_rsa.pub, err = pl_file.read(config.keyring_public_key)
+    if err ~= nil then
+      ngx.log(ngx.ERR, "error loading public key: ", err)
+    end
+  end
+end
+
+
+function _M.envelope_key_priv()
+  return envelope_rsa.priv
+end
+
+
+function _M.envelope_key_pub()
+  return envelope_rsa.pub
+end
+
+
 local generate_node_keys
 do
   local KEY_STRENGTH = 2048
@@ -124,6 +157,8 @@ end
 function _M.init(config)
   ngx.log(ngx.DEBUG, "generating node keys")
   assert(generate_node_keys())
+
+  load_envelope_keys(config)
 
   local r, err = kong.db.keyring_meta:each(1)
   if err then
