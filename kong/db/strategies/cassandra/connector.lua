@@ -82,7 +82,6 @@ function CassandraConnector.new(kong_config)
                 end
 
                 return udp.send(udp, ...)
-              end
 
               elseif k == "settimeout" then
                 return udp.settimeout(udp, select(1, ...)/1000)
