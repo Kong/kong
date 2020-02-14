@@ -1249,6 +1249,10 @@ do
       force = not not opts.force
     end
 
+
+    -- make sure that the path_handling field exists before using it. ignore errors
+    conn:execute("ALTER TABLE routes ADD path_handling text;")
+
     for i = 1, migrations.n do
       local migration = migrations[i]
       local service   = migration.service

@@ -1046,6 +1046,17 @@ function _mt:run_api_migrations(opts)
     force = not not opts.force
   end
 
+  -- make sure that the path_handling field exists before using it. ignore errors
+  self:query([[
+    DO $$
+    BEGIN
+      ALTER TABLE IF EXISTS ONLY "routes" ADD "path_handling" TEXT DEFAULT 'v0';
+    EXCEPTION WHEN DUPLICATE_COLUMN THEN
+      -- Do nothing, accept existing state
+    END;
+    $$
+  ]])
+
   for i = 1, migrations.n do
     local migration = migrations[i]
     local service   = migration.service
