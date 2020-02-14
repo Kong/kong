@@ -92,9 +92,13 @@ pipeline {
             sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:18.04 --ee --custom ${env.RELEASE_SCOPE} -V"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:18.04 -e -R ${env.RELEASE_SCOPE}"
           },
-          amazonlinux: {
-            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p amazonlinux --ee --custom ${env.RELEASE_SCOPE} -V"
-            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p amazonlinux -e -R ${env.RELEASE_SCOPE}"
+          amazonlinux1: {
+            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p amazonlinux:1 --ee --custom ${env.RELEASE_SCOPE} -V"
+            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p amazonlinux:1 -e -R ${env.RELEASE_SCOPE}"
+          },
+          amazonlinux2: {
+            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p amazonlinux:2 --ee --custom ${env.RELEASE_SCOPE} -V"
+            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p amazonlinux:2 -e -R ${env.RELEASE_SCOPE}"
           },
           alpine: {
             sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p alpine --ee --custom ${env.RELEASE_SCOPE} -V"
