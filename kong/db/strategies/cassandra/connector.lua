@@ -57,7 +57,6 @@ function CassandraConnector.new(kong_config)
                 return tcp.settimeout(tcp, select(1, ...)/1000)
               end
 
-
               return tcp[k](tcp, ...)
             end
           end
