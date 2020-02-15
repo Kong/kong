@@ -77,7 +77,7 @@ for _, strategy in helpers.each_strategy() do
       local t2, errors = v(t, schema_def)
       assert.truthy(t2)
       assert.is_falsy(errors)
-      assert.equal(false, t2.config.persistent_refresh_token)
+      assert.equal(false, t2.config.reuse_refresh_token)
     end)
 
     describe("errors", function()
