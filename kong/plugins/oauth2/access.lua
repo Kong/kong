@@ -52,10 +52,9 @@ end
 
 
 local function generate_token(conf, service, credential, authenticated_userid,
-                              scope, state, existing_token, expiration,
-                              disable_refresh)
+                              scope, state, disable_refresh, existing_token)
 
-  local token_expiration = expiration or conf.token_expiration
+  local token_expiration = conf.token_expiration
 
   local refresh_token_ttl
   if conf.refresh_token_ttl and conf.refresh_token_ttl > 0 then
@@ -289,7 +288,7 @@ local function authorize(conf)
           response_params = generate_token(conf, kong.router.get_service(),
                                            client,
                                            parameters[AUTHENTICATED_USERID],
-                                           scopes, state, nil, nil, true)
+                                           scopes, state, true)
           is_implicit_grant = true
         end
       end
@@ -507,7 +506,7 @@ local function issue_token(conf)
             response_params = generate_token(conf, kong.router.get_service(),
                                              client,
                                              parameters.authenticated_userid,
-                                             scope, state, nil, nil, true)
+                                             scope, state, true)
           end
         end
 
@@ -570,7 +569,7 @@ local function issue_token(conf)
             response_params = generate_token(conf, kong.router.get_service(),
                                              client,
                                              token.authenticated_userid,
-                                             token.scope, state, token)
+                                             token.scope, state, false, token)
             -- Delete old token if refresh token not persisted
             if not conf.persistent_refresh_token then
               kong.db.oauth2_tokens:delete({ id = token.id })
