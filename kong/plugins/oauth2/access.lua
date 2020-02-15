@@ -68,7 +68,7 @@ local function generate_token(conf, service, credential, authenticated_userid,
 
   local refresh_token
   local token, err
-  if existing_token and conf.persistent_refresh_token then
+  if existing_token and conf.reuse_refresh_token then
     token, err = kong.db.oauth2_tokens:update({
       id = existing_token.id
     }, {
@@ -571,7 +571,7 @@ local function issue_token(conf)
                                              token.authenticated_userid,
                                              token.scope, state, false, token)
             -- Delete old token if refresh token not persisted
-            if not conf.persistent_refresh_token then
+            if not conf.reuse_refresh_token then
               kong.db.oauth2_tokens:delete({ id = token.id })
             end
           end
