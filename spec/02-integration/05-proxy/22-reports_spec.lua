@@ -55,14 +55,6 @@ for _, strategy in helpers.each_strategy() do
       local fd = assert(io.open(dns_hostsfile, "w"))
       assert(fd:write("127.0.0.1 " .. constants.REPORTS.ADDRESS))
       assert(fd:close())
-    end)
-
-    lazy_teardown(function()
-      os.remove(dns_hostsfile)
-    end)
-
-    before_each(function()
-      reports_server = helpers.mock_reports_server()
 
       local bp = assert(helpers.get_db_utils(strategy, {
         "services",
@@ -187,12 +179,20 @@ for _, strategy in helpers.each_strategy() do
                         helpers.get_proxy_ip(true)  .. ":19443 ssl",
 
       }))
+    end)
 
+    lazy_teardown(function()
+      helpers.stop_kong()
+
+      os.remove(dns_hostsfile)
+    end)
+
+    before_each(function()
+      reports_server = helpers.mock_reports_server()
     end)
 
     after_each(function()
-      helpers.stop_kong()
-      reports_server:stop() -- stop the reports server if it was not already stopped
+      reports_server:stop()
     end)
 
     it("reports http requests", function()
@@ -318,12 +318,12 @@ for _, strategy in helpers.each_strategy() do
 
     it("reports grpcs requests", function()
       local grpcs_client = assert(helpers.proxy_client_grpcs())
-      assert(grpcs_client({
+      grpcs_client({
         service = "hello.HelloService.SayHello",
         opts = {
           ["-authority"] = "grpcs",
         },
-      }))
+      })
 
       reports_send_ping()
 
@@ -416,8 +416,8 @@ for _, strategy in helpers.each_strategy() do
 
       local _, reports_data = assert(reports_server:stop())
       assert.same(1, #reports_data)
-      assert.match("streams=1", reports_data[1])
-      assert.match("tcp_streams=0", reports_data[1])
+      assert.match("streams=2", reports_data[1])
+      assert.match("tcp_streams=1", reports_data[1]) -- it counts the stream request for the ping
       assert.match("tls_streams=1", reports_data[1])
     end)
   end)
