@@ -164,6 +164,13 @@ if subsystem == "http" then
     -- Want to send headers to upstream
     local proxy_span = zipkin.proxy_span
     local set_header = kong.service.request.set_header
+
+    -- Set the W3C Trace Context header
+    -- TODO: Should W3C traceparent header be set even it wasn't on the incoming request?
+    set_header("traceparent", "00-".. to_hex(proxy_span.trace_id) .. "-" .. to_hex(proxy_span.span_id) .. "-" ..
+      tostring(proxy_span.should_sample and "01" or "00"))
+
+    -- TODO: Should B3 headers be set even if they weren't on the incoming request?
     -- We want to remove headers if already present
     set_header("x-b3-traceid", to_hex(proxy_span.trace_id))
     set_header("x-b3-spanid", to_hex(proxy_span.span_id))

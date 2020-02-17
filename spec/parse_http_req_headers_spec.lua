@@ -5,8 +5,8 @@ local to_hex = require "resty.string".to_hex
 local fmt  = string.format
 
 local function to_hex_first_3(arr)
-  return { to_hex(arr[1]),
-           to_hex(arr[2]),
+  return { arr[1] and to_hex(arr[1]) or nil,
+           arr[2] and to_hex(arr[2]) or nil,
            arr[3] and to_hex(arr[3]) or nil,
            arr[4] }
 end
@@ -181,6 +181,120 @@ describe("zipkin header parsing", function()
         t  = { parse_http_req_headers({ b3 = b3 }) }
         assert.same({}, t)
         assert.spy(warn).called_with("b3 single header invalid; ignoring.")
+      end)
+    end)
+  end)
+
+  describe("W3C header parsing", function()
+    local warn
+    before_each(function()
+      warn = spy.on(kong.log, "warn")
+    end)
+
+    it("valid traceparent with sampling", function()
+      local traceparent = fmt("00-%s-%s-01", trace_id_32, parent_id)
+      local t = { parse_http_req_headers({ traceparent = traceparent }) }
+      assert.same({ trace_id_32, nil, parent_id, true }, to_hex_first_3(t))
+      assert.spy(warn).not_called()
+    end)
+
+    it("valid traceparent without sampling", function()
+      local traceparent = fmt("00-%s-%s-00", trace_id_32, parent_id)
+      local t = { parse_http_req_headers({ traceparent = traceparent }) }
+      assert.same({ trace_id_32, nil, parent_id, false }, to_hex_first_3(t))
+      assert.spy(warn).not_called()
+    end)
+
+    it("sampling with mask", function()
+      local traceparent = fmt("00-%s-%s-09", trace_id_32, parent_id)
+      local t = { parse_http_req_headers({ traceparent = traceparent }) }
+      assert.same(true, t[4])
+      assert.spy(warn).not_called()
+    end)
+
+    it("no sampling with mask", function()
+      local traceparent = fmt("00-%s-%s-08", trace_id_32, parent_id)
+      local t = { parse_http_req_headers({ traceparent = traceparent }) }
+      assert.same(false, t[4])
+      assert.spy(warn).not_called()
+    end)
+
+    describe("errors", function()
+      it("rejects W3C versions other than 00", function()
+        local traceparent = fmt("01-%s-%s-00", trace_id_32, parent_id)
+        local t = { parse_http_req_headers({ traceparent = traceparent }) }
+        assert.same({}, t)
+        assert.spy(warn).was_called_with("invalid W3C Trace Context version; ignoring.")
+      end)
+
+      it("rejects invalid header", function()
+        local traceparent = "vv-00000000000000000000000000000001-0000000000000001-00"
+        local t = { parse_http_req_headers({ traceparent = traceparent }) }
+        assert.same({}, t)
+        assert.spy(warn).was_called_with("invalid W3C traceparent header; ignoring.")
+
+        traceparent = "00-vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv-0000000000000001-00"
+        t = { parse_http_req_headers({ traceparent = traceparent }) }
+        assert.same({}, t)
+        assert.spy(warn).was_called_with("invalid W3C traceparent header; ignoring.")
+
+        traceparent = "00-00000000000000000000000000000001-vvvvvvvvvvvvvvvv-00"
+        t = { parse_http_req_headers({ traceparent = traceparent }) }
+        assert.same({}, t)
+        assert.spy(warn).was_called_with("invalid W3C traceparent header; ignoring.")
+
+        traceparent = "00-00000000000000000000000000000001-0000000000000001-vv"
+        t = { parse_http_req_headers({ traceparent = traceparent }) }
+        assert.same({}, t)
+        assert.spy(warn).was_called_with("invalid W3C traceparent header; ignoring.")
+      end)
+
+      it("rejects invalid trace IDs", function()
+        local traceparent = fmt("00-%s-%s-00", too_short_id, parent_id)
+        local t = { parse_http_req_headers({ traceparent = traceparent }) }
+        assert.same({}, t)
+        assert.spy(warn).was_called_with("invalid W3C trace context trace ID; ignoring.")
+
+        traceparent = fmt("00-%s-%s-00", too_long_id, parent_id)
+        t = { parse_http_req_headers({ traceparent = traceparent }) }
+        assert.same({}, t)
+        assert.spy(warn).was_called_with("invalid W3C trace context trace ID; ignoring.")
+
+        -- cannot be all zeros
+        traceparent = fmt("00-00000000000000000000000000000000-%s-00", too_long_id, parent_id)
+        t = { parse_http_req_headers({ traceparent = traceparent }) }
+        assert.same({}, t)
+        assert.spy(warn).was_called_with("invalid W3C trace context trace ID; ignoring.")
+      end)
+
+      it("rejects invalid parent IDs", function()
+        local traceparent = fmt("00-%s-%s-00", trace_id_32, too_short_id)
+        local t = { parse_http_req_headers({ traceparent = traceparent }) }
+        assert.same({}, t)
+        assert.spy(warn).was_called_with("invalid W3C trace context parent ID; ignoring.")
+
+        traceparent = fmt("00-%s-%s-00", trace_id_32, too_long_id)
+        t = { parse_http_req_headers({ traceparent = traceparent }) }
+        assert.same({}, t)
+        assert.spy(warn).was_called_with("invalid W3C trace context parent ID; ignoring.")
+
+        -- cannot be all zeros
+        traceparent = fmt("00-%s-0000000000000000-01", trace_id_32)
+        t = { parse_http_req_headers({ traceparent = traceparent }) }
+        assert.same({}, t)
+        assert.spy(warn).was_called_with("invalid W3C trace context parent ID; ignoring.")
+      end)
+
+      it("rejects invalid trace flags", function()
+        local traceparent = fmt("00-%s-%s-000", trace_id_32, parent_id)
+        local t = { parse_http_req_headers({ traceparent = traceparent }) }
+        assert.same({}, t)
+        assert.spy(warn).was_called_with("invalid W3C trace context flags; ignoring.")
+
+        traceparent = fmt("00-%s-%s-0", trace_id_32, parent_id)
+        t = { parse_http_req_headers({ traceparent = traceparent }) }
+        assert.same({}, t)
+        assert.spy(warn).was_called_with("invalid W3C trace context flags; ignoring.")
       end)
     end)
   end)

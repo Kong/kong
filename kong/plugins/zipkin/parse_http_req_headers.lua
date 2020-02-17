@@ -13,6 +13,7 @@ local baggage_mt = {
 local B3_SINGLE_PATTERN =
   "^(%x+)%-(%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x)%-?([01d]?)%-?(%x*)$"
 
+local W3C_TRACECONTEXT_PATTERN = "^(%x+)%-(%x+)%-(%x+)%-(%x+)$"
 
 local function hex_to_char(c)
   return char(tonumber(c, 16))
@@ -165,9 +166,71 @@ local function parse_zipkin_b3_headers(headers)
   return trace_id, span_id, parent_id, should_sample
 end
 
+local function parse_w3c_trace_context_headers(headers)
+  -- allow testing to spy on this.
+  local warn = kong.log.warn
+
+  local version, trace_id, parent_id, trace_flags
+  local should_sample = false
+
+  local w3c_trace_context_header = headers["traceparent"]
+
+  -- no W3C trace context
+  if w3c_trace_context_header == nil or type(w3c_trace_context_header) ~= "string" then
+    return nil, nil, nil, should_sample
+  end
+
+  version, trace_id, parent_id, trace_flags = match(w3c_trace_context_header, W3C_TRACECONTEXT_PATTERN)
+
+  -- values are not parsable hexidecimal and therefore invalid.
+  if version == nil or trace_id == nil or parent_id == nil or trace_flags == nil then
+    warn("invalid W3C traceparent header; ignoring.")
+  end
+
+  -- Only support version 00 of the W3C Trace Context spec.
+  if version ~= "00" then
+    warn("invalid W3C Trace Context version; ignoring.")
+    return nil, nil, nil, should_sample
+  end
+
+  -- valid trace_id is required.
+  if #trace_id ~= 32 or tonumber(trace_id, 16) == 0 then
+    warn("invalid W3C trace context trace ID; ignoring.")
+    return nil, nil, nil, should_sample
+  end
+
+  -- valid parent_id is required.
+  if #parent_id ~= 16 or tonumber(parent_id, 16) == 0 then
+    warn("invalid W3C trace context parent ID; ignoring.")
+    return nil, nil, nil, should_sample
+  end
+
+  -- valid flags are required
+  if #trace_flags ~= 2 then
+    warn("invalid W3C trace context flags; ignoring.")
+    return nil, nil, nil, should_sample
+  end
+
+  -- W3C sampled flag: https://www.w3.org/TR/trace-context/#sampled-flag
+  should_sample = tonumber(trace_flags, 16) % 2 == 1
+
+  trace_id = from_hex(trace_id)
+  parent_id = from_hex(parent_id)
+
+  return trace_id, parent_id, should_sample
+
+end
 
 local function parse_http_req_headers(headers)
+  -- Check for B3 headers first
   local trace_id, span_id, parent_id, should_sample = parse_zipkin_b3_headers(headers)
+
+  -- TODO: Offer the option to configure which headers to use. For now, W3C wins if it's present
+  -- Check for W3C headers
+  local w3c_trace_id, w3c_parent_id, w3c_should_sample = parse_w3c_trace_context_headers(headers)
+  if w3c_trace_id then
+    trace_id, span_id, parent_id, should_sample = w3c_trace_id, nil, w3c_parent_id, w3c_should_sample
+  end
 
   if not trace_id then
     return trace_id, span_id, parent_id, should_sample
