@@ -1,8 +1,10 @@
 local logger       = require "kong.cmd.utils.log"
+local utils        = require "kong.tools.utils"
 local pgmoon       = require "pgmoon"
 local arrays       = require "pgmoon.arrays"
 local stringx      = require "pl.stringx"
 local semaphore    = require "ngx.semaphore"
+local kong_global = require "kong.global"
 
 
 local setmetatable = setmetatable
@@ -25,6 +27,7 @@ local log          = ngx.log
 local match        = string.match
 local fmt          = string.format
 local sub          = string.sub
+local kong         = kong
 
 
 local WARN                          = ngx.WARN
@@ -39,6 +42,12 @@ local PROTECTED_TABLES = {
   schema_meta       = true,
   locks             = true,
 }
+local OPERATIONS = {
+  read  = true,
+  write = true,
+}
+local ADMIN_API_PHASE = kong_global.phases.admin_api
+local kong_get_phase = kong_global.get_phase
 
 
 local function now_updated()
@@ -179,7 +188,7 @@ local setkeepalive
 
 
 local function connect(config)
-  local phase  = get_phase()
+  local phase  = get_phase(kong)
   if phase == "init" or phase == "init_worker" or ngx.IS_CLI then
     -- Force LuaSocket usage in the CLI in order to allow for self-signed
     -- certificates to be trusted (via opts.cafile) in the resty-cli
@@ -258,8 +267,8 @@ local _mt = {
 _mt.__index = _mt
 
 
-function _mt:get_stored_connection()
-  local conn = self.super.get_stored_connection(self)
+function _mt:get_stored_connection(operation)
+  local conn = self.super.get_stored_connection(self, operation)
   if conn and conn.sock then
     return conn
   end
@@ -376,13 +385,22 @@ function _mt:infos()
 end
 
 
-function _mt:connect()
-  local conn = self:get_stored_connection()
+function _mt:connect(operation)
+  if operation ~= nil and operation ~= "read" and operation ~= "write" then
+    error("operation must be 'read' or 'write', was: " .. tostring(operation), 2)
+  end
+
+  if not operation or not self.config_ro then
+    operation = "write"
+  end
+
+  local conn = self:get_stored_connection(operation)
   if conn then
     return conn
   end
 
-  local connection, err = connect(self.config)
+  local connection, err = connect(operation == "write" and
+                                  self.config or self.config_ro)
   if not connection then
     return nil, err
   end
@@ -399,17 +417,17 @@ end
 
 
 function _mt:close()
-  local conn = self:get_stored_connection()
-  if not conn then
-    return true
-  end
+  for operation in pairs(OPERATIONS) do
+    local conn = self:get_stored_connection(operation)
+    if conn then
+      local _, err = conn:disconnect()
 
-  local _, err = conn:disconnect()
+      self:store_connection(nil, operation)
 
-  self:store_connection(nil)
-
-  if err then
-    return nil, err
+      if err then
+        return nil, err
+      end
+    end
   end
 
   return true
@@ -417,25 +435,26 @@ end
 
 
 function _mt:setkeepalive()
-  local conn = self:get_stored_connection()
-  if not conn then
-    return true
-  end
+  for operation in pairs(OPERATIONS) do
+    local conn = self:get_stored_connection(operation)
+    if conn then
+      local _, err = setkeepalive(conn)
 
-  local _, err = setkeepalive(conn)
+      self:store_connection(nil, operation)
 
-  self:store_connection(nil)
-
-  if err then
-    return nil, err
+      if err then
+        return nil, err
+      end
+    end
   end
 
   return true
 end
 
 
-function _mt:acquire_query_semaphore_resource()
-  if not self.sem then
+function _mt:acquire_query_semaphore_resource(operation)
+  local sem = self["sem_" .. operation]
+  if not sem then
     return true
   end
 
@@ -446,7 +465,7 @@ function _mt:acquire_query_semaphore_resource()
     end
   end
 
-  local ok, err = self.sem:wait(self.config.sem_timeout)
+  local ok, err = sem:wait(self.config.sem_timeout)
   if not ok then
     return nil, err
   end
@@ -455,8 +474,9 @@ function _mt:acquire_query_semaphore_resource()
 end
 
 
-function _mt:release_query_semaphore_resource()
-  if not self.sem then
+function _mt:release_query_semaphore_resource(operation)
+  local sem = self["sem_" .. operation]
+  if not sem then
     return true
   end
 
@@ -467,28 +487,45 @@ function _mt:release_query_semaphore_resource()
     end
   end
 
-  self.sem:post()
+  sem:post()
 end
 
 
-function _mt:query(sql)
+function _mt:query(sql, operation)
+  if operation ~= nil and operation ~= "read" and operation ~= "write" then
+    error("operation must be 'read' or 'write', was: " .. tostring(operation), 2)
+  end
+
+  local phase  = get_phase(kong)
+
+  if not operation or
+     not self.config_ro or
+     (phase == "content" and kong_get_phase(kong) == ADMIN_API_PHASE)
+  then
+    -- admin API requests skips the replica optimization
+    -- to ensure all its results are always strongly consistent
+    operation = "write"
+  end
+
   local res, err, partial, num_queries
 
   local ok
-  ok, err = self:acquire_query_semaphore_resource()
+  ok, err = self:acquire_query_semaphore_resource(operation)
   if not ok then
     return nil, "error acquiring query semaphore: " .. err
   end
 
-  local conn = self:get_stored_connection()
+  local conn = self:get_stored_connection(operation)
   if conn then
     res, err, partial, num_queries = conn:query(sql)
 
   else
     local connection
-    connection, err = connect(self.config)
+    local config = operation == "write" and self.config or self.config_ro
+
+    connection, err = connect(config)
     if not connection then
-      self:release_query_semaphore_resource()
+      self:release_query_semaphore_resource(operation)
       return nil, err
     end
 
@@ -497,7 +534,7 @@ function _mt:query(sql)
     setkeepalive(connection)
   end
 
-  self:release_query_semaphore_resource()
+  self:release_query_semaphore_resource(operation)
 
   if res then
     return res, nil, partial, num_queries or err
@@ -508,7 +545,7 @@ end
 
 
 function _mt:iterate(sql)
-  local res, err, partial, num_queries = self:query(sql)
+  local res, err, partial, num_queries = self:query(sql, "read")
   if not res then
     local failed = false
     return function()
@@ -904,12 +941,49 @@ function _M.new(kong_config)
     end
   end
 
-  return setmetatable({
+  local self = {
     config            = config,
     escape_identifier = db.escape_identifier,
     escape_literal    = db.escape_literal,
-    sem               = sem,
-  }, _mt)
+    sem_write         = sem,
+  }
+
+  if not ngx.IS_CLI and kong_config.pg_ro_host then
+    ngx.log(ngx.DEBUG, "PostgreSQL connector readonly connection enabled")
+
+    local ro_override = {
+      host        = kong_config.pg_ro_host,
+      port        = kong_config.pg_ro_port,
+      timeout     = kong_config.pg_ro_timeout,
+      user        = kong_config.pg_ro_user,
+      password    = kong_config.pg_ro_password,
+      database    = kong_config.pg_ro_database,
+      schema      = kong_config.pg_ro_schema,
+      ssl         = kong_config.pg_ro_ssl,
+      ssl_verify  = kong_config.pg_ro_ssl_verify,
+      cafile      = kong_config.lua_ssl_trusted_certificate,
+      sem_max     = kong_config.pg_ro_max_concurrent_queries,
+      sem_timeout = kong_config.pg_ro_semaphore_timeout and
+                    (kong_config.pg_ro_semaphore_timeout / 1000) or nil,
+    }
+
+    local config_ro = utils.table_merge(config, ro_override)
+
+    local sem
+    if config_ro.sem_max > 0 then
+      local err
+      sem, err = semaphore.new(config_ro.sem_max)
+      if not sem then
+        ngx.log(ngx.CRIT, "failed creating the PostgreSQL connector semaphore: ",
+                          err)
+      end
+    end
+
+    self.config_ro = config_ro
+    self.sem_read = sem
+  end
+
+  return setmetatable(self, _mt)
 end
 
 
