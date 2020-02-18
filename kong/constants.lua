@@ -132,7 +132,8 @@ return {
     "keyring_meta",
     -- DISCLAIMER
     -- this sets whether entity uses kong.core_cache (true) or kong.cache
-    consumers = true,
+    -- XXX EE: we need consumers to use kong.cache for portal auth to work
+    -- consumers = true,
     certificates = true,
     services = true,
     routes = true,
