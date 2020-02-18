@@ -50,7 +50,7 @@ Name                | Required   | Default | Description
 config.account_email| Yes        |            | The account identifier, can be reused in different plugin instance.
 config.api_uri      |            |  `"https://acme-v02.api.letsencrypt.org"`   | The ACMEv2 API endpoint to use, user might use [Let's Encrypt staging environemnt](https://letsencrypt.org/docs/staging-environment/) during testing.
 config.cert_type    |            |  `"rsa"`   | The certificate type to create, choice of `"rsa"` for RSA certificate or `"ecc"` for EC certificate.
-config.domains      |            | `[]`       | The list of domains to create certificate for. To match subdomains under `example.com`, use `*.example.com`. Regex pattern is not supported.
+config.domains      |            | `[]`       | The list of domains to create certificate for. To match subdomains under `example.com`, use `*.example.com`. Regex pattern is not supported. Note this config is only used to match domains, not to specify the Common Name or Subject Alternative Name to create certifcates; each domain will have its own certificate.
 config.renew_threshold_days|     |  `14`      | Days before expire to renew the certificate.
 config.storage      |            |  `"shm"`   | The backend storage type to use, choice of `"kong"`, `"shm"`, `"redis"`, `"consul"` or `"vault"`. In dbless mode, `"kong"` storage is unavailable.
 config.storage_config|           | (See below)| Storage configs for each backend storage.
@@ -151,3 +151,5 @@ Certificate entity is already defined in Kong, they will be overrided from
 response.
 - The plugin only supports http-01 challenge, meaning user will need a public
 IP and setup resolvable DNS. And Kong needs to accept proxy traffic from 80 port.
+And wildcard or star certificate is not supported, each domain will have its own
+certificate.
