@@ -103,7 +103,7 @@ describe("kong.db [#postgres] connector", function()
     end)
 
     it("returns db_readonly = true when readonly connection is enabled", function()
-      infos = connector.infos{ config = config, config_ro = config, }
+      local infos = connector.infos{ config = config, config_ro = config, }
       assert.same({
         db_desc  = "database",
         db_ver   = "unknown",

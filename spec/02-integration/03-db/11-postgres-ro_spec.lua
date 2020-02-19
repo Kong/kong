@@ -105,8 +105,6 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("read only operation breaks and read write operation works", function()
-      local route_id
-
       it("admin API bypasses readonly connection but proxy doesn't", function()
         local res = assert(admin_client:post("/services", {
           body = { name = "mockbin-service", url = "https://mockbin.org/request", },
@@ -123,10 +121,7 @@ for _, strategy in helpers.each_strategy() do
           body = { paths = { "/" }, },
           headers = {["Content-Type"] = "application/json"}
         }))
-        body = assert.res_status(201, res)
-        json = cjson.decode(body)
-
-        route_id = json.id
+        assert.res_status(201, res)
 
         res = assert(proxy_client:send({
           method  = "GET",
