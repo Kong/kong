@@ -839,6 +839,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(494, res)
 
+        -- close and reopen to flush the request
+        proxy_client:close()
+        proxy_client = helpers.proxy_client()
+
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
@@ -875,6 +879,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(494, res)
 
+        -- close and reopen to flush the request
+        proxy_client:close()
+        proxy_client = helpers.proxy_client()
+
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
@@ -906,6 +914,10 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(414, res)
+
+        -- close and reopen to flush the request
+        proxy_client:close()
+        proxy_client = helpers.proxy_client()
 
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
@@ -941,6 +953,10 @@ for _, strategy in helpers.each_strategy() do
           --]]
         })
         assert.res_status(414, res)
+
+        -- close and reopen to flush the request
+        proxy_client:close()
+        proxy_client = helpers.proxy_client()
 
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
