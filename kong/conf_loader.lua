@@ -333,6 +333,7 @@ local CONF_INFERENCES = {
   pg_timeout = { typ = "number" },
   pg_password = { typ = "string" },
   pg_ssl = { typ = "boolean" },
+  pg_ssl_required = { typ = "boolean" }, 
   pg_ssl_verify = { typ = "boolean" },
   pg_max_concurrent_queries = { typ = "number" },
   pg_semaphore_timeout = { typ = "number" },
