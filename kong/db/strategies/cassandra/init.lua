@@ -1,4 +1,5 @@
 local iteration = require "kong.db.iteration"
+local constants = require "kong.constants"
 local cassandra = require "cassandra"
 local workspaces = require "kong.workspaces"
 local utils      = require "kong.tools.utils"
