@@ -1121,7 +1121,6 @@ do
 end
 
 do
-  local opts = new_tab(0, 2)
 
   local function execute_page(self, cql, args, offset, opts)
     local rows, err = self.connector:query(cql, args, opts, "read")
@@ -1144,7 +1143,7 @@ do
     return rows, nil, next_offset
     end
 
-  local function query_page(self, offset, foreign_key, foreign_key_db_columns)
+  local function query_page(self, offset, foreign_key, foreign_key_db_columns, opts)
     local cql
     local args
     local err
@@ -1243,7 +1242,7 @@ do
   end
 
 
-  local function query_page_for_tags(self, size, offset, tags, cond)
+  local function query_page_for_tags(self, size, offset, tags, cond, opts)
     -- TODO: if we don't sort, we can have a performance guidance to user
     -- to "always put tags with less entity at the front of query"
     table.sort(tags)
@@ -1402,6 +1401,7 @@ do
   end
 
   function _mt:page(size, offset, options, foreign_key, foreign_key_db_columns)
+    local opts = new_tab(0, 2)
     size = size or constants.DEFAULT_PAGE_SIZE
 
     if offset then
@@ -1417,10 +1417,10 @@ do
     opts.paging_state = offset
 
     if options and options.tags then
-      return query_page_for_tags(self, size, offset, options.tags, options.tags_cond)
+      return query_page_for_tags(self, size, offset, options.tags, options.tags_cond, opts)
     end
 
-    return query_page(self, offset, foreign_key, foreign_key_db_columns)
+    return query_page(self, offset, foreign_key, foreign_key_db_columns, opts)
   end
 end
 
