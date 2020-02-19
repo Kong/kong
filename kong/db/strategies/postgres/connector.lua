@@ -376,11 +376,12 @@ function _mt:infos()
   end
 
   return {
-    strategy  = "PostgreSQL",
-    db_name   = self.config.database,
-    db_schema = self.config.schema,
-    db_desc   = "database",
-    db_ver    = db_ver or "unknown",
+    strategy    = "PostgreSQL",
+    db_name     = self.config.database,
+    db_schema   = self.config.schema,
+    db_desc     = "database",
+    db_ver      = db_ver or "unknown",
+    db_readonly = self.config_ro ~= nil,
   }
 end
 
@@ -405,14 +406,14 @@ function _mt:connect(operation)
     return nil, err
   end
 
-  self:store_connection(connection)
+  self:store_connection(connection, operation)
 
   return connection
 end
 
 
 function _mt:connect_migrations()
-  return self:connect()
+  return self:connect("write")
 end
 
 
