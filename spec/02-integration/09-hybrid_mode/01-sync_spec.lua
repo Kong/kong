@@ -3,6 +3,7 @@ local cjson = require "cjson.safe"
 
 
 for _, strategy in helpers.each_strategy() do
+  -- XXX EE: set to `define` once we have strategy off
   pending("CP/DP sync works with #" .. strategy .. " backend", function()
     local proxy_client, client
 
