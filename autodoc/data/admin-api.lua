@@ -150,6 +150,136 @@ return {
           ]],
         },
       },
+      ["/endpoints"] = {
+        GET = {
+          title = [[List available endpoints]],
+          endpoint = [[<div class="endpoint get">/endpoints</div>]],
+          description = [[List all available endpoints provided by the Admin API.]],
+          response =[[
+            ```
+            HTTP 200 OK
+            ```
+
+            ```json
+            {
+                "data": [
+                    "/",
+                    "/acls",
+                    "/acls/{acls}",
+                    "/acls/{acls}/consumer",
+                    "/basic-auths",
+                    "/basic-auths/{basicauth_credentials}",
+                    "/basic-auths/{basicauth_credentials}/consumer",
+                    "/ca_certificates",
+                    "/ca_certificates/{ca_certificates}",
+                    "/cache",
+                    "/cache/{key}",
+                    "..."
+                ]
+            }
+            ```
+          ]],
+        },
+      },
+      ["/schemas/:db_entity_name/validate"] = {
+        POST = {
+          title = [[Validate a configuration against a schema]],
+          endpoint = [[<div class="endpoint post">/schemas/{entity}/validate</div>]],
+          description = [[
+            Check validity of a configuration against its entity schema.
+            This allows you to test your input before submitting a request
+            to the entity endpoints of the Admin API.
+
+            Note that this only performs the schema validation checks,
+            checking that the input configuration is well-formed.
+            A requests to the entity endpoint using the given configuration
+            may still fail due to other reasons, such as invalid foreign
+            key relationships or uniqueness check failures against the
+            contents of the data store.
+          ]],
+          response =[[
+            ```
+            HTTP 200 OK
+            ```
+
+            ```json
+            {
+                "message": "schema validation successful"
+            }
+            ```
+          ]],
+        },
+      },
+      ["/schemas/:name"] = {
+        GET = {
+          title = [[Retrieve Entity Schema]],
+          endpoint = [[<div class="endpoint get">/schemas/{entity name}</div>]],
+          description = [[
+            Retrieve the schema of an entity. This is useful to
+            understand what fields an entity accepts, and can be used for building
+            third-party integrations to the Kong.
+          ]],
+          response = [[
+            ```
+            HTTP 200 OK
+            ```
+
+            ```json
+            {
+                "fields": [
+                    {
+                        "id": {
+                            "auto": true,
+                            "type": "string",
+                            "uuid": true
+                        }
+                    },
+                    {
+                        "created_at": {
+                            "auto": true,
+                            "timestamp": true,
+                            "type": "integer"
+                        }
+                    },
+                    ...
+                ]
+            }
+            ```
+          ]],
+        },
+      },
+      ["/schemas/plugins/:name"] = {
+        GET = {
+          title = [[Retrieve Plugin Schema]],
+          endpoint = [[<div class="endpoint get">/schemas/plugins/{plugin name}</div>]],
+          description = [[
+            Retrieve the schema of a plugin's configuration. This is useful to
+            understand what fields a plugin accepts, and can be used for building
+            third-party integrations to the Kong's plugin system.
+          ]],
+          response = [[
+            ```
+            HTTP 200 OK
+            ```
+
+            ```json
+            {
+                "fields": {
+                    "hide_credentials": {
+                        "default": false,
+                        "type": "boolean"
+                    },
+                    "key_names": {
+                        "default": "function",
+                        "required": true,
+                        "type": "array"
+                    }
+                }
+            }
+            ```
+          ]],
+        },
+      },
     },
     health = {
       title = [[Health routes]],
@@ -359,7 +489,7 @@ return {
       ["/tags/:tags"] = {
         GET = {
           title = [[ List entity IDs by tag ]],
-          endpoint = [[<div class="endpoint get">/tags/:tags</div>]],
+          endpoint = [[<div class="endpoint get">/tags/{tags}</div>]],
           description = [[
             Returns the entities that have been tagged with the specified tag.
 
@@ -779,37 +909,9 @@ return {
         would have otherwise matched config B.
       ]],
 
+      -- deprecated
       ["/plugins/schema/:name"] = {
-        GET = {
-          title = [[Retrieve Plugin Schema]],
-          endpoint = [[<div class="endpoint get">/plugins/schema/{plugin name}</div>]],
-          description = [[
-            Retrieve the schema of a plugin's configuration. This is useful to
-            understand what fields a plugin accepts, and can be used for building
-            third-party integrations to the Kong's plugin system.
-          ]],
-          response = [[
-            ```
-            HTTP 200 OK
-            ```
-
-            ```json
-            {
-                "fields": {
-                    "hide_credentials": {
-                        "default": false,
-                        "type": "boolean"
-                    },
-                    "key_names": {
-                        "default": "function",
-                        "required": true,
-                        "type": "array"
-                    }
-                }
-            }
-            ```
-          ]],
-        }
+        skip = true,
       },
 
       ["/plugins/enabled"] = {

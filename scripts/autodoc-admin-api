@@ -568,6 +568,8 @@ local function write_general_section(outfd, filename, all_endpoints, name, data_
   }
 
   write_endpoints(outfd, info, all_endpoints, data_general.methods)
+
+  return info
 end
 
 local active_verbs = {
@@ -868,6 +870,19 @@ local function check_admin_api_modules(data)
   end
 end
 
+local function check_endpoints(all_endpoints, infos)
+  for _, info in ipairs(infos) do
+    for endpoint, handler in pairs(info.mod) do
+      if handler ~= Endpoints.not_found then
+        assert_data(all_endpoints[endpoint],
+                    "data for implemented endpoint " .. endpoint)
+        assert_data(all_endpoints[endpoint].done or all_endpoints[endpoint].skip,
+                    "done or skip mark in endpoint " .. endpoint)
+      end
+    end
+  end
+end
+
 --------------------------------------------------------------------------------
 
 local function write_admin_api(filename, data, title)
@@ -900,9 +915,13 @@ local function write_admin_api(filename, data, title)
 
   local all_endpoints = {}
 
+  local general_infos = {}
+
   for _, fullname in ipairs(data.known.general_files) do
     local name = fullname:match("/([^/]+)%.lua$")
-    write_general_section(outfd, fullname, all_endpoints, name, data.general)
+    local ginfo = write_general_section(outfd, fullname, all_endpoints, name, data.general)
+    table.insert(general_infos, ginfo)
+    general_infos[name] = ginfo
   end
 
   local entity_infos = {}
@@ -924,16 +943,8 @@ local function write_admin_api(filename, data, title)
   end
 
   -- Check that all endpoints were traversed
-  for _, info in ipairs(entity_infos) do
-    for endpoint, handler in pairs(info.mod) do
-      if handler ~= Endpoints.not_found then
-        assert_data(all_endpoints[endpoint],
-                    "data for implemented endpoint " .. endpoint)
-        assert_data(all_endpoints[endpoint].done or all_endpoints[endpoint].skip,
-                    "done or skip mark in endpoint " .. endpoint)
-      end
-    end
-  end
+  check_endpoints(all_endpoints, entity_infos)
+  check_endpoints(all_endpoints, general_infos)
 
   outfd:write(unindent(assert_data(data.footer, "footer string")))
 
