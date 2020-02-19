@@ -180,23 +180,25 @@ local function get_workspaces_count()
 end
 
 
-local function get_rbac_users_count()
-  -- probably it is better to use :each() but since it is being run once a quarter
-  -- don't think it is a big problem
-  local counts, err = kong.db.workspace_entity_counters:select_all({
-    entity_type = "rbac_users"
-  })
-  if err then
-    log(ngx.WARN, "failed to get count of RBAC users: ", err)
-    return nil
+local function get_workspace_entity_counts()
+  local workspace_entity_counters_count = {
+    rbac_users = 0,
+    services = 0,
+  }
+
+  for entity, err in kong.db.workspace_entity_counters:each() do
+    if err then
+      log(ngx.WARN, "could not load workspace_entity_counters: ", err)
+      return nil
+    end
+
+    if workspace_entity_counters_count[entity.entity_type] then
+      workspace_entity_counters_count[entity.entity_type] = workspace_entity_counters_count[entity.entity_type] + entity.count
+    end
   end
 
-  local c = 0
-  for _, entity_counter in ipairs(counts) do
-    c = c + entity_counter.count or 0
-  end
 
-  return c
+  return workspace_entity_counters_count
 end
 
 
@@ -208,6 +210,7 @@ end
 function _M:get_license_report()
   local db = kong.db
   local sys_info = utils.get_system_infos()
+  local workspace_entity_counters_count = get_workspace_entity_counts()
 
   local report = {
     kong_version = kong.version,
@@ -221,8 +224,9 @@ function _M:get_license_report()
     license_key = get_license_data(),
     -- counters
     counters = get_counters_data(self.strategy),
-    rbac_users = get_rbac_users_count(),
+    rbac_users = workspace_entity_counters_count.rbac_users,
     workspaces_count = get_workspaces_count(),
+    services_count = workspace_entity_counters_count.services
   }
 
   return report
