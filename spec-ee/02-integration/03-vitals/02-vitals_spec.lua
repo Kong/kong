@@ -1048,7 +1048,24 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("get_status_codes() - validation", function()
-      it("rejects invalid query_type", function()
+      it("when influxdb strategy rejects invalid query_type", function()
+        kong.configuration = { vitals_strategy = "influxdb" }
+        local res, err = vitals:get_status_codes({
+          entity_type = "service",
+          duration    = "foo",
+          level       = "cluster",
+          service_id  = utils.uuid(),
+        })
+
+        local expected = "Invalid query params: interval must be 'days', 'hours', 'minutes' or 'seconds'"
+
+        assert.is_nil(res)
+        assert.same(expected, err)
+      end)
+
+
+      it("when not influxdb strategy rejects invalid query_type", function()
+        kong.configuration = { vitals_strategy = "database" }
         local res, err = vitals:get_status_codes({
           entity_type = "service",
           duration    = "foo",

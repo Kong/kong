@@ -100,6 +100,13 @@ local PH_STATS = {
   "v.lua",
 }
 
+local interval_to_duration = {
+  seconds = 1,
+  minutes = 60,
+  hours = 3600,
+  days = 86400
+}
+
 local worker_count = ngx.worker.count()
 
 
@@ -1158,8 +1165,14 @@ end
 
 
 function _M:get_stats(query_type, level, node_id, start_ts)
-  if query_type ~= "minutes" and query_type ~= "seconds" then
-    return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
+  if kong.configuration.vitals_strategy == "influxdb" then
+    if query_type ~= "days" and query_type ~= "hours" and query_type ~= "minutes" and query_type ~= "seconds" then
+      return nil, "Invalid query params: interval must be 'days', 'hours', 'minutes' or 'seconds'"
+    end
+  else
+    if query_type ~= "minutes" and query_type ~= "seconds" then
+      return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
+    end
   end
 
   if level ~= "cluster" and level ~= "node" then
@@ -1198,8 +1211,14 @@ function _M:get_stats(query_type, level, node_id, start_ts)
 end
 
 function _M:get_status_codes(opts, key_by)
-  if opts.duration ~= "minutes" and opts.duration ~= "seconds" then
-    return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
+  if kong.configuration.vitals_strategy == "influxdb" then
+    if opts.duration ~= "days" and opts.duration ~= "hours" and opts.duration ~= "minutes" and opts.duration ~= "seconds" then
+      return nil, "Invalid query params: interval must be 'days', 'hours', 'minutes' or 'seconds'"
+    end
+  else
+    if opts.duration ~= "minutes" and opts.duration ~= "seconds" then
+      return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
+    end
   end
 
   -- we don't collect status codes or status code classes at the node level
@@ -1215,7 +1234,7 @@ function _M:get_status_codes(opts, key_by)
   -- currently depending on the API (api/init.lua) to do that check
 
   local query_opts = {
-    duration = opts.duration == "seconds" and 1 or 60,
+    duration = interval_to_duration[opts.duration],
     start_ts = opts.start_ts,
     entity_type = opts.entity_type,
     entity_id = opts.entity_id,
@@ -1271,8 +1290,14 @@ function _M:get_consumer_stats(opts)
     return nil, "Invalid query params: consumer_id, duration, and level are required"
   end
 
-  if opts.duration ~= "seconds" and opts.duration ~= "minutes" then
-    return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
+  if kong.configuration.vitals_strategy == "influxdb" then
+    if opts.duration ~= "days" and opts.duration ~= "hours" and opts.duration ~= "minutes" and opts.duration ~= "seconds" then
+      return nil, "Invalid query params: interval must be 'days', 'hours', 'minutes' or 'seconds'"
+    end
+  else
+    if opts.duration ~= "minutes" and opts.duration ~= "seconds" then
+      return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
+    end
   end
 
   if opts.level ~= "node" and opts.level ~= "cluster" then
@@ -1289,7 +1314,7 @@ function _M:get_consumer_stats(opts)
 
   local query_opts = {
     consumer_id = opts.consumer_id,
-    duration    = opts.duration == "seconds" and 1 or 60,
+    duration    = interval_to_duration[opts.duration],
     level       = opts.level,
     node_id     = opts.node_id,
     start_ts    = opts.start_ts,
