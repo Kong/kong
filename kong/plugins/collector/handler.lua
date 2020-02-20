@@ -116,7 +116,7 @@ end
 
 local CollectorHandler = BasePlugin:extend()
 
-CollectorHandler.PRIORITY = 3
+CollectorHandler.PRIORITY = 903
 CollectorHandler.VERSION = "1.7.0"
 
 function CollectorHandler:new()
@@ -129,6 +129,7 @@ end
 
 function CollectorHandler:access(conf)
   if allowed_to_run and conf.log_bodies then
+    kong.ctx.plugin.serialized_request = basic_serializer.serialize(ngx)
     ngx.req.read_body()
     local content_type = ngx.req.get_headers(0)["Content-Type"]
     local body = ngx.req.get_body_data()
@@ -150,7 +151,7 @@ function CollectorHandler:access(conf)
       end
     end
 
-    ngx.ctx.collector = {req_body = remove_sensible_data_from_table(params)}
+    kong.ctx.plugin.request_body = remove_sensible_data_from_table(params)
   end
 end
 
@@ -175,8 +176,10 @@ function CollectorHandler:body_filter(conf)
 end
 
 function CollectorHandler:log(conf)
-  local entry = basic_serializer.serialize(ngx)
-  entry["request"]["post_data"] = ngx.ctx.collector.req_body
+  local entry = kong.ctx.plugin.serialized_request
+  local response_entry = basic_serializer.serialize(ngx)
+  entry["response"] = response_entry["response"]
+  entry["request"]["post_data"] = kong.ctx.plugin.request_body
   entry = cjson.encode(entry)
 
   local queue_id = get_buffer_id(conf)

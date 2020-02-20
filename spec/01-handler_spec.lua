@@ -1,5 +1,5 @@
-local cjson      = require "cjson"
-local helpers    = require "spec.helpers"
+local cjson = require "cjson"
+local helpers = require "spec.helpers"
 
 
 for _, strategy in helpers.each_strategy() do
