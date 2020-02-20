@@ -402,7 +402,7 @@ do
 end
 
 
-local function wait_for_router_update(bp, old_rv, localhost, proxy_port, admin_port)
+local function wait_for_router_update(bp, old_rv, localhost, proxy_port, admin_port, timeout)
   -- add dummy upstream just to rebuild router
   local dummy_upstream_name, dummy_upstream_id = add_upstream(bp)
   local dummy_port = add_target(bp, dummy_upstream_id, localhost)
@@ -413,7 +413,7 @@ local function wait_for_router_update(bp, old_rv, localhost, proxy_port, admin_p
     client_requests(1, dummy_api_host, "127.0.0.1", proxy_port)
     local rv = get_router_version(admin_port)
     return rv ~= old_rv
-  end, 5)
+  end, timeout or 5)
 
   dummy_server:done()
 end

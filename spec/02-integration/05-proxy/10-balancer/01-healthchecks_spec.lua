@@ -390,7 +390,7 @@ for _, strategy in helpers.each_strategy() do
             local upstream_name, upstream_id = bu.add_upstream(bp)
             local port = bu.add_target(bp, upstream_id, localhost)
             local api_host = bu.add_api(bp, upstream_name)
-            bu.wait_for_router_update(bp, old_rv, localhost, proxy_port_2, admin_port_2)
+            bu.wait_for_router_update(bp, old_rv, localhost, proxy_port_2, admin_port_2, 10)
             bu.end_testcase_setup(strategy, bp)
 
             -- server responds, then fails, then responds again
