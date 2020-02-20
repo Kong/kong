@@ -1,4 +1,5 @@
 local Errors  = require "kong.db.errors"
+local defaults = require "kong.db.strategies.connector".defaults
 local utils   = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 
@@ -53,7 +54,7 @@ for _, strategy in helpers.each_strategy() do
             regex_priority  = 0,
             preserve_host   = false,
             strip_path      = true,
-            path_handling   = "v1",
+            path_handling   = "v0",
             service         = route.service,
             https_redirect_status_code = 426,
           }, route)
@@ -106,7 +107,7 @@ for _, strategy in helpers.each_strategy() do
               regex_priority  = 0,
               preserve_host   = false,
               strip_path      = true,
-              path_handling   = "v1",
+              path_handling   = "v0",
               service         = route.service,
               https_redirect_status_code = 426,
             }, route)
@@ -249,7 +250,7 @@ for _, strategy in helpers.each_strategy() do
               paths           = route.paths,
               regex_priority  = 5,
               strip_path      = route.strip_path,
-              path_handling   = "v1",
+              path_handling   = "v0",
               preserve_host   = route.preserve_host,
               service         = route.service,
               https_redirect_status_code = 426,
@@ -294,7 +295,7 @@ for _, strategy in helpers.each_strategy() do
               paths           = route.paths,
               regex_priority  = 5,
               strip_path      = route.strip_path,
-              path_handling   = "v1",
+              path_handling   = "v0",
               preserve_host   = route.preserve_host,
               service         = route.service,
               https_redirect_status_code = 426,
@@ -389,6 +390,15 @@ for _, strategy in helpers.each_strategy() do
                 bp.routes:insert({ hosts = { "example-" .. i .. ".com" } })
               end
             end, db)
+
+
+            db.routes.pagination.page_size = 100
+            db.routes.pagination.max_page_size = 1000
+          end)
+
+          lazy_teardown(function()
+            db.routes.pagination.page_size = defaults.pagination.page_size
+            db.routes.pagination.max_page_size = defaults.pagination.max_page_size
           end)
 
           it("defaults page_size = 100", function()
@@ -1035,7 +1045,7 @@ for _, strategy in helpers.each_strategy() do
             hosts            = { "example.com" },
             regex_priority   = 0,
             strip_path       = true,
-            path_handling   = "v1",
+            path_handling   = "v0",
             preserve_host    = false,
             service          = {
               id = service.id

@@ -419,24 +419,6 @@ do
   end
 
 
-  function DB:are_014_apis_present()
-    local ok, err = self.connector:connect_migrations({ no_keyspace = true })
-    if not ok then
-      return nil, prefix_err(self, err)
-    end
-
-    ok, err = self.connector:are_014_apis_present()
-
-    self.connector:close()
-
-    if err then
-      return nil, prefix_err(self, "failed checking for presence of 0.14 apis: " .. err)
-    end
-
-    return ok
-  end
-
-
   function DB:schema_bootstrap()
     local ok, err = self.connector:connect_migrations({ no_keyspace = true })
     if not ok then
@@ -653,15 +635,6 @@ do
     self.connector:close()
 
     return true
-  end
-
-  function DB:run_api_migrations(opts)
-    local ok, err = self.connector:connect_migrations()
-    if not ok then
-      return nil, prefix_err(self, err)
-    end
-
-    return self.connector:run_api_migrations(opts)
   end
 
   function DB:run_core_entity_migrations(opts)

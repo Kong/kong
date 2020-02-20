@@ -39,7 +39,7 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
       database              = strategy,
       proxy_listen          = "0.0.0.0:9000, 0.0.0.0:9443 ssl",
       admin_listen          = "0.0.0.0:9001",
-      admin_gui_listen      = "0.0.0.0:9002",
+      admin_gui_listen      = "0.0.0.0:9999",
       portal_gui_listen     = "0.0.0.0:9003",
       portal_api_listen     = "0.0.0.0:9004",
       db_update_frequency   = POLL_INTERVAL,

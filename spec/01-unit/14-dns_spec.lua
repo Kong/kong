@@ -14,7 +14,7 @@ describe("DNS", function()
 
     ngx.ctx.workspaces = {}
 
-    singletons.cache = {
+    singletons.core_cache = {
       get = function() return {} end
     }
 
@@ -43,7 +43,7 @@ describe("DNS", function()
 
   lazy_teardown(function()
     if type(ngx.log) == "table" then
-      ngx.log:revert()
+      ngx.log:revert() -- luacheck: ignore
     end
   end)
 

@@ -85,6 +85,7 @@ return {
     CONSUMER_CUSTOM_ID = "X-Consumer-Custom-ID",
     CONSUMER_USERNAME = "X-Consumer-Username",
     CREDENTIAL_USERNAME = "X-Credential-Username",
+    CREDENTIAL_IDENTIFIER = "X-Credential-Identifier",
     RATELIMIT_LIMIT = "X-RateLimit-Limit",
     RATELIMIT_REMAINING = "X-RateLimit-Remaining",
     CONSUMER_GROUPS = "X-Consumer-Groups",
@@ -129,6 +130,43 @@ return {
     "group_rbac_roles",
     "login_attempts",
     "keyring_meta",
+    -- DISCLAIMER
+    -- this sets whether entity uses kong.core_cache (true) or kong.cache
+    -- XXX EE: we need consumers to use kong.cache for portal auth to work
+    -- consumers = true,
+    certificates = true,
+    services = true,
+    routes = true,
+    snis = true,
+    upstreams = true,
+    targets = true,
+    plugins = true,
+    cluster_ca = true,
+    tags = true,
+    ca_certificates = true,
+    -- ENTERPRISE
+    -- For now do not set kong.core_cache on enterprise entities. Let's see
+    -- what happens
+    -- files = true,
+    -- legacy_files = true,
+    -- workspaces = true,
+    -- workspace_entities = true,
+    -- workspace_entity_counters = true,
+    -- consumer_reset_secrets = true,
+    -- credentials = true,
+    -- audit_requests = true,
+    -- audit_objects = true,
+    -- rbac_users = true,
+    -- rbac_roles = true,
+    -- rbac_user_roles = true,
+    -- rbac_role_entities = true,
+    -- rbac_role_endpoints = true,
+    -- admins = true,
+    -- developers = true,
+    -- groups = true,
+    -- group_rbac_roles = true,
+    -- login_attempts = true,
+    -- keyring_meta = true,
   },
   RATELIMIT = {
     PERIODS = {
@@ -234,8 +272,4 @@ return {
     },
     PRIORITY_INDEX_OFFSET = 6,
   },
-  DEFAULT_ITERATION_SIZE = 1000,
-  DEFAULT_PAGE_SIZE = 100,
-  DEFAULT_CLUSTER_EVENTS_PAGE_SIZE = 1000,
-  MAX_PAGE_SIZE = 1000,
 }

@@ -27,7 +27,7 @@ describe("Configuration loader - enterprise", function()
     -- defaults
     assert.equal("on", conf.nginx_daemon)
     -- overrides
-    assert.same({"0.0.0.0:9002"}, conf.admin_gui_listen)
+    assert.same({"0.0.0.0:9999"}, conf.admin_gui_listen)
     assert.same({"0.0.0.0:9003", "0.0.0.0:9446 ssl"}, conf.portal_gui_listen)
     assert.equal("127.0.0.1:9003", conf.portal_gui_host)
     assert.equal("http", conf.portal_gui_protocol)
@@ -46,7 +46,7 @@ describe("Configuration loader - enterprise", function()
     assert.equal(8002, conf.admin_gui_listeners[1].port)
     assert.equal(false, conf.admin_gui_listeners[1].ssl)
     assert.equal(false, conf.admin_gui_listeners[1].http2)
-    assert.equal("0.0.0.0:8000", conf.proxy_listeners[1].listener)
+    assert.equal("0.0.0.0:8000 reuseport backlog=16384", conf.proxy_listeners[1].listener)
 
     assert.equal("0.0.0.0", conf.admin_gui_listeners[2].ip)
     assert.equal(8445, conf.admin_gui_listeners[2].port)
@@ -94,7 +94,7 @@ describe("Configuration loader - enterprise", function()
     end)
 
     it("#flaky enforces listen addresses format", function()
-      local err_str = "must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport], [... next entry ...]"
+      local err_str = "must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]"
       local conf, err = conf_loader(nil, {
         admin_gui_listen = "127.0.0.1"
       })

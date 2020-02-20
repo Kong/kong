@@ -19,10 +19,10 @@ describe("Configuration loader", function()
   it("loads the defaults", function()
     local conf = assert(conf_loader())
     assert.is_string(conf.lua_package_path)
-    assert.is_nil(conf.nginx_user)
-    assert.equal("auto", conf.nginx_worker_processes)
-    assert.same({"127.0.0.1:8001", "127.0.0.1:8444 http2 ssl"}, conf.admin_listen)
-    assert.same({"0.0.0.0:8000", "0.0.0.0:8443 http2 ssl"}, conf.proxy_listen)
+    assert.is_nil(conf.nginx_main_user)
+    assert.equal("auto", conf.nginx_main_worker_processes)
+    assert.same({"127.0.0.1:8001 reuseport backlog=16384", "127.0.0.1:8444 http2 ssl reuseport backlog=16384"}, conf.admin_listen)
+    assert.same({"0.0.0.0:8000 reuseport backlog=16384", "0.0.0.0:8443 http2 ssl reuseport backlog=16384"}, conf.proxy_listen)
     assert.is_nil(conf.ssl_cert) -- check placeholder value
     assert.is_nil(conf.ssl_cert_key)
     assert.is_nil(conf.admin_ssl_cert)
@@ -32,10 +32,10 @@ describe("Configuration loader", function()
   it("loads a given file, with higher precedence", function()
     local conf = assert(conf_loader(helpers.test_conf_path))
     -- defaults
-    assert.equal("on", conf.nginx_daemon)
+    assert.equal("on", conf.nginx_main_daemon)
     -- overrides
-    assert.is_nil(conf.nginx_user)
-    assert.equal("1",            conf.nginx_worker_processes)
+    assert.is_nil(conf.nginx_main_user)
+    assert.equal("1", conf.nginx_main_worker_processes)
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
     assert.same({"0.0.0.0:9000", "0.0.0.0:9443 http2 ssl",
                  "0.0.0.0:9002 http2", "0.0.0.0:9445 http2 ssl"}, conf.proxy_listen)
@@ -48,13 +48,13 @@ describe("Configuration loader", function()
   it("accepts custom params, with highest precedence", function()
     local conf = assert(conf_loader(helpers.test_conf_path, {
       admin_listen = "127.0.0.1:9001",
-      nginx_worker_processes = "auto"
+      nginx_main_worker_processes = "auto"
     }))
     -- defaults
-    assert.equal("on", conf.nginx_daemon)
+    assert.equal("on", conf.nginx_main_daemon)
     -- overrides
-    assert.is_nil(conf.nginx_user)
-    assert.equal("auto",           conf.nginx_worker_processes)
+    assert.is_nil(conf.nginx_main_user)
+    assert.equal("auto", conf.nginx_main_worker_processes)
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
     assert.same({"0.0.0.0:9000", "0.0.0.0:9443 http2 ssl",
                  "0.0.0.0:9002 http2", "0.0.0.0:9445 http2 ssl"}, conf.proxy_listen)
@@ -103,25 +103,25 @@ describe("Configuration loader", function()
     assert.equal(8001, conf.admin_listeners[1].port)
     assert.equal(false, conf.admin_listeners[1].ssl)
     assert.equal(false, conf.admin_listeners[1].http2)
-    assert.equal("127.0.0.1:8001", conf.admin_listeners[1].listener)
+    assert.equal("127.0.0.1:8001 reuseport backlog=16384", conf.admin_listeners[1].listener)
 
     assert.equal("127.0.0.1", conf.admin_listeners[2].ip)
     assert.equal(8444, conf.admin_listeners[2].port)
     assert.equal(true, conf.admin_listeners[2].ssl)
     assert.equal(true, conf.admin_listeners[2].http2)
-    assert.equal("127.0.0.1:8444 ssl http2", conf.admin_listeners[2].listener)
+    assert.equal("127.0.0.1:8444 ssl http2 reuseport backlog=16384", conf.admin_listeners[2].listener)
 
     assert.equal("0.0.0.0", conf.proxy_listeners[1].ip)
     assert.equal(8000, conf.proxy_listeners[1].port)
     assert.equal(false, conf.proxy_listeners[1].ssl)
     assert.equal(false, conf.proxy_listeners[1].http2)
-    assert.equal("0.0.0.0:8000", conf.proxy_listeners[1].listener)
+    assert.equal("0.0.0.0:8000 reuseport backlog=16384", conf.proxy_listeners[1].listener)
 
     assert.equal("0.0.0.0", conf.proxy_listeners[2].ip)
     assert.equal(8443, conf.proxy_listeners[2].port)
     assert.equal(true, conf.proxy_listeners[2].ssl)
     assert.equal(true, conf.proxy_listeners[2].http2)
-    assert.equal("0.0.0.0:8443 ssl http2", conf.proxy_listeners[2].listener)
+    assert.equal("0.0.0.0:8443 ssl http2 reuseport backlog=16384", conf.proxy_listeners[2].listener)
   end)
   it("parses IPv6 from proxy_listen/admin_listen", function()
     local conf = assert(conf_loader(nil, {
@@ -304,9 +304,9 @@ describe("Configuration loader", function()
                                    "lua_shared_dict", "custom_cache 5m"))
 
       assert.True(search_directive(conf.nginx_proxy_directives,
-                                   "proxy_bind", "127.0.0.1 transparent"))
+                                   "proxy_bind", "127.0.0.1"))
       assert.True(search_directive(conf.nginx_sproxy_directives,
-                                   "proxy_bind", "127.0.0.1 transparent"))
+                                   "proxy_bind", "127.0.0.1"))
 
       assert.True(search_directive(conf.nginx_admin_directives,
                                    "server_tokens", "off"))
@@ -328,8 +328,8 @@ describe("Configuration loader", function()
         ["nginx_stream_variables_hash_bucket_size"] = "256",
         ["nginx_http_lua_shared_dict"] = "custom_cache 2m",
         ["nginx_stream_lua_shared_dict"] = "custom_cache 2m",
-        ["nginx_proxy_proxy_bind"] = "127.0.0.2 transparent",
-        ["nginx_sproxy_proxy_bind"] = "127.0.0.2 transparent",
+        ["nginx_proxy_proxy_bind"] = "127.0.0.2",
+        ["nginx_sproxy_proxy_bind"] = "127.0.0.2",
         ["nginx_admin_server_tokens"] = "build",
         plugins = "off",
       }))
@@ -345,13 +345,13 @@ describe("Configuration loader", function()
                                    "lua_shared_dict", "custom_cache 2m"))
 
       assert.True(search_directive(conf.nginx_proxy_directives,
-                                   "proxy_bind", "127.0.0.2 transparent"))
+                                   "proxy_bind", "127.0.0.2"))
       assert.True(search_directive(conf.nginx_sproxy_directives,
-                                   "proxy_bind", "127.0.0.2 transparent"))
+                                   "proxy_bind", "127.0.0.2"))
 
       assert.True(search_directive(conf.nginx_admin_directives,
                                    "server_tokens", "build"))
-      assert.True(search_directive(conf.nginx_http_status_directives,
+      assert.True(search_directive(conf.nginx_status_directives,
                                    "client_body_buffer_size", "8k"))
     end)
   end)
@@ -388,38 +388,32 @@ describe("Configuration loader", function()
     end)
   end)
 
-  describe("#stream ssl_preread", function()
-    it("is injected if enabled in nginx configuration", function()
-      local save_nginx_configure = ngx.config.nginx_configure
-      finally(function()
-        ngx.config.nginx_configure = save_nginx_configure -- luacheck: ignore
-      end)
-
-      ngx.config.nginx_configure = function() -- luacheck: ignore
-        return "configure arguments: --with-stream_ssl_preread_module --with-stream"
-      end
-      local conf = assert(conf_loader())
-      assert.True(conf.ssl_preread_enabled)
+  describe("nginx_main_user", function()
+    it("is nil by default", function()
+      local conf = assert(conf_loader(helpers.test_conf_path))
+      assert.is_nil(conf.nginx_main_user)
     end)
-    it("is not injected if not enabled in nginx configuration", function()
-      local save_nginx_configure = ngx.config.nginx_configure
-      finally(function()
-        ngx.config.nginx_configure = save_nginx_configure -- luacheck: ignore
-      end)
-
-      ngx.config.nginx_configure = function() -- luacheck: ignore
-        return "configure arguments: --with-stream"
-      end
-      local conf = assert(conf_loader())
-      assert.False(conf.ssl_preread_enabled)
+    it("is nil when 'nobody'", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        nginx_main_user = "nobody"
+      }))
+      assert.is_nil(conf.nginx_main_user)
+    end)
+    it("is nil when 'nobody nobody'", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        nginx_main_user = "nobody nobody"
+      }))
+      assert.is_nil(conf.nginx_main_user)
+    end)
+    it("is 'www_data www_data' when 'www_data www_data'", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        nginx_main_user = "www_data www_data"
+      }))
+      assert.equal("www_data www_data", conf.nginx_main_user)
     end)
   end)
 
   describe("nginx_user", function()
-    it("is nil by default", function()
-      local conf = assert(conf_loader(helpers.test_conf_path))
-      assert.is_nil(conf.nginx_user)
-    end)
     it("is nil when 'nobody'", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         nginx_user = "nobody"
@@ -443,7 +437,7 @@ describe("Configuration loader", function()
   describe("inferences", function()
     it("infer booleans (on/off/true/false strings)", function()
       local conf = assert(conf_loader())
-      assert.equal("on", conf.nginx_daemon)
+      assert.equal("on", conf.nginx_main_daemon)
       assert.equal(30, conf.lua_socket_pool_size)
       assert.True(conf.anonymous_reports)
       assert.False(conf.cassandra_ssl)
@@ -485,19 +479,19 @@ describe("Configuration loader", function()
     end)
     it("infer ngx_boolean", function()
       local conf = assert(conf_loader(nil, {
-        nginx_daemon = true
+        nginx_main_daemon = true
       }))
-      assert.equal("on", conf.nginx_daemon)
+      assert.equal("on", conf.nginx_main_daemon)
 
       conf = assert(conf_loader(nil, {
-        nginx_daemon = false
+        nginx_main_daemon = false
       }))
-      assert.equal("off", conf.nginx_daemon)
+      assert.equal("off", conf.nginx_main_daemon)
 
       conf = assert(conf_loader(nil, {
-        nginx_daemon = "off"
+        nginx_main_daemon = "off"
       }))
-      assert.equal("off", conf.nginx_daemon)
+      assert.equal("off", conf.nginx_main_daemon)
     end)
   end)
 
@@ -536,26 +530,26 @@ describe("Configuration loader", function()
         admin_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport], [... next entry ...]", err)
+      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         proxy_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport], [... next entry ...]", err)
+      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
     end)
     it("rejects empty string in listen addresses", function()
       local conf, err = conf_loader(nil, {
         admin_listen = ""
       })
       assert.is_nil(conf)
-      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport], [... next entry ...]", err)
+      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         proxy_listen = ""
       })
       assert.is_nil(conf)
-      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [transparent] [deferred] [bind] [reuseport], [... next entry ...]", err)
+      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
     end)
     it("errors when dns_resolver is not a list in ipv4/6[:port] format", function()
       local conf, err = conf_loader(nil, {
@@ -692,6 +686,14 @@ describe("Configuration loader", function()
           assert.contains("ssl_cert_key: no such file at /path/cert_key.pem", errors)
           assert.is_nil(conf)
         end)
+        it("requires trusted CA cert file to exist", function()
+          local conf, _, errors = conf_loader(nil, {
+            lua_ssl_trusted_certificate = "/path/cert.pem",
+          })
+          assert.equal(1, #errors)
+          assert.contains("lua_ssl_trusted_certificate: no such file at /path/cert.pem", errors)
+          assert.is_nil(conf)
+        end)
         it("resolves SSL cert/key to absolute path", function()
           local conf, err = conf_loader(nil, {
             ssl_cert = "spec/fixtures/kong_spec.crt",
@@ -705,8 +707,7 @@ describe("Configuration loader", function()
         it("defines ssl_ciphers by default", function()
           local conf, err = conf_loader(nil, {})
           assert.is_nil(err)
-          -- looks kinda like a cipher suite
-          assert.matches(":", conf.ssl_ciphers, nil, true)
+          assert.equal("ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384", conf.ssl_ciphers)
         end)
         it("explicitly defines ssl_ciphers", function()
           local conf, err = conf_loader(nil, {
@@ -733,12 +734,11 @@ describe("Configuration loader", function()
           assert.equals("foo:bar", conf.ssl_ciphers)
         end)
         it("doesn't override ssl_ciphers when undefined", function()
-          local http_tls = require "http.tls"
           local conf, err = conf_loader(nil, {
             ssl_cipher_suite = "custom",
           })
           assert.is_nil(err)
-          assert.same(http_tls.modern_cipher_list, conf.ssl_ciphers)
+          assert.same(nil, conf.ssl_ciphers)
         end)
       end)
       describe("client", function()
@@ -959,112 +959,6 @@ describe("Configuration loader", function()
       })
       assert.equal(conf.router_update_frequency, 0.01)
       assert.is_nil(err)
-    end)
-  end)
-
-  describe("origins config option", function()
-    it("rejects an invalid origins config option", function()
-      local conf, err = conf_loader(nil, {
-        origins = "invalid_origin",
-      })
-      assert.is_nil(conf)
-      assert.equal("an origin must be of the form " ..
-                   "'from_scheme://from_host:from_port=" ..
-                   "to_scheme://to_host:to_port', got 'invalid_origin'",
-                   err)
-    end)
-    it("rejects an invalid origins config option", function()
-      local conf, err = conf_loader(nil, {
-        origins = "http://foo:42=http://",
-      })
-      assert.is_nil(conf)
-      assert.equal("an origin must be of the form " ..
-                   "'from_scheme://from_host:from_port=" ..
-                   "to_scheme://to_host:to_port', got " ..
-                   "'http://foo:42=http://'", err)
-    end)
-    it("rejects invalid schemes", function()
-      for _, bad_origin in ipairs {
-          -- can't start with a number
-          "http://foo:42=0://example.com",
-          "0://foo:42=http://example.com",
-          -- contain non-alphanumeric
-          "invalid%scheme://foo:42=http://example.com",
-          "http://foo:42=invalid%scheme://example.com",
-          -- empty scheme
-          "://foo:42=http://example.com",
-          "http://foo:42=://example.com",
-      } do
-        local conf, err = conf_loader(nil, {
-          origins = bad_origin,
-        })
-        assert.is_nil(conf)
-        assert.equal("an origin must be of the form " ..
-                     "'from_scheme://from_host:from_port=" ..
-                     "to_scheme://to_host:to_port', got '" ..
-                     bad_origin .. "'", err)
-      end
-    end)
-    it("rejects a duplicate", function()
-      local conf, err = conf_loader(nil, {
-        origins = table.concat({
-          "http://src:42=https://foo",
-          "http://src:42=https://bar",
-        }, ",")
-      })
-      assert.is_nil(conf)
-      assert.equal("duplicate origin (http://src:42)", err)
-    end)
-    it("rejects several duplicate", function()
-      local conf, err, errors = conf_loader(nil, {
-        origins = table.concat({
-          "http://src:42=https://foo",
-          "http://src:42=https://bar",
-          "http://src2:42=https://baz",
-          "http://src2:42=https://boo",
-        }, ",")
-      })
-      assert.is_nil(conf)
-      assert.equal("duplicate origin (http://src:42)", err)
-      assert.contains("duplicate origin (http://src:42)", errors)
-      assert.contains("duplicate origin (http://src2:42)", errors)
-    end)
-    it("rejects an invalid 'to' section of an origin", function()
-      local conf, err = conf_loader(nil, {
-        origins = table.concat({
-          "http://src:42=https://foo~",
-        }, ",")
-      })
-      assert.is_nil(conf)
-      assert.equal("failed to parse authority (invalid hostname: foo~)", err)
-    end)
-    it("accepts an authority with no port as destination", function()
-      local value = {
-        "http://foo:42=https://example.com"
-      }
-      local conf, err = conf_loader(nil, {
-        origins = table.concat(value, ","),
-      })
-      assert.is_nil(err)
-      assert.same(value, conf.origins)
-    end)
-    it("accepts both ips and hosts", function()
-      local value = {
-        "http://src1:42=https://dst:55",
-        "http://src2:42=https://127.0.0.1:55",
-        "http://src3:42=https://[::1]:55",
-        "http://127.0.0.1:42=https://dst:55",
-        "http://127.0.0.2:42=https://127.0.0.1:55",
-        "http://127.0.0.3:42=https://[::1]:55",
-        "http://[::1]:42=https://dst:55",
-        "http://[::2]:42=https://127.0.0.1:55",
-        "http://[::3]:42=https://[::1]:55",
-      }
-      local conf, err = conf_loader(nil, {
-        origins = table.concat(value, ","),
-      })
-      assert.is_nil(err)
-      assert.same(value, conf.origins)
     end)
   end)
 

@@ -1,6 +1,4 @@
 local singletons  = require "kong.singletons"
-local reports     = require "kong.reports"
-local utils       = require "kong.tools.utils"
 local workspaces  = require "kong.workspaces"
 local Router      = require "kong.router"
 local core_handler = require "kong.runloop.handler"
@@ -9,15 +7,6 @@ local uuid = require("kong.tools.utils").uuid
 
 local kong = kong
 local null = ngx.null
-
-
-local function post_process(data)
-  local r_data = utils.deep_copy(data)
-  r_data.config = nil
-  r_data.e = "r"
-  reports.send("api", r_data)
-  return data
-end
 
 
 local function build_router_without(excluded_route)
@@ -150,11 +139,5 @@ return {
 
       return parent()
     end
-  },
-
-  ["/routes/:routes/plugins"] = {
-    POST = function(_, _, _, parent)
-      return parent(post_process)
-    end,
   },
 }

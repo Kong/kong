@@ -8,7 +8,7 @@ local conf_loader = require "kong.conf_loader"
 local kong_yml = require "kong.templates.kong_yml"
 
 
-local INIT_FILE = "kong.yml"
+local DEFAULT_FILE = "./kong.yml"
 
 
 local accepted_formats = {
@@ -39,19 +39,17 @@ local function db_export(filename, conf)
 end
 
 
-local function generate_init()
-  if pl_file.access_time(INIT_FILE) then
-    error(INIT_FILE .. " already exists in the current directory.\n" ..
-          "Will not overwrite it.")
+local function generate_init(filename)
+  if pl_file.access_time(filename) then
+    error(filename .. " already exists.\nWill not overwrite it.")
   end
-
-  pl_file.write(INIT_FILE, kong_yml)
+  pl_file.write(filename, kong_yml)
 end
 
 
 local function execute(args)
   if args.command == "init" then
-    generate_init()
+    generate_init(pl_path.abspath(args[1] or DEFAULT_FILE))
     os.exit(0)
   end
 
@@ -97,7 +95,7 @@ local function execute(args)
   _G.kong.db = db
 
   if args.command == "db_export" then
-    return db_export(args[1] or "kong.yml", conf)
+    return db_export(pl_path.abspath(args[1] or DEFAULT_FILE), conf)
   end
 
   if args.command == "db_import" or args.command == "parse" then
@@ -105,6 +103,7 @@ local function execute(args)
     if not filename then
       error("expected a declarative configuration file; see `kong config --help`")
     end
+    filename = pl_path.abspath(filename)
 
     local dc_table, err, _, vers, _, workspace = dc:parse_file(filename, accepted_formats)
     if not dc_table then
@@ -147,14 +146,18 @@ Usage: kong config COMMAND [OPTIONS]
 Use declarative configuration files with Kong.
 
 The available commands are:
-  init                                Generate an example config file to
-                                      get you started.
+  init [<file>]                       Generate an example config file to
+                                      get you started. If a filename
+                                      is not given, ]] .. DEFAULT_FILE .. [[ is used
+                                      by default.
 
   db_import <file>                    Import a declarative config file into
                                       the Kong database.
 
-  db_export <file>                    Export the Kong database into a
-                                      declarative config file.
+  db_export [<file>]                  Export the Kong database into a
+                                      declarative config file. If a filename
+                                      is not given, ]] .. DEFAULT_FILE .. [[ is used
+                                      by default.
 
   parse <file>                        Parse a declarative config file (check
                                       its syntax) but do not load it into Kong.

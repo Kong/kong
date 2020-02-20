@@ -132,6 +132,10 @@ end
 local function extract_options(args, schema, context)
   local options = {
     nulls = true,
+    pagination = {
+      page_size     = 100,
+      max_page_size = 1000,
+    },
   }
 
   if args and schema and context then

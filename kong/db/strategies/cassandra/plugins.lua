@@ -8,11 +8,11 @@ local workspace_entities_map = workspaces.workspace_entities_map
 
 local insert = table.insert
 local fmt = string.format
-
-
 local Plugins = {}
 
 
+-- XXX: EE . Leftover of 1.2.0 merge. This file does not exist there anymore
+-- Keeping it for workspaces. Possibly delete once ws-in-core is real
 function Plugins:select_by_field(field, value, options)
   local plugin, err = self.super.select_by_field(self, field, value, options)
   if err then
@@ -77,7 +77,6 @@ function Plugins:select_by_cache_key_migrating(key)
     "route_id",
     "service_id",
     "consumer_id",
-    "api_id",
   }) do
     local id = parts[i + 2]
     if id ~= "" then
@@ -122,8 +121,7 @@ function Plugins:select_by_cache_key_migrating(key)
           if row.name == parts[2] and
              row.route_id == parts[3] and
              row.service_id == parts[4] and
-             row.consumer_id == parts[5] and
-             row.api_id == parts[6] then
+             row.consumer_id == parts[5] then
              row.cache_key = nil
 
             -- if workspace scope isn't empty,

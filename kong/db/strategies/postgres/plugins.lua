@@ -35,7 +35,6 @@ function Plugins:select_by_cache_key_migrating(key)
     "route_id",
     "service_id",
     "consumer_id",
-    "api_id",
   }) do
     local id = parts[i + 2]
     if id ~= "" then

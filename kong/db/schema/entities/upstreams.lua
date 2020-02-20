@@ -44,9 +44,9 @@ local positive_int = Schema.define {
 }
 
 
-local one_byte_integer = Schema.define {
+local positive_int_or_zero = Schema.define {
   type = "integer",
-  between = { 0, 254 },
+  between = { 0, 2 ^ 31 },
 }
 
 
@@ -60,6 +60,13 @@ local check_type = Schema.define {
 local check_verify_certificate = Schema.define {
   type = "boolean",
   default = true,
+}
+
+
+local health_threshold = Schema.define {
+  type = "number",
+  default = 0,
+  between = { 0, 100 },
 }
 
 
@@ -110,10 +117,10 @@ local types = {
   timeout = seconds,
   concurrency = positive_int,
   interval = seconds,
-  successes = one_byte_integer,
-  tcp_failures = one_byte_integer,
-  timeouts = one_byte_integer,
-  http_failures = one_byte_integer,
+  successes = positive_int_or_zero,
+  tcp_failures = positive_int_or_zero,
+  timeouts = positive_int_or_zero,
+  http_failures = positive_int_or_zero,
   http_path = typedefs.path,
   http_statuses = http_statuses,
   https_sni = typedefs.sni,
@@ -145,6 +152,7 @@ end
 
 
 local healthchecks_fields, healthchecks_defaults = gen_fields(healthchecks_config)
+healthchecks_fields[#healthchecks_fields+1] = { ["threshold"] = health_threshold }
 
 
 local r =  {
@@ -172,7 +180,7 @@ local r =  {
         fields = healthchecks_fields,
     }, },
     { tags = typedefs.tags },
-    { host_header = typedefs.host },
+    { host_header = typedefs.host_with_optional_port },
   },
   entity_checks = {
     -- hash_on_header must be present when hashing on header

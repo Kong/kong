@@ -1,4 +1,5 @@
 local utils = require "kong.tools.utils"
+local constants = require "kong.constants"
 
 
 local cache_warmup = {}
@@ -39,6 +40,8 @@ end
 local function cache_warmup_single_entity(dao)
   local entity_name = dao.schema.name
 
+  local cache = constants.CORE_ENTITIES[entity_name] and kong.core_cache or kong.cache
+
   ngx.log(ngx.NOTICE, "Preloading '", entity_name, "' into the cache ...")
 
   local start = ngx.now()
@@ -66,7 +69,7 @@ local function cache_warmup_single_entity(dao)
 
     local cache_key = dao:cache_key(entity)
 
-    local ok, err = kong.cache:safe_set(cache_key, entity)
+    local ok, err = cache:safe_set(cache_key, entity)
     if not ok then
       return nil, err
     end
@@ -87,7 +90,7 @@ end
 -- Loads entities from the database into the cache, for rapid subsequent
 -- access. This function is intented to be used during worker initialization.
 function cache_warmup.execute(entities)
-  if not kong.cache then
+  if not kong.cache or not kong.core_cache then
     return true
   end
 

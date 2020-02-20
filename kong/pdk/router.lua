@@ -29,11 +29,8 @@ local function new(self)
   -- @phases access, header_filter, body_filter, log
   -- @treturn table the `route` entity.
   -- @usage
-  -- if kong.router.get_route() then
-  --   -- routed by route & service entities
-  -- else
-  --   -- routed by a legacy API entity
-  -- end
+  -- local route = kong.router.get_route()
+  -- local protocols = route.protocols
   function _ROUTER.get_route()
     check_phase(ROUTER_PHASES)
 
@@ -52,7 +49,7 @@ local function new(self)
   -- if kong.router.get_service() then
   --   -- routed by route & service entities
   -- else
-  --   -- routed by a legacy API entity
+  --   -- routed by a route without a service
   -- end
   function _ROUTER.get_service()
     check_phase(ROUTER_PHASES)

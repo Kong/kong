@@ -1,8 +1,8 @@
 --- A library of ready-to-use type synonyms to use in schema definitions.
 -- @module kong.db.schema.typedefs
 local utils = require "kong.tools.utils"
-local openssl_pkey = require "openssl.pkey"
-local openssl_x509 = require "openssl.x509"
+local openssl_pkey = require "resty.openssl.pkey"
+local openssl_x509 = require "resty.openssl.x509"
 local iputils = require "resty.iputils"
 local Schema = require("kong.db.schema")
 local socket_url = require("socket.url")
@@ -29,6 +29,12 @@ local function validate_host(host)
   end
 
   return true
+end
+
+
+local function validate_host_with_optional_port(host)
+  local res, err_or_port = utils.normalize_ip(host)
+  return (res and true or nil), err_or_port
 end
 
 
@@ -173,10 +179,9 @@ end
 
 
 local function validate_certificate(cert)
-  local ok
-  ok, cert = pcall(openssl_x509.new, cert)
-  if not ok then
-    return nil, "invalid certificate: " .. cert
+  local _, err =  openssl_x509.new(cert)
+  if err then
+    return nil, "invalid certificate: " .. err
   end
 
   return true
@@ -184,10 +189,9 @@ end
 
 
 local function validate_key(key)
-  local ok
-  ok, key = pcall(openssl_pkey.new, key)
-  if not ok then
-    return nil, "invalid key: " .. key
+  local _, err =  openssl_pkey.new(key)
+  if err then
+    return nil, "invalid key: " .. err
   end
 
   return true
@@ -212,6 +216,12 @@ typedefs.protocol = Schema.define {
 typedefs.host = Schema.define {
   type = "string",
   custom_validator = validate_host,
+}
+
+
+typedefs.host_with_optional_port = Schema.define {
+  type = "string",
+  custom_validator = validate_host_with_optional_port,
 }
 
 
@@ -291,13 +301,6 @@ typedefs.auto_timestamp_ms = Schema.define {
   type = "number",
   timestamp = true,
   auto = true
-}
-
-
-typedefs.no_api = Schema.define {
-  type = "foreign",
-  reference = "apis",
-  eq = null,
 }
 
 
@@ -398,7 +401,7 @@ typedefs.protocols_http = Schema.define {
 
 local function validate_host_with_wildcards(host)
   local no_wildcards = string.gsub(host, "%*", "abc")
-  return typedefs.host.custom_validator(no_wildcards)
+  return typedefs.host_with_optional_port.custom_validator(no_wildcards)
 end
 
 local function validate_path_with_regexes(path)

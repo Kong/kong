@@ -111,7 +111,7 @@ do
 
   get_upstream_by_id = function(upstream_id)
     local upstream_cache_key = "balancer:upstreams:" .. upstream_id
-    return singletons.cache:get(upstream_cache_key, nil,
+    return singletons.core_cache:get(upstream_cache_key, nil,
                                 load_upstream_into_memory, upstream_id)
   end
 end
@@ -152,7 +152,7 @@ do
   -- @return The target history array, with target entity tables.
   fetch_target_history = function(upstream)
     local targets_cache_key = "balancer:targets:" .. upstream.id
-    return singletons.cache:get(targets_cache_key, nil,
+    return singletons.core_cache:get(targets_cache_key, nil,
                                 load_targets_into_memory, upstream.id)
   end
 end
@@ -401,16 +401,20 @@ do
   -- @param start (integer, optional) from where to start reading the history
   -- @return The new balancer object, or nil+error
   local function create_balancer_exclusive(upstream, history, start)
+    local health_threshold = upstream.healthchecks and
+                              upstream.healthchecks.threshold or nil
+
     local balancer, err = balancer_types[upstream.algorithm].new({
       wheelSize = upstream.slots,  -- will be ignored by least-connections
       dns = dns_client,
+      healthThreshold = health_threshold,
     })
     if not balancer then
       return nil, "failed creating balancer:" .. err
     end
 
-    singletons.cache:invalidate_local("balancer:upstreams:" .. upstream.id)
-    singletons.cache:invalidate_local("balancer:targets:" .. upstream.id)
+    singletons.core_cache:invalidate_local("balancer:upstreams:" .. upstream.id)
+    singletons.core_cache:invalidate_local("balancer:targets:" .. upstream.id)
 
     target_histories[balancer] = {}
 
@@ -567,7 +571,7 @@ do
     -- for access phase
     local upstreams_dict = {}
     for _, workspace in ipairs(workspaces) do
-      local upstreams_dict, err = singletons.cache:get("balancer:upstreams:" .. workspace.id , nil,
+      local upstreams_dict, err = singletons.core_cache:get("balancer:upstreams:" .. workspace.id , nil,
         load_upstreams_dict_into_memory, {workspace})
       if err then
         return nil, err
@@ -663,7 +667,7 @@ end
 
 
 local function do_target_event(operation, upstream_id, upstream_name)
-  singletons.cache:invalidate_local("balancer:targets:" .. upstream_id)
+  singletons.core_cache:invalidate_local("balancer:targets:" .. upstream_id)
 
   local upstream = get_upstream_by_id(upstream_id)
   if not upstream then
@@ -805,7 +809,7 @@ local function do_upstream_event(operation, upstream_id, upstream_name,
   if operation == "create" then
 
     for _, workspace in ipairs(workspaces) do
-      singletons.cache:invalidate_local("balancer:upstreams:" .. workspace.id)
+      singletons.core_cache:invalidate_local("balancer:upstreams:" .. workspace.id)
     end
 
     local upstream = get_upstream_by_id(upstream_id)
@@ -822,12 +826,15 @@ local function do_upstream_event(operation, upstream_id, upstream_name,
   elseif operation == "delete" or operation == "update" then
 
     if singletons.db.strategy ~= "off" then
-      for _, workspace in ipairs(workspaces) do
-        singletons.cache:invalidate_local("balancer:upstreams:" .. workspace.id)
-      end
+      singletons.core_cache:invalidate_local("balancer:upstreams")
+      singletons.core_cache:invalidate_local("balancer:upstreams:" .. upstream_id)
+      singletons.core_cache:invalidate_local("balancer:targets:"   .. upstream_id)
 
-      singletons.cache:invalidate_local("balancer:upstreams:" .. upstream_id)
-      singletons.cache:invalidate_local("balancer:targets:"   .. upstream_id)
+      -- XXX EE [[
+      for _, workspace in ipairs(workspaces) do
+        singletons.core_cache:invalidate_local("balancer:upstreams:" .. workspace.id)
+      end
+      -- ]]
     end
 
     local balancer = balancers[upstream_id]
@@ -1058,6 +1065,19 @@ local function unsubscribe_from_healthcheck_events(callback)
 end
 
 
+local function is_upstream_using_healthcheck(upstream)
+  if upstream ~= nil then
+    return upstream.healthchecks.active.healthy.interval ~= 0
+           or upstream.healthchecks.active.unhealthy.interval ~= 0
+           or upstream.healthchecks.passive.unhealthy.tcp_failures ~= 0
+           or upstream.healthchecks.passive.unhealthy.timeouts ~= 0
+           or upstream.healthchecks.passive.unhealthy.http_failures ~= 0
+  end
+
+  return false
+end
+
+
 --------------------------------------------------------------------------------
 -- Get healthcheck information for an upstream.
 -- @param upstream_id the id of the upstream.
@@ -1072,11 +1092,7 @@ local function get_upstream_health(upstream_id)
     return nil, "upstream not found"
   end
 
-  local using_hc = upstream.healthchecks.active.healthy.interval ~= 0
-                   or upstream.healthchecks.active.unhealthy.interval ~= 0
-                   or upstream.healthchecks.passive.unhealthy.tcp_failures ~= 0
-                   or upstream.healthchecks.passive.unhealthy.timeouts ~= 0
-                   or upstream.healthchecks.passive.unhealthy.http_failures ~= 0
+  local using_hc = is_upstream_using_healthcheck(upstream)
 
   local balancer = balancers[upstream_id]
   if not balancer then
@@ -1111,6 +1127,41 @@ end
 
 
 --------------------------------------------------------------------------------
+-- Get healthcheck information for a balancer.
+-- @param upstream_id the id of the upstream.
+-- @return table with balancer health info
+local function get_balancer_health(upstream_id)
+
+  local upstream = get_upstream_by_id(upstream_id)
+  if not upstream then
+    return nil, "upstream not found"
+  end
+
+  local balancer = balancers[upstream_id]
+  if not balancer then
+    return nil, "balancer not found"
+  end
+
+  local healthchecker
+  local health = "HEALTHCHECKS_OFF"
+  if is_upstream_using_healthcheck(upstream) then
+    healthchecker = healthcheckers[balancer]
+    if not healthchecker then
+      return nil, "healthchecker not found"
+    end
+
+    local balancer_status = balancer:getStatus()
+    health = balancer_status.healthy and "HEALTHY" or "UNHEALTHY"
+  end
+
+  return {
+    health = health,
+    id = upstream_id,
+  }
+end
+
+
+--------------------------------------------------------------------------------
 -- for unit-testing purposes only
 local function _get_healthchecker(balancer)
   return healthcheckers[balancer]
@@ -1136,6 +1187,7 @@ return {
   unsubscribe_from_healthcheck_events = unsubscribe_from_healthcheck_events,
   get_upstream_health = get_upstream_health,
   get_upstream_by_id = get_upstream_by_id,
+  get_balancer_health = get_balancer_health,
 
   -- ones below are exported for test purposes only
   _create_balancer = create_balancer,

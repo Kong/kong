@@ -106,6 +106,9 @@ our $HttpConfig = <<_EOC_;
 		-- kong = nil
 
                 local expected = fdata[phases[phase]]
+                if expected == "pending" then
+                    goto continue
+                end
 
                 local forced_false = expected == "forced false"
                 if forced_false then

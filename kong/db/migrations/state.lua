@@ -233,7 +233,6 @@ end
 --   pending_migrations  = Subsystem[] | nil
 --   missing_migrations  = Subsystem[] | nil
 --   new_migrations      = Subsystem[] | nil,
---   legacy_is_014 = boolean,
 --   needs_bootstrap = boolean,
 -- }
 --
@@ -271,14 +270,7 @@ function State.load(db)
     return nil, prefix_err(db, "failed to check schema state: " .. err)
   end
 
-  local legacy_res =  db.connector:is_034(rows)
-
   db.connector:close()
-
-  if err then
-    return nil, prefix_err(db, "failed to check legacy schema state: " ..
-      err)
-  end
 
   log.verbose("schema state retrieved")
 
@@ -288,19 +280,12 @@ function State.load(db)
     pending_migrations = nil,
     missing_migrations = nil,
     new_migrations = nil,
-    legacy_is_034 = legacy_res.is_034,
   }
-
-  if legacy_res.invalid_state then
-    schema_state.legacy_invalid_state = true
-    schema_state.legacy_missing_component = legacy_res.missing_component
-    schema_state.legacy_missing_migration = legacy_res.missing_migration
-  end
 
   local rows_as_hash = {}
 
   if not rows then
-    schema_state.needs_bootstrap = not legacy_res.is_034
+    schema_state.needs_bootstrap = true
 
   else
     for _, row in ipairs(rows) do

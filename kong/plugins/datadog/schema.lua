@@ -4,12 +4,8 @@ local STAT_NAMES = {
   "kong_latency",
   "latency",
   "request_count",
-  "request_per_user",
   "request_size",
   "response_size",
-  "status_count",
-  "status_count_per_user",
-  "unique_users",
   "upstream_latency",
 }
 
@@ -33,59 +29,39 @@ local DEFAULT_METRICS = {
     name        = "request_count",
     stat_type   = "counter",
     sample_rate = 1,
-    tags        = {"app:kong"}
+    tags        = {"app:kong" },
+    consumer_identifier = "custom_id"
   },
   {
     name      = "latency",
     stat_type = "timer",
-    tags      = {"app:kong"}
+    tags      = {"app:kong"},
+    consumer_identifier = "custom_id"
   },
   {
     name      = "request_size",
     stat_type = "timer",
-    tags      = {"app:kong"}
-  },
-  {
-    name        = "status_count",
-    stat_type   = "counter",
-    sample_rate = 1,
-    tags        = {"app:kong"}
+    tags      = {"app:kong"},
+    consumer_identifier = "custom_id"
   },
   {
     name      = "response_size",
     stat_type = "timer",
-    tags      = {"app:kong"}
-  },
-  {
-    name                = "unique_users",
-    stat_type           = "set",
-    consumer_identifier = "custom_id",
-    tags                = {"app:kong"}
-  },
-  {
-    name                = "request_per_user",
-    stat_type           = "counter",
-    sample_rate         = 1,
-    consumer_identifier = "custom_id",
-    tags                = {"app:kong"}
+    tags      = {"app:kong"},
+    consumer_identifier = "custom_id"
   },
   {
     name      = "upstream_latency",
     stat_type = "timer",
-    tags      = {"app:kong"}
+    tags      = {"app:kong"},
+    consumer_identifier = "custom_id"
   },
   {
     name      = "kong_latency",
     stat_type = "timer",
-    tags      = {"app:kong"}
+    tags      = {"app:kong"},
+    consumer_identifier = "custom_id"
   },
-  {
-    name                = "status_count_per_user",
-    stat_type           = "counter",
-    sample_rate         = 1,
-    consumer_identifier = "custom_id",
-    tags                = {"app:kong"}
-  }
 }
 
 
@@ -115,29 +91,10 @@ return {
                 },
                 entity_checks = {
                   { conditional = {
-                    if_field = "name", if_match = { eq = "unique_users" },
-                    then_field = "stat_type", then_match = { eq = "set" },
-                  }, },
-
-                  { conditional = {
                     if_field = "stat_type",
                     if_match = { one_of = { "counter", "gauge" }, },
                     then_field = "sample_rate",
                     then_match = { required = true },
-                  }, },
-
-                  { conditional = {
-                    if_field = "name",
-                    if_match = { one_of = { "status_count_per_user", "request_per_user", "unique_users" }, },
-                    then_field = "consumer_identifier",
-                    then_match = { required = true },
-                  }, },
-
-                  { conditional = {
-                    if_field = "name",
-                    if_match = { one_of = { "status_count", "status_count_per_user", "request_per_user" }, },
-                    then_field = "stat_type",
-                    then_match = { eq = "counter" },
                   }, },
   }, }, }, }, }, }, }, },
 }

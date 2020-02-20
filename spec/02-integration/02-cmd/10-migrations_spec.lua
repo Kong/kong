@@ -68,8 +68,8 @@ for _, strategy in helpers.each_strategy() do
         assert.match("not a tty", stderr, 1, true)
       end)
 
-      -- XXX EE: test fixed upstream on a later version
-      pending("runs non-interactively with --yes", function()
+      it("runs non-interactively with --yes", function()
+        run_kong("migrations bootstrap")
         local db = init_db()
         local code = run_kong("migrations reset --yes")
         assert.same(0, code)
@@ -146,7 +146,7 @@ for _, strategy in helpers.each_strategy() do
         local stdout
         code, stdout = run_kong("migrations list")
         assert.same(3, code)
-        assert.match("Database needs bootstrapping; run 'kong migrations bootstrap'", stdout, 1, true)
+        assert.match("Database needs bootstrapping or is older than Kong 1.0", stdout, 1, true)
       end)
 
       it("lists migrations if bootstrapped", function()

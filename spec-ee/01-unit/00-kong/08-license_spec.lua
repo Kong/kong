@@ -7,7 +7,7 @@ describe("licensing", function()
   end)
 
   after_each(function()
-    ngx.log:revert()
+    ngx.log:revert() -- luacheck: ignore
   end)
 
   it("does not alert before 90 days from expiration date", function()

@@ -323,7 +323,7 @@ describe("keyring", function()
       setup(function()
         keyring.keyring_add(NEW_MOCK_ID)
         ref = ngx.log
-        ngx.log = function(lvl, ...)
+        ngx.log = function(lvl, ...) -- luacheck: ignore
           local t = table.pack(...)
           table.insert(MOCK_BUF, table.concat(t, ""))
         end
@@ -332,7 +332,7 @@ describe("keyring", function()
       teardown(function()
         ngx.shared.kong_keyring:delete(NEW_MOCK_ID)
         ngx.shared.kong_keyring:set("active", MOCK_ID)
-        ngx.log = ref
+        ngx.log = ref -- luacheck: ignore
       end)
 
       it("", function()

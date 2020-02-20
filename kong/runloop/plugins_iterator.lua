@@ -59,6 +59,7 @@ local function should_process_plugin(plugin)
 end
 
 
+local next_seq = 0
 
 -- Loads a plugin config from the datastore.
 -- @return plugin config table or an empty sentinel table in case of a db-miss
@@ -66,6 +67,12 @@ local function load_plugin_from_db(key)
   local row, err = kong.db.plugins:select_by_cache_key(key, {include_ws = true})
   if err then
     return nil, tostring(err)
+  end
+
+  if type(row) == 'table' then
+    row.__key__ = key
+    row.__seq__ = next_seq
+    next_seq = next_seq + 1
   end
 
   return row
@@ -90,10 +97,10 @@ local function load_plugin_into_memory_ws(ctx, key)
   local ws_scope = ctx.workspaces or {}
 
   -- query with "global cache key" - no workspace attached to it
-  local plugin, err, hit_level = kong.cache:get(key,
-                                                nil,
-                                                load_plugin_into_memory_global_scope,
-                                                key)
+  local plugin, err, hit_level = kong.core_cache:get(key,
+                                                     nil,
+                                                     load_plugin_into_memory_global_scope,
+                                                     key)
   if err then
     return nil, err
   end
@@ -119,7 +126,7 @@ local function load_plugin_into_memory_ws(ctx, key)
     local plugin_cache_key = key .. ws.id
 
     -- attempt finding the plugin in the L1 (LRU) cache
-    plugin = singletons.cache.mlcache.lru:get(plugin_cache_key)
+    plugin = singletons.core_cache.mlcache.lru:get(plugin_cache_key)
     if plugin then
       found = true
 
@@ -132,14 +139,14 @@ local function load_plugin_into_memory_ws(ctx, key)
     -- if plugin is nil, that means it wasn't found so far, so do an L2 (shm) lookup
     if not plugin then
       local ttl
-      ttl, err, plugin = singletons.cache:probe(plugin_cache_key)
+      ttl, err, plugin = singletons.core_cache:probe(plugin_cache_key)
       if err then
         return nil, err
       end
 
       -- :set causes the value to be written back to L1, so subsequent requests
       -- will find a cached entry there (positive or negative)
-      singletons.cache.mlcache.lru:set(plugin_cache_key, plugin)
+      singletons.core_cache.mlcache.lru:set(plugin_cache_key, plugin)
 
       if ttl then -- ttl means a cached value was found (positive or negative)
         found = true
@@ -165,7 +172,7 @@ local function load_plugin_into_memory_ws(ctx, key)
 
       -- +ve cache plugin and return
       -- no further DB call required
-      local _, err = kong.cache:get(plugin_cache_key, nil, function ()
+      local _, err = kong.core_cache:get(plugin_cache_key, nil, function ()
         return plugin
       end)
       if err then
@@ -176,7 +183,7 @@ local function load_plugin_into_memory_ws(ctx, key)
     end
 
     -- -ve cache plugin and continue
-    local _, err = kong.cache:get(plugin_cache_key, nil, function ()
+    local _, err = kong.core_cache:get(plugin_cache_key, nil, function ()
       return plugin
     end)
     if err then
@@ -479,14 +486,14 @@ function PluginsIterator.new(version)
   end
 
   local counter = 0
-  local page_size = constants.DEFAULT_ITERATION_SIZE
+  local page_size = kong.db.plugins.pagination.page_size
   for plugin, err in kong.db.plugins:each() do
     if err then
       return nil, err
     end
 
-    if kong.cache and counter > 0 and counter % page_size == 0 then
-      local new_version, err = kong.cache:get("plugins_iterator:version", TTL_ZERO,  utils.uuid)
+    if kong.core_cache and counter > 0 and counter % page_size == 0 then
+      local new_version, err = kong.core_cache:get("plugins_iterator:version", TTL_ZERO, utils.uuid)
       if err then
         return nil, "failed to retrieve plugins iterator version: " .. err
       end
@@ -522,6 +529,8 @@ function PluginsIterator.new(version)
         combos[name].services[plugin.service.id] = true
       end
     end
+
+    counter = counter + 1
   end
 
   for _, plugin in ipairs(loaded_plugins) do
