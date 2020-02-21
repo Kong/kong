@@ -7,6 +7,13 @@
 
 ## Unreleased
 
+## [1.7.1] - 2020/02/21
+
+#### Summary
+
+- Changes plugin PRIORITY so that it runs before `request-transformer` and `request-transformer-advanced` plugins.
+- Changes how we collect request data making collector plugin compatible with `request-transformer` and `request-transformer-advanced`
+
 ## [1.7.0] - 2020/02/05
 
 #### Summary
