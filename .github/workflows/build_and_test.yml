@@ -1,0 +1,33 @@
+name: Build & Test
+
+on: [push, pull_request]
+
+env:
+  KONG_SOURCE_LOCATION: $$GITHUB_WORKSPACE
+  KONG_BUILD_TOOLS_LOCATION: $HOME/kong-build-tools
+
+jobs:
+  build:
+    name: Build dependencies
+    runs-on: ubuntu-18.04
+
+    steps:
+    - name: Set env
+      run: |
+          echo "::set-env name=KONG_SOURCE_LOCATION::$GITHUB_WORKSPACE"
+          echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
+        
+    - name: Docker Login
+      env: # Or as an environment variable
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSOWRD: ${{ secrets.DOCKER_PASSOWRD }}
+      run: echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v2
+
+    - name: Setup Kong Build Tools
+      run: make setup-kong-build-tools
+
+    - name: Build Test Image
+      run: pushd $KONG_BUILD_TOOLS_LOCATION && make kong-test-container && popd
