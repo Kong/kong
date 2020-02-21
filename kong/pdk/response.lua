@@ -47,6 +47,7 @@ local header_body_log = phase_checker.new(PHASES.header_filter,
 
 local rewrite_access = phase_checker.new(PHASES.rewrite,
                                          PHASES.access,
+                                         PHASES.error,
                                          PHASES.admin_api)
 
 local rewrite_access_header = phase_checker.new(PHASES.rewrite,
