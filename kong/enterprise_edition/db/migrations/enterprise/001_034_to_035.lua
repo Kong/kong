@@ -275,44 +275,7 @@ return {
   },
 
   cassandra = {
-    up = [[
-      CREATE INDEX IF NOT EXISTS ON rbac_user_roles(role_id);
-
-      ALTER TABLE rbac_users ADD user_token_ident text;
-      CREATE INDEX IF NOT EXISTS ON rbac_users(user_token_ident);
-
-      CREATE TABLE IF NOT EXISTS developers (
-        id          uuid,
-        created_at  timestamp,
-        updated_at  timestamp,
-        consumer_id  uuid,
-        email text,
-        status int,
-        meta text,
-        PRIMARY KEY(id)
-      );
-      CREATE INDEX IF NOT EXISTS developers_email_idx ON developers(email);
-      CREATE INDEX IF NOT EXISTS developers_consumer_id_idx ON developers(consumer_id);
-      CREATE INDEX IF NOT EXISTS developers_email_idx ON developers(email);
-
-      CREATE TABLE IF NOT EXISTS admins (
-        id          uuid,
-        created_at  timestamp,
-        updated_at  timestamp,
-        consumer_id  uuid,
-        rbac_user_id  uuid,
-        email text,
-        status int,
-        username   text,
-        custom_id  text,
-        PRIMARY KEY(id)
-      );
-      CREATE INDEX IF NOT EXISTS admins_consumer_id_idx ON admins(consumer_id);
-      CREATE INDEX IF NOT EXISTS admins_rbac_user_id_idx ON admins(rbac_user_id);
-      CREATE INDEX IF NOT EXISTS admins_email_idx ON admins(email);
-      CREATE INDEX IF NOT EXISTS admins_username_idx ON admins(username);
-      CREATE INDEX IF NOT EXISTS admins_custom_id_idx ON admins(custom_id);
-    ]],
+    up = [[ ]],
 
     teardown = function(connector)
       local coordinator = connector:connect_migrations()

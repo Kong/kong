@@ -740,6 +740,7 @@ END $$;
         id uuid PRIMARY KEY,
         name text,
         user_token text,
+        user_token_ident text,
         comment text,
         enabled boolean,
         created_at timestamp
@@ -747,12 +748,15 @@ END $$;
 
       CREATE INDEX IF NOT EXISTS ON rbac_users(name);
       CREATE INDEX IF NOT EXISTS ON rbac_users(user_token);
+      CREATE INDEX IF NOT EXISTS ON rbac_users(user_token_ident);
 
       CREATE TABLE IF NOT EXISTS rbac_user_roles(
         user_id uuid,
         role_id uuid,
         PRIMARY KEY(user_id, role_id)
       );
+
+      CREATE INDEX IF NOT EXISTS ON rbac_user_roles(role_id);
 
       CREATE TABLE IF NOT EXISTS rbac_roles(
         id uuid PRIMARY KEY,
@@ -775,6 +779,8 @@ END $$;
         created_at timestamp,
         PRIMARY KEY(role_id, entity_id)
       );
+
+      CREATE INDEX IF NOT EXISTS ON rbac_role_entities(entity_type);
 
       CREATE TABLE IF NOT EXISTS rbac_role_endpoints(
         role_id uuid,
@@ -838,9 +844,6 @@ END $$;
 
 
       ALTER TABLE consumers ADD type int;
-      ALTER TABLE consumers ADD email text;
-      ALTER TABLE consumers ADD status int;
-      ALTER TABLE consumers ADD meta text;
 
       CREATE INDEX IF NOT EXISTS consumers_type_idx ON consumers(type);
 
@@ -856,8 +859,6 @@ END $$;
       CREATE INDEX IF NOT EXISTS credentials_consumer_id ON credentials(consumer_id);
       CREATE INDEX IF NOT EXISTS credentials_plugin ON credentials(plugin);
 
-      CREATE INDEX IF NOT EXISTS ON rbac_role_entities(entity_type);
-
       CREATE TABLE IF NOT EXISTS consumer_reset_secrets(
         id uuid PRIMARY KEY,
         consumer_id uuid,
@@ -869,6 +870,38 @@ END $$;
       );
 
       CREATE INDEX IF NOT EXISTS consumer_reset_secrets_consumer_id_idx ON consumer_reset_secrets (consumer_id);
+
+      CREATE TABLE IF NOT EXISTS developers (
+        id          uuid,
+        created_at  timestamp,
+        updated_at  timestamp,
+        consumer_id  uuid,
+        email text,
+        status int,
+        meta text,
+        PRIMARY KEY(id)
+      );
+      CREATE INDEX IF NOT EXISTS developers_email_idx ON developers(email);
+      CREATE INDEX IF NOT EXISTS developers_consumer_id_idx ON developers(consumer_id);
+      CREATE INDEX IF NOT EXISTS developers_email_idx ON developers(email);
+
+      CREATE TABLE IF NOT EXISTS admins (
+        id          uuid,
+        created_at  timestamp,
+        updated_at  timestamp,
+        consumer_id  uuid,
+        rbac_user_id  uuid,
+        email text,
+        status int,
+        username   text,
+        custom_id  text,
+        PRIMARY KEY(id)
+      );
+      CREATE INDEX IF NOT EXISTS admins_consumer_id_idx ON admins(consumer_id);
+      CREATE INDEX IF NOT EXISTS admins_rbac_user_id_idx ON admins(rbac_user_id);
+      CREATE INDEX IF NOT EXISTS admins_email_idx ON admins(email);
+      CREATE INDEX IF NOT EXISTS admins_username_idx ON admins(username);
+      CREATE INDEX IF NOT EXISTS admins_custom_id_idx ON admins(custom_id);
 
       CREATE TABLE IF NOT EXISTS vitals_code_classes_by_workspace(
         workspace_id uuid,
