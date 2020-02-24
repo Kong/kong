@@ -35,17 +35,17 @@ for _, strategy in helpers.each_strategy() do
 
       it("can change and retrieve config using Admin API", function()
         local res = assert(admin_client:post("/services", {
-          body = { name = "mockbin-service", url = "https://mockbin.org/request", },
+          body = { name = "mock-service", url = "https://127.0.0.1:15556/request", },
           headers = {["Content-Type"] = "application/json"}
         }))
         assert.res_status(201, res)
 
-        res = assert(admin_client:get("/services/mockbin-service"))
+        res = assert(admin_client:get("/services/mock-service"))
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equals(json.path, "/request")
 
-        res = assert(admin_client:post("/services/mockbin-service/routes", {
+        res = assert(admin_client:post("/services/mock-service/routes", {
           body = { paths = { "/" }, },
           headers = {["Content-Type"] = "application/json"}
         }))
@@ -107,17 +107,17 @@ for _, strategy in helpers.each_strategy() do
     describe("read only operation breaks and read write operation works", function()
       it("admin API bypasses readonly connection but proxy doesn't", function()
         local res = assert(admin_client:post("/services", {
-          body = { name = "mockbin-service", url = "https://mockbin.org/request", },
+          body = { name = "mock-service", url = "https://127.0.0.1:15556/request", },
           headers = {["Content-Type"] = "application/json"}
         }))
         assert.res_status(201, res)
 
-        res = assert(admin_client:get("/services/mockbin-service"))
+        res = assert(admin_client:get("/services/mock-service"))
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equals(json.path, "/request")
 
-        res = assert(admin_client:post("/services/mockbin-service/routes", {
+        res = assert(admin_client:post("/services/mock-service/routes", {
           body = { paths = { "/" }, },
           headers = {["Content-Type"] = "application/json"}
         }))

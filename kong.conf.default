@@ -744,6 +744,37 @@
                                  # Detailed discussion of this behavior is
                                  # available in the online documentation.
 
+# When using Postgres as the backend storage, you can optionally enable Kong
+# to serve read queries from a separate database instance.
+# When the number of proxies are large this can greatly reduce the load
+# on the main Postgres instance and achieve better scalability. It may also
+# reduce the latency jitter if the Kong proxy node's latency to the main
+# Postgres instance is high.
+#
+# The read-only Postgres instance only serves read queries and write
+# queries still goes to the main connection. The read-only Postgres instance
+# can be eventual consistent while replicating changes from the main
+# instance.
+#
+# At least the `pg_ro_host` config is needed to enable this feature.
+# By default all other database config for the read-only connection are
+# inherited from the corresponding main connection config described above but
+# may be optionally overwritten explicitly using the config below.
+
+#pg_ro_host = NONE # Value of `NONE` disables read-only connection
+#pg_ro_port = <pg_port>
+#pg_ro_timeout = <pg_timeout>
+#pg_ro_user = <pg_user>
+#pg_ro_password = <pg_password>
+#pg_ro_database = <pg_database>
+#pg_ro_schema = <pg_schema>
+#pg_ro_ssl = <pg_ssl>
+#pg_ro_ssl_verify = <pg_ssl_verify>
+#pg_ro_max_concurrent_queries = <pg_max_concurrent_queries>
+                                # Note: concurrency is not shared
+                                # with the main connection
+#pg_ro_semaphore_timeout = <pg_semaphore_timeout>
+
 #cassandra_contact_points = 127.0.0.1  # A comma-separated list of contact
                                        # points to your cluster.
                                        # You may specify IP addresses or
