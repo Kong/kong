@@ -191,6 +191,7 @@ local add_api
 local patch_api
 local gen_port
 local gen_multi_host
+local invalidate_router
 do
   local gen_sym
   do
@@ -274,6 +275,16 @@ do
     if status == 200 then
       return body.message
     end
+  end
+
+  invalidate_router = function(forced_port)
+    local path = "/cache/router:version"
+    local status, body = api_send("DELETE", path, nil, forced_port)
+    if status == 204 then
+      return true
+    end
+
+    return nil, body
   end
 
   do
@@ -408,6 +419,11 @@ local function wait_for_router_update(bp, old_rv, localhost, proxy_port, admin_p
   local dummy_port = add_target(bp, dummy_upstream_id, localhost)
   local dummy_api_host = add_api(bp, dummy_upstream_name)
   local dummy_server = http_server(localhost, dummy_port, { 1000 })
+
+  -- forces the router to be rebuild, reduces the flakiness of the test suite
+  -- TODO: find out what's wrong with router invalidation in the particular
+  -- test setup causing the flakiness
+  assert(invalidate_router(admin_port))
 
   helpers.wait_until(function()
     client_requests(1, dummy_api_host, "127.0.0.1", proxy_port)
