@@ -170,7 +170,7 @@ end
 local function reset(schema_state, db, ttl)
   if schema_state.needs_bootstrap then
     log("Database not bootstrapped, nothing to reset")
-    return false
+    return true
   end
 
   local opts = {

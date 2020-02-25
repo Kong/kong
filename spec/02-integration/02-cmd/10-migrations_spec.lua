@@ -98,7 +98,7 @@ for _, strategy in helpers.each_strategy() do
       it("does not reset twice", function()
         run_kong("migrations reset --yes")
         local code, stdout = run_kong("migrations reset --yes")
-        assert.same(1, code)
+        assert.same(0, code)
         assert.match("nothing to reset", stdout, 1, true)
       end)
     end)
@@ -308,7 +308,7 @@ for _, strategy in helpers.each_strategy() do
         code, _, stderr = run_kong("migrations reset --yes", {
           plugins = "bundled"
         }, true)
-        assert.equal(1, code)
+        assert.equal(0, code)
         assert.equal("", stderr)
 
         code, _, stderr = run_kong("migrations bootstrap", {
@@ -364,7 +364,7 @@ for _, strategy in helpers.each_strategy() do
         code, _, stderr = run_kong("migrations reset --yes", {
           plugins = "bundled"
         }, true)
-        assert.equal(1, code)
+        assert.equal(0, code)
         assert.equal("", stderr)
 
         code, _, stderr = run_kong("migrations bootstrap", {
