@@ -59,6 +59,12 @@ pipeline {
                     }
                 }
             }
+            /* the above when statement evaluates to:
+                if (
+                  ( buildingtag && not cron ) ||
+                  ( ( branch = master || branch = next) && cron )
+                )
+            */
             parallel {
                 stage('dbless') {
                     agent {
