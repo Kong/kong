@@ -198,7 +198,6 @@ build = {
     ["kong.enterprise_edition.db.migrations.enterprise"] = "kong/enterprise_edition/db/migrations/enterprise/init.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.000_base"] = "kong/enterprise_edition/db/migrations/enterprise/000_base.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.001_034_to_035"] = "kong/enterprise_edition/db/migrations/enterprise/001_034_to_035.lua",
-    ["kong.enterprise_edition.db.migrations.enterprise.004_036-2_to_037"] = "kong/enterprise_edition/db/migrations/enterprise/004_036-2_to_037.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.005_037_to_1301"] = "kong/enterprise_edition/db/migrations/enterprise/005_037_to_1301.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.006_1301_to_1400"] = "kong/enterprise_edition/db/migrations/enterprise/006_1301_to_1400.lua",
 
