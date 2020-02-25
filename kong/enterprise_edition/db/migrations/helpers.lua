@@ -1,7 +1,6 @@
-local utils        = require "kong.tools.utils"
-
 local fmt = string.format
 
+local utils        = require "kong.tools.utils"
 
 local _M = {}
 

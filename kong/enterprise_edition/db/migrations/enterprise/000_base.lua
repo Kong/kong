@@ -1,208 +1,272 @@
-local utils        = require "kong.tools.utils"
-local crypto       = require "kong.plugins.basic-auth.crypto"
-local helpers = require "kong.enterprise_edition.db.migrations.helpers"
+local utils = require "kong.tools.utils"
+local crypto = require "kong.plugins.basic-auth.crypto"
 
+local audit_ttl = kong.configuration.audit_log_record_ttl
 local fmt = string.format
-local created_ts = math.floor(ngx.now()) * 1000
 
-local audit_ttl    = kong.configuration.audit_log_record_ttl
-
-local function seed_kong_admin_data_rbac_pg()
-  local password = os.getenv("KONG_PASSWORD")
-  if not password then
-    return ""
-  end
-
-  local password = password
-  return fmt([[
-    DO $$
-    DECLARE kong_admin_user_id uuid;
-    DECLARE def_ws_id uuid;
-    DECLARE super_admin_role_id uuid;
-    DECLARE kong_admin_default_role_id uuid;
-    DECLARE tmp record;
-    BEGIN
-
-    SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into kong_admin_user_id;
-    SELECT id into def_ws_id from workspaces where name = 'default';
-
-    -- create kong_admin user
-    SELECT * into tmp FROM rbac_users WHERE name IN ('kong_admin', 'default:kong_admin') LIMIT 1;
-    IF NOT FOUND THEN
-      INSERT INTO rbac_users(id, name, user_token, enabled, comment) VALUES(kong_admin_user_id, 'default:kong_admin', '%s', true, 'Initial RBAC Secure User');
-      INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'id', kong_admin_user_id);
-      INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'name', 'kong_admin');
-      INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_user_id, 'rbac_users', 'user_token', '%s');
+-- purposedly hardcoded. This migration is fixed in time. Even if the name of
+-- the default workspace (or the delimiter) changes over time, we will do that
+-- on a migration, not on the base (until squash)
+local DEFAULT_WORKSPACE = "default"
+local WORKSPACE_DELIMITER = ":"
+local password = os.getenv("KONG_PASSWORD")
 
 
-      SELECT id into super_admin_role_id from rbac_roles where name = 'default:super-admin';
-      INSERT into rbac_user_roles(user_id, role_id) VALUES(kong_admin_user_id, super_admin_role_id);
+-- common lua land functionality
+local base_seed = {
+  uuid = function(self)
+    return utils.uuid()
+  end,
+  ts = function(self)
+      return math.floor(ngx.now()) * 1000
+  end,
+  wsd = function(self, ws, name)
+    return ws.name .. ":" .. name
+  end,
+  add_default_rbac_role_endpoints = function(self, role_id_map)
+    return table.concat({
+      self:add_rbac_role_endpoint(role_id_map["read_only"], "*", "*", 1, false),
+      self:add_rbac_role_endpoint(role_id_map["admin"], "*", "*", 15, false),
+      self:add_rbac_role_endpoint(role_id_map["admin"], "*", "/rbac/*", 15, true),
+      self:add_rbac_role_endpoint(role_id_map["admin"], "*", "/rbac/*/*", 15, true),
+      self:add_rbac_role_endpoint(role_id_map["admin"], "*", "/rbac/*/*/*", 15, true),
+      self:add_rbac_role_endpoint(role_id_map["admin"], "*", "/rbac/*/*/*/*", 15, true),
+      self:add_rbac_role_endpoint(role_id_map["admin"], "*", "/rbac/*/*/*/*/*", 15, true),
+      self:add_rbac_role_endpoint(role_id_map["super-admin"], "*", "*", 15, false),
+    }, "\n")
+  end,
+  add_default_rbac_roles = function(self, ws)
+    local ro, ro_id = self:add_rbac_role(ws, "read_only", "Read access to all endpoints, across all workspaces", false)
+    local ad, ad_id = self:add_rbac_role(ws, "admin", "Full access to all endpoints, across all workspaces—except RBAC Admin API", false)
+    local sa, sa_id = self:add_rbac_role(ws, "super-admin", "Full access to all endpoints, across all workspaces", false)
 
-      -- create default role for the user
-      SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into kong_admin_default_role_id;
-      INSERT into rbac_roles(id, name, comment, is_default) VALUES(kong_admin_default_role_id, 'default:kong_admin', 'Default user role generated for kong_admin', true);
-      INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_default_role_id, 'rbac_roles', 'id', kong_admin_default_role_id);
-      INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_default_role_id, 'rbac_roles', 'name', 'kong_admin');
-      INSERT into rbac_user_roles(user_id, role_id) VALUES(kong_admin_user_id, kong_admin_default_role_id);
-    END IF;
-
-    END $$;
-  ]], password, password)
-end
-
-local function seed_kong_admin_data_pg()
-  local password = os.getenv("KONG_PASSWORD")
-  if not password then
-    return ""
-  end
-
-  local kong_admin_consumer_id = utils.uuid()
-  return fmt([[
-    DO $$
-    DECLARE kong_admin_user_id uuid;
-    DECLARE def_ws_id uuid;
-    DECLARE super_admin_role_id uuid;
-    DECLARE kong_admin_default_role_id uuid;
-    DECLARE kong_admin_consumer_id uuid;
-    DECLARE kong_admin_admin_id uuid;
-    DECLARE kong_admin_basic_auth_id uuid;
-    DECLARE kong_rbac_user_id uuid;
-    DECLARE tmp record;
-    BEGIN
-
-    SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into kong_admin_user_id;
-    SELECT id into def_ws_id from workspaces where name = 'default';
-
-
-    -- create the admin consumer
-    SELECT * into tmp FROM consumers where username='default:kong_admin' limit 1;
-    IF NOT FOUND THEN
-        SELECT '%s'::uuid into kong_admin_consumer_id;
-        INSERT into consumers(id, username, type) VALUES(kong_admin_consumer_id, 'default:kong_admin', 2);
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_consumer_id, 'consumers', 'id', kong_admin_consumer_id);
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_consumer_id, 'consumers', 'username', 'kong_admin');
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_consumer_id, 'consumers', 'custom_id', null);
-
-    -- populate consumers_rbac_users_map
-        SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into kong_admin_admin_id;
-        SELECT id FROM consumers where username='default:kong_admin' limit 1 into kong_admin_consumer_id;
-        SELECT id FROM rbac_users where name='default:kong_admin' limit 1 into kong_rbac_user_id;
-        INSERT into consumers_rbac_users_map(consumer_id, user_id) VALUES(kong_admin_consumer_id, kong_rbac_user_id);
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_admin_id, 'admins', 'id', kong_admin_admin_id);
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_admin_id, 'admins', 'username', 'kong_admin');
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_admin_id, 'admins', 'custom_id', null);
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_admin_id, 'admins', 'email', null);
-    END IF;
-    -- create basic-auth credentials
-    SELECT * into tmp FROM basicauth_credentials where username='default:kong_admin' limit 1;
-    IF NOT FOUND THEN
-        SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into kong_admin_basic_auth_id;
-        INSERT into basicauth_credentials(id, consumer_id, username, password) VALUES(kong_admin_basic_auth_id, kong_admin_consumer_id, 'default:kong_admin', '%s');
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_basic_auth_id, 'basicauth_credentials', 'id', kong_admin_basic_auth_id);
-        INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES(def_ws_id, 'default', kong_admin_basic_auth_id, 'basicauth_credentials', 'username', 'kong_admin');
-    END IF;
-
-    END $$;
-  ]], kong_admin_consumer_id, crypto.hash(kong_admin_consumer_id, password))
-end
-
-local function seed_kong_admin_data_cas(def_ws_id)
-  local res = {}
-  local super_admin_role_id = utils.uuid()
-  local roles = {
-    {
-      utils.uuid(), "read-only", 'Read access to all endpoints, across all workspaces',
-      {"(%s, '*', '*', 1, FALSE)"}
-    },
-    { utils.uuid(), "admin", 'Full access to all endpoints, across all workspaces-except RBAC Admin API',
-      {"(%s, '*', '*', 15, FALSE);",
-       "(%s, '*', '/rbac/*', 15, TRUE);",
-       "(%s, '*', '/rbac/*/*', 15, TRUE);",
-       "(%s, '*', '/rbac/*/*/*', 15, TRUE);",
-       "(%s, '*', '/rbac/*/*/*/*', 15, TRUE);",
-       "(%s, '*', '/rbac/*/*/*/*/*', 15, TRUE);",
-      },
-    },
-    { super_admin_role_id, "super-admin", 'Full access to all endpoints, across all workspaces',
-      {"(%s, '*', '*', 15, FALSE)"}
+    return table.concat({
+      "-- read only role", ro,
+      "-- admin role", ad,
+      "-- super admin role", sa
+    }, "\n"), { ["read_only"] = ro_id, ["admin"] = ad_id, ["super-admin"] = sa_id }
+  end,
+  seed = function(self, password)
+    local ws_q, ws_id = self:add_workspace(DEFAULT_WORKSPACE)
+    local ws = {
+      id = ws_id,
+      name = "default",
     }
-  }
+    local roles_q, roles_ids = self:add_default_rbac_roles(ws)
+    local query = {
+      "-- seed kong enterprise data", "",
+      "-- add default workspace",
+      ws_q,
+      "",
+      "-- add default RBAC roles",
+      roles_q,
+      "-- add default rbac role endpoints",
+      self:add_default_rbac_role_endpoints(roles_ids),
+      -- the end, if no password is set
+    }
 
-  for _, role in ipairs(roles) do
-    table.insert(res,
-      fmt("INSERT into rbac_roles(id, name, comment, created_at) VALUES(%s, 'default:%s', '%s', '%s')",
-        role[1] , role[2], role[3], created_ts))
-    helpers.add_to_default_ws(res, role[1], "rbac_roles", "id", role[1], def_ws_id)
-    helpers.add_to_default_ws(res, role[1], "rbac_roles", "name", role[2], def_ws_id)
+    if password then
+      table.insert(query, "")
+      table.insert(query, "-- Add rbac user named kong_admin")
+      local add_rbac_user_q, rbac_user_id = self:add_rbac_user("kong_admin", password, "Initial RBAC Secure User", ws)
+      table.insert(query, add_rbac_user_q)
+      table.insert(query, "-- Set admin and super-admin roles to kong_admin")
+      table.insert(query, self:add_rbac_user_role(rbac_user_id, roles_ids["admin"]))
+      table.insert(query, self:add_rbac_user_role(rbac_user_id, roles_ids["super-admin"]))
+      table.insert(query, "")
 
-    for _, endpoint in ipairs(role[4]) do
-      table.insert(res,
-        fmt(
-          fmt("INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative) VALUES %s", endpoint),
-          role[1]))
+      table.insert(query, "-- Add kong_admin")
+      table.insert(query,  self:add_admin("kong_admin", password, rbac_user_id, ws))
     end
-  end
 
-  local password = os.getenv("KONG_PASSWORD")
+    return table.concat(query, "\n")
+  end,
+}
 
-  if password then
-    local password = password
+local postgres  = {
+  super = base_seed,
+  seed = function(self, password)
+    local query = {
+      "-- reentrant, do not seed if it looks seeded",
+      [[ DO $$
+         DECLARE tmp record;
+         BEGIN
+         SELECT * into tmp FROM workspaces LIMIT 1;
+         IF NOT FOUND THEN
+      ]],
+      self.super.seed(self, password),
+      "END IF;",
+      "END $$",
+      "-- end",
+    }
+    return table.concat(query, "\n")
+  end,
+  add_workspace = function(self, name)
+    local ws_uuid = self:uuid()
+    return fmt("INSERT INTO workspaces(id, name) VALUES ('%s', '%s') ON CONFLICT DO NOTHING;", ws_uuid, name), ws_uuid
+  end,
 
-    local kong_admin_rbac_id = utils.uuid()
-    -- create kong_admin RBAC user
-    table.insert(res,
-      fmt("INSERT into rbac_users(id, name, user_token, enabled, comment, created_at) VALUES(%s, 'default:%s', '%s', %s, '%s', %s)",
-        kong_admin_rbac_id, "kong_admin", password, 'true', "Initial RBAC Secure User", created_ts))
-    helpers.add_to_default_ws(res, kong_admin_rbac_id, "rbac_users", "id", kong_admin_rbac_id, def_ws_id)
-    helpers.add_to_default_ws(res, kong_admin_rbac_id, "rbac_users", "name", "kong_admin", def_ws_id)
-    helpers.add_to_default_ws(res, kong_admin_rbac_id, "rbac_users", "user_token", password, def_ws_id)
+  add_to_ws = function(self, ws, entity_id, entity, field, value)
+    -- XXX Properly sql escape this
+    local value = value and "'" .. value .. "'" or "NULL"
+    return fmt("INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES ('%s', '%s', '%s', '%s', '%s', %s);", ws.id, ws.name, entity_id, entity, field, value)
+  end,
 
-    -- add user-roles relation
-    table.insert(res,
-      fmt("INSERT into rbac_user_roles(user_id, role_id) VALUES(%s, %s)",
-        kong_admin_rbac_id, super_admin_role_id))
+  add_rbac_user = function(self, name, password, comment, ws)
+    local uuid = self:uuid()
 
-    --create default role for the user
-    local kong_admin_rbac_default_role_id = utils.uuid()
-    table.insert(res,
-      fmt("INSERT into rbac_roles(id, name, comment, is_default, created_at) VALUES(%s, 'default:%s', '%s', %s, %s)",
-        kong_admin_rbac_default_role_id , "kong_admin", "Default user role generated for kong_admin", 'true', created_ts))
-    helpers.add_to_default_ws(res, kong_admin_rbac_default_role_id, "rbac_roles", "id", kong_admin_rbac_default_role_id, def_ws_id)
-    helpers.add_to_default_ws(res, kong_admin_rbac_default_role_id, "rbac_roles", "name", "kong_admin", def_ws_id)
+    return table.concat({
+      fmt("INSERT INTO rbac_users(id, name, user_token, enabled, comment) VALUES('%s', '%s', '%s', true, '%s');", uuid, self:wsd(ws, name), password, comment),
+      self:add_to_ws(ws, uuid, "rbac_users", "id", uuid),
+      self:add_to_ws(ws, uuid, "rbac_users", "name", name),
+      self:add_to_ws(ws, uuid, "rbac_users", "user_token", password),
+    }, "\n"), uuid
+  end,
 
-    table.insert(res,
-      fmt("INSERT into rbac_user_roles(user_id, role_id) VALUES(%s, %s)",
-        kong_admin_rbac_id, kong_admin_rbac_default_role_id))
+  add_rbac_role = function(self, ws, name, desc, is_default)
+    local role_id = self:uuid()
+    local name = self:wsd(ws, name)
+    local query = {
+      fmt("INSERT INTO rbac_roles(id, name, comment, is_default) VALUES ('%s', '%s', '%s', %s);", role_id, name, desc, tostring(is_default)),
+      self:add_to_ws(ws, role_id, "rbac_roles", "id", role_id),
+      self:add_to_ws(ws, role_id, "rbac_roles", "name", name),
+    }
+
+    return table.concat(query, "\n"), role_id
+  end,
+
+  add_rbac_user_role = function(self, rbac_user_id, role_id)
+    return fmt("INSERT INTO rbac_user_roles(user_id, role_id) VALUES ('%s', '%s');", rbac_user_id, role_id)
+  end,
+
+  add_rbac_role_endpoint = function(self, role_id, ws, endpoint, actions, negative)
+
+    -- assumedly, only do that if not found
+    return fmt("INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative) VALUES ('%s', '%s', '%s', %d, %s);", role_id, ws, endpoint, actions, tostring(negative))
+  end,
+
+  add_admin = function(self, name, password, rbac_user_id, ws)
+    local admin_id = utils.uuid()
+    local consumer_id = utils.uuid()
+    local ba_id = utils.uuid()
+
+    local hash_password = crypto.hash(consumer_id, password)
+
+    return table.concat({
+      "-- add a consumer to associate to an admin, with type admin (2)",
+      fmt("INSERT INTO consumers(id, username, type) VALUES ('%s', '%s', %d);", consumer_id, self:wsd(ws, name), 2),
+      self:add_to_ws(ws, consumer_id, "consumers", "id", consumer_id),
+      self:add_to_ws(ws, consumer_id, "consumers", "username", name),
+      self:add_to_ws(ws, consumer_id, "consumers", "custom_id", nil),
+      "",
+      fmt("INSERT INTO admins(id, username, consumer_id, rbac_user_id, rbac_token_enabled) VALUES ('%s', '%s', '%s', '%s', true);", admin_id, name, consumer_id, rbac_user_id),
+      self:add_to_ws(ws, admin_id, "admins", "id", admin_id),
+      self:add_to_ws(ws, admin_id, "admins", "username", name),
+      self:add_to_ws(ws, admin_id, "admins", "custom_id", nil),
+      self:add_to_ws(ws, admin_id, "admins", "email", nil),
+      "",
+      "-- add basic auth credentials asociated to this admin",
+      fmt("INSERT INTO basicauth_credentials(id, consumer_id, username, password) VALUES ('%s', '%s', '%s', '%s');", ba_id, consumer_id, self:wsd(ws, name), hash_password),
+      self:add_to_ws(ws, ba_id, "basicauth_credentials", "id", ba_id),
+      self:add_to_ws(ws, ba_id, "basicauth_credentials", "username", name),
+    }, "\n")
+  end,
+  is_seeded = function(self, connector)
+    local res = connector:query("SELECT COUNT(*) AS ct FROM workspaces;")
+    return res and res[1].ct and res[1].ct > 0 or false
+  end,
+}
+
+local cassandra = {
+  super = base_seed,
+  add_workspace = function(self, name)
+    local ws_uuid = self:uuid()
+
+    return fmt("INSERT INTO workspaces(id, name, config, meta, created_at) VALUES (%s, '%s', '{\"portal\":false}', '{}', '%s');", ws_uuid, name, self:ts()), ws_uuid
+  end,
+
+  add_to_ws = function(self, ws, entity_id, entity, field, value)
+    local value = value and "'" .. value .. "'" or "null"
+
+    return fmt("INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES (%s, '%s', '%s', '%s', '%s', %s);", ws.id, ws.name, entity_id, entity, field, value)
+  end,
+
+  add_rbac_user = function(self, name, password, comment, ws)
+    local uuid = utils.uuid()
+
+    return table.concat({
+      fmt("INSERT INTO rbac_users(id, name, user_token, enabled, comment, created_at) VALUES(%s, '%s', '%s', true, '%s', '%s');", uuid, self:wsd(ws, name), password, comment, self:ts()),
+      self:add_to_ws(ws, uuid, "rbac_users", "id", uuid),
+      self:add_to_ws(ws, uuid, "rbac_users", "name", name),
+      self:add_to_ws(ws, uuid, "rbac_users", "user_token", password),
+    }, "\n"), uuid
+  end,
+
+  add_rbac_role = function(self, ws, name, desc, is_default)
+    local role_id = self:uuid()
+    local name = ws.name .. WORKSPACE_DELIMITER .. name
+    local query = {
+      fmt("INSERT INTO rbac_roles(id, name, comment, is_default, created_at) VALUES (%s, '%s', '%s', %s, '%s');", role_id, name, desc, tostring(is_default), self:ts()),
+      self:add_to_ws(ws, role_id, "rbac_roles", "id", role_id),
+      self:add_to_ws(ws, role_id, "rbac_roles", "name", name),
+    }
+
+    return table.concat(query, "\n"), role_id
+  end,
+
+  add_rbac_user_role = function(self, rbac_user_id, role_id)
+    return fmt("INSERT INTO rbac_user_roles(user_id, role_id) VALUES (%s, %s);", rbac_user_id, role_id)
+  end,
+  add_rbac_role_endpoint = function(self, role_id, ws, endpoint, actions, negative)
+    -- assumedly, only do that if not found
+    return fmt("INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative, created_at) VALUES (%s, '%s', '%s', %d, %s, '%s');", role_id, ws, endpoint, actions, tostring(negative), self:ts())
+  end,
+  add_entity = function(self, entity_type, fields, values)
+    return fmt("INSERT INTO %s(%s) VALUES (%s);", entity_type, table.concat(fields, ","), table.concat(values, ","))
+  end,
+  add_admin = function(self, name, password, rbac_user_id, ws)
+    local admin_id = utils.uuid()
+    local consumer_id = utils.uuid()
+    local ba_id = utils.uuid()
+
+    local hash_password = crypto.hash(consumer_id, password)
+
+    return table.concat({
+      "-- add a consumer to associate to an admin, with type admin (2)",
+      fmt("INSERT INTO consumers(id, username, type, created_at) VALUES (%s, '%s', %d, '%s');", consumer_id, self:wsd(ws, name), 2, self:ts()),
+      self:add_to_ws(ws, consumer_id, "consumers", "id", consumer_id),
+      self:add_to_ws(ws, consumer_id, "consumers", "username", name),
+      self:add_to_ws(ws, consumer_id, "consumers", "custom_id", nil),
+      "",
+      fmt("INSERT INTO admins(id, username, consumer_id, rbac_user_id, rbac_token_enabled, created_at) VALUES (%s, '%s', %s, %s, true, '%s');", admin_id, name, consumer_id, rbac_user_id, self:ts()),
+      self:add_to_ws(ws, admin_id, "admins", "id", admin_id),
+      self:add_to_ws(ws, admin_id, "admins", "username", name),
+      self:add_to_ws(ws, admin_id, "admins", "custom_id", nil),
+      self:add_to_ws(ws, admin_id, "admins", "email", nil),
+      "",
+      "-- add basic auth credentials asociated to this admin",
+      fmt("INSERT INTO basicauth_credentials(id, consumer_id, username, password, created_at) VALUES (%s, %s, '%s', '%s', '%s');", ba_id, consumer_id, self:wsd(ws, name), hash_password, self:ts()),
+      self:add_to_ws(ws, ba_id, "basicauth_credentials", "id", ba_id),
+      self:add_to_ws(ws, ba_id, "basicauth_credentials", "username", name),
+    }, "\n")
+  end,
+  is_seeded = function(self, connector)
+    local res = connector:query("SELECT COUNT(*) AS ct FROM workspaces;")
+    return res and res[1].ct and res[1].ct > 0 or false
+  end,
+}
 
 
-    -- create the admin consumer
-    local kong_admin_consumer_id = utils.uuid()
-    table.insert(res,
-      fmt("INSERT into consumers(id, username, type, created_at, status) VALUES(%s, 'default:%s', %s, %s, %s)",
-        kong_admin_consumer_id, "kong_admin", 2, created_ts, 0))
+local seed_strategies = {
+  postgres = setmetatable(postgres, { __index = base_seed }),
+  cassandra = setmetatable(cassandra, { __index = base_seed }),
+}
 
-    helpers.add_to_default_ws(res, kong_admin_consumer_id, "consumers", "id", kong_admin_consumer_id, def_ws_id)
-    helpers.add_to_default_ws(res, kong_admin_consumer_id, "consumers", "username", "kong_admin", def_ws_id)
-    helpers.add_to_default_ws(res, kong_admin_consumer_id, "consumers", "custom_id", nil, def_ws_id)
 
-    -- add bootstrapped admin to consumers_rbac_users_map
-    table.insert(res,
-    fmt("INSERT into consumers_rbac_users_map(consumer_id, user_id, created_at) VALUES(%s, %s, %s)",
-      kong_admin_consumer_id, kong_admin_rbac_id, created_ts))
-
-    -- create basic-auth credential for admin
-    local kong_admin_basic_auth_id = utils.uuid()
-    table.insert(res,
-      fmt("INSERT into basicauth_credentials(id, consumer_id, username, password, created_at)" ..
-        "VALUES(%s , %s, 'default:%s', '%s', %s)",
-          kong_admin_basic_auth_id, kong_admin_consumer_id, "kong_admin", crypto.hash(kong_admin_consumer_id, password), created_ts))
-
-    helpers.add_to_default_ws(res, kong_admin_basic_auth_id, "basicauth_credentials", "id", kong_admin_basic_auth_id, def_ws_id)
-    helpers.add_to_default_ws(res, kong_admin_basic_auth_id, "basicauth_credentials", "username", "kong_admin", def_ws_id)
-  end
-
-  return table.concat(res, ";") .. ";"
+local seed = function(strategy, password)
+  return seed_strategies[strategy]:seed(password)
 end
+
 
 return {
   postgres = {
@@ -334,15 +398,6 @@ return {
         meta                      JSON                      DEFAULT '{}'::json,
         config                    JSON                      DEFAULT '{"portal":false}'::json
       );
-
-
-      DO $$
-      DECLARE def_ws_id uuid;
-      BEGIN
-
-      SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into def_ws_id;
-      INSERT INTO workspaces(id, name, config) VALUES (def_ws_id, 'default', '{"portal":true}'::json) ON CONFLICT DO NOTHING;
-      END $$;
 
 
       CREATE TABLE IF NOT EXISTS workspace_entities(
@@ -608,109 +663,9 @@ return {
         created_at timestamp with time zone not null
       );
 
--- read-only role
-DO $$
-DECLARE lastid uuid;
-DECLARE def_ws_id uuid;
-DECLARE tmp record;
-BEGIN
-
-SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into lastid;
-SELECT id into def_ws_id from workspaces where name = 'default';
-
-SELECT * into tmp FROM rbac_roles WHERE name='default:read-only' LIMIT 1;
-
-IF NOT FOUND THEN
-  INSERT INTO rbac_roles(id, name, comment)
-  VALUES (lastid, 'default:read-only', 'Read access to all endpoints, across all workspaces');
-
-  INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
-  VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'read-only');
-
-  INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
-  VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
-
-
-  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-  VALUES (lastid, '*', '*', 1, FALSE);
-END IF;
-
-END $$;
-
-
--- admin role
-DO $$
-DECLARE lastid uuid;
-DECLARE def_ws_id uuid;
-DECLARE tmp record;
-BEGIN
-
-SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into lastid;
-SELECT id into def_ws_id from workspaces where name = 'default';
-
-SELECT * into tmp FROM rbac_roles WHERE name='default:admin' LIMIT 1;
-
-IF NOT FOUND THEN
-  INSERT INTO rbac_roles(id, name, comment)
-  VALUES (lastid, 'default:admin', 'Full access to all endpoints, across all workspaces—except RBAC Admin API');
-
-  INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
-  VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'admin');
-
-  INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
-  VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
-
-
-  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-  VALUES (lastid, '*', '*', 15, FALSE);
-
-  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-  VALUES (lastid, '*', '/rbac/*', 15, TRUE);
-
-  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-  VALUES (lastid, '*', '/rbac/*/*', 15, TRUE);
-
-  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-  VALUES (lastid, '*', '/rbac/*/*/*', 15, TRUE);
-
-  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-  VALUES (lastid, '*', '/rbac/*/*/*/*', 15, TRUE);
-
-  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-  VALUES (lastid, '*', '/rbac/*/*/*/*/*', 15, TRUE);
-END IF;
-
-END $$;
-
--- super-admin role
-DO $$
-DECLARE lastid uuid;
-DECLARE def_ws_id uuid;
-DECLARE tmp record;
-BEGIN
-
-SELECT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring) into lastid;
-SELECT id into def_ws_id from workspaces where name = 'default';
-
-SELECT * into tmp FROM rbac_roles WHERE name='default:super-admin' LIMIT 1;
-
-IF NOT FOUND THEN
-  INSERT INTO rbac_roles(id, name, comment)
-  VALUES (lastid, 'default:super-admin', 'Full access to all endpoints, across all workspaces');
-
-  INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
-  VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'name', 'super-admin');
-
-  INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value)
-  VALUES (def_ws_id, 'default', lastid, 'rbac_roles', 'id', lastid);
-
-
-  INSERT INTO rbac_role_endpoints(role_id, workspace, endpoint, actions, negative)
-  VALUES (lastid, '*', '*', 15, FALSE);
-END IF;
-
-END $$;
-    ]] .. seed_kong_admin_data_rbac_pg() .. seed_kong_admin_data_pg()
+    ]] .. seed("postgres", password) .. [[
+      -- The end
+    ]],
   },
   cassandra = {
     up = [[
@@ -1085,38 +1040,11 @@ END $$;
 
     ]],
     teardown = function(connector)
-      -- create default workspace if doesn't exist
-      local default_ws, err = connector:query([[
-        SELECT * FROM workspaces WHERE name='default';
-      ]])
-      if err then
-        return nil, err
+      -- seeding in cassandra is in teardown phase.
+      local seeder = seed_strategies.cassandra
+      if not seeder:is_seeded(connector) then
+        assert(connector:query(seeder:seed(password)))
       end
-
-      if not (default_ws and default_ws[1]) then
-        assert(connector:query(fmt([[INSERT INTO workspaces(id, name, config, meta, created_at)
-          VALUES (uuid(), 'default', '{"portal":true}', '{}', %s);]], created_ts)))
-      end
-
-      -- create default roles if they do not exist (checking for read-only one)
-      local read_only_present = connector:query([[
-        SELECT * FROM rbac_roles WHERE name='default:read-only';
-      ]])
-
-      local default_ws_id, err = connector:query([[
-        SELECT id FROM workspaces WHERE name='default';
-      ]])
-      if err then
-        return nil, err
-      end
-
-      if not (default_ws_id and default_ws_id[1]) then
-        return nil, "failed to fetch default workspace"
-      end
-
-      if not (read_only_present and read_only_present[1]) then
-        assert(connector:query(seed_kong_admin_data_cas(default_ws_id[1].id)))
-      end
-    end
+    end,
   },
 }
