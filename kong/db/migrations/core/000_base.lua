@@ -145,7 +145,7 @@ return {
 
       DO $$
       BEGIN
-      CREATE INDEX IF NOT EXISTS "plugins_name_idx"       ON "plugins" ("name");
+        CREATE INDEX IF NOT EXISTS "plugins_name_idx" ON "plugins" ("name");
       EXCEPTION WHEN UNDEFINED_COLUMN THEN
         -- Do nothing, accept existing state
       END$$;
@@ -159,14 +159,14 @@ return {
 
       DO $$
       BEGIN
-      CREATE INDEX IF NOT EXISTS "plugins_service_id_idx" ON "plugins" ("service_id");
+        CREATE INDEX IF NOT EXISTS "plugins_service_id_idx" ON "plugins" ("service_id");
       EXCEPTION WHEN UNDEFINED_COLUMN THEN
         -- Do nothing, accept existing state
       END$$;
 
       DO $$
       BEGIN
-      CREATE INDEX IF NOT EXISTS "plugins_route_id_idx"   ON "plugins" ("route_id");
+        CREATE INDEX IF NOT EXISTS "plugins_route_id_idx" ON "plugins" ("route_id");
       EXCEPTION WHEN UNDEFINED_COLUMN THEN
         -- Do nothing, accept existing state
       END$$;
@@ -206,7 +206,7 @@ return {
 
       DO $$
       BEGIN
-      CREATE INDEX IF NOT EXISTS "targets_target_idx" ON "targets" ("target");
+        CREATE INDEX IF NOT EXISTS "targets_target_idx" ON "targets" ("target");
       EXCEPTION WHEN UNDEFINED_COLUMN THEN
         -- Do nothing, accept existing state
       END$$;
@@ -240,7 +240,7 @@ return {
 
       DO $$
       BEGIN
-      CREATE INDEX IF NOT EXISTS "ttls_primary_uuid_value_idx" ON "ttls" ("primary_uuid_value");
+        CREATE INDEX IF NOT EXISTS "ttls_primary_uuid_value_idx" ON "ttls" ("primary_uuid_value");
       EXCEPTION WHEN UNDEFINED_COLUMN THEN
         -- Do nothing, accept existing state
       END$$;
@@ -359,7 +359,7 @@ return {
         id uuid    PRIMARY KEY,
         created_at timestamp,
         username   text,
-        custom_id  text,
+        custom_id  text
       );
       CREATE INDEX IF NOT EXISTS consumers_username_idx ON consumers(username);
       CREATE INDEX IF NOT EXISTS consumers_custom_id_idx ON consumers(custom_id);
