@@ -47,6 +47,7 @@ dependencies = {
   "kong-plugin-session ~> 2.2",
   "kong-plugin-aws-lambda ~> 3.1",
   "kong-plugin-acme ~> 0.2",
+  "kong-plugin-grpc-web ~> 0.1",
 }
 build = {
   type = "builtin",
