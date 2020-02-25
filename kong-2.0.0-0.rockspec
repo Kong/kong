@@ -197,7 +197,6 @@ build = {
     -- upstream (in 0.15.0)
     ["kong.enterprise_edition.db.migrations.enterprise"] = "kong/enterprise_edition/db/migrations/enterprise/init.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.000_base"] = "kong/enterprise_edition/db/migrations/enterprise/000_base.lua",
-    ["kong.enterprise_edition.db.migrations.enterprise.001_034_to_035"] = "kong/enterprise_edition/db/migrations/enterprise/001_034_to_035.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.006_1301_to_1400"] = "kong/enterprise_edition/db/migrations/enterprise/006_1301_to_1400.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
