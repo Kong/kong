@@ -107,6 +107,27 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
+      it("checks if timestamp returned is correct", function()
+        local audit_request_record = {
+          request_id = "request-test-id",
+          request_timestamp = 1582659601,
+          client_ip = "127.0.0.1",
+          path = "/services",
+          method = "GET",
+          status = 200,
+        }
+        helpers.wait_until(function()
+          return db.audit_requests:insert(audit_request_record)
+        end)
+
+        local res = assert.res_status(200, admin_client:send({
+          path = "/audit/requests",
+          query = {size = 2}
+        }))
+        local json = cjson.decode(res)
+        assert.same(audit_request_record.request_timestamp, json.data[1].request_timestamp)
+      end)
+
       it("does not sign the audit log entry by default", function()
         local rows = fetch_all(db.audit_requests)
         for _, row in ipairs(rows) do
