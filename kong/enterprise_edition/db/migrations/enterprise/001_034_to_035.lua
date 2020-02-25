@@ -228,95 +228,18 @@ return {
     up = [[
       DO $$
       BEGIN
-        ALTER TABLE IF EXISTS ONLY "rbac_user_roles"
-          ADD CONSTRAINT rbac_user_roles_role_id_fkey FOREIGN KEY (role_id) REFERENCES rbac_roles(id) ON DELETE CASCADE;
+        -- No idea
+        -- ALTER TABLE "consumers" DROP CONSTRAINT IF EXISTS "consumers_status_fkey";
+        -- ALTER TABLE "consumers" DROP CONSTRAINT IF EXISTS "consumers_type_fkey";
 
-        ALTER TABLE IF EXISTS ONLY "rbac_user_roles"
-          ADD CONSTRAINT rbac_user_roles_user_id_fkey FOREIGN KEY (user_id) REFERENCES rbac_users(id) ON DELETE CASCADE;
+        -- This either. Cannot see it being created anywhere
+        -- ALTER TABLE "credentials" DROP CONSTRAINT IF EXISTS "credentials_consumer_type_fkey";
 
-        ALTER TABLE IF EXISTS ONLY "rbac_role_entities"
-          ADD CONSTRAINT rbac_role_entities_role_id_fkey FOREIGN KEY (role_id) REFERENCES rbac_roles(id) ON DELETE CASCADE;
-
-        CREATE INDEX IF NOT EXISTS rbac_role_entities_role_idx on rbac_role_entities(role_id);
-
-        ALTER TABLE IF EXISTS ONLY "rbac_role_endpoints"
-          ADD CONSTRAINT rbac_role_endpoints_role_id_fkey FOREIGN KEY (role_id) REFERENCES rbac_roles(id) ON DELETE CASCADE;
-
-        CREATE INDEX IF NOT EXISTS rbac_role_endpoints_role_idx on rbac_role_endpoints(role_id);
-
-        CREATE INDEX IF NOT EXISTS cluster_events_expire_at_idx ON cluster_events(expire_at);
-
-        CREATE INDEX IF NOT EXISTS workspace_entities_idx_entity_id ON workspace_entities(entity_id);
-
-        ALTER TABLE "consumers" DROP CONSTRAINT IF EXISTS "consumers_status_fkey";
-        ALTER TABLE "consumers" DROP CONSTRAINT IF EXISTS "consumers_type_fkey";
-        ALTER TABLE "credentials" DROP CONSTRAINT IF EXISTS "credentials_consumer_type_fkey";
-        DROP TABLE IF EXISTS consumer_statuses;
-        DROP TABLE IF EXISTS consumer_types;
+        -- These do not exist on 000_base either...
+        -- DROP TABLE IF EXISTS consumer_statuses;
+        -- DROP TABLE IF EXISTS consumer_types;
       END
       $$;
-
-      ALTER TABLE audit_objects
-         ADD COLUMN ttl timestamp WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP(0)
-           AT TIME ZONE 'UTC' + INTERVAL ']] .. audit_ttl .. [[');
-
-      ALTER TABLE audit_requests
-         ADD COLUMN ttl timestamp WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP(0)
-           AT TIME ZONE 'UTC' + INTERVAL ']] .. audit_ttl .. [[');
-
-      ALTER TABLE rbac_users
-         ADD COLUMN user_token_ident text;
-
-      DO $$
-      BEGIN
-        IF (SELECT to_regclass('idx_rbac_token_ident')) IS NULL THEN
-        CREATE INDEX idx_rbac_token_ident on rbac_users(user_token_ident);
-        END IF;
-      END$$;
-
-      CREATE TABLE IF NOT EXISTS admins (
-        id          uuid,
-        created_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
-        updated_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
-        consumer_id  uuid references consumers (id),
-        rbac_user_id  uuid references rbac_users (id),
-        email text,
-        status int,
-        username text unique,
-        custom_id text unique,
-        PRIMARY KEY(id)
-      );
-
-      CREATE TABLE IF NOT EXISTS developers (
-        id          uuid,
-        created_at  timestamp,
-        updated_at  timestamp,
-        email text  unique,
-        status int,
-        meta text,
-        consumer_id  uuid references consumers (id) on delete cascade,
-        PRIMARY KEY(id)
-      );
-
-      ALTER TABLE IF EXISTS ONLY "workspaces"
-        ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
-        ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC';
-
-      ALTER TABLE IF EXISTS ONLY "rbac_users"
-        ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
-        ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC';
-
-      ALTER TABLE IF EXISTS ONLY "rbac_roles"
-        ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
-        ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC';
-
-      ALTER TABLE IF EXISTS ONLY "rbac_role_entities"
-        ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
-        ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC';
-
-      ALTER TABLE IF EXISTS ONLY "rbac_role_endpoints"
-        ALTER "created_at" TYPE TIMESTAMP WITH TIME ZONE USING "created_at" AT TIME ZONE 'UTC',
-        ALTER "created_at" SET DEFAULT CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC';
     ]],
 
     teardown = function(connector)
@@ -343,38 +266,11 @@ return {
       -- iterate over rbac_role_endpoints and transform changed routes
       transform_portal_rbac_routes_postgres(connector)
 
-      -- remove unneccesssary columns in consumers
-      assert(connector:query([[
-        ALTER TABLE consumers DROP COLUMN IF EXISTS meta;
-        ALTER TABLE consumers DROP COLUMN IF EXISTS email;
-        ALTER TABLE consumers DROP COLUMN IF EXISTS status;
-      ]]))
-
-      assert(connector:query([[
-        ALTER TABLE audit_objects
-          DROP COLUMN expire;
-
-        DROP TRIGGER delete_expired_audit_objects_trigger ON audit_objects;
-        DROP FUNCTION delete_expired_audit_objects();
-
-        ALTER TABLE audit_requests
-          DROP COLUMN expire;
-
-        DROP TRIGGER delete_expired_audit_requests_trigger ON audit_requests;
-        DROP FUNCTION delete_expired_audit_requests();
-      ]]))
-
       assert(connector:query([[
         UPDATE workspaces
         SET config = '{"portal":false}'::json
         WHERE name = 'default'
       ]]))
-
-      -- after the legacy admins are migrated, we don't need this table
-      assert(connector:query([[
-        DROP TABLE IF EXISTS consumers_rbac_users_map;
-      ]]))
-
     end
   },
 

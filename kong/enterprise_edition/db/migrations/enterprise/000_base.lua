@@ -5,6 +5,8 @@ local helpers = require "kong.enterprise_edition.db.migrations.helpers"
 local fmt = string.format
 local created_ts = math.floor(ngx.now()) * 1000
 
+local audit_ttl    = kong.configuration.audit_log_record_ttl
+
 local function seed_kong_admin_data_rbac_pg()
   local password = os.getenv("KONG_PASSWORD")
   if not password then
@@ -328,7 +330,7 @@ return {
         id  UUID                  PRIMARY KEY,
         name                      TEXT                      UNIQUE,
         comment                   TEXT,
-        created_at                TIMESTAMP WITHOUT TIME ZONE DEFAULT timezone('utc'::text, ('now'::text)::timestamp(0) with time zone),
+        created_at                TIMESTAMP WITH TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
         meta                      JSON                      DEFAULT '{}'::json,
         config                    JSON                      DEFAULT '{"portal":false}'::json
       );
@@ -353,6 +355,8 @@ return {
         PRIMARY KEY(workspace_id, entity_id, unique_field_name)
       );
 
+      CREATE INDEX IF NOT EXISTS workspace_entities_idx_entity_id ON workspace_entities(entity_id);
+
       DO $$
       BEGIN
         IF (SELECT to_regclass('workspace_entities_composite_idx')) IS NULL THEN
@@ -373,9 +377,10 @@ return {
         id uuid PRIMARY KEY,
         name text UNIQUE NOT NULL,
         user_token text UNIQUE NOT NULL,
+        user_token_ident text,
         comment text,
         enabled boolean NOT NULL,
-        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+        created_at timestamp WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC')
       );
 
       DO $$
@@ -386,42 +391,41 @@ return {
         IF (SELECT to_regclass('rbac_users_token_idx')) IS NULL THEN
           CREATE INDEX rbac_users_token_idx on rbac_users(user_token);
         END IF;
+        IF (SELECT to_regclass('rbac_token_ident_idx')) IS NULL THEN
+          CREATE INDEX rbac_token_ident_idx on rbac_users(user_token_ident);
+        END IF;
       END$$;
-
-      CREATE TABLE IF NOT EXISTS rbac_user_roles(
-        user_id uuid NOT NULL,
-        role_id uuid NOT NULL,
-        PRIMARY KEY(user_id, role_id)
-      );
 
       CREATE TABLE IF NOT EXISTS rbac_roles(
         id uuid PRIMARY KEY,
         name text UNIQUE NOT NULL,
         comment text,
-        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc'),
+        created_at timestamp WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
         is_default boolean default false
+      );
+
+
+      CREATE TABLE IF NOT EXISTS rbac_user_roles(
+        user_id uuid NOT NULL REFERENCES rbac_users(id) ON DELETE CASCADE,
+        role_id uuid NOT NULL REFERENCES rbac_roles(id) ON DELETE CASCADE,
+        PRIMARY KEY(user_id, role_id)
       );
 
       CREATE INDEX IF NOT EXISTS rbac_roles_name_idx on rbac_roles(name);
       CREATE INDEX IF NOT EXISTS rbac_role_default_idx on rbac_roles(is_default);
 
       CREATE TABLE IF NOT EXISTS rbac_role_entities(
-        role_id uuid,
+        role_id uuid REFERENCES rbac_roles(id) ON DELETE CASCADE,
         entity_id text,
         entity_type text NOT NULL,
         actions smallint NOT NULL,
         negative boolean NOT NULL,
         comment text,
-        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc'),
+        created_at                TIMESTAMP WITH TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
         PRIMARY KEY(role_id, entity_id)
       );
 
-      CREATE TABLE IF NOT EXISTS consumers_rbac_users_map(
-        consumer_id uuid REFERENCES consumers (id) ON DELETE CASCADE,
-        user_id uuid REFERENCES rbac_users (id) ON DELETE CASCADE,
-        created_at timestamp without time zone DEFAULT timezone('utc'::text, ('now'::text)::timestamp(0) with time zone),
-        PRIMARY KEY (consumer_id, user_id)
-      );
+      CREATE INDEX IF NOT EXISTS rbac_role_entities_role_idx on rbac_role_entities(role_id);
 
       CREATE TABLE IF NOT EXISTS rbac_role_endpoints(
         role_id uuid,
@@ -429,10 +433,13 @@ return {
         endpoint text NOT NULL,
         actions smallint NOT NULL,
         comment text,
-        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc'),
+        created_at                TIMESTAMP WITH TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
         negative boolean NOT NULL,
-        PRIMARY KEY(role_id, workspace, endpoint)
+        PRIMARY KEY(role_id, workspace, endpoint),
+        FOREIGN KEY (role_id) REFERENCES rbac_roles(id) ON DELETE CASCADE
       );
+
+      CREATE INDEX IF NOT EXISTS rbac_role_endpoints_role_idx on rbac_role_endpoints(role_id);
 
 
 
@@ -453,12 +460,7 @@ return {
                FROM information_schema.columns
                WHERE table_schema=current_schema() and table_name='consumers' and column_name='type') THEN
           ALTER TABLE consumers
-            ADD COLUMN type int NOT NULL DEFAULT 0,
-            ADD COLUMN email text,
-            ADD COLUMN status integer,
-            ADD COLUMN meta text;
-
-            ALTER TABLE consumers ADD CONSTRAINT consumers_email_type_key UNIQUE(email, type);
+            ADD COLUMN type int NOT NULL DEFAULT 0;
          END IF;
       END$$;
 
@@ -495,6 +497,29 @@ return {
       CREATE INDEX IF NOT EXISTS consumer_reset_secrets_consumer_id_idx
         ON consumer_reset_secrets(consumer_id);
 
+      CREATE TABLE IF NOT EXISTS admins (
+        id          uuid,
+        created_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
+        updated_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
+        consumer_id  uuid references consumers (id),
+        rbac_user_id  uuid references rbac_users (id),
+        email text,
+        status int,
+        username text unique,
+        custom_id text unique,
+        PRIMARY KEY(id)
+      );
+
+      CREATE TABLE IF NOT EXISTS developers (
+        id          uuid,
+        created_at  timestamp,
+        updated_at  timestamp,
+        email text  unique,
+        status int,
+        meta text,
+        consumer_id  uuid references consumers (id) on delete cascade,
+        PRIMARY KEY(id)
+      );
 
       CREATE TABLE IF NOT EXISTS audit_objects(
         id uuid PRIMARY KEY,
@@ -505,38 +530,8 @@ return {
         entity text,
         rbac_user_id uuid,
         signature text,
-        expire timestamp without time zone
+        ttl timestamp with time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc' + interval ']] .. audit_ttl .. [[')
       );
-
-      DO $$
-      BEGIN
-          IF (SELECT to_regclass('idx_audit_objects_expire')) IS NULL THEN
-              CREATE INDEX idx_audit_objects_expire on audit_objects(expire);
-          END IF;
-      END$$;
-
-      CREATE OR REPLACE FUNCTION delete_expired_audit_objects() RETURNS trigger
-          LANGUAGE plpgsql
-          AS $$
-      BEGIN
-          DELETE FROM audit_objects WHERE expire <= NOW();
-          RETURN NEW;
-      END;
-      $$;
-
-      DO $$
-      BEGIN
-          IF NOT EXISTS(
-              SELECT FROM information_schema.triggers
-               WHERE event_object_table = 'audit_objects'
-                 AND trigger_name = 'delete_expired_audit_objects_trigger')
-          THEN
-              CREATE TRIGGER delete_expired_audit_objects_trigger
-               AFTER INSERT on audit_objects
-               EXECUTE PROCEDURE delete_expired_audit_objects();
-          END IF;
-      END;
-      $$;
 
       CREATE TABLE IF NOT EXISTS audit_requests(
         request_id char(32) PRIMARY KEY,
@@ -549,38 +544,8 @@ return {
         rbac_user_id uuid,
         workspace uuid,
         signature text,
-        expire timestamp without time zone
+        ttl timestamp with time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc' + interval ']] .. audit_ttl .. [[')
       );
-
-      DO $$
-      BEGIN
-          IF (SELECT to_regclass('idx_audit_requests_expire')) IS NULL THEN
-              CREATE INDEX idx_audit_requests_expire on audit_requests(expire);
-          END IF;
-      END$$;
-
-      CREATE OR REPLACE FUNCTION delete_expired_audit_requests() RETURNS trigger
-          LANGUAGE plpgsql
-          AS $$
-      BEGIN
-          DELETE FROM audit_requests WHERE expire <= NOW();
-          RETURN NEW;
-      END;
-      $$;
-
-      DO $$
-      BEGIN
-          IF NOT EXISTS(
-              SELECT FROM information_schema.triggers
-               WHERE event_object_table = 'audit_requests'
-                 AND trigger_name = 'delete_expired_audit_requests_trigger')
-          THEN
-              CREATE TRIGGER delete_expired_audit_requests_trigger
-               AFTER INSERT on audit_requests
-               EXECUTE PROCEDURE delete_expired_audit_requests();
-          END IF;
-      END;
-      $$;
 
 -- read-only role
 DO $$
