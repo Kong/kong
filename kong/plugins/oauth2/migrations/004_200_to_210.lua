@@ -21,6 +21,13 @@ return {
       EXCEPTION WHEN DUPLICATE_COLUMN THEN
         -- Do nothing, accept existing state
       END$$;
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY oauth2_credentials ADD hash_secret BOOLEAN;
+      EXCEPTION WHEN DUPLICATE_COLUMN THEN
+        -- Do nothing, accept existing state
+      END$$;
     ]],
   },
 
@@ -29,6 +36,7 @@ return {
       ALTER TABLE oauth2_authorization_codes ADD challenge text;
       ALTER TABLE oauth2_authorization_codes ADD challenge_method text;
       ALTER TABLE oauth2_credentials ADD client_type text;
+      ALTER TABLE oauth2_credentials ADD hash_secret boolean;
     ]],
   },
 }

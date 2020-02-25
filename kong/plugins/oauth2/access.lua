@@ -3,6 +3,7 @@ local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
 local sha256 = require "resty.sha256"
 local timestamp = require "kong.tools.timestamp"
+local secret = require "kong.plugins.oauth2.secret"
 
 
 local kong = kong
@@ -566,17 +567,40 @@ local function issue_token(conf)
     end
 
     if client then
-      if client.client_type == CLIENT_TYPE_CONFIDENTIAL and client.client_secret ~= client_secret then
-        response_params = {
-          [ERROR] = "invalid_client",
-          error_description = "Invalid client authentication"
-        }
-        if from_authorization_header then
-          invalid_client_properties = {
-            status = 401,
-            www_authenticate = "Basic realm=\"OAuth2.0\""
-          }
+      if client.client_type == CLIENT_TYPE_CONFIDENTIAL then
+        local authenticated
+        if client.hash_secret then
+          authenticated = secret.verify(client_secret, client.client_secret)
+          if authenticated and secret.needs_rehash(client.client_secret) then
+            local pk = kong.db.oauth2_credentials.schema:extract_pk_values(client)
+            local ok, err = kong.db.oauth2_credentials:update(pk, {
+              client_secret = client_secret,
+              hash_secret   = true,
+            })
+
+            if not ok then
+              kong.log.warn(err)
+            end
+          end
+
+        else
+          authenticated = client.client_secret == client_secret
         end
+
+        if not authenticated then
+          response_params = {
+            [ERROR] = "invalid_client",
+            error_description = "Invalid client authentication"
+          }
+
+          if from_authorization_header then
+            invalid_client_properties = {
+              status = 401,
+              www_authenticate = "Basic realm=\"OAuth2.0\""
+            }
+          end
+        end
+
       elseif client.client_type == CLIENT_TYPE_PUBLIC and strip(client_secret) ~= "" then
         response_params = {
           [ERROR] = "invalid_request",
