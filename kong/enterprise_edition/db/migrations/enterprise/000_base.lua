@@ -515,6 +515,7 @@ return {
         updated_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
         consumer_id  uuid references consumers (id),
         rbac_user_id  uuid references rbac_users (id),
+        rbac_token_enabled BOOLEAN NOT NULL,
         email text,
         status int,
         username text unique,
@@ -599,6 +600,12 @@ return {
         ttl         TIMESTAMP WITH TIME ZONE,
         created_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
         PRIMARY KEY (consumer_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS keyring_meta (
+        id text PRIMARY KEY,
+        state text not null,
+        created_at timestamp with time zone not null
       );
 
 -- read-only role
@@ -963,6 +970,7 @@ END $$;
         updated_at  timestamp,
         consumer_id  uuid,
         rbac_user_id  uuid,
+        rbac_token_enabled boolean,
         email text,
         status int,
         username   text,
@@ -1064,6 +1072,17 @@ END $$;
         created_at  timestamp,
         PRIMARY KEY (consumer_id)
       );
+
+      CREATE TABLE IF NOT EXISTS keyring_meta (
+        id            text PRIMARY KEY,
+        state         TEXT,
+        created_at    timestamp
+      );
+      CREATE TABLE IF NOT EXISTS keyring_meta_active (
+        active text PRIMARY KEY,
+        id text
+      );
+
     ]],
     teardown = function(connector)
       -- create default workspace if doesn't exist
