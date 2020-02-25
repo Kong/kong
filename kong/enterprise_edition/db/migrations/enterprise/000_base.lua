@@ -517,6 +517,7 @@ return {
         email text  unique,
         status int,
         meta text,
+        custom_id text unique,
         consumer_id  uuid references consumers (id) on delete cascade,
         PRIMARY KEY(id)
       );
@@ -879,11 +880,13 @@ END $$;
         email text,
         status int,
         meta text,
+        custom_id text,
         PRIMARY KEY(id)
       );
       CREATE INDEX IF NOT EXISTS developers_email_idx ON developers(email);
       CREATE INDEX IF NOT EXISTS developers_consumer_id_idx ON developers(consumer_id);
       CREATE INDEX IF NOT EXISTS developers_email_idx ON developers(email);
+      CREATE INDEX IF NOT EXISTS developers_custom_id_idx ON developers(custom_id);
 
       CREATE TABLE IF NOT EXISTS admins (
         id          uuid,
