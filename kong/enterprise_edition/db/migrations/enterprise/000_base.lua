@@ -441,9 +441,21 @@ return {
 
       CREATE INDEX IF NOT EXISTS rbac_role_endpoints_role_idx on rbac_role_endpoints(role_id);
 
-
-
       CREATE TABLE IF NOT EXISTS files(
+        id uuid PRIMARY KEY,
+        path text UNIQUE NOT NULL,
+        checksum text,
+        contents text,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+      );
+
+      CREATE INDEX IF NOT EXISTS files_path_idx on files(path);
+
+      -- XXX
+      -- this table comes from a migration from the future. At this step is
+      -- going to always be empty, but there's already code supporting this
+      -- table so I guess we need it here?
+      CREATE TABLE IF NOT EXISTS legacy_files(
         id uuid PRIMARY KEY,
         auth boolean NOT NULL,
         name text UNIQUE NOT NULL,
@@ -452,7 +464,7 @@ return {
         created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
       );
 
-      CREATE INDEX IF NOT EXISTS portal_files_name_idx on files(name);
+      CREATE INDEX IF NOT EXISTS legacy_files_name_idx on legacy_files(name);
 
       DO $$
       BEGIN
@@ -519,8 +531,11 @@ return {
         meta text,
         custom_id text unique,
         consumer_id  uuid references consumers (id) on delete cascade,
+        rbac_user_id uuid,
         PRIMARY KEY(id)
       );
+
+      CREATE INDEX IF NOT EXISTS developers_rbac_user_id_idx ON developers(rbac_user_id);
 
       CREATE TABLE IF NOT EXISTS audit_objects(
         id uuid PRIMARY KEY,
@@ -546,6 +561,44 @@ return {
         workspace uuid,
         signature text,
         ttl timestamp with time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc' + interval ']] .. audit_ttl .. [[')
+      );
+
+      -- Groups Entity
+      CREATE TABLE IF NOT EXISTS groups (
+        id          uuid,
+        created_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
+        name text unique,
+        comment text,
+        PRIMARY KEY (id)
+      );
+
+      CREATE INDEX IF NOT EXISTS groups_name_idx ON groups(name);
+
+      -- Group and RBAC_Role Mapping
+      CREATE TABLE IF NOT EXISTS group_rbac_roles(
+        created_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
+        group_id uuid REFERENCES groups (id) ON DELETE CASCADE,
+        rbac_role_id uuid REFERENCES rbac_roles (id) ON DELETE CASCADE,
+        workspace_id uuid REFERENCES workspaces (id) ON DELETE CASCADE,
+        PRIMARY KEY (group_id, rbac_role_id)
+      );
+
+      -- License data
+      CREATE TABLE IF NOT EXISTS license_data (
+        node_id         uuid,
+        req_cnt         bigint,
+        PRIMARY KEY (node_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS license_data_key_idx ON license_data(node_id);
+
+      -- Login Attempts
+      CREATE TABLE IF NOT EXISTS login_attempts (
+        consumer_id uuid REFERENCES consumers (id) ON DELETE CASCADE,
+        attempts json DEFAULT '{}'::json,
+        ttl         TIMESTAMP WITH TIME ZONE,
+        created_at  TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
+        PRIMARY KEY (consumer_id)
       );
 
 -- read-only role
@@ -794,7 +847,11 @@ END $$;
         PRIMARY KEY(role_id, workspace, endpoint)
       );
 
-      CREATE TABLE IF NOT EXISTS files(
+      -- XXX
+      -- this table comes from a migration from the future. At this step is
+      -- going to always be empty, but there's already code supporting this
+      -- table so I guess we need it here?
+      CREATE TABLE IF NOT EXISTS legacy_files(
         id uuid PRIMARY KEY,
         auth boolean,
         name text,
@@ -803,8 +860,18 @@ END $$;
         created_at timestamp
       );
 
-      CREATE INDEX IF NOT EXISTS ON files(name);
-      CREATE INDEX IF NOT EXISTS ON files(type);
+      CREATE INDEX IF NOT EXISTS ON legacy_files(name);
+      CREATE INDEX IF NOT EXISTS ON legacy_files(type);
+
+      CREATE TABLE IF NOT EXISTS files(
+        id uuid PRIMARY KEY,
+        path text,
+        checksum text,
+        contents text,
+        created_at timestamp
+      );
+
+      CREATE INDEX IF NOT EXISTS ON files(path);
 
       CREATE TABLE IF NOT EXISTS vitals_code_classes_by_cluster(
         at timestamp,
@@ -877,6 +944,7 @@ END $$;
         created_at  timestamp,
         updated_at  timestamp,
         consumer_id  uuid,
+        rbac_user_id uuid,
         email text,
         status int,
         meta text,
@@ -887,6 +955,7 @@ END $$;
       CREATE INDEX IF NOT EXISTS developers_consumer_id_idx ON developers(consumer_id);
       CREATE INDEX IF NOT EXISTS developers_email_idx ON developers(email);
       CREATE INDEX IF NOT EXISTS developers_custom_id_idx ON developers(custom_id);
+      CREATE INDEX IF NOT EXISTS developers_rbac_user_id_idx ON developers(rbac_user_id);
 
       CREATE TABLE IF NOT EXISTS admins (
         id          uuid,
@@ -956,6 +1025,44 @@ END $$;
         user_id uuid,
         created_at timestamp,
         PRIMARY KEY (consumer_id, user_id)
+      );
+
+      /* Groups Entity */
+      CREATE TABLE IF NOT EXISTS groups (
+        id          uuid,
+        created_at  timestamp,
+        name   text,
+        comment  text,
+        PRIMARY KEY (id)
+      );
+
+      CREATE INDEX IF NOT EXISTS groups_name_idx ON groups(name);
+
+      /* Group and RBAC_Role Mapping */
+      CREATE TABLE IF NOT EXISTS group_rbac_roles(
+        created_at timestamp,
+        group_id uuid,
+        rbac_role_id uuid,
+        workspace_id uuid,
+        PRIMARY KEY (group_id, rbac_role_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS group_rbac_roles_rbac_role_id_idx ON group_rbac_roles(rbac_role_id);
+      CREATE INDEX IF NOT EXISTS group_rbac_roles_workspace_id_idx ON group_rbac_roles(workspace_id);
+
+      /* License data */
+      CREATE TABLE IF NOT EXISTS license_data (
+        node_id         uuid,
+        req_cnt         counter,
+        PRIMARY KEY (node_id)
+      );
+
+      /* Login Attempts */
+      CREATE TABLE IF NOT EXISTS login_attempts (
+        consumer_id uuid,
+        attempts map<text,int>,
+        created_at  timestamp,
+        PRIMARY KEY (consumer_id)
       );
     ]],
     teardown = function(connector)
