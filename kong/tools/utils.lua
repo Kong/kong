@@ -1044,4 +1044,108 @@ do
 end
 
 
+local get_mime_type
+local get_error_template
+do
+  local CONTENT_TYPE_JSON    = "application/json"
+  local CONTENT_TYPE_GRPC    = "application/grpc"
+  local CONTENT_TYPE_HTML    = "text/html"
+  local CONTENT_TYPE_XML     = "application/xml"
+  local CONTENT_TYPE_PLAIN   = "text/plain"
+  local CONTENT_TYPE_APP     = "application"
+  local CONTENT_TYPE_TEXT    = "text"
+  local CONTENT_TYPE_DEFAULT = "default"
+  local CONTENT_TYPE_ANY     = "*"
+
+  local MIME_TYPES = {
+    [CONTENT_TYPE_GRPC]     = "",
+    [CONTENT_TYPE_HTML]     = "text/html; charset=utf-8",
+    [CONTENT_TYPE_JSON]     = "application/json; charset=utf-8",
+    [CONTENT_TYPE_PLAIN]    = "text/plain; charset=utf-8",
+    [CONTENT_TYPE_XML]      = "application/xml; charset=utf-8",
+    [CONTENT_TYPE_APP]      = "application/json; charset=utf-8",
+    [CONTENT_TYPE_TEXT]     = "text/plain; charset=utf-8",
+    [CONTENT_TYPE_DEFAULT]  = "application/json; charset=utf-8",
+  }
+
+  local ERROR_TEMPLATES = {
+    [CONTENT_TYPE_GRPC]   = "",
+    [CONTENT_TYPE_HTML]   = [[
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Kong Error</title>
+  </head>
+  <body>
+    <h1>Kong Error</h1>
+    <p>%s.</p>
+  </body>
+</html>
+]],
+    [CONTENT_TYPE_JSON]   = [[
+{
+  "message":"%s"
+}]],
+    [CONTENT_TYPE_PLAIN]  = "%s\n",
+    [CONTENT_TYPE_XML]    = [[
+<?xml version="1.0" encoding="UTF-8"?>
+<error>
+  <message>%s</message>
+</error>
+]],
+  }
+
+  get_mime_type = function(content_header, use_default)
+    use_default = use_default == nil or use_default
+    content_header = _M.strip(content_header)
+    content_header = _M.split(content_header, ";")[1]
+    local mime_type
+
+    local entries = split(content_header, "/")
+    if #entries > 1 then
+      if entries[2] == CONTENT_TYPE_ANY then
+        if entries[1] == CONTENT_TYPE_ANY then
+          mime_type = MIME_TYPES["default"]
+        else
+          mime_type = MIME_TYPES[entries[1]]
+        end
+      else
+        mime_type = MIME_TYPES[content_header]
+      end
+    end
+
+    if mime_type or use_default then
+      return mime_type or MIME_TYPES["default"]
+    end
+
+    return nil, "could not find MIME type"
+  end
+
+
+  get_error_template = function(mime_type)
+    if mime_type == CONTENT_TYPE_JSON or mime_type == MIME_TYPES[CONTENT_TYPE_JSON] then
+      return ERROR_TEMPLATES[CONTENT_TYPE_JSON]
+
+    elseif mime_type == CONTENT_TYPE_HTML or mime_type == MIME_TYPES[CONTENT_TYPE_HTML] then
+      return ERROR_TEMPLATES[CONTENT_TYPE_HTML]
+
+    elseif mime_type == CONTENT_TYPE_XML or mime_type == MIME_TYPES[CONTENT_TYPE_XML] then
+      return ERROR_TEMPLATES[CONTENT_TYPE_XML]
+
+    elseif mime_type == CONTENT_TYPE_PLAIN or mime_type == MIME_TYPES[CONTENT_TYPE_PLAIN] then
+      return ERROR_TEMPLATES[CONTENT_TYPE_PLAIN]
+
+    elseif mime_type == CONTENT_TYPE_GRPC or mime_type == MIME_TYPES[CONTENT_TYPE_GRPC] then
+      return ERROR_TEMPLATES[CONTENT_TYPE_GRPC]
+
+    end
+
+    return nil, "no template found for MIME type " .. (mime_type or "empty")
+  end
+
+end
+_M.get_mime_type = get_mime_type
+_M.get_error_template = get_error_template
+
 return _M

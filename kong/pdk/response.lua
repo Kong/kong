@@ -75,13 +75,9 @@ local function new(self, major_version)
 
   local CONTENT_LENGTH_NAME  = "Content-Length"
   local CONTENT_TYPE_NAME    = "Content-Type"
-  local CONTENT_TYPE_JSON    = "application/json"
+  local CONTENT_TYPE_JSON    = "application/json; charset=utf-8"
   local CONTENT_TYPE_GRPC    = "application/grpc"
-  local CONTENT_TYPE_HTML    = "text/html"
-  local CONTENT_TYPE_XML     = "application/xml"
-  local CONTENT_TYPE_PLAIN   = "text/plain"
-  local CONTENT_TYPE_ANY_TXT = "text/*"
-  local CONTENT_TYPE_ANY_APP = "application/*"
+
 
   local ACCEPT_NAME          = "Accept"
 
@@ -163,42 +159,6 @@ local function new(self, major_version)
     s510 = "Not extended",
     s511 = "Network authentication required",
     default = "The upstream server responded with %d"
-  }
-
-  local CONTENT_TYPE_HEADERS = {
-    [CONTENT_TYPE_GRPC]   = "",
-    [CONTENT_TYPE_HTML]   = "text/html; charset=utf-8",
-    [CONTENT_TYPE_JSON]   = "application/json; charset=utf-8",
-    [CONTENT_TYPE_PLAIN]  = "text/plain; charset=utf-8",
-    [CONTENT_TYPE_XML]    = "application/xml; charset=utf-8",
-  }
-
-  local ERROR_TEMPLATES = {
-    [CONTENT_TYPE_GRPC]   = "",
-    [CONTENT_TYPE_HTML]   = [[
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>Kong Error</title>
-  </head>
-  <body>
-    <h1>Kong Error</h1>
-    <p>%s.</p>
-  </body>
-</html>
-]],
-    [CONTENT_TYPE_JSON]   = [[
-{
-  "message":"%s"
-}]],
-    [CONTENT_TYPE_PLAIN]  = "%s\n",
-    [CONTENT_TYPE_XML]    = [[
-<?xml version="1.0" encoding="UTF-8"?>
-<error>
-  <message>%s</message>
-</error>
-]],
   }
 
 
@@ -656,7 +616,7 @@ local function new(self, major_version)
 
     if json ~= nil then
       if not has_content_type then
-        ngx.header[CONTENT_TYPE_NAME] = CONTENT_TYPE_HEADERS[CONTENT_TYPE_JSON]
+        ngx.header[CONTENT_TYPE_NAME] = CONTENT_TYPE_JSON
       end
 
       ngx.header[CONTENT_LENGTH_NAME] = #json
@@ -945,26 +905,8 @@ local function new(self, major_version)
         end
 
         if quality > max_quality then
-          if find(name, CONTENT_TYPE_JSON, nil, true) == 1 or
-            find(name, CONTENT_TYPE_ANY_APP, nil, true) then
-            type = CONTENT_TYPE_JSON
-
-          elseif find(name, CONTENT_TYPE_GRPC, nil, true) == 1 then
-            type = CONTENT_TYPE_GRPC
-
-          elseif find(name, CONTENT_TYPE_HTML, nil, true) == 1 then
-            type = CONTENT_TYPE_HTML
-
-          elseif find(name, CONTENT_TYPE_XML, nil, true) == 1 then
-            type = CONTENT_TYPE_XML
-
-          elseif find(name, CONTENT_TYPE_PLAIN, nil, true) == 1 or
-            find(name, CONTENT_TYPE_ANY_TXT, nil, true) then
-            type = CONTENT_TYPE_PLAIN
-          end
-
+          type = utils.get_mime_type(name)
           max_quality = quality
-
         end
       end
 
@@ -1075,7 +1017,7 @@ local function new(self, major_version)
       local actual_message = message or
                              HTTP_MESSAGES["s" .. status] or
                              fmt(HTTP_MESSAGES.default, status)
-      body = fmt(ERROR_TEMPLATES[content_type], actual_message)
+      body = fmt(utils.get_error_template(content_type), actual_message)
     end
 
     local ctx = ngx.ctx
