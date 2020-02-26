@@ -117,13 +117,17 @@ fi
 
 luarocks install busted-htest 1.0.0
 
-psql -v ON_ERROR_STOP=1 --username "$KONG_TEST_PG_USER" <<-EOSQL
-    CREATE user postgres_ro;
+if [[ "$KONG_TEST_DATABASE" == "postgres" ]]; then
+  psql -v ON_ERROR_STOP=1 --username "$KONG_TEST_PG_USER" <<-EOSQL
+      CREATE user postgres_ro;
 
-    GRANT CONNECT ON DATABASE travis TO postgres_ro;
-    \c $KONG_TEST_PG_DATABASE;
-    ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT ON TABLES TO postgres_ro;
+      GRANT CONNECT ON DATABASE travis TO postgres_ro;
+      \c $KONG_TEST_PG_DATABASE;
+      ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT ON TABLES TO postgres_ro;
+      \ddp
 EOSQL
+fi
+
 
 nginx -V
 resty -V
