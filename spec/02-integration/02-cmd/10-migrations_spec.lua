@@ -299,8 +299,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    -- XXX EE: EE migrations are not reentrant
-    pending("reentrancy " .. strategy, function()
+    describe("reentrancy " .. strategy, function()
 
       lazy_setup(function()
         run_kong("migrations reset --yes")
