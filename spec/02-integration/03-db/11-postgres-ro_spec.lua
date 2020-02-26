@@ -59,6 +59,15 @@ for _, strategy in helpers.each_strategy() do
           path    = "/",
         }))
 
+        local pl_stringx = require "pl.stringx"
+        local pl_file = require "pl.file"
+        local str = pl_file.read(helpers.test_conf.nginx_err_logs)
+        local str_t = pl_stringx.splitlines(str)
+        local first_line = #str_t - math.min(600, #str_t) + 1
+        for i = first_line, #str_t do
+          print(str_t[i])
+        end
+
         assert.res_status(200, res)
       end)
 
