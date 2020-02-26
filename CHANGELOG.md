@@ -1,5 +1,11 @@
 # Kong AWS Lambda plugin changelog
 
+## aws-lambda 3.3.0 unreleased
+
+- Fix: when reusing the proxy based connection do not do the handshake again.
+- revamped HTTP connect method that allows for connection reuse in scenarios
+  with a proxy and/or ssl based connections
+
 ## aws-lambda 3.2.1 3-Mar-2020
 
 - Maintenance release for CI purposes

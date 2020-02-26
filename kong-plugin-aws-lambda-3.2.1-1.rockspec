@@ -25,5 +25,6 @@ build = {
     ["kong.plugins.aws-lambda.iam-ecs-credentials"]  = "kong/plugins/aws-lambda/iam-ecs-credentials.lua",
     ["kong.plugins.aws-lambda.schema"]               = "kong/plugins/aws-lambda/schema.lua",
     ["kong.plugins.aws-lambda.v4"]                   = "kong/plugins/aws-lambda/v4.lua",
+    ["kong.plugins.aws-lambda.http.connect-better"]  = "kong/plugins/aws-lambda/http/connect-better.lua",
   }
 }

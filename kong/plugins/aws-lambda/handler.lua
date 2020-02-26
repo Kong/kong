@@ -2,7 +2,7 @@
 
 local aws_v4 = require "kong.plugins.aws-lambda.v4"
 local aws_serializer = require "kong.plugins.aws-lambda.aws-serializer"
-local http = require "resty.http"
+local http = require "kong.plugins.aws-lambda.http.connect-better"
 local cjson = require "cjson.safe"
 local meta = require "kong.meta"
 local constants = require "kong.constants"
@@ -223,17 +223,15 @@ function AWSLambdaHandler:access(conf)
   local kong_wait_time_start = get_now()
 
   local ok
-  if conf.proxy_url then
-    ok, err = client:connect_proxy(conf.proxy_url, conf.proxy_scheme, host, port)
-  else
-    ok, err = client:connect(host, port)
-  end
-  if not ok then
-    kong.log.err(err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
-  end
-
-  ok, err = client:ssl_handshake()
+  ok, err = client:connect_better {
+    scheme = "https",
+    host = host,
+    port = port,
+    ssl = { verify = false },
+    proxy = conf.proxy_url and {
+      uri = conf.proxy_url,
+    }
+  }
   if not ok then
     kong.log.err(err)
     return kong.response.exit(500, { message = "An unexpected error occurred" })
@@ -265,14 +263,10 @@ function AWSLambdaHandler:access(conf)
     headers["Transfer-Encoding"] = nil
   end
 
-  if conf.proxy_url then
-    client:close()
-  else
-    ok, err = client:set_keepalive(conf.keepalive)
-    if not ok then
-      kong.log.err(err)
-      return kong.response.exit(500, { message = "An unexpected error occurred" })
-    end
+  ok, err = client:set_keepalive(conf.keepalive)
+  if not ok then
+    kong.log.err(err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   local status
