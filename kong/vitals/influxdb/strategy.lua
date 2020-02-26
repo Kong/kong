@@ -39,6 +39,19 @@ local function ffi_cdef_gettimeofday()
   ]]
 end
 
+local duration_to_interval = {
+  [1] = "seconds",
+  [60] = "minutes",
+  [3600] = "hours",
+  [86400] = "days"
+}
+
+local interval_to_duration = {
+  seconds = 1,
+  minutes = 60,
+  hours = 3600,
+  days = 86400
+}
 
 local ok = pcall(function() return ffi.C.gettimeofday end)
 if not ok then
@@ -250,7 +263,7 @@ function _M:select_consumer_stats(opts)
 
   local meta = {
     earliest_ts = opts.start_ts,
-    interval = opts.duration == 60 and "minutes" or "seconds",
+    interval = duration_to_interval[opts.duration],
     latest_ts = ngx_time(),
     level = opts.level,
     stat_labels = {
@@ -309,7 +322,7 @@ function _M:select_status_codes(opts)
   local meta = {
     earliest_ts = opts.start_ts,
     entity_type = opts.entity_type,
-    interval = opts.duration == 60 and "minutes" or "seconds",
+    interval = duration_to_interval[opts.duration],
     latest_ts = ngx_time(),
     level = "cluster",
     workspace_id = ngx.ctx.workspaces[1].id,
@@ -454,10 +467,9 @@ function _M:select_status_codes(opts)
   }
 end
 
-
 function _M:select_stats(query_type, level, node_id, start_ts)
   -- group by time($int)
-  local int = query_type == "minutes" and "1m" or "1s"
+  local int = interval_to_duration[query_type]
 
   if not start_ts then
     if query_type == "minutes" then
@@ -470,7 +482,7 @@ function _M:select_stats(query_type, level, node_id, start_ts)
   local meta = {
     earliest_ts = start_ts,
     interval = query_type,
-    interval_width = query_type == "minutes" and 60 or 1,
+    interval_width = duration_to_interval[query_type],
     latest_ts = ngx_time(), 
     level = level,
     workspace_id = ngx.ctx.workspaces[1].id,
@@ -493,7 +505,7 @@ function _M:select_stats(query_type, level, node_id, start_ts)
 
   local found_latest_ts = 0
 
-  local group_by = " group by time(" .. int .. ")"
+  local group_by = " group by time(" .. int .. "s)"
 
   if level == "cluster" then
     local c = {}
