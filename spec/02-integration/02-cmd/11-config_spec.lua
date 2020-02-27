@@ -352,6 +352,8 @@ describe("kong config", function()
     assert(db.consumers:truncate())
     assert(db.acls:truncate())
     assert(db.certificates:truncate())
+    assert(db.targets:truncate())
+    assert(db.upstreams:truncate())
 
     local filename = os.tmpname()
     os.remove(filename)
