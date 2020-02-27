@@ -3,7 +3,7 @@
 ![Build Status](https://travis-ci.com/Kong/kong-plugin-acme.svg?branch=master)
 
 This plugin allows Kong to apply cerificates from Let's Encrypt or any other ACMEv2 service
-and serve dynamically. Renew is handled with a configurable threshold time.
+and serve dynamically. Renewal is handled with a configurable threshold time.
 
 ### Using the Plugin
 
@@ -15,7 +15,23 @@ verify Let's Encrypt API. The CA-bundle file is usually `/etc/ssl/certs/ca-certi
 Ubuntu/Debian and `/etc/ssl/certs/ca-bundle.crt` for CentOS/Fedora/RHEL.
 
 #### Enable the Plugin
+
+For all the domains that you need to get certificate, make sure `DOMAIN/.well-known/acme-challenge`
+is mapped to a Route in Kong. You can check this by sending
+`curl KONG_IP/.well-known/acme-challenge/x -H "host:DOMAIN"` and expect a response `Not found`.
+If not, add a Route and a dummy Service to catch this route.
 ```bash
+# add a dummy service if needed
+$ curl http://localhost:8001/service \
+        -d name=acme-dummy \
+        -d url=http://127.0.0.1:65535
+# add a dummy route if needed
+$ curl http://localhost:8001/routes \
+        -d name=acme-dummy \
+        -d paths[]=/.well-known/acme-challenge \
+        -d service.name=acme-dummy
+
+# add the plugin
 $ curl http://localhost:8001/plugins \
         -d name=acme \
         -d config.account_email=yourname@yourdomain.com \
@@ -48,7 +64,7 @@ $ curl https://mydomain.com
 Name                | Required   | Default | Description
 -------------------:|------------|------------|------------
 config.account_email| Yes        |            | The account identifier, can be reused in different plugin instance.
-config.api_uri      |            |  `"https://acme-v02.api.letsencrypt.org"`   | The ACMEv2 API endpoint to use, user might use [Let's Encrypt staging environemnt](https://letsencrypt.org/docs/staging-environment/) during testing.
+config.api_uri      |            |  `"https://acme-v02.api.letsencrypt.org"`   | The ACMEv2 API endpoint to use, user might use [Let's Encrypt staging environemnt](https://letsencrypt.org/docs/staging-environment/) during testing. Kong doesn't automatically delete staging certificates, if you use same domain to test and use in production, you will need to delete those certificates manaully after test.
 config.cert_type    |            |  `"rsa"`   | The certificate type to create, choice of `"rsa"` for RSA certificate or `"ecc"` for EC certificate.
 config.domains      |            | `[]`       | The list of domains to create certificate for. To match subdomains under `example.com`, use `*.example.com`. Regex pattern is not supported. Note this config is only used to match domains, not to specify the Common Name or Subject Alternative Name to create certifcates; each domain will have its own certificate.
 config.renew_threshold_days|     |  `14`      | Days before expire to renew the certificate.
