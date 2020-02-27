@@ -123,7 +123,7 @@ if [[ "$KONG_TEST_DATABASE" == "postgres" ]]; then
 
       GRANT CONNECT ON DATABASE travis TO postgres_ro;
       \c $KONG_TEST_PG_DATABASE;
-      ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT ON TABLES TO postgres_ro;
+      ALTER DEFAULT PRIVILEGES FOR ROLE travis IN SCHEMA public GRANT SELECT ON TABLES TO postgres_ro;
       \ddp
 EOSQL
 fi
