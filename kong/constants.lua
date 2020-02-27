@@ -48,7 +48,6 @@ end
 
 local deprecated_plugins = {
   "route-by-header",
-  "upstream-tls",
 }
 
 local deprecated_plugin_map = {}
