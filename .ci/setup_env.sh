@@ -70,6 +70,7 @@ kong-ngx-build \
     --kong-nginx-module $KONG_NGINX_MODULE_BRANCH \
     --luarocks $LUAROCKS \
     --openssl $OPENSSL \
+    --debug \
     -j $JOBS
 
 OPENSSL_INSTALL=$INSTALL_ROOT/openssl

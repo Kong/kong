@@ -21,6 +21,7 @@ addons:
     packages:
       - net-tools
       - libpcre3-dev
+      - valgrind
       - build-essential
   hosts:
     - grpcs_1.test
