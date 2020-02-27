@@ -969,6 +969,7 @@ function _M.new(kong_config)
     }
 
     local config_ro = utils.table_merge(config, ro_override)
+    ngx.log(ngx.ERR, require("inspect")(config))
     ngx.log(ngx.ERR, require("inspect")(config_ro))
 
     local sem
