@@ -136,7 +136,9 @@ if subsystem == "http" then
     local ctx = ngx.ctx
     local zipkin = get_context(conf, ctx)
     -- note: rewrite is logged on the request_span, not on the proxy span
-    local rewrite_start_mu = ctx.KONG_REWRITE_START * 1000
+    local rewrite_start_mu =
+      ctx.KONG_REWRITE_START and ctx.KONG_REWRITE_START * 1000
+      or ngx_now_mu()
     zipkin.request_span:annotate("krs", rewrite_start_mu)
   end
 
@@ -145,7 +147,10 @@ if subsystem == "http" then
     local ctx = ngx.ctx
     local zipkin = get_context(conf, ctx)
 
-    get_or_add_proxy_span(zipkin, ctx.KONG_ACCESS_START * 1000)
+    local access_start =
+      ctx.KONG_ACCESS_START and ctx.KONG_ACCESS_START * 1000
+      or ngx_now_mu()
+    get_or_add_proxy_span(zipkin, access_start)
 
     -- Want to send headers to upstream
     local proxy_span = zipkin.proxy_span
@@ -219,7 +224,9 @@ elseif subsystem == "stream" then
   function ZipkinLogHandler:preread(conf) -- luacheck: ignore 212
     local ctx = ngx.ctx
     local zipkin = get_context(conf, ctx)
-    local preread_start_mu = ctx.KONG_PREREAD_START * 1000
+    local preread_start_mu =
+      ctx.KONG_PREREAD_START and ctx.KONG_PREREAD_START * 1000
+      or ngx_now_mu()
 
     local proxy_span = get_or_add_proxy_span(zipkin, preread_start_mu)
     proxy_span:annotate("kps", preread_start_mu)
@@ -236,24 +243,28 @@ function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
   local reporter = get_reporter(conf)
 
   local proxy_finish_mu =
-    ctx.KONG_BODY_FILTER_ENDED_AT and ctx.KONG_BODY_FILTER_ENDED_AT * 1000 or now_mu
+    ctx.KONG_BODY_FILTER_ENDED_AT and ctx.KONG_BODY_FILTER_ENDED_AT * 1000
+    or now_mu
 
-  if ctx.KONG_REWRITE_TIME then
+  if ctx.KONG_REWRITE_START and ctx.KONG_REWRITE_TIME then
     -- note: rewrite is logged on the request span, not on the proxy span
     local rewrite_finish_mu = (ctx.KONG_REWRITE_START + ctx.KONG_REWRITE_TIME) * 1000
     zipkin.request_span:annotate("krf", rewrite_finish_mu)
   end
 
   if subsystem == "http" then
-    -- add access_start here instead of in the access phase
+    -- annotate access_start here instead of in the access phase
     -- because the plugin access phase is skipped when dealing with
     -- requests which are not matched by any route
     -- but we still want to know when the access phase "started"
-    local access_start_mu = ctx.KONG_ACCESS_START * 1000
+    local access_start_mu =
+      ctx.KONG_ACCESS_START and ctx.KONG_ACCESS_START * 1000
+      or proxy_span.start_timestamp
     proxy_span:annotate("kas", access_start_mu)
 
     local access_finish_mu =
-      ctx.KONG_ACCESS_ENDED_AT and ctx.KONG_ACCESS_ENDED_AT * 1000 or proxy_finish_mu
+      ctx.KONG_ACCESS_ENDED_AT and ctx.KONG_ACCESS_ENDED_AT * 1000
+      or proxy_finish_mu
     proxy_span:annotate("kaf", access_finish_mu)
 
     if not zipkin.header_filter_finished then
@@ -265,7 +276,8 @@ function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
 
   else
     local preread_finish_mu =
-      ctx.KONG_PREREAD_ENDED_AT and ctx.KONG_PREREAD_ENDED_AT * 1000 or proxy_finish_mu
+      ctx.KONG_PREREAD_ENDED_AT and ctx.KONG_PREREAD_ENDED_AT * 1000
+      or proxy_finish_mu
     proxy_span:annotate("kpf", preread_finish_mu)
   end
 
