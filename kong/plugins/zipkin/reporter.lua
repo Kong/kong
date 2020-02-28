@@ -3,8 +3,6 @@ local to_hex = require "resty.string".to_hex
 local cjson = require "cjson".new()
 cjson.encode_number_precision(16)
 
-local floor = math.floor
-
 local zipkin_reporter_methods = {}
 local zipkin_reporter_mt = {
   __index = zipkin_reporter_methods,
@@ -79,10 +77,9 @@ function zipkin_reporter_methods:report(span)
     parentId = span.parent_id and to_hex(span.parent_id) or nil,
     id = to_hex(span.span_id),
     kind = span.kind,
-    timestamp = floor(span.timestamp * 1000000),
-    duration = floor(span.duration * 1000000), -- zipkin wants integer
+    timestamp = span.timestamp,
+    duration = span.duration,
     -- shared = nil, -- We don't use shared spans (server reuses client generated spanId)
-    -- TODO: debug?
     localEndpoint = localEndpoint,
     remoteEndpoint = remoteEndpoint,
     tags = zipkin_tags,

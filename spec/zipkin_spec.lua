@@ -33,6 +33,17 @@ local function gen_span_id()
   return to_hex(utils.get_rand_bytes(8))
 end
 
+-- assumption: tests take less than this (usually they run in ~2 seconds)
+local MAX_TIMESTAMP_AGE = 5 * 60 -- 5 minutes
+local function assert_valid_timestamp(timestamp_mu, start_s)
+  assert_is_integer(timestamp_mu)
+  local age_s = timestamp_mu / 1000000 - start_s
+
+  if age_s < 0 or age_s > MAX_TIMESTAMP_AGE then
+    error("out of bounds timestamp: " .. timestamp_mu .. "mu (age: " .. age_s .. "s)")
+  end
+end
+
 
 for _, strategy in helpers.each_strategy() do
 describe("http integration tests with zipkin server [#" .. strategy .. "]", function()
@@ -71,7 +82,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
   end
 
   -- the following assertions should be true on any span list, even in error mode
-  local function assert_span_invariants(request_span, proxy_span, expected_name, trace_id)
+  local function assert_span_invariants(request_span, proxy_span, expected_name, trace_id, start_s)
     -- request_span
     assert.same("table", type(request_span))
     assert.same("string", type(request_span.id))
@@ -82,7 +93,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
 
     assert.same("string", type(request_span.traceId))
     assert.equals(trace_id, request_span.traceId)
-    assert_is_integer(request_span.timestamp)
+    assert_valid_timestamp(request_span.timestamp, start_s)
 
     if request_span.duration and proxy_span.duration then
       assert.truthy(request_span.duration >= proxy_span.duration)
@@ -90,8 +101,8 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
 
     assert.equals(2, #request_span.annotations)
     local rann = annotations_to_hash(request_span.annotations)
-    assert_is_integer(rann["krs"])
-    assert_is_integer(rann["krf"])
+    assert_valid_timestamp(rann["krs"], start_s)
+    assert_valid_timestamp(rann["krf"], start_s)
     assert.truthy(rann["krs"] <= rann["krf"])
 
     assert.same({ serviceName = "kong" }, request_span.localEndpoint)
@@ -106,7 +117,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
 
     assert.same("string", type(proxy_span.traceId))
     assert.equals(trace_id, proxy_span.traceId)
-    assert_is_integer(proxy_span.timestamp)
+    assert_valid_timestamp(proxy_span.timestamp, start_s)
 
     if request_span.duration and proxy_span.duration then
       assert.truthy(proxy_span.duration >= 0)
@@ -115,12 +126,12 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     assert.equals(6, #proxy_span.annotations)
     local pann = annotations_to_hash(proxy_span.annotations)
 
-    assert_is_integer(pann["kas"])
-    assert_is_integer(pann["kaf"])
-    assert_is_integer(pann["khs"])
-    assert_is_integer(pann["khf"])
-    assert_is_integer(pann["kbs"])
-    assert_is_integer(pann["kbf"])
+    assert_valid_timestamp(pann["kas"], start_s)
+    assert_valid_timestamp(pann["kaf"], start_s)
+    assert_valid_timestamp(pann["khs"], start_s)
+    assert_valid_timestamp(pann["khf"], start_s)
+    assert_valid_timestamp(pann["kbs"], start_s)
+    assert_valid_timestamp(pann["kbf"], start_s)
 
     assert.truthy(pann["kas"] <= pann["kaf"])
     assert.truthy(pann["khs"] <= pann["khf"])
@@ -197,6 +208,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
   end)
 
   it("generates spans, tags and annotations for regular requests", function()
+    local start_s = ngx.now()
     local trace_id = gen_trace_id()
 
     local r = assert(proxy_client:send {
@@ -212,7 +224,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
 
     local balancer_span, proxy_span, request_span = wait_for_spans(trace_id, 3)
     -- common assertions for request_span and proxy_span
-    assert_span_invariants(request_span, proxy_span, "get", trace_id)
+    assert_span_invariants(request_span, proxy_span, "get", trace_id, start_s)
 
     -- specific assertions for request_span
     local request_tags = request_span.tags
@@ -267,6 +279,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
 
   it("generates spans, tags and annotations for regular requests (#grpc)", function()
     local trace_id = gen_trace_id()
+    local start_s = ngx.now()
 
     local ok, resp = proxy_client_grpc({
       service = "hello.HelloService.SayHello",
@@ -283,7 +296,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
 
     local balancer_span, proxy_span, request_span = wait_for_spans(trace_id, 3)
     -- common assertions for request_span and proxy_span
-    assert_span_invariants(request_span, proxy_span, "post", trace_id)
+    assert_span_invariants(request_span, proxy_span, "post", trace_id, start_s)
 
     -- specific assertions for request_span
     local request_tags = request_span.tags
@@ -317,7 +330,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     -- specific assertions for balancer_span
     assert.equals(balancer_span.parentId, request_span.id)
     assert.equals(request_span.name .. " (balancer try 1)", balancer_span.name)
-    assert_is_integer(balancer_span.timestamp)
+    assert_valid_timestamp(balancer_span.timestamp, start_s)
 
     if balancer_span.duration then
       assert_is_integer(balancer_span.duration)
@@ -338,6 +351,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
   end)
 
   it("generates spans, tags and annotations for regular #stream requests", function()
+    local start_s = ngx.now()
     local tcp = ngx.socket.tcp()
     assert(tcp:connect(helpers.get_proxy_ip(false), 19000))
 
@@ -359,7 +373,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     assert.same("SERVER", request_span.kind)
 
     assert.same("string", type(request_span.traceId))
-    assert_is_integer(request_span.timestamp)
+    assert_valid_timestamp(request_span.timestamp, start_s)
 
     if request_span.duration and proxy_span.duration then
       assert.truthy(request_span.duration >= proxy_span.duration)
@@ -388,7 +402,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     assert.same("CLIENT", proxy_span.kind)
 
     assert.same("string", type(proxy_span.traceId))
-    assert_is_integer(proxy_span.timestamp)
+    assert_valid_timestamp(proxy_span.timestamp, start_s)
 
     if proxy_span.duration then
       assert.truthy(proxy_span.duration >= 0)
@@ -397,8 +411,8 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     assert.equals(2, #proxy_span.annotations)
     local pann = annotations_to_hash(proxy_span.annotations)
 
-    assert_is_integer(pann["kps"])
-    assert_is_integer(pann["kpf"])
+    assert_valid_timestamp(pann["kps"], start_s)
+    assert_valid_timestamp(pann["kpf"], start_s)
 
     assert.truthy(pann["kps"] <= pann["kpf"])
     assert.same({
@@ -436,6 +450,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
 
   it("generates spans, tags and annotations for non-matched requests", function()
     local trace_id = gen_trace_id()
+    local start_s = ngx.now()
 
     local r = assert(proxy_client:send {
       method  = "GET",
@@ -450,7 +465,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     local proxy_span, request_span = wait_for_spans(trace_id, 2)
 
     -- common assertions for request_span and proxy_span
-    assert_span_invariants(request_span, proxy_span, "get", trace_id)
+    assert_span_invariants(request_span, proxy_span, "get", trace_id, start_s)
 
     -- specific assertions for request_span
     local request_tags = request_span.tags

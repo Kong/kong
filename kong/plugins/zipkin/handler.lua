@@ -15,7 +15,21 @@ local ZipkinLogHandler = {
 
 local reporter_cache = setmetatable({}, { __mode = "k" })
 
-local math_random = math.random
+local math_random        = math.random
+local ngx_req_start_time = ngx.req.start_time
+local ngx_now            = ngx.now
+
+
+-- ngx.now in microseconds
+local function ngx_now_mu()
+  return ngx_now() * 1000000
+end
+
+
+-- ngx.req.start_time in microseconds
+local function ngx_req_start_time_mu()
+  return ngx_req_start_time() * 1000000
+end
 
 
 local function get_reporter(conf)
@@ -98,7 +112,7 @@ if subsystem == "http" then
     local request_span = new_span(
       "SERVER",
       method,
-      ngx.req.start_time(),
+      ngx_req_start_time_mu(),
       should_sample,
       trace_id, span_id, parent_id,
       baggage)
@@ -122,8 +136,8 @@ if subsystem == "http" then
     local ctx = ngx.ctx
     local zipkin = get_context(conf, ctx)
     -- note: rewrite is logged on the request_span, not on the proxy span
-    local rewrite_start = ctx.KONG_REWRITE_START / 1000
-    zipkin.request_span:annotate("krs", rewrite_start)
+    local rewrite_start_mu = ctx.KONG_REWRITE_START * 1000
+    zipkin.request_span:annotate("krs", rewrite_start_mu)
   end
 
 
@@ -131,7 +145,7 @@ if subsystem == "http" then
     local ctx = ngx.ctx
     local zipkin = get_context(conf, ctx)
 
-    get_or_add_proxy_span(zipkin, ctx.KONG_ACCESS_START / 1000)
+    get_or_add_proxy_span(zipkin, ctx.KONG_ACCESS_START * 1000)
 
     -- Want to send headers to upstream
     local proxy_span = zipkin.proxy_span
@@ -158,12 +172,12 @@ if subsystem == "http" then
   function ZipkinLogHandler:header_filter(conf) -- luacheck: ignore 212
     local ctx = ngx.ctx
     local zipkin = get_context(conf, ctx)
-    local header_filter_start =
-      ctx.KONG_HEADER_FILTER_STARTED_AT and ctx.KONG_HEADER_FILTER_STARTED_AT / 1000
-      or ngx.now()
+    local header_filter_start_mu =
+      ctx.KONG_HEADER_FILTER_STARTED_AT and ctx.KONG_HEADER_FILTER_STARTED_AT * 1000
+      or ngx_now_mu()
 
-    local proxy_span = get_or_add_proxy_span(zipkin, header_filter_start)
-    proxy_span:annotate("khs", header_filter_start)
+    local proxy_span = get_or_add_proxy_span(zipkin, header_filter_start_mu)
+    proxy_span:annotate("khs", header_filter_start_mu)
   end
 
 
@@ -173,11 +187,11 @@ if subsystem == "http" then
 
     -- Finish header filter when body filter starts
     if not zipkin.header_filter_finished then
-      local now = ngx.now()
+      local now_mu = ngx_now_mu()
 
-      zipkin.proxy_span:annotate("khf", now)
+      zipkin.proxy_span:annotate("khf", now_mu)
       zipkin.header_filter_finished = true
-      zipkin.proxy_span:annotate("kbs", now)
+      zipkin.proxy_span:annotate("kbs", now_mu)
     end
   end
 
@@ -187,7 +201,7 @@ elseif subsystem == "stream" then
     local request_span = new_span(
       "SERVER",
       "stream",
-      ngx.req.start_time(),
+      ngx_req_start_time_mu(),
       math_random() < conf.sample_ratio
     )
     request_span.ip = kong.client.get_forwarded_ip()
@@ -205,29 +219,29 @@ elseif subsystem == "stream" then
   function ZipkinLogHandler:preread(conf) -- luacheck: ignore 212
     local ctx = ngx.ctx
     local zipkin = get_context(conf, ctx)
-    local preread_start = ctx.KONG_PREREAD_START / 1000
+    local preread_start_mu = ctx.KONG_PREREAD_START * 1000
 
-    local proxy_span = get_or_add_proxy_span(zipkin, preread_start)
-    proxy_span:annotate("kps", preread_start)
+    local proxy_span = get_or_add_proxy_span(zipkin, preread_start_mu)
+    proxy_span:annotate("kps", preread_start_mu)
   end
 end
 
 
 function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
-  local now = ngx.now()
+  local now_mu = ngx_now_mu()
   local ctx = ngx.ctx
   local zipkin = get_context(conf, ctx)
   local request_span = zipkin.request_span
-  local proxy_span = get_or_add_proxy_span(zipkin, now)
+  local proxy_span = get_or_add_proxy_span(zipkin, now_mu)
   local reporter = get_reporter(conf)
 
-  local proxy_finish =
-    ctx.KONG_BODY_FILTER_ENDED_AT and ctx.KONG_BODY_FILTER_ENDED_AT / 1000 or now
+  local proxy_finish_mu =
+    ctx.KONG_BODY_FILTER_ENDED_AT and ctx.KONG_BODY_FILTER_ENDED_AT * 1000 or now_mu
 
   if ctx.KONG_REWRITE_TIME then
     -- note: rewrite is logged on the request span, not on the proxy span
-    local rewrite_finish = (ctx.KONG_REWRITE_START + ctx.KONG_REWRITE_TIME) / 1000
-    zipkin.request_span:annotate("krf", rewrite_finish)
+    local rewrite_finish_mu = (ctx.KONG_REWRITE_START + ctx.KONG_REWRITE_TIME) * 1000
+    zipkin.request_span:annotate("krf", rewrite_finish_mu)
   end
 
   if subsystem == "http" then
@@ -235,24 +249,24 @@ function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
     -- because the plugin access phase is skipped when dealing with
     -- requests which are not matched by any route
     -- but we still want to know when the access phase "started"
-    local access_start = ctx.KONG_ACCESS_START / 1000
-    proxy_span:annotate("kas", access_start)
+    local access_start_mu = ctx.KONG_ACCESS_START * 1000
+    proxy_span:annotate("kas", access_start_mu)
 
-    local access_finish =
-      ctx.KONG_ACCESS_ENDED_AT and ctx.KONG_ACCESS_ENDED_AT / 1000 or proxy_finish
-    proxy_span:annotate("kaf", access_finish)
+    local access_finish_mu =
+      ctx.KONG_ACCESS_ENDED_AT and ctx.KONG_ACCESS_ENDED_AT * 1000 or proxy_finish_mu
+    proxy_span:annotate("kaf", access_finish_mu)
 
     if not zipkin.header_filter_finished then
-      proxy_span:annotate("khf", now)
+      proxy_span:annotate("khf", now_mu)
       zipkin.header_filter_finished = true
     end
 
-    proxy_span:annotate("kbf", now)
+    proxy_span:annotate("kbf", now_mu)
 
   else
-    local preread_finish =
-      ctx.KONG_PREREAD_ENDED_AT and ctx.KONG_PREREAD_ENDED_AT / 1000 or proxy_finish
-    proxy_span:annotate("kpf", preread_finish)
+    local preread_finish_mu =
+      ctx.KONG_PREREAD_ENDED_AT and ctx.KONG_PREREAD_ENDED_AT * 1000 or proxy_finish_mu
+    proxy_span:annotate("kpf", preread_finish_mu)
   end
 
   local balancer_data = ctx.balancer_data
@@ -261,7 +275,7 @@ function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
     for i = 1, balancer_data.try_count do
       local try = balancer_tries[i]
       local name = fmt("%s (balancer try %d)", request_span.name, i)
-      local span = request_span:new_child("CLIENT", name, try.balancer_start / 1000)
+      local span = request_span:new_child("CLIENT", name, try.balancer_start * 1000)
       span.ip = try.ip
       span.port = try.port
 
@@ -274,7 +288,7 @@ function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
 
       tag_with_service_and_route(span)
 
-      span:finish((try.balancer_start + try.balancer_latency) / 1000)
+      span:finish((try.balancer_start + try.balancer_latency) * 1000)
       reporter:report(span)
     end
     proxy_span:set_tag("peer.hostname", balancer_data.hostname) -- could be nil
@@ -295,9 +309,9 @@ function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
 
   tag_with_service_and_route(proxy_span)
 
-  proxy_span:finish(proxy_finish)
+  proxy_span:finish(proxy_finish_mu)
   reporter:report(proxy_span)
-  request_span:finish(now)
+  request_span:finish(now_mu)
   reporter:report(request_span)
 
   local ok, err = ngx.timer.at(0, timer_log, reporter)

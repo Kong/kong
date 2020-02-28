@@ -9,14 +9,12 @@ https://github.com/openzipkin/zipkin-api/blob/7e33e977/zipkin2-api.yaml#L280
 local utils = require "kong.tools.utils"
 local rand_bytes = utils.get_rand_bytes
 
+local floor = math.floor
+
 local span_methods = {}
 local span_mt = {
   __index = span_methods,
 }
-
-local floor = math.floor
-
-local ngx_now = ngx.now
 
 
 local baggage_mt = {
@@ -36,9 +34,12 @@ local function generate_span_id()
 end
 
 
-local function new(kind, name, start_timestamp,
+local function new(kind, name, start_timestamp_mu,
                    should_sample, trace_id, span_id, parent_id, baggage)
-  assert(kind == "SERVER" or kind == "CLIENT", "invalid kind")
+  assert(kind == "SERVER" or kind == "CLIENT", "invalid span kind")
+  assert(type(name) == "string" and name ~= "", "invalid span name")
+  assert(type(start_timestamp_mu) == "number" and start_timestamp_mu >= 0,
+         "invalid span start_timestamp")
 
   if trace_id == nil then
     trace_id = generate_trace_id()
@@ -60,17 +61,13 @@ local function new(kind, name, start_timestamp,
     setmetatable(baggage, baggage_mt)
   end
 
-  if start_timestamp == nil then
-    start_timestamp = ngx_now()
-  end
-
   return setmetatable({
     kind = kind,
     trace_id = trace_id,
     span_id = span_id,
     parent_id = parent_id,
     name = name,
-    timestamp = start_timestamp,
+    timestamp = floor(start_timestamp_mu),
     should_sample = should_sample,
     baggage = baggage,
     n_logs = 0,
@@ -78,11 +75,11 @@ local function new(kind, name, start_timestamp,
 end
 
 
-function span_methods:new_child(kind, name, start_timestamp)
+function span_methods:new_child(kind, name, start_timestamp_mu)
   return new(
     kind,
     name,
-    start_timestamp,
+    start_timestamp_mu,
     self.should_sample,
     self.trace_id,
     generate_span_id(),
@@ -93,16 +90,13 @@ function span_methods:new_child(kind, name, start_timestamp)
 end
 
 
-function span_methods:finish(finish_timestamp)
+function span_methods:finish(finish_timestamp_mu)
   assert(self.duration == nil, "span already finished")
-  if finish_timestamp == nil then
-    self.duration = ngx_now() - self.timestamp
-  else
-    assert(type(finish_timestamp) == "number")
-    local duration = finish_timestamp - self.timestamp
-    assert(duration >= 0, "invalid finish timestamp")
-    self.duration = duration
-  end
+  assert(type(finish_timestamp_mu) == "number" and finish_timestamp_mu >= 0,
+         "invalid span finish timestamp")
+  local duration = finish_timestamp_mu - self.timestamp
+  assert(duration >= 0, "invalid span duration")
+  self.duration = floor(duration)
   return true
 end
 
@@ -134,13 +128,13 @@ function span_methods:each_tag()
 end
 
 
-function span_methods:annotate(value, timestamp)
+function span_methods:annotate(value, timestamp_mu)
   assert(type(value) == "string", "invalid annotation value")
-  timestamp = timestamp or ngx_now()
+  assert(type(timestamp_mu) == "number" and timestamp_mu >= 0, "invalid annotation timestamp")
 
   local annotation = {
     value = value,
-    timestamp = floor(timestamp),
+    timestamp = floor(timestamp_mu),
   }
 
   local annotations = self.annotations
