@@ -1,4 +1,9 @@
-local BasePlugin      = require "kong.plugins.base_plugin"
+local OICHandler = {
+  PRIORITY = 1000,
+  VERSION  = "1.2.6",
+}
+
+
 local cache           = require "kong.plugins.openid-connect.cache"
 local arguments       = require "kong.plugins.openid-connect.arguments"
 local log             = require "kong.plugins.openid-connect.log"
@@ -119,7 +124,7 @@ local function create_introspect_token(args, oic)
       for _, client_arg_name in ipairs(client_args) do
         local extra_arg = args.get_uri_arg(client_arg_name)
         if extra_arg then
-          if not pargs then
+          if type(pargs) ~= "table" then
             pargs = {}
           end
 
@@ -128,7 +133,7 @@ local function create_introspect_token(args, oic)
         else
           extra_arg = args.get_post_arg(client_arg_name)
           if extra_arg then
-            if not pargs then
+            if type(pargs) ~= "table" then
               pargs = {}
             end
 
@@ -574,7 +579,7 @@ end
 
 
 local function get_header_value(header_value)
-  if not header_value or header_value == ngx.null then
+  if not header_value or header_value == null then
     return
   end
 
@@ -645,7 +650,7 @@ local function anonymous_access(ctx, anonymous, trusted_client)
   }
 
   local consumer, err = find_consumer(consumer_token, "id", true, "id")
-  if not consumer then
+  if type(consumer) ~= "table" then
     if err then
       return unexpected(trusted_client, "anonymous consumer was not found (", err, ")")
 
@@ -891,23 +896,12 @@ local function rediscover_keys(issuer, options)
 end
 
 
-local OICHandler = BasePlugin:extend()
-
-
-function OICHandler:new()
-  OICHandler.super.new(self, "openid-connect")
-end
-
-
 function OICHandler:init_worker()
-  OICHandler.super.init_worker(self)
   cache.init_worker()
 end
 
 
 function OICHandler:access(conf)
-  OICHandler.super.access(self)
-
   local ctx = ngx.ctx
   local args = arguments(conf)
   args.get_http_opts = create_get_http_opts(args)
@@ -947,7 +941,7 @@ function OICHandler:access(conf)
     }
 
     issuer, err = cache.issuers.load(issuer_uri, discovery_options)
-    if not issuer then
+    if type(issuer) ~= "table" then
       return unexpected(trusted_client, err or "discovery information could not be loaded")
     end
 
@@ -982,7 +976,7 @@ function OICHandler:access(conf)
 
     log("initializing library")
     oic, err = openid.new(options, issuer.configuration, issuer.keys)
-    if not oic then
+    if type(oic) ~= "table" then
       return unexpected(trusted_client, err or "unable to initialize library")
     end
 
@@ -1062,7 +1056,9 @@ function OICHandler:access(conf)
       },
     }
 
-    session_data = session.data
+    if session_present then
+      session_data = session.data
+    end
   end
 
   -- logout
@@ -1083,7 +1079,7 @@ function OICHandler:access(conf)
 
         local logout_query_arg = args.get_conf_arg("logout_query_arg")
         if logout_query_arg then
-           logout = args.get_uri_arg(logout_query_arg) ~= nil
+          logout = args.get_uri_arg(logout_query_arg) ~= nil
         end
 
         if logout then
@@ -1111,10 +1107,10 @@ function OICHandler:access(conf)
 
       if logout then
         local id_token
-        if session_present and session_data then
+        if session_present and type(session_data) == "table" then
           reset_trusted_client(session_data.client, trusted_client, oic, options)
 
-          if session_data.tokens then
+          if type(session_data.tokens) == "table" then
             id_token = session_data.tokens.id_token
 
             if args.get_conf_arg("logout_revoke", false) then
@@ -1286,8 +1282,8 @@ function OICHandler:access(conf)
           log("trying to find id token")
 
           local id_token, loc = args.get_req_arg(
-              id_token_param_name,
-              args.get_conf_arg("id_token_param_type", PARAM_TYPES_ALL)
+            id_token_param_name,
+            args.get_conf_arg("id_token_param_type", PARAM_TYPES_ALL)
           )
 
           if id_token then
@@ -1326,8 +1322,8 @@ function OICHandler:access(conf)
           log("trying to find refresh token")
 
           local refresh_token, loc = args.get_req_arg(
-              refresh_token_param_name,
-              args.get_conf_arg("refresh_token_param_type", PARAM_TYPES_ALL)
+            refresh_token_param_name,
+            args.get_conf_arg("refresh_token_param_type", PARAM_TYPES_ALL)
           )
 
           if loc == "header" then
@@ -1462,7 +1458,7 @@ function OICHandler:access(conf)
         end
       end
 
-      if not token_endpoint_args then
+      if type(token_endpoint_args) ~= "table" then
         -- authorization code flow
         if auth_methods.authorization_code then
           log("trying to open authorization code flow session")
@@ -1499,7 +1495,10 @@ function OICHandler:access(conf)
           if authorization_present then
             log("found authorization code flow session")
 
-            local authorization_data = authorization.data or {}
+            local authorization_data = authorization.data
+            if type(authorization_data) ~= "table" then
+              authorization_data = {}
+            end
 
             log("checking authorization code flow state")
 
@@ -1522,7 +1521,7 @@ function OICHandler:access(conf)
               log("verifying authorization code flow")
 
               token_endpoint_args, err = oic.authorization:verify(token_endpoint_args)
-              if not token_endpoint_args then
+              if type(token_endpoint_args) ~= "table" then
                 log("invalid authorization code flow")
 
                 no_cache_headers()
@@ -1555,7 +1554,7 @@ function OICHandler:access(conf)
                   code_verifier = code_verifier,
                 }
 
-                if not token_endpoint_args then
+                if type(token_endpoint_args) ~= "table" then
                   log("unable to start authorization code flow request with previous parameters")
                   return unexpected(trusted_client, err)
                 end
@@ -1587,7 +1586,7 @@ function OICHandler:access(conf)
             log("authorization code flow session was not found")
           end
 
-          if not token_endpoint_args then
+          if type(token_endpoint_args) ~= "table" then
             log("creating authorization code flow request")
 
             no_cache_headers()
@@ -1622,7 +1621,7 @@ function OICHandler:access(conf)
               args = extra_args,
             }
 
-            if not token_endpoint_args then
+            if type(token_endpoint_args) ~= "table" then
               log("unable to start authorization code flow request")
               return unexpected(trusted_client, err)
             end
@@ -1663,7 +1662,7 @@ function OICHandler:access(conf)
     log("authenticating using session")
   end
 
-  if not session_data then
+  if type(session_data) ~= "table" then
     session_data = {}
   end
 
@@ -1713,7 +1712,11 @@ function OICHandler:access(conf)
     exp_default = ttl.now + ttl.default_ttl
   end
 
-  local tokens_encoded = session_data.tokens
+  local tokens_encoded
+  if type(session_data.tokens) == "table" then
+    tokens_encoded = session_data.tokens
+  end
+
   local tokens_decoded
 
   local auth_method
@@ -1727,7 +1730,7 @@ function OICHandler:access(conf)
     log("verifying bearer token")
 
     tokens_decoded, err = oic.token:verify(tokens_encoded)
-    if not tokens_decoded then
+    if type(tokens_decoded) ~= "table" then
       log("unable to verify bearer token")
       return unauthorized(ctx, iss, unauthorized_error_message, err,
                           session, anonymous, trusted_client)
@@ -1743,7 +1746,7 @@ function OICHandler:access(conf)
         log("trying to find matching kong oauth2 token")
         token_introspected, credential, consumer = cache.kong_oauth2.load(
           ctx, tokens_decoded.access_token, ttl, true)
-        if token_introspected then
+        if type(token_introspected) == "table" then
           log("found matching kong oauth2 token")
           token_introspected.active = true
 
@@ -1752,10 +1755,10 @@ function OICHandler:access(conf)
         end
       end
 
-      if not token_introspected then
+      if type(token_introspected) ~= "table" or token_introspected.active ~= true then
         if auth_methods.introspection then
           token_introspected, err = introspect_token(tokens_decoded.access_token, ttl)
-          if token_introspected then
+          if type(token_introspected) == "table" then
             if token_introspected.active then
               log("authenticated using oauth2 introspection")
 
@@ -1768,7 +1771,7 @@ function OICHandler:access(conf)
           end
         end
 
-        if not token_introspected or not token_introspected.active then
+        if type(token_introspected) ~= "table" or token_introspected.active ~= true then
           log("authentication with opaque bearer token failed")
           return unauthorized(ctx, iss, unauthorized_error_message, err,
                               session, anonymous, trusted_client)
@@ -1786,7 +1789,7 @@ function OICHandler:access(conf)
       if args.get_conf_arg("introspect_jwt_tokens", false) then
         log("introspecting jwt bearer token")
         jwt_token_introspected, err = introspect_token(tokens_encoded.access_token, ttl)
-        if jwt_token_introspected then
+        if type(jwt_token_introspected) == "table" then
           if jwt_token_introspected.active then
             log("jwt bearer token is active and not revoked")
 
@@ -1822,11 +1825,11 @@ function OICHandler:access(conf)
       session:save()
     end
 
-  elseif not tokens_encoded then
+  elseif type(tokens_encoded) ~= "table" then
     -- let's try to retrieve tokens when using authorization code flow,
     -- password credentials, client credentials or refresh_token
     local auth_params
-    if token_endpoint_args then
+    if type(token_endpoint_args) == "table" then
       for _, arg in ipairs(token_endpoint_args) do
         arg.args = args.get_conf_args("token_post_args_names", "token_post_args_values")
         local client_args = args.get_conf_arg("token_post_args_client")
@@ -1883,13 +1886,14 @@ function OICHandler:access(conf)
           log("trying to exchange credentials using token endpoint with caching enabled")
           tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl, true)
 
-          if tokens_encoded and (arg.grant_type == "refresh_token" or
-                                 arg.grant_type == "password" or
-                                 arg.grant_type == "client_credentials") then
-
+          if type(tokens_encoded) == "table"
+              and (arg.grant_type == "refresh_token" or
+                   arg.grant_type == "password"      or
+                   arg.grant_type == "client_credentials")
+          then
             log("verifying tokens")
             tokens_decoded, err = oic.token:verify(tokens_encoded, arg)
-            if not tokens_decoded then
+            if type(tokens_decoded) ~= "table" then
               log("token verification failed, trying to exchange credentials ",
                   "using token endpoint with cache flushed")
               tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl, true, true)
@@ -1904,7 +1908,7 @@ function OICHandler:access(conf)
           tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl, false)
         end
 
-        if tokens_encoded then
+        if type(tokens_encoded) == "table" then
           log("exchanged credentials with tokens")
           auth_method = arg.grant_type or "authorization_code"
           auth_params = arg
@@ -1913,16 +1917,16 @@ function OICHandler:access(conf)
       end
     end
 
-    if not tokens_encoded then
+    if type(tokens_encoded) ~= "table" then
       log("unable to exchange credentials with tokens")
       return unauthorized(ctx, iss, unauthorized_error_message, err,
                           session, anonymous, trusted_client)
     end
 
-    if not tokens_decoded then
+    if type(tokens_decoded) ~= "table" then
       log("verifying tokens")
       tokens_decoded, err = oic.token:verify(tokens_encoded, auth_params)
-      if not tokens_decoded then
+      if type(tokens_decoded) ~= "table" then
         log("token verification failed")
         return unauthorized(ctx, iss, unauthorized_error_message, err,
                             session, anonymous, trusted_client)
@@ -1949,7 +1953,7 @@ function OICHandler:access(conf)
       end
     end
 
-  else
+  elseif session_present then
     -- it looks like we are using session authentication
     log("authenticated using session")
 
@@ -1959,6 +1963,15 @@ function OICHandler:access(conf)
     else
       exp = exp_default
     end
+
+  else
+    return unauthorized(ctx,
+                        iss,
+                        unauthorized_error_message,
+                        "unable to authenticate with any enabled authentication method",
+                        nil,
+                        anonymous,
+                        trusted_client)
   end
 
   log("checking for access token")
@@ -2021,7 +2034,7 @@ function OICHandler:access(conf)
           tokens_decoded, err = oic.token:verify(tokens_encoded)
         end
 
-        if not tokens_decoded then
+        if type(tokens_decoded) ~= "table" then
           log("reverifying tokens failed")
           return unauthorized(ctx,
                               iss,
@@ -2059,7 +2072,7 @@ function OICHandler:access(conf)
       return unauthorized(ctx,
                           iss,
                           unauthorized_error_message,
-                          "access token cannot be refreshed in absense of refresh token",
+                          "access token cannot be refreshed in absence of refresh token",
                           session,
                           anonymous,
                           trusted_client)
@@ -2071,7 +2084,7 @@ function OICHandler:access(conf)
 
     local tokens_refreshed
     tokens_refreshed, err = oic.token:refresh(refresh_token)
-    if not tokens_refreshed then
+    if type(tokens_refreshed) ~= "table" then
       log("unable to refresh access token using refresh token")
       return unauthorized(ctx,
                           iss,
@@ -2098,7 +2111,7 @@ function OICHandler:access(conf)
       tokens_decoded, err = oic.token:verify(tokens_refreshed)
     end
 
-    if not tokens_decoded then
+    if type(tokens_decoded) ~= "table" then
       log("unable to verify refreshed tokens")
       return unauthorized(ctx,
                           iss,
@@ -2146,58 +2159,72 @@ function OICHandler:access(conf)
     end
   end
 
+  local decode_tokens = type(tokens_decoded) ~= "table"
+
   -- additional claims verification
   do
     -- additional non-standard verification of the claim against a jwt session cookie
     local jwt_session_cookie = args.get_conf_arg("jwt_session_cookie")
     if jwt_session_cookie then
-      if not tokens_decoded then
-        tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
+      if decode_tokens and type(tokens_decoded) ~= "table" then
+        decode_tokens = false
+        tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+        if err then
+          log("error decoding tokens (", err, ")")
+        end
       end
 
-      if tokens_decoded then
-        if type(tokens_decoded.access_token) == "table" then
-          log("validating jwt claim against jwt session cookie")
-          local jwt_session_cookie_value = args.get_value(var["cookie_" .. jwt_session_cookie])
-          if not jwt_session_cookie_value then
-            return unauthorized(ctx,
-                                iss,
-                                unauthorized_error_message,
-                                "jwt session cookie was not specified for session claim verification",
-                                session,
-                                anonymous,
-                                trusted_client)
-          end
-
-          local jwt_session_claim = args.get_conf_arg("jwt_session_claim", "sid")
-          local jwt_session_claim_value
-
-          jwt_session_claim_value = tokens_decoded.access_token.payload[jwt_session_claim]
-
-          if not jwt_session_claim_value then
-            return unauthorized(ctx,
-                                iss,
-                                unauthorized_error_message,
-                                "jwt session claim (" .. jwt_session_claim ..
-                                ") was not specified in jwt access token",
-                                session,
-                                anonymous,
-                                trusted_client)
-          end
-
-          if jwt_session_claim_value ~= jwt_session_cookie_value then
-            return unauthorized(ctx,
-                                iss,
-                                unauthorized_error_message,
-                                "invalid jwt session claim (" .. jwt_session_claim ..
-                                ") was specified in jwt access token",
-                                session,
-                                anonymous,
-                                trusted_client)
-          end
-
-          log("jwt claim matches jwt session cookie")
+      local jwt_session_claim = args.get_conf_arg("jwt_session_claim", "sid")
+      if type(tokens_decoded) == "table" and type(tokens_decoded.access_token) == "table" then
+        log("validating jwt claim against jwt session cookie")
+        local jwt_session_cookie_value = args.get_value(var["cookie_" .. jwt_session_cookie])
+        if not jwt_session_cookie_value then
+          return unauthorized(ctx,
+                              iss,
+                              unauthorized_error_message,
+                              "jwt session cookie was not specified for session claim verification",
+                              session,
+                              anonymous,
+                              trusted_client)
         end
+
+        local jwt_session_claim_value
+
+        jwt_session_claim_value = tokens_decoded.access_token.payload[jwt_session_claim]
+
+        if not jwt_session_claim_value then
+          return unauthorized(ctx,
+                              iss,
+                              unauthorized_error_message,
+                              "jwt session claim (" .. jwt_session_claim ..
+                                ") was not specified in jwt access token",
+                              session,
+                              anonymous,
+                              trusted_client)
+        end
+
+        if jwt_session_claim_value ~= jwt_session_cookie_value then
+          return unauthorized(ctx,
+                              iss,
+                              unauthorized_error_message,
+                              "invalid jwt session claim (" .. jwt_session_claim ..
+                                ") was specified in jwt access token",
+                              session,
+                              anonymous,
+                              trusted_client)
+        end
+
+        log("jwt claim matches jwt session cookie")
+
+      else
+          return unauthorized(ctx,
+                              iss,
+                              unauthorized_error_message,
+                              "unable to verify jwt session claim (" .. jwt_session_claim ..
+                                ") in absense of access token",
+                              session,
+                              anonymous,
+                              trusted_client)
       end
     end
 
@@ -2208,7 +2235,7 @@ function OICHandler:access(conf)
       local scopes_claim = args.get_conf_arg("scopes_claim", { "scope" })
 
       local access_token_scopes
-      if token_introspected then
+      if type(token_introspected) == "table" then
         access_token_scopes = find_claim(token_introspected, scopes_claim)
         if access_token_scopes then
           log("scopes found in introspection results")
@@ -2216,7 +2243,7 @@ function OICHandler:access(conf)
           log("scopes not found in introspection results")
         end
 
-      elseif jwt_token_introspected then
+      elseif type(jwt_token_introspected) == "table" then
         access_token_scopes = find_claim(jwt_token_introspected, scopes_claim)
         if access_token_scopes then
           log("scopes found in jwt introspection results")
@@ -2226,11 +2253,15 @@ function OICHandler:access(conf)
       end
 
       if not access_token_scopes then
-        if not tokens_decoded then
-          tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
+        if decode_tokens and type(tokens_decoded) ~= "table" then
+          decode_tokens = false
+          tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+          if err then
+            log("error decoding tokens (", err, ")")
+          end
         end
 
-        if tokens_decoded and type(tokens_decoded.access_token) == "table" then
+        if type(tokens_decoded) == "table" and type(tokens_decoded.access_token) == "table" then
           access_token_scopes = find_claim(tokens_decoded.access_token.payload, scopes_claim)
           if access_token_scopes then
             log("scopes found in access token")
@@ -2282,7 +2313,7 @@ function OICHandler:access(conf)
       local audience_claim = args.get_conf_arg("audience_claim", { "aud" })
 
       local access_token_audience
-      if token_introspected then
+      if type(token_introspected) == "table" then
         access_token_audience = find_claim(token_introspected, audience_claim)
         if access_token_audience then
           log("audience found in introspection results")
@@ -2290,7 +2321,7 @@ function OICHandler:access(conf)
           log("audience not found in introspection results")
         end
 
-      elseif jwt_token_introspected then
+      elseif type(jwt_token_introspected) == "table" then
         access_token_audience = find_claim(jwt_token_introspected, audience_claim)
         if access_token_audience then
           log("audience found in jwt introspection results")
@@ -2300,11 +2331,15 @@ function OICHandler:access(conf)
       end
 
       if not access_token_audience then
-        if not tokens_decoded then
-          tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
+        if decode_tokens and type(tokens_decoded) ~= "table" then
+          decode_tokens = false
+          tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+          if err then
+            log("error decoding tokens (", err, ")")
+          end
         end
 
-        if tokens_decoded and type(tokens_decoded.access_token) == "table" then
+        if type(tokens_decoded) == "table" and type(tokens_decoded.access_token) == "table" then
           access_token_audience = find_claim(tokens_decoded.access_token.payload, audience_claim)
           if access_token_audience then
             log("audience found in access token")
@@ -2363,7 +2398,7 @@ function OICHandler:access(conf)
       local consumer_by = args.get_conf_arg("consumer_by")
 
       if not consumer then
-        if token_introspected then
+        if type(token_introspected) == "table" then
           log("trying to find consumer using introspection response")
           consumer, err = find_consumer({ payload = token_introspected }, consumer_claim, false, consumer_by, ttl)
           if consumer then
@@ -2374,7 +2409,7 @@ function OICHandler:access(conf)
             log("consumer was not found with introspection results")
           end
 
-        elseif jwt_token_introspected then
+        elseif type(jwt_token_introspected) == "table" then
           log("trying to find consumer using jwt introspection response")
           consumer, err = find_consumer({ payload = jwt_token_introspected }, consumer_claim, false, consumer_by, ttl)
           if consumer then
@@ -2388,11 +2423,15 @@ function OICHandler:access(conf)
       end
 
       if not consumer then
-        if not tokens_decoded then
+        if decode_tokens and type(tokens_decoded) ~= "table" then
+          decode_tokens = false
           tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+          if err then
+            log("error decoding tokens (", err, ")")
+          end
         end
 
-        if tokens_decoded then
+        if type(tokens_decoded) == "table" then
           if type(tokens_decoded.id_token) == "table" then
             log("trying to find consumer using id token")
             consumer, err = find_consumer(tokens_decoded.id_token, consumer_claim, false, consumer_by, ttl)
@@ -2420,7 +2459,7 @@ function OICHandler:access(conf)
       end
 
       if not consumer and search_userinfo then
-        if not userinfo and not userinfo_loaded then
+        if type(userinfo) ~= "table" and not userinfo_loaded then
           log("loading user info")
           if cache_userinfo then
             userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
@@ -2430,7 +2469,7 @@ function OICHandler:access(conf)
 
           userinfo_loaded = true
 
-          if userinfo then
+          if type(userinfo) == "table" then
             log("user info loaded")
           elseif err then
             log("user info could not be loaded (", err, ")")
@@ -2496,7 +2535,7 @@ function OICHandler:access(conf)
       log("finding credential claim value")
 
       local credential_value
-      if token_introspected then
+      if type(token_introspected) == "table" then
         credential_value = find_claim(token_introspected, credential_claim)
         if credential_value then
           log("credential claim found in introspection results")
@@ -2504,7 +2543,7 @@ function OICHandler:access(conf)
         else
           log("credential claim not found in introspection results")
         end
-      elseif jwt_token_introspected then
+      elseif type(jwt_token_introspected) == "table" then
         credential_value = find_claim(jwt_token_introspected, credential_claim)
         if credential_value then
           log("credential claim found in jwt introspection results")
@@ -2515,11 +2554,15 @@ function OICHandler:access(conf)
       end
 
       if not credential_value then
-        if not tokens_decoded then
-          tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
+        if decode_tokens and type(tokens_decoded) ~= "table" then
+          decode_tokens = false
+          tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+          if err then
+            log("error decoding tokens (", err, ")")
+          end
         end
 
-        if tokens_decoded then
+        if type(tokens_decoded) == "table" then
           if type(tokens_decoded.id_token) == "table" then
             credential_value = find_claim(tokens_decoded.id_token.payload, credential_claim)
             if credential_value then
@@ -2541,7 +2584,7 @@ function OICHandler:access(conf)
       end
 
       if not credential_value and search_userinfo then
-        if not userinfo and not userinfo_loaded then
+        if type(userinfo) ~= "table" and not userinfo_loaded then
           log("loading user info")
           if cache_userinfo then
             userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
@@ -2551,7 +2594,7 @@ function OICHandler:access(conf)
 
           userinfo_loaded = true
 
-          if userinfo then
+          if type(userinfo) == "table" then
             log("user info loaded")
           elseif err then
             log("user info could not be loaded (", err, ")")
@@ -2591,7 +2634,7 @@ function OICHandler:access(conf)
       log("finding authenticated groups claim value")
 
       local authenticated_groups
-      if token_introspected then
+      if type(token_introspected) == "table" then
         authenticated_groups = find_claim(token_introspected, authenticated_groups_claim)
         if authenticated_groups then
           log("authenticated groups claim found in introspection results")
@@ -2601,11 +2644,15 @@ function OICHandler:access(conf)
       end
 
       if not authenticated_groups then
-        if not tokens_decoded then
-          tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
+        if decode_tokens and type(tokens_decoded) ~= "table" then
+          decode_tokens = false
+          tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+          if err then
+            log("error decoding tokens (", err, ")")
+          end
         end
 
-        if tokens_decoded then
+        if type(tokens_decoded) == "table" then
           if type(tokens_decoded.id_token) == "table" then
             authenticated_groups = find_claim(tokens_decoded.id_token.payload, authenticated_groups_claim)
             if authenticated_groups then
@@ -2627,7 +2674,7 @@ function OICHandler:access(conf)
       end
 
       if not authenticated_groups and search_userinfo then
-        if not userinfo and not userinfo_loaded then
+        if type(userinfo) ~= "table" and not userinfo_loaded then
           log("loading user info")
           if cache_userinfo then
             userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
@@ -2637,7 +2684,7 @@ function OICHandler:access(conf)
 
           userinfo_loaded = true
 
-          if userinfo then
+          if type(userinfo) == "table" then
             log("user info loaded")
           elseif err then
             log("user info could not be loaded (", err, ")")
@@ -2747,30 +2794,36 @@ function OICHandler:access(conf)
           local name = args.get_value(upstream_headers_names[i])
           if name then
             local value
-            if token_introspected then
+            if type(token_introspected) == "table" then
               value = get_header_value(args.get_value(token_introspected[claim]))
             end
 
-            if not value and jwt_token_introspected then
+            if not value and type(jwt_token_introspected) == "table" then
               value = get_header_value(args.get_value(jwt_token_introspected[claim]))
             end
 
-            if not value and tokens_encoded then
-              if not tokens_decoded then
-                tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
+            if not value and type(tokens_encoded) == "table" then
+              if decode_tokens and type(tokens_decoded) ~= "table" then
+                decode_tokens = false
+                tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+                if err then
+                  log("error decoding tokens (", err, ")")
+                end
               end
 
-              if type(tokens_decoded.access_token) == "table" then
-                value = get_header_value(args.get_value(tokens_decoded.access_token.payload[claim]))
-              end
+              if type(tokens_decoded) == "table" then
+                if type(tokens_decoded.access_token) == "table" then
+                  value = get_header_value(args.get_value(tokens_decoded.access_token.payload[claim]))
+                end
 
-              if not value and type(tokens_decoded.id_token) == "table" then
-                value = get_header_value(args.get_value(tokens_decoded.id_token.payload[claim]))
+                if not value and type(tokens_decoded.id_token) == "table" then
+                  value = get_header_value(args.get_value(tokens_decoded.id_token.payload[claim]))
+                end
               end
             end
 
             if not value and search_userinfo then
-              if not userinfo and not userinfo_loaded then
+              if type(userinfo) ~= "table" and not userinfo_loaded then
                 log("loading user info")
                 if cache_userinfo then
                   userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
@@ -2811,30 +2864,36 @@ function OICHandler:access(conf)
           local name = args.get_value(downstream_headers_names[i])
           if name then
             local value
-            if token_introspected then
+            if type(token_introspected) == "table" then
               value = get_header_value(args.get_value(token_introspected[claim]))
             end
 
-            if not value and jwt_token_introspected then
+            if not value and type(jwt_token_introspected) == "table" then
               value = get_header_value(args.get_value(jwt_token_introspected[claim]))
             end
 
-            if not value and tokens_encoded then
-              if not tokens_decoded then
-                tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
+            if not value and type(tokens_encoded) == "table" then
+              if decode_tokens and type(tokens_decoded) ~= "table" then
+                decode_tokens = false
+                tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+                if err then
+                  log("error decoding tokens (", err, ")")
+                end
               end
 
-              if type(tokens_decoded.access_token) == "table" then
-                value = get_header_value(args.get_value(tokens_decoded.access_token.payload[claim]))
-              end
+              if type(tokens_decoded) == "table" then
+                if type(tokens_decoded.access_token) == "table" then
+                  value = get_header_value(args.get_value(tokens_decoded.access_token.payload[claim]))
+                end
 
-              if not value and type(tokens_decoded.id_token) == "table" then
-                value = get_header_value(args.get_value(tokens_decoded.id_token.payload[claim]))
+                if not value and type(tokens_decoded.id_token) == "table" then
+                  value = get_header_value(args.get_value(tokens_decoded.id_token.payload[claim]))
+                end
               end
             end
 
             if not value and search_userinfo then
-              if not userinfo and not userinfo_loaded then
+              if type(userinfo) ~= "table" and not userinfo_loaded then
                 log("loading user info")
                 if cache_userinfo then
                   userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
@@ -2844,7 +2903,7 @@ function OICHandler:access(conf)
 
                 userinfo_loaded = true
 
-                if userinfo then
+                if type(userinfo) == "table" then
                   log("user info loaded")
                 elseif err then
                   log("user info could not be loaded (", err, ")")
@@ -2889,10 +2948,15 @@ function OICHandler:access(conf)
     end)
 
     set_headers(args, "access_token_jwk", function()
-      if not tokens_decoded then
-        tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
+      if decode_tokens and type(tokens_decoded) ~= "table" then
+        decode_tokens = false
+        tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+        if err then
+          log("error decoding tokens (", err, ")")
+        end
       end
-      if tokens_decoded then
+
+      if type(tokens_decoded) == "table" then
         local access_token = tokens_decoded.access_token
         if type(access_token) == "table" and access_token.jwk then
           return access_token.jwk
@@ -2901,10 +2965,15 @@ function OICHandler:access(conf)
     end)
 
     set_headers(args, "id_token_jwk", function()
-      if not tokens_decoded then
-        tokens_decoded = oic.token:decode(tokens_encoded, { verify_signature = false })
+      if decode_tokens and type(tokens_decoded) ~= "table" then
+        decode_tokens = false
+        tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+        if err then
+          log("error decoding tokens (", err, ")")
+        end
       end
-      if tokens_decoded then
+
+      if type(tokens_decoded) == "table" then
         local id_token = tokens_decoded.id_token
         if type(id_token) == "table" and id_token.jwk then
           return id_token.jwk
@@ -3062,10 +3131,6 @@ function OICHandler:access(conf)
 
   log("proxying to upstream")
 end
-
-
-OICHandler.PRIORITY = 1000
-OICHandler.VERSION  = cache.version
 
 
 return OICHandler
