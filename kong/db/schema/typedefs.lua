@@ -8,6 +8,7 @@ local Schema = require("kong.db.schema")
 local socket_url = require("socket.url")
 local constants = require "kong.constants"
 local px = require "resty.mediador.proxy"
+local ipmatcher = require "resty.ipmatcher"
 
 
 local pairs = pairs
@@ -69,6 +70,17 @@ local function validate_cidr_v4(ip)
   -- It's an error only if the second variable is a string
   if type(err) == "string" then
     return nil, "invalid cidr range: " .. err
+  end
+
+  return true
+end
+
+
+local function validate_cidr_v4_v6(ip)
+  local _, err = ipmatcher.new({ ip })
+
+  if err then
+    return nil, "failed to create new ipmatcher instance: " .. err
   end
 
   return true
@@ -244,6 +256,11 @@ typedefs.ip_or_cidr = Schema.define {
 typedefs.cidr_v4 = Schema.define {
   type = "string",
   custom_validator = validate_cidr_v4,
+}
+
+typedefs.cidr_v4_v6 = Schema.define {
+  type = "string",
+  custom_validator = validate_cidr_v4_v6,
 }
 
 -- deprecated alias
