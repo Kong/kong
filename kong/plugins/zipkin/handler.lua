@@ -185,8 +185,8 @@ elseif subsystem == "stream" then
 
   initialize_request = function(conf, ctx)
     local request_span = new_span(
-      "kong.stream",
       "SERVER",
+      "stream",
       ngx.req.start_time(),
       math_random() < conf.sample_ratio
     )
