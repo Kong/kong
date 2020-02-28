@@ -279,6 +279,10 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "cors11.com" },
       })
 
+      local route12 = bp.routes:insert({
+        hosts = { "cors12.com" },
+      })
+
       local mock_service = bp.services:insert {
         host = "127.0.0.2",
         port = 26865,
@@ -394,6 +398,32 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route11.id },
         config = {
           origins = { "http://my-site.com", "https://my-other-site.com:9000" },
+        }
+      }
+
+      bp.plugins:insert {
+        name = "cors",
+        route = { id = route12.id },
+        config = {
+          credentials = true,
+          preflight_continue = false,
+          max_age = 1728000,
+          headers = {
+            "DNT",
+            "X-CustomHeader",
+            "Keep-Alive",
+            "User-Agent",
+            "X-Requested-With",
+            "If-Modified-Since",
+            "Cache-Control",
+            "Content-Type",
+            "Authorization"
+          },
+          methods = ngx.null,
+          origins = {
+            "a.xxx.com",
+            "allowed-domain.test"
+          },
         }
       }
 
@@ -949,6 +979,47 @@ for _, strategy in helpers.each_strategy() do
         assert.equals("*", res.headers["Access-Control-Allow-Origin"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Vary"])
+      end)
+
+      it("removes upstream ACAO header when no match is found", function()
+        local res = proxy_client:get("/response-headers", {
+          query = ngx.encode_args({
+            ["Response-Header"] = "is-added",
+            ["Access-Control-Allow-Origin"] = "*",
+          }),
+          headers = {
+            ["Host"]   = "cors12.com",
+            ["Origin"] = "allowed-domain.test",
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local json = assert(cjson.decode(body))
+
+        assert.equal("is-added", res.headers["Response-Header"])
+        assert.equal("allowed-domain.test", res.headers["Access-Control-Allow-Origin"])
+        assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
+        assert.equal("Origin", res.headers["Vary"])
+        assert.equal("allowed-domain.test", json.headers["origin"])
+
+        local res = proxy_client:get("/response-headers", {
+          query = ngx.encode_args({
+            ["Response-Header"] = "is-added",
+            ["Access-Control-Allow-Origin"] = "*",
+          }),
+          headers = {
+            ["Host"]   = "cors12.com",
+            ["Origin"] = "disallowed-domain.test",
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local json = assert(cjson.decode(body))
+
+        assert.equal("is-added", res.headers["Response-Header"])
+        assert.equal(nil, res.headers["Access-Control-Allow-Origin"])
+        assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
+        assert.equal("disallowed-domain.test", json.headers["origin"])
       end)
     end)
   end)

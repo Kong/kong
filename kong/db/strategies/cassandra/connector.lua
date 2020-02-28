@@ -52,6 +52,9 @@ function CassandraConnector.new(kong_config)
                 end
 
                 return tcp.send(tcp, ...)
+
+              elseif k == "settimeout" then
+                return tcp.settimeout(tcp, select(1, ...)/1000)
               end
 
               return tcp[k](tcp, ...)
@@ -79,6 +82,9 @@ function CassandraConnector.new(kong_config)
                 end
 
                 return udp.send(udp, ...)
+
+              elseif k == "settimeout" then
+                return udp.settimeout(udp, select(1, ...)/1000)
               end
 
               return udp[k](udp, ...)

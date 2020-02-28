@@ -153,6 +153,7 @@ local function configure_origin(conf)
     end
   end
 
+  kong.response.clear_header("Access-Control-Allow-Origin")
   return false
 end
 

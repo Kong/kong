@@ -1,9 +1,9 @@
 package = "kong"
-version = "2.0.0-0"
+version = "2.0.2-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.0.0"
+  tag = "2.0.2"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -28,10 +28,10 @@ dependencies = {
   "lua-resty-iputils == 0.3.0",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
-  "lua-resty-dns-client == 4.1.2",
+  "lua-resty-dns-client == 4.1.3",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-mediador == 0.1.2",
-  "lua-resty-healthcheck == 1.1.2",
+  "lua-resty-healthcheck == 1.2.0",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.1",
   "lua-messagepack == 0.5.2",
@@ -228,6 +228,7 @@ build = {
     ["kong.plugins.oauth2.access"] = "kong/plugins/oauth2/access.lua",
     ["kong.plugins.oauth2.schema"] = "kong/plugins/oauth2/schema.lua",
     ["kong.plugins.oauth2.daos"] = "kong/plugins/oauth2/daos.lua",
+    ["kong.plugins.oauth2.daos.oauth2_tokens"] = "kong/plugins/oauth2/daos/oauth2_tokens.lua",
 
 
     ["kong.plugins.log-serializers.basic"] = "kong/plugins/log-serializers/basic.lua",

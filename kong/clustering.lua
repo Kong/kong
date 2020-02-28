@@ -422,13 +422,23 @@ function _M.init_worker(conf)
     -- ROLE = "control_plane"
 
     kong.worker_events.register(function(data)
+      -- we have to re-broadcast event using `post` because the dao
+      -- events were sent using `post_local` which means not all workers
+      -- can receive it
+      local res, err = kong.worker_events.post("clustering", "push_config")
+      if not res then
+        ngx_log(ngx_ERR, "unable to broadcast event: " .. err)
+      end
+    end, "dao:crud")
+
+    kong.worker_events.register(function(data)
       local res, err = declarative.export_config()
       if not res then
         ngx_log(ngx_ERR, "unable to export config from database: " .. err)
       end
 
       push_config(res)
-    end, "dao:crud")
+    end, "clustering", "push_config")
   end
 end
 

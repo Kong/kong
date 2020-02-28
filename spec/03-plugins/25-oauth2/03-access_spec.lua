@@ -194,6 +194,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       local service11   = admin_api.services:insert()
       local service12   = admin_api.services:insert()
       local service13   = admin_api.services:insert()
+      local service_c   = admin_api.services:insert()
 
       local route1 = assert(admin_api.routes:insert({
         hosts     = { "oauth2.com" },
@@ -277,6 +278,12 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         hosts       = { "oauth2_13.com" },
         protocols   = { "http", "https" },
         service     = service13,
+      }))
+
+      local route_c = assert(admin_api.routes:insert({
+        hosts       = { "oauth2__c.com" },
+        protocols   = { "http", "https" },
+        service     = service_c,
       }))
 
       admin_api.oauth2_plugins:insert({
@@ -375,6 +382,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           hide_credentials   = true,
         },
       })
+
       admin_api.oauth2_plugins:insert({
         route = { id = route13.id },
         config   = {
@@ -384,6 +392,13 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         },
       })
 
+      admin_api.oauth2_plugins:insert({
+        route = { id = route_c.id },
+        config   = {
+          scopes = { "email", "profile", "user.email" },
+          anonymous = anonymous_user.username,
+        },
+      })
 
       proxy_client     = helpers.proxy_client()
       proxy_ssl_client = helpers.proxy_ssl_client()
@@ -1820,6 +1835,17 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         })
         assert.res_status(200, res)
       end)
+      it("fails when missing access_token is being sent in the custom header", function()
+        local res = assert(proxy_ssl_client:send {
+          method = "GET",
+          path = "/request",
+          headers = {
+            ["Host"] = "oauth2_11.com",
+            ["custom_header_name"] = "",
+          }
+        })
+        assert.res_status(401, res)
+      end)
       it("fails when a correct access_token is being sent in the wrong header", function()
         local token = provision_token("oauth2_11.com",nil,"clientid1011","secret1011")
 
@@ -2002,6 +2028,18 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.are.equal(nil, body.headers["x-credential-identifier"])
         assert.are.equal(nil, body.headers["x-credential-username"])
 
+      end)
+      it("works with wrong credentials and username in anonymous", function()
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/request",
+          headers = {
+            ["Host"] = "oauth2__c.com"
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.are.equal("true", body.headers["x-anonymous-consumer"])
+        assert.equal('no-body', body.headers["x-consumer-username"])
       end)
       it("errors when anonymous user doesn't exist", function()
         finally(function()
@@ -2760,7 +2798,6 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           enable_authorization_code = true,
           mandatory_scope = false,
           provision_key = "provision123",
-          anonymous = "",
           global_credentials = false,
           refresh_token_ttl = 2
         }
@@ -2779,7 +2816,6 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           enable_authorization_code = true,
           mandatory_scope = false,
           provision_key = "provision123",
-          anonymous = "",
           global_credentials = false,
           refresh_token_ttl = 0
         }

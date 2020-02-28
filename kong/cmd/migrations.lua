@@ -81,6 +81,8 @@ local function execute(args)
 
   local conf = assert(conf_loader(args.conf))
 
+  package.path = conf.lua_package_path .. ";" .. package.path
+
   conf.pg_timeout = args.db_timeout -- connect + send + read
 
   conf.cassandra_timeout = args.db_timeout -- connect + send + read

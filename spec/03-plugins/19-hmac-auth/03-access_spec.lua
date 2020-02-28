@@ -125,6 +125,19 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local route7 = bp.routes:insert {
+        hosts = { "hmacauth7.com" },
+      }
+
+      bp.plugins:insert {
+        name     = "hmac-auth",
+        route = { id = route7.id },
+        config   = {
+          anonymous  = anonymous_user.username,
+          clock_skew = 3000
+        }
+      }
+
       assert(helpers.start_kong {
         database          = strategy,
         real_ip_header    = "X-Forwarded-For",
@@ -999,6 +1012,22 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(nil, body.headers["x-credential-username"])
 
       end)
+
+      it("should pass with invalid credentials and username in anonymous", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          body    = {},
+          headers = {
+            ["HOST"] = "hmacauth7.com",
+          },
+        })
+        local body = assert.res_status(200, res)
+        body = cjson.decode(body)
+        assert.equal("true", body.headers["x-anonymous-consumer"])
+        assert.equal('no-body', body.headers["x-consumer-username"])
+      end)
+
       it("errors when anonymous user doesn't exist", function()
         finally(function()
           proxy_client = helpers.proxy_client()

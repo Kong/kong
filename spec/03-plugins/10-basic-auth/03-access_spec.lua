@@ -41,6 +41,10 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "basic-auth4.com" },
       }
 
+      local route5 = bp.routes:insert {
+        hosts = { "basic-auth5.com" },
+      }
+
       bp.plugins:insert {
         name     = "basic-auth",
         route = { id = route1.id },
@@ -85,6 +89,14 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route4.id },
         config   = {
           anonymous = utils.uuid(), -- a non-existing consumer id
+        },
+      }
+
+      bp.plugins:insert {
+        name     = "basic-auth",
+        route = { id = route5.id },
+        config   = {
+          anonymous = anonymous_user.username,
         },
       }
 
@@ -347,6 +359,19 @@ for _, strategy in helpers.each_strategy() do
         assert.equal('no-body', body.headers["x-consumer-username"])
         assert.equal(nil, body.headers["x-credential-identifier"])
         assert.equal(nil, body.headers["x-credential-username"])
+      end)
+
+      it("works with wrong credentials and username in anonymous", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"] = "basic-auth5.com"
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.equal('true', body.headers["x-anonymous-consumer"])
+        assert.equal('no-body', body.headers["x-consumer-username"])
       end)
 
       it("errors when anonymous user doesn't exist", function()

@@ -1,6 +1,8 @@
 # Table of Contents
 
 
+- [2.0.2](#202)
+- [2.0.1](#201)
 - [2.0.0](#200)
 - [1.5.0](#150)
 - [1.4.3](#143)
@@ -36,6 +38,80 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+
+## [2.0.2]
+
+> Released 2020/02/27
+
+This is a patch release in the 2.0 series. Being a patch release, it strictly
+contains performance improvements and bugfixes. The are no new features or
+breaking changes.
+
+### Fixes
+
+##### Core
+
+  - Fix issue related to race condition in Cassandra select each method
+    [#5564](https://github.com/Kong/kong/pull/5564).
+    Thanks, [vasuharish](https://github.com/vasuharish)!
+  - Fix an issue when running a control plane with multiple data planes
+    [#5612](https://github.com/Kong/kong/pull/5612).
+  - Don't change route paths when marshaling
+    [#5587](https://github.com/Kong/kong/pull/5587).
+  - Fix propagation of posted health across workers
+    [#5539](https://github.com/Kong/kong/pull/5539).
+  - Use proper units for timeouts with cassandra
+    [#5571](https://github.com/Kong/kong/pull/5571).
+  - Fix broken SNI based routing in L4 proxy mode
+    [#5533](https://github.com/Kong/kong/pull/5533).
+
+##### Plugins
+
+  - Enable the ACME plugin by default
+    [#5555](https://github.com/Kong/kong/pull/5555).
+  - Accept consumer username in anonymous field
+    [#5552](https://github.com/Kong/kong/pull/5552).
+
+[Back to TOC](#table-of-contents)
+
+
+## [2.0.1]
+
+> Released 2020/02/04
+
+This is a patch release in the 2.0 series. Being a patch release, it strictly
+contains performance improvements and bugfixes. The are no new features or
+breaking changes.
+
+
+### Fixes
+
+##### Core
+
+  - Migrations include the configured Lua path now
+    [#5509](https://github.com/Kong/kong/pull/5509).
+  - Hop-by-hop headers to not clear upgrade header on upgrade
+    [#5495](https://github.com/Kong/kong/pull/5495).
+  - Balancers now properly check if a response is produced by an upstream
+    [#5493](https://github.com/Kong/kong/pull/5493).
+    Thanks, [onematchfox](https://github.com/onematchfox)!
+  - Kong correctly logs an error message when the Lua VM cannot allocate memory
+    [#5479](https://github.com/Kong/kong/pull/5479)
+    Thanks, [pamiel](https://github.com/pamiel)!
+  - Schema validations work again in DB-less mode
+    [#5464](https://github.com/Kong/kong/pull/5464).
+
+##### Plugins
+
+  - oauth2: handle `Authorization` headers with missing `access_token` correctly.
+    [#5514](https://github.com/Kong/kong/pull/5514).
+    Thanks, [jeremyjpj0916](https://github.com/jeremyjpj0916)!
+  - oauth2: hash oauth2_tokens cache key via the DAO
+    [#5507](https://github.com/Kong/kong/pull/5507)
+
+
+[Back to TOC](#table-of-contents)
 
 
 ## [2.0.0]
@@ -4600,6 +4676,8 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.0.2]: https://github.com/Kong/kong/compare/2.0.1...2.0.2
+[2.0.1]: https://github.com/Kong/kong/compare/2.0.0...2.0.1
 [2.0.0]: https://github.com/Kong/kong/compare/1.5.0...2.0.0
 [1.5.0]: https://github.com/Kong/kong/compare/1.4.3...1.5.0
 [1.4.3]: https://github.com/Kong/kong/compare/1.4.2...1.4.3

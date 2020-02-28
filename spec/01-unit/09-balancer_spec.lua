@@ -531,12 +531,6 @@ for _, consistency in ipairs({"strict", "eventual"}) do
         end
       end)
 
-      it("requires hostname if that was used in the Target", function()
-        local ok, err = balancer.post_health(upstream_ph, "127.0.0.1", nil, 1111, true)
-        assert.falsy(ok)
-        assert.match(err, "No host found by: '127.0.0.1:1111'")
-      end)
-
       it("fails if upstream/balancer doesn't exist", function()
         local bad = { name = "invalid", id = "bad" }
         local ok, err = balancer.post_health(bad, "127.0.0.1", 1111, true)

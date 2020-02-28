@@ -70,6 +70,10 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             hosts = { "ldap6.com" },
           }
 
+          local route7 = bp.routes:insert {
+            hosts = { "ldap7.com" },
+          }
+
           local anonymous_user = bp.consumers:insert {
             username = "no-body"
           }
@@ -148,6 +152,19 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               start_tls = ldap_strategy.start_tls,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
               attribute = "uid"
+            }
+          }
+
+          bp.plugins:insert {
+            route = { id = route7.id },
+            name     = "ldap-auth",
+            config   = {
+              ldap_host = ldap_host_aws,
+              ldap_port = 389,
+              start_tls = ldap_strategy.start_tls,
+              base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
+              attribute = "uid",
+              anonymous = anonymous_user.username,
             }
           }
 
@@ -470,6 +487,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
 
             local value = assert.request(res).has.header("x-credential-identifier")
             assert.are.equal("einstein", value)
+
             local value = assert.request(res).has.header("x-credential-username")
             assert.are.equal("einstein", value)
             assert.request(res).has_not.header("x-anonymous-username")
@@ -489,6 +507,20 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             assert.equal('no-body', value)
             assert.request(res).has.no.header("x-credential-identifier")
             assert.request(res).has.no.header("x-credential-username")
+          end)
+          it("works with wrong credentials and username in anonymous", function()
+            local res = assert(proxy_client:send {
+              method  = "GET",
+              path    = "/request",
+              headers = {
+                host  = "ldap7.com"
+              }
+            })
+            assert.response(res).has.status(200)
+            local value = assert.request(res).has.header("x-anonymous-consumer")
+            assert.are.equal("true", value)
+            value = assert.request(res).has.header("x-consumer-username")
+            assert.equal('no-body', value)
           end)
           it("errors when anonymous user doesn't exist", function()
             local res = assert(proxy_client:send {

@@ -961,7 +961,7 @@ return {
     before = function(ctx)
       local router = get_updated_router()
 
-      local match_t = router.exec(ctx)
+      local match_t = router.exec()
       if not match_t then
         log(ERR, "no Route found with those values")
         return exit(500)
@@ -986,8 +986,8 @@ return {
     end
   },
   certificate = {
-    before = function(ctx)
-      certificate.execute(ctx)
+    before = function(_)
+      certificate.execute()
     end
   },
   rewrite = {
@@ -1117,7 +1117,7 @@ return {
 
       -- Keep-Alive and WebSocket Protocol Upgrade Headers
       if var.http_upgrade and lower(var.http_upgrade) == "websocket" then
-        var.upstream_connection = "upgrade"
+        var.upstream_connection = "keep-alive, Upgrade"
         var.upstream_upgrade    = "websocket"
 
       else
@@ -1198,9 +1198,14 @@ return {
       -- clear hop-by-hop request headers:
       for _, header_name in csv(var.http_connection) do
         -- some of these are already handled by the proxy module,
-        -- proxy-authorization being an exception that is handled
-        -- below with special semantics.
-        if header_name ~= "proxy-authorization" then
+        -- proxy-authorization and upgrade being an exception that
+        -- is handled below with special semantics.
+        if header_name == "upgrade" then
+          if var.upstream_connection == "keep-alive" then
+            clear_header(header_name)
+          end
+
+        elseif header_name ~= "proxy-authorization" then
           clear_header(header_name)
         end
       end
@@ -1321,7 +1326,7 @@ return {
       -- If response was produced by an upstream (ie, not by a Kong plugin)
       -- Report HTTP status for health checks
       local balancer_data = ctx.balancer_data
-      if balancer_data and balancer_data.balancer and balancer_data.ip then
+      if balancer_data and balancer_data.balancer_handle then
         local status = ngx.status
         if status == 504 then
           balancer_data.balancer.report_timeout(balancer_data.balancer_handle)

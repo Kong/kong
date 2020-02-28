@@ -162,6 +162,22 @@ for _, strategy in helpers.each_strategy() do
 
         assert.equal("Expires", headers["Trailer"])
       end)
+
+      it("keeps upgrade when upgrading", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          headers = {
+            ["Host"] = "headers-inspect.com",
+            ["Connection"] = "keep-alive, Upgrade",
+            ["Upgrade"] = "websocket"
+          },
+          path = "/get",
+        })
+
+        local json = cjson.decode(assert.res_status(200, res))
+        assert.equal("keep-alive, Upgrade", json.headers.connection)
+        assert.equal("websocket", json.headers.upgrade)
+      end)
     end)
 
     describe("(using the default configuration values)", function()

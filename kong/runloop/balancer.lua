@@ -1118,11 +1118,19 @@ local function post_health(upstream, hostname, ip, port, is_healthy)
     return nil, "no healthchecker found for " .. tostring(upstream.name)
   end
 
+  local ok, err
   if ip then
-    return balancer:setAddressStatus(is_healthy, ip, port, hostname)
+    ok, err = healthchecker:set_target_status(ip, port, hostname, is_healthy)
+  else
+    ok, err = healthchecker:set_all_target_statuses_for_hostname(hostname, port, is_healthy)
   end
 
-  return balancer:setHostStatus(is_healthy, hostname, port)
+  -- adjust API because the healthchecker always returns a second argument
+  if ok then
+    err = nil
+  end
+
+  return ok, err
 end
 
 
