@@ -35,13 +35,18 @@ function _M.serialize(ngx, kong)
 
   local request_uri = var.request_uri or ""
 
+  local req_headers = kong.request.get_headers()
+  if req_headers["authorization"] then
+    req_headers["authorization"] = "REDACTED"
+  end
+
   return {
     request = {
       uri = request_uri,
       url = var.scheme .. "://" .. var.host .. ":" .. var.server_port .. request_uri,
       querystring = kong.request.get_query(), -- parameters, as a table
       method = kong.request.get_method(), -- http method
-      headers = kong.request.get_headers(),
+      headers = req_headers,
       size = var.request_length,
       tls = request_tls
     },
