@@ -28,7 +28,7 @@ describe("Log Serializer", function()
       req = {
         get_uri_args = function() return {"arg1", "arg2"} end,
         get_method = function() return "POST" end,
-        get_headers = function() return {"header1", "header2"} end,
+        get_headers = function() return {header1 = "header1", header2 = "header2", authorization = "authorization"} end,
         start_time = function() return 3 end
       },
       resp = {
@@ -58,7 +58,7 @@ describe("Log Serializer", function()
 
       -- Request
       assert.is_table(res.request)
-      assert.same({"header1", "header2"}, res.request.headers)
+      assert.same({header1 = "header1", header2 = "header2", authorization = "REDACTED"}, res.request.headers)
       assert.equal("POST", res.request.method)
       assert.same({"arg1", "arg2"}, res.request.querystring)
       assert.equal("http://test.com:80/request_uri", res.request.url)
