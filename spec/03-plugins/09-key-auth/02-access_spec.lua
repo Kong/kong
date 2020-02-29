@@ -192,7 +192,7 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(401, res)
         local body = assert.res_status(401, res)
-        assert.equal("{\n  \"message\":\"No API key found in request\"\n}", body)
+        assert.same({message = "No API key found in request"}, cjson.decode(body))
       end)
       it("returns Unauthorized on missing credentials", function()
         local res = assert(proxy_client:send {
