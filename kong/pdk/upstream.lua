@@ -9,7 +9,7 @@ local check_phase = phase_checker.check
 
 local PHASES = phase_checker.phases
 
-local function new(self)
+local function new()
   local upstream = {}
 
   ---
