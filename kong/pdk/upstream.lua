@@ -50,21 +50,21 @@ local function new(self)
 
 
     ---
-  -- Get upstream node health
+  -- Get upstream target health
   --
-  -- @function kong.upstream.node_health
+  -- @function kong.upstream.target_health
   -- @phases access
   -- @tparam string upstream_name
   -- @treturn health_info|nil `health_info` on success, or `nil` if no health_info entities where found
   -- @treturn string|nil An error message describing the error if there was one.
   --
   -- @usage
-  -- local ok, err = kong.upstream.node_health("upstream_name")
+  -- local ok, err = kong.upstream.target_health("upstream_name")
   -- if not ok then
   --   kong.log.err(err)
   --   return
   -- end
-  function upstream.node_health(upstream_name)
+  function upstream.target_health(upstream_name)
     check_phase(PHASES.access)
 
     if type(upstream_name) ~= "string" then
