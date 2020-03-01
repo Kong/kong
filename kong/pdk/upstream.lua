@@ -12,7 +12,6 @@ local PHASES = phase_checker.phases
 local function new(self)
   local upstream = {}
 
-  ---
   -- Get upstream balancer health
   --
   -- @function kong.upstream.get_balancer_health
@@ -49,7 +48,6 @@ local function new(self)
   end
 
 
-    ---
   -- Get upstream target health
   --
   -- @function kong.upstream.get_target_health
