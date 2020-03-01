@@ -5,7 +5,6 @@ local balancer = require "kong.runloop.balancer"
 local phase_checker = require "kong.pdk.private.phases"
 
 
-local ngx = ngx
 local check_phase = phase_checker.check
 
 local PHASES = phase_checker.phases
