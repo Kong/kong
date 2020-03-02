@@ -156,7 +156,8 @@ local function execute(args)
         error("not a tty: invoke 'reset' non-interactively with the --yes flag")
       end
 
-      if not confirm_prompt("Are you sure? This operation is irreversible.") then
+      if not schema_state.needs_bootstrap and
+        not confirm_prompt("Are you sure? This operation is irreversible.") then
         log("cancelled")
         return
       end
