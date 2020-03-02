@@ -114,8 +114,6 @@ if [[ "$TEST_SUITE" =~ integration|dbless|plugins ]]; then
   docker run -d --name grpcbin -p 15002:9000 -p 15003:9001 moul/grpcbin
 fi
 
-luarocks install busted-htest 1.0.0
-
 nginx -V
 resty -V
 luarocks --version
