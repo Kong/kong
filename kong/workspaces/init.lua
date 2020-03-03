@@ -517,10 +517,11 @@ local function sanitize_route_param(param)
 end
 
 
-local function sanitize_routes_ngx_nulls(methods, uris, hosts)
-  return sanitize_route_param(methods),
-         sanitize_route_param(uris),
-         sanitize_route_param(hosts)
+local function sanitize_routes_ngx_nulls(methods, paths, hosts)
+  return
+    sanitize_route_param(type(methods) == "string" and { methods } or methods),
+    sanitize_route_param(type(paths) == "string" and { paths } or paths),
+    sanitize_route_param(type(hosts) == "string" and { hosts } or hosts)
 end
 
 
