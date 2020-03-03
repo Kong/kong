@@ -94,21 +94,27 @@ local function get_proto_info(fname)
 
   for _, srvc in ipairs(parsed.service) do
     for _, mthd in ipairs(srvc.method) do
-      local options = safe_access(mthd, "options", "options", "google.api.http")
-      for http_method, http_path in pairs(options) do
-        local preg, grp, err = parse_options_path(http_path)
-        if err then
-          ngx.log(ngx.ERR, "error parsing options path ", err)
-        else
-          if not info[http_method] then
-            info[http_method] = {}
+      local options_bindings =  {
+        safe_access(mthd, "options", "options", "google.api.http"),
+        safe_access(mthd, "options", "options", "google.api.http", "additional_bindings")
+      }
+      for _, options in ipairs(options_bindings) do
+        for http_method, http_path in pairs(options) do
+          local preg, grp, err = parse_options_path(http_path)
+          if err then
+            ngx.log(ngx.ERR, "error parsing options path ", err)
+          else
+            if not info[http_method] then
+              info[http_method] = {}
+            end
+            info[http_method][preg] = {
+              mthd.input_type,
+              mthd.output_type,
+              ("/%s.%s/%s"):format(parsed.package, srvc.name, mthd.name), -- request path
+              grp,
+              options.body,
+            }
           end
-          info[http_method][preg] = {
-            mthd.input_type,
-            mthd.output_type,
-            ("/%s.%s/%s"):format(parsed.package, srvc.name, mthd.name), -- request path
-            grp,
-          }
         end
       end
     end
@@ -122,7 +128,7 @@ end
 
 -- return input and output names of the method specified by the url path
 -- TODO: memoize
-local function rpc_types(method, path, protofile)
+local function rpc_transcode(method, path, protofile)
   if not protofile then
     return nil
   end
@@ -134,6 +140,9 @@ local function rpc_types(method, path, protofile)
   end
   for p, types in pairs(info) do
     local m, err = re_match(path, p, "jo")
+    if err then
+      return nil, ("Cannot match path %q"):format(err)
+    end
     if m then
       local vars = {}
       for i, g in ipairs(types[4]) do
@@ -141,7 +150,7 @@ local function rpc_types(method, path, protofile)
       end
       ooo(types)
       ooo(vars)
-      return types[1], types[2], types[3], vars
+      return types[1], types[2], types[3], vars, types[5]
     end
   end
   return nil, ("Unkown path %q"):format(path)
@@ -153,7 +162,7 @@ function deco.new(method, path, protofile)
     return nil, "transcoding requests require a .proto file defining the service"
   end
 
-  local input_type, output_type, rewrite_path, payload = rpc_types(method, path, protofile)
+  local input_type, output_type, rewrite_path, template_payload, body_variable = rpc_transcode(method, path, protofile)
 
   if not input_type then
     return nil, output_type
@@ -163,7 +172,8 @@ function deco.new(method, path, protofile)
     input_type = input_type,
     output_type = output_type,
     rewrite_path = rewrite_path,
-    payload = payload,
+    template_payload = template_payload,
+    body_variable = body_variable,
   }, deco)
 end
 
@@ -188,8 +198,53 @@ end
 
 
 function deco:upstream(body)
-  ngx.log(ngx.ERR, "encoding ", self.input_type, ": ", require("cjson").encode(self.payload))
-  body = frame(0x0, pb.encode(self.input_type, self.payload))
+  --[[
+    // Note that when using `*` in the body mapping, it is not possible to
+    // have HTTP parameters, as all fields not bound by the path end in
+    // the body. This makes this option more rarely used in practice when
+    // defining REST APIs. The common usage of `*` is in custom methods
+    // which don't use the URL at all for transferring data.
+  ]]
+  -- TODO: do we allow http parameter when body is not *?
+  local payload = self.template_payload
+  if self.body_variable then
+    if body then
+      local body_decoded = cjson.decode(body)
+      if self.body_variable ~= "*" then
+        --[[
+          // For HTTP methods that allow a request body, the `body` field
+          // specifies the mapping. Consider a REST update method on the
+          // message resource collection:
+        ]] 
+        payload[self.body_variable] = body_decoded
+      else
+        --[[
+          // The special name `*` can be used in the body mapping to define that
+          // every field not bound by the path template should be mapped to the
+          // request body.  This enables the following alternative definition of
+          // the update method:
+        ]]
+        for k, v in pairs(body_decoded) do
+          payload[k] = v
+        end
+      end
+    end
+  else
+    --[[
+      // Any fields in the request message which are not bound by the path template
+      // automatically become HTTP query parameters if there is no HTTP request body.
+    ]]--
+    -- TODO primitive type checking
+    local args, err = ngx.req.get_uri_args()
+    if err then
+    else
+      for k, v in pairs(args) do
+        payload[k] = v
+      end
+    end
+  end
+  ngx.log(ngx.ERR, "encoding ", self.input_type, ": ", require("cjson").encode(payload))
+  body = frame(0x0, pb.encode(self.input_type, payload))
 
   return body
 end
