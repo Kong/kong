@@ -1030,7 +1030,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
-          local data = db.oauth2_authorization_codes:select_by_code(m[1])
+          db.oauth2_authorization_codes:select_by_code(m[1])
         end)
         it("returns success and defaults code method to S256 when not provided", function()
           local res = assert(proxy_ssl_client:send {
