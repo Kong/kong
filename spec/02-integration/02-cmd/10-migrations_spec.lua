@@ -130,6 +130,17 @@ for _, strategy in helpers.each_strategy() do
         assert.match("Database already bootstrapped", stdout, 1, true)
       end)
 
+      it("#db does bootstrap twice if forced", function()
+        local code = run_kong("migrations bootstrap")
+        assert.same(0, code)
+        local stdout
+        code, stdout = run_kong("migrations bootstrap --force")
+        assert.same(0, code)
+        assert.match("\nmigrating core", stdout, 1, true)
+        assert.match("\n" .. nr_migrations .. " migration", stdout, 1, true)
+        assert.match("\nDatabase is up-to-date\n", stdout, 1, true)
+      end)
+
       pending("-q suppresses all output", function()
         local code, stdout, stderr = run_kong("migrations bootstrap -q")
         assert.same(0, code)

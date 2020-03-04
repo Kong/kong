@@ -148,6 +148,10 @@ local function execute(args)
     -- exit(0)
 
   elseif args.command == "bootstrap" then
+    if args.force then
+      migrations_utils.reset(schema_state, db, args.lock_timeout)
+      schema_state = assert(db:schema_state())
+    end
     migrations_utils.bootstrap(schema_state, db, args.lock_timeout)
 
   elseif args.command == "reset" then
