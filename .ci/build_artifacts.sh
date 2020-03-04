@@ -7,8 +7,9 @@ fi
 
 docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
 
-git clone https://github.com/Kong/docker-kong.git
+git clone https://"$GITHUB_TOKEN"@github.com/Kong/docker-kong-ee.git
 git clone https://"$GITHUB_TOKEN"@github.com/Kong/kong-distributions.git
+
 pushd kong-distributions
 sed -i -e "s/^\([[:blank:]]*\)version.*$/\1version: master/" kong-images/build.yml
 docker pull mashape/docker-packer
@@ -30,15 +31,17 @@ docker run -it --rm \
 
 VERSION=`dpkg-deb -f output/kong-enterprise-edition-*.xenial.all.deb Version`
 ./release.sh -u $BINTRAY_USER -k $BINTRAY_API_KEY -v ${VERSION} -p ubuntu:16.04 -c
-
 popd
-sudo mv kong-distributions/output/kong-*.tar.gz docker-kong/alpine/kong.tar.gz
-sed -i -e '3 a COPY kong.tar.gz kong.tar.gz' docker-kong/alpine/Dockerfile
-sed -i -e"/.*wget -O.*/,+1 d" docker-kong/alpine/Dockerfile
-sed -i -e '/apk update.*/a  && apk add gnupg \\' docker-kong/alpine/Dockerfile
-sed -i -e '/^USER kong/d' docker-kong/alpine/Dockerfile
 
+sudo mv kong-distributions/output/kong-*.tar.gz docker-kong-ee/alpine/kong.tar.gz
 
-docker build --no-cache -t mashape/kong-enterprise:"$DOCKER_TAG_NAME" docker-kong/alpine/
+pushd docker-kong-ee/alpine/
+sed -i -e '/apk update.*/a  && apk add gnupg \\' Dockerfile
+sed -i -e '/^USER kong/d' Dockerfile
+
+export KONG_ENTERPRISE_PACKAGE=kong.tar.gz
+
+docker build --no-cache --build-arg KONG_ENTERPRISE_PACKAGE=$KONG_ENTERPRISE_PACKAGE -t mashape/kong-enterprise:"$DOCKER_TAG_NAME" .
 
 docker push mashape/kong-enterprise:"$DOCKER_TAG_NAME"
+popd
