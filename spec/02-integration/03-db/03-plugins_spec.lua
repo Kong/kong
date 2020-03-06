@@ -59,7 +59,7 @@ for _, strategy in helpers.each_strategy() do
               key_in_body = false,
               key_names = { "apikey" },
             },
-            protocols = { "grpc", "grpcs", "http", "https" },
+            protocols = { "fcgi", "grpc", "grpcs", "http", "https" },
             enabled = true,
             name = "key-auth",
             route = {
@@ -131,7 +131,7 @@ for _, strategy in helpers.each_strategy() do
               key_in_body = false,
               key_names = { "apikey" },
             },
-            protocols = { "grpc", "grpcs", "http", "https" },
+            protocols = { "fcgi", "grpc", "grpcs", "http", "https" },
             enabled = true,
             name = "key-auth",
             route = {
