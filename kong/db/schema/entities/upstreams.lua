@@ -52,7 +52,7 @@ local positive_int_or_zero = Schema.define {
 
 local check_type = Schema.define {
   type = "string",
-  one_of = { "tcp", "http", "https", "grpc", "grpcs" },
+  one_of = { "tcp", "http", "https", "grpc", "grpcs", "fcgi" },
   default = "http",
 }
 
