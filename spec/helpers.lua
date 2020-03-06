@@ -61,9 +61,11 @@ log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 -- (while running from the busted environment)
 package.path = CUSTOM_PLUGIN_PATH .. ";" .. package.path
 
+--- Returns the OpenResty version.
 -- Extract the current OpenResty version in use and returns
 -- a numerical representation of it.
--- Ex: 1.11.2.2 -> 11122
+-- Ex: `1.11.2.2` -> `11122`
+-- @name openresty_ver_num
 local function openresty_ver_num()
   local nginx_bin = assert(nginx_signals.find_nginx_bin())
   local _, _, _, stderr = pl_utils.executeex(string.format("%s -V", nginx_bin))
@@ -76,16 +78,18 @@ local function openresty_ver_num()
   return tonumber(a .. b .. c .. d)
 end
 
--- Unindent a multi-line string for proper indenting in
+--- Unindent a multi-line string for proper indenting in
 -- square brackets.
+-- @name unindent
+-- @usage
+-- local u = helpers.unindent
 --
--- Ex:
---   u[[
---       hello world
---       foo bar
---   ]]
+-- u[[
+--     hello world
+--     foo bar
+-- ]]
 --
--- will return: "hello world\nfoo bar"
+-- -- will return: "hello world\nfoo bar"
 local function unindent(str, concat_newlines, spaced_newlines)
   str = string.match(str, "(.-%S*)%s*$")
   if not str then
@@ -112,6 +116,45 @@ local function unindent(str, concat_newlines, spaced_newlines)
   return (str:gsub("^\n%s*", ""):gsub("\n" .. prefix, repl):gsub("\n$", ""):gsub("\\r", "\r"))
 end
 
+
+--- Set an environment variable
+-- @name setenv
+-- @param env (string) name of the environment variable
+-- @param value the value to set
+-- @return true on success, false otherwise
+local function setenv(env, value)
+  return ffi.C.setenv(env, value, 1) == 0
+end
+
+
+--- Unset an environment variable
+-- @name setenv
+-- @param env (string) name of the environment variable
+-- @return true on success, false otherwise
+local function unsetenv(env)
+  return ffi.C.unsetenv(env) == 0
+end
+
+
+--- Write a yaml file.
+-- @name make_yaml_file
+-- @param content (string) the yaml string to write to the file
+-- @param filename (optional) if not provided, a temp name will be created
+-- @return filename of the file written
+local function make_yaml_file(content, filename)
+  if not filename then
+    filename = os.tmpname()
+    os.rename(filename, filename .. ".yml")
+    filename = filename .. ".yml"
+  end
+  local fd = assert(io.open(filename, "w"))
+  assert(fd:write(unindent(content)))
+  assert(fd:write("\n")) -- ensure last line ends in newline
+  assert(fd:close())
+  return filename
+end
+
+
 ---------------
 -- Conf and DAO
 ---------------
@@ -128,9 +171,20 @@ local blueprints = assert(Blueprints.new(db))
 local dcbp
 local config_yml
 
-local each_strategy
-
-do
+--- Iterator over DB strategies.
+-- @name each_strategy
+-- @param strategies (optional string array) explicit list of strategies to use,
+-- defaults to `{ "postgres", "cassandra" }`.
+-- @usage
+-- -- repeat all tests for each strategy
+-- for _, strategy_name in helpers.each_strategy() do
+--   describe("my test set [#" .. strategy .. "]", function()
+--
+--     -- add your tests here
+--
+--   end)
+-- end
+local each_strategy do
   local default_strategies = {"postgres", "cassandra"}
   local env_var = os.getenv("KONG_DATABASE")
   if env_var then
@@ -186,6 +240,32 @@ local function bootstrap_database(db)
   end
 end
 
+--- Gets the database utility helpers and prepares the database for a testrun.
+-- This will a.o. bootstrap the datastore and truncate the existing data that
+-- migth be in it. The BluePrint returned can be used to create test entities
+-- in the database.
+-- @name get_db_utils
+-- @param strategy (optional) the database strategy to use, will default to the
+-- strategy in the test configuration.
+-- @param tables (optional) tables to truncate, this can be used to accelarate
+-- tests if only a few tables are used. By default all tables will be truncated.
+-- @param plugins (optional) array of plugins to mark as loaded. Since kong will load all the bundled plugins by default, this is useful for mostly for marking custom plugins as loaded.
+-- @return BluePrint, DB
+-- @usage
+-- local PLUGIN_NAME = "my_fancy_plugin"
+-- local bp = helpers.get_db_utils("postgres", nil, { PLUGIN_NAME })
+--
+-- -- Inject a test route. No need to create a service, there is a default
+-- -- service which will echo the request.
+-- local route1 = bp.routes:insert({
+--   hosts = { "test1.com" },
+-- })
+-- -- add the plugin to test to the route we created
+-- bp.plugins:insert {
+--   name = PLUGIN_NAME,
+--   route = { id = route1.id },
+--   config = {},
+-- }
 local function get_db_utils(strategy, tables, plugins)
   strategy = strategy or conf.database
   if tables ~= nil and type(tables) ~= "table" then
@@ -249,7 +329,10 @@ local function get_db_utils(strategy, tables, plugins)
   return bp, db
 end
 
-
+--- Gets the ml_cache instance.
+-- @name get_cache
+-- @param db the database object
+-- @return ml_cache instance
 local function get_cache(db)
   local worker_events = assert(kong_global.init_worker_events())
   local cluster_events = assert(kong_global.init_cluster_events(conf, db))
@@ -269,7 +352,10 @@ local pack = function(...) return { n = select("#", ...), ... } end
 local unpack = function(t) return unpack(t, 1, t.n) end
 
 --- Prints all returned parameters.
--- Simple debugging aid.
+-- Simple debugging aid, it will pass all received parameters, hence will not
+-- influence the flow of the code. See also `fail`.
+-- @name intercept
+-- @see fail
 -- @usage -- modify
 -- local a,b = some_func(c,d)
 -- -- into
@@ -279,6 +365,40 @@ local function intercept(...)
   print(require("pl.pretty").write(args))
   return unpack(args)
 end
+
+
+-- Prepopulate Schema's cache
+Schema.new(consumers_schema_def)
+Schema.new(services_schema_def)
+Schema.new(routes_schema_def)
+
+local plugins_schema = assert(Entity.new(plugins_schema_def))
+
+
+--- Validate a plugin configuration against a plugin schema.
+-- @name validate_plugin_config_schema
+-- @param config The configuration to validate. This is not the full schema,
+-- only the `config` sub-object needs to be passed.
+-- @param schema_def The schema definition
+-- @return the validated schema, or nil+error
+local function validate_plugin_config_schema(config, schema_def)
+  assert(plugins_schema:new_subschema(schema_def.name, schema_def))
+  local entity = {
+    id = utils.uuid(),
+    name = schema_def.name,
+    config = config
+  }
+  local entity_to_insert, err = plugins_schema:process_auto_fields(entity, "insert")
+  if err then
+    return nil, err
+  end
+  local _, err = plugins_schema:validate_insert(entity_to_insert)
+  if err then return
+    nil, err
+  end
+  return entity_to_insert
+end
+
 
 -- Case insensitive lookup function, returns the value and the original key. Or
 -- if not found nil and the search key
@@ -301,13 +421,16 @@ local function lookup(t, k)
   return nil, ok
 end
 
+
 --- Waits until a specific condition is met.
 -- The check function will repeatedly be called (with a fixed interval), until
 -- the condition is met, or the
 -- timeout value is exceeded.
--- @param f check function that should return `thruthy` when the condition has
+-- @name wait_until
+-- @param f check function that should return `truthy` when the condition has
 -- been met
--- @param timeout maximum time to wait after which an error is thrown
+-- @param timeout (optional) maximum time to wait after which an error is
+-- thrown, defaults to 5.
 -- @return nothing. It returns when the condition is met, or throws an error
 -- when it times out.
 -- @usage -- wait 10 seconds for a file "myfilename" to appear
@@ -353,19 +476,70 @@ local function wait_until(f, timeout, step)
   end
 end
 
+
+local admin_client -- forward declaration
+
+--- Waits for invalidation of a cached key by polling the mgt-api
+-- and waiting for a 404 response.
+-- @name wait_for_invalidation
+-- @param key (string) the cache-key to check
+-- @param timeout (optional) in seconds (for default see `wait_until`).
+local function wait_for_invalidation(key, timeout)
+  -- TODO: this code is not used, but is duplicated all over the codebase!
+  -- search codebase for "/cache/" endpoint
+  local api_client = admin_client()
+  wait_until(function()
+    local res = api_client:get("/cache/" .. key)
+    res:read_body()
+    return res.status == 404
+  end, timeout)
+end
+
+
 --- http_client.
 -- An http-client class to perform requests.
+--
+-- * Based on [lua-resty-http](https://github.com/pintsized/lua-resty-http) but
+-- with some modifications
+--
+-- * Additional convenience methods will be injected for the following methods;
+-- "get", "post", "put", "patch", "delete". Each of these methods comes with a
+-- built-in assert. The signature of the functions is `client:get(path, opts)`.
+--
+-- * Body will be formatted according to the "Content-Type" header, see `http_client:send`.
+--
+-- * Query parameters will be added, see `http_client:send`.
+--
 -- @section http_client
+-- @usage
+-- -- example usage of the client
+-- local client = helpers.get_proxy_client()
+-- -- no need to check for `nil+err` since it is already wrapped in an assert
+--
+-- local opts = {
+--   headers = {
+--     ["My-Header"] = "my header value"
+--   }
+-- }
+-- local result = client:get("/services/foo", opts)
+-- -- the 'get' is wrapped in an assert, so again no need to check for `nil+err`
 
---- Send a http request. Based on https://github.com/pintsized/lua-resty-http.
--- If `opts.body` is a table and "Content-Type" header contains
+
+--- Send a http request.
+-- Based on [lua-resty-http](https://github.com/pintsized/lua-resty-http).
+--
+-- * If `opts.body` is a table and "Content-Type" header contains
 -- `application/json`, `www-form-urlencoded`, or `multipart/form-data`, then it
 -- will automatically encode the body according to the content type.
--- If `opts.query` is a table, a query string will be constructed from it and
--- appended
--- to the request path (assuming none is already present).
+--
+-- * If `opts.query` is a table, a query string will be constructed from it and
+-- appended to the request path (assuming none is already present).
+--
+-- * instead of this generic function there are also shortcut functions available
+-- for every method, eg. `client:get`, `client:post`, etc. See `http_client`.
+--
 -- @name http_client:send
--- @param opts table with options. See https://github.com/pintsized/lua-resty-http
+-- @param opts table with options. See [lua-resty-http](https://github.com/pintsized/lua-resty-http)
 function resty_http_proxy_mt:send(opts)
   local cjson = require "cjson"
   local utils = require "kong.tools.utils"
@@ -449,13 +623,21 @@ function resty_http_proxy_mt:__index(k)
 end
 
 
---- Creates a http client. Based on https://github.com/pintsized/lua-resty-http
+--- Creates a http client.
+-- Instead of using this client, you'll probably want to use the pre-configured
+-- clients available as `proxy_client`, `admin_client`, etc. because these come
+-- pre-configured and connected to the underlying Kong test instance.
+--
 -- @name http_client
 -- @param host hostname to connect to
 -- @param port port to connect to
 -- @param timeout in seconds
 -- @return http client
 -- @see http_client:send
+-- @see proxy_client
+-- @see proxy_ssl_client
+-- @see admin_client
+-- @see admin_ssl_client
 local function http_client(host, port, timeout)
   timeout = timeout or 10000
   local client = assert(http.new())
@@ -466,8 +648,11 @@ local function http_client(host, port, timeout)
   }, resty_http_proxy_mt)
 end
 
+
 --- Returns the proxy port.
+-- @name get_proxy_port
 -- @param ssl (boolean) if `true` returns the ssl port
+-- @param http2 (boolean) if `true` returns the http2 port
 local function get_proxy_port(ssl, http2)
   if ssl == nil then ssl = false end
   for _, entry in ipairs(conf.proxy_listeners) do
@@ -478,8 +663,11 @@ local function get_proxy_port(ssl, http2)
   error("No proxy port found for ssl=" .. tostring(ssl), 2)
 end
 
+
 --- Returns the proxy ip.
+-- @name get_proxy_ip
 -- @param ssl (boolean) if `true` returns the ssl ip address
+-- @param http2 (boolean) if `true` returns the http2 ip address
 local function get_proxy_ip(ssl, http2)
   if ssl == nil then ssl = false end
   for _, entry in ipairs(conf.proxy_listeners) do
@@ -490,8 +678,10 @@ local function get_proxy_ip(ssl, http2)
   error("No proxy ip found for ssl=" .. tostring(ssl), 2)
 end
 
+
 --- returns a pre-configured `http_client` for the Kong proxy port.
 -- @name proxy_client
+-- @param timeout (optional, number) the timeout to use
 local function proxy_client(timeout)
   local proxy_ip = get_proxy_ip(false)
   local proxy_port = get_proxy_port(false)
@@ -499,8 +689,11 @@ local function proxy_client(timeout)
   return http_client(proxy_ip, proxy_port, timeout or 60000)
 end
 
+
 --- returns a pre-configured `http_client` for the Kong SSL proxy port.
 -- @name proxy_ssl_client
+-- @param timeout (optional, number) the timeout to use
+-- @param sni (optional, string) the sni to use
 local function proxy_ssl_client(timeout, sni)
   local proxy_ip = get_proxy_ip(true, true)
   local proxy_port = get_proxy_port(true, true)
@@ -510,9 +703,13 @@ local function proxy_ssl_client(timeout, sni)
   return client
 end
 
+
 --- returns a pre-configured `http_client` for the Kong admin port.
 -- @name admin_client
-local function admin_client(timeout, forced_port)
+-- @param timeout (optional, number) the timeout to use
+-- @param forced_port (optional, number) if provided will override the port in
+-- the Kong configuration with this port
+function admin_client(timeout, forced_port)
   local admin_ip, admin_port
   for _, entry in ipairs(conf.admin_listeners) do
     if entry.ssl == false then
@@ -526,6 +723,7 @@ end
 
 --- returns a pre-configured `http_client` for the Kong admin SSL port.
 -- @name admin_ssl_client
+-- @param timeout (optional, number) the timeout to use
 local function admin_ssl_client(timeout)
   local admin_ip, admin_port
   for _, entry in ipairs(conf.proxy_listeners) do
@@ -540,19 +738,194 @@ local function admin_ssl_client(timeout)
   return client
 end
 
+
+----------------
+-- HTTP2 and GRPC clients
+-- @section Shell-helpers
+
+
+-- Generate grpcurl flags from a table of `flag-value`. If `value` is not a
+-- string, value is ignored and `flag` is passed as is.
+local function gen_grpcurl_opts(opts_t)
+  local opts_l = {}
+
+  for opt, val in pairs(opts_t) do
+    if val ~= false then
+      opts_l[#opts_l + 1] = opt .. " " .. (type(val) == "string" and val or "")
+    end
+  end
+
+  return table.concat(opts_l, " ")
+end
+
+
+--- Creates an HTTP/2 client, based on the lua-http library.
+-- @name http2_client
+-- @param host hostname to connect to
+-- @param port port to connect to
+-- @param tls boolean indicating whether to establish a tls session
+-- @return http2 client
+local function http2_client(host, port, tls)
+  local host = assert(host)
+  local port = assert(port)
+  tls = tls or false
+
+  local request = require "http.request"
+  local req = request.new_from_uri({
+    scheme = tls and "https" or "http",
+    host = host,
+    port = port,
+  })
+  req.version = 2
+  req.tls = tls
+
+  if tls then
+    local http_tls = require "http.tls"
+    local openssl_ctx = require "openssl.ssl.context"
+    local n_ctx = http_tls.new_client_context()
+    n_ctx:setVerify(openssl_ctx.VERIFY_NONE)
+    req.ctx = n_ctx
+  end
+
+  local meta = getmetatable(req) or {}
+
+  meta.__call = function(req, opts)
+    local headers = opts and opts.headers
+    local timeout = opts and opts.timeout
+
+    for k, v in pairs(headers or {}) do
+      req.headers:upsert(k, v)
+    end
+
+    local headers, stream = req:go(timeout)
+    local body = stream:get_body_as_string()
+    return body, headers
+  end
+
+  return setmetatable(req, meta)
+end
+
+
+--- returns a pre-configured cleartext `http2_client` for the Kong proxy port.
+-- @name proxy_client_h2c
+-- @return http2 client
+local function proxy_client_h2c()
+  local proxy_ip = get_proxy_ip(false, true)
+  local proxy_port = get_proxy_port(false, true)
+  assert(proxy_ip, "No http-proxy found in the configuration")
+  return http2_client(proxy_ip, proxy_port)
+end
+
+
+--- returns a pre-configured TLS `http2_client` for the Kong SSL proxy port.
+-- @name proxy_client_h2
+-- @return http2 client
+local function proxy_client_h2()
+  local proxy_ip = get_proxy_ip(true, true)
+  local proxy_port = get_proxy_port(true, true)
+  assert(proxy_ip, "No https-proxy found in the configuration")
+  return http2_client(proxy_ip, proxy_port, true)
+end
+
+local exec -- forward declaration
+
+--- Creates a gRPC client, based on the grpcurl CLI.
+-- @name grpc_client
+-- @param host hostname to connect to
+-- @param port port to connect to
+-- @param opts table with options supported by grpcurl
+-- @return grpc client
+local function grpc_client(host, port, opts)
+  local host = assert(host)
+  local port = assert(tostring(port))
+
+  opts = opts or {}
+  if not opts["-proto"] then
+    opts["-proto"] = MOCK_GRPC_UPSTREAM_PROTO_PATH
+  end
+
+  return setmetatable({
+    opts = opts,
+    cmd_template = string.format("bin/grpcurl %%s %s:%s %%s", host, port)
+
+  }, {
+    __call = function(t, args)
+      local service = assert(args.service)
+      local body = args.body
+
+      local t_body = type(body)
+      if t_body ~= "nil" then
+        if t_body == "table" then
+          body = cjson.encode(body)
+        end
+
+        args.opts["-d"] = string.format("'%s'", body)
+      end
+
+      local opts = gen_grpcurl_opts(pl_tablex.merge(t.opts, args.opts, true))
+      local ok, err, out = exec(string.format(t.cmd_template, opts, service))
+
+      if ok then
+        return ok, out
+      else
+        return nil, err
+      end
+    end
+  })
+end
+
+
+--- returns a pre-configured `grpc_client` for the Kong proxy port.
+-- @name proxy_client_grpc
+-- @param host hostname to connect to
+-- @param port port to connect to
+-- @return grpc client
+local function proxy_client_grpc(host, port)
+  local proxy_ip = host or get_proxy_ip(false, true)
+  local proxy_port = port or get_proxy_port(false, true)
+  assert(proxy_ip, "No http-proxy found in the configuration")
+  return grpc_client(proxy_ip, proxy_port, {["-plaintext"] = true})
+end
+
+--- returns a pre-configured `grpc_client` for the Kong SSL proxy port.
+-- @name proxy_client_grpcs
+-- @param host hostname to connect to
+-- @param port port to connect to
+-- @return grpc client
+local function proxy_client_grpcs(host, port)
+  local proxy_ip = host or get_proxy_ip(true, true)
+  local proxy_port = port or get_proxy_port(true, true)
+  assert(proxy_ip, "No https-proxy found in the configuration")
+  return grpc_client(proxy_ip, proxy_port, {["-insecure"] = true})
+end
+
+
 ---
 -- TCP/UDP server helpers
 --
 -- @section servers
 
---- Starts a TCP server.
--- Accepts a single connection (or multiple, if given opts.requests)
+
+--- Starts a local TCP server.
+-- Accepts a single connection (or multiple, if given `opts.requests`)
 -- and then closes, echoing what was received (last read, in case
 -- of multiple requests).
+--
+--
+-- Options:
+--
+-- * `opts.timeout`: time after which the server exits, defaults to 360 seconds.
+--
+-- * `opts.requests`: the number of requests to accept, before exiting. Default 1.
+--
+-- * `opts.tls`: boolean, make it a ssl server if truthy.
+--
+-- * `opts.prefix`: string, a prefix to add to the echoed data received.
 -- @name tcp_server
--- @param `port`    The port where the server will be listening to
--- @param `opts     A table of options defining the server's behavior
--- @return `thread` A thread object
+-- @param port (number) The port where the server will be listening on
+-- @param opts (table) options defining the server's behavior
+-- @return A thread object (from the `llthreads2` Lua package)
+-- @see kill_tcp_server
 local function tcp_server(port, opts)
   local threads = require "llthreads2.ex"
   opts = opts or {}
@@ -651,6 +1024,14 @@ local function tcp_server(port, opts)
   return thr
 end
 
+
+--- Stops a local TCP server.
+-- A server previously created with `tcp_server` can be stopped prematurely by
+-- calling this function.
+-- @name kill_tcp_server
+-- @param port the port the TCP server is listening on.
+-- @return oks, fails; the number of successes and failures processed by the server
+-- @see tcp_server
 local function kill_tcp_server(port)
   local sock = ngx.socket.tcp()
   assert(sock:connect("localhost", port))
@@ -661,14 +1042,15 @@ local function kill_tcp_server(port)
   return tonumber(oks), tonumber(fails)
 end
 
---- Starts a HTTP server.
+
+--- Starts a local HTTP server.
 -- Accepts a single connection and then closes. Sends a 200 ok, 'Connection:
 -- close' response.
 -- If the request received has path `/delay` then the response will be delayed
 -- by 2 seconds.
 -- @name http_server
--- @param `port`    The port where the server will be listening to
--- @return `thread` A thread object
+-- @param `port` The port the server will be listening on
+-- @return A thread object (from the `llthreads2` Lua package)
 local function http_server(port, ...)
   local threads = require "llthreads2.ex"
   local thread = threads.new({
@@ -710,13 +1092,14 @@ local function http_server(port, ...)
   return thread:start(...)
 end
 
---- Starts a UDP server.
+
+--- Starts a local UDP server.
 -- Accepts a single connection, reading once and then closes
 -- @name udp_server
--- @param `port`    The port where the server will be listening to
--- @param `n`       The number of packets that will be received
+-- @param `port` The port the server will be listening on
+-- @param `n` The number of packets that will be read
 -- @param `timeout` Timeout per read
--- @return `thread` A thread object
+-- @return A thread object (from the `llthreads2` Lua package)
 local function udp_server(port, n, timeout)
   local threads = require "llthreads2.ex"
 
@@ -880,14 +1263,16 @@ end
 local say = require "say"
 local luassert = require "luassert.assert"
 
+
 --- Generic modifier "response".
 -- Will set a "response" value in the assertion state, so following
 -- assertions will operate on the value set.
 -- @name response
--- @param response results from `http_client:send` function.
+-- @param response_obj results from `http_client:send` function (or any of the
+-- shortcuts `client:get`, `client:post`, etc).
 -- @usage
--- local res = assert(client:send { .. your request parameters here ..})
--- local length = assert.response(res).has.header("Content-Length")
+-- local res = client:get("/request", { .. request options here ..})
+-- local response_length = assert.response(res).has.header("Content-Length")
 local function modifier_response(state, arguments, level)
   assert(arguments.n > 0,
         "response modifier requires a response object as argument")
@@ -904,16 +1289,23 @@ local function modifier_response(state, arguments, level)
 end
 luassert:register("modifier", "response", modifier_response)
 
+
 --- Generic modifier "request".
 -- Will set a "request" value in the assertion state, so following
 -- assertions will operate on the value set.
--- The request must be inside a 'response' from mock_upstream
+--
+-- The request must be inside a 'response' from the `mock_upstream`. If a request
+-- is send to the `mock_upstream` endpoint `"/request"`, it will echo the request
+-- received in the body of the response.
 -- @name request
--- @param response results from `http_client:send` function. The request will
--- be extracted from the response.
+-- @param response_obj results from `http_client:send` function (or any of the
+-- shortcuts `client:get`, `client:post`, etc).
 -- @usage
--- local res = assert(client:send { .. your request parameters here ..})
--- local length = assert.request(res).has.header("Content-Length")
+-- local res = client:post("/request", {
+--               headers = { ["Content-Type"] = "application/json" },
+--               body = { hello = "world" },
+--             })
+-- local request_length = assert.request(res).has.header("Content-Length")
 local function modifier_request(state, arguments, level)
   local generic = "The assertion 'request' modifier takes a http response"
                 .. " object as input to decode the json-body returned by"
@@ -944,11 +1336,13 @@ local function modifier_request(state, arguments, level)
 end
 luassert:register("modifier", "request", modifier_request)
 
+
 --- Generic fail assertion. A convenience function for debugging tests, always
 -- fails. It will output the values it was called with as a table, with an `n`
--- field to indicate the number of arguments received.
+-- field to indicate the number of arguments received. See also `intercept`.
 -- @name fail
 -- @param ... any set of parameters to be displayed with the failure
+-- @see intercept
 -- @usage
 -- assert.fail(some, value)
 local function fail(state, args)
@@ -966,13 +1360,14 @@ luassert:register("assertion", "fail", fail,
                   "assertion.fail.negative",
                   "assertion.fail.negative")
 
+
 --- Assertion to check whether a value lives in an array.
 -- @name contains
 -- @param expected The value to search for
 -- @param array The array to search for the value
--- @param pattern (optional) If thruthy, then `expected` is matched as a string
+-- @param pattern (optional) If truthy, then `expected` is matched as a Lua string
 -- pattern
--- @return the index at which the value was found
+-- @return the array index at which the value was found
 -- @usage
 -- local arr = { "one", "three" }
 -- local i = assert.contains("one", arr)        --> passes; i == 1
@@ -1003,12 +1398,13 @@ luassert:register("assertion", "contains", contains,
                   "assertion.contains.negative",
                   "assertion.contains.positive")
 
---- Assertion to check the statuscode of a http response.
+
+--- Assertion to check the status-code of a http response.
 -- @name status
 -- @param expected the expected status code
 -- @param response (optional) results from `http_client:send` function,
 -- alternatively use `response`.
--- @return the response body as a string
+-- @return the response body as a string, for a json body see `jsonbody`.
 -- @usage
 -- local res = assert(client:send { .. your request params here .. })
 -- local body = assert.has.status(200, res)             -- or alternativly
@@ -1089,9 +1485,12 @@ luassert:register("assertion", "status", res_status,
 luassert:register("assertion", "res_status", res_status,
                   "assertion.res_status.negative", "assertion.res_status.positive")
 
+
 --- Checks and returns a json body of an http response/request. Only checks
 -- validity of the json, does not check appropriate headers. Setting the target
--- to check can be done through `request` or `response`
+-- to check can be done through the `request` and `response` modifiers.
+--
+-- For a non-json body, see the `status` assertion.
 -- @name jsonbody
 -- @return the decoded json as a table
 -- @usage
@@ -1138,13 +1537,18 @@ luassert:register("assertion", "jsonbody", jsonbody,
                   "assertion.jsonbody.negative",
                   "assertion.jsonbody.positive")
 
---- Adds an assertion to look for a named header in a `headers` subtable.
+
+--- Asserts that a named header in a `headers` subtable exists.
 -- Header name comparison is done case-insensitive.
 -- @name header
 -- @param name header name to look for (case insensitive).
 -- @see response
 -- @see request
 -- @return value of the header
+-- @usage
+-- local res = client:get("/request", { .. request options here ..})
+-- local resp_header_value = assert.response(res).has.header("Content-Length")
+-- local req_header_value = assert.request(res).has.header("Content-Length")
 local function res_header(state, args)
   local header = args[1]
   local res = args[2] or rawget(state, "kong_request") or rawget(state, "kong_response")
@@ -1175,12 +1579,18 @@ luassert:register("assertion", "header", res_header,
                   "assertion.res_header.negative",
                   "assertion.res_header.positive")
 
+
 ---
--- An assertion to look for a query parameter in a query string
+-- An assertion to look for a query parameter in a query string.
 -- Parameter name comparison is done case-insensitive.
 -- @name queryparam
 -- @param name name of the query parameter to look up (case insensitive)
 -- @return value of the parameter
+-- @usage
+-- local res = client:get("/request", {
+--               query = { hello = "world" },
+--             })
+-- local param_value = assert.request(res).has.queryparam("hello")
 local function req_query_param(state, args)
   local param = args[1]
   local req = rawget(state, "kong_request")
@@ -1217,6 +1627,7 @@ luassert:register("assertion", "queryparam", req_query_param,
                   "assertion.req_query_param.negative",
                   "assertion.req_query_param.positive")
 
+
 ---
 -- Adds an assertion to look for a urlencoded form parameter in a request.
 -- Parameter name comparison is done case-insensitive. Use the `request` modifier to set
@@ -1224,6 +1635,18 @@ luassert:register("assertion", "queryparam", req_query_param,
 -- @name formparam
 -- @param name name of the form parameter to look up (case insensitive)
 -- @return value of the parameter
+-- @usage
+-- local r = assert(proxy_client:post("/request", {
+--   body    = {
+--     hello = "world",
+--   },
+--   headers = {
+--     host             = "mock_upstream",
+--     ["Content-Type"] = "application/x-www-form-urlencoded",
+--   },
+-- })
+-- local value = assert.request(r).has.formparam("hello")
+-- assert.are.equal("world", value)
 local function req_form_param(state, args)
   local param = args[1]
   local req = rawget(state, "kong_request")
@@ -1262,9 +1685,12 @@ luassert:register("assertion", "formparam", req_form_param,
                   "assertion.req_form_param.negative",
                   "assertion.req_form_param.positive")
 
+
 ---
--- Adds an assertion to ensure a value is greater than another.
+-- Assertion to ensure a value is greater than a base value.
 -- @name is_gt
+-- @param base the base value to compare against
+-- @param value the value that must be greater than the base value
 local function is_gt(state, arguments)
   local expected = arguments[1]
   local value = arguments[2]
@@ -1284,7 +1710,9 @@ luassert:register("assertion", "gt", is_gt,
                   "assertion.gt.negative",
                   "assertion.gt.positive")
 
+
 --- Assertion to check whether a CN is matched in an SSL cert.
+-- @name cn
 -- @param expected The CN value
 -- @param cert The cert
 -- @return boolean
@@ -1304,6 +1732,8 @@ Expected CN:
 Got instead:
 %s
 ]])
+-- TODO: this seems broken, there seem to be no tests. A nicer assertion would be
+-- assert.certificate.has.cn("somename.com")
 say:set("assertion.contains.positive", [[
 Expected certificate to not have the given CN value.
 Expected CN to not be:
@@ -1315,6 +1745,28 @@ luassert:register("assertion", "cn", assert_cn,
                   "assertion.cn.negative",
                   "assertion.cn.positive")
 
+
+----------------
+-- DNS-record mocking.
+-- These function allow to create mock dns records that the test Kong instance
+-- will use to resolve names. The created mocks are injected by the `start_kong`
+-- function.
+-- @usage
+-- -- Create a new DNS mock and add some DNS records
+-- local fixtures = {
+--   dns_mock = helpers.dns_mock.new()
+-- }
+--
+-- fixtures.dns_mock:SRV {
+--   name = "my.srv.test.com",
+--   target = "a.my.srv.test.com",
+--   port = 80,
+-- }
+-- fixtures.dns_mock:A {
+--   name = "a.my.srv.test.com",
+--   address = "127.0.0.1",
+-- }
+-- @section DNS-mocks
 
 
 local dns_mock = {}
@@ -1333,17 +1785,25 @@ do
   local TYPE_A, TYPE_AAAA, TYPE_CNAME, TYPE_SRV = 1, 28, 5, 33
 
 
-  --- Creates a new DNS mocks.
+  --- Creates a new DNS mock.
+  -- @name dns_mock.new
+  -- @return dns_mock object
   function dns_mock.new()
     return setmetatable({}, dns_mock)
   end
 
+
   --- Adds an SRV record to the DNS mock.
-  -- Fields name, target, port are required. Other fields get defaults:
-  -- weight (20), ttl (600), priority (20)
+  -- Fields `name`, `target`, and `port` are required. Other fields get defaults:
+  --
+  -- * `weight`; 20
+  -- * `ttl`; 600
+  -- * `priority`; 20
+  -- @param rec the mock DNS record to insert
+  -- @return true
   function dns_mock:SRV(rec)
     if self == dns_mock then
-      error("can't operate omn the class, you must create an instance", 2)
+      error("can't operate on the class, you must create an instance", 2)
     end
     if getmetatable(self or {}) ~= dns_mock then
       error("SRV method must be called using the colon notation", 2)
@@ -1373,11 +1833,14 @@ do
 
 
   --- Adds an A record to the DNS mock.
-  -- Fields name, address are required. Other fields get defaults:
-  -- ttl (600)
+  -- Fields `name` and `address` are required. Other fields get defaults:
+  --
+  -- * `ttl`; 600
+  -- @param rec the mock DNS record to insert
+  -- @return true
   function dns_mock:A(rec)
     if self == dns_mock then
-      error("can't operate omn the class, you must create an instance", 2)
+      error("can't operate on the class, you must create an instance", 2)
     end
     if getmetatable(self or {}) ~= dns_mock then
       error("A method must be called using the colon notation", 2)
@@ -1404,11 +1867,14 @@ do
 
 
   --- Adds an AAAA record to the DNS mock.
-  -- Fields name, address are required. Other fields get defaults:
-  -- ttl (600)
+  -- Fields `name` and `address` are required. Other fields get defaults:
+  --
+  -- * `ttl`; 600
+  -- @param rec the mock DNS record to insert
+  -- @return true
   function dns_mock:AAAA(rec)
     if self == dns_mock then
-      error("can't operate omn the class, you must create an instance", 2)
+      error("can't operate on the class, you must create an instance", 2)
     end
     if getmetatable(self or {}) ~= dns_mock then
       error("AAAA method must be called using the colon notation", 2)
@@ -1434,12 +1900,15 @@ do
   end
 
 
-  --- Adds an CNAME record to the DNS mock.
-  -- Fields name, cname are required. Other fields get defaults:
-  -- ttl (600)
+  --- Adds a CNAME record to the DNS mock.
+  -- Fields `name` and `cname` are required. Other fields get defaults:
+  --
+  -- * `ttl`; 600
+  -- @param rec the mock DNS record to insert
+  -- @return true
   function dns_mock:CNAME(rec)
     if self == dns_mock then
-      error("can't operate omn the class, you must create an instance", 2)
+      error("can't operate on the class, you must create an instance", 2)
     end
     if getmetatable(self or {}) ~= dns_mock then
       error("CNAME method must be called using the colon notation", 2)
@@ -1465,6 +1934,7 @@ do
   end
 end
 
+
 ----------------
 -- Shell helpers
 -- @section Shell-helpers
@@ -1473,13 +1943,13 @@ end
 -- Modified version of `pl.utils.executeex()` so the output can directly be
 -- used on an assertion.
 -- @name execute
--- @param cmd command to execute
+-- @param cmd command string to execute
 -- @param pl_returns (optional) boolean: if true, this function will
 -- return the same values as Penlight's executeex.
--- @return if pl_returns is true, returns four return values
--- (ok, code, stdout, stderr); if pl_returns is false,
+-- @return if `pl_returns` is true, returns four return values
+-- (ok, code, stdout, stderr); if `pl_returns` is false,
 -- returns either (false, stderr) or (true, stderr, stdout).
-local function exec(cmd, pl_returns)
+function exec(cmd, pl_returns)
   local ok, code, stdout, stderr = pl_utils.executeex(cmd)
   if pl_returns then
     return ok, code, stdout, stderr
@@ -1490,6 +1960,7 @@ local function exec(cmd, pl_returns)
   return ok, stderr, stdout
 end
 
+
 --- Execute a Kong command.
 -- @name kong_exec
 -- @param cmd Kong command to execute, eg. `start`, `stop`, etc.
@@ -1497,11 +1968,11 @@ end
 -- variables, overriding the test config (each key will automatically be
 -- prefixed with `KONG_` and be converted to uppercase)
 -- @param pl_returns (optional) boolean: if true, this function will
--- return the same values as Penlight's executeex.
+-- return the same values as Penlight's `executeex`.
 -- @param env_vars (optional) a string prepended to the command, so
 -- that arbitrary environment variables may be passed
--- @return if pl_returns is true, returns four return values
--- (ok, code, stdout, stderr); if pl_returns is false,
+-- @return if `pl_returns` is true, returns four return values
+-- (ok, code, stdout, stderr); if `pl_returns` is false,
 -- returns either (false, stderr) or (true, stderr, stdout).
 local function kong_exec(cmd, env, pl_returns, env_vars)
   cmd = cmd or ""
@@ -1532,6 +2003,7 @@ local function kong_exec(cmd, env, pl_returns, env_vars)
   return exec(env_vars .. " " .. BIN_PATH .. " " .. cmd, pl_returns)
 end
 
+
 --- Prepares the Kong environment.
 -- Creates the working directory if it does not exist.
 -- @param prefix (optional) path to the working directory, if omitted the test
@@ -1540,6 +2012,7 @@ end
 local function prepare_prefix(prefix)
   return pl_dir.makepath(prefix or conf.prefix)
 end
+
 
 --- Cleans the Kong environment.
 -- Deletes the working directory if it exists.
@@ -1553,26 +2026,8 @@ local function clean_prefix(prefix)
   end
 end
 
---- Waits for invalidation of a cached key by polling the mgt-api
--- and waiting for a 404 response.
--- @name wait_for_invalidation
--- @param key the cache-key to check
--- @param timeout (optional) in seconds, defaults to 10.
-local function wait_for_invalidation(key, timeout)
-  local api_client = admin_client()
-  timeout = timeout or 10
-  wait_until(function()
-    local res = assert(api_client:send {
-      method = "GET",
-      path = "/cache/" .. key,
-      headers = {}
-    })
-    res:read_body()
-    return res.status == 404
-  end, timeout)
-end
 
-
+-- Reads the pid from a pid file and returns it, or nil + err
 local function get_pid_from_file(pid_path)
   local pid
   local fd, err = io.open(pid_path)
@@ -1587,7 +2042,7 @@ local function get_pid_from_file(pid_path)
 end
 
 
---- Waits for the termination of a pid.
+-- Waits for the termination of a pid.
 -- @param pid_path Filename of the pid file.
 -- @param timeout (optional) in seconds, defaults to 10.
 local function wait_pid(pid_path, timeout, is_retry)
@@ -1616,47 +2071,24 @@ local function wait_pid(pid_path, timeout, is_retry)
   end
 end
 
--- Return the actual configuration running at the given prefix.
+
+--- Return the actual configuration running at the given prefix.
 -- It may differ from the default, as it may have been modified
 -- by the `env` table given to start_kong.
+-- @name get_running_conf
 -- @param prefix The prefix path where the kong instance is running
--- @return The conf table of the running instance, or nil on error.
+-- @return The conf table of the running instance, or nil + error.
 local function get_running_conf(prefix)
   local default_conf = conf_loader(nil, {prefix = prefix or conf.prefix})
   return conf_loader.load_config_file(default_conf.kong_env)
 end
 
 
--- Prepopulate Schema's cache
-Schema.new(consumers_schema_def)
-Schema.new(services_schema_def)
-Schema.new(routes_schema_def)
-
-local plugins_schema = assert(Entity.new(plugins_schema_def))
-
-local function validate_plugin_config_schema(config, schema_def)
-  assert(plugins_schema:new_subschema(schema_def.name, schema_def))
-  local entity = {
-    id = utils.uuid(),
-    name = schema_def.name,
-    config = config
-  }
-  local entity_to_insert, err = plugins_schema:process_auto_fields(entity, "insert")
-  if err then
-    return nil, err
-  end
-  local _, err = plugins_schema:validate_insert(entity_to_insert)
-  if err then return
-    nil, err
-  end
-  return entity_to_insert
-end
-
-
 --- Return the actual Kong version the tests are running against.
--- See [version.lua](https://github.com/kong/version.lua) for the format. This is mostly useful for testing plugins
--- that should work with multiple Kong versions.
--- @return a `version`
+-- See [version.lua](https://github.com/kong/version.lua) for the format. This
+-- is mostly useful for testing plugins that should work with multiple Kong versions.
+-- @name get_version
+-- @return a `version` object
 -- @usage
 -- local version = require 'version'
 -- if helpers.get_version() < version("0.15.0") then
@@ -1720,6 +2152,67 @@ local function build_go_plugins(path)
   end
 end
 
+
+--- Start the Kong instance to test against.
+-- The fixtures passed to this function can be 3 types:
+--
+-- * DNS mocks
+--
+-- * Nginx server blocks to be inserted in the http module
+--
+-- * Nginx server blocks to be inserted in the stream module
+-- @name start_kong
+-- @param env table with Kong configuration parameters (and values)
+-- @param tables list of database tables to truncate before starting
+-- @param preserve_prefix (boolean) if truthy, the prefix will not be cleaned
+-- before starting
+-- @param fixtures tables with fixtures, dns, http and stream mocks.
+-- @return return values from `execute`
+-- @usage
+-- -- example mocks
+-- -- Create a new DNS mock and add some DNS records
+-- local fixtures = {
+--   http_mock = {},
+--   stream_mock = {},
+--   dns_mock = helpers.dns_mock.new()
+-- }
+--
+-- fixtures.dns_mock:A {
+--   name = "a.my.srv.test.com",
+--   address = "127.0.0.1",
+-- }
+--
+-- -- The blocks below will be rendered by the Kong template renderer, like other
+-- -- custom Kong templates. Hence the `${{xxxx}}` values.
+-- -- Multiple mocks can be added each under their own filename ("my_server_block" below)
+-- fixtures.http_mock.my_server_block = [[
+--      server {
+--          server_name my_server;
+--          listen 10001 ssl;
+--
+--          ssl_certificate ${{SSL_CERT}};
+--          ssl_certificate_key ${{SSL_CERT_KEY}};
+--          ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+--
+--          location ~ "/echobody" {
+--            content_by_lua_block {
+--              ngx.req.read_body()
+--              local echo = ngx.req.get_body_data()
+--              ngx.status = status
+--              ngx.header["Content-Length"] = #echo + 1
+--              ngx.say(echo)
+--            }
+--          }
+--      }
+--    ]]
+--
+-- fixtures.stream_mock.my_server_block = [[
+--      server {
+--        -- insert stream server config here
+--      }
+--    ]]
+--
+-- assert(helpers.start_kong( {database = "postgres"}, nil, nil, fixtures))
 local function start_kong(env, tables, preserve_prefix, fixtures)
   if tables ~= nil and type(tables) ~= "table" then
     error("arg #2 must be a list of tables to truncate")
@@ -1777,6 +2270,12 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
 end
 
 
+-- Stop the Kong test instance.
+-- @name stop_kong
+-- @param prefix (optional) the prefix where the test instance runs, defaults to the test configuration.
+-- @param preserve_prefix (boolean) if truthy, the prefix will not be deleted after stopping
+-- @param preserve_dc
+-- @return true or nil+err
 local function stop_kong(prefix, preserve_prefix, preserve_dc)
   prefix = prefix or conf.prefix
 
@@ -1810,175 +2309,50 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc)
 end
 
 
--- Restart Kong, reusing declarative config when using database=off
+--- Restart Kong. Reusing declarative config when using `database=off`.
+-- @name restart_kong
+-- @param env see `start_kong`
+-- @param tables see `start_kong`
+-- @param fixtures see `start_kong`
+-- @return true or nil+err
 local function restart_kong(env, tables, fixtures)
   stop_kong(env.prefix, true, true)
   return start_kong(env, tables, true, fixtures)
 end
 
 
-local function make_yaml_file(content, filename)
-  if not filename then
-    filename = os.tmpname()
-    os.rename(filename, filename .. ".yml")
-    filename = filename .. ".yml"
-  end
-  local fd = assert(io.open(filename, "w"))
-  assert(fd:write(unindent(content)))
-  assert(fd:write("\n")) -- ensure last line ends in newline
-  assert(fd:close())
-  return filename
-end
-
--- Generate grpcurl flags from a table of `flag-value`. If `value` is not a
--- string, value is ignored and `flag` is passed as is.
-local function gen_grpcurl_opts(opts_t)
-  local opts_l = {}
-
-  for opt, val in pairs(opts_t) do
-    if val ~= false then
-      opts_l[#opts_l + 1] = opt .. " " .. (type(val) == "string" and val or "")
-    end
-  end
-
-  return table.concat(opts_l, " ")
-end
+----------------
+-- Variables/constants
+-- @section exported-fields
 
 
---- Creates an HTTP/2 client, based on the lua-http library.
--- @name http2_client
--- @param host hostname to connect to
--- @param port port to connect to
--- @param tls boolean indicating whether to establish a tls session
--- @return http2 client
-local function http2_client(host, port, tls)
-  local host = assert(host)
-  local port = assert(port)
-  tls = tls or false
-
-  local request = require "http.request"
-  local req = request.new_from_uri({
-    scheme = tls and "https" or "http",
-    host = host,
-    port = port,
-  })
-  req.version = 2
-  req.tls = tls
-
-  if tls then
-    local http_tls = require "http.tls"
-    local openssl_ctx = require "openssl.ssl.context"
-    local n_ctx = http_tls.new_client_context()
-    n_ctx:setVerify(openssl_ctx.VERIFY_NONE)
-    req.ctx = n_ctx
-  end
-
-  local meta = getmetatable(req) or {}
-
-  meta.__call = function(req, opts)
-    local headers = opts and opts.headers
-    local timeout = opts and opts.timeout
-
-    for k, v in pairs(headers or {}) do
-      req.headers:upsert(k, v)
-    end
-
-    local headers, stream = req:go(timeout)
-    local body = stream:get_body_as_string()
-    return body, headers
-  end
-
-  return setmetatable(req, meta)
-end
-
---- returns a pre-configured cleartext `http2_client` for the Kong proxy port.
--- @name proxy_client_h2c
-local function proxy_client_h2c()
-  local proxy_ip = get_proxy_ip(false, true)
-  local proxy_port = get_proxy_port(false, true)
-  assert(proxy_ip, "No http-proxy found in the configuration")
-  return http2_client(proxy_ip, proxy_port)
-end
-
---- returns a pre-configured TLS `http2_client` for the Kong SSL proxy port.
--- @name proxy_client_h2
-local function proxy_client_h2()
-  local proxy_ip = get_proxy_ip(true, true)
-  local proxy_port = get_proxy_port(true, true)
-  assert(proxy_ip, "No https-proxy found in the configuration")
-  return http2_client(proxy_ip, proxy_port, true)
-end
-
-
---- Creates a gRPC client, based on the grpcurl CLI.
--- @name grpc_client
--- @param host hostname to connect to
--- @param port port to connect to
--- @param opts table with options supported by grpcurl
--- @return grpc client
-local function grpc_client(host, port, opts)
-  local host = assert(host)
-  local port = assert(tostring(port))
-
-  opts = opts or {}
-  if not opts["-proto"] then
-    opts["-proto"] = MOCK_GRPC_UPSTREAM_PROTO_PATH
-  end
-
-  return setmetatable({
-    opts = opts,
-    cmd_template = string.format("bin/grpcurl %%s %s:%s %%s", host, port)
-
-  }, {
-    __call = function(t, args)
-      local service = assert(args.service)
-      local body = args.body
-
-      local t_body = type(body)
-      if t_body ~= "nil" then
-        if t_body == "table" then
-          body = cjson.encode(body)
-        end
-
-        args.opts["-d"] = string.format("'%s'", body)
-      end
-
-      local opts = gen_grpcurl_opts(pl_tablex.merge(t.opts, args.opts, true))
-      local ok, err, out = exec(string.format(t.cmd_template, opts, service))
-
-      if ok then
-        return ok, out
-      else
-        return nil, err
-      end
-    end
-  })
-end
-
---- returns a pre-configured `grpc_client` for the Kong proxy port.
--- @name proxy_client_grpc
-local function proxy_client_grpc(host, port)
-  local proxy_ip = host or get_proxy_ip(false, true)
-  local proxy_port = port or get_proxy_port(false, true)
-  assert(proxy_ip, "No http-proxy found in the configuration")
-  return grpc_client(proxy_ip, proxy_port, {["-plaintext"] = true})
-end
-
---- returns a pre-configured `grpc_client` for the Kong SSL proxy port.
--- @name proxy_client_grpcs
-local function proxy_client_grpcs(host, port)
-  local proxy_ip = host or get_proxy_ip(true, true)
-  local proxy_port = port or get_proxy_port(true, true)
-  assert(proxy_ip, "No https-proxy found in the configuration")
-  return grpc_client(proxy_ip, proxy_port, {["-insecure"] = true})
-end
-
+--- Below is a list of fields/constants exported on the `helpers` module table:
+-- @table helpers
+-- @field dir The [`pl.dir` module of Penlight](http://tieske.github.io/Penlight/libraries/pl.dir.html)
+-- @field path The [`pl.path` module of Penlight](http://tieske.github.io/Penlight/libraries/pl.path.html)
+-- @field file The [`pl.file` module of Penlight](http://tieske.github.io/Penlight/libraries/pl.file.html)
+-- @field utils The [`pl.utils` module of Penlight](http://tieske.github.io/Penlight/libraries/pl.utils.html)
+-- @field test_conf The Kong test configuration. See also `get_running_conf` which might be slightly different.
+-- @field test_conf_path The configuration file in use.
+-- @field mock_upstream_hostname
+-- @field mock_upstream_protocol
+-- @field mock_upstream_host
+-- @field mock_upstream_port
+-- @field mock_upstream_url Base url constructed from the components
+-- @field mock_upstream_ssl_protocol
+-- @field mock_upstream_ssl_host
+-- @field mock_upstream_ssl_port
+-- @field mock_upstream_ssl_url Base url constructed from the components
+-- @field mock_upstream_stream_port
+-- @field mock_upstream_stream_ssl_port
+-- @field mock_grpc_upstream_proto_path
+-- @field redis_host The hostname for a Redis instance if available. Port should be `6379`.
 
 ----------
 -- Exposed
 ----------
 -- @export
-return {
+  return {
   -- Penlight
   dir = pl_dir,
   path = pl_path,
@@ -1994,6 +2368,7 @@ return {
   bin_path = BIN_PATH,
   test_conf = conf,
   test_conf_path = TEST_CONF_PATH,
+  go_plugin_path = GO_PLUGIN_PATH,
   mock_upstream_hostname = MOCK_UPSTREAM_HOSTNAME,
   mock_upstream_protocol = MOCK_UPSTREAM_PROTOCOL,
   mock_upstream_host     = MOCK_UPSTREAM_HOST,
@@ -2053,6 +2428,9 @@ return {
   intercept = intercept,
   openresty_ver_num = openresty_ver_num(),
   unindent = unindent,
+  make_yaml_file = make_yaml_file,
+  setenv = setenv,
+  unsetenv = unsetenv,
 
   -- launching Kong subprocesses
   start_kong = start_kong,
@@ -2087,13 +2465,4 @@ return {
 
     return kill.kill(pid_path, signal)
   end,
-  setenv = function(env, value)
-    return ffi.C.setenv(env, value, 1) == 0
-  end,
-  unsetenv = function(env)
-    return ffi.C.unsetenv(env) == 0
-  end,
-
-  make_yaml_file = make_yaml_file,
-  go_plugin_path = GO_PLUGIN_PATH,
 }
