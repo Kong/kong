@@ -313,14 +313,7 @@ for _, strategy in helpers.each_strategy() do
 
       local cache_key = db.plugins:cache_key(plugin)
 
-      helpers.wait_until(function()
-        res = assert(admin_client:send {
-          method = "GET",
-          path   = "/cache/" .. cache_key
-        })
-        res:read_body()
-        return res.status ~= 200
-      end)
+      helpers.wait_for_invalidation(cache_key)
 
       local res = assert(proxy_client:send {
         method  = "GET",
