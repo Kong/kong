@@ -2,7 +2,7 @@
 
 ![Build Status](https://travis-ci.com/Kong/kong-plugin-acme.svg?branch=master)
 
-This plugin allows Kong to apply cerificates from Let's Encrypt or any other ACMEv2 service
+This plugin allows Kong to apply certificates from Let's Encrypt or any other ACMEv2 service
 and serve dynamically. Renewal is handled with a configurable threshold time.
 
 ### Using the Plugin
@@ -166,6 +166,6 @@ in database, they will be overwritten.
 Certificate entity is already defined in Kong, they will be overrided from
 response.
 - The plugin only supports http-01 challenge, meaning user will need a public
-IP and setup resolvable DNS. And Kong needs to accept proxy traffic from 80 port.
-And wildcard or star certificate is not supported, each domain will have its own
-certificate.
+IP and setup resolvable DNS. Kong also needs to accept proxy traffic from port `80`.
+Also, note that wildcard or star certificate is not supported, each domain will have its
+own certificate.
