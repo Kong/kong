@@ -25,14 +25,24 @@ local function fetch_consumer(self, helpers, db, consumer_id)
   end
 end
 
-local function influx_query(q)
+local function influx_query(query)
   local db = "kong"
-  local influx_address = kong.configuration.vitals_tsdb_address
+  local address = kong.configuration.vitals_tsdb_address
+  local user = kong.configuration.vitals_tsdb_user
+  local password = kong.configuration.vitals_tsdb_user
+  if address:sub(1, #"http") ~= "http" then
+    address = "http://" .. address
+  end
   local httpc = http.new()
+  local data = { address = address, db = db, query = ngx.escape_uri(query) }
+  local url = string.gsub("$address/query?db=$db&epoch=s&q=$query", "%$(%w+)", data)
+  local headers = {}
 
-  local res, err = httpc:request_uri(influx_address ..
-    "/query?db=" .. db .. "&epoch=s&q=" .. ngx.escape_uri(q)
-  )
+  if user ~= nil and password ~= nil then
+    headers = { Authorization = ngx.encode_base64(user .. ":" .. password)}
+  end
+
+  local res, err = httpc:request_uri(url, { headers = headers})
   if not res then
     error(err)
   end
@@ -50,6 +60,35 @@ local function influx_query(q)
   else
     return {}
   end
+end
+
+local function requests_report_by(entity, start_ts)
+  start_ts = start_ts or 36000
+  local query = 'SELECT count(status) FROM kong.autogen.kong_request' ..
+    ' WHERE time > now() - ' .. ngx.time() - start_ts .. 's' ..
+    ' GROUP BY ' .. entity .. ', status_f'
+  local result = influx_query(query)
+  local stats = {}
+  for i, row in pairs(result) do
+    local keys = {
+      consumer = row.tags.consumer,
+      service = row.tags.service,
+      node = row.tags.node
+    }
+    if stats[keys[entity]] == nil then
+      stats[keys[entity]] = {}
+    end
+
+
+    local status_group = tostring(row.tags.status_f):sub(1, 1) .. 'XX'
+
+    local current_total = stats[keys[entity]]['total'] or 0
+    local current_status = stats[keys[entity]][status_group] or 0
+
+    stats[keys[entity]]['total'] = current_total + row.values[1][2]
+    stats[keys[entity]][status_group] = current_status + row.values[1][2]
+  end
+  return stats
 end
 
 return {
@@ -333,21 +372,19 @@ return {
 
   ["/vitals/reports/consumer"] = {
     GET = function(self, dao, helpers)
-      local query = 'SELECT count(status) FROM kong.autogen.kong_request GROUP BY consumer, status_f'
-      local result = influx_query(query)
-      local stats = {}
-      for i, row in pairs(result) do
-        if stats[row.tags.consumer] == nil then
-          stats[row.tags.consumer] = {}
-        end
+      return kong.response.exit(200, requests_report_by("consumer", self.params.start_ts))
+    end
+  },
 
-        current_total = stats[row.tags.consumer]['total'] or 0
-        current_status = stats[row.tags.consumer][row.tags.status_f] or 0
+  ["/vitals/reports/service"] = {
+    GET = function(self, dao, helpers)
+      return kong.response.exit(200, requests_report_by("service", self.params.start_ts))
+    end
+  },
 
-        stats[row.tags.consumer]['total'] = current_total + row.values[1][2]
-        stats[row.tags.consumer][row.tags.status_f] = current_status + row.values[1][2]
-      end
-      return kong.response.exit(200, stats)
+  ["/vitals/reports/node"] = {
+    GET = function(self, dao, helpers)
+      return kong.response.exit(200, requests_report_by("node", self.params.start_ts))
     end
   },
 }
