@@ -145,6 +145,20 @@ function _M.register_rbac_resources(db, ws)
 end
 
 
+--- returns a pre-configured `http_client` for the Kong admin gui.
+-- @name admin_gui_client
+function _M.admin_gui_client(timeout, forced_port)
+  local admin_ip, admin_port
+  for _, entry in ipairs(_M.admin_gui_listeners) do
+    if entry.ssl == false then
+      admin_ip = entry.ip
+      admin_port = entry.port
+    end
+  end
+  assert(admin_ip, "No http-admin found in the configuration")
+  return helpers.http_client(admin_ip, forced_port or admin_port, timeout or 60000)
+end
+
 --- Returns the Dev Portal port.
 -- @param ssl (boolean) if `true` returns the ssl port
 local function get_portal_api_port(ssl)
@@ -264,5 +278,6 @@ end
 local http_flags = { "ssl", "http2", "proxy_protocol", "transparent" }
 _M.portal_api_listeners = conf_loader.parse_listeners(helpers.test_conf.portal_api_listen, http_flags)
 _M.portal_gui_listeners = conf_loader.parse_listeners(helpers.test_conf.portal_gui_listen, http_flags)
+_M.admin_gui_listeners = conf_loader.parse_listeners(helpers.test_conf.admin_gui_listen, http_flags)
 
 return _M

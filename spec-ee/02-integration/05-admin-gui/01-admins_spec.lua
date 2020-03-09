@@ -93,6 +93,30 @@ for _, strategy in helpers.each_strategy() do
       db:truncate("basicauth_credentials")
     end)
 
+    describe("/kconfig.js", function()
+      local gui_client
+
+      before_each(function()
+        gui_client = assert(ee_helpers.admin_gui_client())
+      end)
+  
+      after_each(function()
+        if gui_client then gui_client:close() end
+      end)
+
+      it("GET", function()
+        local res = assert(gui_client:send {
+          method = "GET",
+          path = "/kconfig.js",
+          headers = {
+            ["Kong-Admin-Token"] = "letmein-default",
+          },
+        })
+
+        assert.res_status(200, res)
+      end)
+    end)
+
     describe("/admins", function()
       describe("GET", function ()
         it("retrieves list of admins only", function()
