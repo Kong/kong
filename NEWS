@@ -1,3 +1,22 @@
+1.0.0 - 2020-03-09
+
+This version of the plugin has changed enough to be named 1.0.0.
+
+One of the biggest differences from previous versions is that it
+is independent from opentracing, while still being compatible with
+Zipkin (#64). This allowed simplifying the plugin code and removing
+3 external dependencies.
+
+New features:
+  - Handling of B3 single header (#66)
+
+Fixes:
+  - Stopped tagging non-erroneous spans with `error=false` (#63)
+  - Changed the structure of `localEndpoint` and `remoteEndpoint` (#63)
+  - Store annotation times in microseconds (#71)
+  - Prevent an error triggered when timing-related kong variables
+    were not present (#71)
+
 0.2.1 - 2019-12-20
 
   - Fixed incompatibilities in timestamps and annotations. Shortened annotations (#60)
