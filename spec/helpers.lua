@@ -59,7 +59,13 @@ log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 
 -- Add to package path so dao helpers can insert custom plugins
 -- (while running from the busted environment)
-package.path = CUSTOM_PLUGIN_PATH .. ";" .. package.path
+do
+  local paths = {}
+  table.insert(paths, os.getenv("KONG_LUA_PACKAGE_PATH"))
+  table.insert(paths, CUSTOM_PLUGIN_PATH)
+  table.insert(paths, package.path)
+  package.path = table.concat(paths, ";")
+end
 
 -- Extract the current OpenResty version in use and returns
 -- a numerical representation of it.
