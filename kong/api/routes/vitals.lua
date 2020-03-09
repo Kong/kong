@@ -1,4 +1,7 @@
 local endpoints = require "kong.api.endpoints"
+local http  = require "resty.http"
+local cjson = require "cjson"
+local inspect = require "inspect"
 
 
 local kong = kong
@@ -7,7 +10,6 @@ local kong = kong
 if not kong.configuration.vitals then
   return {}
 end
-
 
 local function fetch_consumer(self, helpers, db, consumer_id)
   if not consumer_id then
@@ -20,6 +22,33 @@ local function fetch_consumer(self, helpers, db, consumer_id)
   self.consumer = endpoints.select_entity(self, db, db.consumers.schema)
   if not self.consumer then
     return kong.response.exit(404, { message = "Not found" })
+  end
+end
+
+local function influx_query(q)
+  local db = "kong"
+  local influx_address = kong.configuration.vitals_tsdb_address
+  local httpc = http.new()
+
+  local res, err = httpc:request_uri(influx_address ..
+    "/query?db=" .. db .. "&epoch=s&q=" .. ngx.escape_uri(q)
+  )
+  if not res then
+    error(err)
+  end
+
+  if res.status ~= 200 then
+    error(res.body)
+  end
+
+  local qres = cjson.decode(res.body)
+
+  if #qres.results == 1 and qres.results[1].series then
+    return qres.results[1].series
+  elseif #qres.results > 1 then
+    return qres.results
+  else
+    return {}
   end
 end
 
@@ -299,6 +328,26 @@ return {
       end
 
       return kong.response.exit(200, res)
+    end
+  },
+
+  ["/vitals/reports/consumer"] = {
+    GET = function(self, dao, helpers)
+      local query = 'SELECT count(status) FROM kong.autogen.kong_request GROUP BY consumer, status_f'
+      local result = influx_query(query)
+      local stats = {}
+      for i, row in pairs(result) do
+        if stats[row.tags.consumer] == nil then
+          stats[row.tags.consumer] = {}
+        end
+
+        current_total = stats[row.tags.consumer]['total'] or 0
+        current_status = stats[row.tags.consumer][row.tags.status_f] or 0
+
+        stats[row.tags.consumer]['total'] = current_total + row.values[1][2]
+        stats[row.tags.consumer][row.tags.status_f] = current_status + row.values[1][2]
+      end
+      return kong.response.exit(200, stats)
     end
   },
 }
