@@ -264,14 +264,10 @@ function _M.handle_cp_websocket()
       end
 
       assert(typ == "ping")
-      local _
-      _, err = wb:send_pong()
-      if err then
-        ngx_log(ngx_ERR, "failed to send PONG back to data plane: ", err)
-        return ngx_exit(ngx_ERR)
-      end
 
-      ngx_log(ngx_DEBUG, "sent PONG packet to control plane")
+      -- queue PONG to avoid races
+      table_insert(queue, "PONG")
+      queue.sem:post()
 
       local ok
       ok, err = shdict:safe_set(node_id,
@@ -294,12 +290,24 @@ function _M.handle_cp_websocket()
       local payload = table_remove(queue, 1)
       assert(payload, "config queue can not be empty after semaphore returns")
 
-      local _, err = wb:send_binary(payload)
-      if err then
-        ngx_log(ngx_ERR, "unable to send updated configuration to node: ", err)
+      if payload == "PONG" then
+        local _
+        _, err = wb:send_pong()
+        if err then
+          ngx_log(ngx_ERR, "failed to send PONG back to data plane: ", err)
+          return ngx_exit(ngx_ERR)
+        end
 
-      else
-        ngx_log(ngx_DEBUG, "sent config update to node")
+        ngx_log(ngx_DEBUG, "sent PONG packet to data plane")
+
+      else -- config update
+        local _, err = wb:send_binary(payload)
+        if err then
+          ngx_log(ngx_ERR, "unable to send updated configuration to node: ", err)
+
+        else
+          ngx_log(ngx_DEBUG, "sent config update to node")
+        end
       end
 
     else -- not ok
