@@ -11,26 +11,31 @@
 local ffi = require "ffi"
 local uuid = require "resty.jit-uuid"
 local pl_stringx = require "pl.stringx"
+local pl_stringio = require "pl.stringio"
+local zlib = require "ffi-zlib"
 
-local C          = ffi.C
-local ffi_fill   = ffi.fill
-local ffi_new    = ffi.new
-local ffi_str    = ffi.string
-local type       = type
-local pairs      = pairs
-local ipairs     = ipairs
-local select     = select
-local tostring   = tostring
-local sort       = table.sort
-local concat     = table.concat
-local insert     = table.insert
-local lower      = string.lower
-local fmt        = string.format
-local find       = string.find
-local gsub       = string.gsub
-local split      = pl_stringx.split
-local re_find    = ngx.re.find
-local re_match   = ngx.re.match
+local C             = ffi.C
+local ffi_fill      = ffi.fill
+local ffi_new       = ffi.new
+local ffi_str       = ffi.string
+local type          = type
+local pairs         = pairs
+local ipairs        = ipairs
+local select        = select
+local tostring      = tostring
+local sort          = table.sort
+local concat        = table.concat
+local insert        = table.insert
+local lower         = string.lower
+local fmt           = string.format
+local find          = string.find
+local gsub          = string.gsub
+local split         = pl_stringx.split
+local re_find       = ngx.re.find
+local re_match      = ngx.re.match
+local inflate_gzip  = zlib.inflateGzip
+local deflate_gzip  = zlib.deflateGzip
+local stringio_open = pl_stringio.open
 
 ffi.cdef[[
 typedef unsigned char u_char;
@@ -994,6 +999,48 @@ function _M.bytes_to_str(bytes, unit, scale)
   end
 
   error("invalid unit '" .. unit .. "' (expected 'k/K', 'm/M', or 'g/G')", 2)
+end
+
+
+do
+  -- lua-ffi-zlib allocated buffer of length +1,
+  -- so use 64KB - 1 instead
+  local GZIP_CHUNK_SIZE = 65535
+
+  local function gzip_helper(op, input)
+    local f = stringio_open(input)
+    local output_table = {}
+    local output_table_n = 0
+
+    local res, err = op(function(size)
+      return f:read(size)
+    end,
+    function(res)
+      output_table_n = output_table_n + 1
+      output_table[output_table_n] = res
+    end, GZIP_CHUNK_SIZE)
+
+    if not res then
+      return nil, err
+    end
+
+    return concat(output_table)
+  end
+
+  --- Gzip compress the content of a string
+  -- @tparam string str the uncompressed string
+  -- @return gz (string) of the compressed content, or nil, err to if an error occurs
+  function _M.deflate_gzip(str)
+    return gzip_helper(deflate_gzip, str)
+  end
+
+
+  --- Gzip decompress the content of a string
+  -- @tparam string gz the Gzip compressed string
+  -- @return str (string) of the decompressed content, or nil, err to if an error occurs
+  function _M.inflate_gzip(gz)
+    return gzip_helper(inflate_gzip, gz)
+  end
 end
 
 

@@ -24,9 +24,13 @@ local ngx_time = ngx.time
 local new_tab = require("table.new")
 local ngx_var = ngx.var
 local io_open = io.open
+local table_insert = table.insert
+local table_remove = table.remove
+local inflate_gzip = utils.inflate_gzip
+local deflate_gzip = utils.deflate_gzip
 
 
-local MAX_PAYLOAD = 65536 -- 64KB
+local MAX_PAYLOAD = 4 * 1024 * 1024 -- 4MB
 local PING_INTERVAL = 30 -- 30 seconds
 local WS_OPTS = {
   max_payload_len = MAX_PAYLOAD,
@@ -40,7 +44,7 @@ local CERT, CERT_KEY
 local clients = setmetatable({}, WEAK_KEY_MT)
 local shdict = ngx.shared.kong_clustering -- only when role == "control_plane"
 local prefix = ngx.config.prefix()
-local CONFIG_CACHE = prefix .. "/config.cache.json"
+local CONFIG_CACHE = prefix .. "/config.cache.json.gz"
 local declarative_config
 
 
@@ -77,7 +81,7 @@ local function update_config(config_table, update_cache)
 
     else
       local res
-      res, err = f:write(cjson_encode(config_table))
+      res, err = f:write(assert(deflate_gzip(cjson_encode(config_table))))
       if not res then
         ngx_log(ngx_ERR, "unable to write cache file: ", err)
       end
@@ -165,6 +169,8 @@ local function communicate(premature, conf)
     end
 
     if typ == "binary" then
+      data = assert(inflate_gzip(data))
+
       local msg = assert(cjson_decode(data))
 
       if msg.type == "reconfigure" then
@@ -230,16 +236,22 @@ function _M.handle_cp_websocket()
   local queue = { sem = sem, }
   clients[wb] = queue
 
-  local res
-  -- unconditionally send config update to new clients to
-  -- ensure they have latest version running
-  res, err = declarative.export_config()
-  if not res then
-    ngx_log(ngx_ERR, "unable to export config from database: ".. err)
-  end
+  do
+    local res
+    -- unconditionally send config update to new clients to
+    -- ensure they have latest version running
+    res, err = declarative.export_config()
+    if not res then
+      ngx_log(ngx_ERR, "unable to export config from database: ".. err)
+    end
 
-  table.insert(queue, res)
-  queue.sem:post()
+    local payload = cjson_encode({ type = "reconfigure",
+                                   config_table = res,
+                                 })
+    payload = assert(deflate_gzip(payload))
+    table_insert(queue, payload)
+    queue.sem:post()
+  end
 
   -- connection established
   -- ping thread
@@ -279,12 +291,10 @@ function _M.handle_cp_websocket()
   while not exiting() do
     local ok, err = sem:wait(10)
     if ok then
-      local config = table.remove(queue, 1)
-      assert(config, "config queue can not be empty after semaphore returns")
+      local payload = table_remove(queue, 1)
+      assert(payload, "config queue can not be empty after semaphore returns")
 
-      local _, err = wb:send_binary(cjson_encode({ type = "reconfigure",
-                                                       config_table = config,
-                                                     }))
+      local _, err = wb:send_binary(payload)
       if err then
         ngx_log(ngx_ERR, "unable to send updated configuration to node: ", err)
 
@@ -314,10 +324,15 @@ end
 
 
 local function push_config(config_table)
+  local payload = cjson_encode({ type = "reconfigure",
+                                 config_table = config_table,
+                               })
+  payload = assert(deflate_gzip(payload))
+
   local n = 0
 
   for _, queue in pairs(clients) do
-    table.insert(queue, config_table)
+    table_insert(queue, payload)
     queue.sem:post()
 
     n = n + 1
@@ -401,14 +416,24 @@ function _M.init_worker(conf)
 
         if config then
           ngx_log(ngx_INFO, "found cached copy of data-plane config, loading..")
-          config = cjson_decode(config)
 
+          local err
+
+          config, err = inflate_gzip(config)
           if config then
-            local res
-            res, err = update_config(config, false)
-            if not res then
-              ngx_log(ngx_ERR, "unable to running config from cache: ", err)
+            config = cjson_decode(config)
+
+            if config then
+              local res
+              res, err = update_config(config, false)
+              if not res then
+                ngx_log(ngx_ERR, "unable to running config from cache: ", err)
+              end
             end
+
+          else
+            ngx_log(ngx_ERR, "unable to inflate cached config: ",
+                    err, ", ignoring...")
           end
         end
       end
