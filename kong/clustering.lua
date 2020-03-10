@@ -26,7 +26,7 @@ local ngx_var = ngx.var
 local io_open = io.open
 
 
-local MAX_PAYLOAD = 65536 -- 64KB
+local MAX_PAYLOAD = 8 * 1024 * 1024 -- 8MB
 local PING_INTERVAL = 30 -- 30 seconds
 local WS_OPTS = {
   max_payload_len = MAX_PAYLOAD,
