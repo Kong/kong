@@ -110,6 +110,7 @@ jobs:
 
     env:
       TEST_SUITE: ${{ matrix.suite }}
+      DEBUG: 1
 
     steps:
     - name: Set env
