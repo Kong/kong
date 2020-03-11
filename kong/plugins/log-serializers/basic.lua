@@ -5,6 +5,8 @@ local gkong = kong
 local _M = {}
 
 local EMPTY = tablex.readonly({})
+local REDACTED_REQUEST_HEADERS = { "authorization", "proxy-authorization" }
+local REDACTED_RESPONSE_HEADERS = {}
 
 function _M.serialize(ngx, kong)
   local ctx = ngx.ctx
@@ -36,8 +38,17 @@ function _M.serialize(ngx, kong)
   local request_uri = var.request_uri or ""
 
   local req_headers = kong.request.get_headers()
-  if req_headers["authorization"] then
-    req_headers["authorization"] = "REDACTED"
+  for _, header in ipairs(REDACTED_REQUEST_HEADERS) do
+    if req_headers[header] then
+      req_headers[header] = "REDACTED"
+    end
+  end
+
+  local resp_headers = ngx.resp.get_headers()
+  for _, header in ipairs(REDACTED_RESPONSE_HEADERS) do
+    if resp_headers[header] then
+      resp_headers[header] = "REDACTED"
+    end
   end
 
   return {
@@ -53,7 +64,7 @@ function _M.serialize(ngx, kong)
     upstream_uri = var.upstream_uri,
     response = {
       status = ngx.status,
-      headers = ngx.resp.get_headers(),
+      headers = resp_headers,
       size = var.bytes_sent
     },
     tries = (ctx.balancer_data or EMPTY).tries,

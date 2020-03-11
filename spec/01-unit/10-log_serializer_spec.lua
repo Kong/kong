@@ -32,7 +32,7 @@ describe("Log Serializer", function()
         start_time = function() return 3 end
       },
       resp = {
-        get_headers = function() return {"respheader1", "respheader2"} end
+        get_headers = function() return {header1 = "respheader1", header2 = "respheader2", ["set-cookie"] = "delicious=delicacy"} end
       }
     }
 
@@ -68,7 +68,7 @@ describe("Log Serializer", function()
 
       -- Response
       assert.is_table(res.response)
-      assert.same({"respheader1", "respheader2"}, res.response.headers)
+      assert.same({header1 = "respheader1", header2 = "respheader2", ["set-cookie"] = "delicious=delicacy"}, res.response.headers)
       assert.equal(99, res.response.size)
 
       assert.is_nil(res.api)
