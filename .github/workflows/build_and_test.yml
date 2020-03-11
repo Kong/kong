@@ -27,10 +27,43 @@ jobs:
     - name: Build Test Image
       run: pushd $KONG_BUILD_TOOLS_LOCATION && make kong-test-container && popd
 
+  lint-and-unit-tests:
+    name: Lint & Unit tests
+    runs-on: ubuntu-18.04
+    needs: build
+
+    strategy:
+      matrix:
+        suite: [unit, pdk]
+
+    env:
+      TEST_SUITE: ${{ matrix.suite }}
+      DEBUG: 1
+
+    steps:
+    - name: Set env
+      run: |
+          echo "::set-env name=KONG_SOURCE_LOCATION::$GITHUB_WORKSPACE"
+          echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
+        
+    - uses: azure/docker-login@v1
+      with:
+        username: ${{ secrets.KONG_USERNAME }}
+        password: ${{ secrets.KONG_PASSWORD }}
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v2
+
+    - name: Setup Kong Build Tools
+      run: make setup-kong-build-tools
+
+    - name: Run Tests
+      run: pushd $KONG_BUILD_TOOLS_LOCATION && make test-kong && popd
+
   integration-tests-dbless:
     name: DB-less integration tests
     runs-on: ubuntu-18.04
-    needs: build
+    needs: lint-and-unit-tests
 
     env:
       TEST_DATABASE: 'off'
@@ -59,7 +92,7 @@ jobs:
   integration-tests-with-databases:
     name: ${{matrix.database}} (${{ matrix.suite }}) ${{ matrix.split }} integration tests
     runs-on: ubuntu-18.04
-    needs: build
+    needs: lint-and-unit-tests
 
     strategy:
       matrix:
@@ -78,39 +111,6 @@ jobs:
       TEST_DATABASE: ${{ matrix.database }}
       TEST_SUITE: ${{ matrix.suite }}
       TEST_SPLIT: ${{ matrix.split }}
-
-    steps:
-    - name: Set env
-      run: |
-          echo "::set-env name=KONG_SOURCE_LOCATION::$GITHUB_WORKSPACE"
-          echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
-        
-    - uses: azure/docker-login@v1
-      with:
-        username: ${{ secrets.KONG_USERNAME }}
-        password: ${{ secrets.KONG_PASSWORD }}
-
-    - name: Checkout Kong source code
-      uses: actions/checkout@v2
-
-    - name: Setup Kong Build Tools
-      run: make setup-kong-build-tools
-
-    - name: Run Tests
-      run: pushd $KONG_BUILD_TOOLS_LOCATION && make test-kong && popd
-
-  tests-without-a-database:
-    name: Tests without a datastore
-    runs-on: ubuntu-18.04
-    needs: build
-
-    strategy:
-      matrix:
-        suite: [unit, pdk]
-
-    env:
-      TEST_SUITE: ${{ matrix.suite }}
-      DEBUG: 1
 
     steps:
     - name: Set env
