@@ -123,31 +123,33 @@ server {
     }
 
     location / {
-        default_type                    '';
+        default_type                     '';
 
-        set $ctx_ref                    '';
-        set $upstream_te                '';
-        set $upstream_host              '';
-        set $upstream_upgrade           '';
-        set $upstream_connection        '';
-        set $upstream_scheme            '';
-        set $upstream_uri               '';
-        set $upstream_x_forwarded_for   '';
-        set $upstream_x_forwarded_proto '';
-        set $upstream_x_forwarded_host  '';
-        set $upstream_x_forwarded_port  '';
-        set $kong_proxy_mode            'http';
+        set $ctx_ref                     '';
+        set $upstream_te                 '';
+        set $upstream_host               '';
+        set $upstream_upgrade            '';
+        set $upstream_connection         '';
+        set $upstream_scheme             '';
+        set $upstream_uri                '';
+        set $upstream_x_forwarded_for    '';
+        set $upstream_x_forwarded_proto  '';
+        set $upstream_x_forwarded_host   '';
+        set $upstream_x_forwarded_port   '';
+        set $upstream_x_forwarded_prefix '';
+        set $kong_proxy_mode             'http';
 
         proxy_http_version    1.1;
-        proxy_set_header      TE                $upstream_te;
-        proxy_set_header      Host              $upstream_host;
-        proxy_set_header      Upgrade           $upstream_upgrade;
-        proxy_set_header      Connection        $upstream_connection;
-        proxy_set_header      X-Forwarded-For   $upstream_x_forwarded_for;
-        proxy_set_header      X-Forwarded-Proto $upstream_x_forwarded_proto;
-        proxy_set_header      X-Forwarded-Host  $upstream_x_forwarded_host;
-        proxy_set_header      X-Forwarded-Port  $upstream_x_forwarded_port;
-        proxy_set_header      X-Real-IP         $remote_addr;
+        proxy_set_header      TE                 $upstream_te;
+        proxy_set_header      Host               $upstream_host;
+        proxy_set_header      Upgrade            $upstream_upgrade;
+        proxy_set_header      Connection         $upstream_connection;
+        proxy_set_header      X-Forwarded-For    $upstream_x_forwarded_for;
+        proxy_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
+        proxy_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
+        proxy_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
+        proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
+        proxy_set_header      X-Real-IP          $remote_addr;
         proxy_pass_header     Server;
         proxy_pass_header     Date;
         proxy_ssl_name        $upstream_host;
@@ -164,13 +166,14 @@ server {
         default_type         '';
         set $kong_proxy_mode 'grpc';
 
-        grpc_set_header      TE                $upstream_te;
-        grpc_set_header      Host              $upstream_host;
-        grpc_set_header      X-Forwarded-For   $upstream_x_forwarded_for;
-        grpc_set_header      X-Forwarded-Proto $upstream_x_forwarded_proto;
-        grpc_set_header      X-Forwarded-Host  $upstream_x_forwarded_host;
-        grpc_set_header      X-Forwarded-Port  $upstream_x_forwarded_port;
-        grpc_set_header      X-Real-IP         $remote_addr;
+        grpc_set_header      TE                 $upstream_te;
+        grpc_set_header      Host               $upstream_host;
+        grpc_set_header      X-Forwarded-For    $upstream_x_forwarded_for;
+        grpc_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
+        grpc_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
+        grpc_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
+        grpc_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
+        grpc_set_header      X-Real-IP          $remote_addr;
         grpc_pass_header     Server;
         grpc_pass_header     Date;
         grpc_pass            grpc://kong_upstream;
@@ -181,13 +184,14 @@ server {
         default_type         '';
         set $kong_proxy_mode 'grpc';
 
-        grpc_set_header      TE                $upstream_te;
-        grpc_set_header      Host              $upstream_host;
-        grpc_set_header      X-Forwarded-For   $upstream_x_forwarded_for;
-        grpc_set_header      X-Forwarded-Proto $upstream_x_forwarded_proto;
-        grpc_set_header      X-Forwarded-Host  $upstream_x_forwarded_host;
-        grpc_set_header      X-Forwarded-Port  $upstream_x_forwarded_port;
-        grpc_set_header      X-Real-IP         $remote_addr;
+        grpc_set_header      TE                 $upstream_te;
+        grpc_set_header      Host               $upstream_host;
+        grpc_set_header      X-Forwarded-For    $upstream_x_forwarded_for;
+        grpc_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
+        grpc_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
+        grpc_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
+        grpc_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
+        grpc_set_header      X-Real-IP          $remote_addr;
         grpc_pass_header     Server;
         grpc_pass_header     Date;
         grpc_ssl_name        $upstream_host;
@@ -211,15 +215,16 @@ server {
         log_by_lua_block           {;}
 
         proxy_http_version 1.1;
-        proxy_set_header      TE                $upstream_te;
-        proxy_set_header      Host              $upstream_host;
-        proxy_set_header      Upgrade           $upstream_upgrade;
-        proxy_set_header      Connection        $upstream_connection;
-        proxy_set_header      X-Forwarded-For   $upstream_x_forwarded_for;
-        proxy_set_header      X-Forwarded-Proto $upstream_x_forwarded_proto;
-        proxy_set_header      X-Forwarded-Host  $upstream_x_forwarded_host;
-        proxy_set_header      X-Forwarded-Port  $upstream_x_forwarded_port;
-        proxy_set_header      X-Real-IP         $remote_addr;
+        proxy_set_header      TE                 $upstream_te;
+        proxy_set_header      Host               $upstream_host;
+        proxy_set_header      Upgrade            $upstream_upgrade;
+        proxy_set_header      Connection         $upstream_connection;
+        proxy_set_header      X-Forwarded-For    $upstream_x_forwarded_for;
+        proxy_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
+        proxy_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
+        proxy_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
+        proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
+        proxy_set_header      X-Real-IP          $remote_addr;
         proxy_pass_header     Server;
         proxy_pass_header     Date;
         proxy_ssl_name        $upstream_host;
