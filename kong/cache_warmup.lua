@@ -69,6 +69,9 @@ local function cache_warmup_single_entity(dao)
 
     local cache_key = dao:cache_key(entity)
 
+    kong.log.notice("cache_key: " .. require("inspect")(cache_key))
+    kong.log.notice("entity: " .. require("inspect")(entity))
+
     local ok, err = cache:safe_set(cache_key, entity)
     if not ok then
       return nil, err

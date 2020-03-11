@@ -474,6 +474,12 @@ end
 function _mt:query(sql)
   local res, err, partial, num_queries
 
+  if not string.find(sql, "cluster_events") then
+    kong.log.notice("-----------------------------xxxxxxxxxxxx################")
+    kong.log.notice("sql: " .. require("inspect")(sql))
+    kong.log.notice(debug.traceback())
+  end
+
   local ok
   ok, err = self:acquire_query_semaphore_resource()
   if not ok then
