@@ -99,7 +99,7 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    it("balances by least-connections", function()
+    it("balances by least-connections #flaky", function()
       local thread_max = 100 -- maximum number of threads to use
       local done = false
       local results = {}
