@@ -67,7 +67,7 @@ jobs:
         suite: [integration, plugins]
         database: [cassandra, postgres]
         exclude:
-          - SUITE: plugins
+          - suite: plugins
             split: first
           - suite: plugins
             split: second
