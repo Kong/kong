@@ -70,9 +70,14 @@ local base_seed = {
       table.insert(query, "-- Add rbac user named kong_admin")
       local add_rbac_user_q, rbac_user_id = self:add_rbac_user("kong_admin", password, "Initial RBAC Secure User", ws)
       table.insert(query, add_rbac_user_q)
-      table.insert(query, "-- Set admin and super-admin roles to kong_admin")
-      table.insert(query, self:add_rbac_user_role(rbac_user_id, roles_ids["admin"]))
+
+      table.insert(query, "-- create default role for the user")
+      local admin_role_q, admin_role_id = self:add_rbac_role(ws, "kong_admin", "Default user role generated for kong_admin", true)
+      table.insert(query, admin_role_q)
+
+      table.insert(query, "-- Add super-admin role and his own role to kong_admin")
       table.insert(query, self:add_rbac_user_role(rbac_user_id, roles_ids["super-admin"]))
+      table.insert(query, self:add_rbac_user_role(rbac_user_id, admin_role_id))
       table.insert(query, "")
 
       table.insert(query, "-- Add kong_admin")
