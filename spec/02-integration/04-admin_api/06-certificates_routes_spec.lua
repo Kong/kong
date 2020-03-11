@@ -330,6 +330,29 @@ describe("Admin API: #" .. strategy, function()
         assert.same(json, in_db)
       end)
 
+      it("creates a new sni when provided in the url (with sni duplicated in url and body)", function()
+        local n1 = get_name()
+        local n2 = get_name()
+        local res = client:put("/certificates/" .. n1, {
+          body = {
+            cert = ssl_fixtures.cert,
+            key = ssl_fixtures.key,
+            snis = { n1, n2 },
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same(ssl_fixtures.cert, json.cert)
+
+        assert.same({ n1, n2 }, json.snis)
+        json.snis = nil
+
+        local in_db = assert(db.certificates:select({ id = json.id }, { nulls = true }))
+        assert.same(json, in_db)
+      end)
+
       it("upserts if found", function()
         local certificate = add_certificate()
 
