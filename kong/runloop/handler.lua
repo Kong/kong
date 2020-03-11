@@ -1146,6 +1146,7 @@ return {
       local forwarded_proto
       local forwarded_host
       local forwarded_port
+      local forwarded_prefix
 
       -- X-Forwarded-* Headers Parsing
       --
@@ -1158,14 +1159,27 @@ return {
 
       local trusted_ip = kong.ip.is_trusted(realip_remote_addr)
       if trusted_ip then
-        forwarded_proto = var.http_x_forwarded_proto or scheme
-        forwarded_host  = var.http_x_forwarded_host  or host
-        forwarded_port  = var.http_x_forwarded_port  or port
+        forwarded_proto  = var.http_x_forwarded_proto  or scheme
+        forwarded_host   = var.http_x_forwarded_host   or host
+        forwarded_port   = var.http_x_forwarded_port   or port
+        forwarded_prefix = var.http_x_forwarded_prefix
 
       else
-        forwarded_proto = scheme
-        forwarded_host  = host
-        forwarded_port  = port
+        forwarded_proto  = scheme
+        forwarded_host   = host
+        forwarded_port   = port
+      end
+
+      if not forwarded_prefix then
+        forwarded_prefix = var.request_uri
+        local p = find(forwarded_prefix, "?", 2, true)
+        if p then
+          forwarded_prefix = sub(forwarded_prefix, 1, p - 1)
+        end
+
+        if forwarded_prefix == "" then
+          forwarded_prefix = "/"
+        end
       end
 
       local protocols = route.protocols
@@ -1181,10 +1195,11 @@ return {
           })
         end
 
-        if redirect_status_code == 301 or
-          redirect_status_code == 302 or
-          redirect_status_code == 307 or
-          redirect_status_code == 308 then
+        if redirect_status_code == 301
+        or redirect_status_code == 302
+        or redirect_status_code == 307
+        or redirect_status_code == 308
+        then
           header["Location"] = "https://" .. forwarded_host .. var.request_uri
           return kong.response.exit(redirect_status_code)
         end
@@ -1351,9 +1366,10 @@ return {
         var.upstream_x_forwarded_for = var.remote_addr
       end
 
-      var.upstream_x_forwarded_proto = forwarded_proto
-      var.upstream_x_forwarded_host  = forwarded_host
-      var.upstream_x_forwarded_port  = forwarded_port
+      var.upstream_x_forwarded_proto  = forwarded_proto
+      var.upstream_x_forwarded_host   = forwarded_host
+      var.upstream_x_forwarded_port   = forwarded_port
+      var.upstream_x_forwarded_prefix = forwarded_prefix
 
       local err
       ctx.workspaces, err = workspaces.resolve_ws_scope(ctx, route.protocols and route)
