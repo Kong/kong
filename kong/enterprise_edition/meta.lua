@@ -1,8 +1,8 @@
 local strip = (require "pl.stringx").strip
 
 local version = setmetatable({
-  x = 1,
-  y = 3,
+  x = 2,
+  y = 0,
   z = 0,
   e = 0,
 }, {
