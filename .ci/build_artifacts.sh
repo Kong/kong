@@ -14,14 +14,14 @@ pushd kong-distributions
 sed -i -e "s/^\([[:blank:]]*\)version.*$/\1version: master/" kong-images/build.yml
 docker pull mashape/docker-packer
 
-travis_wait 60 docker run -it --rm \
+docker run -it --rm \
   -v $PWD:/src \
   -v /tmp:/tmp \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -e NPM_TOKEN=$NPM_TOKEN \
   mashape/docker-packer /src/package.sh -p alpine -u "$BINTRAY_USER" -k "$BINTRAY_API_KEY" --ee --dev
 
-travis_wait 60 docker run -it --rm \
+docker run -it --rm \
   -v $PWD:/src \
   -v /tmp:/tmp \
   -v /var/run/docker.sock:/var/run/docker.sock \
