@@ -26,20 +26,19 @@ local function fetch_consumer(self, helpers, db, consumer_id)
 end
 
 local function influx_query(query)
-  local db = "kong"
   local address = kong.configuration.vitals_tsdb_address
   local user = kong.configuration.vitals_tsdb_user
-  local password = kong.configuration.vitals_tsdb_user
+  local password = kong.configuration.vitals_tsdb_password
   if address:sub(1, #"http") ~= "http" then
     address = "http://" .. address
   end
   local httpc = http.new()
-  local data = { address = address, db = db, query = ngx.escape_uri(query) }
+  local data = { address = address, db = "kong", query = ngx.escape_uri(query) }
   local url = string.gsub("$address/query?db=$db&epoch=s&q=$query", "%$(%w+)", data)
   local headers = {}
 
   if user ~= nil and password ~= nil then
-    headers = { Authorization = ngx.encode_base64(user .. ":" .. password)}
+    headers = { ["Authorization"] = "Basic " .. ngx.encode_base64(user .. ":" .. password)}
   end
 
   local res, err = httpc:request_uri(url, { headers = headers})
