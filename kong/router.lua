@@ -450,6 +450,7 @@ local function marshall_route(r)
           route_t.uris[path] = uri_t
           insert(route_t.uris, uri_t)
 
+          route_t.max_uri_length = max(route_t.max_uri_length, #path)
           route_t.submatch_weight = bor(route_t.submatch_weight,
                                         MATCH_SUBRULES.HAS_REGEX_URI)
         end
