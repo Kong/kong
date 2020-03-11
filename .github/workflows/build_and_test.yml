@@ -28,7 +28,7 @@ jobs:
       run: pushd $KONG_BUILD_TOOLS_LOCATION && make kong-test-container && popd
 
   integration-tests-dbless:
-    name: DB-less tests
+    name: DB-less integration tests
     runs-on: ubuntu-18.04
     needs: build
 
