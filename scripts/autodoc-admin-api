@@ -945,16 +945,19 @@ local function write_admin_api_nav(filename, data)
   outfd:write("# Generated via autodoc-admin-api\n")
   outfd:write(unindent(data.nav.header))
 
+  local max_level = 3
   local level = 3
   for _, t in ipairs(titles) do
-    if t.level <= level then
-      outfd:write("\n")
-    elseif t.level > level then
-      outfd:write(("    "):rep(level - 1) .. "  items:\n")
+    if t.level <= max_level then
+      if t.level <= level then
+        outfd:write("\n")
+      elseif t.level > level then
+        outfd:write(("    "):rep(level - 1) .. "  items:\n")
+      end
+      level = t.level
+      outfd:write(("    "):rep(level - 1) .. "- text: " .. t.title .. "\n")
+      outfd:write(("    "):rep(level - 1) .. "  url: /admin-api/#" .. t.title:lower():gsub(" ", "-") .. "\n")
     end
-    level = t.level
-    outfd:write(("    "):rep(level - 1) .. "- text: " .. t.title .. "\n")
-    outfd:write(("    "):rep(level - 1) .. "  url: /admin-api/#" .. t.title:lower():gsub(" ", "-") .. "\n")
   end
 
   outfd:close()
