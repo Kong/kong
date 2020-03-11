@@ -131,11 +131,10 @@ local function do_authentication(conf)
 
   -- retrieve our consumer linked to this API key
 
-  local cache = kong.cache
-
   local credential_cache_key = kong.db.keyauth_credentials:cache_key(key)
-  local credential, err = cache:get(credential_cache_key, nil, load_credential,
-                                    key)
+  local credential, err      = kong.cache:get(credential_cache_key, nil,
+                                              load_credential, key)
+
   if err then
     kong.log.err(err)
     return kong.response.exit(500, {
@@ -155,9 +154,9 @@ local function do_authentication(conf)
   -- retrieve the consumer linked to this API key, to set appropriate headers
   local consumer_cache_key, consumer
   consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
-  consumer, err      = cache:get(consumer_cache_key, nil,
-                                 kong.client.load_consumer,
-                                 credential.consumer.id)
+  consumer, err      = kong.core_cache:get(consumer_cache_key, nil,
+                                           kong.client.load_consumer,
+                                           credential.consumer.id)
   if err then
     kong.log.err(err)
     return nil, { status = 500, message = "An unexpected error occurred" }
