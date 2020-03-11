@@ -1104,8 +1104,9 @@ return {
             to the field [health checker's threshold][healthchecks.threshold].
           ]],
           endpoint = [[
-            <div class="endpoint get">/upstreams/{name or id}/health/</div>
+            <div class="endpoint get indent">/upstreams/{name or id}/health/</div>
 
+            {:.indent}
             Attributes | Description
             ---:| ---
             `name or id`<br>**required** | The unique identifier **or** the name of the Upstream for which to display Target health.
@@ -1247,8 +1248,9 @@ return {
             a new entry for the given target definition with a `weight` of 0.
           ]],
           endpoint = [[
-            <div class="endpoint delete">/upstreams/{upstream name or id}/targets/{host:port or id}</div>
+            <div class="endpoint delete indent">/upstreams/{upstream name or id}/targets/{host:port or id}</div>
 
+            {:.indent}
             Attributes | Description
             ---:| ---
             `upstream name or id`<br>**required** | The unique identifier **or** the name of the upstream for which to delete the target.
@@ -1271,8 +1273,9 @@ return {
             The target object with the latest `created_at` is the current definition.
           ]],
           endpoint = [[
-            <div class="endpoint get">/upstreams/{name or id}/targets/all/</div>
+            <div class="endpoint get indent">/upstreams/{name or id}/targets/all/</div>
 
+            {:.indent}
             Attributes | Description
             ---:| ---
             `name or id`<br>**required** | The unique identifier **or** the name of the upstream for which to list the targets.
@@ -1324,8 +1327,9 @@ return {
             status is propagated to the whole Kong cluster.
           ]],
           endpoint = [[
-            <div class="endpoint post">/upstreams/{upstream name or id}/targets/{target or id}/healthy</div>
+            <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/healthy</div>
 
+            {:.indent}
             Attributes | Description
             ---:| ---
             `upstream name or id`<br>**required** | The unique identifier **or** the name of the upstream.
@@ -1361,8 +1365,9 @@ return {
             target](#delete-target) instead.
           ]],
           endpoint = [[
-            <div class="endpoint post">/upstreams/{upstream name or id}/targets/{target or id}/unhealthy</div>
+            <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/unhealthy</div>
 
+            {:.indent}
             Attributes | Description
             ---:| ---
             `upstream name or id`<br>**required** | The unique identifier **or** the name of the upstream.
@@ -1392,8 +1397,9 @@ return {
             status is propagated to the whole Kong cluster.
           ]],
           endpoint = [[
-            <div class="endpoint post">/upstreams/{upstream name or id}/targets/{target or id}/{address}/healthy</div>
+            <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/{address}/healthy</div>
 
+            {:.indent}
             Attributes | Description
             ---:| ---
             `upstream name or id`<br>**required** | The unique identifier **or** the name of the upstream.
@@ -1429,8 +1435,9 @@ return {
             target](#delete-target) instead.
           ]],
           endpoint = [[
-            <div class="endpoint post">/upstreams/{upstream name or id}/targets/{target or id}/unhealthy</div>
+            <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/unhealthy</div>
 
+            {:.indent}
             Attributes | Description
             ---:| ---
             `upstream name or id`<br>**required** | The unique identifier **or** the name of the upstream.
@@ -1485,18 +1492,19 @@ return {
       endpoint_w_ek = [[
         ##### List All ${Entities}
 
-        <div class="endpoint ${method}">/${entities_url}</div>
+        <div class="endpoint ${method} indent">/${entities_url}</div>
       ]],
       endpoint = [[
         ##### List All ${Entities}
 
-        <div class="endpoint ${method}">/${entities_url}</div>
+        <div class="endpoint ${method} indent">/${entities_url}</div>
       ]],
       fk_endpoint = [[
         ##### List ${Entities} Associated to a Specific ${ForeignEntity}
 
-        <div class="endpoint ${method}">/${foreign_entities_url}/{${foreign_entity} id}/${entities_url}</div>
+        <div class="endpoint ${method} indent">/${foreign_entities_url}/{${foreign_entity} id}/${entities_url}</div>
 
+        {:.indent}
         Attributes | Description
         ---:| ---
         `${foreign_entity} id`<br>**required** | The unique identifier of the ${ForeignEntity} whose ${Entities} are to be retrieved. When using this endpoint, only ${Entities} associated to the specified ${ForeignEntity} will be listed.
@@ -1504,8 +1512,9 @@ return {
       fk_endpoint_w_ek = [[
         ##### List ${Entities} Associated to a Specific ${ForeignEntity}
 
-        <div class="endpoint ${method}">/${foreign_entities_url}/{${foreign_entity} ${endpoint_key} or id}/${entities_url}</div>
+        <div class="endpoint ${method} indent">/${foreign_entities_url}/{${foreign_entity} ${endpoint_key} or id}/${entities_url}</div>
 
+        {:.indent}
         Attributes | Description
         ---:| ---
         `${foreign_entity} ${endpoint_key} or id`<br>**required** | The unique identifier or the `${endpoint_key}` attribute of the ${ForeignEntity} whose ${Entities} are to be retrieved. When using this endpoint, only ${Entities} associated to the specified ${ForeignEntity} will be listed.
@@ -1534,18 +1543,19 @@ return {
       endpoint_w_ek = [[
         ##### Create ${Entity}
 
-        <div class="endpoint ${method}">/${entities_url}</div>
+        <div class="endpoint ${method} indent">/${entities_url}</div>
       ]],
       endpoint = [[
         ##### Create ${Entity}
 
-        <div class="endpoint ${method}">/${entities_url}</div>
+        <div class="endpoint ${method} indent">/${entities_url}</div>
       ]],
       fk_endpoint = [[
         ##### Create ${Entity} Associated to a Specific ${ForeignEntity}
 
-        <div class="endpoint ${method}">/${foreign_entities_url}/{${foreign_entity} id}/${entities_url}</div>
+        <div class="endpoint ${method} indent">/${foreign_entities_url}/{${foreign_entity} id}/${entities_url}</div>
 
+        {:.indent}
         Attributes | Description
         ---:| ---
         `${foreign_entity} id`<br>**required** | The unique identifier of the ${ForeignEntity} that should be associated to the newly-created ${Entity}.
@@ -1553,8 +1563,9 @@ return {
       fk_endpoint_w_ek = [[
         ##### Create ${Entity} Associated to a Specific ${ForeignEntity}
 
-        <div class="endpoint ${method}">/${foreign_entities_url}/{${foreign_entity} ${endpoint_key} or id}/${entities_url}</div>
+        <div class="endpoint ${method} indent">/${foreign_entities_url}/{${foreign_entity} ${endpoint_key} or id}/${entities_url}</div>
 
+        {:.indent}
         Attributes | Description
         ---:| ---
         `${foreign_entity} ${endpoint_key} or id`<br>**required** | The unique identifier or the `${endpoint_key}` attribute of the ${ForeignEntity} that should be associated to the newly-created ${Entity}.
@@ -1580,8 +1591,9 @@ return {
     endpoint_w_ek = [[
       ##### ${Active_verb} ${Entity}
 
-      <div class="endpoint ${method}">/${entities_url}/{${entity} ${endpoint_key} or id}</div>
+      <div class="endpoint ${method} indent">/${entities_url}/{${entity} ${endpoint_key} or id}</div>
 
+      {:.indent}
       Attributes | Description
       ---:| ---
       `${entity} ${endpoint_key} or id`<br>**required** | The unique identifier **or** the ${endpoint_key} of the ${Entity} to ${active_verb}.
@@ -1589,8 +1601,9 @@ return {
     fk_endpoint_w_ek = [[
       ##### ${Active_verb} ${ForeignEntity} Associated to a Specific ${Entity}
 
-      <div class="endpoint ${method}">/${entities_url}/{${entity} ${endpoint_key} or id}/${foreign_entity_url}</div>
+      <div class="endpoint ${method} indent">/${entities_url}/{${entity} ${endpoint_key} or id}/${foreign_entity_url}</div>
 
+      {:.indent}
       Attributes | Description
       ---:| ---
       `${entity} ${endpoint_key} or id`<br>**required** | The unique identifier **or** the ${endpoint_key} of the ${Entity} associated to the ${ForeignEntity} to be ${passive_verb}.
@@ -1598,8 +1611,9 @@ return {
     endpoint = [[
       ##### ${Active_verb} ${Entity}
 
-      <div class="endpoint ${method}">/${entities_url}/{${entity} id}</div>
+      <div class="endpoint ${method} indent">/${entities_url}/{${entity} id}</div>
 
+      {:.indent}
       Attributes | Description
       ---:| ---
       `${entity} id`<br>**required** | The unique identifier of the ${Entity} to ${active_verb}.
@@ -1607,8 +1621,9 @@ return {
     fk_endpoint = [[
       ##### ${Active_verb} ${ForeignEntity} Associated to a Specific ${Entity}
 
-      <div class="endpoint ${method}">/${entities_url}/{${entity} id}/${foreign_entity_url}</div>
+      <div class="endpoint ${method} indent">/${entities_url}/{${entity} id}/${foreign_entity_url}</div>
 
+      {:.indent}
       Attributes | Description
       ---:| ---
       `${entity} id`<br>**required** | The unique identifier of the ${Entity} associated to the ${ForeignEntity} to be ${passive_verb}.
@@ -1616,8 +1631,9 @@ return {
     nested_endpoint_w_eks = [[
       ##### ${Active_verb} ${Entity} Associated to a Specific ${ForeignEntity}
 
-      <div class="endpoint ${method}">/${foreign_entities_url}/{${foreign_entity} ${foreign_endpoint_key} or id}/${entities_url}/{${entity} ${endpoint_key} or id}</div>
+      <div class="endpoint ${method} indent">/${foreign_entities_url}/{${foreign_entity} ${foreign_endpoint_key} or id}/${entities_url}/{${entity} ${endpoint_key} or id}</div>
 
+      {:.indent}
       Attributes | Description
       ---:| ---
       `${foreign_entity} ${foreign_endpoint_key} or id`<br>**required** | The unique identifier **or** the ${foreign_endpoint_key} of the ${ForeignEntity} to ${active_verb}.
@@ -1626,8 +1642,9 @@ return {
     nested_endpoint_w_ek = [[
       ##### ${Active_verb} ${Entity} Associated to a Specific ${ForeignEntity}
 
-      <div class="endpoint ${method}">/${foreign_entities_url}/{${foreign_entity} id}/${entities_url}/{${entity} ${endpoint_key} or id}</div>
+      <div class="endpoint ${method} indent">/${foreign_entities_url}/{${foreign_entity} id}/${entities_url}/{${entity} ${endpoint_key} or id}</div>
 
+      {:.indent}
       Attributes | Description
       ---:| ---
       `${foreign_entity} id`<br>**required** | The unique identifier of the ${ForeignEntity} to ${active_verb}.
@@ -1636,8 +1653,9 @@ return {
     nested_endpoint_w_fek = [[
       ##### ${Active_verb} ${Entity} Associated to a Specific ${ForeignEntity}
 
-      <div class="endpoint ${method}">/${foreign_entities_url}/{${foreign_entity} ${foreign_endpoint_key} or id}/${entities_url}/{${entity} id}</div>
+      <div class="endpoint ${method} indent">/${foreign_entities_url}/{${foreign_entity} ${foreign_endpoint_key} or id}/${entities_url}/{${entity} id}</div>
 
+      {:.indent}
       Attributes | Description
       ---:| ---
       `${foreign_entity} ${foreign_endpoint_key} or id`<br>**required** | The unique identifier **or** the ${foreign_endpoint_key} of the ${ForeignEntity} to ${active_verb}.
@@ -1646,8 +1664,9 @@ return {
     nested_endpoint = [[
       ##### ${Active_verb} ${Entity} Associated to a Specific ${ForeignEntity}
 
-      <div class="endpoint ${method}">/${foreign_entities_url}/{${foreign_entity} id}/${entities_url}/{${entity} id}</div>
+      <div class="endpoint ${method} indent">/${foreign_entities_url}/{${foreign_entity} id}/${entities_url}/{${entity} id}</div>
 
+      {:.indent}
       Attributes | Description
       ---:| ---
       `${foreign_entity} id`<br>**required** | The unique identifier of the ${ForeignEntity} to ${active_verb}.
@@ -1797,8 +1816,9 @@ return {
           POST = {
             title = [[Reload declarative configuration]],
             endpoint = [[
-              <div class="endpoint post">/config</div>
+              <div class="endpoint post indent">/config</div>
 
+              {:.indent}
               Attributes | Description
               ---:| ---
               `config`<br>**required** | The config data (in YAML or JSON format) to be loaded.

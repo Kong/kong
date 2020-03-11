@@ -467,16 +467,6 @@ local function write_entity_templates(outfd, entity, entity_data)
 end
 
 
-local function bold_text_section(outfd, title, content)
-  if not content then
-    return
-  end
-  outfd:write(title and ("*" .. utils.titleize(title) .. "*\n\n") or "")
-  outfd:write(unindent(content) .. "\n")
-  outfd:write("\n")
-end
-
-
 local titles = {}
 
 local function write_title(outfd, level, title)
@@ -522,10 +512,10 @@ local function write_endpoint(outfd, endpoint, ep_data, methods)
       for _, fk_endpoint in ipairs(fk_endpoints) do
         section(outfd, nil, fk_endpoint)
       end
-      bold_text_section(outfd, "Request Querystring Parameters", meth_data.request_query)
-      bold_text_section(outfd, "Request Body", meth_data.request_body)
+      section(outfd, "Request Querystring Parameters", meth_data.request_query)
+      section(outfd, "Request Body", meth_data.request_body)
       section(outfd, nil, meth_data.details)
-      bold_text_section(outfd, "Response", meth_data.response)
+      section(outfd, "Response", meth_data.response)
       outfd:write("---\n\n")
     end
 
