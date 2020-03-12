@@ -158,7 +158,7 @@ function _M:select_interval(channels, min_at, max_at)
     local offset = page * self.page_size
     local q = fmt(query_template, offset)
 
-    local res, err = self.connector:query(q)
+    local res, err = self.connector:query(q, "read")
     if not res then
       return nil, err
     end
@@ -191,7 +191,7 @@ end
 
 
 function _M:server_time()
-  local res, err = self.connector:query(SERVER_TIME_QUERY)
+  local res, err = self.connector:query(SERVER_TIME_QUERY, "read")
   if res then
     return res[1].now
   end

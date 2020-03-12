@@ -321,6 +321,14 @@ local CONF_INFERENCES = {
   pg_max_concurrent_queries = { typ = "number" },
   pg_semaphore_timeout = { typ = "number" },
 
+  pg_ro_port = { typ = "number" },
+  pg_ro_timeout = { typ = "number" },
+  pg_ro_password = { typ = "string" },
+  pg_ro_ssl = { typ = "boolean" },
+  pg_ro_ssl_verify = { typ = "boolean" },
+  pg_ro_max_concurrent_queries = { typ = "number" },
+  pg_ro_semaphore_timeout = { typ = "number" },
+
   cassandra_contact_points = { typ = "array" },
   cassandra_port = { typ = "number" },
   cassandra_password = { typ = "string" },
@@ -464,6 +472,7 @@ local CONF_INFERENCES = {
 local CONF_SENSITIVE_PLACEHOLDER = "******"
 local CONF_SENSITIVE = {
   pg_password = true,
+  pg_ro_password = true,
   cassandra_password = true,
 }
 
@@ -734,6 +743,26 @@ local function check_and_infer(conf)
 
   if conf.pg_semaphore_timeout ~= math.floor(conf.pg_semaphore_timeout) then
     errors[#errors + 1] = "pg_semaphore_timeout must be an integer greater than 0"
+  end
+
+  if conf.pg_ro_max_concurrent_queries then
+    if conf.pg_ro_max_concurrent_queries < 0 then
+      errors[#errors + 1] = "pg_ro_max_concurrent_queries must be greater than 0"
+    end
+
+    if conf.pg_ro_max_concurrent_queries ~= math.floor(conf.pg_ro_max_concurrent_queries) then
+      errors[#errors + 1] = "pg_ro_max_concurrent_queries must be an integer greater than 0"
+    end
+  end
+
+  if conf.pg_ro_semaphore_timeout then
+    if conf.pg_ro_semaphore_timeout < 0 then
+      errors[#errors + 1] = "pg_ro_semaphore_timeout must be greater than 0"
+    end
+
+    if conf.pg_ro_semaphore_timeout ~= math.floor(conf.pg_ro_semaphore_timeout) then
+      errors[#errors + 1] = "pg_ro_semaphore_timeout must be an integer greater than 0"
+    end
   end
 
   if conf.worker_state_update_frequency <= 0 then

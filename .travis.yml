@@ -32,7 +32,8 @@ env:
     - INSTALL_CACHE=$HOME/install-cache
     - DOWNLOAD_ROOT=$HOME/download-root
     - KONG_TEST_PG_DATABASE=travis
-    - KONG_TEST_PG_USER=postgres
+    - KONG_TEST_PG_USER=travis
+    - KONG_TEST_PG_RO_USER=travis_ro
     - JOBS=2
     - DOCKER_MACHINE_ARM64_NAME=travis-ci-kong-${TRAVIS_JOB_ID}
   matrix:

@@ -698,6 +698,23 @@
 # declarative configuration file, which can be specified through the
 # `declarative_config` property, or via the Admin API using the `/config`
 # endpoint.
+#
+# When using Postgres as the backend storage, you can optionally enable Kong
+# to serve read queries from a separate database instance.
+# When the number of proxies are large this can greatly reduce the load
+# on the main Postgres instance and achieve better scalability. It may also
+# reduce the latency jitter if the Kong proxy node's latency to the main
+# Postgres instance is high.
+#
+# The read-only Postgres instance only serves read queries and write
+# queries still goes to the main connection. The read-only Postgres instance
+# can be eventual consistent while replicating changes from the main
+# instance.
+#
+# At least the `pg_ro_host` config is needed to enable this feature.
+# By default all other database config for the read-only connection are
+# inherited from the corresponding main connection config described above but
+# may be optionally overwritten explicitly using the `pg_ro_*` config below.
 
 #database = postgres             # Determines which of PostgreSQL or Cassandra
                                  # this node will use as its datastore.
@@ -743,6 +760,48 @@
                                  # failing with an HTTP 500 status code.
                                  # Detailed discussion of this behavior is
                                  # available in the online documentation.
+
+#pg_ro_host = NONE               # Same as `pg_host`, but for the
+                                 # read-only connection.
+                                 # Value of `NONE` disables
+                                 # read-only connection.
+                                 # **Note:** please refer to the documentation
+                                 # section above for detailed usage.
+
+#pg_ro_port = <pg_port>          # Same as `pg_port`, but for the
+                                 # read-only connection.
+
+#pg_ro_timeout = <pg_timeout>    # Same as `pg_timeout`, but for the
+                                 # read-only connection.
+
+#pg_ro_user = <pg_user>          # Same as `pg_user`, but for the
+                                 # read-only connection.
+
+#pg_ro_password = <pg_password>  # Same as `pg_password`, but for the
+                                 # read-only connection.
+
+#pg_ro_database = <pg_database>  # Same as `pg_database`, but for the
+                                 # read-only connection.
+
+#pg_ro_schema = <pg_schema>      # Same as `pg_schema`, but for the
+                                 # read-only connection.
+
+#pg_ro_ssl = <pg_ssl>            # Same as `pg_ssl`, but for the
+                                 # read-only connection.
+
+#pg_ro_ssl_verify = <pg_ssl_verify>
+                                 # Same as `pg_ssl_verify`, but for the
+                                 # read-only connection.
+
+#pg_ro_max_concurrent_queries = <pg_max_concurrent_queries>
+                                 # Same as `pg_max_concurrent_queries`, but for
+                                 # the read-only connection.
+                                 # Note: read-only concurrency is not shared
+                                 # with the main (read-write) connection.
+
+#pg_ro_semaphore_timeout = <pg_semaphore_timeout>
+                                 # Same as `pg_semaphore_timeout`, but for the
+                                 # read-only connection.
 
 #cassandra_contact_points = 127.0.0.1  # A comma-separated list of contact
                                        # points to your cluster.

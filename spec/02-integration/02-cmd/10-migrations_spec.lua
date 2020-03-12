@@ -2,6 +2,7 @@ local helpers = require "spec.helpers"
 local pl_utils = require "pl.utils"
 local utils = require "kong.tools.utils"
 local DB = require "kong.db.init"
+local tb_clone = require "table.clone"
 
 
 -- Current number of migrations to execute in a new install
@@ -21,6 +22,10 @@ for _, strategy in helpers.each_strategy() do
     env = env or {}
     env.database = strategy
     env.plugins = env.plugins or "off"
+    -- note: run migration command tests in a separate schema
+    -- so it won't affect default schema's ACL which are specially
+    -- set for readonly mode tests later
+    env.pg_schema = "kong_migrations_tests"
 
     local lpath
     if not no_lua_path_overrides then
@@ -34,7 +39,10 @@ for _, strategy in helpers.each_strategy() do
 
 
   local function init_db()
-    local db = assert(DB.new(helpers.test_conf, strategy))
+    local tmp_conf = tb_clone(helpers.test_conf)
+    tmp_conf.pg_schema = "kong_migrations_tests"
+
+    local db = assert(DB.new(tmp_conf, strategy))
     assert(db:init_connector())
     assert(db:connect())
     finally(function()
