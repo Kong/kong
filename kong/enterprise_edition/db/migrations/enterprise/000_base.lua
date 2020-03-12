@@ -25,7 +25,7 @@ local base_seed = {
   end,
   add_default_rbac_role_endpoints = function(self, role_id_map)
     return table.concat({
-      self:add_rbac_role_endpoint(role_id_map["read_only"], "*", "*", 1, false),
+      self:add_rbac_role_endpoint(role_id_map["read-only"], "*", "*", 1, false),
       self:add_rbac_role_endpoint(role_id_map["admin"], "*", "*", 15, false),
       self:add_rbac_role_endpoint(role_id_map["admin"], "*", "/rbac/*", 15, true),
       self:add_rbac_role_endpoint(role_id_map["admin"], "*", "/rbac/*/*", 15, true),
@@ -36,7 +36,7 @@ local base_seed = {
     }, "\n")
   end,
   add_default_rbac_roles = function(self, ws)
-    local ro, ro_id = self:add_rbac_role(ws, "read_only", "Read access to all endpoints, across all workspaces", false)
+    local ro, ro_id = self:add_rbac_role(ws, "read-only", "Read access to all endpoints, across all workspaces", false)
     local ad, ad_id = self:add_rbac_role(ws, "admin", "Full access to all endpoints, across all workspaces—except RBAC Admin API", false)
     local sa, sa_id = self:add_rbac_role(ws, "super-admin", "Full access to all endpoints, across all workspaces", false)
 
@@ -44,7 +44,7 @@ local base_seed = {
       "-- read only role", ro,
       "-- admin role", ad,
       "-- super admin role", sa
-    }, "\n"), { ["read_only"] = ro_id, ["admin"] = ad_id, ["super-admin"] = sa_id }
+    }, "\n"), { ["read-only"] = ro_id, ["admin"] = ad_id, ["super-admin"] = sa_id }
   end,
   seed = function(self, password)
     local ws_q, ws_id = self:add_workspace(DEFAULT_WORKSPACE)
