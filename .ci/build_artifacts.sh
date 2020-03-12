@@ -19,6 +19,7 @@ docker run -it --rm \
   -v /tmp:/tmp \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -e NPM_TOKEN=$NPM_TOKEN \
+  -e SILENT_WAIT=10 \
   mashape/docker-packer /src/package.sh -p alpine -u "$BINTRAY_USER" -k "$BINTRAY_API_KEY" --ee --dev
 
 docker run -it --rm \
@@ -27,6 +28,7 @@ docker run -it --rm \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -e NPM_TOKEN=$NPM_TOKEN \
   -e TRAVIS_BUILD_NUMBER=$TRAVIS_BUILD_NUMBER \
+  -e SILENT_WAIT=10 \
   mashape/docker-packer /src/package.sh -p ubuntu:16.04 -u "$BINTRAY_USER" -k "$BINTRAY_API_KEY" --ee --dev
 
 VERSION=`dpkg-deb -f output/kong-enterprise-edition-*.xenial.all.deb Version`
