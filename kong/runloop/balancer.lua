@@ -64,6 +64,15 @@ local healthcheck_subscribers = {}
 -- upstreams, instead of all at once forcing to rebuild all balancers
 
 
+local function get_all_workspaces()
+  local wss = {}
+  for w, err in kong.db.workspaces:each() do
+    table.insert(wss, w)
+  end
+
+  return wss
+end
+
 local function set_balancer(upstream_id, balancer)
   local prev = balancers[upstream_id]
   if prev then
@@ -586,7 +595,7 @@ do
   end
 
   get_all_upstreams_as_list = function()
-    local workspaces, err = singletons.db.workspaces:select_all()
+    local workspaces, err = get_all_workspaces()
     if err then
       return nil, err
     end
