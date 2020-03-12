@@ -9,9 +9,6 @@ jdk:
 notifications:
   email: false
 
-services:
-  - redis-server
-
 addons:
   postgresql: "9.5"
   apt:
@@ -26,36 +23,37 @@ services:
 
 env:
   global:
+    - PLUGIN_NAME=prometheus
     - LUAROCKS=3.1.3
-    - OPENSSL=1.1.1c
+    - OPENSSL=1.1.1d
+    - KONG_REPOSITORY=kong
+    - KONG_LATEST=master
     - CASSANDRA_BASE=2.2.12
-    - OPENRESTY_BASE=1.15.8.1
+    - CASSANDRA_LATEST=3.9
+    - OPENRESTY_LATEST=1.15.8.1
     - DOWNLOAD_CACHE=$HOME/download-cache
     - INSTALL_CACHE=$HOME/install-cache
     - BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6"
-    - PLUGIN_NAME=prometheus
-    - KONG_TEST_PLUGINS=bundled,$PLUGIN_NAME
+    - TEST_FILE_PATH=$TRAVIS_BUILD_DIR/spec
     - KONG_PLUGINS=bundled,$PLUGIN_NAME
+    - KONG_TEST_PLUGINS=$KONG_PLUGINS
 
   matrix:
-    - OPENRESTY=$OPENRESTY_BASE
+    - OPENRESTY=$OPENRESTY_LATEST
       CASSANDRA=$CASSANDRA_BASE
-
-before_install:
-  - git clone https://$GITHUB_TOKEN:@github.com/Kong/kong-ci.git
-  - source kong-ci/setup_env.sh
-  - git clone --single-branch -b next https://github.com/Kong/kong.git kong-ce
+      KONG_TAG=$KONG_LATEST
+    - OPENRESTY=$OPENRESTY_LATEST
+      CASSANDRA=$CASSANDRA_LATEST
+      KONG_TAG=$KONG_LATEST
 
 install:
-  - luarocks make
-  - cd kong-ce
-  - make dev
-  - cp -r ../spec/fixtures/prometheus spec/fixtures/
-  - createuser --createdb kong
-  - createdb -U kong kong_tests
+  - git clone --single-branch https://$GITHUB_TOKEN:@github.com/Kong/kong-ci ../kong-ci
+  - source ../kong-ci/setup_plugin_env.sh
+  - cp -r ./spec/fixtures/prometheus ../kong-ci/kong/spec/fixtures/
 
 script:
-  - bin/busted $BUSTED_ARGS ../spec
+  - eval $LUACHECK_CMD
+  - eval $BUSTED_CMD
 
 cache:
   apt: true
@@ -64,4 +62,3 @@ cache:
     - $DOWNLOAD_CACHE
     - $INSTALL_CACHE
     - $HOME/.ccm/repository
-
