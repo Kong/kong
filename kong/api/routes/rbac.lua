@@ -614,13 +614,13 @@ return {
         local ws_name = self.params.workspace
 
         if ws_name ~= "*" then
-          local w, err = workspaces.run_with_ws_scope({}, singletons.db.workspaces.select_all, singletons.db.workspaces, {
-            name = ws_name
-          })
+          local w, err = workspaces.run_with_ws_scope({}, singletons.db.workspaces.select_by_name, singletons.db.workspaces,
+            ws_name
+          )
           if err then
             helpers.yield_error(err)
           end
-          if #w == 0 then
+          if not w then
             local err = fmt("Workspace %s does not exist", self.params.workspace)
             kong.response.exit(404, { message = err})
           end
