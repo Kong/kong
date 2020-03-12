@@ -98,13 +98,19 @@ return {
         return kong.response.exit(400, {message = "Cannot delete default workspace"})
       end
 
-      local results, err = db.workspace_entities:select_all({
-        workspace_id = self.workspace.id,
-      })
+      local counts, err = counters.counts(self.workspace.id)
+      local empty = true
+      for k, v in pairs(counts) do
+        if v > 0 then
+          empty = false
+        end
+      end
+
+
       if err then
         return kong.response.exit(500, {err})
       end
-      if #results > 0 then
+      if not empty then
         return kong.response.exit(400, {message = "Workspace is not empty"})
       end
 
