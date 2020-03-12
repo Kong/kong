@@ -21,7 +21,7 @@ describe("signals", function()
     assert.equal(0, code)
   end)
 
-  it("can receive USR2", function()
+  it("can receive USR2 #flaky", function()
     assert(helpers.start_kong())
 
     local conf = helpers.get_running_conf()

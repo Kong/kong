@@ -28,7 +28,7 @@ local function assert_proxy_2_wait(request, res_status, res_headers)
       end
     end
     return true
-  end, 10)
+  end, 30)
 end
 
 
@@ -516,7 +516,7 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-      it("on sni update via id", function()
+      it("on sni update via id #flaky", function()
         local admin_res = admin_client_1:get("/snis")
         local body = assert.res_status(200, admin_res)
         local sni = assert(cjson.decode(body).data[1])
@@ -544,7 +544,7 @@ for _, strategy in helpers.each_strategy() do
         assert.cn("ssl-alt.com", cert_2_new)
       end)
 
-      it("on sni update via name", function()
+      it("on sni update via name #flaky", function()
         local admin_res = admin_client_1:patch("/snis/updated-sn-via-id.com", {
           body    = { name = "updated-sn.com" },
           headers = { ["Content-Type"] = "application/json" },
@@ -568,7 +568,7 @@ for _, strategy in helpers.each_strategy() do
         assert.cn("ssl-alt.com", cert_2_new)
       end)
 
-      it("on certificate delete", function()
+      it("on certificate delete #flaky", function()
         -- delete our certificate
 
         local admin_res = admin_client_1:delete("/certificates/updated-sn.com")
