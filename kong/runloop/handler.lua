@@ -161,6 +161,19 @@ local function csv(s)
   return csv_iterator, s, 1
 end
 
+local function get_all_workspaces()
+  local wss = {}
+  for w, err in kong.db.workspaces:each(nil, {skip_rbac = true}) do
+    if err then
+      return nil, err
+    end
+
+    table.insert(wss, w)
+  end
+
+  return wss
+end
+
 
 local function register_events()
   -- initialize local local_events hooks
@@ -179,7 +192,7 @@ local function register_events()
       return
     end
 
-    local workspaces, err = db.workspaces:select_all(nil, {skip_rbac = true})
+    local workspaces, err = get_all_workspaces()
     if err then
       log(ngx.ERR, "[events] could not fetch workspaces: ", err)
     end
@@ -415,7 +428,7 @@ local function register_events()
     local operation = data.operation
     local upstream = data.entity
 
-    local workspace_list, err = db.workspaces:select_all(nil, {skip_rbac = true})
+    local workspace_list, err = get_all_workspaces()
     if err then
       log(ngx.ERR, "[events] could not fetch workspaces: ", err)
       return
