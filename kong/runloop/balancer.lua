@@ -47,19 +47,14 @@ local healthcheck_subscribers = {}
 
 -- Caching logic
 --
--- We retain 3 entities in singletons.cache:
+-- We retain 2 tables in singletons.core_cache:
 --
 -- 1) `"balancer:upstreams"` - a list of upstreams
 --    to be invalidated on any upstream change
--- 2) `"balancer:upstreams:" .. id` - individual upstreams
---    to be invalidated on individual basis
--- 3) `"balancer:targets:" .. id`
+-- 2) `"balancer:targets:" .. upstream_id`
 --    target history for an upstream, invalidated:
 --    a) along with the upstream it belongs to
 --    b) upon any target change for the upstream (can only add entries)
---
--- Distinction between 1 and 2 makes it possible to invalidate individual
--- upstreams, instead of all at once forcing to rebuild all balancers
 
 
 local function set_balancer(upstream_id, balancer)
@@ -108,7 +103,7 @@ do
   _load_upstream_into_memory = load_upstream_into_memory
 
   get_upstream_by_id = function(upstream_id)
-    local upstream_cache_key = "balancer:upstreams:" .. upstream_id
+    local upstream_cache_key = "upstreams:" .. upstream_id
     return singletons.core_cache:get(upstream_cache_key, nil,
                                 load_upstream_into_memory, upstream_id)
   end
@@ -411,7 +406,6 @@ do
       return nil, "failed creating balancer:" .. err
     end
 
-    singletons.core_cache:invalidate_local("balancer:upstreams:" .. upstream.id)
     singletons.core_cache:invalidate_local("balancer:targets:" .. upstream.id)
 
     target_histories[balancer] = {}
@@ -790,7 +784,6 @@ local function do_upstream_event(operation, upstream_id, upstream_name)
 
     if singletons.db.strategy ~= "off" then
       singletons.core_cache:invalidate_local("balancer:upstreams")
-      singletons.core_cache:invalidate_local("balancer:upstreams:" .. upstream_id)
       singletons.core_cache:invalidate_local("balancer:targets:"   .. upstream_id)
     end
 
