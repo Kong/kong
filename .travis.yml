@@ -1,56 +1,44 @@
-dist: trusty
-sudo: required
+dist: bionic
 
-language: java
-
-jdk:
-  - oraclejdk8
-
-notifications:
-  email: false
-
-addons:
-  postgresql: "9.5"
-  apt:
-    packages:
-      - net-tools
-      - libpcre3-dev
-      - build-essential
-
-services:
-  - docker
+jobs:
+  include:
+  - name: Enterprise 1.3.0.x
+    env: KONG_VERSION=1.3.0.x
+  - name: Enterprise 1.5.0.x
+    env: KONG_VERSION=1.5.0.x
+  - name: Kong CE 1.3.x
+    env: KONG_VERSION=1.3.x
+  - name: Kong CE 1.5.x
+    env: KONG_VERSION=1.5.x
+  - name: Kong CE 2.0.x
+    env: KONG_VERSION=2.0.x
+  - name: Nightly EE-master
+    env: KONG_VERSION=nightly-ee POSTGRES=latest CASSANDRA=latest
+  #- name: Nightly CE-master
+  #  env: KONG_VERSION=nightly POSTGRES=latest CASSANDRA=latest
 
 env:
   global:
-    - CASSANDRA_BASE=2.2.12
-    - CASSANDRA_LATEST=3.9
-    - KONG_REPOSITORY=kong
-    - KONG_TAG=next
-    - DOWNLOAD_CACHE=$HOME/download-cache
-    - INSTALL_CACHE=$HOME/install-cache
-    - DOWNLOAD_ROOT=$HOME/download-root
-    - BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6"
-    - PLUGIN_NAME=aws-lambda
-    - KONG_PLUGINS=bundled,$PLUGIN_NAME
-    - KONG_TEST_PLUGINS=$KONG_PLUGINS
-    - TEST_FILE_PATH=$TRAVIS_BUILD_DIR/spec
-  matrix:
-    # This one runs both postgres and cassandra_base
-    - CASSANDRA=$CASSANDRA_BASE
-    - CASSANDRA=$CASSANDRA_LATEST
+  # for Enterprise images
+  - BINTRAY_USERNAME=kong-automation@kong
+  - BINTRAY_REPO=kong
+  - secure: XRJMsixYJLZZtQMrIQCBEgI16Qf/lMh/66/MRTpPqPRg/+kmSLPWq8/ZSwCdHOCsHr3iUi3z6XLF1FABMIPRH3R4fvwJIiLLjbR3D6X+16lKA864yL0+Y5Cp8rD6oo9UjeTligGV1xqwlufzVD5tv50NXqMmxSclGTWPc3BUHZMaiFd9kKnyR/rAc6Yy1HswaaHFbjmmnygQ/OOG3VhnfgylMsKkXkTFJTQxIYqMnV3rqk0rAaSGpLyM+A7CFOEwqgJ43Ywl4f2bCyKrikolbQvWLFL9SNSFJzdz7sMpind8JWh3+xEjCZoGQvwp48CIlb4GulTiTC/e3K6tC70M1qKMfkW360NVkipXE7N++/jKpwntE0O2FBU+dIuUv2P//DU5KBo79BMbPY1xGdzc3WpvCK7i5xt3OTtGPKQ3KTQb/ZWM7kWvqmoh7Vw/qyIXRH9OUlQu0opEaa0aqCBuQXjsoEgoDX+OLUXzuq1A1qAIq5cuQaHQfEn2FFyGkWgcvkl4KoRLWateV1PwMTccQZ2ohYDpEW08kZrrPei32pBGVO+Bp9OBjJ2gfTuTRvZHsvc6wJlrohAXs4oZBkEuXJb9SpWzQuzibt0XvJ1srevZNmaQTF1kFI5867FZdrxgv6MTQ265ccDXmEH75+fyhARozSTdAAoPpBTheiGDEoY=
+  # for Nightly Enterprise images
+  - NIGHTLY_EE_USER=tieske
+  - secure: OkR4ApVCO1Q+1Ja2rgatQ6nOK2dwuCvkbU7I0O80w7yuqp65oU2sKzZnieXkvV7FHJbmbHSH122mYqp9QwkQqwIH804T8XWPkfHZIwTm7lBseMxFMmVTQNjZvm8HDoG51FfpGs0q/AKVyd1sm410RRM3Vsz0DNBNbsZ/admzbgpJut4nzK1927Ef6xImCqqOHX5dGV3VBDHFQQcz1I74fjwVGLSpmDlIqjIrmx4X9Cz28fbw0RnrD+hQxU4dZehafbFnBXXW+lMrihwoeTdwWOXwCTaz6c+xWwBnrfBnOHEw9U4pu2fG1HvtHCEX2HxhefAsTGH12Mb+rlAkJSOaXiQVQYn19XsBE3rCQxUJfN+mLrqKnI5s7fs3G3lx7vRABwKWhxtonb7NjkVyHAULBqWqpeU69PLpIJap2QtRicRC+QYQ+Czdkg/soYusm5boVrGZT351HjhJP+09ae9CRP1fym7/9NeWIVbvdQzDQUGxMM/k0nWGFQA+CYjzBuJjxN9jISVA1aMiEKXiyMDqTaVHP3NnxDBMfQepragFg1JUNoncyDAx21/UlNJB8ObgP8mBE5lB1HaU2XFHimDCOxzjeCEmTrq1k+8PeZRGeobxAPpGzppTcM5iljeixkS7i7oNy5eIIBjmxGPhdKhWSu6ujJpLDBhTGbHFfWcxaAU=
 
 install:
-  - git clone --single-branch --branch master https://$GITHUB_TOKEN:@github.com/Kong/kong-ci.git ../kong-ci
-  - source ../kong-ci/setup_plugin_env.sh
+- git clone --single-branch https://github.com/Kong/kong-pongo ../kong-pongo
+- "../kong-pongo/pongo.sh up"
+- "../kong-pongo/pongo.sh build"
 
 script:
-  - eval $LUACHECK_CMD
-  - eval $BUSTED_CMD
+- "../kong-pongo/pongo.sh lint"
+- "../kong-pongo/pongo.sh run"
 
-cache:
-  apt: true
-  pip: true
-  directories:
-    - $DOWNLOAD_CACHE
-    - $INSTALL_CACHE
-    - $HOME/.ccm/repository
+notifications:
+  slack:
+    on_success: never
+    on_failure: always
+    rooms:
+      secure: QbZtpW6ihbx/K19d7u0TGk8b6+Uoydi/N8sL+D/BVYlMfFcVhZiOHGqMGK0F8ow5QTiXpqw/uXjgOID3zTSZsba9Qq+1YuqIPxkQ6Waw6VnCwnrR6Pw0/YGCDgxYQupDsfRUoMplJdAvwbpBYktJK/0Wy+45hHu8G9DbeiVfOqMLtbDo3JLhnrjBM3Yoxl0wwroQj8R47yfPBqHD9w+OaL8bWEIAHz+3AwsUSQ5H1RqmsITdmiuaRfo/WdJIVRjuRPVVDv96E34SwhjrDHlTzSC7j2RsPqAv8YHYD7Xj3lwm2OlIrfmjjM/Tk66wIMwo4ohmFsDEFXFPQKUdi+qKRAYBtFnokvFdi+paZBRhhegvWwXtlHl1mtg1irgsCdeSG/4oXufcVOXij8xjBbHBgrzpY/jne3vGGQfoBjvE3JPHhh319d7XeDzcmxQSTsRVm1VR6w3j28IyRjVt8RJsHpF15C4dg9LJMIeOhUTxHGN8Nvr/Jey2c8TJSL4RIHY8Q60iWXH54gcIXmhSuBVGwT5/Exlwk6sAFdaT8b/Ge0+iF9HgngMdd7jFJnlFNIVcGgAth79nUOuGrNBOP7+J3zK63lsXwisTn5n9I3rSWY6b0f30RR3qoU4wNKro4ZcO724e3QvmXb1pftPM3xWV+xX7IUuLqTEjn3ZwLGozS9Q=
