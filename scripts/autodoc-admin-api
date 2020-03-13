@@ -298,6 +298,32 @@ local function gen_kind(finfo, field_data)
   end
 end
 
+local function break_long_code_block(code, separator, max_row_len)
+  local escaped_separator = separator == "." and "%." or separator
+  local word_break_separator = separator .. "`<wbr>`"
+  local buffer = { "`" }
+  local row_len = 0
+  local first = true
+  for part in code:gmatch("[^" .. escaped_separator .."]+") do
+    local part_len = #part
+    if not first then
+      if row_len + part_len + 1 < max_row_len then
+        buffer[#buffer + 1] = separator
+        row_len = row_len + 1
+      else
+        buffer[#buffer + 1] = word_break_separator
+        row_len = 0
+      end
+    end
+    buffer[#buffer + 1] = part
+    row_len = row_len + part_len
+    first = false
+  end
+  buffer[#buffer + 1] = "`"
+
+  return table.concat(buffer)
+end
+
 local function gen_field_info(finfo)
   local out = {}
 
@@ -311,7 +337,9 @@ local function gen_field_info(finfo)
   end
 
   if finfo.default then
-    table.insert(out, " Defaults to `" .. cjson_encode(finfo.default) .. "`.")
+    local json = cjson_encode(finfo.default)
+    local default = break_long_code_block(json, ",", 30)
+    table.insert(out, " Defaults to " ..  default .. ".")
   end
 
   return table.concat(out)
@@ -368,7 +396,9 @@ local function write_field(outfd, fname, finfo, fullname, field_data, entity_nam
   local field_info = gen_field_info(finfo)
   local notation = gen_notation(fname, finfo, field_data)
 
-  outfd:write("    `" .. fullname .. "`" .. kind .. " | " .. description .. field_info .. notation .. "\n")
+  fullname = break_long_code_block(fullname, ".", 25)
+
+  outfd:write("    " .. fullname .. kind .. " | " .. description .. field_info .. notation .. "\n")
 end
 
 local function process_field(outfd, entity_data, entity_name, fname, finfo, prefix)
