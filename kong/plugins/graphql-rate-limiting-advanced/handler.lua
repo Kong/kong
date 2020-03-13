@@ -209,13 +209,14 @@ function NewRLHandler:init_worker()
 end
 
 
-local function introspect_upstream_schema(service)
+local function introspect_upstream_schema(service, request)
   local host = service.host
   local port = service.port
   local path = service.path
   local protocol = service.protocol
   local headers = {
-    ["Content-Type"] = "application/json"
+    ['content-type'] = "application/json",
+    ['authorization'] = request.get_header("authorization")
   }
 
   local httpc = http.new()
@@ -251,14 +252,20 @@ local function introspect_upstream_schema(service)
   local status = res.status
   local body = res:read_body()
 
-  local json = cjson.decode(body)
-  local json_data = json["data"]
-
-  kong.log("Schema Data from upstream server: ", json)
   if status ~= 200 then
     kong.log("failed response from upstream server")
     return nil, { status = status, body = body }
   end
+
+  local json = cjson.decode(body)
+  local json_data = json["data"]
+
+  if not json_data then
+    kong.log("failed to introspect the schema, introspection response is in an unknown format")
+    return nil, "failed to introspect schema"
+  end
+
+  kong.log("Schema Data from upstream server: ", json)
 
   local gql_schema = GqlSchema.deserialize_json_data(json_data)
   return true, gql_schema
@@ -289,6 +296,12 @@ function NewRLHandler:access(conf)
 
   -- Introspecting query body to obtain GraphQL document and calculate its cost
   local body = kong.request.get_body()
+
+  if not body or not body.query then
+    kong.log.err("request body is empty or query was not provided")
+    kong.response.exit(400, { message = "GraphQL query is missing"})
+  end
+
   local gql_docstring = body.query
 
   local ok, res = pcall(build_ast, gql_docstring)
@@ -303,7 +316,7 @@ function NewRLHandler:access(conf)
   local service = ngx.ctx.service
 
   if not self.gql_schema[service.id] then -- Get upstream schema if needed
-    local schema_ok, schema_res = introspect_upstream_schema(service)
+    local schema_ok, schema_res = introspect_upstream_schema(service, kong.request)
     if not schema_ok then
       return kong.response.exit(400, {
         message = "Failed to introspect upstream schema"
