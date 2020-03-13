@@ -71,6 +71,17 @@ return {
         -- Do nothing, accept existing state
       END;
       $$;
+
+      CREATE TABLE IF NOT EXISTS "event_hooks" (
+        "id"           UUID                         UNIQUE,
+        "created_at"   TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
+        "source"       TEXT NOT NULL,
+        "event"        TEXT,
+        "handler"      TEXT NOT NULL,
+        "on_change"    BOOLEAN,
+        "snooze"       INTEGER,
+        "config"       JSON                         NOT NULL
+      );
     ]],
     teardown = function(connector)
       -- XXX: EE keep run_on for now
@@ -146,6 +157,17 @@ return {
       CREATE INDEX IF NOT EXISTS application_instances_composite_id_idx ON application_instances(composite_id);
       CREATE INDEX IF NOT EXISTS application_instances_service_id_idx ON application_instances(service_id);
       CREATE INDEX IF NOT EXISTS application_instances_application_id_idx ON application_instances(application_id);
+
+      CREATE TABLE IF NOT EXISTS event_hooks (
+        id             uuid PRIMARY KEY,
+        created_at     timestamp,
+        source         text,
+        event          text,
+        handler        text,
+        on_change      boolean,
+        snooze         int,
+        config         text
+      );
     ]],
     teardown = function(connector)
       -- XXX: EE keep run_on for now, ignore error
