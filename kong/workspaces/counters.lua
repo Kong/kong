@@ -13,11 +13,13 @@ local _M = {}
 -- Entity count management
 
 function _M.counts(workspace_id)
-  local counts, err = singletons.db.workspace_entity_counters:select_all({
-    workspace_id = workspace_id
-  })
-  if err then
-    return nil, err
+
+  -- XXX ex-select_all
+  local counts = {}
+  for v in singletons.db.workspace_entity_counters:each() do
+    if v.workspace_id ==  workspace_id then
+      counts[#counts+1]= v
+    end
   end
 
   local res = {}
