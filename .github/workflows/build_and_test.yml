@@ -28,7 +28,7 @@ jobs:
       run: pushd $KONG_BUILD_TOOLS_LOCATION && make kong-test-container && popd
 
   lint:
-    name: Unit & PDK
+    name: Lint
     runs-on: ubuntu-18.04
     needs: build
 
@@ -50,7 +50,7 @@ jobs:
       run: make setup-kong-build-tools
 
     - name: Run Tests
-      run: docker run -it --rm mashape/kong-build-tools:test make lint
+      run: docker run -t --rm mashape/kong-build-tools:test make lint
 
   pdk-and-unit-tests:
     name: Unit & PDK

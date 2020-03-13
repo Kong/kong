@@ -12,7 +12,7 @@ export BUSTED_ARGS="--no-k -o htest  -v --exclude-tags=flaky,ipv6"
 
 if [ "$KONG_TEST_DATABASE" == "postgres" ]; then
     export TEST_CMD="bin/busted $BUSTED_ARGS,cassandra,off"
-    psql -v ON_ERROR_STOP=1 -h $KONG_PG_HOST --username "$KONG_TEST_PG_USER" <<-EOSQL
+    psql -v ON_ERROR_STOP=1 -h ${KONG_PG_HOST} -U ${KONG_PG_USER} -d ${KONG_PG_DATABASE} <<-EOSQL
         CREATE user ${KONG_TEST_PG_USER}_ro;
         GRANT CONNECT ON DATABASE $KONG_TEST_PG_DATABASE TO ${KONG_TEST_PG_USER}_ro;
         \c $KONG_TEST_PG_DATABASE;
