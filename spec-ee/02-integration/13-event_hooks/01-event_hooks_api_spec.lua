@@ -24,9 +24,16 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("GET", function()
-      db.event_hooks:insert({
-        event = "foo", source = "bar", handler = "log", config = {}
+      local res = client:post("/event-hooks/", {
+      body = {
+          source = "dao:crud",
+          event = "create",
+          handler = "log",
+        },
+        headers = { ["Content-Type"] = "application/json" },
       })
+      assert.res_status(201, res)
+
       local res  = client:get("/event-hooks")
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
@@ -36,8 +43,8 @@ for _, strategy in helpers.each_strategy() do
     it("POST", function()
       local res = client:post("/event-hooks", {
         body = {
-          event = "foo",
-          source = "bar",
+          event = "create",
+          source = "dao:crud",
           handler = "log",
           config = {},
         },
@@ -47,26 +54,52 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/event-hooks/sources", function()
-      it("exists", function()
+      it("lists available sources", function()
         local res = client:get("/event-hooks/sources")
         local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.same({ data = {} }, json)
-      end)
+        local sources = cjson.decode(body).data
+        local crud_fields = {
+          fields = { "operation", "entity", "old_entity", "schema" },
+        }
+        local some_sources = {
+          ["balancer"] = {
+            ["health"] = {
+              fields = { "upstream_id", "ip", "port", "hostname", "health" },
+            }
+          },
+          ["crud"] = {
+            ["consumers"] = crud_fields,
+            ["consumers:create"] = crud_fields,
+            ["consumers:update"] = crud_fields,
+            ["consumers:delete"] = crud_fields,
+          }
+        }
 
-      pending("lists available sources", function()
-        -- need to provide kong with some mocks that publish events
-        -- unless we add some already to kong
+        -- no need to compare with everything, just that some of them are in
+        -- there?
+        for source, events in pairs(some_sources) do
+          assert.not_nil(sources[source])
+          for event, event_data in pairs(events) do
+            assert.same(event_data, sources[source][event])
+          end
+        end
       end)
     end)
 
-    describe("/event-hooks/<some id>", function()
+    describe("/event-hooks/<some id> #foo", function()
       local event_hook
 
       before_each(function()
-        event_hook = db.event_hooks:insert({
-          event = "foo", source = "bar", handler = "log", config = {}
+        local res = client:post("/event-hooks/", {
+          body = {
+            source = "dao:crud",
+            event = "create",
+            handler = "log",
+          },
+          headers = { ["Content-Type"] = "application/json" },
         })
+        local body = assert.res_status(201, res)
+        event_hook = cjson.decode(body)
       end)
 
       it("GET", function()
@@ -77,14 +110,14 @@ for _, strategy in helpers.each_strategy() do
       it("PATCH", function()
         local res  = client:patch("/event-hooks/" .. event_hook.id, {
           body = {
-            source = "baz",
+            event = "update",
           },
           headers = { ["Content-Type"] = "application/json" },
         })
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("baz", json.source)
+        assert.equal("update", json.event)
       end)
 
       it("DELETE", function()
