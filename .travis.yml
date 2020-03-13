@@ -64,7 +64,7 @@ jobs:
   include:
     - stage: lint and unit
       script:
-      - luacheck -q .
+      - make lint
       - scripts/autodoc-admin-api
       - bin/busted -v -o htest spec/01-unit
       env:

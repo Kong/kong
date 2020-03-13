@@ -161,7 +161,6 @@ end
 local function register_events()
   -- initialize local local_events hooks
   local db             = kong.db
-  local cache          = kong.cache
   local core_cache     = kong.core_cache
   local worker_events  = kong.worker_events
   local cluster_events = kong.cluster_events
@@ -185,12 +184,7 @@ local function register_events()
     -- caching key
 
     local cache_key = db[data.schema.name]:cache_key(data.entity)
-    local cache_obj
-    if constants.CORE_ENTITIES[data.schema.name] then
-      cache_obj = core_cache
-    else
-      cache_obj = cache
-    end
+    local cache_obj = kong[constants.ENTITY_CACHE_STORE[data.schema.name]]
 
     if cache_key then
       cache_obj:invalidate(cache_key)

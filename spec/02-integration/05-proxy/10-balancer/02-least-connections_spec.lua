@@ -141,7 +141,7 @@ for _, strategy in helpers.each_strategy() do
 
       --assert.equal(results,false)
       local ratio = results[100]/results[200]
-      assert.near(2, ratio, 0.4)
+      assert.near(2, ratio, 0.8)
     end)
   end)
 end

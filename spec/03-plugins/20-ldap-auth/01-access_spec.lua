@@ -460,17 +460,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           end)
 
           -- Check that cache is invalidated
-          helpers.wait_until(function()
-            local res = admin_client:send {
-              method  = "GET",
-              path    = "/cache/" .. key
-            }
-            res:read_body()
-            --if res.status ~= 404 then
-            --  ngx.sleep( plugin2.config.cache_ttl / 5 )
-            --end
-            return res.status == 404
-          end, plugin2.config.cache_ttl + 10)
+          helpers.wait_for_invalidation(key, plugin2.config.cache_ttl + 10)
         end)
 
         describe("config.anonymous", function()

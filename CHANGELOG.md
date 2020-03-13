@@ -55,7 +55,7 @@ breaking changes.
   - Fix issue related to race condition in Cassandra select each method
     [#5564](https://github.com/Kong/kong/pull/5564).
     Thanks, [vasuharish](https://github.com/vasuharish)!
-  - Fix an issue when running a control plane with multiple data planes
+  - Fix issue related to running control plane under multiple Nginx workers
     [#5612](https://github.com/Kong/kong/pull/5612).
   - Don't change route paths when marshaling
     [#5587](https://github.com/Kong/kong/pull/5587).

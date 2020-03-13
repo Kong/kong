@@ -2028,10 +2028,12 @@ return {
   dns_mock = dns_mock,
   kong_exec = kong_exec,
   get_version = get_version,
+  get_running_conf = get_running_conf,
   http_client = http_client,
   grpc_client = grpc_client,
   http2_client = http2_client,
   wait_until = wait_until,
+  wait_pid = wait_pid,
   tcp_server = tcp_server,
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
@@ -2076,6 +2078,20 @@ return {
       kill.kill(pid_path, "-TERM")
       wait_pid(pid_path, timeout)
     end
+  end,
+  signal = function(prefix, signal, pid_path)
+    local kill = require "kong.cmd.utils.kill"
+
+    if not pid_path then
+      local running_conf = get_running_conf(prefix)
+      if not running_conf then
+        error("no config file found at prefix: " .. prefix)
+      end
+
+      pid_path = running_conf.nginx_pid
+    end
+
+    return kill.kill(pid_path, signal)
   end,
   setenv = function(env, value)
     return ffi.C.setenv(env, value, 1) == 0

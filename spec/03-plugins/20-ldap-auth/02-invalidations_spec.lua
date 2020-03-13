@@ -104,15 +104,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           it("should invalidate negative cache once ttl expires", function()
             local cache_key = cache_key(plugin.config, "einstein", "wrongpassword")
 
-            helpers.wait_until(function()
-              local res = assert(admin_client:send {
-                method = "GET",
-                path   = "/cache/" .. cache_key,
-                body   = {},
-              })
-              res:read_body()
-              return res.status == 404
-            end)
+            helpers.wait_for_invalidation(cache_key)
           end)
           it("should cache valid credential", function()
             -- It should work
@@ -140,15 +132,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           it("should invalidate cache once ttl expires", function()
             local cache_key = cache_key(plugin.config, "einstein", "password")
 
-            helpers.wait_until(function()
-              local res = assert(admin_client:send {
-                method = "GET",
-                path   = "/cache/" .. cache_key,
-                body   = {},
-              })
-              res:read_body()
-              return res.status == 404
-            end)
+            helpers.wait_for_invalidation(cache_key)
           end)
         end)
       end)

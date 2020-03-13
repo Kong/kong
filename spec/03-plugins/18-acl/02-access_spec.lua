@@ -1158,11 +1158,7 @@ for _, strategy in helpers.each_strategy() do
           -- Wait for cache to be invalidated
           local cache_key = db.acls:cache_key(consumer)
 
-          helpers.wait_until(function()
-            local res = assert(admin_client:get("/cache/" .. cache_key))
-            res:read_body()
-            return res.status == 404
-          end, 5)
+          helpers.wait_for_invalidation(cache_key)
 
           -- Make the request, and it should work
 

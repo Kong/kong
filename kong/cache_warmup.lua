@@ -40,9 +40,10 @@ end
 local function cache_warmup_single_entity(dao)
   local entity_name = dao.schema.name
 
-  local cache = constants.CORE_ENTITIES[entity_name] and kong.core_cache or kong.cache
+  local cache_store = constants.ENTITY_CACHE_STORE[entity_name]
+  local cache = kong[cache_store]
 
-  ngx.log(ngx.NOTICE, "Preloading '", entity_name, "' into the cache ...")
+  ngx.log(ngx.NOTICE, "Preloading '", entity_name, "' into the ", cache_store, "...")
 
   local start = ngx.now()
 
@@ -82,7 +83,7 @@ local function cache_warmup_single_entity(dao)
   local elapsed = math.floor((ngx.now() - start) * 1000)
 
   ngx.log(ngx.NOTICE, "finished preloading '", entity_name,
-                      "' into the cache (in ", tostring(elapsed), "ms)")
+                      "' into the ", cache_store, " (in ", tostring(elapsed), "ms)")
   return true
 end
 
