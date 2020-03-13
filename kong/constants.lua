@@ -109,10 +109,25 @@ return {
     upstreams = true,
     targets = true,
     plugins = true,
-    cluster_ca = true,
     tags = true,
     ca_certificates = true,
   },
+  ENTITY_CACHE_STORE = setmetatable({
+    consumers = "cache",
+    certificates = "core_cache",
+    services = "core_cache",
+    routes = "core_cache",
+    snis = "core_cache",
+    upstreams = "core_cache",
+    targets = "core_cache",
+    plugins = "core_cache",
+    tags = "cache",
+    ca_certificates = "core_cache",
+  }, {
+    __index = function()
+      return "cache"
+    end
+  }),
   RATELIMIT = {
     PERIODS = {
       "second",
