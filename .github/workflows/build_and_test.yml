@@ -27,8 +27,33 @@ jobs:
     - name: Build Test Image
       run: pushd $KONG_BUILD_TOOLS_LOCATION && make kong-test-container && popd
 
-  lint-and-unit-tests:
-    name: Lint & Unit tests
+  lint:
+    name: Unit & PDK
+    runs-on: ubuntu-18.04
+    needs: build
+
+    steps:
+    - name: Set env
+      run: |
+          echo "::set-env name=KONG_SOURCE_LOCATION::$GITHUB_WORKSPACE"
+          echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
+        
+    - uses: azure/docker-login@v1
+      with:
+        username: ${{ secrets.KONG_USERNAME }}
+        password: ${{ secrets.KONG_PASSWORD }}
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v2
+
+    - name: Setup Kong Build Tools
+      run: make setup-kong-build-tools
+
+    - name: Run Tests
+      run: docker run -it --rm mashape/kong-build-tools:test make lint
+
+  pdk-and-unit-tests:
+    name: Unit & PDK
     runs-on: ubuntu-18.04
     needs: build
 
@@ -63,7 +88,7 @@ jobs:
   integration-tests-dbless:
     name: DB-less integration tests
     runs-on: ubuntu-18.04
-    needs: lint-and-unit-tests
+    needs: [pdk-and-unit-tests, lint]
 
     env:
       TEST_DATABASE: 'off'
@@ -92,7 +117,7 @@ jobs:
   integration-tests-with-databases:
     name: ${{matrix.database}} (${{ matrix.suite }}) ${{ matrix.split }} integration tests
     runs-on: ubuntu-18.04
-    needs: lint-and-unit-tests
+    needs: [pdk-and-unit-tests, lint]
 
     strategy:
       matrix:

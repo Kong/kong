@@ -12,6 +12,13 @@ export BUSTED_ARGS="--no-k -o htest  -v --exclude-tags=flaky,ipv6"
 
 if [ "$KONG_TEST_DATABASE" == "postgres" ]; then
     export TEST_CMD="bin/busted $BUSTED_ARGS,cassandra,off"
+    psql -v ON_ERROR_STOP=1 -h $KONG_PG_HOST --username "$KONG_TEST_PG_USER" <<-EOSQL
+        CREATE user ${KONG_TEST_PG_USER}_ro;
+        GRANT CONNECT ON DATABASE $KONG_TEST_PG_DATABASE TO ${KONG_TEST_PG_USER}_ro;
+        \c $KONG_TEST_PG_DATABASE;
+        GRANT USAGE ON SCHEMA public TO ${KONG_TEST_PG_USER}_ro;
+        ALTER DEFAULT PRIVILEGES FOR ROLE $KONG_TEST_PG_USER IN SCHEMA public GRANT SELECT ON TABLES TO ${KONG_TEST_PG_USER}_ro;
+EOSQL
 elif [ "$KONG_TEST_DATABASE" == "cassandra" ]; then
     export KONG_TEST_CASSANDRA_KEYSPACE=kong_tests
     export KONG_TEST_DB_UPDATE_PROPAGATION=1
@@ -95,8 +102,6 @@ if [ "$TEST_SUITE" == "pdk" ]; then
     TEST_NGINX_RANDOMIZE=1 prove -I. -j$JOBS -r t/01-pdk
 fi
 if [ "$TEST_SUITE" == "unit" ]; then
-    unset KONG_TEST_NGINX_USER KONG_PG_PASSWORD KONG_TEST_PG_PASSWORD
-    luacheck -q .
     scripts/autodoc-admin-api
     bin/busted -v -o gtest spec/01-unit
 fi
