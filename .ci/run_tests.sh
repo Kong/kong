@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -ex
 
 function cyan() {
     echo -e "\033[1;36m$*\033[0m"
