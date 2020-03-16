@@ -11,6 +11,8 @@ describe("DNS", function()
   lazy_setup(function()
     stub(ngx, "log")
     singletons = require "kong.singletons"
+    _G.kong = singletons
+
 
     ngx.ctx.workspaces = {}
 
@@ -29,6 +31,9 @@ describe("DNS", function()
     singletons.db.workspaces = {
       select_all = function()
         return {}
+      end,
+      each = function()
+        return function() return nil end
       end
     }
 

@@ -247,6 +247,16 @@ describe("Balancer", function()
       },
       workspaces = {
         select_all = function() return WORKSPACE_FIXTURES end,
+        each = function ()
+          local r = WORKSPACE_FIXTURES
+          local c=0
+          return function()
+            while r do
+              c=c+1
+              return r[c]
+            end
+          end
+        end
       }
     }
 
@@ -265,7 +275,7 @@ describe("Balancer", function()
       end
     }
 
-
+    _G.kong = _G.kong or singletons
   end)
 
   describe("create_balancer()", function()
