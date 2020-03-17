@@ -1,3 +1,38 @@
+local function pg_delete_we_orphan(entity)
+  return [[
+    DELETE FROM workspace_entities WHERE entity_id IN (
+      SELECT entity_id FROM (
+        SELECT * from workspace_entities WHERE entity_type=']] .. entity .. [['
+      ) t1 LEFT JOIN ]] .. entity .. [[ t2
+      ON t2.id::text = t1.entity_id
+      WHERE t2.id IS NULL
+    );
+  ]]
+end
+
+local function pg_fix_we_counters(entity)
+  return [[
+    UPDATE workspace_entity_counters AS wec
+      SET count = we.count FROM (
+        SELECT d.workspace_id AS workspace_id,
+               d.entity_type AS entity_type,
+               coalesce(c.count, 0) AS count
+        FROM (
+          SELECT id AS workspace_id, ']] .. entity .. [['::text AS entity_type
+          FROM workspaces
+        ) AS d LEFT JOIN (
+        SELECT workspace_id, entity_type, COUNT(DISTINCT entity_id)
+          FROM workspace_entities
+          WHERE entity_type = ']] .. entity .. [['
+          GROUP BY workspace_id, entity_type
+        ) c
+        ON d.workspace_id = c.workspace_id
+      ) AS we
+    WHERE wec.workspace_id = we.workspace_id
+    AND wec.entity_type = we.entity_type;
+  ]]
+end
+
 return {
   postgres = {
     up = [[
@@ -58,6 +93,20 @@ return {
         END;
         $$;
       ]]))
+
+      -- List of entities that are workspaceable and have ttl
+      local entities = {
+        "keyauth_credentials",
+        "oauth2_tokens",
+        "oauth2_authorization_codes",
+      }
+
+      for _, entity in ipairs(entities) do
+        -- delete orphan workspace_entities
+        assert(connector:query(pg_delete_we_orphan(entity)))
+        -- re-do workspace_entity_counters
+        assert(connector:query(pg_fix_we_counters(entity)))
+      end
     end,
   },
 
