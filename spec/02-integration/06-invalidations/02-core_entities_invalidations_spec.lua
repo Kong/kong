@@ -412,12 +412,12 @@ for _, strategy in helpers.each_strategy() do
 
         -- if you get an error when running these, you likely have an outdated version of openssl installed
         -- to update in osx: https://github.com/Kong/kong/pull/2776#issuecomment-320275043
-        assert.cn("localhost", cert_1)
-        assert.cn("localhost", cert_2)
-        assert.cn("localhost", cert_wildcard_1)
-        assert.cn("localhost", cert_wildcard_2)
-        assert.cn("localhost", cert_wildcard_3)
-        assert.cn("localhost", cert_wildcard_4)
+        assert.certificate(cert_1).has.cn("localhost")
+        assert.certificate(cert_2).has.cn("localhost")
+        assert.certificate(cert_wildcard_1).has.cn("localhost")
+        assert.certificate(cert_wildcard_2).has.cn("localhost")
+        assert.certificate(cert_wildcard_3).has.cn("localhost")
+        assert.certificate(cert_wildcard_4).has.cn("localhost")
       end)
 
       it("on certificate+sni create", function()
@@ -435,12 +435,12 @@ for _, strategy in helpers.each_strategy() do
         -- because our test instance only has 1 worker
 
         local cert_1 = get_cert(8443, "ssl-example.com")
-        assert.cn("ssl-example.com", cert_1)
+        assert.certificate(cert_1).has.cn("ssl-example.com")
 
         helpers.wait_until(function()
           local cert_2 = get_cert(9443, "ssl-example.com")
           return pcall(function()
-            assert.cn("ssl-example.com", cert_2)
+            assert.certificate(cert_2).has.cn("ssl-example.com")
           end)
         end)
       end)
@@ -469,20 +469,20 @@ for _, strategy in helpers.each_strategy() do
         -- because our test instance only has 1 worker
 
         local cert_1a = get_cert(8443, "ssl-example.com")
-        assert.cn("localhost", cert_1a)
+        assert.certificate(cert_1a).has.cn("localhost")
 
         local cert_1b = get_cert(8443, "new-ssl-example.com")
-        assert.cn("ssl-example.com", cert_1b)
+        assert.certificate(cert_1b).has.cn("ssl-example.com")
 
         helpers.wait_until(function()
           local cert_2a = get_cert(9443, "ssl-example.com")
           return pcall(function()
-            assert.cn("localhost", cert_2a)
+            assert.certificate(cert_2a).has.cn("localhost")
           end)
         end)
 
         local cert_2b = get_cert(9443, "new-ssl-example.com")
-        assert.cn("ssl-example.com", cert_2b)
+        assert.certificate(cert_2b).has.cn("ssl-example.com")
       end)
 
       it("on certificate update", function()
@@ -506,12 +506,12 @@ for _, strategy in helpers.each_strategy() do
         -- because our test instance only has 1 worker
 
         local cert_1 = get_cert(8443, "new-ssl-example.com")
-        assert.cn("ssl-alt.com", cert_1)
+        assert.certificate(cert_1).has.cn("ssl-alt.com")
 
         helpers.wait_until(function()
           local cert_2 = get_cert(9443, "new-ssl-example.com")
           return pcall(function()
-            assert.cn("ssl-alt.com", cert_2)
+            assert.certificate(cert_2).has.cn("ssl-alt.com")
           end)
         end)
       end)
@@ -528,20 +528,20 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, admin_res)
 
         local cert_1_old = get_cert(8443, "new-ssl-example.com")
-        assert.cn("localhost", cert_1_old)
+        assert.certificate(cert_1_old).has.cn("localhost")
 
         local cert_1_new = get_cert(8443, "updated-sn-via-id.com")
-        assert.cn("ssl-alt.com", cert_1_new)
+        assert.certificate(cert_1_new).has.cn("ssl-alt.com")
 
         helpers.wait_until(function()
           local cert_2_old = get_cert(9443, "new-ssl-example.com")
           return pcall(function()
-            assert.cn("localhost", cert_2_old)
+            assert.certificate(cert_2_old).has.cn("localhost")
           end)
         end)
 
         local cert_2_new = get_cert(9443, "updated-sn-via-id.com")
-        assert.cn("ssl-alt.com", cert_2_new)
+        assert.certificate(cert_2_new).has.cn("ssl-alt.com")
       end)
 
       it("on sni update via name #flaky", function()
@@ -552,20 +552,20 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, admin_res)
 
         local cert_1_old = get_cert(8443, "updated-sn-via-id.com")
-        assert.cn("localhost", cert_1_old)
+        assert.certificate(cert_1_old).has.cn("localhost")
 
         local cert_1_new = get_cert(8443, "updated-sn.com")
-        assert.cn("ssl-alt.com", cert_1_new)
+        assert.certificate(cert_1_new).has.cn("ssl-alt.com")
 
         helpers.wait_until(function()
           local cert_2_old = get_cert(9443, "updated-sn-via-id.com")
           return pcall(function()
-            assert.cn("localhost", cert_2_old)
+            assert.certificate(cert_2_old).has.cn("localhost")
           end)
         end)
 
         local cert_2_new = get_cert(9443, "updated-sn.com")
-        assert.cn("ssl-alt.com", cert_2_new)
+        assert.certificate(cert_2_new).has.cn("ssl-alt.com")
       end)
 
       it("on certificate delete #flaky", function()
@@ -578,12 +578,12 @@ for _, strategy in helpers.each_strategy() do
         -- because our test instance only has 1 worker
 
         local cert_1 = get_cert(8443, "updated-sn.com")
-        assert.cn("localhost", cert_1)
+        assert.certificate(cert_1).has.cn("localhost")
 
         helpers.wait_until(function()
           local cert_2 = get_cert(9443, "updated-sn.com")
           return pcall(function()
-            assert.cn("localhost", cert_2)
+            assert.certificate(cert_2).has.cn("localhost")
           end)
         end)
       end)
@@ -614,28 +614,28 @@ for _, strategy in helpers.each_strategy() do
           -- because our test instance only has 1 worker
 
           local cert = get_cert(8443, "test.wildcard.com")
-          assert.cn("ssl-alt.com", cert)
+          assert.certificate(cert).has.cn("ssl-alt.com")
           cert = get_cert(8443, "test2.wildcard.com")
-          assert.cn("ssl-alt.com", cert)
+          assert.certificate(cert).has.cn("ssl-alt.com")
 
           helpers.wait_until(function()
             cert = get_cert(9443, "test.wildcard.com")
             return pcall(function()
-              assert.cn("ssl-alt.com", cert)
+              assert.certificate(cert).has.cn("ssl-alt.com")
             end)
           end)
 
           helpers.wait_until(function()
             cert = get_cert(9443, "test2.wildcard.com")
             return pcall(function()
-              assert.cn("ssl-alt.com", cert)
+              assert.certificate(cert).has.cn("ssl-alt.com")
             end)
           end)
 
           cert = get_cert(8443, "wildcard.org")
-          assert.cn("ssl-alt-alt.com", cert)
+          assert.certificate(cert).has.cn("ssl-alt-alt.com")
           cert = get_cert(8443, "wildcard.com")
-          assert.cn("ssl-alt-alt.com", cert)
+          assert.certificate(cert).has.cn("ssl-alt-alt.com")
         end)
 
         it("on certificate update", function()
@@ -659,16 +659,16 @@ for _, strategy in helpers.each_strategy() do
           -- because our test instance only has 1 worker
 
           local cert = get_cert(8443, "test.wildcard.com")
-          assert.cn("ssl-alt-alt.com", cert)
+          assert.certificate(cert).has.cn("ssl-alt-alt.com")
           cert = get_cert(8443, "test2.wildcard.com")
-          assert.cn("ssl-alt-alt.com", cert)
+          assert.certificate(cert).has.cn("ssl-alt-alt.com")
 
           helpers.wait_until(function()
             local cert1 = get_cert(9443, "test.wildcard.com")
             local cert2 = get_cert(9443, "test2.wildcard.com")
             return pcall(function()
-              assert.cn("ssl-alt-alt.com", cert1)
-              assert.cn("ssl-alt-alt.com", cert2)
+              assert.certificate(cert1).has.cn("ssl-alt-alt.com")
+              assert.certificate(cert2).has.cn("ssl-alt-alt.com")
             end)
           end)
         end)
@@ -685,28 +685,28 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(200, admin_res)
 
           local cert_1_old = get_cert(8443, "test.wildcard.com")
-          assert.cn("localhost", cert_1_old)
+          assert.certificate(cert_1_old).has.cn("localhost")
           cert_1_old = get_cert(8443, "test2.wildcard.com")
-          assert.cn("localhost", cert_1_old)
+          assert.certificate(cert_1_old).has.cn("localhost")
 
           local cert_1_new = get_cert(8443, "test.wildcard_updated.com")
-          assert.cn("ssl-alt-alt.com", cert_1_new)
+          assert.certificate(cert_1_new).has.cn("ssl-alt-alt.com")
           cert_1_new = get_cert(8443, "test2.wildcard_updated.com")
-          assert.cn("ssl-alt-alt.com", cert_1_new)
+          assert.certificate(cert_1_new).has.cn("ssl-alt-alt.com")
 
           helpers.wait_until(function()
             local cert_2_old_1 = get_cert(9443, "test.wildcard.com")
             local cert_2_old_2 = get_cert(9443, "test2.wildcard.com")
             return pcall(function()
-              assert.cn("localhost", cert_2_old_1)
-              assert.cn("localhost", cert_2_old_2)
+              assert.certificate(cert_2_old_1).has.cn("localhost")
+              assert.certificate(cert_2_old_2).has.cn("localhost")
             end)
           end)
 
           local cert_2_new = get_cert(9443, "test.wildcard_updated.com")
-          assert.cn("ssl-alt-alt.com", cert_2_new)
+          assert.certificate(cert_2_new).has.cn("ssl-alt-alt.com")
           cert_2_new = get_cert(9443, "test2.wildcard_updated.com")
-          assert.cn("ssl-alt-alt.com", cert_2_new)
+          assert.certificate(cert_2_new).has.cn("ssl-alt-alt.com")
         end)
 
         it("on sni update via name", function()
@@ -717,28 +717,28 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(200, admin_res)
 
           local cert_1_old = get_cert(8443, "test.wildcard_updated.com")
-          assert.cn("localhost", cert_1_old)
+          assert.certificate(cert_1_old).has.cn("localhost")
           cert_1_old = get_cert(8443, "test2.wildcard_updated.com")
-          assert.cn("localhost", cert_1_old)
+          assert.certificate(cert_1_old).has.cn("localhost")
 
           local cert_1_new = get_cert(8443, "test.wildcard.org")
-          assert.cn("ssl-alt-alt.com", cert_1_new)
+          assert.certificate(cert_1_new).has.cn("ssl-alt-alt.com")
           cert_1_new = get_cert(8443, "test2.wildcard.org")
-          assert.cn("ssl-alt-alt.com", cert_1_new)
+          assert.certificate(cert_1_new).has.cn("ssl-alt-alt.com")
 
           helpers.wait_until(function()
             local cert_2_old_1 = get_cert(9443, "test.wildcard_updated.com")
             local cert_2_old_2 = get_cert(9443, "test2.wildcard_updated.com")
             return pcall(function()
-              assert.cn("localhost", cert_2_old_1)
-              assert.cn("localhost", cert_2_old_2)
+              assert.certificate(cert_2_old_1).has.cn("localhost")
+              assert.certificate(cert_2_old_2).has.cn("localhost")
             end)
           end)
 
           local cert_2_new = get_cert(9443, "test.wildcard.org")
-          assert.cn("ssl-alt-alt.com", cert_2_new)
+          assert.certificate(cert_2_new).has.cn("ssl-alt-alt.com")
           cert_2_new = get_cert(9443, "test2.wildcard.org")
-          assert.cn("ssl-alt-alt.com", cert_2_new)
+          assert.certificate(cert_2_new).has.cn("ssl-alt-alt.com")
         end)
 
         it("on certificate delete", function()
@@ -751,16 +751,16 @@ for _, strategy in helpers.each_strategy() do
           -- because our test instance only has 1 worker
 
           local cert_1 = get_cert(8443, "test.wildcard.org")
-          assert.cn("localhost", cert_1)
+          assert.certificate(cert_1).has.cn("localhost")
           cert_1 = get_cert(8443, "test2.wildcard.org")
-          assert.cn("localhost", cert_1)
+          assert.certificate(cert_1).has.cn("localhost")
 
           helpers.wait_until(function()
             local cert_2_1 = get_cert(9443, "test.wildcard.org")
             local cert_2_2 = get_cert(9443, "test2.wildcard.org")
             return pcall(function()
-              assert.cn("localhost", cert_2_1)
-              assert.cn("localhost", cert_2_2)
+              assert.certificate(cert_2_1).has.cn("localhost")
+              assert.certificate(cert_2_2).has.cn("localhost")
             end)
           end)
         end)

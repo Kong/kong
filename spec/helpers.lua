@@ -1710,16 +1710,43 @@ luassert:register("assertion", "gt", is_gt,
                   "assertion.gt.negative",
                   "assertion.gt.positive")
 
+--- Generic modifier "certificate".
+-- Will set a "certificate" value in the assertion state, so following
+-- assertions will operate on the value set.
+-- @name certificate
+-- @param cert The cert text
+-- @see cn
+-- @usage
+-- assert.certificate(cert).has.cn("ssl-example.com")
+local function modifier_certificate(state, arguments, level)
+  local generic = "The assertion 'certficate' modifier takes a cert text"
+                .. " as input to validate certificate parameters"
+                .. " against."
+  local cert = arguments[1]
+  assert(type(cert) == "string",
+         "Expected a certificate text, got '" .. tostring(cert) .. "'. " .. generic)
+  rawset(state, "kong_certificate", cert)
+  return state
+end
+luassert:register("modifier", "certificate", modifier_certificate)
 
 --- Assertion to check whether a CN is matched in an SSL cert.
 -- @name cn
 -- @param expected The CN value
--- @param cert The cert
--- @return boolean
+-- @param cert The cert text
+-- @return the CN found in the cert
+-- @see certificate
 -- @usage
 -- assert.cn("ssl-example.com", cert)
+--
+-- -- alternative:
+-- assert.certificate(cert).has.cn("ssl-example.com")
 local function assert_cn(state, args)
-  local expected, cert = unpack(args)
+  local expected = args[1]
+  if args[2] and rawget(state, "kong_certificate") then
+    error("assertion 'cn' takes either a 'certificate' modifier, or 2 parameters, not both")
+  end
+  local cert = args[2] or rawget(state, "kong_certificate")
   local cn = string.match(cert, "CN%s*=%s*([^%s,]+)")
   args[2] = cn or "(CN not found in certificate)"
   args.n = 2
@@ -1732,9 +1759,7 @@ Expected CN:
 Got instead:
 %s
 ]])
--- TODO: this seems broken, there seem to be no tests. A nicer assertion would be
--- assert.certificate.has.cn("somename.com")
-say:set("assertion.contains.positive", [[
+say:set("assertion.cn.positive", [[
 Expected certificate to not have the given CN value.
 Expected CN to not be:
 %s
