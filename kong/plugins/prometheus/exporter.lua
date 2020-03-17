@@ -178,10 +178,18 @@ local function collect()
   prometheus:collect()
 end
 
+local function get_prometheus()
+  if not prometheus then
+    kong.log.err("prometheus: plugin is not initialized, please make sure ",
+                     " 'prometheus_metrics' shared dict is present in nginx template")
+  end
+  return prometheus
+end
 
 return {
   init        = init,
   init_worker = init_worker,
   log         = log,
   collect     = collect,
+  get_prometheus = get_prometheus,
 }
