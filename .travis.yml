@@ -102,5 +102,9 @@ jobs:
       if: branch = master
       script: .ci/build_package.sh && .ci/release_artifacts.sh
 
+  # Allow the packaging step to fail
+  allow_failures:
+    - name: package
+
 script:
   - .ci/run_tests.sh
