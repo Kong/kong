@@ -17,6 +17,7 @@ pushd docker-kong-ee/alpine/
 
   export KONG_ENTERPRISE_PACKAGE=kong.tar.gz
 
+  docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
   docker build --no-cache --build-arg KONG_ENTERPRISE_PACKAGE=$KONG_ENTERPRISE_PACKAGE -t mashape/kong-enterprise:"$DOCKER_TAG_NAME" .
   docker push mashape/kong-enterprise:"$DOCKER_TAG_NAME"
 popd
