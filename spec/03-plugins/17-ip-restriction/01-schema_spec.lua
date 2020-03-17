@@ -12,6 +12,17 @@ describe("Plugin: ip-restriction (schema)", function()
   it("should accept a valid blacklist", function()
     assert(v({ blacklist = { "127.0.0.1", "127.0.0.2" } }, schema_def))
   end)
+  it("should accept both non-empty whitelist and blacklist", function()
+    local schema = {
+      blacklist = {
+        "127.0.0.2"
+      },
+      whitelist = {
+        "127.0.0.1"
+      },
+    }
+    assert(v(schema, schema_def))
+  end)
 
   describe("errors", function()
     it("whitelist should not accept invalid types", function()
@@ -50,18 +61,11 @@ describe("Plugin: ip-restriction (schema)", function()
         blacklist = { [3] = "invalid ip or cidr range: 'hello'" }
       }, err.config)
     end)
-    it("should not accept both a whitelist and a blacklist", function()
-      local t = { blacklist = { "127.0.0.1" }, whitelist = { "127.0.0.2" } }
-      local ok, err = v(t, schema_def)
-      assert.falsy(ok)
-      assert.same({ "only one of these fields must be non-empty: 'config.whitelist', 'config.blacklist'" }, err["@entity"])
-    end)
     it("should not accept both empty whitelist and blacklist", function()
       local t = { blacklist = {}, whitelist = {} }
       local ok, err = v(t, schema_def)
       assert.falsy(ok)
       local expected = {
-        "only one of these fields must be non-empty: 'config.whitelist', 'config.blacklist'",
         "at least one of these fields must be non-empty: 'config.whitelist', 'config.blacklist'",
       }
       assert.same(expected, err["@entity"])
