@@ -11,9 +11,10 @@ _M.CONSUMERS = {
     UNVERIFIED = 5,
   },
   TYPE = {
-    PROXY     = 0,
-    DEVELOPER = 1,
-    ADMIN     = 2,
+    PROXY       = 0,
+    DEVELOPER   = 1,
+    ADMIN       = 2,
+    APPLICATION = 3,
   },
   STATUS_LABELS = {},
   TYPE_LABELS   = {},

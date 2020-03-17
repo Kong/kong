@@ -151,6 +151,7 @@ build = {
     ["kong.api.arguments"] = "kong/api/arguments.lua",
     ["kong.api.endpoints"] = "kong/api/endpoints.lua",
     ["kong.api.routes.kong"] = "kong/api/routes/kong.lua",
+    ["kong.api.routes.applications"] = "kong/api/routes/applications.lua",
     ["kong.api.routes.health"] = "kong/api/routes/health.lua",
     ["kong.api.routes.config"] = "kong/api/routes/config.lua",
     ["kong.api.routes.consumers"] = "kong/api/routes/consumers.lua",
@@ -264,6 +265,8 @@ build = {
     ["kong.db.iteration"] = "kong/db/iteration.lua",
     ["kong.db.dao"] = "kong/db/dao/init.lua",
     ["kong.db.dao.admins"] = "kong/db/dao/admins.lua",
+    ["kong.db.dao.applications"] = "kong/db/dao/applications.lua",
+    ["kong.db.dao.application_instances"] = "kong/db/dao/application_instances.lua",
     ["kong.db.dao.consumers"] = "kong/db/dao/consumers.lua",
     ["kong.db.dao.developers"] = "kong/db/dao/developers.lua",
     ["kong.db.dao.certificates"] = "kong/db/dao/certificates.lua",
@@ -278,6 +281,8 @@ build = {
     ["kong.db.declarative"] = "kong/db/declarative/init.lua",
     ["kong.db.schema"] = "kong/db/schema/init.lua",
     ["kong.db.schema.entities.admins"] = "kong/db/schema/entities/admins.lua",
+    ["kong.db.schema.entities.applications"] = "kong/db/schema/entities/applications.lua",
+    ["kong.db.schema.entities.application_instances"] = "kong/db/schema/entities/application_instances.lua",
     ["kong.db.schema.entities.consumers"] = "kong/db/schema/entities/consumers.lua",
     ["kong.db.schema.entities.routes"] = "kong/db/schema/entities/routes.lua",
     ["kong.db.schema.entities.routes_subschemas"] = "kong/db/schema/entities/routes_subschemas.lua",
@@ -515,5 +520,9 @@ build = {
 
     ["kong.plugins.request-termination.handler"] = "kong/plugins/request-termination/handler.lua",
     ["kong.plugins.request-termination.schema"] = "kong/plugins/request-termination/schema.lua",
+
+    ["kong.plugins.application-registration.handler"] = "kong/plugins/application-registration/handler.lua",
+    ["kong.plugins.application-registration.schema"] = "kong/plugins/application-registration/schema.lua",
+    ["kong.plugins.application-registration.api"] = "kong/plugins/application-registration/api.lua",
   }
 }

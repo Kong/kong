@@ -7,7 +7,6 @@ local workspaces = require "kong.workspaces"
 local constants = require "kong.constants"
 
 local kong = kong
-local tonumber = tonumber
 
 local unescape_uri = ngx.unescape_uri
 local ws_constants = constants.WORKSPACE_CONFIG
@@ -37,8 +36,6 @@ return {
 
     -- List all files stored in the portal file system
     GET = function(self, db, helpers, parent)
-      local size = tonumber(self.params.size or 100)
-      local offset = self.params.offset
       local type = self.params.type
 
       self.params.size = nil
@@ -70,16 +67,9 @@ return {
         end
       end
 
-      local res, _, err_t = crud_helpers.paginate(
-        self, '/files', files, size, offset, post_process
-      )
-
+      local res, _, err_t = crud_helpers.paginate(self, files, post_process)
       if not res then
         return endpoints.handle_error(err_t)
-      end
-
-      if type and res.next ~= ngx.null then
-        res.next = res.next .. "&type=" .. type
       end
 
       return kong.response.exit(200, res)

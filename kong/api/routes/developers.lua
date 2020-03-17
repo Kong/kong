@@ -32,6 +32,11 @@ local auth_plugins = {
 }
 
 
+local app_auth_plugins = {
+  ["oauth2"] = { name = "oauth2", dao = "oauth2_credentials" },
+}
+
+
 local function remove_portal_prefix(str)
   return string.gsub(str, "^" .. ESCAPED_PORTAL_PREFIX, "")
 end
@@ -117,8 +122,6 @@ return {
     end,
 
     GET = function(self, db, helpers, parent)
-      local size = tonumber(self.params.size or 100)
-      local offset = self.params.offset
       local filter_by_role = self.params.role
 
       self.params.offset = nil
@@ -157,15 +160,10 @@ return {
         end
       end
 
-      local res, _, err_t = crud_helpers.paginate(self, '/developers',
-                                                  developers, size,
-                                                  offset, post_process)
+      local res, _, err_t = crud_helpers.paginate(self, developers,
+                                                  post_process)
       if not res then
         return endpoints.handle_error(err_t)
-      end
-
-      if filter_by_role and res.next ~= ngx.null then
-        res.next = res.next .. "&role=" .. filter_by_role
       end
 
       return kong.response.exit(200, res)
@@ -232,20 +230,13 @@ return {
     end,
 
     GET = function(self, db, helpers, parent)
-      local size = tonumber(self.params.size or 100)
-      local offset = self.params.offset
-
-      self.params.offset = nil
-      self.params.size = nil
-
       local roles, err, err_t = db.rbac_roles:select_all()
       if err then
         return endpoints.handle_error(err_t)
       end
 
-      local res, _, err_t = crud_helpers.paginate(self, '/developers/roles',
-                                                  roles, size,
-                                                  offset, filter_and_preprocess_roles)
+      local res, _, err_t = crud_helpers.paginate(self, roles,
+                                                  filter_and_preprocess_roles)
       if not res then
         return endpoints.handle_error(err_t)
       end
@@ -356,6 +347,330 @@ return {
     end,
   },
 
+  ["/developers/:developers/applications"] = {
+    before = function(self, db, helpers)
+      crud_helpers.exit_if_portal_disabled()
+
+      local developer_pk = self.params.developers
+      self.params.developers = nil
+
+      local developer = find_developer(db, developer_pk)
+      if not developer then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      self.params.developer = developer
+    end,
+
+    POST = function(self, db, helpers)
+      local application, _, err_t = kong.db.applications:insert(self.params)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      return kong.response.exit(201, application)
+    end,
+
+    GET = function(self, db, helpers)
+      local applications = {}
+      for application, err in kong.db.applications:each_for_developer({ id = self.params.developer.id }) do
+        table.insert(applications, application)
+      end
+
+      setmetatable(applications, cjson.empty_array_mt)
+
+      local res, _, err_t = crud_helpers.paginate(self, applications)
+      if not res then
+        return endpoints.handle_error(err_t)
+      end
+
+      return kong.response.exit(200, res)
+    end,
+  },
+
+  ["/developers/:developers/applications/:applications"] = {
+    before = function(self, db, helpers)
+      crud_helpers.exit_if_portal_disabled()
+
+      local developer_pk = self.params.developers
+      self.params.developers = nil
+
+      local developer = find_developer(db, developer_pk)
+      if not developer then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      self.developer = developer
+
+      local application_pk = self.params.applications
+      self.params.applications = nil
+
+      local application, _, err_t = db.applications:select({ id = application_pk })
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not application then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      if application.developer.id ~= self.developer.id then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      self.application = application
+    end,
+
+    GET = function(self, db, helpers)
+      return kong.response.exit(200, self.application)
+    end,
+
+    PATCH = function(self, db, helpers)
+      local application, _, err_t =
+        kong.db.applications:update({ id = self.application.id }, self.params)
+
+      if not application then
+        return endpoints.handle_error(err_t)
+      end
+
+      return kong.response.exit(200, application)
+    end,
+
+    DELETE = function(self, db, helpers)
+      local _, _, err_t = kong.db.applications:delete({ id = self.application.id })
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      return kong.response.exit(204)
+    end
+  },
+
+  ["/developers/:developers/applications/:applications/credentials/:plugin"] = {
+    before = function(self, db, helpers)
+      crud_helpers.exit_if_portal_disabled()
+
+      local developer_pk = self.params.developers
+      self.params.developers = nil
+
+      local application_pk = self.params.applications
+      self.params.applications = nil
+
+      local developer = find_developer(db, developer_pk)
+      if not developer then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      self.developer = developer
+
+      local application, _, err_t =
+        db.applications:select({ id = application_pk }, { with_consumer = true })
+
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not application then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      if application.developer.id ~= developer.id then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      self.application = application
+
+      local plugin_name = self.params.plugin
+      local plugin = app_auth_plugins[plugin_name]
+      if not plugin then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      self.plugin = plugin
+    end,
+
+    GET = function(self, db, helpers)
+      self.credential_collection = db.daos[self.plugin.dao]
+      self.consumer = { id = self.application.consumer.id }
+
+      return crud_helpers.get_credentials(self, db, helpers)
+    end,
+
+    POST = function(self, db, helpers)
+      self.credential_collection = db.daos[self.plugin.dao]
+      self.params.name = self.application.name
+      self.params.consumer = self.application.consumer
+      self.params.redirect_uris = { self.application.redirect_uri }
+
+      return crud_helpers.create_credential(self, db, helpers, {})
+    end,
+  },
+
+
+  ["/developers/:developers/applications/:applications/credentials/:plugin/:credential_id"] = {
+    before = function(self, db, helpers)
+      crud_helpers.exit_if_portal_disabled()
+
+      local developer_pk = self.params.developers
+      self.params.developers = nil
+
+      local developer = find_developer(db, developer_pk)
+      if not developer then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      local application_pk = self.params.applications
+      self.params.applications = nil
+
+      local application, _, err_t = db.applications:select({ id = application_pk })
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not application then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      if application.developer.id ~= developer.id then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      self.consumer = application.consumer
+
+      local plugin_name = self.params.plugin
+      local plugin = app_auth_plugins[plugin_name]
+      if not plugin then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      self.credential_collection = db.daos[plugin.dao]
+    end,
+
+    GET = function(self, db, helpers)
+      return crud_helpers.get_credential(self, db, helpers)
+    end,
+
+    -- PATCH not allowed, user can only DELETE and POST app credentials
+    PATCH = function(self, db, helpers)
+      return kong.response.exit(405)
+    end,
+
+    DELETE = function(self, db, helpers)
+      return crud_helpers.delete_credential(self, db, helpers)
+    end,
+  },
+
+  ["/developers/:developers/applications/:applications/application_instances"] = {
+    before = function(self, db, helpers)
+      crud_helpers.exit_if_portal_disabled()
+
+      local developer_pk = self.params.developers
+      self.params.developers = nil
+
+      local developer = find_developer(db, developer_pk)
+      if not developer then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      local application_pk = self.params.applications
+      self.params.applications = nil
+
+      local application, _, err_t = db.applications:select({ id = application_pk })
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not application then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      if application.developer.id ~= developer.id then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      self.application = application
+    end,
+
+    POST = function(self, db, helpers)
+      return crud_helpers.create_application_instance(self, db, helpers)
+    end,
+
+    GET = function(self, db, helpers)
+      return crud_helpers.get_application_instances_by_application(self, db, helpers)
+    end,
+  },
+
+
+  ["/developers/:developers/applications/:applications/application_instances/:application_instances"] = {
+    before = function(self, db, helpers)
+      crud_helpers.exit_if_portal_disabled()
+
+      local developer_pk = self.params.developers
+      self.params.developers = nil
+
+      local developer = find_developer(db, developer_pk)
+      if not developer then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      local application_pk = self.params.applications
+      self.params.applications = nil
+
+      local application, _, err_t = db.applications:select({ id = application_pk })
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not application then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      if application.developer.id ~= developer.id then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      self.application = application
+
+      local application_instance_pk = self.params.application_instances
+      self.params.application_instances = nil
+
+      local application_instance, _, err_t =
+        db.application_instances:select({ id = application_instance_pk })
+
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      self.application_instance = application_instance
+    end,
+
+    GET = function(self, db, helpers)
+      if not self.application_instance
+         or self.application_instance.application.id ~= self.application.id then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      return kong.response.exit(200, self.application_instance)
+    end,
+
+    PATCH = function(self, db, helpers)
+      if not self.application_instance
+         or self.application_instance.application.id ~= self.application.id then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      return crud_helpers.update_application_instance(self, db, helpers)
+    end,
+
+    DELETE = function(self, db, helpers)
+      if not self.application_instance
+         or self.application_instance.application.id ~= self.application.id then
+        return kong.response.exit(204)
+      end
+
+      return crud_helpers.delete_application_instance(self, db, helpers)
+    end,
+  },
 
   ["/developers/:email_or_id/plugins/"] = {
     before = function(self, db, helpers)
@@ -496,10 +811,12 @@ return {
     end,
 
     GET = function(self, db, helpers)
+      self.consumer = { id = self.developer.consumer.id }
       return crud_helpers.get_credentials(self, db, helpers)
     end,
 
     POST = function(self, db, helpers)
+      self.params.consumer = { id = self.developer.consumer.id }
       return crud_helpers.create_credential(self, db, helpers)
     end,
   },
@@ -521,14 +838,17 @@ return {
     end,
 
     GET = function(self, db, helpers)
+      self.consumer = { id = self.developer.consumer.id }
       return crud_helpers.get_credential(self, db, helpers)
     end,
 
     PATCH = function(self, db, helpers)
+      self.consumer = { id = self.developer.consumer.id }
       return crud_helpers.update_credential(self, db, helpers)
     end,
 
     DELETE = function(self, db, helpers)
+      self.consumer = { id = self.developer.consumer.id }
       return crud_helpers.delete_credential(self, db, helpers)
     end,
   },

@@ -1145,7 +1145,7 @@ describe("Admin API - Developer Portal - " .. strategy, function()
           },
           headers = {["Content-Type"] = "application/json"},
         }))
-        assert.res_status(200, res)
+        assert.res_status(201, res)
 
         res = assert(client:send {
           method = "GET",

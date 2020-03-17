@@ -572,13 +572,14 @@ for _, strategy in helpers.each_strategy() do
         })
 
         assert.equals(401, res.status)
+        assert.equals(0, #get_pending_tokens(db, unverified_developer))
 
-        local res = client_request({
-          method = "GET",
-          path = "/developers/" .. unverified_developer.email,
-        })
+        -- local res = client_request({
+        --   method = "GET",
+        --   path = "/developers/" .. unverified_developer.email,
+        -- })
 
-        assert.equals(404, res.status)
+        -- assert.equals(404, res.status)
       end)
     end)
   end)

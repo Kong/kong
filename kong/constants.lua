@@ -27,6 +27,7 @@ local plugins = {
   "bot-detection",
   "aws-lambda",
   "request-termination",
+  "application-registration",
   -- external plugins
   "azure-functions",
   "zipkin",
@@ -124,6 +125,8 @@ return {
     "rbac_role_endpoints",
     "admins",
     "developers",
+    "applications",
+    "application_instances",
     "groups",
     "group_rbac_roles",
     "login_attempts",

@@ -13,7 +13,6 @@ local secrets            = require "kong.enterprise_edition.consumer_reset_secre
 local dao_helpers        = require "kong.portal.dao_helpers"
 
 local kong = kong
-local tonumber = tonumber
 
 local PORTAL_DEVELOPER_META_FIELDS = constants.WORKSPACE_CONFIG.PORTAL_DEVELOPER_META_FIELDS
 local PORTAL_AUTH = constants.WORKSPACE_CONFIG.PORTAL_AUTH
@@ -42,7 +41,6 @@ end
 
 local function validate_credential_plugin(self, db, helpers)
   local plugin_name = ngx.unescape_uri(self.params.plugin)
-
   self.credential_plugin = auth_plugins[plugin_name]
   if not self.credential_plugin then
     return kong.response.exit(404, { message = "Not found" })
@@ -80,12 +78,6 @@ return {
   ["/files/unauthenticated"] = {
     -- List all unauthenticated files stored in the portal file system
     GET = function(self, db, helpers)
-      local size = tonumber(self.params.size or 100)
-      local offset = self.params.offset
-
-      self.params.size = nil
-      self.params.offset = nil
-
       local files, err, err_t = db.files:select_all({
         auth = false,
         type = self.params.type,
@@ -97,10 +89,7 @@ return {
         return endpoints.handle_error(err_t)
       end
 
-      local paginated_results, _, err_t = crud_helpers.paginate(
-        self, '/files/unauthenticated', files, size, offset
-      )
-
+      local paginated_results, _, err_t = crud_helpers.paginate(self, files)
       if not paginated_results then
         return endpoints.handle_error(err_t)
       end
@@ -119,12 +108,6 @@ return {
     end,
 
     GET = function(self, db, helpers)
-      local size = tonumber(self.params.size or 100)
-      local offset = self.params.offset
-
-      self.params.size = nil
-      self.params.offset = nil
-
       local files, err, err_t = db.files:select_all({
         type = self.params.type,
       }, {
@@ -135,10 +118,7 @@ return {
         return endpoints.handle_error(err_t)
       end
 
-      local paginated_results, _, err_t = crud_helpers.paginate(
-        self, '/files/unauthenticated', files, size, offset
-      )
-
+      local paginated_results, _, err_t = crud_helpers.paginate(self, files)
       if not paginated_results then
         return endpoints.handle_error(err_t)
       end
@@ -750,7 +730,271 @@ return {
 
       return kong.response.exit(200)
     end,
+  },
 
+  ["/application_services"] = {
+    before = function(self, db, helpers)
+      auth.authenticate_api_session(self, db, helpers)
+    end,
+
+    GET = function(self, db, helpers)
+      local application_services = setmetatable({}, cjson.empty_array_mt)
+
+      local rows, _, err_t = db.plugins:select_all({
+        name = "application-registration",
+      })
+
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      for i, v in ipairs(rows) do
+        local service, _, err_t = db.services:select(v.service)
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+
+        local url = service.protocol .. "://" .. service.host
+        if service.path then
+          url = url .. service.path
+        end
+
+        application_services[i] = {
+          name = v.config.display_name,
+          id = service.id,
+          url = url,
+        }
+      end
+
+      local res, _, err_t = crud_helpers.paginate(self, application_services)
+      if not res then
+        return endpoints.handle_error(err_t)
+      end
+
+      return kong.response.exit(200, res)
+    end,
+  },
+
+  ["/applications"] = {
+    before = function(self, db, helpers)
+      auth.authenticate_api_session(self, db, helpers)
+    end,
+
+    GET = function(self, db, helpers)
+      local applications = {}
+      for row, err in kong.db.applications:each_for_developer({ id = self.developer.id }) do
+        table.insert(applications, row)
+      end
+
+      local res, _, err_t = crud_helpers.paginate(self, applications)
+      if not res then
+        return endpoints.handle_error(err_t)
+      end
+
+      return kong.response.exit(200, res)
+    end,
+
+    POST = function(self, db, helpers)
+      self.params.developer = { id = self.developer.id }
+      local application, _, err_t = kong.db.applications:insert(self.params)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      return kong.response.exit(200, application)
+    end,
+  },
+
+  ["/applications/:applications"] = {
+    before = function(self, db, helpers)
+      auth.authenticate_api_session(self, db, helpers)
+
+      local application_pk = self.params.applications
+      self.params.applications = nil
+
+      local application, _, err_t = db.applications:select({ id = application_pk })
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not application or self.developer.id ~= application.developer.id then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      self.application = application
+    end,
+
+    GET = function(self, db, helpers)
+      return kong.response.exit(200, self.application)
+    end,
+
+    PATCH = function(self, db, helpers)
+      local application, _, err_t = db.applications:update({ id = self.application.id }, self.params)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      return kong.response.exit(200, application)
+    end,
+
+    DELETE = function(self, db, helpers)
+      local ok, _, err_t = db.applications:delete({ id = self.application.id })
+      if not ok then
+        return endpoints.handle_error(err_t)
+      end
+
+      return kong.response.exit(204)
+    end,
+  },
+
+  ["/applications/:applications/application_instances"] = {
+    before = function(self, db, helpers)
+      auth.authenticate_api_session(self, db, helpers)
+
+      local application_pk = self.params.applications
+      self.params.applications = nil
+
+      local application, _, err_t = db.applications:select({ id = application_pk })
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not application or self.developer.id ~= application.developer.id then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      self.application = application
+      self.consumer = { id = self.application.consumer.id }
+    end,
+
+    POST = function(self, db, helpers)
+      if not self.params.service or not self.params.service.id then
+        return kong.response.exit(400, { message = "service.id required"})
+      end
+
+      self.params.status = nil
+      return crud_helpers.create_application_instance(self, db, helpers)
+    end,
+
+    GET = function(self, db, helpers)
+      return crud_helpers.get_application_instances_by_application(self, db, helpers)
+    end,
+  },
+
+  ["/applications/:applications/application_instances/:application_instances"] = {
+    before = function(self, db, helpers)
+      auth.authenticate_api_session(self, db, helpers)
+
+      local application_pk = self.params.applications
+      self.params.applications = nil
+
+      local application, _, err_t = db.applications:select({ id = application_pk })
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not application or self.developer.id ~= application.developer.id then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      self.application = application
+
+      local application_instance_pk = self.params.application_instances
+      self.params.application_instances = nil
+
+      local application_instance, _, err_t = db.application_instances:select({ id = application_instance_pk })
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not application_instance or application_instance.application.id ~= application.id then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      self.application_instance = application_instance
+    end,
+
+    GET = function(self, db, helpers)
+      return kong.response.exit(200, self.application_instance)
+    end,
+
+    PATCH = function(self, db, helpers)
+      return crud_helpers.update_application_instance(self, db, helpers)
+    end,
+
+    DELETE = function(self, db, helpers)
+      return crud_helpers.delete_application_instance(self, db, helpers)
+    end,
+  },
+
+  ["/applications/:applications/credentials"] = {
+    before = function(self, db, helpers)
+      auth.authenticate_api_session(self, db, helpers)
+
+      local application_pk = self.params.applications
+      self.params.applications = nil
+
+      local application, _, err_t = db.applications:select({ id = application_pk })
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not application or self.developer.id ~= application.developer.id then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      self.application = application
+    end,
+
+    GET = function(self, db, helpers)
+      self.credential_collection = db.daos["oauth2_credentials"]
+      self.consumer = { id = self.application.consumer.id }
+
+      return crud_helpers.get_credentials(self, db, helpers)
+    end,
+
+    POST = function(self, db, helpers)
+      self.credential_collection = db.daos["oauth2_credentials"]
+      self.params.name = self.application.name
+      self.params.consumer = self.application.consumer
+      self.params.redirect_uris = { self.application.redirect_uri }
+
+      return crud_helpers.create_credential(self, db, helpers)
+    end,
+  },
+
+  ["/applications/:applications/credentials/:credential_id"] = {
+    before = function(self, db, helpers)
+      auth.authenticate_api_session(self, db, helpers)
+
+      local application_pk = self.params.applications
+      self.params.applications = nil
+
+      local application, _, err_t = db.applications:select({ id = application_pk })
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not application or self.developer.id ~= application.developer.id then
+        return kong.response.exit(404, { message = "Not found"})
+      end
+
+      self.consumer = application.consumer
+      self.credential_collection = db.daos["oauth2_credentials"]
+    end,
+
+    GET = function(self, db, helpers)
+      return crud_helpers.get_credential(self, db, helpers)
+    end,
+
+    -- PATCH not allowed, user can only DELETE and POST app credentials
+    PATCH = function(self, db, helpers)
+      return kong.response.exit(405)
+    end,
+
+    DELETE = function(self, db, helpers)
+      return crud_helpers.delete_credential(self, db, helpers)
+    end,
   },
 
   ["/credentials/:plugin"] = {
@@ -760,10 +1004,12 @@ return {
     end,
 
     GET = function(self, db, helpers)
+      self.consumer = { id = self.developer.consumer.id }
       return crud_helpers.get_credentials(self, db, helpers)
     end,
 
     POST = function(self, db, helpers)
+      self.params.consumer = { id = self.developer.consumer.id }
       return crud_helpers.create_credential(self, db, helpers, { skip_rbac = true })
     end,
   },
@@ -775,14 +1021,17 @@ return {
     end,
 
     GET = function(self, db, helpers)
+      self.consumer = { id = self.developer.consumer.id }
       return crud_helpers.get_credential(self, db, helpers, { skip_rbac = true })
     end,
 
     PATCH = function(self, db, helpers)
+      self.consumer = { id = self.developer.consumer.id }
       return crud_helpers.update_credential(self, db, helpers, { skip_rbac = true })
     end,
 
     DELETE = function(self, db, helpers)
+      self.consumer = { id = self.developer.consumer.id }
       return crud_helpers.delete_credential(self, db, helpers, { skip_rbac = true })
     end,
   },
