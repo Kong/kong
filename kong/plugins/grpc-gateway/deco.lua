@@ -108,18 +108,19 @@ local function get_proto_info(fname)
           if valid_method[http_method] then
             local preg, grp, err = parse_options_path(http_path)
             if err then
-              ngx.log(ngx.ERR, "error parsing options path ", err)
+              ngx.log(ngx.ERR, "error ", err, "parsing options path ", http_path)
             else
               if not info[http_method] then
                 info[http_method] = {}
               end
-              info[http_method][preg] = {
-                mthd.input_type,
-                mthd.output_type,
-                ("/%s.%s/%s"):format(parsed.package, srvc.name, mthd.name), -- request path
-                grp,
-                options.body,
-              }
+              table.insert(info[http_method], {
+                regex = preg,
+                varnames = grp,
+                rewrite_path = ("/%s.%s/%s"):format(parsed.package, srvc.name, mthd.name),
+                input_type = mthd.input_type,
+                output_type = mthd.output_type,
+                body_variable = options.body,
+              })
             end
           end
         end
@@ -145,17 +146,17 @@ local function rpc_transcode(method, path, protofile)
   if not info then
     return nil, ("Unkown method %q"):format(method)
   end
-  for p, types in pairs(info) do
-    local m, err = re_match(path, p, "jo")
+  for _, endpoint in ipairs(info) do
+    local m, err = re_match(path, endpoint.regex, "jo")
     if err then
       return nil, ("Cannot match path %q"):format(err)
     end
     if m then
       local vars = {}
-      for i, g in ipairs(types[4]) do
-        vars[g] = m[i]
+      for i, name in ipairs(endpoint.varnames) do
+        vars[name] = m[i]
       end
-      return types[1], types[2], types[3], vars, types[5]
+      return endpoint, vars
     end
   end
   return nil, ("Unkown path %q"):format(path)
@@ -167,18 +168,16 @@ function deco.new(method, path, protofile)
     return nil, "transcoding requests require a .proto file defining the service"
   end
 
-  local input_type, output_type, rewrite_path, template_payload, body_variable = rpc_transcode(method, path, protofile)
+  local endpoint, vars = rpc_transcode(method, path, protofile)
 
-  if not input_type then
+  if not endpoint then
     return nil, output_type
   end
 
   return setmetatable({
-    input_type = input_type,
-    output_type = output_type,
-    rewrite_path = rewrite_path,
-    template_payload = template_payload,
-    body_variable = body_variable,
+    template_payload = vars,
+    endpoint = endpoint,
+    rewrite_path = endpoint.rewrite_path,
   }, deco)
 end
 
@@ -212,16 +211,17 @@ function deco:upstream(body)
   ]]
   -- TODO: do we allow http parameter when body is not *?
   local payload = self.template_payload
-  if self.body_variable then
+  local body_variable = self.endpoint.body_variable
+  if body_variable then
     if body then
       local body_decoded = cjson.decode(body)
-      if self.body_variable ~= "*" then
+      if body_variable ~= "*" then
         --[[
           // For HTTP methods that allow a request body, the `body` field
           // specifies the mapping. Consider a REST update method on the
           // message resource collection:
         ]] 
-        payload[self.body_variable] = body_decoded
+        payload[body_variable] = body_decoded
       else
         --[[
           // The special name `*` can be used in the body mapping to define that
@@ -248,7 +248,7 @@ function deco:upstream(body)
       end
     end
   end
-  body = frame(0x0, pb.encode(self.input_type, payload))
+  body = frame(0x0, pb.encode(self.endpoint.input_type, payload))
 
   return body
 end
@@ -261,7 +261,7 @@ function deco:downstream(chunk)
   local msg, body = unframe(body)
 
   while msg do
-    msg = encode_json(pb.decode(self.output_type, msg))
+    msg = encode_json(pb.decode(self.endpoint.output_type, msg))
 
     out[n] = msg
     n = n + 1
@@ -272,13 +272,6 @@ function deco:downstream(chunk)
   chunk = table.concat(out)
 
   return chunk
-end
-
-
-function deco:frame(ftype, msg)
-  local f = frame(ftype, msg)
-
-  return f
 end
 
 

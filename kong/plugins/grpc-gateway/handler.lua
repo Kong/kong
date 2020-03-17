@@ -81,18 +81,7 @@ function grpc_gateway:body_filter(conf)
     return
   end
 
-  local chunk, eof = ngx_arg[1], ngx_arg[2]
-
-  chunk = dec:downstream(chunk)
-
-  if eof and dec.framing == "grpc" then
-    chunk = chunk .. dec:frame(0x80, string_format(
-      "grpc-status:%s\r\ngrpc-message:%s\r\n",
-      ngx_var["sent_trailer_grpc_status"] or "0",
-      ngx_var["sent_trailer_grpc_message"] or ""))
-  end
-
-  ngx_arg[1] = chunk
+  ngx_arg[1] = dec:downstream(ngx_arg[1])
 end
 
 
