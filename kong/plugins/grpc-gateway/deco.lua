@@ -59,7 +59,7 @@ local options_path_regex = [=[{([-_.~0-9a-zA-Z]+)=?((?:(?:\*|\*\*|[-_.~0-9a-zA-Z
 local function parse_options_path(path)
   local match_groups = {}
   local match_group_idx = 1
-  local path_regex, _, err = re_gsub(path, options_path_regex, function(m)
+  local path_regex, _, err = re_gsub("^" .. path .. "$", options_path_regex, function(m)
     local var = m[1]
     local paths = m[2]
     -- store lookup table to matched groups to variable name

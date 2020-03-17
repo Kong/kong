@@ -63,15 +63,27 @@ for _, strategy in helpers.each_strategy() do
     test("main entrypoint", function()
       local res, err = proxy_client:get("/v1/messages/john_doe")
       local data = cjson.decode((res:read_body()))
-      assert.same({reply = "hello john_doe"}, data)
+
+      assert.equal(200, res.status)
       assert.is_nil(err)
+
+      assert.same({reply = "hello john_doe"}, data)
     end)
 
     test("additional binding", function()
       local res, err = proxy_client:get("/v1/messages/legacy/john_doe")
       local data = cjson.decode((res:read_body()))
-      assert.same({reply = "hello john_doe"}, data)
+
+      assert.equal(200, res.status)
       assert.is_nil(err)
+
+      assert.same({reply = "hello john_doe"}, data)
+    end)
+
+    test("unknown path", function()
+      local res, err = proxy_client:get("/v1/messages/john_doe/bai")
+      assert.not_equal(200, res.status)
+      assert.equal("Bad Request", res.reason)
     end)
 
  end)
