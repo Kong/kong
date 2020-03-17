@@ -897,7 +897,7 @@ for _, strategy in helpers.each_strategy() do
           close_clients(portal_api_client)
         end)
 
-        describe("/forgot-password [basic-auth] #test", function()
+        describe("/forgot-password [basic-auth]", function()
           describe("POST", function()
             it("should return 400 if called with invalid email", function()
               local res = assert(portal_api_client:send {
@@ -917,7 +917,7 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("should return 200 if called with email of a nonexistent user", function()
-              
+
               local res = assert(portal_api_client:send {
                 method = "POST",
                 path = "/forgot-password",
@@ -1373,7 +1373,7 @@ for _, strategy in helpers.each_strategy() do
                 },
               })
 
-              local body = assert.res_status(200, res)
+              local body = assert.res_status(201, res)
               local resp_body_json = cjson.decode(body)
 
               credential = resp_body_json
@@ -1398,7 +1398,7 @@ for _, strategy in helpers.each_strategy() do
                 },
               })
 
-              local body = assert.res_status(200, res)
+              local body = assert.res_status(201, res)
               local resp_body_json = cjson.decode(body)
 
               credential_key_auth = resp_body_json
@@ -1409,28 +1409,26 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           describe("GET", function()
-            it("returns 404 if plugin is not one of the allowed auth plugins", function()
-              local plugin = "awesome-custom-plugin"
-              local path = "/credentials/" .. plugin .. "/" .. credential.id
+            lazy_setup(function()
+              db:truncate("keyauth_credentials")
+              db:truncate("basicauth_credentials")
+            end)
 
-              local res = assert(portal_api_client:send {
-                method = "GET",
-                path = path,
-                headers = {
-                  ["Cookie"] = cookie,
-                },
-              })
-
-              assert.res_status(404, res)
+            after_each(function()
+              db:truncate("keyauth_credentials")
+              db:truncate("basicauth_credentials")
             end)
 
             it("retrieves a basic-auth credential", function()
-              local plugin = "basic-auth"
-              local path = "/credentials/" .. plugin .. "/" .. credential.id
+              local credential = assert(kong.db.daos["basicauth_credentials"]:insert({
+                consumer = { id = approved_developer.consumer.id },
+                username = "dude",
+                password = "hunter1",
+              }))
 
               local res = assert(portal_api_client:send {
                 method = "GET",
-                path = path,
+                path = "/credentials/basic-auth/" .. credential.id,
                 headers = {
                   ["Cookie"] = cookie,
                 },
@@ -1443,12 +1441,14 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("retrieves a key-auth credential", function()
-              local plugin = "key-auth"
-              local path = "/credentials/" .. plugin .. "/" .. credential_key_auth.id
+              local credential = assert(kong.db.daos["keyauth_credentials"]:insert({
+                consumer = { id = approved_developer.consumer.id },
+                key = "asdf",
+              }))
 
               local res = assert(portal_api_client:send {
                 method = "GET",
-                path = path,
+                path = "/credentials/key-auth/" .. credential.id,
                 headers = {
                   ["Cookie"] = cookie,
                 },
@@ -1457,18 +1457,25 @@ for _, strategy in helpers.each_strategy() do
               local body = assert.res_status(200, res)
               local credential_res = cjson.decode(body)
 
-              assert.same(credential_key_auth, credential_res)
+              assert.same(credential, credential_res)
             end)
           end)
 
           describe("PATCH", function()
+            after_each(function()
+              db:truncate("keyauth_credentials")
+              db:truncate("basicauth_credentials")
+            end)
+
             it("returns 404 if plugin is not one of the allowed auth plugins", function()
-              local plugin = "awesome-custom-plugin"
-              local path = "/credentials/" .. plugin .. "/" .. credential.id
+              local credential = assert(kong.db.daos["keyauth_credentials"]:insert({
+                consumer = { id = approved_developer.consumer.id },
+                key = "asdf",
+              }))
 
               local res = assert(portal_api_client:send {
                 method = "PATCH",
-                path = path,
+                path = "/credentials/awesome-custom-plugin/" .. credential.id,
                 body = {
                   id = credential.id,
                   username = "dudett",
@@ -1484,12 +1491,15 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("updates a basic-auth credential", function()
-              local plugin = "basic-auth"
-              local path = "/credentials/" .. plugin .. "/" .. credential.id
+              local credential = assert(kong.db.daos["basicauth_credentials"]:insert({
+                consumer = { id = approved_developer.consumer.id },
+                username = "dude",
+                password = "hunter1",
+              }))
 
               local res = assert(portal_api_client:send {
                 method = "PATCH",
-                path = path,
+                path = "/credentials/basic-auth/" .. credential.id,
                 body = {
                   id = credential.id,
                   username = "dudett",
@@ -1513,14 +1523,16 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("updates a key-auth credential", function()
-              local plugin = "key-auth"
-              local path = "/credentials/" .. plugin .. "/" .. credential_key_auth.id
+              local credential = assert(kong.db.daos["keyauth_credentials"]:insert({
+                consumer = { id = approved_developer.consumer.id },
+                key = "asdf",
+              }))
 
               local res = assert(portal_api_client:send {
                 method = "PATCH",
-                path = path,
+                path = "/credentials/key-auth/" .. credential.id,
                 body = {
-                  id = credential_key_auth.id,
+                  id = credential.id,
                   key = "a-new-key"
                 },
                 headers = {
@@ -1538,12 +1550,15 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("updates a basic-auth credential by id", function()
-              local plugin = "basic-auth"
-              local path = "/credentials/" .. plugin .. "/" .. credential.id
+              local credential = assert(kong.db.daos["basicauth_credentials"]:insert({
+                consumer = { id = approved_developer.consumer.id },
+                username = "dude",
+                password = "hunter1",
+              }))
 
               local res = assert(portal_api_client:send {
                 method = "PATCH",
-                path = path,
+                path =  "/credentials/basic-auth/" .. credential.id,
                 body = {
                   username = "duderino",
                   password = "a-new-new-password"
@@ -1566,12 +1581,14 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("updates a key-auth credential by id", function()
-              local plugin = "key-auth"
-              local path = "/credentials/" .. plugin .. "/" .. credential_key_auth.id
+              local credential = assert(kong.db.daos["keyauth_credentials"]:insert({
+                consumer = { id = approved_developer.consumer.id },
+                key = "asdf",
+              }))
 
               local res = assert(portal_api_client:send {
                 method = "PATCH",
-                path = path,
+                path = "/credentials/key-auth/" .. credential.id,
                 body = {
                   key = "duderino",
                 },
@@ -1592,13 +1609,15 @@ for _, strategy in helpers.each_strategy() do
 
           describe("DELETE", function()
             it("deletes a basic-auth credential", function()
-              local plugin = "basic-auth"
-              local path = "/credentials/"
-                            .. plugin .. "/" .. credential.id
+              local credential = assert(kong.db.daos["basicauth_credentials"]:insert({
+                consumer = { id = approved_developer.consumer.id },
+                username = "dude",
+                password = "hunter1",
+              }))
 
               local res = assert(portal_api_client:send {
                 method = "DELETE",
-                path = path,
+                path = "/credentials/basic-auth/" .. credential.id,
                 headers = {
                   ["Cookie"] = cookie,
                 },
@@ -1608,7 +1627,7 @@ for _, strategy in helpers.each_strategy() do
 
               local res = assert(portal_api_client:send {
                 method = "GET",
-                path = path,
+                path = "/credentials/basic-auth/" .. credential.id,
                 headers = {
                   ["Cookie"] = cookie,
                 },
@@ -1618,13 +1637,14 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("deletes a key-auth credential", function()
-              local plugin = "key-auth"
-              local path = "/credentials/"
-                            .. plugin .. "/" .. credential_key_auth.id
+              local credential = assert(kong.db.daos["keyauth_credentials"]:insert({
+                consumer = { id = approved_developer.consumer.id },
+                key = "asdf",
+              }))
 
               local res = assert(portal_api_client:send {
                 method = "DELETE",
-                path = path,
+                path = "/credentials/key-auth/" .. credential.id,
                 headers = {
                   ["Cookie"] = cookie,
                 },
@@ -1634,7 +1654,7 @@ for _, strategy in helpers.each_strategy() do
 
               local res = assert(portal_api_client:send {
                 method = "GET",
-                path = path,
+                path = "/credentials/key-auth/" .. credential.id,
                 headers = {
                   ["Cookie"] = cookie,
                 },
@@ -2079,7 +2099,7 @@ for _, strategy in helpers.each_strategy() do
           lazy_setup(function()
             helpers.stop_kong()
             assert(db:truncate())
-  
+
             assert(helpers.start_kong({
               database   = strategy,
               portal_session_conf = PORTAL_SESSION_CONF,
@@ -2097,7 +2117,7 @@ for _, strategy in helpers.each_strategy() do
               portal_auth = "basic-auth",
               portal_auto_approve = true,
             })
-  
+
             portal_api_client = assert(ee_helpers.portal_api_client())
 
             local res = register_developer(portal_api_client, {
@@ -2131,15 +2151,15 @@ for _, strategy in helpers.each_strategy() do
             secret = pending[1].secret
             close_clients(portal_api_client)
           end)
-  
+
           lazy_teardown(function()
             helpers.stop_kong()
           end)
-  
+
           before_each(function()
             portal_api_client = assert(ee_helpers.portal_api_client())
           end)
-  
+
           after_each(function()
             close_clients(portal_api_client)
           end)
@@ -2368,7 +2388,7 @@ for _, strategy in helpers.each_strategy() do
           lazy_setup(function()
             helpers.stop_kong()
             assert(db:truncate())
-  
+
             assert(helpers.start_kong({
               database   = strategy,
               portal_session_conf = PORTAL_SESSION_CONF,
@@ -2570,7 +2590,7 @@ for _, strategy in helpers.each_strategy() do
           lazy_setup(function()
             helpers.stop_kong()
             assert(db:truncate())
-  
+
             assert(helpers.start_kong({
               database   = strategy,
               portal_session_conf = PORTAL_SESSION_CONF,
@@ -4061,7 +4081,7 @@ for _, strategy in helpers.each_strategy() do
                 },
               })
 
-              local body = assert.res_status(200, res)
+              local body = assert.res_status(201, res)
               local resp_body_json = cjson.decode(body)
 
               credential = resp_body_json
@@ -4086,7 +4106,7 @@ for _, strategy in helpers.each_strategy() do
                 },
               })
 
-              local body = assert.res_status(200, res)
+              local body = assert.res_status(201, res)
               local resp_body_json = cjson.decode(body)
 
               credential_key_auth = resp_body_json

@@ -34,7 +34,7 @@ local function get_all_specs()
   end
 
   local workspace = workspaces.get_workspace()
-  local ws_router = router_info.router[workspace.name]
+  local ws_router = router_info.router[workspace.name or "default"]
   local ws_collection = ws_router.collection or {}
 
   local specs = {}

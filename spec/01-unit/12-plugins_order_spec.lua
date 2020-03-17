@@ -57,6 +57,7 @@ describe("Plugins", function()
       "bot-detection",
       "cors",
       "session",
+      "application-registration",
       "jwt",
       "oauth2",
       "key-auth",
