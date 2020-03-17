@@ -681,20 +681,15 @@ function Kong.access()
       kong_global.set_namespaced_log(kong, plugin.name)
 
       local err = coroutine.wrap(plugin.handler.access)(plugin.handler, plugin_conf)
+      if err then
+        kong.log.err(err)
+        ctx.delayed_response = {
+          status_code = 500,
+          content     = { message  = "An unexpected error occurred" },
+        }
+      end
 
       kong_global.reset_log(kong)
-
-      if err then
-        ctx.delay_response = false
-
-        kong.log.err(err)
-
-        ctx.KONG_ACCESS_ENDED_AT = get_now_ms()
-        ctx.KONG_ACCESS_TIME = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_ACCESS_START
-        ctx.KONG_RESPONSE_LATENCY = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_PROCESSING_START
-
-        return kong.response.exit(500, { message  = "An unexpected error occurred" })
-      end
     end
   end
 
