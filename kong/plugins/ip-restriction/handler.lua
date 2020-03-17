@@ -37,8 +37,8 @@ function IpRestrictionHandler:access(conf)
   end
 
   if err then
-    block = true
-    kong.log.err("invalid binary IP address: " .. err)
+    kong.log.err("Invalid binary IP address: " .. err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   if block then
