@@ -5,6 +5,7 @@ local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
 local fmt = string.format
 local kong = kong
 local type = type
+local error = error
 local ipairs = ipairs
 local tostring = tostring
 local re_gmatch = ngx.re.gmatch
@@ -126,8 +127,7 @@ end
 local function do_authentication(conf)
   local token, err = retrieve_token(conf)
   if err then
-    kong.log.err(err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return error(err)
   end
 
   local token_type = type(token)
@@ -162,8 +162,7 @@ local function do_authentication(conf)
   local jwt_secret, err      = kong.cache:get(jwt_secret_cache_key, nil,
                                               load_credential, jwt_secret_key)
   if err then
-    kong.log.err(err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return error(err)
   end
 
   if not jwt_secret then
@@ -213,7 +212,7 @@ local function do_authentication(conf)
                                             kong.client.load_consumer,
                                             jwt_secret.consumer.id, true)
   if err then
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return error(err)
   end
 
   -- However this should not happen
@@ -251,8 +250,7 @@ function JwtHandler:access(conf)
                                                 kong.client.load_consumer,
                                                 conf.anonymous, true)
       if err then
-        kong.log.err("failed to load anonymous consumer:", err)
-        return kong.response.exit(500, { message = "An unexpected error occurred" })
+        return error(err)
       end
 
       set_consumer(consumer)

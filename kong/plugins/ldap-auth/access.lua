@@ -4,6 +4,7 @@ local ldap = require "kong.plugins.ldap-auth.ldap"
 
 
 local kong = kong
+local error = error
 local decode_base64 = ngx.decode_base64
 local sha1_bin = ngx.sha1_bin
 local to_hex = require "resty.string".to_hex
@@ -150,8 +151,7 @@ local function authenticate(conf, given_credentials)
   }, load_credential, given_username, given_password, conf)
 
   if err or credential == nil then
-    kong.log.err(err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return error(err)
   end
 
 
@@ -255,8 +255,7 @@ function _M.execute(conf)
                                                       kong.client.load_consumer,
                                                       conf.anonymous, true)
       if err then
-        kong.log.err("failed to load anonymous consumer:", err)
-        return kong.response.exit(500, { message = "An unexpected error occurred" })
+        return error(err)
       end
 
       set_consumer(consumer)

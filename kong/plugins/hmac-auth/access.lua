@@ -6,6 +6,7 @@ local utils = require "kong.tools.utils"
 
 local ngx = ngx
 local kong = kong
+local error = error
 local time = ngx.time
 local abs = math.abs
 local decode_base64 = ngx.decode_base64
@@ -186,8 +187,7 @@ local function load_credential(username)
   end
 
   if err then
-    kong.log.err(err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return error(err)
   end
 
   return credential
@@ -340,8 +340,7 @@ local function do_authentication(conf)
                                       kong.client.load_consumer,
                                       credential.consumer.id)
   if err then
-    kong.log.err(err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return error(err)
   end
 
   set_consumer(consumer, credential)
@@ -369,8 +368,7 @@ function _M.execute(conf)
                                                 kong.client.load_consumer,
                                                 conf.anonymous, true)
       if err then
-        kong.log.err("failed to load anonymous consumer:", err)
-        return kong.response.exit(500, { message = "An unexpected error occurred" })
+        return error(err)
       end
 
       set_consumer(consumer)
