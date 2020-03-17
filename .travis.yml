@@ -37,6 +37,11 @@ env:
     - KONG_TEST_PG_USER=postgres
     - JOBS=2
     - DOCKER_MACHINE_ARM64_NAME=travis-ci-kong-${TRAVIS_JOB_ID}
+    # Related to packaging and master build
+    - KONG_DISTRIBUTIONS_VERSION=refactor/rename-refactor-redo-package
+    - CACHE_DIR=$HOME/distributions-cache
+    - DOCKER_TAG_NAME=dev-master
+    - ENABLE_OPENTRACING=0
   matrix:
     # enterprise matrix begin
     # XXX add extra jobs for different cassandra versions
@@ -65,15 +70,14 @@ cache:
   directories:
     - $INSTALL_CACHE
     - $HOME/.ccm/repository
+    - $HOME/distributions-cache
 
 stages:
   - lint and unit
   - test
+  - name: package
   - name: deploy
     if: tag =~ 0. || type == cron || branch = master
-  # - functional tests
-  # # - Deploy daily build
-  # - Release
 
 jobs:
   include:
@@ -85,11 +89,18 @@ jobs:
       - bin/busted -v -o gtest spec-ee/01-unit
       env:
         - KONG_DATABASE=none
-    - stage: deploy
+    # package as a test step, to see if this commit breaks our packaging
+    # useful for testing changes in .ci packaging, uncomment to see effects
+    # it's not terrible if it's uncommented. But it will break for any PR not
+    # targeted at current kong master
+    # (unless proper KONG_DISTRIBUTIONS_VERSION branch is set)
+    - stage: package
+      if: branch != master
+      script: .ci/build_package.sh
+    # package and release, only on master
+    - stage: package and deploy
       if: branch = master
-      script: .ci/build_artifacts.sh
-      env:
-        - DOCKER_TAG_NAME=dev-master
+      script: .ci/build_package.sh && .ci/release_artifacts.sh
 
 script:
   - .ci/run_tests.sh
