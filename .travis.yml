@@ -72,6 +72,11 @@ cache:
     - $HOME/.ccm/repository
     - $HOME/distributions-cache
 
+before_cache:
+  # files in distributions cache have been created within docker, so it's
+  # completely possible that travis user would not have full permissions
+  - sudo chown -R travis:travis $HOME/distributions-cache
+
 stages:
   - lint and unit
   - test
