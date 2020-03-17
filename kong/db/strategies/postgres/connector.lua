@@ -328,10 +328,27 @@ function _mt:init_worker(strategies)
       -- XXX EE: nuke from orbit after ws refactor
       if workspaceable then
         cleanup_statements[i] = cleanup_statements[i] .. [[
+
+        UPDATE workspace_entity_counters w
+        SET count = COALESCE(w.COUNT, 0) - c.count
+        FROM
+        (SELECT workspace_id, entity_type, COUNT(DISTINCT entity_id)
+           FROM workspace_entities w INNER JOIN ]]
+             .. self:escape_identifier(table_name) ..[[ c
+           ON w.entity_id = c.id::text
+           WHERE w.entity_type=]] .. self:escape_literal(table_name) ..
+           [[ AND ]] .. column_name .. [[ < CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+           GROUP BY workspace_id, entity_type) c
+        WHERE w.workspace_id = c.workspace_id
+          AND w.entity_type = c.entity_type;
+
+        ]] .. [[
+
           DELETE FROM workspace_entities WHERE entity_id IN (
             SELECT id::text FROM ]] .. self:escape_identifier(table_name) .. [[
             WHERE ]].. column_name .. [[ < CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
-          );
+         );
+
         ]]
       end
 
@@ -342,30 +359,6 @@ function _mt:init_worker(strategies)
         column_name,
         " < CURRENT_TIMESTAMP AT TIME ZONE 'UTC';"
       }
-
-      if workspaceable then
-        -- XXX EE: nuke from orbit after ws refactor
-        cleanup_statements[i] = cleanup_statements[i] .. [[
-          UPDATE workspace_entity_counters AS wec
-            SET count = we.count FROM (
-              SELECT d.workspace_id AS workspace_id,
-                     d.entity_type AS entity_type,
-                     coalesce(c.count, 0) AS count
-              FROM (
-                SELECT id AS workspace_id, ]] .. self:escape_literal(table_name) .. [[::text AS entity_type
-                FROM workspaces
-              ) AS d LEFT JOIN (
-              SELECT workspace_id, entity_type, COUNT(DISTINCT entity_id)
-                FROM workspace_entities
-                WHERE entity_type = ]] .. self:escape_literal(table_name) .. [[
-                GROUP BY workspace_id, entity_type
-              ) c
-              ON d.workspace_id = c.workspace_id
-            ) AS we
-          WHERE wec.workspace_id = we.workspace_id
-          AND wec.entity_type = we.entity_type;
-        ]]
-      end
     end
 
     local cleanup_statement = concat(cleanup_statements, "\n")
