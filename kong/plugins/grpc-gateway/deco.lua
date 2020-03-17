@@ -1,6 +1,7 @@
 -- Copyright (c) Kong Inc. 2020
 
-require"lua_pack"
+package.loaded.lua_pack = nil   -- BUG: why?
+require "lua_pack"
 local cjson = require "cjson"
 local protoc = require "protoc"
 local pb = require "pb"
@@ -22,9 +23,6 @@ local decode_json = cjson.decode
 local deco = {}
 deco.__index = deco
 
-local function ooo(t)
-  ngx.log(ngx.ERR, ">>>>>>>> ", require("cjson").encode(t))
-end
 
 local function safe_access(t, ...)
   for _, k in ipairs({...}) do
@@ -36,6 +34,14 @@ local function safe_access(t, ...)
   end
   return t
 end
+
+local valid_method = {
+  get = true,
+  post = true,
+  put = true,
+  patch = true,
+  delete = true,
+}
 
 --[[
   // ### Path template syntax
@@ -71,8 +77,6 @@ local function parse_options_path(path)
     return nil, nil, err
   end
 
-  print(" -----", path_regex)
-
   return path_regex, match_groups
 end
 
@@ -100,20 +104,23 @@ local function get_proto_info(fname)
       }
       for _, options in ipairs(options_bindings) do
         for http_method, http_path in pairs(options) do
-          local preg, grp, err = parse_options_path(http_path)
-          if err then
-            ngx.log(ngx.ERR, "error parsing options path ", err)
-          else
-            if not info[http_method] then
-              info[http_method] = {}
+          http_method = http_method:lower()
+          if valid_method[http_method] then
+            local preg, grp, err = parse_options_path(http_path)
+            if err then
+              ngx.log(ngx.ERR, "error parsing options path ", err)
+            else
+              if not info[http_method] then
+                info[http_method] = {}
+              end
+              info[http_method][preg] = {
+                mthd.input_type,
+                mthd.output_type,
+                ("/%s.%s/%s"):format(parsed.package, srvc.name, mthd.name), -- request path
+                grp,
+                options.body,
+              }
             end
-            info[http_method][preg] = {
-              mthd.input_type,
-              mthd.output_type,
-              ("/%s.%s/%s"):format(parsed.package, srvc.name, mthd.name), -- request path
-              grp,
-              options.body,
-            }
           end
         end
       end
@@ -148,8 +155,6 @@ local function rpc_transcode(method, path, protofile)
       for i, g in ipairs(types[4]) do
         vars[g] = m[i]
       end
-      ooo(types)
-      ooo(vars)
       return types[1], types[2], types[3], vars, types[5]
     end
   end
@@ -243,7 +248,6 @@ function deco:upstream(body)
       end
     end
   end
-  ngx.log(ngx.ERR, "encoding ", self.input_type, ": ", require("cjson").encode(payload))
   body = frame(0x0, pb.encode(self.input_type, payload))
 
   return body
