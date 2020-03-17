@@ -22,11 +22,15 @@ describe("Plugin: ip-restriction (schema)", function()
     it("whitelist should not accept invalid IPs", function()
       local ok, err = v({ whitelist = { "hello" } }, schema_def)
       assert.falsy(ok)
-      assert.same({ whitelist = { "failed to create new ipmatcher instance: invalid ip address: hello" } }, err.config)
+      assert.same({
+        whitelist = { "invalid ip or cidr range: 'hello'" }
+      }, err.config)
 
       ok, err = v({ whitelist = { "127.0.0.1", "127.0.0.2", "hello" } }, schema_def)
       assert.falsy(ok)
-      assert.same({ whitelist = { [3] = "failed to create new ipmatcher instance: invalid ip address: hello" } }, err.config)
+      assert.same({
+        whitelist = { [3] = "invalid ip or cidr range: 'hello'" }
+      }, err.config)
     end)
     it("blacklist should not accept invalid types", function()
       local ok, err = v({ blacklist = 12 }, schema_def)
@@ -36,11 +40,15 @@ describe("Plugin: ip-restriction (schema)", function()
     it("blacklist should not accept invalid IPs", function()
       local ok, err = v({ blacklist = { "hello" } }, schema_def)
       assert.falsy(ok)
-      assert.same({ blacklist = { "failed to create new ipmatcher instance: invalid ip address: hello" } }, err.config)
+      assert.same({
+        blacklist = { "invalid ip or cidr range: 'hello'" }
+      }, err.config)
 
       ok, err = v({ blacklist = { "127.0.0.1", "127.0.0.2", "hello" } }, schema_def)
       assert.falsy(ok)
-      assert.same({ blacklist = { [3] = "failed to create new ipmatcher instance: invalid ip address: hello" } }, err.config)
+      assert.same({
+        blacklist = { [3] = "invalid ip or cidr range: 'hello'" }
+      }, err.config)
     end)
     it("should not accept both a whitelist and a blacklist", function()
       local t = { blacklist = { "127.0.0.1" }, whitelist = { "127.0.0.2" } }
@@ -59,34 +67,31 @@ describe("Plugin: ip-restriction (schema)", function()
       assert.same(expected, err["@entity"])
     end)
 
-    -- TODO: the ipmatcher library doesn't validate cidr ranges
-    --
-    --it("should not accept invalid cidr ranges", function()
-    --  local ok, err = v({ whitelist = { "0.0.0.0/a", "0.0.0.0/-1", "0.0.0.0/33" } }, schema_def)
-    --  assert.falsy(ok)
-    --  assert.same({
-    --    whitelist = {
-    --     "invalid cidr range: Invalid prefix: /a",
-    --      "invalid cidr range: Invalid prefix: /-1",
-    --      "invalid cidr range: Invalid prefix: /33",
-    --    }
-    --  }, err.config)
-    --
-    --end)
-    --it("should not accept invalid ipv6 cidr ranges", function()
-    --  local ok, err = v({ whitelist = { "::/a", "::/-1", "::/129", "::1/a", "::1/-1", "::1/129" } }, schema_def)
-    --  assert.falsy(ok)
-    --  assert.same({
-    --    whitelist = {
-    --      "invalid cidr range: Invalid prefix: /a",
-    --      "invalid cidr range: Invalid prefix: /-1",
-    --      "invalid cidr range: Invalid prefix: /129",
-    --      "invalid cidr range: Invalid prefix: /a",
-    --      "invalid cidr range: Invalid prefix: /-1",
-    --      "invalid cidr range: Invalid prefix: /129",
-    --    }
-    --  }, err.config)
-    --end)
+    it("should not accept invalid cidr ranges", function()
+      local ok, err = v({ whitelist = { "0.0.0.0/a", "0.0.0.0/-1", "0.0.0.0/33" } }, schema_def)
+      assert.falsy(ok)
+      assert.same({
+        whitelist = {
+          "invalid ip or cidr range: '0.0.0.0/a'",
+          "invalid ip or cidr range: '0.0.0.0/-1'",
+          "invalid ip or cidr range: '0.0.0.0/33'",
+        }
+      }, err.config)
+    end)
+    it("should not accept invalid ipv6 cidr ranges", function()
+      local ok, err = v({ whitelist = { "::/a", "::/-1", "::/129", "::1/a", "::1/-1", "::1/129" } }, schema_def)
+      assert.falsy(ok)
+      assert.same({
+        whitelist = {
+          "invalid ip or cidr range: '::/a'",
+          "invalid ip or cidr range: '::/-1'",
+          "invalid ip or cidr range: '::/129'",
+          "invalid ip or cidr range: '::1/a'",
+          "invalid ip or cidr range: '::1/-1'",
+          "invalid ip or cidr range: '::1/129'",
+        }
+      }, err.config)
+    end)
 
     it("should accept valid ipv6 cidr ranges", function()
       local ok = v({ whitelist = { "::/0",  "::/1", "::/128"  } }, schema_def)

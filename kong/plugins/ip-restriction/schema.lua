@@ -8,8 +8,8 @@ return {
     { config = {
         type = "record",
         fields = {
-          { whitelist = { type = "array", elements = typedefs.cidr_v4_v6, }, },
-          { blacklist = { type = "array", elements = typedefs.cidr_v4_v6, }, },
+          { whitelist = { type = "array", elements = typedefs.ip_or_cidr, }, },
+          { blacklist = { type = "array", elements = typedefs.ip_or_cidr, }, },
         },
       },
     },
