@@ -16,10 +16,7 @@ LIBYAML_VERSION=0.2.2
 # here go enterprise build specific ones which might or might not have the
 # same names as core for building the final package.
 
-KONG_NGINX_MODULE_BRANCH=master
-# this one is for kong-ci setup_env
-BUILD_TOOLS=master
-# this one is for kong[-ee] setup_env and KD
+KONG_NGINX_MODULE_BRANCH=0.0.5
 KONG_BUILD_TOOLS_BRANCH=master
 
 KONG_DEP_NETTLE_VERSION=3.4.1

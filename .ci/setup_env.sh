@@ -9,15 +9,6 @@ OPENRESTY=$(dep_version RESTY_VERSION)
 LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
 OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
 
-# XXX EE specific things we need in CI
-KONG_NGINX_MODULE_BRANCH=$(dep_version KONG_NGINX_MODULE_BRANCH)
-# The name of these deps keep changing and changing...
-# This one is called BUILD_TOOLS because kong-ci uses BUILD_TOOLS
-# I guess we can support both names
-KONG_BUILD_TOOLS_BRANCH=$(dep_version KONG_BUILD_TOOLS_BRANCH)
-KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:-$(dep_version BUILD_TOOLS)}
-
-
 #---------
 # Download
 #---------
@@ -26,6 +17,7 @@ DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml .requirements | md5sum | awk '{ pri
 DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
 BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/openresty-build-tools
 
+# These are CI tests, so always use latest unless said otherwise
 KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:-master}
 KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:-master}
 
