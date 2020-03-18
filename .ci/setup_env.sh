@@ -1,13 +1,7 @@
 #!/usr/bin/env bash
 # set -eu
 
-die() {
-    echo $1
-    exit -1
-}
-
 dep_version() {
-    [ $(grep $1 .requirements | wc -l) != 1 ] && die "value not in .requirements (or doubled)"
     grep $1 .requirements | sed -e 's/.*=//' | tr -d '\n'
 }
 
@@ -21,8 +15,8 @@ KONG_NGINX_MODULE_BRANCH=$(dep_version KONG_NGINX_MODULE_BRANCH)
 # The name of these deps keep changing and changing...
 # This one is called BUILD_TOOLS because kong-ci uses BUILD_TOOLS
 # I guess we can support both names
-BUILD_TOOLS=$(dep_version BUILD_TOOLS)
-KONG_BUILD_TOOLS_BRANCH=${BUILD_TOOLS:-$(dep_version KONG_BUILD_TOOLS_BRANCH)}
+KONG_BUILD_TOOLS_BRANCH=$(dep_version KONG_BUILD_TOOLS_BRANCH)
+KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:-$(dep_version BUILD_TOOLS)}
 
 
 #---------
@@ -34,22 +28,21 @@ DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
 BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/kong-build-tools
 GO_PLUGINSERVER_DOWNLOAD=$DOWNLOAD_ROOT/go-pluginserver
 
-KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:=master}
-KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:=master}
+KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:-master}
+KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:-master}
 
 if [[ $KONG_BUILD_TOOLS_BRANCH == "master" ]]; then
   KONG_BUILD_TOOLS_BRANCH="origin/master"
 fi
 
 if [ ! -d $BUILD_TOOLS_DOWNLOAD ]; then
-    git clone -b $KONG_BUILD_TOOLS_BRANCH https://github.com/Kong/kong-build-tools.git $BUILD_TOOLS_DOWNLOAD
-else
-    pushd $BUILD_TOOLS_DOWNLOAD
-        git fetch
-        git reset --hard $KONG_BUILD_TOOLS_BRANCH || git reset --hard origin/$KONG_BUILD_TOOLS_BRANCH
-    popd
+    git clone https://github.com/Kong/kong-build-tools.git $BUILD_TOOLS_DOWNLOAD
 fi
 
+pushd $BUILD_TOOLS_DOWNLOAD
+    git fetch --all
+    git reset --hard $KONG_BUILD_TOOLS_BRANCH || git reset --hard origin/$KONG_BUILD_TOOLS_BRANCH
+popd
 export PATH=$BUILD_TOOLS_DOWNLOAD/openresty-build-tools:$PATH
 
 if [ ! -d $GO_PLUGINSERVER_DOWNLOAD ]; then
