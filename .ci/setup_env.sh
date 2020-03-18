@@ -1,28 +1,21 @@
 #!/usr/bin/env bash
 # set -eu
 
-die() {
-    echo $1
-    exit -1
-}
-
 dep_version() {
-    [ $(grep $1 .requirements | wc -l) != 1 ] && die "value not in .requirements (or doubled)"
     grep $1 .requirements | sed -e 's/.*=//' | tr -d '\n'
 }
 
 OPENRESTY=$(dep_version RESTY_VERSION)
 LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
 OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
-GO_PLUGINSERVER=$(dep_version KONG_GO_PLUGINSERVER_VERSION)
 
 # XXX EE specific things we need in CI
 KONG_NGINX_MODULE_BRANCH=$(dep_version KONG_NGINX_MODULE_BRANCH)
 # The name of these deps keep changing and changing...
 # This one is called BUILD_TOOLS because kong-ci uses BUILD_TOOLS
 # I guess we can support both names
-BUILD_TOOLS=$(dep_version BUILD_TOOLS)
-KONG_BUILD_TOOLS_BRANCH=${BUILD_TOOLS:-$(dep_version KONG_BUILD_TOOLS_BRANCH)}
+KONG_BUILD_TOOLS_BRANCH=$(dep_version KONG_BUILD_TOOLS_BRANCH)
+KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:-$(dep_version BUILD_TOOLS)}
 
 
 #---------
@@ -33,23 +26,23 @@ DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml .requirements | md5sum | awk '{ pri
 DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
 BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/openresty-build-tools
 
-KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:=master}
-KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:=master}
+KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:-master}
+KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:-master}
 
 if [[ $KONG_BUILD_TOOLS_BRANCH == "master" ]]; then
   KONG_BUILD_TOOLS_BRANCH="origin/master"
 fi
 
 if [ ! -d $BUILD_TOOLS_DOWNLOAD ]; then
-    git clone -q https://github.com/Kong/openresty-build-tools.git $BUILD_TOOLS_DOWNLOAD -b $BUILD_TOOLS
-else
-    pushd $BUILD_TOOLS_DOWNLOAD
-        git fetch
-        git reset --hard $KONG_BUILD_TOOLS_BRANCH || git reset --hard origin/$KONG_BUILD_TOOLS_BRANCH
-    popd
+    git clone https://github.com/Kong/kong-build-tools.git $BUILD_TOOLS_DOWNLOAD
 fi
 
-export PATH=$BUILD_TOOLS_DOWNLOAD:$PATH
+pushd $BUILD_TOOLS_DOWNLOAD
+    git fetch --all
+    git reset --hard $KONG_BUILD_TOOLS_BRANCH || git reset --hard origin/$KONG_BUILD_TOOLS_BRANCH
+popd
+
+export PATH=$BUILD_TOOLS_DOWNLOAD/openresty-build-tools:$PATH
 
 #--------
 # Install
