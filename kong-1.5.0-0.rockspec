@@ -46,6 +46,7 @@ dependencies = {
   "lua-resty-counter == 0.2.0",
   "lua-resty-template == 1.9-1",
   "lua-resty-passwdqc == 1.1-1",
+  "lua-resty-ipmatcher == 0.6",
   -- external Kong plugins
   "kong-plugin-kubernetes-sidecar-injector ~> 0.2.1",
   "kong-plugin-azure-functions ~> 0.4.1",
