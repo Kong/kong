@@ -32,12 +32,8 @@ jobs:
     runs-on: ubuntu-18.04
     needs: build
 
-    strategy:
-      matrix:
-        suite: [unit, lint]
-
     env:
-      TEST_SUITE: ${{ matrix.suite }}
+      TEST_SUITE: unit
 
     steps:
     - name: Set env
@@ -62,7 +58,7 @@ jobs:
   pdk:
     name: PDK
     runs-on: ubuntu-18.04
-    needs: build
+    needs: lint-unit-tests
 
     env:
       TEST_SUITE: pdk

@@ -101,11 +101,9 @@ fi
 if [ "$TEST_SUITE" == "pdk" ]; then
     TEST_NGINX_RANDOMIZE=1 prove -I. -j$JOBS -r t/01-pdk
 fi
-if [ "$TEST_SUITE" == "lint" ]; then
-    make lint
-fi
 if [ "$TEST_SUITE" == "unit" ]; then
     unset KONG_TEST_NGINX_USER KONG_PG_PASSWORD KONG_TEST_PG_PASSWORD
     scripts/autodoc-admin-api
     bin/busted -v -o gtest spec/01-unit
+    make lint
 fi
