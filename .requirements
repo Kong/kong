@@ -18,20 +18,20 @@ KONG_GO_PLUGINSERVER_VERSION=v0.3.0
 # same names as core for building the final package.
 
 KONG_NGINX_MODULE_BRANCH=master
-KONG_BUILD_TOOLS=master
+# this one is for kong-ci setup_env
+BUILD_TOOLS=master
+# this one is for kong[-ee] setup_env and KD
+KONG_BUILD_TOOLS_BRANCH=master
 
 KONG_DEP_NETTLE_VERSION=3.4.1
 KONG_DEP_LIBYAML_VERSION=0.2.2
 KONG_DEP_LICENSING_VERSION=0.1.3
 KONG_DEP_PASSWDQC_VERSION=1.3.1
 
+# opentracing stuff
 KONG_DEP_OPENTRACING_CPP_VERSION=v1.5.1
 KONG_DEP_DATADOG_VERSION=v1.1.2
 KONG_DEP_NGINX_OPENTRACING_VERSION=v0.9.0
 KONG_DEP_JAEGER_VERSION=v0.5.0
 
 LYAML_VERSION=6.2.4
-
-# also, does it break things to have comments in here? since envs are only
-# loaded by grepping them, this should be transparent. And the # at the start
-# is just for convention
