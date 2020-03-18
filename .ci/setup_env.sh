@@ -14,9 +14,15 @@ dep_version() {
 OPENRESTY=$(dep_version RESTY_VERSION)
 LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
 OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
-OPENRESTY_PATCHES_BRANCH=$(dep_version OPENRESTY_PATCHES_BRANCH)
+GO_PLUGINSERVER=$(dep_version KONG_GO_PLUGINSERVER_VERSION)
+
+# XXX EE specific things we need in CI
 KONG_NGINX_MODULE_BRANCH=$(dep_version KONG_NGINX_MODULE_BRANCH)
+# The name of these deps keep changing and changing...
+# This one is called BUILD_TOOLS because kong-ci uses BUILD_TOOLS
+# I guess we can support both names
 BUILD_TOOLS=$(dep_version BUILD_TOOLS)
+KONG_BUILD_TOOLS_BRANCH=${BUILD_TOOLS:-$(dep_version KONG_BUILD_TOOLS_BRANCH)}
 
 
 #---------
@@ -28,14 +34,18 @@ DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
 BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/openresty-build-tools
 
 KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:=master}
-OPENRESTY_PATCHES_BRANCH=${OPENRESTY_PATCHES_BRANCH:=master}
+KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:=master}
+
+if [[ $KONG_BUILD_TOOLS_BRANCH == "master" ]]; then
+  KONG_BUILD_TOOLS_BRANCH="origin/master"
+fi
 
 if [ ! -d $BUILD_TOOLS_DOWNLOAD ]; then
     git clone -q https://github.com/Kong/openresty-build-tools.git $BUILD_TOOLS_DOWNLOAD -b $BUILD_TOOLS
 else
     pushd $BUILD_TOOLS_DOWNLOAD
         git fetch
-        git reset --hard origin/$BUILD_TOOLS
+        git reset --hard $KONG_BUILD_TOOLS_BRANCH || git reset --hard origin/$KONG_BUILD_TOOLS_BRANCH
     popd
 fi
 
