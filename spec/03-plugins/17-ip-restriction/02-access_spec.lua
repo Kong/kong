@@ -49,6 +49,18 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "ip-restriction8.com" },
       }
 
+      local route9 = bp.routes:insert {
+        hosts = { "ip-restriction9.com" },
+      }
+
+      local route10 = bp.routes:insert {
+        hosts = { "ip-restriction10.com" },
+      }
+
+      local route11 = bp.routes:insert {
+        hosts = { "ip-restriction11.com" },
+      }
+
       bp.plugins:insert {
         name     = "ip-restriction",
         route = { id = route1.id },
@@ -113,6 +125,33 @@ for _, strategy in helpers.each_strategy() do
         },
       })
 
+      assert(db.plugins:insert {
+        name     = "ip-restriction",
+        route = { id = route9.id },
+        config   = {
+          whitelist = { "127.0.0.1" },
+          blacklist = { "127.0.0.1" },
+        },
+      })
+
+      assert(db.plugins:insert {
+        name     = "ip-restriction",
+        route = { id = route10.id },
+        config   = {
+          whitelist = { "127.0.0.0/24" },
+          blacklist = { "127.0.0.1" },
+        },
+      })
+
+      assert(db.plugins:insert {
+        name     = "ip-restriction",
+        route = { id = route11.id },
+        config   = {
+          whitelist = { "127.0.0.0/24" },
+          blacklist = { "127.0.0.0/24" },
+        },
+      })
+
       assert(helpers.start_kong {
         database          = strategy,
         real_ip_header    = "X-Forwarded-For",
@@ -171,6 +210,42 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.same({ message = "Your IP address is not allowed" }, json)
       end)
+      it("blocks an IP on a whitelisted CIDR range", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"] = "ip-restriction10.com"
+          }
+        })
+        local body = assert.res_status(403, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Your IP address is not allowed" }, json)
+      end)
+      it("takes precedence over an whitelisted IP", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"] = "ip-restriction9.com"
+          }
+        })
+        local body = assert.res_status(403, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Your IP address is not allowed" }, json)
+      end)
+      it("takes precedence over an whitelisted CIDR range", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"] = "ip-restriction11.com"
+          }
+        })
+        local body = assert.res_status(403, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Your IP address is not allowed" }, json)
+      end)
 
       describe("X-Forwarded-For", function()
         it("allows without any X-Forwarded-For and allowed IP", function()
@@ -213,7 +288,7 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
     end)
-
+    
     describe("whitelist", function()
       it("blocks a request when the IP is not whitelisted", function()
         local res = assert(proxy_client:send {
@@ -337,6 +412,495 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(200, res)
+      end)
+    end)
+  end)
+
+  describe("Plugin: ip-restriction (access) [#" .. strategy .. "]", function()
+    local plugin
+    local proxy_client
+    local admin_client
+    local db
+
+    lazy_setup(function()
+      local bp
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
+
+      local route1 = bp.routes:insert {
+        hosts = { "ip-restriction1.com" },
+      }
+
+      local route2 = bp.routes:insert {
+        hosts = { "ip-restriction2.com" },
+      }
+
+      local route3 = bp.routes:insert {
+        hosts = { "ip-restriction3.com" },
+      }
+
+      local route4 = bp.routes:insert {
+        hosts = { "ip-restriction4.com" },
+      }
+
+      local route5 = bp.routes:insert {
+        hosts = { "ip-restriction5.com" },
+      }
+
+      local route6 = bp.routes:insert {
+        hosts = { "ip-restriction6.com" },
+      }
+
+      local route7 = bp.routes:insert {
+        hosts = { "ip-restriction7.com" },
+      }
+
+      local route8 = bp.routes:insert {
+        hosts = { "ip-restriction8.com" },
+      }
+
+      local route9 = bp.routes:insert {
+        hosts = { "ip-restriction9.com" },
+      }
+
+      bp.plugins:insert {
+        name     = "ip-restriction",
+        route = { id = route1.id },
+        config   = {
+          blacklist = { "::1", "::2" }
+        },
+      }
+
+      plugin = assert(db.plugins:insert {
+        name     = "ip-restriction",
+        route = { id = route2.id },
+        config   = {
+          blacklist = { "::2" },
+        },
+      })
+
+      assert(db.plugins:insert {
+        name     = "ip-restriction",
+        route = { id = route3.id },
+        config   = {
+          blacklist = { "fe80::/8" },
+        },
+      })
+
+
+      assert(db.plugins:insert {
+        name     = "ip-restriction",
+        route = { id = route4.id },
+        config   = {
+          whitelist = { "::2" },
+        },
+      })
+
+      assert(db.plugins:insert {
+        name     = "ip-restriction",
+        route = { id = route5.id },
+        config   = {
+          whitelist = { "::1" },
+        },
+      })
+
+      assert(db.plugins:insert {
+        name     = "ip-restriction",
+        route = { id = route6.id },
+        config   = {
+          whitelist = { "::/0" },
+        },
+      })
+
+      assert(db.plugins:insert {
+        name     = "ip-restriction",
+        route = { id = route7.id },
+        config   = {
+          whitelist = { "::1" },
+          blacklist = { "::1" },
+        },
+      })
+
+      assert(db.plugins:insert {
+        name     = "ip-restriction",
+        route = { id = route8.id },
+        config   = {
+          whitelist = { "::1/128" },
+          blacklist = { "::1" },
+        },
+      })
+
+      assert(db.plugins:insert {
+        name     = "ip-restriction",
+        route = { id = route9.id },
+        config   = {
+          whitelist = { "::1/128" },
+          blacklist = { "::1/128" },
+        },
+      })
+
+      assert(helpers.start_kong {
+        database          = strategy,
+        real_ip_recursive = "on",
+        trusted_ips       = "0.0.0.0/0, ::/0",
+        nginx_conf        = "spec/fixtures/custom_nginx.template",
+      })
+
+      proxy_client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
+    end)
+
+    lazy_teardown(function()
+      if proxy_client and admin_client then
+        proxy_client:close()
+        admin_client:close()
+      end
+
+      helpers.stop_kong()
+    end)
+
+    describe("blacklist", function()
+      it("blocks a request when the IPv6 is blacklisted", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"] = "ip-restriction1.com",
+            ["X-Real-IP"] = "::1",
+          }
+        })
+        local body = assert.res_status(403, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Your IP address is not allowed" }, json)
+      end)
+      it("allows a request when the IPv6 is not blacklisted", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"] = "ip-restriction2.com",
+            ["X-Real-IP"] = "::1",
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("::1", json.vars.remote_addr)
+      end)
+      it("blocks the IPv6 with CIDR", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"] = "ip-restriction3.com",
+            ["X-Real-IP"] = "fe80::1",
+          }
+        })
+        local body = assert.res_status(403, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Your IP address is not allowed" }, json)
+      end)
+      it("blocks an IPv6 on a whitelisted IPv6 CIDR range", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"] = "ip-restriction8.com",
+            ["X-Real-IP"] = "::1",
+          }
+        })
+        local body = assert.res_status(403, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Your IP address is not allowed" }, json)
+      end)
+      it("takes precedence over an whitelisted IPv6", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"] = "ip-restriction7.com",
+            ["X-Real-IP"] = "::1",
+          }
+        })
+        local body = assert.res_status(403, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Your IP address is not allowed" }, json)
+      end)
+      it("takes precedence over an whitelisted IPv6 CIDR range", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"] = "ip-restriction9.com"
+          }
+        })
+        local body = assert.res_status(403, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Your IP address is not allowed" }, json)
+      end)
+    end)
+
+    describe("whitelist", function()
+      it("blocks a request when the IPv6 is not whitelisted", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"] = "ip-restriction4.com",
+            ["X-Real-IP"] = "::1",
+          }
+        })
+        local body = assert.res_status(403, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Your IP address is not allowed" }, json)
+      end)
+      it("allows a whitelisted IPv6", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"] = "ip-restriction5.com",
+            ["X-Real-IP"] = "::1",
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("::1", json.vars.remote_addr)
+      end)
+    end)
+
+    it("supports config changes without restarting", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Host"] = "ip-restriction2.com",
+          ["X-Real-IP"] = "::1",
+        }
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.equal("::1", json.vars.remote_addr)
+
+      res = assert(admin_client:send {
+        method  = "PATCH",
+        path    = "/plugins/" .. plugin.id,
+        body    = {
+          config = { blacklist = { "::1", "::2" } },
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+      assert.res_status(200, res)
+
+      local cache_key = db.plugins:cache_key(plugin)
+
+      helpers.wait_until(function()
+        res = assert(admin_client:send {
+          method = "GET",
+          path   = "/cache/" .. cache_key
+        })
+        res:read_body()
+        return res.status ~= 200
+      end)
+
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Host"] = "ip-restriction2.com",
+          ["X-Real-IP"] = "::1",
+        }
+      })
+      local body = assert.res_status(403, res)
+      local json = cjson.decode(body)
+      assert.same({ message = "Your IP address is not allowed" }, json)
+    end)
+
+    describe("#regression", function()
+      it("handles a CIDR entry with ::/0", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"] = "ip-restriction6.com",
+            ["X-Real-IP"] = "::1",
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("::1", json.vars.remote_addr)
+      end)
+    end)
+  end)
+
+  describe("Plugin: ip-restriction (access) [#" .. strategy .. "]", function()
+    local proxy_client
+    local admin_client
+
+    lazy_setup(function()
+      local bp
+      bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
+
+      local route1 = bp.routes:insert {
+        hosts = { "ip-restriction1.com" },
+      }
+
+      local route2 = bp.routes:insert {
+        hosts = { "ip-restriction2.com" },
+      }
+
+      bp.plugins:insert {
+        name     = "ip-restriction",
+        route = { id = route1.id },
+        config   = {
+          blacklist = { "::4" }
+        },
+      }
+
+      bp.plugins:insert {
+        name     = "ip-restriction",
+        route = { id = route2.id },
+        config   = {
+          whitelist = { "::4" }
+        },
+      }
+
+      assert(helpers.start_kong {
+        database          = strategy,
+        real_ip_header    = "X-Forwarded-For",
+        real_ip_recursive = "on",
+        trusted_ips       = "0.0.0.0/0, ::/0",
+        nginx_conf        = "spec/fixtures/custom_nginx.template",
+      })
+
+      proxy_client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
+    end)
+
+    lazy_teardown(function()
+      if proxy_client and admin_client then
+        proxy_client:close()
+        admin_client:close()
+      end
+
+      helpers.stop_kong()
+    end)
+
+    describe("blacklist", function()
+      it("allows with allowed X-Forwarded-For header", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"]            = "ip-restriction1.com",
+            ["X-Forwarded-For"] = "::3",
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("::3", json.vars.remote_addr)
+      end)
+      it("blocks with not allowed X-Forwarded-For header", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"]            = "ip-restriction1.com",
+            ["X-Forwarded-For"] = "::4"
+          }
+        })
+        local body = assert.res_status(403, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Your IP address is not allowed" }, json)
+      end)
+      it("blocks with blocked complex X-Forwarded-For header", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"]            = "ip-restriction1.com",
+            ["X-Forwarded-For"] = "::4, ::3"
+          }
+        })
+        local body = assert.res_status(403, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Your IP address is not allowed" }, json)
+      end)
+      it("allows with allowed complex X-Forwarded-For header", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"]            = "ip-restriction1.com",
+            ["X-Forwarded-For"] = "::3, ::4"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("::3", json.vars.remote_addr)
+      end)
+    end)
+
+    describe("whitelist", function()
+      it("block with not allowed X-Forwarded-For header", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"]            = "ip-restriction2.com",
+            ["X-Forwarded-For"] = "::3"
+          }
+        })
+        local body = assert.res_status(403, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Your IP address is not allowed" }, json)
+      end)
+      it("allows with allowed X-Forwarded-For header", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"]            = "ip-restriction2.com",
+            ["X-Forwarded-For"] = "::4"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("::4", json.vars.remote_addr)
+      end)
+      it("allows with allowed complex X-Forwarded-For header", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"]            = "ip-restriction2.com",
+            ["X-Forwarded-For"] = "::4, ::3"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("::4", json.vars.remote_addr)
+      end)
+      it("blocks with blocked complex X-Forwarded-For header", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"]            = "ip-restriction2.com",
+            ["X-Forwarded-For"] = "::3, ::4"
+          }
+        })
+        local body = assert.res_status(403, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Your IP address is not allowed" }, json)
       end)
     end)
   end)

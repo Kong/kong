@@ -38,6 +38,7 @@ dependencies = {
   "lua-messagepack == 0.5.2",
   "lua-resty-openssl == 0.6.0",
   "lua-resty-counter == 0.2.0",
+  "lua-resty-ipmatcher == 0.6",
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 0.4",
   "kong-plugin-zipkin ~> 1.0",
