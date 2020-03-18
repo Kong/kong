@@ -23,9 +23,8 @@ return {
     { config = {
         type = "record",
         fields = {
-          -- XXX DEVX: may be useful to include scopes in future implementation
-          -- { scopes = { type = "array", elements = { type = "string" }, }, },
-          -- { mandatory_scope = { type = "boolean", default = false, required = true }, },
+          { scopes = { type = "array", elements = { type = "string" }, }, },
+          { mandatory_scope = { type = "boolean", default = false, required = true }, },
           { display_name = { type = "string", unique = true, required = true }, },
           { description = { type = "string", unique = true }, },
           { auto_approve = { type = "boolean", required = true, default = false }, },
@@ -39,6 +38,14 @@ return {
           { refresh_token_ttl = { type = "number", default = 1209600, required = true }, },
         },
         custom_validator = validate_flows,
+        entity_checks = {
+          { conditional = {
+              if_field = "mandatory_scope",
+              if_match = { eq = true },
+              then_field = "scopes",
+              then_match = { required = true },
+          }, },
+        },
       }
     }
   },

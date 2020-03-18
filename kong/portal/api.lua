@@ -472,9 +472,9 @@ return {
       end
 
       local cred_pk = { id = credential.id }
-      local entity = { 
+      local entity = {
         consumer = { id = consumer.id },
-        [self.plugin.credential_key] = new_password, 
+        [self.plugin.credential_key] = new_password,
       }
       local ok, err = crud_helpers.update_login_credential(
                                               self.collection, cred_pk, entity)
@@ -648,7 +648,7 @@ return {
       end
 
       local cred_params = {}
-      
+
       cred_params.consumer = { id = self.developer.consumer.id }
 
       if self.params.password then
@@ -754,15 +754,18 @@ return {
           return endpoints.handle_error(err_t)
         end
 
-        local url = service.protocol .. "://" .. service.host
-        if service.path then
-          url = url .. service.path
-        end
-
         application_services[i] = {
-          name = v.config.display_name,
           id = service.id,
-          url = url,
+          name = v.config.display_name,
+          description = v.config.description,
+          auth_header_name = v.config.auth_header_name,
+          provision_key = v.config.provision_key,
+          auto_approve = v.config.auto_approve,
+          scopes = v.config.scopes,
+          enable_implicit_grant = v.config.enable_implicit_grant,
+          enable_password_grant = v.config.enable_password_grant,
+          enable_client_credentials = v.config.enable_client_credentials,
+          enable_authorization_code = v.config.enable_authorization_code,
         }
       end
 
