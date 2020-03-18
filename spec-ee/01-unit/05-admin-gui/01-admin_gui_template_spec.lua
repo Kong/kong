@@ -5,6 +5,8 @@ local ee             = require "kong.enterprise_edition"
 
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
+local match   = require "luassert.match"
+local log     = require "kong.cmd.utils.log"
 
 local exists = helpers.path.exists
 
@@ -252,6 +254,80 @@ describe("admin_gui template", function()
       assert.matches("'RBAC_USER_HEADER': 'Kong-Admin-User'", admin_idx, nil, true)
       assert.matches("'FEATURE_FLAGS': '{ HIDE_VITALS: true }'", admin_idx, nil, true)
       assert.matches("'ANONYMOUS_REPORTS': 'true'", admin_idx, nil, true)
+    end)
+  end)
+
+  describe("prepare_admin() - message logs", function()
+    local default_prefix = conf.prefix
+    local mock_prefix  = "servroot_2"
+    local idx_filename = mock_prefix .. "/gui_config/kconfig.js"
+    local usr_path = "servroot"
+    local usr_interface_dir = "gui2"
+    local usr_interface_path = usr_path .. "/" .. usr_interface_dir
+
+    setup(function()
+      conf.prefix = mock_prefix
+      helpers.execute("rm -f " .. idx_filename)
+
+      if not pl_path.exists(usr_interface_path) then
+        assert(pl_path.mkdir(usr_interface_path))
+      end
+    end)
+
+    teardown(function()
+      if pl_path.isfile(idx_filename) then
+        pl_file.delete(idx_filename)
+      end
+
+      if pl_path.exists(usr_interface_path) then
+        assert(pl_path.rmdir(usr_interface_path))
+      end
+
+      -- reverts the spy stub & matcher
+      log.warn:revert()
+      assert:unregister("matcher", "correct")
+
+      -- reset prefix
+      conf.prefix = default_prefix
+    end)     
+
+    it("symlink creation should log out error", function()
+      local spy_log = spy.on(log, "warn")
+
+      local err_1 = "Could not create directory servroot_2/gui_config. "
+                 .. "Ensure that the Kong CLI user has permissions to "
+                 .. "create this directory."
+
+      local err_2 = "ln: failed to create symbolic link 'servroot_2/gui2': "
+                 .. "No such file or directory\n"
+
+      local err_3 = "Could not write file servroot_2/gui_config/kconfig.js. "
+                 .. "Ensure that the Kong CLI user has permissions to write "
+                 .. "to this directory"
+      
+      local count = 1
+
+      local function is_correct(state, arguments)
+        return function(value)
+          local str = string.match(value, arguments[1])  or
+                      string.match(value, arguments[2])  or
+                      string.match(value, arguments[3])
+          
+          assert.same(value, str)
+
+          if count == #arguments then
+            return true
+          end
+
+          count = count + 1
+        end
+      end
+
+      assert:register("matcher", "correct", is_correct)
+
+      ee.prepare_interface(usr_path, usr_interface_dir, "gui_config", {}, conf)
+      assert.spy(spy_log).was_called(3)
+      assert.spy(spy_log).was_called_with(match.is_correct(err_1, err_2, err_3))
     end)
   end)
 end)
