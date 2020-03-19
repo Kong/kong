@@ -132,7 +132,7 @@ app:before_filter(function(self)
     gui_helpers.set_workspace_by_path(self)
   end
 
-  ngx.ctx.workspaces = self.workspaces
+  workspaces.set_workspace(self.workspaces[1])
   self.workspaces = nil
   crud_helpers.exit_if_portal_disabled()
   auth.authenticate_gui_session(self, kong.db, {})
