@@ -61,7 +61,7 @@ local function influx_query(query)
   end
 end
 
-local function requests_report_by(entity, start_ts)
+local function status_code_report_by(entity, start_ts)
   start_ts = start_ts or 36000
   local query = 'SELECT count(status) FROM kong.autogen.kong_request' ..
     ' WHERE time > now() - ' .. ngx.time() - start_ts .. 's' ..
@@ -78,9 +78,7 @@ local function requests_report_by(entity, start_ts)
       stats[keys[entity]] = {}
     end
 
-
     local status_group = tostring(row.tags.status_f):sub(1, 1) .. 'XX'
-
     local current_total = stats[keys[entity]]['total'] or 0
     local current_status = stats[keys[entity]][status_group] or 0
 
@@ -88,6 +86,28 @@ local function requests_report_by(entity, start_ts)
     stats[keys[entity]][status_group] = current_status + row.values[1][2]
   end
   return stats
+end
+
+local function latency_report(start_ts)
+  start_ts = start_ts or 36000
+  local fields = {'proxy_latency', 'request_latency'}
+  local columns = { 'time', 'requests' }
+  local query = ""
+  for i, f in pairs(fields) do
+    query = query .. string.format(', MAX(%s), MIN(%s), MEAN(%s)', f, f, f)
+    for _, n in pairs({ 'max_%s', 'min_%s', 'mean_%s' }) do
+      table.insert(columns, string.format(n, f))
+    end
+
+  end
+
+  local query = 'SELECT count(proxy_latency) ' .. query.. ' FROM kong_request' ..
+    ' WHERE time > now() - ' .. ngx.time() - start_ts .. 's' ..
+    ' GROUP BY hostname'
+  kong.log.err(query)
+  local result = influx_query(query)
+  result[1]['columns'] = columns
+  return result
 end
 
 return {
@@ -371,19 +391,19 @@ return {
 
   ["/vitals/reports/consumer"] = {
     GET = function(self, dao, helpers)
-      return kong.response.exit(200, requests_report_by("consumer", self.params.start_ts))
+      return kong.response.exit(200, status_code_report_by("consumer", self.params.start_ts))
     end
   },
 
   ["/vitals/reports/service"] = {
     GET = function(self, dao, helpers)
-      return kong.response.exit(200, requests_report_by("service", self.params.start_ts))
+      return kong.response.exit(200, status_code_report_by("service", self.params.start_ts))
     end
   },
 
   ["/vitals/reports/node"] = {
     GET = function(self, dao, helpers)
-      return kong.response.exit(200, requests_report_by("node", self.params.start_ts))
+      return kong.response.exit(200, latency_report(self.params.start_ts))
     end
   },
 }
