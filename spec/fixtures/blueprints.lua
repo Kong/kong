@@ -3,6 +3,7 @@ local utils = require "kong.tools.utils"
 
 local deep_merge = utils.deep_merge
 local fmt = string.format
+local workspaces = require "kong.workspaces"
 
 
 local Blueprint   = {}
@@ -26,12 +27,8 @@ end
 
 -- insert blueprint in workspace specified by `ws`
 function Blueprint:insert_ws(overrides, workspace)
-  local old_workspaces = ngx.ctx.workspaces
-
-  ngx.ctx.workspaces = { workspace }
-  local entity = self:insert(overrides)
-  ngx.ctx.workspaces = old_workspaces
-
+  local entity = workspaces.run_with_ws_scope({workspace},
+    self.insert, self, overrides)
   return entity
 end
 
