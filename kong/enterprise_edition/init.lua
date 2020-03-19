@@ -67,8 +67,8 @@ local function write_kconfig(configs, filename)
 end
 
 
-local function prepare_interface(interface_dir, interface_conf_dir, interface_env, kong_config)
-  local usr_interface_path = "/usr/local/kong/" .. interface_dir
+local function prepare_interface(usr_path, interface_dir, interface_conf_dir, interface_env, kong_config)
+  local usr_interface_path = usr_path .. "/" .. interface_dir
   local interface_path = kong_config.prefix .. "/" .. interface_dir
   local interface_conf_path = kong_config.prefix .. "/" .. interface_conf_dir
   local compile_env = interface_env
@@ -89,11 +89,16 @@ local function prepare_interface(interface_dir, interface_conf_dir, interface_en
      and pl_path.exists(usr_interface_path) then
 
     local ln_cmd = "ln -s " .. usr_interface_path .. " " .. interface_path
-    pl_utils.executeex(ln_cmd)
+    local ok, _, _, err_t = pl_utils.executeex(ln_cmd)
+
+    if not ok then
+      log.warn(err_t)
+    end
   end
 
   write_kconfig(compile_env, config_filename)
 end
+_M.prepare_interface = prepare_interface
 
 -- return first listener matching filters
 local function select_listener(listeners, filters)
@@ -146,7 +151,7 @@ function _M.prepare_admin(kong_config)
   local rbac_enforced = kong_config.rbac == "both" or kong_config.rbac == "on"
   local anonymous_reports = kong_config.anonymous_reports == "on"
 
-  return prepare_interface("gui", "gui_config", {
+  return prepare_interface("/usr/local/kong", "gui", "gui_config", {
     ADMIN_GUI_AUTH = prepare_variable(kong_config.admin_gui_auth),
     ADMIN_GUI_URL = prepare_variable(kong_config.admin_gui_url),
     ADMIN_GUI_PORT = prepare_variable(gui_port),
@@ -213,6 +218,5 @@ function _M.prepare_portal(self, kong_config)
     WORKSPACE = prepare_variable(workspace.name)
   }
 end
-
 
 return _M
