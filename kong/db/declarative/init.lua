@@ -1,6 +1,7 @@
 local declarative_config = require "kong.db.schema.others.declarative_config"
 local topological_sort = require "kong.db.schema.topological_sort"
-local DEFAULT_WORKSPACE = require "kong.workspaces".DEFAULT_WORKSPACE
+local workspaces = require "kong.workspaces"
+local DEFAULT_WORKSPACE = workspaces.DEFAULT_WORKSPACE
 local pl_file = require "pl.file"
 local lyaml = require "lyaml"
 local cjson = require "cjson.safe"
@@ -214,7 +215,7 @@ local function find_or_create_current_workspace(name)
     end
   end
 
-  ngx.ctx.workspaces = { workspace }
+  workspaces.set_workspace(workspace)
   return true
 end
 

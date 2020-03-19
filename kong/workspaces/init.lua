@@ -191,6 +191,12 @@ end
 _M.get_workspaces = get_workspaces
 
 
+local function set_workspace(ws)
+  ngx.ctx.workspaces = { ws }
+end
+_M.set_workspace = set_workspace
+
+
 -- register a relation name and its primary key name as a workspaceable
 -- relation
 function _M.register_workspaceable_relation(relation, primary_keys, unique_keys)
