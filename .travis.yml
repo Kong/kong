@@ -40,7 +40,6 @@ env:
     # Related to packaging and master build
     - KONG_DISTRIBUTIONS_VERSION=refactor/rename-refactor-redo-package
     - CACHE_DIR=$HOME/distributions-cache
-    - DOCKER_TAG_NAME=dev-master
     - ENABLE_OPENTRACING=0
   matrix:
     # enterprise matrix begin
