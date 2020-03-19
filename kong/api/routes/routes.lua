@@ -82,10 +82,10 @@ end
 
 local function rebuild_routes(db)
   if kong.configuration.route_validation_strategy ~= 'off'  then
-    local old_wss = ngx.ctx.workspaces
-    ngx.ctx.workspaces = {}
-    core_handler.build_router(db, uuid())
-    ngx.ctx.workspaces = old_wss
+    workspaces.run_with_ws_scope({},
+      core_handler.build_router,
+      db,
+      uuid())
   end
 end
 
@@ -127,10 +127,10 @@ return {
       -- create temporary router
       rebuild_routes(db)
 
-      local old_workspaces = ngx.ctx.workspaces
-      ngx.ctx.workspaces = {}
-      local r = build_router_without(self.params.routes)
-      ngx.ctx.workspaces = old_workspaces
+      local r = workspaces.run_with_ws_scope({},
+        build_router_without,
+        self.params.routes
+      )
 
       local ok, err = workspaces.is_route_crud_allowed(self, r)
       if not ok then

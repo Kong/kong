@@ -1292,10 +1292,9 @@ function _M.load_rbac_ctx(dao_factory, ctx, rbac_user, groups)
     local must_update
     user, must_update = validate_rbac_token(token_users, rbac_token)
     if must_update then
-      local old_ws = ngx.ctx.workspaces
-      ngx.ctx.workspaces = {}
-      update_user_token(user)
-      ngx.ctx.workspaces = old_ws
+      workspaces.run_with_ws_scope({},
+        update_user_token,
+        user)
     end
 
     if not user then
