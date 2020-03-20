@@ -697,23 +697,25 @@ end
 
 function _M.reset_password(plugin, collection, consumer, new_password, secret_id)
   log(DEBUG, _log_prefix, "searching ", plugin.name, "creds for consumer ", consumer.id)
-  for row, err in collection:each_for_consumer({ id = consumer.id }) do
-    if err then
-      return nil, err
+  workspaces.run_with_ws_scope({}, function()
+    for row, err in collection:each_for_consumer({ id = consumer.id }) do
+      if err then
+        return nil, err
+      end
+  
+      local _, err = collection:update(
+        { id = row.id }, 
+        { 
+          consumer = { id = consumer.id },
+          [plugin.credential_key] = new_password, 
+        }
+      )
+  
+      if err then
+        return nil, err
+      end
     end
-
-    local _, err = collection:update(
-      { id = row.id }, 
-      { 
-        consumer = { id = consumer.id },
-        [plugin.credential_key] = new_password, 
-      }
-    )
-
-    if err then
-      return nil, err
-    end
-  end
+  end)
 
   log(DEBUG, _log_prefix, "password was reset, updating secrets")
   local ok, err = secrets.consume_secret(secret_id)
