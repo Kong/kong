@@ -295,6 +295,7 @@ do
 end
 
 
+-- XXX EE Deletable in the new non-shareable world
 function _M.delete_entity_relation(table_name, entity)
   local db = kong.db
 
@@ -303,7 +304,7 @@ function _M.delete_entity_relation(table_name, entity)
     return
   end
 
-  local res, err = db.workspace_entities:select_all({
+  local res, err = db.workspace_entities:select_all({ -- XXX EE can-go
     entity_id = entity[constraints.primary_key],
   }, {skip_rbac = true})
   if err then
@@ -330,11 +331,12 @@ function _M.delete_entity_relation(table_name, entity)
 end
 
 
+-- XXX EE Deletable in the new non-shareable world
 function _M.update_entity_relation(table_name, entity)
   local constraints = workspaceable_relations[table_name]
   if constraints and constraints.unique_keys then
     for k, _ in pairs(constraints.unique_keys) do
-      local res, err = kong.db.workspace_entities:select_all({
+      local res, err = kong.db.workspace_entities:select_all({ -- XXX EE can-go
         entity_id = entity[constraints.primary_key],
         unique_field_name = k,
       })
@@ -362,8 +364,9 @@ function _M.update_entity_relation(table_name, entity)
 end
 
 
+-- XXX EE Deletable in the new non-shareable world
 local function find_entity_by_unique_field(params)
-  local rows, err = kong.db.workspace_entities:select_all(params)
+  local rows, err = kong.db.workspace_entities:select_all(params) -- XXX EE can-go
   if err then
     return nil, err
   end
@@ -373,8 +376,9 @@ local function find_entity_by_unique_field(params)
 end
 _M.find_entity_by_unique_field = find_entity_by_unique_field
 
+
 local function find_workspaces_by_entity(params)
-  local rows, err = kong.db.workspace_entities:select_all(params)
+  local rows, err = kong.db.workspace_entities:select_all(params) -- XXX EE can-go
   if err then
     return nil, err
   end
@@ -394,7 +398,7 @@ _M.match_route = match_route
 local function entity_workspace_ids(entity)
   local old_wss = ngx.ctx.workspaces
   ngx.ctx.workspaces = nil
-  local ws_rels = kong.db.workspace_entities:select_all({entity_id = entity.id})
+  local ws_rels = kong.db.workspace_entities:select_all({entity_id = entity.id}) -- XXX EE can-go
   ngx.ctx.workspaces = old_wss
   return map(function(x) return x.workspace_id end, ws_rels)
 end
@@ -640,7 +644,7 @@ local function load_workspace_scope(ctx, route)
   local old_wss = ctx.workspaces
   ctx.workspaces = {}
 
-  local rows, err = kong.db.workspace_entities:select_all({
+  local rows, err = kong.db.workspace_entities:select_all({ -- XXX EE can-go (adapt)
     entity_id  = route.id,
     unique_field_name = "id",
     unique_field_value = route.id,
@@ -698,7 +702,7 @@ end
 -- given an entity ID, look up its entity collection name;
 -- it is only called if the user does not pass in an entity_type
 function _M.resolve_entity_type(entity_id)
-  local rows, err = kong.db.workspace_entities:select_all({
+  local rows, err = kong.db.workspace_entities:select_all({  -- XXX EE. Think how to do rbac lazily
       entity_id = entity_id
   })
   if err then
@@ -740,7 +744,7 @@ local function load_entity_map(ws_scope, table_name)
   for _, ws in ipairs(ws_scope) do
     local primary_key = workspaceable_relations[table_name].primary_key
 
-    local ws_entities, err = kong.db.workspace_entities:select_all({
+    local ws_entities, err = kong.db.workspace_entities:select_all({ -- XXX EE can-go. Think how to do rbac lazily
       workspace_id = ws.id,
       entity_type = table_name,
       unique_field_name = primary_key,
@@ -816,6 +820,7 @@ end
 
 -- If entity has a unique key it will have workspace_name prefix so we
 -- have to search first in the relationship table
+-- XXX EE Deletable in the new non-shareable world
 function _M.resolve_shared_entity_id(table_name, params, constraints)
   if unique_accross_ws[table_name] then
     return
@@ -901,6 +906,7 @@ _M.run_with_ws_scope = run_with_ws_scope
 
 
 -- validates that given primary_key belongs to current ws scope
+-- XXX EE Deletable in the new non-shareable world
 function _M.validate_pk_exist(table_name, params, constraints, workspace)
   if not constraints or not constraints.primary_key then
     return true
