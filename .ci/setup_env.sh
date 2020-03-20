@@ -10,6 +10,16 @@ LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
 OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
 GO_PLUGINSERVER=$(dep_version KONG_GO_PLUGINSERVER_VERSION)
 
+# XXX kong-ee specific, for now at least
+# - Allow overriding via ENV_VAR (for CI)
+# - should be set in .requirements
+# - defaults to master
+KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:-$(dep_version KONG_NGINX_MODULE_BRANCH)}
+KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:-master}
+
+KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:-$(dep_version KONG_BUILD_TOOLS_BRANCH)}
+KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:-master}
+
 #---------
 # Download
 #---------
@@ -18,10 +28,6 @@ DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml .requirements | md5sum | awk '{ pri
 DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
 BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/kong-build-tools
 GO_PLUGINSERVER_DOWNLOAD=$DOWNLOAD_ROOT/go-pluginserver
-
-# These are CI tests, so always use latest unless said otherwise
-KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:-master}
-KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:-master}
 
 if [[ $KONG_BUILD_TOOLS_BRANCH == "master" ]]; then
   KONG_BUILD_TOOLS_BRANCH="origin/master"
@@ -61,6 +67,18 @@ export PATH=$GO_PLUGINSERVER_DOWNLOAD:$PATH
 INSTALL_CACHE=${INSTALL_CACHE:=/install-cache}
 INSTALL_ROOT=$INSTALL_CACHE/$DEPS_HASH
 
+echo kong-ngx-build \
+    --work $DOWNLOAD_ROOT \
+    --prefix $INSTALL_ROOT \
+    --openresty $OPENRESTY \
+    --kong-nginx-module $KONG_NGINX_MODULE_BRANCH \
+    --luarocks $LUAROCKS \
+    --openssl $OPENSSL \
+    -j $JOBS
+
+# XXX Some versions of kong-ngx-build grok at having no EDITION set, always
+# use test2 or quote envs
+EDITION=""
 kong-ngx-build \
     --work $DOWNLOAD_ROOT \
     --prefix $INSTALL_ROOT \
