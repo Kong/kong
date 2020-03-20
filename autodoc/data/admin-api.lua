@@ -1112,6 +1112,10 @@ return {
           description = [[PEM-encoded public certificate of the CA.]],
           example = "-----BEGIN CERTIFICATE-----...",
         },
+        cert_digest = {
+          description = [[SHA256 hex digest of the public certificate]],
+          example = "c641e28d77e93544f2fa87b2cf3f3d51...",
+        },
         tags = {
           description = [[
             An optional set of strings associated with the Certificate, for grouping and filtering.
