@@ -63,51 +63,79 @@ end
 
 local function status_code_report_by(entity, start_ts)
   start_ts = start_ts or 36000
-  local query = 'SELECT count(status) FROM kong.autogen.kong_request' ..
-    ' WHERE time > now() - ' .. ngx.time() - start_ts .. 's' ..
-    ' GROUP BY ' .. entity .. ', status_f'
+  local query = "SELECT count(status) FROM kong.autogen.kong_request" ..
+    " WHERE time > now() - " .. ngx.time() - start_ts .. "s" ..
+    " GROUP BY " .. entity .. ", status_f"
+
   local result = influx_query(query)
   local stats = {}
   for i, row in pairs(result) do
-    local keys = {
+    local lookup = {
       consumer = row.tags.consumer,
-      service = row.tags.service,
-      node = row.tags.node
+      service = row.tags.service
     }
-    if stats[keys[entity]] == nil then
-      stats[keys[entity]] = {}
+    if stats[lookup[entity]] == nil then
+      stats[lookup[entity]] = {}
     end
 
-    local status_group = tostring(row.tags.status_f):sub(1, 1) .. 'XX'
-    local current_total = stats[keys[entity]]['total'] or 0
-    local current_status = stats[keys[entity]][status_group] or 0
+    local status_group = tostring(row.tags.status_f):sub(1, 1) .. "XX"
+    local current_total = stats[lookup[entity]]["total"] or 0
+    local current_status = stats[lookup[entity]][status_group] or 0
 
-    stats[keys[entity]]['total'] = current_total + row.values[1][2]
-    stats[keys[entity]][status_group] = current_status + row.values[1][2]
+    stats[lookup[entity]]["total"] = current_total + row.values[1][2]
+    stats[lookup[entity]][status_group] = current_status + row.values[1][2]
   end
-  return stats
+
+  local meta = {
+    earliest_ts = start_ts,
+    latest_ts = ngx.time(),
+    stat_labels = {
+      "total",
+      "2XX",
+      "4XX",
+      "5XX"
+    },
+  }
+
+  return { stats=stats, meta=meta }
 end
 
 local function latency_report(start_ts)
   start_ts = start_ts or 36000
-  local fields = {'proxy_latency', 'request_latency'}
-  local columns = { 'time', 'requests' }
-  local query = ""
-  for i, f in pairs(fields) do
-    query = query .. string.format(', MAX(%s), MIN(%s), MEAN(%s)', f, f, f)
-    for _, n in pairs({ 'max_%s', 'min_%s', 'mean_%s' }) do
-      table.insert(columns, string.format(n, f))
-    end
+  local columns = {
+    "proxy_max",
+    "proxy_min",
+    "proxy_avg",
+    "upstream_max",
+    "upstream_min",
+    "upstream_avg",
+  }
+  local query = "SELECT MAX(proxy_latency), MIN(proxy_latency)," ..
+    " MEAN(proxy_latency), MAX(request_latency), MIN(request_latency)," ..
+    " MEAN(request_latency) FROM kong_request" ..
+    " WHERE time > now() - " .. ngx.time() - start_ts .. "s" ..
+    " GROUP BY hostname"
 
+  local result = influx_query(query)
+
+  local stats = {}
+  for _, row in pairs(result) do
+    local hostname = row.tags.hostname
+    if stats[hostname] == nil then
+      stats[hostname] = {}
+    end
+    for i, column in pairs(columns) do
+      stats[hostname][column] = row.values[1][i+1]
+    end
   end
 
-  local query = 'SELECT count(proxy_latency) ' .. query.. ' FROM kong_request' ..
-    ' WHERE time > now() - ' .. ngx.time() - start_ts .. 's' ..
-    ' GROUP BY hostname'
-  kong.log.err(query)
-  local result = influx_query(query)
-  result[1]['columns'] = columns
-  return result
+  local meta = {
+    earliest_ts = start_ts,
+    latest_ts = ngx.time(),
+    stat_labels = columns,
+  }
+  
+  return { stats=stats, meta=meta }
 end
 
 return {
