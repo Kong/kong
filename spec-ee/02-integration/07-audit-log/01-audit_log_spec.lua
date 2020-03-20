@@ -83,7 +83,7 @@ for _, strategy in helpers.each_strategy() do
         }))
 
         local res = assert(admin_client:send({
-          path = "/foo/consumers",
+          path = "/foo/services",
         }))
         assert.res_status(200, res)
 
@@ -155,9 +155,10 @@ for _, strategy in helpers.each_strategy() do
           it("CREATE", function()
             local res = assert(admin_client:send({
               method = "POST",
-              path   = "/consumers",
+              path   = "/services",
               body   = {
-                username = "bob"
+                name = "bob",
+                host = "example.com"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -169,13 +170,14 @@ for _, strategy in helpers.each_strategy() do
 
             helpers.wait_until(function()
               rows = fetch_all(db.audit_objects)
-              return 4 == #rows
+
+              return 3 == #rows
             end)
 
             for _, object in ipairs(rows) do
               assert.same("create", object.operation)
-              if object.dao_name == "consumers" then
-                assert.matches('"username":"bob"', object.entity, nil, true)
+              if object.dao_name == "services" then
+                assert.matches('"name":"bob"', object.entity, nil, true)
               end
             end
 
@@ -193,7 +195,7 @@ for _, strategy in helpers.each_strategy() do
 
             helpers.wait_until(function()
               rows = fetch_all(db.audit_objects)
-              return 7 == #rows
+              return 6 == #rows
             end)
 
             res = assert(admin_client:send({
@@ -210,7 +212,7 @@ for _, strategy in helpers.each_strategy() do
 
             helpers.wait_until(function()
               rows = fetch_all(db.audit_objects)
-              return 8 == #rows
+              return 7 == #rows
             end)
           end)
 
@@ -334,9 +336,10 @@ for _, strategy in helpers.each_strategy() do
           it("", function()
             local res = assert(admin_client:send({
               method = "POST",
-              path   = "/consumers",
+              path   = "/services",
               body   = {
-                username = "c3"
+                name = "s2",
+                host = "foo.com"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -348,15 +351,14 @@ for _, strategy in helpers.each_strategy() do
 
             helpers.wait_until(function()
               rows = fetch_all(db.audit_objects)
-              return 4 == #rows
+              return 3 == #rows
             end)
 
-            -- 1 row for the main entity, plus 3 in workspace_entities, one
+            -- 1 row for the main entity, plus 2 in workspace_entities, one
             -- for each non-nil unique field, plus PK
             assert.same("create", rows[1].operation)
             assert.same("create", rows[2].operation)
             assert.same("create", rows[3].operation)
-            assert.same("create", rows[4].operation)
           end)
         end)
       end)
@@ -750,9 +752,8 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(201, res)
 
-        -- workspace_entities audit log entries
-        local rows
 
+        local rows
         helpers.wait_until(function()
           rows = fetch_all(db.audit_objects)
           return 3 == #rows

@@ -73,40 +73,40 @@ for _, strategy in helpers.each_strategy() do
     it("increments counter on entity_type and workspace", function()
       local res
 
-      -- 2 workspaces (default and ws1), each with 1 consumer
+      -- 2 workspaces (default and ws1), each with 1 service
       post("/workspaces", {name = "ws1"})
-      local c1 = post("/consumers", {username = "first"})
-      post("/ws1/consumers", {username = "bob"})
+      local c1 = post("/services", {name = "first", host = "first.com"})
+      post("/ws1/services", {name = "bob", host = "bob.com"})
 
       res = get("/workspaces/ws1/meta")
-      assert.equal(1, res.counts.consumers)
+      assert.equal(1, res.counts.services)
 
       res = get("/workspaces/default/meta")
-      assert.equal(1, res.counts.consumers)
+      assert.equal(1, res.counts.services)
 
       -- share c1 with ws1
       post("/workspaces/ws1/entities", {entities = c1.id})
 
-      -- ws1 has 2 consumers now
+      -- ws1 has 2 services now
       res = get("/workspaces/ws1/meta")
-      assert.equal(2, res.counts.consumers)
+      assert.equal(2, res.counts.services)
 
       -- default still has 1
       res = get("/workspaces/default/meta")
-      assert.equal(1, res.counts.consumers)
+      assert.equal(1, res.counts.services)
 
       -- delete the one only in ws1
-      delete("/ws1/consumers/bob" )
+      delete("/ws1/services/bob" )
       local res = get("/workspaces/ws1/meta")
-      assert.equal(1, res.counts.consumers)
+      assert.equal(1, res.counts.services)
 
       -- delete the shared one (multiple ws are deleted ok)
-      delete("/ws1/consumers/" .. c1.id)
+      delete("/ws1/services/" .. c1.id)
       res = get("/workspaces/ws1/meta")
-      assert.equal(0, res.counts.consumers)
+      assert.equal(0, res.counts.services)
 
       res = get("/workspaces/default/meta")
-      assert.equal(0, res.counts.consumers)
+      assert.equal(0, res.counts.services)
 
       -- delete ws1
       delete("/workspaces/ws1")
@@ -118,51 +118,26 @@ for _, strategy in helpers.each_strategy() do
 
     it("unshare decrements counts", function()
       post("/workspaces", {name = "ws1"})
-      local c1 = post("/consumers", {username = "first"})
+      local c1 = post("/services", {name = "first", host = "first.com"})
       -- share c1 with ws1
       post("/workspaces/ws1/entities", {entities = c1.id})
 
-      -- ws1 has 1 consumer now
+      -- ws1 has 1 service now
       local res = get("/workspaces/ws1/meta")
-      assert.equal(1, res.counts.consumers)
+      assert.equal(1, res.counts.services)
 
       -- unshare c1 with ws1
       delete("/workspaces/ws1/entities", {entities = c1.id})
-      -- ws1 has 0 consumers now
+      -- ws1 has 0 services now
       local res = get("/workspaces/ws1/meta")
-      assert.equal(0, res.counts.consumers)
+      assert.equal(0, res.counts.services)
 
-      delete("/workspaces/ws1") --cleanup
-    end)
-
-    it("increments counters from new dao entities", function()
-      post("/workspaces", {name = "ws1"})
-      post("/ws1/services", {name = "s1", host = "s1.com"})
-      local res = get("/workspaces/ws1/meta")
-      assert.equals(1, res.counts.services)
-
-      delete("/ws1/services/s1")
-      res = get("/workspaces/ws1/meta")
-      assert.equals(0, res.counts.services)
       delete("/workspaces/ws1") --cleanup
     end)
 
     it("returns 404 if we call from another workspace", function()
       post("/workspaces", {name = "ws1"})
       get("/ws1/workspaces/default/meta", nil, 404)
-    end)
-
-    it("#flaky admins nor developers do not modify consumers' counters", function()
-      local before = get("/workspaces/default/meta").consumers
-      post("/admins", {username = "foo", email = "email@email.com"}, nil, 200)
-      post("/portal/developers", {username = "bar", email = "email@email2.com"})
-      local after = get("/workspaces/default/meta").consumers
-      assert.is_equal(before, after)
-
-      delete("/admins/foo")
-      delete("/portal/developers/email@email2.com")
-      after = get("/workspaces/default/meta").consumers
-      assert.is_equal(before, after)
     end)
   end)
 end

@@ -52,11 +52,11 @@ for _, strategy in helpers.each_strategy() do
         it("in a given workspace", function()
           local ws1 = assert(bp.workspaces:insert({ name = "ws_90" }))
 
-          assert(bp.consumers:insert_ws({ username = "c90" }, ws1))
-          assert(bp.consumers:insert_ws({ username = "c91" }, ws1))
+          assert(bp.services:insert_ws({ name = "c90", host = "c90.com" }, ws1))
+          assert(bp.services:insert_ws({ name = "c91", host = "c91.com" }, ws1))
 
           local rows, err = workspaces.run_with_ws_scope({ws1}, function()
-            return db.consumers:select_all()
+            return db.services:select_all()
           end)
 
           assert.is_nil(err)
@@ -68,12 +68,12 @@ for _, strategy in helpers.each_strategy() do
           local ws2 = assert(bp.workspaces:insert({ name = "ws_92" }))
           local ws3 = assert(bp.workspaces:insert({ name = "ws_93" }))
 
-          assert(bp.consumers:insert_ws({ username = "c90" }, ws1))
-          assert(bp.consumers:insert_ws({ username = "c91" }, ws2))
-          assert(bp.consumers:insert_ws({ username = "c91" }, ws3))
+          assert(bp.services:insert_ws({ name = "c90", host = "c90.com" }, ws1))
+          assert(bp.services:insert_ws({ name = "c91", host = "c91.com" }, ws2))
+          assert(bp.services:insert_ws({ name = "c91", host = "c91.com" }, ws3))
 
           local rows, err = workspaces.run_with_ws_scope({}, function()
-            return db.consumers:select_all()
+            return db.services:select_all()
           end)
 
           assert.is_nil(err)
@@ -99,9 +99,9 @@ for _, strategy in helpers.each_strategy() do
 
         it("unpartitioned entities", function()
           local rows, err
-          bp.consumers:insert({ username = "c1" })
+          bp.services:insert({ name = "c1", host = "c1.com" })
 
-          rows, err = db.consumers:select_all({ username = "c1" })
+          rows, err = db.services:select_all({ name = "c1" })
           assert.is_nil(err)
           assert.same(1, #rows)
         end)
@@ -109,8 +109,8 @@ for _, strategy in helpers.each_strategy() do
         it("non-workspaceable entities", function()
           local ws1 = assert(bp.workspaces:insert({ name = "ws_24" }))
 
-          assert(bp.consumers:insert_ws({ username = "ws1" }, ws1))
-          assert(bp.consumers:insert_ws({ username = "ws2" }, ws1))
+          assert(bp.services:insert_ws({ name = "ws1", host = "ws1.com" }, ws1))
+          assert(bp.services:insert_ws({ name = "ws2", host = "ws2.com" }, ws1))
 
           -- workspace_entities is NOT workspace-aware
           local res, err
@@ -123,7 +123,7 @@ for _, strategy in helpers.each_strategy() do
             workspace_id = ws1.id,
           })
           assert.is_nil(err)
-          assert.same(#res, 6)
+          assert.same(#res, 4)
         end)
 
         it("filters out other workspaces' entities (developers)", function()
@@ -188,32 +188,32 @@ for _, strategy in helpers.each_strategy() do
           assert.same({c4, c5, c6}, res)
         end)
 
-        it("filters out other workspaces' entities (consumers)", function()
+        it("filters out other workspaces' entities (services)", function()
           local ws1 = assert(bp.workspaces:insert({ name = "ws_12" }))
           local ws2 = assert(bp.workspaces:insert({ name = "ws_23" }))
 
-          local c1 = assert(bp.consumers:insert_ws({ username = "ws1" }, ws1))
-          local c2 = assert(bp.consumers:insert_ws({ username = "ws2" }, ws1))
-          local c3 = assert(bp.consumers:insert_ws({ username = "ws3" }, ws1))
+          local c1 = assert(bp.services:insert_ws({ name = "ws1", host = "ws1.com" }, ws1))
+          local c2 = assert(bp.services:insert_ws({ name = "ws2", host = "ws2.com" }, ws1))
+          local c3 = assert(bp.services:insert_ws({ name = "ws3", host = "ws3.com" }, ws1))
 
-          local c4 = assert(bp.consumers:insert_ws({ username = "ws4" }, ws2))
-          local c5 = assert(bp.consumers:insert_ws({ username = "ws5" }, ws2))
-          local c6 = assert(bp.consumers:insert_ws({ username = "ws6" }, ws2))
+          local c4 = assert(bp.services:insert_ws({ name = "ws4", host = "ws4.com" }, ws2))
+          local c5 = assert(bp.services:insert_ws({ name = "ws5", host = "ws5.com" }, ws2))
+          local c6 = assert(bp.services:insert_ws({ name = "ws6", host = "ws6.com" }, ws2))
 
           local sort = function(a, b)
-            return a.username < b.username
+            return a.name < b.name
           end
 
           local res
 
           res = workspaces.run_with_ws_scope({ws1}, function()
-            return db.consumers:select_all()
+            return db.services:select_all()
           end)
           table.sort(res, sort)
           assert.same({c1, c2, c3}, res)
 
           res = workspaces.run_with_ws_scope({ws2}, function()
-            return db.consumers:select_all()
+            return db.services:select_all()
           end)
           table.sort(res, sort)
           assert.same({c4, c5, c6}, res)
@@ -224,15 +224,16 @@ for _, strategy in helpers.each_strategy() do
           local ws_1 = assert(bp.workspaces:insert({
             name = "w1"
           }))
-          local c1 = assert(bp.consumers:insert_ws({
-            username = "c123",
+          local c1 = assert(bp.services:insert_ws({
+            name = "c123",
+            host = "c123.com",
           }, ws_d))
 
-          assert.is_nil(workspaces.add_entity_relation("consumers", c1, ws_1))
+          assert.is_nil(workspaces.add_entity_relation("services", c1, ws_1))
 
           assert.same({c1}, workspaces.run_with_ws_scope({ws_1}, function()
-            return db.consumers:select_all({
-              username = "c123"
+            return db.services:select_all({
+              name = "c123"
             })
           end))
         end)
@@ -241,18 +242,18 @@ for _, strategy in helpers.each_strategy() do
           local ws_1 = assert(bp.workspaces:insert({ name = "ws_1" }))
           local ws_2 = assert(bp.workspaces:insert({ name = "ws_2" }))
 
-          local c1_ws1 = assert(bp.consumers:insert_ws({ username = "ws1" }, ws_1))
-          local c1_ws2 = assert(bp.consumers:insert_ws({ username = "ws1" }, ws_2))
+          local c1_ws1 = assert(bp.services:insert_ws({ name = "ws1", host = "ws1.com" }, ws_1))
+          local c1_ws2 = assert(bp.services:insert_ws({ name = "ws1", host = "ws1.com" }, ws_2))
 
           assert.same({c1_ws1}, workspaces.run_with_ws_scope({ws_1}, function()
-            return db.consumers:select_all({
-              username = "ws1"
+            return db.services:select_all({
+              name = "ws1"
             })
           end))
 
           assert.same({c1_ws2}, workspaces.run_with_ws_scope({ws_2}, function()
-            return db.consumers:select_all({
-              username = "ws1"
+            return db.services:select_all({
+              name = "ws1"
             })
           end))
         end)

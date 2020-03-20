@@ -1064,13 +1064,13 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
           name = "foo"
         })
         -- create some entities
-        local consumers = bp.consumers:insert_n(10)
+        local services = bp.services:insert_n(10)
 
         -- share them
-        for _, consumer in ipairs(consumers) do
+        for _, service in ipairs(services) do
           assert.res_status(201, client:post("/workspaces/foo/entities", {
             body = {
-              entities = consumer.id
+              entities = service.id
             },
             headers = {
               ["Content-Type"] = "application/json",
@@ -1088,7 +1088,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
         assert(10, #json.data)
         for _, entity in ipairs(json.data) do
-          assert.same("consumers", entity.entity_type)
+          assert.same("services", entity.entity_type)
         end
       end)
     end)
@@ -1099,11 +1099,11 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
           assert(bp.workspaces:insert {
             name = "foo"
           })
-          local consumer = assert(bp.consumers:insert())
+          local service = assert(bp.services:insert())
 
           local res = assert(client:post("/workspaces/foo/entities", {
             body = {
-              entities = consumer.id,
+              entities = service.id,
             },
             headers = {
               ["Content-Type"] = "application/json",
@@ -1113,14 +1113,14 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
           local res = assert(client:post("/workspaces/foo/entities", {
             body = {
-              entities = consumer.id,
+              entities = service.id,
             },
             headers = {
               ["Content-Type"] = "application/json",
             },
           }))
           local json = cjson.decode(assert.res_status(409, res))
-          assert.matches("Entity '" .. consumer.id .. "' " ..
+          assert.matches("Entity '" .. service.id .. "' " ..
                          "already associated with workspace", json.message, nil,
                          true)
         end)
@@ -1196,13 +1196,13 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         assert(bp.workspaces:insert({
           name = "foo",
         }))
-        -- create a consumer
-        local consumer = assert(bp.consumers:insert())
+        -- create a service
+        local service = assert(bp.services:insert())
 
         -- share with workspace foo
         assert.res_status(201, client:post("/workspaces/foo/entities", {
           body = {
-            entities = consumer.id
+            entities = service.id
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -1212,7 +1212,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         -- now, delete the entity from foo
         assert.res_status(204, client:delete("/workspaces/foo/entities", {
           body = {
-            entities = consumer.id
+            entities = service.id
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -1222,7 +1222,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         -- and delete it from default, too
         assert.res_status(204, client:delete("/workspaces/default/entities", {
           body = {
-            entities = consumer.id
+            entities = service.id
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -1231,8 +1231,8 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
         -- the entity must be gone - as it was deleted from both workspaces
         -- it belonged to
-        local res, err = db.consumers:select({
-          id = consumer.id
+        local res, err = db.services:select({
+          id = service.id
         })
         assert.is_nil(err)
         assert.is_nil(res)
@@ -1240,9 +1240,10 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         -- and we must be able to create an entity with that same name again
         assert.res_status(201, client:send {
           method = "POST",
-          path = "/consumers",
+          path = "/services",
           body = {
-            username = "foosumer"
+            name = "foo",
+            host= "foo.com",
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -1255,13 +1256,13 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         assert(bp.workspaces:insert({
           name = "foo",
         }))
-        -- create a consumer
-        local consumer = assert(bp.consumers:insert())
+        -- create a service
+        local service = assert(bp.services:insert())
 
         -- share with workspace foo
         assert.res_status(201, client:post("/workspaces/foo/entities", {
           body = {
-            entities = consumer.id
+            entities = service.id
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -1273,7 +1274,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
           method = "DELETE",
           path = "/workspaces/foo/entities",
           body = {
-            entities = consumer.id
+            entities = service.id
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -1283,7 +1284,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         -- now, delete the entity from foo
         local json = cjson.decode(assert.res_status(200, client:get("/workspaces/foo/entities", {
           body = {
-            entities = consumer.id
+            entities = service.id
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -1316,20 +1317,20 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         local ws = assert(bp.workspaces:insert({
           name = "foo",
         }))
-        -- create a consumer
-        local consumer = assert(bp.consumers:insert_ws(nil, ws))
+        -- create a service
+        local service = assert(bp.services:insert_ws(nil, ws))
 
         local res = assert(client:send {
           method = "GET",
-          path = "/workspaces/foo/entities/" .. consumer.id,
+          path = "/workspaces/foo/entities/" .. service.id,
         })
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
         assert.equals(json.workspace_id, ws.id)
-        assert.equals(json.entity_id, consumer.id)
-        assert.equals(json.entity_type, "consumers")
+        assert.equals(json.entity_id, service.id)
+        assert.equals(json.entity_type, "services")
       end)
 
       it("sends the appropriate status on an invalid entity", function()
@@ -1351,12 +1352,12 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         local ws = assert(bp.workspaces:insert({
           name = "foo",
         }))
-        -- create a consumer
-        local consumer = assert(bp.consumers:insert_ws(nil, ws))
+        -- create a service
+        local service = assert(bp.services:insert_ws(nil, ws))
 
         assert.res_status(204, client:send({
           method = "DELETE",
-          path = "/workspaces/foo/entities/" .. consumer.id,
+          path = "/workspaces/foo/entities/" .. service.id,
         }))
       end)
 

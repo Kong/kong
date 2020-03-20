@@ -71,18 +71,18 @@ describe("DB [".. strategy .. "] sharing ", function()
 
   it("is allowed from the workspace where the entity lives", function()
     -- create consumer in default workspace
-    local c1 = post("/consumers", {username = "c1"})
+    local s1 = post("/services", {name = "s1", host="foo.com"})
     -- share it with ws1, from default workspace
-    post("/workspaces/ws1/entities", {entities = c1.id})
+    post("/workspaces/ws1/entities", {entities = s1.id})
   end)
 
   it("is not allowed from a workspace that doesn't own the entity", function()
     -- create consumer in ws1 workspace
-    local c2 = post("/ws1/consumers", {username = "c2"})
+    local s2 = post("/ws1/services", {name = "s2", host = "bar.com"})
     -- try to share it from default, while it is in ws1
-    post("/workspaces/ws2/entities", {entities = c2.id}, nil, 404)
+    post("/workspaces/ws2/entities", {entities = s2.id}, nil, 404)
     -- try to share it from ws3, where neither the entity nor ws1 belong to
-    post("/ws3/workspaces/ws2/entities", {entities = c2.id}, nil, 404)
+    post("/ws3/workspaces/ws2/entities", {entities = s2.id}, nil, 404)
   end)
 
   teardown(function()

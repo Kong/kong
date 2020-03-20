@@ -36,22 +36,22 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    describe("workspaces", function() 
+    describe("workspaces", function()
       it("returns all rows", function()
         local rows = {}
-        
+
         for row in db.workspaces:each() do
           table.insert(rows, row)
         end
-        
-        assert.same(2, #rows)  
+
+        assert.same(2, #rows)
       end)
-      
+
       describe("select_all():", function()
         it("returns services for workspace [default]", function()
-          local res = db.services:select_all()          
+          local res = db.services:select_all()
           assert.same({ s1 }, res)
-        end)  
+        end)
 
         it("returns services for workspace [w1]", function()
           local res = run_ws({ w1 }, function()
@@ -63,12 +63,12 @@ for _, strategy in helpers.each_strategy() do
 
       describe("select():", function()
         it("returns service [s1] for workspace [default] and nil for workspace [w1]", function()
-          local res 
+          local res
           res = db.services:select({ id = s1.id })
           assert.same(s1, res)
 
           res = run_ws({ w1 }, function()
-            return db.services:select({ id = s1.id })   
+            return db.services:select({ id = s1.id })
           end)
           assert.is_nil(res)
         end)
@@ -79,7 +79,7 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(res)
 
           res = run_ws({ w1 }, function()
-            return db.services:select({ id = w1s1.id })   
+            return db.services:select({ id = w1s1.id })
           end)
           assert.same(w1s1, res)
         end)
@@ -118,7 +118,7 @@ for _, strategy in helpers.each_strategy() do
 
           res = run_ws({ w1 }, function()
             return db.services:page()
-          end) 
+          end)
           assert.not_same({ s1 }, res)
         end)
 
@@ -141,7 +141,7 @@ for _, strategy in helpers.each_strategy() do
             return db.services:page()
           end)
           table.sort(res, sort_by_name)
-        
+
           assert.same({ s0, w1s1 }, res)
 
           -- cleanup, removing shared service [s0]
@@ -158,20 +158,20 @@ for _, strategy in helpers.each_strategy() do
             table.insert(res_services, row)
           end
           assert.same({ s1 }, res_services)
-        
+
           local res_services = run_ws({ w1 }, function()
             local res = {}
             for row in db.services:each() do
               table.insert(res, row)
             end
             return res
-          end) 
+          end)
           assert.not_same({ s1 }, res_services)
         end)
 
         it("returns set of services [w1s1, s0] where service [s0] is shared with workspace [w1]", function()
           local s0 = assert(bp.services:insert({ name = "s0" }))
-          
+
           local res_services = {}
           for row in db.services:each() do
             table.insert(res_services, row)
@@ -189,7 +189,7 @@ for _, strategy in helpers.each_strategy() do
           end
           table.sort(res_services, sort_by_name)
           assert.same({ w1s1 }, res_services)
-        
+
           -- adding shared service [s0] with workspace [w1]
           assert.is_nil(workspaces.add_entity_relation("services", s0, w1))
 
@@ -203,11 +203,11 @@ for _, strategy in helpers.each_strategy() do
           end
           table.sort(res_services, sort_by_name)
           assert.same({ s0, w1s1 }, res_services)
-        
+
           -- cleanup, removing shared service [s0]
           local ok, err = db.services:delete({ id = s0.id })
           assert.is_nil(err)
-          assert.is_true(ok)          
+          assert.is_true(ok)
         end)
       end)
 
@@ -219,7 +219,7 @@ for _, strategy in helpers.each_strategy() do
 
           res = db.services:select({ id = s.id })
           assert.same(s, res)
-          
+
           res = run_ws({ w1 }, function()
             return db.services:select({ id = s.id})
           end)
@@ -228,44 +228,6 @@ for _, strategy in helpers.each_strategy() do
           local ok, err = db.services:delete({ id = s.id })
           assert.is_nil(err)
           assert.is_true(ok)
-        end)
-
-        it("appends workspace on cacheable columns", function()
-          local c = db.consumers:insert({ username = "foobar" })
-
-          local res, err, query
-          if db.strategy == "postgres" then
-            query = "SELECT username FROM consumers WHERE id = '%s'"
-          elseif db.strategy == "cassandra" then
-            query = "SELECT username FROM consumers WHERE id = %s"
-          else
-            -- dbless?
-            return
-          end
-
-          res, err = db.connector:query(query:format(c.id))
-          assert.is_nil(err)
-          assert.same({ username = "default:foobar" }, res[1])
-          assert(db.consumers:delete({ id = c.id }))
-        end)
-
-        it("appends workspace on cacheable columns with colon", function()
-          local c = db.consumers:insert({ username = "http://foobar" })
-
-          local res, err, query
-          if db.strategy == "postgres" then
-            query = "SELECT username FROM consumers WHERE id = '%s'"
-          elseif db.strategy == "cassandra" then
-            query = "SELECT username FROM consumers WHERE id = %s"
-          else
-            -- dbless?
-            return
-          end
-
-          res, err = db.connector:query(query:format(c.id))
-          assert.is_nil(err)
-          assert.same({ username = "default:http://foobar" }, res[1])
-          assert(db.consumers:delete({ id = c.id }))
         end)
 
       end)
@@ -307,7 +269,7 @@ for _, strategy in helpers.each_strategy() do
         it("updates shared service [s0] in workspace [w1]", function()
           local res, err
           local s0 = assert(bp.services:insert({ name = "s0" }))
-          
+
           -- fails to update before [s0] is beign shared
           res, err = run_ws({ w1 }, function()
             return db.services:update({ id = s0.id }, { name = "s0-test" })
@@ -378,10 +340,10 @@ for _, strategy in helpers.each_strategy() do
           -- TODO: confirm with core team when they fix upsert
           -- to accept single values without 'insert' type validation
           -- and without overriding values with default values
-          
+
           -- upserting service [s] with new name
           local s_upserted, err = db.services:upsert({ id = s.id }, { name = "test-upsert", host = "httpbin.org" })
-          
+
           assert.is_nil(err)
           res, err = db.services:select({ id = s.id })
           assert.is_nil(err)
@@ -397,7 +359,7 @@ for _, strategy in helpers.each_strategy() do
       describe("delete():", function()
         it("deletes a service from workspace [default] and fails to delete service from workspace [w1]", function()
           local res, err
-          
+
           -- adding new service to run test against
           local s = bp.services:insert({ name = "delete" })
           res, err = db.services:select({ id = s.id })
@@ -428,7 +390,7 @@ for _, strategy in helpers.each_strategy() do
         it("deletes a shared service [s0] from workspace [w1]", function()
           local ok, err
           local s0 = assert(bp.services:insert({ name = "s0" }))
-       
+
           -- checking for existence
           assert.is_nil(run_ws({ w1 }, function()
             return db.services:select({ id = s0.id })
@@ -470,7 +432,7 @@ for _, strategy in helpers.each_strategy() do
       describe("select_by_cache_key():", function()
         it("selects plugin from workspace [default] by cache key and fails to select from workspace [w1]", function()
           local res, err
-          
+
           -- adding new plugin to run tests against
           local p = bp.plugins:insert({ name = "key-auth" })
           res, err = db.plugins:select({ id = p.id })
@@ -502,7 +464,7 @@ for _, strategy in helpers.each_strategy() do
       describe("cache_key():", function()
         it("retrieves different cache key for different workspaces", function()
           local res, res_1, res_2, err
-          
+
           -- adding new plugin to run tests against
           local p = bp.plugins:insert({ name = "key-auth" })
           res, err = db.plugins:select({ id = p.id })
@@ -522,7 +484,7 @@ for _, strategy in helpers.each_strategy() do
           assert.not_nil(res_2)
 
           assert.not_same(res_1, res_2)
-        
+
           -- cleanup, removing plugin
           local ok, err = db.plugins:delete({ id = p.id })
           assert.is_nil(err)
@@ -531,7 +493,7 @@ for _, strategy in helpers.each_strategy() do
 
         it("retrieves same cache key for different workspaces with skip flag on", function()
           local res, res_1, res_2,  err
-          
+
           -- adding new plugin to run tests against
           local p = bp.plugins:insert({ name = "key-auth" })
           res, err = db.plugins:select({ id = p.id })
@@ -550,8 +512,8 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           assert.not_nil(res_2)
 
-          assert.same(res_1, res_2)          
-        
+          assert.same(res_1, res_2)
+
           -- cleanup, removing plugin
           local ok, err = db.plugins:delete({ id = p.id })
           assert.is_nil(err)
@@ -561,4 +523,3 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 end
-
