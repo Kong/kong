@@ -423,8 +423,10 @@ end
 function _M.verify_developer_status(consumer)
   if consumer and consumer.type == DEVELOPER_TYPE then
     local email = consumer.username
-    local developer, err = kong.db.developers:select_by_email(email)
-
+    local developer_cache_key = kong.db.developers:cache_key(email)
+    local developer, err      = kong.cache:get(developer_cache_key, nil,
+                                            kong.db.developers.select_by_email,
+                                            kong.db.developers, email)
     if err then
       kong.log.err(err)
       return false
