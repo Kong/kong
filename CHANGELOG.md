@@ -4,6 +4,7 @@
 - [2.0.2](#202)
 - [2.0.1](#201)
 - [2.0.0](#200)
+- [1.5.1](#151)
 - [1.5.0](#150)
 - [1.4.3](#143)
 - [1.4.2](#142)
@@ -323,6 +324,25 @@ repository will allow you to do both easily.
 
   - Removed the Sidecar Injector plugin which was used for service mesh.
     [#5199](https://github.com/Kong/kong/pull/5199)
+
+
+[Back to TOC](#table-of-contents)
+
+
+## [1.5.1]
+
+> Released 2020/02/19
+
+This is a patch release over 1.5.0, fixing a minor issue in the `kong migrations migrate-apis`
+command, which assumed execution in a certain order in the migration process. This now
+allows the command to be executed prior to running the migrations from 0.x to 1.5.1.
+
+### Fixes
+
+##### CLI
+
+  - Do not assume new fields are already available when running `kong migrations migrate-apis`
+    [#5572](https://github.com/Kong/kong/pull/5572)
 
 
 [Back to TOC](#table-of-contents)
@@ -4679,6 +4699,7 @@ First version running with Cassandra.
 [2.0.2]: https://github.com/Kong/kong/compare/2.0.1...2.0.2
 [2.0.1]: https://github.com/Kong/kong/compare/2.0.0...2.0.1
 [2.0.0]: https://github.com/Kong/kong/compare/1.5.0...2.0.0
+[1.5.1]: https://github.com/Kong/kong/compare/1.5.0...1.5.1
 [1.5.0]: https://github.com/Kong/kong/compare/1.4.3...1.5.0
 [1.4.3]: https://github.com/Kong/kong/compare/1.4.2...1.4.3
 [1.4.2]: https://github.com/Kong/kong/compare/1.4.1...1.4.2
