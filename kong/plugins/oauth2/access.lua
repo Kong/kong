@@ -210,7 +210,7 @@ local function requires_pkce(conf, client, used_pkce)
     return false
   elseif used_pkce then -- only set on token endpoint
     return true
-  elseif client.client_type == CLIENT_TYPE_PUBLIC and conf.pkce ~="none" then
+  elseif client.client_type == CLIENT_TYPE_PUBLIC and conf.pkce ~= "none" then
     return true
   elseif client.client_type == CLIENT_TYPE_CONFIDENTIAL and conf.pkce == "strict" then
     return true
