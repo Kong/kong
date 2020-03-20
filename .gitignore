@@ -18,6 +18,9 @@ luacov.*
 # autodoc
 autodoc/output
 
+# ldoc
+spec/docs
+
 kong-build-tools
 bin/grpcurl
 
