@@ -52,6 +52,7 @@ function usage() {
    step "homebrew"         "bump version and submit a PR to homebrew-kong"
    step "luarocks"         "upload to LuaRocks" "<api-key>"
    step "vagrant"          "bump version and submit a PR to kong-vagrant"
+   step "pongo"            "bump version and submit a PR to kong-pongo"
    exit 0
 }
 
@@ -263,6 +264,12 @@ function bump_homebrew() {
    sum=$(sha256sum "kong-$version.tar.gz" | awk '{print $1}')
    sed -i 's/kong-[0-9.]*.tar.gz/kong-'$version'.tar.gz/' Formula/kong.rb
    sed -i 's/sha256 ".*"/sha256 "'$sum'"/' Formula/kong.rb
+}
+
+#-------------------------------------------------------------------------------
+function bump_pongo() {
+   KONG_CODE_BASE="CE" ADD_KONG_VERSION="$version" \
+   && ./assets/add_version.sh $KONG_CODE_BASE $ADD_KONG_VERSION
 }
 
 #-------------------------------------------------------------------------------
@@ -549,6 +556,36 @@ case "$step" in
       SUCCESS "Make sure you get the PR above approved and merged."
       ;;
    #---------------------------------------------------------------------------
+   pongo)
+      if [ -d ../kong-pongo ]
+      then
+         cd ../kong-pongo
+      else
+         cd ..
+         git clone https://github.com/kong/kong-pongo
+         cd kong-pongo
+      fi
+
+      git checkout master
+      git pull
+      git checkout -B "$branch"
+      bump_pongo
+
+      git diff
+
+      CONFIRM "If everything looks all right, press Enter to commit and send a PR to https://github.com/kong/kong-pongo" \
+              "or Ctrl-C to cancel."
+
+      set -e
+      git add .
+      git commit -m "chore(*) bump Kong to $version"
+
+      git push --set-upstream origin "$branch"
+      hub pull-request -b master -h "$branch" -m "Release: $version"
+
+      SUCCESS "Make sure you get the PR above approved and merged."
+      ;;
+   #---------------------------------------------------------------------------
    vagrant)
       if [ -d ../kong-vagrant ]
       then
@@ -566,7 +603,7 @@ case "$step" in
 
       git diff
 
-      CONFIRM "If everything looks all right, press Enter to commit and send a PR to https://github.com/kong/homebrew-kong" \
+      CONFIRM "If everything looks all right, press Enter to commit and send a PR to https://github.com/kong/kong-vagrant" \
               "or Ctrl-C to cancel."
 
       set -e
