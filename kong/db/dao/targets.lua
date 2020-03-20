@@ -53,7 +53,9 @@ local function clean_history(self, upstream_pk)
     else
       -- haven't got this one, so this is the current state for this target
       seen[entry.target] = true
-      if entry.weight == 0 then
+      -- we can delete this entry if its weight == 0, but let's keep it if the
+      -- target list is almost empty, so the upstream still exists after cleaning up
+      if entry.weight == 0 and #targets > 2 then
         delete[#delete+1] = entry
       end
     end
