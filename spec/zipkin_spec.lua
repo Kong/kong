@@ -44,45 +44,43 @@ local function assert_valid_timestamp(timestamp_mu, start_s)
   end
 end
 
+local function wait_for_spans(zipkin_client, number_of_spans, remoteServiceName, trace_id)
+  local spans = {}
+  helpers.wait_until(function()
+    if trace_id then
+      local res = assert(zipkin_client:get("/api/v2/trace/" .. trace_id))
+      spans = cjson.decode(assert.response(res).has.status(200))
+      return #spans == number_of_spans
+    end
+
+    local res = zipkin_client:get("/api/v2/traces", {
+      query = {
+        limit = 10,
+        remoteServiceName = remoteServiceName,
+      }
+    })
+
+    local all_spans = cjson.decode(assert.response(res).has.status(200))
+    if #all_spans > 0 then
+      spans = all_spans[1]
+      return #spans == number_of_spans
+    end
+  end)
+
+  return utils.unpack(spans)
+end
+
 
 for _, strategy in helpers.each_strategy() do
 describe("http integration tests with zipkin server [#" .. strategy .. "]", function()
   local proxy_client_grpc
-  local tcp_service
+  local service, grpc_service, tcp_service
   local route, grpc_route, tcp_route
   local zipkin_client
   local proxy_client
 
-  local function wait_for_spans(trace_id, number_of_spans)
-    local spans = {}
-    helpers.wait_until(function()
-      local res = assert(zipkin_client:get("/api/v2/trace/" .. trace_id))
-      spans = cjson.decode(assert.response(res).has.status(200))
-      return #spans == number_of_spans
-    end)
-    return utils.unpack(spans)
-  end
-
-  local function wait_for_stream_spans(remoteServiceName, number_of_spans)
-    local spans = {}
-    helpers.wait_until(function()
-      local res = zipkin_client:get("/api/v2/traces", {
-        query = {
-          limit = 10,
-          remoteServiceName = remoteServiceName,
-        }
-      })
-      local all_spans = cjson.decode(assert.response(res).has.status(200))
-      if #all_spans > 0 then
-        spans = all_spans[1]
-        return #spans == number_of_spans
-      end
-    end)
-    return utils.unpack(spans)
-  end
-
   -- the following assertions should be true on any span list, even in error mode
-  local function assert_span_invariants(request_span, proxy_span, expected_name, trace_id, start_s)
+  local function assert_span_invariants(request_span, proxy_span, expected_name, trace_id_len, start_s)
     -- request_span
     assert.same("table", type(request_span))
     assert.same("string", type(request_span.id))
@@ -92,7 +90,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     assert.same("SERVER", request_span.kind)
 
     assert.same("string", type(request_span.traceId))
-    assert.equals(trace_id, request_span.traceId)
+    assert.equals(trace_id_len, #request_span.traceId)
     assert_valid_timestamp(request_span.timestamp, start_s)
 
     if request_span.duration and proxy_span.duration then
@@ -116,7 +114,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     assert.same("CLIENT", proxy_span.kind)
 
     assert.same("string", type(proxy_span.traceId))
-    assert.equals(trace_id, proxy_span.traceId)
+    assert.equals(request_span.traceId, proxy_span.traceId)
     assert_valid_timestamp(proxy_span.timestamp, start_s)
 
     if request_span.duration and proxy_span.duration then
@@ -155,27 +153,27 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
       }
     })
 
-    local service = bp.services:insert {
-      name = "mock-http-service",
+    service = bp.services:insert {
+      name = string.lower("http-" .. utils.random_string()),
     }
 
     -- kong (http) mock upstream
     route = bp.routes:insert({
       service = service,
-      hosts = { "mock-http-route" },
+      hosts = { "http-route" },
       preserve_host = true,
     })
 
     -- grpc upstream
-    local grpc_service = bp.services:insert {
-      name = "grpc-service",
+    grpc_service = bp.services:insert {
+      name = string.lower("grpc-" .. utils.random_string()),
       url = "grpc://localhost:15002",
     }
 
     grpc_route = bp.routes:insert {
       service = grpc_service,
       protocols = { "grpc" },
-      hosts = { "mock-grpc-route" },
+      hosts = { "grpc-route" },
     }
 
     -- tcp upstream
@@ -209,22 +207,21 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
 
   it("generates spans, tags and annotations for regular requests", function()
     local start_s = ngx.now()
-    local trace_id = gen_trace_id()
 
     local r = assert(proxy_client:send {
       method  = "GET",
       path    = "/",
       headers = {
-        ["x-b3-traceid"] = trace_id,
         ["x-b3-sampled"] = "1",
-        host  = "mock-http-route",
+        host  = "http-route",
       },
     })
     assert.response(r).has.status(200)
 
-    local balancer_span, proxy_span, request_span = wait_for_spans(trace_id, 3)
+    local balancer_span, proxy_span, request_span =
+      wait_for_spans(zipkin_client, 3, service.name)
     -- common assertions for request_span and proxy_span
-    assert_span_invariants(request_span, proxy_span, "get", trace_id, start_s)
+    assert_span_invariants(request_span, proxy_span, "get", 32, start_s)
 
     -- specific assertions for request_span
     local request_tags = request_span.tags
@@ -250,7 +247,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     assert.same({
       ipv4 = helpers.mock_upstream_host,
       port = helpers.mock_upstream_port,
-      serviceName = "mock-http-service",
+      serviceName = service.name,
     },
     proxy_span.remoteEndpoint)
 
@@ -266,7 +263,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     assert.same({
       ipv4 = helpers.mock_upstream_host,
       port = helpers.mock_upstream_port,
-      serviceName = "mock-http-service",
+      serviceName = service.name,
     },
     balancer_span.remoteEndpoint)
     assert.same({ serviceName = "kong" }, balancer_span.localEndpoint)
@@ -278,7 +275,6 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
   end)
 
   it("generates spans, tags and annotations for regular requests (#grpc)", function()
-    local trace_id = gen_trace_id()
     local start_s = ngx.now()
 
     local ok, resp = proxy_client_grpc({
@@ -287,16 +283,17 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
         greeting = "world!"
       },
       opts = {
-        ["-H"] = "'x-b3-traceid: " .. trace_id .. "' -H 'x-b3-sampled: 1'",
-        ["-authority"] = "mock-grpc-route",
+        ["-H"] = "'x-b3-sampled: 1'",
+        ["-authority"] = "grpc-route",
       }
     })
     assert.truthy(ok)
     assert.truthy(resp)
 
-    local balancer_span, proxy_span, request_span = wait_for_spans(trace_id, 3)
+    local balancer_span, proxy_span, request_span =
+      wait_for_spans(zipkin_client, 3, grpc_service.name)
     -- common assertions for request_span and proxy_span
-    assert_span_invariants(request_span, proxy_span, "post", trace_id, start_s)
+    assert_span_invariants(request_span, proxy_span, "post", 32, start_s)
 
     -- specific assertions for request_span
     local request_tags = request_span.tags
@@ -323,7 +320,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     assert.same({
       ipv4 = "127.0.0.1",
       port = 15002,
-      serviceName = "grpc-service",
+      serviceName = grpc_service.name,
     },
     proxy_span.remoteEndpoint)
 
@@ -339,7 +336,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     assert.same({
       ipv4 = "127.0.0.1",
       port = 15002,
-      serviceName = "grpc-service",
+      serviceName = grpc_service.name,
     },
     balancer_span.remoteEndpoint)
     assert.same({ serviceName = "kong" }, balancer_span.localEndpoint)
@@ -362,7 +359,8 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
 
     assert(tcp:close())
 
-    local balancer_span, proxy_span, request_span = wait_for_stream_spans(tcp_service.name, 3)
+    local balancer_span, proxy_span, request_span =
+      wait_for_spans(zipkin_client, 3, tcp_service.name)
 
     -- request span
     assert.same("table", type(request_span))
@@ -462,10 +460,11 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     })
     assert.response(r).has.status(404)
 
-    local proxy_span, request_span = wait_for_spans(trace_id, 2)
+    local proxy_span, request_span =
+      wait_for_spans(zipkin_client, 2, nil, trace_id)
 
     -- common assertions for request_span and proxy_span
-    assert_span_invariants(request_span, proxy_span, "get", trace_id, start_s)
+    assert_span_invariants(request_span, proxy_span, "get", #trace_id, start_s)
 
     -- specific assertions for request_span
     local request_tags = request_span.tags
@@ -500,7 +499,8 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     })
     assert.response(r).has.status(404)
 
-    local proxy_span, request_span = wait_for_spans(trace_id, 2)
+    local proxy_span, request_span =
+      wait_for_spans(zipkin_client, 2, nil, trace_id)
 
     assert.equals(trace_id, proxy_span.traceId)
     assert.equals(trace_id, request_span.traceId)
@@ -516,12 +516,13 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
       local r = proxy_client:get("/", {
         headers = {
           b3 = fmt("%s-%s-%s-%s", trace_id, span_id, "1", parent_id),
-          host = "mock-http-route",
+          host = "http-route",
         },
       })
       assert.response(r).has.status(200)
 
-      local balancer_span, proxy_span, request_span = wait_for_spans(trace_id, 3)
+      local balancer_span, proxy_span, request_span =
+        wait_for_spans(zipkin_client, 3, nil, trace_id)
 
       assert.equals(trace_id, request_span.traceId)
       assert.equals(span_id, request_span.id)
@@ -543,12 +544,13 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
       local r = proxy_client:get("/", {
         headers = {
           b3 = fmt("%s-%s-1", trace_id, span_id),
-          host = "mock-http-route",
+          host = "http-route",
         },
       })
       assert.response(r).has.status(200)
 
-      local balancer_span, proxy_span, request_span = wait_for_spans(trace_id, 3)
+      local balancer_span, proxy_span, request_span =
+        wait_for_spans(zipkin_client, 3, nil, trace_id)
 
       assert.equals(trace_id, request_span.traceId)
       assert.equals(span_id, request_span.id)
@@ -570,12 +572,13 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
         headers = {
           b3 = fmt("%s-%s", trace_id, span_id),
           ["x-b3-sampled"] = "1",
-          host = "mock-http-route",
+          host = "http-route",
         },
       })
       assert.response(r).has.status(200)
 
-      local balancer_span, proxy_span, request_span = wait_for_spans(trace_id, 3)
+      local balancer_span, proxy_span, request_span =
+        wait_for_spans(zipkin_client, 3, nil, trace_id)
 
       assert.equals(trace_id, request_span.traceId)
       assert.equals(span_id, request_span.id)
@@ -600,7 +603,8 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
       })
       assert.response(r).has.status(404)
 
-      local proxy_span, request_span = wait_for_spans(trace_id, 2)
+      local proxy_span, request_span =
+        wait_for_spans(zipkin_client, 2, nil, trace_id)
 
       assert.equals(trace_id, request_span.traceId)
       assert.equals(span_id, request_span.id)
