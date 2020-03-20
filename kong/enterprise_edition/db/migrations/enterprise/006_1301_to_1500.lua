@@ -1,4 +1,7 @@
-local cassandra = require "cassandra"
+local fmt           = string.format
+local openssl_x509  = require "resty.openssl.x509"
+local str           = require "resty.string"
+local cassandra     = require "cassandra"
 
 local function pg_delete_we_orphan(entity)
   return [[
@@ -98,6 +101,54 @@ local function c_migrate_license_data(connector)
   end
 end
 
+local function pg_ca_certificates_migration(connector)
+  assert(connector:connect_migrations())
+
+  for ca_cert, err in connector:iterate('SELECT * FROM ca_certificates') do
+    if err then
+      return nil, err
+    end
+
+    local digest = str.to_hex(openssl_x509.new(ca_cert.cert):digest("sha256"))
+    if not digest then
+      return nil, "cannot create digest value of certificate with id: " .. ca_cert.id
+    end
+
+    local sql = string.format([[
+          UPDATE ca_certificates SET cert_digest = '%s' WHERE id = '%s';
+        ]], digest, ca_cert.id)
+
+    assert(connector:query(sql))
+  end
+
+  assert(connector:query('ALTER TABLE ca_certificates ALTER COLUMN cert_digest SET NOT NULL'))
+end
+
+local function c_ca_certificates_migration(connector)
+  local coordinator = connector:connect_migrations()
+
+  for rows, err in coordinator:iterate("SELECT cert, id FROM ca_certificates") do
+    if err then
+      return nil, err
+    end
+
+    for _, ca_cert in ipairs(rows) do
+      local digest = str.to_hex(openssl_x509.new(ca_cert.cert):digest("sha256"))
+      if not digest then
+        return nil, "cannot create digest value of certificate with id: " .. ca_cert.id
+      end
+
+      _, err = connector:query(
+        fmt("UPDATE ca_certificates SET cert_digest = '%s' WHERE partition = 'ca_certificates' AND id = %s",
+          digest, ca_cert.id)
+      )
+      if err then
+        return nil, err
+      end
+    end
+  end
+end
+
 return {
   postgres = {
     up = [[
@@ -165,6 +216,10 @@ return {
           -- Do nothing, accept existing state
         END;
       $$;
+
+      -- ca_certificates table
+      ALTER TABLE ca_certificates DROP CONSTRAINT ca_certificates_cert_key;
+      ALTER TABLE ca_certificates ADD COLUMN "cert_digest" TEXT UNIQUE;
     ]],
     teardown = function(connector)
       -- XXX: EE keep run_on for now
@@ -201,6 +256,9 @@ return {
         -- re-do workspace_entity_counters
         assert(connector:query(pg_fix_we_counters(entity)))
       end
+
+      -- add `cert_digest` field for `ca_certificates` table
+      pg_ca_certificates_migration(connector)
     end,
   },
 
@@ -270,6 +328,12 @@ return {
 
       CREATE INDEX IF NOT EXISTS document_objects_path_idx ON document_objects(path);
       CREATE INDEX IF NOT EXISTS document_objects_service_id_idx ON document_objects(service_id);
+
+      -- ca_certificates
+      ALTER TABLE ca_certificates ADD cert_digest text;
+
+      DROP INDEX ca_certificates_cert_idx;
+      CREATE INDEX ca_certificates_cert_idx ON ca_certificates(cert_digest);
     ]],
     teardown = function(connector)
       -- XXX: EE keep run_on for now, ignore error
@@ -278,6 +342,9 @@ return {
       ]])
 
       c_migrate_license_data(connector)
+
+      -- add `cert_digest` field for `ca_certificates` table
+      c_ca_certificates_migration(connector)
     end,
   }
 }
