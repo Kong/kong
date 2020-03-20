@@ -5,6 +5,7 @@ local groups = require "kong.plugins.acl.groups"
 
 local setmetatable = setmetatable
 local concat = table.concat
+local error = error
 local kong = kong
 
 
@@ -97,11 +98,8 @@ function ACLHandler:access(conf)
       -- get the consumer groups, since we need those as cache-keys to make sure
       -- we invalidate properly if they change
       local consumer_groups, err = groups.get_consumer_groups(consumer_id)
-      if err then
-        kong.log.err(err)
-        return kong.response.exit(500, {
-          message = "An unexpected error occurred"
-        })
+       if err then
+        return error(err)
       end
 
       if not consumer_groups then

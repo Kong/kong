@@ -5,11 +5,11 @@ local timestamp = require "kong.tools.timestamp"
 local kong = kong
 local next = next
 local pairs = pairs
+local error = error
 local tostring = tostring
 
 
 local EMPTY = {}
-local HTTP_INTERNAL_SERVER_ERROR = 500
 local HTTP_TOO_MANY_REQUESTS = 429
 local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
 
@@ -75,14 +75,12 @@ function _M.execute(conf)
   -- Load current metric for configured period
   local usage, err = get_usage(conf, identifier, conf.limits, current_timestamp)
   if err then
-    if conf.fault_tolerant then
-      kong.log.err("failed to get usage: ", tostring(err))
-      return
-    else
-      return kong.response.exit(HTTP_INTERNAL_SERVER_ERROR, {
-        message = "An unexpected error occurred"
-      })
+    if not conf.fault_tolerant then
+      return error(err)
     end
+
+    kong.log.err("failed to get usage: ", tostring(err))
+    return
   end
 
   -- Append usage headers to the upstream request. Also checks "block_on_first_violation".

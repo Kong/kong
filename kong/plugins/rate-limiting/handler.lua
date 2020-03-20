@@ -9,6 +9,7 @@ local max = math.max
 local time = ngx.time
 local floor = math.floor
 local pairs = pairs
+local error = error
 local tostring = tostring
 local timer_at = ngx.timer.at
 
@@ -124,12 +125,11 @@ function RateLimitingHandler:access(conf)
 
   local usage, stop, err = get_usage(conf, identifier, current_timestamp, limits)
   if err then
-    if fault_tolerant then
-      kong.log.err("failed to get usage: ", tostring(err))
-    else
-      kong.log.err(err)
-      return kong.response.exit(500, { message = "An unexpected error occurred" })
+    if not fault_tolerant then
+      return error(err)
     end
+
+    kong.log.err("failed to get usage: ", tostring(err))
   end
 
   if usage then

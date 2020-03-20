@@ -3,6 +3,7 @@ local constants = require "kong.constants"
 
 local kong = kong
 local type = type
+local error = error
 
 
 local KeyAuthHandler = {
@@ -136,10 +137,7 @@ local function do_authentication(conf)
   local credential, err = cache:get(credential_cache_key, nil, load_credential,
                                     key)
   if err then
-    kong.log.err(err)
-    return kong.response.exit(500, {
-      message = "An unexpected error occurred"
-    })
+    return error(err)
   end
 
   -- no credential in DB, for this key, it is invalid, HTTP 401
@@ -189,8 +187,7 @@ function KeyAuthHandler:access(conf)
                                            kong.client.load_consumer,
                                            conf.anonymous, true)
       if err then
-        kong.log.err("failed to load anonymous consumer:", err)
-        return kong.response.exit(500, { message = "An unexpected error occurred" })
+        return error(err)
       end
 
       set_consumer(consumer)

@@ -8,6 +8,7 @@ local kong = kong
 local type = type
 local next = next
 local table = table
+local error = error
 local split = utils.split
 local strip = utils.strip
 local string_find = string.find
@@ -43,12 +44,6 @@ local GRANT_REFRESH_TOKEN = "refresh_token"
 local GRANT_PASSWORD = "password"
 local ERROR = "error"
 local AUTHENTICATED_USERID = "authenticated_userid"
-
-
-local function internal_server_error(err)
-  kong.log.err(err)
-  return kong.response.exit(500, { message = "An unexpected error occurred" })
-end
 
 
 local function generate_token(conf, service, credential, authenticated_userid,
@@ -100,7 +95,7 @@ local function generate_token(conf, service, credential, authenticated_userid,
   end
 
   if err then
-    return internal_server_error(err)
+    return error(err)
   end
 
   return {
@@ -131,7 +126,7 @@ local function get_redirect_uris(client_id)
                                  load_oauth2_credential_by_client_id,
                                  client_id)
     if err then
-      return internal_server_error(err)
+      return error(err)
     end
   end
 
@@ -276,7 +271,7 @@ local function authorize(conf)
           })
 
           if err then
-            return internal_server_error(err)
+            error(err)
           end
 
           response_params = {
@@ -637,7 +632,7 @@ local function retrieve_token(conf, access_token)
                                 kong.router.get_service(),
                                 access_token)
     if err then
-      return internal_server_error(err)
+      return error(err)
     end
   end
 
@@ -833,7 +828,7 @@ local function do_authentication(conf)
                                          load_oauth2_credential_into_memory,
                                          token.credential.id)
   if err then
-    return internal_server_error(err)
+    return error(err)
   end
 
   -- Retrieve the consumer from the credential
@@ -843,7 +838,7 @@ local function do_authentication(conf)
                                       kong.client.load_consumer,
                                       credential.consumer.id)
   if err then
-    return internal_server_error(err)
+    return error(err)
   end
 
   set_consumer(consumer, credential, token)
@@ -882,8 +877,7 @@ function _M.execute(conf)
                                                 kong.client.load_consumer,
                                                 conf.anonymous, true)
       if err then
-        kong.log.err("failed to load anonymous consumer:", err)
-        return kong.response.exit(500, { message = "An unexpected error occurred" })
+        return error(err)
       end
 
       set_consumer(consumer)
