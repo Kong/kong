@@ -191,18 +191,19 @@ end
 local function retrieve_code_challenge(parameters)
   local code_challenge = parameters[CODE_CHALLENGE]
   local code_method = parameters[CODE_CHALLENGE_METHOD]
+  local err
   if code_method and not code_challenge then
-    return nil, nil, "code_challenge is required when code_method is present"
+    err = "code_challenge is required when code_method is present"
   elseif code_challenge then
     code_challenge = split(code_challenge, "=")[1] -- remove padding
     if code_method == nil then
       code_method = "S256"
     end
     if code_method ~= "S256" then
-      return nil, nil, "transform algorithm not supported, must be S256"
+      err = "transform algorithm not supported, must be S256"
     end
   end
-  return code_challenge, code_method, nil
+  return code_challenge or nil, code_method or nil, err or nil
 end
 
 local function requires_pkce(conf, client, used_pkce)
