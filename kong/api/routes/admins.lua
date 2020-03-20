@@ -302,7 +302,7 @@ return {
     -- reset password and consume token
     PATCH = function(self, db, helpers, parent)
       ee_api.validate_password(self.params.password)
-      
+
       local found, err = admins.reset_password(self.plugin,
                                                self.collection,
                                                self.admin.consumer,
@@ -407,10 +407,10 @@ return {
           self.plugin.name)
       end
 
-      -- Find the workspace the consumer is in
+      -- Find the workspace the rbac_user is in
       local refs, err = db.workspace_entities:select_all({
-        entity_type = "consumers",
-        entity_id = admin.consumer.id,
+        entity_type = "rbac_users",
+        entity_id = admin.rbac_user.id,
         unique_field_name = "id",
       })
 
@@ -419,16 +419,19 @@ return {
       end
 
       -- Set the current workspace so the credential is created there
-      local consumer_ws = {
+      local rbac_user_ws = {
         id = refs[1].workspace_id,
         name = refs[1].workspace_name,
       }
 
       local _, err = workspaces.run_with_ws_scope(
-                                { consumer_ws },
+                                { rbac_user_ws },
                                 credential_dao.insert,
                                 credential_dao,
                                 credential_data)
+
+      -- local _, err = credential_dao:insert(credential_data)
+
       if err then
         return endpoints.handle_error(err)
       end
@@ -458,7 +461,7 @@ return {
 
     PATCH = function(self, db, helpers, parent)
       ee_api.validate_password(self.params.password)
-      
+
       local res, err = admins.update_password(self.admin, self.params)
 
       if err then

@@ -96,8 +96,8 @@ function _M.find_all()
     -- see if admin is in current workspace
     local ws, err = kong.db.workspace_entities:select_all({
       workspace_name = ngx.ctx.workspaces[1].name,
-      entity_type = "consumers",
-      entity_id = v.consumer.id,
+      entity_type = "rbac_users",
+      entity_id = v.rbac_user.id,
       unique_field_name = "id",
     })
     if err then
@@ -170,8 +170,9 @@ function _M.validate(params, db, admin_to_update)
       {},
       db.consumers.select,
       db.consumers,
-      { id = admin.consumer.id }
-    )
+      { id = admin.consumer.id })
+
+
     if not consumer then
       -- again, we should never get here: admins must have consumers
       return nil, nil, err or "consumer not found for admin " .. admin.id
@@ -490,7 +491,7 @@ function _M.update_password(admin, params)
                  kong.db.basicauth_credentials.update,
                  kong.db.basicauth_credentials,
                  { id = creds.id },
-                 { 
+                 {
                    consumer = { id = admin.consumer.id },
                    password = params.password,
                  }
@@ -561,6 +562,50 @@ function _M.delete(admin_to_delete, opts)
   return { code = 204 }
 end
 
+local function find_all_ws_for_rbac_user(rbac_user)
+  local roles, err, ws
+  -- get roles across all workspaces
+  roles, err = workspaces.run_with_ws_scope({},
+                                            rbac.get_user_roles,
+                                            kong.db,
+                                            rbac_user)
+  if err then
+    return nil, err
+  end
+
+  local group_roles = workspaces.run_with_ws_scope({},
+                                                   rbac.get_groups_roles,
+                                                   kong.db,
+                                                   ngx.ctx.authenticated_groups)
+  roles = rbac.merge_roles(roles, group_roles)
+
+  ws, err = workspaces.find_workspaces_by_entity({
+    entity_type = "rbac_users",
+    entity_id = rbac_user.id,
+  })
+  if err then
+    return nil, err
+  end
+
+  local w = {}
+  for _, v in ipairs(ws) do
+    w[v.workspace_name] = true
+  end
+
+  for _, role in ipairs(roles) do
+    for _, role_endpoint in ipairs(rbac.get_role_endpoints(kong.db, role)) do
+      w[role_endpoint.workspace] = true
+    end
+  end
+
+  local res = {}
+  for k, v in pairs(w) do
+    table.insert(res, k)
+  end
+
+  return res
+end
+
 
 function _M.find_by_username_or_id(username_or_id, raw)
   if not username_or_id then
@@ -583,27 +628,28 @@ function _M.find_by_username_or_id(username_or_id, raw)
     end
   end
 
-  -- see if this admin is in this workspace
-  if admin then
-    local ws, err = kong.db.workspace_entities:select_all({
-      -- permit global workspace lookup
-      workspace_name = ngx.ctx.workspaces[1] and ngx.ctx.workspaces[1].name,
-      entity_type = "consumers",
-      entity_id = admin.consumer.id,
-      unique_field_name = "id",
-    })
-    if err then
-      return nil, err
-    end
+  if not admin then
+    return nil
+  end
 
-    if not ws[1] then
-      return nil
+  local wss = find_all_ws_for_rbac_user(admin.rbac_user)
+  if not wss[1] then
+    return nil
+  end
+
+  local c_ws_name = ngx.ctx.workspaces[1] and ngx.ctx.workspaces[1].name
+
+  if not c_ws_name then
+    return raw and admin or transmogrify(admin)
+  end
+
+  -- see if this admin is in this workspace
+  for _, v in ipairs(wss) do
+    if v == c_ws_name  then
+      return raw and admin or transmogrify(admin)
     end
   end
 
-  -- it's convenient to find_by_username_or_id in this module, too,
-  -- and use the returned rbac_user and consumer ids.
-  return raw and admin or transmogrify(admin)
 end
 
 
@@ -619,11 +665,11 @@ end
 
 function _M.link_to_workspace(admin, workspace)
   -- see if this admin is already in this workspace. Look it up by its
-  -- consumer id, because admins themselves are global.
+  -- rbac_user id, because admins themselves are global.
   local ws_list, err = workspaces.find_workspaces_by_entity({
     workspace_id = workspace.id,
-    entity_type = "consumers",
-    entity_id = admin.consumer.id,
+    entity_type = "rbac_users",
+    entity_id = admin.rbac_user.id,
   })
 
   if err then
@@ -636,7 +682,7 @@ function _M.link_to_workspace(admin, workspace)
   end
 
   -- link consumer
-  local _, err = workspaces.add_entity_relation("consumers", admin.consumer, workspace)
+  -- local _, err = workspaces.add_entity_relation("consumers", admin.consumer, workspace)
 
   if err then
     return nil, err
@@ -702,15 +748,15 @@ function _M.reset_password(plugin, collection, consumer, new_password, secret_id
       if err then
         return nil, err
       end
-  
+
       local _, err = collection:update(
-        { id = row.id }, 
-        { 
+        { id = row.id },
+        {
           consumer = { id = consumer.id },
-          [plugin.credential_key] = new_password, 
+          [plugin.credential_key] = new_password,
         }
       )
-  
+
       if err then
         return nil, err
       end

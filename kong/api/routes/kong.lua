@@ -318,8 +318,9 @@ return {
       end
 
       local consumer_id = admin.consumer.id
+      local rbac_user_id = admin.rbac_user.id
 
-      ee_api.attach_consumer_and_workspaces(self, consumer_id)
+      ee_api.attach_consumer_and_workspaces(self, consumer_id, rbac_user_id)
 
       local session_conf = singletons.configuration.admin_gui_session_conf
 

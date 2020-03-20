@@ -495,8 +495,8 @@ for _, strategy in helpers.each_strategy() do
 
         local ws_list, err = workspaces.find_workspaces_by_entity({
           workspace_id = another_ws.id,
-          entity_type = "consumers",
-          entity_id = admins[1].consumer.id,
+          entity_type = "rbac_users",
+          entity_id = admins[1].rbac_user.id,
         })
 
         assert.is_nil(err)
