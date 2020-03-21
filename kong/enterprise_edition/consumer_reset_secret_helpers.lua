@@ -1,4 +1,5 @@
 local singletons = require "kong.singletons"
+local workspaces = require "kong.workspaces"
 local ee_jwt = require "kong.enterprise_edition.jwt"
 local enums = require "kong.enterprise_edition.dao.enums"
 
@@ -19,10 +20,14 @@ function _M.create(consumer, client_addr, expiry)
   end
 
   -- Generate new reset
-  local row, err = reset_secrets:insert({
-    consumer = { id = consumer.id },
-    client_addr = client_addr,
-  })
+  -- Dao validate the fk exists in ws, since 'consumer' is workspacable
+  -- Use {} as ws_scope, the validation will use `select` instead of `select_ws`
+  local row, err = workspaces.run_with_ws_scope({}, function()
+    return reset_secrets:insert({
+      consumer = { id = consumer.id },
+      client_addr = client_addr,
+    })
+  end)
 
   if err then
     return nil, err

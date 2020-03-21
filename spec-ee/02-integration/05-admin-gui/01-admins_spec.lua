@@ -780,6 +780,7 @@ for _, strategy in helpers.each_strategy() do
       local client
       local db
       local admin
+      local outside_admin
 
       lazy_setup(function()
         _, db = helpers.get_db_utils(strategy)
@@ -808,7 +809,27 @@ for _, strategy in helpers.each_strategy() do
         }))
         ee_helpers.register_rbac_resources(db)
         client = assert(helpers.admin_client())
+        
+        -- init outside_admin
+        local another_ws = assert(db.workspaces:insert({
+          name = "another-one",
+        }))
 
+        local res_outside = assert(admins_helpers.create({
+          custom_id = "outsider1",
+          username = "outsider1",
+          email = "outsider1@konghq.com",
+        }, {
+          token_optional = false,
+          remote_addr = "localhost",
+          db = db,
+          workspace = another_ws.name,
+          raw = true,
+        }))
+
+        outside_admin = res_outside.body.admin
+
+        -- init admin
         local res = assert(admins_helpers.create({
           custom_id = "gruce",
           username = "gruce",
@@ -829,6 +850,12 @@ for _, strategy in helpers.each_strategy() do
           password    = "kong",
           consumer = admin.consumer,
         })
+
+        assert(db.basicauth_credentials:insert {
+          username    = "outsider1",
+          password    = "outsider1pass",
+          consumer = outside_admin.consumer,
+        })
       end)
 
       lazy_teardown(function()
@@ -837,7 +864,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("POST", function()
-        it("creates a consumer_reset_secret", function()
+        local function check_endpoint(admin)
           local res = assert(client:send {
             method = "POST",
             path  = "/admins/password_resets",
@@ -845,11 +872,13 @@ for _, strategy in helpers.each_strategy() do
               ["Content-Type"] = "application/json",
             },
             body  = {
-              email = "gruce@konghq.com",
+              email = admin.email,
             }
           })
           assert.res_status(200, res)
+        end
 
+        local function check_secrets(admin)
           local num_secrets = 0
           for _, err in db.consumer_reset_secrets:each_for_consumer({ id = admin.consumer.id }) do
             assert.is_nil(err)
@@ -858,6 +887,15 @@ for _, strategy in helpers.each_strategy() do
 
           -- one when he was invited, one when he forgot password
           assert.same(2, num_secrets)
+        end
+
+        it("creates a consumer_reset_secret", function()
+          local admins = { admin, outside_admin }
+
+          for _, _admin in ipairs(admins) do
+            check_endpoint(_admin)
+            check_secrets(_admin)
+          end
         end)
       end)
 
