@@ -1,4 +1,5 @@
 local typedefs = require "kong.db.schema.typedefs"
+local is_regex = require("kong.db.schema").validators.is_regex
 
 
 return {
@@ -20,6 +21,12 @@ return {
           }, },
           { key_claim_name = { type = "string", default = "iss" }, },
           { secret_is_base64 = { type = "boolean", default = false }, },
+          { subjects = {
+              type = "array",
+              elements = {
+                type = "string",
+                custom_validator = is_regex,
+          }, }, },
           { claims_to_verify = {
               type = "set",
               elements = {

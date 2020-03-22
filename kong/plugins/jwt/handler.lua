@@ -24,11 +24,13 @@ JwtHandler.VERSION = "2.1.0"
 -- @param conf Plugin configuration
 -- @return token JWT token contained in request (can be a table) or nil
 -- @return err
-local function retrieve_token(conf)
+local function retrieve_tokens(conf)
+  local tokens = {}
+
   local args = kong.request.get_query()
   for _, v in ipairs(conf.uri_param_names) do
     if args[v] then
-      return args[v]
+      tokens[#tokens+1] = args[v]
     end
   end
 
@@ -36,7 +38,7 @@ local function retrieve_token(conf)
   for _, v in ipairs(conf.cookie_names) do
     local cookie = var["cookie_" .. v]
     if cookie and cookie ~= "" then
-      return cookie
+      tokens[#tokens+1] = cookie
     end
   end
 
@@ -47,23 +49,24 @@ local function retrieve_token(conf)
       if type(token_header) == "table" then
         token_header = token_header[1]
       end
-      local iterator, iter_err = re_gmatch(token_header, "\\s*[Bb]earer\\s+(.+)")
+      local iterator, iter_err = re_gmatch(token_header, ",?\\s*[Bb]earer\\s+([\\w\\d+.=-]+)\\s*,?")
       if not iterator then
         kong.log.err(iter_err)
         break
       end
 
-      local m, err = iterator()
-      if err then
-        kong.log.err(err)
-        break
-      end
-
-      if m and #m > 0 then
-        return m[1]
+      for m, err in iterator do
+        if err then
+          kong.log.err(err)
+          break
+        end
+        if m and #m > 0 then
+          tokens[#tokens+1] = m[1]
+        end
       end
     end
   end
+  return tokens
 end
 
 
@@ -120,27 +123,42 @@ end
 
 
 local function do_authentication(conf)
-  local token, err = retrieve_token(conf)
+  local tokens, err = retrieve_tokens(conf)
   if err then
     kong.log.err(err)
     return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
-  local token_type = type(token)
-  if token_type ~= "string" then
-    if token_type == "nil" then
-      return false, { status = 401, message = "Unauthorized" }
-    elseif token_type == "table" then
-      return false, { status = 401, message = "Multiple tokens provided" }
-    else
-      return false, { status = 401, message = "Unrecognizable token" }
+  local acceptable_jwts = {}
+  for _, token in ipairs(tokens) do
+    if type(token) ~= "string" then
+      goto continue
     end
+
+    local jwt, err = jwt_decoder:new(token)
+    if not conf.subjects then
+      acceptable_jwts[#acceptable_jwts+1] = jwt
+      goto continue
+    end
+
+    for _, acceptable_sub in ipairs(conf.subjects) do
+      local iterator, _iter_err = re_gmatch(jwt.claims.sub, acceptable_sub)
+      if iterator and iterator() then
+        acceptable_jwts[#acceptable_jwts+1] = jwt
+        break
+      end
+    end
+
+    ::continue::
   end
 
-  -- Decode token to find out who the consumer is
-  local jwt, err = jwt_decoder:new(token)
-  if err then
-    return false, { status = 401, message = "Bad token; " .. tostring(err) }
+  local jwt
+  if #acceptable_jwts == 0 then
+    return false, { status = 401, message = "Unauthorized" }
+  elseif #acceptable_jwts > 1 then
+    return false, { status = 401, message = "Multiple tokens provided" }
+  else
+    jwt = acceptable_jwts[1]
   end
 
   local claims = jwt.claims
