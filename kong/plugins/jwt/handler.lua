@@ -6,7 +6,6 @@ local fmt = string.format
 local kong = kong
 local type = type
 local ipairs = ipairs
-local tostring = tostring
 local re_gmatch = ngx.re.gmatch
 
 
@@ -136,15 +135,18 @@ local function do_authentication(conf)
     end
 
     local jwt, err = jwt_decoder:new(token)
+    if err then
+      goto continue
+    end
     if not conf.subjects then
-      acceptable_jwts[#acceptable_jwts+1] = jwt
+      acceptable_jwts[#acceptable_jwts+1] = { jwt, token }
       goto continue
     end
 
     for _, acceptable_sub in ipairs(conf.subjects) do
-      local iterator, _iter_err = re_gmatch(jwt.claims.sub, acceptable_sub)
+      local iterator, _ = re_gmatch(jwt.claims.sub, acceptable_sub)
       if iterator and iterator() then
-        acceptable_jwts[#acceptable_jwts+1] = jwt
+        acceptable_jwts[#acceptable_jwts+1] = { jwt, token }
         break
       end
     end
@@ -152,13 +154,15 @@ local function do_authentication(conf)
     ::continue::
   end
 
-  local jwt
+  local jwt, token
   if #acceptable_jwts == 0 then
     return false, { status = 401, message = "Unauthorized" }
   elseif #acceptable_jwts > 1 then
     return false, { status = 401, message = "Multiple tokens provided" }
   else
-    jwt = acceptable_jwts[1]
+    local acceptable_jwt = acceptable_jwts[1]
+    jwt = acceptable_jwt[1]
+    token = acceptable_jwt[2]
   end
 
   local claims = jwt.claims
