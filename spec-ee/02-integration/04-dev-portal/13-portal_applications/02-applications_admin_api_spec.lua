@@ -404,7 +404,7 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-      describe("DELETE #test", function()
+      describe("DELETE", function()
         before_each(function()
           developer = assert(db.developers:insert({
             email = "bob@bork.com",
@@ -1293,6 +1293,7 @@ for _, strategy in helpers.each_strategy() do
             email = "dog@bork.com",
             password = "woof",
             meta = '{ "full_name": "todd" }',
+            status = enums.CONSUMERS.STATUS.APPROVED,
           }))
 
           assert(db.plugins:insert({
@@ -1400,6 +1401,7 @@ for _, strategy in helpers.each_strategy() do
           local application_instance = assert(db.application_instances:insert({
             service = { id = service.id },
             application = { id  = application.id },
+            suspended = false,
             status = 4,
           }))
 

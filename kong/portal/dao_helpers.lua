@@ -33,6 +33,28 @@ local auth_plugins = {
 }
 
 
+local function set_app_instance_suspension_by_developer(self, developer)
+  for app, err in kong.db.applications:each_for_developer({ id = developer.id }) do
+    if err then
+      return nil, err
+    end
+
+    for app_inst, row in kong.db.application_instances:each_for_application({ id = app.id }) do
+      local suspended = developer.status ~= enums.CONSUMERS.STATUS.APPROVED
+      local ok, err, err_t = kong.db.application_instances:update({ id = app_inst.id}, {
+        suspended = suspended
+      })
+
+      if not ok then
+        return nil, err, err_t
+      end
+    end
+  end
+
+  return true
+end
+
+
 local function validate_developer_password(password)
   local workspace = workspaces.get_workspace()
   local portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
@@ -826,4 +848,5 @@ return {
   set_portal_conf = set_portal_conf,
   validate_developer_password = validate_developer_password,
   get_name_or_email = get_name_or_email,
+  set_app_instance_suspension_by_developer = set_app_instance_suspension_by_developer,
 }

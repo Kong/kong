@@ -51,6 +51,113 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/developers/:developer", function()
+      describe("PATCH", function()
+        local developer,
+              application_instance_one,
+              application_instance_two
+
+        lazy_setup(function()
+          local service_one = assert(db.services:insert({
+            name = "service_one",
+            url = "http://google.com"
+          }))
+
+          local service_two = assert(db.services:insert({
+            name = "service_two",
+            url = "http://google.com"
+          }))
+
+          assert(db.plugins:insert({
+            config = {
+              enable_authorization_code = true,
+              display_name = "dope plugin one",
+            },
+            name = "application-registration",
+            service = { id = service_one.id },
+          }))
+
+          assert(db.plugins:insert({
+            config = {
+              enable_authorization_code = true,
+              display_name = "dope plugin one",
+            },
+            name = "application-registration",
+            service = { id = service_two.id },
+          }))
+
+          developer = assert(db.developers:insert({
+            email = "revoked@bork.com",
+            password = "woof",
+            meta = '{ "full_name": "todd" }',
+            status = enums.CONSUMERS.STATUS.REVOKED,
+          }))
+
+          local application_one = assert(db.applications:insert({
+            developer = { id = developer.id },
+            name = "bonesRcool",
+            redirect_uri = "http://doghouse.com",
+          }))
+
+          local application_two = assert(db.applications:insert({
+            developer = { id = developer.id },
+            name = "bonesRntCool",
+            redirect_uri = "http://doghouse.com",
+          }))
+
+          application_instance_one = assert(db.application_instances:insert({
+            application = { id = application_one.id },
+            service = { id = service_one.id },
+          }))
+
+          application_instance_two = assert(db.application_instances:insert({
+            application = { id = application_two.id },
+            service = { id = service_two.id },
+          }))
+        end)
+
+        lazy_teardown(function()
+          db:truncate("basicauth_credentials")
+          db:truncate("consumers")
+          db:truncate("developers")
+          db:truncate("applications")
+          db:truncate("application_instances")
+        end)
+
+        it("devs application_instance's are set 'suspended' param correctly based off dev status", function()
+          local res = assert(client:send({
+            method = "PATCH",
+            path = "/developers/" .. developer.id,
+            body = {
+              status = 0,
+            },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+          assert.res_status(200, res)
+
+          local res_one = assert(kong.db.application_instances:select({ id = application_instance_one.id }))
+          local res_two = assert(kong.db.application_instances:select({ id = application_instance_two.id }))
+
+          assert.falsy(res_one.suspended)
+          assert.falsy(res_two.suspended)
+
+          local res = assert(client:send({
+            method = "PATCH",
+            path = "/developers/" .. developer.id,
+            body = {
+              status = 0,
+            },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+          assert.res_status(200, res)
+
+          local res_one = assert(kong.db.application_instances:select({ id = application_instance_one.id }))
+          local res_two = assert(kong.db.application_instances:select({ id = application_instance_two.id }))
+
+          assert.falsy(res_one.suspended)
+          assert.falsy(res_two.suspended)
+        end)
+      end)
+
       describe("DELETE", function()
         local developer, application
 
@@ -1204,6 +1311,43 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(201, res)
         end)
 
+        it("has status of 'suspended' with non-approved developer", function()
+          local res = assert(client:send({
+            method = "POST",
+            path = "/developers/" .. developer.id .. "/applications/" .. application.id .. "/application_instances",
+            body = {
+              service = { id = service.id },
+            },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+
+          assert.truthy(json.suspended)
+        end)
+
+        it("has status of not 'suspended' with approved developer", function()
+          assert(db.developers:update(
+            { id = developer.id },
+            { status = enums.CONSUMERS.STATUS.APPROVED }
+          ))
+
+          local res = assert(client:send({
+            method = "POST",
+            path = "/developers/" .. developer.id .. "/applications/" .. application.id .. "/application_instances",
+            body = {
+              service = { id = service.id },
+            },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+
+          assert.falsy(json.suspended)
+        end)
+
         it("cannot create an application instance with wrong developer", function()
           local developer_two = assert(db.developers:insert({
             email = "cat@meow.com",
@@ -1329,7 +1473,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/applications/:application/application_instances/:application_instances", function()
+    describe("/developers/:developers/applications/:application/application_instances/:application_instances", function()
       local service,
             developer,
             application_one,
@@ -1495,6 +1639,7 @@ for _, strategy in helpers.each_strategy() do
             email = "dog@bork.com",
             password = "woof",
             meta = '{ "full_name": "todd" }',
+            status = enums.CONSUMERS.STATUS.APPROVED,
           }))
 
           assert(db.plugins:insert({

@@ -17,6 +17,7 @@ return {
     { updated_at     = typedefs.auto_timestamp_s },
     { application    = { type = "foreign", reference = "applications", required = true }, },
     { service        = { type = "foreign", reference = "services", required = true }, },
+    { suspended      = { type = "boolean", default = false } },
     { composite_id   = { type = "string", unique = true }, },
     { status         = application_instances_status },
   },
