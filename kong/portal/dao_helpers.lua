@@ -39,7 +39,7 @@ local function set_app_instance_suspension_by_developer(self, developer)
       return nil, err
     end
 
-    for app_inst, row in kong.db.application_instances:each_for_application({ id = app.id }) do
+    for app_inst, _ in kong.db.application_instances:each_for_application({ id = app.id }) do
       local suspended = developer.status ~= enums.CONSUMERS.STATUS.APPROVED
       local ok, err, err_t = kong.db.application_instances:update({ id = app_inst.id}, {
         suspended = suspended
