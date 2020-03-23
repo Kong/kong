@@ -16,8 +16,9 @@ LIBYAML_VERSION=0.2.2
 # here go enterprise build specific ones which might or might not have the
 # same names as core for building the final package.
 
-KONG_NGINX_MODULE_BRANCH=0.0.5
-KONG_BUILD_TOOLS_BRANCH=2b8e81
+# This version compiles right against that version
+KONG_NGINX_MODULE_BRANCH=0.0.6
+KONG_BUILD_TOOLS_BRANCH=a5fcd9
 
 KONG_DEP_NETTLE_VERSION=3.4.1
 KONG_DEP_LIBYAML_VERSION=0.2.2
