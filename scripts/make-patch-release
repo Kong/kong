@@ -568,21 +568,7 @@ case "$step" in
 
       git checkout master
       git pull
-      git checkout -B "$branch"
-      bump_pongo
-
-      git diff
-
-      CONFIRM "If everything looks all right, press Enter to commit and send a PR to https://github.com/kong/kong-pongo" \
-              "or Ctrl-C to cancel."
-
-      set -e
-      git add .
-      git commit -m "chore(*) bump Kong to $version"
-
-      git push --set-upstream origin "$branch"
-      hub pull-request -b master -h "$branch" -m "Release: $version"
-
+      ./assets/add_version.sh CE $version
       SUCCESS "Make sure you get the PR above approved and merged."
       ;;
    #---------------------------------------------------------------------------
