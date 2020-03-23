@@ -41,6 +41,20 @@ return {
             one_of = {"CN", "DN"},
             default = "CN"
           }, },
+          { revocation_check_mode = {
+            required = false,
+            type = "string",
+            one_of = {"SKIP", "IGNORE_CA_ERROR"},
+            default = "SKIP"
+          }, },
+          { http_timeout = {
+            type = "number",
+            default = 30000,
+          }, },
+          { cert_cache_ttl = {
+            type = "number",
+            default = 60000,
+          }, },
         },
     }, },
   },

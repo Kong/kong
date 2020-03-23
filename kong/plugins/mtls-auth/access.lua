@@ -6,11 +6,14 @@ local _M = {}
 
 
 local resty_kong_tls = require("resty.kong.tls")
-local openssl_x509 = require("openssl.x509")
-local openssl_x509_chain = require("openssl.x509.chain")
-local openssl_x509_store = require("openssl.x509.store")
+local openssl_x509 = require("resty.openssl.x509")
+local openssl_x509_chain = require("resty.openssl.x509.chain")
+local openssl_x509_store = require("resty.openssl.x509.store")
 local mtls_cache = require("kong.plugins.mtls-auth.cache")
+local ocsp_client = require("kong.plugins.mtls-auth.ocsp_client")
+local crl_client = require("kong.plugins.mtls-auth.crl_client")
 local constants = require("kong.constants")
+local x509_r = require("resty.openssl.x509")
 
 
 local kong = kong
@@ -26,14 +29,28 @@ local ngx_var = ngx.var
 
 local cache_opts = {
   l1_serializer = function(cas)
-    local trust_store = openssl_x509_store.new()
+    local trust_store, err = openssl_x509_store.new()
+    if err then
+      return nil, err
+    end
     local reverse_lookup = new_tab(0, #cas)
 
     for _, ca in ipairs(cas) do
-      local x509 = openssl_x509.new(ca.cert, "PEM")
-      trust_store:add(x509)
+      local x509, err = openssl_x509.new(ca.cert,"PEM")
+      if err then
+        return nil, err
+      end
+      local _, err = trust_store:add(x509)
+      if err then
+        return nil, err
+      end
 
-      reverse_lookup[x509:digest()] = ca.id
+      local digest, err = x509:digest()
+      if err then
+        return nil, err
+      end
+
+      reverse_lookup[digest] = ca.id
     end
 
     return {
@@ -226,25 +243,29 @@ local function get_subject_names_from_cert(x509)
   local names_n = 0
   local cn
 
-  local subj_alt = x509:getSubjectAlt()
+  local subj_alt, err = x509:get_subject_alt_name()
 
   if subj_alt then
-    for t, val in pairs(subj_alt) do
+    for _, val in pairs(subj_alt) do
       names_n = names_n + 1
       names[names_n] = val
     end
   end
 
-  local subj = x509:getSubject()
+  local subj, err = x509:get_subject_name()
+  if err then
+    return nil, nil, err
+  end
 
   if subj then
-    for _, entry in ipairs(subj:all()) do
-      if entry.id == "2.5.4.3" then -- common name
-        names_n = names_n + 1
-        names[names_n] = entry.blob
-        cn = entry.blob
-        break
-      end
+    local entry, _, err = subj:find("CN")
+    if err then
+      return nil, nil, err
+    end
+    if entry then
+      names_n = names_n + 1
+      names[names_n] = entry.blob
+      cn = entry.blob
     end
   end
 
@@ -282,6 +303,32 @@ local function set_cert_headers(names)
   if #names ~= 0 then
     set_header("X-Client-Cert-SAN", table_concat(names, ","))
   end
+end
+
+
+local function is_cert_revoked(conf, client_cert_chain, cert, intermidiate, store)
+  local ocsp_status, err = ocsp_client.validate_cert(conf, client_cert_chain)
+  if err then
+    kong.log.warn("OCSP verify: ", err)
+  end
+  -- URI set and no communication error
+  if ocsp_status ~= nil then
+    return not ocsp_status
+  end
+
+  -- no OCSP URI set, check for CRL
+  local crl_status, err = crl_client.validate_cert(conf, cert, intermidiate, store)
+  if err then
+    kong.log.warn("CRL verify: ", err)
+  end
+
+  -- URI set and no communication error
+  if crl_status ~= nil then
+    return not crl_status
+  end
+
+  -- there was communication error or niether of OCSP URI or CRL URI set
+  return (conf.revocation_check_mode == "IGNORE_CA_ERROR" and false) or true
 end
 
 
@@ -329,14 +376,26 @@ local function do_authentication(conf)
     chain[chain_n] = m[0]
   end
 
-  local intermidiate = #chain > 1 and openssl_x509_chain.new() or nil
+  local intermidiate, err = #chain > 1 and openssl_x509_chain.new() or nil
+  if err then
+    kong.log.err(err)
+    return kong.response.exit(500, "An unexpected error occurred")
+  end
 
   for i, c in ipairs(chain) do
-    local x509 = openssl_x509.new(c, "PEM")
+    local x509, err = openssl_x509.new(c, "PEM")
+    if err then
+      kong.log.err(err)
+      return kong.response.exit(500, "An unexpected error occurred")
+    end
     chain[i] = x509
 
     if i > 1 then
-      intermidiate:add(x509)
+      local _, err = intermidiate:add(x509)
+      if err then
+        kong.log.err(err)
+        return kong.response.exit(500, "An unexpected error occurred")
+      end
     end
   end
 
@@ -349,23 +408,41 @@ local function do_authentication(conf)
     return kong.response.exit(500, "An unexpected error occurred")
   end
 
-  local res, chain_or_err = trust_table.store:verify(chain[1], intermidiate)
-  if res then
+  local proof_chain, err = trust_table.store:verify(chain[1], intermidiate, true)
+  if proof_chain then
     -- get the matching CA id
+    local ca = proof_chain[1]
 
-    local ca
-    for _, obj in ipairs(chain_or_err) do
-      ca = obj
+    local digest, err = ca:digest()
+    if err then
+      return nil, err
     end
 
-    local ca_id = trust_table.reverse_lookup[ca:digest()]
+    local ca_id = trust_table.reverse_lookup[digest]
 
-    local names, cn = get_subject_names_from_cert(chain[1])
+    local names, cn, err = get_subject_names_from_cert(chain[1])
+    if err then
+      return nil, err
+    end
     kong.log.debug("names = ", tb_concat(names, ", "))
+
+    -- revocation check
+    if conf.revocation_check_mode ~= "SKIP" then
+      local revoked, err = kong.cache:get(ngx_var.ssl_client_s_dn,
+        { ttl = conf.cert_cache_ttl }, is_cert_revoked,
+        conf, pem, chain[1], intermidiate, trust_table.store)
+      if err then
+        kong.log.error(err)
+      end
+
+      if revoked == true then
+        return nil, "TLS certificate failed verification"
+      end
+    end
 
     if conf.skip_consumer_lookup then
       if conf.consumer_by then
-        local group , err = authenticate_group_by[conf.authenticated_group_by](cn)
+        local group, err = authenticate_group_by[conf.authenticated_group_by](cn)
         if not group then
           return nil, err
         end
@@ -412,7 +489,7 @@ local function do_authentication(conf)
                   " fields = ", tb_concat(consumer_by, ", "))
   end
 
-  kong.log.err(chain_or_err)
+  kong.log.err("client certificate verify failed: ", err)
 
   return nil, "TLS certificate failed verification"
 end
