@@ -177,6 +177,7 @@ pipeline {
                         DOCKER_MACHINE_ARM64_NAME = "jenkins-kong-${env.BUILD_NUMBER}"
                         REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
                         KONG_PACKAGE_NAME = "kong-${env.BRANCH_NAME}"
+                        DEBUG = 0
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
@@ -205,6 +206,7 @@ pipeline {
                         BINTRAY_KEY = credentials('bintray_travis_key')
                         REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
                         KONG_PACKAGE_NAME = "kong-${env.BRANCH_NAME}"
+                        DEBUG = 0
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
@@ -229,6 +231,7 @@ pipeline {
                         PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
                         REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
                         KONG_PACKAGE_NAME = "kong-${env.BRANCH_NAME}"
+                        DEBUG = 0
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
@@ -259,6 +262,7 @@ pipeline {
                         PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
                         REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
                         KONG_PACKAGE_NAME = "kong-${env.BRANCH_NAME}"
+                        DEBUG = 0
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
@@ -283,6 +287,7 @@ pipeline {
                         BINTRAY_KEY = credentials('bintray_travis_key')
                         REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
                         KONG_PACKAGE_NAME = "kong-${env.BRANCH_NAME}"
+                        DEBUG = 0
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
@@ -307,6 +312,7 @@ pipeline {
                         BINTRAY_USR = 'kong-inc_travis-ci@kong'
                         BINTRAY_KEY = credentials('bintray_travis_key')
                         KONG_PACKAGE_NAME = "kong-${env.BRANCH_NAME}"
+                        DEBUG = 0
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
@@ -346,6 +352,7 @@ pipeline {
                         BINTRAY_KEY = credentials('bintray_travis_key')
                         AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
                         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+                        DEBUG = 0
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
@@ -372,6 +379,7 @@ pipeline {
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                         BINTRAY_USR = 'kong-inc_travis-ci@kong'
                         BINTRAY_KEY = credentials('bintray_travis_key')
+                        DEBUG = 0
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
@@ -394,6 +402,7 @@ pipeline {
                         BINTRAY_KEY = credentials('bintray_travis_key')
                         PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
                         PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
+                        DEBUG = 0
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
@@ -419,6 +428,7 @@ pipeline {
                         BINTRAY_KEY = credentials('bintray_travis_key')
                         PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
                         PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
+                        DEBUG = 0
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
@@ -441,6 +451,7 @@ pipeline {
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                         BINTRAY_USR = 'kong-inc_travis-ci@kong'
                         BINTRAY_KEY = credentials('bintray_travis_key')
+                        DEBUG = 0
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
@@ -464,6 +475,7 @@ pipeline {
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                         BINTRAY_USR = 'kong-inc_travis-ci@kong'
                         BINTRAY_KEY = credentials('bintray_travis_key')
+                        DEBUG = 0
                     }
                     steps {
                         sh 'make setup-kong-build-tools'
