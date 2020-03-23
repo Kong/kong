@@ -736,7 +736,7 @@ for _, strategy in helpers.each_strategy() do
           headers = {
             ["Host"] = "logical-and.com",
             ["apikey"] = "Mouse",
-            ["Authorization"] = "Basic QWxhZGRpbjpPcGVuU2VzYW1l",
+            ["Authorization"] = "Basic xxxxxxxxxx",
           }
         })
         assert.response(res).has.status(200)
@@ -764,7 +764,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Host"]          = "logical-and.com",
-            ["Authorization"] = "Basic QWxhZGRpbjpPcGVuU2VzYW1l",
+            ["Authorization"] = "Basic xxxxxxxxxxxxxx",
           }
         })
         assert.response(res).has.status(401)
@@ -791,7 +791,7 @@ for _, strategy in helpers.each_strategy() do
           headers = {
             ["Host"]          = "logical-or.com",
             ["apikey"]        = "Mouse",
-            ["Authorization"] = "Basic QWxhZGRpbjpPcGVuU2VzYW1l",
+            ["Authorization"] = "Basic xxxxxxxxxxxxxxx",
           }
         })
         assert.response(res).has.status(200)
