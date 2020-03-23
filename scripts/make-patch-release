@@ -267,12 +267,6 @@ function bump_homebrew() {
 }
 
 #-------------------------------------------------------------------------------
-function bump_pongo() {
-   KONG_CODE_BASE="CE" ADD_KONG_VERSION="$version" \
-   && ./assets/add_version.sh $KONG_CODE_BASE $ADD_KONG_VERSION
-}
-
-#-------------------------------------------------------------------------------
 function bump_vagrant() {
    sed -i 's/version = "[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*"/version = "'$version'"/' Vagrantfile
    sed -i 's/`[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*`/`'$version'`/' README.md
