@@ -1,6 +1,7 @@
 local url = require "socket.url"
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
+local sha256 = require "resty.sha256"
 local timestamp = require "kong.tools.timestamp"
 
 
@@ -12,6 +13,7 @@ local error = error
 local split = utils.split
 local strip = utils.strip
 local string_find = string.find
+local string_gsub = string.gsub
 local check_https = utils.check_https
 local encode_args = utils.encode_args
 local random_string = utils.random_string
@@ -21,6 +23,7 @@ local table_contains = utils.table_contains
 local ngx_decode_args = ngx.decode_args
 local ngx_re_gmatch = ngx.re.gmatch
 local ngx_decode_base64 = ngx.decode_base64
+local ngx_encode_base64 = ngx.encode_base64
 
 
 local _M = {}
@@ -30,6 +33,11 @@ local EMPTY = {}
 local RESPONSE_TYPE = "response_type"
 local STATE = "state"
 local CODE = "code"
+local CODE_CHALLENGE = "code_challenge"
+local CODE_CHALLENGE_METHOD = "code_challenge_method"
+local CODE_VERIFIER = "code_verifier"
+local CLIENT_TYPE_PUBLIC = "public"
+local CLIENT_TYPE_CONFIDENTIAL = "confidential"
 local TOKEN = "token"
 local REFRESH_TOKEN = "refresh_token"
 local SCOPE = "scope"
@@ -175,6 +183,36 @@ local function retrieve_scope(parameters, conf)
   end -- else return nil
 end
 
+local function retrieve_code_challenge(parameters)
+  local code_challenge = parameters[CODE_CHALLENGE]
+  local code_method = parameters[CODE_CHALLENGE_METHOD]
+  local err
+  if code_method and not code_challenge then
+    err = "code_challenge is required when code_method is present"
+  elseif code_challenge then
+    code_challenge = split(code_challenge, "=")[1] -- remove padding
+    if code_method == nil then
+      code_method = "S256"
+    end
+    if code_method ~= "S256" then
+      err = "transform algorithm not supported, must be S256"
+    end
+  end
+  return code_challenge or nil, code_method or nil, err or nil
+end
+
+local function requires_pkce(conf, client, used_pkce)
+  if not client then
+    return false
+  elseif used_pkce then -- only set on token endpoint
+    return true
+  elseif client.client_type == CLIENT_TYPE_PUBLIC and conf.pkce ~= "none" then
+    return true
+  elseif client.client_type == CLIENT_TYPE_CONFIDENTIAL and conf.pkce == "strict" then
+    return true
+  end
+  return false
+end
 
 local function authorize(conf)
   local response_params = {}
@@ -253,6 +291,23 @@ local function authorize(conf)
 
       parsed_redirect_uri = url.parse(redirect_uri)
 
+      -- require PKCE for public clients but accept it for confidential clients as well
+      local code_challenge, code_method, err_msg = retrieve_code_challenge(parameters)
+      local client_requires_pkce = requires_pkce(conf, client)
+      if err_msg then
+        response_params = {
+          [ERROR] = "invalid_request",
+          error_description = err_msg
+        }
+      elseif client and client_requires_pkce and not code_challenge then
+        response_params = {
+          [ERROR] = "invalid_request",
+          error_description = "code_challenge is required for " .. CLIENT_TYPE_PUBLIC .. " clients"
+        }
+      elseif not code_challenge then -- do not save a code method unless we have a challenge
+        code_method = nil
+      end
+
       -- If there are no errors, keep processing the request
       if not response_params[ERROR] then
         if response_type == CODE then
@@ -265,7 +320,9 @@ local function authorize(conf)
             service = service_id and { id = service_id } or nil,
             credential = { id = client.id },
             authenticated_userid = parameters[AUTHENTICATED_USERID],
-            scope = scopes
+            scope = scopes,
+            challenge = code_challenge,
+            challenge_method = code_method
           }, {
             ttl = 300
           })
@@ -357,11 +414,52 @@ local function retrieve_client_credentials(parameters, conf)
         client_secret = basic_parts[2]
       end
     end
+
+  elseif parameters[CLIENT_ID] then
+    client_id = parameters[CLIENT_ID]
   end
 
   return client_id, client_secret, from_authorization_header
 end
 
+local function validate_pkce_verifier(parameters, auth_code)
+  local code_verifier = parameters[CODE_VERIFIER]
+  if not code_verifier then
+    return {
+      [ERROR] = "invalid_request",
+      error_description = "code verifier is required for PKCE authorization requests"
+    }
+  elseif type(code_verifier) ~= "string" then
+    return {
+      [ERROR] = "invalid_request",
+      error_description = "code verifier is not a string"
+    }
+  end
+
+  local verifier_len = code_verifier:len()
+  if verifier_len < 43 or verifier_len > 128 then
+    return {
+      [ERROR] = "invalid_request",
+      error_description = "code verifier must be between 43 and 128 characters"
+    }
+  end
+
+  local digest = sha256:new()
+  digest:update(code_verifier)
+  local challenge = ngx_encode_base64(digest:final(), true)
+  challenge = string_gsub(challenge, "+", "-")
+  challenge = string_gsub(challenge, "/", "_")
+  if challenge ~= auth_code.challenge then
+    kong.log.warn("PKCE verifier mismatch: presented ["..tostring(challenge)..
+      "] stored ["..tostring(auth_code.challenge).."]")
+    return {
+      [ERROR] = "invalid_grant",
+      error_description = "Invalid " .. CODE
+    }
+  end
+
+  return nil
+end
 
 local function issue_token(conf)
   local response_params = {}
@@ -426,16 +524,22 @@ local function issue_token(conf)
       end
     end
 
-    if client and client.client_secret ~= client_secret then
-      response_params = {
-        [ERROR] = "invalid_client",
-        error_description = "Invalid client authentication"
-      }
-
-      if from_authorization_header then
-        invalid_client_properties = {
-          status = 401,
-          www_authenticate = "Basic realm=\"OAuth2.0\""
+    if client then
+      if client.client_type == CLIENT_TYPE_CONFIDENTIAL and client.client_secret ~= client_secret then
+        response_params = {
+          [ERROR] = "invalid_client",
+          error_description = "Invalid client authentication"
+        }
+        if from_authorization_header then
+          invalid_client_properties = {
+            status = 401,
+            www_authenticate = "Basic realm=\"OAuth2.0\""
+          }
+        end
+      elseif client.client_type == CLIENT_TYPE_PUBLIC and strip(client_secret) ~= "" then
+        response_params = {
+          [ERROR] = "invalid_request",
+          error_description = "client_secret is disallowed for " .. CLIENT_TYPE_PUBLIC .. " clients"
         }
       end
     end
@@ -451,28 +555,50 @@ local function issue_token(conf)
 
         local auth_code =
           code and kong.db.oauth2_authorization_codes:select_by_code(code)
-
-        if not auth_code or (service_id and service_id ~= auth_code.service.id)
-        then
+        if not auth_code or (service_id and service_id ~= auth_code.service.id) then
           response_params = {
             [ERROR] = "invalid_request",
             error_description = "Invalid " .. CODE
           }
-
         elseif auth_code.credential.id ~= client.id then
           response_params = {
             [ERROR] = "invalid_request",
             error_description = "Invalid " .. CODE
           }
+        end
 
-        else
-          response_params = generate_token(conf, kong.router.get_service(),
-                                           client,
-                                           auth_code.authenticated_userid,
-                                           auth_code.scope, state)
+        -- if the code was generated by a PKCE request, then check the code verifier
+        local client_requires_pkce = auth_code and requires_pkce(conf, client, auth_code.challenge_method)
+        if not response_params[ERROR] and client_requires_pkce then
+          local err = validate_pkce_verifier(parameters, auth_code)
+          if err then
+            response_params = err
+          end
+        end
 
-          -- Delete authorization code so it cannot be reused
-          kong.db.oauth2_authorization_codes:delete({ id = auth_code.id })
+        if not response_params[ERROR] then
+          if not auth_code or (service_id and service_id ~= auth_code.service.id)
+          then
+            response_params = {
+              [ERROR] = "invalid_request",
+              error_description = "Invalid " .. CODE
+            }
+
+          elseif auth_code.credential.id ~= client.id then
+            response_params = {
+              [ERROR] = "invalid_request",
+              error_description = "Invalid " .. CODE
+            }
+
+          else
+            response_params = generate_token(conf, kong.router.get_service(),
+              client,
+              auth_code.authenticated_userid,
+              auth_code.scope, state)
+
+            -- Delete authorization code so it cannot be reused
+            kong.db.oauth2_authorization_codes:delete({ id = auth_code.id })
+          end
         end
 
       elseif grant_type == GRANT_CLIENT_CREDENTIALS then
