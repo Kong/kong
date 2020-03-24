@@ -1787,6 +1787,11 @@ luassert:register("assertion", "cn", assert_cn,
 --   target = "a.my.srv.test.com",
 --   port = 80,
 -- }
+-- fixtures.dns_mock:SRV {
+--   name = "my.srv.test.com",     -- adding same name again: record gets 2 entries!
+--   target = "b.my.srv.test.com", -- a.my.srv.test.com and b.my.srv.test.com
+--   port = 80,
+-- }
 -- fixtures.dns_mock:A {
 --   name = "a.my.srv.test.com",
 --   address = "127.0.0.1",
@@ -2159,6 +2164,9 @@ local function render_fixtures(conf, env, prefix, fixtures)
 
     -- if no existing path setting then end with double semi-colons
     env[key] = "spec/fixtures/mocks/lua-resty-dns/?.lua;" .. (path or ";")
+  else
+    -- remove any old mocks if they exist
+    os.remove(prefix .. "/dns_mock_records.json")
   end
 
   return true

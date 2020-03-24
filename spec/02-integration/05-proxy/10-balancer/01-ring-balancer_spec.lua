@@ -1330,11 +1330,6 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("threshold for health checks", function()
-            local dns_mock_filename = helpers.test_conf.prefix .. "/dns_mock_records.lua"
-            finally(function()
-              os.remove(dns_mock_filename)
-            end)
-
             local fixtures = {
               dns_mock = helpers.dns_mock.new()
             }
@@ -1703,11 +1698,6 @@ for _, strategy in helpers.each_strategy() do
             it("perform active health checks on a target that resolves to multiple addresses -- automatic recovery #" .. protocol, function()
               local hosts = {}
 
-              local dns_mock_filename = helpers.test_conf.prefix .. "/dns_mock_records.lua"
-              finally(function()
-                os.remove(dns_mock_filename)
-              end)
-
               local fixtures = {
                 dns_mock = helpers.dns_mock.new()
               }
@@ -1826,11 +1816,6 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("perform active health checks on targets that resolve to the same IP -- automatic recovery #" .. protocol, function()
-              local dns_mock_filename = helpers.test_conf.prefix .. "/dns_mock_records.lua"
-              finally(function()
-                os.remove(dns_mock_filename)
-              end)
-
               local fixtures = {
                 dns_mock = helpers.dns_mock.new()
               }
