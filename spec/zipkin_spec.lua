@@ -24,8 +24,8 @@ local function assert_is_integer(number)
 end
 
 
-local function gen_trace_id()
-  return to_hex(utils.get_rand_bytes(16))
+local function gen_trace_id(traceid_byte_count)
+  return to_hex(utils.get_rand_bytes(traceid_byte_count))
 end
 
 
@@ -72,7 +72,11 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-describe("http integration tests with zipkin server [#" .. strategy .. "]", function()
+for _, traceid_byte_count in ipairs({ 8, 16 }) do
+describe("http integration tests with zipkin server [#"
+         .. strategy .. "] traceid_byte_count: "
+         .. traceid_byte_count, function()
+
   local proxy_client_grpc
   local service, grpc_service, tcp_service
   local route, grpc_route, tcp_route
@@ -80,7 +84,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
   local proxy_client
 
   -- the following assertions should be true on any span list, even in error mode
-  local function assert_span_invariants(request_span, proxy_span, expected_name, trace_id_len, start_s)
+  local function assert_span_invariants(request_span, proxy_span, expected_name, traceid_len, start_s)
     -- request_span
     assert.same("table", type(request_span))
     assert.same("string", type(request_span.id))
@@ -90,7 +94,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     assert.same("SERVER", request_span.kind)
 
     assert.same("string", type(request_span.traceId))
-    assert.equals(trace_id_len, #request_span.traceId)
+    assert.equals(traceid_len, #request_span.traceId, request_span.traceId)
     assert_valid_timestamp(request_span.timestamp, start_s)
 
     if request_span.duration and proxy_span.duration then
@@ -150,6 +154,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
       config = {
         sample_ratio = 1,
         http_endpoint = "http://127.0.0.1:9411/api/v2/spans",
+        traceid_byte_count = traceid_byte_count,
       }
     })
 
@@ -208,9 +213,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
   it("generates spans, tags and annotations for regular requests", function()
     local start_s = ngx.now()
 
-    local r = assert(proxy_client:send {
-      method  = "GET",
-      path    = "/",
+    local r = proxy_client:get("/", {
       headers = {
         ["x-b3-sampled"] = "1",
         host  = "http-route",
@@ -221,7 +224,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     local balancer_span, proxy_span, request_span =
       wait_for_spans(zipkin_client, 3, service.name)
     -- common assertions for request_span and proxy_span
-    assert_span_invariants(request_span, proxy_span, "get", 32, start_s)
+    assert_span_invariants(request_span, proxy_span, "get", traceid_byte_count * 2, start_s)
 
     -- specific assertions for request_span
     local request_tags = request_span.tags
@@ -293,7 +296,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     local balancer_span, proxy_span, request_span =
       wait_for_spans(zipkin_client, 3, grpc_service.name)
     -- common assertions for request_span and proxy_span
-    assert_span_invariants(request_span, proxy_span, "post", 32, start_s)
+    assert_span_invariants(request_span, proxy_span, "post", traceid_byte_count * 2, start_s)
 
     -- specific assertions for request_span
     local request_tags = request_span.tags
@@ -447,7 +450,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
   end)
 
   it("generates spans, tags and annotations for non-matched requests", function()
-    local trace_id = gen_trace_id()
+    local trace_id = gen_trace_id(traceid_byte_count)
     local start_s = ngx.now()
 
     local r = assert(proxy_client:send {
@@ -487,7 +490,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
   end)
 
   it("propagates b3 headers for non-matched requests", function()
-    local trace_id = gen_trace_id()
+    local trace_id = gen_trace_id(traceid_byte_count)
 
     local r = assert(proxy_client:send {
       method  = "GET",
@@ -509,7 +512,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
 
   describe("b3 single header propagation", function()
     it("works on regular calls", function()
-      local trace_id = gen_trace_id()
+      local trace_id = gen_trace_id(traceid_byte_count)
       local span_id = gen_span_id()
       local parent_id = gen_span_id()
 
@@ -538,7 +541,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     end)
 
     it("works without parent_id", function()
-      local trace_id = gen_trace_id()
+      local trace_id = gen_trace_id(traceid_byte_count)
       local span_id = gen_span_id()
 
       local r = proxy_client:get("/", {
@@ -565,7 +568,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     end)
 
     it("works with only trace_id and span_id", function()
-      local trace_id = gen_trace_id()
+      local trace_id = gen_trace_id(traceid_byte_count)
       local span_id = gen_span_id()
 
       local r = proxy_client:get("/", {
@@ -593,7 +596,7 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     end)
 
     it("works on non-matched requests", function()
-      local trace_id = gen_trace_id()
+      local trace_id = gen_trace_id(traceid_byte_count)
       local span_id = gen_span_id()
 
       local r = proxy_client:get("/foobar", {
@@ -615,4 +618,5 @@ describe("http integration tests with zipkin server [#" .. strategy .. "]", func
     end)
   end)
 end)
+end
 end

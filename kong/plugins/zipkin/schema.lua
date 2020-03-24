@@ -12,6 +12,7 @@ return {
                              between = { 0, 1 } } },
                                         { default_service_name = { type = "string", default = nil } },
           { include_credential = { type = "boolean", required = true, default = true } },
+          { traceid_byte_count = { type = "integer", required = true, default = 16, one_of = { 8, 16 } } },
         },
     }, },
   },

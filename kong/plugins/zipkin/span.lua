@@ -24,28 +24,19 @@ local baggage_mt = {
 }
 
 
-local function generate_trace_id()
-  return rand_bytes(16)
-end
-
-
 local function generate_span_id()
   return rand_bytes(8)
 end
 
 
 local function new(kind, name, start_timestamp_mu,
-                   should_sample, trace_id, span_id, parent_id, baggage)
+                   should_sample, trace_id,
+                   span_id, parent_id, baggage)
   assert(kind == "SERVER" or kind == "CLIENT", "invalid span kind")
   assert(type(name) == "string" and name ~= "", "invalid span name")
   assert(type(start_timestamp_mu) == "number" and start_timestamp_mu >= 0,
          "invalid span start_timestamp")
-
-  if trace_id == nil then
-    trace_id = generate_trace_id()
-  else
-    assert(type(trace_id) == "string", "invalid trace id")
-  end
+  assert(type(trace_id) == "string", "invalid trace id")
 
   if span_id == nil then
     span_id = generate_span_id()

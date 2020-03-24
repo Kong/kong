@@ -2,9 +2,12 @@ local new_zipkin_reporter = require "kong.plugins.zipkin.reporter".new
 local new_span = require "kong.plugins.zipkin.span".new
 local to_hex = require "resty.string".to_hex
 local parse_http_req_headers = require "kong.plugins.zipkin.parse_http_req_headers"
+local utils = require "kong.tools.utils"
+
 
 local subsystem = ngx.config.subsystem
 local fmt = string.format
+local rand_bytes = utils.get_rand_bytes
 
 local ZipkinLogHandler = {
   VERSION = "1.0.0",
@@ -109,12 +112,18 @@ if subsystem == "http" then
       should_sample = math_random() < conf.sample_ratio
     end
 
+    if trace_id == nil then
+      trace_id = rand_bytes(conf.traceid_byte_count)
+    end
+
     local request_span = new_span(
       "SERVER",
       method,
       ngx_req_start_time_mu(),
       should_sample,
-      trace_id, span_id, parent_id,
+      trace_id,
+      span_id,
+      parent_id,
       baggage)
 
     request_span.ip = kong.client.get_forwarded_ip()
@@ -207,7 +216,8 @@ elseif subsystem == "stream" then
       "SERVER",
       "stream",
       ngx_req_start_time_mu(),
-      math_random() < conf.sample_ratio
+      math_random() < conf.sample_ratio,
+      rand_bytes(conf.traceid_byte_count)
     )
     request_span.ip = kong.client.get_forwarded_ip()
     request_span.port = kong.client.get_forwarded_port()
