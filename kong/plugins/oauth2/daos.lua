@@ -55,7 +55,7 @@ local oauth2_authorization_codes = {
     { authenticated_userid = { type = "string", required = false }, },
     { scope = { type = "string" }, },
     { challenge = { type = "string", required = false }},
-    { challenge_method = { type = "string", required = false }},
+    { challenge_method = { type = "string", required = false, one_of = { "S256" } }},
   },
 }
 
@@ -81,6 +81,7 @@ local oauth2_tokens = {
     { scope = { type = "string" }, },
   },
 }
+
 
 return {
   oauth2_credentials,

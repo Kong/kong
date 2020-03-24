@@ -54,6 +54,38 @@ local ERROR = "error"
 local AUTHENTICATED_USERID = "authenticated_userid"
 
 
+local base64url_encode
+local base64url_decode
+do
+  local BASE64URL_ENCODE_CHARS = "[+/]"
+  local BASE64URL_ENCODE_SUBST = {
+    ["+"] = "-",
+    ["/"] = "_",
+  }
+
+  base64url_encode = function(value)
+    value = ngx_encode_base64(value, true)
+    if not value then
+      return nil
+    end
+
+    return string_gsub(value, BASE64URL_ENCODE_CHARS, BASE64URL_ENCODE_SUBST)
+  end
+
+
+  local BASE64URL_DECODE_CHARS = "[-_]"
+  local BASE64URL_DECODE_SUBST = {
+    ["-"] = "+",
+    ["_"] = "/",
+  }
+
+  base64url_decode = function(value)
+    value = string_gsub(value, BASE64URL_DECODE_CHARS, BASE64URL_DECODE_SUBST)
+    return ngx_decode_base64(value)
+  end
+end
+
+
 local function generate_token(conf, service, credential, authenticated_userid,
                               scope, state, disable_refresh, existing_token)
 
@@ -184,33 +216,43 @@ local function retrieve_scope(parameters, conf)
 end
 
 local function retrieve_code_challenge(parameters)
-  local code_challenge = parameters[CODE_CHALLENGE]
-  local code_method = parameters[CODE_CHALLENGE_METHOD]
-  local err
-  if code_method and not code_challenge then
-    err = "code_challenge is required when code_method is present"
-  elseif code_challenge then
-    code_challenge = split(code_challenge, "=")[1] -- remove padding
-    if code_method == nil then
-      code_method = "S256"
+  local challenge        = parameters[CODE_CHALLENGE]
+  local challenge_method = parameters[CODE_CHALLENGE_METHOD]
+
+  if challenge_method and not challenge then
+    return nil, CODE_CHALLENGE .. " is required when code_method is present"
+  end
+
+  if challenge then
+    local challenge_decoded = base64url_decode(challenge)
+    if challenge_decoded then
+      challenge = base64url_encode(challenge_decoded)
     end
-    if code_method ~= "S256" then
-      err = "transform algorithm not supported, must be S256"
+
+    if challenge_method and challenge_method ~= "S256" then
+      if challenge_method ~= "s256" then
+        return nil, CODE_CHALLENGE_METHOD .. " is not supported, must be S256"
+      end
+
+      challenge_method = "S256"
     end
   end
-  return code_challenge or nil, code_method or nil, err or nil
+
+  return challenge, nil, challenge_method or "S256"
 end
 
 local function requires_pkce(conf, client, used_pkce)
   if not client then
     return false
-  elseif used_pkce then -- only set on token endpoint
-    return true
-  elseif client.client_type == CLIENT_TYPE_PUBLIC and conf.pkce ~= "none" then
-    return true
-  elseif client.client_type == CLIENT_TYPE_CONFIDENTIAL and conf.pkce == "strict" then
+  end
+
+  if used_pkce -- only set on token endpoint
+  or (client.client_type == CLIENT_TYPE_PUBLIC       and conf.pkce ~= "none")
+  or (client.client_type == CLIENT_TYPE_CONFIDENTIAL and conf.pkce == "strict")
+  then
     return true
   end
+
   return false
 end
 
@@ -291,21 +333,19 @@ local function authorize(conf)
 
       parsed_redirect_uri = url.parse(redirect_uri)
 
-      -- require PKCE for public clients but accept it for confidential clients as well
-      local code_challenge, code_method, err_msg = retrieve_code_challenge(parameters)
-      local client_requires_pkce = requires_pkce(conf, client)
-      if err_msg then
+      local challenge, err, challenge_method = retrieve_code_challenge(parameters)
+      if err then
         response_params = {
           [ERROR] = "invalid_request",
-          error_description = err_msg
+          error_description = err
         }
-      elseif client and client_requires_pkce and not code_challenge then
+      elseif client and not challenge and requires_pkce(conf, client) then
         response_params = {
           [ERROR] = "invalid_request",
-          error_description = "code_challenge is required for " .. CLIENT_TYPE_PUBLIC .. " clients"
+          error_description = CODE_CHALLENGE .. " is required for " .. CLIENT_TYPE_PUBLIC .. " clients"
         }
-      elseif not code_challenge then -- do not save a code method unless we have a challenge
-        code_method = nil
+      elseif not challenge then -- do not save a code method unless we have a challenge
+        challenge_method = nil
       end
 
       -- If there are no errors, keep processing the request
@@ -321,8 +361,8 @@ local function authorize(conf)
             credential = { id = client.id },
             authenticated_userid = parameters[AUTHENTICATED_USERID],
             scope = scopes,
-            challenge = code_challenge,
-            challenge_method = code_method
+            challenge = challenge,
+            challenge_method = challenge_method
           }, {
             ttl = 300
           })
@@ -423,35 +463,36 @@ local function retrieve_client_credentials(parameters, conf)
 end
 
 local function validate_pkce_verifier(parameters, auth_code)
-  local code_verifier = parameters[CODE_VERIFIER]
-  if not code_verifier then
+  local verifier = parameters[CODE_VERIFIER]
+  if not verifier then
     return {
       [ERROR] = "invalid_request",
-      error_description = "code verifier is required for PKCE authorization requests"
+      error_description = CODE_VERIFIER .. " is required for PKCE authorization requests",
     }
-  elseif type(code_verifier) ~= "string" then
+  elseif type(verifier) ~= "string" then
     return {
       [ERROR] = "invalid_request",
-      error_description = "code verifier is not a string"
-    }
-  end
-
-  local verifier_len = code_verifier:len()
-  if verifier_len < 43 or verifier_len > 128 then
-    return {
-      [ERROR] = "invalid_request",
-      error_description = "code verifier must be between 43 and 128 characters"
+      error_description = CODE_VERIFIER .. " is not a string",
     }
   end
 
-  local digest = sha256:new()
-  digest:update(code_verifier)
-  local challenge = ngx_encode_base64(digest:final(), true)
-  challenge = string_gsub(challenge, "+", "-")
-  challenge = string_gsub(challenge, "/", "_")
-  if challenge ~= auth_code.challenge then
-    kong.log.warn("PKCE verifier mismatch: presented ["..tostring(challenge)..
-      "] stored ["..tostring(auth_code.challenge).."]")
+  if #verifier < 43 or #verifier > 128 then
+    return {
+      [ERROR] = "invalid_request",
+      error_description = CODE_VERIFIER .. " must be between 43 and 128 characters",
+    }
+  end
+
+  local s256 = sha256:new()
+  s256:update(verifier)
+  local digest = s256:final()
+
+  local challenge = base64url_encode(digest)
+
+  if not challenge
+  or not auth_code.challenge
+  or challenge ~= auth_code.challenge
+  then
     return {
       [ERROR] = "invalid_grant",
       error_description = "Invalid " .. CODE
