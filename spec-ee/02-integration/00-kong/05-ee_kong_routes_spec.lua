@@ -274,7 +274,8 @@ describe("Admin API - ee-specific Kong routes", function()
         assert.res_status(404, res)
       end)
 
-      it("returns user info of admin consumer outside default workspace", function()
+      pending("returns user info of admin consumer outside default workspace", function()
+
         db = select(2, helpers.get_db_utils(strategy))
 
         assert(helpers.start_kong({
