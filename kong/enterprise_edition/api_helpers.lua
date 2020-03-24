@@ -215,8 +215,8 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
 end
 
 
-function _M.attach_consumer_and_workspaces(self, consumer_id, rbac_user_id)
-  local workspace = _M.attach_workspaces(self, rbac_user_id)
+function _M.attach_consumer_and_workspaces(self, consumer_id)
+  local workspace = _M.attach_workspaces(self, consumer_id)
 
   ngx.ctx.workspaces = { workspace }
 
@@ -261,23 +261,23 @@ function _M.attach_workspaces_roles(self, roles)
 end
 
 
-function _M.attach_workspaces(self, rbac_user_id)
+function _M.attach_workspaces(self, consumer_id)
   local workspace_entities, err = kong.db.workspace_entities:select_all({
-    entity_id = rbac_user_id,
+    entity_id = consumer_id,
     unique_field_name = "id",
-    entity_type = "rbac_users",
+    entity_type = "consumers",
   })
 
   self.workspace_entities = workspace_entities
 
   if err then
-    log(ERR, _log_prefix, "Error fetching workspaces for rbac_user: ",
-      rbac_user_id, ": ", err)
+    log(ERR, _log_prefix, "Error fetching workspaces for consumer_id: ",
+      consumer_id, ": ", err)
     return endpoints.handle_error()
   end
 
   if not next(workspace_entities) then
-    log(ERR, "no workspace found for rbac_user:" .. rbac_user_id)
+    log(ERR, "no workspace found for rbac_user:" .. consumer_id)
     return endpoints.handle_error()
   end
 

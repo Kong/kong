@@ -682,7 +682,7 @@ function _M.link_to_workspace(admin, workspace)
   end
 
   -- link consumer
-  -- local _, err = workspaces.add_entity_relation("consumers", admin.consumer, workspace)
+  local _, err = workspaces.add_entity_relation("consumers", admin.consumer, workspace)
 
   if err then
     return nil, err
