@@ -135,24 +135,30 @@ local function init_worker()
     log("consumer updated, invalidating cache")
 
     local old_entity = data.old_entity
+    local old_custom_id
+    local old_username
     if old_entity then
-      if old_entity.custom_id and old_entity.custom_id ~= null and old_entity.custom_id ~= "" then
-        cache_invalidate_cluster(cache_key("custom_id:" .. old_entity.custom_id, "consumers"))
+      old_custom_id = old_entity.custom_id
+      if old_custom_id and old_custom_id ~= null and old_custom_id ~= "" then
+        cache_invalidate_cluster(cache_key("custom_id:" .. old_custom_id, "consumers"))
       end
 
-      if old_entity.username and old_entity.username ~= null and old_entity.username ~= "" then
-        cache_invalidate_cluster(cache_key("username:" .. old_entity.username,  "consumers"))
+      old_username = old_entity.username
+      if old_username and old_username ~= null and old_username ~= "" then
+        cache_invalidate_cluster(cache_key("username:" .. old_username,  "consumers"))
       end
     end
 
     local entity = data.entity
     if entity then
-      if entity.custom_id and entity.custom_id ~= null and entity.custom_id ~= "" then
-        cache_invalidate_cluster(cache_key("custom_id:" .. entity.custom_id, "consumers"))
+      local custom_id = entity.custom_id
+      if custom_id and custom_id ~= null and custom_id ~= "" and custom_id ~= old_custom_id then
+        cache_invalidate_cluster(cache_key("custom_id:" .. custom_id, "consumers"))
       end
 
-      if entity.username and entity.username ~= null and entity.username ~= "" then
-        cache_invalidate_cluster(cache_key("username:" .. entity.username,  "consumers"))
+      local username = entity.username
+      if username and username ~= null and username ~= "" and username ~= old_username then
+        cache_invalidate_cluster(cache_key("username:" .. username,  "consumers"))
       end
     end
   end, "crud", "consumers")
