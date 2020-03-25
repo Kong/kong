@@ -56,6 +56,11 @@ local function cache_invalidate(key)
 end
 
 
+local function cache_invalidate_cluster(key)
+  return kong.cache:invalidate(key)
+end
+
+
 local function get_expiry_and_cache_ttl(token, ttl)
   local expires_in
   if type(token) == "table" then
@@ -132,22 +137,22 @@ local function init_worker()
     local old_entity = data.old_entity
     if old_entity then
       if old_entity.custom_id and old_entity.custom_id ~= null and old_entity.custom_id ~= "" then
-        cache_invalidate(cache_key("custom_id:" .. old_entity.custom_id, "consumers"))
+        cache_invalidate_cluster(cache_key("custom_id:" .. old_entity.custom_id, "consumers"))
       end
 
       if old_entity.username and old_entity.username ~= null and old_entity.username ~= "" then
-        cache_invalidate(cache_key("username:" .. old_entity.username,  "consumers"))
+        cache_invalidate_cluster(cache_key("username:" .. old_entity.username,  "consumers"))
       end
     end
 
     local entity = data.entity
     if entity then
       if entity.custom_id and entity.custom_id ~= null and entity.custom_id ~= "" then
-        cache_invalidate(cache_key("custom_id:" .. entity.custom_id, "consumers"))
+        cache_invalidate_cluster(cache_key("custom_id:" .. entity.custom_id, "consumers"))
       end
 
       if entity.username and entity.username ~= null and entity.username ~= "" then
-        cache_invalidate(cache_key("username:" .. entity.username,  "consumers"))
+        cache_invalidate_cluster(cache_key("username:" .. entity.username,  "consumers"))
       end
     end
   end, "crud", "consumers")
