@@ -5,7 +5,6 @@ local workspaces = require "kong.workspaces"
 local dao_helpers = require "kong.portal.dao_helpers"
 local developers  = require "kong.db.schema.entities.developers"
 
-
 local ws_constants = constants.WORKSPACE_CONFIG
 
 
@@ -88,12 +87,23 @@ function _Developers:update(developer_pk, entity, options)
     return nil, err, err_t
   end
 
+  local update_suspended_status = entity.status and entity.status ~= developer.status
   local developer, err, err_t =
     dao_helpers.update_developer(self, developer, entity, options)
 
   if not developer then
     ngx.log(ngx.DEBUG, err)
     return nil, err, err_t
+  end
+
+  if update_suspended_status then
+    local ok, err, err_t =
+      dao_helpers.set_app_instance_suspension_by_developer(self, developer)
+
+    if not ok then
+      ngx.log(ngx.DEBUG, err)
+      return nil, err, err_t
+    end
   end
 
   return developer

@@ -321,7 +321,14 @@ end
 
 
 function _M.create_application_instance(self, db, helpers)
+  local developer, _, err_t = kong.db.developers:select({ id = self.application.developer.id })
+  if not developer then
+    return endpoints.handle_error(err_t)
+  end
+
+  self.params.suspended = developer.status ~= enums.CONSUMERS.STATUS.APPROVED
   self.params.application = { id = self.application.id }
+
   local application_instance, _, err_t = db.application_instances:insert(self.params)
   if not application_instance then
     return endpoints.handle_error(err_t)
@@ -366,6 +373,20 @@ end
 
 
 function _M.update_application_instance(self, db, helpers)
+  if not self.application then
+    self.application = db.applications:select({ id = self.application_instance.application.id })
+    if not self.application then
+      return kong.response.exit(404, {message = "Not found" })
+    end
+  end
+
+  local developer, _, err_t = kong.db.developers:select({ id = self.application.developer.id })
+  if not developer then
+    return endpoints.handle_error(err_t)
+  end
+
+  self.params.suspended = developer.status ~= enums.CONSUMERS.STATUS.APPROVED
+
   local application_instance_pk = { id = self.application_instance.id }
   local application_instance, _, err_t = db.application_instances:update(application_instance_pk, self.params)
   if not application_instance then

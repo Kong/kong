@@ -6,6 +6,19 @@ local application_instances  = require "kong.db.schema.entities.application_inst
 local _ApplicationInstances = {}
 
 
+local function skip_permission_update(entity, application_instance)
+  return entity.suspended == nil and not entity.status or
+         entity.status == application_instance.status
+end
+
+
+local function should_create_permission(init_application_instance, application_instance)
+  return application_instance.status == enums.CONSUMERS.STATUS.APPROVED and
+         application_instance.status ~= init_application_instance.status and
+         not application_instance.suspended
+end
+
+
 local function validate_insert(entity)
   local ApplicationInstances = Schema.new(application_instances)
   local application_instance = entity
@@ -91,7 +104,9 @@ function _ApplicationInstances:insert(entity, options)
   end
 
   if application_instance.status == enums.CONSUMERS.STATUS.APPROVED then
-    local application, err, err_t = kong.db.applications:select({ id = application_instance.application.id })
+    local application, err, err_t =
+      kong.db.applications:select({ id = application_instance.application.id })
+
     if not application then
       kong.db.application_instance:delete({ id = application_instance.id })
 
@@ -114,18 +129,21 @@ end
 
 -- Updates an application_instance, and an associated ACL credential
 function _ApplicationInstances:update(app_instance_pk, entity, options)
-  local application_instance, err, err_t = self.super.select(self, app_instance_pk, options)
-  if not application_instance then
+  local init_application_instance, err, err_t = self.super.select(self, app_instance_pk, options)
+  if not init_application_instance then
     return nil, err, err_t
   end
 
-  if not entity.status or entity.status == application_instance.status then
-    return application_instance
+  if skip_permission_update(entity, init_application_instance) then
+    return init_application_instance
   end
 
-  local entity = { status = entity.status }
+  local entity = {
+    status = entity.status,
+    suspended = entity.suspended
+  }
 
-  application_instance, err, err_t = self.super.update(self, app_instance_pk, entity, options)
+  local application_instance, err, err_t = self.super.update(self, app_instance_pk, entity, options)
   if not application_instance then
     return nil, err, err_t
   end
@@ -139,7 +157,7 @@ function _ApplicationInstances:update(app_instance_pk, entity, options)
 
   local consumer_id = application.consumer.id
   local service_id = application_instance.service.id
-  if application_instance.status == enums.CONSUMERS.STATUS.APPROVED then
+  if should_create_permission(init_application_instance, application_instance) then
     local ok, err, err_t = create_acl_permission(consumer_id, service_id)
     if not ok then
       return nil, err, err_t

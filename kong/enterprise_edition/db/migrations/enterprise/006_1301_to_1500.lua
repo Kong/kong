@@ -59,6 +59,7 @@ return {
         service_id uuid references services (id) on delete cascade,
         application_id  uuid references applications (id) on delete cascade,
         composite_id text unique,
+        suspended boolean NOT NULL,
         PRIMARY KEY(id)
       );
 
@@ -138,6 +139,7 @@ return {
         service_id uuid,
         application_id uuid,
         composite_id text,
+        suspended boolean,
         PRIMARY KEY(id)
       );
 
