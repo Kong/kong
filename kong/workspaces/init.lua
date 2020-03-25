@@ -187,8 +187,12 @@ local function get_workspaces()
   end
   return ngx.ctx.workspaces or {}
 end
-
 _M.get_workspaces = get_workspaces
+
+
+function _M.get_workspace()
+  return get_workspaces()[1]
+end
 
 
 local function set_workspace(ws)
@@ -964,12 +968,6 @@ function _M.ws_scope_as_list(table_name)
     return encode_ws_list(ws_scope)
   end
 end
-
-
-function _M.get_workspace()
-  return ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
-end
-
 
 -- used to retrieve workspace specific configuration values.
 -- * config must exist in default configuration or will result
