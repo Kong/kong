@@ -68,7 +68,7 @@ describe("rockspec/meta", function()
   end)
 
   describe("modules", function()
-    it("are all included in rockspec", function()
+    it("are all included in rockspec #flaky", function()
       for _, src in ipairs(lua_srcs) do
         local rel_src = src:sub(3) -- strip './'
         local found
