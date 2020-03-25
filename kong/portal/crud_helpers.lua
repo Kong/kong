@@ -574,7 +574,7 @@ end
 
 
 function _M.exit_if_portal_disabled()
-  local ws = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local ws = workspaces.get_workspace()
   local opts = { explicitly_ws = true }
   local enabled_in_ws = workspaces.retrieve_ws_config(PORTAL, ws, opts)
   local enabled_in_conf = kong.configuration.portal

@@ -54,7 +54,7 @@ local auth_plugins = {
 
 
 local function get_oidc_developer_status()
-  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local workspace = workspaces.get_workspace()
   local auto_approve = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
 
   if auto_approve then

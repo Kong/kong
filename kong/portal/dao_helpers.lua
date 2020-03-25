@@ -93,7 +93,7 @@ end
 
 
 local function get_developer_status()
-  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local workspace = workspaces.get_workspace()
   local auto_approve = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
   local auth_type = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
 
@@ -550,7 +550,7 @@ end
 
 
 local function create_developer(self, entity, options)
-  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local workspace = workspaces.get_workspace()
 
   local roles = extract_roles(entity)
 
@@ -582,7 +582,7 @@ local function create_developer(self, entity, options)
     return nil, err, err_t
   end
 
-  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local workspace = workspaces.get_workspace()
   local portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
 
   if portal_auth ~= "openid-connect" then
@@ -656,7 +656,7 @@ end
 
 
 local function update_developer(self, developer, entity, options)
-  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local workspace = workspaces.get_workspace()
   local consumer = self.db.consumers:select({ id = developer.consumer.id })
 
   -- developer cannot update to type UNVERIFIED

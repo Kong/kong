@@ -142,7 +142,7 @@ local base_conf = {
 }
 
 function _M:get_example_email_tokens(path)
-  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local workspace = workspaces.get_workspace()
 
 
   local portal_gui_url = workspaces.build_ws_portal_gui_url(singletons.configuration, workspace)
@@ -264,7 +264,7 @@ end
 
 
 function _M:invite(recipients)
-  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local workspace = workspaces.get_workspace()
   local portal_invite_email = workspaces.retrieve_ws_config(ws_constants.PORTAL_INVITE_EMAIL, workspace)
 
   if not portal_invite_email then
@@ -310,7 +310,7 @@ end
 
 
 function _M:access_request(developer_email, developer_name)
-  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local workspace = workspaces.get_workspace()
   local portal_access_request_email = workspaces.retrieve_ws_config(ws_constants.PORTAL_ACCESS_REQUEST_EMAIL, workspace)
 
   if not portal_access_request_email then
@@ -353,7 +353,7 @@ end
 
 
 function _M:approved(recipient, developer_name)
-  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local workspace = workspaces.get_workspace()
   local portal_approved_email = workspaces.retrieve_ws_config(ws_constants.PORTAL_APPROVED_EMAIL, workspace)
 
   if not portal_approved_email then
@@ -393,7 +393,7 @@ function _M:approved(recipient, developer_name)
 end
 
 function _M:password_reset(recipient, token, developer_name)
-  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local workspace = workspaces.get_workspace()
   local portal_reset_email = workspaces.retrieve_ws_config(ws_constants.PORTAL_RESET_EMAIL, workspace)
 
   if not portal_reset_email then
@@ -443,7 +443,7 @@ function _M:password_reset(recipient, token, developer_name)
 end
 
 function _M:password_reset_success(recipient, developer_name)
-  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local workspace = workspaces.get_workspace()
   local portal_reset_success_email = workspaces.retrieve_ws_config(ws_constants.PORTAL_RESET_SUCCESS_EMAIL, workspace)
 
   if not portal_reset_success_email then
@@ -483,7 +483,7 @@ function _M:password_reset_success(recipient, developer_name)
 end
 
 function _M:account_verification_email(recipient, token, developer_name)
-  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local workspace = workspaces.get_workspace()
 
   local portal_gui_url = workspaces.build_ws_portal_gui_url(singletons.configuration, workspace)
   local portal_emails_from = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
@@ -529,7 +529,7 @@ function _M:account_verification_email(recipient, token, developer_name)
 end
 
 function _M:account_verification_success_approved(recipient, developer_name)
-  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local workspace = workspaces.get_workspace()
 
   local portal_gui_url = workspaces.build_ws_portal_gui_url(singletons.configuration, workspace)
   local portal_emails_from = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)
@@ -564,7 +564,7 @@ function _M:account_verification_success_approved(recipient, developer_name)
 end
 
 function _M:account_verification_success_pending(recipient, developer_name)
-  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local workspace = workspaces.get_workspace()
 
   local portal_gui_url = workspaces.build_ws_portal_gui_url(singletons.configuration, workspace)
   local portal_emails_from = workspaces.retrieve_ws_config(ws_constants.PORTAL_EMAILS_FROM, workspace)

@@ -45,7 +45,7 @@ end
 -- Creates an developer, and an associated consumer
 function _Developers:insert(entity, options)
   -- ensure portal_auth is set
-  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local workspace = workspaces.get_workspace()
 
   self.portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
   if not self.portal_auth then
@@ -150,7 +150,7 @@ function _Developers:delete(developer_pk, options)
     if err then
       return nil, err
     end
-    
+
     local _, err, err_t = self.db.applications:delete({ id = row.id })
     if err then
       return nil, err, err_t

@@ -18,7 +18,7 @@ local app = lapis.Application()
 
 
 local function is_legacy()
-  local workspace = ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  local workspace = workspaces.get_workspace()
   return workspaces.retrieve_ws_config(ws_constants.PORTAL_IS_LEGACY, workspace)
 end
 

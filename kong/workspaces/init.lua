@@ -191,6 +191,11 @@ _M.get_workspaces = get_workspaces
 
 
 function _M.get_workspace()
+  return ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+end
+
+
+function _M.get_first_workspace()
   return get_workspaces()[1]
 end
 

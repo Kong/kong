@@ -35,7 +35,7 @@ local auth_plugins = {
 
 
 local function get_workspace()
-  return ngx.ctx.workspaces and ngx.ctx.workspaces[1] or {}
+  return workspaces.get_workspace()
 end
 
 
