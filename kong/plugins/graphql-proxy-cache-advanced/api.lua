@@ -14,19 +14,30 @@ local function broadcast_purge(plugin_id, cache_key)
 end
 
 
+local function each_by_name(entity, name)
+  local iter = entity:each(1000)
+  local function iterator()
+    local element, err = iter()
+    if err then return nil, err end
+    if element == nil then return end
+    if element.name == name then return element, nil end
+    return iterator()
+  end
+
+  return iterator
+end
+
+
 return {
   ["/graphql-proxy-cache-advanced"] = {
     resource = "graphql-proxy-cache-advanced",
 
     DELETE = function()
-      local rows, err = kong.db.plugins:select_all {
-        name = "graphql-proxy-cache-advanced"
-      }
-      if err then
-        return kong.response.exit(500, { message = HTTP_INTERNAL_SERVER_ERROR_MSG })
-      end
+      for row, err in each_by_name(kong.db.plugins, "graphql-proxy-cache-advanced") do
+        if err then
+          return kong.response.exit(500, { message = HTTP_INTERNAL_SERVER_ERROR_MSG })
+        end
 
-      for _, row in ipairs(rows) do
         local conf = row.config
         local strategy = require(STRATEGY_PATH)({
           strategy_name = conf.strategy,
@@ -54,14 +65,12 @@ return {
     resource = "graphql-proxy-cache-advanced",
 
     GET = function(self)
-      local rows, err = kong.db.plugins:select_all {
-        name = "graphql-proxy-cache-advanced",
-      }
-      if err then
-        return kong.response.exit(500, { message = HTTP_INTERNAL_SERVER_ERROR_MSG })
-      end
 
-      for _, plugin in ipairs(rows) do
+      for plugin, err in each_by_name(kong.db.plugins, "graphql-proxy-cache-advanced") do
+        if err then
+          return kong.response.exit(500, { message = HTTP_INTERNAL_SERVER_ERROR_MSG })
+        end
+
         local conf = plugin.config
         local strategy = require(STRATEGY_PATH)({
           strategy_name = conf.strategy,
@@ -83,14 +92,12 @@ return {
     end,
 
     DELETE = function(self)
-      local rows, err = kong.db.plugins:select_all {
-        name = "graphql-proxy-cache-advanced",
-      }
-      if err then
-        return kong.response.exit(500, { message = HTTP_INTERNAL_SERVER_ERROR_MSG })
-      end
 
-      for _, plugin in ipairs(rows) do
+      for plugin, err in each_by_name(kong.db.plugins, "graphql-proxy-cache-advanced") do
+        if err then
+          return kong.response.exit(500, { message = HTTP_INTERNAL_SERVER_ERROR_MSG })
+        end
+
         local conf = plugin.config
         local strategy = require(STRATEGY_PATH)({
           strategy_name = conf.strategy,
