@@ -50,38 +50,6 @@ local function signal_cache_req(cache_key, cache_status)
 end
 
 
-local function send_response(res)
-  -- simulate the access.after handler
-  --===========================================================
-  local now = get_now()
-
-  ngx.ctx.KONG_ACCESS_TIME = now - ngx.ctx.KONG_ACCESS_START
-  ngx.ctx.KONG_ACCESS_ENDED_AT = now
-  local proxy_latency = now - ngx.req.start_time() * 1000
-  ngx.ctx.KONG_PROXY_LATENCY = proxy_latency
-  ngx.ctx.KONG_PROXIED = true
-
-  ee.handlers.access.after(ngx.ctx)
-  --===========================================================
-
-  ngx.status = res.status
-
-  for k, v in pairs(res.headers) do
-    if overwritable_header(k) then
-      ngx.header[k] = v
-    end
-  end
-
-  ngx.header["Age"] = floor(time() - res.timestamp)
-  ngx.header["X-Cache-Status"] = "Hit"
-
-  ngx.ctx.delayed_response = true
-  ngx.ctx.delayed_response_callback = function()
-    ngx.say(res.body)
-  end
-end
-
-
 local _GqlCacheHandler = {}
 
 
@@ -138,7 +106,43 @@ function _GqlCacheHandler:access(conf)
     return signal_cache_req(cache_key, "Refresh")
   end
 
-  return send_response(res)
+  -- we have cache data yo!
+  -- expose response data for logging plugins
+  local response_data = {
+    res = res,
+    req = {
+      body = res.req_body,
+    },
+    server_addr = ngx.var.server_addr,
+  }
+
+  kong.ctx.shared.proxy_cache_hit = response_data
+
+  local nctx = ngx.ctx
+  nctx.proxy_cache_hit = response_data -- TODO: deprecated
+
+  local now = get_now()
+
+  nctx.KONG_ACCESS_TIME = now - nctx.KONG_ACCESS_START
+  nctx.KONG_ACCESS_ENDED_AT = now
+
+  local proxy_latency = now - ngx.req.start_time() * 1000
+
+  nctx.KONG_PROXY_LATENCY = proxy_latency
+  nctx.KONG_PROXIED = true
+
+  ee.handlers.log.after(nctx)
+
+  for k in pairs(res.headers) do
+    if not overwritable_header(k) then
+      res.headers[k] = nil
+    end
+  end
+
+  res.headers["Age"] = floor(time() - res.timestamp)
+  res.headers["X-Cache-Status"] = "Hit"
+
+  return kong.response.exit(res.status, res.body, res.headers)
 end
 
 function _GqlCacheHandler:header_filter(conf)
