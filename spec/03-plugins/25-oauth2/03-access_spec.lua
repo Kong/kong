@@ -2230,7 +2230,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         local body = assert.res_status(200, res)
         assert.is_table(ngx.re.match(body, [[^\{"refresh_token":"[\w]{32,32}","token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
       end)
-      it("success when code challenge contains + or / characters", function()
+      it("succeeds when code challenge contains + or / characters", function()
         local code_verifier = "abcdelfhigklmnopqrstuvwxyz0123456789abcdefghijklmnop9"
         local code_challenge = "0LoS6Gtrw16r07+ZXsCf8MeAi21QHmKc3LJdUCA5w/o="
         local code = provision_code(nil, nil, "clientid11211", code_challenge)
