@@ -1,5 +1,11 @@
 --- Copyright 2019 Kong Inc.
 
+-- In http subsystem we don't have functions like ngx.ocsp and
+-- get full client chain working. Masking this plugin as a noop
+-- plugin so it will not error out.
+if ngx.config.subsystem ~= "http" then
+    return {}
+end
 
 local BasePlugin = require("kong.plugins.base_plugin")
 local mtls_cache = require("kong.plugins.mtls-auth.cache")
