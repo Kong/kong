@@ -60,5 +60,15 @@ return {
   ["/services/:services/document_objects"] = {
     GET  = portal_crud.get_document_objects_by_service,
     POST = portal_crud.create_document_object_by_service,
+  },
+  
+  ["/services/:services/routes/:route"] = {
+    PATCH = function(self, _, _, parent)
+      local ok, err = workspaces.is_route_crud_allowed(self, singletons.router, true)
+      if not ok then
+        return kong.response.exit(err.code, {message = err.message})
+      end
+      return parent()
+    end,
   }
 }

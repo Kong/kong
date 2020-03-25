@@ -105,7 +105,7 @@ describe("DB [".. strategy .. "] sharing ", function()
 end)
 
 describe("DB [".. strategy .. "] routes are checked for colisions ", function()
-  local route, default_service
+  local route, default_service, service_ws2
   setup(function()
     helpers.get_db_utils(strategy)
 
@@ -123,6 +123,26 @@ describe("DB [".. strategy .. "] routes are checked for colisions ", function()
     post("/ws1/services/default-service/routes", { paths = { "/route" } })
     post("/ws1/services/default-service/routes", { hosts = { "example.com" } })
     post("/ws1/services/default-service/routes", { methods = { "GET" } })
+
+    post("/ws1/services", {
+      name = "service_ws1",
+      url = "http://httpbin.org",
+    })
+
+    service_ws2 = post("/ws2/services", {
+      name = "service_ws2",
+      url = "http://httpbin.org",
+    })
+
+    post("/ws1/services/service_ws1/routes", {
+      name = "route_ws1",
+      paths = { "/test" },
+    })
+
+    post("/ws2/services/service_ws2/routes", {
+      name = "route_ws2",
+      paths = { "/2test" },
+    })
   end)
 
   teardown(function()
@@ -226,6 +246,20 @@ describe("DB [".. strategy .. "] routes are checked for colisions ", function()
     local r = post("/ws2/services/default-service/routes",
       {['hosts[]'] = "bla.org"})
     patch("/ws2/routes/" .. r.id, {['hosts[]'] = "example.org"}, nil, 409)
+  end)
+
+  it_content_types("when PATCHing", function(content_type)
+    return function()
+      local headers = { ["Content-Type"] = content_type }
+
+      patch("/ws2/routes/route_ws2", {
+        paths = "/test",
+      }, headers, 409)
+
+      patch("/ws2/services/" .. service_ws2.id .. "/routes/route_ws2", {
+        paths = "/test",
+      }, headers, 409)
+    end
   end)
 end)
 
