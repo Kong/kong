@@ -42,8 +42,15 @@ local function validate_issuer(conf)
   return true
 end
 
+local function keyring_enabled()
+  local ok, enabled = pcall(function()
+    return kong.configuration.keyring_enabled
+  end)
 
-local ENCRYPTED = kong.configuration.keyring_enabled and true or nil
+  return ok and enabled or nil
+end
+
+local ENCRYPTED = keyring_enabled()
 
 
 local config = {
