@@ -30,6 +30,14 @@ describe("Admin API #" .. strategy, function()
   local default_port = 8000
 
   lazy_setup(function()
+    local fixtures = {
+      dns_mock = helpers.dns_mock.new()
+    }
+    fixtures.dns_mock:A {
+      name = "custom_localhost",
+      address = "127.0.0.1",
+    }
+
     bp, db = helpers.get_db_utils(strategy, {
       "upstreams",
       "targets",
@@ -37,7 +45,7 @@ describe("Admin API #" .. strategy, function()
     assert(helpers.start_kong({
       database   = strategy,
       nginx_conf = "spec/fixtures/custom_nginx.template",
-    }))
+    }, nil, nil, fixtures))
   end)
 
   lazy_teardown(function()
