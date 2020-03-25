@@ -379,7 +379,7 @@ function ProxyCacheHandler:access(conf)
   nctx.KONG_PROXY_LATENCY = proxy_latency
   nctx.KONG_PROXIED = true
 
-  ee.handlers.access.after(nctx)
+  ee.handlers.log.after(nctx)
 
   for k in pairs(res.headers) do
     if not overwritable_header(k) then
