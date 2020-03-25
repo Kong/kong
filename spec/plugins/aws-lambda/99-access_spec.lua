@@ -8,6 +8,7 @@ local null = ngx.null
 
 
 local fixtures = {
+  dns_mock = helpers.dns_mock.new(),
   http_mock = {
     lambda_plugin = [[
 
@@ -77,6 +78,11 @@ local fixtures = {
 
     ]]
   },
+}
+
+fixtures.dns_mock:A {
+  name = "lambda.us-east-1.amazonaws.com",
+  address = "127.0.0.1",
 }
 
 
