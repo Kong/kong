@@ -1022,6 +1022,9 @@ function OICHandler:access(conf)
   -- load enabled authentication methods
   local auth_methods = get_auth_methods(args.get_conf_arg)
 
+  -- dynamic login redirect uri (only used with authorization code flow)
+  local dynamic_login_redirect_uri
+
   -- try to open session
   local session, session_present, session_data
   if auth_methods.session then
@@ -1538,13 +1541,6 @@ function OICHandler:access(conf)
                   log(err)
                 end
 
-                log("starting a new authorization code flow with previous parameters")
-                -- it seems that user may have opened a second tab
-                -- lets redirect that to idp as well in case user
-                -- had closed the previous, but with same parameters
-                -- as before.
-                authorization:start()
-
                 log("creating authorization code flow request with previous parameters")
                 token_endpoint_args, err = oic.authorization:request {
                   args          = authorization_data.args,
@@ -1559,11 +1555,22 @@ function OICHandler:access(conf)
                   return unexpected(trusted_client, err)
                 end
 
+                log("starting a new authorization code flow with previous parameters")
+                -- it seems that user may have opened a second tab
+                -- lets redirect that to idp as well in case user
+                -- had closed the previous, but with same parameters
+                -- as before.
+                authorization:start()
+                authorization.data.uri = redirect_uri(args)
+                authorization:save()
+
                 log("redirecting client to openid connect provider with previous parameters")
                 return redirect(token_endpoint_args.url)
               end
 
               log("authorization code flow verified")
+
+              dynamic_login_redirect_uri = authorization.data.uri
 
               authorization:hide()
               authorization:destroy()
@@ -1627,6 +1634,7 @@ function OICHandler:access(conf)
             end
 
             authorization.data = {
+              uri           = redirect_uri(args),
               args          = extra_args,
               client        = trusted_client.index,
               state         = token_endpoint_args.state,
@@ -2050,10 +2058,6 @@ function OICHandler:access(conf)
       end
     end
 
-    if auth_methods.session then
-      session:start()
-    end
-
   else
     log("access token has expired")
 
@@ -2217,14 +2221,7 @@ function OICHandler:access(conf)
         log("jwt claim matches jwt session cookie")
 
       else
-          return unauthorized(ctx,
-                              iss,
-                              unauthorized_error_message,
-                              "unable to verify jwt session claim (" .. jwt_session_claim ..
-                                ") in absense of access token",
-                              session,
-                              anonymous,
-                              trusted_client)
+          log("jwt claim verification skipped as it was not found on access token")
       end
     end
 
@@ -2716,11 +2713,9 @@ function OICHandler:access(conf)
   -- remove session cookie from the upstream request?
   if auth_methods.session then
     log("hiding session cookie from upstream")
+    session:start()
     session:hide()
-
-    if session.close then
-      session:close()
-    end
+    session:close()
   end
 
   -- here we replay token endpoint request response headers, if any
@@ -3050,8 +3045,11 @@ function OICHandler:access(conf)
           return success(args.get_value(login_response))
 
         elseif login_action == "redirect" then
-          if trusted_client.login_redirect_uri then
-            local u = { trusted_client.login_redirect_uri }
+          local login_redirect_uri = trusted_client.login_redirect_uri or
+                                     dynamic_login_redirect_uri
+
+          if login_redirect_uri then
+            local u = { login_redirect_uri }
             local i = 2
 
             local login_tokens = args.get_conf_arg("login_tokens")
@@ -3123,6 +3121,9 @@ function OICHandler:access(conf)
 
             log("login with redirect login action")
             return redirect(concat(u))
+
+          else
+            log.notice("login action was set to redirect but no login redirect uri was specified")
           end
         end
       end
