@@ -16,6 +16,7 @@ local cjson = require "cjson.safe"
 local meta = require "kong.meta"
 local checks = require "kong.pdk.private.checks"
 local phase_checker = require "kong.pdk.private.phases"
+local utils = require "kong.tools.utils"
 
 
 local ngx = ngx
@@ -31,6 +32,7 @@ local normalize_multi_header = checks.normalize_multi_header
 local validate_header = checks.validate_header
 local validate_headers = checks.validate_headers
 local check_phase = phase_checker.check
+local split = utils.split
 local add_header
 if ngx and ngx.config.subsystem == "http" then
   add_header = require("ngx.resp").add_header
@@ -62,6 +64,7 @@ local function new(self, major_version)
 
   local MIN_STATUS_CODE      = 100
   local MAX_STATUS_CODE      = 599
+  local MIN_ERR_STATUS_CODE  = 400
 
   local SERVER_HEADER_NAME   = "Server"
   local SERVER_HEADER_VALUE  = meta._NAME .. "/" .. meta._VERSION
@@ -74,6 +77,9 @@ local function new(self, major_version)
   local CONTENT_TYPE_NAME    = "Content-Type"
   local CONTENT_TYPE_JSON    = "application/json; charset=utf-8"
   local CONTENT_TYPE_GRPC    = "application/grpc"
+
+
+  local ACCEPT_NAME          = "Accept"
 
   local HTTP_TO_GRPC_STATUS = {
     [200] = 0,
@@ -108,6 +114,51 @@ local function new(self, major_version)
     [14] = "Unavailable",
     [15] = "DataLoss",
     [16] = "Unauthenticated",
+  }
+
+  local HTTP_MESSAGES = {
+    s400 = "Bad request",
+    s401 = "Unauthorized",
+    s402 = "Payment required",
+    s403 = "Forbidden",
+    s404 = "Not found",
+    s405 = "Method not allowed",
+    s406 = "Not acceptable",
+    s407 = "Proxy authentication required",
+    s408 = "Request timeout",
+    s409 = "Conflict",
+    s410 = "Gone",
+    s411 = "Length required",
+    s412 = "Precondition failed",
+    s413 = "Payload too large",
+    s414 = "URI too long",
+    s415 = "Unsupported media type",
+    s416 = "Range not satisfiable",
+    s417 = "Expectation failed",
+    s418 = "I'm a teapot",
+    s421 = "Misdirected request",
+    s422 = "Unprocessable entity",
+    s423 = "Locked",
+    s424 = "Failed dependency",
+    s425 = "Too early",
+    s426 = "Upgrade required",
+    s428 = "Precondition required",
+    s429 = "Too many requests",
+    s431 = "Request header fields too large",
+    s451 = "Unavailable for legal reasons",
+    s494 = "Request header or cookie too large",
+    s500 = "An unexpected error occurred",
+    s501 = "Not implemented",
+    s502 = "An invalid response was received from the upstream server",
+    s503 = "The upstream server is currently unavailable",
+    s504 = "The upstream server is timing out",
+    s505 = "HTTP version not supported",
+    s506 = "Variant also negotiates",
+    s507 = "Insufficient storage",
+    s508 = "Loop detected",
+    s510 = "Not extended",
+    s511 = "Network authentication required",
+    default = "The upstream server responded with %d"
   }
 
 
@@ -830,6 +881,171 @@ local function new(self, major_version)
     end
   end
 
+
+  local function get_response_type(content_header)
+    local type = CONTENT_TYPE_JSON
+
+    if content_header ~= nil then
+      local accept_values = split(content_header, ",")
+      local max_quality = 0
+      for _, value in ipairs(accept_values) do
+        local mimetype_values = split(value, ";")
+        local name
+        local quality = 1
+        for _, entry in ipairs(mimetype_values) do
+          local m = ngx.re.match(entry, [[^\s*(\S+\/\S+)\s*$]], "ajo")
+          if m then
+            name = m[1]
+          else
+            m = ngx.re.match(entry, [[^\s*q=([0-9]*[\.][0-9]+)\s*$]], "ajoi")
+            if m then
+              quality = tonumber(m[1])
+            end
+          end
+        end
+
+        if quality > max_quality then
+          type = utils.get_mime_type(name)
+          max_quality = quality
+        end
+      end
+
+    end
+
+    return type
+  end
+
+
+  ---
+  -- This function interrupts the current processing and produces an error
+  -- response.
+  --
+  -- It is recommended to use this function in conjunction with the `return`
+  -- operator, to better reflect its meaning:
+  --
+  -- ```lua
+  -- return kong.response.error(500, "Error", {["Content-Type"] = "text/html"})
+  -- ```
+  --
+  -- The first argument `status` will set the status code of the response that
+  -- will be seen by the client. The status code must be of an error, i.e.
+  -- >399.
+  --
+  -- The second, optional, `message` argument will set the message describing
+  -- the error, which will be written in the body.
+  --
+  -- The third, optional, `headers` argument can be a table specifying response
+  -- headers to send. If specified, its behavior is similar to
+  -- `kong.response.set_headers()`.
+  --
+  -- This method will send the response formatted in JSON, XML, HTML or plain
+  -- text. The actual format is chosen using one of the following options:
+  -- - Manually specifying in `headers` argument using the `Content-Type`
+  --   header.
+  -- - Conform to the `Accept` header from the request.
+  -- - If none of the above is found, fallback to JSON format.
+  -- Content-Length header in the produced response for convenience.
+  -- @function kong.response.error
+  -- @phases rewrite, access, admin_api, header_filter (only if `body` is nil)
+  -- @tparam number status The status to be used (>399)
+  -- @tparam[opt] string message The error message to be used
+  -- @tparam[opt] table headers The headers to be used
+  -- @return Nothing; throws an error on invalid input.
+  -- @usage
+  -- return kong.response.error(403, "Access Forbidden", {
+  --   ["Content-Type"] = "text/plain",
+  --   ["WWW-Authenticate"] = "Basic"
+  -- })
+  --
+  -- ---
+  --
+  -- return kong.response.error(403, "Access Forbidden")
+  --
+  -- ---
+  --
+  -- return kong.response.error(403)
+  function _RESPONSE.error(status, message, headers)
+    local is_buffered_exit = self.ctx.core.buffered_proxying
+                         and self.ctx.core.phase == PHASES.balancer
+                         and ngx.get_phase()     == "access"
+
+    if not is_buffered_exit then
+      check_phase(rewrite_access_header)
+    end
+
+    if ngx.headers_sent then
+      error("headers have already been sent", 2)
+    end
+
+    if type(status) ~= "number" then
+      error("code must be a number", 2)
+
+    elseif status < MIN_ERR_STATUS_CODE or status > MAX_STATUS_CODE then
+      error(fmt("code must be a number between %u and %u", MIN_ERR_STATUS_CODE,
+        MAX_STATUS_CODE), 2)
+    end
+
+    if message ~= nil and type(message) ~= "string" then
+        error("message must be a nil or a string", 2)
+    end
+
+    if headers ~= nil and type(headers) ~= "table" then
+      error("headers must be a nil or table", 2)
+    end
+
+    if headers ~= nil then
+      validate_headers(headers)
+    else
+      headers = {}
+    end
+
+    local content_type_header = headers[CONTENT_TYPE_NAME]
+    local content_type = content_type_header and content_type_header[1] or content_type_header
+
+    if content_type_header == nil then
+      content_type_header = ngx.req.get_headers()[ACCEPT_NAME]
+      if type(content_type_header) == "table" then
+        content_type_header = content_type_header[1]
+      end
+      content_type = get_response_type(content_type_header)
+    end
+
+    headers[CONTENT_TYPE_NAME] = content_type
+
+    local body
+    if content_type ~= CONTENT_TYPE_GRPC then
+      local actual_message = message or
+                             HTTP_MESSAGES["s" .. status] or
+                             fmt(HTTP_MESSAGES.default, status)
+      body = fmt(utils.get_error_template(content_type), actual_message)
+    end
+
+    local ctx = ngx.ctx
+
+    if is_buffered_exit then
+      self.ctx.core.buffered_status = status
+      self.ctx.core.buffered_headers = headers
+      self.ctx.core.buffered_body = body
+
+    else
+      ctx.KONG_EXITED = true
+    end
+
+    if ctx.delay_response and not ctx.delayed_response then
+      ctx.delayed_response = {
+        status_code = status,
+        content     = body,
+        headers     = headers,
+      }
+
+      ctx.delayed_response_callback = flush
+      coroutine.yield()
+
+    else
+      return send(status, body, headers)
+    end
+
+  end
 
   return _RESPONSE
 end

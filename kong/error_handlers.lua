@@ -1,49 +1,12 @@
 local kong = kong
 local find = string.find
 local fmt  = string.format
+local utils = require "kong.tools.utils"
 
 
 local CONTENT_TYPE    = "Content-Type"
 local ACCEPT          = "Accept"
-
-
-local TYPE_JSON       = "application/json"
 local TYPE_GRPC       = "application/grpc"
-local TYPE_HTML       = "text/html"
-local TYPE_XML        = "application/xml"
-
-
-local JSON_TEMPLATE = [[
-{
-  "message": "%s"
-}
-]]
-
-
-local HTML_TEMPLATE = [[
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>Kong Error</title>
-  </head>
-  <body>
-    <h1>Kong Error</h1>
-    <p>%s.</p>
-  </body>
-</html>
-]]
-
-
-local XML_TEMPLATE = [[
-<?xml version="1.0" encoding="UTF-8"?>
-<error>
-  <message>%s</message>
-</error>
-]]
-
-
-local PLAIN_TEMPLATE = "%s\n"
 
 
 local BODIES = {
@@ -77,32 +40,14 @@ return function(ctx)
   local message = BODIES["s" .. status] or fmt(BODIES.default, status)
 
   local headers
-  if find(accept_header, TYPE_JSON, nil, true) == 1 then
-    message = fmt(JSON_TEMPLATE, message)
-    headers = {
-      [CONTENT_TYPE] = "application/json; charset=utf-8"
-    }
-
-  elseif find(accept_header, TYPE_GRPC, nil, true) == 1 then
+  if find(accept_header, TYPE_GRPC, nil, true) == 1 then
     message = { message = message }
 
-  elseif find(accept_header, TYPE_HTML, nil, true) == 1 then
-    message = fmt(HTML_TEMPLATE, message)
-    headers = {
-      [CONTENT_TYPE] = "text/html; charset=utf-8"
-    }
-
-  elseif find(accept_header, TYPE_XML, nil, true) == 1 then
-    message = fmt(XML_TEMPLATE, message)
-    headers = {
-      [CONTENT_TYPE] = "application/xml; charset=utf-8"
-    }
-
   else
-    message = fmt(PLAIN_TEMPLATE, message)
-    headers = {
-      [CONTENT_TYPE] = "text/plain; charset=utf-8"
-    }
+    local mime_type = utils.get_mime_type(accept_header)
+    message = fmt(utils.get_error_template(mime_type), message)
+    headers = { [CONTENT_TYPE] = mime_type }
+
   end
 
   -- Reset relevant context values
