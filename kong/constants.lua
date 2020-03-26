@@ -125,6 +125,7 @@ return {
     "rbac_role_endpoints",
     "admins",
     "developers",
+    "document_objects",
     "applications",
     "application_instances",
     "groups",

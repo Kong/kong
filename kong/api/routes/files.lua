@@ -59,8 +59,12 @@ return {
           return file
         end
 
-        local is_content = file_helpers.is_content_path(file.path) or
-                           file_helpers.is_spec_path(file.path)
+        local is_spec =file_helpers.is_spec_path(file.path)
+        local is_content = file_helpers.is_content_path(file.path) or is_spec
+
+        if type == "spec" and is_spec then
+          return file
+        end
 
         if type == "content" and is_content then
           return file

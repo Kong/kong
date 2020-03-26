@@ -158,7 +158,7 @@ for _, strategy in helpers.each_strategy() do
           close_clients(portal_api_client)
         end)
 
-        describe("GET #test", function()
+        describe("GET", function()
           local devs = { "dale", "bob" }
 
           lazy_setup(function()

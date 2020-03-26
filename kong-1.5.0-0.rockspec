@@ -287,6 +287,7 @@ build = {
     ["kong.db.schema.entities.admins"] = "kong/db/schema/entities/admins.lua",
     ["kong.db.schema.entities.applications"] = "kong/db/schema/entities/applications.lua",
     ["kong.db.schema.entities.application_instances"] = "kong/db/schema/entities/application_instances.lua",
+    ["kong.db.schema.entities.document_objects"] = "kong/db/schema/entities/document_objects.lua",
     ["kong.db.schema.entities.consumers"] = "kong/db/schema/entities/consumers.lua",
     ["kong.db.schema.entities.routes"] = "kong/db/schema/entities/routes.lua",
     ["kong.db.schema.entities.routes_subschemas"] = "kong/db/schema/entities/routes_subschemas.lua",

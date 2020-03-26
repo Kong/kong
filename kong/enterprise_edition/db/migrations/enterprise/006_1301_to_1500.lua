@@ -63,6 +63,15 @@ return {
         PRIMARY KEY(id)
       );
 
+      CREATE TABLE IF NOT EXISTS document_objects (
+        id          uuid,
+        created_at  timestamp,
+        updated_at  timestamp,
+        service_id uuid references services (id) on delete cascade,
+        path text unique,
+        PRIMARY KEY(id)
+      );
+
       -- XXX: EE keep run_on for now
       DO $$
       BEGIN
@@ -168,6 +177,18 @@ return {
         snooze         int,
         config         text
       );
+
+      CREATE TABLE IF NOT EXISTS document_objects (
+        id          uuid,
+        created_at  timestamp,
+        updated_at  timestamp,
+        service_id uuid,
+        path text,
+        PRIMARY KEY(id)
+      );
+
+      CREATE INDEX IF NOT EXISTS document_objects_path_idx ON document_objects(path);
+      CREATE INDEX IF NOT EXISTS document_objects_service_id_idx ON document_objects(service_id);
     ]],
     teardown = function(connector)
       -- XXX: EE keep run_on for now, ignore error

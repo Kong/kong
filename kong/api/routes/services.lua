@@ -4,7 +4,7 @@ local utils       = require "kong.tools.utils"
 local core_handler = require "kong.runloop.handler"
 local uuid = require("kong.tools.utils").uuid
 local workspaces = require "kong.workspaces"
-
+local portal_crud = require "kong.portal.crud_helpers"
 
 local kong = kong
 
@@ -56,4 +56,9 @@ return {
       return parent(post_process)
     end,
   },
+
+  ["/services/:services/document_objects"] = {
+    GET  = portal_crud.get_document_objects_by_service,
+    POST = portal_crud.create_document_object_by_service,
+  }
 }

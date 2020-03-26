@@ -320,6 +320,44 @@ function _M.update_login_credential(collection, cred_pk, entity)
 end
 
 
+function _M.get_document_objects_by_service(self, db, helpers)
+  local service_id = self.params.services
+  local document_object
+  for row, err in db.document_objects:each_for_service({ id = service_id }) do
+    document_object = row
+  end
+
+  return kong.response.exit(200, {
+    data = setmetatable({ document_object }, cjson.empty_array_mt),
+    next = ngx.null,
+  })
+end
+
+
+function _M.create_document_object_by_service(self, db, helpers)
+  local service_id = self.params.services
+  local path = self.params.path
+  local document = db.files:select_by_path(path)
+  if not document then
+    return kong.response.exit(404, {message = "Not found" })
+  end
+
+  local document_object, _, err_t = db.document_objects:insert({
+    service = { id = service_id },
+    path = path,
+  })
+
+  if err_t then
+    return endpoints.handle_error(err_t)
+  end
+
+  kong.response.exit(200, {
+    data = { document_object },
+    next = ngx.null,
+  })
+end
+
+
 function _M.create_application_instance(self, db, helpers)
   local developer, _, err_t = kong.db.developers:select({ id = self.application.developer.id })
   if not developer then

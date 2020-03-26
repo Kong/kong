@@ -11,7 +11,7 @@ local ee_api             = require "kong.enterprise_edition.api_helpers"
 local auth_helpers       = require "kong.enterprise_edition.auth_helpers"
 local secrets            = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local dao_helpers        = require "kong.portal.dao_helpers"
-
+local file_helpers = require "kong.portal.file_helpers"
 local kong = kong
 
 local PORTAL_DEVELOPER_META_FIELDS = constants.WORKSPACE_CONFIG.PORTAL_DEVELOPER_META_FIELDS
@@ -754,6 +754,26 @@ return {
           return endpoints.handle_error(err_t)
         end
 
+        local document_object
+        for row, err in db.document_objects:each_for_service({ id = v.service.id }) do
+          if err then
+            return endpoints.handle_error(err)
+          end
+
+          document_object = row
+        end
+
+        local route
+        if document_object then
+          local file = db.files:select_by_path(document_object.path)
+          if file then
+            local file_meta = file_helpers.parse_content(file)
+            if file_meta and file_meta.route then
+              route = file_meta.route
+            end
+          end
+        end
+
         application_services[i] = {
           id = service.id,
           name = v.config.display_name,
@@ -766,6 +786,7 @@ return {
           enable_password_grant = v.config.enable_password_grant,
           enable_client_credentials = v.config.enable_client_credentials,
           enable_authorization_code = v.config.enable_authorization_code,
+          document_route = route,
         }
       end
 
@@ -784,9 +805,28 @@ return {
     end,
 
     GET = function(self, db, helpers)
-      local applications = {}
-      for row, err in kong.db.applications:each_for_developer({ id = self.developer.id }) do
-        table.insert(applications, row)
+      local applications = setmetatable({}, cjson.empty_array_mt)
+      local include_instances = self.req.params_get and self.req.params_get.include_instances == "true"
+
+      for application, err in kong.db.applications:each_for_developer({ id = self.developer.id }) do
+        if err then
+          return endpoints.handle_error(err)
+        end
+
+        if include_instances then
+          application.application_instances = setmetatable({}, cjson.empty_array_mt)
+          for instance, err in kong.db.application_instances:each_for_application({ id = application.id }) do
+            if err then
+              return endpoints.handle_error(err)
+            end
+
+            if instance then
+              table.insert(application.application_instances, instance)
+            end
+          end
+        end
+
+        table.insert(applications, application)
       end
 
       local res, _, err_t = crud_helpers.paginate(self, applications)
