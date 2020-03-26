@@ -7,6 +7,8 @@ local constants  = require "kong.constants"
 local workspaces = require "kong.workspaces"
 local feature_flags   = require "kong.enterprise_edition.feature_flags"
 local license_helpers = require "kong.enterprise_edition.license_helpers"
+local event_hooks = require "kong.enterprise_edition.event_hooks"
+local balancer  = require "kong.runloop.balancer"
 
 
 local kong = kong
@@ -18,6 +20,74 @@ _M.handlers = {
   init_worker = {
     after = function(ctx)
       license_helpers.report_expired_license()
+
+      -- register event_hooks hooks
+      if event_hooks.enabled() then
+        local dao_adapter = function(data)
+          return {
+            entity = data.entity,
+            old_entity = data.old_entity,
+            schema = data.schema and data.schema.name,
+            operation = data.operation,
+          }
+        end
+        -- publish all kong events
+        local operations = { "create", "update", "delete" }
+        for _, op in ipairs(operations) do
+          event_hooks.publish("dao:crud", op, {
+            fields = { "operation", "entity", "old_entity", "schema" },
+            adapter = dao_adapter,
+          })
+        end
+        for name, _ in pairs(kong.db.daos) do
+          event_hooks.publish("crud", name, {
+            fields = { "operation", "entity", "old_entity", "schema" },
+            adapter = dao_adapter,
+          })
+          for _, op in ipairs(operations) do
+            event_hooks.publish("crud", name .. ":" .. op, {
+              fields = { "operation", "entity", "old_entity", "schema" },
+              adapter = dao_adapter,
+            })
+          end
+        end
+
+        kong.worker_events.register(function(data, event, source, pid)
+          event_hooks.emit(source, event, dao_adapter(data))
+        end, "crud")
+
+        kong.worker_events.register(function(data, event, source, pid)
+          event_hooks.emit(source, event, dao_adapter(data))
+        end, "dao:crud")
+
+        -- register a callback to trigger an event_hook balanacer health
+        -- event
+        balancer.subscribe_to_healthcheck_events(function(upstream_id, ip, port, hostname, health)
+          event_hooks.emit("balancer", "health", {
+            upstream_id = upstream_id,
+            ip = ip,
+            port = port,
+            hostname = hostname,
+            health = health,
+          })
+        end)
+
+        event_hooks.publish("balancer", "health", {
+          fields = { "upstream_id", "ip", "port", "hostname", "health" },
+        })
+
+        -- XXX not so sure this timer is good? the idea is to not hog kong
+        -- on startup for this secondary feature
+        ngx.timer.at(0, function()
+          for entity, err in kong.db.event_hooks:each(1000) do
+            if err then
+              kong.log.err(err)
+            else
+              event_hooks.register(entity)
+            end
+          end
+        end)
+      end
     end,
   },
   header_filter = {

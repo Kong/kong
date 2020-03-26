@@ -80,6 +80,17 @@ return {
         -- Do nothing, accept existing state
       END;
       $$;
+
+      CREATE TABLE IF NOT EXISTS "event_hooks" (
+        "id"           UUID                         UNIQUE,
+        "created_at"   TIMESTAMP WITHOUT TIME ZONE  DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
+        "source"       TEXT NOT NULL,
+        "event"        TEXT,
+        "handler"      TEXT NOT NULL,
+        "on_change"    BOOLEAN,
+        "snooze"       INTEGER,
+        "config"       JSON                         NOT NULL
+      );
     ]],
     teardown = function(connector)
       -- XXX: EE keep run_on for now
@@ -167,6 +178,17 @@ return {
 
       CREATE INDEX IF NOT EXISTS document_objects_path_idx ON document_objects(path);
       CREATE INDEX IF NOT EXISTS document_objects_service_id_idx ON document_objects(service_id);
+
+      CREATE TABLE IF NOT EXISTS event_hooks (
+        id             uuid PRIMARY KEY,
+        created_at     timestamp,
+        source         text,
+        event          text,
+        handler        text,
+        on_change      boolean,
+        snooze         int,
+        config         text
+      );
     ]],
     teardown = function(connector)
       -- XXX: EE keep run_on for now, ignore error

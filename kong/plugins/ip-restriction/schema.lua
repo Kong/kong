@@ -8,14 +8,13 @@ return {
     { config = {
         type = "record",
         fields = {
-          { whitelist = { type = "array", elements = typedefs.cidr_v4, }, },
-          { blacklist = { type = "array", elements = typedefs.cidr_v4, }, },
+          { whitelist = { type = "array", elements = typedefs.ip_or_cidr, }, },
+          { blacklist = { type = "array", elements = typedefs.ip_or_cidr, }, },
         },
       },
     },
   },
   entity_checks = {
-    { only_one_of = { "config.whitelist", "config.blacklist" }, },
     { at_least_one_of = { "config.whitelist", "config.blacklist" }, },
   },
 }

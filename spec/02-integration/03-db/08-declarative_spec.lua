@@ -98,6 +98,7 @@ for _, strategy in helpers.each_strategy() do
       consumer = { id = consumer_def.id },
       group = "The A Team"
     }
+
     before_each(function()
       db.acls:truncate()
       db.plugins:truncate()

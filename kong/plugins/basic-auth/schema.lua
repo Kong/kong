@@ -9,7 +9,7 @@ return {
     { config = {
         type = "record",
         fields = {
-          { anonymous = { type = "string", uuid = true, legacy = true }, },
+          { anonymous = { type = "string" }, },
           { hide_credentials = { type = "boolean", default = false }, },
     }, }, },
   },
