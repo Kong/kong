@@ -59,59 +59,59 @@ pipeline {
         parallel (
           centos6: {
             sh "./package.sh centos:6 ${env.RELEASE_SCOPE}"
-            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:6 -e -R ${env.RELEASE_SCOPE}"
+            // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:6 -e -R ${env.RELEASE_SCOPE}"
           },
           centos7: {
             sh "./package.sh centos:7 ${env.RELEASE_SCOPE}"
-            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:7 -e -R ${env.RELEASE_SCOPE}"
+            // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:7 -e -R ${env.RELEASE_SCOPE}"
           },
           centos8: {
             sh "./package.sh centos:8 ${env.RELEASE_SCOPE}"
-            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:8 -e -R ${env.RELEASE_SCOPE}"
+            // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:8 -e -R ${env.RELEASE_SCOPE}"
           },
           debian8: {
             sh "./package.sh debian:8 ${env.RELEASE_SCOPE}"
-            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:8 -e -R ${env.RELEASE_SCOPE}"
+            // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:8 -e -R ${env.RELEASE_SCOPE}"
           },
           debian9: {
             sh "./package.sh debian:9 ${env.RELEASE_SCOPE}"
-            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:9 -e -R ${env.RELEASE_SCOPE}"
+            // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:9 -e -R ${env.RELEASE_SCOPE}"
           },
           ubuntu1404: {
             sh "./package.sh ubuntu:14.04.2 ${env.RELEASE_SCOPE}"
-            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:14.04.2 -e -R ${env.RELEASE_SCOPE}"
+            // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:14.04.2 -e -R ${env.RELEASE_SCOPE}"
           },
           ubuntu1604: {
             sh "./package.sh ubuntu:16.04 ${env.RELEASE_SCOPE}"
-            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:16.04 -e -R ${env.RELEASE_SCOPE}"
+            // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:16.04 -e -R ${env.RELEASE_SCOPE}"
           },
           ubuntu1704: {
             sh "./package.sh ubuntu:17.04 ${env.RELEASE_SCOPE}"
-            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:17.04 -e -R ${env.RELEASE_SCOPE}"
+            // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:17.04 -e -R ${env.RELEASE_SCOPE}"
           },
           ubuntu1804: {
             sh "./package.sh ubuntu:18.04 ${env.RELEASE_SCOPE}"
-            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:18.04 -e -R ${env.RELEASE_SCOPE}"
+            // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:18.04 -e -R ${env.RELEASE_SCOPE}"
           },
           amazonlinux: {
             sh "./package.sh amazonlinux ${env.RELEASE_SCOPE}"
-            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p amazonlinux -e -R ${env.RELEASE_SCOPE}"
+            // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p amazonlinux -e -R ${env.RELEASE_SCOPE}"
           },
           alpine: {
             sh "./package.sh alpine ${env.RELEASE_SCOPE}"
-            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p alpine -e -R ${env.RELEASE_SCOPE}"
+            // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p alpine -e -R ${env.RELEASE_SCOPE}"
           },
           rhel6: {
             sh "./package.sh rhel:6 ${env.RELEASE_SCOPE}"
-            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel:6 -e -R ${env.RELEASE_SCOPE}"
+            // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel:6 -e -R ${env.RELEASE_SCOPE}"
           },
           rhel7: {
             sh "./package.sh rhel:7 ${env.RELEASE_SCOPE}"
-            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel:7 -e -R ${env.RELEASE_SCOPE}"
+            // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel:7 -e -R ${env.RELEASE_SCOPE}"
           },
           rhel8: {
             sh "./package.sh rhel:8 ${env.RELEASE_SCOPE}"
-            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel:8 -e -R ${env.RELEASE_SCOPE}"
+            // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel:8 -e -R ${env.RELEASE_SCOPE}"
           },
         )
       }
@@ -138,16 +138,16 @@ pipeline {
         parallel (
           // beware! $KONG_VERSION might have an ending \n that swallows everything after it
           alpine: {
-            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
-            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
+            // sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
+            // sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
           },
           centos7: {
-            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
-            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
+            // sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
+            // sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
           },
           rhel: {
-            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
-            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
+            // sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
+            // sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
           },
         )
       }
