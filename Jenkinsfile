@@ -49,7 +49,6 @@ pipeline {
           userRemoteConfigs: [[url: 'git@github.com:Kong/kong-distributions.git',
             credentialsId: 'kong-distributions-deploy-key']]
         ])
-        // sh 'utilities/install_deps.sh'
       }
     }
     stage('Build & Push Packages') {
