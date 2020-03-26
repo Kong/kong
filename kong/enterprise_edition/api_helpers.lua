@@ -243,7 +243,7 @@ function _M.attach_workspaces_roles(self, roles)
   end
 
   for k, role in ipairs(roles) do
-    local entities, err = kong.db.workspace_entities:select_all({
+    local entities, err = kong.db.workspace_entities:select_all({ -- XXX EE painful
       entity_id = role.id,
       unique_field_name = "id",
       entity_type = "rbac_roles",
@@ -262,7 +262,7 @@ end
 
 
 function _M.attach_workspaces(self, consumer_id)
-  local workspace_entities, err = kong.db.workspace_entities:select_all({
+  local workspace_entities, err = kong.db.workspace_entities:select_all({ -- XXX EE painful
     entity_id = consumer_id,
     unique_field_name = "id",
     entity_type = "consumers",

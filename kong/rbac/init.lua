@@ -186,7 +186,7 @@ end
 
 
 local function retrieve_entity_ids(ws_id)
-  local workspaced_entities, err = kong.db.workspace_entities:select_all({
+  local workspaced_entities, err = kong.db.workspace_entities:select_all({ -- XXX EE think how to do rbac lazily
       workspace_id = ws_id
     }, { skip_rbac = true })
 

@@ -27,7 +27,7 @@ function Plugins:select_by_field(field, value, options)
   local found
 
   if plugin then
-    local plugin_workspaces = kong.db.workspace_entities:select_all({
+    local plugin_workspaces = kong.db.workspace_entities:select_all({ -- XXX EE will probably go
       entity_id = plugin.id,
       unique_field_name = "id",
     }, {skip_rbac = true})

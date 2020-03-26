@@ -408,7 +408,7 @@ return {
       end
 
       -- Find the workspace the rbac_user is in
-      local refs, err = db.workspace_entities:select_all({
+local refs, err = db.workspace_entities:select_all({ -- XXX EE replace with rbac_user.ws_id
         entity_type = "rbac_users",
         entity_id = admin.rbac_user.id,
         unique_field_name = "id",

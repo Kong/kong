@@ -129,7 +129,7 @@ return {
     GET = function(self, db)
       ensure_valid_workspace(self)
 
-      local entities, err = db.workspace_entities:select_all({
+      local entities, err = db.workspace_entities:select_all({ -- XXX EE will go
         workspace_id = self.workspace.id,
       })
       if err then
@@ -147,7 +147,7 @@ return {
         return kong.response.exit(400, {message = "must provide >= entity"})
       end
 
-      local existing_entities, err = db.workspace_entities:select_all({
+      local existing_entities, err = db.workspace_entities:select_all({ -- XXX EE will go
         workspace_id = self.workspace.id,
       })
       if err then
@@ -221,7 +221,7 @@ return {
         end
 
         for _, row in ipairs(ws_e) do
-          local _, err = db.workspace_entities:delete({
+          local _, err = db.workspace_entities:delete({ -- XXX EE will go
             entity_id = row.entity_id,
             workspace_id = row.workspace_id,
             unique_field_name = row.unique_field_name,
@@ -235,7 +235,7 @@ return {
 
         -- find out if the entity is still in any workspace
         local rows
-        rows, err = db.workspace_entities:select_all({
+        rows, err = db.workspace_entities:select_all({ -- XXX EE will go
           entity_id = e, -- get the first result's entity_type;
                                            -- we can do that given the result in
                                            -- ws_e is for the same entity_id
@@ -275,7 +275,7 @@ return {
     end,
 
     GET = function(self, db)
-      local e, err = db.workspace_entities:select_all({
+      local e, err = db.workspace_entities:select_all({ -- XXX EE will go
         workspace_id = self.workspace.id,
         entity_id = self.params.entity_id,
       })
@@ -295,7 +295,7 @@ return {
     end,
 
     DELETE = function(self, db)
-      local e, err = db.workspace_entities:select_all({
+      local e, err = db.workspace_entities:select_all({ -- XXX EE will go
         workspace_id = self.workspace.id,
         entity_id = self.params.entity_id,
       })
