@@ -42,7 +42,9 @@ pipeline {
         //echo "Kong version: $KONG_VERSION"
         echo "Release scope ${env.RELEASE_SCOPE}"
         checkout([$class: 'GitSCM',
-          branches: [[name: 'refactor/ft-1151']],
+          // This is like this now, for internal preview
+          // We should tune this thing to either use a branch_name or a tag
+          branches: [[name: env.BRANCH_NAME]],
           extensions: [[$class: 'WipeWorkspace']],
           userRemoteConfigs: [[url: 'git@github.com:Kong/kong-distributions.git',
             credentialsId: 'kong-distributions-deploy-key']]
