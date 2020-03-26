@@ -50,14 +50,14 @@ dependencies = {
   "lua-resty-ipmatcher == 0.6",
   -- external Kong plugins
   "kong-plugin-kubernetes-sidecar-injector ~> 0.2.1",
-  "kong-plugin-azure-functions ~> 0.4.1",
+  "kong-plugin-azure-functions ~> 0.4.2",
   "kong-plugin-serverless-functions ~> 0.3.1",
-  "kong-prometheus-plugin ~> 0.6.0",
+  "kong-prometheus-plugin ~> 0.7.1",
   "kong-plugin-session == 2.2.0",
-  "kong-proxy-cache-plugin ~> 1.2.2",
+  "kong-proxy-cache-plugin ~> 1.3.0",
   "kong-plugin-request-transformer ~> 1.2.4",
-  "kong-plugin-aws-lambda ~> 3.1.0",
-  "kong-plugin-zipkin ~> 0.2",
+  "kong-plugin-aws-lambda ~> 3.2.0",
+  "kong-plugin-zipkin ~> 1.0.0",
 }
 build = {
   type = "builtin",
