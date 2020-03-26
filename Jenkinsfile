@@ -128,29 +128,29 @@ pipeline {
         ])
       }
     }
-    stage("Build & Push Docker Images") {
-      //when {
-      //  expression {
-      //    expression { BRANCH_NAME ==~ /^release\/.*/ }
-      //  }
-      //}
-      steps {
-        parallel (
-          // beware! $KONG_VERSION might have an ending \n that swallows everything after it
-          alpine: {
-            // sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
-            // sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
-          },
-          centos7: {
-            // sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
-            // sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
-          },
-          rhel: {
-            // sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
-            // sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
-          },
-        )
-      }
-    }
+    // stage("Build & Push Docker Images") {
+    //   //when {
+    //   //  expression {
+    //   //    expression { BRANCH_NAME ==~ /^release\/.*/ }
+    //   //  }
+    //   //}
+    //   steps {
+    //     parallel (
+    //       // beware! $KONG_VERSION might have an ending \n that swallows everything after it
+    //       alpine: {
+    //         // sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
+    //         // sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
+    //       },
+    //       centos7: {
+    //         // sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
+    //         // sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
+    //       },
+    //       rhel: {
+    //         // sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
+    //         // sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
+    //       },
+    //     )
+    //   }
+    // }
   }
 }
