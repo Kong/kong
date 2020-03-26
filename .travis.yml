@@ -98,17 +98,13 @@ jobs:
     # it's not terrible if it's uncommented. But it will break for any PR not
     # targeted at current kong master
     # (unless proper KONG_DISTRIBUTIONS_VERSION branch is set)
-    - stage: package
-      if: branch != master
-      script: .ci/build_package.sh
+    # - stage: package
+    #   if: branch != master
+    #   script: .ci/build_package.sh
     # package and release, only on master
     - stage: package and deploy
       if: branch = master
       script: .ci/build_package.sh && .ci/release_artifacts.sh
-
-  # Allow the packaging step to fail
-  allow_failures:
-    - name: package
 
 script:
   - .ci/run_tests.sh
