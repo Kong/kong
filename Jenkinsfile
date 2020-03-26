@@ -13,6 +13,7 @@ pipeline {
     REDHAT = credentials('redhat')
     PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
     PRIVATE_KEY_PASSWORD = credentials('kong.private.gpg-key.asc.password')
+    CACHE_DIR = "/tmp/kong-distributions-cache"
     //KONG_VERSION = """${sh(
     //  returnStdout: true,
     //  script: '[ -n $TAG_NAME ] && echo $TAG_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+" || echo -n $BRANCH_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+"'
