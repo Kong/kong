@@ -30,6 +30,7 @@ return {
           { producer_async = { type = "boolean", default = true }, },
           { producer_async_flush_timeout = { type = "integer", default = 1000 }, },
           { producer_async_buffering_limits_messages_in_memory = { type = "integer", default = 50000 }, },
+          { api_version = { type = "integer", default = 0 }, },
         },
       },
     },

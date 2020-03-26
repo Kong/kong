@@ -10,6 +10,7 @@ local function create(conf)
     -- settings affecting all Kafka APIs (including Metadata API, Produce API, etc)
     socket_timeout = conf.timeout,
     keepalive_timeout = conf.keepalive,
+    api_version = conf.api_version,
 
     -- settings specific to Kafka Produce API
     required_acks = conf.producer_request_acks,
@@ -24,6 +25,7 @@ local function create(conf)
     producer_type = conf.producer_async and "async" or "sync",
     flush_time = conf.producer_async_flush_timeout,
     max_buffering = conf.producer_async_buffering_limits_messages_in_memory,
+    api_version = conf.api_version,
   }
   local cluster_name = conf.uuid
 
