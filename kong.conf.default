@@ -1189,6 +1189,9 @@
                                  # strategies, this value controls both the read
                                  # and write source for Vitals data.
 
+#vitals_tsdb_user =              # Influxdb user
+#vitals_tsdb_password =          # Influxdb password
+
 #vitals_statsd_address =         # Defines the host and port (and an optional
                                  # protocol) of the StatsD server to which
                                  # Kong should write Vitals metics. This value

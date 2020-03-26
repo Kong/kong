@@ -221,14 +221,32 @@ local stats_queries = {
 }
 
 
-local function query(self, q)
-  local db = "kong"
+local function authorization_headers(user, password)
+  if user ~= nil and password ~= nil then
+    return { ["Authorization"] = "Basic " .. ngx.encode_base64(user .. ":" .. password)}
+  end
+  return {}
+end
+_M.authorization_headers = authorization_headers
 
+local function prepend_protocol(address)
+  if address:sub(1, #"http") ~= "http" then
+    return "http://" .. address
+  end
+  return address
+end
+_M.prepend_protocol = prepend_protocol
+
+
+local function query(self, q)
+  local user = kong.configuration.vitals_tsdb_user
+  local password = kong.configuration.vitals_tsdb_password
+  local address = prepend_protocol(kong.configuration.vitals_tsdb_address)
   local httpc = http.new()
 
-  local res, err = httpc:request_uri("http://" .. self.host .. ":" ..
-    self.port .. "/query?db=" .. db .. "&epoch=s&q=" .. ngx.escape_uri(q)
-  )
+  local headers = authorization_headers(user, password)
+  local url = address .. "/query?db=kong&epoch=s&q=" .. ngx.escape_uri(q)
+  local res, err = httpc:request_uri(url, { headers = headers })
   if not res then
     error(err)
   end
