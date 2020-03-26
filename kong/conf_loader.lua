@@ -434,6 +434,8 @@ local CONF_INFERENCES = {
   vitals_statsd_prefix = {typ = "string"},
   vitals_statsd_udp_packet_size = {typ = "number"},
   vitals_tsdb_address = {typ = "string"},
+  vitals_tsdb_user = {typ = "string"},
+  vitals_tsdb_password = {typ = "string"},
   vitals_prometheus_scrape_interval = {typ = "number"},
 
   audit_log = {typ = "boolean"},
