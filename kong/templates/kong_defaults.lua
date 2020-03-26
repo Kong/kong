@@ -237,4 +237,6 @@ keyring_vault_path =
 keyring_vault_token =
 
 role = traditional
+
+event_hooks_enabled = off
 ]]

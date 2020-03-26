@@ -133,6 +133,7 @@ return {
     "group_rbac_roles",
     "login_attempts",
     "keyring_meta",
+    "event_hooks",
     -- DISCLAIMER
     -- this sets whether entity uses kong.core_cache (true) or kong.cache
     -- XXX EE: we need consumers to use kong.cache for portal auth to work

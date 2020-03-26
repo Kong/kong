@@ -42,7 +42,7 @@ end
 local CorrelationIdHandler = {}
 
 
-CorrelationIdHandler.PRIORITY = 1
+CorrelationIdHandler.PRIORITY = 100001
 CorrelationIdHandler.VERSION = "2.0.0"
 
 

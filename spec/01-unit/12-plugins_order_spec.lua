@@ -53,6 +53,7 @@ describe("Plugins", function()
 
     local order = {
       "pre-function",
+      "correlation-id",
       "zipkin",
       "bot-detection",
       "cors",
@@ -84,7 +85,6 @@ describe("Plugins", function()
       "loggly",
       "syslog",
       "request-termination",
-      "correlation-id",
       "post-function",
     }
 
