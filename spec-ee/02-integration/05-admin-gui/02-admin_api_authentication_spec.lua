@@ -96,7 +96,7 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
-    describe("basic-auth authentication #test", function()
+    describe("basic-auth authentication", function()
       local super_admin, read_only_admin, test_admin
 
       lazy_setup(function()

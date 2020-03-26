@@ -1348,7 +1348,7 @@
 # DEVELOPER PORTAL
 #------------------------------------------------------------------------------
 
-#portal = off
+portal = on
                         # Developer Portal Switch
                         #
                         # When enabled:
@@ -1564,7 +1564,7 @@
 # in the database for that particular workspace.
 #------------------------------------------------------------------------------
 
-#portal_auth =
+portal_auth = basic-auth
                         # Developer Portal Authentication Plugin Name
                         #
                         # Here you may specify the authentication plugin
@@ -1638,7 +1638,7 @@
                         # Note: Any value greater than 0 will only affect
                         # Dev Portals secured with basic-auth.
 
-#portal_session_conf =  # Portal Session Config (JSON)
+portal_session_conf =  { "cookie_name": "portal_session", "secret": "super-secret", "cookie_secure": false }
                         #
                         # Here you may specify the configuration for the
                         # Session plugin as used by Kong Portal.
