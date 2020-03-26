@@ -1,3 +1,13 @@
+## 1.3.4
+
+### Fixed
+
+- Fix namespace field defaulting to nil.
+
+### Added
+
+- Emit a rate-limit-exceeded event-hooks event
+
 ## 1.3.3
 
 ### Fixed
