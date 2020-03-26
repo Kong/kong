@@ -660,6 +660,17 @@ local config = {
             },
           },
           {
+            session_strategy = {
+              required = false,
+              type     = "string",
+              default  = "default",
+              one_of   = {
+                "default",
+                "regenerate",
+              },
+            },
+          },
+          {
             session_storage = {
               required = false,
               type     = "string",

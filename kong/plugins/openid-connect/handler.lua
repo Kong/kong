@@ -57,7 +57,9 @@ end
 
 
 local function create_session_open(args, secret)
-  local storage = args.get_conf_arg("session_storage", "cookie")
+  local strategy = args.get_conf_arg("session_strategy", "default")
+  local storage  = args.get_conf_arg("session_storage", "cookie")
+
   local redis, memcache
 
   if storage == "memcache" then
@@ -83,6 +85,7 @@ local function create_session_open(args, secret)
   end
 
   return function(options)
+    options.strategy = strategy
     options.storage  = storage
     options.memcache = memcache
     options.redis    = redis
