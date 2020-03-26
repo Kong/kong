@@ -1,9 +1,6 @@
 local looper = require "kong.portal.render_toolset.looper"
 
--- XXX: looper.set_node patches `nil` making any test that runs after this one
--- use the patched entity instead of the real one, even when busted is
--- insulating every describe block
-pending("base helpers", function()
+describe("base helpers", function()
   local snapshot
 
   before_each(function()
