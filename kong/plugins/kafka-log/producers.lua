@@ -10,7 +10,6 @@ local function create(conf)
     -- settings affecting all Kafka APIs (including Metadata API, Produce API, etc)
     socket_timeout = conf.timeout,
     keepalive_timeout = conf.keepalive,
-    api_version = conf.api_version,
 
     -- settings specific to Kafka Produce API
     required_acks = conf.producer_request_acks,
