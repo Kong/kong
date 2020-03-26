@@ -77,18 +77,18 @@ pipeline {
             sh "./package.sh debian:9 ${env.RELEASE_SCOPE}"
             // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:9 -e -R ${env.RELEASE_SCOPE}"
           },
-          ubuntu1404: {
-            sh "./package.sh ubuntu:14.04.2 ${env.RELEASE_SCOPE}"
-            // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:14.04.2 -e -R ${env.RELEASE_SCOPE}"
-          },
+          // ubuntu1404: {
+          //   sh "./package.sh ubuntu:14.04.2 ${env.RELEASE_SCOPE}"
+          //   // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:14.04.2 -e -R ${env.RELEASE_SCOPE}"
+          // },
           ubuntu1604: {
             sh "./package.sh ubuntu:16.04 ${env.RELEASE_SCOPE}"
             // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:16.04 -e -R ${env.RELEASE_SCOPE}"
           },
-          ubuntu1704: {
-            sh "./package.sh ubuntu:17.04 ${env.RELEASE_SCOPE}"
-            // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:17.04 -e -R ${env.RELEASE_SCOPE}"
-          },
+          // ubuntu1704: {
+          //   sh "./package.sh ubuntu:17.04 ${env.RELEASE_SCOPE}"
+          //   // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:17.04 -e -R ${env.RELEASE_SCOPE}"
+          // },
           ubuntu1804: {
             sh "./package.sh ubuntu:18.04 ${env.RELEASE_SCOPE}"
             // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:18.04 -e -R ${env.RELEASE_SCOPE}"
