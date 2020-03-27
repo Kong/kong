@@ -1329,6 +1329,19 @@ function _M:get_consumer_stats(opts)
   return convert_consumer_stats(self, res, opts.level, opts.duration)
 end
 
+function _M:get_report(opts)
+  if kong.configuration.vitals_strategy ~= "influxdb" then
+    return nil, "Unsupported vitals_strategy"
+  end
+
+  if opts.entity_type == "consumer" or opts.entity_type == "service"  then
+    return self.strategy:status_code_report_by(opts.entity_type, opts.start_ts)
+  end
+
+  if opts.entity_type == "node" then
+    return self.strategy:latency_report(opts.start_ts)
+  end
+end
 
 --[[
                          INTERFACES TO KONG CORE

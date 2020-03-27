@@ -25,118 +25,6 @@ local function fetch_consumer(self, helpers, db, consumer_id)
   end
 end
 
-local function influx_query(query)
-  local address = kong.configuration.vitals_tsdb_address
-  local user = kong.configuration.vitals_tsdb_user
-  local password = kong.configuration.vitals_tsdb_password
-  if address:sub(1, #"http") ~= "http" then
-    address = "http://" .. address
-  end
-  local httpc = http.new()
-  local data = { address = address, db = "kong", query = ngx.escape_uri(query) }
-  local url = string.gsub("$address/query?db=$db&epoch=s&q=$query", "%$(%w+)", data)
-  local headers = {}
-
-  if user ~= nil and password ~= nil then
-    headers = { ["Authorization"] = "Basic " .. ngx.encode_base64(user .. ":" .. password)}
-  end
-
-  local res, err = httpc:request_uri(url, { headers = headers})
-  if not res then
-    error(err)
-  end
-
-  if res.status ~= 200 then
-    error(res.body)
-  end
-
-  local qres = cjson.decode(res.body)
-
-  if #qres.results == 1 and qres.results[1].series then
-    return qres.results[1].series
-  elseif #qres.results > 1 then
-    return qres.results
-  else
-    return {}
-  end
-end
-
-local function status_code_report_by(entity, start_ts)
-  start_ts = start_ts or 36000
-  local query = "SELECT count(status) FROM kong.autogen.kong_request" ..
-    " WHERE time > now() - " .. ngx.time() - start_ts .. "s" ..
-    " GROUP BY " .. entity .. ", status_f"
-
-  local result = influx_query(query)
-  local stats = {}
-  for i, row in pairs(result) do
-    local lookup = {
-      consumer = row.tags.consumer,
-      service = row.tags.service
-    }
-    if stats[lookup[entity]] == nil then
-      stats[lookup[entity]] = {}
-    end
-
-    local status_group = tostring(row.tags.status_f):sub(1, 1) .. "XX"
-    local current_total = stats[lookup[entity]]["total"] or 0
-    local current_status = stats[lookup[entity]][status_group] or 0
-
-    stats[lookup[entity]]["total"] = current_total + row.values[1][2]
-    stats[lookup[entity]][status_group] = current_status + row.values[1][2]
-  end
-
-  local meta = {
-    earliest_ts = start_ts,
-    latest_ts = ngx.time(),
-    stat_labels = {
-      "total",
-      "2XX",
-      "4XX",
-      "5XX"
-    },
-  }
-
-  return { stats=stats, meta=meta }
-end
-
-local function latency_report(start_ts)
-  start_ts = start_ts or 36000
-  local columns = {
-    "proxy_max",
-    "proxy_min",
-    "proxy_avg",
-    "upstream_max",
-    "upstream_min",
-    "upstream_avg",
-  }
-  local query = "SELECT MAX(proxy_latency), MIN(proxy_latency)," ..
-    " MEAN(proxy_latency), MAX(request_latency), MIN(request_latency)," ..
-    " MEAN(request_latency) FROM kong_request" ..
-    " WHERE time > now() - " .. ngx.time() - start_ts .. "s" ..
-    " GROUP BY hostname"
-
-  local result = influx_query(query)
-
-  local stats = {}
-  for _, row in pairs(result) do
-    local hostname = row.tags.hostname
-    if stats[hostname] == nil then
-      stats[hostname] = {}
-    end
-    for i, column in pairs(columns) do
-      stats[hostname][column] = row.values[1][i+1]
-    end
-  end
-
-  local meta = {
-    earliest_ts = start_ts,
-    latest_ts = ngx.time(),
-    stat_labels = columns,
-  }
-  
-  return { stats=stats, meta=meta }
-end
 
 return {
   ["/vitals/"] = {
@@ -419,19 +307,64 @@ return {
 
   ["/vitals/reports/consumer"] = {
     GET = function(self, dao, helpers)
-      return kong.response.exit(200, status_code_report_by("consumer", self.params.start_ts))
+      local opts = {
+        entity_type = "consumer",
+        start_ts    = self.params.start_ts,
+      }
+      local report, err = kong.vitals:get_report(opts)
+
+      if err then
+        if err:find("Invalid query params", nil, true) then
+          return kong.response.exit(400, { message = err })
+
+        else
+          return helpers.yield_error(err)
+        end
+      end
+
+      return kong.response.exit(200, report)
     end
   },
 
   ["/vitals/reports/service"] = {
     GET = function(self, dao, helpers)
-      return kong.response.exit(200, status_code_report_by("service", self.params.start_ts))
+      local opts = {
+        entity_type = "service",
+        start_ts    = self.params.start_ts,
+      }
+      local report, err = kong.vitals:get_report(opts)
+
+      if err then
+        if err:find("Invalid query params", nil, true) then
+          return kong.response.exit(400, { message = err })
+
+        else
+          return helpers.yield_error(err)
+        end
+      end
+
+      return kong.response.exit(200, report)
     end
   },
 
   ["/vitals/reports/node"] = {
     GET = function(self, dao, helpers)
-      return kong.response.exit(200, latency_report(self.params.start_ts))
+      local opts = {
+        entity_type = "node",
+        start_ts    = self.params.start_ts,
+      }
+      local report, err = kong.vitals:get_report(opts)
+
+      if err then
+        if err:find("Invalid query params", nil, true) then
+          return kong.response.exit(400, { message = err })
+
+        else
+          return helpers.yield_error(err)
+        end
+      end
+
+      return kong.response.exit(200, report)
     end
   },
 }
