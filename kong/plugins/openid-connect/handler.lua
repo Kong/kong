@@ -899,12 +899,12 @@ local function rediscover_keys(issuer, options)
 end
 
 
-function OICHandler:init_worker()
+function OICHandler.init_worker()
   cache.init_worker()
 end
 
 
-function OICHandler:access(conf)
+function OICHandler.access(_, conf)
   local ctx = ngx.ctx
   local args = arguments(conf)
   args.get_http_opts = create_get_http_opts(args)
@@ -1029,7 +1029,11 @@ function OICHandler:access(conf)
   local dynamic_login_redirect_uri
 
   -- try to open session
-  local session, session_present, session_data
+  local session
+  local session_present
+  local session_modified
+  local session_regenerate
+  local session_data
   if auth_methods.session then
     local session_secure = args.get_conf_arg("session_cookie_secure")
     if session_secure == nil then
@@ -1829,12 +1833,12 @@ function OICHandler:access(conf)
     end
 
     if auth_methods.session then
+      session_modified = true
       session.data = {
         client  = trusted_client.index,
         tokens  = tokens_encoded,
         expires = exp,
       }
-      session:save()
     end
 
   elseif type(tokens_encoded) ~= "table" then
@@ -1899,9 +1903,9 @@ function OICHandler:access(conf)
           tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl, true)
 
           if type(tokens_encoded) == "table"
-              and (arg.grant_type == "refresh_token" or
-                   arg.grant_type == "password"      or
-                   arg.grant_type == "client_credentials")
+            and (arg.grant_type == "refresh_token" or
+            arg.grant_type == "password"      or
+            arg.grant_type == "client_credentials")
           then
             log("verifying tokens")
             tokens_decoded, err = oic.token:verify(tokens_encoded, arg)
@@ -1951,18 +1955,12 @@ function OICHandler:access(conf)
     exp = get_exp(tokens_decoded.access_token, tokens_encoded, ttl.now, exp_default)
 
     if auth_methods.session then
+      session_modified = true
       session.data = {
         client  = trusted_client.index,
         tokens  = tokens_encoded,
         expires = exp,
       }
-
-      if session_present then
-        session:regenerate()
-
-      else
-        session:save()
-      end
     end
 
   elseif session_present then
@@ -2157,13 +2155,17 @@ function OICHandler:access(conf)
     end
 
     if auth_methods.session then
+      if session_present then
+        session_regenerate = true
+      else
+        session_modified = true
+      end
+
       session.data = {
         client  = trusted_client.index,
         tokens  = tokens_encoded,
         expires = exp,
       }
-
-      session:regenerate()
     end
   end
 
@@ -2225,7 +2227,7 @@ function OICHandler:access(conf)
         log("jwt claim matches jwt session cookie")
 
       else
-          log("jwt claim verification skipped as it was not found on access token")
+        log("jwt claim verification skipped as it was not found on access token")
       end
     end
 
@@ -2714,14 +2716,6 @@ function OICHandler:access(conf)
     end
   end
 
-  -- remove session cookie from the upstream request?
-  if auth_methods.session then
-    log("hiding session cookie from upstream")
-    session:start()
-    session:hide()
-    session:close()
-  end
-
   -- here we replay token endpoint request response headers, if any
   replay_downstream_headers(args, downstream_headers, auth_method)
 
@@ -2988,6 +2982,24 @@ function OICHandler:access(conf)
     end)
   end
 
+
+  if auth_methods.session then
+    -- remove session cookie from the upstream request?
+    log("starting session and hiding session cookie from upstream")
+    session:hide()
+    session:start()
+    if session_regenerate then
+      log("regenerating session identifier")
+      session:regenerate()
+    elseif session_modified then
+      log("saving session")
+      session:save()
+    else
+      log("closing session")
+      session:close()
+    end
+  end
+
   -- login actions
   do
     local login_action = args.get_conf_arg("login_action")
@@ -3050,7 +3062,7 @@ function OICHandler:access(conf)
 
         elseif login_action == "redirect" then
           local login_redirect_uri = trusted_client.login_redirect_uri or
-                                     dynamic_login_redirect_uri
+            dynamic_login_redirect_uri
 
           if login_redirect_uri then
             local u = { login_redirect_uri }
