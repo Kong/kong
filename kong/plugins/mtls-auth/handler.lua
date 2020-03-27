@@ -43,7 +43,7 @@ end
 
 
 MtlsAuthHandler.PRIORITY = 1006
-MtlsAuthHandler.VERSION = "0.0.9"
+MtlsAuthHandler.VERSION = "0.1.0"
 
 
 return MtlsAuthHandler
