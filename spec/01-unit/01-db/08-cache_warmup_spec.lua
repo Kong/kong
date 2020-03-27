@@ -5,6 +5,7 @@ local function mock_entity(db_data, entity_name, cache_key)
   return {
     schema = {
       name = entity_name,
+      primary_key = {"id"},
     },
     each = function()
       local i = 0
@@ -59,6 +60,21 @@ end
 
 describe("cache_warmup", function()
 
+  it("uses right entity cache store", function()
+    local store = require "kong.constants".ENTITY_CACHE_STORE
+    assert.equal("cache", store.consumers)
+    assert.equal("core_cache", store.certificates)
+    assert.equal("core_cache", store.services)
+    assert.equal("core_cache", store.routes)
+    assert.equal("core_cache", store.snis)
+    assert.equal("core_cache", store.upstreams)
+    assert.equal("core_cache", store.targets)
+    assert.equal("core_cache", store.plugins)
+    assert.equal("cache", store.tags)
+    assert.equal("core_cache", store.ca_certificates)
+    assert.equal("cache", store.keyauth_credentials)
+  end)
+
   it("caches entities", function()
     local cache_table = {}
     local db_data = {
@@ -76,6 +92,9 @@ describe("cache_warmup", function()
       db = {
         my_entity = mock_entity(db_data, "my_entity", "aaa"),
         another_entity = mock_entity(db_data, "another_entity", "xxx"),
+        workspace_entities = {
+          select_all = function() return {} end
+        },
       },
       cache = mock_cache(cache_table),
     }
@@ -108,6 +127,9 @@ describe("cache_warmup", function()
       db = {
         my_entity = mock_entity(db_data, "my_entity", "aaa"),
         routes = mock_entity(db_data, "routes", "xxx"),
+        workspace_entities = {
+          select_all = function() return {} end
+        },
       },
       cache = mock_cache(cache_table),
       log = mock_log(nil, logged_notices),
@@ -144,6 +166,9 @@ describe("cache_warmup", function()
       db = {
         my_entity = mock_entity(db_data, "my_entity", "aaa"),
         services = mock_entity(db_data, "services", "name"),
+        workspace_entities = {
+          select_all = function() return {} end
+        },
       },
       cache = mock_cache(cache_table),
       dns = {
@@ -173,7 +198,11 @@ describe("cache_warmup", function()
     local logged_warnings = {}
 
     local kong = {
-      db = {},
+      db = {
+        workspace_entities = {
+          select_all = function() return {} end
+        },
+      },
       cache = {},
       log = mock_log(logged_warnings),
     }
@@ -204,6 +233,9 @@ describe("cache_warmup", function()
       db = {
         my_entity = mock_entity(db_data, "my_entity", "aaa"),
         another_entity = mock_entity(db_data, "another_entity", "xxx"),
+        workspace_entities = {
+          select_all = function() return {} end
+        },
       },
       cache = mock_cache(cache_table, 3),
       log = mock_log(logged_warnings),

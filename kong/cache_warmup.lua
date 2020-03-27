@@ -50,6 +50,24 @@ local function cache_warmup_single_entity(dao)
     host_count = 0
   end
 
+  local id_to_ws = kong.db.workspace_entities:select_all({
+    entity_type= entity_name,
+    unique_field_name=dao.schema.primary_key[1] or "id"
+  })
+
+
+  -- id_to_ws == {{ id='123',..., workspace_id='w1' },
+  --              { id='123',..., workspace_id='w2' }}
+
+  local id_to_ws_h = {}
+  for _, v in ipairs(id_to_ws) do
+    id_to_ws_h[v.unique_field_value] = id_to_ws_h[v.unique_field_value] or {}
+    table.insert(id_to_ws_h[v.unique_field_value], v.workspace_id)
+  end
+
+  -- {'123'= {'w1', 'w2'} }
+  local cache = kong.cache
+
   for entity, err in dao:each() do
     if err then
       return nil, err
@@ -64,11 +82,32 @@ local function cache_warmup_single_entity(dao)
       end
     end
 
-    local cache_key = dao:cache_key(entity)
+    for _, v in ipairs(id_to_ws_h[entity.id] or {false}) do
+      local cache_key, cache_key_ws, ok, err
 
-    local ok, err = kong.cache:safe_set(cache_key, entity)
-    if not ok then
-      return nil, err
+      if entity_name == 'plugins' then
+        cache_key = dao:cache_key(entity)
+        cache_key_ws = dao:cache_key(entity, nil , nil, nil, nil, nil, v)
+        entity = kong.db.plugins:select_by_cache_key(cache_key_ws,
+                                                    { include_ws = true })
+        ok, err = cache:safe_set(cache_key_ws, entity)
+
+        if not ok then
+          return nil, err
+        end
+      else
+        cache_key = dao:cache_key(entity, nil , nil, nil, nil, nil, v)
+      end
+
+      -- consumers:123:21::ws_id
+      -- consumers:123:21::::ws_id2
+
+
+      ok, err = kong.cache:safe_set(cache_key, entity)
+
+      if not ok then
+        return nil, err
+      end
     end
   end
 

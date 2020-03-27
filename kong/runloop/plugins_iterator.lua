@@ -120,6 +120,7 @@ local function load_plugin_into_memory_ws(ctx, key)
 
     -- attempt finding the plugin in the L1 (LRU) cache
     plugin = singletons.cache.mlcache.lru:get(plugin_cache_key)
+
     if plugin then
       found = true
 

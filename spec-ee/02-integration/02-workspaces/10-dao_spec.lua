@@ -497,6 +497,49 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           assert.is_true(ok)
         end)
+        it("selects plugin from workspace [w1] by cache key and fails to select from workspace [default]", function()
+          local res, p, p_cache_key_ws, ok, err
+
+          run_ws({ w1 }, function()
+            p, err = bp.plugins:insert({ name = "key-auth" })
+            assert.is_nil(err)
+
+            res, err = db.plugins:select({ id = p.id })
+            assert.is_nil(err)
+            assert.same(res, p)
+
+            -- loads plugin from db with ws info
+            p_cache_key_ws = db.plugins:cache_key(p)
+
+            -- retrieving plugin entity from workspace w1 with ws info
+            res, err = db.plugins:select_by_cache_key(p_cache_key_ws, { include_ws = true })
+
+            assert.is_nil(err)
+            assert.is_not.same(p, res)
+            assert.same(res.workspace_id, w1.id)
+            assert.same(res.workspace_name, w1.name)
+
+            -- retrieving plugin entity from workspace w1 without ws info
+            res, err = db.plugins:select_by_cache_key(p_cache_key_ws)
+            assert.is_nil(err)
+            assert.same(p, res)
+            assert.is_nil(res.workspace_id)
+            assert.is_nil(res.workspace_name)
+          end)
+
+          -- make sure the plugin still exists out of run_ws
+          assert.is_not_nil(p)
+
+          -- retrieving plugin entity from workspace [default]
+          res, err = db.plugins:select({ id = p.id })
+          assert.is_nil(err)
+          assert.is_nil(res)
+
+          -- cleanup, removing plugin
+          ok, err = db.plugins:delete({ id = p.id })
+          assert.is_nil(err)
+          assert.is_true(ok)
+        end)
       end)
 
       describe("cache_key():", function()

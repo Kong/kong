@@ -196,7 +196,6 @@ local function register_events()
 
     local cache_key = db[data.schema.name]:cache_key(data.entity, nil, nil,
                                                      nil, nil, true)
-
     if cache_key then
       cache:invalidate(cache_key, workspaces)
     end
