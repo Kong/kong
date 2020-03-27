@@ -1,6 +1,4 @@
 local helpers = require "spec.helpers"
-local redis = require "resty.redis"
-
 
 local REDIS_HOST = helpers.redis_host
 local REDIS_PORT = 6379
@@ -12,10 +10,15 @@ local SLEEP_TIME = 1
 
 
 local function flush_redis(db)
-  local red = redis:new()
-  red:set_timeout(2000)
-  assert(red:connect(REDIS_HOST, REDIS_PORT))
-  assert(red:select(db))
+  local redis_connector = require("resty.redis.connector").new()
+  local red, err = redis_connector:connect({
+    host = REDIS_HOST,
+    port = REDIS_PORT,
+    db = db
+  })
+  if red == nil or not red then
+    error("failed to connect to Redis: " .. err)
+  end
   red:flushall()
   red:close()
 end
@@ -60,9 +63,11 @@ describe("Plugin: rate-limiting (integration)", function()
         config = {
           minute         = 1,
           policy         = "redis",
-          redis_host     = REDIS_HOST,
-          redis_port     = REDIS_PORT,
-          redis_database = REDIS_DB_1,
+          redis          = {
+            host     = REDIS_HOST,
+            port     = REDIS_PORT,
+            database = REDIS_DB_1
+          },
           fault_tolerant = false,
         },
       })
@@ -76,9 +81,11 @@ describe("Plugin: rate-limiting (integration)", function()
         config = {
           minute         = 1,
           policy         = "redis",
-          redis_host     = REDIS_HOST,
-          redis_port     = REDIS_PORT,
-          redis_database = REDIS_DB_2,
+          redis          = {
+            host     = REDIS_HOST,
+            port     = REDIS_PORT,
+            database = REDIS_DB_2
+          },
           fault_tolerant = false,
         }
       })
@@ -89,8 +96,17 @@ describe("Plugin: rate-limiting (integration)", function()
     end)
 
     it("connection pool respects database setting", function()
-      local red = redis:new()
-      red:set_timeout(2000)
+      local redis_connector = require("resty.redis.connector").new()
+      
+      local red, err = redis_connector:connect({
+        host = REDIS_HOST,
+        port = REDIS_PORT,
+        connect_timeout = 2000,
+        db = REDIS_DB_1
+      })
+      if red == nil or not red then
+        error("failed to connect to Redis: " .. err)
+      end
 
       finally(function()
         if red then
@@ -98,9 +114,6 @@ describe("Plugin: rate-limiting (integration)", function()
         end
       end)
 
-      assert(red:connect(REDIS_HOST, REDIS_PORT))
-
-      assert(red:select(REDIS_DB_1))
       local size_1 = assert(red:dbsize())
 
       assert(red:select(REDIS_DB_2))

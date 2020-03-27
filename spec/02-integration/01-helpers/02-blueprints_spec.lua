@@ -233,7 +233,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("inserts rate limiting plugins", function()
-      local p = bp.rate_limiting_plugins:insert({ config = { hour = 42 } })
+      local p = bp.rate_limiting_plugins:insert({ config = { hour = 42 , redis = {host = "5.5.5.5", port=6379}} })
       assert.equals("rate-limiting", p.name)
       assert.matches(UUID_PATTERN, p.id)
     end)

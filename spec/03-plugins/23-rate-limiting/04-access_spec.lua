@@ -53,26 +53,16 @@ end
 
 
 local function flush_redis()
-  local redis = require "resty.redis"
-  local red = redis:new()
-  red:set_timeout(2000)
-  local ok, err = red:connect(REDIS_HOST, REDIS_PORT)
-  if not ok then
+  local redis_connector = require("resty.redis.connector").new()
+  local red, err = redis_connector:connect({
+    host = REDIS_HOST,
+    port = REDIS_PORT,
+    password = REDIS_PASSWORD,
+    db = REDIS_DATABASE
+  })
+  if red == nil or not red then
     error("failed to connect to Redis: " .. err)
   end
-
-  if REDIS_PASSWORD and REDIS_PASSWORD ~= "" then
-    local ok, err = red:auth(REDIS_PASSWORD)
-    if not ok then
-      error("failed to connect to Redis: " .. err)
-    end
-  end
-
-  local ok, err = red:select(REDIS_DATABASE)
-  if not ok then
-    error("failed to change Redis database: " .. err)
-  end
-
   red:flushall()
   red:close()
 end
@@ -87,7 +77,7 @@ for _, strategy in helpers.each_strategy() do
       lazy_setup(function()
         helpers.kill_all()
         flush_redis()
-
+       
         bp, db = helpers.get_db_utils(strategy)
 
         local consumer1 = bp.consumers:insert {
@@ -123,10 +113,12 @@ for _, strategy in helpers.each_strategy() do
             policy         = policy,
             minute         = 6,
             fault_tolerant = false,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE,
+            redis          = {
+              host     = REDIS_HOST,
+              port     = REDIS_PORT,
+              password = REDIS_PASSWORD,
+              database = REDIS_DATABASE
+            }
           }
         })
 
@@ -141,10 +133,12 @@ for _, strategy in helpers.each_strategy() do
             hour           = 5,
             fault_tolerant = false,
             policy         = policy,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE,
+            redis          = {
+              host     = REDIS_HOST,
+              port     = REDIS_PORT,
+              password = REDIS_PASSWORD,
+              database = REDIS_DATABASE
+            }
           }
         })
 
@@ -164,10 +158,12 @@ for _, strategy in helpers.each_strategy() do
             limit_by       = "credential",
             fault_tolerant = false,
             policy         = policy,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE,
+            redis          = {
+              host     = REDIS_HOST,
+              port     = REDIS_PORT,
+              password = REDIS_PASSWORD,
+              database = REDIS_DATABASE
+            }
           }
         })
 
@@ -178,10 +174,12 @@ for _, strategy in helpers.each_strategy() do
             minute         = 8,
             fault_tolerant = false,
             policy         = policy,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE
+            redis          = {
+              host     = REDIS_HOST,
+              port     = REDIS_PORT,
+              password = REDIS_PASSWORD,
+              database = REDIS_DATABASE
+            }
           }
         })
 
@@ -201,10 +199,12 @@ for _, strategy in helpers.each_strategy() do
             minute         = 6,
             fault_tolerant = true,
             policy         = policy,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE,
+            redis          = {
+              host     = REDIS_HOST,
+              port     = REDIS_PORT,
+              password = REDIS_PASSWORD,
+              database = REDIS_DATABASE
+            }
           },
         })
 
@@ -219,10 +219,12 @@ for _, strategy in helpers.each_strategy() do
             minute              = 6,
             hide_client_headers = true,
             fault_tolerant      = false,
-            redis_host          = REDIS_HOST,
-            redis_port          = REDIS_PORT,
-            redis_password      = REDIS_PASSWORD,
-            redis_database      = REDIS_DATABASE,
+            redis          = {
+              host     = REDIS_HOST,
+              port     = REDIS_PORT,
+              password = REDIS_PASSWORD,
+              database = REDIS_DATABASE
+            }
           },
         })
 
@@ -242,10 +244,12 @@ for _, strategy in helpers.each_strategy() do
             policy         = policy,
             minute         = 6,
             fault_tolerant = false,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE,
+            redis          = {
+              host     = REDIS_HOST,
+              port     = REDIS_PORT,
+              password = REDIS_PASSWORD,
+              database = REDIS_DATABASE
+            }
           }
         })
 
@@ -612,7 +616,7 @@ for _, strategy in helpers.each_strategy() do
 
             bp.rate_limiting_plugins:insert {
               route = { id = route1.id },
-              config  = { minute = 6, policy = policy, redis_host = "5.5.5.5", fault_tolerant = false },
+              config  = { minute = 6, policy = policy, redis ={ host = "5.5.5.5", port = 6379 }, fault_tolerant = false },
             }
 
             local service2 = bp.services:insert()
@@ -626,7 +630,7 @@ for _, strategy in helpers.each_strategy() do
             bp.rate_limiting_plugins:insert {
               name   = "rate-limiting",
               route = { id = route2.id },
-              config = { minute = 6, policy = policy, redis_host = "5.5.5.5", fault_tolerant = true },
+              config = { minute = 6, policy = policy, redis ={ host = "5.5.5.5", port = 6379 }, fault_tolerant = true },
             }
 
             assert(helpers.start_kong({
@@ -681,11 +685,13 @@ for _, strategy in helpers.each_strategy() do
             config   = {
               minute         = 6,
               policy         = policy,
-              redis_host     = REDIS_HOST,
-              redis_port     = REDIS_PORT,
-              redis_password = REDIS_PASSWORD,
-              fault_tolerant = false,
-              redis_database = REDIS_DATABASE,
+              redis          = {
+                host     = REDIS_HOST,
+                port     = REDIS_PORT,
+                password = REDIS_PASSWORD,
+                database = REDIS_DATABASE
+              },
+              fault_tolerant = false
             },
           }
 
@@ -754,10 +760,12 @@ for _, strategy in helpers.each_strategy() do
             policy         = policy,
             minute         = 6,
             fault_tolerant = false,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE,
+            redis          = {
+              host     = REDIS_HOST,
+              port     = REDIS_PORT,
+              password = REDIS_PASSWORD,
+              database = REDIS_DATABASE
+            }
           }
         })
 
@@ -825,10 +833,12 @@ for _, strategy in helpers.each_strategy() do
             policy         = policy,
             minute         = 6,
             fault_tolerant = false,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE,
+            redis          = {
+              host     = REDIS_HOST,
+              port     = REDIS_PORT,
+              password = REDIS_PASSWORD,
+              database = REDIS_DATABASE
+            }
           }
         })
 
@@ -895,10 +905,12 @@ for _, strategy in helpers.each_strategy() do
             policy         = policy,
             minute         = 6,
             fault_tolerant = false,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE,
+            redis          = {
+              host     = REDIS_HOST,
+              port     = REDIS_PORT,
+              password = REDIS_PASSWORD,
+              database = REDIS_DATABASE
+            }
           }
         })
 

@@ -37,6 +37,7 @@ dependencies = {
   "lua-messagepack == 0.5.2",
   "lua-resty-openssl == 0.4.3",
   "lua-resty-counter == 0.2.0",
+  "lua-resty-redis-connector == 0.08",
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 0.4",
   "kong-plugin-zipkin ~> 0.2",
@@ -252,6 +253,7 @@ build = {
     ["kong.plugins.rate-limiting.daos"] = "kong/plugins/rate-limiting/daos.lua",
     ["kong.plugins.rate-limiting.policies"] = "kong/plugins/rate-limiting/policies/init.lua",
     ["kong.plugins.rate-limiting.policies.cluster"] = "kong/plugins/rate-limiting/policies/cluster.lua",
+    ["kong.plugins.rate-limiting.policies.redis"] = "kong/plugins/rate-limiting/policies/redis.lua",
 
     ["kong.plugins.response-ratelimiting.migrations"] = "kong/plugins/response-ratelimiting/migrations/init.lua",
     ["kong.plugins.response-ratelimiting.migrations.000_base_response_rate_limiting"] = "kong/plugins/response-ratelimiting/migrations/000_base_response_rate_limiting.lua",

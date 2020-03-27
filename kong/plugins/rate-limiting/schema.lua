@@ -48,12 +48,24 @@ return {
               one_of = { "local", "cluster", "redis" },
           }, },
           { fault_tolerant = { type = "boolean", default = true }, },
-          { redis_host = typedefs.host },
-          { redis_port = typedefs.port({ default = 6379 }), },
-          { redis_password = { type = "string", len_min = 0 }, },
-          { redis_timeout = { type = "number", default = 2000, }, },
-          { redis_database = { type = "integer", default = 0 }, },
           { hide_client_headers = { type = "boolean", default = false }, },
+          {
+            redis = {
+              type = "record",
+              fields = {
+                {sentinel_master = {type = "string", required = false}},
+                {sentinel_addresses = {type = "array", elements = {type = "string"}, len_min = 1, required = false}},
+                {host = typedefs.host {required = false}},
+                {port = typedefs.port {required = false}},
+                {keepalive_timeout = {type = "number", required = false, default = 60000}},
+                {keepalive_poolsize = {type = "number", required = false, default = 100}},
+                {read_timeout = {type = "number", required = true, gt = 0, default = 1000}},
+                {connect_timeout = {type = "number", required = true, gt = 0, default = 1000}},
+                {password = {type = "string", required = false}},
+                {database = {type = "number", required = true, default = 0}}
+              }
+            }
+          },
         },
         custom_validator = validate_periods_order,
       },
@@ -61,17 +73,18 @@ return {
   },
   entity_checks = {
     { at_least_one_of = { "config.second", "config.minute", "config.hour", "config.day", "config.month", "config.year" } },
-    { conditional = {
+    { conditional_at_least_one_of = {
       if_field = "config.policy", if_match = { eq = "redis" },
-      then_field = "config.redis_host", then_match = { required = true },
+      then_at_least_one_of = {"config.redis.sentinel_addresses", "config.redis.host" },
     } },
     { conditional = {
       if_field = "config.policy", if_match = { eq = "redis" },
-      then_field = "config.redis_port", then_match = { required = true },
+      then_field = "config.redis.read_timeout", then_match = { required = true },
     } },
     { conditional = {
       if_field = "config.policy", if_match = { eq = "redis" },
-      then_field = "config.redis_timeout", then_match = { required = true },
+      then_field = "config.redis.connect_timeout", then_match = { required = true },
     } },
+    { mutually_required = {"config.redis.host","config.redis.port" } },
   },
 }
