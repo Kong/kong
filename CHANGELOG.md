@@ -1,3 +1,9 @@
+## v1.2.7
+
+- Fix cluster invalidate consumer cache (see #43, thanks @rainest)
+- Fix pcall kong.configuration to handle command line invocations (see #44, thanks @RobSerafini)
+
+
 ## v1.2.6
 
 - Fix header encoding to use base64 (non-url variant) with padding
