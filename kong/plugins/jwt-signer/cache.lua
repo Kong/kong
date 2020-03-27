@@ -36,24 +36,30 @@ local function init_worker()
     log("consumer updated, invalidating cache")
 
     local old_entity = data.old_entity
+    local old_username
+    local old_custom_id
     if old_entity then
-      if old_entity.custom_id and old_entity.custom_id ~= null and old_entity.custom_id ~= "" then
-        kong.cache:invalidate_local(kong.db.consumers:cache_key("custom_id", old_entity.custom_id))
+      old_custom_id = old_entity.custom_id
+      if old_custom_id and old_custom_id ~= null and old_custom_id ~= "" then
+        kong.cache:invalidate(kong.db.consumers:cache_key("custom_id", old_custom_id))
       end
 
-      if old_entity.username and old_entity.username ~= null and old_entity.username ~= "" then
-        kong.cache:invalidate_local(kong.db.consumers:cache_key("username", old_entity.username))
+      old_username = old_entity.username
+      if old_username and old_username ~= null and old_username ~= "" then
+        kong.cache:invalidate(kong.db.consumers:cache_key("username", old_username))
       end
     end
 
     local entity = data.entity
     if entity then
-      if entity.custom_id and entity.custom_id ~= null and entity.custom_id ~= "" then
-        kong.cache:invalidate_local(kong.db.consumers:cache_key("custom_id", entity.custom_id))
+      local custom_id = entity.custom_id
+      if custom_id and custom_id ~= null and custom_id ~= "" and custom_id ~= old_custom_id then
+        kong.cache:invalidate(kong.db.consumers:cache_key("custom_id", custom_id))
       end
 
-      if entity.username and entity.username ~= null and entity.username ~= "" then
-        kong.cache:invalidate_local(kong.db.consumers:cache_key("username", entity.username))
+      local username = entity.username
+      if username and username ~= null and username ~= "" and username ~= old_username then
+        kong.cache:invalidate(kong.db.consumers:cache_key("username", username))
       end
     end
   end, "crud", "consumers")
