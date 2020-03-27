@@ -1334,6 +1334,10 @@ function _M:get_report(opts)
     return nil, "Unsupported vitals_strategy"
   end
 
+  if opts.entity_type ~= "consumer" and opts.entity_type ~= "service" and opts.entity_type ~= "node" then
+    return nil, "Unsupported vitals report"
+  end
+
   if opts.entity_type == "consumer" or opts.entity_type == "service"  then
     return self.strategy:status_code_report_by(opts.entity_type, opts.start_ts)
   end

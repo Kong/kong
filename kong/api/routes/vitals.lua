@@ -1,7 +1,4 @@
 local endpoints = require "kong.api.endpoints"
-local http  = require "resty.http"
-local cjson = require "cjson"
-local inspect = require "inspect"
 
 
 local kong = kong
