@@ -173,7 +173,7 @@ end
 
 
 local function validate_certificate(cert)
-  local _, err =  openssl_x509.new(cert)
+  local _, err = openssl_x509.new(cert)
   if err then
     return nil, "invalid certificate: " .. err
   end
@@ -183,7 +183,16 @@ end
 
 
 local function validate_key(key)
-  local _, err =  openssl_pkey.new(key)
+  -- requires a unencrypted PEM-encoded key
+  local ok, _, err = pcall(openssl_pkey.new, key, {
+    format = "PEM",
+    passphrase_cb = function()
+      error("shouldn't reach here", 2)
+    end,
+  })
+  if not ok then
+    err = "key is encrypted"
+  end
   if err then
     return nil, "invalid key: " .. err
   end
