@@ -1,4 +1,9 @@
-local BasePlugin = require "kong.plugins.base_plugin"
+local JwtSignerHandler = {
+  PRIORITY = 999,
+  VERSION  = "1.0.3",
+}
+
+
 local constants  = require "kong.constants"
 local arguments  = require "kong.plugins.jwt-signer.arguments"
 local cache      = require "kong.plugins.jwt-signer.cache"
@@ -7,7 +12,9 @@ local jwt        = require "kong.openid-connect.jwt"
 local jws        = require "kong.openid-connect.jws"
 local set        = require "kong.openid-connect.set"
 
+
 local ngx        = ngx
+local kong       = kong
 local tonumber   = tonumber
 local tostring   = tostring
 local ipairs     = ipairs
@@ -272,23 +279,12 @@ local function instrument()
 end
 
 
-local JwtSignerHandler = BasePlugin:extend()
-
-
-function JwtSignerHandler:new()
-  JwtSignerHandler.super.new(self, "jwt-signer")
-end
-
-
-function JwtSignerHandler:init_worker()
-  JwtSignerHandler.super.init_worker(self)
+function JwtSignerHandler.init_worker()
   cache.init_worker()
 end
 
 
-function JwtSignerHandler:access(conf)
-  JwtSignerHandler.super.access(self)
-
+function JwtSignerHandler.access(_, conf)
   local args = arguments(conf)
   local ins = args.get_conf_arg("enable_instrumentation") and instrument() or noop
 
@@ -305,8 +301,8 @@ function JwtSignerHandler:access(conf)
     local errs   = ERRS[token_type]
 
     local err = nil
-    local enable_introspection = nil
-    local trust_introspection = nil
+    local enable_introspection
+    local trust_introspection
     local payload
 
     local request_header = args.get_conf_arg(config.request_header)
@@ -765,10 +761,6 @@ function JwtSignerHandler:access(conf)
 
   ins("request finished")
 end
-
-
-JwtSignerHandler.PRIORITY = 999
-JwtSignerHandler.VERSION  = "1.0.3"
 
 
 return JwtSignerHandler
