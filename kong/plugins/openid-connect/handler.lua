@@ -1034,6 +1034,7 @@ function OICHandler.access(_, conf)
   local session_modified
   local session_regenerate
   local session_data
+  local session_error
   if auth_methods.session then
     local session_secure = args.get_conf_arg("session_cookie_secure")
     if session_secure == nil then
@@ -1052,7 +1053,7 @@ function OICHandler.access(_, conf)
       session_secure = lower(scheme) == "https"
     end
 
-    session, session_present = session_open {
+    session, session_present, session_error = session_open {
       name = args.get_conf_arg("session_cookie_name", "session"),
       cookie = {
         lifetime = args.get_conf_arg("session_cookie_lifetime", 3600),
@@ -1214,7 +1215,11 @@ function OICHandler.access(_, conf)
     local hide_credentials = args.get_conf_arg("hide_credentials", false)
 
     if auth_methods.session then
-      log("session was not found")
+      if session_error then
+        log("session was not found (", session_error, ")")
+      else
+        log("session was not found")
+      end
     end
 
     -- bearer token authentication
@@ -1491,7 +1496,7 @@ function OICHandler.access(_, conf)
             authorization_secure = lower(scheme) == "https"
           end
 
-          local authorization, authorization_present = session_open {
+          local authorization, authorization_present, authorization_error = session_open {
             name = args.get_conf_arg("authorization_cookie_name", "authorization"),
             cookie = {
               lifetime = args.get_conf_arg("authorization_cookie_lifetime", 600),
@@ -1598,7 +1603,11 @@ function OICHandler.access(_, conf)
             end
 
           else
-            log("authorization code flow session was not found")
+            if authorization_error then
+              log("authorization code flow session was not found (", authorization_error, ")")
+            else
+              log("authorization code flow session was not found")
+            end
           end
 
           if type(token_endpoint_args) ~= "table" then
