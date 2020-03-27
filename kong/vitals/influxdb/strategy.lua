@@ -620,7 +620,7 @@ end
 
 function _M:status_code_report_by(entity, start_ts)
   start_ts = start_ts or 36000
-  local q = "SELECT count(status) FROM kong.autogen.kong_request"
+  local q = "SELECT count(status) FROM kong_request"
   local where_clause = " WHERE time > now() - " .. ngx.time() - start_ts .. "s"
   local group_by = " GROUP BY " .. entity .. ", status_f"
 
