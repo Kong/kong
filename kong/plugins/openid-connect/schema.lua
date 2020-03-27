@@ -609,6 +609,12 @@ local config = {
             },
           },
           {
+            session_cookie_idletime = {
+              required = false,
+              type     = "number",
+            },
+          },
+          {
             session_cookie_renew = {
               required = false,
               type     = "number",

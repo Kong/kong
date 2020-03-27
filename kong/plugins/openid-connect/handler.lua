@@ -1052,6 +1052,7 @@ function OICHandler:access(conf)
       name = args.get_conf_arg("session_cookie_name", "session"),
       cookie = {
         lifetime = args.get_conf_arg("session_cookie_lifetime", 3600),
+        idletime = args.get_conf_arg("session_cookie_idletime"),
         renew    = args.get_conf_arg("session_cookie_renew", 600),
         path     = args.get_conf_arg("session_cookie_path", "/"),
         domain   = args.get_conf_arg("session_cookie_domain"),
