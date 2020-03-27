@@ -1,3 +1,19 @@
+## v1.0.4
+
+### Fixed
+
+- Consumer invalidation now happen cluster wide. Reverting the change made in `1.0.2`.
+
+### Changed
+
+- The plugin does not inherit anymore from BasePlugin
+- The run_on attribute need is dynamically detected (it was dropped already on CE)
+
+### Added
+
+- support for more algorithms: HS256, HS384, HS512, RS512, ES256, ES384,
+  ES512, PS256, PS384, PS512, EdDSA
+
 ## v1.0.3
 
 ### Fixed

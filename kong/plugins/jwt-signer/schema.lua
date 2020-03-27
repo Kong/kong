@@ -1,10 +1,11 @@
 local typedefs  = require "kong.db.schema.typedefs"
-
 local arguments = require "kong.plugins.jwt-signer.arguments"
 local cache     = require "kong.plugins.jwt-signer.cache"
 local log       = require "kong.plugins.jwt-signer.log"
 
 
+local table = table
+local pcall = pcall
 local get_phase = ngx.get_phase
 
 
@@ -61,15 +62,15 @@ local function validate_tokens(conf)
   return true
 end
 
-return {
+
+local config = {
   name = "jwt-signer",
   fields = {
-    { consumer  = typedefs.no_consumer  },
-    { run_on    = typedefs.run_on_first },
-    { config    = {
-        type                = "record",
-        custom_validator    = validate_tokens,
-        fields              = {
+    { consumer = typedefs.no_consumer },
+    { config   = {
+        type             = "record",
+        custom_validator = validate_tokens,
+        fields           = {
           {
             realm = {
               type = "string",
@@ -143,7 +144,7 @@ return {
               type = "array",
               elements = {
                 type = "string",
-                one_of = {"id", "username", "custom_id" },
+                one_of = { "id", "username", "custom_id" },
               },
               default = { "username", "custom_id" },
               required = false,
@@ -248,7 +249,20 @@ return {
           {
             access_token_signing_algorithm = {
               type = "string",
-              one_of = { "RS256", "RS512" },
+              one_of = {
+                "HS256",
+                "HS384",
+                "HS512",
+                "RS256",
+                "RS512",
+                "ES256",
+                "ES384",
+                "ES512",
+                "PS256",
+                "PS384",
+                "PS512",
+                "EdDSA",
+              },
               default = "RS256",
               required = true,
             },
@@ -475,7 +489,20 @@ return {
           {
             channel_token_signing_algorithm = {
               type = "string",
-              one_of = { "RS256", "RS512" },
+              one_of = {
+                "HS256",
+                "HS384",
+                "HS512",
+                "RS256",
+                "RS512",
+                "ES256",
+                "ES384",
+                "ES512",
+                "PS256",
+                "PS384",
+                "PS512",
+                "EdDSA",
+              },
               default = "RS256",
               required = true,
             },
@@ -548,3 +575,20 @@ return {
     },
   },
 }
+
+
+do
+  local ok, run_on_first = pcall(function()
+    return typedefs.run_on_first
+  end)
+
+  if ok then
+    if typedefs.run_on_first then
+      table.insert(config.fields, {
+        run_on = run_on_first,
+      })
+    end
+  end
+end
+
+return config
