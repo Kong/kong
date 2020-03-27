@@ -27,6 +27,7 @@ local developer_status = Schema.define { type = "integer", between = { 0, 5 }, d
 return {
   name          = "developers",
   primary_key   = { "id" },
+  cache_key     = { "email" },
   endpoint_key  = "email",
   dao           = "kong.db.dao.developers",
   workspaceable = true,
