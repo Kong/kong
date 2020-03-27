@@ -56,11 +56,6 @@ local function cache_invalidate(key)
 end
 
 
-local function cache_invalidate_cluster(key)
-  return kong.cache:invalidate(key)
-end
-
-
 local function get_expiry_and_cache_ttl(token, ttl)
   local expires_in
   if type(token) == "table" then
@@ -135,17 +130,17 @@ local function init_worker()
     log("consumer updated, invalidating cache")
 
     local old_entity = data.old_entity
-    local old_custom_id
     local old_username
+    local old_custom_id
     if old_entity then
       old_custom_id = old_entity.custom_id
       if old_custom_id and old_custom_id ~= null and old_custom_id ~= "" then
-        cache_invalidate_cluster(cache_key("custom_id:" .. old_custom_id, "consumers"))
+        kong.cache:invalidate(kong.db.consumers:cache_key("custom_id", old_custom_id))
       end
 
       old_username = old_entity.username
       if old_username and old_username ~= null and old_username ~= "" then
-        cache_invalidate_cluster(cache_key("username:" .. old_username,  "consumers"))
+        kong.cache:invalidate(kong.db.consumers:cache_key("username", old_username))
       end
     end
 
@@ -153,12 +148,12 @@ local function init_worker()
     if entity then
       local custom_id = entity.custom_id
       if custom_id and custom_id ~= null and custom_id ~= "" and custom_id ~= old_custom_id then
-        cache_invalidate_cluster(cache_key("custom_id:" .. custom_id, "consumers"))
+        kong.cache:invalidate(kong.db.consumers:cache_key("custom_id", custom_id))
       end
 
       local username = entity.username
       if username and username ~= null and username ~= "" and username ~= old_username then
-        cache_invalidate_cluster(cache_key("username:" .. username,  "consumers"))
+        kong.cache:invalidate(kong.db.consumers:cache_key("username", username))
       end
     end
   end, "crud", "consumers")
@@ -481,10 +476,10 @@ function consumers.load(subject, anonymous, consumer_by, ttl)
     local key
 
     if field_name == "id" then
-      key = cache_key(subject, "consumers")
+      key = kong.db.consumers:cache_key(subject)
 
     else
-      key = cache_key(field_name .. ":" .. subject, "consumers")
+      key = kong.db.consumers:cache_key(field_name, subject)
     end
 
     local consumer
