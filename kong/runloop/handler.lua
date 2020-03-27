@@ -208,13 +208,7 @@ local function register_events()
 
     local cache_key = db[data.schema.name]:cache_key(data.entity, nil, nil,
                                                      nil, nil, true)
-
-    local cache_obj
-    if constants.CORE_ENTITIES[data.schema.name] then
-      cache_obj = core_cache
-    else
-      cache_obj = cache
-    end
+    local cache_obj = kong[constants.ENTITY_CACHE_STORE[data.schema.name]]
 
     if cache_key then
       cache_obj:invalidate(cache_key, workspaces)

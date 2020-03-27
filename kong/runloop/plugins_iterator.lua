@@ -97,10 +97,9 @@ local function load_plugin_into_memory_ws(ctx, key)
   local ws_scope = ctx.workspaces or {}
 
   -- query with "global cache key" - no workspace attached to it
-  local plugin, err, hit_level = kong.core_cache:get(key,
-                                                     nil,
-                                                     load_plugin_into_memory_global_scope,
-                                                     key)
+  local plugin, err, hit_level = kong.core_cache:get(key, nil,
+                    load_plugin_into_memory_global_scope, key)
+
   if err then
     return nil, err
   end
@@ -127,6 +126,7 @@ local function load_plugin_into_memory_ws(ctx, key)
 
     -- attempt finding the plugin in the L1 (LRU) cache
     plugin = singletons.core_cache.mlcache.lru:get(plugin_cache_key)
+
     if plugin then
       found = true
 

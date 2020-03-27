@@ -1634,13 +1634,20 @@ function DAO:post_crud_event(operation, entity, old_entity, options)
 end
 
 
-function DAO:cache_key(key, arg2, arg3, arg4, arg5, skip_ws)
-
+function DAO:cache_key(key, arg2, arg3, arg4, arg5, skip_ws, forced_ws)
   -- Fast path: passing the cache_key/primary_key entries in
   -- order as arguments, this produces the same result as
   -- the generic code below, but building the cache key
   -- becomes a single string.format operation
-  local workspace = workspaces.get_workspaces()[1]
+
+  local workspace
+
+  if forced_ws then
+    workspace = { id = forced_ws }
+  else
+    workspace = workspaces.get_workspaces()[1]
+  end
+
   local workspaceable = self.schema.workspaceable
   if skip_ws or not workspaceable then
     workspace = nil

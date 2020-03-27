@@ -37,6 +37,7 @@ describe("tracing [#" .. strategy .. "] details", function()
 
       bp.routes:insert {
         hosts = { "example.com" },
+        service = bp.services:insert()
       }
 
       os.remove(TRACE_LOG_PATH)
@@ -48,6 +49,7 @@ describe("tracing [#" .. strategy .. "] details", function()
         tracing_write_strategy = "file_raw",
         tracing_write_endpoint = TRACE_LOG_PATH,
         generate_trace_details = true,
+        db_cache_warmup_entities = "routes", -- force SQL queries for services
       }))
 
     end)
