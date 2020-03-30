@@ -68,5 +68,7 @@ You can combine `consumer_id` and `service_id` in the same request, to furthermo
 | `config.append.querystring`                       |                     | List of queryname:value pairs. If the querystring is not set, set it with the given value. If it is already set, a new querystring with the same name and the new value will be set.
 | `config.append.body`                              |                     | List of paramname:value pairs. If the content-type is one the following [`application/json`, `application/x-www-form-urlencoded`], add a new parameter with the given value if the parameter is not present, otherwise if it is already present, the two values (old and new) will be aggregated in an array. |
 
+**Note:** the `X-Forwarded-*` are non-standard header fields written by Nginx to inform the upstream about client details and can't be overwritten by this plugin. If overwriting these header fields is needed, please see [post-function plugin in Serverless Functions](https://github.com/Kong/kong-plugin-serverless-functions).
+
 [badge-travis-url]: https://travis-ci.com/Kong/kong-plugin-request-transformer/branches
 [badge-travis-image]: https://travis-ci.com/Kong/kong-plugin-request-transformer.svg?token=BfzyBZDa3icGPsKGmBHb&branch=master
