@@ -22,7 +22,7 @@ pipeline {
     //  returnStdout: true,
     //  script: '[ -n $TAG_NAME ] && echo $TAG_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+" || echo -n $BRANCH_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+"'
     //)}"""
-    // Can't bother to fix this now. This works, right? :)
+    // XXX: Can't bother to fix this now. This works, right? :)
     KONG_VERSION = "1.5.0.0"
   }
   stages {
