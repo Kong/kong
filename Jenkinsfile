@@ -5,7 +5,7 @@ pipeline {
     }
   }
   options {
-      timeout(time: 30, unit: 'MINUTES')
+      timeout(time: 45, unit: 'MINUTES')
   }
   environment {
     GITHUB_TOKEN = credentials('GITHUB_TOKEN')
