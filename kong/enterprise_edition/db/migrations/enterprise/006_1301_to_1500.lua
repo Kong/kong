@@ -1,3 +1,5 @@
+local cassandra = require "cassandra"
+
 local function pg_delete_we_orphan(entity)
   return [[
     DELETE FROM workspace_entities WHERE entity_id IN (
@@ -31,6 +33,69 @@ local function pg_fix_we_counters(entity)
     WHERE wec.workspace_id = we.workspace_id
     AND wec.entity_type = we.entity_type;
   ]]
+end
+
+local function c_migrate_license_data(connector)
+  -- migrate `license_data` from the old table to a new one
+  local res, err = connector:query([[ SELECT * FROM license_data LIMIT 1; ]])
+
+  if not err and not res.license_creation_date then
+    local coordinator = connector:connect_migrations()
+    local cluster = connector.cluster;
+    for rows, err in coordinator:iterate("SELECT * FROM license_data") do
+      if err then
+        return nil, err
+      end
+
+      for _, row in ipairs(rows) do
+        assert(cluster:execute("UPDATE license_data_tmp SET req_cnt = req_cnt + ? WHERE node_id = ?",
+          {
+            cassandra.counter(row.req_cnt),
+            cassandra.uuid(row.node_id)
+          }))
+      end
+    end
+
+    -- drop table
+    assert(connector:query([[
+          DROP TABLE IF EXISTS license_data;
+        ]]))
+
+    -- recreate table with the new field
+    assert(connector:query([[
+          /* License data */
+          CREATE TABLE IF NOT EXISTS license_data (
+            node_id                 uuid,
+            license_creation_date   timestamp,
+            req_cnt                 counter,
+            PRIMARY KEY (node_id, license_creation_date)
+          );
+        ]]))
+
+    -- copy data from temp table to a new one
+    for rows, err in coordinator:iterate("SELECT * FROM license_data_tmp") do
+      if err then
+        return nil, err
+      end
+
+      -- add current timestamp for old data which didn't have license creation date info
+      local date = os.time() * 1000
+      for _, row in ipairs(rows) do
+        assert(cluster:execute(
+          "UPDATE license_data SET req_cnt = req_cnt + ? WHERE node_id = ? AND license_creation_date = ?",
+          {
+            cassandra.counter(row.req_cnt),
+            cassandra.uuid(row.node_id),
+            cassandra.timestamp(date),
+          }))
+      end
+    end
+
+    -- drop temp table
+    assert(connector:query([[
+          DROP TABLE IF EXISTS license_data_tmp;
+        ]]))
+  end
 end
 
 return {
@@ -91,6 +156,15 @@ return {
         "snooze"       INTEGER,
         "config"       JSON                         NOT NULL
       );
+
+      -- add `license_creation_date` field for license_data table
+      DO $$
+        BEGIN
+          ALTER TABLE license_data ADD COLUMN license_creation_date TIMESTAMP;
+        EXCEPTION WHEN duplicate_column THEN
+          -- Do nothing, accept existing state
+        END;
+      $$;
     ]],
     teardown = function(connector)
       -- XXX: EE keep run_on for now
@@ -134,6 +208,13 @@ return {
     up = [[
       -- XXX: EE keep run_on for now
       ALTER TABLE plugins ADD run_on TEXT;
+
+      /* Add temporary table for license data table */
+      CREATE TABLE IF NOT EXISTS license_data_tmp (
+        node_id         uuid,
+        req_cnt         counter,
+        PRIMARY KEY (node_id)
+      );
 
       CREATE TABLE IF NOT EXISTS applications (
         id          uuid,
@@ -195,6 +276,8 @@ return {
       connector:query([[
         ALTER TABLE plugins ADD run_on TEXT;
       ]])
+
+      c_migrate_license_data(connector)
     end,
   }
 }

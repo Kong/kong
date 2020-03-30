@@ -3,8 +3,8 @@ local log        = ngx.log
 local ERR        = ngx.ERR
 
 local INSERT_DATA = [[
-  INSERT INTO license_data (node_id, req_cnt)
-  VALUES ('%s', %d)
+  INSERT INTO license_data (node_id, license_creation_date, req_cnt)
+  VALUES ('%s', '%s', %d)
   ON CONFLICT (node_id) DO UPDATE SET
     req_cnt = license_data.req_cnt + excluded.req_cnt
 ]]
@@ -29,6 +29,7 @@ end
 function _M:flush_data(data)
   local values = {
     data.node_id,
+    data.license_creation_date,
     data.request_count
   }
 

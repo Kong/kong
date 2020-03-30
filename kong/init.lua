@@ -545,7 +545,7 @@ function Kong.init_worker()
   -- sales counters functions require a timer, so must start in worker context
   local ok, err = kong.sales_counters:init()
   if not ok then
-    ngx.log(ngx.CRIT, "could not initialize sales counters: ", err)
+    ngx.log(ngx.WARN, "could not initialize license report module: ", err)
   end
 
   local cache, err = kong_global.init_cache(kong.configuration, cluster_events, worker_events, kong.vitals)

@@ -1,4 +1,5 @@
 local cassandra = require "cassandra"
+local split     = require "kong.tools.utils".split
 
 
 local log = ngx.log
@@ -9,7 +10,8 @@ local UPDATE_STATEMENT = [[
     UPDATE license_data SET
       req_cnt = req_cnt + ?
     WHERE
-      node_id = ?
+      node_id = ? AND
+      license_creation_date = ?
   ]]
 
 local SELECT_DATA = [[
@@ -32,9 +34,17 @@ end
 
 
 function _M:flush_data(data)
+  local date_split = split(data.license_creation_date, "-")
+  local timestamp = os.time({
+    year = date_split[1],
+    month = date_split[2],
+    day = date_split[3],
+  })
+
   local values = {
     cassandra.counter(data.request_count),
-    cassandra.uuid(data.node_id)
+    cassandra.uuid(data.node_id),
+    cassandra.timestamp(timestamp * 1000),
   }
 
   local QUERY_OPTIONS = {

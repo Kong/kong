@@ -1,5 +1,6 @@
-local counters_service = require("kong.counters")
-local utils = require "kong.tools.utils"
+local kong             = kong
+local utils            = require "kong.tools.utils"
+local counters_service = require"kong.counters"
 
 
 local timer_at   = ngx.timer.at
@@ -48,6 +49,100 @@ persistence_handler = function(premature, self)
   end
 end
 
+local function get_license_data()
+  return kong.license and kong.license.license.payload or nil
+end
+
+-- retrieves all merged counters data from all nodes that is stored in the database
+local function get_counters_data(strategy)
+  local data = {}
+
+  local counters_data = strategy:pull_data()
+  if counters_data then
+    for i = 1, #counters_data do
+
+      if counters_data[i] then
+        -- get license_creation_date
+        local date = counters_data[i]["license_creation_date"]
+
+        -- normalize date format by database strategy type
+        local db_strategy_name = kong.db.strategy
+        if db_strategy_name == "cassandra" then
+          -- cassandra returns seconds since beginning of epoch, we have to convert to format `YYYY-MM-DD`
+          date = os.date("%Y-%m-%d", date / 1000)
+        elseif db_strategy_name == "postgres" then
+          -- postgress return string `YYYY-MM-DD HH:DD:SS` we only need `YYYY-MM-DD`
+          date = utils.split(date, ' ')[1]
+        end
+
+        if not data[date] then
+          data[date] = {}
+        end
+
+        -- group counters by license creation date
+        local bucket = data[date]
+
+        -- iterate over counters and sum data
+        for key, counter in pairs(counters_data[i]) do
+          -- sum only numbers
+          if type(counter) == "number" and key ~= "license_creation_date" then
+            if not bucket[key] then
+              bucket[key] = 0
+            end
+
+            bucket[key] = bucket[key] + counter
+          end
+        end
+      end
+    end
+  end
+
+  return data
+end
+
+local function get_workspaces_count()
+  -- probably it is better to use :each() but since it is being run once a quarter
+  -- don't think it is a big problem
+  local workspaces, err = kong.db.workspaces:select_all()
+  if err then
+    log(ngx.WARN, "failed to get count of workspaces: ", err)
+    return nil
+  end
+
+  return #workspaces;
+end
+
+local function get_workspace_entity_counts()
+  local workspace_entity_counters_count = {
+    rbac_users = 0,
+    services = 0,
+  }
+
+  for entity, err in kong.db.workspace_entity_counters:each() do
+    if err then
+      log(ngx.WARN, "could not load workspace_entity_counters: ", err)
+      return nil
+    end
+
+    if workspace_entity_counters_count[entity.entity_type] then
+      workspace_entity_counters_count[entity.entity_type] = entity.count
+    end
+  end
+
+
+  return workspace_entity_counters_count
+end
+
+local function merge_counter(counter_data)
+  local final_counter = 0
+  if counter_data then
+    for _, counter in pairs(counter_data) do
+      final_counter = final_counter + counter
+    end
+  end
+  return final_counter
+end
+
 
 function _M.new(opts)
   local self = {
@@ -64,6 +159,9 @@ function _M.new(opts)
 end
 
 function _M:init()
+  if get_license_data() == nil then
+    return nil, "license data is missing"
+  end
   self.counters:init()
 
   local delay = self.flush_interval
@@ -82,18 +180,6 @@ function _M:log_request()
   self.counters:increment(METRICS.requests)
 end
 
-
-local function merge_counter(counter_data)
-  local final_counter = 0
-  if counter_data then
-    for _, counter in pairs(counter_data) do
-      final_counter = final_counter + counter
-    end
-  end
-  return final_counter
-end
-
-
 -- Acquire a lock for flushing counters to the database
 function _M:flush_lock()
   local ok, err = self.list_cache:safe_add(FLUSH_LOCK_KEY, true,
@@ -108,7 +194,6 @@ function _M:flush_lock()
 
   return true
 end
-
 
 function _M:flush_data()
   local lock = self:flush_lock()
@@ -138,79 +223,11 @@ function _M:flush_data()
   end
 end
 
-
--- retrieves all merged counters data from all nodes that is stored in the database
-local function get_counters_data(strategy)
-  local data = {}
-
-  local counters_data = strategy:pull_data()
-  if counters_data then
-    for i = 1, #counters_data do
-
-      if counters_data[i] then
-        -- iterate over counters and sum data
-        for key, counter in pairs(counters_data[i]) do
-          -- sum only numbers
-          if type(counter) == "number" then
-            if not data[key] then
-              data[key] = 0
-            end
-
-            data[key] = data[key] + counter
-          end
-        end
-      end
-    end
-  end
-
-  return data
-end
-
-
-local function get_workspaces_count()
-  -- probably it is better to use :each() but since it is being run once a quarter
-  -- don't think it is a big problem
-  local workspaces, err = kong.db.workspaces:select_all()
-  if err then
-    log(ngx.WARN, "failed to get count of workspaces: ", err)
-    return nil
-  end
-
-  return #workspaces;
-end
-
-
-local function get_workspace_entity_counts()
-  local workspace_entity_counters_count = {
-    rbac_users = 0,
-    services = 0,
-  }
-
-  for entity, err in kong.db.workspace_entity_counters:each() do
-    if err then
-      log(ngx.WARN, "could not load workspace_entity_counters: ", err)
-      return nil
-    end
-
-    if workspace_entity_counters_count[entity.entity_type] then
-      workspace_entity_counters_count[entity.entity_type] = entity.count
-    end
-  end
-
-
-  return workspace_entity_counters_count
-end
-
-
-local function get_license_data()
-  return kong.license and kong.license.license.payload.license_key or nil
-end
-
-
 function _M:get_license_report()
   local db = kong.db
   local sys_info = utils.get_system_infos()
   local workspace_entity_counters_count = get_workspace_entity_counts()
+  local license_data = get_license_data()
 
   local report = {
     kong_version = kong.version,
@@ -221,7 +238,7 @@ function _M:get_license_report()
       hostname = sys_info.hostname,
       cores = sys_info.cores
     },
-    license_key = get_license_data(),
+    license_key = license_data and license_data.license_key or nil,
     -- counters
     counters = get_counters_data(self.strategy),
     rbac_users = workspace_entity_counters_count.rbac_users,
