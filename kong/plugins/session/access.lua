@@ -1,24 +1,25 @@
 local constants = require "kong.constants"
 local kong_session = require "kong.plugins.session.session"
+
+
+local ngx = ngx
 local kong = kong
+local concat = table.concat
+
 
 local _M = {}
-
-
-local function load_consumer(consumer_id)
-  local result, err = kong.db.consumers:select { id = consumer_id }
-  if not result then
-    return nil, err
-  end
-  return result
-end
 
 
 local function authenticate(consumer, credential_id, groups)
   local set_header = kong.service.request.set_header
   local clear_header = kong.service.request.clear_header
 
-  set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+  if consumer.id then
+    set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+  else
+    clear_header(constants.HEADERS.CONSUMER_ID)
+  end
+
   if consumer.custom_id then
     set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
   else
@@ -32,29 +33,46 @@ local function authenticate(consumer, credential_id, groups)
   end
 
   if groups then
-    set_header(constants.HEADERS.AUTHENTICATED_GROUPS, table.concat(groups, ", "))
+    set_header(constants.HEADERS.AUTHENTICATED_GROUPS, concat(groups, ", "))
     ngx.ctx.authenticated_groups = groups
   else
     clear_header(constants.HEADERS.AUTHENTICATED_GROUPS)
   end
 
+  local credential
   if credential_id then
-    local credential = {id = credential_id or consumer.id, consumer_id = consumer.id}
-    set_header(constants.HEADERS.ANONYMOUS, true)
-    kong.client.authenticate(consumer, credential)
+    credential = {
+      id          = credential_id,
+      consumer_id = consumer.id
+    }
 
-    return
+    clear_header(constants.HEADERS.ANONYMOUS)
+
+    if constants.HEADERS.CREDENTIAL_IDENTIFIER then
+      set_header(constants.HEADERS.CREDENTIAL_IDENTIFIER, credential.id)
+    end
+
+  else
+    set_header(constants.HEADERS.ANONYMOUS, true)
+
+    if constants.HEADERS.CREDENTIAL_IDENTIFIER then
+      clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
+    end
   end
 
-  kong.client.authenticate(consumer, nil)
+  kong.client.authenticate(consumer, credential)
 end
 
 
 function _M.execute(conf)
-  local s = kong_session.open_session(conf)
+  local s, present, reason = kong_session.open_session(conf)
+  if not present then
+    if reason then
+      kong.log.debug("session not present (", reason, ")")
+    else
+      kong.log.debug("session not present")
+    end
 
-  if not s.present then
-    kong.log.debug("session not present")
     return
   end
 
@@ -70,7 +88,7 @@ function _M.execute(conf)
 
   local consumer_cache_key = kong.db.consumers:cache_key(cid)
   local consumer, err = kong.cache:get(consumer_cache_key, nil,
-                                       load_consumer, cid)
+                                       kong.client.load_consumer, cid)
 
   if err then
     kong.log.err("could not load consumer: ", err)

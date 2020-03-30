@@ -1,10 +1,12 @@
 local typedefs = require "kong.db.schema.typedefs"
 local Schema = require "kong.db.schema"
+local utils = require "kong.tools.utils"
 
-local utils = require("kong.tools.utils")
+
 local char = string.char
 local rand = math.random
 local encode_base64 = ngx.encode_base64
+
 
 local samesite = Schema.define {
   type = "string",
@@ -12,6 +14,7 @@ local samesite = Schema.define {
   one_of = {
     "Strict",
     "Lax",
+    "None",
     "off",
   }
 }
@@ -43,6 +46,7 @@ return {
           },
           { cookie_name = { type = "string", default = "session" } },
           { cookie_lifetime = { type = "number", default = 3600 } },
+          { cookie_idletime = { type = "number" } },
           { cookie_renew = { type = "number", default = 600 } },
           { cookie_path = { type = "string", default = "/" } },
           { cookie_domain = { type = "string" } },

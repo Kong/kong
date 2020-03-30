@@ -1,12 +1,12 @@
 package = "kong-plugin-session"
 
-version = "2.2.0-1"
+version = "2.3.0-1"
 
 supported_platforms = {"linux", "macosx"}
 
 source = {
   url = "git://github.com/Kong/kong-plugin-session",
-  tag = "2.2.0"
+  tag = "2.3.0"
 }
 
 description = {
@@ -17,7 +17,7 @@ description = {
 
 dependencies = {
   "lua >= 5.1",
-  "lua-resty-session == 2.24",
+  "lua-resty-session == 3.1",
   --"kong >= 1.2.0",
 }
 
@@ -27,6 +27,7 @@ build = {
     ["kong.plugins.session.handler"] = "kong/plugins/session/handler.lua",
     ["kong.plugins.session.schema"] = "kong/plugins/session/schema.lua",
     ["kong.plugins.session.access"] = "kong/plugins/session/access.lua",
+    ["kong.plugins.session.header_filter"] = "kong/plugins/session/header_filter.lua",
     ["kong.plugins.session.session"] = "kong/plugins/session/session.lua",
     ["kong.plugins.session.daos"] = "kong/plugins/session/daos.lua",
     ["kong.plugins.session.storage.kong"] = "kong/plugins/session/storage/kong.lua",

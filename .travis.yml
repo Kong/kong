@@ -1,10 +1,10 @@
-dist: trusty
+dist: xenial
 sudo: required
 
-language: java
+language: go
 
-jdk:
-  - oraclejdk8
+go:
+  - "1.13.x"
 
 notifications:
   email:
@@ -26,15 +26,15 @@ services:
 
 env:
   global:
-    - LUAROCKS=3.1.3
-    - OPENSSL=1.1.1c
+    - LUAROCKS=3.3.1
+    - OPENSSL=1.1.1d
     - CASSANDRA_BASE=2.2.12
     - CASSANDRA_LATEST=3.9
-    - OPENRESTY_BASE=1.15.8.1
-    - OPENRESTY_LATEST=1.15.8.1
+    - OPENRESTY_BASE=1.15.8.2
+    - OPENRESTY_LATEST=1.15.8.2
     - DOWNLOAD_CACHE=$HOME/download-cache
     - INSTALL_CACHE=$HOME/install-cache
-    - BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6"
+    - BUSTED_ARGS="-o htest -v --exclude-tags=flaky,ipv6"
     - PLUGIN_NAME=session
     - KONG_TEST_PLUGINS=bundled,$PLUGIN_NAME
     - KONG_PLUGINS=bundled,$PLUGIN_NAME
@@ -59,6 +59,8 @@ install:
   - cd ../
   - KONG_DATABASE=postgres KONG_PG_DATABASE=kong_tests kong-ce/bin/kong migrations bootstrap
   - KONG_DATABASE=cassandra KONG_CASSANDRA_KEYSPACE=kong_tests kong-ce/bin/kong migrations bootstrap
+  - luarocks remove --force lua-resty-session
+  - luarocks install --force lua-resty-session 3.1
   - cd kong-ce
 
 script:
