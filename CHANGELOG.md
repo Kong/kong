@@ -1,10 +1,15 @@
+## v1.2.9
+
+- Bump `lua-resty-session` dependency to `3.1`
+
+
 ## v1.2.8
 
 - Optimize consumer cache key invalidations
 - Add support for dynamic login redirect uri
 - Add support for `config.session_strategy` configuration parameter
 - Add support for `session_cookie_idletime` configuration parameter
-- Bump lua-resty-session dependency to 3.0
+- Bump `lua-resty-session` dependency to `3.0`
 - Make consumer cache keys generated similarly as in JWT Signer plugin
 - Unified session handling code in a single place (should be more robust)
 - Make the code more robust by checking the right data types
