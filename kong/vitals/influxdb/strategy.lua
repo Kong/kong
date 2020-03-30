@@ -618,6 +618,84 @@ function _M:select_stats(query_type, level, node_id, start_ts)
 end
 
 
+function _M:status_code_report_by(entity, start_ts)
+  start_ts = start_ts or 36000
+  local q = "SELECT count(status) FROM kong_request"
+  local where_clause = " WHERE time > now() - " .. ngx.time() - start_ts .. "s"
+  local group_by = " GROUP BY " .. entity .. ", status_f"
+
+
+  local result = query(self, q .. where_clause .. group_by)
+  local stats = {}
+  for i, row in pairs(result) do
+    local lookup = {
+      consumer = row.tags.consumer,
+      service = row.tags.service
+    }
+    if stats[lookup[entity]] == nil then
+      stats[lookup[entity]] = {}
+    end
+
+    local status_group = tostring(row.tags.status_f):sub(1, 1) .. "XX"
+    local current_total = stats[lookup[entity]]["total"] or 0
+    local current_status = stats[lookup[entity]][status_group] or 0
+
+    stats[lookup[entity]]["total"] = current_total + row.values[1][2]
+    stats[lookup[entity]][status_group] = current_status + row.values[1][2]
+  end
+
+  local meta = {
+    earliest_ts = start_ts,
+    latest_ts = ngx.time(),
+    stat_labels = {
+      "total",
+      "2XX",
+      "4XX",
+      "5XX"
+    },
+  }
+
+  return { stats=stats, meta=meta }
+end
+
+function _M:latency_report(start_ts)
+  start_ts = start_ts or 36000
+  local columns = {
+    "proxy_max",
+    "proxy_min",
+    "proxy_avg",
+    "upstream_max",
+    "upstream_min",
+    "upstream_avg",
+  }
+  local q = "SELECT MAX(proxy_latency), MIN(proxy_latency)," ..
+    " MEAN(proxy_latency), MAX(request_latency), MIN(request_latency)," ..
+    " MEAN(request_latency) FROM kong_request"
+  local where_clause = " WHERE time > now() - " .. ngx.time() - start_ts .. "s"
+  local group_by = " GROUP BY hostname"
+
+  local result = query(self, q .. where_clause .. group_by)
+
+  local stats = {}
+  for _, row in pairs(result) do
+    local hostname = row.tags.hostname
+    if stats[hostname] == nil then
+      stats[hostname] = {}
+    end
+    for i, column in pairs(columns) do
+      stats[hostname][column] = row.values[1][i+1]
+    end
+  end
+
+  local meta = {
+    earliest_ts = start_ts,
+    latest_ts = ngx.time(),
+    stat_labels = columns,
+  }
+  
+  return { stats=stats, meta=meta }
+end
+
 function _M:log()
   clear_tab(tags)
   clear_tab(fields)

@@ -8,7 +8,6 @@ if not kong.configuration.vitals then
   return {}
 end
 
-
 local function fetch_consumer(self, helpers, db, consumer_id)
   if not consumer_id then
     return kong.response.exit(404, { message = "Not found" })
@@ -22,6 +21,7 @@ local function fetch_consumer(self, helpers, db, consumer_id)
     return kong.response.exit(404, { message = "Not found" })
   end
 end
+
 
 return {
   ["/vitals/"] = {
@@ -299,6 +299,69 @@ return {
       end
 
       return kong.response.exit(200, res)
+    end
+  },
+
+  ["/vitals/reports/consumer"] = {
+    GET = function(self, dao, helpers)
+      local opts = {
+        entity_type = "consumer",
+        start_ts    = self.params.start_ts,
+      }
+      local report, err = kong.vitals:get_report(opts)
+
+      if err then
+        if err:find("Invalid query params", nil, true) then
+          return kong.response.exit(400, { message = err })
+
+        else
+          return helpers.yield_error(err)
+        end
+      end
+
+      return kong.response.exit(200, report)
+    end
+  },
+
+  ["/vitals/reports/service"] = {
+    GET = function(self, dao, helpers)
+      local opts = {
+        entity_type = "service",
+        start_ts    = self.params.start_ts,
+      }
+      local report, err = kong.vitals:get_report(opts)
+
+      if err then
+        if err:find("Invalid query params", nil, true) then
+          return kong.response.exit(400, { message = err })
+
+        else
+          return helpers.yield_error(err)
+        end
+      end
+
+      return kong.response.exit(200, report)
+    end
+  },
+
+  ["/vitals/reports/node"] = {
+    GET = function(self, dao, helpers)
+      local opts = {
+        entity_type = "node",
+        start_ts    = self.params.start_ts,
+      }
+      local report, err = kong.vitals:get_report(opts)
+
+      if err then
+        if err:find("Invalid query params", nil, true) then
+          return kong.response.exit(400, { message = err })
+
+        else
+          return helpers.yield_error(err)
+        end
+      end
+
+      return kong.response.exit(200, report)
     end
   },
 }
