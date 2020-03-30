@@ -13,7 +13,11 @@ pipeline {
     REDHAT = credentials('redhat')
     PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
     PRIVATE_KEY_PASSWORD = credentials('kong.private.gpg-key.asc.password')
-    CACHE_DIR = "/tmp/kong-distributions-cache"
+    # This cache dir will contain files owned by root, and user ubuntu will
+    # not have permission over it. We still need for it to survive between
+    # builds, so /tmp is also not an option. Try $HOME for now, iterate
+    # on that
+    CACHE_DIR = "$HOME/kong-distributions-cache"
     //KONG_VERSION = """${sh(
     //  returnStdout: true,
     //  script: '[ -n $TAG_NAME ] && echo $TAG_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+" || echo -n $BRANCH_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+"'
