@@ -8,6 +8,7 @@
 local BIN_PATH = "bin/kong"
 local TEST_CONF_PATH = os.getenv("KONG_SPEC_TEST_CONF_PATH") or "spec/kong_tests.conf"
 local CUSTOM_PLUGIN_PATH = "./spec/fixtures/custom_plugins/?.lua"
+local DNS_MOCK_LUA_PATH = "./spec/fixtures/mocks/lua-resty-dns/?.lua"
 local GO_PLUGIN_PATH = "./spec/fixtures/go"
 local MOCK_UPSTREAM_PROTOCOL = "http"
 local MOCK_UPSTREAM_SSL_PROTOCOL = "https"
@@ -1793,6 +1794,11 @@ luassert:register("assertion", "cn", assert_cn,
 --   target = "a.my.srv.test.com",
 --   port = 80,
 -- }
+-- fixtures.dns_mock:SRV {
+--   name = "my.srv.test.com",     -- adding same name again: record gets 2 entries!
+--   target = "b.my.srv.test.com", -- a.my.srv.test.com and b.my.srv.test.com
+--   port = 80,
+-- }
 -- fixtures.dns_mock:A {
 --   name = "a.my.srv.test.com",
 --   address = "127.0.0.1",
@@ -2010,14 +2016,24 @@ local function kong_exec(cmd, env, pl_returns, env_vars)
   env = env or {}
 
   -- Insert the Lua path to the custom-plugin fixtures
-  if not env.lua_package_path then
-    env.lua_package_path = CUSTOM_PLUGIN_PATH
-
-  else
-    env.lua_package_path = CUSTOM_PLUGIN_PATH .. ";" .. env.lua_package_path
+  do
+    local function cleanup(t)
+      if t then
+        t = pl_stringx.strip(t)
+        if t:sub(-1,-1) == ";" then
+          t = t:sub(1, -2)
+        end
+      end
+      return t ~= "" and t or nil
+    end
+    local paths = {}
+    table.insert(paths, cleanup(CUSTOM_PLUGIN_PATH))
+    table.insert(paths, cleanup(env.lua_package_path))
+    table.insert(paths, cleanup(conf.lua_package_path))
+    env.lua_package_path = table.concat(paths, ";")
+    -- note; the nginx config template will add a final ";;", so no need to
+    -- include that here
   end
-
-  env.lua_package_path = env.lua_package_path .. ";" .. conf.lua_package_path
 
   if not env.plugins then
     env.plugins = "bundled,dummy,cache,rewriter,error-handler-log," ..
@@ -2159,12 +2175,14 @@ local function render_fixtures(conf, env, prefix, fixtures)
                               tostring(fixtures.dns_mock)))
 
     -- add the mock resolver to the path to ensure the records are loaded
-    local path
-    local key = "lua_package_path"
-    path, key = lookup(env, key) -- case insensitive lookup
-
-    -- if no existing path setting then end with double semi-colons
-    env[key] = "spec/fixtures/mocks/lua-resty-dns/?.lua;" .. (path or ";")
+    if env.lua_package_path then
+      env.lua_package_path = DNS_MOCK_LUA_PATH .. ";" .. env.lua_package_path
+    else
+      env.lua_package_path = DNS_MOCK_LUA_PATH
+    end
+  else
+    -- remove any old mocks if they exist
+    os.remove(prefix .. "/dns_mock_records.json")
   end
 
   return true
