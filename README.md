@@ -21,7 +21,7 @@ $ curl -X POST http://kong:8001/services/{service}/plugins \
 
 #### Without a database
 
-Configure this plugin on a [Service](https://docs.konghq.com/latest/admin-api/#service-object) by adding this section do your declarative configuration file:
+Configure this plugin on a [Service](https://docs.konghq.com/latest/admin-api/#service-object) by adding this section to your declarative configuration file:
 
 ```
 plugins:
@@ -50,7 +50,7 @@ $ curl -X POST http://kong:8001/routes/{route}/plugins \
 
 #### Without a database
 
-Configure this plugin on a [Route](https://docs.konghq.com/latest/admin-api/#route-object) by adding this section do your declarative configuration file:
+Configure this plugin on a [Route](https://docs.konghq.com/latest/admin-api/#route-object) by adding this section to your declarative configuration file:
 
 ```
 plugins:
@@ -78,7 +78,7 @@ $ curl -X POST http://kong:8001/consumers/{consumer}/plugins \
 
 #### Without a database
 
-Configure this plugin on a [Consumer](https://docs.konghq.com/latest/admin-api/#Consumer-object) by adding this section do your declarative configuration file:
+Configure this plugin on a [Consumer](https://docs.konghq.com/latest/admin-api/#Consumer-object) by adding this section to your declarative configuration file:
 
 ```
 plugins:
@@ -136,7 +136,7 @@ Here's a list of all the parameters which can be used in this plugin's configura
 
 ## Notes
 
-If you do not provide `aws.key` or `aws.secret`, the plugin uses an IAM role inherited from the instance running Kong. 
+If you do not provide `aws.key` or `aws.secret`, the plugin uses an IAM role inherited from the instance running Kong.
 
 First, the plugin will try ECS metadata to get the role. If no ECS metadata is available, the plugin will fall back on EC2 metadata.
 
