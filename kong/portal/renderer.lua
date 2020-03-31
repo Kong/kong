@@ -197,6 +197,8 @@ end
 
 
 local function set_layout_by_permission(route_config, developer, workspace, config, path)
+  local updated_path
+
   if not next(route_config) then
     return LAYOUTS.UNSET
   end
@@ -232,11 +234,13 @@ local function set_layout_by_permission(route_config, developer, workspace, conf
 
   -- route requires auth, no developer preset, redirect
   if not next(developer) and auth_required then
-    file = router.find_highest_priority_file_by_route(db,
-                                                      "/" .. unauthenticated_r)
+    updated_path = "/" .. unauthenticated_r
+    file = router.find_highest_priority_file_by_route(db, updated_path)
+
     -- fallback in the case that unauthenticated content not found
     if not file then
-      return LAYOUTS.LOGIN
+      updated_path =  "/" .. LAYOUTS.LOGIN
+      return LAYOUTS.LOGIN, updated_path
     end
   end
 
@@ -247,11 +251,13 @@ local function set_layout_by_permission(route_config, developer, workspace, conf
 
     -- permissions check failed, redirect
     if not ok then
-      file = router.find_highest_priority_file_by_route(db,
-                                                        "/" .. unauthorized_r)
+      updated_path = "/" .. unauthorized_r
+      file = router.find_highest_priority_file_by_route(db, updated_path)
+
       -- fallback in the case that unauthorized content not found
       if not file then
-        return LAYOUTS.UNAUTHORIZED
+        updated_path =  "/" .. LAYOUTS.UNAUTHORIZED
+        return LAYOUTS.UNAUTHORIZED, updated_path
       end
     end
   end
@@ -265,7 +271,7 @@ local function set_layout_by_permission(route_config, developer, workspace, conf
     return LAYOUTS.UNSET
   end
 
-  return parsed_file.layout
+  return parsed_file.layout, updated_path
 end
 
 
@@ -389,7 +395,11 @@ local function set_render_ctx(self, email_tokens)
 
   local developer = self.developer or {}
   local path   = set_path(self.path)
-  local layout = set_layout_by_permission(route_config, developer, workspace, portal_config)
+  local layout, updated_path = set_layout_by_permission(route_config, developer, workspace, portal_config)
+  if updated_path then
+    path = set_path(updated_path)
+    route_config = set_route_config(updated_path)
+  end
 
   singletons.render_ctx = {
     route_config         = route_config,

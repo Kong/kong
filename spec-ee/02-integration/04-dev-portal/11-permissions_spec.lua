@@ -709,59 +709,78 @@ for _, strategy in helpers.each_strategy() do
     describe("Fetching pages", function()
       local roles = {"red", "blue"}
 
-      local content_files = {
+      local files = {
         red = {
-          path = "content/red.txt",
-          contents = [[
-            ---
-            readable_by: ["red"]
-            layout: red.html
-            ---
-          ]]
+          content = {
+            path = "content/red.txt",
+            contents = [[
+              ---
+              readable_by: ["red"]
+              layout: red.html
+              ---
+            ]],
+          },
+          layout = "red",
         },
         blue = {
-          path = "content/blue.txt",
-          contents = [[
-            ---
-            readable_by: ["blue"]
-            layout: blue.html
-            ---
-          ]],
-
+          content = {
+            path = "content/blue.txt",
+            contents = [[
+              ---
+              readable_by: ["blue"]
+              layout: blue.html
+              ---
+            ]],
+          },
+          layout = "blue",
         },
         red_blue = {
-          path = "content/red_blue.txt",
-          contents = [[
-            ---
-            readable_by: ["red", "blue"]
-            layout: red_blue.html
-            ---
-          ]]
+          content = {
+            path = "content/red_blue.txt",
+            contents = [[
+              ---
+              readable_by: ["red", "blue"]
+              layout: red_blue.html
+              ---
+            ]],
+          },
+          layout = "red_blue",
         },
         star = {
-          path = "content/star.txt",
-          contents = [[
-            ---
-            readable_by: "*"
-            layout: star.html
-            ---
-          ]]
+          content = {
+            path = "content/star.txt",
+            contents = [[
+              ---
+              readable_by: "*"
+              layout: star.html
+              ---
+            ]],
+          },
+          layout = "star"
         },
         login = {
-          path = "content/login.txt",
-          contents = [[
-            ---
-            layout: login.html
-            ---
-          ]],
+          content = {
+            path = "content/login.txt",
+            contents = [[
+              ---
+              layout: login.html
+              locale:
+                login_form_header: "Log into your account, my man"
+              ---
+            ]],
+          },
+          layout = "{* l('login_form_header', 'Login') *}"
         },
         unauthorized = {
-          path = "content/unauthorized.txt",
-          contents = [[
-            ---
-            layout: unauthorized.html
-            ---
-          ]],
+          content = {
+            path = "content/unauthorized.txt",
+            contents = [[
+              ---
+              layout: unauthorized.html
+              ---
+            ]],
+          },
+          layout = "unauthorized"
         }
       }
 
@@ -810,11 +829,11 @@ for _, strategy in helpers.each_strategy() do
           end
 
           -- Content/Layout
-          for name, body in pairs(content_files) do
+          for name, file in pairs(files) do
             assert(client_request({
               method = "POST",
               path = "/files",
-              body = body,
+              body = file.content,
               headers = {["Content-Type"] = "application/json"},
             }))
 
@@ -823,7 +842,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/files",
               body = {
                 path = "themes/default/layouts/" .. name .. ".html",
-                contents = name,
+                contents = file.layout,
               },
               headers = {["Content-Type"] = "application/json"},
             }))
@@ -851,7 +870,7 @@ for _, strategy in helpers.each_strategy() do
           local body = res.body
 
           assert.equals(200, status)
-          assert.equals("login", body)
+          assert.equals("Log into your account, my man", body)
         end)
 
         it("redirects to login when requesting blue page", function()
@@ -864,7 +883,7 @@ for _, strategy in helpers.each_strategy() do
           local body = res.body
 
           assert.equals(200, status)
-          assert.equals("login", body)
+          assert.equals("Log into your account, my man", body)
         end)
 
         it("redirects to login when requesting red_blue page", function()
@@ -877,7 +896,7 @@ for _, strategy in helpers.each_strategy() do
           local body = res.body
 
           assert.equals(200, status)
-          assert.equals("login", body)
+          assert.equals("Log into your account, my man", body)
         end)
 
         it("redirects to login when requesting star page", function()
@@ -890,7 +909,7 @@ for _, strategy in helpers.each_strategy() do
           local body = res.body
 
           assert.equals(200, status)
-          assert.equals("login", body)
+          assert.equals("Log into your account, my man", body)
         end)
 
         it("serves the login page", function()
@@ -903,7 +922,7 @@ for _, strategy in helpers.each_strategy() do
           local body = res.body
 
           assert.equals(200, status)
-          assert.equals("login", body)
+          assert.equals("Log into your account, my man", body)
         end)
 
         it("serves the 404 page when requesting a non existent page", function()
@@ -983,11 +1002,11 @@ for _, strategy in helpers.each_strategy() do
           end
 
           -- Content/Layout
-          for name, body in pairs(content_files) do
+          for name, file in pairs(files) do
             assert(client_request({
               method = "POST",
               path = "/files",
-              body = body,
+              body = file.content,
               headers = {["Content-Type"] = "application/json"},
             }))
 
@@ -996,7 +1015,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/files",
               body = {
                 path = "themes/default/layouts/" .. name .. ".html",
-                contents = name,
+                contents = file.layout,
               },
               headers = {["Content-Type"] = "application/json"},
             }))
@@ -1112,7 +1131,7 @@ for _, strategy in helpers.each_strategy() do
           local body = res.body
 
           assert.equals(200, status)
-          assert.equals("login", body)
+          assert.equals("Log into your account, my man", body)
         end)
 
         it("serves the 404 page when requesting a non existent page", function()
@@ -1276,11 +1295,11 @@ for _, strategy in helpers.each_strategy() do
           end
 
           -- Content/Layout
-          for name, body in pairs(content_files) do
+          for name, file in pairs(files) do
             assert(client_request({
               method = "POST",
               path = "/files",
-              body = body,
+              body = file.content,
               headers = {["Content-Type"] = "application/json"},
             }))
 
@@ -1289,7 +1308,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/files",
               body = {
                 path = "themes/default/layouts/" .. name .. ".html",
-                contents = name,
+                contents = file.layout,
               },
               headers = {["Content-Type"] = "application/json"},
             }))
@@ -1405,7 +1424,7 @@ for _, strategy in helpers.each_strategy() do
           local body = res.body
 
           assert.equals(200, status)
-          assert.equals("login", body)
+          assert.equals("Log into your account, my man", body)
         end)
 
         it("serves the 404 page when requesting a non existent page", function()
@@ -1568,11 +1587,11 @@ for _, strategy in helpers.each_strategy() do
           end
 
           -- Content/Layout
-          for name, body in pairs(content_files) do
+          for name, file in pairs(files) do
             assert(client_request({
               method = "POST",
               path = "/files",
-              body = body,
+              body = file.content,
               headers = {["Content-Type"] = "application/json"},
             }))
 
@@ -1581,7 +1600,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/files",
               body = {
                 path = "themes/default/layouts/" .. name .. ".html",
-                contents = name,
+                contents = file.layout,
               },
               headers = {["Content-Type"] = "application/json"},
             }))
@@ -1697,7 +1716,7 @@ for _, strategy in helpers.each_strategy() do
           local body = res.body
 
           assert.equals(200, status)
-          assert.equals("login", body)
+          assert.equals("Log into your account, my man", body)
         end)
 
         it("serves the 404 page when requesting a non existent page", function()
@@ -1780,11 +1799,11 @@ for _, strategy in helpers.each_strategy() do
           end
 
           -- Content/Layout
-          for name, body in pairs(content_files) do
+          for name, file in pairs(files) do
             assert(client_request({
               method = "POST",
               path = "/files",
-              body = body,
+              body = file.content,
               headers = {["Content-Type"] = "application/json"},
             }))
 
@@ -1793,7 +1812,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/files",
               body = {
                 path = "themes/default/layouts/" .. name .. ".html",
-                contents = name,
+                contents = file.layout,
               },
               headers = {["Content-Type"] = "application/json"},
             }))
@@ -1909,7 +1928,7 @@ for _, strategy in helpers.each_strategy() do
           local body = res.body
 
           assert.equals(200, status)
-          assert.equals("login", body)
+          assert.equals("Log into your account, my man", body)
         end)
 
         it("serves the 404 page when requesting a non existent page", function()
@@ -1990,11 +2009,11 @@ for _, strategy in helpers.each_strategy() do
           end
 
           -- Content/Layout
-          for name, body in pairs(content_files) do
+          for name, file in pairs(files) do
             assert(client_request({
               method = "POST",
               path = "/files",
-              body = body,
+              body = file.content,
               headers = {["Content-Type"] = "application/json"},
             }))
 
@@ -2003,7 +2022,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/files",
               body = {
                 path = "themes/default/layouts/" .. name .. ".html",
-                contents = name,
+                contents = file.layout,
               },
               headers = {["Content-Type"] = "application/json"},
             }))
@@ -2053,6 +2072,8 @@ for _, strategy in helpers.each_strategy() do
               contents = [[
                 ---
                 layout: custom_login.html
+                locale:
+                  custom_header: "This is a custom login header"
                 ---
               ]]
             },
@@ -2064,7 +2085,7 @@ for _, strategy in helpers.each_strategy() do
             path = "/files",
             body = {
               path = "themes/default/layouts/custom_login.html",
-              contents = "custom_login",
+              contents = "{* l('custom_header', 'Custom') *}",
             },
             headers = {["Content-Type"] = "application/json"},
           }))
@@ -2078,7 +2099,7 @@ for _, strategy in helpers.each_strategy() do
           local body = res.body
 
           assert.equals(200, status)
-          assert.equals("custom_login", body)
+          assert.equals("This is a custom login header", body)
         end)
 
         it("redirects to login if redirect.login is not found", function()
@@ -2104,7 +2125,7 @@ for _, strategy in helpers.each_strategy() do
           local body = res.body
 
           assert.equals(200, status)
-          assert.equals("login", body)
+          assert.equals("Log into your account, my man", body)
         end)
 
         it("redirects to redirect.unauthorized if set in conf", function()
