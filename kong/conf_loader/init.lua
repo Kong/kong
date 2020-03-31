@@ -441,6 +441,8 @@ local CONF_INFERENCES = {
   pg_ssl_required = { typ = "boolean" },
   pg_ssl_verify = { typ = "boolean" },
   pg_ssl_version = { typ = "string"},
+  pg_ssl_cert = { typ = "string" },
+  pg_ssl_cert_key = { typ = "string" },
   pg_max_concurrent_queries = { typ = "number" },
   pg_semaphore_timeout = { typ = "number" },
   pg_keepalive_timeout = { typ = "number" },
@@ -452,6 +454,8 @@ local CONF_INFERENCES = {
   pg_ro_ssl_required = { typ = "boolean" },
   pg_ro_ssl_verify = { typ = "boolean" },
   pg_ro_ssl_version = { typ = "string"},
+  pg_ro_ssl_cert = { typ = "string" },
+  pg_ro_ssl_cert_key = { typ = "string" },
   pg_ro_max_concurrent_queries = { typ = "number" },
   pg_ro_semaphore_timeout = { typ = "number" },
   pg_ro_keepalive_timeout = { typ = "number" },
@@ -864,6 +868,25 @@ local function check_and_infer(conf, opts)
     if conf.client_ssl_cert_key and not pl_path.exists(conf.client_ssl_cert_key) then
       errors[#errors + 1] = "client_ssl_cert_key: no such file at " ..
                           conf.client_ssl_cert_key
+    end
+  end
+
+  if conf.pg_ssl then
+    if conf.pg_ssl_cert and not conf.pg_ssl_cert_key then
+      errors[#errors + 1] = "pg_ssl_cert_key must be specified"
+
+    elseif conf.pg_ssl_cert_key and not conf.pg_ssl_cert then
+      errors[#errors + 1] = "pg_ssl_cert must be specified"
+    end
+
+    if conf.pg_ssl_cert and not pl_path.exists(conf.pg_ssl_cert) then
+      errors[#errors + 1] = "pg_ssl_cert: no such file at " ..
+                          conf.pg_ssl_cert
+    end
+
+    if conf.pg_ssl_cert_key and not pl_path.exists(conf.pg_ssl_cert_key) then
+      errors[#errors + 1] = "pg_ssl_cert_key: no such file at " ..
+                          conf.pg_ssl_cert_key
     end
   end
 
@@ -1678,6 +1701,11 @@ local function load(path, custom_conf, opts)
 
     conf.lua_ssl_trusted_certificate_combined =
       pl_path.abspath(pl_path.join(conf.prefix, ".ca_combined"))
+  end
+
+  if conf.pg_ssl_cert and conf.pg_ssl_cert_key then
+    conf.pg_ssl_cert = pl_path.abspath(conf.pg_ssl_cert)
+    conf.pg_ssl_cert_key = pl_path.abspath(conf.pg_ssl_cert_key)
   end
 
   -- attach prefix files paths
