@@ -2286,7 +2286,7 @@ function _M.new(connector, schema, errors)
       local select_by_statement_name = "select_by_" .. field_name
       local select_by_statement
 
-      local select_by_statement_name_ws = "select_by_" .. unique_name .. "_ws"
+      local select_by_statement_name_ws = "select_by_" .. field_name .. "_ws"
       local workspace_select_expression = ", ws_e.workspace_name as workspace_name, ws_e.workspace_id as workspace_id"
       local select_by_statement_ws
 
