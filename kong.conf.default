@@ -949,6 +949,15 @@
                                  # See the `lua_ssl_trusted_certificate`
                                  # setting to specify a certificate authority.
 
+#pg_ssl_cert =                   # The absolute path to the PEM encoded client
+                                 # TLS certificate for the PostgreSQL connection.
+                                 # Mutual TLS authentication against
+                                 # PostgreSQL is only enabled if this value is set.
+
+#pg_ssl_cert_key =               # If `pg_ssl_cert` is set, the absolute path to
+                                 # the PEM encoded client TLS private key for the
+                                 # PostgreSQL connection.
+
 #pg_max_concurrent_queries = 0   # Sets the maximum number of concurrent queries
                                  # that can be executing at any given time. This
                                  # limit is enforced per worker process; the
