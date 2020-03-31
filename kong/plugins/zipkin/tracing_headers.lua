@@ -1,7 +1,10 @@
+local to_hex = require "resty.string".to_hex
+
 local unescape_uri = ngx.unescape_uri
 local char = string.char
 local match = string.match
 local gsub = string.gsub
+local fmt = string.format
 
 
 local baggage_mt = {
@@ -47,7 +50,7 @@ local function parse_jaeger_baggage_headers(headers)
 end
 
 
-local function parse_zipkin_b3_headers(headers)
+local function parse_zipkin_b3_headers(headers, b3_single_header)
   local warn = kong.log.warn
 
   -- X-B3-Sampled: if an upstream decided to sample this request, we do too.
@@ -74,28 +77,10 @@ local function parse_zipkin_b3_headers(headers)
   local had_invalid_id = false
 
   -- B3 single header
-  -- The docs for this header are located here:
-  --   https://github.com/openzipkin/b3-propagation/blob/master/RATIONALE.md#b3-single-header-format
-  --
-  -- This code makes some assumptions about edge cases not covered on those docs:
-  -- * X-B3-Sampled and X-B3-Flags can be used in conjunction with B3 single. This doesn't raise any errors.
-  -- * The id headers (X-B3-TraceId, X-B3-SpanId, X-B3-ParentId) can also be used along with B3 but:
-  --   * When both the single header an a id header specify an id, the single header "wins" (overrides)
-  --   * All provided id headers are parsed (even those overriden by B3 single)
-  --   * An erroneous formatting on *any* header (even those overriden by B3 single) results
-  --     in rejection (ignoring) of all headers. This rejection is logged.
-  -- * The "sampled" section activates sampling with both "1" and "d". This is to match the
-  --   behavior of the X-B3-Flags header
   -- * For speed, the "-" separators between sampled and parent_id are optional on this implementation
   --   This is not guaranteed to happen in future versions and won't be considered a breaking change
-  local b3_single_header = headers["b3"]
-  if not b3_single_header then
-    local tracestate_header = headers["tracestate"]
-    if tracestate_header then
-      b3_single_header = match(tracestate_header, "^b3=(.+)$")
-    end
-  end
-
+  -- * The "sampled" section activates sampling with both "1" and "d". This is to match the
+  --   behavior of the X-B3-Flags header
   if b3_single_header and type(b3_single_header) == "string" then
     if b3_single_header == "1" or b3_single_header == "d" then
       should_sample = true
@@ -166,21 +151,18 @@ local function parse_zipkin_b3_headers(headers)
   return trace_id, span_id, parent_id, should_sample
 end
 
-local function parse_w3c_trace_context_headers(headers)
+
+local function parse_w3c_trace_context_headers(w3c_header)
   -- allow testing to spy on this.
   local warn = kong.log.warn
 
-  local version, trace_id, parent_id, trace_flags
   local should_sample = false
 
-  local w3c_trace_context_header = headers["traceparent"]
-
-  -- no W3C trace context
-  if w3c_trace_context_header == nil or type(w3c_trace_context_header) ~= "string" then
+  if type(w3c_header) ~= "string" then
     return nil, nil, nil, should_sample
   end
 
-  version, trace_id, parent_id, trace_flags = match(w3c_trace_context_header, W3C_TRACECONTEXT_PATTERN)
+  local version, trace_id, parent_id, trace_flags = match(w3c_header, W3C_TRACECONTEXT_PATTERN)
 
   -- values are not parsable hexidecimal and therefore invalid.
   if version == nil or trace_id == nil or parent_id == nil or trace_flags == nil then
@@ -218,28 +200,130 @@ local function parse_w3c_trace_context_headers(headers)
   parent_id = from_hex(parent_id)
 
   return trace_id, parent_id, should_sample
-
 end
 
-local function parse_http_req_headers(headers)
-  -- Check for B3 headers first
-  local trace_id, span_id, parent_id, should_sample = parse_zipkin_b3_headers(headers)
 
-  -- TODO: Offer the option to configure which headers to use. For now, W3C wins if it's present
-  -- Check for W3C headers
-  local w3c_trace_id, w3c_parent_id, w3c_should_sample = parse_w3c_trace_context_headers(headers)
-  if w3c_trace_id then
-    trace_id, span_id, parent_id, should_sample = w3c_trace_id, nil, w3c_parent_id, w3c_should_sample
+-- This plugin understands several tracing header types:
+-- * Zipkin B3 headers (X-B3-TraceId, X-B3-SpanId, X-B3-ParentId, X-B3-Sampled, X-B3-Flags)
+-- * Zipkin B3 "single header" (a single header called "B3", composed of several fields)
+--   * spec: https://github.com/openzipkin/b3-propagation/blob/master/RATIONALE.md#b3-single-header-format
+-- * W3C "traceparent" header - also a composed field
+--   * spec: https://www.w3.org/TR/trace-context/
+--
+-- The plugin expects request to be using *one* of these types. If several of them are
+-- encountered on one request, only one kind will be transmitted further. The order is
+--
+--      B3-single > B3 > W3C
+--
+-- Exceptions:
+--
+-- * When both B3 and B3-single fields are present, the B3 fields will be "ammalgamated"
+--   into the resulting B3-single field. If they present contradictory information (i.e.
+--   different TraceIds) then B3-single will "win".
+--
+-- * The erroneous formatting on *any* header (even those overriden by B3 single) results
+--   in rejection (ignoring) of all headers. This rejection is logged.
+local function find_header_type(headers)
+  local b3_single_header = headers["b3"]
+  if not b3_single_header then
+    local tracestate_header = headers["tracestate"]
+    if tracestate_header then
+      b3_single_header = match(tracestate_header, "^b3=(.+)$")
+    end
+  end
+
+  if b3_single_header then
+    return "b3-single", b3_single_header
+  end
+
+  if headers["x-b3-sampled"]
+  or headers["x-b3-flags"]
+  or headers["x-b3-traceid"]
+  or headers["x-b3-spanid"]
+  or headers["x-b3-parentspanid"]
+  then
+    return "b3"
+  end
+
+  local w3c_header = headers["traceparent"]
+  if w3c_header then
+    return "w3c", w3c_header
+  end
+end
+
+
+local function parse(headers)
+  -- Check for B3 headers first
+  local header_type, composed_header = find_header_type(headers)
+  local trace_id, span_id, parent_id, should_sample
+
+  if header_type == "b3" or header_type == "b3-single" then
+    trace_id, span_id, parent_id, should_sample = parse_zipkin_b3_headers(headers, composed_header)
+  elseif header_type == "w3c" then
+    trace_id, parent_id, should_sample = parse_w3c_trace_context_headers(composed_header)
   end
 
   if not trace_id then
-    return trace_id, span_id, parent_id, should_sample
+    return header_type, trace_id, span_id, parent_id, should_sample
   end
 
   local baggage = parse_jaeger_baggage_headers(headers)
 
-  return trace_id, span_id, parent_id, should_sample, baggage
+  return header_type, trace_id, span_id, parent_id, should_sample, baggage
 end
 
 
-return parse_http_req_headers
+local function set(conf_header_type, found_header_type, proxy_span)
+  local set_header = kong.service.request.set_header
+
+  if conf_header_type ~= "preserve" and
+     found_header_type ~= nil and
+     conf_header_type ~= found_header_type
+  then
+    kong.log.warn("Mismatched header types. conf: " .. conf_header_type .. ". found: " .. found_header_type)
+  end
+
+  if conf_header_type == "b3"
+  or found_header_type == nil
+  or found_header_type == "b3"
+  then
+    set_header("x-b3-traceid", to_hex(proxy_span.trace_id))
+    set_header("x-b3-spanid", to_hex(proxy_span.span_id))
+    if proxy_span.parent_id then
+      set_header("x-b3-parentspanid", to_hex(proxy_span.parent_id))
+    end
+    local Flags = kong.request.get_header("x-b3-flags") -- Get from request headers
+    if Flags then
+      set_header("x-b3-flags", Flags)
+    else
+      set_header("x-b3-sampled", proxy_span.should_sample and "1" or "0")
+    end
+  end
+
+  if conf_header_type == "b3-single" or found_header_type == "b3-single" then
+    set_header("b3", fmt("%s-%s-%s-%s",
+        to_hex(proxy_span.trace_id),
+        to_hex(proxy_span.span_id),
+        proxy_span.should_sample and "1" or "0",
+      to_hex(proxy_span.parent_id)))
+  end
+
+  if conf_header_type == "w3c" or found_header_type == "w3c" then
+    set_header("traceparent", fmt("00-%s-%s-%s",
+        to_hex(proxy_span.trace_id),
+        to_hex(proxy_span.span_id),
+      proxy_span.should_sample and "01" or "00"))
+  end
+
+  for key, value in proxy_span:each_baggage_item() do
+    -- XXX: https://github.com/opentracing/specification/issues/117
+    set_header("uberctx-"..key, ngx.escape_uri(value))
+  end
+end
+
+
+return {
+  parse = parse,
+  set = set,
+  from_hex = from_hex,
+}

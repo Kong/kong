@@ -24,7 +24,7 @@ build = {
     ["kong.plugins.zipkin.handler"] = "kong/plugins/zipkin/handler.lua",
     ["kong.plugins.zipkin.reporter"] = "kong/plugins/zipkin/reporter.lua",
     ["kong.plugins.zipkin.span"] = "kong/plugins/zipkin/span.lua",
-    ["kong.plugins.zipkin.parse_http_req_headers"] = "kong/plugins/zipkin/parse_http_req_headers.lua",
+    ["kong.plugins.zipkin.tracing_headers"] = "kong/plugins/zipkin/tracing_headers.lua",
     ["kong.plugins.zipkin.schema"] = "kong/plugins/zipkin/schema.lua",
   },
 }

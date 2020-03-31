@@ -1,9 +1,7 @@
 local new_zipkin_reporter = require "kong.plugins.zipkin.reporter".new
 local new_span = require "kong.plugins.zipkin.span".new
-local to_hex = require "resty.string".to_hex
-local parse_http_req_headers = require "kong.plugins.zipkin.parse_http_req_headers"
 local utils = require "kong.tools.utils"
-
+local tracing_headers = require "kong.plugins.zipkin.tracing_headers"
 
 local subsystem = ngx.config.subsystem
 local fmt = string.format
@@ -104,8 +102,8 @@ if subsystem == "http" then
   initialize_request = function(conf, ctx)
     local req = kong.request
 
-    local trace_id, span_id, parent_id, should_sample, baggage =
-      parse_http_req_headers(req.get_headers())
+    local header_type, trace_id, span_id, parent_id, should_sample, baggage =
+      tracing_headers.parse(req.get_headers())
     local method = req.get_method()
 
     if should_sample == nil then
@@ -135,6 +133,7 @@ if subsystem == "http" then
 
     ctx.zipkin = {
       request_span = request_span,
+      header_type = header_type,
       proxy_span = nil,
       header_filter_finished = false,
     }
@@ -161,32 +160,7 @@ if subsystem == "http" then
       or ngx_now_mu()
     get_or_add_proxy_span(zipkin, access_start)
 
-    -- Want to send headers to upstream
-    local proxy_span = zipkin.proxy_span
-    local set_header = kong.service.request.set_header
-
-    -- Set the W3C Trace Context header
-    -- TODO: Should W3C traceparent header be set even it wasn't on the incoming request?
-    set_header("traceparent", "00-".. to_hex(proxy_span.trace_id) .. "-" .. to_hex(proxy_span.span_id) .. "-" ..
-      tostring(proxy_span.should_sample and "01" or "00"))
-
-    -- TODO: Should B3 headers be set even if they weren't on the incoming request?
-    -- We want to remove headers if already present
-    set_header("x-b3-traceid", to_hex(proxy_span.trace_id))
-    set_header("x-b3-spanid", to_hex(proxy_span.span_id))
-    if proxy_span.parent_id then
-      set_header("x-b3-parentspanid", to_hex(proxy_span.parent_id))
-    end
-    local Flags = kong.request.get_header("x-b3-flags") -- Get from request headers
-    if Flags then
-      set_header("x-b3-flags", Flags)
-    else
-      set_header("x-b3-sampled", proxy_span.should_sample and "1" or "0")
-    end
-    for key, value in proxy_span:each_baggage_item() do
-      -- XXX: https://github.com/opentracing/specification/issues/117
-      set_header("uberctx-"..key, ngx.escape_uri(value))
-    end
+    tracing_headers.set(conf.header_type, zipkin.header_type, zipkin.proxy_span)
   end
 
 

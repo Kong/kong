@@ -516,13 +516,16 @@ describe("http integration tests with zipkin server [#"
       local span_id = gen_span_id()
       local parent_id = gen_span_id()
 
+
       local r = proxy_client:get("/", {
         headers = {
           b3 = fmt("%s-%s-%s-%s", trace_id, span_id, "1", parent_id),
           host = "http-route",
         },
       })
-      assert.response(r).has.status(200)
+      local body = assert.response(r).has.status(200)
+      local json = cjson.decode(body)
+      assert.matches(trace_id .. "%-%x+%-1%-%x+", json.headers.b3)
 
       local balancer_span, proxy_span, request_span =
         wait_for_spans(zipkin_client, 3, nil, trace_id)
@@ -550,7 +553,9 @@ describe("http integration tests with zipkin server [#"
           host = "http-route",
         },
       })
-      assert.response(r).has.status(200)
+      local body = assert.response(r).has.status(200)
+      local json = cjson.decode(body)
+      assert.matches(trace_id .. "%-%x+%-1%-%x+", json.headers.b3)
 
       local balancer_span, proxy_span, request_span =
         wait_for_spans(zipkin_client, 3, nil, trace_id)
@@ -578,7 +583,9 @@ describe("http integration tests with zipkin server [#"
           host = "http-route",
         },
       })
-      assert.response(r).has.status(200)
+      local body = assert.response(r).has.status(200)
+      local json = cjson.decode(body)
+      assert.matches(trace_id .. "%-%x+%-1%-%x+", json.headers.b3)
 
       local balancer_span, proxy_span, request_span =
         wait_for_spans(zipkin_client, 3, nil, trace_id)
@@ -615,6 +622,53 @@ describe("http integration tests with zipkin server [#"
       assert.equals(trace_id, proxy_span.traceId)
       assert.not_equals(span_id, proxy_span.id)
       assert.equals(span_id, proxy_span.parentId)
+    end)
+  end)
+
+
+  describe("w3c traceparent header propagation", function()
+    it("works on regular calls", function()
+      local trace_id = gen_trace_id(16) -- w3c only admits 16-byte trace_ids
+      local parent_id = gen_span_id()
+
+      local r = proxy_client:get("/", {
+        headers = {
+          traceparent = fmt("00-%s-%s-01", trace_id, parent_id),
+          host = "http-route"
+        },
+      })
+      local body = assert.response(r).has.status(200)
+      local json = cjson.decode(body)
+      assert.matches("00%-" .. trace_id .. "%-%x+-01", json.headers.traceparent)
+
+      local balancer_span, proxy_span, request_span =
+        wait_for_spans(zipkin_client, 3, nil, trace_id)
+
+      assert.equals(trace_id, request_span.traceId)
+      assert.equals(parent_id, request_span.parentId)
+
+      assert.equals(trace_id, proxy_span.traceId)
+      assert.equals(trace_id, balancer_span.traceId)
+    end)
+
+    it("works on non-matched requests", function()
+      local trace_id = gen_trace_id(16) -- w3c only admits 16-bit trace_ids
+      local parent_id = gen_span_id()
+
+      local r = proxy_client:get("/foobar", {
+        headers = {
+          traceparent = fmt("00-%s-%s-01", trace_id, parent_id),
+        },
+      })
+      assert.response(r).has.status(404)
+
+      local proxy_span, request_span =
+        wait_for_spans(zipkin_client, 2, nil, trace_id)
+
+      assert.equals(trace_id, request_span.traceId)
+      assert.equals(parent_id, request_span.parentId)
+
+      assert.equals(trace_id, proxy_span.traceId)
     end)
   end)
 end)
