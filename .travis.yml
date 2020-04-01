@@ -55,7 +55,7 @@ env:
 install:
   - git clone --single-branch https://$GITHUB_TOKEN:@github.com/Kong/kong-ci.git ../kong-ci
   - source ../kong-ci/setup_plugin_env.sh
-  - docker run -d --name zipkin -p 9411:9411 openzipkin/zipkin && while ! curl localhost:9411/health; do sleep 1; done
+  - docker run -d --name zipkin -p 9411:9411 openzipkin/zipkin:2.19 && while ! curl localhost:9411/health; do sleep 1; done
 
 script:
   - eval $LUACHECK_CMD
