@@ -38,11 +38,27 @@ local function issuer(row)
 end
 
 
+local function filter_jwks(jwks)
+  for _, jwk in ipairs(jwks.keys) do
+    jwk.k = nil
+    jwk.d = nil
+    jwk.p = nil
+    jwk.q = nil
+    jwk.dp = nil
+    jwk.dq = nil
+    jwk.qi = nil
+  end
+
+  return jwks
+end
+
+
 local issuers_schema = kong.db.oic_issuers.schema
+local jwks_schema = kong.db.oic_jwks.schema
 
 
 return {
-  ["/openid-connect/issuers/"] = {
+  ["/openid-connect/issuers"] = {
     schema = issuers_schema,
     methods = {
       GET = function(self, db)
@@ -87,6 +103,25 @@ return {
         return kong.response.exit(200, issuer(entity))
       end,
       DELETE = endpoints.delete_entity_endpoint(issuers_schema),
+    },
+  },
+  ["/openid-connect/jwks"] = {
+    schema = jwks_schema,
+    methods = {
+      GET = function(self, db)
+        local entity, _, err_t = endpoints.select_entity(self, db, jwks_schema, "get")
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+
+        if not entity then
+          return kong.response.exit(404, { message = "Not found" })
+        end
+
+        return kong.response.exit(200, filter_jwks(entity.jwks), {
+          ["Content-Type"] = "application/jwk-set+json",
+        })
+      end,
     },
   },
 }

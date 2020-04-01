@@ -1,7 +1,6 @@
 return {
   postgres = {
     up = [[
-
       CREATE TABLE IF NOT EXISTS oic_issuers (
         id             UUID                      PRIMARY KEY,
         issuer         TEXT                      UNIQUE,
@@ -22,7 +21,6 @@ return {
 
   cassandra = {
     up = [[
-
       CREATE TABLE IF NOT EXISTS oic_issuers (
         id             uuid        PRIMARY KEY,
         issuer         text,
@@ -33,7 +31,6 @@ return {
       );
 
       CREATE INDEX IF NOT EXISTS ON oic_issuers (issuer);
-
     ]],
   },
 }

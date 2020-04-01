@@ -131,21 +131,60 @@ local config = {
           },
           {
             client_id = {
-              required = false,
-              type     = "array",
+              required  = false,
+              type      = "array",
               encrypted = ENCRYPTED,
-              elements = {
-                type = "string",
+              elements  = {
+                type    = "string",
               },
             },
           },
           {
             client_secret = {
-              required = false,
-              type     = "array",
+              required  = false,
+              type      = "array",
               encrypted = ENCRYPTED,
-              elements = {
-                type = "string",
+              elements  = {
+                type    = "string",
+              },
+            },
+          },
+          {
+            client_auth = {
+              required  = false,
+              type      = "array",
+              elements  = {
+                type    = "string",
+                one_of  = {
+                  "client_secret_basic",
+                  "client_secret_post",
+                  "client_secret_jwt",
+                  "private_key_jwt",
+                  "none",
+                },
+              },
+            },
+          },
+          {
+            client_alg  = {
+              required  = false,
+              type      = "array",
+              elements  = {
+                type    = "string",
+                one_of = {
+                  "HS256",
+                  "HS384",
+                  "HS512",
+                  "RS256",
+                  "RS512",
+                  "ES256",
+                  "ES384",
+                  "ES512",
+                  "PS256",
+                  "PS384",
+                  "PS512",
+                  "EdDSA",
+                },
               },
             },
           },
@@ -420,9 +459,11 @@ local config = {
               required = false,
               type     = "string",
               one_of   = {
-                "none",
                 "client_secret_basic",
                 "client_secret_post",
+                "client_secret_jwt",
+                "private_key_jwt",
+                "none",
               },
             },
           },
@@ -515,6 +556,19 @@ local config = {
             },
           },
           {
+            introspection_endpoint_auth_method = {
+              required = false,
+              type     = "string",
+              one_of   = {
+                "client_secret_basic",
+                "client_secret_post",
+                "client_secret_jwt",
+                "private_key_jwt",
+                "none",
+              },
+            },
+          },
+          {
             introspection_hint = {
               required = false,
               type     = "string",
@@ -576,6 +630,19 @@ local config = {
           {
             revocation_endpoint = typedefs.url {
               required = false,
+            },
+          },
+          {
+            revocation_endpoint_auth_method = {
+              required = false,
+              type     = "string",
+              one_of   = {
+                "client_secret_basic",
+                "client_secret_post",
+                "client_secret_jwt",
+                "private_key_jwt",
+                "none",
+              },
             },
           },
           {

@@ -614,13 +614,9 @@ end
 local introspection = {}
 
 
-local function introspection_load(oic, access_token, endpoint, hint, headers, args, ttl)
+local function introspection_load(oic, access_token, hint, ttl, opts)
   log.notice("introspecting access token with identity provider")
-  local token, err = oic.token:introspect(access_token, hint or "access_token", {
-    introspection_endpoint = endpoint,
-    headers                = headers,
-    args                   = args,
-  })
+  local token, err = oic.token:introspect(access_token, hint or "access_token", opts)
   if not token then
     return nil, err or "unable to introspect token"
   end
@@ -631,13 +627,13 @@ local function introspection_load(oic, access_token, endpoint, hint, headers, ar
 end
 
 
-function introspection.load(oic, access_token, endpoint, hint, headers, args, ttl, use_cache)
+function introspection.load(oic, access_token, hint, ttl, use_cache, opts)
   if not access_token then
     return nil, "no access token given for token introspection"
   end
 
   local key = cache_key(base64.encode(hash.S256(concat({
-    endpoint or oic.configuration.issuer,
+    opts.introspection_endpoint or oic.configuration.issuer,
     access_token
   }, "#introspection="))))
 
@@ -645,7 +641,7 @@ function introspection.load(oic, access_token, endpoint, hint, headers, args, tt
   local err
 
   if use_cache and key then
-    res, err = cache_get("oic:" .. key, ttl, introspection_load, oic, access_token, endpoint, hint, headers, args, ttl)
+    res, err = cache_get("oic:" .. key, ttl, introspection_load, oic, access_token, hint, ttl, opts)
     if not res then
       return nil, err or "unable to introspect token"
     end
@@ -653,11 +649,11 @@ function introspection.load(oic, access_token, endpoint, hint, headers, args, tt
     local exp = res[1]
     if exp ~= 0 and exp < ttl.now then
       cache_invalidate("oic:" .. key)
-      res, err = introspection_load(oic, access_token, endpoint, hint, headers, args, ttl)
+      res, err = introspection_load(oic, access_token, hint, ttl, opts)
     end
 
   else
-    res, err = introspection_load(oic, access_token, endpoint, hint, headers, args, ttl)
+    res, err = introspection_load(oic, access_token, hint, ttl, opts)
   end
 
   if not res then

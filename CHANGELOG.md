@@ -1,5 +1,14 @@
-## v1.2.9
+## v1.3.0
 
+- Add support for `client_secret_jwt` and `private_key_jwt` authentication
+- Add `config.client_auth`
+- Add `config.client_alg`
+- Add `config.introspection_endpoint_auth_method`
+- Add `config.revocation_endpoint_auth_method`
+- Change `config.introspection_endpoint_auth_method` to include `client_secret_jwt` and
+  `private_key_jwt`
+- Fix issue when `bearer` auth_method was disabled that it was not disabled
+  if introspection was enabled
 - Bump `lua-resty-session` dependency to `3.1`
 
 

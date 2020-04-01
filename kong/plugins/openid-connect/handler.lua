@@ -1,6 +1,6 @@
 local OICHandler = {
   PRIORITY = 1000,
-  VERSION  = "1.2.8",
+  VERSION  = "1.3.0",
 }
 
 
@@ -36,6 +36,9 @@ local type            = type
 local sub             = string.sub
 local json            = codec.json
 local base64url       = codec.base64url
+
+
+local PRIVATE_KEY_JWKS = {}
 
 
 local PARAM_TYPES_ALL = {
@@ -115,10 +118,11 @@ end
 
 
 local function create_introspect_token(args, oic)
-  local endpoint  = args.get_conf_arg("introspection_endpoint")
-  local hint      = args.get_conf_arg("introspection_hint", "access_token")
-  local headers   = args.get_conf_args("introspection_headers_names", "introspection_headers_values")
-  local use_cache = args.get_conf_arg("cache_introspection")
+  local endpoint    = args.get_conf_arg("introspection_endpoint")
+  local auth_method = args.get_conf_arg("introspection_endpoint_auth_method")
+  local hint        = args.get_conf_arg("introspection_hint", "access_token")
+  local use_cache   = args.get_conf_arg("cache_introspection")
+  local headers     = args.get_conf_args("introspection_headers_names", "introspection_headers_values")
 
   return function(access_token, ttl)
     local pargs       = args.get_conf_args("introspection_post_args_names", "introspection_post_args_values")
@@ -146,13 +150,20 @@ local function create_introspect_token(args, oic)
       end
     end
 
+    local opts = {
+      introspection_endpoint             = endpoint,
+      introspection_endpoint_auth_method = auth_method,
+      headers                            = headers,
+      args                               = pargs,
+    }
+
     if use_cache then
       log("introspecting token with caching enabled")
-      return cache.introspection.load(oic, access_token, endpoint, hint, headers, pargs, ttl, true)
+      return cache.introspection.load(oic, access_token, hint, ttl, true, opts)
     end
 
     log("introspecting token")
-    return cache.introspection.load(oic, access_token, endpoint, hint, headers, pargs, ttl, false)
+    return cache.introspection.load(oic, access_token, hint, ttl, false, opts)
   end
 end
 
@@ -420,6 +431,8 @@ local function find_trusted_client(args)
   -- load client configuration
   local clients   = args.get_conf_arg("client_id",     {})
   local secrets   = args.get_conf_arg("client_secret", {})
+  local auths     = args.get_conf_arg("client_auth",   {})
+  local algs      = args.get_conf_arg("client_alg",    {})
   local redirects = args.get_conf_arg("redirect_uri",  {})
 
   local login_redirect_uris        = args.get_conf_arg("login_redirect_uri",        {})
@@ -448,6 +461,8 @@ local function find_trusted_client(args)
   local client = {
     clients                    = clients,
     secrets                    = secrets,
+    auths                      = auths,
+    algs                       = algs,
     redirects                  = redirects,
     login_redirect_uris        = login_redirect_uris,
     logout_redirect_uris       = logout_redirect_uris,
@@ -461,6 +476,8 @@ local function find_trusted_client(args)
     client.id                        = client_id
     client.index                     = client_index
     client.secret                    = secrets[client_index]                    or secrets[1]
+    client.auth                      = auths[client_index]                      or auths[1]
+    client.alg                       = algs[client_index]                       or algs[1]
     client.redirect_uri              = redirects[client_index]                  or redirects[1] or redirect_uri(args)
     client.login_redirect_uri        = login_redirect_uris[client_index]        or login_redirect_uris[1]
     client.logout_redirect_uri       = logout_redirect_uris[client_index]       or logout_redirect_uris[1]
@@ -472,6 +489,8 @@ local function find_trusted_client(args)
     client.id                        = clients[1]
     client.index                     = 1
     client.secret                    = secrets[1]
+    client.auth                      = auths[1]
+    client.alg                       = algs[1]
     client.redirect_uri              = redirects[1] or redirect_uri(args)
     client.login_redirect_uri        = login_redirect_uris[1]
     client.logout_redirect_uri       = logout_redirect_uris[1]
@@ -498,6 +517,10 @@ local function reset_trusted_client(new_client_index, trusted_client, oic, optio
   trusted_client.id                        = new_id
   trusted_client.secret                    = trusted_client.secrets[new_client_index] or
                                              trusted_client.secret
+  trusted_client.auth                      = trusted_client.auths[new_client_index] or
+                                             trusted_client.auth
+  trusted_client.alg                       = trusted_client.algs[new_client_index] or
+                                             trusted_client.alg
   trusted_client.redirect_uri              = trusted_client.redirects[new_client_index] or
                                              trusted_client.redirect_uri
   trusted_client.login_redirect_uri        = trusted_client.login_redirect_uris[new_client_index] or
@@ -514,6 +537,8 @@ local function reset_trusted_client(new_client_index, trusted_client, oic, optio
 
   options.client_id     = trusted_client.id
   options.client_secret = trusted_client.secret
+  options.client_auth   = trusted_client.auth
+  options.client_alg    = trusted_client.alg
   options.redirect_uri  = trusted_client.redirect_uri
 
   oic.options:reset(options)
@@ -900,6 +925,18 @@ end
 
 
 function OICHandler.init_worker()
+  local keys, err = kong.db.oic_jwks:get()
+  if not keys then
+    log.err(err)
+
+  else
+    for _, jwk in ipairs(keys.jwks.keys) do
+      if jwk.alg ~= "HS256" and jwk.alg ~= "HS384" and jwk.alg ~= "HS512" then
+        PRIVATE_KEY_JWKS[jwk.alg] = jwk
+      end
+    end
+  end
+
   cache.init_worker()
 end
 
@@ -951,6 +988,10 @@ function OICHandler.access(_, conf)
     options = {
       client_id                 = trusted_client.id,
       client_secret             = trusted_client.secret,
+      client_auth               = trusted_client.auth,
+      client_alg                = trusted_client.alg,
+      client_jwk                = trusted_client.alg and PRIVATE_KEY_JWKS[trusted_client.alg] or
+                                                         PRIVATE_KEY_JWKS.RS256,
       redirect_uri              = trusted_client.redirect_uri,
       scope                     = args.get_conf_arg("scopes", {}),
       response_mode             = args.get_conf_arg("response_mode"),
@@ -1127,16 +1168,13 @@ function OICHandler.access(_, conf)
 
             if args.get_conf_arg("logout_revoke", false) then
               local revocation_endpoint = args.get_conf_arg("revocation_endpoint")
-
+              local revocation_endpoint_auth_method = args.get_conf_arg("revocation_endpoint_auth_method")
               if session_data.tokens.refresh_token and args.get_conf_arg("logout_revoke_refresh_token", false) then
-                if not revocation_endpoint then
-                  revocation_endpoint = revocation_endpoint
-                end
-
                 if revocation_endpoint then
                   log("revoking refresh token")
                   ok, err = oic.token:revoke(session_data.tokens.refresh_token, "refresh_token", {
                     revocation_endpoint = revocation_endpoint,
+                    revocation_endpoint_auth_method = revocation_endpoint_auth_method,
                   })
                   if not ok and err then
                     log("revoking refresh token failed: ", err)
@@ -1152,6 +1190,7 @@ function OICHandler.access(_, conf)
                   log("revoking access token")
                   ok, err = oic.token:revoke(session_data.tokens.access_token, "access_token", {
                     revocation_endpoint = revocation_endpoint,
+                    revocation_endpoint_auth_method = revocation_endpoint_auth_method,
                   })
                   if not ok and err then
                     log("revoking access token failed: ", err)
@@ -1437,6 +1476,7 @@ function OICHandler.access(_, conf)
             }
 
           else
+
             log("credentials for client credentials or password grants were not found")
           end
 
@@ -1763,14 +1803,25 @@ function OICHandler.access(_, conf)
 
     log("bearer token verified")
 
-    -- introspection of opaque access token
-    if type(tokens_decoded.access_token) ~= "table" then
-      log("opaque bearer token was provided")
+    if not auth_methods.bearer or type(tokens_decoded.access_token) ~= "table" then
+      local access_token
+      if type(tokens_decoded.access_token) ~= "table" then
+        log("opaque bearer token was provided")
+        access_token = tokens_decoded.access_token
+
+      elseif type(tokens_encoded) == "table" then
+        log("bearer authentication was not enabled")
+        access_token = tokens_encoded.access_token
+      else
+        return unauthorized(ctx, iss, unauthorized_error_message,
+                            "access token not found",
+                            session, anonymous, trusted_client)
+      end
 
       if auth_methods.kong_oauth2 then
         log("trying to find matching kong oauth2 token")
         token_introspected, credential, consumer = cache.kong_oauth2.load(
-          ctx, tokens_decoded.access_token, ttl, true)
+          ctx, access_token, ttl, true)
         if type(token_introspected) == "table" then
           log("found matching kong oauth2 token")
           token_introspected.active = true
@@ -1782,7 +1833,7 @@ function OICHandler.access(_, conf)
 
       if type(token_introspected) ~= "table" or token_introspected.active ~= true then
         if auth_methods.introspection then
-          token_introspected, err = introspect_token(tokens_decoded.access_token, ttl)
+          token_introspected, err = introspect_token(access_token, ttl)
           if type(token_introspected) == "table" then
             if token_introspected.active then
               log("authenticated using oauth2 introspection")
@@ -1911,10 +1962,10 @@ function OICHandler.access(_, conf)
           log("trying to exchange credentials using token endpoint with caching enabled")
           tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl, true)
 
-          if type(tokens_encoded) == "table"
-            and (arg.grant_type == "refresh_token" or
-            arg.grant_type == "password"      or
-            arg.grant_type == "client_credentials")
+          if type(tokens_encoded) == "table"   and
+            (arg.grant_type == "refresh_token" or
+              arg.grant_type == "password"      or
+              arg.grant_type == "client_credentials")
           then
             log("verifying tokens")
             tokens_decoded, err = oic.token:verify(tokens_encoded, arg)
