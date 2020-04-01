@@ -44,8 +44,8 @@ return {
           { revocation_check_mode = {
             required = false,
             type = "string",
-            one_of = {"SKIP", "IGNORE_CA_ERROR"},
-            default = "SKIP"
+            one_of = {"SKIP", "IGNORE_CA_ERROR", "STRICT"},
+            default = "IGNORE_CA_ERROR"
           }, },
           { http_timeout = {
             type = "number",
