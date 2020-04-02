@@ -27,32 +27,38 @@ local function load_jwks(dao)
       return nil, err
     end
 
-    local generated_jwks
-    generated_jwks, err = jwks.new()
-    if not generated_jwks then
-      return nil, err
-    end
+    if kong.configuration.database ~= "off" then
+      local generated_jwks
+      generated_jwks, err = jwks.new()
+      if not generated_jwks then
+        return nil, err
+      end
 
-    keys, err = dao.super.insert(dao, {
-      id   = pk_default.id,
-      jwks = generated_jwks,
-    })
+      keys, err = dao.super.insert(dao, {
+        id   = pk_default.id,
+        jwks = generated_jwks,
+      })
 
-    if not keys then
-      local err2
-      keys, err2 = dao.super.select(dao, pk_default)
       if not keys then
-        if err then
-          return nil, err
-        end
+        local err2
+        keys, err2 = dao.super.select(dao, pk_default)
+        if not keys then
+          if err then
+            return nil, err
+          end
 
-        if err2 then
-          return nil, err2
-        end
+          if err2 then
+            return nil, err2
+          end
 
-        return nil, "unable to load default jwks"
+          return nil, "unable to load default jwks"
+        end
       end
     end
+  end
+
+  if not keys then
+    return nil, "unable to load default jwks"
   end
 
   return keys
