@@ -13,9 +13,25 @@ end
 
 
 local function should_create_permission(init_application_instance, application_instance)
-  return application_instance.status == enums.CONSUMERS.STATUS.APPROVED and
-         application_instance.status ~= init_application_instance.status and
-         not application_instance.suspended
+  local is_suspended = application_instance.suspended
+  local is_approved = application_instance.status == enums.CONSUMERS.STATUS.APPROVED
+  local status_did_change = application_instance.status ~= init_application_instance.status
+  local suspended_did_change = application_instance.suspended ~= init_application_instance.suspended
+
+  -- always delete acl group when instance is suspended
+  if is_suspended then
+    return false
+  end
+
+  -- create acl group when suspended changed to false and is_approved
+  if is_approved and suspended_did_change then
+    return true
+  end
+
+    -- create acl group when status changed and is_approved
+  if is_approved and status_did_change then
+    return true
+  end
 end
 
 

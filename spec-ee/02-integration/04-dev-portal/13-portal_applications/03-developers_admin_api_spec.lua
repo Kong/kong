@@ -53,16 +53,20 @@ for _, strategy in helpers.each_strategy() do
     describe("/developers/:developer", function()
       describe("PATCH", function()
         local developer,
+              service_one,
+              service_two,
+              application_one,
+              application_two,
               application_instance_one,
               application_instance_two
 
-        lazy_setup(function()
-          local service_one = assert(db.services:insert({
+        before_each(function()
+          service_one = assert(db.services:insert({
             name = "service_one",
             url = "http://google.com"
           }))
 
-          local service_two = assert(db.services:insert({
+          service_two = assert(db.services:insert({
             name = "service_two",
             url = "http://google.com"
           }))
@@ -92,13 +96,13 @@ for _, strategy in helpers.each_strategy() do
             status = enums.CONSUMERS.STATUS.REVOKED,
           }))
 
-          local application_one = assert(db.applications:insert({
+          application_one = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
             redirect_uri = "http://doghouse.com",
           }))
 
-          local application_two = assert(db.applications:insert({
+          application_two = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRntCool",
             redirect_uri = "http://doghouse.com",
@@ -107,15 +111,18 @@ for _, strategy in helpers.each_strategy() do
           application_instance_one = assert(db.application_instances:insert({
             application = { id = application_one.id },
             service = { id = service_one.id },
+            status = enums.CONSUMERS.STATUS.APPROVED
           }))
 
           application_instance_two = assert(db.application_instances:insert({
             application = { id = application_two.id },
             service = { id = service_two.id },
+            status = enums.CONSUMERS.STATUS.APPROVED
           }))
         end)
 
-        lazy_teardown(function()
+        after_each(function()
+          db:truncate("services")
           db:truncate("basicauth_credentials")
           db:truncate("consumers")
           db:truncate("developers")
@@ -144,7 +151,7 @@ for _, strategy in helpers.each_strategy() do
             method = "PATCH",
             path = "/developers/" .. developer.id,
             body = {
-              status = 0,
+              status = 1,
             },
             headers = {["Content-Type"] = "application/json"}
           }))
@@ -153,8 +160,99 @@ for _, strategy in helpers.each_strategy() do
           local res_one = assert(kong.db.application_instances:select({ id = application_instance_one.id }))
           local res_two = assert(kong.db.application_instances:select({ id = application_instance_two.id }))
 
+          assert(res_one.suspended)
+          assert(res_two.suspended)
+        end)
+
+        it("devs application_instance's re-create acl group when status is revoked, then re-introduced", function()
+          local res = assert(client:send({
+            method = "PATCH",
+            path = "/developers/" .. developer.id,
+            body = {
+              status = 0,
+            },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+          assert.res_status(200, res)
+
+          local res_one = assert(kong.db.application_instances:select({ id = application_instance_one.id }))
+          local res_two = assert(kong.db.application_instances:select({ id = application_instance_two.id }))
           assert.falsy(res_one.suspended)
           assert.falsy(res_two.suspended)
+
+          for row, err in db.daos["acls"]:each_for_consumer({ id = application_one.consumer.id }) do
+            if row then
+              assert.equal(row.service.id, service_one.id)
+            end
+          end
+
+          for row, err in db.daos["acls"]:each_for_consumer({ id = application_two.consumer.id }) do
+            if row then
+              assert.equal(row.service.id, service_two.id)
+            end
+          end
+
+
+          local res = assert(client:send({
+            method = "PATCH",
+            path = "/developers/" .. developer.id,
+            body = {
+              status = 1,
+            },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+          assert.res_status(200, res)
+
+          local res_one = assert(kong.db.application_instances:select({ id = application_instance_one.id }))
+          local res_two = assert(kong.db.application_instances:select({ id = application_instance_two.id }))
+          assert(res_one.suspended)
+          assert(res_two.suspended)
+
+          local creds = {}
+          for row, err in db.daos["acls"]:each_for_consumer({ id = application_one.consumer.id }) do
+            if row then
+              table.insert(creds, row)
+            end
+          end
+
+          assert.equal(#creds, 0)
+
+          creds = {}
+          for row, err in db.daos["acls"]:each_for_consumer({ id = application_two.consumer.id }) do
+            if row then
+              table.insert(creds, row)
+            end
+          end
+
+          assert.equal(#creds, 0)
+
+
+          local res = assert(client:send({
+            method = "PATCH",
+            path = "/developers/" .. developer.id,
+            body = {
+              status = 0,
+            },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+          assert.res_status(200, res)
+
+          local res_one = assert(kong.db.application_instances:select({ id = application_instance_one.id }))
+          local res_two = assert(kong.db.application_instances:select({ id = application_instance_two.id }))
+          assert.falsy(res_one.suspended)
+          assert.falsy(res_two.suspended)
+
+          for row, err in db.daos["acls"]:each_for_consumer({ id = application_one.consumer.id }) do
+            if row then
+              assert.equal(row.service.id, service_one.id)
+            end
+          end
+
+          for row, err in db.daos["acls"]:each_for_consumer({ id = application_two.consumer.id }) do
+            if row then
+              assert.equal(row.service.id, service_two.id)
+            end
+          end
         end)
       end)
 
