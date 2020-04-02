@@ -5,6 +5,7 @@
 - Add `config.client_alg`
 - Add `config.introspection_endpoint_auth_method`
 - Add `config.revocation_endpoint_auth_method`
+- Add `config.display_errors`
 - Change `config.introspection_endpoint_auth_method` to include `client_secret_jwt` and
   `private_key_jwt`
 - Fix issue when `bearer` auth_method was disabled that it was not disabled

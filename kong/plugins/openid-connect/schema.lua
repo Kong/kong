@@ -1452,6 +1452,13 @@ local config = {
               default  = 10000,
             },
           },
+          {
+            display_errors = {
+              required = false,
+              type     = "boolean",
+              default  = false,
+            },
+          },
         },
       },
     },

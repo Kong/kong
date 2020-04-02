@@ -55,7 +55,15 @@ local function unexpected(trusted_client, ...)
     return redirect(trusted_client.unexpected_redirect_uri)
   end
 
-  return kong.response.exit(500, { message = "An unexpected error occurred" })
+  local message = "An unexpected error occurred"
+  if trusted_client.display_errors then
+    local err = concat({...}, " ")
+    if err ~= "" then
+      message = message .. " (" .. err .. ")"
+    end
+  end
+
+  return kong.response.exit(500, { message = message })
 end
 
 
@@ -429,11 +437,12 @@ end
 
 local function find_trusted_client(args)
   -- load client configuration
-  local clients   = args.get_conf_arg("client_id",     {})
-  local secrets   = args.get_conf_arg("client_secret", {})
-  local auths     = args.get_conf_arg("client_auth",   {})
-  local algs      = args.get_conf_arg("client_alg",    {})
-  local redirects = args.get_conf_arg("redirect_uri",  {})
+  local clients        = args.get_conf_arg("client_id",      {})
+  local secrets        = args.get_conf_arg("client_secret",  {})
+  local auths          = args.get_conf_arg("client_auth",    {})
+  local algs           = args.get_conf_arg("client_alg",     {})
+  local redirects      = args.get_conf_arg("redirect_uri",   {})
+  local display_errors = args.get_conf_arg("display_errors", false)
 
   local login_redirect_uris        = args.get_conf_arg("login_redirect_uri",        {})
   local logout_redirect_uris       = args.get_conf_arg("logout_redirect_uri",       {})
@@ -448,7 +457,6 @@ local function find_trusted_client(args)
 
   if clients.n > 1 then
     local client_arg_name = args.get_conf_arg("client_arg", "client_id")
-
     client_id, client_index = find_trusted_client_by_arg(args.get_header(client_arg_name, "X"), clients)
     if not client_id then
       client_id, client_index = find_trusted_client_by_arg(args.get_uri_arg(client_arg_name), clients)
@@ -498,6 +506,8 @@ local function find_trusted_client(args)
     client.unauthorized_redirect_uri = unauthorized_redirect_uris[1]
     client.unexpected_redirect_uri   = unexpected_redirect_uris[1]
   end
+
+  client.display_errors = display_errors
 
   return client
 end
