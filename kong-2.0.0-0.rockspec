@@ -35,6 +35,7 @@ dependencies = {
   "lyaml == 6.2.4",
   "bcrypt == 2.1",
   "lpeg_patterns == 0.5",
+  "http == 0.3",
   "lua-resty-dns-client == 4.1.3",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-mediador == 0.1.2",
