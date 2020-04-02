@@ -13,13 +13,20 @@ popd
 
 sudo mv kong-distributions/output/kong-*.tar.gz docker-kong-ee/alpine/kong.tar.gz
 
+SOURCE_REPO=$(git config --get remote.origin.url)
+SOURCE_COMMIT=$(git rev-parse HEAD)
+
 pushd docker-kong-ee/alpine/
   sed -i -e '/apk update.*/a  && apk add gnupg \\' Dockerfile
   sed -i -e '/^USER kong/d' Dockerfile
 
   export KONG_ENTERPRISE_PACKAGE=kong.tar.gz
 
-  docker build --no-cache --build-arg KONG_ENTERPRISE_PACKAGE=$KONG_ENTERPRISE_PACKAGE -t kong-ee-dev .
+  docker build --no-cache \
+    --label org.opencontainers.image.source="$SOURCE_REPO" \
+    --label org.opencontainers.image.revision="$SOURCE_COMMIT" \
+    --build-arg KONG_ENTERPRISE_PACKAGE=$KONG_ENTERPRISE_PACKAGE \
+    -t kong-ee-dev .
 
   # XXX: remove once we are ok switching to github pkg registry
   DOCKER_HUB_IMAGE_TAG=mashape/kong-enterprise:dev-master
