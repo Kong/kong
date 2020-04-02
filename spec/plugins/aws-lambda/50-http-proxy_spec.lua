@@ -100,7 +100,7 @@ end
 
 
 
-describe("#proxy", function()
+describe("#proxy #squid", function()
 
   local http
   before_each(function()
@@ -122,7 +122,7 @@ end)
 
 
 
-describe("#keepalive", function()
+describe("#keepalive #squid", function()
 
   local http
   before_each(function()
