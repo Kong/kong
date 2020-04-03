@@ -1,5 +1,9 @@
 # Kong AWS Lambda plugin changelog
 
+## aws-lambda 3.2.1 3-Mar-2020
+
+- Maintenance release for CI purposes
+
 ## aws-lambda 3.2.0 11-Feb-2020
 
 - Encrypt IAM access and secret keys when relevant
