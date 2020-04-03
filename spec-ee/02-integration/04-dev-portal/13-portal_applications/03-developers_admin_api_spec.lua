@@ -181,15 +181,11 @@ for _, strategy in helpers.each_strategy() do
           assert.falsy(res_two.suspended)
 
           for row, err in db.daos["acls"]:each_for_consumer({ id = application_one.consumer.id }) do
-            if row then
-              assert.equal(row.service.id, service_one.id)
-            end
+            assert.equal(row.group, service_one.id)
           end
 
           for row, err in db.daos["acls"]:each_for_consumer({ id = application_two.consumer.id }) do
-            if row then
-              assert.equal(row.service.id, service_two.id)
-            end
+            assert.equal(row.group, service_two.id)
           end
 
 
@@ -243,15 +239,11 @@ for _, strategy in helpers.each_strategy() do
           assert.falsy(res_two.suspended)
 
           for row, err in db.daos["acls"]:each_for_consumer({ id = application_one.consumer.id }) do
-            if row then
-              assert.equal(row.service.id, service_one.id)
-            end
+            assert.equal(row.group, service_one.id)
           end
 
           for row, err in db.daos["acls"]:each_for_consumer({ id = application_two.consumer.id }) do
-            if row then
-              assert.equal(row.service.id, service_two.id)
-            end
+            assert.equal(row.group, service_two.id)
           end
         end)
       end)
