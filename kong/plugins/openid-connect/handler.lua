@@ -441,6 +441,7 @@ local function find_trusted_client(args)
   local secrets        = args.get_conf_arg("client_secret",  {})
   local auths          = args.get_conf_arg("client_auth",    {})
   local algs           = args.get_conf_arg("client_alg",     {})
+  local jwks           = args.get_conf_arg("client_jwk",     {})
   local redirects      = args.get_conf_arg("redirect_uri",   {})
   local display_errors = args.get_conf_arg("display_errors", false)
 
@@ -471,6 +472,7 @@ local function find_trusted_client(args)
     secrets                    = secrets,
     auths                      = auths,
     algs                       = algs,
+    jwks                       = jwks,
     redirects                  = redirects,
     login_redirect_uris        = login_redirect_uris,
     logout_redirect_uris       = logout_redirect_uris,
@@ -485,6 +487,7 @@ local function find_trusted_client(args)
     client.index                     = client_index
     client.secret                    = secrets[client_index]                    or secrets[1]
     client.auth                      = auths[client_index]                      or auths[1]
+    client.jwk                       = jwks[client_index]                       or jwks[1]
     client.alg                       = algs[client_index]                       or algs[1]
     client.redirect_uri              = redirects[client_index]                  or redirects[1] or redirect_uri(args)
     client.login_redirect_uri        = login_redirect_uris[client_index]        or login_redirect_uris[1]
@@ -499,12 +502,17 @@ local function find_trusted_client(args)
     client.secret                    = secrets[1]
     client.auth                      = auths[1]
     client.alg                       = algs[1]
+    client.jwk                       = jwks[1]
     client.redirect_uri              = redirects[1] or redirect_uri(args)
     client.login_redirect_uri        = login_redirect_uris[1]
     client.logout_redirect_uri       = logout_redirect_uris[1]
     client.forbidden_redirect_uri    = forbidden_redirect_uris[1]
     client.unauthorized_redirect_uri = unauthorized_redirect_uris[1]
     client.unexpected_redirect_uri   = unexpected_redirect_uris[1]
+  end
+
+  if not client.jwk then
+    client.jwk = PRIVATE_KEY_JWKS[client.alg] or PRIVATE_KEY_JWKS.RS256
   end
 
   client.display_errors = display_errors
@@ -529,6 +537,8 @@ local function reset_trusted_client(new_client_index, trusted_client, oic, optio
                                              trusted_client.secret
   trusted_client.auth                      = trusted_client.auths[new_client_index] or
                                              trusted_client.auth
+  trusted_client.jwk                       = trusted_client.jwk[new_client_index] or
+                                             trusted_client.jwk
   trusted_client.alg                       = trusted_client.algs[new_client_index] or
                                              trusted_client.alg
   trusted_client.redirect_uri              = trusted_client.redirects[new_client_index] or
@@ -544,6 +554,9 @@ local function reset_trusted_client(new_client_index, trusted_client, oic, optio
   trusted_client.unexpected_redirect_uri   = trusted_client.unexpected_redirect_uris[new_client_index] or
                                              trusted_client.unexpected_redirect_uri
 
+  if not trusted_client.jwk then
+    trusted_client.jwk = PRIVATE_KEY_JWKS[trusted_client.alg] or PRIVATE_KEY_JWKS.RS256
+  end
 
   options.client_id     = trusted_client.id
   options.client_secret = trusted_client.secret
@@ -1000,8 +1013,7 @@ function OICHandler.access(_, conf)
       client_secret             = trusted_client.secret,
       client_auth               = trusted_client.auth,
       client_alg                = trusted_client.alg,
-      client_jwk                = trusted_client.alg and PRIVATE_KEY_JWKS[trusted_client.alg] or
-                                                         PRIVATE_KEY_JWKS.RS256,
+      client_jwk                = trusted_client.jwk,
       redirect_uri              = trusted_client.redirect_uri,
       scope                     = args.get_conf_arg("scopes", {}),
       response_mode             = args.get_conf_arg("response_mode"),

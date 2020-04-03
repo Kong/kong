@@ -3,6 +3,7 @@
 - Add support for `client_secret_jwt` and `private_key_jwt` authentication
 - Add `config.client_auth`
 - Add `config.client_alg`
+- Add `config.client_jwk`
 - Add `config.introspection_endpoint_auth_method`
 - Add `config.revocation_endpoint_auth_method`
 - Add `config.display_errors`

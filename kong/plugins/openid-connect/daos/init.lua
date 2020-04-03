@@ -1,152 +1,5 @@
 local typedefs = require "kong.db.schema.typedefs"
-
-
-local jwk = {
-  type = "record",
-  required = true,
-  fields = {
-    {
-      issuer = {
-        type = "string",
-        required = false,
-      },
-    },
-    {
-      kty = {
-        type = "string",
-        required = false,
-      },
-    },
-    {
-      use = {
-        type = "string",
-        required = false,
-      },
-    },
-    {
-      key_ops = {
-        type = "array",
-        required = false,
-        elements = {
-          type = "string",
-          required = false,
-        }
-      },
-    },
-    {
-      alg = {
-        type = "string",
-        required = false,
-      },
-    },
-    {
-      kid = {
-        type = "string",
-        required = true,
-      },
-    },
-    {
-      x5u = {
-        type = "string",
-        required = false,
-      },
-    },
-    {
-      x5c = {
-        type = "array",
-        required = false,
-        elements = {
-          type = "string",
-          required = false,
-        },
-      },
-    },
-    {
-      x5t = {
-        type = "string",
-        required = false,
-      },
-    },
-    {
-      ["x5t#S256"] = {
-        type = "string",
-        required = false,
-      },
-    },
-    {
-      k = {
-        type = "string",
-        required = false,
-      },
-    },
-    {
-      x = {
-        type = "string",
-        required = false,
-      },
-    },
-    {
-      y = {
-        type = "string",
-        required = false,
-      },
-    },
-    {
-      crv = {
-        type = "string",
-        required = false,
-      },
-    },
-    {
-      n = {
-        type = "string",
-        required = false,
-      },
-    },
-    {
-      e = {
-        type = "string",
-        required = false,
-      },
-    },
-    {
-      d = {
-        type = "string",
-        required = false,
-      },
-    },
-    {
-      p = {
-        type = "string",
-        required = false,
-      },
-    },
-    {
-      q = {
-        type = "string",
-        required = false,
-      },
-    },
-    {
-      dp = {
-        type = "string",
-        required = false,
-      },
-    },
-    {
-      dq = {
-        type = "string",
-        required = false,
-      },
-    },
-    {
-      qi = {
-        type = "string",
-        required = false,
-      },
-    },
-  },
-}
+local oidcdefs = require "kong.plugins.openid-connect.typedefs"
 
 
 return {
@@ -196,7 +49,13 @@ return {
     generate_admin_api = false,
     fields = {
       {
-        id = typedefs.uuid,
+        id = {
+          type = "string",
+          uuid    = true,
+          auto    = false,
+          default = "c3cfba2d-1617-453f-a416-52e6edb5f9a0",
+          eq      = "c3cfba2d-1617-453f-a416-52e6edb5f9a0",
+        },
       },
       {
         jwks = {
@@ -207,7 +66,7 @@ return {
               keys = {
                 type = "array",
                 required = true,
-                elements = jwk,
+                elements = oidcdefs.jwk,
               },
             },
           },

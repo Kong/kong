@@ -1,4 +1,5 @@
 local typedefs  = require "kong.db.schema.typedefs"
+local oidcdefs  = require "kong.plugins.openid-connect.typedefs"
 local cache     = require "kong.plugins.openid-connect.cache"
 local arguments = require "kong.plugins.openid-connect.arguments"
 
@@ -43,6 +44,7 @@ local function validate_issuer(conf)
   return true
 end
 
+
 local function keyring_enabled()
   local ok, enabled = pcall(function()
     return kong.configuration.keyring_enabled
@@ -50,6 +52,7 @@ local function keyring_enabled()
 
   return ok and enabled or nil
 end
+
 
 local ENCRYPTED = keyring_enabled()
 
@@ -163,6 +166,13 @@ local config = {
                   "none",
                 },
               },
+            },
+          },
+          {
+            client_jwk  = {
+              required  = false,
+              type      = "array",
+              elements  = oidcdefs.jwk,
             },
           },
           {
