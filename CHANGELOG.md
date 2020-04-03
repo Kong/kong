@@ -1,3 +1,9 @@
+## Unreleased
+
+### Added
+
+- Rename option for header in config.rename.headers
+
 ## 0.3.2
 
 ### Added
