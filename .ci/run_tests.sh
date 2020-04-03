@@ -8,7 +8,7 @@ function red() {
     echo -e "\033[1;31m$*\033[0m"
 }
 
-export BUSTED_ARGS="-o htest -v --exclude-tags=flaky,ipv6"
+export BUSTED_ARGS="-o htest -v --exclude-tags=flaky,ipv6,squid"
 
 if [ "$KONG_TEST_DATABASE" == "postgres" ]; then
     export TEST_CMD="bin/busted $BUSTED_ARGS,cassandra,off"
