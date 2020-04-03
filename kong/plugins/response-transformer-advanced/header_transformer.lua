@@ -150,6 +150,16 @@ function _M.transform_headers(conf, ngx_headers, resp_code)
     end
   end
 
+  -- rename headers
+  if conf.rename and not skip_transform(resp_code, conf.rename.if_status) then
+      for _, old_header, new_header in iter(conf.rename.headers) do
+        if ngx_headers[old_header] ~= nil and new_header then
+          ngx_headers[new_header] = ngx_headers[old_header]
+          ngx_headers[old_header] = nil
+        end
+      end
+  end
+
   -- replace headers
   if not skip_transform(resp_code, conf.replace.if_status) then
     for _, header_name, header_value in iter(conf.replace.headers) do

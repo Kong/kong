@@ -1,10 +1,46 @@
 local header_transformer = require "kong.plugins.response-transformer-advanced.header_transformer"
 
-
 describe("Plugin: response-transformer-advanced", function()
   describe("execute_headers()", function()
+    local default_conf = {
+      remove = {
+        json = {},
+        headers = {},
+        if_status = {}
+      },
+      rename = {
+        headers = {},
+        if_status = {}
+      },
+      replace = {
+        body = {},
+        json = {},
+        headers = {},
+        if_status = {}
+      },
+      add = {
+        json = {},
+        headers = {},
+        if_status = {}
+      },
+      append = {
+        json = {},
+        headers = {},
+        if_status = {}
+      }
+    }
+
+    local function get_assign(default, table)
+      return setmetatable(table, {
+        __index = function (t, k)
+          if rawget(t, k) ~= nil then return rawget(t, k) end
+          return default[k]
+        end
+      })
+    end
+
     describe("remove", function()
-      local conf_skip = {
+      local conf_skip = get_assign(default_conf, {
         remove    = {
           headers = {
             "h1", "h2",
@@ -36,17 +72,12 @@ describe("Plugin: response-transformer-advanced", function()
           },
             if_status = {"201-300", "500"}
         },
-        replace   = {
-          headers = {}
-        },
         add       = {
           json    = {"p1:v1"},
           headers = {}
-        },
-        append    = {
-          headers = {}
         }
-      }
+      })
+
       it("skips removing headers if response code doesn't match", function()
         local ngx_headers = {h1 = "value1", h2 = {"value2a", "value2b"}}
         local ngx_headers_copy = {h1 = "value1", h2 = {"value2a", "value2b"}}
@@ -60,6 +91,7 @@ describe("Plugin: response-transformer-advanced", function()
         header_transformer.transform_headers(conf_skip, ngx_headers, 201)
         assert.is_not.same(ngx_headers, ngx_headers_copy)
       end)
+
       it("specific header value", function()
         local req_ngx_headers = {
           h1 = {"v1", "v2", "v3"},
@@ -115,11 +147,9 @@ describe("Plugin: response-transformer-advanced", function()
         }, req_ngx_headers)
       end)
     end)
+
     describe("replace", function()
-      local conf_skip  = {
-        remove    = {
-          headers = {}
-        },
+      local conf_skip = get_assign(default_conf,{
         replace   = {
           headers = {"h1:v1", "h2:value:2"},  -- payload with colon to verify parsing
           if_status = {"201-300", "500"}
@@ -127,11 +157,9 @@ describe("Plugin: response-transformer-advanced", function()
         add       = {
           json    = {"p1:v1"},
           headers = {}
-        },
-        append    = {
-          headers = {}
         }
-      }
+      })
+
       it("is skipped if response code doesn't match", function()
         local req_ngx_headers = {h1 = "value1", h2 = {"value2a", "value2b"}}
         local req_ngx_headers_copy = {h1 = "value1", h2 = {"value2a", "value2b"}}
@@ -146,23 +174,49 @@ describe("Plugin: response-transformer-advanced", function()
         assert.is_not.same(req_ngx_headers, req_ngx_headers_copy)
       end)
     end)
+
+    describe("rename", function ()
+      local conf = get_assign(default_conf, {
+        rename = {
+          headers = {"old1:new1", "old2:new2", "set_name:Set-Name"},
+          if_status = { "201-300", "500 "}
+        }
+      })
+
+      local function shallow_cpy(t)
+        local t2 = {}
+        for k,v in pairs(t) do
+          t2[k] = v
+        end
+        return t2
+      end
+
+      it("is skipped if response code doesn't match", function ()
+        local headers = { old1 = 42, set_name = "x was here" }
+        local headers_cpy = shallow_cpy(headers)
+        header_transformer.transform_headers(conf, headers, 401)
+        assert.same(headers, headers_cpy);
+      end)
+
+      it("renames header if response code is in range", function ()
+        local headers = { old1 = 42, set_name = "x was here" }
+        header_transformer.transform_headers(conf, headers, 201)
+        assert.same(headers, {
+          new1 = 42,
+          ["Set-Name"] = "x was here"
+        })
+      end)
+    end)
+
     describe("add", function()
-      local conf_skip  = {
-        remove    = {
-          headers = {}
-        },
-        replace   = {
-          headers = {}
-        },
+      local conf_skip = get_assign(default_conf, {
         add       = {
           json    = {"p1:v1"},
           headers = {"h2:v2"},
           if_status = {"201-300", "500"}
-        },
-        append    = {
-          headers = {}
         }
-      }
+      })
+
       it("is skipped if response code doesn't match", function()
         local req_ngx_headers = {h1 = "v1"}
         local req_ngx_headers_copy = {h1 = "v1"}
@@ -177,14 +231,9 @@ describe("Plugin: response-transformer-advanced", function()
         assert.is_not.same(req_ngx_headers, req_ngx_headers_copy)
       end)
     end)
+
     describe("append", function()
-      local conf_skip = {
-        remove    = {
-          headers = {}
-        },
-        replace   = {
-          headers = {}
-        },
+      local conf_skip = get_assign(default_conf, {
         add       = {
           json    = {"p1:v1"},
           headers = {}
@@ -193,7 +242,8 @@ describe("Plugin: response-transformer-advanced", function()
           headers = {"h1:v2"},
           if_status = {"201-300", "500"}
         }
-      }
+      })
+
       it("is skipped if response code doesn't match", function()
         local req_ngx_headers = {}
         header_transformer.transform_headers(conf_skip, req_ngx_headers, 200)
@@ -205,8 +255,9 @@ describe("Plugin: response-transformer-advanced", function()
         assert.is_not.same({}, req_ngx_headers)
       end)
     end)
+
     describe("performing remove, replace, add, append together", function()
-      local conf_skip = {
+      local conf_skip = get_assign(default_conf, {
         remove    = {
           headers = {"h1:v1"},
           if_status = {500}
@@ -224,7 +275,8 @@ describe("Plugin: response-transformer-advanced", function()
           headers = {"h3:v4"},
           if_status = {500}
         }
-      }
+      })
+
       it("transforms all headers is skipped if response code doesn't match", function()
         local req_ngx_headers = {h1 = "v1", h2 = "v2"}
         local req_ngx_headers_copy = {h1 = "v1", h2 = "v2"}
