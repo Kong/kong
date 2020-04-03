@@ -1335,7 +1335,7 @@ function _M:get_report(opts)
     return nil, "Unsupported vitals_strategy"
   end
 
-  if opts.entity_type ~= "consumer" and opts.entity_type ~= "service" and opts.entity_type ~= "node" then
+  if opts.entity_type ~= "consumer" and opts.entity_type ~= "service" and opts.entity_type ~= "hostname" then
     return nil, "Unsupported vitals report"
   end
 
@@ -1343,7 +1343,7 @@ function _M:get_report(opts)
       return self.strategy:status_code_report_by(opts.entity_type, opts.entity_id, opts.interval, opts.start_ts)
   end
 
-  if opts.entity_type == "node" then
+  if opts.entity_type == "hostname" then
       return self.strategy:latency_report(opts.entity_id, opts.interval, opts.start_ts)
   end
 end
