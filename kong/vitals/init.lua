@@ -104,7 +104,8 @@ local interval_to_duration = {
   seconds = 1,
   minutes = 60,
   hours = 3600,
-  days = 86400
+  days = 86400,
+  weeks = 604800
 }
 
 local worker_count = ngx.worker.count()
@@ -1339,11 +1340,11 @@ function _M:get_report(opts)
   end
 
   if opts.entity_type == "consumer" or opts.entity_type == "service"  then
-    return self.strategy:status_code_report_by(opts.entity_type, opts.start_ts)
+      return self.strategy:status_code_report_by(opts.entity_type, opts.entity_id, opts.interval, opts.start_ts)
   end
 
   if opts.entity_type == "node" then
-    return self.strategy:latency_report(opts.start_ts)
+      return self.strategy:latency_report(opts.entity_id, opts.interval, opts.start_ts)
   end
 end
 

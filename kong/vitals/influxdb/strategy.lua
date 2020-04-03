@@ -43,14 +43,16 @@ local duration_to_interval = {
   [1] = "seconds",
   [60] = "minutes",
   [3600] = "hours",
-  [86400] = "days"
+  [86400] = "days",
+  [604800] = "weeks",
 }
 
 local interval_to_duration = {
   seconds = 1,
   minutes = 60,
   hours = 3600,
-  days = 86400
+  days = 86400,
+  weeks = 604800,
 }
 
 local ok = pcall(function() return ffi.C.gettimeofday end)
@@ -618,30 +620,46 @@ function _M:select_stats(query_type, level, node_id, start_ts)
 end
 
 
-function _M:status_code_report_by(entity, start_ts)
+function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   start_ts = start_ts or 36000
+
   local q = "SELECT count(status) FROM kong_request"
   local where_clause = " WHERE time > now() - " .. ngx.time() - start_ts .. "s"
-  local group_by = " GROUP BY " .. entity .. ", status_f"
-
+  local group_by = " GROUP BY status_f, "
+  if entity_id == nil then
+    group_by = group_by .. entity 
+  else
+    where_clause = where_clause .. " and " .. entity .. "='" .. entity_id .."'"
+    group_by = group_by .. " time(" .. interval_to_duration[interval] .. "s)"
+  end
 
   local result = query(self, q .. where_clause .. group_by)
   local stats = {}
-  for i, row in pairs(result) do
-    local lookup = {
-      consumer = row.tags.consumer,
-      service = row.tags.service
-    }
-    if stats[lookup[entity]] == nil then
-      stats[lookup[entity]] = {}
+  for i, series in pairs(result) do
+    for i, value in pairs(series.values) do
+      local key
+      if entity_id == nil then
+        local lookup = {
+          consumer = series.tags.consumer,
+          service = series.tags.service
+        }
+        key = lookup[entity]
+      else
+        key = tostring(value[1]) -- timestamp
+      end
+
+      if stats[key] == nil then
+        stats[key] = {}
+      end
+
+      local status_group = tostring(series.tags.status_f):sub(1, 1) .. "XX"
+
+      local current_total = stats[key]["total"] or 0
+      local current_status = stats[key][status_group] or 0
+
+      stats[key]["total"] = current_total + value[2]
+      stats[key][status_group] = current_status + value[2]
     end
-
-    local status_group = tostring(row.tags.status_f):sub(1, 1) .. "XX"
-    local current_total = stats[lookup[entity]]["total"] or 0
-    local current_status = stats[lookup[entity]][status_group] or 0
-
-    stats[lookup[entity]]["total"] = current_total + row.values[1][2]
-    stats[lookup[entity]][status_group] = current_status + row.values[1][2]
   end
 
   local meta = {
@@ -658,7 +676,7 @@ function _M:status_code_report_by(entity, start_ts)
   return { stats=stats, meta=meta }
 end
 
-function _M:latency_report(start_ts)
+function _M:latency_report(hostname, interval, start_ts)
   start_ts = start_ts or 36000
   local columns = {
     "proxy_max",
@@ -672,18 +690,34 @@ function _M:latency_report(start_ts)
     " MEAN(proxy_latency), MAX(request_latency), MIN(request_latency)," ..
     " MEAN(request_latency) FROM kong_request"
   local where_clause = " WHERE time > now() - " .. ngx.time() - start_ts .. "s"
-  local group_by = " GROUP BY hostname"
+  local group_by = " GROUP BY "
+
+  if hostname == nil then
+    group_by = group_by .. "hostname"
+  else
+    where_clause = where_clause .. " AND hostname='" .. hostname .."'"
+    group_by = group_by .. "time(" .. interval_to_duration[interval] .. "s)"
+  end
 
   local result = query(self, q .. where_clause .. group_by)
 
   local stats = {}
-  for _, row in pairs(result) do
-    local hostname = row.tags.hostname
-    if stats[hostname] == nil then
-      stats[hostname] = {}
-    end
-    for i, column in pairs(columns) do
-      stats[hostname][column] = row.values[1][i+1]
+  for _, series in pairs(result) do
+    for _, value in pairs(series.values) do
+      local key
+      if hostname == nil then
+        key = series.tags.hostname
+      else
+        key = tostring(value[1]) -- timestamp
+      end
+
+      if stats[key] == nil then
+        stats[key] = {}
+      end
+
+      for i, column in pairs(columns) do
+        stats[key][column] = value[i+1]
+      end
     end
   end
 
