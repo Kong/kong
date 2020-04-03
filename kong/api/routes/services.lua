@@ -62,7 +62,7 @@ return {
     POST = portal_crud.create_document_object_by_service,
   },
   
-  ["/services/:services/routes/:route"] = {
+  ["/services/:services/routes/:routes"] = {
     PATCH = function(self, _, _, parent)
       local ok, err = workspaces.is_route_crud_allowed(self, singletons.router, true)
       if not ok then

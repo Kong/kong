@@ -155,6 +155,10 @@ describe("DB [".. strategy .. "] routes are checked for colisions ", function()
     post("/ws1/services/service_ws1/routes", {
       paths = { "/foo" },
     })
+
+    post("/ws1/services/service_ws1/routes", {
+      snis = { "example.com" },
+    })
   end)
 
   teardown(function()
@@ -293,6 +297,26 @@ describe("DB [".. strategy .. "] routes are checked for colisions ", function()
           },
         }, headers, 409)
       end
+    end
+  end)
+
+  it_content_types("snis", function(content_type)
+    return function()
+      if content_type == "multipart/form-data" then
+        -- the client doesn't play well with this
+        return
+      end
+
+      local headers = { ["Content-Type"] = content_type }
+
+      post("/ws2/services/service_ws2/routes", {
+        snis = "example.com",
+      }, headers, 409)
+
+      post("/ws2/services/service_ws2/routes", {
+        paths = "/foo",
+        snis = "foo.com"
+      }, headers, 409)
     end
   end)
 
