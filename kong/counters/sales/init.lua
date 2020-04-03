@@ -200,9 +200,11 @@ function _M:flush_data()
 
   if lock then
     local counters = self.counters:get_counters()
+    local license_data = get_license_data()
 
     local merged_data = {
       node_id = self.counters.node_id,
+      license_creation_date = license_data.license_creation_date,
       request_count = 0
     }
 
