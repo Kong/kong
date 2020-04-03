@@ -378,8 +378,8 @@ local function find_workspaces_by_entity(params)
 end
 _M.find_workspaces_by_entity = find_workspaces_by_entity
 
-local function match_route(router, method, uri, host)
-  return router.select(method, uri, host)
+local function match_route(router, method, uri, host, headers)
+  return router.select(method, uri, host, nil, nil, nil, nil, nil, headers)
 end
 _M.match_route = match_route
 
@@ -412,8 +412,8 @@ _M.is_route_in_ws = is_route_in_ws
 -- This function works for both routes/services and APIS, the
 -- difference between both being we 'fold' api and route attributes of
 -- the selected `route (in the code used as a generic word)`
-local function validate_route_for_ws(router, method, uri, host, ws)
-  local selected_route = match_route(router, method, uri, host)
+local function validate_route_for_ws(router, method, uri, host, headers, ws)
+  local selected_route = match_route(router, method, uri, host, headers)
 
   -- XXX: Treating routes and apis the same way. See function comment
   if selected_route and selected_route.api then
@@ -517,11 +517,12 @@ local function sanitize_route_param(param)
 end
 
 
-local function sanitize_routes_ngx_nulls(methods, paths, hosts)
+local function sanitize_routes_ngx_nulls(methods, paths, hosts, headers)
   return
     sanitize_route_param(type(methods) == "string" and { methods } or methods),
     sanitize_route_param(type(paths) == "string" and { paths } or paths),
-    sanitize_route_param(type(hosts) == "string" and { hosts } or hosts)
+    sanitize_route_param(type(hosts) == "string" and { hosts } or hosts),
+    sanitize_route_param(headers)
 end
 
 
@@ -534,7 +535,7 @@ end
 local function is_route_crud_allowed_smart(req, router)
   router = router or singletons.router
   local params = req.params
-  local methods, uris, hosts = sanitize_routes_ngx_nulls(params.methods, params.paths, params.hosts)
+  local methods, uris, hosts, headers = sanitize_routes_ngx_nulls(params.methods, params.paths, params.hosts, params.headers)
 
   local ws = _M.get_workspaces()[1]
   for perm in permutations(methods and values(methods) or split(ALL_METHODS),
@@ -547,7 +548,7 @@ local function is_route_crud_allowed_smart(req, router)
                       -- schema validator handle the type error
     end
 
-    if not validate_route_for_ws(router, perm[1], perm[2], perm[3], ws) then
+    if not validate_route_for_ws(router, perm[1], perm[2], perm[3], headers, ws) then
       ngx_log(DEBUG, "route collided")
       return false, { code = 409,
                       message = "API route collides with an existing API" }

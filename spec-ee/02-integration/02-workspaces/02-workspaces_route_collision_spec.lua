@@ -105,9 +105,9 @@ describe("DB [".. strategy .. "] sharing ", function()
 end)
 
 describe("DB [".. strategy .. "] routes are checked for colisions ", function()
-  local route, default_service, service_ws2
+  local route, default_service, service_ws2, db
   setup(function()
-    helpers.get_db_utils(strategy)
+    _, db = helpers.get_db_utils(strategy)
 
     assert(helpers.start_kong({
       database   = strategy,
@@ -142,6 +142,18 @@ describe("DB [".. strategy .. "] routes are checked for colisions ", function()
     post("/ws2/services/service_ws2/routes", {
       name = "route_ws2",
       paths = { "/2test" },
+    })
+
+    post("/ws1/services/service_ws1/routes", {
+      headers = {
+        locations = {
+          "USA",
+        },
+      },
+    })
+
+    post("/ws1/services/service_ws1/routes", {
+      paths = { "/foo" },
     })
   end)
 
@@ -225,6 +237,62 @@ describe("DB [".. strategy .. "] routes are checked for colisions ", function()
       post("/ws2/services/default-service/routes", {
         methods = "GET",
       }, headers, 409)
+    end
+  end)
+  
+  it_content_types("headers", function(content_type)
+    return function()
+      if content_type == "multipart/form-data" then
+        -- the client doesn't play well with this
+        return
+      end
+
+      local headers = { ["Content-Type"] = content_type }
+
+      post("/ws2/services/service_ws2/routes", {
+        headers = {
+          locations = {
+            "USA",
+          },
+        },
+      }, headers, 409)
+
+      post("/ws2/services/service_ws2/routes", {
+        headers = {
+          locations = {
+            "USA",
+            "BRA"
+          },
+        },
+      }, headers, 409)
+
+      post("/ws2/services/service_ws2/routes", {
+        headers = {
+          locations = {
+            "Brazil",
+          },
+        },
+      }, headers, 201)
+
+      if content_type == "application/json" then
+        post("/ws2/services/service_ws2/routes", {
+          paths = { "/foo" },
+          headers = {
+            name = {
+              "value",
+            },
+          },
+        }, headers, 409)
+      else
+        post("/ws2/services/service_ws2/routes", {
+          paths = "/foo",
+          headers = {
+            name = {
+              "value",
+            },
+          },
+        }, headers, 409)
+      end
     end
   end)
 
