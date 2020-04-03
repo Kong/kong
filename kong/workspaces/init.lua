@@ -457,18 +457,6 @@ end
 _M.validate_route_for_ws = validate_route_for_ws
 
 
-local function extract_req_data(params)
-  return params.methods, params.uris, params.hosts
-end
-
-
-local function sanitize_ngx_nulls(methods, uris, hosts)
-  return (methods == ngx_null) and "" or methods,
-         (uris    == ngx_null) and "" or uris,
-         (hosts   == ngx_null) and "" or hosts
-end
-
-
 -- workarounds for
 -- https://github.com/stevedonovan/Penlight/blob/master/tests/test-stringx.lua#L141-L145
 local function split(str_or_tbl)
@@ -484,27 +472,6 @@ local function split(str_or_tbl)
   return utils_split(str_or_tbl or " ", separator)
 end
 
-
--- Extracts parameters for an api to be validated against the global
--- current router. An api can have 0..* of each hosts, uris, methods.
--- We check if a route collides with the current setup by trying to
--- match each one of the combinations of accepted [hosts, uris,
--- methods]. The function returns false iff none of the variants
--- collide.
-function _M.is_api_colliding(req, router)
-  router = router or singletons.api_router
-  local methods, uris, hosts = sanitize_ngx_nulls(extract_req_data(req.params))
-  local ws = _M.get_workspaces()[1]
-  for perm in permutations(split(is_blank(methods) and ALL_METHODS or methods),
-                           split(is_blank(uris)    and {"/"} or uris),
-                           split(is_blank(hosts)   and {""} or hosts)) do
-    if not validate_route_for_ws(router, perm[1], perm[2], perm[3], ws) then
-      ngx_log(DEBUG, "api collided")
-      return true
-    end
-  end
-  return false
-end
 
 local function sanitize_route_param(param)
   if (param == cjson.null) or (param == ngx_null) or

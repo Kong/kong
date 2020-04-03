@@ -105,9 +105,9 @@ describe("DB [".. strategy .. "] sharing ", function()
 end)
 
 describe("DB [".. strategy .. "] routes are checked for colisions ", function()
-  local route, default_service, service_ws2, db
+  local route, default_service, service_ws2
   setup(function()
-    _, db = helpers.get_db_utils(strategy)
+    helpers.get_db_utils(strategy)
 
     assert(helpers.start_kong({
       database   = strategy,
