@@ -649,7 +649,7 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
       end
 
       if stats[key] == nil then
-        stats[key] = {}
+        stats[key] = { ["total"]=0, ["2XX"]=0, ["4XX"]=0, ["5XX"]=0 }
       end
 
       local status_group = tostring(series.tags.status_f):sub(1, 1) .. "XX"
@@ -716,7 +716,13 @@ function _M:latency_report(hostname, interval, start_ts)
       end
 
       for i, column in pairs(columns) do
-        stats[key][column] = value[i+1]
+        if value[i+1] ~= cjson.null then
+          if string.match(column, "_avg") then
+            stats[key][column] = math.floor(value[i+1])
+          else
+            stats[key][column] = value[i+1]
+          end
+        end
       end
     end
   end
@@ -729,7 +735,6 @@ function _M:latency_report(hostname, interval, start_ts)
   
   return { stats=stats, meta=meta }
 end
-
 function _M:log()
   clear_tab(tags)
   clear_tab(fields)
