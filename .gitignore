@@ -6,3 +6,5 @@
 *.tar.gz
 *.rock
 package.sh
+servroot
+
