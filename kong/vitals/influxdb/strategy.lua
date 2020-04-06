@@ -620,7 +620,6 @@ function _M:select_stats(query_type, level, node_id, start_ts)
 end
 
 
-
 local function status_code_query(entity_id, entity, seconds_from_now, interval)
   local q = "SELECT count(status) FROM kong_request"
   local where_clause = " WHERE time > now() - " .. seconds_from_now .. "s"
@@ -642,8 +641,8 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   local seconds_from_now = ngx.time() - start_ts
   local result = query(self, status_code_query(entity_id, entity, seconds_from_now, interval))
   local stats = {}
-  for _, series in pairs(result) do
-    for _, value in pairs(series.values) do
+  for _, series in ipairs(result) do
+    for _, value in ipairs(series.values) do
       local key
       if entity_id == nil then
         local lookup = {
@@ -717,8 +716,8 @@ function _M:latency_report(hostname, interval, start_ts)
   local result = query(self, latency_query(hostname, seconds_from_now, interval))
 
   local stats = {}
-  for _, series in pairs(result) do
-    for _, value in pairs(series.values) do
+  for _, series in ipairs(result) do
+    for _, value in ipairs(series.values) do
       local key
       if hostname == nil then
         key = series.tags.hostname
