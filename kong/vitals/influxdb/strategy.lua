@@ -43,14 +43,16 @@ local duration_to_interval = {
   [1] = "seconds",
   [60] = "minutes",
   [3600] = "hours",
-  [86400] = "days"
+  [86400] = "days",
+  [604800] = "weeks",
 }
 
 local interval_to_duration = {
   seconds = 1,
   minutes = 60,
   hours = 3600,
-  days = 86400
+  days = 86400,
+  weeks = 604800,
 }
 
 local ok = pcall(function() return ffi.C.gettimeofday end)
@@ -618,30 +620,52 @@ function _M:select_stats(query_type, level, node_id, start_ts)
 end
 
 
-function _M:status_code_report_by(entity, start_ts)
-  start_ts = start_ts or 36000
+local function status_code_query(entity_id, entity, seconds_from_now, interval)
   local q = "SELECT count(status) FROM kong_request"
-  local where_clause = " WHERE time > now() - " .. ngx.time() - start_ts .. "s"
-  local group_by = " GROUP BY " .. entity .. ", status_f"
+  local where_clause = " WHERE time > now() - " .. seconds_from_now .. "s"
+  local group_by = " GROUP BY status_f, "
+  if entity_id == nil then
+    group_by = group_by .. entity 
+  else
+    where_clause = where_clause .. " and " .. entity .. "='" .. entity_id .."'"
+    group_by = group_by .. " time(" .. interval_to_duration[interval] .. "s)"
+  end
+  return q .. where_clause .. group_by
+end
+_M.status_code_query = status_code_query
 
 
-  local result = query(self, q .. where_clause .. group_by)
+function _M:status_code_report_by(entity, entity_id, interval, start_ts)
+  start_ts = start_ts or 36000
+
+  local seconds_from_now = ngx.time() - start_ts
+  local result = query(self, status_code_query(entity_id, entity, seconds_from_now, interval))
   local stats = {}
-  for i, row in pairs(result) do
-    local lookup = {
-      consumer = row.tags.consumer,
-      service = row.tags.service
-    }
-    if stats[lookup[entity]] == nil then
-      stats[lookup[entity]] = {}
+  for _, series in ipairs(result) do
+    for _, value in ipairs(series.values) do
+      local key
+      if entity_id == nil then
+        local lookup = {
+          consumer = series.tags.consumer,
+          service = series.tags.service
+        }
+        key = lookup[entity]
+      else
+        key = tostring(value[1]) -- timestamp
+      end
+
+      if stats[key] == nil then
+        stats[key] = { ["total"]=0, ["2XX"]=0, ["4XX"]=0, ["5XX"]=0 }
+      end
+
+      local status_group = tostring(series.tags.status_f):sub(1, 1) .. "XX"
+
+      local current_total = stats[key]["total"] or 0
+      local current_status = stats[key][status_group] or 0
+
+      stats[key]["total"] = current_total + value[2]
+      stats[key][status_group] = current_status + value[2]
     end
-
-    local status_group = tostring(row.tags.status_f):sub(1, 1) .. "XX"
-    local current_total = stats[lookup[entity]]["total"] or 0
-    local current_status = stats[lookup[entity]][status_group] or 0
-
-    stats[lookup[entity]]["total"] = current_total + row.values[1][2]
-    stats[lookup[entity]][status_group] = current_status + row.values[1][2]
   end
 
   local meta = {
@@ -658,7 +682,26 @@ function _M:status_code_report_by(entity, start_ts)
   return { stats=stats, meta=meta }
 end
 
-function _M:latency_report(start_ts)
+
+local function latency_query(hostname, seconds_from_now, interval)
+  local q = "SELECT MAX(proxy_latency), MIN(proxy_latency)," ..
+    " MEAN(proxy_latency), MAX(request_latency), MIN(request_latency)," ..
+    " MEAN(request_latency) FROM kong_request"
+  local where_clause = " WHERE time > now() - " .. seconds_from_now .. "s"
+  local group_by = " GROUP BY "
+
+  if hostname == nil then
+    group_by = group_by .. "hostname"
+  else
+    where_clause = where_clause .. " AND hostname='" .. hostname .."'"
+    group_by = group_by .. "time(" .. interval_to_duration[interval] .. "s)"
+  end
+  return q .. where_clause .. group_by
+end
+_M.latency_query = latency_query
+
+
+function _M:latency_report(hostname, interval, start_ts)
   start_ts = start_ts or 36000
   local columns = {
     "proxy_max",
@@ -668,22 +711,33 @@ function _M:latency_report(start_ts)
     "upstream_min",
     "upstream_avg",
   }
-  local q = "SELECT MAX(proxy_latency), MIN(proxy_latency)," ..
-    " MEAN(proxy_latency), MAX(request_latency), MIN(request_latency)," ..
-    " MEAN(request_latency) FROM kong_request"
-  local where_clause = " WHERE time > now() - " .. ngx.time() - start_ts .. "s"
-  local group_by = " GROUP BY hostname"
 
-  local result = query(self, q .. where_clause .. group_by)
+  local seconds_from_now = ngx.time() - start_ts
+  local result = query(self, latency_query(hostname, seconds_from_now, interval))
 
   local stats = {}
-  for _, row in pairs(result) do
-    local hostname = row.tags.hostname
-    if stats[hostname] == nil then
-      stats[hostname] = {}
-    end
-    for i, column in pairs(columns) do
-      stats[hostname][column] = row.values[1][i+1]
+  for _, series in ipairs(result) do
+    for _, value in ipairs(series.values) do
+      local key
+      if hostname == nil then
+        key = series.tags.hostname
+      else
+        key = tostring(value[1]) -- timestamp
+      end
+
+      if stats[key] == nil then
+        stats[key] = {}
+      end
+
+      for i, column in pairs(columns) do
+        if value[i+1] ~= cjson.null then
+          if string.match(column, "_avg") then
+            stats[key][column] = math.floor(value[i+1])
+          else
+            stats[key][column] = value[i+1]
+          end
+        end
+      end
     end
   end
 
@@ -695,7 +749,6 @@ function _M:latency_report(start_ts)
   
   return { stats=stats, meta=meta }
 end
-
 function _M:log()
   clear_tab(tags)
   clear_tab(fields)

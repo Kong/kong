@@ -302,53 +302,13 @@ return {
     end
   },
 
-  ["/vitals/reports/consumer"] = {
+  ["/vitals/reports/:entity_type"] = {
     GET = function(self, dao, helpers)
       local opts = {
-        entity_type = "consumer",
+        entity_type = self.params.entity_type,
+        entity_id   = self.params.entity_id,
         start_ts    = self.params.start_ts,
-      }
-      local report, err = kong.vitals:get_report(opts)
-
-      if err then
-        if err:find("Invalid query params", nil, true) then
-          return kong.response.exit(400, { message = err })
-
-        else
-          return helpers.yield_error(err)
-        end
-      end
-
-      return kong.response.exit(200, report)
-    end
-  },
-
-  ["/vitals/reports/service"] = {
-    GET = function(self, dao, helpers)
-      local opts = {
-        entity_type = "service",
-        start_ts    = self.params.start_ts,
-      }
-      local report, err = kong.vitals:get_report(opts)
-
-      if err then
-        if err:find("Invalid query params", nil, true) then
-          return kong.response.exit(400, { message = err })
-
-        else
-          return helpers.yield_error(err)
-        end
-      end
-
-      return kong.response.exit(200, report)
-    end
-  },
-
-  ["/vitals/reports/node"] = {
-    GET = function(self, dao, helpers)
-      local opts = {
-        entity_type = "node",
-        start_ts    = self.params.start_ts,
+        interval    = self.params.interval,
       }
       local report, err = kong.vitals:get_report(opts)
 
@@ -365,3 +325,4 @@ return {
     end
   },
 }
+
