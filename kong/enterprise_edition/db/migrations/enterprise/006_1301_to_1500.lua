@@ -340,7 +340,7 @@ return {
       ALTER TABLE ca_certificates ADD cert_digest text;
 
       DROP INDEX IF EXISTS ca_certificates_cert_idx;
-      CREATE INDEX ca_certificates_cert_idx ON ca_certificates(cert_digest);
+      CREATE INDEX IF NOT EXISTS ca_certificates_cert_digest_idx ON ca_certificates(cert_digest);
     ]],
     teardown = function(connector)
       -- XXX: EE keep run_on for now, ignore error
