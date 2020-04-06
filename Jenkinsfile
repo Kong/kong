@@ -5,7 +5,7 @@ pipeline {
     }
   }
   options {
-      timeout(time: 30, unit: 'MINUTES')
+      timeout(time: 45, unit: 'MINUTES')
   }
   environment {
     GITHUB_TOKEN = credentials('GITHUB_TOKEN')
@@ -13,17 +13,24 @@ pipeline {
     REDHAT = credentials('redhat')
     PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
     PRIVATE_KEY_PASSWORD = credentials('kong.private.gpg-key.asc.password')
-    KONG_VERSION = """${sh(
-      returnStdout: true,
-      script: '[ -n $TAG_NAME ] && echo $TAG_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+" || echo -n $BRANCH_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+"'
-    )}"""
+    // This cache dir will contain files owned by root, and user ubuntu will
+    // not have permission over it. We still need for it to survive between
+    // builds, so /tmp is also not an option. Try $HOME for now, iterate
+    // on that
+    CACHE_DIR = "$HOME/kong-distributions-cache"
+    //KONG_VERSION = """${sh(
+    //  returnStdout: true,
+    //  script: '[ -n $TAG_NAME ] && echo $TAG_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+" || echo -n $BRANCH_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+"'
+    //)}"""
+    // XXX: Can't bother to fix this now. This works, right? :)
+    KONG_VERSION = "1.5.0.0"
   }
   stages {
     // choice between internal, rc1, rc2, rc3, rc4 ....,  GA
     stage('Checkpoint') {
       steps {
         script {
-          def input_params = input(message: "Kong version: $KONG_VERSION\nShould I continue this build?",
+          def input_params = input(message: "Should I continue this build?",
           parameters: [
             // [$class: 'TextParameterDefinition', defaultValue: '', description: 'custom build', name: 'customername'],
             choice(name: 'RELEASE_SCOPE',
@@ -35,90 +42,95 @@ pipeline {
       }
     }
     stage('Prepare Kong Distributions') {
-      when {
-        expression { BRANCH_NAME ==~ /^(release\/)?.*/}
-      }
+      //when {
+      //  expression { BRANCH_NAME ==~ /^(release\/)?.*/}
+      //}
       steps {
-        echo "Kong version: $KONG_VERSION"
+        //echo "Kong version: $KONG_VERSION"
         echo "Release scope ${env.RELEASE_SCOPE}"
         checkout([$class: 'GitSCM',
+          // This is like this now, for internal preview
+          // We should tune this thing to either use a branch_name or a tag
           branches: [[name: env.BRANCH_NAME]],
           extensions: [[$class: 'WipeWorkspace']],
           userRemoteConfigs: [[url: 'git@github.com:Kong/kong-distributions.git',
             credentialsId: 'kong-distributions-deploy-key']]
         ])
-        // sh 'utilities/install_deps.sh'
       }
     }
     stage('Build & Push Packages') {
-      when {
-        expression { BRANCH_NAME ==~ /^(release\/)?.*/ }
-      }
+      //when {
+      //  expression { BRANCH_NAME ==~ /^(release\/)?.*/ }
+      //}
       steps {
         parallel (
           centos6: {
-            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:6 --ee --custom ${env.RELEASE_SCOPE} --key-file $PRIVATE_KEY_FILE --key-password '${PRIVATE_KEY_PASSWORD}' -V"
+            sh "./package.sh centos:6 ${env.RELEASE_SCOPE}"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:6 -e -R ${env.RELEASE_SCOPE}"
           },
           centos7: {
-            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:7 --ee --custom ${env.RELEASE_SCOPE} --key-file $PRIVATE_KEY_FILE --key-password '${PRIVATE_KEY_PASSWORD}' -V"
+            sh "./package.sh centos:7 ${env.RELEASE_SCOPE}"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:7 -e -R ${env.RELEASE_SCOPE}"
           },
           centos8: {
-            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:8 --ee --custom ${env.RELEASE_SCOPE} --key-file $PRIVATE_KEY_FILE --key-password '${PRIVATE_KEY_PASSWORD}' -V"
+            sh "./package.sh centos:8 ${env.RELEASE_SCOPE}"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:8 -e -R ${env.RELEASE_SCOPE}"
           },
           debian8: {
-            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:8 --ee --custom ${env.RELEASE_SCOPE} -V"
+            sh "./package.sh debian:8 ${env.RELEASE_SCOPE}"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:8 -e -R ${env.RELEASE_SCOPE}"
           },
           debian9: {
-            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:9 --ee --custom ${env.RELEASE_SCOPE} -V"
+            sh "./package.sh debian:9 ${env.RELEASE_SCOPE}"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:9 -e -R ${env.RELEASE_SCOPE}"
           },
-          ubuntu1404: {
-            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:14.04.2 --ee --custom ${env.RELEASE_SCOPE} -V"
-            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:14.04.2 -e -R ${env.RELEASE_SCOPE}"
-          },
+          // ubuntu1404: {
+          //   sh "./package.sh ubuntu:14.04.2 ${env.RELEASE_SCOPE}"
+          //   // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:14.04.2 -e -R ${env.RELEASE_SCOPE}"
+          // },
           ubuntu1604: {
-            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:16.04 --ee --custom ${env.RELEASE_SCOPE} -V"
+            sh "./package.sh ubuntu:16.04 ${env.RELEASE_SCOPE}"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:16.04 -e -R ${env.RELEASE_SCOPE}"
           },
-          ubuntu1704: {
-            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:17.04 --ee --custom ${env.RELEASE_SCOPE} -V"
-            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:17.04 -e -R ${env.RELEASE_SCOPE}"
-          },
+          // ubuntu1704: {
+          //   sh "./package.sh ubuntu:17.04 ${env.RELEASE_SCOPE}"
+          //   // sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:17.04 -e -R ${env.RELEASE_SCOPE}"
+          // },
           ubuntu1804: {
-            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:18.04 --ee --custom ${env.RELEASE_SCOPE} -V"
+            sh "./package.sh ubuntu:18.04 ${env.RELEASE_SCOPE}"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:18.04 -e -R ${env.RELEASE_SCOPE}"
           },
-          amazonlinux: {
-            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p amazonlinux --ee --custom ${env.RELEASE_SCOPE} -V"
-            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p amazonlinux -e -R ${env.RELEASE_SCOPE}"
+          amazonlinux1: {
+            sh "./package.sh amazonlinux:1 ${env.RELEASE_SCOPE}"
+            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p amazonlinux:1 -e -R ${env.RELEASE_SCOPE}"
+          },
+          amazonlinux2: {
+            sh "./package.sh amazonlinux:2 ${env.RELEASE_SCOPE}"
+            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p amazonlinux:2 -e -R ${env.RELEASE_SCOPE}"
           },
           alpine: {
-            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p alpine --ee --custom ${env.RELEASE_SCOPE} -V"
+            sh "./package.sh alpine ${env.RELEASE_SCOPE}"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p alpine -e -R ${env.RELEASE_SCOPE}"
           },
           rhel6: {
-            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW --redhat-username $REDHAT_USR --redhat-password $REDHAT_PSW -p rhel:6 --ee --custom ${env.RELEASE_SCOPE} --key-file $PRIVATE_KEY_FILE --key-password '${PRIVATE_KEY_PASSWORD}' -V"
+            sh "./package.sh rhel:6 ${env.RELEASE_SCOPE}"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel:6 -e -R ${env.RELEASE_SCOPE}"
           },
           rhel7: {
-            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW --redhat-username $REDHAT_USR --redhat-password $REDHAT_PSW -p rhel:7 --ee --custom ${env.RELEASE_SCOPE} --key-file $PRIVATE_KEY_FILE --key-password '${PRIVATE_KEY_PASSWORD}' -V"
+            sh "./package.sh rhel:7 ${env.RELEASE_SCOPE}"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel:7 -e -R ${env.RELEASE_SCOPE}"
           },
           rhel8: {
-            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW --redhat-username $REDHAT_USR --redhat-password $REDHAT_PSW -p rhel:8 --ee --custom ${env.RELEASE_SCOPE} --key-file $PRIVATE_KEY_FILE --key-password '${PRIVATE_KEY_PASSWORD}' -V"
+            sh "./package.sh rhel:8 ${env.RELEASE_SCOPE}"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel:8 -e -R ${env.RELEASE_SCOPE}"
           },
         )
       }
     }
     stage("Prepare Docker Kong EE") {
-      when {
-        expression { BRANCH_NAME ==~ /^(release\/)?.*/ }
-      }
+      //when {
+      //  expression { BRANCH_NAME ==~ /^(release\/)?.*/ }
+      //}
       steps {
         checkout([$class: 'GitSCM',
             extensions: [[$class: 'WipeWorkspace']],
@@ -128,11 +140,11 @@ pipeline {
       }
     }
     stage("Build & Push Docker Images") {
-      when {
-        expression {
-          expression { BRANCH_NAME ==~ /^release\/.*/ }
-        }
-      }
+      //when {
+      //  expression {
+      //    expression { BRANCH_NAME ==~ /^release\/.*/ }
+      //  }
+      //}
       steps {
         parallel (
           // beware! $KONG_VERSION might have an ending \n that swallows everything after it
