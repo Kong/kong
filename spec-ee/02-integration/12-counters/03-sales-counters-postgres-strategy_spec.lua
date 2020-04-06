@@ -3,6 +3,7 @@ local utils       = require "kong.tools.utils"
 local helpers     = require "spec.helpers"
 
 local LICENSE_DATA_TNAME = "license_data"
+local license_creation_date = "2019-03-03"
 
 
 for _, strategy in helpers.each_strategy({"postgres"}) do
@@ -39,6 +40,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       it("should flush data to cassandra from one node", function()
         local data = {
           request_count = 10,
+          license_creation_date = license_creation_date,
           node_id = utils.uuid()
         }
 
@@ -48,6 +50,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
         local expected_data = {
           node_id  = data.node_id,
+          license_creation_date = license_creation_date .. " 00:00:00",
           req_cnt = 10
         }
 
@@ -57,6 +60,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       it("should flush data to cassandra with more than one row from node", function()
         local data = {
           request_count = 10,
+          license_creation_date = license_creation_date,
           node_id = utils.uuid()
         }
 
@@ -66,6 +70,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
         local expected_data = {
           node_id  = data.node_id,
+          license_creation_date = license_creation_date .. " 00:00:00",
           req_cnt = 10
         }
 
@@ -73,6 +78,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
         local data = {
           request_count = 269,
+          license_creation_date = license_creation_date,
           node_id = data.node_id
         }
 
@@ -82,6 +88,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
         local expected_data = {
           node_id  = data.node_id,
+          license_creation_date = license_creation_date .. " 00:00:00",
           req_cnt = 279
         }
 
@@ -91,6 +98,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       it("should flush data to cassandra from more than one node", function()
         local data = {
           request_count = 10,
+          license_creation_date = license_creation_date,
           node_id = utils.uuid()
         }
 
@@ -100,6 +108,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
         local expected_data = {
           node_id  = data.node_id,
+          license_creation_date = license_creation_date .. " 00:00:00",
           req_cnt = 10
         }
 
@@ -107,6 +116,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
         local data = {
           request_count = 58,
+          license_creation_date = license_creation_date,
           node_id = utils.uuid()
         }
 
@@ -116,6 +126,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
         local expected_data = {
           node_id  = data.node_id,
+          license_creation_date = license_creation_date .. " 00:00:00",
           req_cnt = 58
         }
 
