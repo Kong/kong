@@ -218,8 +218,15 @@ return {
       $$;
 
       -- ca_certificates table
-      ALTER TABLE ca_certificates DROP CONSTRAINT ca_certificates_cert_key;
-      ALTER TABLE ca_certificates ADD COLUMN "cert_digest" TEXT UNIQUE;
+      ALTER TABLE ca_certificates DROP CONSTRAINT IF EXISTS ca_certificates_cert_key;
+
+      DO $$
+        BEGIN
+          ALTER TABLE ca_certificates ADD COLUMN "cert_digest" TEXT UNIQUE;
+        EXCEPTION WHEN duplicate_column THEN
+          -- Do nothing, accept existing state
+        END;
+      $$;
     ]],
     teardown = function(connector)
       -- XXX: EE keep run_on for now
@@ -332,7 +339,7 @@ return {
       -- ca_certificates
       ALTER TABLE ca_certificates ADD cert_digest text;
 
-      DROP INDEX ca_certificates_cert_idx;
+      DROP INDEX IF EXISTS ca_certificates_cert_idx;
       CREATE INDEX ca_certificates_cert_idx ON ca_certificates(cert_digest);
     ]],
     teardown = function(connector)
