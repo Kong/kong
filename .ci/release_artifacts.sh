@@ -34,8 +34,9 @@ pushd docker-kong-ee/alpine/
   docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
   docker push $DOCKER_HUB_IMAGE_TAG
 
-  INT_PKG_IMAGE_TAG=registry.kongcloud.io/kong-ee-dev-master:latest
+  INT_REGISTRY=registry.kongcloud.io
+  INT_PKG_IMAGE_TAG=$INT_REGISTRY/kong-ee-dev-master:latest
   docker tag kong-ee-dev $INT_PKG_IMAGE_TAG
-  docker login docker.pkg.github.com -u kong-ee-deploy -p $INT_PKG_PASSWORD
+  docker login $INT_REGISTRY -u kong-ee-deploy -p $INT_PKG_PASSWORD
   docker push $INT_PKG_IMAGE_TAG
 popd
