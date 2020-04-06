@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
+export KONG_DISTRIBUTIONS_VERSION=${KONG_DISTRIBUTIONS_VERSION:-master}
 # Set silent build by default
 export VERBOSE=${VERBOSE:-0}
-
-KONG_DISTRIBUTIONS_VERSION=${KONG_DISTRIBUTIONS_VERSION:-master}
-
 # disable open tracing by default for master build (faster)
 export ENABLE_OPENTRACING=${ENABLE_OPENTRACING:-0}
 
