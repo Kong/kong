@@ -48,6 +48,9 @@ status_ssl_cert_key = NONE
 headers = server_tokens, latency_tokens
 trusted_ips = NONE
 error_default_type = text/plain
+upstream_keepalive_pool_size = 60
+upstream_keepalive_max_requests = 100
+upstream_keepalive_idle_timeout = 60
 
 nginx_main_daemon = on
 nginx_main_user = nobody nobody
