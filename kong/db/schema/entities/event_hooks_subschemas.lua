@@ -65,16 +65,6 @@ local log_schema = {
   }
 }
 
-local slack_schema = {
-  name = "slack",
-  fields = {
-    { config = {
-      type = "record",
-      fields = {}
-    } }
-  }
-}
-
 local function validate_function(fun)
   local _, err = loadstring(fun)
   if err then
@@ -109,6 +99,5 @@ return {
   webhook = simple_webhook_schema,
   ["webhook-custom"] = webhook_schema,
   log = log_schema,
-  slack = slack_schema,
   lambda = lambda_schema,
 }
