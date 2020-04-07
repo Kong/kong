@@ -1140,7 +1140,7 @@ describe("event-hooks", function()
       stub(event_hooks.handlers, handler).returns({
         callback = function() end,
       })
-      local _, err = event_hooks.ping(entity, op)
+      local _, _, err = event_hooks.ping(entity, op)
       assert.equal("handler 'some_handler' does not support 'ping'", err)
     end)
   end)

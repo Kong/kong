@@ -43,7 +43,7 @@ return {
         return kong.response.exit(404, { message = "Not found" })
       end
 
-      local ok, err = event_hooks.ping(row)
+      local ok, _, err = event_hooks.ping(row)
 
       if not ok then
         return kong.response.exit(400, { message = err })

@@ -95,7 +95,7 @@ _M.ping = function(entity, operation)
   local handler = _M.handlers[entity.handler](entity, entity.config)
 
   if not handler.ping then
-    return false, fmt("handler '%s' does not support 'ping'", entity.handler)
+    return false, nil, fmt("handler '%s' does not support 'ping'", entity.handler)
   end
 
   return handler.ping(operation)
