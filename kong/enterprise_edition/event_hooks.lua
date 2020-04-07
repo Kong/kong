@@ -394,19 +394,6 @@ _M.handlers = {
     }
   end,
 
-  -- This would be a specialized helper easier to configure than a webhook
-  -- even though slack would use a webhook
-  slack = function(entity, config)
-    return {
-      callback = function(data, event, source, pid)
-        kong.log.inspect("slack event data: ", { data, event, source, pid })
-        kong.log.notice("slack callback not implemented")
-
-        return true
-      end,
-    }
-  end,
-
   log = function(entity, config)
     return {
       callback = function(data, event, source, pid)
