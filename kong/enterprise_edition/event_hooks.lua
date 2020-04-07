@@ -78,14 +78,6 @@ _M.publish = function(source, event, opts)
 end
 
 
-_M.test = function(entity, data)
-  -- Get an unwrapped callback, since we want it sync
-  local callback = _M.handlers[entity.handler](entity, entity.config).callback
-
-  return callback(data, entity.event, entity.source, 1234)
-end
-
-
 _M.has_ping = function(entity)
   return _M.handlers[entity.handler](entity, entity.config).ping
 end
@@ -177,15 +169,22 @@ end
 
 local process_callback = function(batch)
   local entry = batch[1]
-  local ok, res_or_err = pcall(entry.callback, unpack(entry.args))
+  -- not so easy to parse:
+  -- pok: pcall ok
+  -- cok_or_perr: callback ok or pcall err
+  -- cres: callback res
+  -- cerr: callback err
+  -- XXX there's probably some fancy unpack that's possible
+  local pok, cok_or_perr, cres, cerr = pcall(entry.callback, unpack(entry.args))
 
-  if not ok then
-    kong.log.err(res_or_err)
-
-    return false, nil, res_or_err
+  if not pok then
+    kong.log.err(cok_or_perr)
+    -- not ok, no result, pcall error
+    return false, nil, cok_or_perr
   end
 
-  return true, res_or_err
+  -- callback ok?, callback result, callback error
+  return cok_or_perr, cres, cerr
 end
 
 local queue_opts = {
@@ -260,12 +259,32 @@ _M.callback = function(entity)
 end
 
 
+_M.test = function(entity, data)
+  -- Get an unwrapped callback, since we want it sync
+  local callback = _M.handlers[entity.handler](entity, entity.config).callback
+
+  local blob = {
+      callback = callback,
+      args = { data, entity.event, entity.source, 42 },
+  }
+
+  return process_callback({blob})
+end
+
 local function sign_body(secret)
   return function(body)
     return "sha1", to_hex(hmac_sha1(secret, body))
   end
 end
 
+
+-- a table of handlers that holds initializer functions for every handler
+--  > Each entry must be a function that returns a handler
+--  > A handler is composed of a set of functions (callback, ping)
+--  > These functions are called asyncronously on a batch, so they
+--    must return ok, result, error, ie:
+--      return nil, 42
+--      return false, nil, "some error"
 
 _M.handlers = {
   -- Simple and opinionated webhook. No bells and whistles, 0 config
