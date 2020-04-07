@@ -14,9 +14,7 @@ local app = lapis.Application()
 app.default_route = api_helpers.default_route
 app.handle_404 = api_helpers.handle_404
 app.handle_error = api_helpers.handle_error
-app:before_filter(function(self)
-  api_helpers.before_filter(self, true)
-end)
+app:before_filter(api_helpers.before_filter)
 
 
 ngx.log(ngx.DEBUG, "Loading Status API endpoints")
