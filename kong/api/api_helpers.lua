@@ -211,8 +211,7 @@ end
 
 local NEEDS_BODY = tablex.readonly({ PUT = 1, POST = 2, PATCH = 3 })
 
-
-function _M.before_filter(self)
+local function before_filter_for_ee(self)
   local req_id = utils.random_string()
   local invoke_plugin = singletons.invoke_plugin
 
@@ -279,6 +278,13 @@ function _M.before_filter(self)
     -- by replacing named parameters with *
     rbac.validate_user(self.rbac_user, self.groups)
     rbac.validate_endpoint(self.route_name, ngx.var.uri, self.rbac_user, self.groups)
+  end
+end
+
+function _M.before_filter(self, disable_ee)
+
+  if not disable_ee then
+    before_filter_for_ee(self)
   end
 
   if not NEEDS_BODY[ngx.req.get_method()] then
