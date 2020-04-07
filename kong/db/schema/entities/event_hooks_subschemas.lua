@@ -8,7 +8,7 @@ local webhook_schema = {
       required = true,
       fields = {
         { url = typedefs.url { required = true } },
-        { method = typedefs.http_method { default = "GET" } },
+        { method = typedefs.http_method { required = true } },
         -- payload as a data map of string:string ideally we allow here any
         -- data structure, but I think that's not allowed
         { payload = { type = "map",
