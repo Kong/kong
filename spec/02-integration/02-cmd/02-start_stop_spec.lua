@@ -486,87 +486,97 @@ describe("kong start/stop #" .. strategy, function()
     describe("prints a warning to stderr", function()
       local u = helpers.unindent
 
-      it("'nginx_optimizations'", function()
-        local opts = {
+      local function check_warn(opts, deprecated, replacement)
+        local kopts = {
           prefix = helpers.test_conf.prefix,
           database = helpers.test_conf.database,
           pg_database = helpers.test_conf.pg_database,
           cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+        }
+
+        for k, v in pairs(opts) do
+          kopts[k] = v
+        end
+
+        local _, stderr, stdout = assert(helpers.kong_exec("start", kopts))
+        assert.matches("Kong started", stdout, nil, true)
+
+        if replacement then
+          assert.matches(u([[
+            [warn] the ']] .. deprecated .. [[' configuration property is
+            deprecated, use ']] .. replacement .. [[' instead
+          ]], nil, true), stderr, nil, true)
+
+        else
+          assert.matches(u([[
+            [warn] the ']] .. deprecated .. [[' configuration property is
+            deprecated
+          ]], nil, true), stderr, nil, true)
+        end
+
+        local _, stderr, stdout = assert(helpers.kong_exec("stop", kopts))
+        assert.matches("Kong stopped", stdout, nil, true)
+        assert.equal("", stderr)
+      end
+
+      it("nginx_optimizations", function()
+        check_warn({
           nginx_optimizations = true,
-        }
-
-        local _, stderr, stdout = assert(helpers.kong_exec("start", opts))
-        assert.matches("Kong started", stdout, nil, true)
-        assert.matches(u([[
-          [warn] the 'nginx_optimizations' configuration property is deprecated
-        ]], nil, true), stderr, nil, true)
-
-        local _, stderr, stdout = assert(helpers.kong_exec("stop", opts))
-        assert.matches("Kong stopped", stdout, nil, true)
-        assert.equal("", stderr)
+        }, "nginx_optimizations")
       end)
 
-      it("'upstream_keepalive'", function()
-        local opts = {
-          prefix = helpers.test_conf.prefix,
-          database = helpers.test_conf.database,
-          pg_database = helpers.test_conf.pg_database,
-          cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
-          upstream_keepalive = 0,
-        }
-
-        local _, stderr, stdout = assert(helpers.kong_exec("start", opts))
-        assert.matches("Kong started", stdout, nil, true)
-        assert.matches(u([[
-          [warn] the 'upstream_keepalive' configuration property is deprecated,
-          use 'nginx_upstream_keepalive' instead
-        ]], nil, true), stderr, nil, true)
-
-        local _, stderr, stdout = assert(helpers.kong_exec("stop", opts))
-        assert.matches("Kong stopped", stdout, nil, true)
-        assert.equal("", stderr)
+      it("client_max_body_size", function()
+        check_warn({
+          client_max_body_size = "16k",
+        }, "client_max_body_size", "nginx_http_client_max_body_size")
       end)
 
-      it("'nginx_http_upstream_keepalive_timeout'", function()
-        local opts = {
-          prefix = helpers.test_conf.prefix,
-          database = helpers.test_conf.database,
-          pg_database = helpers.test_conf.pg_database,
-          cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
-          nginx_http_upstream_keepalive_timeout = "30s",
-        }
-
-        local _, stderr, stdout = assert(helpers.kong_exec("start", opts))
-        assert.matches("Kong started", stdout, nil, true)
-        assert.matches(u([[
-          [warn] the 'nginx_http_upstream_keepalive_timeout' configuration property is deprecated,
-          use 'nginx_upstream_keepalive_timeout' instead
-        ]], nil, true), stderr, nil, true)
-
-        local _, stderr, stdout = assert(helpers.kong_exec("stop", opts))
-        assert.matches("Kong stopped", stdout, nil, true)
-        assert.equal("", stderr)
+      it("client_body_buffer_size", function()
+        check_warn({
+          client_body_buffer_size = "16k",
+        }, "client_body_buffer_size", "nginx_http_client_body_buffer_size")
       end)
 
-      it("'nginx_http_upstream_keepalive_requests'", function()
-        local opts = {
-          prefix = helpers.test_conf.prefix,
-          database = helpers.test_conf.database,
-          pg_database = helpers.test_conf.pg_database,
-          cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+      it("upstream_keepalive", function()
+        check_warn({
+          upstream_keepalive = 10,
+        }, "upstream_keepalive", "upstream_keepalive_pool_size")
+      end)
+
+      it("nginx_http_upstream_keepalive", function()
+        check_warn({
+          nginx_http_upstream_keepalive = 10,
+        }, "nginx_http_upstream_keepalive", "upstream_keepalive_pool_size")
+      end)
+
+      it("nginx_http_upstream_keepalive_requests", function()
+        check_warn({
           nginx_http_upstream_keepalive_requests = 50,
-        }
+        }, "nginx_http_upstream_keepalive_requests", "upstream_keepalive_max_requests")
+      end)
 
-        local _, stderr, stdout = assert(helpers.kong_exec("start", opts))
-        assert.matches("Kong started", stdout, nil, true)
-        assert.matches(u([[
-          [warn] the 'nginx_http_upstream_keepalive_requests' configuration property is deprecated,
-          use 'nginx_upstream_keepalive_requests' instead
-        ]], nil, true), stderr, nil, true)
+      it("nginx_http_upstream_keepalive_timeout", function()
+        check_warn({
+          nginx_http_upstream_keepalive_timeout = "30s",
+        }, "nginx_http_upstream_keepalive_timeout", "upstream_keepalive_idle_timeout")
+      end)
 
-        local _, stderr, stdout = assert(helpers.kong_exec("stop", opts))
-        assert.matches("Kong stopped", stdout, nil, true)
-        assert.equal("", stderr)
+      it("nginx_upstream_keepalive", function()
+        check_warn({
+          nginx_upstream_keepalive = 10,
+        }, "nginx_upstream_keepalive", "upstream_keepalive_pool_size")
+      end)
+
+      it("nginx_upstream_keepalive_requests", function()
+        check_warn({
+          nginx_upstream_keepalive_requests = 10,
+        }, "nginx_upstream_keepalive_requests", "upstream_keepalive_max_requests")
+      end)
+
+      it("nginx_upstream_keepalive_timeout", function()
+        check_warn({
+          nginx_upstream_keepalive_timeout = "30s",
+        }, "nginx_upstream_keepalive_timeout", "upstream_keepalive_idle_timeout")
       end)
 
       it("'cassandra_consistency'", function()
