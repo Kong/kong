@@ -20,8 +20,7 @@ return {
     { event          = { type = "string" } },
     { on_change      = { type = "boolean" } },
     { snooze         = { type = "integer" } },
-    { handler        = { type = "string", required = true,
-                         default = "webhook" } },
+    { handler        = { type = "string", required = true } },
     { config         = { type = "record", required = true, abstract = true } },
   },
   -- This entity check makes sure the source and the event exist, assuming
