@@ -89,7 +89,6 @@ local functions_array = {
   type = "array",
   required = true,
   elements = { type = "string", custom_validator = validate_function },
-  default = {},
 }
 
 
@@ -100,7 +99,7 @@ local lambda_schema = {
       type = "record",
       required = true,
       fields = {
-        functions = functions_array,
+        { functions = functions_array },
       }
     } },
   },
