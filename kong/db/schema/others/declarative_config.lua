@@ -632,16 +632,14 @@ function DeclarativeConfig.load(plugin_set, include_foreign)
 
   local known_entities = utils.deep_copy(core_entities, false)
 
-  if not all_schemas then
-    all_schemas = {}
-    for _, entity in ipairs(core_entities) do
-      local mod = require("kong.db.schema.entities." .. entity)
-      local definition = utils.deep_copy(mod, false)
-      all_schemas[entity] = Entity.new(definition)
+  all_schemas = {}
+  for _, entity in ipairs(core_entities) do
+    local mod = require("kong.db.schema.entities." .. entity)
+    local definition = utils.deep_copy(mod, false)
+    all_schemas[entity] = Entity.new(definition)
 
-      -- load core entities subschemas
-      assert(load_entity_subschemas(entity, all_schemas[entity]))
-    end
+    -- load core entities subschemas
+    assert(load_entity_subschemas(entity, all_schemas[entity]))
   end
 
   for plugin in pairs(plugin_set) do
