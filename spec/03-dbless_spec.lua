@@ -1,5 +1,12 @@
 local helpers = require "spec.helpers"
 
+local strategies = require("kong.db.strategies").STRATEGIES
+
+-- set tests as pending for kongs without strategy 'off'
+local describe = describe
+if not strategies.off then
+  describe = pending
+end
 
 for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
 

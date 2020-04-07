@@ -1,5 +1,10 @@
 # Changelog; Kong Serverless Functions Plugin
 
+## 1.0.0
+
+- Change: adds the ability to run functions in each phase
+- Fix: bug when upvalues are used, combined with an early exit
+
 ## 0.3.1
 
 - Do not execute functions when validating ([Kong/kong#5110](https://github.com/Kong/kong/issues/5110))
