@@ -318,7 +318,15 @@ _M.handlers = {
           ssl_verify = config.ssl_verify,
         })
 
-        return not err, res, err
+        if not err then
+          return true, {
+            body = res.body,
+            headers = res.headers,
+            status = res.status
+          }
+        end
+
+        return false, nil, err
       end,
 
       ping = function(operation)
@@ -348,7 +356,15 @@ _M.handlers = {
           ssl_verify = config.ssl_verify,
         })
 
-        return not err, res, err
+        if not err then
+          return true, {
+            body = res.body,
+            headers = res.headers,
+            status = res.status
+          }
+        end
+
+        return false, nil, err
       end,
     }
   end,
@@ -408,7 +424,15 @@ _M.handlers = {
           ssl_verify = config.ssl_verify,
         })
 
-        return not err, res, err
+        if not err then
+          return true, {
+            body = res.body,
+            headers = res.headers,
+            status = res.status
+          }
+        end
+
+        return false, nil, err
       end,
     }
   end,

@@ -4,7 +4,9 @@ local cjson = require "cjson"
 -- XXX does this affect any other test?
 local utils = mock(require "kong.enterprise_edition.utils")
 package.loaded["kong.enterprise_edition.utils"] = utils
-package.loaded["kong.enterprise_edition.utils"].request = mock(function() end)
+package.loaded["kong.enterprise_edition.utils"].request = mock(function()
+  return { body = "", headers = {}, status = 200 }
+end)
 
 local request = utils.request
 
