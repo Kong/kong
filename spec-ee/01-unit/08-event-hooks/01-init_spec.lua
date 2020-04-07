@@ -610,7 +610,7 @@ describe("event-hooks", function()
       it("returns true on correct execution", function()
         local blob = {
           callback = function(data, event, source, pid)
-            return "hello world"
+            return true, "hello world"
           end,
           args = { { some = "data" }, "some_event", "some_source", 1234 },
         }
@@ -627,7 +627,7 @@ describe("event-hooks", function()
         local pid = 1234
         local blob = {
           callback = function(data, event, source, pid)
-            return { data, event, source, pid }
+            return true, { data, event, source, pid }
           end,
           args = { data, event, source, pid },
         }
