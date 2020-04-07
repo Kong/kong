@@ -754,6 +754,10 @@ local function unauthorized(ctx, issuer, msg, err, session, anonymous, trusted_c
     return redirect(trusted_client.unauthorized_redirect_uri)
   end
 
+  if trusted_client.display_errors and err then
+    msg = msg .. " (" .. err .. ")"
+  end
+
   local parts = uri.parse(issuer)
 
   return kong.response.exit(401, { message = msg }, {
@@ -777,6 +781,10 @@ local function forbidden(ctx, issuer, msg, err, session, anonymous, trusted_clie
 
   if trusted_client.forbidden_redirect_uri then
     return redirect(trusted_client.forbidden_redirect_uri)
+  end
+
+  if trusted_client.display_errors and err then
+    msg = msg .. " (" .. err .. ")"
   end
 
   local parts = uri.parse(issuer)

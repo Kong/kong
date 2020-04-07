@@ -1,3 +1,7 @@
+## v1.3.1
+
+- Make `config.display_errors` to display errors also on `401` and `403`.
+ 
 ## v1.3.0
 
 - Add support for `client_secret_jwt` and `private_key_jwt` authentication
