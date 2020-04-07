@@ -1,6 +1,6 @@
 # Changelog; Kong Serverless Functions Plugin
 
-## 1.0.0
+## 1.0.0 released 7-Apr-2020
 
 - Change: adds the ability to run functions in each phase
 - Fix: bug when upvalues are used, combined with an early exit

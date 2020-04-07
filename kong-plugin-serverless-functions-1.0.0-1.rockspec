@@ -1,11 +1,11 @@
 package = "kong-plugin-serverless-functions"
-version = "0.3.1-0"
+version = "1.0.0-1"
 source = {
   url = "git://github.com/kong/kong-plugin-serverless-functions",
-  tag = "0.3.1"
+  tag = "1.0.0"
 }
 description = {
-  summary = "Dynamically run Lua code from Kong during access phase.",
+  summary = "Dynamically run Lua code from Kong during plugin phases.",
   license = "Apache 2.0"
 }
 dependencies = {
