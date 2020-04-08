@@ -109,6 +109,13 @@ local get_last_failure = ngx_balancer.get_last_failure
 local set_current_peer = ngx_balancer.set_current_peer
 local set_timeouts     = ngx_balancer.set_timeouts
 local set_more_tries   = ngx_balancer.set_more_tries
+local enable_keepalive = ngx_balancer.enable_keepalive
+if not enable_keepalive then
+  ngx_log(ngx_WARN, "missing method 'ngx_balancer.enable_keepalive()' ",
+                    "(was the dyn_upstream_keepalive patch applied?) ",
+                    "set the 'nginx_upstream_keepalive' configuration ",
+                    "property instead of 'upstream_keepalive_pool_size'")
+end
 
 
 local declarative_entities
@@ -830,13 +837,36 @@ function Kong.balancer()
     end
   end
 
+  local pool_opts
+  local kong_conf = kong.configuration
+
+  if enable_keepalive and kong_conf.upstream_keepalive_pool_size > 0
+     and subsystem == "http"
+  then
+    local pool = balancer_data.ip .. "|" .. balancer_data.port
+
+    if balancer_data.scheme == "https" then
+      -- upstream_host is SNI
+      pool = pool .. "|" .. ngx.var.upstream_host
+
+      if ctx.service and ctx.service.client_certificate then
+        pool = pool .. "|" .. ctx.service.client_certificate.id
+      end
+    end
+
+    pool_opts = {
+      pool = pool,
+      pool_size = kong_conf.upstream_keepalive_pool_size,
+    }
+  end
+
   current_try.ip   = balancer_data.ip
   current_try.port = balancer_data.port
 
   -- set the targets as resolved
   ngx_log(ngx_DEBUG, "setting address (try ", balancer_data.try_count, "): ",
                      balancer_data.ip, ":", balancer_data.port)
-  local ok, err = set_current_peer(balancer_data.ip, balancer_data.port)
+  local ok, err = set_current_peer(balancer_data.ip, balancer_data.port, pool_opts)
   if not ok then
     ngx_log(ngx_ERR, "failed to set the current peer (address: ",
             tostring(balancer_data.ip), " port: ", tostring(balancer_data.port),
@@ -854,6 +884,19 @@ function Kong.balancer()
                          balancer_data.read_timeout / 1000)
   if not ok then
     ngx_log(ngx_ERR, "could not set upstream timeouts: ", err)
+  end
+
+  if pool_opts then
+    ok, err = enable_keepalive(kong_conf.upstream_keepalive_idle_timeout,
+                               kong_conf.upstream_keepalive_max_requests)
+    if not ok then
+      ngx_log(ngx_ERR, "could not enable connection keepalive: ", err)
+    end
+
+    ngx_log(ngx_DEBUG, "enabled connection keepalive (pool=", pool_opts.pool,
+                       ", pool_size=", pool_opts.pool_size,
+                       ", idle_timeout=", kong_conf.upstream_keepalive_idle_timeout,
+                       ", max_requests=", kong_conf.upstream_keepalive_max_requests, ")")
   end
 
   -- record overall latency
