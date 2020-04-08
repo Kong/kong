@@ -1,8 +1,10 @@
-## v1.3.1
+## v1.4.0
 
 - Make `config.display_errors` to display errors also on `401` and `403`.
 - Fix issue when `bearer` auth_method was disabled that it was not disabled
   if introspection was enabled (see v1.3.0 that didn't fix it correctly)
+- Add support for `cookie` for `config.bearer_token_param_type`
+- Add support for `config.bearer_token_cookie_name`
  
 ## v1.3.0
 

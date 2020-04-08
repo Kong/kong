@@ -857,10 +857,17 @@ local config = {
                 type   = "string",
                 one_of = {
                   "header",
+                  "cookie",
                   "query",
                   "body",
                 },
               },
+            },
+          },
+          {
+            bearer_token_cookie_name = {
+              required = false,
+              type     = "string",
             },
           },
           {

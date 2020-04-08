@@ -24,6 +24,7 @@ local time            = ngx.time
 local null            = ngx.null
 local header          = ngx.header
 local set_header      = ngx.req.set_header
+local clear_header    = ngx.req.clear_header
 local escape_uri      = ngx.escape_uri
 local encode_base64   = ngx.encode_base64
 local tonumber        = tonumber
@@ -31,6 +32,7 @@ local tostring        = tostring
 local ipairs          = ipairs
 local concat          = table.concat
 local lower           = string.lower
+local gsub            = string.gsub
 local find            = string.find
 local type            = type
 local sub             = string.sub
@@ -46,6 +48,50 @@ local PARAM_TYPES_ALL = {
   "query",
   "body",
 }
+
+
+local function hide_cookie(name)
+  local cookies = var.http_cookie
+  if not cookies then
+    return
+  end
+
+  local results = {}
+  local i = 1
+  local j = 0
+  local sc_pos = find(cookies, ";", 1, true)
+  while sc_pos do
+    local cookie = sub(cookies, i, sc_pos - 1)
+    local eq_pos = find(cookie, "=", 1, true)
+    if eq_pos then
+      local cookie_name = gsub(sub(cookie, 1, eq_pos - 1), "^%s+", "")
+      if cookie_name ~= name and cookie_name ~= "" then
+        j = j + 1
+        results[j] = cookie
+      end
+    end
+    i = sc_pos + 1
+    sc_pos = find(cookies, ";", i, true)
+  end
+
+  local cookie = sub(cookies, i)
+  if cookie and cookie ~= "" then
+    local eq_pos = find(cookie, "=", 1, true)
+    if eq_pos then
+      local cookie_name = gsub(sub(cookie, 1, eq_pos - 1), "^%s+", "")
+      if cookie_name ~= name and cookie_name ~= "" then
+        j = j + 1
+        results[j] = cookie
+      end
+    end
+  end
+
+  if j == 0 then
+    clear_header("Cookie")
+  else
+    set_header("Cookie", concat(results, "; ", 1, j))
+  end
+end
 
 
 local function unexpected(trusted_client, ...)
@@ -1321,6 +1367,17 @@ function OICHandler.access(_, conf)
               args.clear_header("x_access_token")
             end
             break
+          end
+        elseif location == "cookie" then
+          local name = args.get_conf_arg("bearer_token_cookie_name")
+          if name then
+            bearer_token = var["cookie_" .. name]
+            if bearer_token then
+              if hide_credentials then
+                hide_cookie(name)
+              end
+              break
+            end
           end
 
         elseif location == "query" then
