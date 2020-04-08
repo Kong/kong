@@ -92,7 +92,7 @@ end
 
 
 local function rebuild_routes(db)
-  if kong.configuration.route_validation_strategy ~= 'off'  then
+  if kong.configuration.route_validation_strategy == 'smart'  then
     local old_wss = ngx.ctx.workspaces
     ngx.ctx.workspaces = {}
     core_handler.build_router(db, uuid())
