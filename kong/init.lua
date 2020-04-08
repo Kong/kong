@@ -693,6 +693,7 @@ end
 
 function Kong.access()
   local ctx = ngx.ctx
+  ctx.is_proxy_request = true
   if not ctx.KONG_ACCESS_START then
     ctx.KONG_ACCESS_START = get_now_ms()
 
