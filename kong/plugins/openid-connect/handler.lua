@@ -1882,25 +1882,29 @@ function OICHandler.access(_, conf)
     if auth_methods.bearer then
       log("verifying bearer token")
       tokens_decoded, err = oic.token:verify(tokens_encoded)
-      if not auth_methods.kong_oauth2 and not auth_methods.introspection then
-        log("unable to verify bearer token")
-        return unauthorized(ctx, iss, unauthorized_error_message, err or "invalid jwt token",
-                            session, anonymous, trusted_client)
-      end
+      if type(tokens_decoded) ~= "table" then
+        if not auth_methods.kong_oauth2 and not auth_methods.introspection then
+          log("unable to verify bearer token")
+          return unauthorized(ctx, iss, unauthorized_error_message, err or "invalid jwt token",
+                              session, anonymous, trusted_client)
+        end
 
-      if err then
-        log("unable to verify bearer token (", err, "), trying to introspect it")
+        if err then
+          log("unable to verify bearer token (", err, "), trying to introspect it")
 
-      else
-        log("unable to verify bearer token, trying to introspect it")
+        else
+          log("unable to verify bearer token, trying to introspect it")
+        end
       end
     end
 
-    if not auth_methods.bearer or not tokens_decoded or type(tokens_decoded.access_token) ~= "table" then
-      tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
-      if not tokens_decoded then
-        return unauthorized(ctx, iss, unauthorized_error_message,
-                            err, session, anonymous, trusted_client)
+    if not auth_methods.bearer or type(tokens_decoded) ~= "table" or type(tokens_decoded.access_token) ~= "table" then
+      if type(tokens_decoded) ~= "table" then
+        tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+        if not tokens_decoded then
+          return unauthorized(ctx, iss, unauthorized_error_message,
+                              err, session, anonymous, trusted_client)
+        end
       end
 
       local access_token

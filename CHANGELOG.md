@@ -1,3 +1,8 @@
+## v1.4.1
+
+- Fix issue where bearer token authentication did not work when introspection
+  was disabled.
+
 ## v1.4.0
 
 - Make `config.display_errors` to display errors also on `401` and `403`.
