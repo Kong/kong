@@ -39,6 +39,9 @@ return {
       type = "record",
       fields = {
         { functions = functions_array },
+        { handle_unknown = { type = "boolean", default = false } },
+        { handle_unexpected = { type = "boolean", default = false } },
+        { handle_admin = { type = "boolean", default = false } },
       }
     } }
   },

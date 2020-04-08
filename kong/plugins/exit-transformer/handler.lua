@@ -2,6 +2,7 @@ local inspect = require "inspect"
 
 local utils = require "kong.tools.utils"
 local runloop_handler = require "kong.runloop.handler"
+local workspaces = require "kong.workspaces"
 
 local BasePlugin = require "kong.plugins.base_plugin"
 
@@ -21,14 +22,43 @@ end
 
 local function get_conf()
   -- Gets plugin configuration for the ctx, no matter the priority
-  local ctx = ngx.ctx
+  local workspace = workspaces.get_workspace()
+  -- Not really needed, but a hack because get_workspace might return an
+  -- empty {} to signal... something? AFAIK, this is fixed on 2.0 already,
+  -- this solution makes it so it won't work on neither version of kong.
+  local workspace_id = workspace and workspace.id
 
   local plugins_iterator = runloop_handler.get_plugins_iterator()
-  for plugin, plugin_conf in plugins_iterator:iterate("access", ctx) do
-    if plugin.name == PLUGIN_NAME then
+
+  for plugin, plugin_conf in plugins_iterator:iterate("access", ngx.ctx) do
+
+    if plugin.name ~= PLUGIN_NAME then
+      goto continue
+    end
+
+    -- it's very important that this filtering happens here and not once we
+    -- already have a config. Since plugin confs applying globally on
+    -- different workspaces would collide here and rely only on the first
+    -- match
+    if not workspace_id and not plugin_conf.handle_unknown then
+      goto continue
+    end
+
+    if ngx.ctx.KONG_UNEXPECTED and not plugin_conf.handle_unexpected then
+      goto continue
+    end
+
+    if not ngx.ctx.is_proxy_request and not plugin_conf.handle_admin then
+      goto continue
+    end
+
+    do
       return plugin_conf
     end
+
+    ::continue::
   end
+
   return nil
 end
 
@@ -85,11 +115,6 @@ end
 
 
 function _M:exit(status, body, headers)
-  -- Do not transform non proxy requests (ie: admin)
-  if not ngx.ctx.is_proxy_request then
-    return status, body, headers
-  end
-
   -- Try to get plugin configuration for current context
   local conf = get_conf()
   if not conf then

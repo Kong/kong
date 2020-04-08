@@ -5,10 +5,12 @@ local PLUGIN_NAME    = require("kong.plugins.exit-transformer").PLUGIN_NAME
 
 for _, strategy in helpers.each_strategy() do
   describe(PLUGIN_NAME .. ": (scope) [#" .. strategy .. "]", function()
-    local client
+    local client, admin_client
+
+    local bp, gplugin
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, nil, { PLUGIN_NAME })
+      bp = helpers.get_db_utils(strategy, nil, { PLUGIN_NAME })
 
       local function_str_body_hello_world = [[
         return function (status, body, headers)
@@ -25,9 +27,11 @@ for _, strategy in helpers.each_strategy() do
       ]]
 
       -- Apply plugin globally
-      bp.plugins:insert {
+      gplugin = bp.plugins:insert {
         name = PLUGIN_NAME,
-        config = { functions = { function_str_body_hello_world } },
+        config = {
+          functions = { function_str_body_hello_world },
+        }
       }
 
       -- Add a plugin that generates a kong.response.exit, such as key-auth
@@ -36,7 +40,7 @@ for _, strategy in helpers.each_strategy() do
         name = "key-auth",
       }
 
-      local route1 = bp.routes:insert({
+      bp.routes:insert({
         hosts = { "test1.com" },
       })
 
@@ -77,7 +81,19 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("global scope", function()
-      it("global plugin applies", function()
+      it("global plugin applies only if conf.handle_unknown", function()
+        local res = assert(admin_client:send({
+          method  = "PATCH",
+          path    = "/plugins/" .. gplugin.id,
+          body    = {
+            config = { handle_unknown = true },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        }))
+        assert.res_status(200, res)
+
         -- try a request to a route that does not exist
         local res = assert(client:send {
           method = "get",
@@ -86,8 +102,36 @@ for _, strategy in helpers.each_strategy() do
             host = "non-set-route.com"
           }
         })
+
         local body = res:read_body()
         assert.equal("{\"hello\":\"world\"}", body)
+
+
+        local res = assert(admin_client:send({
+          method  = "PATCH",
+          path    = "/plugins/" .. gplugin.id,
+          body    = {
+            config = { handle_unknown = false },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        }))
+        assert.res_status(200, res)
+
+        -- try a request to a route that does not exist
+        local res = assert(client:send {
+          method = "get",
+          path = "/request",  -- makes mockbin return the entire request
+          headers = {
+            host = "non-set-route.com"
+          }
+        })
+
+        assert.response(res).has.status(404)
+        local body = res:read_body()
+        assert.equal("{\"message\":\"no Route matched with those values\"}", body)
+
       end)
 
       it("plugin on route applies", function()
@@ -102,7 +146,38 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("{\"hello\":\"world\"}", body)
       end)
 
-      it("does not transform admin exit", function()
+      it("does only transform admin if config.handle_admin", function()
+        local res = assert(admin_client:send({
+          method  = "PATCH",
+          path    = "/plugins/" .. gplugin.id,
+          body    = {
+            config = { handle_admin = true },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        }))
+        assert.res_status(200, res)
+
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/something-that-does-not-exist",  -- makes mockbin return the entire request
+        })
+        local body = assert.response(res).has.jsonbody()
+        assert.same({ hello = "world" }, body)
+
+        local res = assert(admin_client:send({
+          method  = "PATCH",
+          path    = "/plugins/" .. gplugin.id,
+          body    = {
+            config = { handle_admin = false },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        }))
+        assert.res_status(200, res)
+
         local res = assert(admin_client:send {
           method = "GET",
           path = "/something-that-does-not-exist",  -- makes mockbin return the entire request
@@ -110,6 +185,7 @@ for _, strategy in helpers.each_strategy() do
         assert.response(res).has.status(404)
         local body = assert.response(res).has.jsonbody()
         assert.same({ message = "Not found" }, body)
+
       end)
     end)
 
