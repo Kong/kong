@@ -1,6 +1,8 @@
 ## v1.3.1
 
 - Make `config.display_errors` to display errors also on `401` and `403`.
+- Fix issue when `bearer` auth_method was disabled that it was not disabled
+  if introspection was enabled (see v1.3.0 that didn't fix it correctly)
  
 ## v1.3.0
 

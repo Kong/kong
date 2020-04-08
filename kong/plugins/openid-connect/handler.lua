@@ -1822,18 +1822,30 @@ function OICHandler.access(_, conf)
 
   -- retrieve or verify tokens
   if bearer_token then
-    log("verifying bearer token")
+    if auth_methods.bearer then
+      log("verifying bearer token")
+      tokens_decoded, err = oic.token:verify(tokens_encoded)
+      if not auth_methods.kong_oauth2 and not auth_methods.introspection then
+        log("unable to verify bearer token")
+        return unauthorized(ctx, iss, unauthorized_error_message, err or "invalid jwt token",
+                            session, anonymous, trusted_client)
+      end
 
-    tokens_decoded, err = oic.token:verify(tokens_encoded)
-    if type(tokens_decoded) ~= "table" then
-      log("unable to verify bearer token")
-      return unauthorized(ctx, iss, unauthorized_error_message, err,
-                          session, anonymous, trusted_client)
+      if err then
+        log("unable to verify bearer token (", err, "), trying to introspect it")
+
+      else
+        log("unable to verify bearer token, trying to introspect it")
+      end
     end
 
-    log("bearer token verified")
+    if not auth_methods.bearer or not tokens_decoded or type(tokens_decoded.access_token) ~= "table" then
+      tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+      if not tokens_decoded then
+        return unauthorized(ctx, iss, unauthorized_error_message,
+                            err, session, anonymous, trusted_client)
+      end
 
-    if not auth_methods.bearer or type(tokens_decoded.access_token) ~= "table" then
       local access_token
       if type(tokens_decoded.access_token) ~= "table" then
         log("opaque bearer token was provided")
@@ -1842,7 +1854,9 @@ function OICHandler.access(_, conf)
       elseif type(tokens_encoded) == "table" then
         log("bearer authentication was not enabled")
         access_token = tokens_encoded.access_token
-      else
+      end
+
+      if not access_token then
         return unauthorized(ctx, iss, unauthorized_error_message,
                             "access token not found",
                             session, anonymous, trusted_client)
@@ -1879,7 +1893,7 @@ function OICHandler.access(_, conf)
 
         if type(token_introspected) ~= "table" or token_introspected.active ~= true then
           log("authentication with opaque bearer token failed")
-          return unauthorized(ctx, iss, unauthorized_error_message, err,
+          return unauthorized(ctx, iss, unauthorized_error_message, err or "invalid or inactive token",
                               session, anonymous, trusted_client)
         end
 
@@ -1892,6 +1906,8 @@ function OICHandler.access(_, conf)
       exp = get_exp(token_introspected, tokens_encoded, ttl.now, exp_default)
 
     else
+      log("bearer token verified")
+
       if args.get_conf_arg("introspect_jwt_tokens", false) then
         log("introspecting jwt bearer token")
         jwt_token_introspected, err = introspect_token(tokens_encoded.access_token, ttl)
