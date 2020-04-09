@@ -64,30 +64,6 @@ local function parse_multipart_form_params(body, content_type)
   return params
 end
 
-local function remove_sensible_data_from_table(a_table, depth)
-  local clean = {}
-  depth = depth or 1
-  local max_depth = 500
-
-  if depth == max_depth then
-    -- if we can't remove PII from the whole body we won't send it
-    return
-  end
-
-  if a_table then
-    for key, value in pairs(a_table) do
-      if type(value) == "table" then
-        clean[key] = remove_sensible_data_from_table(value, depth + 1)
-      elseif type(value) == "string" then
-        clean[key] = { field_type = "string", field_length = #value }
-      elseif type(value) == "number" then
-        clean[key] = { field_type = "number"  }
-      end
-    end
-  end
-
-  return clean
-end
 
 -- Sends the provided payload (a string) to the configured plugin host
 -- @return true if everything was sent correctly, falsy if error
@@ -119,6 +95,37 @@ local CollectorHandler = BasePlugin:extend()
 CollectorHandler.PRIORITY = 903
 CollectorHandler.VERSION = "1.7.3"
 
+
+local function remove_sensible_data_from_table(a_table, depth)
+  local clean = {}
+  depth = depth or 1
+  local max_depth = 500
+
+  if depth == max_depth then
+    -- if we can't remove PII from the whole body we won't send it
+    return {}
+  end
+
+  if type(a_table) == "string" then
+    return {}
+  end
+
+  if a_table then
+    for key, value in pairs(a_table) do
+      if type(value) == "table" then
+        clean[key] = remove_sensible_data_from_table(value, depth + 1)
+      elseif type(value) == "string" then
+        clean[key] = { field_type = "string", field_length = #value }
+      elseif type(value) == "number" then
+        clean[key] = { field_type = "number"  }
+      end
+    end
+  end
+
+  return clean
+end
+CollectorHandler.remove_sensible_data_from_table = remove_sensible_data_from_table
+
 function CollectorHandler:new()
   if string.match(kong.version, "enterprise") then
     allowed_to_run = true
@@ -133,9 +140,10 @@ function CollectorHandler:access(conf)
 
   if allowed_to_run and conf.log_bodies then
     ngx.req.read_body()
+    kong.ctx.plugin.request_body = {}
     local content_type = ngx.req.get_headers(0)["Content-Type"]
     local body = ngx.req.get_body_data()
-    local params
+    local params = {}
     local err
     if type(content_type) == "string" then
       if content_type:find("application/x-www-form-urlencoded", nil, true) then
@@ -145,15 +153,12 @@ function CollectorHandler:access(conf)
       elseif content_type:find("application/json", nil, true) then
         params, err = cjson_safe.decode(body)
       end
-      params = params or cjson_safe.null
-
       if err then
-        err = tostring(err)
         kong.log.err("Could not parse body data: ", err)
+      else
+        kong.ctx.plugin.request_body = remove_sensible_data_from_table(params)
       end
     end
-
-    kong.ctx.plugin.request_body = remove_sensible_data_from_table(params)
   end
 end
 
