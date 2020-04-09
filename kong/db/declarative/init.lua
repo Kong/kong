@@ -360,6 +360,9 @@ function declarative.load_into_cache(entities, hash, shadow_page)
   -- but filtered for a given tag
   local tags_by_name = {}
 
+  kong.core_cache:purge()
+  kong.cache:purge()
+
   for entity_name, items in pairs(entities) do
     local dao = kong.db[entity_name]
     local schema = dao.schema
