@@ -1214,7 +1214,9 @@ end
 local function run_self_check(self, input, errors)
   local ok = true
   for fname, field in self:each_field() do
-    if input[fname] == nil and not field.nilable then
+    if input[fname] == nil
+      and not field.nilable
+      and not field.hidden then
       local err = validation_errors.REQUIRED_FOR_ENTITY_CHECK:format(fname)
       errors[fname] = err
       ok = false
@@ -1656,6 +1658,10 @@ function Schema:process_auto_fields(data, context, nulls)
       end
 
       check_immutable_fields = true
+    end
+
+    if field.hidden then
+      data[key] = nil
     end
   end
 
