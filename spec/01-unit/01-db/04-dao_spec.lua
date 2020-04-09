@@ -22,6 +22,22 @@ local nullable_schema_definition = {
   }
 }
 
+local hidden_attr_schema_definition = {
+  name = "Foo",
+  primary_key = { "a" },
+  fields = {
+    { a = { type = "number" }, },
+    { b = { type = "string", default = "hello" }, },
+    { u = { type = "string", hidden = true }, },
+    { r = { type = "record",
+            required = false,
+            fields = {
+              { f1 = { type = "number" } },
+              { f2 = { type = "string", default = "world" } },
+            } } },
+  }
+}
+
 local non_nullable_schema_definition = {
   name = "Foo",
   primary_key = { "a" },
@@ -159,6 +175,26 @@ describe("DAO", function()
       row = dao:select({ a = 42 }, { nulls = false })
       assert.same(42, row.a)
       assert.same(nil, row.ttl)
+    end)
+
+    it("hides fields if strategy returns a column with a value set and it is configured to be hidden in the schema", function()
+      local schema = assert(Schema.new(hidden_attr_schema_definition))
+
+      -- mock strategy
+      local strategy = {
+        select = function()
+          return { a = 42, b = null, u = "data", r = { f1 = 10, f2 = null } }
+        end,
+      }
+
+      local dao = DAO.new(mock_db, schema, strategy, errors)
+
+      local row = dao:select({ a = 42 }, { nulls = true })
+      assert.same(42, row.a)
+      assert.same(null, row.b)
+      assert.same(nil, row.u)
+      assert.same(10, row.r.f1)
+      assert.same(null, row.r.f2)
     end)
   end)
 

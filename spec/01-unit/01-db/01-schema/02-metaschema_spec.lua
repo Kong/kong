@@ -1067,6 +1067,40 @@ describe("metasubschema", function()
     assert.match("'set' cannot have attribute 'unique'", err.set)
   end)
 
+  it("supports the hidden attribute with a string type", function()
+    local s = {
+      name = "test",
+      fields = {
+        { str = { type = "string", hidden = true } },
+      },
+    }
+    assert.truthy(MetaSchema.MetaSubSchema:validate(s))
+  end)
+
+  it("rejects a hidden attribute in complex and number types", function()
+    local s = {
+      name = "test",
+      fields = {
+        { id  = { type = "string" } },
+        { num = { type = "number", hidden = true } },
+        { int = { type = "integer", hidden = true } },
+        { arr = { type = "array", hidden = true } },
+        { map = { type = "map", hidden = true } },
+        { rec = { type = "record", hidden = true } },
+        { set = { type = "set", hidden = true } },
+      },
+    }
+    local ok, err = MetaSchema.MetaSubSchema:validate(s)
+    assert.falsy(ok)
+    print(require("inspect")(err))
+    assert.match("'number' cannot have attribute 'hidden'", err.num)
+    assert.match("'integer' cannot have attribute 'hidden'", err.int)
+    assert.match("'array' cannot have attribute 'hidden'", err.arr)
+    assert.match("'map' cannot have attribute 'hidden'", err.map)
+    assert.match("'record' cannot have attribute 'hidden'", err.rec)
+    assert.match("'set' cannot have attribute 'hidden'", err.set)
+  end)
+
   it("a schema cannot have a field of type 'any'", function()
     local s = {
       name = "hello",
