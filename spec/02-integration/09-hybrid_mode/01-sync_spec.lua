@@ -58,7 +58,7 @@ for _, strategy in helpers.each_strategy() do
     describe("sync works", function()
       local route_id
 
-      it("proxy on DP follows CP config", function()
+      it("proxy on DP follows CP config #flaky", function()
         local res = assert(client:post("/services", {
           body = { name = "mockbin-service", url = "https://mockbin.org/request", },
           headers = {["Content-Type"] = "application/json"}
@@ -88,7 +88,7 @@ for _, strategy in helpers.each_strategy() do
         end, 5)
       end)
 
-      it("cache invalidation works on config change", function()
+      it("cache invalidation works on config change #flaky", function()
         local res = assert(client:send({
           method = "DELETE",
           path   = "/routes/" .. route_id,

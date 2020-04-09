@@ -177,8 +177,10 @@ pipeline {
                         DOCKER_MACHINE_ARM64_NAME = "jenkins-kong-${env.BUILD_NUMBER}"
                         REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
                         KONG_PACKAGE_NAME = "kong-${env.BRANCH_NAME}"
+                        DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly KONG_VERSION=`date +%Y-%m-%d` make nightly-release'
@@ -205,8 +207,10 @@ pipeline {
                         BINTRAY_KEY = credentials('bintray_travis_key')
                         REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
                         KONG_PACKAGE_NAME = "kong-${env.BRANCH_NAME}"
+                        DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_TAG=bionic BUILDX=false make nightly-release'
@@ -229,8 +233,10 @@ pipeline {
                         PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
                         REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
                         KONG_PACKAGE_NAME = "kong-${env.BRANCH_NAME}"
+                        DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
@@ -259,8 +265,10 @@ pipeline {
                         PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
                         REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
                         KONG_PACKAGE_NAME = "kong-${env.BRANCH_NAME}"
+                        DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
@@ -283,8 +291,10 @@ pipeline {
                         BINTRAY_KEY = credentials('bintray_travis_key')
                         REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
                         KONG_PACKAGE_NAME = "kong-${env.BRANCH_NAME}"
+                        DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_TAG=jessie make nightly-release'
@@ -307,8 +317,11 @@ pipeline {
                         BINTRAY_USR = 'kong-inc_travis-ci@kong'
                         BINTRAY_KEY = credentials('bintray_travis_key')
                         KONG_PACKAGE_NAME = "kong-${env.BRANCH_NAME}"
+                        REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
+                        DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly PACKAGE_TYPE=src RESTY_IMAGE_BASE=src KONG_VERSION=`date +%Y-%m-%d` make nightly-release'
@@ -346,8 +359,10 @@ pipeline {
                         BINTRAY_KEY = credentials('bintray_travis_key')
                         AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
                         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+                        DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'make release'
@@ -372,8 +387,10 @@ pipeline {
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                         BINTRAY_USR = 'kong-inc_travis-ci@kong'
                         BINTRAY_KEY = credentials('bintray_travis_key')
+                        DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'RESTY_IMAGE_TAG=bionic make release'
@@ -394,8 +411,10 @@ pipeline {
                         BINTRAY_KEY = credentials('bintray_travis_key')
                         PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
                         PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
+                        DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
@@ -419,8 +438,10 @@ pipeline {
                         BINTRAY_KEY = credentials('bintray_travis_key')
                         PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
                         PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
+                        DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
@@ -441,8 +462,10 @@ pipeline {
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                         BINTRAY_USR = 'kong-inc_travis-ci@kong'
                         BINTRAY_KEY = credentials('bintray_travis_key')
+                        DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'RESTY_IMAGE_TAG=jessie make release'
@@ -464,8 +487,10 @@ pipeline {
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                         BINTRAY_USR = 'kong-inc_travis-ci@kong'
                         BINTRAY_KEY = credentials('bintray_travis_key')
+                        DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'PACKAGE_TYPE=src RESTY_IMAGE_BASE=src make release'

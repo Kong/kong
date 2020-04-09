@@ -1,9 +1,9 @@
 package = "kong"
-version = "2.0.1-0"
+version = "2.0.3-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.0.1"
+  tag = "2.0.3"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -35,7 +35,7 @@ dependencies = {
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.1",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.4.3",
+  "lua-resty-openssl == 0.4.4",
   "lua-resty-counter == 0.2.0",
   "lua-resty-redis-connector == 0.08",
   -- external Kong plugins

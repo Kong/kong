@@ -17,18 +17,18 @@ for _, ldap_strategy in pairs(ldap_strategies) do
         local admin_client
         local proxy_client
         local plugin
-    
+
         lazy_setup(function()
           local bp = helpers.get_db_utils(strategy, {
             "routes",
             "services",
             "plugins",
           })
-    
+
           local route = bp.routes:insert {
             hosts = { "ldapauth.com" },
           }
-    
+
           plugin = bp.plugins:insert {
             route = { id = route.id },
             name     = "ldap-auth",
@@ -41,18 +41,18 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               cache_ttl = 1,
             }
           }
-    
+
           assert(helpers.start_kong({
             database   = strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
           }))
         end)
-    
+
         before_each(function()
           admin_client = helpers.admin_client()
           proxy_client = helpers.proxy_client()
         end)
-    
+
         after_each(function()
           if admin_client then
             admin_client:close()
@@ -61,11 +61,11 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             proxy_client:close()
           end
         end)
-    
+
         lazy_teardown(function()
           helpers.stop_kong(nil, true)
         end)
-    
+
         local function cache_key(conf, username, password)
             local ldap_config_cache = md5(fmt("%s:%u:%s:%s:%u",
               lower(conf.ldap_host),
@@ -74,11 +74,11 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               conf.attribute,
               conf.cache_ttl
             ))
-    
+
           return fmt("ldap_auth_cache:%s:%s:%s", ldap_config_cache,
                      username, password)
         end
-    
+
         describe("authenticated LDAP user get cached", function()
           it("should cache invalid credential", function()
             local res = assert(proxy_client:send {
@@ -91,7 +91,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               }
             })
             assert.res_status(401, res)
-    
+
             local cache_key = cache_key(plugin.config, "einstein", "wrongpassword")
             res = assert(admin_client:send {
               method = "GET",
@@ -102,16 +102,8 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           end)
           it("should invalidate negative cache once ttl expires", function()
             local cache_key = cache_key(plugin.config, "einstein", "wrongpassword")
-    
-            helpers.wait_until(function()
-              local res = assert(admin_client:send {
-                method = "GET",
-                path   = "/cache/" .. cache_key,
-                body   = {},
-              })
-              res:read_body()
-              return res.status == 404
-            end)
+
+            helpers.wait_for_invalidation(cache_key)
           end)
           it("should cache valid credential", function()
             -- It should work
@@ -125,7 +117,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               }
             })
             assert.res_status(200, res)
-    
+
             -- Check that cache is populated
             local cache_key = cache_key(plugin.config, "einstein", "password")
             res = assert(admin_client:send {
@@ -137,16 +129,8 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           end)
           it("should invalidate cache once ttl expires", function()
             local cache_key = cache_key(plugin.config, "einstein", "password")
-    
-            helpers.wait_until(function()
-              local res = assert(admin_client:send {
-                method = "GET",
-                path   = "/cache/" .. cache_key,
-                body   = {},
-              })
-              res:read_body()
-              return res.status == 404
-            end)
+
+            helpers.wait_for_invalidation(cache_key)
           end)
         end)
       end)

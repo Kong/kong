@@ -279,15 +279,15 @@ for _, strategy in helpers.each_strategy() do
     describe("handshake", function()
       it("sets the default fallback SSL certificate if no SNI match", function()
         local cert = get_cert("test.com")
-        assert.cn("localhost", cert)
+        assert.certificate(cert).has.cn("localhost")
       end)
 
       it("sets the configured SSL certificate if SNI match", function()
         local cert = get_cert("ssl1.com")
-        assert.cn("ssl-example.com", cert)
+        assert.certificate(cert).has.cn("ssl-example.com")
 
         cert = get_cert("example.com")
-        assert.cn("ssl-example.com", cert)
+        assert.certificate(cert).has.cn("ssl-example.com")
       end)
 
       describe("wildcard sni", function()
@@ -574,7 +574,7 @@ for _, strategy in helpers.each_strategy() do
 
         local cert = get_cert("example.com")
         -- this fails if the "example.com" SNI wasn't inserted above
-        assert.cn("ssl-example.com", cert)
+        assert.certificate(cert).has.cn("ssl-example.com")
       end)
     end)
   end)

@@ -298,6 +298,32 @@ local function gen_kind(finfo, field_data)
   end
 end
 
+local function break_long_code_block(code, separator, max_row_len)
+  local escaped_separator = separator == "." and "%." or separator
+  local word_break_separator = separator .. "`<wbr>`"
+  local buffer = { "`" }
+  local row_len = 0
+  local first = true
+  for part in code:gmatch("[^" .. escaped_separator .."]+") do
+    local part_len = #part
+    if not first then
+      if row_len + part_len + 1 < max_row_len then
+        buffer[#buffer + 1] = separator
+        row_len = row_len + 1
+      else
+        buffer[#buffer + 1] = word_break_separator
+        row_len = 0
+      end
+    end
+    buffer[#buffer + 1] = part
+    row_len = row_len + part_len
+    first = false
+  end
+  buffer[#buffer + 1] = "`"
+
+  return table.concat(buffer)
+end
+
 local function gen_field_info(finfo)
   local out = {}
 
@@ -311,7 +337,9 @@ local function gen_field_info(finfo)
   end
 
   if finfo.default then
-    table.insert(out, " Defaults to `" .. cjson_encode(finfo.default) .. "`.")
+    local json = cjson_encode(finfo.default)
+    local default = break_long_code_block(json, ",", 30)
+    table.insert(out, " Defaults to " ..  default .. ".")
   end
 
   return table.concat(out)
@@ -368,7 +396,9 @@ local function write_field(outfd, fname, finfo, fullname, field_data, entity_nam
   local field_info = gen_field_info(finfo)
   local notation = gen_notation(fname, finfo, field_data)
 
-  outfd:write("    `" .. fullname .. "`" .. kind .. " | " .. description .. field_info .. notation .. "\n")
+  fullname = break_long_code_block(fullname, ".", 25)
+
+  outfd:write("    " .. fullname .. kind .. " | " .. description .. field_info .. notation .. "\n")
 end
 
 local function process_field(outfd, entity_data, entity_name, fname, finfo, prefix)
@@ -467,16 +497,6 @@ local function write_entity_templates(outfd, entity, entity_data)
 end
 
 
-local function bold_text_section(outfd, title, content)
-  if not content then
-    return
-  end
-  outfd:write(title and ("*" .. utils.titleize(title) .. "*\n\n") or "")
-  outfd:write(unindent(content) .. "\n")
-  outfd:write("\n")
-end
-
-
 local titles = {}
 
 local function write_title(outfd, level, title)
@@ -522,10 +542,10 @@ local function write_endpoint(outfd, endpoint, ep_data, methods)
       for _, fk_endpoint in ipairs(fk_endpoints) do
         section(outfd, nil, fk_endpoint)
       end
-      bold_text_section(outfd, "Request Querystring Parameters", meth_data.request_query)
-      bold_text_section(outfd, "Request Body", meth_data.request_body)
+      section(outfd, "Request Querystring Parameters", meth_data.request_query)
+      section(outfd, "Request Body", meth_data.request_body)
       section(outfd, nil, meth_data.details)
-      bold_text_section(outfd, "Response", meth_data.response)
+      section(outfd, "Response", meth_data.response)
       outfd:write("---\n\n")
     end
 
@@ -966,16 +986,19 @@ local function write_admin_api_nav(filename, data)
   outfd:write("# Generated via autodoc-admin-api\n")
   outfd:write(unindent(data.nav.header))
 
+  local max_level = 3
   local level = 3
   for _, t in ipairs(titles) do
-    if t.level <= level then
-      outfd:write("\n")
-    elseif t.level > level then
-      outfd:write(("    "):rep(level - 1) .. "  items:\n")
+    if t.level <= max_level then
+      if t.level <= level then
+        outfd:write("\n")
+      elseif t.level > level then
+        outfd:write(("    "):rep(level - 1) .. "  items:\n")
+      end
+      level = t.level
+      outfd:write(("    "):rep(level - 1) .. "- text: " .. t.title .. "\n")
+      outfd:write(("    "):rep(level - 1) .. "  url: /admin-api/#" .. t.title:lower():gsub(" ", "-") .. "\n")
     end
-    level = t.level
-    outfd:write(("    "):rep(level - 1) .. "- text: " .. t.title .. "\n")
-    outfd:write(("    "):rep(level - 1) .. "  url: /admin-api/#" .. t.title:lower():gsub(" ", "-") .. "\n")
   end
 
   outfd:close()

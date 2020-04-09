@@ -117,14 +117,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(204, res)
 
         -- ensure cache is invalidated
-        helpers.wait_until(function()
-          local res = assert(admin_client:send {
-            method  = "GET",
-            path    = "/cache/" .. cache_key
-          })
-          res:read_body()
-          return res.status == 404
-        end)
+        helpers.wait_for_invalidation(cache_key)
 
         -- It should not work
         authorization, date = get_authorization("bob")
@@ -198,14 +191,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- ensure cache is invalidated
         local cache_key = db.hmacauth_credentials:cache_key("bob")
-        helpers.wait_until(function()
-          local res = assert(admin_client:send {
-            method  = "GET",
-            path    = "/cache/" .. cache_key
-          })
-          res:read_body()
-          return res.status == 404
-        end)
+        helpers.wait_for_invalidation(cache_key)
 
         -- It should work
         local authorization, date = get_authorization("hello123")
@@ -254,15 +240,8 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(204, res)
 
-       -- ensure cache is invalidated
-        helpers.wait_until(function()
-          local res = assert(admin_client:send {
-            method  = "GET",
-            path    = "/cache/" .. cache_key
-          })
-          res:read_body()
-          return res.status == 404
-        end)
+        -- ensure cache is invalidated
+        helpers.wait_for_invalidation(cache_key)
 
         -- It should not work
         local authorization, date = get_authorization("bob")

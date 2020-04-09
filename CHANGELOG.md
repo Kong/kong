@@ -1,8 +1,11 @@
 # Table of Contents
 
 
+- [2.0.3](#203)
+- [2.0.2](#202)
 - [2.0.1](#201)
 - [2.0.0](#200)
+- [1.5.1](#151)
 - [1.5.0](#150)
 - [1.4.3](#143)
 - [1.4.2](#142)
@@ -37,6 +40,92 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+
+## [2.0.3]
+
+> Released 2020/04/06
+
+This is a patch release in the 2.0 series. Being a patch release, it strictly
+contains performance improvements and bugfixes. The are no new features or
+breaking changes.
+
+### Fixes
+
+##### Core
+
+    - Setting the target weight to 0 does not automatically remove the upstream.
+      [#5710](https://github.com/Kong/kong/pull/5710).
+    - The plugins iterator is now always fully built, even if the initialization
+      of any of them fails.
+      [#5692](https://github.com/Kong/kong/pull/5692).
+    - Fixed the load of `dns_not_found_ttl` and `dns_error_ttl` configuration
+      options.
+      [#5684](https://github.com/Kong/kong/pull/5684).
+    - Consumers and tags are properly warmed-up from the plugins' perspective,
+      i.e. they are loaded to the cache space that plugins access.
+      [#5669](https://github.com/Kong/kong/pull/5669).
+    - Customized error messages don't affect subsequent default error responses
+      now.
+      [#5673](https://github.com/Kong/kong/pull/5673).
+
+##### CLI
+
+    - Fixed the `lua_package_path` option precedence over `LUA_PATH` environment
+      variable.
+      [#5729](https://github.com/Kong/kong/pull/5729).
+    - Support to Nginx binary upgrade by correctly handling the `USR2` signal.
+      [#5657](https://github.com/Kong/kong/pull/5657).
+
+##### Configuration
+
+    - Fixed the logrotate configuration file with the right line terminators.
+      [#243](https://github.com/Kong/kong-build-tools/pull/243).
+      Thanks, [WALL-E](https://github.com/WALL-E)
+
+##### Admin API
+
+    - Fixed the `sni is duplicated` error when sending multiple `SNIs` as body
+      arguments and an `SNI` on URL that matched one from the body.
+      [#5660](https://github.com/Kong/kong/pull/5660).
+
+[Back to TOC](#table-of-contents)
+
+
+## [2.0.2]
+
+> Released 2020/02/27
+
+This is a patch release in the 2.0 series. Being a patch release, it strictly
+contains performance improvements and bugfixes. The are no new features or
+breaking changes.
+
+### Fixes
+
+##### Core
+
+  - Fix issue related to race condition in Cassandra select each method
+    [#5564](https://github.com/Kong/kong/pull/5564).
+    Thanks, [vasuharish](https://github.com/vasuharish)!
+  - Fix issue related to running control plane under multiple Nginx workers
+    [#5612](https://github.com/Kong/kong/pull/5612).
+  - Don't change route paths when marshaling
+    [#5587](https://github.com/Kong/kong/pull/5587).
+  - Fix propagation of posted health across workers
+    [#5539](https://github.com/Kong/kong/pull/5539).
+  - Use proper units for timeouts with cassandra
+    [#5571](https://github.com/Kong/kong/pull/5571).
+  - Fix broken SNI based routing in L4 proxy mode
+    [#5533](https://github.com/Kong/kong/pull/5533).
+
+##### Plugins
+
+  - Enable the ACME plugin by default
+    [#5555](https://github.com/Kong/kong/pull/5555).
+  - Accept consumer username in anonymous field
+    [#5552](https://github.com/Kong/kong/pull/5552).
+
+[Back to TOC](#table-of-contents)
 
 
 ## [2.0.1]
@@ -286,6 +375,25 @@ repository will allow you to do both easily.
 
   - Removed the Sidecar Injector plugin which was used for service mesh.
     [#5199](https://github.com/Kong/kong/pull/5199)
+
+
+[Back to TOC](#table-of-contents)
+
+
+## [1.5.1]
+
+> Released 2020/02/19
+
+This is a patch release over 1.5.0, fixing a minor issue in the `kong migrations migrate-apis`
+command, which assumed execution in a certain order in the migration process. This now
+allows the command to be executed prior to running the migrations from 0.x to 1.5.1.
+
+### Fixes
+
+##### CLI
+
+  - Do not assume new fields are already available when running `kong migrations migrate-apis`
+    [#5572](https://github.com/Kong/kong/pull/5572)
 
 
 [Back to TOC](#table-of-contents)
@@ -4639,8 +4747,11 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.0.3]: https://github.com/Kong/kong/compare/2.0.2...2.0.3
+[2.0.2]: https://github.com/Kong/kong/compare/2.0.1...2.0.2
 [2.0.1]: https://github.com/Kong/kong/compare/2.0.0...2.0.1
 [2.0.0]: https://github.com/Kong/kong/compare/1.5.0...2.0.0
+[1.5.1]: https://github.com/Kong/kong/compare/1.5.0...1.5.1
 [1.5.0]: https://github.com/Kong/kong/compare/1.4.3...1.5.0
 [1.4.3]: https://github.com/Kong/kong/compare/1.4.2...1.4.3
 [1.4.2]: https://github.com/Kong/kong/compare/1.4.1...1.4.2

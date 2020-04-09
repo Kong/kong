@@ -13,23 +13,6 @@ local TYPE_HTML       = "text/html"
 local TYPE_XML        = "application/xml"
 
 
-local HEADERS_JSON = {
-  [CONTENT_TYPE] = "application/json; charset=utf-8"
-}
-
-local HEADERS_HTML = {
-  [CONTENT_TYPE] = "text/html; charset=utf-8"
-}
-
-local HEADERS_XML = {
-  [CONTENT_TYPE] = "application/xml; charset=utf-8"
-}
-
-local HEADERS_PLAIN = {
-  [CONTENT_TYPE] = "text/plain; charset=utf-8"
-}
-
-
 local JSON_TEMPLATE = [[
 {
   "message": "%s"
@@ -96,22 +79,30 @@ return function(ctx)
   local headers
   if find(accept_header, TYPE_JSON, nil, true) == 1 then
     message = fmt(JSON_TEMPLATE, message)
-    headers = HEADERS_JSON
+    headers = {
+      [CONTENT_TYPE] = "application/json; charset=utf-8"
+    }
 
   elseif find(accept_header, TYPE_GRPC, nil, true) == 1 then
     message = { message = message }
 
   elseif find(accept_header, TYPE_HTML, nil, true) == 1 then
     message = fmt(HTML_TEMPLATE, message)
-    headers = HEADERS_HTML
+    headers = {
+      [CONTENT_TYPE] = "text/html; charset=utf-8"
+    }
 
   elseif find(accept_header, TYPE_XML, nil, true) == 1 then
     message = fmt(XML_TEMPLATE, message)
-    headers = HEADERS_XML
+    headers = {
+      [CONTENT_TYPE] = "application/xml; charset=utf-8"
+    }
 
   else
     message = fmt(PLAIN_TEMPLATE, message)
-    headers = HEADERS_PLAIN
+    headers = {
+      [CONTENT_TYPE] = "text/plain; charset=utf-8"
+    }
   end
 
   -- Reset relevant context values
