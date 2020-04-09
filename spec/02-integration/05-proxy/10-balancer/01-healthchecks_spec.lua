@@ -62,6 +62,7 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        stream_listen = "127.0.0.1:9100",
         db_update_frequency = 0.1,
       }, nil, nil, fixtures))
 
@@ -344,7 +345,7 @@ for _, strategy in helpers.each_strategy() do
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt",
-        stream_listen = "off",
+        stream_listen = "127.0.0.1:9100",
         db_update_frequency = 0.1,
         plugins = "bundled,fail-once-auth",
       }))
@@ -368,7 +369,7 @@ for _, strategy in helpers.each_strategy() do
           database   = strategy,
           admin_listen = "127.0.0.1:" .. admin_port_2,
           proxy_listen = "127.0.0.1:" .. proxy_port_2,
-          stream_listen = "off",
+          stream_listen = "127.0.0.1:9201",
           prefix = "servroot2",
           log_level = "debug",
           db_update_frequency = 0.1,
@@ -874,7 +875,7 @@ for _, strategy in helpers.each_strategy() do
                 nginx_conf = "spec/fixtures/custom_nginx.template",
                 lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt",
                 db_update_frequency = 0.1,
-                stream_listen = "off",
+                stream_listen = "127.0.0.1:9100",
                 plugins = "bundled,fail-once-auth",
               }, nil, fixtures)
               bu.end_testcase_setup(strategy, bp)
@@ -1276,7 +1277,7 @@ for _, strategy in helpers.each_strategy() do
                   nginx_conf = "spec/fixtures/custom_nginx.template",
                   lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt",
                   db_update_frequency = 0.1,
-                  stream_listen = "off",
+                  stream_listen = "127.0.0.1:9100",
                   plugins = "bundled,fail-once-auth",
                 }, nil, fixtures)
                 bu.end_testcase_setup(strategy, bp)
@@ -1382,7 +1383,7 @@ for _, strategy in helpers.each_strategy() do
                   nginx_conf = "spec/fixtures/custom_nginx.template",
                   lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt",
                   db_update_frequency = 0.1,
-                  stream_listen = "off",
+                  stream_listen = "127.0.0.1:9100",
                   plugins = "bundled,fail-once-auth",
                 }, nil, fixtures)
                 bu.end_testcase_setup(strategy, bp)
@@ -1484,7 +1485,7 @@ for _, strategy in helpers.each_strategy() do
               end)
             end
 
-            it("#flaky #db perform active health checks -- automatic recovery #stream", function()
+            it((strategy == "cassandra" and "#flaky" or "") .." #db perform active health checks -- automatic recovery #stream", function()
 
               local port1 = bu.gen_port()
               local port2 = bu.gen_port()
@@ -1623,7 +1624,7 @@ for _, strategy in helpers.each_strategy() do
                 nginx_conf = "spec/fixtures/custom_nginx.template",
                 lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt",
                 db_update_frequency = 0.1,
-                stream_listen = "off",
+                stream_listen = "127.0.0.1:9100",
                 plugins = "bundled,fail-once-auth",
               })
               bu.end_testcase_setup(strategy, bp)
