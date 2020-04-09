@@ -1,11 +1,25 @@
 # Table of Contents
 
- - [1.7.0](#170---20200502)
+ - [1.7.3](#173---20200408)
+ - [1.7.2](#172---20200326)
+ - [1.7.1](#171---20200221)
  - [1.6.1](#161---20191021)
  - [1.5.1](#151---20190926)
  - [1.5.0](#150---20190813)
 
 ## Unreleased
+
+## [1.7.3] - 2020/04/08
+
+#### Summary
+
+- Fixed a bug that would make the plugin fail to send hars to collector if `log_bodies` is false
+
+## [1.7.2] - 2020/03/26
+
+#### Summary
+
+- Removes unused configuration options
 
 ## [1.7.1] - 2020/02/21
 

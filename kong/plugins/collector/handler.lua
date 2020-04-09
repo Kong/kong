@@ -117,7 +117,7 @@ end
 local CollectorHandler = BasePlugin:extend()
 
 CollectorHandler.PRIORITY = 903
-CollectorHandler.VERSION = "1.7.1"
+CollectorHandler.VERSION = "1.7.3"
 
 function CollectorHandler:new()
   if string.match(kong.version, "enterprise") then
@@ -128,8 +128,10 @@ function CollectorHandler:new()
 end
 
 function CollectorHandler:access(conf)
+  -- we need to store request state before plugins change it
+  kong.ctx.plugin.serialized_request = basic_serializer.serialize(ngx)
+
   if allowed_to_run and conf.log_bodies then
-    kong.ctx.plugin.serialized_request = basic_serializer.serialize(ngx)
     ngx.req.read_body()
     local content_type = ngx.req.get_headers(0)["Content-Type"]
     local body = ngx.req.get_body_data()
