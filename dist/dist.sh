@@ -23,6 +23,7 @@ trap on_exit EXIT
 git clone -b $KONG_DISTRIBUTIONS_VERSION https://"$GITHUB_TOKEN"@github.com/Kong/kong-distributions.git $KONG_DIST_PATH
 
 # This is for package.sh
+export CACHE_DIR=${CACHE_DIR:-/tmp/kong-dist-cache}
 export OUTPUT_DIR=$LOCAL_PATH/output
 export LOCAL_KONG_PATH=$LOCAL_KONG_PATH
 # This is for release.sh
