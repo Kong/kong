@@ -1772,6 +1772,104 @@ luassert:register("assertion", "cn", assert_cn,
                   "assertion.cn.positive")
 
 
+do
+  --- Generic modifier "errlog"
+  -- Will set an "errlog_path" value in the assertion state.
+  -- @name errlog
+  -- @param path A path to the errlog file (defaults to the test prefix's
+  -- errlog).
+  local function modifier_errlog(state, args)
+    local errlog_path = args[1] or conf.nginx_err_logs
+
+    assert(type(errlog_path) == "string", "errlog modifier expects nil, or " ..
+                                          "a string as argument, got: "      ..
+                                          type(errlog_path))
+
+    rawset(state, "errlog_path", errlog_path)
+
+    return state
+  end
+
+  luassert:register("modifier", "errlog", modifier_errlog)
+
+
+  --- Assertion checking is any line from a file matches the given regex or
+  -- substring.
+  -- @name line
+  -- @param regex The regex to evaluate against each line.
+  -- @param plain If true, the regex argument will be considered as a plain
+  -- string.
+  -- @param timeout An optional timeout after which the assertion will fail if
+  -- reached.
+  -- @param fpath An optional path to the file (defaults to the errlog
+  -- modifier)
+  -- @see errlog
+  -- @usage
+  -- assert.not_line("[error]", true)
+  -- assert.errlog().not_has.line("[error]", true)
+  local function match_line(state, args)
+    local regex = args[1]
+    local plain = args[2]
+    local timeout = args[3] or 2
+    local fpath = args[4] or rawget(state, "errlog_path")
+
+    assert(type(regex) == "string",
+           "Expected the regex argument to be a string")
+    assert(type(fpath) == "string",
+           "Expected the file path argument to be a string")
+    assert(type(timeout) == "number" and timeout > 0,
+           "Expected the timeout argument to be a positive number")
+
+    local pok = pcall(wait_until, function()
+      local logs = pl_file.read(fpath)
+      local from, _, err
+
+      for line in logs:gmatch("[^\r\n]+") do
+        if plain then
+          from = string.find(line, regex, nil, true)
+
+        else
+          from, _, err = ngx.re.find(line, regex)
+          if err then
+            error(err)
+          end
+        end
+
+        if from then
+          table.insert(args, 1, line)
+          table.insert(args, 1, regex)
+          args.n = 2
+          return true
+        end
+      end
+    end, timeout)
+
+    table.insert(args, 1, fpath)
+    args.n = args.n + 1
+
+    return pok
+  end
+
+  say:set("assertion.match_line.negative", unindent [[
+    Expected file at:
+    %s
+    To match:
+    %s
+  ]])
+  say:set("assertion.match_line.positive", unindent [[
+    Expected file at:
+    %s
+    To not match:
+    %s
+    But matched line:
+    %s
+  ]])
+  luassert:register("assertion", "line", match_line,
+                    "assertion.match_line.negative",
+                    "assertion.match_line.positive")
+end
+
+
 ----------------
 -- DNS-record mocking.
 -- These function allow to create mock dns records that the test Kong instance
