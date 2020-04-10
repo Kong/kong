@@ -4,12 +4,13 @@ for _, strategy in helpers.each_strategy() do
 	describe("Plugin: upstream-timeout", function ()
 		local admin_client
 		local proxy_client
+		local timeout_route
 
 		setup(function ()
 			local bp = helpers.get_db_utils(strategy)
 
 			-- Note there is already service to echo the request
-			bp.routes:insert({
+			timeout_route = bp.routes:insert({
 				hosts = { "test_upstream_timeout.adult" }
 			})
 
@@ -22,10 +23,10 @@ for _, strategy in helpers.each_strategy() do
 			admin_client = helpers.admin_client()
 		end)
 
-		lazy_teardown(function ()
+		teardown(function ()
 			if proxy_client and admin_client then
-				proxy_client.close()
-				admin_client.close()
+				proxy_client:close()
+				admin_client:close()
 			end
 			helpers.stop_kong()
 		end)
@@ -39,10 +40,9 @@ for _, strategy in helpers.each_strategy() do
 						["Content-Type"] = "application/json"
 					},
 					body   = {
-						name   = "upstream-timeout",
+						name   = "key-auth",
 						config = {
-							send_timeout = 0,
-							read_timeout = 0
+							route = { id = timeout_route.id }
 						}
 					}
 				})
@@ -60,6 +60,7 @@ for _, strategy in helpers.each_strategy() do
 				})
 
 				-- What is timeout status
+				assert.response(res).has.status(500)
 			end)
 
 
