@@ -291,7 +291,7 @@ do
         end
 
         if not ok then
-          log(ERR, "[healthchecks] failed setting peer status: ", err)
+          log(ERR, "[healthchecks] failed setting peer status (upstream: ", hc.name, "): ", err)
         end
       end
 
@@ -403,6 +403,7 @@ do
                               upstream.healthchecks.threshold or nil
 
     local balancer, err = balancer_types[upstream.algorithm].new({
+      log_prefix = "upstream:" .. upstream.name,
       wheelSize = upstream.slots,  -- will be ignored by least-connections
       dns = dns_client,
       healthThreshold = health_threshold,
