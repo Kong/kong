@@ -10,9 +10,9 @@ return {
 		{ config = {
 				type = "record",
 				fields = {
-					{ read_timeout = { type = "integer" } },
-					{ send_timeout = { type = "integer" } },
-					{ connect_timeout = { type = "integer" } }
+					{ read_timeout = typedefs.timeout },
+					{ send_timeout = typedefs.timeout },
+					{ connect_timeout = typedefs.timeout }
 				}
 			}
 		}

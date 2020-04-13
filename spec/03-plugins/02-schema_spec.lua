@@ -2,73 +2,38 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 local PLUGIN_NAME = "upstream-timeout"
+local TIMEOUT_FIELDS = { "read_timeout", "send_timeout", "connect_timeout" }
+
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin API config validator:", function ()
-    local proxy_client
-    local route1
+    local admin_client
 
-    setup(function ()
-      local bp = helpers.get_db_utils(strategy)
-
-      route1 = bp.routes:insert {
-        hosts = { "schema_plugin_test.com" }
-      }
+    lazy_setup(function ()
+      helpers.get_db_utils(strategy, {
+        "plugins"
+      })
 
       assert(helpers.start_kong {
         database = strategy,
-        nginx_conf = "spec/fixtures/custom_nginx.template"
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        plugins = "bundled, upstream-timeout"
       })
-      proxy_client = helpers.admin_client()
+
+      admin_client = helpers.admin_client()
     end)
 
-    teardown(function ()
-      if proxy_client then
-        proxy_client:close()
+    lazy_teardown(function ()
+      if admin_client then
+        admin_client:close()
       end
       helpers.stop_kong()
     end)
 
-    it("fails when timeout conf is not a positive integer", function ()
-      local res = assert(proxy_client:send {
-        method = "POST",
-        path = "/plugins/",
-        body = {
-          name = PLUGIN_NAME,
-          config = {
-            read_timeout = "invalid_type_string"
-          },
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
-
-      local body = assert.response(res).has.status(400)
-      local json = cjson.decode(body)
-      assert.same("schema violation", json.name)
-
-      res = assert(proxy_client:send {
-        method = "POST",
-        path = "/plugins",
-        body = {
-          name = PLUGIN_NAME,
-          config = {
-            read_timeout = -234324
-          }
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
-      assert.response(res).has.status(400)
-    end)
-
-
-    local function make_request(client, conf, route)
+    local function make_request(client, conf)
       return (client:send {
         method = "POST",
-        path = "/plugins/",
+        path = "/plugins",
         body = {
           name = PLUGIN_NAME,
           config = conf,
@@ -79,10 +44,24 @@ for _, strategy in helpers.each_strategy() do
       })
     end
 
+    it("fails when timeout conf is not a positive integer", function ()
+      local res = assert(make_request(admin_client, { read_timeout = "invalid_string_type" }))
+
+      local body = assert.response(res).has.status(400)
+      local json = cjson.decode(body)
+      assert.same(json.name, "schema violation")
+
+      res = assert(make_request(admin_client, { read_timeout = -2342 }))
+      assert.response(res).has.status(400)
+	    assert.same(json.name, "schema violation")
+    end)
+
     it("succeeds if positive integer", function ()
-      local res = assert(make_request(proxy_client, { read_timeout = 500 }, route1))
-      assert.response(res).has.status(201)
+      local res = assert(make_request(admin_client, { read_timeout = 500 }))
+      local body = assert.response(res).has.status(201)
+      local json = cjson.decode(body)
+      assert.same(json.config.read_timeout, 500)
     end)
 
   end)
-end 
+end
