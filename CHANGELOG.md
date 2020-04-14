@@ -1,5 +1,13 @@
-## Unreleased
+## 0.37.1
 
+### Changed
+
+* Improved performance by not inheriting from the BasePlugin class
+* Convert the plugin away from deprecated functions
+
+### Fixed
+
+* Fixed bug on adding a header with the same name as a removed one
 
 ## 0.37.0
 
