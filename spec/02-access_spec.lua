@@ -10,7 +10,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       "routes",
       "services",
       "plugins",
-    })
+    }, { "request-transformer-advanced" })
 
     local route1 = bp.routes:insert({
       hosts = { "test1.com" }

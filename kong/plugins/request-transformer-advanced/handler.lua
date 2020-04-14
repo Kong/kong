@@ -1,19 +1,16 @@
-local BasePlugin = require "kong.plugins.base_plugin"
 local access = require "kong.plugins.request-transformer-advanced.access"
 
-local RequestTransformerHandler = BasePlugin:extend()
 
-function RequestTransformerHandler:new()
-  RequestTransformerHandler.super.new(self, "request-transformer-advanced")
-end
+local RequestTransformerHandler = {}
 
 
 function RequestTransformerHandler:access(conf)
-  RequestTransformerHandler.super.access(self)
   access.execute(conf)
 end
 
+
+RequestTransformerHandler.VERSION  = "0.37.0"
 RequestTransformerHandler.PRIORITY = 802
-RequestTransformerHandler.VERSION = "0.37.0"
+
 
 return RequestTransformerHandler
