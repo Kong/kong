@@ -109,9 +109,9 @@ return {
     schema = jwks_schema,
     methods = {
       GET = function(self, db)
-        local entity, _, err_t = endpoints.select_entity(self, db, jwks_schema, "get")
-        if err_t then
-          return endpoints.handle_error(err_t)
+        local entity, err = endpoints.select_entity(self, db, jwks_schema, "get")
+        if err then
+          return endpoints.handle_error(err)
         end
 
         if not entity then
