@@ -1,7 +1,18 @@
+## v1.4.2
+
+- Fix `openid_connect/jwks` to not try to use `err_t` with JWKS custom DAO
+  that is not returning the `err_t`. Thank you @artomal!
+- Fix JWKS custom DAO to not return `cache hit level` as a third return
+  value on `errors` as it may be treated as `err_t` which it is not.
+- Add a `teardown` migration to create the `oic_jwks` row
+  (so that it is not needed to create on `init_worker`).
+   
+
 ## v1.4.1
 
 - Fix issue where bearer token authentication did not work when introspection
   was disabled.
+
 
 ## v1.4.0
 
@@ -10,6 +21,7 @@
   if introspection was enabled (see v1.3.0 that didn't fix it correctly)
 - Add support for `cookie` for `config.bearer_token_param_type`
 - Add support for `config.bearer_token_cookie_name`
+ 
  
 ## v1.3.0
 
