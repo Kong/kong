@@ -70,7 +70,12 @@ function _M:get()
     cache_key = self.super.cache_key(self, pk_default)
   end
 
-  return kong.cache:get(cache_key, cache_opts, load_jwks, self)
+  local keys, err = kong.cache:get(cache_key, cache_opts, load_jwks, self)
+  if not keys then
+    return nil, err
+  end
+
+  return keys
 end
 
 
