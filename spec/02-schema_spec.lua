@@ -2,7 +2,6 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 local PLUGIN_NAME = "upstream-timeout"
-local TIMEOUT_FIELDS = { "read_timeout", "send_timeout", "connect_timeout" }
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin API config validator:", function()
