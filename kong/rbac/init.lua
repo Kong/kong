@@ -978,15 +978,19 @@ local function delete_role_entity_permission(table_name, entity)
     entity_id = entity_id .. "_id"
   end
 
-  local role_entities, err, err_t = db.rbac_role_entities:select_all({
-    entity_id = entity[entity_id],
-    entity_type = table_name
-  })
-  if err then
-    return err_t
+  local rows = {}
+  -- XXXCORE TODO custom query for this
+  for row, err, err_t in db.rbac_role_entities:each() do
+    if err then
+      return err_t
+    end
+
+    if row.entity_id == entity[entity_id] and row.entity_type == table_name then
+      table.insert(rows, row)
+    end
   end
 
-  for _, role_entity in ipairs(role_entities) do
+  for _, role_entity in ipairs(rows) do
     local _, err, err_t = db.rbac_role_entities:delete({
       role = { id = role_entity.role.id },
       entity_id = role_entity.entity_id
@@ -1315,17 +1319,37 @@ end
 -- this function is wrapped in an mlcache callback when validating rbac tokens
 -- it is called directly by the rbac_user DAO to validate uniqueness of tokens
 -- or when searching directly for legacy plaintext tokens
-local function retrieve_token_users(ident, k)
-  local token_users, err = kong.db.rbac_users:select_all({
-    [k] = ident, enabled = true },
-    { skip_rbac = true })
-  if err then
-    return nil, err
+function _M.retrieve_token_users(ident, k)
+  local opts = { skip_rbac = true }
+
+  local users = {}
+  if k == "user_token" then
+    -- user_token is unique
+    local user, err = kong.db.rbac_users:select_by_user_token(ident, nil, opts)
+    if err then
+      return nil, err
+    end
+
+    if user and user.enabled then
+      table.insert(users, user)
+    end
+
+  elseif k == "user_token_ident" then
+    -- XXXCORE less efficient each() here because user_token_ident
+    -- is not unique
+    for user, err in kong.db.rbac_users:each(nil, opts) do
+      if err then
+        return nil, err
+      end
+
+      if user.enabled and user.user_token_ident == ident then
+        table.insert(users, user)
+      end
+    end
   end
 
-  return token_users
+  return users
 end
-_M.retrieve_token_users = retrieve_token_users
 
 
 -- fetch from mlcache a list of rbac_user rows that may be associated with
@@ -1338,7 +1362,7 @@ local function get_token_users(rbac_token)
   local function cache_get()
     return kong.cache:get(cache_key,
                           nil,
-                          retrieve_token_users,
+                          _M.retrieve_token_users,
                           ident,
                           "user_token_ident")
   end
@@ -1425,7 +1449,7 @@ load_rbac_ctx = function(ctx, rbac_user, groups)
     -- no users found, either the ident isn't found because the token doesn't
     -- exist or because it hasn't yet been updated. fallback to pt search
     if not token_users or #token_users == 0 then
-      token_users = retrieve_token_users(rbac_token, "user_token")
+      token_users = _M.retrieve_token_users(rbac_token, "user_token")
     end
 
     local must_update
