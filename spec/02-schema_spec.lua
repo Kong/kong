@@ -4,12 +4,11 @@ local cjson = require "cjson"
 local PLUGIN_NAME = "upstream-timeout"
 local TIMEOUT_FIELDS = { "read_timeout", "send_timeout", "connect_timeout" }
 
-
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin API config validator:", function ()
+  describe("Plugin API config validator:", function()
     local admin_client
 
-    lazy_setup(function ()
+    lazy_setup(function()
       helpers.get_db_utils(strategy, {
         "plugins"
       })
@@ -23,7 +22,7 @@ for _, strategy in helpers.each_strategy() do
       admin_client = helpers.admin_client()
     end)
 
-    lazy_teardown(function ()
+    lazy_teardown(function()
       if admin_client then
         admin_client:close()
       end
@@ -44,7 +43,7 @@ for _, strategy in helpers.each_strategy() do
       })
     end
 
-    it("fails when timeout conf is not a positive integer", function ()
+    it("fails when timeout conf is not a positive integer", function()
       local res = assert(make_request(admin_client, { read_timeout = "invalid_string_type" }))
 
       local body = assert.response(res).has.status(400)
@@ -53,10 +52,10 @@ for _, strategy in helpers.each_strategy() do
 
       res = assert(make_request(admin_client, { read_timeout = -2342 }))
       assert.response(res).has.status(400)
-	    assert.same(json.name, "schema violation")
+      assert.same(json.name, "schema violation")
     end)
 
-    it("succeeds if positive integer", function ()
+    it("succeeds if positive integer", function()
       local res = assert(make_request(admin_client, { read_timeout = 500 }))
       local body = assert.response(res).has.status(201)
       local json = cjson.decode(body)
