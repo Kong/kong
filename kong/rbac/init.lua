@@ -813,7 +813,7 @@ local function get_rbac_user_info(rbac_user, groups)
 
   local ctx = ngx.ctx
   local old_ws_ctx = ctx.workspaces
-  local user, err = load_rbac_ctx(kong.db, ctx, rbac_user, groups)
+  local user, err = load_rbac_ctx(ctx, rbac_user, groups)
 
   ctx.workspaces = old_ws_ctx
 
@@ -969,13 +969,9 @@ _M.add_default_role_entity_permission = add_default_role_entity_permission
 -- remove role-entity permission: remove an entity from the role
 -- should be called when entity is deleted or role is removed
 local function delete_role_entity_permission(table_name, entity)
-  local dao = kong.dao
   local db = kong.db
 
   local schema = db[table_name] and db[table_name].schema
-  if not schema then -- old dao
-    schema = dao[table_name].schema
-  end
 
   local entity_id = schema.primary_key[1]
   if schema.fields[entity_id].type == "foreign" then
@@ -1405,7 +1401,7 @@ function _M.merge_roles(roles1, roles2)
 end
 
 
-load_rbac_ctx = function(dao_factory, ctx, rbac_user, groups)
+load_rbac_ctx = function(ctx, rbac_user, groups)
   local user = rbac_user
 
   if not user then
@@ -1470,7 +1466,7 @@ load_rbac_ctx = function(dao_factory, ctx, rbac_user, groups)
   for _, workspace in ipairs(user_ws_scope) do
     ngx.ctx.workspaces = { workspace }
 
-    local roles, err = get_user_roles(dao_factory, user)
+    local roles, err = get_user_roles(kong.db, user)
     if err then
       kong.log.err("error getting user roles", err)
       return kong.response.exit(500, { message = "An unexpected error occurred" })
