@@ -400,6 +400,15 @@ local function has_schema_field(schema, name)
       end
     end
 
+    if schema.shorthands then
+      for _, shorthand in ipairs(schema.shorthands) do
+        local k = next(shorthand)
+        if k == name then
+          return true
+        end
+      end
+    end
+
     return false
   end
 

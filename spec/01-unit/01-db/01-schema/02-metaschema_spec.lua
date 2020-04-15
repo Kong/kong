@@ -743,6 +743,44 @@ describe("metaschema", function()
     }))
   end)
 
+  it("validates transformation input fields exists as a shorthand (positive)", function()
+    assert.truthy(MetaSchema:validate({
+      name = "test",
+      primary_key = { "test" },
+      fields = {
+        { test = { type = "string" } },
+      },
+      shorthands = {
+        { short = function() end }
+      },
+      transformations = {
+        {
+          input = { "short" },
+          on_write = function() return true end,
+        },
+      },
+    }))
+  end)
+
+  it("validates transformation input fields exists as a shorthand (negative)", function()
+    assert.falsy(MetaSchema:validate({
+      name = "test",
+      primary_key = { "test" },
+      fields = {
+        { test = { type = "string" } },
+      },
+      shorthands = {
+        { short = function() end }
+      },
+      transformations = {
+        {
+          input = { "nonexisting" },
+          on_write = function() return true end,
+        },
+      },
+    }))
+  end)
+
   it("validates transformation needs fields exists (positive)", function()
     assert.truthy(MetaSchema:validate({
       name = "test",
