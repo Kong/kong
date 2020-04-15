@@ -180,6 +180,7 @@ pipeline {
                         DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly KONG_VERSION=`date +%Y-%m-%d` make nightly-release'
@@ -209,6 +210,7 @@ pipeline {
                         DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_TAG=bionic BUILDX=false make nightly-release'
@@ -234,6 +236,7 @@ pipeline {
                         DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
@@ -265,6 +268,7 @@ pipeline {
                         DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
@@ -290,6 +294,7 @@ pipeline {
                         DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly KONG_VERSION=`date +%Y-%m-%d` RESTY_IMAGE_TAG=jessie make nightly-release'
@@ -312,9 +317,11 @@ pipeline {
                         BINTRAY_USR = 'kong-inc_travis-ci@kong'
                         BINTRAY_KEY = credentials('bintray_travis_key')
                         KONG_PACKAGE_NAME = "kong-${env.BRANCH_NAME}"
+                        REPOSITORY_OS_NAME = "${env.BRANCH_NAME}"
                         DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'REPOSITORY_NAME=`basename ${GIT_URL%.*}`-nightly PACKAGE_TYPE=src RESTY_IMAGE_BASE=src KONG_VERSION=`date +%Y-%m-%d` make nightly-release'
@@ -355,6 +362,7 @@ pipeline {
                         DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'make release'
@@ -382,6 +390,7 @@ pipeline {
                         DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'RESTY_IMAGE_TAG=bionic make release'
@@ -405,6 +414,7 @@ pipeline {
                         DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
@@ -431,6 +441,7 @@ pipeline {
                         DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
@@ -454,6 +465,7 @@ pipeline {
                         DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'RESTY_IMAGE_TAG=jessie make release'
@@ -478,6 +490,7 @@ pipeline {
                         DEBUG = 0
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         dir('../kong-build-tools'){ sh 'make setup-ci' }
                         sh 'PACKAGE_TYPE=src RESTY_IMAGE_BASE=src make release'

@@ -185,5 +185,13 @@ describe("typedefs", function()
     assert.truthy(Test:validate({ f = { ["hostname"]  = { "example.com" } } }))
   end)
 
+  it("allows overriding typedefs with boolean false", function()
+    local uuid = typedefs.uuid()
+    assert.equal(true, uuid.auto)
+    local uuid2 = typedefs.uuid({
+      auto = false,
+    })
+    assert.equal(false, uuid2.auto)
+ end)
 
 end)

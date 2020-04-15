@@ -2236,7 +2236,7 @@ function Schema.define(tbl)
     __call = function(t, arg)
       arg = arg or {}
       for k,v in pairs(t) do
-        if not arg[k] then
+        if arg[k] == nil then
           arg[k] = v
         end
       end
