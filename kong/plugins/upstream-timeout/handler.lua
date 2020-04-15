@@ -15,6 +15,6 @@ function UpstreamTimeout:access(conf)
 end
 
 UpstreamTimeout.PRIORITY = 400
-UpstreamTimeout.VERSION = "1.0.0-0"
+UpstreamTimeout.VERSION = "0.1.0-0"
 
 return UpstreamTimeout
