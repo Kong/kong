@@ -333,6 +333,10 @@ end
 _M.get_user = get_user
 
 
+local function perm_set(map, key)
+  return not not map[key]
+end
+
 local function bitfield_check(map, key, bit)
   local keys = {
     key, -- exact match has priority
@@ -754,16 +758,7 @@ local function resolve_role_entity_permissions(roles)
 
   local function iter(role_entities, mask)
     for _, role_entity in ipairs(role_entities) do
-      if role_entity.entity_type == "workspaces" then
-        -- list/hash
-        local es = resolve_workspace_entities({ role_entity.entity_id })
-
-        for _, child_id in ipairs(es) do
-          mask(role_entity.actions, child_id)
-        end
-      else
-        mask(role_entity.actions, role_entity.entity_id)
-      end
+      mask(role_entity.actions, role_entity.entity_id)
     end
   end
 
@@ -1063,17 +1058,54 @@ function _M.validate_entity_operation(entity, table_name)
     return false
   end
 
-  local permissions_map = rbac_ctx.entities_perms
+  local pmap = rbac_ctx.entities_perms
   local action = rbac_ctx.action
 
   local schema = kong.db.daos[table_name].schema
 
   local entity_id = schema.primary_key[1]
 
-  return authorize_request_entity(permissions_map, entity[entity_id], action)
+  if schema.workspaceable then
+    local wss = kong.db.workspace_entities:select_all({  -- XXX EE: REMOVE MERGE
+      entity_id= entity[entity_id]
+    })
+    if wss and wss[1] then
+      entity.ws_id=wss[1].workspace_id
+    end
+  end
+
+  local w = true
+  if entity.ws_id then
+    w = authorize_request_entity(pmap, entity.ws_id, action)
+  end
+
+  local e = authorize_request_entity(pmap, entity[entity_id], action)
+
+  --   Truth table of the rbac thingie.
+  --   If a permission is false, we don't know if it's by omission of
+  --   any permission over that entity (think there are 2 levels, ws
+  --   and entities). perm_set uses the fact that we do have
+  --   permissions or not on that entity to discern one or the other
+  --   situation.
+  -- w | e | ps(w) | ps(e)
+  -- 0 | 0 | X     | X  => 0
+  -- 0 | 1 | 1     | 1  => 0   <- for backward compat. negative prevails
+  -- 0 | 1 | 0     | 1  => 1
+  -- 1 | 0 | 1     | 0  => 1
+  -- 1 | 0 | 1     | 1  => 0
+  -- 1 | 1 | 1     | 1  => 1
+
+  if (not w) and (not e) then
+    return false
+  elseif perm_set(pmap, entity.ws_id) and perm_set(pmap, entity[entity_id]) then
+    return w and e
+  else
+    return w or e
+  end
+
 end
 
-
+-- XXX EE: This is mostly used for displays in the API. slash this out
 function _M.readable_entities_permissions(roles)
   local map, nmap = resolve_role_entity_permissions(roles)
 
