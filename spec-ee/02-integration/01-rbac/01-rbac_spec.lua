@@ -31,8 +31,8 @@ describe("(#" .. strategy .. ")", function()
       iterations = math.random(4, MAX_ITERATIONS)
     end)
 
-    describe(".bitfield_all_actions", function()
-      local all_actions = rbac.bitfield_all_actions
+    describe("._bitfield_all_actions", function()
+      local all_actions = rbac._bitfield_all_actions
       for perm_name, perm_bit in pairs(rbac.actions_bitfields) do
         it("has '" .. perm_name .. "' permissions", function()
           assert.equals(perm_bit, bit.band(perm_bit, all_actions))
@@ -40,7 +40,7 @@ describe("(#" .. strategy .. ")", function()
       end
     end)
 
-    describe(".resolve_workspace_entities", function()
+    describe("._resolve_workspace_entities", function()
       local workspaces, entities = {}, {}
 
       setup(function()
@@ -77,7 +77,7 @@ describe("(#" .. strategy .. ")", function()
 
       it("returns entities for a given workspace id", function()
         for i = 1, #workspaces do
-          local ws_entities = rbac.resolve_workspace_entities({workspaces[i]})
+          local ws_entities = rbac._resolve_workspace_entities({workspaces[i]})
 
           assert.equals(#entities[i], #ws_entities)
           for _, ws in ipairs(entities[i]) do
@@ -92,7 +92,7 @@ describe("(#" .. strategy .. ")", function()
         local x = math.max(1, math.random(#workspaces - 1))
         local y = x + 1
 
-        local ws_entities = rbac.resolve_workspace_entities({
+        local ws_entities = rbac._resolve_workspace_entities({
           workspaces[x],
           workspaces[y],
         })
@@ -154,7 +154,7 @@ describe("(#" .. strategy .. ")", function()
         it("given a single workspace association", function()
           -- #workspaces - 1 is the second-to-last workspace;
           -- its only entity is another workspace
-          local ws_entities = rbac.resolve_workspace_entities({
+          local ws_entities = rbac._resolve_workspace_entities({
             workspaces[#workspaces - 1]
           })
 
@@ -166,7 +166,7 @@ describe("(#" .. strategy .. ")", function()
         end)
 
         it("with additional entities", function()
-          local ws_entities = rbac.resolve_workspace_entities({
+          local ws_entities = rbac._resolve_workspace_entities({
             workspaces[#workspaces]
           })
 
@@ -201,7 +201,7 @@ describe("(#" .. strategy .. ")", function()
           end)
 
           it("", function()
-            local ws_entities = rbac.resolve_workspace_entities({
+            local ws_entities = rbac._resolve_workspace_entities({
               workspaces[#workspaces]
             })
 
@@ -244,7 +244,7 @@ describe("(#" .. strategy .. ")", function()
 
         it("", function()
           local e = function()
-            rbac.resolve_workspace_entities({ x })
+            rbac._resolve_workspace_entities({ x })
           end
 
           assert.has_error(e, "already seen workspace " .. x)
@@ -252,7 +252,7 @@ describe("(#" .. strategy .. ")", function()
       end)
     end)
 
-    describe(".resolve_role_entity_permissions", function()
+    describe("._resolve_role_entity_permissions", function()
       local role_id, entity_id
 
       setup(function()
@@ -274,7 +274,7 @@ describe("(#" .. strategy .. ")", function()
       end)
 
       it("returns a map given a role", function()
-        local map = rbac.resolve_role_entity_permissions({
+        local map = rbac._resolve_role_entity_permissions({
           { id = role_id },
         })
 
@@ -295,7 +295,7 @@ describe("(#" .. strategy .. ")", function()
         end)
 
         it("", function()
-          local map = rbac.resolve_role_entity_permissions({
+          local map = rbac._resolve_role_entity_permissions({
             { id = role_id },
             { id = role_id2 },
           })
@@ -307,7 +307,7 @@ describe("(#" .. strategy .. ")", function()
         end)
 
         it("regardless of role order", function()
-          local map = rbac.resolve_role_entity_permissions({
+          local map = rbac._resolve_role_entity_permissions({
             { id = role_id2 },
             { id = role_id },
           })
@@ -384,14 +384,14 @@ describe("(#" .. strategy .. ")", function()
         end)
 
         it("for a given role", function()
-          local map = rbac.resolve_role_entity_permissions({
+          local map = rbac._resolve_role_entity_permissions({
             { id = roles[1] },
           })
 
           assert.equals(0x1, map[entities[1]])
           assert.is_nil(map[entities[2]])
 
-          map = rbac.resolve_role_entity_permissions({
+          map = rbac._resolve_role_entity_permissions({
             { id = roles[2] },
           })
 
@@ -400,7 +400,7 @@ describe("(#" .. strategy .. ")", function()
         end)
 
         it("for multiple roles", function()
-          local map = rbac.resolve_role_entity_permissions({
+          local map = rbac._resolve_role_entity_permissions({
             { id = roles[1] },
             { id = roles[2] },
           })
@@ -889,9 +889,9 @@ describe("(#" .. strategy .. ")", function()
       end)
     end)
   end)
-  describe(".authorize_request_entity", function()
+  describe("._authorize_request_entity", function()
     it("returns true on bit match", function()
-      assert.equals(true, rbac.authorize_request_entity(
+      assert.equals(true, rbac._authorize_request_entity(
         { foo = 0x1 },
         "foo",
         0x1
@@ -900,7 +900,7 @@ describe("(#" .. strategy .. ")", function()
 
     it("returns true when multiple bits are assigned", function()
       for i = 1, 4 do
-        assert.equals(true, rbac.authorize_request_entity(
+        assert.equals(true, rbac._authorize_request_entity(
           { foo = 0xf },
           "foo",
           (2 ^ i) - 1
@@ -909,7 +909,7 @@ describe("(#" .. strategy .. ")", function()
     end)
 
     it("returns false when no bit is unset", function()
-      assert.equals(false, rbac.authorize_request_entity(
+      assert.equals(false, rbac._authorize_request_entity(
         { foo = 0x1 },
         "foo",
         0x2
@@ -917,12 +917,12 @@ describe("(#" .. strategy .. ")", function()
     end)
 
     it("returns false when no key is present", function()
-      assert.equals(false, rbac.authorize_request_entity(
+      assert.equals(false, rbac._authorize_request_entity(
         { foo = 0x1 },
         "bar",
         0x1
       ))
-      assert.equals(false, rbac.authorize_request_entity(
+      assert.equals(false, rbac._authorize_request_entity(
         {},
         "bar",
         0x1

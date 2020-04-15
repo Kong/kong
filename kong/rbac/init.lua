@@ -60,7 +60,7 @@ local bitfield_all_actions = 0x0
 for k in pairs(actions_bitfields) do
   bitfield_all_actions = bor(bitfield_all_actions, actions_bitfields[k])
 end
-_M.bitfield_all_actions = bitfield_all_actions
+_M._bitfield_all_actions = bitfield_all_actions -- for tests only
 
 
 local figure_action
@@ -93,7 +93,6 @@ do
     return bitfield_action[action]
   end
 
-  _M.figure_action = figure_action
   _M.readable_action = readable_action
 end
 
@@ -381,7 +380,7 @@ end
 -- given a list of workspace IDs, return a list/hash
 -- of entities belonging to the workspaces, handling
 -- circular references
-function _M.resolve_workspace_entities(workspaces)
+local function resolve_workspace_entities(workspaces)
   -- entities = {
   --    [1] = "foo",
   --    foo = 1,
@@ -444,6 +443,7 @@ function _M.resolve_workspace_entities(workspaces)
 
   return entities
 end
+_M._resolve_workspace_entities = resolve_workspace_entities -- for tests only
 
 
 local function get_role_entities(db, role, opts)
@@ -460,7 +460,7 @@ local function get_role_entities(db, role, opts)
 
   return res
 end
-_M.get_role_entities = get_role_entities
+
 
 local function get_role_endpoints(db, role, opts)
   opts = opts or {}
@@ -756,7 +756,7 @@ local function resolve_role_entity_permissions(roles)
     for _, role_entity in ipairs(role_entities) do
       if role_entity.entity_type == "workspaces" then
         -- list/hash
-        local es = _M.resolve_workspace_entities({ role_entity.entity_id })
+        local es = resolve_workspace_entities({ role_entity.entity_id })
 
         for _, child_id in ipairs(es) do
           mask(role_entity.actions, child_id)
@@ -772,7 +772,7 @@ local function resolve_role_entity_permissions(roles)
   -- the order of iteration
   local positive_entities, negative_entities =  {}, {}
   for _, role in ipairs(roles) do
-    local role_entities, err = _M.get_role_entities(kong.db, role)
+    local role_entities, err = get_role_entities(kong.db, role)
     if err then
       return _, _, err
     end
@@ -791,7 +791,10 @@ local function resolve_role_entity_permissions(roles)
 
   return pmap, nmap
 end
-_M.resolve_role_entity_permissions = resolve_role_entity_permissions
+_M._resolve_role_entity_permissions = resolve_role_entity_permissions -- for tests only
+
+
+local load_rbac_ctx
 
 
 local function get_rbac_user_info(rbac_user, groups)
@@ -810,7 +813,7 @@ local function get_rbac_user_info(rbac_user, groups)
 
   local ctx = ngx.ctx
   local old_ws_ctx = ctx.workspaces
-  local user, err = _M.load_rbac_ctx(kong.db, ctx, rbac_user, groups)
+  local user, err = load_rbac_ctx(kong.db, ctx, rbac_user, groups)
 
   ctx.workspaces = old_ws_ctx
 
@@ -820,7 +823,6 @@ local function get_rbac_user_info(rbac_user, groups)
 
   return user or guest_user
 end
-_M.get_rbac_user_info = get_rbac_user_info
 
 
 local function objects_from_names(db, given_names, object_name)
@@ -857,7 +859,6 @@ local function is_system_table(t)
 
   return false
 end
-_M.is_system_table = is_system_table
 
 
 local function is_admin_api_request()
@@ -905,43 +906,6 @@ function _M.create_default_role(user)
 
   return user
 end
-
-
--- helpers: remove entity and endpoint relation when
--- a role is removed
-local function role_relation_cleanup(role)
-  local db = kong.db
-  -- delete the role <-> entity mappings
-  local entities, err = get_role_entities(db, role)
-  if err then
-    return err
-  end
-
-  for _, entity in ipairs(entities) do
-    local _, err = db.rbac_role_entities:delete(entity)
-    if err then
-      return err
-    end
-  end
-
-  -- delete the role <-> endpoint mappings
-  local endpoints, err = get_role_endpoints(db, role)
-  if err then
-    return err
-  end
-
-  for _, endpoint in ipairs(endpoints) do
-    local _, err = db.rbac_role_endpoints:delete({
-      role = { id = endpoint.role_id },
-      workspace = endpoint.workspace,
-      endpoint = endpoint.endpoint,
-    })
-    if err then
-      return err
-    end
-  end
-end
-_M.role_relation_cleanup = role_relation_cleanup
 
 
 -- helpers: delete the role no rbac_user has that role This is ment to
@@ -1059,6 +1023,12 @@ function _M.narrow_readable_entities(table_name, entities)
 end
 
 
+local function authorize_request_entity(map, id, action)
+  return bitfield_check(map, id, action)
+end
+_M._authorize_request_entity = authorize_request_entity -- for tests only
+
+
 function _M.validate_entity_operation(entity, table_name)
   -- rbac only applies to the admin api - ie, proxy side
   -- requests are not to be considered
@@ -1100,7 +1070,7 @@ function _M.validate_entity_operation(entity, table_name)
 
   local entity_id = schema.primary_key[1]
 
-  return _M.authorize_request_entity(permissions_map, entity[entity_id], action)
+  return authorize_request_entity(permissions_map, entity[entity_id], action)
 end
 
 
@@ -1126,12 +1096,6 @@ function _M.readable_entities_permissions(roles)
 
   return map
 end
-
-
-local function authorize_request_entity(map, id, action)
-  return bitfield_check(map, id, action)
-end
-_M.authorize_request_entity = authorize_request_entity
 
 
 local function resolve_role_endpoint_permissions(roles)
@@ -1237,7 +1201,7 @@ local function generalize_with_wildcards(route_name)
 
   return tablex.imap(string.reverse, res)
 end
-_M.generalize_with_wildcards = generalize_with_wildcards
+
 
 -- return a list of endpoints; if the incoming request endpoint
 -- matches either one of them, we get a positive or negative match
@@ -1441,7 +1405,7 @@ function _M.merge_roles(roles1, roles2)
 end
 
 
-function _M.load_rbac_ctx(dao_factory, ctx, rbac_user, groups)
+load_rbac_ctx = function(dao_factory, ctx, rbac_user, groups)
   local user = rbac_user
 
   if not user then
@@ -1626,6 +1590,7 @@ function _M.check_cascade(entities, rbac_ctx)
     return true
   end
 
+  -- XXXCORE entities is cascade_entries in the DAO... this table does *not* have this shape!?
   --
   -- entities = {
   --  [table name] = {
