@@ -119,5 +119,15 @@ server {
         Kong.log()
     }
 }
+
+server {
+    listen unix:${{PREFIX}}/stream_config.sock;
+
+    error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
+
+    content_by_lua_block {
+        Kong.stream_config_listener()
+    }
+}
 > end -- #stream_listeners > 0
 ]]
