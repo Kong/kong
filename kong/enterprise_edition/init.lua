@@ -9,6 +9,7 @@ local feature_flags   = require "kong.enterprise_edition.feature_flags"
 local license_helpers = require "kong.enterprise_edition.license_helpers"
 local event_hooks = require "kong.enterprise_edition.event_hooks"
 local balancer  = require "kong.runloop.balancer"
+local rbac = require "kong.rbac"
 
 
 local kong = kong
@@ -17,6 +18,11 @@ local _M = {}
 
 
 _M.handlers = {
+  init = {
+    after = function()
+      rbac.register_dao_hooks(kong.db)
+    end
+  },
   init_worker = {
     after = function(ctx)
       license_helpers.report_expired_license()

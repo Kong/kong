@@ -506,6 +506,8 @@ function Kong.init()
     assert(runloop.build_router("init"))
   end
 
+  ee.handlers.init.after()
+
   db:close()
 end
 

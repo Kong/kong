@@ -2,6 +2,7 @@ local cjson = require "cjson"
 local iteration = require "kong.db.iteration"
 local utils = require "kong.tools.utils"
 local defaults = require "kong.db.strategies.connector".defaults
+local hooks = require "kong.hooks"
 
 
 local setmetatable = setmetatable
@@ -18,6 +19,8 @@ local next         = next
 local log          = ngx.log
 local fmt          = string.format
 local deep_copy    = utils.deep_copy
+local run_hook = hooks.run_hook
+
 
 local workspaces = require "kong.workspaces"
 local rbac       = require "kong.rbac"
@@ -452,33 +455,6 @@ local function check_update(self, key, entity, options, name)
 end
 
 
--- Iterator wrapper that applies rbac to any dao iterator unless
--- skip_rbac is passed.
-local function rbacced_iterator(iterator, self, options)
-  if options and options.skip_rbac then
-    return iterator
-  end
-
-  return function()
-    local res, t, page = iterator()
-    if not res then
-      return res, t, page
-    end
-
-    local valid = rbac.validate_entity_operation(res, self.schema.name)
-    while not valid do
-      res, t, page = iterator()
-      if not res then
-        return res, t, page
-      end
-
-      valid = rbac.validate_entity_operation(res, self.schema.name)
-    end
-
-    return res, t, page
-  end
-end
-
 local function check_upsert(self, entity, options, name, value)
   local entity_to_upsert, err = self.schema:process_auto_fields(entity, "upsert")
   if not entity_to_upsert then
@@ -615,6 +591,14 @@ local function generate_foreign_key_methods(schema)
 
         local strategy = self.strategy
 
+        local ok, err_t = run_hook("dao:page_for:pre",
+                                   foreign_key,
+                                   self.schema.name,
+                                   options)
+        if not ok then
+          return nil, tostring(err_t), err_t
+        end
+
         local rows, err_t, new_offset = strategy[page_method_name](strategy,
                                                                    foreign_key,
                                                                    size,
@@ -625,14 +609,17 @@ local function generate_foreign_key_methods(schema)
         end
 
         local entities, err
-        -- XXX check this
         entities, err, err_t = self:rows_to_entities(rows, options)
         if err then
           return nil, err, err_t
         end
 
-        if not options or not options.skip_rbac then
-          entities = rbac.narrow_readable_entities(self.schema.name, entities)
+        entities, err_t = run_hook("dao:page_for:post",
+                                   entities,
+                                   self.schema.name,
+                                   options)
+        if not entities then
+          return nil, tostring(err_t), err_t
         end
 
         return entities, nil, nil, new_offset
@@ -677,7 +664,7 @@ local function generate_foreign_key_methods(schema)
           return strategy[page_method_name](strategy, foreign_key, size, offset, options)
         end
 
-        return rbacced_iterator(iteration.by_row(self, pager, size), self, options)
+        return iteration.by_row(self, pager, size, options)
       end
     end
 
@@ -708,6 +695,14 @@ local function generate_foreign_key_methods(schema)
           end
         end
 
+        local ok, err_t = run_hook("dao:select_by:pre",
+                                   unique_value,
+                                   self.schema.name,
+                                   options)
+        if not ok then
+          return nil, tostring(err_t), err_t
+        end
+
         local params = { [name] = unique_value }
         local constraints = workspaceable[self.schema.name]
         workspaces.apply_unique_per_ws(self.schema.name, params, constraints)
@@ -732,20 +727,21 @@ local function generate_foreign_key_methods(schema)
           return nil
         end
 
-        if not options or not options.skip_rbac then
-          local r = rbac.validate_entity_operation(row, self.schema.name)
-          if not r then
-            local err_t = self.errors:unauthorized_operation({
-              username = ngx.ctx.rbac.user.name,
-              action = rbac.readable_action(ngx.ctx.rbac.action)
-            })
-            return nil, tostring(err_t), err_t
-          end
+        local err
+        row, err, err_t = self:row_to_entity(row, options)
+        if not row then
+          return nil, err, err_t
         end
 
-        if row then
-          return self:row_to_entity(row, options)
+        row, err_t = run_hook("dao:select_by:post",
+                              row,
+                              self.schema.name,
+                              options)
+        if not row then
+          return nil, tostring(err_t), err_t
         end
+
+        return row
       end
 
       methods["update_by_" .. name] = function(self, unique_value, entity, options)
@@ -767,6 +763,13 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
+        local ok, err_t = run_hook("dao:update_by:pre",
+                                   unique_value,
+                                   self.schema.name,
+                                   options)
+        if not ok then
+          return nil, tostring(err_t), err_t
+        end
 
         local pk, err_t = workspaces.resolve_shared_entity_id(self.schema.name,
           { [name] = unique_value },
@@ -797,6 +800,14 @@ local function generate_foreign_key_methods(schema)
         row, err, err_t = self:row_to_entity(row, options)
         if not row then
           return nil, err, err_t
+        end
+
+        row, err_t = run_hook("dao:update_by:post",
+                              row,
+                              self.schema.name,
+                              options)
+        if not row then
+          return nil, tostring(err_t), err_t
         end
 
         self:post_crud_event("update", row, rbw_entity, options)
@@ -841,11 +852,11 @@ local function generate_foreign_key_methods(schema)
           return nil, err, err_t
         end
 
-        if not rbac.validate_entity_operation(entity_to_upsert, self.schema.name) then
-          local err_t = self.errors:unauthorized_operation({
-            username = ngx.ctx.rbac.user.name,
-            action = rbac.readable_action(ngx.ctx.rbac.action)
-          })
+        local ok, err_t = run_hook("dao:upsert_by:pre",
+                                   entity_to_upsert,
+                                   self.schema.name,
+                                   options)
+        if not ok then
           return nil, tostring(err_t), err_t
         end
 
@@ -876,13 +887,15 @@ local function generate_foreign_key_methods(schema)
           end
         end
 
-        -- if entity was created, insert it in the user's default role
-        local _, err = rbac.add_default_role_entity_permission(row, self.schema.name)
-        if err then
-          local err_t = self.errors:database_error("failed to add entity permissions to current user")
+        row, err_t = run_hook("dao:upsert_by:post",
+                              row,
+                              self.schema.name,
+                              options)
+        if not row then
           return nil, tostring(err_t), err_t
         end
 
+        -- if entity was created, insert it in the user's default role
         self:post_crud_event("update", row, nil, options)
 
         return row
@@ -935,14 +948,12 @@ local function generate_foreign_key_methods(schema)
 
         local cascade_entries = find_cascade_delete_entities(self, entity)
 
-        if (not options or not options.skip_rbac) and  -- not skipping rbac
-          (not rbac.validate_entity_operation(entity, self.schema.name) or
-            not rbac.check_cascade(cascade_entries, ngx.ctx.rbac))  then
-          -- operation or cascading not allowed
-          local err_t = self.errors:unauthorized_operation({
-            username = ngx.ctx.rbac.user.name,
-            action = rbac.readable_action(ngx.ctx.rbac.action)
-          })
+        local ok, err_t = run_hook("dao:delete_by:pre",
+                                   entity,
+                                   self.schema.name,
+                                   cascade_entries,
+                                   options)
+        if not ok then
           return nil, tostring(err_t), err_t
         end
 
@@ -968,10 +979,12 @@ local function generate_foreign_key_methods(schema)
           end
         end
 
-        err = rbac.delete_role_entity_permission("routes", entity)
-        if err then
-          return nil, self.errors:database_error("could not delete Route relationship " ..
-          "with Role: " .. err)
+        entity, err_t = run_hook("dao:delete_by:post",
+                                 entity,
+                                 "routes",
+                                 options)
+        if not entity then
+          return nil, tostring(err_t), err_t
         end
 
         self:post_crud_event("delete", entity, nil, options)
@@ -1116,6 +1129,12 @@ function DAO:select(primary_key, options)
     return nil
   end
 
+  local err_t
+  ok, err_t = run_hook("dao:select:pre", primary_key, self.schema.name, options)
+  if not ok then
+    return nil, tostring(err_t), err_t
+  end
+
   local row, err_t = self.strategy:select(primary_key, options)
   if err_t then
     return nil, tostring(err_t), err_t
@@ -1125,18 +1144,17 @@ function DAO:select(primary_key, options)
     return nil
   end
 
-  if not options or not options.skip_rbac then
-    local r = rbac.validate_entity_operation(primary_key, self.schema.name)
-    if not r then
-      local err_t = self.errors:unauthorized_operation({
-        username = ngx.ctx.rbac.user.name,
-        action = rbac.readable_action(ngx.ctx.rbac.action)
-      })
-      return  nil, tostring(err_t), err_t
-    end
+  row, err, err_t = self:row_to_entity(row, options)
+  if not row then
+    return nil, err, err_t
   end
 
-  return self:row_to_entity(row, options)
+  row, err_t = run_hook("dao:select:post", row, self.schema.name, options)
+  if not row then
+    return nil, tostring(err_t), err_t
+  end
+
+  return row
 end
 
 
@@ -1168,6 +1186,11 @@ function DAO:page(size, offset, options)
     return nil, tostring(err_t), err_t
   end
 
+  local ok, err_t = run_hook("dao:page:pre", size, self.schema.name, options)
+  if not ok then
+    return nil, tostring(err_t), err_t
+  end
+
   local rows, err_t, offset = self.strategy:page(size, offset, options)
   if err_t then
     return nil, tostring(err_t), err_t
@@ -1179,8 +1202,9 @@ function DAO:page(size, offset, options)
     return nil, err, err_t
   end
 
-  if not options or not options.skip_rbac then
-    entities = rbac.narrow_readable_entities(self.schema.name, entities)
+  entities, err_t = run_hook("dao:page:post", entities, self.schema.name, options)
+  if not entities then
+    return nil, tostring(err_t), err_t
   end
 
   return entities, err, err_t, offset
@@ -1219,13 +1243,6 @@ function DAO:each(size, options)
 end
 
 
-do
-  local each = DAO.each
-  DAO.each = function(self, size, options)
-    return rbacced_iterator(each(self, size, options), self, options)
-  end
-end
-
 function DAO:insert(entity, options)
   validate_entity_type(entity)
 
@@ -1236,6 +1253,11 @@ function DAO:insert(entity, options)
   local entity_to_insert, err, err_t = check_insert(self, entity, options)
   if not entity_to_insert then
     return nil, err, err_t
+  end
+
+  local ok, err_t = run_hook("dao:insert:pre", entity, self.schema.name, options)
+  if not ok then
+    return nil, tostring(err_t), err_t
   end
 
   local workspace, err_t = workspaces.apply_unique_per_ws(self.schema.name, entity_to_insert,
@@ -1254,8 +1276,6 @@ function DAO:insert(entity, options)
     return nil, err, err_t
   end
 
-  local table_name = self.schema.name
-
   if not err and workspace then
     local err_rel = workspaces.add_entity_relation(self.schema.name, row, workspace)
     if err_rel then
@@ -1265,22 +1285,11 @@ function DAO:insert(entity, options)
       end
       return nil, tostring(err_rel), err_rel
     end
-
-    -- if entity was created, insert it in the user's default role
-    if row then
-      local _, err = rbac.add_default_role_entity_permission(row, self.schema.name)
-      if err then
-        local err_t = self.errors:database_error("failed to add entity permissions to current user")
-        return nil, tostring(err_t), err_t
-      end
-    end
   end
 
-  if table_name == "rbac_users" then
-    local _, err = rbac.create_default_role(row)
-    if err then
-      return nil, "failed to create default role for '" .. row.name .. "'"
-    end
+  row, err_t = run_hook("dao:insert:post", row, self.schema.name, options)
+  if not row then
+    return nil, tostring(err_t), err_t
   end
 
   self:post_crud_event("create", row, nil, options)
@@ -1324,14 +1333,12 @@ function DAO:update(primary_key, entity, options)
     return nil, err, err_t
   end
 
-  if not options or not options.skip_rbac then
-    if not rbac.validate_entity_operation(entity_to_update, self.schema.name) then
-      local err_t = self.errors:unauthorized_operation({
-        username = ngx.ctx.rbac.user.name,
-        action = rbac.readable_action(ngx.ctx.rbac.action)
-      })
-      return nil, tostring(err_t), err_t
-    end
+  local ok, err_t = run_hook("dao:update:pre",
+                             entity_to_update,
+                             self.schema.name,
+                             options)
+  if not ok then
+    return nil, tostring(err_t), err_t
   end
 
   workspaces.apply_unique_per_ws(self.schema.name, entity_to_update, constraints)
@@ -1351,6 +1358,14 @@ function DAO:update(primary_key, entity, options)
     if err_rel then
       return nil, tostring(err_rel), err_rel
     end
+  end
+
+  row, err_t = run_hook("dao:update:post",
+                        row,
+                        self.schema.name,
+                        options)
+  if not row then
+    return nil, tostring(err_t), err_t
   end
 
   self:post_crud_event("update", row, rbw_entity, options)
@@ -1379,8 +1394,6 @@ function DAO:upsert(primary_key, entity, options)
   -- FIXME try upsert to workspace_entity
   local is_update, err = workspaces.validate_pk_exist(self.schema.name,
                                                       primary_key, constraints)
-
-
   if err then
     local err_t = self.errors:database_error(err)
     return nil, tostring(err_t), err_t
@@ -1391,15 +1404,15 @@ function DAO:upsert(primary_key, entity, options)
     return nil, err, err_t
   end
 
-  if not rbac.validate_entity_operation(primary_key, self.schema.name) then
-    local err_t = self.errors:unauthorized_operation({
-      username = ngx.ctx.rbac.user.name,
-      action = rbac.readable_action(ngx.ctx.rbac.action)
-    })
+  local workspace = workspaces.apply_unique_per_ws(self.schema.name, entity_to_upsert, constraints)
+
+  local ok, err_t = run_hook("dao:upsert:pre",
+                             entity_to_upsert,
+                             self.schema.name,
+                             options)
+  if not ok then
     return nil, tostring(err_t), err_t
   end
-
-  local workspace = workspaces.apply_unique_per_ws(self.schema.name, entity_to_upsert, constraints)
 
   local row, err_t = self.strategy:upsert(primary_key, entity_to_upsert, options)
   if not row then
@@ -1429,13 +1442,9 @@ function DAO:upsert(primary_key, entity, options)
     end
   end
 
-  if not is_update then
-    -- if entity was created, insert it in the user's default role
-    local _, err = rbac.add_default_role_entity_permission(row, self.schema.name)
-    if err then
-      local err_t = self.errors:database_error("failed to add entity permissions to current user")
-      return nil, tostring(err_t), err_t
-    end
+  row, err_t = run_hook("dao:upsert:post", row, self.schema.name, options)
+  if not row then
+    return nil, tostring(err_t), err_t
   end
 
   self:post_crud_event("update", row, nil, options)
@@ -1490,15 +1499,13 @@ function DAO:delete(primary_key, options)
 
   local cascade_entries = find_cascade_delete_entities(self, primary_key)
 
-  if (not options or not options.skip_rbac) and  -- not skipping rbac
-    (not rbac.validate_entity_operation(entity, self.schema.name) or
-     not rbac.check_cascade(cascade_entries, ngx.ctx.rbac))  then
-      -- operation or cascading not allowed
-      local err_t = self.errors:unauthorized_operation({
-        username = ngx.ctx.rbac.user.name,
-        action = rbac.readable_action(ngx.ctx.rbac.action)
-      })
-      return nil, tostring(err_t), err_t
+  local ok, err_t = run_hook("dao:delete_by:pre",
+                             entity,
+                             self.schema.name,
+                             cascade_entries,
+                             options)
+  if not ok then
+    return nil, tostring(err_t)
   end
 
   local _
@@ -1523,10 +1530,9 @@ function DAO:delete(primary_key, options)
     end
   end
 
-  err = rbac.delete_role_entity_permission(self.schema.name, entity)
-  if err then
-    return nil, self.errors:database_error(
-      "could not delete entity relationship with Role: " .. err)
+  entity, err_t = run_hook("dao:delete:post", entity, self.schema.name, options)
+  if not entity then
+    return nil, tostring(err_t), err_t
   end
 
   self:post_crud_event("delete", entity, nil, options)
@@ -1550,16 +1556,38 @@ function DAO:select_by_cache_key(cache_key, options)
     return self["select_by_" .. ck_definition[1]](self, cache_key, options)
   end
 
-  local row, err_t = self.strategy:select_by_field("cache_key", cache_key, options)
-  if err_t then
+  local ok, err_t = run_hook("dao:select_by_cache_key:pre",
+                             cache_key,
+                             self.schema.name,
+                             options)
+  if not ok then
     return nil, tostring(err_t), err_t
   end
 
+  local row
+  row, err_t = self.strategy:select_by_field("cache_key", cache_key, options)
+  if err_t then
+    return nil, tostring(err_t), err_t
+  end
   if not row then
     return nil
   end
 
-  return self:row_to_entity(row, options)
+  local err
+  row, err, err_t = self:row_to_entity(row, options)
+  if not row then
+    return nil, err, err_t
+  end
+
+  row, err_t = run_hook("dao:select_by_cache_key:post",
+                        row,
+                        self.schema.name,
+                        options)
+  if not row then
+    return nil, tostring(err_t), err_t
+  end
+
+  return row
 end
 
 

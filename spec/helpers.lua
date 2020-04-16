@@ -51,6 +51,8 @@ local ffi = require "ffi"
 local invoke_plugin = require "kong.enterprise_edition.invoke_plugin"
 local portal_router = require "kong.portal.router"
 local ffi = require "ffi"
+local rbac = require "kong.rbac"
+local hooks = require "kong.hooks"
 
 
 ffi.cdef [[
@@ -270,6 +272,8 @@ local function get_db_utils(strategy, tables, plugins)
       conf.loaded_plugins[plugin] = false
     end
   end
+
+  rbac.register_dao_hooks(db)
 
   local workspaces = require "kong.workspaces"
   ngx.ctx.workspaces = { workspaces.upsert_default(db) }

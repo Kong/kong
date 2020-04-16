@@ -8,6 +8,7 @@ local tablex     = require "pl.tablex"
 local bcrypt     = require "bcrypt"
 local new_tab    = require "table.new"
 local base       = require "resty.core.base"
+local hooks      = require "kong.hooks"
 
 local band   = bit.band
 local bor    = bit.bor
@@ -17,6 +18,7 @@ local rshift = bit.rshift
 local find   = string.find
 local setmetatable = setmetatable
 local getmetatable = getmetatable
+local register_hook = hooks.register_hook
 
 local LOG_ROUNDS = 9
 
@@ -95,6 +97,183 @@ do
   _M.readable_action = readable_action
 end
 
+
+local _hooks_loaded
+function _M.register_dao_hooks(db)
+  if _hooks_loaded then
+    return
+  end
+  _hooks_loaded = true
+
+  local function skip_rbac(options)
+    return options and options.skip_rbac
+  end
+
+  local function page(entities, name, options)
+    if skip_rbac(options) then
+      return entities
+    end
+
+    return _M.narrow_readable_entities(name, entities)
+  end
+
+  register_hook("dao:page:post", page)
+  register_hook("dao:page_for:post", page)
+
+  register_hook("dao:select_by:post", function(row, name, options)
+    if skip_rbac(options) then
+      return row
+    end
+
+    if not _M.validate_entity_operation(row, name) then
+      local err_t = db.errors:unauthorized_operation({
+        username = ngx.ctx.rbac.user.name,
+        action = _M.readable_action(ngx.ctx.rbac.action)
+      })
+
+      return nil, err_t
+    end
+
+    return row
+  end)
+
+  local function pre_upsert(entity, name, options)
+    if skip_rbac(options) then
+      return true
+    end
+
+    if not _M.validate_entity_operation(entity, name) then
+      local err_t = db.errors:unauthorized_operation({
+        username = ngx.ctx.rbac.user.name,
+        action = _M.readable_action(ngx.ctx.rbac.action)
+      })
+
+      return nil, err_t
+    end
+
+    return true
+  end
+
+  local function post_upsert(row, name, options)
+    local _, err = _M.add_default_role_entity_permission(row, name)
+    if err then
+      local err_t = db.errors:database_error("failed to add entity permissions to current user")
+      return nil, err_t
+    end
+
+    return row
+  end
+
+  register_hook("dao:upsert_by:pre", pre_upsert)
+  register_hook("dao:upsert_by:post", post_upsert)
+
+  register_hook("dao:upsert:pre", pre_upsert)
+  register_hook("dao:upsert:post", post_upsert)
+
+  register_hook("dao:delete_by:pre", function(entity, name, cascade_entities, options)
+    if skip_rbac(options) then
+      return true
+    end
+
+    if not _M.validate_entity_operation(entity, name) or
+       not _M.check_cascade(cascade_entities, ngx.ctx.rbac) then
+
+      -- operation or cascading not allowed
+      local err_t = db.errors:unauthorized_operation({
+        username = ngx.ctx.rbac.user.name,
+        action = _M.readable_action(ngx.ctx.rbac.action)
+      })
+
+      return nil, err_t
+    end
+
+    return true
+  end)
+
+  register_hook("dao:delete_by:post", function(entity, name)
+    local err = _M.delete_role_entity_permission(name, entity)
+    if err then
+      return nil, db.errors:database_error("could not delete Route relationship " ..
+          "with Role: " .. err)
+    end
+
+    return entity
+  end)
+
+  register_hook("dao:select:pre", function(pk, name, options)
+    if skip_rbac(options) then
+      return true
+    end
+
+    if not _M.validate_entity_operation(pk, name) then
+      local err_t = db.errors:unauthorized_operation({
+        username = ngx.ctx.rbac.user.name,
+        action = _M.readable_action(ngx.ctx.rbac.action)
+      })
+      return nil, err_t
+    end
+
+    return true
+  end)
+
+  register_hook("dao:insert:post", function(row, name, options)
+    -- if entity was created, insert it in the user's default role
+    if not kong.db[name].schema.workspaceable then
+      return row
+    end
+
+    if row then
+      local _, err = _M.add_default_role_entity_permission(row, name)
+      if err then
+        local err_t = db.errors:database_error("failed to add entity permissions to current user")
+        return nil, err_t
+      end
+    end
+
+    if name == "rbac_users" then
+      local _, err = _M.create_default_role(row)
+      if err then
+        return nil, "failed to create default role for '" .. row.name .. "'"
+      end
+    end
+
+    return row
+  end)
+
+  register_hook("dao:update:pre", function(entity, name, options)
+    if skip_rbac(options) then
+      return entity
+    end
+
+    if not _M.validate_entity_operation(entity, name) then
+      local err_t = db.errors:unauthorized_operation({
+        username = ngx.ctx.rbac.user.name,
+        action = _M.readable_action(ngx.ctx.rbac.action)
+      })
+
+      return nil, err_t
+    end
+
+    return entity
+  end)
+
+  register_hook("dao:delete:post", function(entity, name, options)
+    local err = _M.delete_role_entity_permission(name, entity)
+    if err then
+      return nil, db.errors:database_error("could not delete entity relationship with Role: " .. err)
+    end
+
+    return entity
+  end)
+
+  register_hook("dao:iterator:post", function(entity, name, options)
+    if skip_rbac(options) then
+      return entity
+    end
+
+    return _M.validate_entity_operation(entity, name) and entity
+  end)
+end
 
 -- fetch the foreign object associated with a mapping id pair
 local function retrieve_relationship_entity(foreign_factory_key, foreign_id)
