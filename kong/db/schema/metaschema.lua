@@ -69,6 +69,7 @@ local field_schema = {
   { generate_admin_api = { type = "boolean" }, },
   { legacy = { type = "boolean" }, },
   { immutable = { type = "boolean" }, },
+  { export_as = { type = "string" }, },
   { err = { type = "string" } },
 }
 
@@ -315,6 +316,15 @@ local attribute_types = {
     ["set"] = true,
     ["map"] = true,
   },
+  export_as = {
+    ["string"] = true,
+    ["number"] = true,
+    ["integer"] = true,
+    ["record"] = true,
+    ["array"] = true,
+    ["set"] = true,
+    ["map"] = true,
+  }
 }
 
 

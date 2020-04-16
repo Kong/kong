@@ -248,9 +248,13 @@ function declarative.export_from_db(fd)
 
     local name = schema.name
     local fks = {}
+    local export_as_fields = {}
     for name, field in schema:each_field() do
       if field.type == "foreign" then
         table.insert(fks, name)
+      end
+      if field.export_as then
+        export_as_fields[name] = field.export_as
       end
     end
 
@@ -263,6 +267,11 @@ function declarative.export_from_db(fd)
             row[fname] = id
           end
         end
+      end
+
+      for old_name, export_as_name in pairs(export_as_fields) do
+        row[export_as_name] = row[old_name]
+        row[old_name] = nil
       end
 
       local yaml = declarative.to_yaml_string({ [name] = { row } })
@@ -300,9 +309,13 @@ function declarative.export_config()
 
     local name = schema.name
     local fks = {}
+    local export_as_fields = {}
     for name, field in schema:each_field() do
       if field.type == "foreign" then
         table.insert(fks, name)
+      end
+      if field.export_as then
+        export_as_fields[name] = field.export_as
       end
     end
 
@@ -314,6 +327,11 @@ function declarative.export_config()
             row[fname] = id
           end
         end
+      end
+
+      for old_name, export_as_name in pairs(export_as_fields) do
+        out[export_as_name] = out[old_name]
+        out[old_name] = nil
       end
 
       if not out[name] then
