@@ -397,6 +397,7 @@ local CONF_INFERENCES = {
   cluster_control_plane = { typ = "string", },
   cluster_cert = { typ = "string" },
   cluster_cert_key = { typ = "string" },
+  kic = { typ = "boolean" },
 }
 
 
