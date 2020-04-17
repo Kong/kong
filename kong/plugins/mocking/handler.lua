@@ -65,8 +65,8 @@ local function _retrieve_example(parsed_content, uripath, accept, method)
 
   for specpath, value in pairs(paths) do
 
-    print("spec=",specpath)
-    print("uripath=",uripath)
+    --print("spec=",specpath)
+    --print("uripath=",uripath)
 
     local formatted_path = gsub(specpath, "{(.-)}", "[0-9]+")
     local strmatch = match(uripath, formatted_path)
