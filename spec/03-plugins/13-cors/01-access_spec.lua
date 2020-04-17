@@ -283,6 +283,16 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "cors12.com" },
       })
 
+      local mock_upstream = bp.services:insert {
+        host = helpers.mock_upstream_hostname,
+        port = helpers.mock_upstream_port,
+      }
+
+      local route_upstream = bp.routes:insert({
+        hosts = { "cors-upstream.com" },
+        service = mock_upstream
+      })
+
       local mock_service = bp.services:insert {
         host = "127.0.0.2",
         port = 26865,
@@ -454,6 +464,20 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
+        name = "cors",
+        route = { id = route_upstream.id },
+        config = {
+          origins            = { "example.com" },
+          methods            = { "GET" },
+          headers            = { "origin", "type", "accepts" },
+          exposed_headers    = { "x-auth-token" },
+          max_age            = 10,
+          preflight_continue = true
+        }
+      }
+
+
+      bp.plugins:insert {
         name = "error-generator-last",
         route = { id = route_error.id },
         config = {
@@ -546,7 +570,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
-        assert.is_nil(res.headers["Vary"])
+        assert.equal("Origin", res.headers["Vary"])
       end)
 
       it("gives * wildcard when config.origins is empty", function()
@@ -572,7 +596,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
-        assert.is_nil(res.headers["Vary"])
+        assert.equal("Origin", res.headers["Vary"])
       end)
 
       it("gives appropriate defaults when origin is explicitly set to *", function()
@@ -698,7 +722,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
-        assert.is_nil(res.headers["Vary"])
+        assert.equal("Origin", res.headers["Vary"])
       end)
 
       it("proxies a non-preflight OPTIONS request", function()
@@ -718,7 +742,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
-        assert.is_nil(res.headers["Vary"])
+        assert.equal("Origin", res.headers["Vary"])
       end)
 
       it("accepts config options", function()
@@ -787,7 +811,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
-        assert.is_nil(res.headers["Vary"])
+        assert.equal("Origin", res.headers["Vary"])
       end)
 
       it("works with 40x responses returned by another plugin", function()
@@ -804,7 +828,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
-        assert.is_nil(res.headers["Vary"])
+        assert.equal("Origin", res.headers["Vary"])
       end)
 
       it("sets CORS orgin based on origin host", function()
@@ -840,6 +864,19 @@ for _, strategy in helpers.each_strategy() do
                        res.headers["Access-Control-Allow-Origin"])
           assert.equal("Origin", res.headers["Vary"])
         end
+      end)
+
+      it("sets Vary and don't override existing Vary header", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path = "/response-headers?vary=Accept-Encoding",
+          headers = {
+            ["Host"]   = "cors-upstream.com",
+            ["Origin"] = "example.com",
+          }
+        })
+        assert.res_status(200, res)
+        assert.same({"Accept-Encoding", "Origin"}, res.headers["Vary"])
       end)
 
       it("does not automatically parse the host", function()
@@ -927,7 +964,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Access-Control-Allow-Origin"])
       end)
 
-      it("does not sets CORS orgin if origin host is not in origin_domains list", function()
+      it("does not sets CORS origin if origin host is not in origin_domains list", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
@@ -978,7 +1015,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
         assert.equals("*", res.headers["Access-Control-Allow-Origin"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
-        assert.is_nil(res.headers["Vary"])
+        assert.equal("Origin", res.headers["Vary"])
       end)
 
       it("removes upstream ACAO header when no match is found", function()
