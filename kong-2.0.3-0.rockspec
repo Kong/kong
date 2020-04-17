@@ -25,7 +25,7 @@ dependencies = {
   "pgmoon == 1.11.0",
   "luatz == 0.4",
   "lua_system_constants == 0.1.4",
-  "lyaml == 6.2.4",
+  "lyaml == 6.2.5",
   "lua-resty-iputils == 0.3.0",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
