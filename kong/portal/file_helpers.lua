@@ -215,7 +215,7 @@ local function parse_file_contents(contents, email_tokens)
     contents = emails:replace_tokens(contents, email_tokens)
   end
 
-  local split_contents = pl_stringx.split(contents, "---")
+  local split_contents = pl_stringx.split(contents, "---", 3)
   content = split_contents[3]
 
   local ok, headmatter = pcall(yaml_load, split_contents[2])
