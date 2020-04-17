@@ -10,7 +10,7 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: request-termination (access) [#" .. strategy .. "]", function()
     local proxy_client
     local admin_client
-    local plugin_message, plugin_body
+    local plugin_body
 
     lazy_setup(function()
       local bp, db = helpers.get_db_utils(strategy, {
@@ -65,7 +65,7 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      plugin_message = bp.plugins:insert {
+      bp.plugins:insert {
         name     = "request-termination",
         route = { id = route3.id },
         config   = {

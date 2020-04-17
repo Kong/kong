@@ -61,7 +61,6 @@ describe("hooks", function()
   end)
 
   it("calls with parameters", function()
-    local count = 0
     local f = function(a, b)
       return {a,b}
     end

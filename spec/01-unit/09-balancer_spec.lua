@@ -251,10 +251,8 @@ describe("Balancer", function()
           local r = WORKSPACE_FIXTURES
           local c=0
           return function()
-            while r do
-              c=c+1
-              return r[c]
-            end
+            c=c+1
+            return r[c]
           end
         end
       }

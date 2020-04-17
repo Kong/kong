@@ -50,9 +50,7 @@ local singletons = require "kong.singletons"
 local ffi = require "ffi"
 local invoke_plugin = require "kong.enterprise_edition.invoke_plugin"
 local portal_router = require "kong.portal.router"
-local ffi = require "ffi"
 local rbac = require "kong.rbac"
-local hooks = require "kong.hooks"
 
 
 ffi.cdef [[

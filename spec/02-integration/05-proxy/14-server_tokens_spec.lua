@@ -808,7 +808,7 @@ describe("headers [#" .. strategy .. "]", function()
     end
 
     lazy_setup(function()
-      bp, db, _ = helpers.get_db_utils(strategy, {
+      bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
       })

@@ -228,12 +228,6 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("/services/{service}", function()
-        local service
-
-        before_each(function()
-          db:truncate("services")
-          service = bp.services:insert({ name = "my-service", protocol = "http", host="example.com", path="/path" })
-        end)
 
         describe("GET", function()
           it("retrieves by id", function()

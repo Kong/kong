@@ -351,7 +351,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal('no-body', body.headers["x-consumer-username"])
       end)
 
-      it("works with wrong #only credentials and username in anonymous", function()
+      it("works with wrong credentials and username in anonymous", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",

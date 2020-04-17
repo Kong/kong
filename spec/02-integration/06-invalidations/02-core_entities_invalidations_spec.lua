@@ -81,7 +81,6 @@ for _, strategy in helpers.each_strategy() do
         db_update_frequency   = POLL_INTERVAL,
         db_update_propagation = db_update_propagation,
         router_update_frequency = POLL_INTERVAL,
-        router_update_frequency = POLL_INTERVAL,
       })
 
       admin_client_1 = helpers.http_client("127.0.0.1", 8001)
