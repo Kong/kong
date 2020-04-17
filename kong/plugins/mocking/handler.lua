@@ -1,141 +1,132 @@
-local cjson = require("cjson.safe").new()
-local singletons   = require "kong.singletons"
-local pl_stringx = require "pl.stringx"
-local pl_tablex = require "pl.tablex"
-local lyaml      = require "lyaml"
-local yaml_load = lyaml.load
-local inspect = require "inspect"
---local route = require "kong.plugins.mocking.route".new()
+local cjson       = require("cjson.safe").new()
+local lyaml       = require "lyaml"
+local gsub        = string.gsub
+local match       = string.match
+local find        = string.find
+local yaml_load   = lyaml.load
+local tablex      = require "pl.tablex"
 
---assert(ngx.get_phase() == "timer", "The world is coming to an end!")
 local plugin = {
   VERSION  = "0.1",
   PRIORITY = 1000,
 }
 
 local kong = kong
-local ngx = ngx
---local services  = kong.db.services
-local time = ngx.time
 local inspect = require('inspect')
 
-local function getmethodpath(path, method)
-  if method == "GET" then return path.get
-  elseif method == "POST" then return path.post
-  elseif method == "PUT" then return path.put
-  elseif method == "PATCH" then return path.patch
-  elseif method == "DELETE" then return path.delete
-  elseif method == "HEAD" then return path.head
-  elseif method == "CONNECT" then return path.connect
-  elseif method == "TRACE" then return path.trace
+local function _getmethodpath(path, method, accept)
+
+  local rtn
+
+  if method == "GET" then rtn = path.get
+  elseif method == "POST" then rtn = path.post
+  elseif method == "PUT" then rtn = path.put
+  elseif method == "PATCH" then rtn = path.patch
+  elseif method == "DELETE" then rtn = path.delete
+  elseif method == "OPTIONS" then rtn = path.options
+  end
+
+  print(inspect(rtn))
+
+  -- need to improve this
+  if rtn and rtn.responses then
+    if rtn.responses["200"] then
+      print("200")
+      if rtn.responses["200"].examples and rtn.responses["200"].examples[accept] then
+        return rtn.responses["200"].examples[accept], 200
+      else
+        return rtn.responses["200"], 200
+      end
+    elseif rtn.responses["201"] then
+      print("201")
+      if rtn.responses["201"].examples and rtn.responses["201"].examples[accept] then
+        return rtn.responses["201"].examples[accept], 201
+      else
+        return rtn.responses["201"], 201
+      end
+    elseif rtn.responses["204"] then
+      print("204")
+      if rtn.responses["204"].examples and rtn.responses["204"].examples[accept] then
+        return rtn.responses["204"].examples[accept], 204
+      else
+        return rtn.responses["204"], 204
+      end
+    end
+  end
+
+  return nil, 404
+
+end
+
+local function _retrieve_example(parsed_content, uripath, accept, method)
+
+  local paths = parsed_content.paths
+  local found = false
+
+  for specpath, value in pairs(paths) do
+
+    print("spec=",specpath)
+    print("uripath=",uripath)
+
+    local formatted_path = gsub(specpath, "{(.-)}", "[0-9]+")
+    local strmatch = match(uripath, formatted_path)
+    --print("formated=",formatted_path)
+    --print("match=",strmatch)
+    if match(uripath, "/%d+") and not match(specpath, "{(.-)}") then
+      strmatch = nil
+    end
+    if strmatch then
+      found = true
+      local responsepath, status = _getmethodpath(value, method, accept)
+      if responsepath then
+        kong.response.exit(status, responsepath)
+      else
+        return kong.response.exit(404, { message = "No examples exist in API specification for  \
+          this resource"})
+      end
+    end
+  end
+
+  if not found then
+    return kong.response.exit(404, { message = "Path does not exist in API Specification" })
   end
 
 end
 
-function plugin:access(plugin_conf)
-
-  --kong.log("\027[31m\n",inspect(plugin_conf), "\027[0m")
-
-  local service_id = plugin_conf.service_id
-
-  local service = kong.db.services:select({ id = service_id })
-
-  --kong.log("service=", inspect(service))
-
-  --kong.log(inspect(kong.request))
-
-  --print("accept=", kong.request.get_header("accept"))
-  --print("method=", kong.request.get_method())
+function plugin:access(conf)
 
   -- Get resource information
   local uripath = kong.request.get_path()
   local accept = kong.request.get_header("Accept") or kong.request.get_header("accept")
   local method = kong.request.get_method()
 
-  --print("path", path)
+  local specfile, err = kong.db.files:select_by_path("specs/" .. conf.api_specification_filename)
 
-  local specfile, err = singletons.db.files:select_by_path("specs/" .. plugin_conf.api_specification_filename)
-
-  if err then
+  if err or (specfile == nil or specfile == '') then
     return kong.response.exit(404, { message = "API Specification file not found. Check Plugin 'api_specification_filename' value" })
   end
 
   local contents = specfile and specfile.contents or ""
 
-  --print(contents)
-
-  if string.match(plugin_conf.api_specification_filename, ".json") then
-    --print("specfile=",plugin_conf.api_specification_filename)
+  if string.match(conf.api_specification_filename, ".json") then
     local parsed_content = cjson.decode(contents)
-    --print("parsed=",inspect(parsed_content))
-    
-    local paths = parsed_content.paths
-    --print("paths=",inspect(paths))
-    -- hard coded for demo
-    local path = paths["/Patient/{id}"]
 
-    if not path then
-      return kong.response.exit(404, { message = "Path does not exist in API Specification" })
-    end
-       --local path = paths[0] or paths[1]
-  
-    --print("path=", inspect(path))
+    _retrieve_example(parsed_content, uripath, accept, method)
 
-    local responsepath = getmethodpath(path, method)
-    --print("responsepath", inspect(responsepath))
-    local examplejson = responsepath.responses["200"].examples["application/json+fhir"]
-  
-    return kong.response.exit(200, examplejson)
 
-  else
+  elseif string.match(conf.api_specification_filename, ".yaml") then
 
     local parsed_content = yaml_load(contents)
 
-    local paths = parsed_content.paths
-  
-    --print("islist====", lua_helpers.is_list(paths))
-  
-    local path = paths[uripath]
-  
-  
-    -- hack!! need to understand how to search yaml_load
-    --if string.match(uripath, "users") then
-    --  path = paths["/users/{id}"]
-    --end
-  
-    if not path then
-      return kong.response.exit(404, { message = "Path does not exist in API Specification" })
-    end
-  
-    local responsepath = getmethodpath(path, method)
-    --kong.log("responsepath", inspect(responsepath))
-    local examplejson = responsepath.responses["200"].examples["application/json"]
-  
-    return kong.response.exit(200, examplejson)
+    _retrieve_example(parsed_content, uripath, accept, method)
+
+  else
+    kong.response.exit(404, { message = "API Specification file type is not supported" })
   end
+end
 
-end --]]
+function plugin:header_filter(conf)
+  kong.response.add_header("X-Kong-Mocking-Plugin", "true")
+end
 
-
----[[ runs in the 'header_filter_by_lua_block'
-  function plugin:header_filter(plugin_conf)
-
-    kong.response.add_header("X-Kong-Mocking-Plugin", "true")
-
-
-    end --]]
-
-
----[[ runs in the 'body_filter_by_lua_block'
-  function plugin:body_filter(plugin_conf)
-
-
-
-
-  end --]]
-
-
-
-
--- return our plugin object
-      return plugin
+return plugin
