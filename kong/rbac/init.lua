@@ -333,10 +333,10 @@ end
 _M.get_user = get_user
 
 
-local function perm_set(map, key)
-  return not not map[key]
-end
 
+-- Return the permission of a key on a map in the given permission
+-- bit. Also return a second result whether the entity permission was
+-- explicitly set or absent
 local function bitfield_check(map, key, bit)
   local keys = {
     key, -- exact match has priority
@@ -346,16 +346,16 @@ local function bitfield_check(map, key, bit)
   for _, key in ipairs(keys) do
     -- first, verify negative permissions
     if map[key] and band(rshift(map[key], 4), bit) == bit then
-      return false
+      return false, true
     end
 
     -- then, positive permissions
     if map[key] and band(map[key], bit) == bit then
-      return true
+      return true, true
     end
   end
 
-  return false
+  return false, false
 end
 
 
@@ -1074,12 +1074,15 @@ function _M.validate_entity_operation(entity, table_name)
     end
   end
 
-  local w = true
+  -- default w permision to false. If an entity is not workspaceable,
+  -- the perm_set(entity.ws_id) (that is nil) will be false. So `or`
+  -- applies, therefore we make it a nop by setting it to false.
+  local w, explicit_ws_perm = false
   if entity.ws_id then
-    w = authorize_request_entity(pmap, entity.ws_id, action)
+    w, explicit_ws_perm = authorize_request_entity(pmap, entity.ws_id, action)
   end
 
-  local e = authorize_request_entity(pmap, entity[entity_id], action)
+  local e, explicit_e_perm = authorize_request_entity(pmap, entity[entity_id], action)
 
   --   Truth table of the rbac thingie.
   --   If a permission is false, we don't know if it's by omission of
@@ -1097,7 +1100,11 @@ function _M.validate_entity_operation(entity, table_name)
 
   if (not w) and (not e) then
     return false
-  elseif perm_set(pmap, entity.ws_id) and perm_set(pmap, entity[entity_id]) then
+  elseif not entity.ws_id then
+    -- Explicit case for non wsable entities so we don't rely on the
+    -- unspecced effect that perm_set(x, nil) returns false.
+    return e
+  elseif explicit_ws_perm and explicit_e_perm then
     return w and e
   else
     return w or e
