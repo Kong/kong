@@ -81,7 +81,7 @@ end
 
 
 local function rebuild_routes(db)
-  if kong.configuration.route_validation_strategy ~= 'off'  then
+if kong.configuration.route_validation_strategy == 'smart'  then
     workspaces.run_with_ws_scope({},
       core_handler.build_router,
       db,

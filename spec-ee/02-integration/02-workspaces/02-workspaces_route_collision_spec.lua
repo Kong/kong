@@ -6,6 +6,19 @@ local tablex = require "pl.tablex"
 local client
 
 
+local function it_content_types(title, fn)
+  -- Supported content types:
+  -- https://docs.konghq.com/1.3.x/admin-api/#supported-content-types
+  local test_form_encoded = fn("application/x-www-form-urlencoded")
+  local test_json = fn("application/json")
+  local test_multipart = fn("multipart/form-data")
+
+  it(title .. " with application/json", test_json)
+  it(title .. " with application/www-form-urlencoded", test_form_encoded)
+  it(title .. " with multipart/form-data", test_multipart)
+end
+
+
 local function any(t, p)
   return #tablex.filter(t, p) > 0
 end
@@ -55,7 +68,7 @@ end
 
 for _, strategy in helpers.each_strategy() do
 describe("DB [".. strategy .. "] sharing ", function()
-  setup(function()
+  lazy_setup(function()
     helpers.get_db_utils(strategy)
 
     assert(helpers.start_kong({
@@ -85,14 +98,14 @@ describe("DB [".. strategy .. "] sharing ", function()
     post("/ws3/workspaces/ws2/entities", {entities = s2.id}, nil, 404)
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
     client:close()
   end)
 end)
 
 describe("DB [".. strategy .. "] routes are checked for colisions ", function()
-  local route, default_service
+  local route, default_service, service_ws2
   setup(function()
     helpers.get_db_utils(strategy)
 
@@ -107,6 +120,45 @@ describe("DB [".. strategy .. "] routes are checked for colisions ", function()
     default_service = post("/ws1/services", {name = "default-service", host = "httpbin1.org"})
     post("/ws2/services", {name = "default-service", host = "httpbin2.org"})
     route = post("/ws1/services/default-service/routes", {['hosts[]'] = "example.org"})
+    post("/ws1/services/default-service/routes", { paths = { "/route" } })
+    post("/ws1/services/default-service/routes", { hosts = { "example.com" } })
+    post("/ws1/services/default-service/routes", { methods = { "GET" } })
+
+    post("/ws1/services", {
+      name = "service_ws1",
+      url = "http://httpbin.org",
+    })
+
+    service_ws2 = post("/ws2/services", {
+      name = "service_ws2",
+      url = "http://httpbin.org",
+    })
+
+    post("/ws1/services/service_ws1/routes", {
+      name = "route_ws1",
+      paths = { "/test" },
+    })
+
+    post("/ws2/services/service_ws2/routes", {
+      name = "route_ws2",
+      paths = { "/2test" },
+    })
+
+    post("/ws1/services/service_ws1/routes", {
+      headers = {
+        locations = {
+          "USA",
+        },
+      },
+    })
+
+    post("/ws1/services/service_ws1/routes", {
+      paths = { "/foo" },
+    })
+
+    post("/ws1/services/service_ws1/routes", {
+      snis = { "example.com" },
+    })
   end)
 
   teardown(function()
@@ -131,6 +183,143 @@ describe("DB [".. strategy .. "] routes are checked for colisions ", function()
       {['hosts[]'] = "example.org"}, nil, 404)
   end)
 
+  -- Collides when a route swallows traffic from a different ws.
+  it_content_types("paths attribute: same prefix", function(content_type)
+    return function()
+      local headers = { ["Content-Type"] = content_type }
+
+      post("/ws2/services/default-service/routes", {
+        paths = "/route2",
+      }, headers, 409)
+    end
+  end)
+
+  -- Collides when a route swallows traffic from a different ws.
+  it_content_types("paths attribute: different prefix", function(content_type)
+    return function()
+      local headers = { ["Content-Type"] = content_type }
+
+      if content_type == "application/json" then
+        post("/ws2/services/default-service/routes", {
+          paths = { "/2route" },
+        }, headers, 201)
+      else
+        post("/ws2/services/default-service/routes", {
+          paths = "/2route",
+        }, headers, 201)
+      end
+    end
+  end)
+
+  -- Collides when a route swallows traffic from a different ws.
+  it_content_types("paths attribute: identical", function(content_type)
+    return function()
+      local headers = { ["Content-Type"] = content_type }
+
+      post("/ws2/services/default-service/routes", {
+        paths = "/route",
+      }, headers, 409)
+    end
+  end)
+
+  -- Collides when a route swallows traffic from a different ws.
+  it_content_types("when the hosts attribute is set", function(content_type)
+    local headers = { ["Content-Type"] = content_type }
+    
+    return function()
+      post("/ws2/services/default-service/routes", {
+        hosts = "example.com",
+      }, headers, 409)
+    end
+  end)
+
+  -- Collides when a route swallows traffic from a different ws.
+  it_content_types("when the methods attribute is set", function(content_type)
+    return function()
+      local headers = { ["Content-Type"] = content_type }
+
+      post("/ws2/services/default-service/routes", {
+        methods = "GET",
+      }, headers, 409)
+    end
+  end)
+  
+  it_content_types("headers", function(content_type)
+    return function()
+      if content_type == "multipart/form-data" then
+        -- the client doesn't play well with this
+        return
+      end
+
+      local headers = { ["Content-Type"] = content_type }
+
+      post("/ws2/services/service_ws2/routes", {
+        headers = {
+          locations = {
+            "USA",
+          },
+        },
+      }, headers, 409)
+
+      post("/ws2/services/service_ws2/routes", {
+        headers = {
+          locations = {
+            "USA",
+            "BRA"
+          },
+        },
+      }, headers, 409)
+
+      post("/ws2/services/service_ws2/routes", {
+        headers = {
+          locations = {
+            "Brazil",
+          },
+        },
+      }, headers, 201)
+
+      if content_type == "application/json" then
+        post("/ws2/services/service_ws2/routes", {
+          paths = { "/foo" },
+          headers = {
+            name = {
+              "value",
+            },
+          },
+        }, headers, 409)
+      else
+        post("/ws2/services/service_ws2/routes", {
+          paths = "/foo",
+          headers = {
+            name = {
+              "value",
+            },
+          },
+        }, headers, 409)
+      end
+    end
+  end)
+
+  it_content_types("snis", function(content_type)
+    return function()
+      if content_type == "multipart/form-data" then
+        -- the client doesn't play well with this
+        return
+      end
+
+      local headers = { ["Content-Type"] = content_type }
+
+      post("/ws2/services/service_ws2/routes", {
+        snis = "example.com",
+      }, headers, 409)
+
+      post("/ws2/services/service_ws2/routes", {
+        paths = "/foo",
+        snis = "foo.com"
+      }, headers, 409)
+    end
+  end)
+
   it("doesnt collide if we are in the same ws", function()
     post("/ws1/services/default-service/routes",
       {['hosts[]'] = "example.org"})
@@ -149,6 +338,20 @@ describe("DB [".. strategy .. "] routes are checked for colisions ", function()
     local r = post("/ws2/services/default-service/routes",
       {['hosts[]'] = "bla.org"})
     patch("/ws2/routes/" .. r.id, {['hosts[]'] = "example.org"}, nil, 409)
+  end)
+
+  it_content_types("when PATCHing", function(content_type)
+    return function()
+      local headers = { ["Content-Type"] = content_type }
+
+      patch("/ws2/routes/route_ws2", {
+        paths = "/test",
+      }, headers, 409)
+
+      patch("/ws2/services/" .. service_ws2.id .. "/routes/route_ws2", {
+        paths = "/test",
+      }, headers, 409)
+    end
   end)
 end)
 

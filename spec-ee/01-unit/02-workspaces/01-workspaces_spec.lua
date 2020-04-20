@@ -271,13 +271,13 @@ describe("workspaces", function()
     it("adds route in the same ws", function()
       local Router = require "kong.router"
       local r = Router.new(routes)
-      assert.truthy(workspaces.validate_route_for_ws(r, "GET", "/api4", "host4", {id = "ws4"}))
+      assert.truthy(workspaces.validate_route_for_ws(r, "GET", "/api4", "host4", nil, nil, {id = "ws4"}))
     end)
 
     it("ADD route in different ws, no host in existing one", function()
       local Router = require "kong.router"
       local r = Router.new(routes)
-      assert.falsy(workspaces.validate_route_for_ws(r, "GET", "/my-api2", "hi", {id = "ws3"}))
+      assert.falsy(workspaces.validate_route_for_ws(r, "GET", "/my-api2", "hi", nil, nil, {id = "ws3"}))
     end)
 
     it("NOT add route in different ws, with same wildcard host", function()
@@ -286,21 +286,21 @@ describe("workspaces", function()
       assert.equal("api-3", workspaces.match_route(r, "GET", "/my-api3",
                                                    "h*").route.name)
       assert.falsy(
-        workspaces.validate_route_for_ws(r, "GET", "/my-api3", "*", {id = "ws4"}))
+        workspaces.validate_route_for_ws(r, "GET", "/my-api3", "*", nil, nil, {id = "ws4"}))
     end)
 
     it("ADD route in different ws, with different wildcard host", function()
       local Router = require "kong.router"
       local r = Router.new(routes)
       assert.equal("api-3", workspaces.match_route(r, "GET", "/my-api3", "h*").route.name)
-      assert.truthy(workspaces.validate_route_for_ws(r, "GET", "/my-api3", "*.foo.com", {id = "ws4"}))
+      assert.truthy(workspaces.validate_route_for_ws(r, "GET", "/my-api3", "*.foo.com", nil, nil, {id = "ws4"}))
     end)
 
     it("NOT add route in different ws, with full host in the conflicting route", function()
       local Router = require "kong.router"
       local r = Router.new(routes)
       assert.equal("api-4", workspaces.match_route(r, "GET", "/api4", "host4").route.name)
-      assert.falsy(workspaces.validate_route_for_ws(r, "GET", "/api4", "host4", {id = "different"}))
+      assert.falsy(workspaces.validate_route_for_ws(r, "GET", "/api4", "host4", nil, nil, {id = "different"}))
     end)
 
   end)

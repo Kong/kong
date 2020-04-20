@@ -20,6 +20,8 @@ local app = lapis.Application()
 app.default_route = api_helpers.default_route
 app.handle_404 = api_helpers.handle_404
 app.handle_error = api_helpers.handle_error
+-- XXX EE: enterprise before filter (rbac, req_id, etc)
+app:before_filter(ee_api.before_filter)
 app:before_filter(api_helpers.before_filter)
 
 

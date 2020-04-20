@@ -11,7 +11,7 @@ local kong = kong
 return {
   ["/services/:services/routes"] = {
     before = function(self, db, helpers)
-      if kong.configuration.route_validation_strategy ~= 'off'  then
+      if kong.configuration.route_validation_strategy == 'smart' then
         local old_wss = ngx.ctx.workspaces
         ngx.ctx.workspaces = {}
         core_handler.build_router(db, uuid())
@@ -44,5 +44,15 @@ return {
   ["/services/:services/document_objects"] = {
     GET  = portal_crud.get_document_objects_by_service,
     POST = portal_crud.create_document_object_by_service,
+  },
+  
+  ["/services/:services/routes/:routes"] = {
+    PATCH = function(self, _, _, parent)
+      local ok, err = workspaces.is_route_crud_allowed(self, singletons.router, true)
+      if not ok then
+        return kong.response.exit(err.code, {message = err.message})
+      end
+      return parent()
+    end,
   }
 }
