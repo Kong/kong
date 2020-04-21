@@ -729,6 +729,7 @@ stream {
         }
     }
 
+> if database == "off" then
     server {
         listen unix:${{PREFIX}}/stream_config.sock;
 
@@ -738,6 +739,7 @@ stream {
             Kong.stream_config_listener()
         }
     }
+> end -- database == "off"
 > end -- #stream_listeners > 0
 
     server {
