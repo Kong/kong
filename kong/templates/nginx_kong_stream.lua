@@ -120,6 +120,7 @@ server {
     }
 }
 
+> if strategy == "off" then
 server {
     listen unix:${{PREFIX}}/stream_config.sock;
 
@@ -129,5 +130,6 @@ server {
         Kong.stream_config_listener()
     }
 }
+> end -- strategy == "off"
 > end -- #stream_listeners > 0
 ]]

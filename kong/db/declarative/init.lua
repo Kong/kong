@@ -536,12 +536,16 @@ function declarative.load_into_cache_with_events(entities, hash)
       return nil, err
     end
 
-    ok, err = sock:send(cjson.encode({ entities, hash, }))
+    local json = cjson.encode({ entities, hash, })
+    local bytes
+    bytes, err = sock:send(json)
     sock:close()
 
-    if not ok then
+    if not bytes then
       return nil, err
     end
+
+    assert(bytes == #json, "incomplete config sent to the stream subsystem")
   end
 
   ok, err = kong.worker_events.post("balancer", "upstreams", {

@@ -1164,9 +1164,9 @@ do
   local cjson = require("cjson.safe")
 
   function Kong.stream_config_listener()
-    local sock = ngx.req.socket()
+    local sock, err = ngx.req.socket()
     if not sock then
-      ngx_log(ngx_CRIT, "unable to obtain request socket")
+      kong.log.crit("unable to obtain request socket: ", err)
       return
     end
 
@@ -1176,19 +1176,25 @@ do
       return
     end
 
-    local parsed = cjson.decode(data)
+    local parsed
+    parsed, err = cjson.decode(data)
+    if not parsed then
+      kong.log.err("unable to parse received declarative config: ", err)
+      return
+    end
 
     local ok, err = concurrency.with_worker_mutex({ name = "dbless-worker" }, function()
       return declarative.load_into_cache_with_events(parsed[1], parsed[2])
     end)
 
-    if err == "no memory" then
-      kong.log.err("not enough cache space for declarative config")
-      return
-    end
-
     if not ok then
-      kong.log.err("failed loading declarative config into cache: ", err)
+      if err == "no memory" then
+        kong.log.err("not enough cache space for declarative config, " ..
+                     "consider raising the \"mem_cache_size\" Kong config")
+
+      else
+        kong.log.err("failed loading declarative config into cache: ", err)
+      end
     end
   end
 end
