@@ -208,6 +208,7 @@ describe("Admin API #off", function()
 
         assert.response(res).has.status(201)
       end)
+
       it("accepts configuration as a JSON string", function()
         local res = assert(client:send {
           method = "POST",
@@ -498,41 +499,6 @@ describe("Admin API #off", function()
           message = "expected a declarative configuration",
         }, json)
       end)
-
-      it("updates stream subsystem config", function()
-        local res = assert(client:send {
-          method = "POST",
-          path = "/config",
-          body = {
-            config = [[
-            _format_version: "1.1"
-            services:
-            - connect_timeout: 60000
-              host: 127.0.0.1
-              name: mock
-              port: 15557
-              protocol: tcp
-              routes:
-              - name: mock_route
-                protocols:
-                - tcp
-                destinations:
-                - port: 9011
-            ]],
-          },
-          headers = {
-            ["Content-Type"] = "application/json"
-          }
-        })
-
-        assert.response(res).has.status(201)
-
-        local sock = ngx.socket.tcp()
-        assert(sock:connect("127.0.0.1", 9011))
-        assert(sock:send("hi\n"))
-        assert.equals(sock:receive(), "hi")
-        sock:close()
-      end)
     end)
 
     describe("GET", function()
@@ -587,6 +553,41 @@ describe("Admin API #off", function()
       })
 
       assert.response(res).has.status(201)
+    end)
+
+    it("updates stream subsystem config", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = [[
+          _format_version: "1.1"
+          services:
+          - connect_timeout: 60000
+            host: 127.0.0.1
+            name: mock
+            port: 15557
+            protocol: tcp
+            routes:
+            - name: mock_route
+              protocols:
+              - tcp
+              destinations:
+              - port: 9011
+          ]],
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+
+      local sock = ngx.socket.tcp()
+      assert(sock:connect("127.0.0.1", 9011))
+      assert(sock:send("hi\n"))
+      assert.equals(sock:receive(), "hi")
+      sock:close()
     end)
   end)
 
