@@ -3,7 +3,6 @@ local lyaml       = require "lyaml"
 local gsub        = string.gsub
 local match       = string.match
 local find        = string.find
-local yaml_load   = lyaml.load
 local tablex      = require "pl.tablex"
 
 local plugin = {
@@ -14,7 +13,7 @@ local plugin = {
 local kong = kong
 local inspect = require('inspect')
 
-local function _getmethodpath(path, method, accept)
+local function get_method_path(path, method, accept)
 
   local rtn
 
@@ -26,26 +25,21 @@ local function _getmethodpath(path, method, accept)
   elseif method == "OPTIONS" then rtn = path.options
   end
 
-  print(inspect(rtn))
-
   -- need to improve this
   if rtn and rtn.responses then
     if rtn.responses["200"] then
-      print("200")
       if rtn.responses["200"].examples and rtn.responses["200"].examples[accept] then
         return rtn.responses["200"].examples[accept], 200
       else
         return rtn.responses["200"], 200
       end
     elseif rtn.responses["201"] then
-      print("201")
       if rtn.responses["201"].examples and rtn.responses["201"].examples[accept] then
         return rtn.responses["201"].examples[accept], 201
       else
         return rtn.responses["201"], 201
       end
     elseif rtn.responses["204"] then
-      print("204")
       if rtn.responses["204"].examples and rtn.responses["204"].examples[accept] then
         return rtn.responses["204"].examples[accept], 204
       else
@@ -58,7 +52,34 @@ local function _getmethodpath(path, method, accept)
 
 end
 
-local function _retrieve_example(parsed_content, uripath, accept, method)
+--- Loads a spec string.
+-- Tries to first read it as json, and if failed as yaml.
+-- @param spec_str (string) the string to load
+-- @return table or nil+err
+local function load_spec(spec_str)
+
+  -- first try to parse as JSON
+  local result, cjson_err = cjson.decode(spec_str)
+  if type(result) ~= "table" then
+    -- if fail, try as YAML
+    local ok
+    ok, result = pcall(lyaml.load, spec_str)
+    if not ok or type(result) ~= "table" then
+      return nil, ("Spec is neither valid json ('%s') nor valid yaml ('%s')"):
+                  format(tostring(cjson_err), tostring(result))
+    end
+  end
+
+  return result
+end
+
+local function retrieve_schema_def(parsed_content, obj)
+  local props = parsed_content.definitions.obj.properties
+
+
+end
+
+local function retrieve_example(parsed_content, uripath, accept, method)
 
   local paths = parsed_content.paths
   local found = false
@@ -68,16 +89,14 @@ local function _retrieve_example(parsed_content, uripath, accept, method)
     --print("spec=",specpath)
     --print("uripath=",uripath)
 
-    local formatted_path = gsub(specpath, "{(.-)}", "[0-9]+")
+    -- build formatted string for exact match
+    local formatted_path = "^" .. gsub(specpath, "{(.-)}", "[0-9]+") .. "$"
     local strmatch = match(uripath, formatted_path)
     --print("formated=",formatted_path)
     --print("match=",strmatch)
-    if match(uripath, "/%d+") and not match(specpath, "{(.-)}") then
-      strmatch = nil
-    end
     if strmatch then
       found = true
-      local responsepath, status = _getmethodpath(value, method, accept)
+      local responsepath, status = get_method_path(value, method, accept)
       if responsepath then
         kong.response.exit(status, responsepath)
       else
@@ -108,21 +127,10 @@ function plugin:access(conf)
 
   local contents = specfile and specfile.contents or ""
 
-  if string.match(conf.api_specification_filename, ".json") then
-    local parsed_content = cjson.decode(contents)
+  local parsed_content = load_spec(contents)
 
-    _retrieve_example(parsed_content, uripath, accept, method)
+  retrieve_example(parsed_content, uripath, accept, method)
 
-
-  elseif string.match(conf.api_specification_filename, ".yaml") then
-
-    local parsed_content = yaml_load(contents)
-
-    _retrieve_example(parsed_content, uripath, accept, method)
-
-  else
-    kong.response.exit(404, { message = "API Specification file type is not supported" })
-  end
 end
 
 function plugin:header_filter(conf)
@@ -130,3 +138,4 @@ function plugin:header_filter(conf)
 end
 
 return plugin
+
