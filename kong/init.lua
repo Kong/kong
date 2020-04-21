@@ -1171,7 +1171,7 @@ do
     end
 
     local data, err = sock:receive("*a")
-    if err then
+    if not data then
       ngx_log(ngx_CRIT, "unable to receive new config: ", err)
       return
     end
