@@ -198,12 +198,13 @@ describe("proxy-cache-advanced invalidations via: " .. strategy, function()
 
       helpers.wait_until(function()
         -- assert that the entity was purged from the second instance
-        res = admin_client_2:send {
+        res = assert(admin_client_2:send {
           method = "GET",
           path = "/proxy-cache-advanced/" .. plugin1.id .. "/caches/" .. cache_key,
-        }
+        })
 
-        return res and res.status == 404
+        res:read_body()
+        return res.status == 404
       end, 10)
 
       -- refresh and purge with our second endpoint
@@ -238,16 +239,18 @@ describe("proxy-cache-advanced invalidations via: " .. strategy, function()
 
       assert.res_status(204, res)
 
+      admin_client_2:close()
+      admin_client_2 = helpers.http_client("127.0.0.1", 9001)
+
       helpers.wait_until(function()
         -- assert that the entity was purged from the second instance
-        res = admin_client_2:send {
+        res = assert(admin_client_2:send {
           method = "GET",
           path = "/proxy-cache-advanced/" .. cache_key,
-        }
-
-        return res and res.status == 404
+        })
+        res:read_body()
+        return res.status == 404
       end, 10)
-
     end)
 
     it("does not affect cache entries under other plugin instances", function()
@@ -279,21 +282,22 @@ describe("proxy-cache-advanced invalidations via: " .. strategy, function()
       end
 
       helpers.wait_until(function()
-        local res = admin_client_1:send {
+        local res = assert(admin_client_1:send {
           method = "GET",
           path = "/proxy-cache-advanced/" .. plugin2.id .. "/caches/" .. cache_key2,
-        }
-
-        return res and res.status == 404
+        })
+        res:read_body()
+        return res.status == 404
       end, 10)
 
       helpers.wait_until(function()
-        local res = admin_client_2:send {
+        local res = assert(admin_client_2:send {
           method = "GET",
           path = "/proxy-cache-advanced/" .. plugin2.id .. "/caches/" .. cache_key2,
-        }
+        })
 
-        return res and res.status == 404
+        res:read_body()
+        return res.status == 404
       end, 10)
     end)
   end)
