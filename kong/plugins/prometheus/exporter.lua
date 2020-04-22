@@ -1,5 +1,3 @@
-local counter = require "resty.counter"
-
 local kong = kong
 local ngx = ngx
 local find = string.find
@@ -11,8 +9,9 @@ local DEFAULT_BUCKETS = { 1, 2, 5, 7, 10, 15, 20, 25, 30, 40, 50, 60, 70,
 local metrics = {}
 -- prometheus.lua instance
 local prometheus
--- lua-resty-counter instance
-local counter_instance
+
+-- use the same counter library shipped with Kong
+package.loaded['prometheus_resty_counter'] = require("resty.counter")
 
 
 local function init()
@@ -52,28 +51,27 @@ local function init()
   -- per service/route
   metrics.status = prometheus:counter("http_status",
                                       "HTTP status codes per service/route in Kong",
-                                      {"code", "service", "route"})
+                                      {"service", "route", "code"})
   metrics.latency = prometheus:histogram("latency",
                                          "Latency added by Kong, total " ..
                                          "request time and upstream latency " ..
                                          "for each service/route in Kong",
-                                         {"type", "service", "route"},
+                                         {"service", "route", "type"},
                                          DEFAULT_BUCKETS) -- TODO make this configurable
   metrics.bandwidth = prometheus:counter("bandwidth",
                                          "Total bandwidth in bytes " ..
                                          "consumed per service/route in Kong",
-                                         {"type", "service", "route"})
+                                         {"service", "route", "type"})
 end
 
 local function init_worker()
-  local err
-  -- create a lua-resty-counter instance with sync interval of every second
-  counter_instance, err = counter.new("prometheus_metrics", 1)
-  if err then
-    error(err)
-  end
-  prometheus:set_resty_counter(counter_instance)
+  prometheus:init_worker()
 end
+
+
+-- Since in the prometheus library we create a new table for each diverged label
+-- so putting the "more dynamic" label at the end will save us some memory
+local labels_table = {0, 0, 0}
 
 local function log(message)
   if not metrics then
@@ -96,31 +94,39 @@ local function log(message)
     route_name = message.route.name or message.route.id
   end
 
-  metrics.status:inc(1, { message.response.status, service_name, route_name })
+  labels_table[1] = service_name
+  labels_table[2] = route_name
+  labels_table[3] = message.response.status
+  metrics.status:inc(1, labels_table)
 
   local request_size = tonumber(message.request.size)
   if request_size and request_size > 0 then
-    metrics.bandwidth:inc(request_size, { "ingress", service_name, route_name })
+    labels_table[3] = "ingress"
+    metrics.bandwidth:inc(request_size, labels_table)
   end
 
   local response_size = tonumber(message.response.size)
   if response_size and response_size > 0 then
-    metrics.bandwidth:inc(response_size, { "egress", service_name, route_name })
+    labels_table[3] = "egress"
+    metrics.bandwidth:inc(response_size, labels_table)
   end
 
   local request_latency = message.latencies.request
   if request_latency and request_latency >= 0 then
-    metrics.latency:observe(request_latency, { "request", service_name, route_name })
+    labels_table[3] = "request"
+    metrics.latency:observe(request_latency, labels_table)
   end
 
   local upstream_latency = message.latencies.proxy
   if upstream_latency ~= nil and upstream_latency >= 0 then
-    metrics.latency:observe(upstream_latency, { "upstream", service_name, route_name })
+    labels_table[3] = "upstream"
+    metrics.latency:observe(upstream_latency, labels_table)
   end
 
   local kong_proxy_latency = message.latencies.kong
   if kong_proxy_latency ~= nil and kong_proxy_latency >= 0 then
-    metrics.latency:observe(kong_proxy_latency, { "kong", service_name, route_name })
+    labels_table[3] = "kong"
+    metrics.latency:observe(kong_proxy_latency, labels_table)
   end
 end
 
@@ -171,9 +177,6 @@ local function collect()
     metrics.memory_stats.worker_vms:set(res.workers_lua_vms[i].http_allocated_gc,
                                         {res.workers_lua_vms[i].pid})
   end
-
-  -- force a manual sync of counter local state to make integration test working
-  counter_instance:sync()
 
   prometheus:collect()
 end
