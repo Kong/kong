@@ -2790,6 +2790,62 @@ for _, strategy in helpers.each_strategy() do
             end)
 
           end)
+
+          it("#db removing and adding the same target", function()
+            begin_testcase_setup(strategy, bp)
+            local upstream_name, upstream_id = add_upstream(bp)
+            local port = add_target(bp, upstream_id, localhost, nil, { weight = 100 })
+            local api_host = add_api(bp, upstream_name)
+            end_testcase_setup(strategy, bp)
+
+            local requests = 20
+
+            local server = http_server(localhost, port, { requests })
+            local oks = client_requests(requests, api_host)
+            local _, count = server:done()
+            assert.equal(requests, oks)
+            assert.equal(requests, count)
+
+            -- remove the target
+            local api_client = helpers.admin_client()
+            local res = assert(api_client:send {
+              method = "POST",
+              path = "/upstreams/" .. upstream_id .. "/targets",
+              headers = {
+                ["Content-Type"] = "application/json",
+              }, body = {
+                target = localhost .. ":" .. port,
+                weight = 0,
+              }
+            })
+            assert.status(201, res)
+
+            local server = http_server(localhost, port, { requests })
+            local oks = client_requests(requests, api_host)
+            local _, count = server:done()
+            assert.equal(0, oks)
+            assert.equal(0, count)
+
+            -- add the target back with same weight as initial weight
+            local api_client = helpers.admin_client()
+            local res = assert(api_client:send {
+              method = "POST",
+              path = "/upstreams/" .. upstream_id .. "/targets",
+              headers = {
+                ["Content-Type"] = "application/json",
+              }, body = {
+                target = localhost .. ":" .. port,
+                weight = 100,
+              }
+            })
+            assert.status(201, res)
+
+            local server = http_server(localhost, port, { requests })
+            local oks = client_requests(requests, api_host)
+            local _, count = server:done()
+            assert.equal(requests, oks)
+            assert.equal(requests, count)
+          end)
         end)
       end)
     end -- for 'localhost'
