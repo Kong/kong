@@ -12,7 +12,8 @@ and serve dynamically. Renewal is handled with a configurable threshold time.
 - Kong needs to listen 80 port or proxied by a load balancer that listens for 80 port.
 - `nginx_proxy_lua_ssl_trusted_certificate` needs to be set in `kong.conf` to ensure the plugin can properly
 verify Let's Encrypt API. The CA-bundle file is usually `/etc/ssl/certs/ca-certificates.crt` for
-Ubuntu/Debian and `/etc/ssl/certs/ca-bundle.crt` for CentOS/Fedora/RHEL.
+Ubuntu/Debian and `/etc/ssl/certs/ca-bundle.crt` for CentOS/Fedora/RHEL. If you are using Kong with Docker you can also 
+set `KONG_LUA_SSL_TRUSTED_CERTIFICATE` as environment instead of changing `kong.conf`.
 
 #### Enable the Plugin
 
