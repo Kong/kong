@@ -10,6 +10,7 @@ local insert    = table.insert
 local ngx_log   = ngx.log
 local ngx_now   = ngx.now
 local timer_at  = ngx.timer.at
+local ngx_update_time = ngx.update_time
 local knode     = (kong and kong.node) and kong.node or
                   require "kong.pdk.node".new()
 
@@ -115,6 +116,7 @@ function _M.new(opts)
     poll_interval = poll_interval,
     poll_offset   = poll_offset,
     poll_delay    = poll_delay,
+    event_ttl_shm = poll_interval * 2 + poll_offset,
     node_id       = nil,
     polling       = false,
     channels      = {},
@@ -229,12 +231,11 @@ local function process_event(self, row, local_start_time)
   end
 
   log(DEBUG, "new event (channel: '", row.channel, "') data: '", row.data,
-             "' nbf: '", row.nbf or "none", "'")
-
-  local exptime = self.poll_interval + self.poll_offset
+             "' nbf: '", row.nbf or "none", "' shm exptime: ",
+             self.event_ttl_shm)
 
   -- mark as ran before running in case of long-running callbacks
-  local ok, err = self.events_shm:set(row.id, true, exptime)
+  local ok, err = self.events_shm:set(row.id, true, self.event_ttl_shm)
   if not ok then
     return nil, "failed to mark event as ran: " .. err
   end
@@ -248,6 +249,7 @@ local function process_event(self, row, local_start_time)
     local delay
 
     if row.nbf and row.now then
+      ngx_update_time()
       local now = row.now + max(ngx_now() - local_start_time, 0)
       delay = max(row.nbf - now, 0)
     end
@@ -304,6 +306,7 @@ local function poll(self)
       end
     end
 
+    ngx_update_time()
     local local_start_time = ngx_now()
     for i = 1, count do
       local ok, err = process_event(self, rows[i], local_start_time)
