@@ -10,7 +10,10 @@ local deepcopy = tablex.deepcopy
 local null = ngx.null
 local SHADOW = true
 local md5 = ngx.md5
+local ngx_socket_tcp = ngx.socket.tcp
 local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
+local PREFIX = ngx.config.prefix()
+local SUBSYS = ngx.config.subsystem
 
 
 local declarative = {}
@@ -519,6 +522,30 @@ function declarative.load_into_cache_with_events(entities, hash)
   local ok, err = kong.worker_events.poll()
   if not ok then
     return nil, err
+  end
+
+  if SUBSYS == "http" and #kong.configuration.stream_listeners > 0 and
+     ngx.get_phase() ~= "init_worker"
+  then
+    -- update stream if necessary
+    -- TODO: remove this once shdict can be shared between subsystems
+
+    local sock = ngx_socket_tcp()
+    ok, err = sock:connect("unix:" .. PREFIX .. "/stream_config.sock")
+    if not ok then
+      return nil, err
+    end
+
+    local json = cjson.encode({ entities, hash, })
+    local bytes
+    bytes, err = sock:send(json)
+    sock:close()
+
+    if not bytes then
+      return nil, err
+    end
+
+    assert(bytes == #json, "incomplete config sent to the stream subsystem")
   end
 
   ok, err = kong.worker_events.post("balancer", "upstreams", {

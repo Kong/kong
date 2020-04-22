@@ -419,7 +419,9 @@ function Kong.init()
     certificate.init()
   end
 
-  clustering.init(config)
+  if subsystem == "http" then
+    clustering.init(config)
+  end
 
   -- Load plugins as late as possible so that everything is set up
   assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
@@ -550,7 +552,9 @@ function Kong.init_worker()
     go.manage_pluginserver()
   end
 
-  clustering.init_worker(kong.configuration)
+  if subsystem == "http" then
+    clustering.init_worker(kong.configuration)
+  end
 end
 
 
@@ -1152,6 +1156,47 @@ function Kong.serve_cluster_listener(options)
   kong_global.set_phase(kong, PHASES.cluster_listener)
 
   return clustering.handle_cp_websocket()
+end
+
+
+do
+  local declarative = require("kong.db.declarative")
+  local cjson = require("cjson.safe")
+
+  function Kong.stream_config_listener()
+    local sock, err = ngx.req.socket()
+    if not sock then
+      kong.log.crit("unable to obtain request socket: ", err)
+      return
+    end
+
+    local data, err = sock:receive("*a")
+    if not data then
+      ngx_log(ngx_CRIT, "unable to receive new config: ", err)
+      return
+    end
+
+    local parsed
+    parsed, err = cjson.decode(data)
+    if not parsed then
+      kong.log.err("unable to parse received declarative config: ", err)
+      return
+    end
+
+    local ok, err = concurrency.with_worker_mutex({ name = "dbless-worker" }, function()
+      return declarative.load_into_cache_with_events(parsed[1], parsed[2])
+    end)
+
+    if not ok then
+      if err == "no memory" then
+        kong.log.err("not enough cache space for declarative config, " ..
+                     "consider raising the \"mem_cache_size\" Kong config")
+
+      else
+        kong.log.err("failed loading declarative config into cache: ", err)
+      end
+    end
+  end
 end
 
 
