@@ -69,6 +69,10 @@ function _M.new(opts)
     return error("opts.poll_offset must be a number")
   end
 
+  if opts.poll_delay and type(opts.poll_delay) ~= "number" then
+    return error("opts.poll_delay must be a number")
+  end
+
   if not opts.db then
     return error("opts.db is required")
   end
@@ -78,6 +82,7 @@ function _M.new(opts)
   local strategy
   local poll_interval = max(opts.poll_interval or 5, 0)
   local poll_offset   = max(opts.poll_offset   or 0, 0)
+  local poll_delay    = max(opts.poll_delay    or 0, 0)
 
   do
     local db_strategy
@@ -109,6 +114,7 @@ function _M.new(opts)
     strategy      = strategy,
     poll_interval = poll_interval,
     poll_offset   = poll_offset,
+    poll_delay    = poll_delay,
     node_id       = nil,
     polling       = false,
     channels      = {},
@@ -152,6 +158,9 @@ function _M:broadcast(channel, data, delay)
 
   if delay and type(delay) ~= "number" then
     return nil, "delay must be a number"
+
+  elseif self.poll_delay > 0 then
+    delay = self.poll_delay
   end
 
   -- insert event row
