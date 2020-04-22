@@ -245,23 +245,25 @@ local function process_event(self, row, local_start_time)
   end
 
   for j = 1, #cbs do
-    if not row.nbf then
-      -- unique callback run without delay
-      local ok, err = pcall(cbs[j], row.data)
-      if not ok and not ngx_debug then
-        log(ERR, "callback threw an error: ", err)
-      end
+    local delay
 
-    else
-      -- unique callback run after some delay
+    if row.nbf and row.now then
       local now = row.now + max(ngx_now() - local_start_time, 0)
-      local delay = max(row.nbf - now, 0)
+      delay = max(row.nbf - now, 0)
+    end
 
+    if delay and delay > 0 then
       log(DEBUG, "delaying nbf event by ", delay, "s")
 
       local ok, err = timer_at(delay, nbf_cb_handler, cbs[j], row.data)
       if not ok then
         log(ERR, "failed to schedule nbf event timer: ", err)
+      end
+
+    else
+      local ok, err = pcall(cbs[j], row.data)
+      if not ok and not ngx_debug then
+        log(ERR, "callback threw an error: ", err)
       end
     end
   end
