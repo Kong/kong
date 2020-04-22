@@ -131,10 +131,6 @@ function _M.new(opts)
     error("opts.worker_events is required", 2)
   end
 
-  if opts.propagation_delay and type(opts.propagation_delay) ~= "number" then
-    error("opts.propagation_delay must be a number", 2)
-  end
-
   if opts.ttl and type(opts.ttl) ~= "number" then
     error("opts.ttl must be a number", 2)
   end
@@ -203,7 +199,6 @@ function _M.new(opts)
   end
 
   local self          = {
-    propagation_delay = max(opts.propagation_delay or 0, 0),
     cluster_events    = opts.cluster_events,
     mlcache           = mlcaches[1],
     mlcaches          = mlcaches,
@@ -313,15 +308,9 @@ function _M:invalidate(key)
 
   self:invalidate_local(key)
 
-  local delay
-  if self.propagation_delay > 0 then
-    delay = self.propagation_delay
-  end
+  log(DEBUG, "broadcasting (cluster) invalidation for key: '", key, "'")
 
-  log(DEBUG, "broadcasting (cluster) invalidation for key: '", key, "' ",
-             "with delay: '", delay or "none", "'")
-
-  local ok, err = self.cluster_events:broadcast("invalidations", key, delay)
+  local ok, err = self.cluster_events:broadcast("invalidations", key)
   if not ok then
     log(ERR, "failed to broadcast cached entity invalidation: ", err)
   end
