@@ -1,6 +1,7 @@
 # Table of Contents
 
 
+- [2.0.4](#204)
 - [2.0.3](#203)
 - [2.0.2](#202)
 - [2.0.1](#201)
@@ -42,6 +43,30 @@
 - [0.9.9 and prior](#099---20170202)
 
 
+## [2.0.4]
+
+> Released 2020/04/22
+
+<<< TODO Introduction, plus any sections below >>>
+
+### Fixes
+
+##### Core
+
+##### CLI
+
+##### Configuration
+
+##### Admin API
+
+##### PDK
+
+##### Plugins
+
+
+[Back to TOC](#table-of-contents)
+
+
 ## [2.0.3]
 
 > Released 2020/04/06
@@ -54,40 +79,40 @@ breaking changes.
 
 ##### Core
 
-    - Setting the target weight to 0 does not automatically remove the upstream.
-      [#5710](https://github.com/Kong/kong/pull/5710).
-    - The plugins iterator is now always fully built, even if the initialization
-      of any of them fails.
-      [#5692](https://github.com/Kong/kong/pull/5692).
-    - Fixed the load of `dns_not_found_ttl` and `dns_error_ttl` configuration
-      options.
-      [#5684](https://github.com/Kong/kong/pull/5684).
-    - Consumers and tags are properly warmed-up from the plugins' perspective,
-      i.e. they are loaded to the cache space that plugins access.
-      [#5669](https://github.com/Kong/kong/pull/5669).
-    - Customized error messages don't affect subsequent default error responses
-      now.
-      [#5673](https://github.com/Kong/kong/pull/5673).
+  - Setting the target weight to 0 does not automatically remove the upstream.
+    [#5710](https://github.com/Kong/kong/pull/5710).
+  - The plugins iterator is now always fully built, even if the initialization
+    of any of them fails.
+    [#5692](https://github.com/Kong/kong/pull/5692).
+  - Fixed the load of `dns_not_found_ttl` and `dns_error_ttl` configuration
+    options.
+    [#5684](https://github.com/Kong/kong/pull/5684).
+  - Consumers and tags are properly warmed-up from the plugins' perspective,
+    i.e. they are loaded to the cache space that plugins access.
+    [#5669](https://github.com/Kong/kong/pull/5669).
+  - Customized error messages don't affect subsequent default error responses
+    now.
+    [#5673](https://github.com/Kong/kong/pull/5673).
 
 ##### CLI
 
-    - Fixed the `lua_package_path` option precedence over `LUA_PATH` environment
-      variable.
-      [#5729](https://github.com/Kong/kong/pull/5729).
-    - Support to Nginx binary upgrade by correctly handling the `USR2` signal.
-      [#5657](https://github.com/Kong/kong/pull/5657).
+  - Fixed the `lua_package_path` option precedence over `LUA_PATH` environment
+    variable.
+    [#5729](https://github.com/Kong/kong/pull/5729).
+  - Support to Nginx binary upgrade by correctly handling the `USR2` signal.
+    [#5657](https://github.com/Kong/kong/pull/5657).
 
 ##### Configuration
 
-    - Fixed the logrotate configuration file with the right line terminators.
-      [#243](https://github.com/Kong/kong-build-tools/pull/243).
-      Thanks, [WALL-E](https://github.com/WALL-E)
+  - Fixed the logrotate configuration file with the right line terminators.
+    [#243](https://github.com/Kong/kong-build-tools/pull/243).
+    Thanks, [WALL-E](https://github.com/WALL-E)
 
 ##### Admin API
 
-    - Fixed the `sni is duplicated` error when sending multiple `SNIs` as body
-      arguments and an `SNI` on URL that matched one from the body.
-      [#5660](https://github.com/Kong/kong/pull/5660).
+  - Fixed the `sni is duplicated` error when sending multiple `SNIs` as body
+    arguments and an `SNI` on URL that matched one from the body.
+    [#5660](https://github.com/Kong/kong/pull/5660).
 
 [Back to TOC](#table-of-contents)
 
@@ -4747,6 +4772,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.0.4]: https://github.com/Kong/kong/compare/2.0.3...2.0.4
 [2.0.3]: https://github.com/Kong/kong/compare/2.0.2...2.0.3
 [2.0.2]: https://github.com/Kong/kong/compare/2.0.1...2.0.2
 [2.0.1]: https://github.com/Kong/kong/compare/2.0.0...2.0.1
