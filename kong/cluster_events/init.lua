@@ -282,15 +282,21 @@ local function poll(self)
     return nil, "failed to retrieve 'at' in shm: " .. err
   end
 
-  if not min_at then
-    return nil, "no 'at' in shm"
+  if min_at then
+    -- apply grace period
+    min_at = min_at - self.poll_offset - 0.001
+    log(DEBUG, "polling events from: ", min_at)
+
+  else
+    -- 'at' was evicted from 'kong' shm - safest is to resume fetching events
+    -- that may still be in the shm to ensure that we do not replay them
+    -- This is far from normal behavior, since the 'at' value should never
+    -- be evicted from the 'kong' shm (which should be frozen and never subject
+    -- to eviction, unless misused).
+    local now = self.strategy:server_time() or ngx_now()
+    min_at = now - self.event_ttl_shm
+    log(CRIT, "no 'at' in shm, polling events from: ", min_at)
   end
-
-  -- apply grace period
-
-  min_at = min_at - self.poll_offset - 0.001
-
-  log(DEBUG, "polling events from: ", min_at)
 
   for rows, err, page in self.strategy:select_interval(self.channels, min_at) do
     if err then
