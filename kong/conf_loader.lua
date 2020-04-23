@@ -335,17 +335,43 @@ local CONF_INFERENCES = {
   cassandra_timeout = { typ = "number" },
   cassandra_ssl = { typ = "boolean" },
   cassandra_ssl_verify = { typ = "boolean" },
-  cassandra_consistency = { enum = {
-                              "ALL",
-                              "EACH_QUORUM",
-                              "QUORUM",
-                              "LOCAL_QUORUM",
-                              "ONE",
-                              "TWO",
-                              "THREE",
-                              "LOCAL_ONE",
-                            }
-                          },
+  cassandra_write_consistency = { enum = {
+                                  "ALL",
+                                  "EACH_QUORUM",
+                                  "QUORUM",
+                                  "LOCAL_QUORUM",
+                                  "ONE",
+                                  "TWO",
+                                  "THREE",
+                                  "LOCAL_ONE",
+                                }
+                              },
+  cassandra_read_consistency = { enum = {
+                                  "ALL",
+                                  "EACH_QUORUM",
+                                  "QUORUM",
+                                  "LOCAL_QUORUM",
+                                  "ONE",
+                                  "TWO",
+                                  "THREE",
+                                  "LOCAL_ONE",
+                                }
+                              },
+  cassandra_consistency = {
+    typ = "string",
+    deprecated = {
+      replacement = "cassandra_write_consistency / cassandra_read_consistency",
+      alias = function(conf)
+        if conf.cassandra_write_consistency == nil then
+          conf.cassandra_write_consistency = conf.cassandra_consistency
+        end
+
+        if conf.cassandra_read_consistency == nil then
+          conf.cassandra_read_consistency = conf.cassandra_consistency
+        end
+      end,
+    }
+  },
   cassandra_lb_policy = { enum = {
                             "RoundRobin",
                             "RequestRoundRobin",

@@ -821,9 +821,12 @@
 
 #cassandra_keyspace = kong       # The keyspace to use in your cluster.
 
-#cassandra_consistency = ONE     # Consistency setting to use when reading/
-                                 # writing to the Cassandra cluster.
-                                 #
+#cassandra_write_consistency = ONE  # Consistency setting to use when
+                                    # writing to the Cassandra cluster.
+
+#cassandra_read_consistency = ONE   # Consistency setting to use when
+                                    # reading from the Cassandra cluster.
+
 #cassandra_timeout = 5000        # Defines the timeout (in ms) for reading
                                  # and writing.
 

@@ -568,6 +568,28 @@ describe("kong start/stop #" .. strategy, function()
         assert.matches("Kong stopped", stdout, nil, true)
         assert.equal("", stderr)
       end)
+
+      it("'cassandra_consistency'", function()
+        local opts = {
+          prefix = helpers.test_conf.prefix,
+          database = helpers.test_conf.database,
+          pg_database = helpers.test_conf.pg_database,
+          cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+          cassandra_consistency = "LOCAL_ONE",
+        }
+
+        local _, stderr, stdout = assert(helpers.kong_exec("start", opts))
+        assert.matches("Kong started", stdout, nil, true)
+        assert.matches(u([[
+          [warn] the 'cassandra_consistency' configuration property is
+          deprecated, use 'cassandra_write_consistency / cassandra_read_consistency'
+          instead
+        ]], nil, true), stderr, nil, true)
+
+        local _, stderr, stdout = assert(helpers.kong_exec("stop", opts))
+        assert.matches("Kong stopped", stdout, nil, true)
+        assert.equal("", stderr)
+      end)
     end)
   end)
 end)
