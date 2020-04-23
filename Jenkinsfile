@@ -5,7 +5,6 @@ pipeline {
     }
     options {
         retry(1)
-        parallelsAlwaysFailFast()
         timeout(time: 2, unit: 'HOURS')
     }
     environment {
