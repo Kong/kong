@@ -27,7 +27,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       before_each(function()
-        db:truncate()
+        db:truncate("response_ratelimiting_metrics")
       end)
 
       it("should return 0 when ratelimiting metrics are not existing", function()
