@@ -33,7 +33,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
   local client
 
   lazy_setup(function()
-    bp, db  = helpers.get_db_utils(strategy, {
+    bp, db = helpers.get_db_utils(strategy, {
       "consumers",
       "plugins",
     }, {
@@ -50,7 +50,6 @@ describe("Admin API (#" .. strategy .. "): ", function()
   end)
 
   before_each(function()
-    db:truncate()
     client = helpers.admin_client()
   end)
 
@@ -336,7 +335,6 @@ describe("Admin API (#" .. strategy .. "): ", function()
         it_content_types("updates by id", function(content_type)
           return function()
             local consumer = bp.consumers:insert()
-
             local new_username = gensym()
             local res = assert(client:send {
               method = "PATCH",
@@ -351,14 +349,13 @@ describe("Admin API (#" .. strategy .. "): ", function()
             assert.equal(new_username, json.username)
             assert.equal(consumer.id, json.id)
 
-            local in_db = assert(db.consumers:select({id = consumer.id}, { nulls = true }))
+            local in_db = assert(db.consumers:select({ id = consumer.id }, { nulls = true }))
             assert.same(json, in_db)
           end
         end)
         it_content_types("updates by username", function(content_type)
           return function()
             local consumer = bp.consumers:insert()
-
             local new_username = gensym()
             local res = assert(client:send {
               method = "PATCH",
@@ -373,14 +370,13 @@ describe("Admin API (#" .. strategy .. "): ", function()
             assert.equal(new_username, json.username)
             assert.equal(consumer.id, json.id)
 
-            local in_db = assert(db.consumers:select({id = consumer.id}, { nulls = true }))
+            local in_db = assert(db.consumers:select({ id = consumer.id }, { nulls = true }))
             assert.same(json, in_db)
           end
         end)
         it_content_types("updates by username and custom_id with previous values", function(content_type)
           return function()
             local consumer = bp.consumers:insert()
-
             local res = assert(client:send {
               method = "PATCH",
               path = "/consumers/" .. consumer.username,
@@ -687,13 +683,14 @@ describe("Admin API (#" .. strategy .. "): ", function()
                 route = ngx.null,
                 service = ngx.null,
               },
-                        }, json)
+            }, json)
           end
         end)
       end)
     end)
+
     describe("GET", function()
-      it("retrieves the first page blab", function()
+      it("retrieves the first page", function()
         local consumer = bp.consumers:insert()
         bp.rewriter_plugins:insert({ consumer = { id = consumer.id }})
 
@@ -723,6 +720,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
 
   describe("/consumers/{username_or_id}/plugins/{plugin}", function()
+
     describe("GET", function()
 
       it("retrieves by id", function()
@@ -758,6 +756,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
           custom_id = "wc",
           username = "wrong-consumer"
         }
+
         -- Try to request the plugin through it (belongs to the fixture consumer instead)
         local res = assert(client:send {
           method = "GET",
