@@ -531,6 +531,12 @@ describe("Configuration loader", function()
                  .. " THREE, LOCAL_ONE)", err)
       assert.is_nil(conf)
 
+      conf = assert(conf_loader(nil, {
+        cassandra_consistency = "QUORUM"
+      }))
+      assert.equal("QUORUM", conf.cassandra_read_consistency)
+      assert.equal("QUORUM", conf.cassandra_write_consistency)
+
     end)
     it("enforces listen addresses format", function()
       local conf, err = conf_loader(nil, {
