@@ -516,9 +516,17 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
 
       conf, err = conf_loader(nil, {
-        cassandra_consistency = "FOUR"
+        cassandra_write_consistency = "FOUR"
       })
-      assert.equal("cassandra_consistency has an invalid value: 'FOUR'"
+      assert.equal("cassandra_write_consistency has an invalid value: 'FOUR'"
+                 .. " (ALL, EACH_QUORUM, QUORUM, LOCAL_QUORUM, ONE, TWO,"
+                 .. " THREE, LOCAL_ONE)", err)
+      assert.is_nil(conf)
+
+      conf, err = conf_loader(nil, {
+        cassandra_read_consistency = "FOUR"
+      })
+      assert.equal("cassandra_read_consistency has an invalid value: 'FOUR'"
                  .. " (ALL, EACH_QUORUM, QUORUM, LOCAL_QUORUM, ONE, TWO,"
                  .. " THREE, LOCAL_ONE)", err)
       assert.is_nil(conf)

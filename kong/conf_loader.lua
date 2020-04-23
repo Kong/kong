@@ -335,7 +335,18 @@ local CONF_INFERENCES = {
   cassandra_timeout = { typ = "number" },
   cassandra_ssl = { typ = "boolean" },
   cassandra_ssl_verify = { typ = "boolean" },
-  cassandra_consistency = { enum = {
+  cassandra_write_consistency = { enum = {
+                              "ALL",
+                              "EACH_QUORUM",
+                              "QUORUM",
+                              "LOCAL_QUORUM",
+                              "ONE",
+                              "TWO",
+                              "THREE",
+                              "LOCAL_ONE",
+                            }
+                          },
+  cassandra_read_consistency = { enum = {
                               "ALL",
                               "EACH_QUORUM",
                               "QUORUM",
