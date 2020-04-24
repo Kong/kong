@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [0.8.0](#080---20200424)
 - [0.7.1](#071---20200105)
 - [0.7.0](#070---20191204)
 - [0.6.0](#060---20190929)
@@ -14,6 +15,15 @@
 - [0.2.0](#020---20180924)
 - [0.1.0](#010---20180615)
 
+
+##  [0.8.0] - 2020/04/24
+
+- Expose the `prometheus` object for custom metrics
+  [#78](https://github.com/Kong/kong-plugin-prometheus/pull/78)
+- Significant performance enhancements; expect manifolds improvements in
+  Kong's throughput while using the plugin and reduction in CPU usage while
+  memory usage is expected to go up.
+  [#79](https://github.com/Kong/kong-plugin-prometheus/pull/79)
 
 ##  [0.7.1] - 2020/01/05
 
@@ -104,6 +114,7 @@ initialized
 
 - Initial release of Prometheus plugin for Kong.
 
+[0.8.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.7.1...0.8.0
 [0.7.1]: https://github.com/Kong/kong-plugin-prometheus/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.5.0...0.6.0
