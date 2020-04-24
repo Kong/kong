@@ -13,6 +13,44 @@ local plugin = {
 local kong = kong
 local inspect = require('inspect')
 
+local function find_key(tbl, key)
+
+  for lk, lv in pairs(tbl) do
+    if lk == key then return lv end
+    if type(lv) == "table" then
+      for dk, dv in pairs(lv) do
+        if dk == key then return dk end
+        if type(dv) == "table" then
+          for ek, ev in pairs(dv) do
+
+            if ek == key then return ev end
+          end
+        end
+      end
+    end
+  end
+
+  return nil
+end
+
+local function get_example(accept, tbl)
+  if find_key(tbl, "examples") then
+    if find_key(tbl, "examples")[accept] then
+      return find_key(tbl, "examples")[accept]
+    else
+      return find_key(tbl, "examples")
+    end
+  elseif find_key(tbl, "example") then
+    if find_key(tbl, "example")[accept] then
+      return find_key(tbl, "example")[accept]
+    else
+      return find_key(tbl, "example")
+    end
+  else
+    return ""
+  end
+end
+
 local function get_method_path(path, method, accept)
 
   local rtn
@@ -28,11 +66,7 @@ local function get_method_path(path, method, accept)
   -- need to improve this
   if rtn and rtn.responses then
     if rtn.responses["200"] then
-      if rtn.responses["200"].examples and rtn.responses["200"].examples[accept] then
-        return rtn.responses["200"].examples[accept], 200
-      else
-        return rtn.responses["200"], 200
-      end
+      return get_example(accept, rtn.responses["200"]), 200
     elseif rtn.responses["201"] then
       if rtn.responses["201"].examples and rtn.responses["201"].examples[accept] then
         return rtn.responses["201"].examples[accept], 201
@@ -73,12 +107,6 @@ local function load_spec(spec_str)
   return result
 end
 
-local function retrieve_schema_def(parsed_content, obj)
-  local props = parsed_content.definitions.obj.properties
-
-
-end
-
 local function retrieve_example(parsed_content, uripath, accept, method)
 
   local paths = parsed_content.paths
@@ -100,8 +128,7 @@ local function retrieve_example(parsed_content, uripath, accept, method)
       if responsepath then
         kong.response.exit(status, responsepath)
       else
-        return kong.response.exit(404, { message = "No examples exist in API specification for  \
-          this resource"})
+        return kong.response.exit(404, { message = "No examples exist in API specification for this resource"})
       end
     end
   end
