@@ -68,17 +68,9 @@ local function get_method_path(path, method, accept)
     if rtn.responses["200"] then
       return get_example(accept, rtn.responses["200"]), 200
     elseif rtn.responses["201"] then
-      if rtn.responses["201"].examples and rtn.responses["201"].examples[accept] then
-        return rtn.responses["201"].examples[accept], 201
-      else
-        return rtn.responses["201"], 201
-      end
+      return get_example(accept, rtn.responses["201"]), 201
     elseif rtn.responses["204"] then
-      if rtn.responses["204"].examples and rtn.responses["204"].examples[accept] then
-        return rtn.responses["204"].examples[accept], 204
-      else
-        return rtn.responses["204"], 204
-      end
+      return get_example(accept, rtn.responses["204"]), 204
     end
   end
 
