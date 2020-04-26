@@ -417,6 +417,7 @@ do
     end
 
     instance_info.id = status.Id
+    instance_info.conf = conf
     instance_info.seq = conf.__seq__
     instance_info.Config = status.Config
 
