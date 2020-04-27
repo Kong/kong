@@ -441,11 +441,13 @@ local function check_and_infer(conf, opts)
     local v_schema = CONF_INFERENCES[k] or {}
     local typ = v_schema.typ
 
-    if type(value) == "string" and not opts.from_kong_env then
-      -- remove trailing comment, if any
-      -- and remove escape chars from octothorpes
-      value = string.gsub(value, "[^\\]#.-$", "")
-      value = string.gsub(value, "\\#", "#")
+    if type(value) == "string" then
+      if not opts.from_kong_env then
+        -- remove trailing comment, if any
+        -- and remove escape chars from octothorpes
+        value = string.gsub(value, "[^\\]#.-$", "")
+        value = string.gsub(value, "\\#", "#")
+      end
 
       value = pl_stringx.strip(value)
     end
