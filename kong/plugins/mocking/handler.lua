@@ -2,8 +2,6 @@ local cjson       = require("cjson.safe").new()
 local lyaml       = require "lyaml"
 local gsub        = string.gsub
 local match       = string.match
-local find        = string.find
-local tablex      = require "pl.tablex"
 
 local plugin = {
   VERSION  = "0.1",
@@ -22,7 +20,6 @@ local function find_key(tbl, key)
         if dk == key then return dk end
         if type(dv) == "table" then
           for ek, ev in pairs(dv) do
-
             if ek == key then return ev end
           end
         end
@@ -37,14 +34,10 @@ local function get_example(accept, tbl)
   if find_key(tbl, "examples") then
     if find_key(tbl, "examples")[accept] then
       return find_key(tbl, "examples")[accept]
-    else
-      return find_key(tbl, "examples")
     end
   elseif find_key(tbl, "example") then
     if find_key(tbl, "example")[accept] then
       return find_key(tbl, "example")[accept]
-    else
-      return find_key(tbl, "example")
     end
   else
     return ""
@@ -101,26 +94,23 @@ end
 
 local function retrieve_example(parsed_content, uripath, accept, method)
 
+  local base_path = parsed_content.basePath or ""
   local paths = parsed_content.paths
   local found = false
 
   for specpath, value in pairs(paths) do
 
-    --print("spec=",specpath)
-    --print("uripath=",uripath)
-
     -- build formatted string for exact match
-    local formatted_path = "^" .. gsub(specpath, "{(.-)}", "[0-9]+") .. "$"
+    local formatted_path = gsub(specpath, "{(.-)}", "[0-9]+") .. "$"
     local strmatch = match(uripath, formatted_path)
-    --print("formated=",formatted_path)
-    --print("match=",strmatch)
     if strmatch then
       found = true
       local responsepath, status = get_method_path(value, method, accept)
       if responsepath then
         kong.response.exit(status, responsepath)
       else
-        return kong.response.exit(404, { message = "No examples exist in API specification for this resource"})
+        return kong.response.exit(404, { message = "No examples exist in API specification for this" ..
+         " resource with Accept Header (" .. accept .. ")"})
       end
     end
   end
@@ -135,13 +125,15 @@ function plugin:access(conf)
 
   -- Get resource information
   local uripath = kong.request.get_path()
-  local accept = kong.request.get_header("Accept") or kong.request.get_header("accept")
+  -- grab Accept header which is used to retrieve associated mock response, or default to "application/json"
+  local accept = kong.request.get_header("Accept") or kong.request.get_header("accept") or "application/json"
   local method = kong.request.get_method()
 
   local specfile, err = kong.db.files:select_by_path("specs/" .. conf.api_specification_filename)
 
   if err or (specfile == nil or specfile == '') then
-    return kong.response.exit(404, { message = "API Specification file not found. Check Plugin 'api_specification_filename' value" })
+    return kong.response.exit(404, { message = "API Specification file not found. " ..
+     "Check Plugin 'api_specification_filename' (" .. conf.api_specification_filename ")" })
   end
 
   local contents = specfile and specfile.contents or ""
