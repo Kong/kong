@@ -556,7 +556,7 @@ local function new(self, major_version)
         local err
         json, err = cjson.encode(body)
         if err then
-          return nil, err
+          error(fmt("body encoding failed while flushing response: %s", err), 2)
         end
       end
     end
