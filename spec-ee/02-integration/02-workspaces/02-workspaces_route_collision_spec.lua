@@ -107,7 +107,10 @@ end)
 describe("DB [".. strategy .. "] routes are checked for colisions ", function()
   local route, default_service, service_ws2
   setup(function()
-    helpers.get_db_utils(strategy)
+    helpers.get_db_utils(strategy, {
+      "services",
+      "routes",
+    })
 
     assert(helpers.start_kong({
       database   = strategy,
@@ -357,7 +360,10 @@ end)
 
 describe("DB [".. strategy .. "] with route_validation_strategy = off", function()
   setup(function()
-    helpers.get_db_utils(strategy)
+    helpers.get_db_utils(strategy, {
+      "services",
+      "routes",
+    })
 
     assert(helpers.start_kong({
       database   = strategy,
