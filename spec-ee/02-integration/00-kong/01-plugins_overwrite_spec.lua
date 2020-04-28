@@ -1,7 +1,15 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
+local function fields_as_hash(json)
+  for _, f in ipairs(json.fields) do
+    local name = next(f)
+    json.fields[name] = f[name]
+  end
+  return json
+end
 
+for _, strategy in helpers.each_strategy() do
 describe("#flaky Plugins overwrite:", function()
   local bp
   local client
@@ -10,7 +18,7 @@ describe("#flaky Plugins overwrite:", function()
     describe("with defaults", function()
 
       setup(function()
-        bp = helpers.get_db_utils()
+        bp = helpers.get_db_utils(strategy, {"plugins"})
         assert(helpers.start_kong())
         client = helpers.admin_client()
       end)
@@ -23,7 +31,7 @@ describe("#flaky Plugins overwrite:", function()
           path = "/plugins/schema/rate-limiting",
         })
         local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
+        local json = fields_as_hash(cjson.decode(body))
         assert.same("cluster", json.fields.policy.default)
         assert.is_nil(json.fields.redis_host.default)
         assert.same(6379, json.fields.redis_port.default)
@@ -37,7 +45,7 @@ describe("#flaky Plugins overwrite:", function()
           path = "/plugins/schema/rate-limiting",
         })
         local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
+        local json = fields_as_hash(cjson.decode(body))
         assert.is_nil(json.fields.policy.overwrite)
         assert.is_nil(json.fields.redis_host.overwrite)
         assert.is_nil(json.fields.redis_port.overwrite)
@@ -83,7 +91,7 @@ describe("#flaky Plugins overwrite:", function()
     describe("with feature-flag 'rate_limiting_restrict_redis_only=on',", function()
 
       setup(function()
-        bp = helpers.get_db_utils()
+        bp = helpers.get_db_utils(strategy, {})
         assert(helpers.start_kong{
           feature_conf_path = "spec-ee/fixtures/feature_rate_limit_plugins.conf",
         })
@@ -98,7 +106,7 @@ describe("#flaky Plugins overwrite:", function()
           path = "/plugins/schema/rate-limiting",
         })
         local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
+        local json = fields_as_hash(cjson.decode(body))
         assert.is_nil(json.fields.policy.default)
         assert.is_nil(json.fields.redis_host.default)
         assert.is_nil(json.fields.redis_port.default)
@@ -111,7 +119,7 @@ describe("#flaky Plugins overwrite:", function()
           method = "GET",
           path = "/plugins/schema/rate-limiting", })
         local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
+        local json = fields_as_hash(cjson.decode(body))
         assert.is_not_nil(json.fields.policy.overwrite)
         assert.is_not_nil(json.fields.redis_host.overwrite)
         assert.is_not_nil(json.fields.redis_port.overwrite)
@@ -189,7 +197,7 @@ describe("#flaky Plugins overwrite:", function()
     describe("with defaults", function()
 
       setup(function()
-        bp = helpers.get_db_utils()
+        bp = helpers.get_db_utils(strategy, {"plugins"})
         assert(helpers.start_kong())
         client = helpers.admin_client()
       end)
@@ -202,7 +210,7 @@ describe("#flaky Plugins overwrite:", function()
           path = "/plugins/schema/response-ratelimiting",
         })
         local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
+        local json = fields_as_hash(cjson.decode(body))
         assert.same("cluster", json.fields.policy.default)
         assert.is_nil(json.fields.redis_host.default)
         assert.same(6379, json.fields.redis_port.default)
@@ -216,7 +224,7 @@ describe("#flaky Plugins overwrite:", function()
           path = "/plugins/schema/response-ratelimiting",
         })
         local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
+        local json = fields_as_hash(cjson.decode(body))
         assert.is_nil(json.fields.policy.overwrite)
         assert.is_nil(json.fields.redis_host.overwrite)
         assert.is_nil(json.fields.redis_port.overwrite)
@@ -267,7 +275,7 @@ describe("#flaky Plugins overwrite:", function()
     describe("with feature-flag 'response_ratelimiting_restrict_redis_only=on',", function()
 
       setup(function()
-        bp = helpers.get_db_utils()
+        bp = helpers.get_db_utils(strategy, {"plugins"})
         assert(helpers.start_kong{
           feature_conf_path = "spec-ee/fixtures/feature_rate_limit_plugins.conf",
         })
@@ -282,7 +290,7 @@ describe("#flaky Plugins overwrite:", function()
           path = "/plugins/schema/response-ratelimiting",
         })
         local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
+        local json = fields_as_hash(cjson.decode(body))
         assert.is_nil(json.fields.policy.default)
         assert.is_nil(json.fields.redis_host.default)
         assert.is_nil(json.fields.redis_port.default)
@@ -296,7 +304,7 @@ describe("#flaky Plugins overwrite:", function()
           path = "/plugins/schema/response-ratelimiting",
         })
         local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
+        local json = fields_as_hash(cjson.decode(body))
         assert.is_not_nil(json.fields.policy.overwrite)
         assert.is_not_nil(json.fields.redis_host.overwrite)
         assert.is_not_nil(json.fields.redis_port.overwrite)
@@ -372,3 +380,4 @@ describe("#flaky Plugins overwrite:", function()
     end)
   end)
 end)
+end
