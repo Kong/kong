@@ -28,12 +28,6 @@ pushd docker-kong-ee/alpine/
     --build-arg KONG_ENTERPRISE_PACKAGE=$KONG_ENTERPRISE_PACKAGE \
     -t kong-ee-dev .
 
-  # XXX: remove once we are ok switching to github pkg registry
-  DOCKER_HUB_IMAGE_TAG=mashape/kong-enterprise:dev-master
-  docker tag kong-ee-dev $DOCKER_HUB_IMAGE_TAG
-  docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-  docker push $DOCKER_HUB_IMAGE_TAG
-
   INT_REGISTRY=registry.kongcloud.io
   INT_PKG_IMAGE_TAG=$INT_REGISTRY/kong-ee-dev-master:latest
   docker tag kong-ee-dev $INT_PKG_IMAGE_TAG
