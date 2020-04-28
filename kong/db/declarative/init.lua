@@ -363,8 +363,8 @@ function declarative.load_into_cache(entities, hash, shadow_page)
   -- but filtered for a given tag
   local tags_by_name = {}
 
-  kong.core_cache:purge()
-  kong.cache:purge()
+  kong.core_cache:purge(SHADOW)
+  kong.cache:purge(SHADOW)
 
   for entity_name, items in pairs(entities) do
     local dao = kong.db[entity_name]
@@ -563,11 +563,8 @@ function declarative.load_into_cache_with_events(entities, hash)
     if ok ~= "done" then
       return nil, "failed to flip declarative config cache pages: " .. (err or ok)
     end
-  end
 
-  kong.core_cache:purge(SHADOW)
-
-  if not ok then
+  else
     return nil, err
   end
 
