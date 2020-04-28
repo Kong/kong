@@ -87,6 +87,18 @@ describe("Configuration loader", function()
     assert.True(conf.loaded_plugins["foo"])
     assert.True(conf.loaded_plugins["bar"])
   end)
+  it("apply # transformations when loading from config file directly", function()
+    local conf = assert(conf_loader(nil, {
+      pg_password = "!abCDefGHijKL4\\#1MN2OP3",
+    }))
+    assert.same("!abCDefGHijKL4#1MN2OP3", conf.pg_password)
+  end)
+  it("no longer applies # transformations when loading from .kong_env (issue #5761)", function()
+    local conf = assert(conf_loader(nil, {
+      pg_password = "!abCDefGHijKL4\\#1MN2OP3",
+    }, { from_kong_env = true, }))
+    assert.same("!abCDefGHijKL4\\#1MN2OP3", conf.pg_password)
+  end)
   it("loads custom plugins surrounded by spaces", function()
     local conf = assert(conf_loader(nil, {
       plugins = " hello-world ,   another-one  "
