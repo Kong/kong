@@ -502,7 +502,7 @@ function Kong.init_worker()
   kong.cache = cache
 
   local core_cache, err = kong_global.init_core_cache(kong.configuration, cluster_events, worker_events)
-  if not cache then
+  if not core_cache then
     stash_init_worker_error("failed to instantiate 'kong.core_cache' module: " ..
                             err)
     return
