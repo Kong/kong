@@ -23,7 +23,8 @@ return {
         ON CONFLICT DO NOTHING;
       ]], generated_jwks)
 
-      local _, err = connector:query(insert_query)
+      local _
+      _, err = connector:query(insert_query)
       if err then
         return nil, err
       end
@@ -51,7 +52,8 @@ return {
              VALUES (c3cfba2d-1617-453f-a416-52e6edb5f9a0, '%s') IF NOT EXISTS
       ]], generated_jwks)
 
-      local _, err = connector:query(insert_query)
+      local _
+      _, err = connector:query(insert_query)
       if err then
         return nil, err
       end
