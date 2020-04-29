@@ -104,6 +104,15 @@ function _Files:select_all(options)
 end
 
 
+function _Files:each(options)
+  if is_legacy() then
+    return kong.db.legacy_files:each(options)
+  end
+
+  return self.super.each(self, options)
+end
+
+
 -- order for non-legacy file insertions/updates
 -- 1. build checksum
 -- 2. get path if not included through method

@@ -12,19 +12,14 @@ local unescape_uri = ngx.unescape_uri
 local ws_constants = constants.WORKSPACE_CONFIG
 
 
-local function is_legacy()
-  local workspace = workspaces.get_workspace()
-  return workspaces.retrieve_ws_config(ws_constants.PORTAL_IS_LEGACY, workspace)
-end
-
-
 local function find_file(db, file_pk)
   local id = unescape_uri(file_pk)
   if utils.is_valid_uuid(id) then
     return db.files:select({ id = file_pk })
   end
 
-  return db.files:select_by_path(file_pk)
+  return db.files:
+  select_by_path(file_pk)
 end
 
 
@@ -38,16 +33,18 @@ return {
     GET = function(self, db, helpers, parent)
       local type = self.params.type
 
-      self.params.size = nil
-      self.params.offset = nil
+      local is_legacy = workspaces.retrieve_ws_config(ws_constants.PORTAL_IS_LEGACY,
+                                                      workspaces.get_workspace())
 
-      if not is_legacy() then
-        self.params.type = nil
-      end
+      local files = {}
+      for file, err, err_t in db.files:each() do
+        if err then
+          return endpoints.handle_error(err_t)
+        end
 
-      local files, _, err_t = db.files:select_all(self.params)
-      if not files then
-        return endpoints.handle_error(err_t)
+        if (not is_legacy) or (not type) or (file.type == type) then
+          table.insert(files, file)
+        end
       end
 
       local post_process = function(file)
