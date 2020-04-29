@@ -17,7 +17,8 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Admin API #" .. strategy, function()
+describe("services routes ws spec", function()
+  it("Admin API #" .. strategy, function()
     local bp
     local db
     local _
@@ -663,4 +664,5 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
+end)
 end
