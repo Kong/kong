@@ -174,6 +174,19 @@ do
     ngx.shared.kong:flush_all()
     ngx.shared.kong:flush_expired(0)
 
+    local db_cache = {
+      "kong_core_db_cache",
+      "kong_db_cache",
+      -- no need to purge the second page for DB-less mode, as when reload
+      -- happens Kong always uses the first page afterwards
+    }
+    for _, shm in ipairs(db_cache) do
+      ngx.shared[shm]:flush_all()
+      ngx.shared[shm]:flush_expired(0)
+      ngx.shared[shm .. "_miss"]:flush_all()
+      ngx.shared[shm .. "_miss"]:flush_expired(0)
+    end
+
     for _, key in ipairs(preserve_keys) do
       ngx.shared.kong:set(key, preserved[key])
     end
