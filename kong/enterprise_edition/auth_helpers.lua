@@ -1,4 +1,6 @@
 local passwdqc = require "resty.passwdqc"
+local workspaces = require "kong.workspaces"
+local basicauth_crypto = require "kong.plugins.basic-auth.crypto"
 
 local kong = kong
 
@@ -151,6 +153,54 @@ function _M.reset_attempts(consumer)
     return nil, err
   end
 end
+
+  --- Verify an admin/developers's basic auth credential password checking old vs. new
+  -- @param `db` database strategy must contain consumer
+  -- @param{type=string} `old_password`
+  -- @param{type=string} `new_password`
+  --
+  -- @return{type=table} credential
+  -- @return{type=string} bad_request_message
+  -- @return error
+function _M.verify_password(user, old_password, new_password)
+    if not old_password then
+      return nil, "Must include old_password"
+    end
+
+    if not new_password or new_password == old_password then
+      return nil, "Passwords cannot be the same"
+    end
+
+    local creds, err = workspaces.run_with_ws_scope(
+                       {},
+                       kong.db.basicauth_credentials.page_for_consumer,
+                       kong.db.basicauth_credentials,
+                       user.consumer
+    )
+    if err then
+      return nil, nil, err
+    end
+
+    if creds[1] then
+      local digest, err = basicauth_crypto.hash(creds[1].consumer.id,
+                                                   old_password)
+
+      if err then
+        kong.log.err(err)
+        return nil, nil, err
+      end
+
+      local valid = creds[1].password == digest
+
+      if not valid then
+        return nil, "Old password is invalid"
+      end
+
+      return creds[1]
+    end
+
+    return nil, "Bad request"
+  end
 
 
 return _M

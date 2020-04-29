@@ -2698,6 +2698,7 @@ for _, strategy in helpers.each_strategy() do
                 method = "PATCH",
                 body = {
                   password = "asdf",
+                  old_password = changeme_password
                 },
                 path = "/developer/password",
                 headers = {
@@ -2718,6 +2719,7 @@ for _, strategy in helpers.each_strategy() do
                 method = "PATCH",
                 body = {
                   password = "asdfasdfasdfasdf",
+                  old_password = changeme_password
                 },
                 path = "/developer/password",
                 headers = {
@@ -2733,11 +2735,53 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("Invalid password: not enough different characters or classes", message)
             end)
 
+            it("returns 400 if patched with no old password", function()
+              local res = assert(portal_api_client:send {
+                method = "PATCH",
+                body = {
+                  password = "wontwork"
+                },
+                path = "/developer/password",
+                headers = {
+                  ["Content-Type"] = "application/json",
+                  ["Cookie"] = cookie,
+                }
+              })
+
+              local body = assert.res_status(400, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.message
+
+              assert.equal("Must include old_password", message)
+            end)
+
+            it("returns 400 if patched with wrong old password", function()
+              local res = assert(portal_api_client:send {
+                method = "PATCH",
+                body = {
+                  password = "wontwork",
+                  old_password = "alsowontwork"
+                },
+                path = "/developer/password",
+                headers = {
+                  ["Content-Type"] = "application/json",
+                  ["Cookie"] = cookie,
+                }
+              })
+
+              local body = assert.res_status(400, res)
+              local resp_body_json = cjson.decode(body)
+              local message = resp_body_json.message
+
+              assert.equal("Old password is invalid", message)
+            end)
+
             it("updates the password", function()
               local res = assert(portal_api_client:send {
                 method = "PATCH",
                 body = {
                   password = password,
+                  old_password = changeme_password
                 },
                 path = "/developer/password",
                 headers = {

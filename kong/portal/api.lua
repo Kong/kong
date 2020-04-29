@@ -430,9 +430,12 @@ return {
       auth.validate_auth_plugin(self, db, helpers)
       ee_api.validate_jwt(self, db, helpers)
 
+
       -- If we made it this far, the jwt is valid format and properly signed.
       -- Now we will lookup the consumer and credentials we need to update
       -- Lookup consumer by id contained in jwt, if not found, this will 404
+
+
       local consumer, _, err_t = db.consumers:select({ id = self.consumer_id },
                                                           { skip_rbac = true })
       if err_t then
@@ -652,8 +655,25 @@ return {
       cred_params.consumer = { id = self.developer.consumer.id }
 
       if self.params.password then
+        -- creds here is redudent, and should replace credential from above,
+        -- this can be done when removing key auth
+        local creds, bad_req_message, err = auth_helpers.verify_password(self.developer, self.params.old_password,
+        self.params.password)
+
+        if not creds then
+          if err then
+            return endpoints.handle_error(err)
+          end
+
+          if bad_req_message then
+            return kong.response.exit(400, { message = bad_req_message })
+          end
+        end
+
         cred_params.password = self.params.password
         self.params.password = nil
+
+
       elseif self.params.key then
         cred_params.key = self.params.key
         self.params.key = nil
