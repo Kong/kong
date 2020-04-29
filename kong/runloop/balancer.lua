@@ -546,6 +546,8 @@ local get_all_upstreams
 do
   local function load_upstreams_dict_into_memory()
     local upstreams_dict = {}
+    local found = nil
+
     -- build a dictionary, indexed by the upstream name
     for up, err in singletons.db.upstreams:each() do
       if err then
@@ -554,8 +556,10 @@ do
       end
 
       upstreams_dict[up.name] = up.id
+      found = true
     end
-    return upstreams_dict
+
+    return found and upstreams_dict
   end
   _load_upstreams_dict_into_memory = load_upstreams_dict_into_memory
 
