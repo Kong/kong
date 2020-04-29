@@ -2,7 +2,7 @@ local helpers  = require "spec.helpers"
 local cjson    = require "cjson"
 
 
-local UDP_PORT = 20000
+local TCP_PORT = 20000
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin-loop: log phase  [#" .. strategy .. "]", function()
@@ -12,14 +12,14 @@ for _, strategy in helpers.each_strategy() do
       local bp = helpers.get_db_utils(strategy)
 
       bp.routes:insert {
-        hosts = { "udp_logging.com" },
+        hosts = { "tcp_logging.com" },
       }
 
       bp.plugins:insert {
-        name     = "udp-log",
+        name     = "tcp-log",
         config   = {
           host   = "127.0.0.1",
-          port   = UDP_PORT
+          port   = TCP_PORT
         },
       }
 
@@ -42,7 +42,7 @@ for _, strategy in helpers.each_strategy() do
     describe("configures globally", function()
       it("sends log for non-matched route", function()
 
-        local thread = helpers.udp_server(UDP_PORT)
+        local thread = helpers.tcp_server(TCP_PORT)
         local response = assert(proxy_client:send {
           method  = "GET",
           headers = {
@@ -60,11 +60,11 @@ for _, strategy in helpers.each_strategy() do
       end)
       it("sends log for matched route", function()
 
-        local thread = helpers.udp_server(UDP_PORT)
+        local thread = helpers.tcp_server(TCP_PORT)
         local response = assert(proxy_client:send {
           method  = "GET",
           headers = {
-            host  = "udp_logging.com"
+            host  = "tcp_logging.com"
           }
         })
         assert.res_status(200, response)
