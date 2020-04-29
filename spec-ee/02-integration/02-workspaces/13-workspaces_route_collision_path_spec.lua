@@ -33,7 +33,7 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("DB [".. strategy .. "] routes are checked for enforced pattern", function()
+  describe("DB [#".. strategy .. "] routes are checked for enforced pattern", function()
     local ws2_service
     setup(function()
       helpers.get_db_utils(strategy)
