@@ -4,6 +4,8 @@ local utils   = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 local ssl_fixtures = require "spec.fixtures.ssl"
+local openssl_x509  = require "resty.openssl.x509"
+local str           = require "resty.string"
 
 
 local fmt      = string.format
@@ -2386,6 +2388,8 @@ for _, strategy in helpers.each_strategy() do
 
     describe("CA Certificates", function()
       it("cannot create a CA Certificate with an existing cert content", function()
+        local digest = str.to_hex(openssl_x509.new(ssl_fixtures.cert_ca):digest("sha256"))
+
         -- insert 1
         local _, _, err_t = db.ca_certificates:insert {
           cert = ssl_fixtures.cert_ca,
@@ -2401,10 +2405,10 @@ for _, strategy in helpers.each_strategy() do
         assert.same({
           code     = Errors.codes.UNIQUE_VIOLATION,
           name     = "unique constraint violation",
-          message  = "UNIQUE violation detected on '{cert=[[" .. ssl_fixtures.cert_ca .. "]]}'",
+          message  = "UNIQUE violation detected on '{cert_digest=\"" .. digest .. "\"}'",
           strategy = strategy,
           fields   = {
-            cert = ssl_fixtures.cert_ca,
+            cert_digest = digest,
           }
         }, err_t)
       end)
