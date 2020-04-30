@@ -25,3 +25,5 @@ kong-build-tools
 bin/grpcurl
 
 *.so
+
+scripts/make-prerelease-release
