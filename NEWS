@@ -1,3 +1,12 @@
+1.1.0 - 2020-04-30
+
+New features:
+  - New `traceid_byte_count` config option (#74)
+  - Handling of W3C header, and new `header_type` config option (#75)
+
+Fixes:
+  - (docs) Span annotations not correctly documented in README (#77)
+
 1.0.0 - 2020-03-09
 
 This version of the plugin has changed enough to be named 1.0.0.
