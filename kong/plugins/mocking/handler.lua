@@ -127,6 +127,7 @@ function plugin:access(conf)
   local uripath = kong.request.get_path()
   -- grab Accept header which is used to retrieve associated mock response, or default to "application/json"
   local accept = kong.request.get_header("Accept") or kong.request.get_header("accept") or "application/json"
+  if accept == "*/*" then accept = "application/json" end
   local method = kong.request.get_method()
 
   local specfile, err = kong.db.files:select_by_path("specs/" .. conf.api_specification_filename)
