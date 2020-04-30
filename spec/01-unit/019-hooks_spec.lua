@@ -1,21 +1,20 @@
 local hooks = require "kong.hooks"
 
-local c = 0
-local function s()
-  c=c+1
-  return tostring(c)
-end
-
 
 describe("hooks", function()
+  local c = 0
+  local function s()
+    c=c+1
+    return tostring(c)
+  end
+
   local h
   before_each(function()
     h = s()
   end)
 
   it("runs a non-initialized hook and doesn't err", function()
-    hooks.run_hook(h)
-    assert(true)
+    assert.not_error(function() hooks.run_hook(h) end)
   end)
 
   it("wraps 1 function by default", function()
@@ -69,19 +68,18 @@ describe("hooks", function()
     hooks.register_hook(h, f)
     local r = hooks.run_hook(h, 1, 2)
 
-    assert.equal(1, r[1])
-    assert.equal(2, r[2])
+    assert.same({1, 2}, r)
   end)
 
-  it("can run raw functions", function()
+  it("can run low-level functions", function()
     local function f(acc, i)
       acc = acc or {}
-      table.insert(acc, acc and acc[#acc] and acc[#acc]+1 or 0)
+      table.insert(acc, acc[#acc] and acc[#acc]+1 or 0)
       return acc
     end
-    hooks.register_hook(h, f, {raw=true})
-    hooks.register_hook(h, f, {raw=true})
-    hooks.register_hook(h, f, {raw=true})
+    hooks.register_hook(h, f, {low_level=true})
+    hooks.register_hook(h, f, {low_level=true})
+    hooks.register_hook(h, f, {low_level=true})
 
     assert.same({0,1,2}, {hooks.run_hook(h, 0)})
   end)

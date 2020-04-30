@@ -89,7 +89,7 @@ function iteration.by_row(self, pager, size, options)
       goto nextrow
     end
     if err_t then
-      return row, nil, page
+      return false, tostring(err_t), err_t
     end
 
     if not self.row_to_entity then
