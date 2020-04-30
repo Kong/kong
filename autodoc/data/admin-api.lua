@@ -66,7 +66,29 @@ return {
     }, {
       title = [[Supported Content Types]],
       text = [[
-        The Admin API accepts 2 content types on every endpoint:
+        The Admin API accepts 3 content types on every endpoint:
+
+        - **application/json**
+
+        Handy for complex bodies (ex: complex plugin configuration), in that case simply send
+        a JSON representation of the data you want to send. Example:
+
+        ```json
+        {
+            "config": {
+                "limit": 10,
+                "period": "seconds"
+            }
+        }
+        ```
+
+        An example adding a route to a service named `test-service`:
+
+        ```
+        curl -i -X POST http://localhost:8001/services/test-service/routes \
+             -H "Content-Type: application/json" \
+             -d '{"name": "test-route", "paths": [ "/path/one", "/path/two" ]}'
+        ```
 
         - **application/x-www-form-urlencoded**
 
@@ -103,27 +125,25 @@ return {
         ```
 
 
+        - **multipart/form-data**
 
-        - **application/json**
+        Similar to url-encoded, this content type uses dotted keys to reference nested
+        objects. Here is an example of sending a Lua file to the pre-function Kong plugin:
 
-        Handy for complex bodies (ex: complex plugin configuration), in that case simply send
-        a JSON representation of the data you want to send. Example:
-
-        ```json
-        {
-            "config": {
-                "limit": 10,
-                "period": "seconds"
-            }
-        }
+        ```
+        curl -i -X POST http://localhost:8001/services/plugin-testing/plugins \
+             -F "name=pre-function" \
+             -F "config.access=@custom-auth.lua"
         ```
 
-        An example adding a route to a service named `test-service`:
+        When specifying arrays for this content-type the array indices must be specified.
+        An example route added to a service named `test-service`:
 
         ```
         curl -i -X POST http://localhost:8001/services/test-service/routes \
-             -H "Content-Type: application/json" \
-             -d '{"name": "test-route", "paths": [ "/path/one", "/path/two" ]}'
+             -F "name=test-route" \
+             -F "paths[1]=/path/one" \
+             -F "paths[2]=/path/two"
         ```
       ]]
     },
