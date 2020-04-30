@@ -94,14 +94,15 @@ end
 
 local function retrieve_example(parsed_content, uripath, accept, method)
 
-  local base_path = parsed_content.basePath or ""
   local paths = parsed_content.paths
   local found = false
 
   for specpath, value in pairs(paths) do
 
     -- build formatted string for exact match
-    local formatted_path = gsub(specpath, "{(.-)}", "[0-9]+") .. "$"
+    local formatted_path = gsub(specpath, "{(.-)}", "[A-Za-z0-9]+") .. "$"
+
+    --path = gsub(path, "{(.-)}", "(?<%1>\\S+)")
     local strmatch = match(uripath, formatted_path)
     if strmatch then
       found = true
