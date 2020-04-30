@@ -78,6 +78,32 @@ return {
         config.limit=10&config.period=seconds
         ```
 
+        When specifying arrays send the values in order, or use square brackets (numbering
+        inside the brackets is optional but if provided it must be 1-indexed, and
+        consecutive). An example route added to a service named `test-service`:
+
+        ```
+        curl -i -X POST http://localhost:8001/services/test-service/routes \
+             -d "name=test-route" \
+             -d "paths[1]=/path/one" \
+             -d "paths[2]=/path/two"
+        ```
+
+        The following two are identical to the one above, but less explicit:
+        ```
+        curl -i -X POST http://localhost:8001/services/test-service/routes \
+             -d "name=test-route" \
+             -d "paths[]=/path/one" \
+             -d "paths[]=/path/two"
+
+        curl -i -X POST http://localhost:8001/services/test-service/routes \
+            -d "name=test-route" \
+            -d "paths=/path/one" \
+            -d "paths=/path/two"
+        ```
+
+
+
         - **application/json**
 
         Handy for complex bodies (ex: complex plugin configuration), in that case simply send
@@ -90,6 +116,14 @@ return {
                 "period": "seconds"
             }
         }
+        ```
+
+        An example adding a route to a service named `test-service`:
+
+        ```
+        curl -i -X POST http://localhost:8001/services/test-service/routes \
+             -H "Content-Type: application/json" \
+             -d '{"name": "test-route", "paths": [ "/path/one", "/path/two" ]}'
         ```
       ]]
     },
