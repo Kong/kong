@@ -32,8 +32,18 @@ A tracer is created with the "http_headers" formatter set to use the headers des
     The proxy span and balancer spans are children of this span.
     Contains logs/annotations for the `kong.rewrite` phase start and end
   - *Proxy span*: 1 per request. Encompassing most of Kong's internal processing of a request (kind: `CLIENT`)
-    Contains logs/annotations for the rest start/end of the rest of the kong phases:
-    `kong.access`, `kong.header_filter`, `kong.body_filter`, `kong.preread`
+    Contains logs/annotations for the rest start/finish of the of the Kong plugin phases:
+    - `krs` - `kong.rewrite.start`
+    - `krf` - `kong.rewrite.finish`
+    - `kas` - `kong.access.start`
+    - `kaf` - `kong.access.finish`
+    - `kbs` - `kong.body_filter.start`
+    - `kbf` - `kong.body_filter.finish`
+    - `khs` - `kong.header_filter.start`
+    - `khf` - `kong.header_filter.finish`
+    - `kps` - `kong.preread.start`
+    - `kpf` - `kong.preread.finish`
+    This kind of information is useful for finding performance problems in plugins.
   - *Balancer span(s)*: 0 or more per request, each encompassing one balancer attempt (kind: `CLIENT`)
     Contains tags specific to the load balancing:
     - `kong.balancer.try`: a number indicating the attempt order
