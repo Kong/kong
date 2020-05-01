@@ -537,6 +537,20 @@ describe("Configuration loader", function()
       assert.equal("QUORUM", conf.cassandra_read_consistency)
       assert.equal("QUORUM", conf.cassandra_write_consistency)
 
+      conf = assert(conf_loader(nil, {
+        cassandra_consistency = "QUORUM",
+        cassandra_read_consistency = "TWO"
+      }))
+      assert.equal("TWO", conf.cassandra_read_consistency)
+      assert.equal("QUORUM", conf.cassandra_write_consistency)
+
+      conf = assert(conf_loader(nil, {
+        cassandra_consistency = "QUORUM",
+        cassandra_write_consistency = "LOCAL_QUORUM"
+      }))
+      assert.equal("QUORUM", conf.cassandra_read_consistency)
+      assert.equal("LOCAL_QUORUM", conf.cassandra_write_consistency)
+
     end)
     it("enforces listen addresses format", function()
       local conf, err = conf_loader(nil, {

@@ -821,17 +821,6 @@
 
 #cassandra_keyspace = kong       # The keyspace to use in your cluster.
 
-#cassandra_consistency = DISABLED     # Consistency setting to use when reading/
-                                      # writing to the Cassandra cluster.
-                                      # Note: `cassandra_write_consistency` and
-                                      # `cassandra_read_consistency` should be
-                                      # preferred over this, with this `DISABLED`
-                                      # If this is `DISABLED`, `cassandra_write_consistency`
-                                      # and `cassandra_read_consistency` would be used,
-                                      # else `cassandra_consistency` takes precedence over
-                                      # `cassandra_write_consistency` and `cassandra_read_consistency`
-                                      # It exists only for backward compatibility.
-
 #cassandra_write_consistency = ONE    # Consistency setting to use when
                                       # writing to the Cassandra cluster.
 
