@@ -530,27 +530,6 @@ describe("Configuration loader", function()
                  .. " (ALL, EACH_QUORUM, QUORUM, LOCAL_QUORUM, ONE, TWO,"
                  .. " THREE, LOCAL_ONE)", err)
       assert.is_nil(conf)
-
-      conf = assert(conf_loader(nil, {
-        cassandra_consistency = "QUORUM"
-      }))
-      assert.equal("QUORUM", conf.cassandra_read_consistency)
-      assert.equal("QUORUM", conf.cassandra_write_consistency)
-
-      conf = assert(conf_loader(nil, {
-        cassandra_consistency = "QUORUM",
-        cassandra_read_consistency = "TWO"
-      }))
-      assert.equal("TWO", conf.cassandra_read_consistency)
-      assert.equal("QUORUM", conf.cassandra_write_consistency)
-
-      conf = assert(conf_loader(nil, {
-        cassandra_consistency = "QUORUM",
-        cassandra_write_consistency = "LOCAL_QUORUM"
-      }))
-      assert.equal("QUORUM", conf.cassandra_read_consistency)
-      assert.equal("LOCAL_QUORUM", conf.cassandra_write_consistency)
-
     end)
     it("enforces listen addresses format", function()
       local conf, err = conf_loader(nil, {
@@ -1035,6 +1014,31 @@ describe("Configuration loader", function()
 
       assert.equal("123456", conf.pg_password)
       assert.equal("123456", conf.cassandra_password)
+    end)
+  end)
+
+  describe("deprecated properties", function()
+    it("cassandra_consistency -> cassandra_r/w_consistency", function()
+
+      local conf = assert(conf_loader(nil, {
+        cassandra_consistency = "QUORUM"
+      }))
+      assert.equal("QUORUM", conf.cassandra_read_consistency)
+      assert.equal("QUORUM", conf.cassandra_write_consistency)
+
+      local conf = assert(conf_loader(nil, {
+        cassandra_consistency = "QUORUM",
+        cassandra_read_consistency = "TWO" -- prioritized
+      }))
+      assert.equal("TWO", conf.cassandra_read_consistency)
+      assert.equal("QUORUM", conf.cassandra_write_consistency)
+
+      local conf = assert(conf_loader(nil, {
+        cassandra_consistency = "QUORUM",
+        cassandra_write_consistency = "LOCAL_QUORUM" -- prioritized
+      }))
+      assert.equal("QUORUM", conf.cassandra_read_consistency)
+      assert.equal("LOCAL_QUORUM", conf.cassandra_write_consistency)
     end)
   end)
 end)
