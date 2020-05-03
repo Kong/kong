@@ -51,11 +51,36 @@ function _GLOBAL.set_named_ctx(self, name, key)
     error("name cannot be an empty string", 2)
   end
 
+  if key == nil then
+    error("key cannot be nil", 2)
+  end
+
   if not self.ctx then
     error("ctx PDK module not initialized", 2)
   end
 
-  self.ctx.keys[name] = key
+  self.ctx.__set_namespace(name, key)
+end
+
+
+function _GLOBAL.del_named_ctx(self, name)
+  if not self then
+    error("arg #1 cannot be nil", 2)
+  end
+
+  if type(name) ~= "string" then
+    error("name must be a string", 2)
+  end
+
+  if #name == 0 then
+    error("name cannot be an empty string", 2)
+  end
+
+  if not self.ctx then
+    error("ctx PDK module not initialized", 2)
+  end
+
+  self.ctx.__del_namespace(name)
 end
 
 

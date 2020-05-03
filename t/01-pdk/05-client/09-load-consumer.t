@@ -126,4 +126,3 @@ GET /t
 cannot load a consumer with an id that is not a uuid
 --- no_error_log
 [error]
-
