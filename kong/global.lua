@@ -55,7 +55,7 @@ function _GLOBAL.set_named_ctx(self, name, key)
     error("ctx PDK module not initialized", 2)
   end
 
-  self.ctx.keys[name] = key
+  self.ctx.set(name, key)
 end
 
 

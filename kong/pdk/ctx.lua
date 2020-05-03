@@ -4,6 +4,8 @@
 
 
 local ngx = ngx
+local fmt = string.format
+local nctx_key_name = "kong_ctx_%s_key"
 
 
 -- shared between all global instances
@@ -86,21 +88,27 @@ local _CTX_CORE_KEY = {}
 --
 --   kong.log(value) -- "hello world"
 -- end
+
+
 local function new(self)
-  local _CTX = {
-    -- those would be visible on the *.ctx namespace for now
-    -- TODO: hide them in a private table shared between this
-    -- module and the global.lua one
-    keys = setmetatable({}, { __mode = "v" }),
-  }
-
-
+  local _CTX = {}
   local _ctx_mt = {}
+
+
+  function _ctx_mt.set(name, key)
+    ngx.ctx[fmt(nctx_key_name, name)] = key
+  end
 
 
   function _ctx_mt.__index(t, k)
     local nctx = ngx.ctx
-    local key
+    local key = _ctx_mt[k]
+
+    if key ~= nil and type(key) == "function" then
+      return function(self, ...)
+        key(self, ...)
+      end
+    end
 
     if k == "core" then
       key = _CTX_CORE_KEY
@@ -109,7 +117,7 @@ local function new(self)
       key = _CTX_SHARED_KEY
 
     else
-      key = t.keys[k]
+      key = nctx[fmt(nctx_key_name, k)]
     end
 
     if key then

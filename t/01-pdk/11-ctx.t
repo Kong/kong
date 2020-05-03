@@ -65,3 +65,32 @@ GET /t
 world
 --- no_error_log
 [error]
+
+
+
+=== TEST 3: ctx.plugin namespace should be resetted between requests
+--- http_config
+    init_by_lua_block {
+        local PDK = require "kong.pdk"
+        pdk = PDK.new()
+    }
+--- config
+    location = /t {
+        content_by_lua_block {
+          pdk.ctx.set("plugin", "plugin")
+
+          ngx.exec("/a")
+        }
+    }
+
+    location = /a {
+        content_by_lua_block {
+          ngx.say(pdk.ctx.plugin)
+        }
+    }
+--- request
+GET /t
+--- response_body
+nil
+--- no_error_log
+[error]
