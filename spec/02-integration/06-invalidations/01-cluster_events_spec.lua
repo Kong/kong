@@ -314,6 +314,39 @@ for _, strategy in helpers.each_strategy() do
         assert(cluster_events_1:poll())
         assert.spy(spy_func).was_called(1) -- called
       end)
+
+      it("broadcasts an event with a polling delay for subscribers", function()
+        local delay = 1
+
+        local cluster_events_1 = assert(kong_cluster_events.new {
+          db = db,
+          node_id = uuid_1,
+          poll_delay = delay,
+        })
+
+        local cluster_events_2 = assert(kong_cluster_events.new {
+          db = db,
+          node_id = uuid_2,
+          poll_delay = delay,
+        })
+
+        assert(cluster_events_1:subscribe("nbf_channel", cb, false)) -- false to not start auto polling
+
+        assert(cluster_events_2:broadcast("nbf_channel", "hello world"))
+
+        assert(cluster_events_1:poll())
+        assert.spy(spy_func).was_not_called() -- not called yet
+
+        ngx.sleep(0.001) -- still yield in case our timer is set to 0
+
+        assert(cluster_events_1:poll())
+        assert.spy(spy_func).was_not_called() -- still not called
+
+        ngx.sleep(delay) -- go past our desired `nbf` delay
+
+        assert(cluster_events_1:poll())
+        assert.spy(spy_func).was_called(1) -- called
+      end)
     end)
   end)
 end

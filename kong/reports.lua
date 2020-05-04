@@ -205,7 +205,7 @@ end
 -- returns a string indicating the "kind" of the current request/stream:
 -- "http", "https", "h2c", "h2", "grpc", "grpcs", "ws", "wss", "tcp", "tls"
 -- or nil + error message if the suffix could not be determined
-local function get_current_suffix()
+local function get_current_suffix(ctx)
   if subsystem == "stream" then
     if var.ssl_protocol then
       return "tls"
@@ -215,8 +215,8 @@ local function get_current_suffix()
   end
 
   local scheme = var.scheme
+  local proxy_mode = var.kong_proxy_mode
   if scheme == "http" or scheme == "https" then
-    local proxy_mode = var.kong_proxy_mode
     if proxy_mode == "http" then
       local http_upgrade = var.http_upgrade
       if http_upgrade and lower(http_upgrade) == "websocket" then
@@ -235,7 +235,7 @@ local function get_current_suffix()
         return "h2"
       end
 
-      return scheme
+      return scheme -- http/https
     end
 
     if proxy_mode == "grpc" then
@@ -249,7 +249,12 @@ local function get_current_suffix()
     end
   end
 
-  return nil, "unknown request scheme: " .. tostring(scheme)
+  if ctx.KONG_UNEXPECTED then
+    return nil
+  end
+
+  log(WARN, "could not determine log suffix (scheme=", tostring(scheme),
+            ", proxy_mode=", tostring(proxy_mode), ")")
 end
 
 
@@ -336,6 +341,7 @@ local function configure_ping(kong_conf)
 
   add_immutable_value("database", kong_conf.database)
   add_immutable_value("role", kong_conf.role)
+  add_immutable_value("kic", kong_conf.kic)
   add_immutable_value("_admin", #kong_conf.admin_listeners > 0 and 1 or 0)
   add_immutable_value("_proxy", #kong_conf.proxy_listeners > 0 and 1 or 0)
   add_immutable_value("_stream", #kong_conf.stream_listeners > 0 and 1 or 0)
@@ -404,17 +410,15 @@ return {
 
     local count_key = subsystem == "stream" and STREAM_COUNT_KEY
                                              or REQUEST_COUNT_KEY
-
     incr_counter(count_key)
-    local suffix, err = get_current_suffix()
+
+    if ctx.ran_go_plugin then
+      incr_counter(GO_PLUGINS_REQUEST_COUNT_KEY)
+    end
+
+    local suffix = get_current_suffix(ctx)
     if suffix then
       incr_counter(count_key .. ":" .. suffix)
-
-      if ctx.ran_go_plugin then
-        incr_counter(GO_PLUGINS_REQUEST_COUNT_KEY)
-      end
-    else
-      log(WARN, err)
     end
   end,
 

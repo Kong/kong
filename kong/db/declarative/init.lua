@@ -10,7 +10,10 @@ local deepcopy = tablex.deepcopy
 local null = ngx.null
 local SHADOW = true
 local md5 = ngx.md5
+local ngx_socket_tcp = ngx.socket.tcp
 local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
+local PREFIX = ngx.config.prefix()
+local SUBSYS = ngx.config.subsystem
 
 
 local declarative = {}
@@ -360,6 +363,9 @@ function declarative.load_into_cache(entities, hash, shadow_page)
   -- but filtered for a given tag
   local tags_by_name = {}
 
+  kong.core_cache:purge(SHADOW)
+  kong.cache:purge(SHADOW)
+
   for entity_name, items in pairs(entities) do
     local dao = kong.db[entity_name]
     local schema = dao.schema
@@ -518,6 +524,30 @@ function declarative.load_into_cache_with_events(entities, hash)
     return nil, err
   end
 
+  if SUBSYS == "http" and #kong.configuration.stream_listeners > 0 and
+     ngx.get_phase() ~= "init_worker"
+  then
+    -- update stream if necessary
+    -- TODO: remove this once shdict can be shared between subsystems
+
+    local sock = ngx_socket_tcp()
+    ok, err = sock:connect("unix:" .. PREFIX .. "/stream_config.sock")
+    if not ok then
+      return nil, err
+    end
+
+    local json = cjson.encode({ entities, hash, })
+    local bytes
+    bytes, err = sock:send(json)
+    sock:close()
+
+    if not bytes then
+      return nil, err
+    end
+
+    assert(bytes == #json, "incomplete config sent to the stream subsystem")
+  end
+
   ok, err = kong.worker_events.post("balancer", "upstreams", {
     operation = "delete_all",
     entity = { id = "all", name = "all" }
@@ -533,12 +563,14 @@ function declarative.load_into_cache_with_events(entities, hash)
     if ok ~= "done" then
       return nil, "failed to flip declarative config cache pages: " .. (err or ok)
     end
+
+  else
+    return nil, err
   end
 
-  kong.core_cache:purge(SHADOW)
-
+  ok, err = kong.core_cache:save_curr_page()
   if not ok then
-    return nil, err
+    return nil, "failed to persist cache page number inside shdict: " .. err
   end
 
   kong.core_cache:invalidate("router:version")

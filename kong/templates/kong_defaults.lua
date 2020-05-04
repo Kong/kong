@@ -151,4 +151,5 @@ lua_package_path = ./?.lua;./?/init.lua;
 lua_package_cpath = NONE
 
 role = traditional
+kic = off
 ]]

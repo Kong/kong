@@ -170,6 +170,32 @@ describe("reports", function()
       end)
     end)
 
+    describe("sends 'kic'", function()
+      it("default (off)", function()
+        local conf = assert(conf_loader(nil))
+        reports.configure_ping(conf)
+
+        local thread = helpers.tcp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert._matches("kic=false", res, nil, true)
+      end)
+
+      it("enabled", function()
+        local conf = assert(conf_loader(nil, {
+          kic = "on",
+        }))
+        reports.configure_ping(conf)
+
+        local thread = helpers.tcp_server(8189)
+        reports.send_ping("127.0.0.1", 8189)
+
+        local _, res = assert(thread:join())
+        assert.matches("kic=true", res, nil, true)
+      end)
+    end)
+
     describe("sends '_admin' for 'admin_listen'", function()
       it("off", function()
         local conf = assert(conf_loader(nil, {

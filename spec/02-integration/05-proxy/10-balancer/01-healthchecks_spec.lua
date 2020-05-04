@@ -7,6 +7,9 @@ local utils = require "kong.tools.utils"
 for _, strategy in helpers.each_strategy() do
   local bp
 
+  local DB_UPDATE_PROPAGATION = strategy == "cassandra" and 0.1 or 0
+  local DB_UPDATE_FREQUENCY   = strategy == "cassandra" and 0.1 or 0.1
+
   describe("Healthcheck #" .. strategy, function()
     lazy_setup(function()
       bp = bu.get_db_utils_for_dc_and_admin_api(strategy, {
@@ -61,8 +64,10 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database   = strategy,
+        dns_resolver = "127.0.0.1",
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        db_update_frequency = 0.1,
+        db_update_frequency = DB_UPDATE_FREQUENCY,
+        db_update_propagation = DB_UPDATE_PROPAGATION,
       }, nil, nil, fixtures))
 
     end)
@@ -342,10 +347,12 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database   = strategy,
+        dns_resolver = "127.0.0.1",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt",
         stream_listen = "off",
-        db_update_frequency = 0.1,
+        db_update_frequency = DB_UPDATE_FREQUENCY,
+        db_update_propagation = DB_UPDATE_PROPAGATION,
         plugins = "bundled,fail-once-auth",
       }))
     end)
@@ -366,12 +373,14 @@ for _, strategy in helpers.each_strategy() do
         -- start a second Kong instance
         helpers.start_kong({
           database   = strategy,
+          dns_resolver = "127.0.0.1",
           admin_listen = "127.0.0.1:" .. admin_port_2,
           proxy_listen = "127.0.0.1:" .. proxy_port_2,
           stream_listen = "off",
           prefix = "servroot2",
           log_level = "debug",
-          db_update_frequency = 0.1,
+          db_update_frequency = DB_UPDATE_FREQUENCY,
+          db_update_propagation = DB_UPDATE_PROPAGATION,
         })
       end)
 
@@ -390,12 +399,18 @@ for _, strategy in helpers.each_strategy() do
             local upstream_name, upstream_id = bu.add_upstream(bp)
             local port = bu.add_target(bp, upstream_id, localhost)
             local api_host = bu.add_api(bp, upstream_name)
+            bu.wait_for_router_update(bp, old_rv, localhost, proxy_port_1, admin_port_1)
+            old_rv = bu.get_router_version(admin_port_1)
             bu.wait_for_router_update(bp, old_rv, localhost, proxy_port_2, admin_port_2)
             bu.end_testcase_setup(strategy, bp)
 
-            -- server responds, then fails, then responds again
-            local server = bu.http_server(localhost, port, { 20, 20, 20 })
+            local server
+            helpers.wait_until(function()
+              server = assert(bu.http_server(localhost, port, { 20, 20, 20 }))
+              return true
+            end, 10)
 
+            -- server responds, then fails, then responds again
             local seq = {
               { port = proxy_port_2, oks = 10, fails = 0, last_status = 200 },
               { port = proxy_port_1, oks = 10, fails = 0, last_status = 200 },

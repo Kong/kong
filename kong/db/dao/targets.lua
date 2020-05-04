@@ -65,7 +65,10 @@ local function clean_history(self, upstream_pk)
     ngx.log(ngx.NOTICE, "[Target DAO] Starting cleanup of target table for upstream ",
                tostring(upstream_pk.id))
     local cnt = 0
-    for _, entry in ipairs(delete) do
+    -- reverse again; so deleting oldest entries first
+    for i = #delete, 1, -1 do
+      local entry = delete[i]
+
       -- notice super - this is real delete (not creating a new entity with weight = 0)
       self.super.delete(self, { id = entry.id })
       -- ignoring errors here, deleted by id, so should not matter

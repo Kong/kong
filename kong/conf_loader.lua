@@ -464,6 +464,7 @@ local CONF_INFERENCES = {
   cluster_mtls = { enum = { "shared", "pki" } },
   cluster_ca_cert = { typ = "string" },
   cluster_server_name = { typ = "string" },
+  kic = { typ = "boolean" },
 }
 
 
@@ -501,7 +502,7 @@ local _nop_tostring_mt = {
 
 -- Validate properties (type/enum/custom) and infer their type.
 -- @param[type=table] conf The configuration table to treat.
-local function check_and_infer(conf)
+local function check_and_infer(conf, opts)
   local errors = {}
 
   for k, value in pairs(conf) do
@@ -509,10 +510,12 @@ local function check_and_infer(conf)
     local typ = v_schema.typ
 
     if type(value) == "string" then
-      -- remove trailing comment, if any
-      -- and remove escape chars from octothorpes
-      value = string.gsub(value, "[^\\]#.-$", "")
-      value = string.gsub(value, "\\#", "#")
+      if not opts.from_kong_env then
+        -- remove trailing comment, if any
+        -- and remove escape chars from octothorpes
+        value = string.gsub(value, "[^\\]#.-$", "")
+        value = string.gsub(value, "\\#", "#")
+      end
 
       value = pl_stringx.strip(value)
     end
@@ -1246,7 +1249,7 @@ local function load(path, custom_conf, opts)
                               user_conf)
 
   -- validation
-  local ok, err, errors = check_and_infer(conf)
+  local ok, err, errors = check_and_infer(conf, opts)
 
   if not opts.starting then
     log.enable()
