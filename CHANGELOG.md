@@ -1,3 +1,16 @@
+## (Upcoming) v1.5.0
+
+- Add support for Redis Clusters for session storage
+- Add `config.session_redis_connect_timeout`
+- Add `config.session_redis_read_timeout`
+- Add `config.session_redis_send_timeout`
+- Add `config.session_redis_ssl`
+- Add `config.session_redis_ssl_verify`
+- Add `config.session_redis_server_name`
+- Add `config.session_redis_cluster_nodes`
+- Add `config.session_redis_cluster_maxredirections`
+
+
 ## v1.4.2
 
 - Fix `openid_connect/jwks` to not try to use `err_t` with JWKS custom DAO
@@ -6,7 +19,7 @@
   value on `errors` as it may be treated as `err_t` which it is not.
 - Add a `teardown` migration to create the `oic_jwks` row
   (so that it is not needed to create on `init_worker`).
-   
+
 
 ## v1.4.1
 
@@ -21,8 +34,8 @@
   if introspection was enabled (see v1.3.0 that didn't fix it correctly)
 - Add support for `cookie` for `config.bearer_token_param_type`
 - Add support for `config.bearer_token_cookie_name`
- 
- 
+
+
 ## v1.3.0
 
 - Add support for `client_secret_jwt` and `private_key_jwt` authentication
@@ -61,7 +74,7 @@
 
 - Fix header encoding to use base64 (non-url variant) with padding
 - Add support for keyring encryption of client_id and client_secret
-- Add support for `None` with `config.session_cookie_samesite` and `config.authorization_cookie_samesite` 
+- Add support for `None` with `config.session_cookie_samesite` and `config.authorization_cookie_samesite`
 - Add support for `config.session_cookie_maxsize`
 - Bump `lua-resty-session` dependency to `2.26`
 
@@ -75,14 +88,14 @@
 
 - Fix issue when discovery did not return issuer information, and which could lead
   to `500` error on `401` and `403` responses.
-  
+
 
 ## v1.2.3
 
 - Change invalidations to do local invalidation instead of cluster-wide invalidation
 - Fix admin api to properly call cleanup function on entity endpoint
 - Fix `hide_credentials` not clearing `X-Access-Token` header
-- Chore debug logging to not log about disabled authentication methods 
+- Chore debug logging to not log about disabled authentication methods
 - Chore TTL code and fix some edge cases
 
 
@@ -95,7 +108,7 @@
 ## v1.2.1
 
 - Change more reentrant migrations (not a real issue, but for future)
-- Remove developer status/type check from plugin EBB-56 
+- Remove developer status/type check from plugin EBB-56
 
 
 ## v1.2.0
@@ -259,7 +272,7 @@
 - Add `config.consumer_optional`
 - Add `config.token_endpoint_auth_method`
 - Fix `kong_oauth2` auth_method so that it works without having to
-  also add`bearer` or `introspection` to `config.auth_methods` 
+  also add`bearer` or `introspection` to `config.auth_methods`
 
 
 ## v0.1.7
@@ -276,7 +289,7 @@
 
 ## v0.1.5
 
-- Change `self_check` to run only on `content` and `access` phases. 
+- Change `self_check` to run only on `content` and `access` phases.
 
 
 ## v0.1.4

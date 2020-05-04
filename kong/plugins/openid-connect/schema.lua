@@ -825,6 +825,71 @@ local config = {
             },
           },
           {
+            session_redis_connect_timeout = {
+              required = false,
+              type = "integer",
+            },
+          },
+          {
+            session_redis_read_timeout = {
+              required = false,
+              type = "integer",
+            },
+          },
+          {
+            session_redis_send_timeout = {
+              required = false,
+              type = "integer",
+            },
+          },
+          {
+            session_redis_ssl = {
+              required = false,
+              type     = "boolean",
+              default  = false,
+            },
+          },
+          {
+            session_redis_ssl_verify = {
+              required = false,
+              type     = "boolean",
+              default  = false,
+            },
+          },
+          {
+            session_redis_server_name = {
+              required = false,
+              type     = "string",
+            },
+          },
+          {
+            session_redis_cluster_nodes = {
+              required = false,
+              type = "array",
+              elements = {
+                type = "record",
+                fields = {
+                  {
+                    ip = typedefs.ip {
+                      required = true,
+                    },
+                  },
+                  {
+                    port = typedefs.port {
+                      default  = 6379
+                    },
+                  },
+                },
+              },
+            },
+          },
+          {
+            session_redis_cluster_maxredirections = {
+              required = false,
+              type = "integer",
+            },
+          },
+          {
             reverify = {
               required = false,
               type     = "boolean",
