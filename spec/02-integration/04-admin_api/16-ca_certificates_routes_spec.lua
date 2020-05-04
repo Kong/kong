@@ -50,7 +50,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
 
-        assert.equal("schema violation (cert: field required for entity check)", json.message)
+        assert.equal("schema violation (cert: required field missing)", json.message)
       end)
 
       it("non CA cert", function()
@@ -180,7 +180,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
 
-        assert.equal("schema violation (cert: field required for entity check)", json.message)
+        assert.equal("schema violation (cert: required field missing)", json.message)
       end)
 
       it("non CA cert", function()
