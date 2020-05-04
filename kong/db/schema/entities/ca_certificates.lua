@@ -14,16 +14,18 @@ return {
     { tags = typedefs.tags },
   },
 
-  check = function(entity)
-    local digest = str.to_hex(openssl_x509.new(entity.cert):digest("sha256"))
-    if not digest then
-      return nil, "cannot create digest value of certificate"
-    end
-
-    entity.cert_digest = digest
-
-    return true
-  end,
+  transformations = {
+    {
+      input = { "cert" },
+      on_write = function(cert)
+        local digest = str.to_hex(openssl_x509.new(cert):digest("sha256"))
+        if not digest then
+          return nil, "cannot create digest value of certificate"
+        end
+        return { cert_digest = digest }
+      end,
+    },
+  },
 
   entity_checks = {
     { custom_entity_check = {
