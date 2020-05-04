@@ -206,7 +206,7 @@ function CollectorHandler:log(conf)
 
     local opts = {
       retry_count = conf.retry_count,
-      flush_timeout = conf.flush_timeout,
+      flush_timeout = 1,
       batch_max_size = batch_max_size,
       process_delay = 0,
     }

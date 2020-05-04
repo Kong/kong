@@ -130,8 +130,7 @@ for _, strategy in helpers.each_strategy() do
       local plugin_config = {
         http_endpoint = "http://127.0.0.1:5000",
         log_bodies = true,
-        queue_size = 1,
-        flush_timeout = 1
+        queue_size = 1
       }
 
       bp, db = helpers.get_db_utils(strategy)
