@@ -2606,4 +2606,20 @@ end
 
     return kill.kill(pid_path, signal)
   end,
+  -- send signal to all Nginx workers, not including the master
+  signal_workers = function(prefix, signal, pid_path)
+    if not pid_path then
+      local running_conf = get_running_conf(prefix)
+      if not running_conf then
+        error("no config file found at prefix: " .. prefix)
+      end
+
+      pid_path = running_conf.nginx_pid
+    end
+
+    local cmd = string.format("pkill %s -P `cat %s`", signal, pid_path)
+    local _, code = pl_utils.execute(cmd)
+
+    return code
+  end,
 }

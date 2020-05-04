@@ -198,12 +198,18 @@ function _M.new(opts)
     end
   end
 
+  local curr_mlcache = 1
+
+  if opts.cache_pages == 2 then
+    curr_mlcache = ngx.shared.kong:get("kong:cache:" .. opts.shm_name .. ":curr_mlcache") or 1
+  end
+
   local self          = {
     cluster_events    = opts.cluster_events,
-    mlcache           = mlcaches[1],
+    mlcache           = mlcaches[curr_mlcache],
     mlcaches          = mlcaches,
     shm_names         = shm_names,
-    curr_mlcache      = 1,
+    curr_mlcache      = curr_mlcache,
   }
 
   local ok, err = self.cluster_events:subscribe("invalidations", function(key)
@@ -218,6 +224,12 @@ function _M.new(opts)
   _init[opts.shm_name] = true
 
   return setmetatable(self, mt)
+end
+
+
+function _M:save_curr_page()
+  return ngx.shared.kong:set(
+    "kong:cache:" .. self.shm_names[1] .. ":curr_mlcache", self.curr_mlcache)
 end
 
 

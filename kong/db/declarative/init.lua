@@ -568,6 +568,11 @@ function declarative.load_into_cache_with_events(entities, hash)
     return nil, err
   end
 
+  ok, err = kong.core_cache:save_curr_page()
+  if not ok then
+    return nil, "failed to persist cache page number inside shdict: " .. err
+  end
+
   kong.core_cache:invalidate("router:version")
 
   ok, err = kong.worker_events.post("balancer", "upstreams", {
