@@ -4,7 +4,7 @@ local _M = {}
 local cjson = require "cjson"
 local ffi   = require "ffi"
 local http  = require "resty.http"
-
+local workspaces = require "kong.workspaces"
 
 local ipairs        = ipairs
 local math_floor    = math.floor
@@ -638,20 +638,35 @@ _M.status_code_query = status_code_query
 function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   start_ts = start_ts or 36000
 
+  local entities = {}
+  local plural_entity = entity .. 's'
+  local rows, err = workspaces.run_with_ws_scope({}, function()
+    return kong.db[plural_entity]:select_all()
+  end)
+  if err then
+    return nil, err
+  end
+
+  for _, row in ipairs(rows) do
+    entities[row.id] = row.name or row.username
+  end
+  
   local seconds_from_now = ngx.time() - start_ts
   local result = query(self, status_code_query(entity_id, entity, seconds_from_now, interval))
   local stats = {}
   for _, series in ipairs(result) do
     for _, value in ipairs(series.values) do
-      local key
+      local key, name
       if entity_id == nil then
         local lookup = {
           consumer = series.tags.consumer,
           service = series.tags.service
         }
-        key = lookup[entity]
+        key = lookup[entity] -- consumer/service guid
+        name = entities[key]
       else
         key = tostring(value[1]) -- timestamp
+        name = entities[entity_id]
       end
 
       if stats[key] == nil then
@@ -662,7 +677,7 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
 
       local current_total = stats[key]["total"] or 0
       local current_status = stats[key][status_group] or 0
-
+      stats[key]["name"] = name
       stats[key]["total"] = current_total + value[2]
       stats[key][status_group] = current_status + value[2]
     end
@@ -672,6 +687,7 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
     earliest_ts = start_ts,
     latest_ts = ngx.time(),
     stat_labels = {
+      "name",
       "total",
       "2XX",
       "4XX",
