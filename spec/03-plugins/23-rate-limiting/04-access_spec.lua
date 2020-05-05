@@ -293,7 +293,7 @@ for _, strategy in helpers.each_strategy() do
           assert.same({ message = "API rate limit exceeded" }, json)
         end)
 
-        it_with_retry("counts against the same service register from different routes", function()
+        it_with_retry("#flaky counts against the same service register from different routes", function()
           for i = 1, 3 do
             local res = GET("/status/200", {
               headers = { Host = "test-service1.com" },
@@ -338,7 +338,7 @@ for _, strategy in helpers.each_strategy() do
           assert.same({ message = "API rate limit exceeded" }, json)
         end)
 
-        it_with_retry("handles multiple limits", function()
+        it_with_retry("#flaky handles multiple limits", function()
           local limits = {
             minute = 3,
             hour   = 5
