@@ -10,6 +10,9 @@ local plugin = {
 
 local kong = kong
 local inspect = require('inspect')
+-- spec version
+local isV3 = false
+local isV2 = false
 
 local function find_key(tbl, key)
 
@@ -31,16 +34,27 @@ local function find_key(tbl, key)
 end
 
 local function get_example(accept, tbl)
-  if find_key(tbl, "examples") then
-    if find_key(tbl, "examples")[accept] then
-      return find_key(tbl, "examples")[accept]
-    end
-  elseif find_key(tbl, "example") then
-    if find_key(tbl, "example")[accept] then
-      return find_key(tbl, "example")[accept]
+  if isV2 then
+    if find_key(tbl, "examples") then
+      if find_key(tbl, "examples")[accept] then
+        return find_key(tbl, "examples")[accept]
+      end
+    elseif find_key(tbl, "example") then
+      if find_key(tbl, "example")[accept] then
+        return find_key(tbl, "example")[accept]
+      end
+    else
+      return ""
     end
   else
-    return ""
+    tbl = tbl.content
+    if find_key(tbl, accept) then
+      if find_key(tbl, accept).examples.response.value then
+        return find_key(tbl, accept).examples.response.value
+      else
+        return ""
+      end
+    end
   end
 end
 
@@ -89,6 +103,15 @@ local function load_spec(spec_str)
     end
   end
 
+  -- check spec version
+  if result.openapi then
+    isV3 = true
+    isV2 = false
+  else
+    isV2 = true
+    isV3 = false
+  end
+
   return result
 end
 
@@ -102,7 +125,6 @@ local function retrieve_example(parsed_content, uripath, accept, method)
     -- build formatted string for exact match
     local formatted_path = gsub(specpath, "{(.-)}", "[A-Za-z0-9]+") .. "$"
 
-    --path = gsub(path, "{(.-)}", "(?<%1>\\S+)")
     local strmatch = match(uripath, formatted_path)
     if strmatch then
       found = true
