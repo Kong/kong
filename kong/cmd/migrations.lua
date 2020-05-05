@@ -261,6 +261,8 @@ local function execute(args)
 
   elseif args.command == "reinitialize-workspace-entity-counters" then
     local counters = require "kong.workspaces.counters"
+    kong.db.plugins:load_plugin_schemas(conf.loaded_plugins)
+
     counters.initialize_counters(db)
 
   else
