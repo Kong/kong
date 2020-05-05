@@ -1,20 +1,18 @@
-local lyaml    = require "lyaml"
-local lunamark = require "lunamark"
-local workspaces = require "kong.workspaces"
-local singletons = require "kong.singletons"
-local looper     = require "kong.portal.render_toolset.looper"
-local helpers    = require "kong.portal.render_toolset.helpers"
+local helpers       = require "kong.portal.render_toolset.helpers"
+local workspaces    = require "kong.workspaces"
+local singletons    = require "kong.singletons"
+local markdown      = require "kong.portal.render_toolset.markdown"
+local lyaml         = require "lyaml"
+local looper        = require "kong.portal.render_toolset.looper"
 
-local writer = lunamark.writer.html.new({})
-local parse = lunamark.reader.markdown.new(writer, {})
-local yaml_load = lyaml.load
+local yaml_load     = lyaml.load
 
 
 local function markdownify(contents, route_config)
   local path_meta = route_config.path_meta or {}
   local extension = path_meta.extension or ""
   if extension == "md" or extension == "markdown" then
-    return parse(contents)
+    return markdown(contents)
   end
 
   return contents

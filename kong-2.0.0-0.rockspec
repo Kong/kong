@@ -32,7 +32,6 @@ dependencies = {
   "lua-resty-mail == 1.0.2",
   "lua-resty-redis-connector == 0.08",
   "lua-resty-rsa == 0.04",
-  "lunamark == 0.5.0-1",
   "lyaml == 6.2.4",
   "bcrypt == 2.1",
   "lpeg_patterns == 0.5",
