@@ -101,7 +101,7 @@ local postgres  = {
       ]],
       self.super.seed(self, password),
       "END IF;",
-      "END $$",
+      "END $$;",
       "-- end",
     }
     return table.concat(query, "\n")
