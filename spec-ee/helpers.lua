@@ -40,7 +40,7 @@ function _M.register_rbac_resources(db, ws)
   -- this role only has the 'read-only' permissions
   _, err = db.rbac_role_endpoints:insert({
     role = { id = roles.read_only.id, },
-    workspace = "*",
+    workspace = ws or "*",
     endpoint = "*",
     actions = rbac.actions_bitfields.read,
   })

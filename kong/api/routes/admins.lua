@@ -139,7 +139,10 @@ return {
       local err
 
       local name_or_id = ngx.unescape_uri(self.params.admin)
-      self.admin, err = admins.find_by_username_or_id(name_or_id, true)
+      -- should be able to add an admin roles to a workspace they do not
+      -- have roles in
+      local require_workspace_ctx = self.req.method == 'GET'
+      self.admin, err = admins.find_by_username_or_id(name_or_id, true, require_workspace_ctx)
       if err then
         return endpoints.handle_error(err)
       end
@@ -183,16 +186,18 @@ return {
 
       -- we've now validated that all our roles exist, and this user exists,
       -- so time to create the assignment
-      for i = 1, #roles do
-        local _, _, err_t = db.rbac_user_roles:insert({
-          user = self.admin.rbac_user,
-          role = roles[i]
-        })
+      workspaces.run_with_ws_scope({}, function ()
+        for i = 1, #roles do
+          local _, _, err_t = db.rbac_user_roles:insert({
+            user = self.admin.rbac_user,
+            role = roles[i]
+          })
 
-        if err_t then
-          return endpoints.handle_error(err_t)
+          if err_t then
+            return endpoints.handle_error(err_t)
+          end
         end
-      end
+      end)
 
       -- invalidate rbac user so we don't fetch the old roles
       local cache_key = db["rbac_user_roles"]:cache_key(self.admin.rbac_user.id)
@@ -331,9 +336,7 @@ return {
   ["/admins/:admin/workspaces"] = {
     GET = function(self, db, helpers, parent)
       -- lookup across all workspaces
-      local res, err = workspaces.run_with_ws_scope({},
-                                                    admins.workspaces_for_admin,
-                                                    self.params.admin)
+      local res, err = admins.workspaces_for_admin(self.params.admin)
       if err then
         return endpoints.handle_error(err)
       end

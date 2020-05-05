@@ -248,24 +248,6 @@ for _, strategy in helpers.each_strategy() do
         assert.same(expected, res)
       end)
 
-      it("it links existing admin to new workspace", function()
-        local opts = {
-          token_optional = true,
-          db = db,
-          workspace = default_ws,
-        }
-
-        local params = {
-          username = admins[2].username,
-          email = admins[2].email,
-          status = enums.CONSUMERS.STATUS.APPROVED,
-        }
-
-        local res = admins_helpers.create(params, opts)
-        assert.same(200, res.code)
-        assert.same(admins_helpers.transmogrify(admins[2]), res.body.admin)
-      end)
-
       it("returns 409 when rbac_user with same name already exists", function()
         -- rbac_user who is not part of an admin record
       end)
@@ -485,36 +467,6 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("link_to_workspace", function()
-      it("links an admin to another workspace", function()
-        -- odd-numbered admins are in default_ws
-        local linked, err = admins_helpers.link_to_workspace(admins[1], another_ws)
-
-        assert.is_nil(err)
-        assert.is_true(linked)
-
-        local ws_list, err = workspaces.find_workspaces_by_entity({
-          workspace_id = another_ws.id,
-          entity_type = "rbac_users",
-          entity_id = admins[1].rbac_user.id,
-        })
-
-        assert.is_nil(err)
-        assert.not_nil(ws_list)
-        assert.same(ws_list[1].workspace_id, another_ws.id)
-
-        ws_list, err = workspaces.find_workspaces_by_entity({
-          workspace_id = another_ws.id,
-          entity_type = "rbac_users",
-          entity_id = admins[1].rbac_user.id,
-        })
-
-        assert.is_nil(err)
-        assert.not_nil(ws_list)
-        assert.same(ws_list[1].workspace_id, another_ws.id)
-      end)
-    end)
-
     describe("workspaces_for_admin", function()
       it("returns workspaces", function()
         local opts = {
@@ -523,7 +475,7 @@ for _, strategy in helpers.each_strategy() do
         local res, err = admins_helpers.workspaces_for_admin(admins[1].username, opts)
         assert.is_nil(err)
         assert.same(200, res.code)
-        assert.same(2, #res.body)
+        assert.same(1, #res.body) -- only for workspaces they have roles in
 
         -- ensure that what came back looks like a workspace
         local ws = res.body[1]

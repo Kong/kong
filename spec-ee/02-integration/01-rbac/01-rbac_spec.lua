@@ -1,5 +1,6 @@
 local spec_helpers = require "spec.helpers"
 local utils       = require "kong.tools.utils"
+local workspaces = require "kong.workspaces"
 local bit = require "bit"
 
 
@@ -888,6 +889,152 @@ describe("(#" .. strategy .. ")", function()
         local res = kong.db.rbac_role_endpoints:all_by_endpoint("/foo", "foo")
         assert.same({ p1 }, res)
       end)
+    end)
+  end)
+
+  describe("find_all_ws_for_rbac_user", function()
+    local default_ws, another_ws
+    local users = {}
+
+    local function includes(tbl, item, pk)
+      for _, v in ipairs(tbl) do
+        if v[pk] == item[pk] then return true end
+      end
+      return false
+    end
+
+    setup(function()
+      local cache = {
+        get = function(self, x, y, f, ...) return f(...) end,
+      }
+
+      if _G.kong then
+        _G.kong.db = db
+        _G.kong.cache =  cache
+      else
+        _G.kong = { db = db,
+          cache = cache
+        }
+      end
+
+      default_ws = assert(workspaces.fetch_workspace("default"))
+      another_ws = assert(db.workspaces:insert({ name = "ws1" }))
+
+      local function generate_user (i, ws, endpoint_workspace)
+        return workspaces.run_with_ws_scope({ws}, function ()
+          local user = assert(db.rbac_users:insert {
+            name = "some-user-" .. i,
+            user_token = "billgatesletmeinnow" .. i,
+          })
+
+          local endpoints = {}
+          local role
+
+          if endpoint_workspace then
+            role = db.rbac_roles:insert({ name = "role" .. i })
+
+            workspaces.run_with_ws_scope({}, function ()
+              assert(db.rbac_user_roles:insert({
+                user = user,
+                role = role,
+              }))
+            end)
+
+            endpoints = {
+              [1] = assert(db.rbac_role_endpoints:insert({
+                role = role,
+                workspace = endpoint_workspace,
+                endpoint = "*",
+                actions = rbac.actions_bitfields.read,
+              }))
+            }
+          end
+
+          return {
+            user = user,
+            role = role,
+            endpoints = endpoints
+          }
+        end)
+      end
+
+      users[1] = generate_user(1, default_ws, "*")
+      users[2] = generate_user(2, another_ws, another_ws.name)
+      users[3] = generate_user(3, default_ws, "*")
+      workspaces.run_with_ws_scope({}, function ()
+        assert(db.rbac_user_roles:insert({
+          user = users[3].user,
+          role = users[2].role
+        }))
+      end)
+
+      users[4] = generate_user(4, default_ws, nil)
+
+      users[5] = generate_user(5, default_ws, "*")
+      workspaces.run_with_ws_scope({default_ws}, function ()
+        assert(db.rbac_role_endpoints:insert({
+          role = users[5].role,
+          workspace = "*",
+          endpoint = "/consumers",
+          actions = rbac.actions_bitfields.create
+        }))
+      end)
+    end)
+
+    before_each(function()
+      ngx.ctx.workspaces = { default_ws }
+    end)
+
+
+    it("returns only single workspace associated with rbac_user when role endpoint is '*'", function()
+      local wss, err = rbac.find_all_ws_for_rbac_user(users[1].user)
+
+      assert.is_nil(err)
+      assert.not_nil(wss)
+      assert.equal(#wss, 2)
+      assert.is_true(includes(wss, {name = "*"}, 'name'))
+      assert.is_true(includes(wss, default_ws, 'name'))
+    end)
+
+    it("returns workspaces of roles associated with rbac_user in another ws only", function()
+      local wss, err = rbac.find_all_ws_for_rbac_user(users[2].user)
+
+      assert.is_nil(err)
+      assert.not_nil(wss)
+      assert.equal(#wss, 1)
+      assert.equal(wss[1].name, another_ws.name)
+    end)
+
+    it("returns workspaces of roles associated with rbac_user", function()
+      local wss, err = rbac.find_all_ws_for_rbac_user(users[3].user)
+
+      assert.is_nil(err)
+      assert.not_nil(wss)
+      assert.equal(#wss, 3)
+      assert.is_true(includes(wss, another_ws, 'name'))
+      assert.is_true(includes(wss, {name = "*"}, 'name'))
+      assert.is_true(includes(wss, default_ws, 'name'))
+      assert.is_false(includes(wss, {name = "nope"}, 'name'))
+    end)
+
+    it("returns workspaces of rbac_user when no roles are defined", function()
+      local wss, err = rbac.find_all_ws_for_rbac_user(users[4].user)
+
+      assert.is_nil(err)
+      assert.not_nil(wss)
+      assert.equal(#wss, 1)
+      assert.is_nil(users[4].role)
+      assert.equal(wss[1].name, default_ws.name)
+    end)
+
+    it("returns '*' workspaces of rbac_user only once", function()
+      local wss, err = rbac.find_all_ws_for_rbac_user(users[5].user)
+
+      assert.is_nil(err)
+      assert.not_nil(wss)
+      assert.equal(#wss, 2)
+      assert.is_true(includes(wss, default_ws, "name"))
+      assert.is_true(includes(wss, { name = "*" }, "name"))
     end)
   end)
 end)

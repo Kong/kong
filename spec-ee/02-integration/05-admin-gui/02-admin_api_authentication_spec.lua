@@ -25,8 +25,10 @@ local function truncate_tables(db)
 end
 
 local function setup_ws_defaults(dao, db, workspace)
+  local endpoint = "*"
   if not workspace then
     workspace = workspaces.DEFAULT_WORKSPACE
+    endpoint = "*"
   end
 
   -- setup workspace and register rbac default roles
@@ -43,7 +45,7 @@ local function setup_ws_defaults(dao, db, workspace)
   -- create a record we can use to test inter-workspace calls
   assert(db.services:insert({  host = workspace .. "-example.com", }))
 
-  ee_helpers.register_rbac_resources(db, workspace)
+  ee_helpers.register_rbac_resources(db, endpoint or workspace)
 
   return ws
 end
@@ -145,13 +147,13 @@ for _, strategy in helpers.each_strategy() do
           workspace = "default",
           endpoint = "/services",
           actions = "read"
-        }, { ['Kong-Admin-Token'] = 'letmein-' .. ws.name }, 201)
+        }, { ['Kong-Admin-Token'] = 'letmein-*' }, 201)
 
         post(client, "/" .. ws.name .. "/rbac/roles/another-one/endpoints", {
           workspace = ws.name,
           endpoint = "*",
           actions = "create,read,update,delete"
-        }, { ['Kong-Admin-Token'] = 'letmein-' .. ws.name }, 201)
+        }, { ['Kong-Admin-Token'] = 'letmein-*' }, 201)
 
         assert(db.basicauth_credentials:insert {
           username    = "dj-khaled",
@@ -176,7 +178,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/_kong/admin",
             headers = {
-              ['Kong-Admin-Token'] = 'letmein-' .. 'default',
+              ['Kong-Admin-Token'] = 'letmein-*',
             },
           })
 
@@ -197,7 +199,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/",
             headers = {
-              ['Kong-Admin-Token'] = 'letmein-' .. 'default',
+              ['Kong-Admin-Token'] = 'letmein-*',
             }
           })
 
@@ -497,7 +499,7 @@ for _, strategy in helpers.each_strategy() do
                 token = token
               }
             })
-  
+
             assert.res_status(200, res)
           end
 
@@ -509,7 +511,7 @@ for _, strategy in helpers.each_strategy() do
                 ["Kong-Admin-Token"] = token,
               },
             })
-  
+
             assert.res_status(code, res)
           end
 
@@ -651,7 +653,6 @@ for _, strategy in helpers.each_strategy() do
         client = assert(helpers.admin_client())
 
         local ws = setup_ws_defaults(dao, db) -- default workspace
-
         super_admin = admin(db, ws, 'MacBeth')
         read_only_admin = admin(db, ws, 'Ophelia')
         multiple_groups_admin = admin(db, ws, 'Beatrice')
@@ -687,7 +688,7 @@ for _, strategy in helpers.each_strategy() do
           endpoint = "/services",
           actions = "read",
           negative = true,
-        }, { ['Kong-Admin-Token'] = 'letmein-default' }, 201)
+        }, { ['Kong-Admin-Token'] = 'letmein-*' }, 201)
         assert(db.rbac_user_roles:insert({
           user = super_admin.rbac_user,
           role = user_specified_role,
@@ -701,7 +702,7 @@ for _, strategy in helpers.each_strategy() do
           endpoint = "*",
           actions = "create,read,update,delete",
           negative = false,
-        }, { ['Kong-Admin-Token'] = 'letmein-default' }, 201)
+        }, { ['Kong-Admin-Token'] = 'letmein-*' }, 201)
         ngx.ctx.workspaces = {}
         assert(db.group_rbac_roles:insert({
           group = group3,

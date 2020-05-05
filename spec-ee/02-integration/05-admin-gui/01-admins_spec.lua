@@ -31,11 +31,15 @@ for _, strategy in helpers.each_strategy() do
       })
       assert(helpers.start_kong(config))
 
-      another_ws = assert(bp.workspaces:insert({
+      another_ws = assert(db.workspaces:insert({
         name = "another-one",
       }))
 
       ee_helpers.register_rbac_resources(db)
+
+      workspaces.run_with_ws_scope({ another_ws }, function()
+        ee_helpers.register_rbac_resources(db, "another-one")
+      end)
 
       for i = 1, 3 do
         -- admins that are already approved
@@ -99,7 +103,7 @@ for _, strategy in helpers.each_strategy() do
       before_each(function()
         gui_client = assert(ee_helpers.admin_gui_client())
       end)
-  
+
       after_each(function()
         if gui_client then gui_client:close() end
       end)
@@ -451,23 +455,32 @@ for _, strategy in helpers.each_strategy() do
       describe("/admins/:admin/workspaces", function()
         describe("GET", function()
           it("retrieves workspaces for an admin by id", function()
-            -- put an admin in another workspace besides default
-            assert(admins_helpers.link_to_workspace(admins[2], another_ws))
-
-            local res = assert(client:send {
-              method = "GET",
-              path = "/admins/" .. admins[2].id .. "/workspaces",
+            assert.res_status(201, assert(client:send {
+              method = "POST",
+              path = "/another-one/admins/" .. admins[2].id .. "/roles",
               headers = {
                 ["Kong-Admin-Token"] = "letmein-default",
                 ["Content-Type"]     = "application/json",
               },
-            })
+              body = {
+                roles = "read-only"
+              }
+            }))
+
+            local res = client:send {
+              method = "GET",
+              path = "/another-one/admins/" .. admins[2].username .. "/workspaces",
+              headers = {
+                ["Kong-Admin-Token"] = "letmein-default",
+                ["Content-Type"]     = "application/json",
+              },
+            }
 
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
 
-            local names = { json[1].name, json[2].name }
             assert.equal(2, #json)
+            local names = { json[1].name, json[2].name }
             assert.contains("default", names)
             assert.contains(another_ws.name, names)
           end)
@@ -496,7 +509,7 @@ for _, strategy in helpers.each_strategy() do
 
             local res = assert(client:send {
               method = "GET",
-              path = "/admins/" .. lesser_admin.username .. "/workspaces",
+              path = "/".. another_ws.name .. "/admins/" .. lesser_admin.username .. "/workspaces",
               headers = {
                 ["Kong-Admin-Token"] = "letmein-default",
                 ["Content-Type"]     = "application/json",
@@ -520,11 +533,22 @@ for _, strategy in helpers.each_strategy() do
             })
             assert.res_status(404, res)
           end)
+
+          it("returns 404 if admin is not in workspace", function()
+            local res = assert(client:send {
+              method = "GET",
+              path = "/another-one/admins/" .. admins[1].id .. "/workspaces",
+              headers = {
+                ["Kong-Admin-Token"] = "letmein-default",
+                ["Content-Type"]     = "application/json",
+              },
+            })
+            assert.res_status(404, res)
+          end)
         end)
       end)
     end)
   end)
-
   describe("Admin API - Admins Register #" .. strategy, function()
     local client
     local db
@@ -809,7 +833,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         ee_helpers.register_rbac_resources(db)
         client = assert(helpers.admin_client())
-        
+
         -- init outside_admin
         local another_ws = assert(db.workspaces:insert({
           name = "another-one",
@@ -1003,7 +1027,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/auth",
             headers = {
-              ["Authorization"] = "Basic " .. 
+              ["Authorization"] = "Basic " ..
                                   ngx.encode_base64("kinman:" .. new_password),
               ["Kong-Admin-User"] = "kinman",
             }
@@ -1036,7 +1060,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/auth",
             headers = {
-              ["Authorization"] = "Basic " .. 
+              ["Authorization"] = "Basic " ..
                                   ngx.encode_base64("kinman:" .. new_password),
               ["Kong-Admin-User"] = "kinman",
             }
@@ -1836,7 +1860,6 @@ for _, strategy in helpers.each_strategy() do
         assert.is_not_nil(role)
       end)
 
-      admins_helpers.link_to_workspace(outside_admin, "another-one")
       workspaces.run_with_ws_scope({ws}, function ()
         assert(db.basicauth_credentials:insert {
           username    = outside_admin.username,

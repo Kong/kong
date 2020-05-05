@@ -660,29 +660,27 @@ function _M.resolve_ws_scope(ctx, route)
 end
 
 
-local function load_user_workspace_scope(ctx, name)
+local function load_user_workspace_scope(ctx, user)
+  local rbac = require "kong.rbac"
   local old_wss = ctx.workspaces
 
   ctx.workspaces = {}
-  local rows, err = kong.db.workspace_entities:select_all({
-    entity_type  = "rbac_users",
-    unique_field_name = "name",
-    unique_field_value = name,
-  })
+  -- TODO: remove dep on rbac module
+  local rows, err = rbac.find_all_ws_for_rbac_user(user)
   ctx.workspaces = old_wss
 
   if err or not rows[1] then
     return nil, err
   end
 
-  return unique_workspaces(rows)
+  return rows
 end
 
 
 -- Return workspace scope, given api belongs
 -- to, to the the context.
-function _M.resolve_user_ws_scope(ctx, name)
-  return load_user_workspace_scope(ctx, name)
+function _M.resolve_user_ws_scope(ctx, user)
+  return load_user_workspace_scope(ctx, user)
 end
 
 

@@ -405,12 +405,14 @@ end
 
 local function retrieve_roles_ids(db, user_id)
   local relationship_ids = {}
-  for row, err in db.rbac_user_roles:each_for_user({id = user_id }, nil, {skip_rbac = true}) do
-    if err then
-      return nil, err
+  workspaces.run_with_ws_scope({}, function()
+    for row, err in db.rbac_user_roles:each_for_user({id = user_id}, nil, {skip_rbac = true}) do
+      if err then
+        return nil, err
+      end
+      relationship_ids[#relationship_ids + 1] = row
     end
-    relationship_ids[#relationship_ids + 1] = row
-  end
+  end)
 
   return relationship_ids
 end
@@ -451,7 +453,6 @@ local function get_user_roles(db, user)
                                           retrieve_roles_ids,
                                           db,
                                           user.id)
-
   if err then
     log(ngx.ERR, "err retrieving roles for user", user.id, ": ", err)
     return nil, err
@@ -464,8 +465,10 @@ local function get_user_roles(db, user)
     local foreign_id = relationship_ids[i]["role"].id
     local role_entity_key = db.rbac_roles:cache_key(foreign_id)
 
-    local relationship, err = cache:get(role_entity_key, nil,
+    local relationship, err
+    relationship, err = cache:get(role_entity_key, nil,
       retrieve_relationship_entity, "rbac_roles",foreign_id)
+
     if err then
       kong.log.err("err retrieving relationship via id ", foreign_id, ": ", err)
       return nil, err
@@ -511,15 +514,16 @@ function _M.get_groups_roles(db, groups)
       for i = 1, #relationship_ids do
         local rbac_role_id = relationship_ids[i]["rbac_role"].id
         local role_entity_key = db.rbac_roles:cache_key(rbac_role_id)
-
-        local relationship, err = cache:get(role_entity_key, nil,
+        workspaces.run_with_ws_scope({}, function ()
+          local relationship, err = cache:get(role_entity_key, nil,
           retrieve_relationship_entity, "rbac_roles", rbac_role_id)
-        if err then
-          kong.log.err("err retrieving rbac_role for id: ", rbac_role_id, ": ", err)
-          return nil, err
-        end
+          if err then
+            kong.log.err("err retrieving rbac_role for id: ", rbac_role_id, ": ", err)
+            return nil, err
+          end
 
-        relationship_objs[#relationship_objs + 1] = relationship
+          relationship_objs[#relationship_objs + 1] = relationship
+        end)
       end
     end
   end
@@ -1414,8 +1418,9 @@ load_rbac_ctx = function(ctx, rbac_user, groups)
     end
   end
 
-  local user_ws_scope, err = workspaces.resolve_user_ws_scope(ctx, user.name)
+  local user_ws_scope, err = workspaces.resolve_user_ws_scope(ctx, user)
   if err then
+    kong.log.err(err)
     return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
@@ -1429,7 +1434,6 @@ load_rbac_ctx = function(ctx, rbac_user, groups)
   local group_roles, err = workspaces.run_with_ws_scope({}, _M.get_groups_roles,
                                                         kong.db,
                                                         ngx.ctx.authenticated_groups)
-
   if err then
     kong.log.err("error getting groups roles", err)
     return kong.response.exit(500, { message = "An unexpected error occurred" })
@@ -1581,6 +1585,66 @@ function _M.check_cascade(entities, rbac_ctx)
   end
 
   return true
+end
+
+function _M.find_all_ws_for_rbac_user(rbac_user)
+    -- get roles across all workspaces
+  local roles, err = workspaces.run_with_ws_scope({}, _M.get_user_roles,
+                                                  kong.db,
+                                                  rbac_user)
+  if err then
+    return nil, err
+  end
+
+  local group_roles, err = workspaces.run_with_ws_scope({},
+                                                   _M.get_groups_roles,
+                                                   kong.db,
+                                                   ngx.ctx.authenticated_groups)
+
+  if err then
+    return nil, err
+  end
+
+  roles = _M.merge_roles(roles, group_roles)
+
+  local wss = {}
+  local wsNameMap = {}
+
+  for _, role in ipairs(roles) do
+    workspaces.run_with_ws_scope({}, function ()
+      for _, role_endpoint in ipairs(_M.get_role_endpoints(kong.db, role)) do
+        local wsName = role_endpoint.workspace
+        if wsName == "*" then
+          if not wsNameMap[wsName] then
+            wss[#wss + 1] = { name = "*" }
+            wsNameMap["*"] = true
+          end
+        else
+          if not wsNameMap[wsName] then
+            wsNameMap[wsName] = true
+            wss[#wss + 1] = kong.db.workspaces:select_by_name(wsName)
+          end
+        end
+      end
+    end)
+  end
+
+  -- TODO: just read the rbac_user.workspace_id once ready
+  local rows, err = workspaces.find_workspaces_by_entity({
+    entity_id = rbac_user.id,
+    entity_type = "rbac_users",
+    unique_field_name = "id",
+  })
+
+  if err then
+    return nil, err
+  end
+
+  if not wsNameMap[rows[1].workspace_name] then
+    wss[#wss + 1] = kong.db.workspaces:select_by_name(rows[1].workspace_name)
+  end
+
+  return wss
 end
 
 do

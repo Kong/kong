@@ -37,6 +37,7 @@ local function transmogrify(admin)
       email = admin.email,
       status = admin.status,
       rbac_token_enabled = admin.rbac_token_enabled,
+      workspaces = admin.workspaces,
       created_at = admin.created_at,
       updated_at = admin.updated_at,
     }
@@ -92,21 +93,14 @@ function _M.find_all()
 
   local ws_admins = {}
   setmetatable(ws_admins, cjson.empty_array_mt)
-
   for _, v in ipairs(all_admins) do
-    -- see if admin is in current workspace
-    local ws, err = kong.db.workspace_entities:select_all({
-      workspace_name = ngx.ctx.workspaces[1].name,
-      entity_type = "rbac_users",
-      entity_id = v.rbac_user.id,
-      unique_field_name = "id",
-    })
-    if err then
-      return nil, err
-    end
+    v.workspaces = rbac.find_all_ws_for_rbac_user(v.rbac_user)
 
-    if ws[1] then
-      ws_admins[#ws_admins + 1] = transmogrify(v)
+    for _, ws in ipairs(v.workspaces) do
+      if ws.name == ngx.ctx.workspaces[1].name or ws.name == '*' then
+        ws_admins[#ws_admins + 1] = transmogrify(v)
+        break
+      end
     end
   end
 
@@ -238,22 +232,6 @@ function _M.create(params, opts)
   end
 
   if admin then
-    -- already exists. try to link them to current workspace.
-    local linked, err = _M.link_to_workspace(admin, opts.workspace)
-
-    if err then
-      return nil, err
-    end
-
-    if linked then
-      -- in a POST, this isn't the greatest response code, but we
-      -- haven't really created an admin, so...
-      return {
-        code = 200,
-        body = { admin = opts.raw and admin or transmogrify(admin) },
-      }
-    end
-
     -- if we got here, user already exists
     return {
       code = 409,
@@ -518,52 +496,10 @@ function _M.delete(admin_to_delete, opts)
   return { code = 204 }
 end
 
-local function find_all_ws_for_rbac_user(rbac_user)
-  local roles, err, ws
-  -- get roles across all workspaces
-  roles, err = workspaces.run_with_ws_scope({},
-                                            rbac.get_user_roles,
-                                            kong.db,
-                                            rbac_user)
-  if err then
-    return nil, err
+function _M.find_by_username_or_id(username_or_id, raw, require_workspace_ctx)
+  if require_workspace_ctx == nil then
+    require_workspace_ctx = true
   end
-
-  local group_roles = workspaces.run_with_ws_scope({},
-                                                   rbac.get_groups_roles,
-                                                   kong.db,
-                                                   ngx.ctx.authenticated_groups)
-  roles = rbac.merge_roles(roles, group_roles)
-
-  ws, err = workspaces.find_workspaces_by_entity({
-    entity_type = "rbac_users",
-    entity_id = rbac_user.id,
-  })
-  if err then
-    return nil, err
-  end
-
-  local w = {}
-  for _, v in ipairs(ws) do
-    w[v.workspace_name] = true
-  end
-
-  for _, role in ipairs(roles) do
-    for _, role_endpoint in ipairs(rbac.get_role_endpoints(kong.db, role)) do
-      w[role_endpoint.workspace] = true
-    end
-  end
-
-  local res = {}
-  for k, v in pairs(w) do
-    table.insert(res, k)
-  end
-
-  return res
-end
-
-
-function _M.find_by_username_or_id(username_or_id, raw)
   if not username_or_id then
     return nil
   end
@@ -571,41 +507,47 @@ function _M.find_by_username_or_id(username_or_id, raw)
   local admin, err
 
   if utils.is_valid_uuid(username_or_id) then
-    admin, err = kong.db.admins:select({ id = username_or_id })
-    if err then
-      return err
-    end
-  end
-
-  if not admin then
-    admin, err = kong.db.admins:select_by_username(username_or_id)
+    admin, err = workspaces.run_with_ws_scope({}, function ()
+      return kong.db.admins:select({ id = username_or_id })
+    end)
     if err then
       return nil, err
     end
   end
 
   if not admin then
+    admin, err = workspaces.run_with_ws_scope({}, function ()
+      return kong.db.admins:select_by_username(username_or_id)
+    end)
+    if err then
+      return nil, err
+    end
+  end
+--
+  if not admin then
     return nil
   end
 
-  local wss = find_all_ws_for_rbac_user(admin.rbac_user)
-  if not wss[1] then
-    return nil
+  local wss, err = rbac.find_all_ws_for_rbac_user(admin.rbac_user)
+
+  admin.workspaces = wss
+
+  if err then
+    return nil, err
   end
 
   local c_ws_name = ngx.ctx.workspaces[1] and ngx.ctx.workspaces[1].name
 
-  if not c_ws_name then
+  if not c_ws_name or not require_workspace_ctx then
     return raw and admin or transmogrify(admin)
   end
 
   -- see if this admin is in this workspace
-  for _, v in ipairs(wss) do
-    if v == c_ws_name  then
+  for _, ws in ipairs(wss) do
+    if ws.name == c_ws_name or ws.name == '*' then
       return raw and admin or transmogrify(admin)
     end
   end
-
 end
 
 
@@ -616,42 +558,6 @@ function _M.find_by_email(email)
   end
 
   return admins[1]
-end
-
-
-function _M.link_to_workspace(admin, workspace)
-  -- see if this admin is already in this workspace. Look it up by its
-  -- rbac_user id, because admins themselves are global.
-  local ws_list, err = workspaces.find_workspaces_by_entity({
-    workspace_id = workspace.id,
-    entity_type = "rbac_users",
-    entity_id = admin.rbac_user.id,
-  })
-
-  if err then
-    return nil, err
-  end
-
-  if ws_list and ws_list[1] then
-    -- already linked, so no new link made
-    return false
-  end
-
-  -- link consumer
-  local _, err = workspaces.add_entity_relation("consumers", admin.consumer, workspace)
-
-  if err then
-    return nil, err
-  end
-
-  -- link rbac_user
-  local _, err = workspaces.add_entity_relation("rbac_users", admin.rbac_user, workspace)
-
-  if err then
-    return nil, err
-  end
-
-  return true
 end
 
 
@@ -666,33 +572,11 @@ function _M.workspaces_for_admin(username_or_id)
     return { code = 404, body = { message = "not found" }}
   end
 
-  local rows, err = workspaces.find_workspaces_by_entity({
-    entity_id = admin.rbac_user.id,
-    entity_type = "rbac_users",
-    unique_field_name = "id",
-  })
-
-  if err then
-    return nil, err
-  end
-
-  local ws_for_admin = {}
-  for i, workspace in ipairs(rows) do
-    local ws, err = kong.db.workspaces:select({ id = workspace.workspace_id })
-
-    -- since we're selecting by id and we got these id's from a list of
-    -- workspace entities, whatever goes wrong here indicates some kind
-    -- of data corruption. bail early.
-    if err or not ws then
-      return nil, (err or "workspace not found: "..  workspace.name)
-    end
-
-    ws_for_admin[i] = ws
-  end
+  local wss = rbac.find_all_ws_for_rbac_user(admin.rbac_user)
 
   return {
     code = 200,
-    body = ws_for_admin,
+    body = setmetatable(wss, cjson.empty_array_mt),
   }
 end
 
