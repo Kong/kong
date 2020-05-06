@@ -43,6 +43,9 @@ local COMMA = byte(",")
 local SPACE = byte(" ")
 
 
+local HOST_PORTS = {}
+
+
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
 local EMPTY_T = {}
 local TTL_ZERO = { ttl = 0 }
@@ -871,6 +874,10 @@ return {
 
   init_worker = {
     before = function()
+      if kong.configuration.host_ports then
+        HOST_PORTS = kong.configuration.host_ports
+      end
+
       if kong.configuration.anonymous_reports then
         reports.configure_ping(kong.configuration)
         reports.add_ping_value("database_version", kong.db.infos.db_ver)
@@ -953,6 +960,8 @@ return {
   },
   preread = {
     before = function(ctx)
+      ctx.host_port = HOST_PORTS[var.server_port] or var.server_port
+
       local router = get_updated_router()
 
       local match_t = router.exec()
@@ -986,6 +995,8 @@ return {
   },
   rewrite = {
     before = function(ctx)
+      ctx.host_port = HOST_PORTS[var.server_port] or var.server_port
+
       -- special handling for proxy-authorization and te headers in case
       -- the plugin(s) want to specify them (store the original)
       ctx.http_proxy_authorization = var.http_proxy_authorization
@@ -1012,7 +1023,8 @@ return {
       local http_version   = ngx.req.http_version()
       local scheme         = var.scheme
       local host           = var.host
-      local port           = tonumber(var.server_port, 10)
+      local port           = tonumber(ctx.host_port, 10)
+                          or tonumber(var.server_port, 10)
       local content_type   = var.content_type
 
       local route          = match_t.route

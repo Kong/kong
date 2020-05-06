@@ -202,6 +202,7 @@ local PREFIX_PATHS = {
 -- `array`: a comma-separated list
 local CONF_INFERENCES = {
   -- forced string inferences (or else are retrieved as numbers)
+  port_maps = { typ = "array" },
   proxy_listen = { typ = "array" },
   admin_listen = { typ = "array" },
   status_listen = { typ = "array" },
@@ -596,6 +597,34 @@ local function check_and_infer(conf, opts)
   ---------------------
   -- custom validations
   ---------------------
+
+  conf.host_ports = {}
+  if conf.port_maps then
+    local MIN_PORT = 1
+    local MAX_PORT = 65535
+
+    for _, port_map in ipairs(conf.port_maps) do
+      local colpos = string.find(port_map, ":", nil, true)
+      if not colpos then
+        errors[#errors + 1] = "invalid port mapping (`port_maps`): " .. port_map
+
+      else
+        local host_port_str = string.sub(port_map, 1, colpos - 1)
+        local host_port_num = tonumber(host_port_str, 10)
+        local kong_port_str = string.sub(port_map, colpos + 1)
+        local kong_port_num = tonumber(kong_port_str, 10)
+
+        if  (host_port_num and host_port_num >= MIN_PORT and host_port_num <= MAX_PORT)
+        and (kong_port_num and kong_port_num >= MIN_PORT and kong_port_num <= MAX_PORT)
+        then
+            conf.host_ports[kong_port_num] = host_port_num
+            conf.host_ports[kong_port_str] = host_port_num
+        else
+          errors[#errors + 1] = "invalid port mapping (`port_maps`): " .. port_map
+        end
+      end
+    end
+  end
 
   if conf.database == "cassandra" then
     if string.find(conf.cassandra_lb_policy, "DCAware", nil, true)
