@@ -9,6 +9,7 @@
 - Add `config.session_redis_server_name`
 - Add `config.session_redis_cluster_nodes`
 - Add `config.session_redis_cluster_maxredirections`
+- Add `config.preserve_query_args`
 
 
 ## v1.4.2

@@ -460,6 +460,13 @@ local config = {
             },
           },
           {
+            preserve_query_args = {
+              required = false,
+              type     = "boolean",
+              default  = false,
+            },
+          },
+          {
             token_endpoint = typedefs.url {
               required = false,
             },

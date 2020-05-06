@@ -25,6 +25,7 @@ local null            = ngx.null
 local header          = ngx.header
 local set_header      = ngx.req.set_header
 local clear_header    = ngx.req.clear_header
+local set_uri_args    = ngx.req.set_uri_args
 local escape_uri      = ngx.escape_uri
 local encode_base64   = ngx.encode_base64
 local tonumber        = tonumber
@@ -1167,6 +1168,7 @@ function OICHandler.access(_, conf)
 
   -- dynamic login redirect uri (only used with authorization code flow)
   local dynamic_login_redirect_uri
+  local dynamic_login_redirect_uri_args
 
   -- try to open session
   local session
@@ -1725,6 +1727,9 @@ function OICHandler.access(_, conf)
                 -- as before.
                 authorization:start()
                 authorization.data.uri = redirect_uri(args)
+                if args.get_conf_arg("preserve_query_args") then
+                  authorization.data.uri_args = var.args
+                end
                 authorization:save()
 
                 log("redirecting client to openid connect provider with previous parameters")
@@ -1734,6 +1739,10 @@ function OICHandler.access(_, conf)
               log("authorization code flow verified")
 
               dynamic_login_redirect_uri = authorization.data.uri
+
+              if args.get_conf_arg("preserve_query_args") then
+                dynamic_login_redirect_uri_args = authorization.data.uri_args
+              end
 
               authorization:hide()
               authorization:destroy()
@@ -1808,6 +1817,10 @@ function OICHandler.access(_, conf)
               nonce         = token_endpoint_args.nonce,
               code_verifier = token_endpoint_args.code_verifier,
             }
+
+            if args.get_conf_arg("preserve_query_args") then
+              authorization.data.uri_args = var.args
+            end
 
             authorization:save()
 
@@ -3252,29 +3265,38 @@ function OICHandler.access(_, conf)
 
         elseif login_action == "redirect" then
           local login_redirect_uri = trusted_client.login_redirect_uri or
-            dynamic_login_redirect_uri
+                                     dynamic_login_redirect_uri
+
+          local query
+          local fragment
+
+          local fragment_start = find(login_redirect_uri, "#", 1, true)
+          if fragment_start then
+            fragment = sub(login_redirect_uri, fragment_start)
+            login_redirect_uri = sub(login_redirect_uri, 1, fragment_start - 1)
+          end
+
+          local query_start = find(login_redirect_uri, "?", 1, true)
+          if query_start then
+            query = gsub(sub(login_redirect_uri, query_start), "&+$", "")
+            login_redirect_uri = sub(login_redirect_uri, 1, query_start - 1)
+          end
+
+          if dynamic_login_redirect_uri_args then
+            if query then
+              query = gsub(concat({ query, dynamic_login_redirect_uri_args }, "&"), "&+$", "")
+            else
+              query = "?" ..  gsub(dynamic_login_redirect_uri_args, "&+$", "")
+            end
+          end
 
           if login_redirect_uri then
-            local u = { login_redirect_uri }
-            local i = 2
-
             local login_tokens = args.get_conf_arg("login_tokens")
             if login_tokens then
               log("adding login tokens to redirect uri")
 
-              local login_redirect_mode   = args.get_conf_arg("login_redirect_mode", "fragment")
-              local redirect_params_added = false
-
-              if login_redirect_mode == "query" then
-                if find(u[1], "?", 1, true) then
-                  redirect_params_added = true
-                end
-
-              else
-                if find(u[1], "#", 1, true) then
-                  redirect_params_added = true
-                end
-              end
+              local login_token_argc = 0
+              local login_token_args
 
               for _, name in ipairs(login_tokens) do
                 local value
@@ -3303,30 +3325,50 @@ function OICHandler.access(_, conf)
                     value = tostring(value)
                   end
 
-                  if not redirect_params_added then
-                    if login_redirect_mode == "query" then
-                      u[i] = "?"
-                    else
-                      u[i] = "#"
-                    end
-
-                    redirect_params_added = true
-                  else
-                    u[i] = "&"
+                  if not login_token_args then
+                    login_token_args = {}
                   end
 
-                  u[i+1] = name
-                  u[i+2] = "="
-                  u[i+3] = value
-                  i=i+4
+                  login_token_args[login_token_argc + 1] = name
+                  login_token_args[login_token_argc + 2] = "="
+                  login_token_args[login_token_argc + 3] = value
+                  login_token_args[login_token_argc + 4] = "&"
+                  login_token_argc = login_token_argc + 4
                 end
               end
+
+              if login_token_argc > 0 then
+                login_token_args = concat(login_token_args, nil, 1, login_token_argc - 1)
+                local login_redirect_mode = args.get_conf_arg("login_redirect_mode", "fragment")
+                if login_redirect_mode == "query" then
+                  if query then
+                    query =  gsub(concat({ query, login_token_args }, "&"), "&+$", "")
+                  else
+                    query = "?" .. gsub(login_token_args, "&+$", "")
+                  end
+
+                else
+                  if fragment then
+                    fragment = gsub(concat({ fragment, login_token_args }, "&"), "&+$", "")
+                  else
+                    fragment = "#" .. gsub(login_token_args, "&+$", "")
+                  end
+                end
+              end
+            end
+
+            if query then
+              login_redirect_uri = login_redirect_uri .. query
+            end
+
+            if fragment then
+              login_redirect_uri = login_redirect_uri .. fragment
             end
 
             no_cache_headers()
 
             log("login with redirect login action")
-            return redirect(concat(u))
+            return redirect(login_redirect_uri)
 
           else
             log.notice("login action was set to redirect but no login redirect uri was specified")
@@ -3334,6 +3376,11 @@ function OICHandler.access(_, conf)
         end
       end
     end
+  end
+
+  if dynamic_login_redirect_uri_args then
+    log("preserving uri args")
+    set_uri_args(dynamic_login_redirect_uri_args)
   end
 
   log("proxying to upstream")
