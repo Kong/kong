@@ -555,7 +555,7 @@ describe("Admin API #off", function()
       assert.response(res).has.status(201)
     end)
 
-    it("updates stream subsystem config", function()
+    it("#flaky updates stream subsystem config", function()
       local res = assert(client:send {
         method = "POST",
         path = "/config",
