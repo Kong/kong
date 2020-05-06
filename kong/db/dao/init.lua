@@ -40,6 +40,18 @@ local DAO   = {}
 DAO.__index = DAO
 
 
+local function remove_nulls(tbl)
+  for k,v in pairs(tbl) do
+    if v == null then
+      tbl[k] = nil
+    elseif type(v) == "table" then
+      tbl[k] = remove_nulls(v)
+    end
+  end
+  return tbl
+end
+
+
 local function validate_size_type(size)
   if type(size) ~= "number" then
     error("size must be a number", 3)
@@ -362,7 +374,7 @@ end
 
 
 local function check_update(self, key, entity, options, name)
-  local entity_to_update, err, read_before_write, check_immutable_fields =
+  local entity_to_update, err, check_immutable_fields =
     self.schema:process_auto_fields(entity, "update")
   if not entity_to_update then
     local err_t = self.errors:schema_violation(err)
@@ -370,39 +382,35 @@ local function check_update(self, key, entity, options, name)
   end
 
   local rbw_entity
-  if read_before_write then
-    local err, err_t
-    if name then
-       rbw_entity, err, err_t = self["select_by_" .. name](self, key, options)
-    else
-       rbw_entity, err, err_t = self:select(key, options)
-    end
-    if err then
-      return nil, nil, err, err_t
-    end
+  local err, err_t
+  if name then
+     rbw_entity, err, err_t = self["select_by_" .. name](self, key, options)
+  else
+     rbw_entity, err, err_t = self:select(key, options)
+  end
+  if err then
+    return nil, nil, err, err_t
+  end
 
-    if rbw_entity and check_immutable_fields then
-      local ok, errors = self.schema:validate_immutable_fields(entity_to_update, rbw_entity)
-
-      if not ok then
-        local err_t = self.errors:schema_violation(errors)
-        return nil, nil, tostring(err_t), err_t
-      end
-    end
-
-    if rbw_entity then
-      entity_to_update = self.schema:merge_values(entity_to_update, rbw_entity)
-    else
-      local err_t = name
-                    and self.errors:not_found_by_field({ [name] = key })
-                    or  self.errors:not_found(key)
+  if rbw_entity and check_immutable_fields then
+    local ok, errors = self.schema:validate_immutable_fields(entity_to_update, rbw_entity)
+    if not ok then
+      local err_t = self.errors:schema_violation(errors)
       return nil, nil, tostring(err_t), err_t
     end
   end
 
+  if rbw_entity then
+    entity_to_update = self.schema:merge_values(entity_to_update, rbw_entity)
+  else
+    local err_t = name and self.errors:not_found_by_field({ [name] = key })
+                        or self.errors:not_found(key)
+    return nil, nil, tostring(err_t), err_t
+  end
+
   local ok, err, err_t = resolve_foreign(self, entity_to_update)
   if not ok then
-    return nil, err, err_t
+    return nil, nil, err, err_t
   end
 
   local ok, errors = self.schema:validate_update(entity_to_update, entity, rbw_entity)
@@ -433,26 +441,38 @@ local function check_update(self, key, entity, options, name)
 end
 
 
-local function check_upsert(self, entity, options, name, value)
-  local entity_to_upsert, err = self.schema:process_auto_fields(entity, "upsert")
+local function check_upsert(self, key, entity, options, name)
+  local entity_to_upsert, err =
+    self.schema:process_auto_fields(entity, "upsert")
   if not entity_to_upsert then
     local err_t = self.errors:schema_violation(err)
-    return nil, tostring(err_t), err_t
+    return nil, nil, tostring(err_t), err_t
+  end
+
+  local rbw_entity
+  local err, err_t
+  if name then
+     rbw_entity, err, err_t = self["select_by_" .. name](self, key, options)
+  else
+     rbw_entity, err, err_t = self:select(key, options)
+  end
+  if err then
+    return nil, nil, err, err_t
   end
 
   if name then
-    entity_to_upsert[name] = value
+    entity_to_upsert[name] = key
   end
 
   local ok, err, err_t = resolve_foreign(self, entity_to_upsert)
   if not ok then
-    return nil, err, err_t
+    return nil, nil, err, err_t
   end
 
   local ok, errors = self.schema:validate_upsert(entity_to_upsert, entity)
   if not ok then
     local err_t = self.errors:schema_violation(errors)
-    return nil, tostring(err_t), err_t
+    return nil, nil, tostring(err_t), err_t
   end
 
   if name then
@@ -462,14 +482,14 @@ local function check_upsert(self, entity, options, name, value)
   entity_to_upsert, err = self.schema:transform(entity_to_upsert, entity, "upsert")
   if not entity_to_upsert then
     err_t = self.errors:transformation_error(err)
-    return nil, tostring(err_t), err_t
+    return nil, nil, tostring(err_t), err_t
   end
 
   if options ~= nil then
     local ok, errors = validate_options_value(self, options)
     if not ok then
       local err_t = self.errors:invalid_options(errors)
-      return nil, tostring(err_t), err_t
+      return nil, nil, tostring(err_t), err_t
     end
   end
 
@@ -477,7 +497,7 @@ local function check_upsert(self, entity, options, name, value)
     entity_to_upsert.cache_key = self:cache_key(entity_to_upsert)
   end
 
-  return entity_to_upsert
+  return entity_to_upsert, rbw_entity
 end
 
 
@@ -777,8 +797,11 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        local entity_to_upsert, err, err_t = check_upsert(self, entity, options,
-                                                          name, unique_value)
+        local entity_to_upsert, rbw_entity, err, err_t = check_upsert(self,
+                                                                      unique_value,
+                                                                      entity,
+                                                                      options,
+                                                                      name)
         if not entity_to_upsert then
           return nil, err, err_t
         end
@@ -810,7 +833,11 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        self:post_crud_event("update", row, nil, options)
+        if rbw_entity then
+          self:post_crud_event("update", row, rbw_entity, options)
+        else
+          self:post_crud_event("create", row, nil, options)
+        end
 
         return row
       end
@@ -1158,7 +1185,10 @@ function DAO:upsert(primary_key, entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  local entity_to_upsert, err, err_t = check_upsert(self, entity, options)
+  local entity_to_upsert, rbw_entity, err, err_t = check_upsert(self,
+                                                                primary_key,
+                                                                entity,
+                                                                options)
   if not entity_to_upsert then
     return nil, err, err_t
   end
@@ -1186,7 +1216,11 @@ function DAO:upsert(primary_key, entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  self:post_crud_event("update", row, nil, options)
+  if rbw_entity then
+    self:post_crud_event("update", row, rbw_entity, options)
+  else
+    self:post_crud_event("create", row, nil, options)
+  end
 
   return row
 end
@@ -1277,6 +1311,7 @@ function DAO:select_by_cache_key(cache_key, options)
   if err_t then
     return nil, tostring(err_t), err_t
   end
+
   if not row then
     return nil
   end
@@ -1349,11 +1384,21 @@ function DAO:post_crud_event(operation, entity, old_entity, options)
   end
 
   if self.events then
+    local entity_without_nulls
+    if entity then
+      entity_without_nulls = remove_nulls(utils.deep_copy(entity, false))
+    end
+
+    local old_entity_without_nulls
+    if old_entity then
+      old_entity_without_nulls = remove_nulls(utils.deep_copy(old_entity, false))
+    end
+
     local ok, err = self.events.post_local("dao:crud", operation, {
       operation  = operation,
       schema     = self.schema,
-      entity     = entity,
-      old_entity = old_entity,
+      entity     = entity_without_nulls,
+      old_entity = old_entity_without_nulls,
     })
     if not ok then
       log(ERR, "[db] failed to propagate CRUD operation: ", err)
