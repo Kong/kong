@@ -392,7 +392,7 @@ for _, strategy in helpers.each_strategy() do
 
         describe("#" .. mode, function()
 
-          it("does not perform health checks when disabled (#3304)", function()
+          it("#flaky does not perform health checks when disabled (#3304)", function()
 
             bu.begin_testcase_setup(strategy, bp)
             local old_rv = bu.get_router_version(admin_port_2)
