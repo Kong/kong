@@ -51,10 +51,12 @@ function _M.serialize(ngx, kong)
     end
   end
 
+  local host_port = ctx.host_port or var.server_port
+
   return {
     request = {
       uri = request_uri,
-      url = var.scheme .. "://" .. var.host .. ":" .. var.server_port .. request_uri,
+      url = var.scheme .. "://" .. var.host .. ":" .. host_port .. request_uri,
       querystring = kong.request.get_query(), -- parameters, as a table
       method = kong.request.get_method(), -- http method
       headers = req_headers,
