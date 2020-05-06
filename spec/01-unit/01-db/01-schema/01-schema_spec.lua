@@ -3210,51 +3210,6 @@ describe("schema", function()
       end
     end)
 
-    it("sets 'read_before_write' to true when updating field type record", function()
-      local Test = Schema.new({
-        name = "test",
-        fields = {
-          { config = { type = "record", fields = { foo = { type = "string" } } } },
-        }
-      })
-
-      for _, operation in pairs{ "insert", "update", "select", "delete" } do
-        local assertion = assert.falsy
-
-        if operation == "update" then
-          assertion = assert.truthy
-        end
-
-        local _, _, process_auto_fields = Test:process_auto_fields({
-          config = {
-            foo = "dog"
-          }
-        }, operation)
-
-        assertion(process_auto_fields)
-      end
-    end)
-
-    it("sets 'read_before_write' to false when not updating field type record", function()
-      local Test = Schema.new({
-        name = "test",
-        fields = {
-          { config = { type = "record", fields = { foo = { type = "string" } } } },
-          { name = { type = "string" } }
-        }
-      })
-
-      for _, operation in pairs{ "insert", "update", "select", "delete" } do
-        local assertion = assert.falsy
-
-        local _, _, process_auto_fields = Test:process_auto_fields({
-          name = "cat"
-        }, operation)
-
-        assertion(process_auto_fields)
-      end
-    end)
-
     it("correctly flags check_immutable_fields when immutable present in schema", function()
       local test_schema = {
         name = "test",
@@ -3266,7 +3221,7 @@ describe("schema", function()
       local test_entity = { name = "bob" }
 
       local TestEntities = Schema.new(test_schema)
-      local _, _, _, check_immutable_fields =
+      local _, _, check_immutable_fields =
         TestEntities:process_auto_fields(test_entity, "update")
 
       assert.truthy(check_immutable_fields)
@@ -3283,7 +3238,7 @@ describe("schema", function()
       local test_entity = { name = "bob" }
 
       local TestEntities = Schema.new(test_schema)
-      local _, _, _, check_immutable_fields =
+      local _, _, check_immutable_fields =
         TestEntities:process_auto_fields(test_entity, "update")
 
       assert.falsy(check_immutable_fields)
