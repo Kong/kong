@@ -5,6 +5,7 @@ local cjson = require "cjson"
 local ffi   = require "ffi"
 local http  = require "resty.http"
 local workspaces = require "kong.workspaces"
+local enums        = require "kong.enterprise_edition.dao.enums"
 
 local ipairs        = ipairs
 local math_floor    = math.floor
@@ -634,21 +635,41 @@ local function status_code_query(entity_id, entity, seconds_from_now, interval)
 end
 _M.status_code_query = status_code_query
 
+local function resolve_entity_name(entity)
+  local app_id, app_name, name
+  if entity.type == enums.CONSUMERS.TYPE.APPLICATION then
+    app_id = entity.username:sub(0, entity.username:find("_") - 1)
+    app_name = entity.username:sub(entity.username:find("_") + 1)
+  else
+    name = entity.name or entity.username
+  end
+  return {
+    name = name or "",
+    app_id = app_id or "",
+    app_name = app_name or "",
+  }
+end
+_M.resolve_entity_name = resolve_entity_name
 
+-- TODO: test app name parser with names that contain underscores
 function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   start_ts = start_ts or 36000
 
-  local entities = {}
+  local isTimeSeries = entity_id ~= nil
+  local isConsumer = entity == "consumer"
+
   local plural_entity = entity .. 's'
+  -- if isTimeSeries then select by entity id, resolve entity name
+  -- else build entities table
   local rows, err = workspaces.run_with_ws_scope({}, function()
     return kong.db[plural_entity]:select_all()
   end)
   if err then
     return nil, err
   end
-
+  local entities = {}
   for _, row in ipairs(rows) do
-    entities[row.id] = row.name or row.username
+    entities[row.id] = resolve_entity_name(row)
   end
   
   local seconds_from_now = ngx.time() - start_ts
@@ -656,30 +677,44 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   local stats = {}
   for _, series in ipairs(result) do
     for _, value in ipairs(series.values) do
-      local key, name
-      if entity_id == nil then
+      local key, name, app_id, app_name, isAnonymous
+      if isTimeSeries then
+        isAnonymous = false
+        key = tostring(value[1]) -- timestamp
+        name = entities[entity_id].name
+        app_id = entities[entity_id].app_id
+        app_name = entities[entity_id].app_name
+      else
         local lookup = {
           consumer = series.tags.consumer,
           service = series.tags.service
         }
-        key = lookup[entity] -- consumer/service guid
-        name = entities[key]
-      else
-        key = tostring(value[1]) -- timestamp
-        name = entities[entity_id]
+        isAnonymous = lookup[entity] == ''
+        if isAnonymous == false then
+          key = lookup[entity]
+          name = entities[key].name
+          kong.log.err(name)
+          app_id = entities[key].app_id
+          app_name = entities[key].app_name
+        end
       end
+      if isAnonymous == false then
+        if stats[key] == nil then
+          stats[key] = { ["total"]=0, ["2XX"]=0, ["4XX"]=0, ["5XX"]=0 }
+        end
 
-      if stats[key] == nil then
-        stats[key] = { ["total"]=0, ["2XX"]=0, ["4XX"]=0, ["5XX"]=0 }
+        local status_group = tostring(series.tags.status_f):sub(1, 1) .. "XX"
+
+        local current_total = stats[key]["total"] or 0
+        local current_status = stats[key][status_group] or 0
+        stats[key]["name"] = name
+        if isConsumer then
+          stats[key]["app_id"] = app_id
+          stats[key]["app_name"] = app_name
+        end
+        stats[key]["total"] = current_total + value[2]
+        stats[key][status_group] = current_status + value[2]
       end
-
-      local status_group = tostring(series.tags.status_f):sub(1, 1) .. "XX"
-
-      local current_total = stats[key]["total"] or 0
-      local current_status = stats[key][status_group] or 0
-      stats[key]["name"] = name
-      stats[key]["total"] = current_total + value[2]
-      stats[key][status_group] = current_status + value[2]
     end
   end
 
@@ -694,7 +729,17 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
       "5XX"
     },
   }
-
+  if isConsumer then
+    meta.stat_labels = {
+      "name",
+      "app_name",
+      "app_id",
+      "total",
+      "2XX",
+      "4XX",
+      "5XX"
+    }
+  end
   return { stats=stats, meta=meta }
 end
 
