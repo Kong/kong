@@ -1560,7 +1560,7 @@ function Schema:process_auto_fields(data, context, nulls)
 
   for key, field in self:each_field(data) do
 
-    if field.legacy and field.uuid and data[key] == "" then
+    if field.type == "string" and field.legacy and data[key] == "" then
       data[key] = null
     end
 

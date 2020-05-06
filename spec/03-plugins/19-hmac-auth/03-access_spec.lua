@@ -138,6 +138,19 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local route8 = bp.routes:insert {
+        hosts = { "hmacauth8.com" },
+      }
+
+      bp.plugins:insert {
+        name     = "hmac-auth",
+        route = { id = route8.id },
+        config   = {
+          anonymous  = "",
+          clock_skew = 3000
+        }
+      }
+
       assert(helpers.start_kong {
         database          = strategy,
         real_ip_header    = "X-Forwarded-For",
@@ -1020,6 +1033,18 @@ for _, strategy in helpers.each_strategy() do
         body = cjson.decode(body)
         assert.equal("true", body.headers["x-anonymous-consumer"])
         assert.equal('no-body', body.headers["x-consumer-username"])
+      end)
+
+      it("config.anonymous = '' (empty string) fails with #401", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          body    = {},
+          headers = {
+            ["HOST"] = "hmacauth8.com",
+          },
+        })
+        assert.res_status(401, res)
       end)
 
       it("errors when anonymous user doesn't exist", function()

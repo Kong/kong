@@ -45,6 +45,10 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "basic-auth5.com" },
       }
 
+      local route6 = bp.routes:insert {
+        hosts = { "basic-auth6.com" },
+      }
+
       bp.plugins:insert {
         name     = "basic-auth",
         route = { id = route1.id },
@@ -97,6 +101,14 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route5.id },
         config   = {
           anonymous = anonymous_user.username,
+        },
+      }
+
+      bp.plugins:insert {
+        name     = "basic-auth",
+        route = { id = route6.id },
+        config   = {
+          anonymous = "",
         },
       }
 
@@ -362,6 +374,17 @@ for _, strategy in helpers.each_strategy() do
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal('true', body.headers["x-anonymous-consumer"])
         assert.equal('no-body', body.headers["x-consumer-username"])
+      end)
+
+      it("config.anonymous = '' (empty string) fails with #401", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"] = "basic-auth6.com"
+          }
+        })
+        assert.res_status(401, res)
       end)
 
       it("errors when anonymous user doesn't exist", function()

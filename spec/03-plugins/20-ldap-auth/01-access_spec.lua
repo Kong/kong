@@ -72,6 +72,10 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             hosts = { "ldap7.com" },
           }
 
+          local route8 = bp.routes:insert {
+            hosts = { "ldap8.com" },
+          }
+
           local anonymous_user = bp.consumers:insert {
             username = "no-body"
           }
@@ -163,6 +167,19 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
               attribute = "uid",
               anonymous = anonymous_user.username,
+            }
+          }
+
+          bp.plugins:insert {
+            route = { id = route8.id },
+            name     = "ldap-auth",
+            config   = {
+              ldap_host = ldap_host_aws,
+              ldap_port = 389,
+              start_tls = ldap_strategy.start_tls,
+              base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
+              attribute = "uid",
+              anonymous = "",
             }
           }
 
@@ -500,6 +517,16 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             assert.are.equal("true", value)
             value = assert.request(res).has.header("x-consumer-username")
             assert.equal('no-body', value)
+          end)
+          it("config.anonymous = '' (empty string) fails with #401", function()
+            local res = assert(proxy_client:send {
+              method  = "GET",
+              path    = "/request",
+              headers = {
+                host  = "ldap8.com"
+              }
+            })
+            assert.response(res).has.status(401)
           end)
           it("errors when anonymous user doesn't exist", function()
             local res = assert(proxy_client:send {

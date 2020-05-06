@@ -38,7 +38,7 @@ for _, strategy in helpers.each_strategy() do
 
       local routes = {}
 
-      for i = 1, 13 do
+      for i = 1, 14 do
         routes[i] = bp.routes:insert {
           hosts = { "jwt" .. i .. ".com" },
         }
@@ -133,6 +133,12 @@ for _, strategy in helpers.each_strategy() do
         name     = "jwt",
         route = { id = routes[13].id },
         config   = { anonymous = anonymous_user.username },
+      })
+
+      plugins:insert({
+        name     = "jwt",
+        route = { id = routes[14].id },
+        config   = { anonymous = "" },
       })
 
       plugins:insert({
@@ -788,6 +794,16 @@ for _, strategy in helpers.each_strategy() do
         assert.equal('true', body.headers["x-anonymous-consumer"])
         assert.equal('no-body', body.headers["x-consumer-username"])
         assert.equal(nil, body.headers["x-credential-identifier"])
+      end)
+      it("config.anonymous = '' (empty string) fails with #401", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"] = "jwt14.com"
+          }
+        })
+        assert.res_status(401, res)
       end)
       it("errors when anonymous user doesn't exist", function()
         local res = assert(proxy_client:send {

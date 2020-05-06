@@ -170,6 +170,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       local service11   = admin_api.services:insert()
       local service12   = admin_api.services:insert()
       local service13   = admin_api.services:insert()
+      local service14   = admin_api.services:insert()
 
       local route1 = assert(admin_api.routes:insert({
         hosts     = { "oauth2.com" },
@@ -253,6 +254,12 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         hosts       = { "oauth2_13.com" },
         protocols   = { "http", "https" },
         service     = service13,
+      }))
+
+      local route14 = assert(admin_api.routes:insert({
+        hosts       = { "oauth2_14.com" },
+        protocols   = { "http", "https" },
+        service     = service14,
       }))
 
       admin_api.oauth2_plugins:insert({
@@ -357,6 +364,14 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         config   = {
           scopes    = { "email", "profile", "user.email" },
           anonymous = anonymous_user.username,
+        },
+      })
+
+      admin_api.oauth2_plugins:insert({
+        route = { id = route14.id },
+        config   = {
+          scopes    = { "email", "profile", "user.email" },
+          anonymous = "",
         },
       })
 
@@ -1986,6 +2001,16 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.are.equal("true", body.headers["x-anonymous-consumer"])
         assert.equal('no-body', body.headers["x-consumer-username"])
       end)
+      it("config.anonymous = '' (empty string) fails with #401", function()
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/request",
+          headers = {
+            ["Host"] = "oauth2_14.com"
+          }
+        })
+        assert.res_status(401, res)
+      end)  
       it("errors when anonymous user doesn't exist", function()
         finally(function()
           if proxy_ssl_client then
