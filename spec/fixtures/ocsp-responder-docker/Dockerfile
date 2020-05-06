@@ -17,7 +17,7 @@ RUN chmod +x create_ca.sh && \
     chmod +x get_chain && \
     chmod +x get_cert && \
     chmod +x get_key && \
-    chmod +x get_issuer &
+    chmod +x get_issuer && \
     chmod +x get_ca && \
     chmod +x get_crl
 RUN ./create_ca.sh
