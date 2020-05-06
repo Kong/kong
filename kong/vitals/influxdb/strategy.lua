@@ -635,27 +635,31 @@ local function status_code_query(entity_id, entity, seconds_from_now, interval)
 end
 _M.status_code_query = status_code_query
 
--- entity: consumer or service dao
-local function resolve_entity_name(entity)
-  local app_id, app_name, name
+-- @param entity: consumer or service dao
+local function resolve_entity_metadata(entity)
+  local isService = entity.name ~= nil
+  if isService then
+    return { name = entity.name }
+  end
   if entity.type == enums.CONSUMERS.TYPE.APPLICATION then
-    app_id = entity.username:sub(0, entity.username:find("_") - 1)
-    app_name = entity.username:sub(entity.username:find("_") + 1)
-  else
-    name = entity.name or entity.username
+    return {
+      name = "",
+      app_id = entity.username:sub(0, entity.username:find("_") - 1),
+      app_name = entity.username:sub(entity.username:find("_") + 1)  
+    }
   end
   return {
-    name = name or "",
-    app_id = app_id or "",
-    app_name = app_name or "",
+    name = entity.username or entity.custom_id,
+    app_id = "",
+    app_name = "",
   }
 end
-_M.resolve_entity_name = resolve_entity_name
+_M.resolve_entity_metadata = resolve_entity_metadata
 
--- entity: consumer or service
--- entity_id: UUID or null, signifies how each row is indexed
--- interval: seconds, minutes, hours, days, weeks, months
--- start_ts: seconds from now
+-- @param entity: consumer or service
+-- @param entity_id: UUID or null, signifies how each row is indexed
+-- @param interval: seconds, minutes, hours, days, weeks, months
+-- @param start_ts: seconds from now
 function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   start_ts = start_ts or 36000
   local plural_entity = entity .. 's'
@@ -676,7 +680,7 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   end
   local entities = {}
   for _, r in ipairs(rows) do
-    entities[r.id] = resolve_entity_name(r)
+    entities[r.id] = resolve_entity_metadata(r)
   end
 
   local seconds_from_now = ngx.time() - start_ts
