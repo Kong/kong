@@ -5,7 +5,6 @@ local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 local basicauth_crypto = require "kong.plugins.basic-auth.crypto"
 local workspaces = require "kong.workspaces"
 local singletons = require "kong.singletons"
-local bcrypt = require "bcrypt"
 local cjson = require "cjson"
 
 local cache = {
@@ -542,22 +541,17 @@ for _, strategy in helpers.each_strategy() do
           status = 4,
         })
 
-        local user_token = "my-new-token" .. utils.uuid()
-        local params = {
-          token = user_token
-        }
-
         local original_rbac_user = kong.db.rbac_users:select({id = admin.rbac_user.id})
-        local res = assert(admins_helpers.update_token(admin, params))
+        local res = assert(admins_helpers.update_token(admin, {}))
         local updated_rbac_user = kong.db.rbac_users:select({id = admin.rbac_user.id})
-        assert.not_equal(original_rbac_user.user_token, updated_rbac_user.user_token)
-        assert(bcrypt.verify(user_token, updated_rbac_user.user_token))
+
         assert.equal("Token reset successfully", res.body.message)
+        assert.equal(32, #res.body.token)
+        assert.not_equal(original_rbac_user.user_token, updated_rbac_user.user_token)
         assert.equal(200, res.code)
-        assert.not_equal(admin.rbac_user.user_token, params.token)
       end)
 
-      it("update_token - successful unhashed token", function()
+      it("update_token - successful unhashed", function()
         local admin = db.admins:insert({
           username = "kong_admin",
           email = "test@konghq.com",
@@ -565,64 +559,17 @@ for _, strategy in helpers.each_strategy() do
         })
 
         -- make this look like the bootstrap user
-        local rbac_user = db.rbac_users:update(
-          {
-            id = admin.rbac_user.id
-          },
-          {
-            user_token = "foo",
-            user_token_ident = cjson.null
-          }
-        )
+        local rbac_user = db.rbac_users:update({ id = admin.rbac_user.id }, {
+          user_token = "foo",
+          user_token_ident = cjson.null,
+        })
 
         admin.rbac_user = rbac_user
-        local user_token = "my-new-token" .. utils.uuid()
-        local params = {
-          token = user_token
-        }
 
-        local res = assert(admins_helpers.update_token(admin, params))
+        local res = assert(admins_helpers.update_token(admin, {}))
         assert.equal("Token reset successfully", res.body.message)
         assert.equal(200, res.code)
-      end)
-
-      it("update_token - cannot reuse an existing token", function()
-        local admin = db.admins:insert({
-          username = "an_admin_11",
-          email = "test1@konghq.com",
-          status = 4,
-        })
-
-        local user_token = "my-new-token" .. utils.uuid()
-        local params = {
-          token = user_token
-        }
-
-        assert(admins_helpers.update_token(admin, params))
-        local _, err = admins_helpers.update_token(admin, params)
-        assert.equal("UNIQUE violation detected on '{\"user_token\"}'", err.fields.message)
-      end)
-
-      it("update_token - cannot use another user's token", function()
-        local admin = db.admins:insert({
-          username = "an_admin_12",
-          email = "test1@konghq.com",
-          status = 4,
-        })
-
-        local cool_token = "my-rad-token-" .. utils.uuid()
-
-        local _, _ = db.rbac_users:insert({
-          name = "rbac_to_the_beat",
-          user_token = cool_token,
-        })
-
-        local params = {
-          token = cool_token
-        }
-
-        local _, err = admins_helpers.update_token(admin, params)
-        assert.equal("UNIQUE violation detected on '{\"user_token\"}'", err.fields.message)
+        assert.equal(32, #res.body.token)
       end)
     end)
   end)

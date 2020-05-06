@@ -442,12 +442,14 @@ end
 function _M.update_token(admin, params)
   local expired_ident = admin.rbac_user.user_token_ident
 
-  if not params.token then
-    return { code = 400, body = { message = "You must supply a new token" }}
+  if params.token then
+    return { code = 400, body = { message = "Tokens cannot be set explicitly. Remove token parameter to receive an auto-generated token." }}
   end
 
-  admin.rbac_user.user_token = params.token
-  admin.rbac_user.user_token_ident = rbac.get_token_ident(params.token)
+  local token = utils.random_string()
+
+  admin.rbac_user.user_token = token
+  admin.rbac_user.user_token_ident = rbac.get_token_ident(token)
 
   local check_result, err = kong.db.rbac_users.schema:validate(admin.rbac_user)
   if not check_result then
@@ -477,7 +479,7 @@ function _M.update_token(admin, params)
     kong.cache:invalidate(cache_key)
   end
 
-  return { code = 200, body = { message = "Token reset successfully" }}
+  return { code = 200, body = { token = token, message = "Token reset successfully" }}
 end
 
 

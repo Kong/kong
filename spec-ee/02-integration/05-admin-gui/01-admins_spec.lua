@@ -1900,17 +1900,48 @@ for _, strategy in helpers.each_strategy() do
           local res = client:send {
             method = "PATCH",
             path = "/admins/self/token",
-            body = {
-              token = "foo",
-            },
             headers = {
-              ["Content-Type"] = "application/json",
               ["Kong-Admin-User"] = admin.username,
               cookie = cookie,
             }
           }
-          assert.res_status(200, res)
-          assert(string.find(admin.rbac_user.user_token, "^%$2b%$"))
+          local rando = utils.random_string()
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.equal(#json.token, 32)
+          assert.not_equal(json.token, rando)
+        end)
+
+        it("updates an admin token uniquely across requests", function()
+          local cookie = get_admin_cookie(client, admin.username, 'hunter1')
+          local patch_token = function()
+            local res = client:send {
+              method = "PATCH",
+              path = "/admins/self/token",
+              headers = {
+                ["Kong-Admin-User"] = admin.username,
+                cookie = cookie,
+              }
+            }
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            return json.token
+          end
+
+          local seen = {}
+          local hasDuplicates = false
+          for i=1,10 do
+            local t = patch_token()
+            assert.equal(#t, 32)
+            if not seen[t] then
+              seen[t] = true
+            else
+              hasDuplicates = true
+              break
+            end
+          end
+          assert.is_false(hasDuplicates)
         end)
 
         it("allows read-only admins to update tokens", function()
@@ -1963,43 +1994,24 @@ for _, strategy in helpers.each_strategy() do
           local res = client:send {
             method = "PATCH",
             path = "/admins/self/token",
-            body = {
-              token = "foo1",
-            },
             headers = {
-              ["Content-Type"] = "application/json",
               ["cookie"] = cookie,
               ["Kong-Admin-User"] = admins[3].username,
             }
           }
 
-          assert.res_status(200, res)
-          assert(string.find(admins[3].rbac_user.user_token, "^%$2b%$"))
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.equal(#json.token, 32)
         end)
 
-        it("is workspace agnostic", function()
-          local cookie = get_admin_cookie(client, outside_admin.username, 'outsider1pass')
-          local res = client:send {
-            method = "PATCH",
-            path = "/admins/self/token",
-            body = {
-              token = "foo2",
-            },
-            headers = {
-              ["Content-Type"] = "application/json",
-              ["Kong-Admin-User"] = outside_admin.username,
-              cookie = cookie,
-            }
-          }
-          assert.res_status(200, res)
-          assert(string.find(outside_admin.rbac_user.user_token, "^%$2b%$"))
-        end)
-
-        it("checks for correct number of parameters", function()
+        it("fails when trying to set token explictly", function()
           local cookie = get_admin_cookie(client, admin.username, 'hunter1')
           local res = assert(client:send {
             path = "/admins/self/token",
             body = {
+              token = "this-is-gonna-be-great"
             },
             method = "PATCH",
             headers = {
@@ -2011,7 +2023,8 @@ for _, strategy in helpers.each_strategy() do
 
           res = assert.res_status(400, res)
           local json = cjson.decode(res)
-          assert.equal("You must supply a new token", json.message)
+          assert.equal("Tokens cannot be set explicitly. Remove token parameter to receive an auto-generated token.",
+                       json.message)
         end)
       end)
     end)

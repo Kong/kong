@@ -464,18 +464,12 @@ for _, strategy in helpers.each_strategy() do
           -- see 'rbac.get_user()' and
           -- 'cache invalidation' in 'runloop'.
           do
-            local token = utils.uuid()
-
             local res = assert(client:send {
               method = "PATCH",
               path = "/admins/self/token",
               headers = {
                 ["cookie"] = cookie,
                 ["Kong-Admin-User"] = super_admin.username,
-                ["Content-Type"] = "application/json"
-              },
-              body = {
-                token = token
               }
             })
 
@@ -486,21 +480,19 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("Kong-Admin-Token invalidation: #p1", function()
-          local function reset_token(token)
+          local function reset_token()
             local res = assert(client:send {
               method = "PATCH",
               path = "/admins/self/token",
               headers = {
                 ["cookie"] = cookie,
                 ["Kong-Admin-User"] = super_admin.username,
-                ["Content-Type"] = "application/json"
-              },
-              body = {
-                token = token
               }
             })
 
-            assert.res_status(200, res)
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            return json.token
           end
 
           local function call_api_with_token(code, token)
@@ -515,17 +507,16 @@ for _, strategy in helpers.each_strategy() do
             assert.res_status(code, res)
           end
 
-          it("updates admin token when updates rbac token", function()
+          it("invalidates old tokens when admins generates new token", function()
             -- set token to "one"
-            reset_token("one");
-            call_api_with_token(200, "one")
-            -- ensure token "two" not works before reset
-            call_api_with_token(401, "two")
-            -- reset token to "two"
-            reset_token("two")
-            -- "one" should invalid
-            call_api_with_token(401, "one")
-            call_api_with_token(200, "two")
+            local t1 = reset_token();
+            call_api_with_token(200, t1)
+
+            -- reset to a new generated token
+            local t2 = reset_token()
+            -- t1 should no longer be valid
+            call_api_with_token(401, t1)
+            call_api_with_token(200, t2)
           end)
         end)
       end)
