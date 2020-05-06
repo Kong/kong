@@ -10,6 +10,7 @@
 - Add `config.session_redis_cluster_nodes`
 - Add `config.session_redis_cluster_maxredirections`
 - Add `config.preserve_query_args`
+- Bump `lua-resty-session` dependency to `3.3`
 
 
 ## v1.4.2
