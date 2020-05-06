@@ -635,6 +635,7 @@ local function status_code_query(entity_id, entity, seconds_from_now, interval)
 end
 _M.status_code_query = status_code_query
 
+-- entity: consumer or service dao
 local function resolve_entity_name(entity)
   local app_id, app_name, name
   if entity.type == enums.CONSUMERS.TYPE.APPLICATION then
@@ -651,69 +652,68 @@ local function resolve_entity_name(entity)
 end
 _M.resolve_entity_name = resolve_entity_name
 
--- TODO: test app name parser with names that contain underscores
+-- entity: consumer or service
+-- entity_id: UUID or null, signifies how each row is indexed
+-- interval: seconds, minutes, hours, days, weeks, months
+-- start_ts: seconds from now
 function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   start_ts = start_ts or 36000
-
-  local isTimeSeries = entity_id ~= nil
-  local isConsumer = entity == "consumer"
-
   local plural_entity = entity .. 's'
-  -- if isTimeSeries then select by entity id, resolve entity name
-  -- else build entities table
-  local rows, err = workspaces.run_with_ws_scope({}, function()
-    return kong.db[plural_entity]:select_all()
-  end)
+  local isTimeSeriesReport = entity_id ~= nil
+  local row, rows, err
+  if isTimeSeriesReport then
+    row, err = workspaces.run_with_ws_scope({}, function()
+      return kong.db[plural_entity]:select({ id = entity_id})
+    end)
+    rows = { row }
+  else
+    rows, err = workspaces.run_with_ws_scope({}, function()
+      return kong.db[plural_entity]:select_all()
+    end)
+  end
   if err then
     return nil, err
   end
   local entities = {}
-  for _, row in ipairs(rows) do
-    entities[row.id] = resolve_entity_name(row)
+  for _, r in ipairs(rows) do
+    entities[r.id] = resolve_entity_name(r)
   end
-  
+
   local seconds_from_now = ngx.time() - start_ts
   local result = query(self, status_code_query(entity_id, entity, seconds_from_now, interval))
   local stats = {}
+  local isConsumer = entity == "consumer"
   for _, series in ipairs(result) do
     for _, value in ipairs(series.values) do
-      local key, name, app_id, app_name, isAnonymous
-      if isTimeSeries then
-        isAnonymous = false
-        key = tostring(value[1]) -- timestamp
-        name = entities[entity_id].name
-        app_id = entities[entity_id].app_id
-        app_name = entities[entity_id].app_name
+      local index, entity_metadata
+      if isTimeSeriesReport then
+        local timestamp = tostring(value[1])
+        index = timestamp
+        entity_metadata = entities[entity_id]
       else
-        local lookup = {
+        local entity_tag = {
           consumer = series.tags.consumer,
           service = series.tags.service
         }
-        isAnonymous = lookup[entity] == ''
-        if isAnonymous == false then
-          key = lookup[entity]
-          name = entities[key].name
-          kong.log.err(name)
-          app_id = entities[key].app_id
-          app_name = entities[key].app_name
-        end
+        local id = entity_tag[entity]
+        index = id
+        entity_metadata = entities[id]
       end
-      if isAnonymous == false then
-        if stats[key] == nil then
-          stats[key] = { ["total"]=0, ["2XX"]=0, ["4XX"]=0, ["5XX"]=0 }
+      local has_index = index ~= ''
+      if has_index then
+        if stats[index] == nil then
+          stats[index] = { ["total"] = 0, ["2XX"] = 0, ["4XX"] = 0, ["5XX"] = 0 }
         end
-
         local status_group = tostring(series.tags.status_f):sub(1, 1) .. "XX"
-
-        local current_total = stats[key]["total"] or 0
-        local current_status = stats[key][status_group] or 0
-        stats[key]["name"] = name
+        local request_count = value[2]
+        stats[index]["total"] = stats[index]["total"] + request_count
+        stats[index][status_group] = stats[index][status_group] + request_count
+        
+        stats[index]["name"] = entity_metadata.name
         if isConsumer then
-          stats[key]["app_id"] = app_id
-          stats[key]["app_name"] = app_name
+          stats[index]["app_id"] = entity_metadata.app_id
+          stats[index]["app_name"] = entity_metadata.app_name
         end
-        stats[key]["total"] = current_total + value[2]
-        stats[key][status_group] = current_status + value[2]
       end
     end
   end
