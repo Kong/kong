@@ -68,7 +68,12 @@ install:
 remove:
 	-@luarocks remove kong
 
-dependencies:
+grpcurl:
+	@curl -s -S -L \
+		https://github.com/fullstorydev/grpcurl/releases/download/v1.3.0/grpcurl_1.3.0_$(GRPCURL_OS)_$(MACHINE).tar.gz | tar xz -C bin;
+	@rm bin/LICENSE
+
+dependencies: grpcurl
 	@for rock in $(DEV_ROCKS) ; do \
 	  if luarocks list --porcelain $$rock | grep -q "installed" ; then \
 	    echo $$rock already installed, skipping ; \
@@ -78,12 +83,7 @@ dependencies:
 	  fi \
 	done;
 
-grpcurl:
-	@curl -s -S -L \
-		https://github.com/fullstorydev/grpcurl/releases/download/v1.3.0/grpcurl_1.3.0_$(GRPCURL_OS)_$(MACHINE).tar.gz | tar xz -C bin;
-	@rm bin/LICENSE
-
-dev: remove install dependencies grpcurl
+dev: remove install dependencies
 
 lint:
 	@luacheck -q .
