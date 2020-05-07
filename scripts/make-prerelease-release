@@ -44,9 +44,8 @@ function usage() {
    step "write_changelog"  "prepare the changelog"
    step "commit_changelog" "commit the changelog"
    step "version_bump"     "bump and commit the version number"
+   step "submit"           "push and submit a release PR"
    step "tag"              "tag and sign the release candidate"
-   step "update_docker"    "update and submit a PR to Kong's docker-kong repo"
-   step "merge_docker"     "merge, tag and sign Kong's docker-kong PR"
    exit 0
 }
 
@@ -129,7 +128,6 @@ patch=${rest##*.}
 prerelease=${version##*-}
 rockspec="kong-$xyzversion-0.rockspec"
 branch="release/$xyzversion"
-dockerbranch="release/$version"
 xyxversion="$major.$minor.0-(alpha|beta).n"
 prev_version="$xyzversion"
 
@@ -182,8 +180,21 @@ function prepare_changelog() {
             local today = os.date("*t")
             fd_out:write("> Released TBD\n")
             fd_out:write("\n")
-            fd_out:write("<<< TODO Dont sort or edit the output at this time >>>\n")
-            fd_out:write("<<< git log --pretty=\"%s (%an)\" x.y.z..HEAD --grep=\"(\#\" >>>\n")
+            fd_out:write("<<< TODO Introduction, plus any sections below >>>\n")
+            fd_out:write("\n")
+            fd_out:write("### Fixes\n")
+            fd_out:write("\n")
+            fd_out:write("##### Core\n")
+            fd_out:write("\n")
+            fd_out:write("##### CLI\n")
+            fd_out:write("\n")
+            fd_out:write("##### Configuration\n")
+            fd_out:write("\n")
+            fd_out:write("##### Admin API\n")
+            fd_out:write("\n")
+            fd_out:write("##### PDK\n")
+            fd_out:write("\n")
+            fd_out:write("##### Plugins\n")
             fd_out:write("\n")
             fd_out:write("\n")
             fd_out:write("[Back to TOC](#table-of-contents)\n")
@@ -223,37 +234,6 @@ EOF
 }
 
 #-------------------------------------------------------------------------------
-function switch_to_docs_repo() {
-   if [ -d ../docs.konghq.com ]
-   then
-      cd ../docs.konghq.com
-
-      git fetch --all
-      if ! [ "$(git rev-parse "origin/$branch")" = "$(git rev-parse "$branch")" ]
-      then
-         if [ "$1" = "--drop-local-changes" ]
-         then
-            git reset --hard "origin/$branch"
-         else
-            die "Local branch in your docs.konghq.com checkout is not clean," \
-                "please push your changes manually into origin" \
-                "or run again with --drop-local-changes to discard any local changes."
-         fi
-      fi
-   else
-      CONFIRM "This will clone the the docs.konghq.com repo and" \
-              "switch to branch $branch. Press Enter to continue" \
-              "or Ctrl-C to cancel."
-
-      cd ..
-      git clone https://github.com/kong/docs.konghq.com
-      cd docs.konghq.com
-   fi
-
-   git checkout "$branch"
-}
-
-#-------------------------------------------------------------------------------
 function make_github_release_file() {
    versionlink=$(echo $version | tr -d .)
    cat <<EOF > release-$version.txt
@@ -262,34 +242,11 @@ $version
 **Download Kong $version and run it now:**
 
 - https://konghq.com/install/
-- [Docker Image](https://hub.docker.com/_/kong/)
+- [Docker Image](https://hub.docker.com/r/kong/kong)
 
 Links:
 - [$version Changelog](https://github.com/Kong/kong/blob/$version/CHANGELOG.md#$versionlink)
 EOF
-}
-
-#-------------------------------------------------------------------------------
-function ensure_recent_luarocks() {
-   if ! ( luarocks upload --help | grep -q temp-key )
-   then
-      if [ `uname -s` = "Linux" ]
-      then
-         set -e
-         source .requirements
-         lv=3.2.1
-         pushd /tmp
-         rm -rf luarocks-$lv
-         mkdir -p luarocks-$lv
-         cd luarocks-$lv
-         curl -L -o "luarocks-$lv-linux-x86_64.zip" https://luarocks.github.io/luarocks/releases/luarocks-$lv-linux-x86_64.zip
-         unzip luarocks-$lv-linux-x86_64.zip
-         export PATH=/tmp/luarocks-$lv/luarocks-$lv-linux-x86_64:$PATH
-         popd
-      else
-         die "Your LuaRocks version is too old. Please upgrade LuaRocks."
-      fi
-   fi
 }
 
 #-------------------------------------------------------------------------------
@@ -391,6 +348,25 @@ case "$step" in
 
       SUCCESS "Version bump for the release is now committed locally." \
               "You are ready to run the next step:" \
+              "    $0 $version submit"
+      ;;
+   #---------------------------------------------------------------------------
+   submit)
+      if ! git log -n 1 | grep -q "release: $version"
+      then
+         die "Release commit is not at the top of the current branch. Did you commit the version bump?"
+      fi
+
+      git log
+
+      CONFIRM "Press Enter to push the branch and open the release PR" \
+              "or Ctrl-C to cancel."
+
+      set -e
+      git push --set-upstream origin "$branch"
+      hub pull-request -b master -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge"
+
+      SUCCESS "Now get the above PR reviewed and approved. Before continueing on" \
               "    $0 $version tag"
       ;;
    #---------------------------------------------------------------------------
@@ -409,51 +385,7 @@ case "$step" in
       hub release create --prerelease -F release-$version.txt "$version"
       rm -f release-$version.txt
 
-      SUCCESS "Make sure the packages are built and available on Bintray" \
-              "before continuing to the following steps." \
-              "Once they are built, you may run the following steps:" \
-              "* 'update_docker', then 'merge_docker'"
-      ;;
-   #---------------------------------------------------------------------------
-   update_docker)
-      if [ -d ../docker-kong ]
-      then
-         cd ../docker-kong
-      else
-         cd ..
-         git clone https://github.com/kong/docker-kong
-         cd docker-kong
-      fi
-
-      set -e
-      ./update.sh "$version"
-
-      SUCCESS "Make sure you get the PR above approved and merged" \
-              "before continuing to the step 'merge_docker'."
-      ;;
-   #---------------------------------------------------------------------------
-   merge_docker)
-      if [ -d ../docker-kong ]
-      then
-         cd ../docker-kong
-      else
-         cd ..
-         git clone https://github.com/kong/docker-kong
-         cd docker-kong
-      fi
-
-      set -e
-      git checkout "$dockerbranch"
-      git pull
-      git checkout master
-      git pull
-      git merge "$dockerbranch"
-      git push
-      git tag -s "$version" -m "$version"
-      git push origin "$version"
-      git push --delete origin "$dockerbranch"
-
-      SUCCESS "You're done" \
+      SUCCESS "Make sure the packages are built and available on Bintray"
       ;;
    #---------------------------------------------------------------------------
    *)
