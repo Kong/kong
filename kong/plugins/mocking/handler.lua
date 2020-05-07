@@ -2,6 +2,8 @@ local cjson       = require("cjson.safe").new()
 local lyaml       = require "lyaml"
 local gsub        = string.gsub
 local match       = string.match
+local ngx         = ngx
+local random      = math.random
 
 local plugin = {
   VERSION  = "0.1",
@@ -164,6 +166,9 @@ function plugin:access(conf)
 
   local parsed_content = load_spec(contents)
 
+  if conf.random_delay then
+    ngx.sleep(random(conf.max_delay_time))
+  end
   retrieve_example(parsed_content, uripath, accept, method)
 
 end
