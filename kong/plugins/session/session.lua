@@ -10,15 +10,10 @@ local _M = {}
 
 
 local function get_opts(conf)
-  local storage = conf.storage
-  if storage == "kong" then
-    storage = kong_storage
-  end
-
-  return {
+  local opts = {
     name    = conf.cookie_name,
     secret  = conf.secret,
-    storage = storage,
+    storage  = conf.storage,
     cookie  = {
       lifetime = conf.cookie_lifetime,
       idletime = conf.cookie_idletime,
@@ -31,6 +26,13 @@ local function get_opts(conf)
       discard  = conf.cookie_discard,
     }
   }
+
+  if conf.storage == "kong" then
+    opts.strategy = 'regenerate'
+    opts.storage = kong_storage
+  end
+
+  return opts
 end
 
 
