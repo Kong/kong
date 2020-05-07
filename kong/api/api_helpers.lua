@@ -6,6 +6,7 @@ local app_helpers = require "lapis.application"
 local arguments = require "kong.api.arguments"
 local Errors = require "kong.db.errors"
 local singletons = require "kong.singletons"
+local hooks = require "kong.hooks"
 
 
 local ngx      = ngx
@@ -173,7 +174,7 @@ do
 
         else
           out[k] = fdata_to_jsonable(v, "maybe")
-  end
+      end
 
       elseif type(v) == "number" then
         if v ~= v then
@@ -184,7 +185,7 @@ do
           out[k] = "-inf"
         else
           out[k] = v
-  end
+      end
 
       elseif type(v) ~= "function" then
         out[k] = v
@@ -361,10 +362,9 @@ function _M.attach_routes(app, routes)
     end
 
     app:match(route_path, route_path, app_helpers.respond_to(methods))
-    if route_path ~= "/" then
-      app:match("workspace_" .. route_path, "/:workspace_name" .. route_path,
-        app_helpers.respond_to(methods))
-    end
+
+    assert(hooks.run_hook("api:helpers:attach_routes",
+      app, route_path, methods))
   end
 end
 
@@ -390,10 +390,9 @@ function _M.attach_new_db_routes(app, routes)
     end
 
     app:match(route_path, route_path, app_helpers.respond_to(methods))
-    if route_path ~= "/" then
-      app:match("workspace_" .. route_path, "/:workspace_name" .. route_path,
-        app_helpers.respond_to(methods))
-    end
+
+    assert(hooks.run_hook("api:helpers:attach_new_db_routes",
+      app, route_path, methods))
   end
 end
 
@@ -433,6 +432,15 @@ function _M.handle_error(self, err, trace)
   -- We just logged the error so no need to give it to responses and log it
   -- twice
   return kong.response.exit(500, { message = "An unexpected error occurred" })
+end
+
+
+function _M.is_new_db_routes(routes)
+  for _, verbs in pairs(routes) do
+    if type(verbs) == "table" then -- ignore "before" functions
+      return verbs.schema
+    end
+  end
 end
 
 

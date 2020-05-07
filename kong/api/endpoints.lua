@@ -22,17 +22,17 @@ local split        = utils.split
 
 -- error codes http status codes
 local ERRORS_HTTP_CODES = {
-  [Errors.codes.INVALID_PRIMARY_KEY]   = 400,
-  [Errors.codes.SCHEMA_VIOLATION]      = 400,
-  [Errors.codes.PRIMARY_KEY_VIOLATION] = 400,
-  [Errors.codes.FOREIGN_KEY_VIOLATION] = 400,
-  [Errors.codes.UNIQUE_VIOLATION]      = 409,
-  [Errors.codes.NOT_FOUND]             = 404,
-  [Errors.codes.INVALID_OFFSET]        = 400,
-  [Errors.codes.DATABASE_ERROR]        = 500,
-  [Errors.codes.INVALID_SIZE]          = 400,
-  [Errors.codes.INVALID_UNIQUE]        = 400,
-  [Errors.codes.INVALID_OPTIONS]       = 400,
+  [Errors.codes.INVALID_PRIMARY_KEY]     = 400,
+  [Errors.codes.SCHEMA_VIOLATION]        = 400,
+  [Errors.codes.PRIMARY_KEY_VIOLATION]   = 400,
+  [Errors.codes.FOREIGN_KEY_VIOLATION]   = 400,
+  [Errors.codes.UNIQUE_VIOLATION]        = 409,
+  [Errors.codes.NOT_FOUND]               = 404,
+  [Errors.codes.INVALID_OFFSET]          = 400,
+  [Errors.codes.DATABASE_ERROR]          = 500,
+  [Errors.codes.INVALID_SIZE]            = 400,
+  [Errors.codes.INVALID_UNIQUE]          = 400,
+  [Errors.codes.INVALID_OPTIONS]         = 400,
   [Errors.codes.OPERATION_UNSUPPORTED]   = 405,
   [Errors.codes.FOREIGN_KEYS_UNRESOLVED] = 400,
 }

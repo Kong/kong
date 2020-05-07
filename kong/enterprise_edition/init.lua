@@ -10,6 +10,11 @@ local license_helpers = require "kong.enterprise_edition.license_helpers"
 local event_hooks = require "kong.enterprise_edition.event_hooks"
 local balancer  = require "kong.runloop.balancer"
 local rbac = require "kong.rbac"
+local hooks = require "kong.hooks"
+local ee_api = require "kong.enterprise_edition.api_helpers"
+local utils = require "kong.tools.utils"
+local app_helpers = require "lapis.application"
+local api_helpers = require "kong.api.api_helpers"
 
 
 local kong = kong
@@ -21,6 +26,57 @@ _M.handlers = {
   init = {
     after = function()
       rbac.register_dao_hooks(kong.db)
+
+      hooks.register_hook("api:init:pre", function(app)
+        app:before_filter(ee_api.before_filter)
+
+        for _, v in ipairs({"vitals", "oas_config", "license",
+                            "entities", "keyring"}) do
+
+          local routes = require("kong.api.routes." .. v)
+          api_helpers.attach_routes(app, routes)
+        end
+
+        -- attach `/:workspace/kong`, which replicates `/`
+        local slash_handler = require "kong.api.routes.kong"["/"]
+        app:match("ws_root" .. "/", "/:workspace_name/kong",
+        app_helpers.respond_to(slash_handler))
+
+        return true
+      end)
+
+      hooks.register_hook("api:init:post", function(app, routes)
+        for _, k in ipairs({"rbac", "audit"}) do
+          local loaded, mod = utils.load_module_if_exists("kong.api.routes.".. k)
+          if loaded then
+            ngx.log(ngx.DEBUG, "Loading API endpoints for module: ", k)
+            if api_helpers.is_new_db_routes(mod) then
+              api_helpers.attach_new_db_routes(app, mod)
+            else
+              api_helpers.attach_routes(app, mod)
+            end
+
+          else
+            ngx.log(ngx.DEBUG, "No API endpoints loaded for module: ", k)
+          end
+        end
+
+        ee_api.splatify_entity_route("files", routes)
+
+        return true
+      end)
+
+      local function prepend_workspace_prefix(app, route_path, methods)
+        if route_path ~= "/" then
+          app:match("workspace_" .. route_path, "/:workspace_name" .. route_path,
+          app_helpers.respond_to(methods))
+        end
+
+        return true
+      end
+
+      hooks.register_hook("api:helpers:attach_routes", prepend_workspace_prefix)
+      hooks.register_hook("api:helpers:attach_new_db_routes", prepend_workspace_prefix)
     end
   },
   init_worker = {

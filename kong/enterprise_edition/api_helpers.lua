@@ -8,7 +8,6 @@ local workspaces      = require "kong.workspaces"
 local utils           = require "kong.tools.utils"
 local ee_utils        = require "kong.enterprise_edition.utils"
 local ee_jwt          = require "kong.enterprise_edition.jwt"
-local ee_auth_helpers = require "kong.enterprise_edition.auth_helpers"
 
 local fmt = string.format
 local kong = kong
@@ -379,6 +378,7 @@ end
 
 function _M.validate_password(password)
   local config = singletons.configuration.admin_gui_auth_password_complexity
+  local ee_auth_helpers = require "kong.enterprise_edition.auth_helpers"
 
   if not password or password == "" then
     return kong.response.exit(400, { message = "password is required" })

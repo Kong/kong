@@ -1,12 +1,10 @@
 local lapis       = require "lapis"
 local utils       = require "kong.tools.utils"
 local singletons  = require "kong.singletons"
-local app_helpers = require "lapis.application"
 local api_helpers = require "kong.api.api_helpers"
-
 local Endpoints   = require "kong.api.endpoints"
+local hooks       = require "kong.hooks"
 
-local ee_api      = require "kong.enterprise_edition.api_helpers"
 
 local ngx      = ngx
 local type     = type
@@ -20,9 +18,10 @@ local app = lapis.Application()
 app.default_route = api_helpers.default_route
 app.handle_404 = api_helpers.handle_404
 app.handle_error = api_helpers.handle_error
--- XXX EE: enterprise before filter (rbac, req_id, etc)
-app:before_filter(ee_api.before_filter)
 app:before_filter(api_helpers.before_filter)
+
+
+assert(hooks.run_hook("api:init:pre", app))
 
 
 ngx.log(ngx.DEBUG, "Loading Admin API endpoints")
@@ -33,18 +32,6 @@ for _, v in ipairs({"kong", "health", "cache", "config", "clustering"}) do
   local routes = require("kong.api.routes." .. v)
   api_helpers.attach_routes(app, routes)
 end
-
--- XXX EE, move elsewhere
-for _, v in ipairs({"vitals", "oas_config", "license", "entities", "keyring"}) do
-  local routes = require("kong.api.routes." .. v)
-  api_helpers.attach_routes(app, routes)
-end
-
-
--- attach `/:workspace/kong`, which replicates `/`
-local slash_handler = require "kong.api.routes.kong"["/"]
-app:match("ws_root" .. "/", "/:workspace_name/kong",
-  app_helpers.respond_to(slash_handler))
 
 
 do
@@ -89,14 +76,6 @@ do
     end
   end
 
-  local function is_new_db_routes(routes)
-    for _, verbs in pairs(routes) do
-      if type(verbs) == "table" then -- ignore "before" functions
-        return verbs.schema
-      end
-    end
-  end
-
   local routes = {}
 
   -- DAO Routes
@@ -121,7 +100,7 @@ do
       local loaded, custom_endpoints = utils.load_module_if_exists("kong.plugins." .. k .. ".api")
       if loaded then
         ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: ", k)
-        if is_new_db_routes(custom_endpoints) then
+        if api_helpers.is_new_db_routes(custom_endpoints) then
           customize_routes(routes, custom_endpoints, custom_endpoints.schema)
 
         else
@@ -134,23 +113,8 @@ do
     end
   end
 
-  -- Loading plugins routes
-  for _, k in ipairs({"rbac", "audit"}) do
-    local loaded, mod = utils.load_module_if_exists("kong.api.routes.".. k)
-    if loaded then
-      ngx.log(ngx.DEBUG, "Loading API endpoints for module: ", k)
-      if is_new_db_routes(mod) then
-        api_helpers.attach_new_db_routes(app, mod)
-      else
-        api_helpers.attach_routes(app, mod)
-      end
+  assert(hooks.run_hook("api:init:post", app, routes))
 
-    else
-      ngx.log(ngx.DEBUG, "No API endpoints loaded for module: ", k)
-    end
-  end
-
-  ee_api.splatify_entity_route("files", routes)
   api_helpers.attach_new_db_routes(app, routes)
 end
 
