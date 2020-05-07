@@ -653,6 +653,26 @@
 #   `nginx_admin_ssl_protocols`, both of which taking precedence over the
 #   `http {}` block.
 
+#nginx_main_worker_rlimit_nofile = auto
+                                 # Changes the limit on the maximum number of open files
+                                 # for worker processes.
+                                 #
+                                 # The special and default value of `auto` sets this
+                                 # value to `ulimit -n` with the upper bound limited to
+                                 # 16384 as a measure to protect against excess memory use.
+                                 #
+                                 # See http://nginx.org/en/docs/ngx_core_module.html#worker_rlimit_nofile
+
+#nginx_events_worker_connections = auto
+                                 # Sets the maximum number of simultaneous
+                                 # connections that can be opened by a worker process.
+                                 #
+                                 # The special and default value of `auto` sets this
+                                 # value to `ulimit -n` with the upper bound limited to
+                                 # 16384 as a measure to protect against excess memory use.
+                                 #
+                                 # See http://nginx.org/en/docs/ngx_core_module.html#worker_connections
+
 #nginx_upstream_keepalive = 60   # Sets the maximum number of idle keepalive
                                  # connections to upstream servers that are
                                  # preserved in the cache of each worker

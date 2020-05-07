@@ -643,6 +643,19 @@ describe("NGINX conf compiler", function()
       assert.matches("worker_connections%s+%d+;", nginx_conf)
       assert.matches("multi_accept%s+on;", nginx_conf)
     end)
+    it("compiles with correct auto values", function()
+      local conf = assert(conf_loader(nil, {
+        nginx_main_worker_rlimit_nofile = "auto",
+        nginx_events_worker_connections = "auto",
+      }))
+
+      local ulimit = prefix_handler.get_ulimit()
+      ulimit = math.min(ulimit, 16384)
+
+      local nginx_conf = prefix_handler.compile_nginx_conf(conf)
+      assert.matches("worker_rlimit_nofile%s+" .. ulimit .. ";", nginx_conf)
+      assert.matches("worker_connections%s+" .. ulimit .. ";", nginx_conf)
+    end)
     it("converts dns_resolver to string", function()
       local nginx_conf = prefix_handler.compile_nginx_conf({
         dns_resolver = { "8.8.8.8", "8.8.4.4" }
