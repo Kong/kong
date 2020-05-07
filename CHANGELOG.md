@@ -1,5 +1,9 @@
 # Kong AWS Lambda plugin changelog
 
+## Unreleased
+
+- Fix: do not validate region name against hardcoded list of regions
+
 ## aws-lambda 3.3.0 17-Apr-2020
 
 - Fix: when reusing the proxy based connection do not do the handshake again.

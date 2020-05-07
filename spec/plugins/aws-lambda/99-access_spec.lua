@@ -1,8 +1,10 @@
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 local meta    = require "kong.meta"
+local pl_file = require "pl.file"
 
 
+local TEST_CONF = helpers.test_conf
 local server_tokens = meta._SERVER_TOKENS
 local null = ngx.null
 
@@ -79,6 +81,7 @@ local fixtures = {
     ]]
   },
 }
+
 
 fixtures.dns_mock:A {
   name = "lambda.us-east-1.amazonaws.com",
@@ -171,6 +174,12 @@ for _, strategy in helpers.each_strategy() do
 
       local route14 = bp.routes:insert {
         hosts       = { "lambda14.com" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
+      local route15 = bp.routes:insert {
+        hosts       = { "lambda15.com" },
         protocols   = { "http", "https" },
         service     = null,
       }
@@ -368,6 +377,18 @@ for _, strategy in helpers.each_strategy() do
           aws_key       = "mock-key",
           aws_secret    = "mock-secret",
           aws_region    = "us-east-1",
+          function_name = "kongLambdaTest",
+        },
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route = { id = route15.id },
+        config   = {
+          port          = 10001,
+          aws_key       = "mock-key",
+          aws_secret    = "mock-secret",
+          aws_region    = "ab-cdef-1",
           function_name = "kongLambdaTest",
         },
       }
@@ -728,6 +749,23 @@ for _, strategy in helpers.each_strategy() do
       })
 
       assert.equal(65, tonumber(res.headers["Content-Length"]))
+    end)
+
+    it("errors on bad region name (DNS resolution)", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/get?key1=some_value1",
+        headers = {
+          ["Host"] = "lambda15.com"
+        }
+      })
+      assert.res_status(500, res)
+
+      helpers.wait_until(function()
+        local logs = pl_file.read(TEST_CONF.prefix .. "/" .. TEST_CONF.proxy_error_log)
+        local _, count = logs:gsub([[handler.lua:%d+ %[aws%-lambda%].+lambda%.ab%-cdef%-1%.amazonaws%.com.+name error"]], "")
+        return count >= 1
+      end, 10)
     end)
 
     describe("config.is_proxy_integration = true", function()

@@ -1,22 +1,5 @@
 local typedefs = require "kong.db.schema.typedefs"
 
-local REGIONS = {
-  "ap-northeast-1", "ap-northeast-2",
-  "ap-south-1",
-  "ap-southeast-1", "ap-southeast-2",
-  "ca-central-1",
-  "cn-north-1",
-  "cn-northwest-1",
-  "eu-central-1",
-  "eu-north-1",
-  "eu-west-1", "eu-west-2", "eu-west-3",
-  "me-south-1",
-  "sa-east-1",
-  "us-east-1", "us-east-2",
-  "us-gov-west-1",
-  "us-west-1", "us-west-2",
-}
-
 local function keyring_enabled()
   local ok, enabled = pcall(function()
     return kong.configuration.keyring_enabled
@@ -54,11 +37,7 @@ return {
           type = "string",
           encrypted = ENCRYPTED,
         } },
-        { aws_region = {
-          type = "string",
-          required = true,
-          one_of = REGIONS
-        } },
+        { aws_region = typedefs.host { required = true } },
         { function_name = {
           type = "string",
           required = true,
