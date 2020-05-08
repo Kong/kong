@@ -167,7 +167,7 @@ function plugin:access(conf)
   local parsed_content = load_spec(contents)
 
   if conf.random_delay then
-    ngx.sleep(random(conf.max_delay_time))
+    ngx.sleep(random(conf.min_delay_time,conf.max_delay_time))
   end
   retrieve_example(parsed_content, uripath, accept, method)
 
