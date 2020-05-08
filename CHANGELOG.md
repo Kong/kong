@@ -10,6 +10,11 @@
 
 ## Unreleased
 
+## [1.7.5] - 2020/05/08
+
+#### Summary
+- Remove flush_timeout parameter for collector configuration, set default to 1 when used.
+
 ## [1.7.4] - 2020/04/09
 
 #### Summary
