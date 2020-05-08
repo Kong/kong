@@ -294,7 +294,24 @@ function _PDK.new(kong_config, major_version, self)
     parent[child] = mod.new(self)
   end
 
-  return self
+  self._log = self.log
+  self.log = nil
+
+  return setmetatable(self, {
+    __index = function(t, k)
+      if k == "core_log" then
+        return rawget(t, "_log")
+      end
+
+      if k == "log" then
+        if t.ctx.core and t.ctx.core.log then
+          return t.ctx.core.log
+        end
+
+        return rawget(t, "_log")
+      end
+    end
+  })
 end
 
 
