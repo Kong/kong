@@ -99,10 +99,7 @@ end
 
 
 do
-  local log_facilities = {
-    core = nil,
-    namespaced = setmetatable({}, { __index = "k" }),
-  }
+  local log_facilities = setmetatable({}, { __index = "k" })
 
 
   function _GLOBAL.set_namespaced_log(self, namespace)
@@ -114,13 +111,17 @@ do
       error("namespace (arg #2) must be a string", 2)
     end
 
-    local log = log_facilities.namespaced[namespace]
-    if not log then
-      log = self.log.new(namespace) -- use default namespaced format
-      log_facilities.namespaced[namespace] = log
+    if not self.ctx then
+      error("ctx PDK module not initialized", 2)
     end
 
-    self.log = log
+    local log = log_facilities[namespace]
+    if not log then
+      log = self.core_log.new(namespace) -- use default namespaced format
+      log_facilities[namespace] = log
+    end
+
+    self.ctx.core.log = log
   end
 
 
@@ -129,7 +130,11 @@ do
       error("arg #1 cannot be nil", 2)
     end
 
-    self.log = log_facilities.core
+    if not self.ctx then
+      error("ctx PDK module not initialized", 2)
+    end
+
+    self.ctx.core.log = self.core_log
   end
 
 
@@ -139,8 +144,6 @@ do
     end
 
     PDK.new(kong_config, pdk_major_version, self)
-
-    log_facilities.core = self.log
   end
 
 
