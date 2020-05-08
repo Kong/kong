@@ -67,7 +67,7 @@ local function simulate_access_after(ctx)
 
   ctx.KONG_PROXIED = true
 
-  ee.handlers.access.after(ctx)
+  ee.handlers.log.after(ctx)
 end
 
 
