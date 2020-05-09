@@ -512,7 +512,7 @@ for _, strategy in helpers.each_strategy() do
 
             bp.rate_limiting_plugins:insert {
               route = { id = route1.id },
-              config   = { minute = 6, fault_tolerant = false }
+              config   = { minute = 6, fault_tolerant = false, policy = policy }
             }
 
             local route2 = bp.routes:insert {
@@ -522,7 +522,7 @@ for _, strategy in helpers.each_strategy() do
             bp.rate_limiting_plugins:insert {
               name     = "rate-limiting",
               route = { id = route2.id },
-              config   = { minute = 6, fault_tolerant = true },
+              config   = { minute = 6, fault_tolerant = true, policy = policy },
             }
 
             assert(helpers.start_kong({

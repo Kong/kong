@@ -43,7 +43,7 @@ return {
           }, },
           { policy = {
               type = "string",
-              default = "cluster",
+              default = "local",
               len_min = 0,
               one_of = { "local", "cluster", "redis" },
           }, },

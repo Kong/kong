@@ -36,7 +36,7 @@ return {
                          one_of = { "consumer", "credential", "ip" },
           }, },
           { policy = { type = "string",
-                       default = "cluster",
+                       default = "local",
                        one_of = { "local", "cluster", "redis" },
           }, },
           { fault_tolerant = { type = "boolean", default = true }, },
