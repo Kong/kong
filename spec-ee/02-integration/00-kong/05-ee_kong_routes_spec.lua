@@ -165,28 +165,6 @@ describe("Admin API - ee-specific Kong routes", function()
         assert.same(expected, json)
         assert.equal(1, #user_workspaces)
         assert.equal(workspaces.DEFAULT_WORKSPACE, user_workspaces[1].name)
-
-        --- TODO: add this back once we can know the rbac_user.token of admin
-        --
-        -- Now send the same request, but with just the rbac token
-        -- and make sure the responses are equivalent
-        -- res = assert(client:send {
-        --   method = "GET",
-        --   path = "/userinfo",
-        --   headers = {
-        --     ["Kong-Admin-Token"] = admin.rbac_user.raw_user_token,
-        --   }
-        -- })
-
-        -- res = assert.res_status(200, res)
-        -- local json2 = cjson.decode(res)
-        -- local user_workspaces2 = json2.workspaces
-
-        -- json2.workspaces = nil
-        -- json2.admin.updated_at = nil
-
-        -- assert.same(json2, json)
-        -- assert.same(user_workspaces2, user_workspaces)
       end)
 
       it("/userinfo whitelisted - admin consumer success without needing /userinfo " ..
@@ -274,7 +252,7 @@ describe("Admin API - ee-specific Kong routes", function()
         assert.res_status(404, res)
       end)
 
-      pending("returns user info of admin consumer outside default workspace", function()
+      it("returns user info of admin consumer outside default workspace", function()
 
         db = select(2, helpers.get_db_utils(strategy))
 
@@ -322,7 +300,6 @@ describe("Admin API - ee-specific Kong routes", function()
         admin.rbac_user = nil
         admin.status = enums.CONSUMERS.STATUS.APPROVED
         admin.updated_at = nil
-        admins.link_to_workspace(admin, ws_name)
 
         assert(db.rbac_role_endpoints:insert {
           role = { id = role.id },
@@ -385,31 +362,6 @@ describe("Admin API - ee-specific Kong routes", function()
         assert.equal(2, #json.workspaces)
         assert.equal("test-ws", json.workspaces[1].name)
         assert.equal("test-ws-1", json.workspaces[2].name)
-
-        -- TODO: add this back once we can know the rbac_user.token of admin
-        -- insert.
-        --
-        -- Now send the same request, but with just the rbac token
-        -- and make sure the responses are equivalent
-        -- local rbac_user = admin.rbac_user
-        -- local token = rbac_user.raw_user_token
-        -- rbac_user.raw_user_token = nil
-        -- res = assert(client:send {
-        --   method = "GET",
-        --   path = "/userinfo",
-        --   headers = {
-        --     ["Kong-Admin-Token"] = token,
-        --   }
-        -- })
-
-        -- res = assert.res_status(200, res)
-        -- local json2 = cjson.decode(res)
-        -- local user_workspaces2 = json2.workspaces
-        -- json2.workspaces = nil
-        -- json2.admin.updated_at = nil
-
-        -- assert.same(json2, json)
-        -- assert.same(user_workspaces2, user_workspaces)
       end)
     end)
   end
