@@ -328,7 +328,11 @@ local function is_cert_revoked(conf, client_cert_chain, cert, intermidiate, stor
   end
 
   -- there was communication error or niether of OCSP URI or CRL URI set
-  return (conf.revocation_check_mode == "IGNORE_CA_ERROR" and false) or true
+  if conf.revocation_check_mode == "IGNORE_CA_ERROR" then
+    return false
+  else
+    return true
+  end
 end
 
 
@@ -432,7 +436,7 @@ local function do_authentication(conf)
         { ttl = conf.cert_cache_ttl }, is_cert_revoked,
         conf, pem, chain[1], intermidiate, trust_table.store)
       if err then
-        kong.log.error(err)
+        kong.log.err(err)
       end
 
       if revoked == true then
