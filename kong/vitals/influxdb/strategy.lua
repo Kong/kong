@@ -663,9 +663,9 @@ _M.resolve_entity_metadata = resolve_entity_metadata
 function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   start_ts = start_ts or 36000
   local plural_entity = entity .. 's'
-  local isTimeSeriesReport = entity_id ~= nil
+  local is_timeseries_report = entity_id ~= nil
   local row, rows, err
-  if isTimeSeriesReport then
+  if is_timeseries_report then
     row, err = workspaces.run_with_ws_scope({}, function()
       return kong.db[plural_entity]:select({ id = entity_id})
     end)
@@ -686,11 +686,11 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   local seconds_from_now = ngx.time() - start_ts
   local result = query(self, status_code_query(entity_id, entity, seconds_from_now, interval))
   local stats = {}
-  local isConsumer = entity == "consumer"
+  local is_consumer = entity == "consumer"
   for _, series in ipairs(result) do
     for _, value in ipairs(series.values) do
       local index, entity_metadata
-      if isTimeSeriesReport then
+      if is_timeseries_report then
         local timestamp = tostring(value[1])
         index = timestamp
         entity_metadata = entities[entity_id]
@@ -714,7 +714,7 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
         stats[index][status_group] = stats[index][status_group] + request_count
         
         stats[index]["name"] = entity_metadata.name
-        if isConsumer then
+        if is_consumer then
           stats[index]["app_id"] = entity_metadata.app_id
           stats[index]["app_name"] = entity_metadata.app_name
         end
@@ -733,7 +733,7 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
       "5XX"
     },
   }
-  if isConsumer then
+  if is_consumer then
     meta.stat_labels = {
       "name",
       "app_name",
