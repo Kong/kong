@@ -17,6 +17,21 @@ return {
       "kong/api/routes/config.lua",
       "kong/api/routes/tags.lua",
       "kong/api/routes/clustering.lua",
+      -- ee routes:
+      "kong/api/routes/admins.lua",
+      "kong/api/routes/applications.lua",
+      "kong/api/routes/audit.lua",
+      "kong/api/routes/developers.lua",
+      "kong/api/routes/entities.lua",
+      "kong/api/routes/event_hooks.lua",
+      "kong/api/routes/files.lua",
+      "kong/api/routes/groups.lua",
+      "kong/api/routes/keyring.lua",
+      "kong/api/routes/license.lua",
+      "kong/api/routes/oas_config.lua",
+      "kong/api/routes/rbac.lua",
+      "kong/api/routes/vitals.lua",
+      "kong/api/routes/workspaces.lua",
     },
     nodoc_files = {
       "kong/api/routes/cache.lua", -- FIXME should we document this?
