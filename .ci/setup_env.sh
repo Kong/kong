@@ -10,15 +10,18 @@ LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
 OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
 GO_PLUGINSERVER=$(dep_version KONG_GO_PLUGINSERVER_VERSION)
 
+DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml .requirements | md5sum | awk '{ print $1 }')
+INSTALL_CACHE=${INSTALL_CACHE:=/install-cache}
+INSTALL_ROOT=$INSTALL_CACHE/$DEPS_HASH
 
 #---------
 # Download
 #---------
 
-DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml .requirements | md5sum | awk '{ print $1 }')
 DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
-BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/kong-build-tools
-GO_PLUGINSERVER_DOWNLOAD=$DOWNLOAD_ROOT/go-pluginserver
+
+BUILD_TOOLS_DOWNLOAD=$INSTALL_ROOT/kong-build-tools
+GO_PLUGINSERVER_DOWNLOAD=$INSTALL_ROOT/go-pluginserver
 
 KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:=master}
 
@@ -40,12 +43,11 @@ fi
 export PATH=$BUILD_TOOLS_DOWNLOAD/openresty-build-tools:$PATH
 
 if [ ! -d $GO_PLUGINSERVER_DOWNLOAD ]; then
-  git clone -q https://github.com/Kong/go-pluginserver $GO_PLUGINSERVER_DOWNLOAD
+  git clone -b $GO_PLUGINSERVER https://github.com/Kong/go-pluginserver $GO_PLUGINSERVER_DOWNLOAD
 else
   pushd $GO_PLUGINSERVER_DOWNLOAD
     git fetch
     git checkout $GO_PLUGINSERVER
-    git reset --hard origin/$GO_PLUGINSERVER
   popd
 fi
 
@@ -60,8 +62,6 @@ export PATH=$GO_PLUGINSERVER_DOWNLOAD:$PATH
 #--------
 # Install
 #--------
-INSTALL_CACHE=${INSTALL_CACHE:=/install-cache}
-INSTALL_ROOT=$INSTALL_CACHE/$DEPS_HASH
 
 kong-ngx-build \
     --work $DOWNLOAD_ROOT \
