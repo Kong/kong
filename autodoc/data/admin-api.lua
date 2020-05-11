@@ -593,6 +593,70 @@ return {
         },
       },
     },
+    admins = { -- FIXME fix these endpoints, or make Admins generated
+      title = [[Admins routes]],
+      description = "",
+      GET = {
+        title = [[Retrieve all Admins]],
+        endpoint = [[<div class="endpoint get">/admins</div>]],
+        description =[[
+          Retrieve all the Admins in Kong.
+        ]],
+        response = [[
+          ```
+          HTTP 200 OK
+          ```
+
+          ```json
+          {
+            {
+              "data": [
+                { "id": "123",
+                  "created_at": 123,
+                  "updated_at":  123,
+                  "username": "admin1",
+                  "custom_id": "admin1",
+                  "email":  "admin1@example.dev",
+                  "status": 1,
+                  "rbac_token_enabled": false,
+                  "consumer":  { id = "abc" }
+                  "rbac_user": { id = "def" }
+                }
+              ],
+              "offset": "123",
+              "next": "/admins?offset=123"
+            },
+          }
+          ```
+        ]]
+      },
+      POST = {
+        title = [[Create Admin]],
+        endpoint = [[<div class="endpoint post">/admins</div>]],
+        description = [[
+          Create a new Admin.
+        ]],
+        response = [[
+          ```
+          HTTP 201 Created
+          ```
+
+          ```json
+          { "id": "123",
+            "created_at": 123,
+            "updated_at":  123,
+            "username": "admin1",
+            "custom_id": "admin1",
+            "email":  "admin1@example.dev",
+            "status": 1,
+            "rbac_token_enabled": false,
+            "consumer":  { id = "abc" }
+            "rbac_user": { id = "def" }
+          }
+          ```
+        ]]
+      },
+    }, -- FIXME keep adding endpoints here
   },
 
 --------------------------------------------------------------------------------
@@ -893,6 +957,13 @@ return {
         id = { skip = true },
         created_at = { skip = true },
         updated_at = { skip = true },
+        type = {
+          kind = "required",
+          description = [[
+            The type of consumer. It can be `0` (proxy), `1` (developer), `2` (admin) or `3` (application)
+          ]],
+          example = 0,
+        },
         username = {
           kind = "semi-optional",
           description = [[
@@ -1064,6 +1135,10 @@ return {
         id = { skip = true },
         created_at = { skip = true },
         updated_at = { skip = true },
+        run_on = {
+          skip = true,
+          example = "first",
+        },
         name = {
           description = [[
             The name of the Plugin that's going to be added. Currently the
