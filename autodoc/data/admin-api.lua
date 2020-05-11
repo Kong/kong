@@ -1276,7 +1276,7 @@ return {
           request_query = [[
             Attributes | Description
             ---:| ---
-            `balancer_health`<br>*optional* | If set to 1, Kong will return the health status of the whole Upstream.
+            `balancer_health`<br>*optional* | If set to 1, Kong will return the health status of the Upstream itself. See the `healthchecks.threshold` property.
           ]],
           response = [[
             ```
@@ -1934,10 +1934,44 @@ return {
       {
         title = [[Supported Content Types]],
         text = [[
-          The Admin API accepts 2 content types on every endpoint:
+          The Admin API accepts 3 content types on every endpoint:
+
+          - **application/json**
+
+          Handy for complex bodies (ex: complex plugin configuration), in that case simply send
+          a JSON representation of the data you want to send. Example:
+
+          ```json
+          {
+              "config": {
+                  "limit": 10,
+                  "period": "seconds"
+              }
+          }
+          ```
+
 
           - **application/x-www-form-urlencoded**
-          - **application/json**
+
+          Simple enough for basic request bodies, you will probably use it most of the time.
+          Note that when sending nested values, Kong expects nested objects to be referenced
+          with dotted keys. Example:
+
+          ```
+          config.limit=10&config.period=seconds
+          ```
+
+
+          - **multipart/form-data**
+
+          Similar to url-encoded, this content type uses dotted keys to reference nested objects.
+          Here is an example of sending a Lua file to the pre-function Kong plugin:
+
+          ```
+          curl -i -X POST http://localhost:8001/services/plugin-testing/plugins \
+               -F "name=pre-function" \
+               -F "config.functions=@custom-auth.lua"
+          ```
         ]],
       },
     },
