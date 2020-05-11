@@ -637,8 +637,8 @@ _M.status_code_query = status_code_query
 
 -- @param entity: consumer or service dao
 local function resolve_entity_metadata(entity)
-  local isService = entity.name ~= nil
-  if isService then
+  local is_service = not not entity.name
+  if is_service then
     return { name = entity.name }
   end
   if entity.type == enums.CONSUMERS.TYPE.APPLICATION then
@@ -663,24 +663,23 @@ _M.resolve_entity_metadata = resolve_entity_metadata
 function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   start_ts = start_ts or 36000
   local plural_entity = entity .. 's'
-  local is_timeseries_report = entity_id ~= nil
-  local row, rows, err
+  local is_timeseries_report = not not entity_id
+  local entities = {}
+  local err
   if is_timeseries_report then
-    row, err = workspaces.run_with_ws_scope({}, function()
-      return kong.db[plural_entity]:select({ id = entity_id})
+    _, err = workspaces.run_with_ws_scope({}, function()
+      local row = kong.db[plural_entity]:select({ id = entity_id})
+      entities[row.id] = resolve_entity_metadata(row)
     end)
-    rows = { row }
   else
-    rows, err = workspaces.run_with_ws_scope({}, function()
-      return kong.db[plural_entity]:select_all()
+    _, err = workspaces.run_with_ws_scope({}, function()
+      for row in kong.db[plural_entity]:each() do
+        entities[row.id] = resolve_entity_metadata(row)
+      end
     end)
   end
   if err then
     return nil, err
-  end
-  local entities = {}
-  for _, r in ipairs(rows) do
-    entities[r.id] = resolve_entity_metadata(r)
   end
 
   local seconds_from_now = ngx.time() - start_ts
@@ -705,9 +704,7 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
       end
       local has_index = index ~= ''
       if has_index then
-        if stats[index] == nil then
-          stats[index] = { ["total"] = 0, ["2XX"] = 0, ["4XX"] = 0, ["5XX"] = 0 }
-        end
+        stats[index] = stats[index] or { ["total"] = 0, ["2XX"] = 0, ["4XX"] = 0, ["5XX"] = 0 }
         local status_group = tostring(series.tags.status_f):sub(1, 1) .. "XX"
         local request_count = value[2]
         stats[index]["total"] = stats[index]["total"] + request_count
@@ -789,10 +786,7 @@ function _M:latency_report(hostname, interval, start_ts)
       else
         key = tostring(value[1]) -- timestamp
       end
-
-      if stats[key] == nil then
-        stats[key] = {}
-      end
+      stats[key] = stats[key] or {}
 
       for i, column in pairs(columns) do
         if value[i+1] ~= cjson.null then
