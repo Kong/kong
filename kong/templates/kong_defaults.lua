@@ -287,4 +287,7 @@ role = traditional
 event_hooks_enabled = off
 
 kic = off
+
+cluster_telemetry_listen = 0.0.0.0:8006
+cluster_telemetry_endpoint = 127.0.0.1:8006
 ]]

@@ -1382,6 +1382,15 @@ function Kong.serve_cluster_listener(options)
 end
 
 
+function Kong.serve_cluster_telemetry_listener(options)
+  log_init_worker_errors()
+
+  kong_global.set_phase(kong, PHASES.cluster_listener)
+
+  return clustering.handle_cp_websocket(true)
+end
+
+
 do
   local declarative = require("kong.db.declarative")
   local cjson = require("cjson.safe")

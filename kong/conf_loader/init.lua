@@ -274,6 +274,7 @@ local CONF_INFERENCES = {
   status_listen = { typ = "array" },
   stream_listen = { typ = "array" },
   cluster_listen = { typ = "array" },
+  cluster_telemetry_listen = { typ = "array" },
   db_update_frequency = {  typ = "number"  },
   db_update_propagation = {  typ = "number"  },
   db_cache_ttl = {  typ = "number"  },
@@ -942,6 +943,10 @@ local function check_and_infer(conf, opts)
       errors[#errors + 1] = "cluster_listen must be specified when role = \"control_plane\""
     end
 
+    if #conf.cluster_telemetry_listen < 1 or pl_stringx.strip(conf.cluster_telemetry_listen[1]) == "off" then
+      errors[#errors + 1] = "cluster_telemetry_listen must be specified when role = \"control_plane\""
+    end
+
     if conf.database == "off" then
       errors[#errors + 1] = "in-memory storage can not be used when role = \"control_plane\""
     end
@@ -1465,6 +1470,7 @@ local function load(path, custom_conf, opts)
     { name = "admin_listen",   subsystem = "http",   ssl_flag = "admin_ssl_enabled" },
     { name = "status_listen",  flags = { "ssl" },    ssl_flag = "status_ssl_enabled" },
     { name = "cluster_listen", subsystem = "http" },
+    { name = "cluster_telemetry_listen", subsystem = "http" },
   })
   if not ok then
     return nil, err

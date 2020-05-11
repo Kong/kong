@@ -276,6 +276,7 @@ build = {
     ["kong.vitals.prometheus.strategy"] = "kong/vitals/prometheus/strategy.lua",
     ["kong.vitals.prometheus.statsd.logger"] = "kong/vitals/prometheus/statsd/logger.lua",
     ["kong.vitals.prometheus.statsd.handler"] = "kong/vitals/prometheus/statsd/handler.lua",
+    ["kong.vitals.clustering.strategy"] = "kong/vitals/clustering/strategy.lua",
     ["kong.vitals.influxdb.strategy"] = "kong/vitals/influxdb/strategy.lua",
     ["kong.db"] = "kong/db/init.lua",
     ["kong.db.errors"] = "kong/db/errors.lua",

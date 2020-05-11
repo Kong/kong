@@ -190,6 +190,11 @@
                                  # which configuration updates will be fetched,
                                  # in `host:port` format.
 
+#cluster_telemetry_endpoint =    # To be used by data plane nodes only:
+                                 # telemetry address of the control plane node
+                                 # from which telemetry updates will be posted
+                                 # in `host:port` format.
+
 #cluster_listen = 0.0.0.0:8005
                          # Comma-separated list of addresses and ports on
                          # which the cluster control plane server should listen
@@ -198,6 +203,17 @@
                          # must be accessible by all the data planes
                          # within the same cluster. This port is mTLS protected
                          # to ensure end-to-end security and integrity.
+                         #
+                         # This setting has no effect if `role` is not set to
+                         # `control_plane`.
+
+#cluster_telemetry_listen = 0.0.0.0:8006
+                         # Comma-separated list of addresses and ports on
+                         # which the cluster control plane server should listen
+                         # for data plane telemetry connections.
+                         # The cluster communication port of the control plane
+                         # must be accessible by all the data planes
+                         # within the same cluster.
                          #
                          # This setting has no effect if `role` is not set to
                          # `control_plane`.

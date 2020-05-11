@@ -233,6 +233,7 @@ function _M.new(opts)
 
   local strategy
   local tsdb_storage = false
+  local hybrid_cp = false
 
   do
     local db = opts.db
@@ -254,8 +255,14 @@ function _M.new(opts)
         db_strategy = require "kong.vitals.cassandra.strategy"
       elseif db.strategy == "off" then
         db_strategy = require "kong.vitals.off.strategy"
-      else
+      elseif kong.configuration.role == "traditional" then
         return error("no vitals strategy for " .. db.strategy)
+      end
+
+      if kong.configuration.role ~= "traditional" then
+        db_strategy = require "kong.vitals.clustering.strategy"
+        hybrid_cp = kong.configuration.role == "control_plane"
+        log(DEBUG, _log_prefix, "loading clustering strategy, is CP: ", hybrid_cp)
       end
     else
       -- use TSDB strategies
@@ -280,6 +287,7 @@ function _M.new(opts)
     ttl_minutes    = opts.ttl_minutes or 90000,
     initialized    = false,
     tsdb_storage   = tsdb_storage,
+    hybrid_cp      = hybrid_cp,
   }
 
   return setmetatable(self, mt)
@@ -356,7 +364,7 @@ persistence_handler = function(premature, self)
     return
   end
 
-  if self.tsdb_storage then
+  if self.tsdb_storage or self.hybrid_cp then
     -- TSDB strategy is read-only, the metrics will be sent by statsd-advanced plugin.
     return
   end
@@ -1496,6 +1504,9 @@ function _M:log_phase_after_plugins(ctx, status)
   if self.tsdb_storage then
     -- skip maintaining counters since TSDB strategies handle writes directly
     return self.strategy:log()
+  elseif self.hybrid_cp then
+    -- skip counters in control plane
+    return true
   end
 
   local seconds = time()

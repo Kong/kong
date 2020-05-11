@@ -610,4 +610,32 @@ server {
     }
 }
 > end -- role == "control_plane"
+
+> if role == "control_plane" then
+server {
+    server_name kong_cluster_telemetry_listener;
+> for _, entry in ipairs(cluster_telemetry_listeners) do
+    listen $(entry.listener) ssl;
+> end
+
+    access_log off;
+
+> if cluster_mtls == "shared" then
+    ssl_verify_client   optional_no_ca;
+> else
+    ssl_verify_client   on;
+    ssl_client_certificate ${{CLUSTER_CA_CERT}};
+    ssl_verify_depth     4;
+> end
+    ssl_certificate     ${{CLUSTER_CERT}};
+    ssl_certificate_key ${{CLUSTER_CERT_KEY}};
+    ssl_session_cache   shared:ClusterSSL:10m;
+
+    location = /v1/ingest {
+        content_by_lua_block {
+            Kong.serve_cluster_telemetry_listener()
+        }
+    }
+}
+> end -- role == "control_plane"
 ]]

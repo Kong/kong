@@ -45,8 +45,10 @@ local clients = setmetatable({}, WEAK_KEY_MT)
 local shdict = ngx.shared.kong_clustering -- only when role == "control_plane"
 local prefix = ngx.config.prefix()
 local CONFIG_CACHE = prefix .. "/config.cache.json.gz"
+local RECONFIGURE_TYPE_KEY = "reconfigure"
 local declarative_config
 
+local server_on_message_callbacks = {}
 
 local function update_config(config_table, update_cache)
   assert(type(config_table) == "table")
@@ -108,33 +110,133 @@ local function send_ping(c)
   return true
 end
 
+local function ws_event_loop(ws, on_connection, on_error, on_message)
+  local sem = semaphore.new()
+  local queue = { sem = sem, }
 
-local function communicate(premature, conf)
+  local function queued_send(msg)
+    table_insert(queue, msg)
+    queue.sem:post()
+  end
+
+  local recv = ngx.thread.spawn(function()
+    while not exiting() do
+      local data, typ, err = ws:recv_frame()
+      if err then
+        ngx.log(ngx.ERR, "error while receiving frame from peer: ", err)
+        if ws.close then
+          ws:close()
+        end
+
+        if on_connection then
+          local _, err = on_connection(false)
+          if err then
+            ngx_log(ngx_ERR, "error when executing on_connection function: ", err)
+          end
+        end
+
+        if on_error then
+          local _, err = on_error(err)
+          if err then
+            ngx_log(ngx_ERR, "error when executing on_error function: ", err)
+          end
+        end
+        return
+      end
+
+      if (typ == "ping" or typ == "binary") and on_message then
+        local cbs
+        if typ == "binary" then
+          data = assert(inflate_gzip(data))
+          data = assert(cjson_decode(data))
+
+          cbs = on_message[data.type]
+        else
+          cbs = on_message[typ]
+        end
+
+        if cbs then
+          for _, cb in ipairs(cbs) do
+            local _, err = cb(data, queued_send)
+            if err then
+              ngx_log(ngx_ERR, "error when executing on_message function: ", err)
+            end
+          end
+        end
+      elseif typ == "pong" then
+        ngx_log(ngx_DEBUG, "received PONG frame from peer")
+      end
+    end
+  end)
+
+  local send = ngx.thread.spawn(function()
+    while not exiting() do
+      local ok, err = sem:wait(10)
+      if ok then
+        local payload = table_remove(queue, 1)
+        assert(payload, "client message queue can not be empty after semaphore returns")
+
+        if payload == "PONG" then
+          local _
+          _, err = ws:send_pong()
+          if err then
+            ngx_log(ngx_ERR, "failed to send PONG back to peer: ", err)
+            return ngx_exit(ngx_ERR)
+          end
+
+          ngx_log(ngx_DEBUG, "sent PONG packet back to peer")
+        elseif payload == "PING" then
+          local _
+          _, err = send_ping(ws)
+          if err then
+            ngx_log(ngx_ERR, "failed to send PING to peer: ", err)
+            return ngx_exit(ngx_ERR)
+          end
+
+          ngx_log(ngx_DEBUG, "sent PING packet to peer")
+        else
+          payload = assert(deflate_gzip(payload))
+          local _, err = ws:send_binary(payload)
+          if err then
+            ngx_log(ngx_ERR, "unable to send binary to peer: ", err)
+          end
+        end
+
+      else -- not ok
+        if err ~= "timeout" then
+          ngx_log(ngx_ERR, "semaphore wait error: ", err)
+        end
+      end
+    end
+  end)
+
+  local wait = function()
+    return ngx.thread.wait(recv, send)
+  end
+
+  return queued_send, wait
+
+end
+
+
+local function communicate(premature, uri, server_name, on_connection, on_message)
   if premature then
     -- worker wants to exit
     return
   end
 
-  -- TODO: pick one random CP
-  local address = conf.cluster_control_plane
+  local reconnect = function(delay)
+    return ngx.timer.at(delay, communicate, uri, server_name, on_connection, on_message)
+  end
 
   local c = assert(ws_client:new(WS_OPTS))
-  local uri = "wss://" .. address .. "/v1/outlet?node_id=" ..
-              kong.node.get_id() .. "&node_hostname=" .. utils.get_hostname()
 
   local opts = {
     ssl_verify = true,
     client_cert = CERT,
     client_priv_key = CERT_KEY,
+    server_name = server_name,
   }
-  if conf.cluster_mtls == "shared" then
-    opts.server_name = "kong_clustering"
-  else
-    -- server_name will be set to the host if it is not explicitly defined here
-    if conf.cluster_server_name ~= "" then
-      opts.server_name = conf.cluster_server_name
-    end
-  end
 
   local res, err = c:connect(uri, opts)
   if not res then
@@ -142,54 +244,31 @@ local function communicate(premature, conf)
 
     ngx_log(ngx_ERR, "connection to control plane broken: ", err,
             " retrying after ", delay , " seconds")
-    assert(ngx.timer.at(delay, communicate, conf))
+
+    assert(reconnect(delay))
     return
   end
 
-  -- connection established
-  -- ping thread
-  ngx.thread.spawn(function()
-    while true do
-      if not send_ping(c) then
-        return
-      end
+  local queued_send, wait = ws_event_loop(c,
+    on_connection,
+    function()
+      assert(reconnect(9 + math.random()))
+    end,
+    on_message)
 
-      ngx_sleep(PING_INTERVAL)
-    end
-  end)
 
-  while true do
-    local data, typ, err = c:recv_frame()
+  if on_connection then
+    local _, err = on_connection(true, queued_send)
     if err then
-      ngx.log(ngx.ERR, "error while receiving frame from control plane: ", err)
-      c:close()
-
-      local delay = 9 + math.random()
-      assert(ngx.timer.at(delay, communicate, conf))
-      return
-    end
-
-    if typ == "binary" then
-      data = assert(inflate_gzip(data))
-
-      local msg = assert(cjson_decode(data))
-
-      if msg.type == "reconfigure" then
-        local config_table = assert(msg.config_table)
-
-        local res, err = update_config(config_table, true)
-        if not res then
-          ngx_log(ngx_ERR, "unable to update running config: ", err)
-        end
-
-        send_ping(c)
-
-      end
-    elseif typ == "pong" then
-      ngx_log(ngx_DEBUG, "received PONG frame from control plane")
+      ngx_log(ngx_ERR, "error when executing on_connection function: ", err)
     end
   end
+
+  wait()
+
 end
+
+_M.communicate = communicate
 
 
 local function validate_shared_cert()
@@ -213,7 +292,7 @@ local function validate_shared_cert()
 end
 
 
-function _M.handle_cp_websocket()
+function _M.handle_cp_websocket(is_telemetry)
   -- use mutual TLS authentication
   if kong.configuration.cluster_mtls == "shared" then
     validate_shared_cert()
@@ -233,11 +312,43 @@ function _M.handle_cp_websocket()
     return ngx_exit(444)
   end
 
-  local sem = semaphore.new()
-  local queue = { sem = sem, }
-  clients[wb] = queue
+  local current_on_message_callbacks = {}
+  for k, v in pairs(server_on_message_callbacks) do
+    current_on_message_callbacks[k] = v
+  end
 
-  do
+  if not is_telemetry then
+    current_on_message_callbacks["ping"] = {
+      function(data, queued_send)
+        queued_send("PONG")
+
+        local ok
+        ok, err = shdict:safe_set(node_id,
+                                  cjson_encode({
+                                    last_seen = ngx_time(),
+                                    config_hash =
+                                      data ~= "" and data or nil,
+                                    hostname = node_hostname,
+                                    ip = node_ip,
+                                  }), PING_INTERVAL * 2 + 5)
+        if not ok then
+          ngx_log(ngx_ERR, "unable to update in-memory cluster status: ", err)
+        end
+      end
+    }
+  end
+
+  local queued_send, wait = ws_event_loop(wb,
+    nil,
+    function(_)
+      return ngx_exit(ngx_ERR)
+    end,
+    current_on_message_callbacks)
+
+  if not is_telemetry then
+    -- is a config sync client
+    clients[wb] = queued_send
+
     local res
     -- unconditionally send config update to new clients to
     -- ensure they have latest version running
@@ -246,77 +357,13 @@ function _M.handle_cp_websocket()
       ngx_log(ngx_ERR, "unable to export config from database: ".. err)
     end
 
-    local payload = cjson_encode({ type = "reconfigure",
+    local payload = cjson_encode({ type = RECONFIGURE_TYPE_KEY,
                                    config_table = res,
                                  })
-    payload = assert(deflate_gzip(payload))
-    table_insert(queue, payload)
-    queue.sem:post()
+    queued_send(payload)
   end
 
-  -- connection established
-  -- ping thread
-  ngx.thread.spawn(function()
-    while true do
-      local data, typ, err = wb:recv_frame()
-      if not data then
-        ngx_log(ngx_ERR, "did not receive ping frame from data plane: ", err)
-        return ngx_exit(ngx_ERR)
-      end
-
-      assert(typ == "ping")
-
-      -- queue PONG to avoid races
-      table_insert(queue, "PONG")
-      queue.sem:post()
-
-      local ok
-      ok, err = shdict:safe_set(node_id,
-                                cjson_encode({
-                                  last_seen = ngx_time(),
-                                  config_hash =
-                                    data ~= "" and data or nil,
-                                  hostname = node_hostname,
-                                  ip = node_ip,
-                                }), PING_INTERVAL * 2 + 5)
-      if not ok then
-        ngx_log(ngx_ERR, "unable to update in-memory cluster status: ", err)
-      end
-    end
-  end)
-
-  while not exiting() do
-    local ok, err = sem:wait(10)
-    if ok then
-      local payload = table_remove(queue, 1)
-      assert(payload, "config queue can not be empty after semaphore returns")
-
-      if payload == "PONG" then
-        local _
-        _, err = wb:send_pong()
-        if err then
-          ngx_log(ngx_ERR, "failed to send PONG back to data plane: ", err)
-          return ngx_exit(ngx_ERR)
-        end
-
-        ngx_log(ngx_DEBUG, "sent PONG packet to data plane")
-
-      else -- config update
-        local _, err = wb:send_binary(payload)
-        if err then
-          ngx_log(ngx_ERR, "unable to send updated configuration to node: ", err)
-
-        else
-          ngx_log(ngx_DEBUG, "sent config update to node")
-        end
-      end
-
-    else -- not ok
-      if err ~= "timeout" then
-        ngx_log(ngx_ERR, "semaphore wait error: ", err)
-      end
-    end
-  end
+  wait()
 end
 
 
@@ -333,16 +380,14 @@ end
 
 
 local function push_config(config_table)
-  local payload = cjson_encode({ type = "reconfigure",
+  local payload = cjson_encode({ type = RECONFIGURE_TYPE_KEY,
                                  config_table = config_table,
                                })
-  payload = assert(deflate_gzip(payload))
 
   local n = 0
 
-  for _, queue in pairs(clients) do
-    table_insert(queue, payload)
-    queue.sem:post()
+  for _, queued_send in pairs(clients) do
+    queued_send(payload)
 
     n = n + 1
   end
@@ -407,6 +452,59 @@ function _M.init(conf)
 end
 
 
+local function start_conf_sync_client(conf)
+  -- TODO: pick one random CP
+  local address = conf.cluster_control_plane
+
+  local uri = "wss://" .. address .. "/v1/outlet?node_id=" ..
+              kong.node.get_id() .. "&node_hostname=" .. utils.get_hostname()
+  local server_name
+  if conf.cluster_mtls == "shared" then
+    server_name = "kong_clustering"
+  else
+    -- server_name will be set to the host if it is not explicitly defined here
+    if conf.cluster_server_name ~= "" then
+      server_name = conf.cluster_server_name
+    end
+  end
+
+  local on_message = {
+    [RECONFIGURE_TYPE_KEY] = {
+      function(msg, queued_send)
+        local config_table = assert(msg.config_table)
+
+        local res, err = update_config(config_table, true)
+        if not res then
+          ngx_log(ngx_ERR, "unable to update running config: ", err)
+        end
+
+        queued_send("PING")
+      end,
+    }
+  }
+
+  local ping_thread_cookie
+
+  local on_connection = function(connected, queued_send)
+    if not connected then
+      return
+    end
+    ping_thread_cookie = utils.uuid()
+
+    ngx.thread.spawn(function(cookie)
+      -- make sure the old thread clean up by itself
+      while cookie == ping_thread_cookie do
+        queued_send("PING")
+
+        ngx_sleep(PING_INTERVAL)
+      end
+    end, ping_thread_cookie)
+  end
+
+  assert(ngx.timer.at(0, communicate, uri, server_name, on_connection, on_message))
+end
+
+
 function _M.init_worker(conf)
   assert(conf, "conf can not be nil", 2)
 
@@ -447,7 +545,8 @@ function _M.init_worker(conf)
         end
       end
 
-      assert(ngx.timer.at(0, communicate, conf))
+      start_conf_sync_client(conf)
+
     end
 
   elseif conf.role == "control_plane" then
@@ -473,6 +572,14 @@ function _M.init_worker(conf)
 
       push_config(res)
     end, "clustering", "push_config")
+  end
+end
+
+function _M.register_server_on_message(typ, cb)
+  if not server_on_message_callbacks[typ] then
+    server_on_message_callbacks[typ] = { cb }
+  else
+    table.insert(server_on_message_callbacks[typ], cb)
   end
 end
 

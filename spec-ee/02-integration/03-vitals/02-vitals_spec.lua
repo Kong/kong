@@ -32,7 +32,11 @@ for _, strategy in helpers.each_strategy() do
     setup(function()
       db = select(2, helpers.get_db_utils(strategy))
 
-      kong.configuration = { vitals = true }
+      kong.configuration = {
+        role = "traditional",
+        vitals = true
+      }
+
       vitals = kong_vitals.new({
         db = db,
       })
@@ -272,7 +276,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("cache_accessed()", function()
       it("doesn't increment the cache counter when vitals is off", function()
-        kong.configuration = { vitals = false }
+        kong.configuration.vitals = false
 
         local vitals = kong_vitals.new { db = db }
         vitals:reset_counters()
@@ -281,7 +285,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("does increment the cache counter when vitals is on", function()
-        kong.configuration = { vitals = true }
+        kong.configuration.vitals = true
 
         local vitals = kong_vitals.new { db = db, flush_interval = 1 }
         stub(vitals, "enabled").returns(true)
@@ -322,7 +326,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("log_latency()", function()
       it("doesn't log latency when vitals is off", function()
-        kong.configuration = { vitals = false }
+        kong.configuration.vitals = false
 
         local vitals = kong_vitals.new { db = db }
         vitals:reset_counters()
@@ -331,7 +335,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("does log latency when vitals is on", function()
-        kong.configuration = { vitals = true }
+        kong.configuration.vitals = true
 
         local vitals = kong_vitals.new { db = db }
         stub(vitals, "enabled").returns(true)
@@ -350,7 +354,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("log_upstream_latency()", function()
       it("doesn't log upstream latency when vitals is off", function()
-        kong.configuration = { vitals = false }
+        kong.configuration.vitals = false
 
         local vitals = kong_vitals.new { db = db }
         vitals:reset_counters()
@@ -359,7 +363,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("does log upstream latency when vitals is on", function()
-        kong.configuration = { vitals = true }
+        kong.configuration.vitals = true
 
         local vitals = kong_vitals.new { db = db }
         stub(vitals, "enabled").returns(true)
@@ -799,7 +803,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("init()", function()
       it("doesn't initialize strategy  when vitals is off", function()
-        kong.configuration = { vitals = false }
+        kong.configuration.vitals = false
 
         local vitals = kong_vitals.new { db = db }
         vitals:reset_counters()
@@ -811,7 +815,7 @@ for _, strategy in helpers.each_strategy() do
         assert.spy(s_strategy).was_called(0)
       end)
       it("does initialize strategy when vitals is on", function()
-        kong.configuration = { vitals = true }
+        kong.configuration.vitals = true
 
         local vitals = kong_vitals.new({
           db = db,
@@ -1049,7 +1053,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("get_status_codes() - validation", function()
       it("when influxdb strategy rejects invalid query_type", function()
-        kong.configuration = { vitals_strategy = "influxdb" }
+        kong.configuration.vitals_strategy = "influxdb"
         local res, err = vitals:get_status_codes({
           entity_type = "service",
           duration    = "foo",
@@ -1065,7 +1069,7 @@ for _, strategy in helpers.each_strategy() do
 
 
       it("when not influxdb strategy rejects invalid query_type", function()
-        kong.configuration = { vitals_strategy = "database" }
+        kong.configuration.vitals_strategy = "database"
         local res, err = vitals:get_status_codes({
           entity_type = "service",
           duration    = "foo",

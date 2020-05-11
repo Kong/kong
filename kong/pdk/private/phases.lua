@@ -121,7 +121,7 @@ local public_phases = setmetatable({
                       PHASES.log,
                       PHASES.error,
                       PHASES.admin_api,
-                      PHASES.cluster_listener),
+                      PHASES.cluster_listener)
 }, {
   __index = function(t, k)
     error("unknown phase or phase alias: " .. k)
