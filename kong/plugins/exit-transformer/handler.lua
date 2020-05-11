@@ -48,10 +48,6 @@ local function get_conf()
       goto continue
     end
 
-    if not ngx.ctx.is_proxy_request and not plugin_conf.handle_admin then
-      goto continue
-    end
-
     do
       return plugin_conf
     end
@@ -115,6 +111,11 @@ end
 
 
 function _M:exit(status, body, headers)
+  -- Do not transform admin requests
+  if not ngx.ctx.is_proxy_request then
+    return status, body, headers
+  end
+
   -- Try to get plugin configuration for current context
   local conf = get_conf()
   if not conf then

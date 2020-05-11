@@ -145,48 +145,6 @@ for _, strategy in helpers.each_strategy() do
         local body = res:read_body()
         assert.equal("{\"hello\":\"world\"}", body)
       end)
-
-      it("does only transform admin if config.handle_admin", function()
-        local res = assert(admin_client:send({
-          method  = "PATCH",
-          path    = "/plugins/" .. gplugin.id,
-          body    = {
-            config = { handle_admin = true },
-          },
-          headers = {
-            ["Content-Type"] = "application/json"
-          }
-        }))
-        assert.res_status(200, res)
-
-        local res = assert(admin_client:send {
-          method = "GET",
-          path = "/something-that-does-not-exist",  -- makes mockbin return the entire request
-        })
-        local body = assert.response(res).has.jsonbody()
-        assert.same({ hello = "world" }, body)
-
-        local res = assert(admin_client:send({
-          method  = "PATCH",
-          path    = "/plugins/" .. gplugin.id,
-          body    = {
-            config = { handle_admin = false },
-          },
-          headers = {
-            ["Content-Type"] = "application/json"
-          }
-        }))
-        assert.res_status(200, res)
-
-        local res = assert(admin_client:send {
-          method = "GET",
-          path = "/something-that-does-not-exist",  -- makes mockbin return the entire request
-        })
-        assert.response(res).has.status(404)
-        local body = assert.response(res).has.jsonbody()
-        assert.same({ message = "Not found" }, body)
-
-      end)
     end)
 
     describe("specific", function()
