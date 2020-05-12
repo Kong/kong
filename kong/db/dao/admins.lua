@@ -52,7 +52,7 @@ function _Admins:insert(admin, options)
     user_token = utils.uuid(),
     enabled = admin.rbac_token_enabled,
     comment = "User generated on creation of Admin.",
-  })
+  }, options)
 
   if err then
     return nil, err
@@ -63,7 +63,7 @@ function _Admins:insert(admin, options)
     username  = admin.username,
     custom_id = admin.custom_id,
     type = enums.CONSUMERS.TYPE.ADMIN,
-  })
+  }, options)
 
   if err then
     rollback_on_create(self, { rbac_user = rbac_user })
