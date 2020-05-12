@@ -163,7 +163,7 @@ function AWSLambdaHandler:access(conf)
     " to forward request values: ", err)
   end
 
-  local host = fmt("lambda.%s.amazonaws.com", conf.aws_region)
+  local host = conf.host or fmt("lambda.%s.amazonaws.com", conf.aws_region)
   local path = fmt("/2015-03-31/functions/%s/invocations",
                             conf.function_name)
   local port = conf.port or AWS_PORT

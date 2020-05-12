@@ -90,4 +90,35 @@ describe("Plugin: AWS Lambda (schema)", function()
     assert.falsy(ok)
   end)
 
+  it("accepts a host", function()
+    local ok, err = v({
+      host = "my.lambda.host",
+      function_name = "my-function"
+    }, schema_def)
+
+    assert.is_nil(err)
+    assert.truthy(ok)
+  end)
+
+  it("errors if none of aws_region and host are passed ", function()
+    local ok, err = v({
+      function_name = "my-function"
+    }, schema_def)
+
+
+    assert.equal("only one of these fields must be non-empty: 'config.aws_region', 'config.host'", err["@entity"][1])
+    assert.falsy(ok)
+  end)
+
+  it("errors if both of aws_region and host are passed ", function()
+    local ok, err = v({
+      host = "my.lambda.host",
+      aws_region = "us-east-1",
+      function_name = "my-function"
+    }, schema_def)
+
+
+    assert.equal("only one of these fields must be non-empty: 'config.aws_region', 'config.host'", err["@entity"][1])
+    assert.falsy(ok)
+  end)
 end)

@@ -115,13 +115,14 @@ Here's a list of all the parameters which can be used in this plugin's configura
 | `consumer_id` || The id of the Consumer which this plugin will target.
 |`config.aws_key` <br>*semi-optional* || The AWS key credential to be used when invoking the function. This value is required if `aws_secret` is defined.
 |`config.aws_secret` <br>*semi-optional* ||The AWS secret credential to be used when invoking the function. This value is required if `aws_key` is defined.
-|`config.aws_region` || The AWS region where the Lambda function is located. The plugin *does not* attempt to validate the provided region name; an invalid region name will result in a DNS name resolution error.
+|`config.aws_region` <br>*semi-optional* || The AWS region where the Lambda function is located. The plugin *does not* attempt to validate the provided region name; an invalid region name will result in a DNS name resolution error. This value cannot be specified if `host` is set.
 |`config.function_name` || The AWS Lambda function name to invoke.
 |`config.timeout`| `60000` | Timeout protection in milliseconds when invoking the function.
 |`config.keepalive`| `60000` | Max idle timeout in milliseconds when invoking the function.
 |`config.qualifier` <br>*optional* || The [`Qualifier`](http://docs.aws.amazon.com/lambda/latest/dg/API_Invoke.html#API_Invoke_RequestSyntax) to use when invoking the function.
 |`config.invocation_type` <br>*optional*| `RequestResponse` | The [`InvocationType`](http://docs.aws.amazon.com/lambda/latest/dg/API_Invoke.html#API_Invoke_RequestSyntax) to use when invoking the function. Available types are `RequestResponse`, `Event`, `DryRun`.
 |`config.log_type` <br>*optional* | `Tail`| The [`LogType`](http://docs.aws.amazon.com/lambda/latest/dg/API_Invoke.html#API_Invoke_RequestSyntax) to use when invoking the function. By default `None` and `Tail` are supported.
+|`config.host` <br>*semi-optional* || The AWS lambda host. If not specified, `aws_region` is required and the official AWS lambda endpoint for the given AWS region is used as host.
 |`config.port` <br>*optional* | `443` | The TCP port that this plugin will use to connect to the server.
 |`config.unhandled_status` <br>*optional* | `200`, `202` or `204` | The response status code to use (instead of the default `200`, `202`, or `204`) in the case of an [`Unhandled` Function Error](https://docs.aws.amazon.com/lambda/latest/dg/API_Invoke.html#API_Invoke_ResponseSyntax)
 |`config.forward_request_body` <br>*optional* | `false` | An optional value that defines whether the request body is to be sent in the `request_body` field of the JSON-encoded request. If the body arguments can be parsed, they will be sent in the separate `request_body_args` field of the request. The body arguments can be parsed for `application/json`, `application/x-www-form-urlencoded`, and `multipart/form-data` content types.

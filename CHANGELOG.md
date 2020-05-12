@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- Fix: do not validate region name against hardcoded list of regions
+- fix: do not validate region name against hardcoded list of regions
+- feat: add `host` configuration to allow for custom Lambda endpoints
 
 ## aws-lambda 3.3.0 17-Apr-2020
 

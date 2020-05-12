@@ -37,7 +37,7 @@ return {
           type = "string",
           encrypted = ENCRYPTED,
         } },
-        { aws_region = typedefs.host { required = true } },
+        { aws_region = typedefs.host },
         { function_name = {
           type = "string",
           required = true,
@@ -57,6 +57,7 @@ return {
           default = "Tail",
           one_of = { "Tail", "None" }
         } },
+        { host = typedefs.host },
         { port = typedefs.port { default = 443 }, },
         { unhandled_status = {
           type = "integer",
@@ -101,5 +102,6 @@ return {
   entity_checks = {
     { mutually_required = { "config.aws_key", "config.aws_secret" } },
     { mutually_required = { "config.proxy_scheme", "config.proxy_url" } },
+    { only_one_of = { "config.aws_region", "config.host" } },
   }
 }
