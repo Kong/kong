@@ -15,7 +15,7 @@ return function(options)
   local meta = require "kong.meta"
 
 
-  require("cjson.safe").encode_sparse_array(nil, nil, 512)
+  require("cjson.safe").encode_sparse_array(nil, nil, 2^15)
 
 
   if options.cli then
