@@ -3267,30 +3267,30 @@ function OICHandler.access(_, conf)
           local login_redirect_uri = trusted_client.login_redirect_uri or
                                      dynamic_login_redirect_uri
 
-          local query
-          local fragment
-
-          local fragment_start = find(login_redirect_uri, "#", 1, true)
-          if fragment_start then
-            fragment = sub(login_redirect_uri, fragment_start)
-            login_redirect_uri = sub(login_redirect_uri, 1, fragment_start - 1)
-          end
-
-          local query_start = find(login_redirect_uri, "?", 1, true)
-          if query_start then
-            query = gsub(sub(login_redirect_uri, query_start), "&+$", "")
-            login_redirect_uri = sub(login_redirect_uri, 1, query_start - 1)
-          end
-
-          if dynamic_login_redirect_uri_args then
-            if query then
-              query = gsub(concat({ query, dynamic_login_redirect_uri_args }, "&"), "&+$", "")
-            else
-              query = "?" ..  gsub(dynamic_login_redirect_uri_args, "&+$", "")
-            end
-          end
-
           if login_redirect_uri then
+            local query
+            local fragment
+
+            local fragment_start = find(login_redirect_uri, "#", 1, true)
+            if fragment_start then
+              fragment = sub(login_redirect_uri, fragment_start)
+              login_redirect_uri = sub(login_redirect_uri, 1, fragment_start - 1)
+            end
+
+            local query_start = find(login_redirect_uri, "?", 1, true)
+            if query_start then
+              query = gsub(sub(login_redirect_uri, query_start), "&+$", "")
+              login_redirect_uri = sub(login_redirect_uri, 1, query_start - 1)
+            end
+
+            if dynamic_login_redirect_uri_args then
+              if query then
+                query = gsub(concat({ query, dynamic_login_redirect_uri_args }, "&"), "&+$", "")
+              else
+                query = "?" ..  gsub(dynamic_login_redirect_uri_args, "&+$", "")
+              end
+            end
+
             local login_tokens = args.get_conf_arg("login_tokens")
             if login_tokens then
               log("adding login tokens to redirect uri")
