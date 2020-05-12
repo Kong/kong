@@ -142,9 +142,10 @@ do
 
   function _GLOBAL.init_cluster_events(kong_config, db)
     return kong_cluster_events.new({
-      db                      = db,
-      poll_interval           = kong_config.db_update_frequency,
-      poll_offset             = kong_config.db_update_propagation,
+      db            = db,
+      poll_interval = kong_config.db_update_frequency,
+      poll_offset   = kong_config.db_update_propagation,
+      poll_delay    = kong_config.db_update_propagation,
     })
   end
 
@@ -161,7 +162,6 @@ do
       shm_name          = "kong_db_cache",
       cluster_events    = cluster_events,
       worker_events     = worker_events,
-      propagation_delay = kong_config.db_update_propagation,
       ttl               = db_cache_ttl,
       neg_ttl           = db_cache_ttl,
       resurrect_ttl     = kong_config.resurrect_ttl,
@@ -186,7 +186,6 @@ do
       shm_name          = "kong_core_db_cache",
       cluster_events    = cluster_events,
       worker_events     = worker_events,
-      propagation_delay = kong_config.db_update_propagation,
       ttl               = db_cache_ttl,
       neg_ttl           = db_cache_ttl,
       resurrect_ttl     = kong_config.resurrect_ttl,

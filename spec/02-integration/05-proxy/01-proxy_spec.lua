@@ -15,9 +15,9 @@ local function get_listeners(filename)
   local file = assert(utils.readfile(filename))
   local result = {}
   for block in file:gmatch("[%\n%s]+server%s+(%b{})") do
-    local server = {}
     local server_name = block:match("[%\n%s]server_name%s(.-);")
     server_name = server_name and stringx.strip(server_name) or "stream"
+    local server = result[server_name] or {}
     result[server_name] = server
     for listen in block:gmatch("[%\n%s]listen%s(.-);") do
       listen = stringx.strip(listen)
@@ -98,13 +98,28 @@ describe("#stream proxy interface listeners", function()
       stream_listen = "127.0.0.1:9011, 127.0.0.1:9012",
     }))
 
-    assert.equals(1, count_server_blocks(helpers.test_conf.nginx_kong_stream_conf))
-    assert.same({
-      ["127.0.0.1:9011"] = 1,
-      ["127.0.0.1:9012"] = 2,
-      [1] = "127.0.0.1:9011",
-      [2] = "127.0.0.1:9012",
-    }, get_listeners(helpers.test_conf.nginx_kong_stream_conf).stream)
+    if helpers.test_conf.database == "off" then
+      local stream_config_sock_path = "unix:" .. helpers.test_conf.prefix .. "/stream_config.sock"
+
+      assert.equals(2, count_server_blocks(helpers.test_conf.nginx_kong_stream_conf))
+      assert.same({
+        ["127.0.0.1:9011"] = 1,
+        ["127.0.0.1:9012"] = 2,
+        [stream_config_sock_path] = 3,
+        [1] = "127.0.0.1:9011",
+        [2] = "127.0.0.1:9012",
+        [3] = stream_config_sock_path,
+      }, get_listeners(helpers.test_conf.nginx_kong_stream_conf).stream)
+
+    else
+      assert.equals(1, count_server_blocks(helpers.test_conf.nginx_kong_stream_conf))
+      assert.same({
+        ["127.0.0.1:9011"] = 1,
+        ["127.0.0.1:9012"] = 2,
+        [1] = "127.0.0.1:9011",
+        [2] = "127.0.0.1:9012",
+      }, get_listeners(helpers.test_conf.nginx_kong_stream_conf).stream)
+    end
 
     for i = 9011, 9012 do
       local sock = ngx.socket.tcp()

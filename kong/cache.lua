@@ -131,10 +131,6 @@ function _M.new(opts)
     error("opts.worker_events is required", 2)
   end
 
-  if opts.propagation_delay and type(opts.propagation_delay) ~= "number" then
-    error("opts.propagation_delay must be a number", 2)
-  end
-
   if opts.ttl and type(opts.ttl) ~= "number" then
     error("opts.ttl must be a number", 2)
   end
@@ -202,13 +198,18 @@ function _M.new(opts)
     end
   end
 
+  local curr_mlcache = 1
+
+  if opts.cache_pages == 2 then
+    curr_mlcache = ngx.shared.kong:get("kong:cache:" .. opts.shm_name .. ":curr_mlcache") or 1
+  end
+
   local self          = {
-    propagation_delay = max(opts.propagation_delay or 0, 0),
     cluster_events    = opts.cluster_events,
-    mlcache           = mlcaches[1],
+    mlcache           = mlcaches[curr_mlcache],
     mlcaches          = mlcaches,
     shm_names         = shm_names,
-    curr_mlcache      = 1,
+    curr_mlcache      = curr_mlcache,
   }
 
   local ok, err = self.cluster_events:subscribe("invalidations", function(key)
@@ -223,6 +224,12 @@ function _M.new(opts)
   _init[opts.shm_name] = true
 
   return setmetatable(self, mt)
+end
+
+
+function _M:save_curr_page()
+  return ngx.shared.kong:set(
+    "kong:cache:" .. self.shm_names[1] .. ":curr_mlcache", self.curr_mlcache)
 end
 
 
@@ -313,15 +320,9 @@ function _M:invalidate(key)
 
   self:invalidate_local(key)
 
-  local delay
-  if self.propagation_delay > 0 then
-    delay = self.propagation_delay
-  end
+  log(DEBUG, "broadcasting (cluster) invalidation for key: '", key, "'")
 
-  log(DEBUG, "broadcasting (cluster) invalidation for key: '", key, "' ",
-             "with delay: '", delay or "none", "'")
-
-  local ok, err = self.cluster_events:broadcast("invalidations", key, delay)
+  local ok, err = self.cluster_events:broadcast("invalidations", key)
   if not ok then
     log(ERR, "failed to broadcast cached entity invalidation: ", err)
   end

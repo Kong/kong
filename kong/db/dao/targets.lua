@@ -53,9 +53,7 @@ local function clean_history(self, upstream_pk)
     else
       -- haven't got this one, so this is the current state for this target
       seen[entry.target] = true
-      -- we can delete this entry if its weight == 0, but let's keep it if the
-      -- target list is almost empty, so the upstream still exists after cleaning up
-      if entry.weight == 0 and #targets > 2 then
+      if entry.weight == 0 then
         delete[#delete+1] = entry
       end
     end
@@ -67,10 +65,11 @@ local function clean_history(self, upstream_pk)
     ngx.log(ngx.NOTICE, "[Target DAO] Starting cleanup of target table for upstream ",
                tostring(upstream_pk.id))
     local cnt = 0
-    for _, entry in ipairs(delete) do
+    -- reverse again; so deleting oldest entries first
+    for i = #delete, 1, -1 do
+      local entry = delete[i]
+
       -- notice super - this is real delete (not creating a new entity with weight = 0)
-      -- not sending update events, one event at the end, based on the
-      -- post of the new entry should suffice to reload only once
       self.super.delete(self, { id = entry.id })
       -- ignoring errors here, deleted by id, so should not matter
       -- in case another kong-node does the same cleanup simultaneously
@@ -103,10 +102,11 @@ function _TARGETS:insert(entity)
     entity.target = formatted_target
   end
 
+  -- cleaning up will NOT send invalidation events, hence we only add the new
+  -- entry AFTER the cleanup, such that the cleanup will be picked up by the
+  -- other nodes based on the event of the newly added entry
+  clean_history(self, entity.upstream)
   local row, err, err_t = self.super.insert(self, entity)
-  if row then
-    clean_history(self, entity.upstream)
-  end
 
   return row, err, err_t
 end

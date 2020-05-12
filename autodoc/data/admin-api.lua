@@ -66,17 +66,7 @@ return {
     }, {
       title = [[Supported Content Types]],
       text = [[
-        The Admin API accepts 2 content types on every endpoint:
-
-        - **application/x-www-form-urlencoded**
-
-        Simple enough for basic request bodies, you will probably use it most of the time.
-        Note that when sending nested values, Kong expects nested objects to be referenced
-        with dotted keys. Example:
-
-        ```
-        config.limit=10&config.period=seconds
-        ```
+        The Admin API accepts 3 content types on every endpoint:
 
         - **application/json**
 
@@ -90,6 +80,70 @@ return {
                 "period": "seconds"
             }
         }
+        ```
+
+        An example adding a route to a service named `test-service`:
+
+        ```
+        curl -i -X POST http://localhost:8001/services/test-service/routes \
+             -H "Content-Type: application/json" \
+             -d '{"name": "test-route", "paths": [ "/path/one", "/path/two" ]}'
+        ```
+
+        - **application/x-www-form-urlencoded**
+
+        Simple enough for basic request bodies, you will probably use it most of the time.
+        Note that when sending nested values, Kong expects nested objects to be referenced
+        with dotted keys. Example:
+
+        ```
+        config.limit=10&config.period=seconds
+        ```
+
+        When specifying arrays send the values in order, or use square brackets (numbering
+        inside the brackets is optional but if provided it must be 1-indexed, and
+        consecutive). An example route added to a service named `test-service`:
+
+        ```
+        curl -i -X POST http://localhost:8001/services/test-service/routes \
+             -d "name=test-route" \
+             -d "paths[1]=/path/one" \
+             -d "paths[2]=/path/two"
+        ```
+
+        The following two are identical to the one above, but less explicit:
+        ```
+        curl -i -X POST http://localhost:8001/services/test-service/routes \
+             -d "name=test-route" \
+             -d "paths[]=/path/one" \
+             -d "paths[]=/path/two"
+
+        curl -i -X POST http://localhost:8001/services/test-service/routes \
+            -d "name=test-route" \
+            -d "paths=/path/one" \
+            -d "paths=/path/two"
+        ```
+
+
+        - **multipart/form-data**
+
+        Similar to url-encoded, this content type uses dotted keys to reference nested
+        objects. Here is an example of sending a Lua file to the pre-function Kong plugin:
+
+        ```
+        curl -i -X POST http://localhost:8001/services/plugin-testing/plugins \
+             -F "name=pre-function" \
+             -F "config.access=@custom-auth.lua"
+        ```
+
+        When specifying arrays for this content-type the array indices must be specified.
+        An example route added to a service named `test-service`:
+
+        ```
+        curl -i -X POST http://localhost:8001/services/test-service/routes \
+             -F "name=test-route" \
+             -F "paths[1]=/path/one" \
+             -F "paths[2]=/path/two"
         ```
       ]]
     },
