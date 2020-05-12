@@ -665,21 +665,17 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   local plural_entity = entity .. 's'
   local is_timeseries_report = not not entity_id
   local entities = {}
-  local err
   if is_timeseries_report then
-    _, err = workspaces.run_with_ws_scope({}, function()
+    workspaces.run_with_ws_scope({}, function()
       local row = kong.db[plural_entity]:select({ id = entity_id})
       entities[row.id] = resolve_entity_metadata(row)
     end)
   else
-    _, err = workspaces.run_with_ws_scope({}, function()
+    workspaces.run_with_ws_scope({}, function()
       for row in kong.db[plural_entity]:each() do
         entities[row.id] = resolve_entity_metadata(row)
       end
     end)
-  end
-  if err then
-    return nil, err
   end
 
   local seconds_from_now = ngx.time() - start_ts
