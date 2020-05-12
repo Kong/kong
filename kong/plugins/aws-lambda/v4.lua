@@ -3,7 +3,7 @@
 
 local resty_sha256 = require "resty.sha256"
 local pl_string = require "pl.stringx"
-local openssl_hmac = require "openssl.hmac"
+local openssl_hmac = require "resty.openssl.hmac"
 
 local ALGORITHM = "AWS4-HMAC-SHA256"
 

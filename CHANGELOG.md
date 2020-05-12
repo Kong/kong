@@ -1,7 +1,8 @@
 # Kong AWS Lambda plugin changelog
 
-## Unreleased
+## aws-lambda 3.4.0 12-May-2020
 
+- Change `luaossl` to `lua-resty-openssl`
 - fix: do not validate region name against hardcoded list of regions
 - feat: add `host` configuration to allow for custom Lambda endpoints
 
