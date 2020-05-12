@@ -59,10 +59,10 @@ return {
                 {port = typedefs.port {required = false}},
                 {keepalive_timeout = {type = "number", required = false, default = 60000}},
                 {keepalive_poolsize = {type = "number", required = false, default = 100}},
-                {read_timeout = {type = "number", required = true, gt = 0, default = 1000}},
-                {connect_timeout = {type = "number", required = true, gt = 0, default = 1000}},
-                {password = {type = "string", required = false}},
-                {database = {type = "number", required = true, default = 0}}
+                {read_timeout = {type = "number", required = false, gt = 0, default = 1000}},
+                {connect_timeout = {type = "number", required = false, gt = 0, default = 1000}},
+                {password = {type = "string", required = false, len_min = 0}},
+                {database = {type = "number", required = false, default = 0}}
               }
             }
           },
