@@ -91,6 +91,7 @@ jobs:
       # - scripts/autodoc-admin-api
       - bin/busted -v -o htest spec/01-unit
       - bin/busted -v -o htest spec-ee/01-unit
+      - scripts/autodoc-admin-api
       env:
         - KONG_DATABASE=none
     # package as a test step, to see if this commit breaks our packaging
