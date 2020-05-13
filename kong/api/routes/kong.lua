@@ -10,7 +10,7 @@ local api_helpers = require "kong.api.api_helpers"
 local Schema = require "kong.db.schema"
 local Errors = require "kong.db.errors"
 local workspaces = require "kong.workspaces"
-
+local endpoints  = require "kong.api.endpoints"
 
 local sub = string.sub
 local kong = kong
@@ -205,11 +205,34 @@ return {
   ["/userinfo"] = {
     GET = function(self, dao, helpers)
       ws_and_rbac_helper(self, dao, helpers)
+
+      local user_session = kong.ctx.shared.authenticated_session
+      local cookie = user_session and user_session.cookie
+
+      if not user_session or (user_session and not user_session.expires) then
+        return endpoints.handle_error('could not find session')
+      end
+
+      if cookie then
+        if not cookie.renew or not cookie.lifetime then
+          return endpoints.handle_error('could not find session cookie data')
+        end
+      end
+
       return kong.response.exit(200, {
         admin = admins.transmogrify(self.admin),
         groups = self.groups,
         permissions = self.permissions,
         workspaces = self.workspaces,
+        session = {
+          expires = user_session.expires, -- unix timestamp seconds
+          cookie = {
+            discard = user_session.cookie.discard,
+            renew = user_session.cookie.renew,
+            idletime = user_session.cookie.idletime,
+            lifetime = user_session.cookie.lifetime,
+          },
+        }
       })
     end,
   },
