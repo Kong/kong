@@ -434,8 +434,7 @@ for _, strategy in helpers.each_strategy() do
       proxy_client:close()
 
       assert.errlog()
-            .not_has
-            .line([[could not determine log suffix]], true)
+            .has.no.line([[could not determine log suffix]], true)
     end)
   end)
 end
