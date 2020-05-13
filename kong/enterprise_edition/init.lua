@@ -281,7 +281,6 @@ function _M.prepare_admin(kong_config)
   -- we will consider rbac to be on if it is set to "both" or "on",
   -- because we don't currently support entity-level
   local rbac_enforced = kong_config.rbac == "both" or kong_config.rbac == "on"
-  local anonymous_reports = kong_config.anonymous_reports == "on"
 
   return prepare_interface("/usr/local/kong", "gui", "gui_config", {
     ADMIN_GUI_AUTH = prepare_variable(kong_config.admin_gui_auth),
@@ -301,7 +300,7 @@ function _M.prepare_admin(kong_config)
     PORTAL_GUI_PROTOCOL = prepare_variable(kong_config.portal_gui_protocol),
     PORTAL_GUI_HOST = prepare_variable(kong_config.portal_gui_host),
     PORTAL_GUI_USE_SUBDOMAINS = prepare_variable(kong_config.portal_gui_use_subdomains),
-    ANONYMOUS_REPORTS = prepare_variable(anonymous_reports),
+    ANONYMOUS_REPORTS = prepare_variable(kong_config.anonymous_reports),
   }, kong_config)
 end
 

@@ -157,7 +157,7 @@ describe("admin_gui template", function()
       admin_gui_url = "http://0.0.0.0:8002",
       proxy_url = "http://0.0.0.0:8000",
       admin_api_uri = "0.0.0.0:8001",
-      anonymous_reports = "off",
+      anonymous_reports = false,
       admin_gui_listeners = {
         {
           ip = "0.0.0.0",
@@ -235,7 +235,7 @@ describe("admin_gui template", function()
       new_conf.admin_gui_url = 'http://admin-test.example.com'
       new_conf.proxy_url = 'http://127.0.0.1:8000'
       new_conf.admin_gui_flags = "{ HIDE_VITALS: true }"
-      new_conf.anonymous_reports = "on"
+      new_conf.anonymous_reports = true
 
       -- update template
       ee.prepare_admin(new_conf)
@@ -289,7 +289,7 @@ describe("admin_gui template", function()
 
       -- reset prefix
       conf.prefix = default_prefix
-    end)     
+    end)
 
     it("symlink creation should log out error", function()
       local spy_log = spy.on(log, "warn")
@@ -304,7 +304,7 @@ describe("admin_gui template", function()
       local err_3 = "Could not write file servroot_2/gui_config/kconfig.js. "
                  .. "Ensure that the Kong CLI user has permissions to write "
                  .. "to this directory"
-      
+
       local count = 1
 
       local function is_correct(state, arguments)
@@ -312,7 +312,7 @@ describe("admin_gui template", function()
           local str = string.match(value, arguments[1])  or
                       string.match(value, arguments[2])  or
                       string.match(value, arguments[3])
-          
+
           assert.same(value, str)
 
           if count == #arguments then
