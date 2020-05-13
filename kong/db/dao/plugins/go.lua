@@ -385,7 +385,7 @@ do
 
     if instance_info
       and instance_info.id
-      and instance_info.seq == instance_info.conf.__seq__
+      and instance_info.seq == conf.__seq__
     then
       -- exact match, return it
       return instance_info.id
@@ -417,6 +417,8 @@ do
     end
 
     instance_info.id = status.Id
+    instance_info.conf = conf
+    instance_info.seq = conf.__seq__
     instance_info.Config = status.Config
 
     if old_instance_id then
