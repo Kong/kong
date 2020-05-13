@@ -136,7 +136,7 @@ end
 for _, strategy in helpers.each_strategy() do
 for _, workspace in ipairs({ "default", "doggos"}) do
 
-  describe("sitemap", function()
+  describe("sitemap #" .. strategy, function()
     local db
 
       setup(function()
@@ -188,7 +188,7 @@ for _, workspace in ipairs({ "default", "doggos"}) do
             contents = "---layout: base.html---"
           }
         })
-  
+
         local res = gui_client_request({
           method = "GET",
           path = "/" .. workspace .. "/sitemap.xml",
@@ -199,7 +199,7 @@ for _, workspace in ipairs({ "default", "doggos"}) do
           assert.equals(1, count)
         end
       end)
-  
+
       it("can properly display 'explicit' type router files", function()
         create_workspace_files(workspace, {
           {
@@ -257,7 +257,7 @@ for _, workspace in ipairs({ "default", "doggos"}) do
             ]]
           }
         })
-  
+
         local res = gui_client_request({
           method = "GET",
           path = "/" .. workspace .. "/sitemap.xml",
@@ -268,7 +268,7 @@ for _, workspace in ipairs({ "default", "doggos"}) do
           assert.equals(1, count)
         end
       end)
-  
+
       it("can properly display 'collection' type router files", function()
         create_workspace_files(workspace, {
           {
@@ -308,12 +308,12 @@ for _, workspace in ipairs({ "default", "doggos"}) do
                 layout: base.html
           ]]
         })
-  
+
         local res = gui_client_request({
           method = "GET",
           path = "/" .. workspace .. "/sitemap.xml",
         })
-  
+
         assert.equals(res.status, 200)
         for _, v in ipairs({ "/guides/home", "/guides/docs", "/guides/about" }) do
           local _, count = string.gsub(res.body, workspace .. v, "")
@@ -332,12 +332,12 @@ for _, workspace in ipairs({ "default", "doggos"}) do
             contents = "---private: true---"
           },
         })
-  
+
         local res = gui_client_request({
           method = "GET",
           path = "/" .. workspace .. "/sitemap.xml",
         })
-  
+
         assert.equals(res.status, 200)
         local _, count = string.gsub(res.body, workspace .. "/home", "")
         assert.equals(1, count)

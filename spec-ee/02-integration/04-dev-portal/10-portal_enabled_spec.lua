@@ -52,7 +52,7 @@ for _, strategy in helpers.each_strategy() do
     local conf_on = conf[1]
     local ws_on = conf[2]
 
-    describe("Portal Enabled[" .. strategy .. "] conf = " .. tostring(conf_on) .. " ws = " .. tostring(ws_on), function()
+    describe("Portal Enabled [#" .. strategy .. "] conf = " .. tostring(conf_on) .. " ws = " .. tostring(ws_on), function()
       local _, db, _ = helpers.get_db_utils(strategy)
       -- do not run tests for cassandra < 3
       if strategy == "cassandra" and db.connector.major_version < 3 then

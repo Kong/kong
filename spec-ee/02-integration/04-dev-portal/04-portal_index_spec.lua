@@ -220,7 +220,7 @@ end
 
 for _, strategy in helpers.each_strategy() do
 
-  describe("router", function ()
+  describe("router #" .. strategy, function ()
     describe("portal_gui_use_subdomains = off", function()
       local db
 

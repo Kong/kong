@@ -45,7 +45,7 @@ end
 
 for _, strategy in helpers.each_strategy() do
 
-describe("Admin API - Developer Portal - " .. strategy, function()
+describe("Admin API - Developer Portal - #" .. strategy, function()
   local client, portal_api_client
   local bp, db
 
