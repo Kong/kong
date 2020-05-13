@@ -18,7 +18,7 @@ local setmetatable = setmetatable
 local ipairs = ipairs
 local type = type
 local utils_split = utils.split
-local ngx_null = ngx.null
+local null = ngx.null
 local tostring = tostring
 local inc_counter = counters.inc_counter
 local table_concat = table.concat
@@ -450,7 +450,7 @@ local function validate_route_for_ws(router, method, uri, host, sni,
     return true
 
   elseif is_blank(selected_route.route.hosts) or
-    ngx_null == selected_route.route.hosts then -- we match from a no-host route
+    selected_route.route.hosts == null then -- we match from a no-host route
     ngx_log(DEBUG, "selected_route has no host restriction")
     return false
 
@@ -494,7 +494,7 @@ end
 
 
 local function sanitize_route_param(param)
-  if (param == cjson.null) or (param == ngx_null) or
+  if (param == cjson.null) or (param == null) or
     not param or "table" ~= type(param) or
     not next(param) then
     return {[""] = ""}
@@ -578,7 +578,7 @@ local function validate_paths(self, _, is_create)
   local pattern = kong.configuration.enforce_route_path_pattern
   local paths = self.params.paths
 
-  if (is_create and not paths) or paths == ngx_null then
+  if (is_create and not paths) or paths == null then
     return false, { code = 400,
                     message = format("path is required matching pattern '%s')", pattern) }
   end
@@ -794,7 +794,7 @@ function _M.apply_unique_per_ws(table_name, params, constraints)
 
   for field_name, field_schema in pairs(constraints.unique_keys) do
     if params[field_name] and not constraints.primary_keys[field_name] and
-      field_schema.type ~= "id" and  params[field_name] ~= ngx_null then
+      field_schema.type ~= "id" and  params[field_name] ~= null then
       params[field_name] = format("%s%s%s", workspace.name, WORKSPACE_DELIMETER,
                                   params[field_name])
     end
@@ -860,7 +860,7 @@ function _M.remove_ws_prefix(table_name, row, include_ws)
     -- skip if no unique key or it's also a primary, field
     -- is not set or has null value
     if row[field_name] and constraints.primary_key ~= field_name and
-       field_schema.type ~= "id" and row[field_name] ~= ngx_null and
+       field_schema.type ~= "id" and row[field_name] ~= null and
        type(row[field_name]) == "string" then
 
       local names = utils_split(row[field_name], WORKSPACE_DELIMETER)
@@ -964,7 +964,7 @@ function _M.retrieve_ws_config(config_name, workspace, opts)
 
   if opts.explicitly_ws or workspace.config and
     workspace.config[config_name] ~= nil and
-    workspace.config[config_name] ~= ngx.null then
+    workspace.config[config_name] ~= null then
     conf = workspace.config[config_name]
   else
     if singletons.configuration then
