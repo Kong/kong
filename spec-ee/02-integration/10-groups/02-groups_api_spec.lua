@@ -17,8 +17,8 @@ end
 for _, strategy in helpers.each_strategy() do
   describe("Groups API #" .. strategy, function()
     local function get_request(url, token)
-      if not token then 
-        token ="letmein-default" 
+      if not token then
+        token ="letmein-default"
       end
 
       local json = assert.res_status(200, assert(client:send {
@@ -46,7 +46,7 @@ for _, strategy in helpers.each_strategy() do
         admin_gui_auth = "basic-auth",
         admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
         enforce_rbac = "on",
-        
+
         admin_gui_auth_config = "{ \"hide_credentials\": true }",
       }))
 
@@ -89,7 +89,7 @@ for _, strategy in helpers.each_strategy() do
             ["Kong-Admin-Token"] = "letmein-default",
           }
         }))
-        
+
         local res = get_request("/groups")
 
         assert.same({}, res.data)
@@ -112,7 +112,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert.same(name, res.data[1].name)
       end)
-      
+
       it("GET The endpoint should work with the 'offset' filter", function()
         local qty = 3
 
@@ -127,10 +127,10 @@ for _, strategy in helpers.each_strategy() do
 
         assert.is_equal(qty, count + count_2)
       end)
-      
+
       it("GET The endpoint should list a group by id", function()
         local res_insert = insert_group()
-        
+
         local res_select = get_request("/groups/" .. res_insert.id)
 
         assert.same(res_insert, res_select)
@@ -138,7 +138,7 @@ for _, strategy in helpers.each_strategy() do
 
       it("GET The endpoint should list a group by name", function()
         local res_insert = insert_group()
-        
+
         local res_select = get_request("/groups/" .. res_insert.name)
 
         assert.same(res_insert, res_select)
@@ -228,7 +228,7 @@ for _, strategy in helpers.each_strategy() do
         local _, user_role, err = ee_helpers.register_rbac_resources(db, ws)
         -- ensure resources
         assert.is.falsy(err)
-      
+
         return user_role.role, "letmein-" .. ws
       end
 
@@ -329,8 +329,8 @@ for _, strategy in helpers.each_strategy() do
               ["Kong-Admin-Token"] = token,
             },
           }))
-          
-          if res_code ~= 201 then 
+
+          if res_code ~= 201 then
             return nil
           end
 
@@ -340,7 +340,7 @@ for _, strategy in helpers.each_strategy() do
           assert.same(res.workspace.id, _workspace.id)
           assert.same(res.rbac_role.id, _role.id)
         end
-        
+
         lazy_setup(function()
           group, role, workspace, token = insert_entities()
           insert_mapping(group, role, workspace)
@@ -412,7 +412,7 @@ for _, strategy in helpers.each_strategy() do
           end
         end)
 
-        it("The endpoint should not create a mapping with incorrect ids", function() 
+        it("The endpoint should not create a mapping with incorrect ids", function()
           local _role = assert(db.rbac_roles:insert{ name = "test_role_" .. utils.uuid()})
           local res_roles_default = get_request("/default/rbac/roles", token)
 
