@@ -40,23 +40,26 @@ return function()
   if route_config.path then
     page.document_object = kong.db.document_objects:select_by_path(route_config.path) or {}
 
-    local service_id
-    if page.document_object.service then
-      service_id = page.document_object.service.id
-    end
+    local service_id = page.document_object.service
+                       and page.document_object.service.id
 
-    local plugins = kong.db.plugins:select_all({ name = "application-registration"  })
-    if service_id and next(plugins) then
-      for _, plugin in ipairs(plugins) do
-        if plugin.service.id == page.document_object.service.id then
+    if service_id then
+      for plugin, err in kong.db.plugins:each() do
+        if err then
+          kong.log.err(err)
+          break
+        end
+
+        if plugin.name == "application-registration"
+        and plugin.service.id == service_id then
           page.document_object.registration = true
+          break
         end
       end
     end
   end
 
   -- Helper variables
-  local route_config = render_ctx.route_config or {}
   local route = route_config.route or render_ctx.path
   route = string.gsub(route, workspace_path_gsub, "")
   if helpers.str.startswith(route, "/") then
