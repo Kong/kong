@@ -87,6 +87,18 @@ describe("Configuration loader", function()
     assert.True(conf.loaded_plugins["foo"])
     assert.True(conf.loaded_plugins["bar"])
   end)
+  it("apply # transformations when loading from config file directly", function()
+    local conf = assert(conf_loader(nil, {
+      pg_password = "!abCDefGHijKL4\\#1MN2OP3",
+    }))
+    assert.same("!abCDefGHijKL4#1MN2OP3", conf.pg_password)
+  end)
+  it("no longer applies # transformations when loading from .kong_env (issue #5761)", function()
+    local conf = assert(conf_loader(nil, {
+      pg_password = "!abCDefGHijKL4\\#1MN2OP3",
+    }, { from_kong_env = true, }))
+    assert.same("!abCDefGHijKL4\\#1MN2OP3", conf.pg_password)
+  end)
   it("loads custom plugins surrounded by spaces", function()
     local conf = assert(conf_loader(nil, {
       plugins = " hello-world ,   another-one  "
@@ -516,13 +528,20 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
 
       conf, err = conf_loader(nil, {
-        cassandra_consistency = "FOUR"
+        cassandra_write_consistency = "FOUR"
       })
-      assert.equal("cassandra_consistency has an invalid value: 'FOUR'"
-                 .. " (ALL, EACH_QUORUM, QUORUM, LOCAL_QUORUM, ONE, TWO,"
-                 .. " THREE, LOCAL_ONE)", err)
+      assert.equal("cassandra_write_consistency has an invalid value: 'FOUR'" ..
+                   " (ALL, EACH_QUORUM, QUORUM, LOCAL_QUORUM, ONE, TWO," ..
+                   " THREE, LOCAL_ONE)", err)
       assert.is_nil(conf)
 
+      conf, err = conf_loader(nil, {
+        cassandra_read_consistency = "FOUR"
+      })
+      assert.equal("cassandra_read_consistency has an invalid value: 'FOUR'" ..
+                   " (ALL, EACH_QUORUM, QUORUM, LOCAL_QUORUM, ONE, TWO," ..
+                   " THREE, LOCAL_ONE)", err)
+      assert.is_nil(conf)
     end)
     it("enforces listen addresses format", function()
       local conf, err = conf_loader(nil, {
@@ -1007,6 +1026,30 @@ describe("Configuration loader", function()
 
       assert.equal("123456", conf.pg_password)
       assert.equal("123456", conf.cassandra_password)
+    end)
+  end)
+
+  describe("deprecated properties", function()
+    it("cassandra_consistency -> cassandra_r/w_consistency", function()
+      local conf = assert(conf_loader(nil, {
+        cassandra_consistency = "QUORUM"
+      }))
+      assert.equal("QUORUM", conf.cassandra_read_consistency)
+      assert.equal("QUORUM", conf.cassandra_write_consistency)
+
+      local conf = assert(conf_loader(nil, {
+        cassandra_consistency = "QUORUM",
+        cassandra_read_consistency = "TWO" -- prioritized
+      }))
+      assert.equal("TWO", conf.cassandra_read_consistency)
+      assert.equal("QUORUM", conf.cassandra_write_consistency)
+
+      local conf = assert(conf_loader(nil, {
+        cassandra_consistency = "QUORUM",
+        cassandra_write_consistency = "LOCAL_QUORUM" -- prioritized
+      }))
+      assert.equal("QUORUM", conf.cassandra_read_consistency)
+      assert.equal("LOCAL_QUORUM", conf.cassandra_write_consistency)
     end)
   end)
 end)

@@ -1,9 +1,9 @@
 package = "kong"
-version = "2.0.3-0"
+version = "2.0.4-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.0.3"
+  tag = "2.0.4"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -20,7 +20,7 @@ dependencies = {
   "lua-ffi-zlib == 0.5",
   "multipart == 0.5.6",
   "version == 1.0.1",
-  "kong-lapis == 1.7.0.1",
+  "kong-lapis == 1.8.1.2",
   "lua-cassandra == 1.5.0",
   "pgmoon == 1.11.0",
   "luatz == 0.4",
@@ -46,8 +46,8 @@ dependencies = {
   "kong-prometheus-plugin ~> 0.8",
   "kong-proxy-cache-plugin ~> 1.3",
   "kong-plugin-request-transformer ~> 1.2",
-  "kong-plugin-session ~> 2.3",
-  "kong-plugin-aws-lambda ~> 3.3",
+  "kong-plugin-session ~> 2.4",
+  "kong-plugin-aws-lambda ~> 3.4",
   "kong-plugin-acme ~> 0.2",
   "kong-plugin-grpc-web ~> 0.1",
 }
@@ -188,6 +188,7 @@ build = {
     ["kong.db.migrations.core.006_130_to_140"] = "kong/db/migrations/core/006_130_to_140.lua",
     ["kong.db.migrations.core.007_140_to_150"] = "kong/db/migrations/core/007_140_to_150.lua",
     ["kong.db.migrations.core.008_150_to_200"] = "kong/db/migrations/core/008_150_to_200.lua",
+    ["kong.db.migrations.core.009_200_to_210"] = "kong/db/migrations/core/009_200_to_210.lua",
 
     ["kong.pdk"] = "kong/pdk/init.lua",
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",

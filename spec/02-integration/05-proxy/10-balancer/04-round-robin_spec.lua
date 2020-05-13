@@ -297,7 +297,6 @@ for _, consistency in ipairs(bu.consistencies) do
         local _, _, status = bu.client_requests(1, api_host)
         assert.same(503, status)
       end)
-
     end)
 
     describe("Balancing with no targets #" .. consistency, function()
@@ -335,6 +334,51 @@ for _, consistency in ipairs(bu.consistencies) do
         local _, _, status = bu.client_requests(1, api_host)
         assert.same(503, status)
       end)
+
+      for mode, localhost in pairs(bu.localhosts) do
+        it("removing and adding the same target #" .. mode, function()
+
+          bu.begin_testcase_setup(strategy, bp)
+          local upstream_name, upstream_id = bu.add_upstream(bp)
+          local port = bu.add_target(bp, upstream_id, localhost, nil, { weight = 100 })
+          local api_host = bu.add_api(bp, upstream_name)
+          bu.end_testcase_setup(strategy, bp, consistency)
+
+          local requests = 20
+
+          local server = bu.http_server(localhost, port, { requests })
+          local oks = bu.client_requests(requests, api_host)
+          local _, count = server:done()
+          assert.equal(requests, oks)
+          assert.equal(requests, count)
+
+          -- remove target
+          bu.begin_testcase_setup_update(strategy, bp)
+          bu.add_target(bp, upstream_id, localhost, port, {
+            weight = 0,
+          })
+          bu.end_testcase_setup(strategy, bp, consistency)
+
+          server = bu.http_server(localhost, port, { requests })
+          oks = bu.client_requests(requests, api_host)
+          _, count = server:done()
+          assert.equal(0, oks)
+          assert.equal(0, count)
+
+          -- add the target back with same weight as initial weight
+          bu.begin_testcase_setup_update(strategy, bp)
+          bu.add_target(bp, upstream_id, localhost, port, {
+            weight = 100,
+          })
+          bu.end_testcase_setup(strategy, bp, consistency)
+
+          server = bu.http_server(localhost, port, { requests })
+          oks = bu.client_requests(requests, api_host)
+          _, count = server:done()
+          assert.equal(requests, oks)
+          assert.equal(requests, count)
+        end)
+      end
     end)
 
   end

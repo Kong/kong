@@ -3,6 +3,11 @@ local ngx_ssl = require "ngx.ssl"
 local pl_utils = require "pl.utils"
 local mlcache = require "resty.mlcache"
 
+if jit.arch == 'arm64' then
+  jit.off(mlcache.get_bulk)        -- "temporary" workaround for issue #5748 on ARM
+end
+
+
 
 local ngx_log     = ngx.log
 local ERR         = ngx.ERR

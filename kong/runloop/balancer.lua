@@ -524,31 +524,38 @@ local function check_target_history(upstream, balancer)
   local old_size = #old_history
   local new_size = #new_history
 
-  -- compare balancer history with db-loaded history
-  local last_equal_index = 0  -- last index where history is the same
-  for i, entry in ipairs(old_history) do
-    local new_entry = new_history[i]
-    if new_entry and
-       new_entry.name == entry.name and
-       new_entry.port == entry.port and
-       new_entry.weight == entry.weight
-    then
-      last_equal_index = i
-    else
-      break
+  if new_size >= old_size then
+    -- compare balancer history with db-loaded history
+    local last_equal_index = 0  -- last index where history is the same
+    for i, entry in ipairs(old_history) do
+      local new_entry = new_history[i]
+      if new_entry and
+        new_entry.name == entry.name and
+        new_entry.port == entry.port and
+        new_entry.weight == entry.weight
+      then
+        last_equal_index = i
+      else
+        break
+      end
+    end
+
+    if last_equal_index == old_size then
+      -- The history from which our balancer was build is still identical
+      if new_size == old_size then
+        -- No new targets, so no update is necessary in the balancer object
+        return true
+      end
+
+      -- new_size > old_size in this case
+      -- history is the same, but we now have additional entries, apply them
+      apply_history(balancer, new_history, last_equal_index + 1)
+      return true
     end
   end
 
-  if last_equal_index == new_size and new_size == old_size then
-    -- No history update is necessary in the balancer object.
-    return true
-  elseif last_equal_index == old_size then
-    -- history is the same, so we only need to add new entries
-    apply_history(balancer, new_history, last_equal_index + 1)
-    return true
-  end
-
-  -- history not the same.
+  -- History not the same. Either a history-cleanup happened, or due to
+  -- eventual-consistency a target showed up "in the past".
   -- TODO: ideally we would undo the last ones until we're equal again
   -- and can replay changes, but not supported by ring-balancer yet.
   -- for now; create a new balancer from scratch
@@ -563,8 +570,10 @@ local function check_target_history(upstream, balancer)
   return true
 end
 
+
 local function load_upstreams_dict_into_memory()
   local upstreams_dict = {}
+
   -- build a dictionary, indexed by the upstream name
   for up, err in singletons.db.upstreams:each() do
     if err then
@@ -574,9 +583,14 @@ local function load_upstreams_dict_into_memory()
 
     upstreams_dict[up.name] = up.id
   end
+
   return upstreams_dict
 end
 _load_upstreams_dict_into_memory = load_upstreams_dict_into_memory
+
+
+local opts = { neg_ttl = 10 }
+
 
 ------------------------------------------------------------------------------
 -- Implements a simple dictionary with all upstream-ids indexed
@@ -584,7 +598,6 @@ _load_upstreams_dict_into_memory = load_upstreams_dict_into_memory
 -- @return The upstreams dictionary (a map with upstream names as string keys
 -- and upstream entity tables as values), or nil+error
 local function get_all_upstreams()
-  local opts = { neg_ttl = 10 }
   if kong.configuration.worker_consistency == "eventual" then
     return singletons.core_cache:get("balancer:upstreams", opts, noop)
   end
