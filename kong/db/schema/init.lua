@@ -1326,11 +1326,9 @@ local function run_transformation_checks(self, input, original_input, rbw_entity
       for _, input_field_name in ipairs(transformation.needs) do
         if rbw_entity and not needs_changed then
           local value = get_field(original_input or input, input_field_name)
-          if is_nonempty(value) then
-            local rbw_value = get_field(rbw_entity, input_field_name)
-            if value ~= rbw_value then
-              needs_changed = true
-            end
+          local rbw_value = get_field(rbw_entity, input_field_name)
+          if value ~= rbw_value then
+            needs_changed = true
           end
         end
 
