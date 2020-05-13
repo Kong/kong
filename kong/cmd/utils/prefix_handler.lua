@@ -134,31 +134,31 @@ local function compile_conf(kong_config, conf_template)
   end
 
   do
-    local worker_rlimit_nofile
+    local worker_rlimit_nofile_auto
     if kong_config.nginx_main_directives then
       for _, directive in pairs(kong_config.nginx_main_directives) do
         if directive.name == "worker_rlimit_nofile" then
           if directive.value == "auto" then
-            worker_rlimit_nofile = directive
+            worker_rlimit_nofile_auto = directive
           end
           break
         end
       end
     end
 
-    local worker_connections
+    local worker_connections_auto
     if kong_config.nginx_events_directives then
       for _, directive in pairs(kong_config.nginx_events_directives) do
         if directive.name == "worker_connections" then
           if directive.value == "auto" then
-            worker_connections = directive
+            worker_connections_auto = directive
           end
           break
         end
       end
     end
 
-    if worker_connections or worker_rlimit_nofile then
+    if worker_connections_auto or worker_rlimit_nofile_auto then
       local value, err = get_ulimit()
       if not value then
         return nil, err
@@ -166,12 +166,12 @@ local function compile_conf(kong_config, conf_template)
 
       value = math.min(value, 16384)
 
-      if worker_rlimit_nofile then
-        worker_rlimit_nofile.value = value
+      if worker_rlimit_nofile_auto then
+        worker_rlimit_nofile_auto.value = value
       end
 
-      if worker_connections then
-        worker_connections.value = value
+      if worker_connections_auto then
+        worker_connections_auto.value = value
       end
     end
   end
@@ -392,6 +392,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
 end
 
 return {
+  get_ulimit = get_ulimit,
   prepare_prefix = prepare_prefix,
   compile_conf = compile_conf,
   compile_kong_conf = compile_kong_conf,
