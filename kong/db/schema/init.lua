@@ -1614,8 +1614,18 @@ function Schema:process_auto_fields(data, context, nulls)
     end
 
     for key in pairs(data) do
-      -- set non defined fields to nil, except meta fields (ttl) if enabled
-      if not self.fields[key] then
+      local field = self.fields[key]
+      if field then
+        if not field.legacy
+           and field.type == "string"
+           and (field.len_min or 1) > 0
+           and data[key] == ""
+        then
+          data[key] = nulls and null or nil
+        end
+
+      else
+        -- set non defined fields to nil, except meta fields (ttl) if enabled
         if not self.ttl or key ~= "ttl" then
           data[key] = nil
         end
