@@ -36,16 +36,10 @@ for _, strategy in helpers.each_strategy() do
         end
       ]]
 
-      local function_body_request_id = [[
+      local function_kong_ctx = [[
         return function (status, body, headers)
-          local uid = request_id()
-          return 418, uid, headers
-        end
-      ]]
-
-      local function_global_ctx = [[
-        return function (status, body, headers)
-          return 418, type(kong), headers
+          local something = kong.request.get_header("something")
+          return 418, something, headers
         end
       ]]
 
@@ -115,23 +109,6 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route4.id },
       }
 
-      local route5 = bp.routes:insert {
-        hosts = { "test5.com" },
-      }
-
-      bp.plugins:insert {
-        name = PLUGIN_NAME,
-        route = { id = route5.id },
-        config = { functions = { function_body_request_id } },
-      }
-
-      -- Add a plugin that generates a kong.response.exit, such as key-auth
-      -- with invalid or no credentials
-      bp.plugins:insert {
-        name = "key-auth",
-        route = { id = route5.id },
-      }
-
       local route6 = bp.routes:insert {
         hosts = { "test6.com" },
       }
@@ -139,7 +116,7 @@ for _, strategy in helpers.each_strategy() do
       bp.plugins:insert {
         name = PLUGIN_NAME,
         route = { id = route6.id },
-        config = { functions = { function_global_ctx } },
+        config = { functions = { function_kong_ctx } },
       }
 
       -- Add a plugin that generates a kong.response.exit, such as key-auth
@@ -222,29 +199,19 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("some value", header)
       end)
 
-      it("has a get_request_id function available", function()
+      it("has access to kong #pdk", function()
         local res = assert(client:send {
           method = "GET",
           path = "/request",  -- makes mockbin return the entire request
           headers = {
-            host = "test5.com"
-          }
-        })
-        local body = assert.response(res).has.status(418)
-        assert.equal(32, body:len())
-      end)
-
-      it("has no access to the global context", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/request",  -- makes mockbin return the entire request
-          headers = {
-            host = "test6.com"
+            host = "test6.com",
+            something = "hello world",
           }
         })
         local body = res:read_body()
-        assert.equal("nil", body)
+        assert.equal("hello world", body)
       end)
+
     end)
   end)
 end

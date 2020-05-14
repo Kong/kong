@@ -1,6 +1,5 @@
 local inspect = require "inspect"
 
-local utils = require "kong.tools.utils"
 local runloop_handler = require "kong.runloop.handler"
 local workspaces = require "kong.workspaces"
 
@@ -8,16 +7,6 @@ local BasePlugin = require "kong.plugins.base_plugin"
 
 local PLUGIN_NAME    = require("kong.plugins.exit-transformer").PLUGIN_NAME
 local PLUGIN_VERSION = require("kong.plugins.exit-transformer").PLUGIN_VERSION
-
-
-local function request_id()
-  local ok, res = pcall(function() return ngx.var.set_request_id end)
-  if ok then
-    return res
-  end
-
-  return utils.uuid()
-end
 
 
 local function get_conf()
@@ -68,8 +57,10 @@ local function get_transform_functions(config)
     print = print,
     pairs = pairs,
     ipairs = ipairs,
+    require = require,
     inspect = inspect,
-    request_id = request_id,
+    kong = kong,
+    -- ...
   }
 
   if not functions then
