@@ -2,7 +2,7 @@ local helpers    = require "spec.helpers"
 local cjson      = require "cjson"
 
 for _, strategy in helpers.each_strategy() do
-  describe("Admin API - Open API Spec routes - " .. strategy, function()
+  describe("Admin API - Open API Spec routes - #" .. strategy, function()
     local client, db, _
 
     setup(function()
