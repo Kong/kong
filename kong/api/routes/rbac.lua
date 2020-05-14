@@ -44,7 +44,7 @@ end
 
 
 local function action_bitfield(self)
-  local action_bitfield = 0x0
+  local bitfield = 0x0
 
   if type(self.params.actions) == "string" then
     local action_names = utils.split(self.params.actions, ",")
@@ -55,7 +55,7 @@ local function action_bitfield(self)
       -- keyword all sets everything
       if action == "*" then
         for k in pairs(rbac.actions_bitfields) do
-          action_bitfield = bxor(action_bitfield, rbac.actions_bitfields[k])
+          bitfield = bxor(bitfield, rbac.actions_bitfields[k])
         end
 
         break
@@ -66,11 +66,11 @@ local function action_bitfield(self)
                                                action_names[i])
       end
 
-      action_bitfield = bxor(action_bitfield, rbac.actions_bitfields[action])
+      bitfield = bxor(bitfield, rbac.actions_bitfields[action])
     end
   end
 
-  self.params.actions = action_bitfield
+  self.params.actions = bitfield
 end
 
 
