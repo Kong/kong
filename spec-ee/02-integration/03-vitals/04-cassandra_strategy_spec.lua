@@ -7,7 +7,7 @@ local cassandra = require "cassandra"
 
 
 for _, strategy in helpers.each_strategy({"cassandra"}) do
-  describe("Cassandra strategy", function()
+  describe("#cassandra strategy", function()
     local strategy
     local cluster
     local db

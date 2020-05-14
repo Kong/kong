@@ -6,7 +6,7 @@ local time        = ngx.time
 
 
 for _, strategy in helpers.each_strategy({"postgres"}) do
-  describe("Postgres strategy", function()
+  describe("#postgres strategy", function()
     local strategy
     local db
     local snapshot
