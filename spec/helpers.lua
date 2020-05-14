@@ -1892,10 +1892,14 @@ end
 -- fixtures.dns_mock:SRV {
 --   name = "my.srv.test.com",     -- adding same name again: record gets 2 entries!
 --   target = "b.my.srv.test.com", -- a.my.srv.test.com and b.my.srv.test.com
---   port = 80,
+--   port = 8080,
 -- }
 -- fixtures.dns_mock:A {
 --   name = "a.my.srv.test.com",
+--   address = "127.0.0.1",
+-- }
+-- fixtures.dns_mock:A {
+--   name = "b.my.srv.test.com",
 --   address = "127.0.0.1",
 -- }
 -- @section DNS-mocks
