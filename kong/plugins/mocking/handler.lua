@@ -7,7 +7,7 @@ local random      = math.random
 
 local plugin = {
   VERSION  = "0.1",
-  PRIORITY = 1000,
+  PRIORITY = 700,
 }
 
 local kong = kong
