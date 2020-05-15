@@ -84,6 +84,35 @@ jobs:
     - name: Run Tests
       run: pushd $KONG_BUILD_TOOLS_LOCATION && make test-kong && popd
 
+  package-and-smoke-test:
+    name: Package and smoke test Kong
+    runs-on: ubuntu-18.04
+    needs: lint-unit-tests
+    if: contains(github.ref, 'merge')
+
+    steps:
+    - name: Set env
+      run: |
+          echo "::set-env name=KONG_SOURCE_LOCATION::$GITHUB_WORKSPACE"
+          echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
+          
+    - uses: azure/docker-login@v1
+      with:
+        username: ${{ secrets.KONG_USERNAME }}
+        password: ${{ secrets.KONG_PASSWORD }}
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v2
+
+    - name: Setup Kong Build Tools
+      run: make setup-kong-build-tools
+    
+    - name: Package Kong
+      run: pushd $HOME/kong-build-tools && make package-kong
+      
+    - name: Smoke Test Kong
+      run: pushd $HOME/kong-build-tools && make test
+
   integration-tests-dbless:
     name: DB-less integration tests
     runs-on: ubuntu-18.04
