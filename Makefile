@@ -41,20 +41,24 @@ KONG_VERSION ?= `cat $(KONG_SOURCE_LOCATION)/kong-*.rockspec | grep -m1 tag | aw
 BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 ISTAG = false
 ISPRERELEASE = false
+
 ifeq ($(BRANCH),HEAD)
+	# We're building a tag
 	ISTAG = true
 	BRANCH = $(shell git describe --tags --abbrev=0)
 	POSSIBLE_VERSION = $(shell git describe --tags --abbrev=0 | awk -F"-" '{print $$1}')
 	POSSIBLE_PRERELEASE_NAME = $(shell git describe --tags --abbrev=0 | awk -F"-" '{print $$2}')
+	ifneq ($(POSSIBLE_PRERELEASE_NAME),)
+		# We're building a pre-release tag
+		KONG_VERSION = ${BRANCH}
+		REPOSITORY_NAME = kong-prerelease
+	endif
 else
+	# We're releasing a branch. Presumably a daily build
 	REPOSITORY_NAME = kong-${BRANCH}
 	REPOSITORY_OS_NAME = ${BRANCH}
 	KONG_PACKAGE_NAME = kong-${BRANCH}
 	KONG_VERSION = `date +%Y-%m-%d`
-endif
-ifneq ($(POSSIBLE_PRERELEASE_NAME),)
-	KONG_VERSION = ${BRANCH}
-	REPOSITORY_NAME = kong-prerelease
 endif
 
 release:
