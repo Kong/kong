@@ -12,8 +12,7 @@ local DEFAULT_FILE = "./kong.yml"
 
 
 local accepted_formats = {
-  yaml = true,
-  json = true,
+  yaml_and_json = true,
   lua = true,
 }
 

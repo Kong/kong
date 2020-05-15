@@ -49,7 +49,10 @@ local function idempotent(tbl, err)
       if k == "id" then
         t[k] = "UUID"
       end
-      if k == "client_id" or k == "client_secret" or k == "access_token" then
+      if (k == "key" and v:sub(1, 4) ~= "http") or
+         k == "client_id" or k == "client_secret" or
+         k == "access_token"
+      then
         t[k] = "RANDOM"
       end
       if type(v) == "table" then
@@ -1920,6 +1923,61 @@ describe("declarative config: flatten", function()
                 scope = "foo",
                 service = null,
                 token_type = "bearer"
+              }
+            }
+          }, idempotent(config))
+        end)
+
+        it("accepts nulls in entities with YAML input", function()
+          local config = assert(lyaml.load([[
+            _format_version: "1.1"
+            consumers:
+            - username: my-user
+              keyauth_credentials:
+              - key: null
+          ]]))
+          local config = DeclarativeConfig:flatten(config)
+          config.consumers = nil
+          assert.same({
+            keyauth_credentials = {
+              {
+                consumer = { id = 'UUID', },
+                created_at = 1234567890,
+                id = 'UUID',
+                key = 'RANDOM',
+                tags = null,
+              }
+            }
+          }, idempotent(config))
+        end)
+
+        it("accepts nulls in entities with JSON input", function()
+          -- note: YAML parser is used for both JSON and YAML input
+          local config = assert(lyaml.load([[
+            {
+              "_format_version": "1.1",
+              "consumers": [
+                {
+                  "username": "my-user",
+                  "keyauth_credentials": [
+                    {
+                      "key": null
+                    }
+                  ]
+                }
+              ]
+            }
+          ]]))
+          local config = DeclarativeConfig:flatten(config)
+          config.consumers = nil
+          assert.same({
+            keyauth_credentials = {
+              {
+                consumer = { id = 'UUID', },
+                created_at = 1234567890,
+                id = 'UUID',
+                key = 'RANDOM',
+                tags = null,
               }
             }
           }, idempotent(config))

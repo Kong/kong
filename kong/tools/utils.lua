@@ -11,6 +11,7 @@
 local ffi = require "ffi"
 local uuid = require "resty.jit-uuid"
 local pl_stringx = require "pl.stringx"
+local lyaml = require("lyaml")
 
 local C          = ffi.C
 local ffi_fill   = ffi.fill
@@ -31,6 +32,8 @@ local gsub       = string.gsub
 local split      = pl_stringx.split
 local re_find    = ngx.re.find
 local re_match   = ngx.re.match
+local null       = ngx.null
+local ynull      = lyaml.null
 
 ffi.cdef[[
 typedef unsigned char u_char;
@@ -995,6 +998,30 @@ function _M.bytes_to_str(bytes, unit, scale)
 
   error("invalid unit '" .. unit .. "' (expected 'k/K', 'm/M', or 'g/G')", 2)
 end
+
+
+--- Removes ngx.null or lyaml.null value from input table recursively
+--
+--  Note: this function only removes hash part of the table,
+--  the array part is not checked. No new table is created, instead the
+--  input table is modified in place and returned.
+--
+--  @tparam table the table to be removed
+--  @return table the input table
+local function remove_nulls(tbl)
+  for k,v in pairs(tbl) do
+    if v == null or v == ynull then
+      tbl[k] = nil
+
+    elseif type(v) == "table" then
+      tbl[k] = remove_nulls(v)
+    end
+  end
+
+  return tbl
+end
+
+_M.remove_nulls = remove_nulls
 
 
 return _M

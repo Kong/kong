@@ -18,6 +18,7 @@ local next         = next
 local log          = ngx.log
 local fmt          = string.format
 local match        = string.match
+local remove_nulls = utils.remove_nulls
 
 
 local ERR          = ngx.ERR
@@ -36,18 +37,6 @@ end
 local _M    = {}
 local DAO   = {}
 DAO.__index = DAO
-
-
-local function remove_nulls(tbl)
-  for k,v in pairs(tbl) do
-    if v == null then
-      tbl[k] = nil
-    elseif type(v) == "table" then
-      tbl[k] = remove_nulls(v)
-    end
-  end
-  return tbl
-end
 
 
 local function validate_size_type(size)

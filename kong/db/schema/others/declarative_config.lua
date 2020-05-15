@@ -8,6 +8,7 @@ local plugin_loader = require("kong.db.schema.plugin_loader")
 
 
 local null = ngx.null
+local remove_nulls = utils.remove_nulls
 
 
 local DeclarativeConfig = {}
@@ -556,6 +557,8 @@ end
 
 local function flatten(self, input)
   local output = {}
+
+  remove_nulls(input)
 
   local ok, err = self:validate(input)
   if not ok then

@@ -4,13 +4,15 @@ local pl_file = require "pl.file"
 local lyaml = require "lyaml"
 local cjson = require "cjson.safe"
 local tablex = require "pl.tablex"
+local stringx = require "pl.stringx"
+local utils = require "kong.tools.utils"
 
 
 local deepcopy = tablex.deepcopy
-local null = ngx.null
 local SHADOW = true
 local md5 = ngx.md5
 local ngx_socket_tcp = ngx.socket.tcp
+local remove_nulls = utils.remove_nulls
 local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
 local PREFIX = ngx.config.prefix()
 local SUBSYS = ngx.config.subsystem
@@ -89,19 +91,20 @@ function Config:parse_string(contents, filename, accept, old_hash)
   end
 
   -- do not accept Lua by default
-  accept = accept or { yaml = true, json = true }
+  accept = accept or { yaml_and_json = true, }
 
   local dc_table, err
-  if accept.yaml and ((not filename) or filename:match("ya?ml$")) then
+  if accept.yaml_and_json and
+     (not filename or
+      filename:match("ya?ml$") or
+      filename:match("json$"))
+  then
     local pok
     pok, dc_table, err = pcall(lyaml.load, contents)
     if not pok then
       err = dc_table
       dc_table = nil
     end
-
-  elseif accept.json and filename:match("json$") then
-    dc_table, err = cjson.decode(contents)
 
   elseif accept.lua and filename:match("lua$") then
     local chunk, pok
@@ -118,8 +121,14 @@ function Config:parse_string(contents, filename, accept, old_hash)
   else
     local accepted = {}
     for k, _ in pairs(accept) do
-      table.insert(accepted, k)
+      if k:find("_and_", nil, true) then
+        accepted = tablex.union(accepted, stringx.split(k, "_and_"))
+
+      else
+        table.insert(accepted, k)
+      end
     end
+
     table.sort(accepted)
     local err = "unknown file extension (" ..
                 table.concat(accepted, ", ") ..
@@ -331,18 +340,6 @@ function declarative.export_config()
   end
 
   return out
-end
-
-
-local function remove_nulls(tbl)
-  for k,v in pairs(tbl) do
-    if v == null then
-      tbl[k] = nil
-    elseif type(v) == "table" then
-      tbl[k] = remove_nulls(v)
-    end
-  end
-  return tbl
 end
 
 

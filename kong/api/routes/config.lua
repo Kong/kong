@@ -14,8 +14,7 @@ local tostring = tostring
 -- Do not accept Lua configurations from the Admin API
 -- because it is Turing-complete.
 local accept = {
-  yaml = true,
-  json = true,
+  yaml_and_json = true,
 }
 
 local _reports = {
