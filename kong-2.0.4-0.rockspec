@@ -219,6 +219,14 @@ build = {
     ["kong.plugins.basic-auth.schema"] = "kong/plugins/basic-auth/schema.lua",
     ["kong.plugins.basic-auth.daos"] = "kong/plugins/basic-auth/daos.lua",
 
+    ["kong.plugins.basic-auth-v2.migrations"] = "kong/plugins/basic-auth-v2/migrations/init.lua",
+    ["kong.plugins.basic-auth-v2.migrations.000_base_basic_auth_v2"] = "kong/plugins/basic-auth-v2/migrations/000_base_basic_auth_v2.lua",
+    ["kong.plugins.basic-auth-v2.crypto"] = "kong/plugins/basic-auth-v2/crypto.lua",
+    ["kong.plugins.basic-auth-v2.handler"] = "kong/plugins/basic-auth-v2/handler.lua",
+    ["kong.plugins.basic-auth-v2.access"] = "kong/plugins/basic-auth-v2/access.lua",
+    ["kong.plugins.basic-auth-v2.schema"] = "kong/plugins/basic-auth-v2/schema.lua",
+    ["kong.plugins.basic-auth-v2.daos"] = "kong/plugins/basic-auth-v2/daos.lua",
+
     ["kong.plugins.key-auth.migrations"] = "kong/plugins/key-auth/migrations/init.lua",
     ["kong.plugins.key-auth.migrations.000_base_key_auth"] = "kong/plugins/key-auth/migrations/000_base_key_auth.lua",
     ["kong.plugins.key-auth.migrations.002_130_to_140"] = "kong/plugins/key-auth/migrations/002_130_to_140.lua",
