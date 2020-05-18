@@ -688,7 +688,7 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
       if is_timeseries_report then
         local timestamp = tostring(value[1])
         index = timestamp
-        entity_metadata = entities[entity_id]
+        entity_metadata = entities[entity_id] or {}
       else
         local entity_tag = {
           consumer = series.tags.consumer,
@@ -696,7 +696,7 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
         }
         local id = entity_tag[entity]
         index = id
-        entity_metadata = entities[id]
+        entity_metadata = entities[id] or {}
       end
       local has_index = index ~= ''
       if has_index then
