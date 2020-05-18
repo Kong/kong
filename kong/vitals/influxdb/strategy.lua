@@ -635,7 +635,7 @@ local function status_code_query(entity_id, entity, seconds_from_now, interval)
 end
 _M.status_code_query = status_code_query
 
--- @param entity: consumer or service dao
+-- @param entity: consumer or service DAO
 local function resolve_entity_metadata(entity)
   local is_service = not not entity.name
   if is_service then
@@ -656,10 +656,11 @@ local function resolve_entity_metadata(entity)
 end
 _M.resolve_entity_metadata = resolve_entity_metadata
 
--- @param entity: consumer or service
--- @param entity_id: UUID or null, signifies how each row is indexed
--- @param interval: seconds, minutes, hours, days, weeks, months
--- @param start_ts: seconds from now
+
+-- @param[type=string] entity: consumer or service
+-- @param[type=nullable-string] entity_id: UUID or null, signifies how each row is indexed
+-- @param[type=string] interval: seconds, minutes, hours, days, weeks, months
+-- @param[type=number] start_ts: seconds from now
 function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   start_ts = start_ts or 36000
   local plural_entity = entity .. 's'
@@ -705,7 +706,6 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
         local request_count = value[2]
         stats[index]["total"] = stats[index]["total"] + request_count
         stats[index][status_group] = stats[index][status_group] + request_count
-        
         stats[index]["name"] = entity_metadata.name
         if is_consumer then
           stats[index]["app_id"] = entity_metadata.app_id
