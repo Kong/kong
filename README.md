@@ -103,5 +103,5 @@ For example, the `kong.rewrite`, `start` log would be transmitted as:
   - `{ "value" = "kong.rewrite.start", timestamp = <timestamp> }`
 
 
-[badge-travis-url]: https://travis-ci.com/Kong/kong-plugin-zipkin/branches
-[badge-travis-image]: https://api.travis-ci.com/Kong/kong-plugin-zipkin.svg?branch=master
+[badge-travis-url]: https://travis-ci.org/Kong/kong-plugin-zipkin/branches
+[badge-travis-image]: https://travis-ci.org/Kong/kong-plugin-zipkin.svg?branch=master
