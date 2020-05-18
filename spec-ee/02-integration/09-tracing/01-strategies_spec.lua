@@ -269,7 +269,10 @@ describe("tracing [#" .. strategy .. "]", function()
     local TCP_PORT = 35001
 
     setup(function()
-      local bp, _, _ = helpers.get_db_utils(strategy)
+      local bp, _, _ = helpers.get_db_utils(strategy, {
+        "services",
+        "routes",
+      })
 
       bp.routes:insert {
         hosts = { "example.com" },
@@ -340,7 +343,10 @@ describe("tracing [#" .. strategy .. "]", function()
     local TCP_PORT = 35002
 
     setup(function()
-      local bp, _, _ = helpers.get_db_utils(strategy)
+      local bp, _, _ = helpers.get_db_utils(strategy, {
+        "services",
+        "routes",
+      })
 
       bp.routes:insert {
         hosts = { "example.com" },
@@ -408,7 +414,10 @@ describe("tracing [#" .. strategy .. "]", function()
     local UDP_PORT = 35003
 
     setup(function()
-      local bp, _, _ = helpers.get_db_utils(strategy)
+      local bp, _, _ = helpers.get_db_utils(strategy, {
+        "services",
+        "routes",
+      })
 
       bp.routes:insert {
         hosts = { "example.com" },
@@ -481,7 +490,10 @@ describe("tracing [#" .. strategy .. "]", function()
     local HTTP_PORT = 35004
 
     setup(function()
-      local bp, _, _ = helpers.get_db_utils(strategy)
+      local bp, _, _ = helpers.get_db_utils(strategy, {
+        "services",
+        "routes",
+      })
 
       bp.routes:insert {
         hosts = { "example.com" },

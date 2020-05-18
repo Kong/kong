@@ -6,15 +6,19 @@ for _, strategy in helpers.each_strategy() do
     local client, db, _
 
     setup(function()
-      _, db = helpers.get_db_utils(strategy)
+      _, db = helpers.get_db_utils(strategy, {
+        "services",
+        "routes",
+      })
 
       assert(helpers.start_kong({
         database = strategy,
+        db_update_propagation = strategy == "postgres" and 0 or 3,
       }))
     end)
 
     teardown(function()
-      helpers.stop_kong(nil, true, true)
+      helpers.stop_kong()
     end)
 
     describe("/oas-config", function()
@@ -22,7 +26,6 @@ for _, strategy in helpers.each_strategy() do
         describe("Error Handling", function()
 
           before_each(function()
-            db:truncate()
             client = assert(helpers.admin_client())
           end)
 
@@ -254,6 +257,7 @@ for _, strategy in helpers.each_strategy() do
                 local file_path = "spec-ee/fixtures/oas_config/petstore_" .. version .. "." .. format
 
                 setup(function()
+                  db:truncate("services")
                   client = assert(helpers.admin_client())
                   local f = assert(io.open(file_path))
                   local str = f:read("*a")
@@ -277,9 +281,6 @@ for _, strategy in helpers.each_strategy() do
                   if client then client:close() end
                 end)
 
-                teardown(function()
-                  db:truncate()
-                end)
 
                 it("should generate 2 services and 4 routes", function()
                   table.sort(resp_body_json.services, function(a, b)
@@ -358,7 +359,6 @@ for _, strategy in helpers.each_strategy() do
         describe("Error Handling", function()
 
           before_each(function()
-            db:truncate()
             client = assert(helpers.admin_client())
           end)
 
@@ -591,6 +591,7 @@ for _, strategy in helpers.each_strategy() do
                 local file_path = "spec-ee/fixtures/oas_config/petstore_" .. version .. "." .. format
 
                 setup(function()
+                  db:truncate("services")
                   client = assert(helpers.admin_client())
                   local f = assert(io.open(file_path))
                   local str = f:read("*a")
@@ -673,9 +674,6 @@ for _, strategy in helpers.each_strategy() do
                   if client then client:close() end
                 end)
 
-                teardown(function()
-                  db:truncate()
-                end)
 
                 it("should update existing services (host, port and path change) but not update routes", function()
                   local expected_service = {
