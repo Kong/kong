@@ -499,6 +499,78 @@ describe("Admin API #off", function()
           message = "expected a declarative configuration",
         }, json)
       end)
+
+      it("sparse responses are correctly generated", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            {
+              "_format_version" : "1.1",
+              "plugins": [{
+                "name": "key-auth",
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }, {
+                "name": "key-auth",
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }, {
+                "name": "key-auth",
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }, {
+                "name": "key-auth",
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }, {
+                "name": "key-auth",
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }, {
+                "name": "key-auth",
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }, {
+                "name": "key-auth",
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }, {
+                "name": "key-auth",
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }, {
+                "name": "key-auth",
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }, {
+                "name": "key-auth",
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }, {
+                "name": "cors",
+                "config": {
+                  "credentials": true,
+                  "exposed_headers": ["*"],
+                  "headers": ["*"],
+                  "methods": ["*"],
+                  "origins": ["*"],
+                  "preflight_continue": true
+                },
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }]
+            }
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        assert.response(res).has.status(400)
+      end)
     end)
 
     describe("GET", function()

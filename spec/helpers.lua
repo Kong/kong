@@ -1779,15 +1779,18 @@ luassert:register("assertion", "cn", assert_cn,
 
 
 do
-  --- Generic modifier "errlog"
+  --- Generic modifier "logfile"
   -- Will set an "errlog_path" value in the assertion state.
-  -- @name errlog
-  -- @param path A path to the errlog file (defaults to the test prefix's
+  -- @name logfile
+  -- @param path A path to the log file (defaults to the test prefix's
   -- errlog).
+  -- @see line
+  -- @usage
+  -- assert.logfile("./my/logfile.log").has.no.line("[error]", true)
   local function modifier_errlog(state, args)
     local errlog_path = args[1] or conf.nginx_err_logs
 
-    assert(type(errlog_path) == "string", "errlog modifier expects nil, or " ..
+    assert(type(errlog_path) == "string", "logfile modifier expects nil, or " ..
                                           "a string as argument, got: "      ..
                                           type(errlog_path))
 
@@ -1796,10 +1799,11 @@ do
     return state
   end
 
-  luassert:register("modifier", "errlog", modifier_errlog)
+  luassert:register("modifier", "errlog", modifier_errlog) -- backward compat
+  luassert:register("modifier", "logfile", modifier_errlog)
 
 
-  --- Assertion checking is any line from a file matches the given regex or
+  --- Assertion checking if any line from a file matches the given regex or
   -- substring.
   -- @name line
   -- @param regex The regex to evaluate against each line.
@@ -1807,12 +1811,11 @@ do
   -- string.
   -- @param timeout An optional timeout after which the assertion will fail if
   -- reached.
-  -- @param fpath An optional path to the file (defaults to the errlog
+  -- @param fpath An optional path to the file (defaults to the filelog
   -- modifier)
-  -- @see errlog
+  -- @see logfile
   -- @usage
-  -- assert.not_line("[error]", true)
-  -- assert.errlog().not_has.line("[error]", true)
+  -- assert.logfile().has.no.line("[error]", true)
   local function match_line(state, args)
     local regex = args[1]
     local plain = args[2]
@@ -1895,10 +1898,14 @@ end
 -- fixtures.dns_mock:SRV {
 --   name = "my.srv.test.com",     -- adding same name again: record gets 2 entries!
 --   target = "b.my.srv.test.com", -- a.my.srv.test.com and b.my.srv.test.com
---   port = 80,
+--   port = 8080,
 -- }
 -- fixtures.dns_mock:A {
 --   name = "a.my.srv.test.com",
+--   address = "127.0.0.1",
+-- }
+-- fixtures.dns_mock:A {
+--   name = "b.my.srv.test.com",
 --   address = "127.0.0.1",
 -- }
 -- @section DNS-mocks
