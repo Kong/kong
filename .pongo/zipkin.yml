@@ -1,0 +1,17 @@
+version: '3.5'
+
+services:
+  zipkin:
+    image: openzipkin/zipkin:${ZIPKIN:-2.19}
+    healthcheck:
+      interval: 5s
+      retries: 10
+      test:
+      - CMD
+      - wget
+      - localhost:9411/health
+      timeout: 10s
+    restart: on-failure
+    stop_signal: SIGKILL
+    networks:
+      - ${NETWORK_NAME}

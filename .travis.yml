@@ -1,71 +1,38 @@
-language: generic
-dist: trusty
-sudo: required
+dist: bionic
 
-branches:
-  only:
-    - master
-
-services:
-  - redis-server
-
-addons:
-  postgresql: "9.5"
-  apt:
-    packages:
-      - net-tools
-      - libpcre3-dev
-      - build-essential
-
-services:
-  - redis
-  - docker
+jobs:
+  include:
+  - name: Kong CE 1.5.x
+    env: KONG_VERSION=1.5.x
+  - name: Kong CE 2.0.x
+    env: KONG_VERSION=2.0.x
+  - name: Kong Enterprise 1.5.0.x
+    env: KONG_VERSION=1.5.0.x
+  - name: Kong Enterprise nightly
+    env: KONG_VERSION=nightly-ee
 
 env:
   global:
-    - PLUGIN_NAME=zipkin
-    - KONG_REPOSITORY=kong
-    - KONG_TAG=master
-    - KONG_PLUGINS=bundled
-    - KONG_TEST_PLUGINS=$KONG_PLUGINS
-    - LUAROCKS=3.2.1
-    - OPENSSL=1.1.1d
-    - CASSANDRA_BASE=2.2.12
-    - CASSANDRA_LATEST=3.9
-    - OPENRESTY=1.15.8.2
-    - DOWNLOAD_CACHE=$HOME/download-cache
-    - INSTALL_CACHE=$HOME/install-cache
-    - BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6"
-    - TEST_FILE_PATH=$TRAVIS_BUILD_DIR/spec
-
-  matrix:
-    # Some of these might be commented off because they don't apply for the current plugin.
-    # If a plugin does not extend the pdk, the pdk test suite doesn't need to be run.
-    # If a plugin is not compatible with dbless, then the dbless test suite doesn't need to be run.
-    # If a plugin doesn't monkeypatch Kong's internal entities, it should not need to run integration tests
-    # - TEST_SUITE=pdk
-    # - KONG_TEST_DATABASE=postgres TEST_SUITE=integration
-    # - KONG_TEST_DATABASE=cassandra CASSANDRA=$CASSANDRA_BASE TEST_SUITE=integration
-    # - KONG_TEST_DATABASE=cassandra CASSANDRA=$CASSANDRA_LATEST TEST_SUITE=integration
-    # - KONG_TEST_DATABASE=off TEST_SUITE=dbless
-    - KONG_TEST_DATABASE=postgres TEST_SUITE=plugins
-    - KONG_TEST_DATABASE=cassandra CASSANDRA=$CASSANDRA_BASE TEST_SUITE=plugins
-    - KONG_TEST_DATABASE=cassandra CASSANDRA=$CASSANDRA_LATEST TEST_SUITE=plugins
+  # for Enterprise images
+  - BINTRAY_USERNAME=kong-automation@kong
+  - BINTRAY_REPO=kong
+  - secure: TjVyfKW1xY5OJwTBIxhRELOhHFAPaHsp9RsOPt6IZp9ypdqlI5z4H0xESJXjXNAxj5flV5lSGheM/FQlMwd5QgGDaT4QmukiNMaN9rgbyMqxQIrXoJbts/VLZCPe/J5jupZdRywtN8570MiKbzJxvAK80It3I0blUyD5mxBHm+1x71o8m9tNUL5sFywt2/sEo6K/djhkQnzoSWhZQqZsLihonNi7sdSPCRjXXXG+afdbV+B/cUNRUO1PweI+PrYDLew+qmLLpaG9vh+cSS+s2uELCN/6nu1MRQHcyYXdVaIVMs187TVjSuRPfXYPw7byp0O+JncfPEUj7N1ga/5amJgYHXMECdVx7zL52gCF/Z1DGSB5oozbC0WBC+xF3DVJaQpBckxiwsAE4z9N3tmx1+29dGiPjRscPSs0KPxZRJ28nZJSRm4uhWSw7x3ysbbnTrqpFbnWsS1VP3KmriZ3DaXHMGZ63uxHqjj4WCXvr4cbG5Js6zpPBEV+9/ATxZcWBLxhZqhN3D1FNcoe31Q4fw1yxs2G1nwKzZ/ixcf5jnJsYqeRrL47FtSfALcG1OiPDP9kUbayndqz6jdQLQbinus2AV6wqwMCiNzY2ziLxCdZYtLLdbyDhaTmfoJXV36I6O8gZlq1tV02p9rLEcxzaF1iYFiyMLgqDlhyeNCgS4s=
+  # for Enterprise nightly images
+  - NIGHTLY_EE_USER=kong-automation@kong
+  - secure: F4yDGkmDs7gjV+1X4FWaxuXonOQxSMVx6dtYiNh09h6PFAi5JopjRy4hnqmE35djoaAP8mQ1vXG1yv1O3Ry3ivIq5XDNe7sb6/dP495bVKDDumnAf9E+g0eLf/3OqUiuaYqrcf4+KVn9Y91t5z7h5wdNdDbSppkg043x3/vXWBS7vVjmIjJ1FRwfYjdWqiI3Hmthkmw7rrZYFnDluneRlh+F44Gd2wxbKwWGEl6PmM12mTV9RNvs0zpljDd64DL1PM+q37YtrNBF4yMQLzUiVTFf48H18Yls/6wMjA09UFrqdWHYZRk9D0T7ms7JGkBV/UEMGMqb5bSjOWF126EMiZWcuPvf1s1Wx3SOWE7nesj5IOBri6O0wIT8a0QcfcdaOvOhvtLhq20guaSqOwwMIKehJWOXfV/IV4E2ht7ID3BW21AFmlDhtTPgNguAY9bYk1fs9+LsyGE685ObIm8gQDYcH+8vNHPMDWjMXPPbH45H23ag2X3lwmu6VpxPtLO05waKlGYO2m8VuXvz37u8GlPttY95Y3T1lNBRieEJ8maCv9ttdciNR7CPe7luKO3GbEsVQLCfeBlM1Z907f3brfgGilcerk0IX6Vs7umhngX7S8Iqc9IHWcqzsY6iShD7LX0ptKSl1fqZi660cWyI67dv2siECL5PmgbWV7jreeg=
 
 install:
-  - git clone --single-branch https://$GITHUB_TOKEN:@github.com/Kong/kong-ci.git ../kong-ci
-  - source ../kong-ci/setup_plugin_env.sh
-  - docker run -d --name zipkin -p 9411:9411 openzipkin/zipkin:2.19 && while ! curl localhost:9411/health; do sleep 1; done
+- git clone --single-branch https://github.com/Kong/kong-pongo ../kong-pongo
+- "../kong-pongo/pongo.sh up"
+- "../kong-pongo/pongo.sh build"
 
 script:
-  - eval $LUACHECK_CMD
-  - eval $BUSTED_CMD
+- "../kong-pongo/pongo.sh lint"
+- "../kong-pongo/pongo.sh run"
 
 notifications:
-  email: false
-
-cache:
-  directories:
-    - $DOWNLOAD_CACHE
-    - $INSTALL_CACHE
-    - $HOME/.ccm/repository
+  slack:
+    on_success: change
+    on_failure: always
+    rooms:
+      secure: grAwbLnUQEvqK8Vil4tgo/2UFUoPBDGh+dQCfm8fPNLzMH3DADKoLRRH0gz2qAZEI20kMd6qIFhY45rDZ2Y2EyL5/nLbcDNNndAp2TCszvBVCGXRkCQ4hOC8xhyn86t2+/vzSQ73+16nVoSgtu6zjzbKbAJObGz08oMincUp6UHFvYtyly0pfplTJ6mXU9xMWzQffGsLk67pdf1uynLQeaE3XTDGNLr3SnwMIMIKqhndGo1/0hJzE4o8bTH8PZ9lYPfGJsmxVJ9IY/RN7hdZNIllQ13fziTPsiInKGrw9jICgDpSHGonW5uR+1axjZGNi2af2BVJ93YXINIXYf0xq9Y9gNMmVmwyk7J5K0XrilQWcQzwRJE5uk8SnJCvcGWjlG+ThOgZzlYF5A1WcjPnaa1gQfuIdzvtJlh3ba9Ba3HoHAenTudKnYutrzNNp9tdPZOjxP1yqJKMCHoXrkvD0fR67c1QuOv5dGn+wQD0tifp6Pl13tMkIMF7mCHW600Yj/kLoxZOyA70w5vbPQUwO9pPikdWqXuHDZ991f9QjhMJlGQJTYC/4GHpxKhVTfxjw/eXkL+5Yq9z9D/yRIdOhJ3H9Q5ULgp+gFXzlhvtxn6r33c9mJF8I5SMjmtiBQCi/JMmIETCwUZ8oiDGQsGLiPcCEJamcQBfmBPS1p9AonA=
