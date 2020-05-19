@@ -449,6 +449,8 @@ local function get_key_for_uuid_gen(entity, item, schema, parent_fk, child_key)
   if schema.cache_key then
     return pk_name, build_cache_key(entity, item, schema, parent_fk, child_key)
   end
+
+  return pk_name
 end
 
 
@@ -486,7 +488,7 @@ local function generate_ids(input, known_entities, parent_entity)
 end
 
 
-local function populate_ids(input, known_entities, parent_entity, by_id, by_key)
+local function populate_ids_for_validation(input, known_entities, parent_entity, by_id, by_key)
   local by_id  = by_id  or {}
   local by_key = by_key or {}
   for _, entity in ipairs(known_entities) do
@@ -509,11 +511,15 @@ local function populate_ids(input, known_entities, parent_entity, by_id, by_key)
     for _, item in ipairs(input[entity]) do
       local pk_name, key = get_key_for_uuid_gen(entity, item, schema,
                                                 parent_fk, child_key)
-      if key and not item[pk_name] then
-        item[pk_name] = generate_uuid(schema.name, key)
+      if pk_name and not item[pk_name] then
+        if key then
+          item[pk_name] = generate_uuid(schema.name, key)
+        else
+          item[pk_name] = utils.uuid()
+        end
       end
 
-      populate_ids(item, known_entities, entity, by_id, by_key)
+      populate_ids_for_validation(item, known_entities, entity, by_id, by_key)
 
       local item_id = DeclarativeConfig.pk_string(schema, item)
       by_id[entity] = by_id[entity] or {}
@@ -586,13 +592,12 @@ local function flatten(self, input)
     -- and that is the reason why we try to validate the input again with the
     -- filled foreign keys
     local input_copy = utils.deep_copy(input, false)
-    populate_ids(input_copy, self.known_entities)
+    populate_ids_for_validation(input_copy, self.known_entities)
     local schema = DeclarativeConfig.load(self.plugin_set, true)
 
     local ok2, err2 = schema:validate(input_copy)
     if not ok2 then
-      err = extract_null_errors(err)
-      local err3 = utils.deep_merge(err2, err)
+      local err3 = utils.deep_merge(err2, extract_null_errors(err))
       return nil, err3
     end
   end

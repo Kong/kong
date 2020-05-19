@@ -2010,5 +2010,27 @@ describe("declarative config: flatten", function()
           },
         }, idempotent(err))
     end)
+    it("fixes #5920 - validation error on valid input", function()
+      local config = assert(lyaml.load([[
+        _format_version: "1.1"
+
+        services:
+        - name: test-service
+          routes:
+          - paths:
+            - /test/path
+            plugins:
+            - name: key-auth
+          url: https://example.com
+
+        consumers:
+        - username: test-user
+          basicauth_credentials:
+          - username: test-username
+            password: test-password
+      ]]))
+      local _, err = DeclarativeConfig:flatten(config)
+      assert.equal(nil, err)
+    end)
   end)
 end)
