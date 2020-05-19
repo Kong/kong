@@ -602,7 +602,9 @@ describe("Admin API #off", function()
 
         local body = assert.response(res).has.status(200)
         local json = cjson.decode(body)
-        local expected_config = "_format_version: '1.1'\n" ..
+        local expected_config =
+          "_transform: false\n" ..
+          "_format_version: '1.1'\n" ..
           "consumers:\n" ..
           "- created_at: 1566863706\n" ..
           "  username: bobo\n" ..

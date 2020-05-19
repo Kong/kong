@@ -128,6 +128,7 @@ local function execute(args)
 
         local report = {
           decl_fmt_version = dc_table._format_version,
+          decl_transform = dc_table._transform,
         }
         kong_reports.send("config-db-import", report)
       end
