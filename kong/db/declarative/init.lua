@@ -80,7 +80,7 @@ end
 
 -- first return item: a table with the following format:
 --   {
---     _format_version: 1.1,
+--     _format_version: 1.2,
 --     _transform: true,
 --     services: {
 --       ["<uuid>"] = { ... },
@@ -159,7 +159,7 @@ end
 
 -- first return item: a table with the following format:
 --   {
---     _format_version: 1.1,
+--     _format_version: 1.2,
 --     _transform: true,
 --     services: {
 --       ["<uuid>"] = { ... },
@@ -275,7 +275,7 @@ function declarative.export_from_db(fd)
   end
 
   fd:write(declarative.to_yaml_string({
-    _format_version = "1.1",
+    _format_version = "1.2",
     _transform = false,
   }))
 
@@ -330,7 +330,7 @@ function declarative.export_config()
   end
 
   local out = {
-    _format_version = "1.1",
+    _format_version = "1.2",
     _transform = false,
   }
 
@@ -391,7 +391,7 @@ end
 
 -- dc_table format:
 --   {
---     _format_version: 1.1,
+--     _format_version: 1.2,
 --     _transform: true,
 --     services: {
 --       ["<uuid>"] = { ... },

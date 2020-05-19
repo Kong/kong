@@ -4,6 +4,7 @@ local pl_utils = require "pl.utils"
 local helpers  = require "spec.helpers"
 local Errors   = require "kong.db.errors"
 local mocker   = require("spec.fixtures.mocker")
+local lyaml    = require "lyaml"
 
 local WORKER_SYNC_TIMEOUT = 10
 
@@ -602,14 +603,17 @@ describe("Admin API #off", function()
 
         local body = assert.response(res).has.status(200)
         local json = cjson.decode(body)
-        local expected_config =
-          "_transform: false\n" ..
-          "_format_version: '1.1'\n" ..
-          "consumers:\n" ..
-          "- created_at: 1566863706\n" ..
-          "  username: bobo\n" ..
-          "  id: d885e256-1abe-5e24-80b6-8f68fe59ea8e\n"
-        assert.same(expected_config, json.config)
+        local config = assert(lyaml.load(json.config))
+        assert.same({
+          _format_version = "1.2",
+          _transform = false,
+          consumers = {
+            { id = "d885e256-1abe-5e24-80b6-8f68fe59ea8e",
+              created_at = 1566863706,
+              username = "bobo",
+            },
+          },
+        }, config)
       end)
     end)
 
