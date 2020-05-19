@@ -15,6 +15,9 @@ return function(options)
   local meta = require "kong.meta"
 
 
+  require("cjson.safe").encode_sparse_array(nil, nil, 2^15)
+
+
   if options.cli then
     -- disable the _G write guard alert log introduced in OpenResty 1.15.8.1
     -- when in CLI or when running tests in resty-cli

@@ -4,11 +4,16 @@
 
 
 local ngx = ngx
+local ngx_get_phase = ngx.get_phase
 
 
 -- shared between all global instances
 local _CTX_SHARED_KEY = {}
 local _CTX_CORE_KEY = {}
+
+
+-- dynamic namespaces, also shared between global instances
+local _CTX_NAMESPACES_KEY = {}
 
 
 ---
@@ -86,19 +91,58 @@ local _CTX_CORE_KEY = {}
 --
 --   kong.log(value) -- "hello world"
 -- end
+
+
 local function new(self)
-  local _CTX = {
-    -- those would be visible on the *.ctx namespace for now
-    -- TODO: hide them in a private table shared between this
-    -- module and the global.lua one
-    keys = setmetatable({}, { __mode = "v" }),
-  }
-
-
+  local _CTX = {}
   local _ctx_mt = {}
+  local _ns_mt = { __mode = "v" }
+
+
+  local function get_namespaces(nctx)
+    local namespaces = nctx[_CTX_NAMESPACES_KEY]
+    if not namespaces then
+      -- 4 namespaces for request, i.e. ~4 plugins
+      namespaces = self.table.new(0, 4)
+      nctx[_CTX_NAMESPACES_KEY] = setmetatable(namespaces, _ns_mt)
+    end
+
+    return namespaces
+  end
+
+
+  local function set_namespace(namespace, namespace_key)
+    local nctx = ngx.ctx
+    local namespaces = get_namespaces(nctx)
+
+    local ns = namespaces[namespace]
+    if ns and ns == namespace_key then
+      return
+    end
+
+    namespaces[namespace] = namespace_key
+  end
+
+
+  local function del_namespace(namespace)
+    local nctx = ngx.ctx
+    local namespaces = get_namespaces(nctx)
+    namespaces[namespace] = nil
+  end
 
 
   function _ctx_mt.__index(t, k)
+    if k == "__set_namespace" then
+      return set_namespace
+
+    elseif k == "__del_namespace" then
+      return del_namespace
+    end
+
+    if ngx_get_phase() == "init" then
+      return
+    end
+
     local nctx = ngx.ctx
     local key
 
@@ -109,7 +153,8 @@ local function new(self)
       key = _CTX_SHARED_KEY
 
     else
-      key = t.keys[k]
+      local namespaces = get_namespaces(nctx)
+      key = namespaces[k]
     end
 
     if key then

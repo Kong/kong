@@ -442,7 +442,9 @@ do
       self.print = nop
     end
 
+
     self.on()
+
 
     return setmetatable(self, _inspect_mt)
   end

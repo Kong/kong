@@ -148,6 +148,11 @@ local function set_consumer(consumer, credential)
 end
 
 
+local function fail_authentication()
+  return false, { status = 401, message = "Invalid authentication credentials" }
+end
+
+
 local function do_authentication(conf)
   -- If both headers are missing, return 401
   if not (kong.request.get_header("authorization") or kong.request.get_header("proxy-authorization")) then
@@ -161,19 +166,23 @@ local function do_authentication(conf)
   end
 
   local credential
-  local username, password = retrieve_credentials("proxy-authorization", conf)
-  if username then
-    credential = load_credential_from_db(username)
+  local given_username, given_password = retrieve_credentials("proxy-authorization", conf)
+  if given_username and given_password then
+    credential = load_credential_from_db(given_username)
   end
 
   -- Try with the authorization header
   if not credential then
-    username, password = retrieve_credentials("authorization", conf)
-    credential = load_credential_from_db(username)
+    given_username, given_password = retrieve_credentials("authorization", conf)
+    if given_username and given_password then
+      credential = load_credential_from_db(given_username)
+    else
+      return fail_authentication()
+    end
   end
 
-  if not credential or not validate_credentials(credential, password) then
-    return false, { status = 401, message = "Invalid authentication credentials" }
+  if not credential or not validate_credentials(credential, given_password) then
+    return fail_authentication()
   end
 
   -- Retrieve consumer
