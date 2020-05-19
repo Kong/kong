@@ -554,6 +554,29 @@ local function populate_ids(input, known_entities, parent_entity, by_id, by_key)
 end
 
 
+local function extract_null_errors(err)
+  local ret = {}
+  for k, v in pairs(err) do
+    local t = type(v)
+    if t == "table" then
+      local res = extract_null_errors(v)
+      if not next(res) then
+        ret[k] = nil
+      else
+        ret[k] = res
+      end
+
+    elseif t == "string" and v ~= "value must be null" then
+      ret[k] = nil
+    else
+      ret[k] = v
+    end
+  end
+
+  return ret
+end
+
+
 local function flatten(self, input)
   local output = {}
 
@@ -565,8 +588,12 @@ local function flatten(self, input)
     local input_copy = utils.deep_copy(input, false)
     populate_ids(input_copy, self.known_entities)
     local schema = DeclarativeConfig.load(self.plugin_set, true)
-    if not schema:validate(input_copy) then
-      return nil, err
+
+    local ok2, err2 = schema:validate(input_copy)
+    if not ok2 then
+      err = extract_null_errors(err)
+      local err3 = utils.deep_merge(err2, err)
+      return nil, err3
     end
   end
 

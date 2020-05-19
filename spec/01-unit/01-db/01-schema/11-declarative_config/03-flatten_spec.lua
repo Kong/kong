@@ -1,8 +1,9 @@
 local declarative_config = require "kong.db.schema.others.declarative_config"
 local helpers = require "spec.helpers"
 local lyaml = require "lyaml"
+local cjson = require "cjson"
 local tablex = require "pl.tablex"
-
+local utils = require "kong.tools.utils"
 
 local null = ngx.null
 
@@ -46,7 +47,7 @@ local function idempotent(tbl, err)
 
   local function recurse_fields(t)
     for k,v in sortedpairs(t) do
-      if k == "id" then
+      if k == "id" and utils.is_valid_uuid(v) then
         t[k] = "UUID"
       end
       if k == "client_id" or k == "client_secret" or k == "access_token" then
@@ -1420,6 +1421,9 @@ describe("declarative config: flatten", function()
               ["@entity"] = {
                 "all or none of these fields must be set: 'password', 'consumer.id'",
               },
+              ["consumer"] = {
+                ["id"] = "missing primary key"
+              },
             },
           },
         }, idempotent(err))
@@ -1480,6 +1484,9 @@ describe("declarative config: flatten", function()
             {
               ["@entity"] = {
                 "all or none of these fields must be set: 'password', 'consumer.id'",
+              },
+              ["consumer"] = {
+                ["id"] = "missing primary key"
               },
             },
           },
@@ -1929,4 +1936,79 @@ describe("declarative config: flatten", function()
     end)
   end)
 
+  describe("issues", function()
+    it("fixes #5750 - misleading error messages", function()
+      local config = assert(cjson.decode([[
+        {
+          "_format_version": "1.1",
+          "consumers": [
+            {
+              "username": "consumer-test",
+              "basicauth_credentials": [
+                {
+                  "username": "some_user",
+                  "password": "some_password"
+                }
+              ]
+            }
+          ],
+          "plugins": [
+            {
+              "name": "request-transformer",
+              "config": {
+                "add": {
+                  "body": [],
+                  "headers": [],
+                  "querystring": []
+                },
+                "append": {
+                  "body": [],
+                  "headers": [
+                    "X-Another-Header:foo"
+                  ],
+                  "querystring": []
+                },
+                "remove": {
+                  "body": [],
+                  "headers": [
+                    "X-Another-Header"
+                  ],
+                  "querystring": []
+                },
+                "rename": {
+                  "body": [],
+                  "headers": [],
+                  "querystring": []
+                },
+                "replace": {
+                  "body": [],
+                  "headers": [],
+                  "querystring": [],
+                  "uri": null
+                }
+              },
+              "route": "does-not-exist",
+              "enabled": true,
+              "protocols": [
+                "http",
+                "https"
+              ]
+            }
+          ]
+        }
+      ]]))
+      local err
+      config, err = DeclarativeConfig:flatten(config)
+      assert.equal(nil, config)
+      assert.same({
+        plugins = {
+            {
+              ["route"] = {
+                ["id"] = "missing primary key"
+              },
+            },
+          },
+        }, idempotent(err))
+    end)
+  end)
 end)
