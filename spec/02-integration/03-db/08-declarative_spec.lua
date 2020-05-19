@@ -2,6 +2,7 @@ local declarative = require "kong.db.declarative"
 local ssl_fixtures = require "spec.fixtures.ssl"
 local helpers = require "spec.helpers"
 local lyaml = require "lyaml"
+local crypto = require "kong.plugins.basic-auth.crypto"
 
 for _, strategy in helpers.each_strategy() do
   describe("declarative config #" .. strategy, function()
@@ -98,8 +99,28 @@ for _, strategy in helpers.each_strategy() do
       consumer = { id = consumer_def.id },
       group = "The A Team"
     }
+
+    local basicauth_credential_def = {
+      id = "ad06b77c-0d2f-407a-8d6d-07f272a92d9a",
+      consumer = {
+        id = consumer_def.id,
+      },
+      username = "james",
+      password = "secret",
+    }
+
+    local basicauth_hashed_credential_def = {
+      id = "caa33a6f-8e6b-4b02-9f55-0e2cffd26fb5",
+      consumer = {
+        id = consumer_def.id,
+      },
+      username = "bond",
+      password = crypto.hash(consumer_def.id, "MI6"),
+    }
+
     before_each(function()
       db.acls:truncate()
+      db.basicauth_credentials:truncate()
       db.plugins:truncate()
       db.routes:truncate()
       db.services:truncate()
@@ -115,6 +136,13 @@ for _, strategy in helpers.each_strategy() do
         consumers = { [consumer_def.id] = consumer_def },
         plugins = { [plugin_def.id] = plugin_def },
         acls = { [acl_def.id] = acl_def  },
+        basicauth_credentials = { [basicauth_credential_def.id] = basicauth_credential_def },
+      }))
+
+      -- import without performing transformations
+      assert(declarative.load_into_db({
+        _transform = false,
+        basicauth_credentials = { [basicauth_hashed_credential_def.id] = basicauth_hashed_credential_def },
       }))
     end)
 
@@ -154,19 +182,23 @@ for _, strategy in helpers.each_strategy() do
         local acl = assert(db.acls:select({ id = acl_def.id }))
         assert.equals(consumer_def.id, acl.consumer.id)
         assert.equals("The A Team", acl.group)
+
+        local basicauth_credential = assert(db.basicauth_credentials:select({ id = basicauth_credential_def.id }))
+        assert.equals(basicauth_credential_def.id, basicauth_credential.id)
+        assert.equals(consumer.id, basicauth_credential.consumer.id)
+        assert.equals("james", basicauth_credential.username)
+        assert.equals(crypto.hash(consumer.id, "secret"), basicauth_credential.password)
+
+        local basicauth_hashed_credential = assert(db.basicauth_credentials:select({ id = basicauth_hashed_credential_def.id }))
+        assert.equals(basicauth_hashed_credential_def.id, basicauth_hashed_credential.id)
+        assert.equals(consumer.id, basicauth_hashed_credential.consumer.id)
+        assert.equals("bond", basicauth_hashed_credential.username)
+        assert.equals(basicauth_hashed_credential_def.password, basicauth_hashed_credential.password)
       end)
     end)
 
     describe("export_from_db", function()
       it("exports base and custom entities with associations", function()
-
-        -- Add a basicauth_credential to make sure it is not exported
-        db.basicauth_credentials:insert({
-          username = "some_username",
-          password = "secret",
-          consumer = { id = consumer_def.id },
-        })
-
         local fake_file = {
           buffer = {},
           write = function(self, str)
@@ -187,7 +219,9 @@ for _, strategy in helpers.each_strategy() do
         table.sort(toplevel_keys)
         assert.same({
           "_format_version",
+          "_transform",
           "acls",
+          "basicauth_credentials",
           "certificates",
           "consumers",
           "plugins",
@@ -197,6 +231,7 @@ for _, strategy in helpers.each_strategy() do
         }, toplevel_keys)
 
         assert.equals("1.1", yaml._format_version)
+        assert.equals(false, yaml._transform)
 
         assert.equals(1, #yaml.snis)
         local sni = assert(yaml.snis[1])
@@ -242,6 +277,21 @@ for _, strategy in helpers.each_strategy() do
         local acl = assert(yaml.acls[1])
         assert.equals(consumer_def.id, acl.consumer)
         assert.equals("The A Team", acl.group)
+
+        assert.equals(2, #yaml.basicauth_credentials)
+        table.sort(yaml.basicauth_credentials, function(a, b)
+          return a.username > b.username
+        end)
+
+        local bac1 = assert(yaml.basicauth_credentials[1])
+        assert.equals(consumer_def.id, bac1.consumer)
+        assert.equals("james", bac1.username)
+        assert.equals(crypto.hash(consumer_def.id, "secret"), bac1.password)
+
+        local bac2 = assert(yaml.basicauth_credentials[2])
+        assert.equals(consumer_def.id, bac2.consumer)
+        assert.equals("bond", bac2.username)
+        assert.equals(basicauth_hashed_credential_def.password, bac2.password)
       end)
     end)
   end)

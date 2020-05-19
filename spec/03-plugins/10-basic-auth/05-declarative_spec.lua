@@ -68,6 +68,15 @@ for _, strategy in helpers.each_strategy() do
       password = "secret",
     }
 
+    local basicauth_hashed_credential_def = {
+      id = "caa33a6f-8e6b-4b02-9f55-0e2cffd26fb5",
+      consumer = {
+        id = consumer_def.id,
+      },
+      username = "bond",
+      password = crypto.hash(consumer_def.id, "MI6"),
+    }
+
     local plugin_def = {
       _tags = ngx.null,
       created_at = 1547047308,
@@ -93,6 +102,11 @@ for _, strategy in helpers.each_strategy() do
         consumers = { [consumer_def.id] = consumer_def },
         plugins = { [plugin_def.id] = plugin_def },
         basicauth_credentials = { [basicauth_credential_def.id] = basicauth_credential_def },
+      }))
+
+      assert(declarative.load_into_db({
+        _transform = false,
+        basicauth_credentials = { [basicauth_hashed_credential_def.id] = basicauth_hashed_credential_def },
       }))
     end)
 
@@ -125,6 +139,12 @@ for _, strategy in helpers.each_strategy() do
         assert.equals(consumer.id, basicauth_credential.consumer.id)
         assert.equals("james", basicauth_credential.username)
         assert.equals(crypto.hash(consumer.id, "secret"), basicauth_credential.password)
+
+        local basicauth_hashed_credential = assert(db.basicauth_credentials:select({ id = basicauth_hashed_credential_def.id }))
+        assert.equals(basicauth_hashed_credential_def.id, basicauth_hashed_credential.id)
+        assert.equals(consumer.id, basicauth_hashed_credential.consumer.id)
+        assert.equals("bond", basicauth_hashed_credential.username)
+        assert.equals(basicauth_hashed_credential_def.password, basicauth_hashed_credential.password)
       end)
     end)
 
@@ -163,8 +183,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("Authorized", function()
-        it("returns 401 Unauthorized on invalid credentials in Authorization", function()
-
+        it("Accepts valid credentials", function()
           local creds = "Basic " .. ngx.encode_base64(
                           string.format("%s:%s", basicauth_credential_def.username,
                                                  basicauth_credential_def.password))
@@ -182,6 +201,26 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(consumer_def.custom_id, json.headers["x-consumer-custom-id"])
           assert.equal(basicauth_credential_def.username, json.headers["x-credential-identifier"])
           assert.equal(basicauth_credential_def.username, json.headers["x-credential-username"])
+        end)
+
+        it("Accepts valid credentials (introduced with a hashed password)", function()
+          local creds = "Basic " .. ngx.encode_base64(
+                          string.format("%s:%s", basicauth_hashed_credential_def.username,
+                                                 "MI6"))
+
+          local res = assert(proxy_client:get("/status/200", {
+            headers = {
+              ["Authorization"] = creds,
+            }
+          }))
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.equal(consumer_def.id, json.headers["x-consumer-id"])
+          assert.equal(consumer_def.username, json.headers["x-consumer-username"])
+          assert.equal(consumer_def.custom_id, json.headers["x-consumer-custom-id"])
+          assert.equal(basicauth_hashed_credential_def.username, json.headers["x-credential-identifier"])
+          assert.equal(basicauth_hashed_credential_def.username, json.headers["x-credential-username"])
         end)
       end)
     end)

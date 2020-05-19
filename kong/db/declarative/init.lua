@@ -81,6 +81,7 @@ end
 -- first return item: a table with the following format:
 --   {
 --     _format_version: 1.1,
+--     _transform: true,
 --     services: {
 --       ["<uuid>"] = { ... },
 --       ...
@@ -159,6 +160,7 @@ end
 -- first return item: a table with the following format:
 --   {
 --     _format_version: 1.1,
+--     _transform: true,
 --     services: {
 --       ["<uuid>"] = { ... },
 --       ...
@@ -239,6 +241,9 @@ function declarative.load_into_db(dc_table)
     return nil, err
   end
 
+  local options = {
+    transform = dc_table._transform,
+  }
   local schema, primary_key, ok, err, err_t
   for i = 1, #sorted_schemas do
     schema = sorted_schemas[i]
@@ -248,7 +253,7 @@ function declarative.load_into_db(dc_table)
 
       primary_key = schema:extract_pk_values(entity)
 
-      ok, err, err_t = kong.db[schema.name]:upsert(primary_key, entity)
+      ok, err, err_t = kong.db[schema.name]:upsert(primary_key, entity, options)
       if not ok then
         return nil, err, err_t
       end
@@ -271,6 +276,7 @@ function declarative.export_from_db(fd)
 
   fd:write(declarative.to_yaml_string({
     _format_version = "1.1",
+    _transform = false,
   }))
 
   for _, schema in ipairs(sorted_schemas) do
@@ -325,6 +331,7 @@ function declarative.export_config()
 
   local out = {
     _format_version = "1.1",
+    _transform = false,
   }
 
   for _, schema in ipairs(sorted_schemas) do
@@ -385,6 +392,7 @@ end
 -- dc_table format:
 --   {
 --     _format_version: 1.1,
+--     _transform: true,
 --     services: {
 --       ["<uuid>"] = { ... },
 --       ...
@@ -443,12 +451,21 @@ function declarative.load_into_cache(dc_table, hash, shadow_page)
       end
     end
 
+    local transform = dc_table._transform == nil and true or dc_table._transform
     local ids = {}
     for id, item in pairs(items) do
       table.insert(ids, id)
 
       local cache_key = dao:cache_key(id)
-      item = schema:transform(remove_nulls(item))
+      item = remove_nulls(item)
+      if transform then
+        local err
+        item, err = schema:transform(item)
+        if not item then
+          return nil, err
+        end
+      end
+
       local ok, err = kong.core_cache:safe_set(cache_key, item, shadow_page)
       if not ok then
         return nil, err
