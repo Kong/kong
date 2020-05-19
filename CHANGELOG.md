@@ -1,6 +1,7 @@
 # Table of Contents
 
 
+- [2.1.0 UNRELEASED](#210 UNRELEASED)
 - [2.0.4](#204)
 - [2.0.3](#203)
 - [2.0.2](#202)
@@ -42,6 +43,194 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
+
+## [2.1.0 UNRELEASED]
+
+> Released 2020/05/19
+
+### Dependencies
+
+- Bumped [lua-resty-dns-client](https://github.com/Kong/lua-resty-dns-client)
+  to `4.1.3`.
+  [#5499](https://github.com/Kong/kong/pull/5499)
+
+### Changes
+
+##### Core
+
+- Increase maximum allowed payload size in hybrid mode.
+  [#5654](https://github.com/Kong/kong/pull/5654)
+- Targets now support a weight range of 0-65535.
+  [#5871](https://github.com/Kong/kong/pull/5871)
+
+##### Configuration
+
+- :warning: The configuration property `router_consistency` has been renamed to
+  `worker_consistency`. Its accepted values and default remain the same.
+- :warning: The configuration property `router_update_frequency` has been renamed
+  `worker_state_update_frequency`. Its default value has been changed from `1` to
+  `5`.
+
+### Additions
+
+##### Core
+
+- :fireworks: **Asynchronous upstream updates**: when `worker_consistency` is
+  set to `eventual`, upstreams will not be updated in the context of Admin API calls,
+  but rather in a background timer.
+  [#5325](https://github.com/Kong/kong/pull/5325)
+- :fireworks: **Read-Only Postgres**: Kong users are now able to configure
+  a read-only Postgres replica. When configured, Kong will attempt to fulfill
+  read operations through the read-only replica instead of the main Postgres
+  connection.
+  [#5584](https://github.com/Kong/kong/pull/5584)
+- The default certificate for the proxy can now be configured via Admin API
+using the `/certificates` endpoint. A special `*` SNI has been introduced
+which stands for the default certificate.
+  [#5404](https://github.com/Kong/kong/pull/5404)
+- Add support for PKI in Hybrid Mode mTLS.
+  [#5396](https://github.com/Kong/kong/pull/5396)
+- Go Plugins: fix issue where instances of the same plugin applied to different
+  routes would get mixed.
+  [#5597](https://github.com/Kong/kong/pull/5607)
+- Add `X-Forwarded-Prefix` to set of headers forwarded to upstream requests.
+  [#5620](https://github.com/Kong/kong/pull/5620)
+
+##### CLI
+
+- Migrations: add `--force` flag to `migrations bootstrap`.
+  [#5635](https://github.com/Kong/kong/pull/5635)
+
+##### Configuration
+
+- Introduce configuration property `db_cache_neg_ttl`, allowing the configuration
+  of negative TTL for DB entities.
+  Thanks [ealogar](https://github.com/ealogar) for the patch!
+  [#5397](https://github.com/Kong/kong/pull/5397)
+
+##### Admin API
+
+##### PDK
+
+- Support `kong.response.exit` in Stream (L4) proxy mode.
+  [#5524](https://github.com/Kong/kong/pull/5524)
+- Introduce `kong.request.get_forwarded_path` method, which returns
+  the path component of the request's URL, but also considers
+  `X-Forwarded-Prefix` if it comes from a trusted source.
+  [#5620](https://github.com/Kong/kong/pull/5620)
+- Introduce `kong.response.error` method, that allows PDK users to exit with
+  an error while honoring the Accept header or manually forcing a content-type.
+  [#5562](https://github.com/Kong/kong/pull/5562)
+- Introduce `kong.client.tls` module, which provides the following methods for
+  interacting with downstream mTLS:
+  * `kong.client.tls.request_client_certificate`: request client to present its
+    client-side certificate to initiate mutual TLS authentication between server
+    and client.
+  * `kong.client.tls.disable_session_reuse`: prevent the TLS session for the current
+    connection from being reused by disabling session ticket and session ID for
+    the current TLS connection.
+  * `kong.client.tls.get_full_client_certificate_chain`: return the PEM encoded
+    downstream client certificate chain with the client certificate at the top
+    and intermediate certificates (if any) at the bottom.
+  [#5890](https://github.com/Kong/kong/pull/5890)
+
+##### Plugins
+
+- :fireworks: **New Plugin**: introduce the grpc-web plugin, allowing clients
+  to consume gRPC services via the gRPC-Web protocol.
+  [#5607](https://github.com/Kong/kong/pull/5607)
+- Go: add getter and setter methods for `kong.ctx.shared`.
+  [#5496](https://github.com/Kong/kong/pull/5496/)
+- Add `X-Credential-Identifier` header to the following authentication plugins:
+  * basic-auth
+  * key-auth
+  * ldap-auth
+  * oauth2
+  [#5516](https://github.com/Kong/kong/pull/5516)
+- Rate-Limiting: auto-cleanup expired rate-limiting metrics in Postgres.
+  [#5498](https://github.com/Kong/kong/pull/5498)
+- OAuth2: add ability to persist refresh tokens throughout their life cycle.
+  Thanks [amberheilman](https://github.com/amberheilman) for the patch!
+  [#5264](https://github.com/Kong/kong/pull/5264)
+- IP-Restriction: add support for IPv6.
+  [#5640](https://github.com/Kong/kong/pull/5640)
+- OAuth2: add support for PKCE.
+  Thanks [amberheilman](https://github.com/amberheilman) for the patch!
+  [5268](https://github.com/Kong/kong/pull/5268)
+- OAuth2: allow optional hashing of client secrets.
+  [#5610](https://github.com/Kong/kong/pull/5610)
+- aws-lambda: bumped from v3.3.0 to v3.4.0.
+  [#5894](https://github.com/Kong/kong/pull/5894)
+- session: bumped from 2.3.0 to 2.4.0.
+  [#5868](https://github.com/Kong/kong/pull/5868)
+
+### Fixes
+
+##### Core
+
+- Fix memory leak when loading a declarative configuration that fails
+  schema validation.
+  [#5759](https://github.com/Kong/kong/pull/5759)
+- Fix issue where entities removed from declarative configuration file
+  would persist upon configuration reload.
+  [#5769](https://github.com/Kong/kong/pull/5769)
+- Fix migration issue where index for the `ca_certificates` table would fail
+  to be created.
+  [#5764](https://github.com/Kong/kong/pull/5764)
+- Fix issue where DNS resolution would fail in db-less mode.
+  [#5831](https://github.com/Kong/kong/pull/5831)
+- Fix race condition leading to random TLS breakages in db-less mode.
+  [#5833](https://github.com/Kong/kong/pull/5833)
+- Fix issue where a respawned worker would not get the existing configuration
+  in db-less mode.
+  [#5850](https://github.com/Kong/kong/pull/5850)
+- Fix issue where declarative configuration would fail with error
+  `Cannot serialise table: excessively sparse array`.
+  [#5768](https://github.com/Kong/kong/issues/5768)
+- 
+
+##### Admin
+
+- Fix issue where a PUT request on Certificates would result in a `sni is duplicated`
+  error.
+  [#5660](https://github.com/Kong/kong/pull/5660)
+
+##### Configuration
+
+- Fix issue where the Postgres password from the Kong confiuration file
+  would be truncated if it contained a `#` character.
+  [#5822](https://github.com/Kong/kong/pull/5822)
+
+##### CLI
+
+- Migrations: do not ask for confirmation if bootstrap is not needed.
+  [#5635](https://github.com/Kong/kong/pull/5635)
+
+##### Plugins
+
+- ACL: respond with 401, rather than 403, if credentials are not provided.
+  [#5452](https://github.com/Kong/kong/pull/5452)
+- ldap-auth: set credential ID upon authentication, allowing subsequent
+  plugins (e.g., rate-limiting) to act on said value.
+  [#5497](https://github.com/Kong/kong/pull/5497)
+- ldap-auth: hash the cache key generated by the plugin.
+  [#5497](https://github.com/Kong/kong/pull/5497)
+- Strip `Authorization` value from logged headers. Values are now shown as
+  `REDACTED`.
+  [#5628](https://github.com/Kong/kong/pull/5628).
+- Go plugins: fix issue where the go-pluginserver would not reload plugin
+  configurations.
+  Thanks [wopol](https://github.com/wopol) for the patch!
+  [#5866](https://github.com/Kong/kong/pull/5866)
+- basic-auth: avoid fetching credentials when password is not given.
+  Thanks [Abhishekvrshny](https://github.com/Abhishekvrshny) for the patch!
+
+##### PDK
+
+- Stop request processing flow if body encoding fails.
+  [#5829](https://github.com/Kong/kong/pull/5829)
+
+[Back to TOC](#table-of-contents)
 
 ## [2.0.4]
 
@@ -4780,6 +4969,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.1.0 UNRELEASED]: https://github.com/Kong/kong/compare/2.0.4...2.1.0 UNRELEASED
 [2.0.4]: https://github.com/Kong/kong/compare/2.0.3...2.0.4
 [2.0.3]: https://github.com/Kong/kong/compare/2.0.2...2.0.3
 [2.0.2]: https://github.com/Kong/kong/compare/2.0.1...2.0.2
