@@ -1,0 +1,395 @@
+#!/usr/bin/env bash
+
+red="\033[0;31m"
+green="\033[0;32m"
+cyan="\033[0;36m"
+bold="\033[1m"
+nocolor="\033[0m"
+
+#-------------------------------------------------------------------------------
+function step() {
+   box="   "
+   color="$nocolor"
+   if [ "$version" != "<x.y.z-alpha.n>" ]
+   then
+      if [ -e "/tmp/.step-$1-$version" ]
+      then
+         color="$green"
+         box="[x]"
+      else
+         color="$bold"
+         box="[ ]"
+      fi
+   fi
+   echo -e "$color $box Step $c) $2"
+   echo "        $0 $version $1 $3"
+   echo -e "$nocolor"
+   c="$[c+1]"
+}
+
+#-------------------------------------------------------------------------------
+function usage() {
+   echo
+   echo -e "Make a Kong ${yellow}alpha|beta${nocolor} release using this script:"
+   echo ""
+   echo "Usage:"
+   if [ "$version" = "<x.y.z-alpha.n>" ]
+   then
+      echo "     List executed steps for a given release"
+      echo "        $0 $version $1 $3"
+      echo
+   fi
+   c=1
+   step "switch"           "switch or create to the release branch"
+   step "write_changelog"  "prepare the changelog"
+   step "commit_changelog" "commit the changelog"
+   step "version_bump"     "bump and commit the version number"
+   step "submit"           "push and submit a release PR"
+   step "tag"              "tag and sign the release candidate"
+   exit 0
+}
+
+#-------------------------------------------------------------------------------
+function die() {
+   echo
+   for line in "$@"
+   do
+      echo -e "$red$bold*** $line$nocolor"
+   done
+   echo "See also: $0 --help"
+   echo
+   exit 1
+}
+
+#-------------------------------------------------------------------------------
+function SUCCESS() {
+   echo
+   echo -e "$green$bold****************************************$nocolor$bold"
+   for line in "$@"
+   do
+      echo "$line"
+   done
+   echo -e "$green$bold****************************************$nocolor"
+   echo
+   touch /tmp/.step-$step-$version
+   exit 0
+}
+
+#-------------------------------------------------------------------------------
+function CONFIRM() {
+   echo
+   echo -e "$cyan$bold----------------------------------------$nocolor$bold"
+   for line in "$@"
+   do
+      echo -e "$line"
+   done
+   echo -e "$cyan$bold----------------------------------------$nocolor"
+   read
+}
+
+#-------------------------------------------------------------------------------
+# Dependency checks
+#-------------------------------------------------------------------------------
+
+hub --version &> /dev/null || die "hub is not in PATH. Get it from https://github.com/github/hub"
+
+if resty -v &> /dev/null
+then
+   LUA=resty
+elif lua -v &> /dev/null
+then
+   LUA=lua
+else
+   die "Lua interpreter is not in PATH. Install any Lua or OpenResty to run this script."
+fi
+
+#-------------------------------------------------------------------------------
+# Default help
+#-------------------------------------------------------------------------------
+
+if [ "$1" = "-h" ] || [ "$1" = "--help" ] || ! [ "$1" ]
+then
+   version="<x.y.z-alpha.n>"
+   usage
+fi
+
+#-------------------------------------------------------------------------------
+# Variables
+#-------------------------------------------------------------------------------
+
+version="$1"
+step="$2"
+
+xyzversion="${version%%-*}"
+major=${xyzversion%%.*}
+rest=${xyzversion#*.}
+minor=${rest%%.*}
+patch=${rest##*.}
+prerelease=${version##*-}
+rockspec="kong-$xyzversion-0.rockspec"
+branch="release/$xyzversion"
+xyxversion="$major.$minor.0-(alpha|beta).n"
+prev_version="$xyzversion"
+
+echo ${major}
+echo ${minor}
+echo ${patch}
+echo ${branch}
+echo ${xyzversion}
+echo ${version}
+
+if ! [[ "$version" =~ ^[0-9]+.[0-9]+.0-(alpha|beta)\.[0-9]$ ]]
+then
+   die "first argument must be a version in x.y.z-(alpha|beta).n format"
+fi
+
+if [[ "$rc" = "1" ]]
+then
+   die "use make-rc1-release for rc1, and this script only for the following rcs"
+fi
+
+if [ "$step" = "" ]
+then
+   usage
+fi
+
+EDITOR="${EDITOR-$VISUAL}"
+
+#-------------------------------------------------------------------------------
+function prepare_changelog() {
+   $LUA -e '
+      local fd_in = io.open("CHANGELOG.md", "r")
+      local fd_out = io.open("CHANGELOG.md.new", "w")
+      local version = "'$xyzversion' UNRELEASED"
+
+      local state = "start"
+      for line in fd_in:lines() do
+         if state == "start" then
+            if line:match("^%- %[") then
+               fd_out:write("- [" .. version .. "](#" .. version:gsub("%.", "") .. ")\n")
+               state = "toc"
+            end
+         elseif state == "toc" then
+            if not line:match("^%- %[") then
+               state = "start_log"
+            end
+         elseif state == "start_log" then
+            fd_out:write("\n")
+            fd_out:write("## [" .. version .. "]\n")
+            fd_out:write("\n")
+            local today = os.date("*t")
+            fd_out:write("> Released TBD\n")
+            fd_out:write("\n")
+            fd_out:write("<<< TODO Introduction, plus any sections below >>>\n")
+            fd_out:write("\n")
+            fd_out:write("### Fixes\n")
+            fd_out:write("\n")
+            fd_out:write("##### Core\n")
+            fd_out:write("\n")
+            fd_out:write("##### CLI\n")
+            fd_out:write("\n")
+            fd_out:write("##### Configuration\n")
+            fd_out:write("\n")
+            fd_out:write("##### Admin API\n")
+            fd_out:write("\n")
+            fd_out:write("##### PDK\n")
+            fd_out:write("\n")
+            fd_out:write("##### Plugins\n")
+            fd_out:write("\n")
+            fd_out:write("\n")
+            fd_out:write("[Back to TOC](#table-of-contents)\n")
+            fd_out:write("\n")
+            state = "log"
+         elseif state == "log" then
+            local prev_version = line:match("^%[(%d+%.%d+%.%d+)%]: ")
+            if prev_version then
+               fd_out:write("[" .. version .. "]: https://github.com/Kong/kong/compare/" .. prev_version .."..." .. version .. "\n")
+               state = "last"
+            end
+         end
+
+         fd_out:write(line .. "\n")
+      end
+      fd_in:close()
+      fd_out:close()
+   '
+   mv CHANGELOG.md.new CHANGELOG.md
+}
+
+#-------------------------------------------------------------------------------
+function bump_docs_kong_versions() {
+cat <<EOF >> app/_data/kong_versions.yml
+-
+  release: "$xyxversion"
+  version: "$xyzversion"
+  edition: "community"
+  luarocks_version: "$xyzversion-0"
+  dependencies:
+    luajit: "2.1.0-beta3"
+    luarocks: "$RESTY_LUAROCKS_VERSION"
+    cassandra: "3.x.x"
+    postgres: "9.5+"
+    openresty: "$RESTY_VERSION"
+EOF
+}
+
+#-------------------------------------------------------------------------------
+function make_github_release_file() {
+   versionlink=$(echo $version | tr -d .)
+   cat <<EOF > release-$version.txt
+$version
+
+**Download Kong $version and run it now:**
+
+- https://konghq.com/install/
+- [Docker Image](https://hub.docker.com/r/kong/kong)
+
+Links:
+- [$version Changelog](https://github.com/Kong/kong/blob/$version/CHANGELOG.md#$versionlink)
+EOF
+}
+
+#-------------------------------------------------------------------------------
+function try_to_commit() {
+   if git status | grep -q "no changes added to commit"
+   then
+      return
+   fi
+   should_push=1
+   git commit "$@"
+}
+
+case "$step" in
+   #---------------------------------------------------------------------------
+   switch)
+      if [ $(git status --untracked-files=no --porcelain | wc -l) != "0" ]
+      then
+         die "Local tree is not clean, please commit or stash before running this."
+      fi
+
+      set -e
+      git checkout chore/prerelease
+      # FIX ME
+      git pull
+      git checkout "$branch" || true
+      git checkout -B "$branch" || true
+      git push -u origin "$branch"
+
+      SUCCESS "Release branch is switched locally." \
+              "You are ready to run the next step:" \
+              "    $0 $version write_changelog"
+      ;;
+   #---------------------------------------------------------------------------
+   write_changelog)
+      if ! grep -q "\[$xyzversion\]" CHANGELOG.md
+      then
+         prepare_changelog
+      fi
+
+      CONFIRM "Press Enter to open your text editor ($EDITOR) to edit CHANGELOG.md" \
+              "or Ctrl-C to cancel."
+
+      $EDITOR CHANGELOG.md
+
+      SUCCESS "If you need to further edit the changelog," \
+              "you can run this step again."
+              "If it is ready, you can proceed to the next step" \
+              "which will commit it:" \
+              "    $0 $version commit_changelog"
+      ;;
+   #---------------------------------------------------------------------------
+   commit_changelog)
+      if ! git status CHANGELOG.md | grep -q "modified:"
+      then
+         die "No changes in CHANGELOG.md to commit. Did you write the changelog?"
+      fi
+
+      git diff
+
+      CONFIRM "If everything looks all right, press Enter to commit" \
+              "or Ctrl-C to cancel."
+
+      set -e
+      git add CHANGELOG.md
+      git commit -m "docs(changelog) add $version changes"
+      git log -n 1
+
+      SUCCESS "The changelog is now committed locally." \
+              "You are ready to run the next step:" \
+              "    $0 $version version_bump"
+      ;;
+   #---------------------------------------------------------------------------
+   version_bump)
+      if ! grep -q "minor = $minor" kong/meta.lua
+      then
+         sed -i 's/major = [0-9]*/major = '$major'/' kong/meta.lua
+         sed -i 's/minor = [0-9]*/minor = '$minor'/' kong/meta.lua
+         sed -i 's/patch = [0-9]*/patch = '$patch'/' kong/meta.lua
+         sed -i 's/-- suffix.*/suffix = "'$prerelease'"/' kong/meta.lua
+      fi
+      if ! [ -f "$rockspec" ]
+      then
+         old_rockspec=$(ls kong-*-0.rockspec | head -n 1)
+         sed -i 's/^version = ".*"/version = "'$xyzversion'-0"/' "$old_rockspec"
+         sed -i 's/^  tag = ".*"/  tag = "'$version'"/' "$old_rockspec"
+      fi
+
+      git diff HEAD
+
+      CONFIRM "If everything looks all right, press Enter to make the release commit" \
+              "or Ctrl-C to cancel."
+
+      git mv "$old_rockspec" "$rockspec"
+      git add kong/meta.lua
+      git add $rockspec
+
+      git commit -m "release: $version"
+      git log -n 1
+
+      SUCCESS "Version bump for the release is now committed locally." \
+              "You are ready to run the next step:" \
+              "    $0 $version submit"
+      ;;
+   #---------------------------------------------------------------------------
+   submit)
+      if ! git log -n 1 | grep -q "release: $version"
+      then
+         die "Release commit is not at the top of the current branch. Did you commit the version bump?"
+      fi
+
+      git log
+
+      CONFIRM "Press Enter to push the branch and open the release PR" \
+              "or Ctrl-C to cancel."
+
+      set -e
+      git push --set-upstream origin "$branch"
+      hub pull-request -b master -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge"
+
+      SUCCESS "Now get the above PR reviewed and approved. Before continueing on" \
+              "    $0 $version tag"
+      ;;
+   #---------------------------------------------------------------------------
+   tag)
+      CONFIRM "Press Enter to tag the prerelease (it is not actually merged)" \
+              "or Ctrl-C to cancel."
+
+      set -e
+      git checkout "$branch"
+      git pull
+      git tag -s "$version" -m "$version"
+      git push origin "$version"
+
+      make_github_release_file
+
+      hub release create --prerelease -F release-$version.txt "$version"
+      rm -f release-$version.txt
+
+      SUCCESS "Make sure the packages are built and available on Bintray"
+      ;;
+   #---------------------------------------------------------------------------
+   *)
+      die "Unknown step!"
+      ;;
+esac
+
