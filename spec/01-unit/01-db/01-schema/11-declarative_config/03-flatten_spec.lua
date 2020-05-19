@@ -37,11 +37,16 @@ local function idempotent(tbl, err)
   assert.table(tbl, err)
 
   for entity, items in sortedpairs(tbl) do
-    local new = {}
-    for _, item in sortedpairs(items, sort_by_key) do
-      table.insert(new, item)
+    if entity:sub(1,1) ~= "_" and type(items) == "table" then
+      local new = {}
+      for _, item in sortedpairs(items, sort_by_key) do
+        table.insert(new, item)
+      end
+
+      tbl[entity] = new
+    else
+      tbl[entity] = nil
     end
-    tbl[entity] = new
   end
 
   local function recurse_fields(t)

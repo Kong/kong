@@ -72,9 +72,10 @@ return {
       end
       self.params.check_hash = nil
 
-      local entities, _, err_t, vers, new_hash
+      local dc_table, new_hash, err_t
       if self.params._format_version then
-        entities, _, err_t, vers, new_hash = dc:parse_table(self.params)
+        dc_table, new_hash, err_t =
+          dc:parse_table(self.params)
       else
         local config = self.params.config
         if not config then
@@ -82,20 +83,19 @@ return {
             message = "expected a declarative configuration"
           })
         end
-        entities, _, err_t, vers, new_hash =
+        dc_table, new_hash, err_t =
           dc:parse_string(config, nil, accept, old_hash)
       end
 
-      if check_hash and new_hash and old_hash == new_hash then
-        return kong.response.exit(304)
-      end
-
-      if not entities then
+      if not dc_table then
+        if check_hash and err_t and err_t.error == "configuration is identical" then
+          return kong.response.exit(304)
+        end
         return kong.response.exit(400, errors:declarative_config(err_t))
       end
 
       local ok, err = concurrency.with_worker_mutex({ name = "dbless-worker" }, function()
-        return declarative.load_into_cache_with_events(entities, new_hash)
+        return declarative.load_into_cache_with_events(dc_table, new_hash)
       end)
 
       if err == "no memory" then
@@ -110,9 +110,16 @@ return {
         return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 
-      _reports.decl_fmt_version = vers
+      _reports.decl_fmt_version = dc_table._format_version
 
       ngx.timer.at(0, reports_timer)
+
+      local entities = {}
+      for k, v in pairs(dc_table) do
+        if k:sub(1,1) ~= "_" then
+          entities[k] = v
+        end
+      end
 
       return kong.response.exit(201, entities)
     end,

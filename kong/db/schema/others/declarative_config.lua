@@ -555,7 +555,6 @@ end
 
 
 local function flatten(self, input)
-  local output = {}
 
   local ok, err = self:validate(input)
   if not ok then
@@ -577,6 +576,13 @@ local function flatten(self, input)
   local by_id, by_key = validate_references(self, processed)
   if not by_id then
     return nil, by_key
+  end
+
+  local output = {}
+  for key, value in pairs(processed) do
+    if key:sub(1,1) == "_" then
+      output[key] = value
+    end
   end
 
   for entity, entries in pairs(by_id) do
