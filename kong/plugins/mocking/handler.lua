@@ -12,7 +12,6 @@ local plugin = {
 }
 
 local kong = kong
-local inspect = require('inspect')
 -- spec version
 local isV3 = false
 local isV2 = false
