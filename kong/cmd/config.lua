@@ -105,7 +105,7 @@ local function execute(args)
     end
     filename = pl_path.abspath(filename)
 
-    local dc_table, err, _, vers = dc:parse_file(filename, accepted_formats)
+    local dc_table, err = dc:parse_file(filename, accepted_formats)
     if not dc_table then
       error("Failed parsing:\n" .. err)
     end
@@ -126,7 +126,9 @@ local function execute(args)
         kong_reports.configure_ping(conf)
         kong_reports.toggle(true)
 
-        local report = { decl_fmt_version = vers }
+        local report = {
+          decl_fmt_version = dc_table._format_version,
+        }
         kong_reports.send("config-db-import", report)
       end
 
