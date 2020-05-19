@@ -1733,15 +1733,27 @@ function Schema:process_auto_fields(data, context, nulls)
 
   elseif context == "select" then
     for key in pairs(data) do
-      if not self.fields[key]
-      -- XXX EE: when comming from select_by_cache_key, entities
-      -- (plugins) come with workspace_(id|name) fields that we
-      -- shouldn't remove as they are needed down the line.
-        and key ~= "workspace_id"
-        and key ~= "workspace_name"
-        and not (self.ttl and key == "ttl")
-      then
-        data[key] = nil
+      local field = self.fields[key]
+      if field then
+        if not field.legacy
+           and field.type == "string"
+           and (field.len_min or 1) > 0
+           and data[key] == ""
+        then
+          data[key] = nulls and null or nil
+        end
+
+      else
+        -- set non defined fields to nil, except meta fields (ttl) if enabled
+        -- XXX EE: when comming from select_by_cache_key, entities
+        -- (plugins) come with workspace_(id|name) fields that we
+        -- shouldn't remove as they are needed down the line.
+        if key ~= "workspace_id"
+           and key ~= "workspace_name"
+           and not (self.ttl and key == "ttl")
+        then
+          data[key] = nil
+        end
       end
     end
   end
