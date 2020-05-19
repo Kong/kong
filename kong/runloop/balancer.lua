@@ -1085,6 +1085,7 @@ local function execute(target, ctx)
       (port == "No peers are available" or port == "Balancer is unhealthy") then
       return nil, "failure to get a peer from the ring-balancer", 503
     end
+    hostname = hostname or ip
     target.hash_value = hash_value
     target.balancer_handle = handle
 
