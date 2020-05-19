@@ -279,7 +279,7 @@ GET /t
 GET /t
 --- error_code: 204
 --- response_headers_like
-Server: kong/\d+\.\d+\.\d+(rc\d?)?
+Server: kong/\d+\.\d+\.\d+(rc\d|alpha\.\d|beta\.\d)?
 --- response_body chop
 
 --- no_error_log
