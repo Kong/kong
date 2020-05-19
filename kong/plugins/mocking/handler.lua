@@ -7,7 +7,8 @@ local random      = math.random
 
 local plugin = {
   VERSION  = "0.1",
-  PRIORITY = 700,
+  -- Mocking plugin should execute after all other plugins
+  PRIORITY = -1,
 }
 
 local kong = kong
