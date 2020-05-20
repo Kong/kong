@@ -8,7 +8,7 @@
 -- JWT
 -- Adapted from kong.plugins.jwt.jwt_parser
 
-local openssl_hmac  = require "openssl.hmac"
+local openssl_hmac  = require "resty.openssl.hmac"
 local cjson         = require "cjson.safe"
 local pl_string     = require "pl.stringx"
 local string_rep    = string.rep
