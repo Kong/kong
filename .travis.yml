@@ -1,62 +1,41 @@
-dist: trusty
-sudo: required
+dist: bionic
 
-language: java
-
-jdk:
-  - oraclejdk8
-
-notifications:
-  email: false
-
-services:
-  - redis-server
-
-addons:
-  postgresql: "9.5"
-  apt:
-    packages:
-      - net-tools
-      - libpcre3-dev
-      - build-essential
-
-services:
-  - redis
-  - docker
+jobs:
+  include:
+  - name: Kong CE 1.3.x
+    env: KONG_VERSION=1.3.x
+  - name: Kong CE 1.5.x
+    env: KONG_VERSION=1.5.x
+  - name: Kong CE 2.0.x
+    env: KONG_VERSION=2.0.x
+  - name: Kong Enterprise 1.3.0.x
+    env: KONG_VERSION=1.3.0.x
+  - name: Kong Enterprise 1.5.0.x
+    env: KONG_VERSION=1.5.0.x
+  - name: Kong Enterprise nightly
+    env: KONG_VERSION=nightly-ee
 
 env:
   global:
-    - PLUGIN_NAME=pre-function,post-function
-    - KONG_REPOSITORY=kong
-    - KONG_TAG=master
-    - KONG_PLUGINS=bundled,$PLUGIN_NAME
-    - KONG_TEST_PLUGINS=$KONG_PLUGINS
-    - LUAROCKS=3.2.1
-    - OPENSSL=1.1.1b
-    - CASSANDRA_BASE=2.2.12
-    - CASSANDRA_LATEST=3.9
-    - OPENRESTY=1.15.8.1
-    - DOWNLOAD_CACHE=$HOME/download-cache
-    - INSTALL_CACHE=$HOME/install-cache
-    - BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6"
-    - TEST_FILE_PATH=$TRAVIS_BUILD_DIR/spec
-
-  matrix:
-    - KONG_TEST_DATABASE=postgres
-    - KONG_TEST_DATABASE=cassandra CASSANDRA=$CASSANDRA_BASE
-    - KONG_TEST_DATABASE=cassandra CASSANDRA=$CASSANDRA_LATEST
+  # for Enterprise images
+  - BINTRAY_USERNAME=kong-automation@kong
+  - BINTRAY_REPO=kong
+  - secure: Ob71/HUEPWq5FnFg/c3EvIQAxrfPJwSQ1b8BaM98gilVntumxN1SD7h0QSrVdElh0BmaF4WeXVkn3CJ3ihjEjmjCmAlrgJkSIbI6wZ2hQXcXiEY2LT9lpjIqlNHo6eOVzqqvfUl4NQbfoqjR5pNO4eWtJSv8tRLcv54oUkpPD2gD/ZkCfz9LnPA04JfrK4YWvx9e3vZBPzEosomixGkSZh2GTDLm8V1rYhDERxSqlNaNHxkaA3lEk1jSeVoaRkl1T6HixdNb0h5h4kLrVtVswY5LEEogNlV6gpmVjlWBkZi7unYWeX2rVStn66Jkot3n6TzarPlNLaDEIQmK3skZ1ngz8J0sp3ulyas8J5iR0Y+y/gSF87TeSjH61CZDeYeruKJp8GSlb9RrtPmxSYuok3nWwNgNU83L3VsJR1QSd3TmJ0npEJiW/2UyJLFTAF3bo7rOHQGPVMJ2DDbWhlYU5h2pymeOWkFfLgwyjEofnzsYWG6fC6XnlRJ5aLPu1AHslEdT5HXSfeigfYBiTbW0o8iUtJ80MwwutAhOlU14Mz9UbRe/gZqhXZJnOpaqZZzS9P55IvCbdMo+J+kEcFWAlQ6s0PYTtrCVGokxs6gRLlFwo1Gws3GWdicoJqpZaCUvdfC6ivVPJGLgWRYmYuPU0fFAWieJ+PdQd4EfZbfWcxg=
+  - NIGHTLY_EE_USER=kong-automation@kong
+  - secure: CDaJZctPj9tQfpnkZuBDoYT/P7wtaSXMyvpXQt0aADEMQ2Mki6QotDcGCDDzwqeAWM9DKrIIxhQLzrf/RAwU2vBIm/SdYvX5KYHP9GCVHgs8rnD6xMSOE6ohMy24wweb1qVZ/9VpK+Hl/sD5fvnEMV5mgtOkMkemU6wlt4EqYoH66bTitTdEVZD7tdz3YIM5pW1929AFIJ+V7BGGCo+CGrKFrcDacljaGRLrd4qkK1bEJyqyqpLxB3ia+vds0DuQ+ZmCdol0KJ8EMKnthZ5Itm9zwq2f/b9/dfUAFjeDROUlkAwC4Ib/nDnbK0l/gdbQQcUQ8gvTo94raF5ckqVN7r6eq1iATkPDCx/dgW+YUkCo3smhQTaPQ2l/uYXJvnIlfNXmlJJ/n55Phs4WmQSSMn8g3o39IXMgxm/9NcvFFgeyFa+MhVHpGhTSNZ5gHK5QaZhEaG0st5hKLtjrPi+JK0+4fCDKEl4UO/zmdPPw1NBHn/FnG1B40GQj5Mt7394+TTXNhx1gT47mrB/2hz21D3V6VHH52krVVHzG4e/DKJVqeTTySj6l0EGvKl/jLSfDYmBVyxKWr0vb1gxAMA3a/IbbKElEwueknuTWmf4yelP3e4IQ1kTqKFaAC9h2GEkhlcxTrxk/m8p05gRZGS3enrd3cosuQwiSw0ZUWCx6ZHc=
 
 install:
-  - git clone --single-branch https://$GITHUB_TOKEN:@github.com/Kong/kong-ci ../kong-ci
-  - source ../kong-ci/setup_plugin_env.sh
+- git clone --single-branch https://github.com/Kong/kong-pongo ../kong-pongo
+- "../kong-pongo/pongo.sh up"
+- "../kong-pongo/pongo.sh build"
 
 script:
-  - eval $BUSTED_CMD
+- "../kong-pongo/pongo.sh lint"
+- "../kong-pongo/pongo.sh run"
 
-cache:
-  apt: true
-  pip: true
-  directories:
-    - $DOWNLOAD_CACHE
-    - $INSTALL_CACHE
-    - $HOME/.ccm/repository
+notifications:
+  slack:
+    on_success: change
+    on_failure: always
+    rooms:
+      secure: jeyfYnQslOOjT+kVHSNWeKPKEjDxwYDpygd3SuAbnchmlrog90wgBcjmPxIRTP0R5cEXDmIw45LjFM4srdZT4vf5Whykznz6IkQ7NeHs5cpk8aDK9Ya3dv+NNbbq3TPyKa6G7B/DnVoRl5cLI6Fyw6ympRalyg/7f1Hwv90FKUH7MW1LJGnSFKY7+ghlNP1dRGfesoxIC0JS9n2Nh6y6MvcqRFHQmE3Nn2Qi1aN1+8gVCxLVpe7vHdtEh7vQvsBQ12E/zdQRG6ZJDzuwiu1buETzcHmG2/pweF9U2j9Hdm2f/J/9foEkvjGvCA3Xt5nKsrQPfzym1MgE4S8rVUQBo8wviQOINz90Z98pdYb5z8EnS2cQMRzJYS9mOitReRiyskiYxZJf5pKyaO4kXSE+YSG5gFsTZc3H42l0gDpVwvGQAU9b/by389NudIYqHkxvtEgdbBLmKO/p6zstyrAftGNCf2CTyrQvngM9prbf7RvPX+BJhHirTEr0Te6sIIGnlUUpS3Kv65lJqPnAIJ1GUUAO4mwZeAf8gVDXAsaPrXLYxpgb0tlWfhr2uBAUQ/0fEOX0ehrrvrDZ9RSYqsVwdUYJdBTGQjm1N9EWmJECn9hJLVGdS0ID0hi7AnSTldxQ4x3z4PxMnvXIIU7ksU9Uq4QRol3GCQ2X15VwkFOteyI=
