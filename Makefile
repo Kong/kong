@@ -36,7 +36,8 @@ PACKAGE_TYPE ?= deb
 REPOSITORY_NAME ?= kong-${PACKAGE_TYPE}
 REPOSITORY_OS_NAME ?= ${RESTY_IMAGE_BASE}
 KONG_PACKAGE_NAME ?= kong
-KONG_VERSION ?= `cat $(KONG_SOURCE_LOCATION)/kong-*.rockspec | grep -m1 tag | awk '{print $$3}' | sed 's/"//g'`
+# This logic should mirror the kong-build-tools equivalent
+KONG_VERSION ?= `echo $(KONG_SOURCE_LOCATION)/kong-*.rockspec | sed 's,.*/,,' | cut -d- -f2`
 
 BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 ISTAG = false
@@ -50,7 +51,6 @@ ifeq ($(BRANCH),HEAD)
 	POSSIBLE_PRERELEASE_NAME = $(shell git describe --tags --abbrev=0 | awk -F"-" '{print $$2}')
 	ifneq ($(POSSIBLE_PRERELEASE_NAME),)
 		# We're building a pre-release tag
-		KONG_VERSION = ${BRANCH}
 		REPOSITORY_NAME = kong-prerelease
 	endif
 else
