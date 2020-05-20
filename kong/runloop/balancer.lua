@@ -412,9 +412,6 @@ do
       return nil, "failed creating balancer:" .. err
     end
 
-    singletons.core_cache:invalidate_local("balancer:upstreams:" .. upstream.id)
-    singletons.core_cache:invalidate_local("balancer:targets:" .. upstream.id)
-
     target_histories[balancer] = {}
 
     if not history then
