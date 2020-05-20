@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 
 local mock_one_fn = [[
   local plugin_name = "%s"
-  local filename = kong.configuration.prefix .. "/" .. plugin_name .. "_output"
+  local filename = "/tmp/" .. plugin_name .. "_output"
   local text = "phase: '%s', index: '%s', plugin: '" .. plugin_name .. "'\n"
   local readfile = require("pl.utils").readfile
   local writefile = require("pl.utils").writefile
@@ -60,7 +60,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
 
 
     it("hits all phases, with 3 functions, on 3 requests", function()
-      local filename = helpers.test_conf.prefix .. "/" .. plugin_name .. "_output"
+      local filename = "/tmp/" .. plugin_name .. "_output"
       os.remove(filename)
 
       for i = 1,3 do
