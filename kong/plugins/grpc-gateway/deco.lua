@@ -12,13 +12,10 @@ local bpack = string.pack         -- luacheck: ignore string
 local bunpack = string.unpack     -- luacheck: ignore string
 
 local ngx = ngx
-local decode_base64 = ngx.decode_base64
-local encode_base64 = ngx.encode_base64
 local re_gsub = ngx.re.gsub
 local re_match = ngx.re.match
 
 local encode_json = cjson.encode
-local decode_json = cjson.decode
 
 local deco = {}
 deco.__index = deco
@@ -144,7 +141,7 @@ local function rpc_transcode(method, path, protofile)
   local info = get_proto_info(protofile)
   info = info[method]
   if not info then
-    return nil, ("Unkown method %q"):format(method)
+    return nil, ("Unknown method %q"):format(method)
   end
   for _, endpoint in ipairs(info) do
     local m, err = re_match(path, endpoint.regex, "jo")
@@ -159,7 +156,7 @@ local function rpc_transcode(method, path, protofile)
       return endpoint, vars
     end
   end
-  return nil, ("Unkown path %q"):format(path)
+  return nil, ("Unknown path %q"):format(path)
 end
 
 
@@ -171,7 +168,7 @@ function deco.new(method, path, protofile)
   local endpoint, vars = rpc_transcode(method, path, protofile)
 
   if not endpoint then
-    return nil, output_type
+    return nil, "failed to transcode .proto file " .. vars
   end
 
   return setmetatable({
@@ -213,16 +210,16 @@ function deco:upstream(body)
   local payload = self.template_payload
   local body_variable = self.endpoint.body_variable
   if body_variable then
-    if body then
+    if body and #body > 0 then
       local body_decoded = cjson.decode(body)
       if body_variable ~= "*" then
         --[[
           // For HTTP methods that allow a request body, the `body` field
           // specifies the mapping. Consider a REST update method on the
           // message resource collection:
-        ]] 
+        ]]
         payload[body_variable] = body_decoded
-      else
+      elseif type(body_decoded) == "table" then
         --[[
           // The special name `*` can be used in the body mapping to define that
           // every field not bound by the path template should be mapped to the
@@ -232,6 +229,8 @@ function deco:upstream(body)
         for k, v in pairs(body_decoded) do
           payload[k] = v
         end
+      else
+        return nil, "body must be a table"
       end
     end
   else
@@ -241,8 +240,7 @@ function deco:upstream(body)
     ]]--
     -- TODO primitive type checking
     local args, err = ngx.req.get_uri_args()
-    if err then
-    else
+    if not err then
       for k, v in pairs(args) do
         payload[k] = v
       end

@@ -5,10 +5,8 @@ local deco = require "kong.plugins.grpc-gateway.deco"
 local ngx = ngx
 local kong = kong
 
-local string_format = string.format
 
 local ngx_arg = ngx.arg
-local ngx_var = ngx.var
 
 local kong_request_get_path = kong.request.get_path
 local kong_request_get_method = kong.request.get_method
@@ -16,7 +14,6 @@ local kong_request_get_raw_body = kong.request.get_raw_body
 local kong_response_exit = kong.response.exit
 local kong_response_set_header = kong.response.set_header
 local kong_service_request_set_header = kong.service.request.set_header
-local kong_service_request_set_path = kong.service.request.set_path
 local kong_service_request_set_method = kong.service.request.set_method
 local kong_service_request_set_raw_body = kong.service.request.set_raw_body
 
@@ -56,7 +53,12 @@ function grpc_gateway:access(conf)
 
   kong_service_request_set_header("Content-Type", "application/grpc")
   kong_service_request_set_header("TE", "trailers")
-  kong_service_request_set_raw_body(dec:upstream(kong_request_get_raw_body()))
+  local body, err = dec:upstream(kong_request_get_raw_body())
+  if err then
+    kong.log.err(err)
+    return kong_response_exit(400, err)
+  end
+  kong_service_request_set_raw_body(body)
 
   ngx.req.set_uri(dec.rewrite_path)
   kong_service_request_set_method("POST")
@@ -81,7 +83,13 @@ function grpc_gateway:body_filter(conf)
     return
   end
 
-  ngx_arg[1] = dec:downstream(ngx_arg[1])
+  local ret = dec:downstream(ngx_arg[1])
+  -- fall through if we can't decode response
+  -- or it's empty
+  if not ret or #ret == 0 then
+    return
+  end
+  ngx_arg[1] = ret
 end
 
 

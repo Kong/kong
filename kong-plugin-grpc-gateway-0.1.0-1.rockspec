@@ -1,12 +1,12 @@
 package = "kong-plugin-grpc-gateway"
 
-version = "0.0.0-1"
+version = "0.1.0-1"
 
 supported_platforms = {"linux", "macosx"}
 
 source = {
   url = "git+https://git@github.com/Kong/kong-plugin-grpc-gateway.git",
-  tag = "v0.0.0",
+  tag = "v0.1.0",
 }
 
 description = {
@@ -18,7 +18,7 @@ description = {
 
 dependencies = {
   "lua >= 5.1",
-  "lua-protobuf == 0.3.1-0",
+  "lua-protobuf == 0.3.2-0",
   "lua_pack == 1.0.5",
 }
 

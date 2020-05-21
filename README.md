@@ -27,7 +27,8 @@ services:
     - /
     plugins:
     - name: grpc-gateway
-      proto: path/to/hello.proto
+      config:
+        proto: path/to/hello.proto
 ```
 
 Same thing via the administation API:
@@ -64,22 +65,25 @@ package hello;
 service HelloService {
   rpc SayHello(HelloRequest) returns (HelloResponse) {
     option (google.api.http) = {
-      get: "/v1/messages/{greeting}"
+      get: "/v1/messages/{name}"
       additional_bindings {
-        get: "/v1/messages/legacy/{greeting=**}"
+        get: "/v1/messages/legacy/{name=**}"
       }
-      post: "/v1/messages/{greeting}"
+      post: "/v1/messages/"
+      body: "*"
     }
   }
 }
 
 
+// The request message containing the user's name.
 message HelloRequest {
-  optional string greeting = 1;
+  string name = 1;
 }
 
-message HelloResponse {
-  required string reply = 1;
+// The response message containing the greetings
+message HelloReply {
+  string message = 1;
 }
 ```
 
