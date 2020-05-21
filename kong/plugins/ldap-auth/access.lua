@@ -4,7 +4,10 @@ local ldap = require "kong.plugins.ldap-auth.ldap"
 
 
 local kong = kong
+local error = error
 local decode_base64 = ngx.decode_base64
+local sha1_bin = ngx.sha1_bin
+local to_hex = require "resty.string".to_hex
 local tostring =  tostring
 local match = string.match
 local lower = string.lower
@@ -13,14 +16,10 @@ local find = string.find
 local sub = string.sub
 local fmt = string.format
 local tcp = ngx.socket.tcp
-local md5 = ngx.md5
 
 
 local AUTHORIZATION = "authorization"
 local PROXY_AUTHORIZATION = "proxy-authorization"
-
-
-local ldap_config_cache = setmetatable({}, { __mode = "k" })
 
 
 local _M = {}
@@ -103,6 +102,21 @@ local function ldap_authenticate(given_username, given_password, conf)
   return is_authenticated, err
 end
 
+
+local function cache_key(conf, username, password)
+  local hash = to_hex(sha1_bin(fmt("%s:%u:%s:%s:%u:%s:%s",
+                                   lower(conf.ldap_host),
+                                   conf.ldap_port,
+                                   conf.base_dn,
+                                   conf.attribute,
+                                   conf.cache_ttl,
+                                   username,
+                                   password)))
+
+  return "ldap_auth_cache:" .. hash
+end
+
+
 local function load_credential(given_username, given_password, conf)
   local ok, err = ldap_authenticate(given_username, given_password, conf)
   if err ~= nil then
@@ -117,22 +131,11 @@ local function load_credential(given_username, given_password, conf)
     return false
   end
 
-  return { username = given_username, password = given_password }
-end
-
-
-local function cache_key(conf, username, password)
-  if not ldap_config_cache[conf] then
-    ldap_config_cache[conf] = md5(fmt("%s:%u:%s:%s:%u",
-                                      lower(conf.ldap_host),
-                                      conf.ldap_port,
-                                      conf.base_dn,
-                                      conf.attribute,
-                                      conf.cache_ttl))
-  end
-
-  return fmt("ldap_auth_cache:%s:%s:%s", ldap_config_cache[conf],
-             username, password)
+  return {
+    id = cache_key(conf, given_username, given_password),
+    username = given_username,
+    password = given_password,
+  }
 end
 
 
@@ -148,9 +151,9 @@ local function authenticate(conf, given_credentials)
   }, load_credential, given_username, given_password, conf)
 
   if err or credential == nil then
-    kong.log.err(err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return error(err)
   end
+
 
   return credential and credential.password == given_password, credential
 end
@@ -162,42 +165,37 @@ local function set_consumer(consumer, credential)
   local set_header = kong.service.request.set_header
   local clear_header = kong.service.request.clear_header
 
-  if consumer then
-    -- this can only be the Anonymous user in this case
-    if consumer.id then
-      set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
-    else
-      clear_header(constants.HEADERS.CONSUMER_ID)
-    end
+  if consumer and consumer.id then
+    set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+  else
+    clear_header(constants.HEADERS.CONSUMER_ID)
+  end
 
-    if consumer.custom_id then
-      set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
-    else
-      clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
-    end
+  if consumer and consumer.custom_id then
+    set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  else
+    clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
+  end
 
-    if consumer.username then
-      set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
-    else
-      clear_header(constants.HEADERS.CONSUMER_USERNAME)
-    end
-
-    set_header(constants.HEADERS.ANONYMOUS, true)
-
-    return
+  if consumer and consumer.username then
+    set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  else
+    clear_header(constants.HEADERS.CONSUMER_USERNAME)
   end
 
   if credential and credential.username then
+    set_header(constants.HEADERS.CREDENTIAL_IDENTIFIER, credential.username)
     set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
   else
+    clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
     clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
   end
 
-  -- in case of auth plugins concatenation, remove remnants of anonymous
-  clear_header(constants.HEADERS.ANONYMOUS)
-  clear_header(constants.HEADERS.CONSUMER_ID)
-  clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
-  clear_header(constants.HEADERS.CONSUMER_USERNAME)
+  if credential then
+    clear_header(constants.HEADERS.ANONYMOUS)
+  else
+    set_header(constants.HEADERS.ANONYMOUS, true)
+  end
 end
 
 
@@ -257,14 +255,13 @@ function _M.execute(conf)
                                                       kong.client.load_consumer,
                                                       conf.anonymous, true)
       if err then
-        kong.log.err("failed to load anonymous consumer:", err)
-        return kong.response.exit(500, { message = "An unexpected error occurred" })
+        return error(err)
       end
 
-      set_consumer(consumer, nil)
+      set_consumer(consumer)
 
     else
-      return kong.response.exit(err.status, { message = err.message }, err.headers)
+      return kong.response.error(err.status, err.message, err.headers)
     end
   end
 end

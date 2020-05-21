@@ -10,6 +10,19 @@ LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
 OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
 GO_PLUGINSERVER=$(dep_version KONG_GO_PLUGINSERVER_VERSION)
 
+DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml .requirements | md5sum | awk '{ print $1 }')
+INSTALL_CACHE=${INSTALL_CACHE:=/install-cache}
+INSTALL_ROOT=$INSTALL_CACHE/$DEPS_HASH
+
+#---------
+# Download
+#---------
+
+DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
+
+BUILD_TOOLS_DOWNLOAD=$INSTALL_ROOT/kong-build-tools
+GO_PLUGINSERVER_DOWNLOAD=$INSTALL_ROOT/go-pluginserver
+
 # XXX kong-ee specific, for now at least
 # - Allow overriding via ENV_VAR (for CI)
 # - should be set in .requirements
@@ -19,19 +32,6 @@ KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:-master}
 
 KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:-$(dep_version KONG_BUILD_TOOLS_BRANCH)}
 KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:-master}
-
-#---------
-# Download
-#---------
-
-DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml .requirements | md5sum | awk '{ print $1 }')
-DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
-BUILD_TOOLS_DOWNLOAD=$DOWNLOAD_ROOT/kong-build-tools
-GO_PLUGINSERVER_DOWNLOAD=$DOWNLOAD_ROOT/go-pluginserver
-
-if [[ $KONG_BUILD_TOOLS_BRANCH == "master" ]]; then
-  KONG_BUILD_TOOLS_BRANCH="origin/master"
-fi
 
 if [ ! -d $BUILD_TOOLS_DOWNLOAD ]; then
     git clone https://github.com/Kong/kong-build-tools.git $BUILD_TOOLS_DOWNLOAD
@@ -44,12 +44,11 @@ popd
 export PATH=$BUILD_TOOLS_DOWNLOAD/openresty-build-tools:$PATH
 
 if [ ! -d $GO_PLUGINSERVER_DOWNLOAD ]; then
-  git clone -q https://github.com/Kong/go-pluginserver $GO_PLUGINSERVER_DOWNLOAD
+  git clone -b $GO_PLUGINSERVER https://github.com/Kong/go-pluginserver $GO_PLUGINSERVER_DOWNLOAD
 else
   pushd $GO_PLUGINSERVER_DOWNLOAD
     git fetch
     git checkout $GO_PLUGINSERVER
-    git reset --hard origin/$GO_PLUGINSERVER
   popd
 fi
 
@@ -64,8 +63,6 @@ export PATH=$GO_PLUGINSERVER_DOWNLOAD:$PATH
 #--------
 # Install
 #--------
-INSTALL_CACHE=${INSTALL_CACHE:=/install-cache}
-INSTALL_ROOT=$INSTALL_CACHE/$DEPS_HASH
 
 echo kong-ngx-build \
     --work $DOWNLOAD_ROOT \
@@ -86,6 +83,7 @@ kong-ngx-build \
     --kong-nginx-module $KONG_NGINX_MODULE_BRANCH \
     --luarocks $LUAROCKS \
     --openssl $OPENSSL \
+    --debug \
     -j $JOBS
 
 OPENSSL_INSTALL=$INSTALL_ROOT/openssl
@@ -124,9 +122,9 @@ if [[ "$TEST_SUITE" == "pdk" ]]; then
   cpanm --notest --local-lib=$TRAVIS_BUILD_DIR/perl5 local::lib && eval $(perl -I $TRAVIS_BUILD_DIR/perl5/lib/perl5/ -Mlocal::lib)
 fi
 
-# ----------------
-# Run gRPC server |
-# ----------------
+# ---------------
+# Run gRPC server
+# ---------------
 if [[ "$TEST_SUITE" =~ integration|dbless|plugins ]]; then
   docker run -d --name grpcbin -p 15002:9000 -p 15003:9001 moul/grpcbin
 fi

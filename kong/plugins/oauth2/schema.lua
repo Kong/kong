@@ -35,6 +35,7 @@ return {
           { auth_header_name = { type = "string", default = "authorization" }, },
           { refresh_token_ttl = { type = "number", default = 1209600, required = true }, },
           { persistent_refresh_token = { type = "boolean", default = false, required = true }, },
+          { pkce = { type = "string", default = "lax", required = false, one_of = { "none", "lax", "strict" } }, },
         },
         custom_validator = validate_flows,
         entity_checks = {
@@ -49,6 +50,5 @@ return {
     },
   },
 }
-
 
 

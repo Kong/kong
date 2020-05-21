@@ -676,7 +676,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/admins/register ldap-auth-advanced", function()
+    describe("/admins/register ldap-auth-advanced #ldap", function()
       before_each(function()
         _, db = helpers.get_db_utils(strategy)
         assert(helpers.start_kong({

@@ -539,7 +539,7 @@ local function execute(strategy, statement_name, attributes, options, ws_scope)
   local connector = strategy.connector
   local statement = strategy.statements[statement_name]
   if not attributes then
-    return connector:query(statement)
+    return connector:query(statement[1], statement[2])
   end
 
   local fields = strategy.fields
@@ -633,7 +633,7 @@ local function execute(strategy, statement_name, attributes, options, ws_scope)
   argv[0] = ws_scope
 
   local sql = statement.make(argv)
-  return connector:query(sql)
+  return connector:query(sql, statement.operation)
 end
 
 
@@ -1795,65 +1795,72 @@ function _M.new(connector, schema, errors)
   local page_next_args   = new_tab(page_next_count, 0)
 
   local self = setmetatable({
-    connector          = connector,
-    schema             = schema,
-    errors             = errors,
-    expand             = foreign_key_count > 0 and
-                         expand(table_name .. "_expand", foreign_key_list) or
-                         noop,
-    collapse           = collapse(table_name .. "_collapse", foreign_key_list),
-    fields             = fields_hash,
-    statements         = {
-      create           = create_statement,
-      truncate         = truncate_statement,
-      count            = count_statement,
-      drop             = drop_statement,
-      insert           = {
-        expr           = insert_expressions,
-        cols           = insert_columns,
-        argn           = insert_names,
-        argc           = insert_count,
-        argv           = insert_args,
-        make           = compile(table_name .. "_insert", insert_statement),
+    connector     = connector,
+    schema        = schema,
+    errors        = errors,
+    expand        = foreign_key_count > 0 and
+                    expand(table_name .. "_expand", foreign_key_list) or
+                    noop,
+    collapse      = collapse(table_name .. "_collapse", foreign_key_list),
+    fields        = fields_hash,
+    statements    = {
+      create      = { create_statement, "write", },
+      truncate    = { truncate_statement, "write", },
+      count       = { count_statement, "read", },
+      drop        = { drop_statement, "write", },
+      insert      = {
+        expr      = insert_expressions,
+        cols      = insert_columns,
+        argn      = insert_names,
+        argc      = insert_count,
+        argv      = insert_args,
+        make      = compile(table_name .. "_insert", insert_statement),
+        operation = "write",
       },
-      upsert           = {
-        expr           = upsert_expressions,
-        argn           = insert_names,
-        argc           = insert_count,
-        argv           = insert_args,
-        make           = compile(table_name .. "_upsert", upsert_statement),
+      upsert      = {
+        expr      = upsert_expressions,
+        argn      = insert_names,
+        argc      = insert_count,
+        argv      = insert_args,
+        make      = compile(table_name .. "_upsert", upsert_statement),
+        operation = "write",
       },
-      update           = {
-        expr           = update_expressions,
-        argn           = update_args_names,
-        argc           = update_args_count,
-        argv           = update_args,
-        make           = compile(table_name .. "_update", update_statement),
+      update      = {
+        expr      = update_expressions,
+        argn      = update_args_names,
+        argc      = update_args_count,
+        argv      = update_args,
+        make      = compile(table_name .. "_update", update_statement),
+        operation = "write",
       },
-      delete           = {
-        argn           = primary_key_names,
-        argc           = primary_key_count,
-        argv           = primary_key_args,
-        make           = compile(table_name .. "_delete", delete_statement),
+      delete      = {
+        argn      = primary_key_names,
+        argc      = primary_key_count,
+        argv      = primary_key_args,
+        make      = compile(table_name .. "_delete", delete_statement),
+        operation = "write",
       },
-      select           = {
-        expr           = select_expressions,
-        argn           = primary_key_names,
-        argc           = primary_key_count,
-        argv           = primary_key_args,
-        make           = compile(table_name .. "_select" , select_statement),
+      select      = {
+        expr      = select_expressions,
+        argn      = primary_key_names,
+        argc      = primary_key_count,
+        argv      = primary_key_args,
+        make      = compile(table_name .. "_select" , select_statement),
+        operation = "read",
       },
-      page_first       = {
-        argn           = { LIMIT },
-        argc           = 1,
-        argv           = single_args,
-        make           = compile(table_name .. "_first" , page_first_statement),
+      page_first  = {
+        argn      = { LIMIT },
+        argc      = 1,
+        argv      = single_args,
+        make      = compile(table_name .. "_first" , page_first_statement),
+        operation = "read",
       },
-      page_next        = {
-        argn           = page_next_names,
-        argc           = page_next_count,
-        argv           = page_next_args,
-        make           = compile(table_name .. "_next" , page_next_statement),
+      page_next   = {
+        argn      = page_next_names,
+        argc      = page_next_count,
+        argv      = page_next_args,
+        make      = compile(table_name .. "_next" , page_next_statement),
+        operation = "read",
       },
       -- EE workspaces-related
       select_ws        = {
@@ -1862,19 +1869,23 @@ function _M.new(connector, schema, errors)
         argc           = primary_key_count,
         argv           = primary_key_args,
         make           = compile_ws(table_name .. "_select_ws" , select_statement_ws),
+        operation = "read",
       },
       page_first_ws    = {
         argn           = { LIMIT },
         argc           = 1,
         argv           = single_args,
         make           = compile_ws(table_name .. "_page_first_ws" , page_first_statement_ws),
+        operation = "read",
       },
       page_next_ws     = {
         argn           = page_next_names,
         argc           = page_next_count,
         argv           = page_next_args,
         make           = compile_ws(table_name .. "_page_next_ws" , page_next_statement_ws),
+        operation = "read",
       },
+
     },
   }, _mt)
 
@@ -2091,17 +2102,19 @@ function _M.new(connector, schema, errors)
       local statement_name = "page_for_" .. foreign_entity_name
 
       statements[statement_name .. "_first"] = {
-        argn = argn_first,
-        argc = argc_first,
-        argv = argv_first,
-        make = compile(concat({ table_name, statement_name, "first" }, "_"), page_first_statement),
+        argn      = argn_first,
+        argc      = argc_first,
+        argv      = argv_first,
+        make      = compile(concat({ table_name, statement_name, "first" }, "_"), page_first_statement),
+        operation = "read",
       }
 
       statements[statement_name .. "_next"] = {
-        argn = argn_next,
-        argc = argc_next,
-        argv = argv_next,
-        make = compile(concat({ table_name, statement_name, "next" }, "_"), page_next_statement)
+        argn      = argn_next,
+        argc      = argc_next,
+        argv      = argv_next,
+        make      = compile(concat({ table_name, statement_name, "next" }, "_"), page_next_statement),
+        operation = "read",
       }
 
       statements[statement_name .. "_first_ws"] = {
@@ -2248,17 +2261,19 @@ function _M.new(connector, schema, errors)
       }
 
       statements[statement_name .. cond .. "_first"] = {
-        argn = argn_first,
-        argc = argc_first,
-        argv = argv_first,
-        make = compile(concat({ table_name, statement_name, "first" }, "_"), page_first_by_tags_statement),
+        argn      = argn_first,
+        argc      = argc_first,
+        argv      = argv_first,
+        make      = compile(concat({ table_name, statement_name, "first" }, "_"), page_first_by_tags_statement),
+        operation = "read",
       }
 
       statements[statement_name .. cond .. "_next"] = {
-        argn = argn_next,
-        argc = argc_next,
-        argv = argv_next,
-        make = compile(concat({ table_name, statement_name, "next" }, "_"), page_next_by_tags_statement)
+        argn      = argn_next,
+        argc      = argc_next,
+        argv      = argv_next,
+        make      = compile(concat({ table_name, statement_name, "next" }, "_"), page_next_by_tags_statement),
+        operation = "read",
       }
     end
   end
@@ -2326,10 +2341,11 @@ function _M.new(connector, schema, errors)
       end
 
       statements[select_by_statement_name] = {
-        argn = single_names,
-        argc = 1,
-        argv = single_args,
-        make = compile(concat({ table_name, select_by_statement_name }, "_"), select_by_statement),
+        argn      = single_names,
+        argc      = 1,
+        argv      = single_args,
+        make      = compile(concat({ table_name, select_by_statement_name }, "_"), select_by_statement),
+        operation = "read",
       }
 
       -- EE [[
@@ -2368,10 +2384,11 @@ function _M.new(connector, schema, errors)
 
       update_by_args_names[update_by_args_count] = unique_name
       statements[update_by_statement_name] = {
-        argn = update_by_args_names,
-        argc = update_by_args_count,
-        argv = update_by_args,
-        make = compile(concat({ table_name, update_by_statement_name }, "_"), update_by_statement),
+        argn      = update_by_args_names,
+        argc      = update_by_args_count,
+        argv      = update_by_args,
+        make      = compile(concat({ table_name, update_by_statement_name }, "_"), update_by_statement),
+        operation = "write",
       }
 
       local upsert_by_statement_name = "upsert_by_" .. field_name
@@ -2393,6 +2410,7 @@ function _M.new(connector, schema, errors)
         argc = insert_count,
         argv = insert_args,
         make = compile(concat({ table_name, upsert_by_statement_name }, "_"), upsert_by_statement),
+        operation = "write",
       }
 
       local delete_by_statement_name = "delete_by_" .. field_name
@@ -2419,6 +2437,7 @@ function _M.new(connector, schema, errors)
         argc = 1,
         argv = single_args,
         make = compile(concat({ table_name, delete_by_statement_name }, "_"), delete_by_statement),
+        operation = "write",
       }
     end
   end

@@ -81,14 +81,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(204, res)
 
       -- ensure cache is invalidated
-      helpers.wait_until(function()
-        local res = assert(admin_client:send {
-          method  = "GET",
-          path    = "/cache/" .. cache_key
-        })
-        res:read_body()
-        return res.status == 404
-      end)
+      helpers.wait_for_invalidation(cache_key)
 
       res = assert(proxy_client:send {
         method  = "GET",
@@ -130,14 +123,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(204, res)
 
       -- ensure cache is invalidated
-      helpers.wait_until(function()
-        local res = assert(admin_client:send {
-          method  = "GET",
-          path    = "/cache/" .. cache_key
-        })
-        res:read_body()
-        return res.status == 404
-      end)
+      helpers.wait_for_invalidation(cache_key)
 
       res = assert(proxy_client:send {
         method  = "GET",
@@ -185,14 +171,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- ensure cache is invalidated
-      helpers.wait_until(function()
-        local res = assert(admin_client:send {
-          method = "GET",
-          path = "/cache/" .. cache_key
-        })
-        res:read_body()
-        return res.status == 404
-      end)
+      helpers.wait_for_invalidation(cache_key)
 
       res = assert(proxy_client:send {
         method  = "GET",

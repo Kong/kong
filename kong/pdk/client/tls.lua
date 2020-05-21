@@ -16,8 +16,6 @@ local PHASES = phase_checker.phases
 local REWRITE_AND_LATER = phase_checker.new(PHASES.rewrite,
                                             PHASES.access,
                                             PHASES.balancer,
-                                            PHASES.header_filter,
-                                            PHASES.body_filter,
                                             PHASES.log)
 
 

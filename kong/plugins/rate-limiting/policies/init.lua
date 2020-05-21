@@ -48,25 +48,17 @@ end
 local sock_opts = {}
 
 
-local EXPIRATIONS = {
-  second = 1,
-  minute = 60,
-  hour   = 3600,
-  day    = 86400,
-  month  = 2592000,
-  year   = 31536000,
-}
+local EXPIRATION = require "kong.plugins.rate-limiting.expiration"
 
 
 return {
-  ["EXPIRATIONS"] = EXPIRATIONS,
   ["local"] = {
     increment = function(conf, limits, identifier, current_timestamp, value)
       local periods = timestamp.get_timestamps(current_timestamp)
       for period, period_date in pairs(periods) do
         if limits[period] then
           local cache_key = get_local_key(conf, identifier, period, period_date)
-          local newval, err = shm:incr(cache_key, value, 0, EXPIRATIONS[period])
+          local newval, err = shm:incr(cache_key, value, 0, EXPIRATION[period])
           if not newval then
             kong.log.err("could not increment counter for period '", period, "': ", err)
             return nil, err
@@ -110,8 +102,8 @@ return {
       local service_id, route_id = get_service_and_route_ids(conf)
       local policy = policy_cluster[db.strategy]
 
-      local row, err = policy.find(db.connector, identifier, period,
-                                   current_timestamp, service_id, route_id)
+      local row, err = policy.find(identifier, period, current_timestamp,
+                                   service_id, route_id)
 
       if err then
         return nil, err
@@ -183,7 +175,7 @@ return {
           idx = idx + 1
           keys[idx] = cache_key
           if not exists or exists == 0 then
-            expirations[idx] = EXPIRATIONS[period]
+            expirations[idx] = EXPIRATION[period]
           end
         end
       end

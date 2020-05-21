@@ -5,6 +5,7 @@ local groups = require "kong.plugins.acl.groups"
 
 local setmetatable = setmetatable
 local concat = table.concat
+local error = error
 local kong = kong
 
 
@@ -39,7 +40,7 @@ local ACLHandler = {}
 
 
 ACLHandler.PRIORITY = 950
-ACLHandler.VERSION = "2.1.0"
+ACLHandler.VERSION = "3.0.0"
 
 
 function ACLHandler:access(conf)
@@ -65,20 +66,20 @@ function ACLHandler:access(conf)
   if not consumer_id then
     local authenticated_groups = groups.get_authenticated_groups()
     if not authenticated_groups then
-      kong.log.err("Cannot identify the consumer, add an authentication ",
-                   "plugin to use the ACL plugin")
+      if kong.client.get_credential() then
+        return kong.response.error(403, "You cannot consume this service")
+      end
 
-      return kong.response.exit(403, {
-        message = "You cannot consume this service"
-      })
+      return kong.response.error(401)
     end
 
     local in_group = groups.group_in_groups(config.groups, authenticated_groups)
     to_be_blocked = get_to_be_blocked(config, authenticated_groups, in_group)
 
   else
+    local credential = kong.client.get_credential()
     local authenticated_groups
-    if not kong.client.get_credential() then
+    if not credential then
       -- authenticated groups overrides anonymous groups
       authenticated_groups = groups.get_authenticated_groups()
     end
@@ -93,11 +94,21 @@ function ACLHandler:access(conf)
       -- get the consumer groups, since we need those as cache-keys to make sure
       -- we invalidate properly if they change
       local consumer_groups, err = groups.get_consumer_groups(consumer_id)
+       if err then
+        return error(err)
+      end
+
       if not consumer_groups then
-        kong.log.err(err)
-        return kong.response.exit(500, {
-          message = "An unexpected error occurred"
-        })
+        if config.type == BLACK and credential then
+          consumer_groups = EMPTY
+
+        else
+          if credential then
+            return kong.response.error(403, "You cannot consume this service")
+          end
+
+          return kong.response.error(401)
+        end
       end
 
       -- 'to_be_blocked' is either 'true' if it's to be blocked, or the header
@@ -114,9 +125,7 @@ function ACLHandler:access(conf)
   end
 
   if to_be_blocked == true then -- NOTE: we only catch the boolean here!
-    return kong.response.exit(403, {
-      message = "You cannot consume this service"
-    })
+    return kong.response.error(403, "You cannot consume this service")
   end
 
   if not conf.hide_groups_header and to_be_blocked then

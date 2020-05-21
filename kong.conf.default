@@ -278,6 +278,9 @@
                          #
                          # This value accepts IPv4, IPv6, and hostnames.
                          # Some suffixes can be specified for each pair:
+                         # - `ssl` will require that all connections made
+                         #   through a particular address/port be made with TLS
+                         #   enabled.
                          # - `proxy_protocol` will enable usage of the
                          #   PROXY protocol for a given address/port.
                          # - `bind` instructs to make a separate bind() call
@@ -376,6 +379,12 @@
                          # healthiness, and other non-sensitive information
                          # of the current Kong node.
                          #
+                         # The following suffix can be specified for each pair:
+                         #
+                         # - `ssl` will require that all connections made
+                         #   through a particular address/port be made with TLS
+                         #   enabled.
+                         #
                          # This value can be set to `off`, disabling
                          # the Status API for this node.
                          #
@@ -427,6 +436,39 @@
                                  # This value is ignored if `ssl_cipher_suite`
                                  # is not `custom`.
 
+#ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
+                                 # Enables the specified protocols for
+                                 # client-side connections. The set of
+                                 # supported protocol versions also depends
+                                 # on the version of OpenSSL Kong was built
+                                 # with. This value is ignored if
+                                 # `ssl_cipher_suite` is not `custom`.
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_protocols
+
+#ssl_prefer_server_ciphers = on  # Specifies that server ciphers should be
+                                 # preferred over client ciphers when using
+                                 # the SSLv3 and TLS protocols. This value is
+                                 # ignored if `ssl_cipher_suite` is not `custom`.
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_prefer_server_ciphers
+
+#ssl_session_tickets = on        # Enables or disables session resumption through
+                                 # TLS session tickets. This is has no impact when
+                                 # used with TLSv1.3.
+                                 #
+                                 # Kong enables this by default for performance
+                                 # reasons, but it has security implications:
+                                 # https://github.com/mozilla/server-side-tls/issues/135
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_tickets
+
+#ssl_session_timeout = 1d        # Specifies a time during which a client may
+                                 # reuse the session parameters. See the rationale:
+                                 # https://github.com/mozilla/server-side-tls/issues/198
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_timeout
+
 #ssl_cert =                      # The absolute path to the SSL certificate for
                                  # `proxy_listen` values with SSL enabled.
 
@@ -455,6 +497,12 @@
 
 #admin_ssl_cert_key =            # The absolute path to the SSL key for
                                  # `admin_listen` values with SSL enabled.
+
+#status_ssl_cert =               # The absolute path to the SSL certificate for
+                                 # `status_listen` values with SSL enabled.
+
+#status_ssl_cert_key =           # The absolute path to the SSL key for
+                                 # `status_listen` values with SSL enabled.
 
 #headers = server_tokens, latency_tokens
                                  # Comma-separated list of headers Kong should
@@ -640,45 +688,25 @@
 #   `nginx_admin_ssl_protocols`, both of which taking precedence over the
 #   `http {}` block.
 
-#nginx_http_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
-                                 # Enables the specified protocols for
-                                 # client-side connections. The set of
-                                 # supported protocol versions also depends
-                                 # on the version of OpenSSL Kong was built
-                                 # with.
+#nginx_main_worker_rlimit_nofile = auto
+                                 # Changes the limit on the maximum number of open files
+                                 # for worker processes.
                                  #
-                                 # This value is ignored if `ssl_cipher_suite`
-                                 # is not `custom`.
+                                 # The special and default value of `auto` sets this
+                                 # value to `ulimit -n` with the upper bound limited to
+                                 # 16384 as a measure to protect against excess memory use.
                                  #
-                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_protocols
+                                 # See http://nginx.org/en/docs/ngx_core_module.html#worker_rlimit_nofile
 
-#nginx_http_ssl_prefer_server_ciphers = on
-                                 # Specifies that server ciphers should be
-                                 # preferred over client ciphers when using
-                                 # the SSLv3 and TLS protocols
+#nginx_events_worker_connections = auto
+                                 # Sets the maximum number of simultaneous
+                                 # connections that can be opened by a worker process.
                                  #
-                                 # This value is ignored if `ssl_cipher_suite`
-                                 # is not `custom`.
+                                 # The special and default value of `auto` sets this
+                                 # value to `ulimit -n` with the upper bound limited to
+                                 # 16384 as a measure to protect against excess memory use.
                                  #
-                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_prefer_server_ciphers
-
-#nginx_http_ssl_session_tickets = on
-                                 # Enables or disables session resumption through
-                                 # TLS session tickets. This is has no impact when
-                                 # used with TLSv1.3.
-                                 #
-                                 # Kong enables this by default for performance
-                                 # reasons, but it has security implications:
-                                 # https://github.com/mozilla/server-side-tls/issues/135
-                                 #
-                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_tickets
-
-#nginx_http_ssl_session_timeout = 1d
-                                 # Specifies a time during which a client may
-                                 # reuse the session parameters. See the rationale:
-                                 # https://github.com/mozilla/server-side-tls/issues/198
-                                 #
-                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_timeout
+                                 # See http://nginx.org/en/docs/ngx_core_module.html#worker_connections
 
 #nginx_upstream_keepalive = 60   # Sets the maximum number of idle keepalive
                                  # connections to upstream servers that are
@@ -725,6 +753,23 @@
 # declarative configuration file, which can be specified through the
 # `declarative_config` property, or via the Admin API using the `/config`
 # endpoint.
+#
+# When using Postgres as the backend storage, you can optionally enable Kong
+# to serve read queries from a separate database instance.
+# When the number of proxies are large this can greatly reduce the load
+# on the main Postgres instance and achieve better scalability. It may also
+# reduce the latency jitter if the Kong proxy node's latency to the main
+# Postgres instance is high.
+#
+# The read-only Postgres instance only serves read queries and write
+# queries still goes to the main connection. The read-only Postgres instance
+# can be eventual consistent while replicating changes from the main
+# instance.
+#
+# At least the `pg_ro_host` config is needed to enable this feature.
+# By default all other database config for the read-only connection are
+# inherited from the corresponding main connection config described above but
+# may be optionally overwritten explicitly using the `pg_ro_*` config below.
 
 #database = postgres             # Determines which of PostgreSQL or Cassandra
                                  # this node will use as its datastore.
@@ -774,6 +819,48 @@
                                  # Detailed discussion of this behavior is
                                  # available in the online documentation.
 
+#pg_ro_host = NONE               # Same as `pg_host`, but for the
+                                 # read-only connection.
+                                 # Value of `NONE` disables
+                                 # read-only connection.
+                                 # **Note:** please refer to the documentation
+                                 # section above for detailed usage.
+
+#pg_ro_port = <pg_port>          # Same as `pg_port`, but for the
+                                 # read-only connection.
+
+#pg_ro_timeout = <pg_timeout>    # Same as `pg_timeout`, but for the
+                                 # read-only connection.
+
+#pg_ro_user = <pg_user>          # Same as `pg_user`, but for the
+                                 # read-only connection.
+
+#pg_ro_password = <pg_password>  # Same as `pg_password`, but for the
+                                 # read-only connection.
+
+#pg_ro_database = <pg_database>  # Same as `pg_database`, but for the
+                                 # read-only connection.
+
+#pg_ro_schema = <pg_schema>      # Same as `pg_schema`, but for the
+                                 # read-only connection.
+
+#pg_ro_ssl = <pg_ssl>            # Same as `pg_ssl`, but for the
+                                 # read-only connection.
+
+#pg_ro_ssl_verify = <pg_ssl_verify>
+                                 # Same as `pg_ssl_verify`, but for the
+                                 # read-only connection.
+
+#pg_ro_max_concurrent_queries = <pg_max_concurrent_queries>
+                                 # Same as `pg_max_concurrent_queries`, but for
+                                 # the read-only connection.
+                                 # Note: read-only concurrency is not shared
+                                 # with the main (read-write) connection.
+
+#pg_ro_semaphore_timeout = <pg_semaphore_timeout>
+                                 # Same as `pg_semaphore_timeout`, but for the
+                                 # read-only connection.
+
 #cassandra_contact_points = 127.0.0.1  # A comma-separated list of contact
                                        # points to your cluster.
                                        # You may specify IP addresses or
@@ -792,9 +879,12 @@
 
 #cassandra_keyspace = kong       # The keyspace to use in your cluster.
 
-#cassandra_consistency = ONE     # Consistency setting to use when reading/
-                                 # writing to the Cassandra cluster.
-                                 #
+#cassandra_write_consistency = ONE  # Consistency setting to use when
+                                    # writing to the Cassandra cluster.
+
+#cassandra_read_consistency = ONE   # Consistency setting to use when
+                                    # reading from the Cassandra cluster.
+
 #cassandra_timeout = 5000        # Defines the timeout (in ms) for reading
                                  # and writing.
 
@@ -922,10 +1012,19 @@
                                  # the datastore when cached by this node.
                                  #
                                  # Database misses (no entity) are also cached
-                                 # according to this setting.
+                                 # according to this setting if you do not
+                                 # configure `db_cache_neg_ttl`.
                                  #
                                  # If set to 0 (default), such cached entities
-                                 # or misses never expire.
+                                 # or misses never expire
+
+#db_cache_neg_ttl =              # Time-to-live (in seconds) of a datastore
+                                 # miss (no entity).
+                                 #
+                                 # If not specified (default), `db_cache_ttl`
+                                 # value will be used instead.
+                                 #
+                                 # If set to 0, misses will never expire.
 
 #db_resurrect_ttl = 30           # Time (in seconds) for which stale entities
                                  # from the datastore should be resurrected for
@@ -1022,11 +1121,14 @@
 # TUNING & BEHAVIOR
 #------------------------------------------------------------------------------
 
-#router_consistency = strict     # Defines whether this node should rebuild its
-                                 # router synchronously or asynchronously (the
-                                 # router is rebuilt every time a Route or a
-                                 # Service is updated via the Admin API or
-                                 # loading a declarative configuration file).
+#worker_consistency = strict
+                                 # Defines whether this node should rebuild its
+                                 # state synchronously or asynchronously (the
+                                 # balancers and the router are rebuilt on
+                                 # updates that affects them, e.g. updates to
+                                 # Routes, Services or Upstreams, via the Admin
+                                 # API or loading a declarative configuration
+                                 # file).
                                  #
                                  # Accepted values are:
                                  #
@@ -1050,14 +1152,15 @@
                                  # for a short period of time after Routes and
                                  # Services updates.
 
-#router_update_frequency = 1     # Defines how often the router changes are
+#worker_state_update_frequency = 5
+                                 # Defines how often the worker state changes are
                                  # checked with a background job. When a change
-                                 # is detected, a new router will be built. By
-                                 # default we check for changes every second.
-                                 # Raising this value will decrease the load on
-                                 # database servers and result in less jitter
-                                 # in proxy latency, with downside of longer
-                                 # converge time for router updates.
+                                 # is detected, a new router or balancer will be
+                                 # built, as needed. Raising this value will
+                                 # decrease the load on database servers and
+                                 # result in less jitter in proxy latency, but
+                                 # it might take more time to propagate changes
+                                 # to each individual worker.
 
 #------------------------------------------------------------------------------
 # DEVELOPMENT & MISCELLANEOUS

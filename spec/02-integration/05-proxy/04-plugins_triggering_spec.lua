@@ -161,6 +161,29 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local service_error = bp.services:insert {
+        name = "service-error",
+      }
+
+      bp.routes:insert {
+        hosts     = { "service-error.test" },
+        protocols = { "http" },
+        service   = service_error,
+      }
+
+      bp.plugins:insert {
+        name     = "error-generator",
+        service  = { id = service_error.id },
+        config   = {
+          access = true,
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "error-handler-log",
+        service  = { id = service_error.id },
+      }
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -231,6 +254,17 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
       assert.equal("5", res.headers["x-ratelimit-limit-hour"])
+    end)
+
+    it("builds complete plugins iterator even when plugin errors", function()
+      local res = proxy_client:get("/status/200", {
+        headers = {
+          Host = "service-error.test",
+        }
+      })
+
+      assert.res_status(500, res)
+      assert.equal("header_filter", res.headers["Log-Plugin-Phases"])
     end)
 
     describe("short-circuited requests", function()
@@ -854,6 +888,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(494, res)
 
+        -- close and reopen to flush the request
+        proxy_client:close()
+        proxy_client = helpers.proxy_client()
+
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
@@ -890,6 +928,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(494, res)
 
+        -- close and reopen to flush the request
+        proxy_client:close()
+        proxy_client = helpers.proxy_client()
+
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
@@ -921,6 +963,10 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(414, res)
+
+        -- close and reopen to flush the request
+        proxy_client:close()
+        proxy_client = helpers.proxy_client()
 
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
@@ -956,6 +1002,10 @@ for _, strategy in helpers.each_strategy() do
           --]]
         })
         assert.res_status(414, res)
+
+        -- close and reopen to flush the request
+        proxy_client:close()
+        proxy_client = helpers.proxy_client()
 
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.

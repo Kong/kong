@@ -229,9 +229,7 @@ for _, strategy in helpers.each_strategy() do
       assert.True(is_latencies_sum_adding_up)
     end)
 
-    -- XXX EE: this test fails randomly, both locally and on travis
-    -- but managed to get a couple of successes
-    it("#flaky logs proper latencies (#grpcs)", function()
+    it("logs proper latencies (#grpcs) #flaky", function()
       local tcp_thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
 
       -- Making the request

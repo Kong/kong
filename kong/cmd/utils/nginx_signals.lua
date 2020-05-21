@@ -4,6 +4,7 @@ local meta = require "kong.meta"
 local pl_path = require "pl.path"
 local version = require "version"
 local pl_utils = require "pl.utils"
+local pl_stringx = require "pl.stringx"
 local fmt = string.format
 
 local nginx_bin_name = "nginx"
@@ -56,6 +57,17 @@ function _M.find_nginx_bin()
   for _, path in ipairs(nginx_search_paths) do
     local path_to_check = pl_path.join(path, nginx_bin_name)
     if is_openresty(path_to_check) then
+      if path_to_check == "nginx" then
+        log.debug("finding executable absolute path from $PATH...")
+        local ok, code, stdout, stderr = pl_utils.executeex("command -v nginx")
+        if ok and code == 0 then
+          path_to_check = pl_stringx.strip(stdout)
+
+        else
+          log.error("could not find executable absolute path: %s", stderr)
+        end
+      end
+
       found = path_to_check
       log.debug("found OpenResty 'nginx' executable at %s", found)
       break

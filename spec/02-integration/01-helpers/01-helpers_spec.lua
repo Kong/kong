@@ -445,5 +445,56 @@ for _, strategy in helpers.each_strategy() do
         assert.error(function() assert.request(r).has.formparam("hello") end)
       end)
     end)
+
+
+    describe("certificates,", function()
+
+      local function get_cert(server_name)
+        local _, _, stdout = assert(helpers.execute(
+          string.format("echo 'GET /' | openssl s_client -connect 0.0.0.0:%d -servername %s",
+                        helpers.get_proxy_port(true), server_name)
+        ))
+        return stdout
+      end
+
+
+      it("cn assertion with 2 parameters, positive success", function()
+        local cert = get_cert("ssl1.com")
+        assert.has.cn("localhost", cert)
+      end)
+
+      it("cn assertion with 2 parameters, positive failure", function()
+        local cert = get_cert("ssl1.com")
+        assert.has.error(function()
+          assert.has.cn("some.other.host.org", cert)
+        end)
+      end)
+
+      it("cn assertion with 2 parameters, negative success", function()
+        local cert = get_cert("ssl1.com")
+        assert.Not.cn("some.other.host.org", cert)
+      end)
+
+      it("cn assertion with 2 parameters, negative failure", function()
+        local cert = get_cert("ssl1.com")
+        assert.has.error(function()
+          assert.Not.cn("localhost", cert)
+        end)
+      end)
+
+      it("cn assertion with modifier and 1 parameter", function()
+        local cert = get_cert("ssl1.com")
+        assert.certificate(cert).has.cn("localhost")
+      end)
+
+      it("cn assertion with modifier and 2 parameters fails", function()
+        local cert = get_cert("ssl1.com")
+        assert.has.error(function()
+          assert.certificate(cert).has.cn("localhost", cert)
+        end)
+      end)
+
+    end)
+
   end)
 end

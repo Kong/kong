@@ -23,7 +23,6 @@ describe("SDK: kong.log", function()
 
   before_each(function()
     bp, db = helpers.get_db_utils(nil, {
-      "apis",
       "routes",
       "services",
       "plugins",

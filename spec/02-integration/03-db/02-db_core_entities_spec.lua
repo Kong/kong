@@ -1,9 +1,9 @@
-local Errors        = require "kong.db.errors"
-local defaults      = require "kong.db.strategies.connector".defaults
-local utils         = require "kong.tools.utils"
-local helpers       = require "spec.helpers"
-local cjson         = require "cjson"
-local ssl_fixtures  = require "spec.fixtures.ssl"
+local Errors  = require "kong.db.errors"
+local defaults = require "kong.db.strategies.connector".defaults
+local utils   = require "kong.tools.utils"
+local helpers = require "spec.helpers"
+local cjson   = require "cjson"
+local ssl_fixtures = require "spec.fixtures.ssl"
 local openssl_x509  = require "resty.openssl.x509"
 local str           = require "resty.string"
 

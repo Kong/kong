@@ -11,26 +11,31 @@
 local ffi = require "ffi"
 local uuid = require "resty.jit-uuid"
 local pl_stringx = require "pl.stringx"
+local pl_stringio = require "pl.stringio"
+local zlib = require "ffi-zlib"
 
-local C          = ffi.C
-local ffi_fill   = ffi.fill
-local ffi_new    = ffi.new
-local ffi_str    = ffi.string
-local type       = type
-local pairs      = pairs
-local ipairs     = ipairs
-local select     = select
-local tostring   = tostring
-local sort       = table.sort
-local concat     = table.concat
-local insert     = table.insert
-local lower      = string.lower
-local fmt        = string.format
-local find       = string.find
-local gsub       = string.gsub
-local split      = pl_stringx.split
-local re_find    = ngx.re.find
-local re_match   = ngx.re.match
+local C             = ffi.C
+local ffi_fill      = ffi.fill
+local ffi_new       = ffi.new
+local ffi_str       = ffi.string
+local type          = type
+local pairs         = pairs
+local ipairs        = ipairs
+local select        = select
+local tostring      = tostring
+local sort          = table.sort
+local concat        = table.concat
+local insert        = table.insert
+local lower         = string.lower
+local fmt           = string.format
+local find          = string.find
+local gsub          = string.gsub
+local split         = pl_stringx.split
+local re_find       = ngx.re.find
+local re_match      = ngx.re.match
+local inflate_gzip  = zlib.inflateGzip
+local deflate_gzip  = zlib.deflateGzip
+local stringio_open = pl_stringio.open
 
 ffi.cdef[[
 typedef unsigned char u_char;
@@ -996,5 +1001,151 @@ function _M.bytes_to_str(bytes, unit, scale)
   error("invalid unit '" .. unit .. "' (expected 'k/K', 'm/M', or 'g/G')", 2)
 end
 
+
+do
+  -- lua-ffi-zlib allocated buffer of length +1,
+  -- so use 64KB - 1 instead
+  local GZIP_CHUNK_SIZE = 65535
+
+  local function gzip_helper(op, input)
+    local f = stringio_open(input)
+    local output_table = {}
+    local output_table_n = 0
+
+    local res, err = op(function(size)
+      return f:read(size)
+    end,
+    function(res)
+      output_table_n = output_table_n + 1
+      output_table[output_table_n] = res
+    end, GZIP_CHUNK_SIZE)
+
+    if not res then
+      return nil, err
+    end
+
+    return concat(output_table)
+  end
+
+  --- Gzip compress the content of a string
+  -- @tparam string str the uncompressed string
+  -- @return gz (string) of the compressed content, or nil, err to if an error occurs
+  function _M.deflate_gzip(str)
+    return gzip_helper(deflate_gzip, str)
+  end
+
+
+  --- Gzip decompress the content of a string
+  -- @tparam string gz the Gzip compressed string
+  -- @return str (string) of the decompressed content, or nil, err to if an error occurs
+  function _M.inflate_gzip(gz)
+    return gzip_helper(inflate_gzip, gz)
+  end
+end
+
+
+local get_mime_type
+local get_error_template
+do
+  local CONTENT_TYPE_JSON    = "application/json"
+  local CONTENT_TYPE_GRPC    = "application/grpc"
+  local CONTENT_TYPE_HTML    = "text/html"
+  local CONTENT_TYPE_XML     = "application/xml"
+  local CONTENT_TYPE_PLAIN   = "text/plain"
+  local CONTENT_TYPE_APP     = "application"
+  local CONTENT_TYPE_TEXT    = "text"
+  local CONTENT_TYPE_DEFAULT = "default"
+  local CONTENT_TYPE_ANY     = "*"
+
+  local MIME_TYPES = {
+    [CONTENT_TYPE_GRPC]     = "",
+    [CONTENT_TYPE_HTML]     = "text/html; charset=utf-8",
+    [CONTENT_TYPE_JSON]     = "application/json; charset=utf-8",
+    [CONTENT_TYPE_PLAIN]    = "text/plain; charset=utf-8",
+    [CONTENT_TYPE_XML]      = "application/xml; charset=utf-8",
+    [CONTENT_TYPE_APP]      = "application/json; charset=utf-8",
+    [CONTENT_TYPE_TEXT]     = "text/plain; charset=utf-8",
+    [CONTENT_TYPE_DEFAULT]  = "application/json; charset=utf-8",
+  }
+
+  local ERROR_TEMPLATES = {
+    [CONTENT_TYPE_GRPC]   = "",
+    [CONTENT_TYPE_HTML]   = [[
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Kong Error</title>
+  </head>
+  <body>
+    <h1>Kong Error</h1>
+    <p>%s.</p>
+  </body>
+</html>
+]],
+    [CONTENT_TYPE_JSON]   = [[
+{
+  "message":"%s"
+}]],
+    [CONTENT_TYPE_PLAIN]  = "%s\n",
+    [CONTENT_TYPE_XML]    = [[
+<?xml version="1.0" encoding="UTF-8"?>
+<error>
+  <message>%s</message>
+</error>
+]],
+  }
+
+  get_mime_type = function(content_header, use_default)
+    use_default = use_default == nil or use_default
+    content_header = _M.strip(content_header)
+    content_header = _M.split(content_header, ";")[1]
+    local mime_type
+
+    local entries = split(content_header, "/")
+    if #entries > 1 then
+      if entries[2] == CONTENT_TYPE_ANY then
+        if entries[1] == CONTENT_TYPE_ANY then
+          mime_type = MIME_TYPES["default"]
+        else
+          mime_type = MIME_TYPES[entries[1]]
+        end
+      else
+        mime_type = MIME_TYPES[content_header]
+      end
+    end
+
+    if mime_type or use_default then
+      return mime_type or MIME_TYPES["default"]
+    end
+
+    return nil, "could not find MIME type"
+  end
+
+
+  get_error_template = function(mime_type)
+    if mime_type == CONTENT_TYPE_JSON or mime_type == MIME_TYPES[CONTENT_TYPE_JSON] then
+      return ERROR_TEMPLATES[CONTENT_TYPE_JSON]
+
+    elseif mime_type == CONTENT_TYPE_HTML or mime_type == MIME_TYPES[CONTENT_TYPE_HTML] then
+      return ERROR_TEMPLATES[CONTENT_TYPE_HTML]
+
+    elseif mime_type == CONTENT_TYPE_XML or mime_type == MIME_TYPES[CONTENT_TYPE_XML] then
+      return ERROR_TEMPLATES[CONTENT_TYPE_XML]
+
+    elseif mime_type == CONTENT_TYPE_PLAIN or mime_type == MIME_TYPES[CONTENT_TYPE_PLAIN] then
+      return ERROR_TEMPLATES[CONTENT_TYPE_PLAIN]
+
+    elseif mime_type == CONTENT_TYPE_GRPC or mime_type == MIME_TYPES[CONTENT_TYPE_GRPC] then
+      return ERROR_TEMPLATES[CONTENT_TYPE_GRPC]
+
+    end
+
+    return nil, "no template found for MIME type " .. (mime_type or "empty")
+  end
+
+end
+_M.get_mime_type = get_mime_type
+_M.get_error_template = get_error_template
 
 return _M

@@ -64,7 +64,7 @@ end
 function BotDetectionHandler:access(conf)
   local user_agent, err = get_user_agent()
   if err then
-    return kong.response.exit(BAD_REQUEST, { message = err })
+    return kong.response.error(BAD_REQUEST, err)
   end
 
   if not user_agent then
@@ -86,7 +86,7 @@ function BotDetectionHandler:access(conf)
   -- if we saw a blacklisted UA or bot, return forbidden. otherwise,
   -- fall out of our handler
   if match > 1 then
-    return kong.response.exit(FORBIDDEN, { message = "Forbidden" })
+    return kong.response.error(FORBIDDEN)
   end
 end
 

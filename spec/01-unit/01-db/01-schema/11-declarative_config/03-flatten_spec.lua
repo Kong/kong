@@ -1559,6 +1559,8 @@ describe("declarative config: flatten", function()
           oauth2_credentials = { {
               client_id = "RANDOM",
               client_secret = "RANDOM",
+              client_type = "confidential",
+              hash_secret = false,
               consumer = {
                 id = "UUID"
               },
@@ -1570,6 +1572,8 @@ describe("declarative config: flatten", function()
             }, {
               client_id = "RANDOM",
               client_secret = "RANDOM",
+              client_type = "confidential",
+              hash_secret = false,
               consumer = {
                 id = "UUID",
               },
@@ -1822,6 +1826,8 @@ describe("declarative config: flatten", function()
             oauth2_credentials = { {
                 client_id = "RANDOM",
                 client_secret = "RANDOM",
+                client_type = "confidential",
+                hash_secret = false,
                 consumer = {
                   id = "UUID"
                 },
@@ -1833,6 +1839,8 @@ describe("declarative config: flatten", function()
               }, {
                 client_id = "RANDOM",
                 client_secret = "RANDOM",
+                client_type = "confidential",
+                hash_secret = false,
                 consumer = {
                   id = "UUID"
                 },
@@ -1865,6 +1873,8 @@ describe("declarative config: flatten", function()
             oauth2_credentials = { {
                 client_id = "RANDOM",
                 client_secret = "RANDOM",
+                client_type = "confidential",
+                hash_secret = false,
                 consumer = {
                   id = "UUID"
                 },
@@ -1899,6 +1909,8 @@ describe("declarative config: flatten", function()
             oauth2_credentials = { {
                 client_id = "RANDOM",
                 client_secret = "RANDOM",
+                client_type = "confidential",
+                hash_secret = false,
                 consumer = {
                   id = "UUID"
                 },

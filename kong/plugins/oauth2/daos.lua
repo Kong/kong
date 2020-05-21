@@ -1,5 +1,9 @@
 local url = require "socket.url"
 local typedefs = require "kong.db.schema.typedefs"
+local secret = require "kong.plugins.oauth2.secret"
+
+
+local assert = assert
 
 
 local function validate_uri(uri)
@@ -29,6 +33,7 @@ local oauth2_credentials = {
     { name = { type = "string", required = true }, },
     { client_id = { type = "string", required = false, unique = true, auto = true }, },
     { client_secret = { type = "string", required = false, auto = true }, },
+    { hash_secret = { type = "boolean", required = true, default = false }, },
     { redirect_uris = {
       type = "array",
       required = false,
@@ -37,6 +42,22 @@ local oauth2_credentials = {
         custom_validator = validate_uri,
     }, }, },
     { tags = typedefs.tags },
+    { client_type = { type = "string", required = true, default = "confidential", one_of = { "confidential", "public" }, }, },
+  },
+  transformations = {
+    {
+      input = { "hash_secret" },
+      needs = { "client_secret" },
+      on_write = function(hash_secret, client_secret)
+        if not hash_secret then
+          return {}
+        end
+        local hash = assert(secret.hash(client_secret))
+        return {
+          client_secret = hash,
+        }
+      end,
+    },
   },
 }
 
@@ -55,6 +76,8 @@ local oauth2_authorization_codes = {
     { code = { type = "string", required = false, unique = true, auto = true }, }, -- FIXME immutable
     { authenticated_userid = { type = "string", required = false }, },
     { scope = { type = "string" }, },
+    { challenge = { type = "string", required = false }},
+    { challenge_method = { type = "string", required = false, one_of = { "S256" } }},
   },
 }
 
@@ -65,6 +88,7 @@ local oauth2_tokens = {
   name = "oauth2_tokens",
   endpoint_key = "access_token",
   cache_key = { "access_token" },
+  dao = "kong.plugins.oauth2.daos.oauth2_tokens",
   ttl = true,
   workspaceable = true,
   fields = {
@@ -80,6 +104,7 @@ local oauth2_tokens = {
     { scope = { type = "string" }, },
   },
 }
+
 
 return {
   oauth2_credentials,

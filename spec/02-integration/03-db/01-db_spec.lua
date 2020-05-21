@@ -41,6 +41,7 @@ for _, strategy in helpers.each_strategy() do
             db_name = helpers.test_conf.pg_database,
             db_schema = helpers.test_conf.pg_schema or "",
             db_ver  = "unknown",
+            db_readonly = false,
           }, infos)
 
         elseif strategy == "cassandra" then
@@ -74,6 +75,36 @@ for _, strategy in helpers.each_strategy() do
           db_name = conf.pg_database,
           db_schema = conf.pg_schema,
           db_ver  = "unknown",
+          db_readonly = false,
+        }, infos)
+
+      end)
+
+      postgres_only("initializes infos with readonly support", function()
+        local conf = utils.deep_copy(helpers.test_conf)
+
+        conf.pg_ro_host = "127.0.0.1"
+
+        -- hack
+        ngx.IS_CLI = false
+
+        local db, err = DB.new(conf, strategy)
+
+        -- hack
+        ngx.IS_CLI = true
+
+        assert.is_nil(err)
+        assert.is_table(db)
+
+        local infos = db.infos
+
+        assert.same({
+          strategy = "PostgreSQL",
+          db_desc = "database",
+          db_name = conf.pg_database,
+          db_schema = helpers.test_conf.pg_schema or "",
+          db_ver  = "unknown",
+          db_readonly = true,
         }, infos)
 
       end)
@@ -116,6 +147,7 @@ for _, strategy in helpers.each_strategy() do
           -- when not specified-
           db_schema = helpers.test_conf.pg_schema or "public",
           db_ver  = infos.db_ver,
+          db_readonly = false,
         }, infos)
 
       elseif strategy == "cassandra" then
@@ -154,6 +186,7 @@ for _, strategy in helpers.each_strategy() do
         db_name = conf.pg_database,
         db_schema = conf.pg_schema,
         db_ver  = infos.db_ver,
+        db_readonly = false,
       }, infos)
     end)
   end)
@@ -330,6 +363,59 @@ for _, strategy in helpers.each_strategy() do
 
       db:close()
     end)
+
+    postgres_only("connects to postgres with readonly account (cosockets)", function()
+      ngx.IS_CLI = false
+
+      local conf = utils.deep_copy(helpers.test_conf)
+      conf.pg_ro_host = conf.pg_host
+
+      local db, err = DB.new(conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      local conn, err = db.connector:connect("read")
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      assert.is_nil(db.connector:get_stored_connection("write"))
+      assert.is_nil(db.connector:get_stored_connection()) -- empty defaults to "write"
+
+      assert.equal("nginx", db.connector:get_stored_connection("read").sock_type)
+      assert.is_false(db.connector:get_stored_connection("read").ssl)
+
+      db:close()
+    end)
+
+    postgres_only("connects to postgres with readonly account (luasocket)", function()
+      ngx.IS_CLI = true
+
+      local conf = utils.deep_copy(helpers.test_conf)
+      conf.pg_ro_host = conf.pg_host
+
+      local db, err = DB.new(conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      local conn, err = db.connector:connect("read")
+      -- this gets overwritten to write instead
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      assert.is_nil(db.connector:get_stored_connection("read"))
+
+      assert.equal("luasocket", db.connector:get_stored_connection("write").sock_type)
+      assert.is_false(db.connector:get_stored_connection("write").ssl)
+
+      assert.equal("luasocket", db.connector:get_stored_connection().sock_type)
+      assert.is_false(db.connector:get_stored_connection().ssl)
+
+      db:close()
+    end)
   end)
 
 
@@ -475,6 +561,74 @@ for _, strategy in helpers.each_strategy() do
       assert.is_nil(db.connector:get_stored_connection())
       assert.is_true(db:setkeepalive())
     end)
+
+    postgres_only("keepalives both read only and write connection (cosockets)", function()
+      ngx.IS_CLI = false
+
+      local conf = utils.deep_copy(helpers.test_conf)
+      conf.pg_ro_host = conf.pg_host
+
+      local db, err = DB.new(conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      local conn, err = db.connector:connect("read")
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      conn, err = db.connector:connect("write")
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      assert.equal("nginx", db.connector:get_stored_connection("read").sock_type)
+      assert.equal("nginx", db.connector:get_stored_connection("write").sock_type)
+
+      assert.is_false(db.connector:get_stored_connection("read").ssl)
+      assert.is_false(db.connector:get_stored_connection("write").ssl)
+
+      assert.is_true(db:setkeepalive())
+
+      assert.is_nil(db.connector:get_stored_connection("read"))
+      assert.is_nil(db.connector:get_stored_connection("write"))
+
+      db:close()
+    end)
+
+    postgres_only("connects and keepalives only write connection (luasocket)", function()
+      ngx.IS_CLI = true
+
+      local conf = utils.deep_copy(helpers.test_conf)
+      conf.pg_ro_host = conf.pg_host
+
+      local db, err = DB.new(conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      local conn, err = db.connector:connect("read")
+      -- this gets overwritten to "write" under the hood
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      conn, err = db.connector:connect("write")
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      assert.equal("luasocket", db.connector:get_stored_connection("write").sock_type)
+      assert.is_nil(db.connector:get_stored_connection("read"))
+
+      assert.is_false(db.connector:get_stored_connection("write").ssl)
+
+      assert.is_true(db:setkeepalive())
+
+      assert.is_nil(db.connector:get_stored_connection("read"))
+      assert.is_nil(db.connector:get_stored_connection("write"))
+
+      db:close()
+    end)
   end)
 
 
@@ -610,6 +764,73 @@ for _, strategy in helpers.each_strategy() do
 
       assert.is_nil(db.connector:get_stored_connection())
       assert.equal(true, db:close())
+    end)
+
+    postgres_only("returns true when both read-only and write connection exists (cosockets)", function()
+      ngx.IS_CLI = false
+
+      local conf = utils.deep_copy(helpers.test_conf)
+      conf.pg_ro_host = conf.pg_host
+
+      local db, err = DB.new(conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      local conn, err = db.connector:connect("read")
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      conn, err = db.connector:connect("write")
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      assert.equal("nginx", db.connector:get_stored_connection("read").sock_type)
+      assert.equal("nginx", db.connector:get_stored_connection("write").sock_type)
+
+      assert.is_false(db.connector:get_stored_connection("read").ssl)
+      assert.is_false(db.connector:get_stored_connection("write").ssl)
+
+      assert.is_true(db:close())
+
+      assert.is_nil(db.connector:get_stored_connection("read"))
+      assert.is_nil(db.connector:get_stored_connection("write"))
+
+      db:close()
+    end)
+
+    postgres_only("returns true when both read-only and write connection exists (luasocket)", function()
+      ngx.IS_CLI = true
+
+      local conf = utils.deep_copy(helpers.test_conf)
+      conf.pg_ro_host = conf.pg_host
+
+      local db, err = DB.new(conf, strategy)
+      assert.is_nil(err)
+      assert.is_table(db)
+
+      assert(db:init_connector())
+
+      local conn, err = db.connector:connect("read")
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      conn, err = db.connector:connect("write")
+      assert.is_nil(err)
+      assert.is_table(conn)
+
+      assert.equal("luasocket", db.connector:get_stored_connection("write").sock_type)
+      assert.is_nil(db.connector:get_stored_connection("read"))
+
+      assert.is_false(db.connector:get_stored_connection("write").ssl)
+
+      assert.is_true(db:close())
+
+      assert.is_nil(db.connector:get_stored_connection("read"))
+      assert.is_nil(db.connector:get_stored_connection("write"))
+
+      db:close()
     end)
   end)
 end

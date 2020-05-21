@@ -2,7 +2,10 @@
 local access = require "kong.plugins.basic-auth.access"
 
 
-local BasicAuthHandler = {}
+local BasicAuthHandler = {
+  PRIORITY = 1001,
+  VERSION = "2.2.0",
+}
 
 
 function BasicAuthHandler:access(conf, exit_handler)
@@ -10,10 +13,6 @@ function BasicAuthHandler:access(conf, exit_handler)
   return access.execute(conf, exit_handler)
   --]] EE
 end
-
-
-BasicAuthHandler.PRIORITY = 1001
-BasicAuthHandler.VERSION = "2.1.0"
 
 
 return BasicAuthHandler

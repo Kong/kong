@@ -1334,11 +1334,9 @@ local function run_transformation_checks(self, input, original_input, rbw_entity
       for _, input_field_name in ipairs(transformation.needs) do
         if rbw_entity and not needs_changed then
           local value = get_field(original_input or input, input_field_name)
-          if is_nonempty(value) then
-            local rbw_value = get_field(rbw_entity, input_field_name)
-            if value ~= rbw_value then
-              needs_changed = true
-            end
+          local rbw_value = get_field(rbw_entity, input_field_name)
+          if value ~= rbw_value then
+            needs_changed = true
           end
         end
 
@@ -1577,35 +1575,9 @@ function Schema:process_auto_fields(data, context, nulls)
   local now_s  = ngx_time()
   local now_ms = ngx_now()
 
-  local read_before_write = false
-  if context == "update" and self.transformations then
-    for _, transformation in ipairs(self.transformations) do
-      if transformation.needs then
-        for _, input_field_name in ipairs(transformation.needs) do
-          read_before_write = is_nonempty(get_field(data, input_field_name))
-        end
-
-        if read_before_write then
-          break
-        end
-      end
-    end
-  end
-
-  local cache_key_modified = false
   local check_immutable_fields = false
 
   data = tablex.deepcopy(data)
-
-  --[[
-  if context == "select" and self.translations then
-    for _, translation in ipairs(self.translations) do
-      if type(translation.read) == "function" then
-        output = translation.read(output)
-      end
-    end
-  end
-  --]]
 
   if self.shorthands then
     for _, shorthand in ipairs(self.shorthands) do
@@ -1664,12 +1636,6 @@ function Schema:process_auto_fields(data, context, nulls)
 
     data[key] = adjust_field_for_context(field, data[key], context, nulls)
 
-    if data[key] ~= nil then
-      if self.cache_key_set and self.cache_key_set[key] then
-        cache_key_modified = true
-      end
-    end
-
     if context == "select" and data[key] == null and not nulls then
       data[key] = nil
     end
@@ -1678,75 +1644,45 @@ function Schema:process_auto_fields(data, context, nulls)
       data[key] = floor(data[key])
     end
 
-    if not read_before_write then
-      -- Set read_before_write to true,
-      -- to handle deep merge of record object on update.
-      if context == "update" and field.type == "record"
-         and data[key] ~= nil and data[key] ~= null then
-        read_before_write = true
-      end
-    end
-
     if context == 'update' and field.immutable then
-      if not read_before_write then
-        -- if entity schema contains immutable fields,
-        -- we need to preform a read-before-write and
-        -- check the existing record to insure update
-        -- is valid.
-        read_before_write = true
-      end
-
       check_immutable_fields = true
     end
   end
 
-  if self.ttl and context == "select" and data.ttl == null and not nulls then
-    data.ttl = nil
-  end
-
-  --[[
-  if context ~= "select" and self.translations then
-    for _, translation in ipairs(self.translations) do
-      if type(translation.write) == "function" then
-        data = translation.write(data)
-      end
-    end
-  end
-  --]]
-
-  if context == "update" and (
-    -- If a partial update does not provide the subschema key,
-    -- we need to do a read-before-write to get it and be
-    -- able to properly validate the entity.
-    (self.subschema_key and data[self.subschema_key] == nil)
-    -- If we're resetting the value of a composite cache key,
-    -- we to do a read-before-write to get the rest of the cache key
-    -- and be able to properly update it.
-    or cache_key_modified
-    -- Entity checks validate across fields, and the field
-    -- that is necessary for validating may not be present.
-    or self.entity_checks)
-  then
-    if not read_before_write then
-      read_before_write = true
+  if context == "select" then
+    if self.ttl and data.ttl == null and not nulls then
+      data.ttl = nil
     end
 
-  elseif context == "select" then
     for key in pairs(data) do
-      if not self.fields[key]
-      -- XXX EE: when comming from select_by_cache_key, entities
-      -- (plugins) come with workspace_(id|name) fields that we
-      -- shouldn't remove as they are needed down the line.
+      local field = self.fields[key]
+      if field then
+        if not field.legacy
+           and field.type == "string"
+           and (field.len_min or 1) > 0
+           and data[key] == ""
+        then
+          data[key] = nulls and null or nil
+        end
+
+      else
+        -- set non defined fields to nil, except meta fields (ttl) if enabled
+        if not (self.ttl and key == "ttl")
+
+        -- XXX EE: when coming from select_by_cache_key, entities
+        -- (plugins) come with workspace_(id|name) fields that we
+        -- shouldn't remove as they are needed down the line.
         and key ~= "workspace_id"
         and key ~= "workspace_name"
-        and not (self.ttl and key == "ttl")
-      then
-        data[key] = nil
+
+        then
+          data[key] = nil
+        end
       end
     end
   end
 
-  return data, nil, read_before_write, check_immutable_fields
+  return data, nil, check_immutable_fields
 end
 
 
@@ -2281,7 +2217,7 @@ function Schema.define(tbl)
     __call = function(t, arg)
       arg = arg or {}
       for k,v in pairs(t) do
-        if not arg[k] then
+        if arg[k] == nil then
           arg[k] = v
         end
       end

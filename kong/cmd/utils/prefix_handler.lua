@@ -35,6 +35,10 @@ local function gen_default_ssl_cert(kong_config, pair_type)
     ssl_cert = kong_config.admin_ssl_cert_default
     ssl_cert_key = kong_config.admin_ssl_cert_key_default
 
+  elseif pair_type == "status" then
+    ssl_cert = kong_config.status_ssl_cert_default
+    ssl_cert_key = kong_config.status_ssl_cert_key_default
+
   elseif pair_type == "admin_gui" then
     ssl_cert = kong_config.admin_gui_ssl_cert_default
     ssl_cert_key = kong_config.admin_gui_ssl_cert_key_default
@@ -56,8 +60,9 @@ local function gen_default_ssl_cert(kong_config, pair_type)
   end
 
   if not pl_path.exists(ssl_cert) and not pl_path.exists(ssl_cert_key) then
-    log.verbose("generating %s SSL certificate and key",
-                pair_type)
+    log.verbose("generating %s %s SSL certificate and key",
+                pair_type or "default")
+
     local key = openssl_pkey.new { bits = 2048 }
 
     local crt = x509.new()
@@ -112,7 +117,8 @@ local function gen_default_ssl_cert(kong_config, pair_type)
     end
 
   else
-    log.verbose("%s SSL certificate found at %s", pair_type, ssl_cert)
+    log.verbose("%s %s SSL certificate found at %s",
+                pair_type or "default", ssl_cert)
   end
 
   return true
@@ -146,31 +152,31 @@ local function compile_conf(kong_config, conf_template)
   end
 
   do
-    local worker_rlimit_nofile
+    local worker_rlimit_nofile_auto
     if kong_config.nginx_main_directives then
       for _, directive in pairs(kong_config.nginx_main_directives) do
         if directive.name == "worker_rlimit_nofile" then
           if directive.value == "auto" then
-            worker_rlimit_nofile = directive
+            worker_rlimit_nofile_auto = directive
           end
           break
         end
       end
     end
 
-    local worker_connections
+    local worker_connections_auto
     if kong_config.nginx_events_directives then
       for _, directive in pairs(kong_config.nginx_events_directives) do
         if directive.name == "worker_connections" then
           if directive.value == "auto" then
-            worker_connections = directive
+            worker_connections_auto = directive
           end
           break
         end
       end
     end
 
-    if worker_connections or worker_rlimit_nofile then
+    if worker_connections_auto or worker_rlimit_nofile_auto then
       local value, err = get_ulimit()
       if not value then
         return nil, err
@@ -178,18 +184,22 @@ local function compile_conf(kong_config, conf_template)
 
       value = math.min(value, 16384)
 
-      if worker_rlimit_nofile then
-        worker_rlimit_nofile.value = value
+      if worker_rlimit_nofile_auto then
+        worker_rlimit_nofile_auto.value = value
       end
 
-      if worker_connections then
-        worker_connections.value = value
+      if worker_connections_auto then
+        worker_connections_auto.value = value
       end
     end
   end
 
   compile_env = pl_tablex.merge(compile_env, kong_config, true) -- union
   compile_env.dns_resolver = table.concat(compile_env.dns_resolver, " ")
+  compile_env.lua_package_path = (compile_env.lua_package_path or "") .. ";" ..
+                                 (os.getenv("LUA_PATH") or "")
+  compile_env.lua_package_cpath = (compile_env.lua_package_cpath or "") .. ";" ..
+                                  (os.getenv("LUA_CPATH") or "")
 
   local post_template, err = pl_template.substitute(conf_template, compile_env)
   if not post_template then
@@ -314,6 +324,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     kong_config.ssl_cert = kong_config.ssl_cert_default
     kong_config.ssl_cert_key = kong_config.ssl_cert_key_default
   end
+
   if kong_config.admin_ssl_enabled and not kong_config.admin_ssl_cert and
      not kong_config.admin_ssl_cert_key then
     log.verbose("Admin SSL enabled, no custom certificate set: using default certificate")
@@ -364,6 +375,17 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     kong_config.portal_api_ssl_cert_key = kong_config.portal_api_ssl_cert_key_default
   end
 
+
+  if kong_config.status_ssl_enabled and not kong_config.status_ssl_cert and
+     not kong_config.status_ssl_cert_key then
+    log.verbose("Status SSL enabled, no custom certificate set: using default certificate")
+    local ok, err = gen_default_ssl_cert(kong_config, "status")
+    if not ok then
+      return nil, err
+    end
+    kong_config.status_ssl_cert = kong_config.status_ssl_cert_default
+    kong_config.status_ssl_cert_key = kong_config.status_ssl_cert_key_default
+  end
 
   -- check ulimit
   local ulimit, err = get_ulimit()
@@ -450,6 +472,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
 end
 
 return {
+  get_ulimit = get_ulimit,
   prepare_prefix = prepare_prefix,
   compile_conf = compile_conf,
   compile_kong_conf = compile_kong_conf,

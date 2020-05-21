@@ -7,7 +7,6 @@ describe("SDK: kong.ctx", function()
 
   before_each(function()
     bp, db = helpers.get_db_utils(nil, {
-      "apis",
       "routes",
       "plugins",
     }, {

@@ -25,6 +25,8 @@ describe("Admin API #off", function()
     assert(helpers.start_kong({
       database = "off",
       mem_cache_size = "10m",
+      stream_listen = "127.0.0.1:9011",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
 
@@ -206,6 +208,7 @@ describe("Admin API #off", function()
 
         assert.response(res).has.status(201)
       end)
+
       it("accepts configuration as a JSON string", function()
         local res = assert(client:send {
           method = "POST",
@@ -496,6 +499,78 @@ describe("Admin API #off", function()
           message = "expected a declarative configuration",
         }, json)
       end)
+
+      it("sparse responses are correctly generated", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            {
+              "_format_version" : "1.1",
+              "plugins": [{
+                "name": "key-auth",
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }, {
+                "name": "key-auth",
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }, {
+                "name": "key-auth",
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }, {
+                "name": "key-auth",
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }, {
+                "name": "key-auth",
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }, {
+                "name": "key-auth",
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }, {
+                "name": "key-auth",
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }, {
+                "name": "key-auth",
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }, {
+                "name": "key-auth",
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }, {
+                "name": "key-auth",
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }, {
+                "name": "cors",
+                "config": {
+                  "credentials": true,
+                  "exposed_headers": ["*"],
+                  "headers": ["*"],
+                  "methods": ["*"],
+                  "origins": ["*"],
+                  "preflight_continue": true
+                },
+                "enabled": true,
+                "protocols": ["http", "https"]
+              }]
+            }
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        assert.response(res).has.status(400)
+      end)
     end)
 
     describe("GET", function()
@@ -550,6 +625,41 @@ describe("Admin API #off", function()
       })
 
       assert.response(res).has.status(201)
+    end)
+
+    it("updates stream subsystem config", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = [[
+          _format_version: "1.1"
+          services:
+          - connect_timeout: 60000
+            host: 127.0.0.1
+            name: mock
+            port: 15557
+            protocol: tcp
+            routes:
+            - name: mock_route
+              protocols:
+              - tcp
+              destinations:
+              - port: 9011
+          ]],
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+
+      local sock = ngx.socket.tcp()
+      assert(sock:connect("127.0.0.1", 9011))
+      assert(sock:send("hi\n"))
+      assert.equals(sock:receive(), "hi")
+      sock:close()
     end)
   end)
 
