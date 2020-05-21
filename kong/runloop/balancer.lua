@@ -293,7 +293,7 @@ do
         end
 
         if not ok then
-          log(ERR, "[healthchecks] failed setting peer status: ", err)
+          log(WARN, "[healthchecks] failed setting peer status (upstream: ", hc.name, "): ", err)
         end
       end
 
