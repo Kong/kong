@@ -38,7 +38,7 @@ pipeline {
             steps {
                 sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                 sh 'make setup-kong-build-tools'
-                sh 'KONG_VERSION=${GIT_COMMIT} PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=latest make release'
+                sh 'KONG_VERSION=`git rev-parse --short HEAD` PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=latest make release'
             }
         }
     }
