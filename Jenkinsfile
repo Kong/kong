@@ -145,18 +145,39 @@ pipeline {
                 }
             }
         }
+        stage('Release Per Commit') {
+            when {
+                beforeAgent true
+                allOf {
+                    triggeredBy 'TimerTrigger'
+                    anyOf { branch 'master'; branch 'next' }
+                }
+            }
+            agent {
+                node {
+                    label 'docker-compose'
+                }
+            }
+            environment {
+                KONG_VERSION = "${env.GIT_COMMIT }"
+                KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
+                KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                BINTRAY_USR = 'kong-inc_travis-ci@kong'
+                BINTRAY_KEY = credentials('bintray_travis_key')
+                DEBUG = 0
+            }
+            steps {
+                sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
+                sh 'make setup-kong-build-tools'
+                sh 'PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=latest make release'
+            }
+        }
         stage('Release') {
             when {
                 beforeAgent true
-                anyOf {
-                    allOf {
-                        triggeredBy 'TimerTrigger'
-                        anyOf { branch 'master'; branch 'next' }
-                    }
-                    allOf {
-                        buildingTag()
-                        not { triggeredBy 'TimerTrigger' }
-                    }
+                allOf {
+                    buildingTag()
+                    not { triggeredBy 'TimerTrigger' }
                 }
             }
             parallel {
