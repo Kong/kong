@@ -38,7 +38,14 @@ pipeline {
             steps {
                 sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                 sh 'make setup-kong-build-tools'
-                sh 'KONG_VERSION=`git rev-parse --short HEAD` PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=latest make release'
+                sh 'KONG_VERSION=`git rev-parse --short HEAD` RELEASE_DOCKER_ONLY=true PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=latest make release'
+            }
+            post {
+                always {
+                    sh 'docker images'
+                    sh 'docker push mashape/kong-build-tools:kong-packaged-alpine-latest-e1fe0b710-`git rev-parse --short HEAD`-`git rev-parse --short HEAD`-21'
+                    sh 'docker push mashape/kong-build-tools:kong-alpine-latest-e1fe0b710-`git rev-parse --short HEAD`-`git rev-parse --short HEAD`-21'
+                }
             }
         }
     }
