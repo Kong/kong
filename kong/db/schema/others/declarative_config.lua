@@ -193,7 +193,7 @@ end
 
 local function build_fields(entities, include_foreign)
   local fields = {
-    { _format_version = { type = "string", required = true, one_of = {"1.1", "1.2"} } },
+    { _format_version = { type = "string", required = true, one_of = {"1.1", "2.1"} } },
     { _transform = { type = "boolean", default = true } },
   }
   add_extra_attributes(fields, {

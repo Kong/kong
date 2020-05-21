@@ -605,7 +605,7 @@ describe("Admin API #off", function()
         local json = cjson.decode(body)
         local config = assert(lyaml.load(json.config))
         assert.same({
-          _format_version = "1.2",
+          _format_version = "2.1",
           _transform = false,
           consumers = {
             { id = "d885e256-1abe-5e24-80b6-8f68fe59ea8e",

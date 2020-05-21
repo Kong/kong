@@ -25,7 +25,7 @@ describe("declarative config: validate", function()
   end)
 
   describe("_format_version", function()
-    it("requires version 1.1 or 1.2", function()
+    it("requires version 1.1 or 2.1", function()
 
       local ok, err = DeclarativeConfig:validate(lyaml.load([[
         _format_version: 1.1
@@ -40,7 +40,7 @@ describe("declarative config: validate", function()
       ]]))
       assert.falsy(ok)
       assert.same({
-        ["_format_version"] = "expected one of: 1.1, 1.2"
+        ["_format_version"] = "expected one of: 1.1, 2.1"
       }, err)
 
       assert(DeclarativeConfig:validate(lyaml.load([[
@@ -48,7 +48,7 @@ describe("declarative config: validate", function()
       ]])))
 
       assert(DeclarativeConfig:validate(lyaml.load([[
-        _format_version: "1.2"
+        _format_version: "2.1"
       ]])))
     end)
   end)
