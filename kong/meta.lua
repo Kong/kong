@@ -7,7 +7,8 @@ local version = setmetatable({
   -- our Makefile during certain releases adjusts this line. Any changes to
   -- the format need to be reflected in both places
   __tostring = function(t)
-return "2f3e118"
+    return string.format("%d.%d.%d%s", t.major, t.minor, t.patch,
+                         t.suffix or "")
   end
 })
 
