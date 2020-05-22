@@ -50,6 +50,7 @@ dependencies = {
   "kong-plugin-aws-lambda ~> 3.4",
   "kong-plugin-acme ~> 0.2",
   "kong-plugin-grpc-web ~> 0.1",
+  "kong-plugin-grpc-gateway ~> 0.1",
 }
 build = {
   type = "builtin",
