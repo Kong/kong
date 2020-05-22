@@ -53,10 +53,10 @@ ifneq ($(TAG),)
 	endif
 else
     ISTAG = false
-    BRANCH = $(shell git branch -r --contains `git rev-parse HEAD` | sed 's/origin\///g')
+    BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD)
 	REPOSITORY_NAME = kong-${BRANCH}
 	REPOSITORY_OS_NAME = ${BRANCH}
-	KONG_PACKAGE_NAME = kong-${BRANCH}
+	KONG_PACKAGE_NAME ?= kong-${BRANCH}
 	KONG_VERSION ?= `date +%Y-%m-%d`
 endif
 
