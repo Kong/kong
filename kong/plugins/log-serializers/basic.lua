@@ -2,6 +2,8 @@ local tablex = require "pl.tablex"
 local ngx_ssl = require "ngx.ssl"
 local gkong = kong
 
+
+
 local _M = {}
 
 local EMPTY = tablex.readonly({})
@@ -10,6 +12,7 @@ function _M.serialize(ngx, kong)
   local ctx = ngx.ctx
   local var = ngx.var
   local req = ngx.req
+  local basic_serializer_overrides = ctx.basic_serializer_overrides
 
   if not kong then
     kong = gkong
@@ -29,7 +32,10 @@ function _M.serialize(ngx, kong)
     request_tls = {
       version = request_tls_ver,
       cipher = var.ssl_cipher,
-      client_verify = var.ssl_client_verify,
+      client_verify =
+        (basic_serializer_overrides and
+         basic_serializer_overrides["request.tls.client_verify"]) or
+        var.ssl_client_verify,
     }
   end
 

@@ -13,6 +13,10 @@
 local errlog = require "ngx.errlog"
 local ngx_re = require "ngx.re"
 local inspect = require "inspect"
+local new_tab = require("table.new")
+local phase_checker = require("kong.pdk.private.phases")
+
+
 
 
 local sub = string.sub
@@ -24,11 +28,28 @@ local getinfo = debug.getinfo
 local reverse = string.reverse
 local tostring = tostring
 local setmetatable = setmetatable
+local ngx = ngx
+local check_phase = phase_checker.check
 
 
 local _PREFIX = "[kong] "
 local _DEFAULT_FORMAT = "%file_src:%line_src %message"
 local _DEFAULT_NAMESPACED_FORMAT = "%file_src:%line_src [%namespace] %message"
+local OVERRIDE_ALLOWED_FIELDS = {
+  ["request.tls.client_verify"] = function(v)
+    if v == "SUCCESS" or v == "NONE" or v:sub(1, 7) == "FAILED:" then
+      return true
+    end
+
+    return nil, "only \"SUCCESS\", \"FAILED:reason\", and \"NONE\" are accepted"
+  end,
+}
+local PHASES = phase_checker.phases
+local REWRITE_AND_LATER = phase_checker.new(PHASES.rewrite,
+                                            PHASES.access,
+                                            PHASES.header_filter,
+                                            PHASES.body_filter,
+                                            PHASES.log)
 
 
 local _LEVELS = {
@@ -501,6 +522,46 @@ local function new_log(namespace, format)
     end
   end
 
+
+  ---
+  -- Override log fields for Kong's basic log serializer, which is used by
+  -- logging plugins such as `file-log`, `http-log`, `udp-log` and `tcp-log`.
+  --
+  -- Supported field:
+  -- * `request.tls.client_verify` - only "SUCCESS", "FAILED:*reason*"
+  --   and "NONE" are supported
+  --
+  -- @function kong.log.override_log_serializer_field
+  -- @phases rewrite, access, header_filter, body_filter, log
+  -- @usage
+  -- kong.log.override_log_serializer_field("basic", "request.tls.client_verify", "FAILED:unknown CA")
+  function self.override_log_serializer_field(typ, field, value)
+    check_phase(REWRITE_AND_LATER)
+
+    assert(typ == "basic", "unsupported log serializer type, " ..
+           "only \"basic\" is supported")
+
+    local validator = OVERRIDE_ALLOWED_FIELDS[field]
+    if not validator then
+      error("can not override \"" .. field .. "\", supported fields are: \"" ..
+            concat(OVERRIDE_ALLOWED_FIELDS, ", ") .. "\"")
+    end
+
+    assert(value, "overriding value can not be nil")
+
+    local suc, err = validator(value)
+    if not suc then
+      error("bad field value: " .. err)
+    end
+
+    local basic_serializer_overrides = ngx.ctx.basic_serializer_overrides
+    if not basic_serializer_overrides then
+      basic_serializer_overrides = new_tab(0, 1)
+      ngx.ctx.basic_serializer_overrides = basic_serializer_overrides
+    end
+
+    basic_serializer_overrides[field] = value
+  end
 
   self.set_format(format)
 

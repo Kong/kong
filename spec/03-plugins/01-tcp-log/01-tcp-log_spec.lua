@@ -30,6 +30,18 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      bp.plugins:insert {
+        name    = "post-function",
+        route   = { id = route.id },
+        config  = { functions = { [[
+          local header = kong.request.get_header("x-ssl-client-verify")
+          if header then
+            kong.log.override_log_serializer_field("basic", "request.tls.client_verify", "SUCCESS")
+          end
+        ]]
+        }, },
+      }
+
       local route2 = bp.routes:insert {
         hosts = { "tcp_logging_tls.com" },
       }
@@ -313,6 +325,33 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("TLSv1.2", log_message.request.tls.version)
       assert.is_string(log_message.request.tls.cipher)
       assert.equal("NONE", log_message.request.tls.client_verify)
+    end)
+
+    it("TLS client_verify can be overwritten", function()
+      local thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
+
+      -- Making the request
+      local r = assert(proxy_ssl_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          host  = "tcp_logging.com",
+          ["x-ssl-client-verify"] = "SUCCESS",
+        },
+      })
+
+      assert.response(r).has.status(200)
+
+      -- Getting back the TCP server input
+      local ok, res = thread:join()
+      assert.True(ok)
+      assert.is_string(res)
+
+      -- Making sure it's alright
+      local log_message = cjson.decode(res)
+      assert.equal("TLSv1.2", log_message.request.tls.version)
+      assert.is_string(log_message.request.tls.cipher)
+      assert.equal("SUCCESS", log_message.request.tls.client_verify)
     end)
 
     it("logs TLS info (#grpcs)", function()
