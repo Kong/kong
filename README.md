@@ -45,7 +45,7 @@ $ # add an http route
 $ curl -XPOST localhost:8001/services/grpc/routes \
   --data protocols=http \
   --data name=web-service \
-  --data paths=/
+  --data paths[]=/
 
 $ # add the plugin to the route
 $ curl -XPOST localhost:8001/routes/web-service/plugins \
@@ -53,7 +53,7 @@ $ curl -XPOST localhost:8001/routes/web-service/plugins \
 ```
 
 The proto file must contain the
-[HTTP REST to gRPC mapping rule](https://github.com/googleapis/googleapis/blob/fc37c47e70b83c1cc5cc1616c9a307c4303fe789/google/api/http.proto)
+[HTTP REST to gRPC mapping rule](https://github.com/googleapis/googleapis/blob/fc37c47e70b83c1cc5cc1616c9a307c4303fe789/google/api/http.proto).
 
 In the example we use the following mapping (note the `option (google.api.http) = {}` section):
 
@@ -87,7 +87,7 @@ message HelloReply {
 }
 ```
 
-In this example, we can send following requests to Kong that translates to corredsponding gRPC requests:
+In this example, we can send following requests to Kong that translates to corresponding gRPC requests:
 
 ```shell
 # grpc-go/examples/features/reflection/server $ go run main.go &
