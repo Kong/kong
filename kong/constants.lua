@@ -34,6 +34,8 @@ local plugins = {
   "proxy-cache",
   "session",
   "acme",
+  "grpc-web",
+  "grpc-gateway",
 }
 
 local plugin_map = {}
