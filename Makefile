@@ -37,33 +37,28 @@ REPOSITORY_NAME ?= kong-${PACKAGE_TYPE}
 REPOSITORY_OS_NAME ?= ${RESTY_IMAGE_BASE}
 KONG_PACKAGE_NAME ?= kong
 
-BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+TAG := $(shell git describe --exact-match HEAD || true)
 
-ifeq ($(BRANCH),HEAD)
+ifneq ($(TAG),)
 	# We're building a tag
 	ISTAG = true
-	BRANCH = $(shell git describe --tags --abbrev=0)
 	POSSIBLE_PRERELEASE_NAME = $(shell git describe --tags --abbrev=0 | awk -F"-" '{print $$2}')
 	ifneq ($(POSSIBLE_PRERELEASE_NAME),)
 		# We're building a pre-release tag
-		KONG_VERSION ?= ${BRANCH}
+		KONG_VERSION ?= ${TAG}
 		REPOSITORY_NAME = kong-prerelease
 	else
 	   # We're building a semver release tag
 		KONG_VERSION ?= `cat $(KONG_SOURCE_LOCATION)/kong-*.rockspec | grep -m1 tag | awk '{print $$3}' | sed 's/"//g'`
 	endif
 else
-	# We're releasing a branch. Presumably a daily build
     ISTAG = false
+    BRANCH = $(shell git branch -r --contains `git rev-parse HEAD` | sed 's/origin\///g')
 	REPOSITORY_NAME = kong-${BRANCH}
 	REPOSITORY_OS_NAME = ${BRANCH}
 	KONG_PACKAGE_NAME = kong-${BRANCH}
 	KONG_VERSION ?= `date +%Y-%m-%d`
 endif
-
-debug:
-	@echo ${ISTAG}
-	@echo ${KONG_VERSION}
 
 release:
 ifeq ($(ISTAG),false)
