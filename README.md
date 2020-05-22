@@ -70,7 +70,7 @@ config.api_uri      |            |  `"https://acme-v02.api.letsencrypt.org"`   |
 config.cert_type    |            |  `"rsa"`   | The certificate type to create, choice of `"rsa"` for RSA certificate or `"ecc"` for EC certificate.
 config.domains      |            | `[]`       | The list of domains to create certificate for. To match subdomains under `example.com`, use `*.example.com`. Regex pattern is not supported. Note this config is only used to match domains, not to specify the Common Name or Subject Alternative Name to create certifcates; each domain will have its own certificate.
 config.renew_threshold_days|     |  `14`      | Days before expire to renew the certificate.
-config.storage      |            |  `"shm"`   | The backend storage type to use, choice of `"kong"`, `"shm"`, `"redis"`, `"consul"` or `"vault"`. In dbless mode, `"kong"` storage is unavailable.
+config.storage      |            |  `"shm"`   | The backend storage type to use, choice of `"kong"`, `"shm"`, `"redis"`, `"consul"` or `"vault"`. In dbless mode, `"kong"` storage is unavailable. Note `"shm"` storage does not persist during Kong restarts and does not work for Kong running on different machines, consider using one of `"kong"`, `"redis"`, `"consul"` or `"vault"` in production.
 config.storage_config|           | (See below)| Storage configs for each backend storage.
 config.tos_accepted |            | `false`    | If you are using Let's Encrypt, you must set this to true to agree the [Terms of Service](https://letsencrypt.org/repository/).
 
@@ -101,9 +101,6 @@ config.tos_accepted |            | `false`    | If you are using Let's Encrypt, 
         },
     }
 ```
-
-If you are using a cluster of Kong (multiple Kong instances running on different machines),
-consider using one of `"kong"`, `"redis"`, `"consul"` or `"vault"` to support inter-cluster communication.
 
 To configure storage type other than `kong`, please refer to [lua-resty-acme](https://github.com/fffonion/lua-resty-acme#storage-adapters).
 
