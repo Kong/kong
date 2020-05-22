@@ -42,6 +42,41 @@ wWaPbub8SN2jKnT0g6ZWuca4VwEo1fRaBkzSZDqXwhkBDWP8UBqLXMXWHdZaT8NK
 -----END CERTIFICATE-----
 ]]
 
+local mtls_fixtures = { http_mock = {
+  mtls_server_block = [[
+    server {
+        server_name mtls_test_client;
+        listen 10121;
+
+        location = /example_client {
+            proxy_ssl_certificate ../spec-ee/03-plugins/20-mtls-auth/fixtures/client_example.com.crt;
+            proxy_ssl_certificate_key ../spec-ee/03-plugins/20-mtls-auth/fixtures/client_example.com.key;
+            proxy_ssl_name example.com;
+            proxy_set_header Host example.com;
+
+            proxy_pass https://127.0.0.1:9443/get;
+        }
+
+        location = /bad_client {
+            proxy_ssl_certificate ../spec-ee/03-plugins/20-mtls-auth/fixtures/bad_client.crt;
+            proxy_ssl_certificate_key ../spec-ee/03-plugins/20-mtls-auth/fixtures/bad_client.key;
+            proxy_ssl_name example.com;
+            proxy_set_header Host example.com;
+
+            proxy_pass https://127.0.0.1:9443/get;
+        }
+
+        location = /no_san_client {
+            proxy_ssl_certificate ../spec-ee/03-plugins/20-mtls-auth/fixtures/no_san.crt;
+            proxy_ssl_certificate_key ../spec-ee/03-plugins/20-mtls-auth/fixtures/no_san.key;
+            proxy_ssl_name example.com;
+            proxy_set_header Host example.com;
+
+            proxy_pass https://127.0.0.1:9443/get;
+        }
+    }
+  ]], }
+}
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: mtls-auth (access) [#" .. strategy .. "]", function()
@@ -107,8 +142,8 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database   = strategy,
         plugins = "bundled,mtls-auth",
-        nginx_conf = "spec-ee/03-plugins/20-mtls-auth/fixtures/custom_nginx.template",
-      }))
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }, nil, nil, mtls_fixtures))
 
       proxy_client = helpers.proxy_client()
       proxy_ssl_client = helpers.proxy_ssl_client()
@@ -531,8 +566,8 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database   = strategy,
         plugins = "bundled,mtls-auth",
-        nginx_conf = "spec-ee/03-plugins/20-mtls-auth/fixtures/custom_nginx.template",
-      }))
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }, nil, nil, mtls_fixtures))
 
       proxy_client = helpers.proxy_client()
       proxy_ssl_client_foo = helpers.proxy_ssl_client(nil, "foo.com")
