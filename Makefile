@@ -61,6 +61,10 @@ else
 	KONG_VERSION ?= `date +%Y-%m-%d`
 endif
 
+debug:
+	@echo ${ISTAG}
+	@echo ${KONG_VERSION}
+
 release:
 ifeq ($(ISTAG),false)
 	sed -i -e '/return string\.format/,/\"\")/c\return "$(KONG_VERSION)\"' kong/meta.lua
