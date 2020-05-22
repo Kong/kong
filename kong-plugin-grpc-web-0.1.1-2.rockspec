@@ -1,6 +1,6 @@
 package = "kong-plugin-grpc-web"
 
-version = "0.1.1-1"
+version = "0.1.1-2"
 
 supported_platforms = {"linux", "macosx"}
 
@@ -18,7 +18,7 @@ description = {
 
 dependencies = {
   "lua >= 5.1",
-  "lua-protobuf == 0.3.1-0",
+  "lua-protobuf ~> 0.3",
   "lua_pack == 1.0.5",
 }
 
