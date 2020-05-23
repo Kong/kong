@@ -84,6 +84,7 @@ describe("Plugins", function()
       "tcp-log",
       "loggly",
       "syslog",
+      "grpc-web",
       "request-termination",
       "correlation-id",
       "post-function",
