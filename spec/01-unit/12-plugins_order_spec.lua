@@ -64,6 +64,7 @@ describe("Plugins", function()
       "basic-auth",
       "hmac-auth",
       "acme",
+      "grpc-gateway",
       "ip-restriction",
       "request-size-limiting",
       "acl",
