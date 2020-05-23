@@ -1,3 +1,9 @@
+## 1.0.2
+
+### Changed
+
+* Vitals moved to log phase
+
 ## 1.0.1
 
 ### Changed

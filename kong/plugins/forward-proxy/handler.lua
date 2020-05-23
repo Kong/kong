@@ -24,7 +24,7 @@ local ForwardProxyHandler = BasePlugin:extend()
 
 
 ForwardProxyHandler.PRIORITY = 50
-ForwardProxyHandler.VERSION = "1.0.0"
+ForwardProxyHandler.VERSION = "1.0.2"
 
 
 function ForwardProxyHandler:new()
