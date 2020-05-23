@@ -19,8 +19,8 @@ local kong_service_request_set_raw_body = kong.service.request.set_raw_body
 
 
 local grpc_gateway = {
-  PRIORITY = 3,
-  VERSION = '0.1.0',
+  PRIORITY = 998,
+  VERSION = '0.1.1',
 }
 
 --require "lua_pack"
