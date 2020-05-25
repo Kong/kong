@@ -777,6 +777,11 @@ local function http2_client(host, port, tls)
   local port = assert(port)
   tls = tls or false
 
+  -- if Kong/lua-pack is loaded, unload it first
+  -- so lua-http can use implementation from compat53.string
+  package.loaded.string.unpack = nil
+  package.loaded.string.pack = nil
+
   local request = require "http.request"
   local req = request.new_from_uri({
     scheme = tls and "https" or "http",
