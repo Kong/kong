@@ -657,6 +657,47 @@ return {
         ]]
       },
     }, -- FIXME keep adding endpoints here
+
+    applications = {
+      description = [[ applications endpoints ]],
+    },
+    audit = {
+      description = [[ audit endpoints ]],
+    },
+
+    developers = {
+      description = [[ developers endpoints]]
+    },
+    entities = {
+      description = [[ entities endpoints]]
+    },
+    event_hooks = {
+      description = [[ event_hooks endpoints]]
+    },
+    files = {
+      description = [[ files endpoints]]
+    },
+    groups = {
+      description = [[ groups endpoints]]
+    },
+    keyring = {
+      description = [[ keyring endpoints ]]
+    },
+    license = {
+      description = [[ license endpoints ]]
+    },
+    oas_config = {
+      description = [[ oas_config endpoints ]]
+    },
+    rbac = {
+      description = [[ rbac endpoints ]]
+    },
+    vitals = {
+      description = [[ vitals endpoints ]]
+    },
+    workspaces = {
+      description = [[ workspaces endpoints ]]
+    },
   },
 
 --------------------------------------------------------------------------------
@@ -680,6 +721,10 @@ return {
         Service. See the [Proxy Reference][proxy-reference] for a detailed explanation
         of how Kong proxies traffic.
       ]],
+
+      ["/services/:services/document_objects"] = {
+        endpoint = false,
+      },
 
       ["/services/:services/client_certificate"] = {
         endpoint = false,
