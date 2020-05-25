@@ -1,12 +1,12 @@
 package = "kong-plugin-grpc-gateway"
 
-version = "0.1.1-1"
+version = "0.1.1-2"
 
 supported_platforms = {"linux", "macosx"}
 
 source = {
   url = "git+https://git@github.com/Kong/kong-plugin-grpc-gateway.git",
-  tag = "v0.1.1",
+  tag = "0.1.1",
 }
 
 description = {
