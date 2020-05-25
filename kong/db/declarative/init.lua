@@ -248,7 +248,7 @@ function declarative.load_into_db(dc_table)
 end
 
 
-function declarative.export_from_db(fd)
+local function export_from_db(emitter)
   local schemas = {}
   for _, dao in pairs(kong.db.daos) do
     table.insert(schemas, dao.schema)
@@ -258,9 +258,9 @@ function declarative.export_from_db(fd)
     return nil, err
   end
 
-  fd:write(declarative.to_yaml_string({
+  emitter:emit_toplevel({
     _format_version = "1.1",
-  }))
+  })
 
   for _, schema in ipairs(sorted_schemas) do
     if schema.db_export == false then
@@ -269,94 +269,92 @@ function declarative.export_from_db(fd)
 
     local name = schema.name
     local fks = {}
-    for name, field in schema:each_field() do
+    for field_name, field in schema:each_field() do
       if field.type == "foreign" then
-        table.insert(fks, name)
+        table.insert(fks, field_name)
       end
     end
 
-    local first_row = true
     for row, err in kong.db[name]:each(nil, { nulls = true }) do
       if err then
         return nil, err
       end
 
-      for _, fname in ipairs(fks) do
-        if type(row[fname]) == "table" then
-          local id = row[fname].id
+      for _, foreign_name in ipairs(fks) do
+        if type(row[foreign_name]) == "table" then
+          local id = row[foreign_name].id
           if id ~= nil then
-            row[fname] = id
+            row[foreign_name] = id
           end
         end
       end
 
-      local yaml = declarative.to_yaml_string({ [name] = { row } })
-      if not first_row then
-        yaml = assert(yaml:match(REMOVE_FIRST_LINE_PATTERN))
-      end
-      first_row = false
-
-      fd:write(yaml)
+      emitter:emit_entity(name, row)
     end
 
     ::continue::
   end
 
-  return true
+  return emitter:done()
+end
+
+
+local fd_emitter = {
+  emit_toplevel = function(self, tbl)
+    self.fd:write(declarative.to_yaml_string(tbl))
+  end,
+
+  emit_entity = function(self, entity_name, entity_data)
+    local yaml = declarative.to_yaml_string({ [entity_name] = { entity_data } })
+    if entity_name == self.current_entity then
+      yaml = assert(yaml:match(REMOVE_FIRST_LINE_PATTERN))
+    end
+    self.fd:write(yaml)
+    self.current_entity = entity_name
+  end,
+
+  done = function()
+    return true
+  end,
+}
+
+
+function fd_emitter.new(fd)
+  return setmetatable({ fd = fd }, { __index = fd_emitter })
+end
+
+
+function declarative.export_from_db(fd)
+  return export_from_db(fd_emitter.new(fd))
+end
+
+
+local table_emitter = {
+  emit_toplevel = function(self, tbl)
+    self.out = tbl
+  end,
+
+  emit_entity = function(self, entity_name, entity_data)
+    if not self.out[entity_name] then
+      self.out[entity_name] = { entity_data }
+    else
+      table.insert(self.out[entity_name], entity_data)
+    end
+  end,
+
+  done = function(self)
+    return self.out
+  end,
+}
+
+
+function table_emitter.new()
+  return setmetatable({}, { __index = table_emitter })
 end
 
 
 function declarative.export_config()
-  local schemas = {}
-  for _, dao in pairs(kong.db.daos) do
-    table.insert(schemas, dao.schema)
-  end
-  local sorted_schemas, err = topological_sort(schemas)
-  if not sorted_schemas then
-    return nil, err
-  end
-
-  local out = { _format_version = "1.1" }
-
-  for _, schema in ipairs(sorted_schemas) do
-    if schema.db_export == false then
-      goto continue
-    end
-
-    local name = schema.name
-    local fks = {}
-    for name, field in schema:each_field() do
-      if field.type == "foreign" then
-        table.insert(fks, name)
-      end
-    end
-
-    for row, err in kong.db[name]:each() do
-      if err then
-        return nil, err
-      end
-
-      for _, fname in ipairs(fks) do
-        if type(row[fname]) == "table" then
-          local id = row[fname].id
-          if id ~= nil then
-            row[fname] = id
-          end
-        end
-      end
-
-      if not out[name] then
-        out[name] = { row }
-
-      else
-        table.insert(out[name], row)
-      end
-    end
-
-    ::continue::
-  end
-
-  return out
+  return export_from_db(table_emitter.new())
 end
 
 
