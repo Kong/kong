@@ -238,15 +238,19 @@ do
 
     ["kong.nginx.get_tls1_version_str"] = ngx_ssl.get_tls1_version_str,
 
-    ["kong.nginx.get_ctx"] = function(v)
-      return ngx.ctx[v]
+    ["kong.nginx.get_ctx"] = function(k)
+      return ngx.ctx[k]
     end,
 
-    ["kong.get_ctx_shared"] = function(k)
+    ["kong.nginx.set_ctx"] = function(k, v)
+      ngx.ctx[k] = v
+    end,
+
+    ["kong.ctx.shared.get"] = function(k)
       return kong.ctx.shared[k]
     end,
 
-    ["kong.set_ctx_shared"] = function(k, v)
+    ["kong.ctx.shared.set"] = function(k, v)
       kong.ctx.shared[k] = v
     end,
 
