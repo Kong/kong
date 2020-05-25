@@ -1,4 +1,5 @@
 local cjson    = require "cjson"
+local lyaml    = require "lyaml"
 local utils    = require "kong.tools.utils"
 local pl_utils = require "pl.utils"
 local helpers  = require "spec.helpers"
@@ -604,12 +605,15 @@ describe("Admin API #off", function()
 
         local body = assert.response(res).has.status(200)
         local json = cjson.decode(body)
-        local expected_config = "_format_version: '1.1'\n" ..
-          "consumers:\n" ..
-          "- created_at: 1566863706\n" ..
-          "  username: bobo\n" ..
-          "  id: d885e256-1abe-5e24-80b6-8f68fe59ea8e\n"
-        assert.same(expected_config, json.config)
+        local yaml_config = lyaml.load(json.config)
+        local expected_config = lyaml.load [[
+_format_version: "1.1"
+consumers:
+- created_at: 1566863706
+  username: bobo
+  id: d885e256-1abe-5e24-80b6-8f68fe59ea8e
+]]
+        assert.same(expected_config, yaml_config)
       end)
     end)
 
