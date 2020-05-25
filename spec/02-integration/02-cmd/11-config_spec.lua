@@ -14,6 +14,18 @@ local function sort_by_name(a, b)
   return a.name < b.name
 end
 
+
+local function convert_yaml_nulls(tbl)
+  for k,v in pairs(tbl) do
+    if v == lyaml.null then
+      tbl[k] = ngx.null
+    elseif type(v) == "table" then
+      convert_yaml_nulls(v)
+    end
+  end
+end
+
+
 describe("kong config", function()
   local bp, db
 
@@ -385,24 +397,24 @@ describe("kong config", function()
     -- starting kong just so the prefix is properly initialized
     assert(helpers.start_kong())
 
-    local service1 = bp.services:insert({ name = "service1" })
-    local route1 = bp.routes:insert({ service = service1, methods = { "POST" }, name = "a" })
+    local service1 = bp.services:insert({ name = "service1" }, { nulls = true })
+    local route1 = bp.routes:insert({ service = service1, methods = { "POST" }, name = "a" }, { nulls = true })
     local plugin1 = bp.hmac_auth_plugins:insert({
       service = service1,
-    })
+    }, { nulls = true })
     local plugin2 = bp.key_auth_plugins:insert({
       service = service1,
-    })
+    }, { nulls = true })
 
-    local service2 = bp.services:insert({ name = "service2" })
-    local route2 = bp.routes:insert({ service = service2, methods = { "GET" }, name = "b" })
+    local service2 = bp.services:insert({ name = "service2" }, { nulls = true })
+    local route2 = bp.routes:insert({ service = service2, methods = { "GET" }, name = "b" }, { nulls = true })
     local plugin3 = bp.tcp_log_plugins:insert({
       service = service2,
-    })
-    local consumer = bp.consumers:insert()
-    local acls = bp.acls:insert({ consumer = consumer })
+    }, { nulls = true })
+    local consumer = bp.consumers:insert(nil, { nulls = true })
+    local acls = bp.acls:insert({ consumer = consumer }, { nulls = true })
 
-    local keyauth = bp.keyauth_credentials:insert({ consumer = consumer, key = "hello" })
+    local keyauth = bp.keyauth_credentials:insert({ consumer = consumer, key = "hello" }, { nulls = true })
 
     assert(helpers.kong_exec("config db_export " .. filename, {
       prefix = helpers.test_conf.prefix,
@@ -431,6 +443,8 @@ describe("kong config", function()
       "routes",
       "services",
     }, toplevel_keys)
+
+    convert_yaml_nulls(yaml)
 
     assert.equals("1.1", yaml._format_version)
 
