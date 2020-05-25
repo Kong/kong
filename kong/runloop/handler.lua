@@ -1247,23 +1247,7 @@ return {
 
       var.upstream_scheme = balancer_data.scheme
 
-      do
-        -- set the upstream host header if not `preserve_host`
-        local upstream_host = var.upstream_host
-
-        if not upstream_host or upstream_host == "" then
-          upstream_host = balancer_data.hostname
-
-          local upstream_scheme = var.upstream_scheme
-          if upstream_scheme == "http"  and balancer_data.port ~= 80 or
-             upstream_scheme == "https" and balancer_data.port ~= 443
-          then
-            upstream_host = upstream_host .. ":" .. balancer_data.port
-          end
-
-          var.upstream_host = upstream_host
-        end
-      end
+      balancer.set_host_header(balancer_data)
 
       -- clear hop-by-hop request headers:
       for _, header_name in csv(var.http_connection) do

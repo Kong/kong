@@ -7,6 +7,7 @@ local get_certificate = require("kong.runloop.certificate").get_certificate
 
 -- due to startup/require order, cannot use the ones from 'singletons' here
 local dns_client = require "resty.dns.client"
+local kong_balancer = require "resty.kong.balancer"
 
 local table_concat = table.concat
 local crc32 = ngx.crc32_short
@@ -1297,6 +1298,34 @@ local function get_upstream_health(upstream_id)
 end
 
 
+local function set_host_header(balancer_data)
+  -- set the upstream host header if not `preserve_host`
+  local upstream_host = var.upstream_host
+  local phase = get_phase()
+
+
+  if not upstream_host or upstream_host == "" or phase == "balancer" then
+    upstream_host = balancer_data.hostname
+
+    local upstream_scheme = var.upstream_scheme
+    if (upstream_scheme == "http"  and balancer_data.port ~= 80 or
+        upstream_scheme == "https" and balancer_data.port ~= 443) and
+        (upstream_host ~= nil and upstream_host ~= "" )
+    then
+      upstream_host = upstream_host .. ":" .. balancer_data.port
+    end
+
+    var.upstream_host = upstream_host
+
+    if phase == "balancer" then
+      kong_balancer.update_proxy_request()
+    end
+
+  end
+
+end
+
+
 --------------------------------------------------------------------------------
 -- Get healthcheck information for a balancer.
 -- @param upstream_id the id of the upstream.
@@ -1361,6 +1390,7 @@ return {
   get_upstream_health = get_upstream_health,
   get_upstream_by_id = get_upstream_by_id,
   get_balancer_health = get_balancer_health,
+  set_host_header = set_host_header,
 
   -- ones below are exported for test purposes only
   _create_balancer = create_balancer,
