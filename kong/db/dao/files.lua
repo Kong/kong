@@ -104,12 +104,12 @@ function _Files:select_all(options)
 end
 
 
-function _Files:each(options)
+function _Files:each(size, options)
   if is_legacy() then
-    return kong.db.legacy_files:each(options)
+    return kong.db.legacy_files:each(size, options)
   end
 
-  return self.super.each(self, options)
+  return self.super.each(self, size, options)
 end
 
 
