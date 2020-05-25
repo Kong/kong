@@ -23,7 +23,7 @@ for _, strategy in helpers.each_strategy() do
         name = "grpc",
         protocol = "grpc",
         host = "localhost",
-        port = 50051,
+        port = 15002,
       })
 
       local route1 = assert(bp.routes:insert {
@@ -63,7 +63,7 @@ for _, strategy in helpers.each_strategy() do
       local body = res:read_body()
       local data = cjson.decode(body)
 
-      assert.same({message = "Hello john_doe"}, data)
+      assert.same({reply = "hello john_doe"}, data)
     end)
 
     test("additional binding", function()
@@ -74,7 +74,7 @@ for _, strategy in helpers.each_strategy() do
 
       local data = cjson.decode((res:read_body()))
 
-      assert.same({message = "Hello john_doe"}, data)
+      assert.same({reply = "hello john_doe"}, data)
     end)
 
     test("unknown path", function()

@@ -54,9 +54,7 @@ install:
   - source ../kong-ci/setup_plugin_env.sh
 
 script:
-  # uploaded file is at https://github.com/Kong/kong-plugin-grpc-gateway/pull/2
-  - wget https://github.com/Kong/kong-plugin-${PLUGIN_NAME}/files/4666673/server.gz -O - | gzip -d > /tmp/server
-  - chmod +x /tmp/server && /tmp/server &
+  # grpcbin docker container is started by kong-ci/setup_plugin_env.sh
   - cp ../kong-plugin-${PLUGIN_NAME}/spec/fixtures/grpc/* ../kong-ci/kong/spec/fixtures/grpc
   - eval $LUACHECK_CMD
   - eval $BUSTED_CMD
