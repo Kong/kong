@@ -8,7 +8,6 @@ local tablex = require "pl.tablex"
 
 local deepcopy = tablex.deepcopy
 local null = ngx.null
-local null_yaml = lyaml.null
 local SHADOW = true
 local md5 = ngx.md5
 local ngx_socket_tcp = ngx.socket.tcp
@@ -79,14 +78,16 @@ function Config:parse_file(filename, accept, old_hash)
 end
 
 
-local function convert_nulls(tbl)
+local function convert_yaml_nulls(tbl)
   for k,v in pairs(tbl) do
-    if v == null_yaml then
+    if v == lyaml.null then
       tbl[k] = null
+
     elseif type(v) == "table" then
-      tbl[k] = convert_nulls(v)
+      tbl[k] = convert_yaml_nulls(v)
     end
   end
+
   return tbl
 end
 
@@ -111,6 +112,9 @@ function Config:parse_string(contents, filename, accept, old_hash)
     if not pok then
       err = dc_table
       dc_table = nil
+
+    elseif type(dc_table) == "table" then
+      convert_yaml_nulls(dc_table)
     end
 
   elseif accept.json and filename:match("json$") then
@@ -152,8 +156,6 @@ function Config:parse_string(contents, filename, accept, old_hash)
         (err and ": " .. err or "")
     return nil, err, { error = err }
   end
-
-  convert_nulls(dc_table)
 
   return self:parse_table(dc_table, new_hash)
 end
