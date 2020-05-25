@@ -346,6 +346,27 @@ describe("Admin API #off", function()
         assert.response(res).has.status(201)
       end)
 
+      it("accepts configuration containing null as a YAML string", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            _format_version: "1.1"
+            routes:
+            - paths:
+              - "/"
+              service: null
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        assert.response(res).has.status(201)
+      end)
+
       it("can reload upstreams (regression test)", function()
         local config = [[
           _format_version: "1.1"
