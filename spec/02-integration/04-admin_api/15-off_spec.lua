@@ -7,7 +7,7 @@ local mocker   = require("spec.fixtures.mocker")
 
 
 local WORKER_SYNC_TIMEOUT = 10
-local MEM_CACHE_SIZE = "5m"
+local MEM_CACHE_SIZE = "15m"
 
 
 local function it_content_types(title, fn)
