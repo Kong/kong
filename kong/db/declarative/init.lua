@@ -8,6 +8,7 @@ local tablex = require "pl.tablex"
 
 local deepcopy = tablex.deepcopy
 local null = ngx.null
+local null_yaml = lyaml.null
 local SHADOW = true
 local md5 = ngx.md5
 local ngx_socket_tcp = ngx.socket.tcp
@@ -78,6 +79,18 @@ function Config:parse_file(filename, accept, old_hash)
 end
 
 
+local function convert_nulls(tbl)
+  for k,v in pairs(tbl) do
+    if v == null_yaml then
+      tbl[k] = null
+    elseif type(v) == "table" then
+      tbl[k] = convert_nulls(v)
+    end
+  end
+  return tbl
+end
+
+
 function Config:parse_string(contents, filename, accept, old_hash)
   -- we don't care about the strength of the hash
   -- because declarative config is only loaded by Kong administrators,
@@ -139,6 +152,8 @@ function Config:parse_string(contents, filename, accept, old_hash)
         (err and ": " .. err or "")
     return nil, err, { error = err }
   end
+
+  convert_nulls(dc_table)
 
   return self:parse_table(dc_table, new_hash)
 end
