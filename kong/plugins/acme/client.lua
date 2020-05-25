@@ -157,7 +157,6 @@ local function store_renew_config(conf, host)
   -- Note: we don't distinguish api uri because host is unique in Kong SNIs
   err = st:set(RENEW_KEY_PREFIX .. host, cjson.encode({
     host = host,
-    conf = conf,
     expire_at = ngx.time() + 86400 * 90,
   }))
   return err
@@ -254,6 +253,8 @@ local function renew_certificate_storage(conf)
   end
 
   for _, renew_conf_key in ipairs(renew_conf_keys) do
+    local host, sni_entity, key
+    local clean_renew_conf = false
     local renew_conf, err = st:get(renew_conf_key)
     if err then
       kong.log.err("can't read renew conf: ", err)
@@ -261,25 +262,53 @@ local function renew_certificate_storage(conf)
     end
     renew_conf = cjson.decode(renew_conf)
 
-    local host = renew_conf.host
+    host = renew_conf.host
     if renew_conf.expire_at - 86400 * conf.renew_threshold_days > ngx.time() then
       kong.log.info("certificate for host ", host, " is not due for renewal")
       goto renew_continue
     end
 
-    local sni_entity, err = kong.db.snis:select_by_name(host)
+    -- for dbless mode, skip looking up cert key from kong
+    -- instead, load it from storage and verify if it's been deleted outside of kong
+    if dbless then
+      local certkey, err = st:get(CERTKEY_KEY_PREFIX .. host)
+      -- generally, we want to skip the current renewal if we can't verify if
+      -- the cert not needed anymore. and delete the renew conf if we do see the
+      -- cert is deleted
+      if err then
+        kong.log.err("can't read certificate of host:", host, " from storage:", err)
+        goto renew_continue
+      elseif not certkey then
+        kong.log.warn("certificate for host ", host, " is deleted from storage, deleting renew config")
+        clean_renew_conf = true
+        goto renew_continue
+      end
+      certkey = cjson.decode(certkey)
+      key = certkey and certkey.key
+
+      goto renew_dbless
+    end
+
+    sni_entity, err = kong.db.snis:select_by_name(host)
     if err then
       kong.log.err("can't read SNI entity of host:", host, " : ", err)
       goto renew_continue
     elseif not sni_entity then
-      kong.log.err("SNI ", host, " is deleted from Kong, aborting")
+      kong.log.warn("SNI ", host, " is deleted from Kong, deleting renew config")
+      clean_renew_conf = true
       goto renew_continue
     end
-    local key
-    if sni_entity.certificate then
+
+    if sni_entity and sni_entity.certificate then
       local cert_entity, err = kong.db.certificates:select({ id = sni_entity.certificate.id })
       if err then
-        kong.log.info("can't read certificate ", sni_entity.certificate.id, " from db")
+        kong.log.info("can't read certificate ", sni_entity.certificate.id, " from db",
+                      ", deleting renew config")
+        goto renew_continue
+      elseif not cert_entity then
+        kong.log.warn("certificate for SNI ", host, " is deleted from Kong, deleting renew config")
+        clean_renew_conf = true
+        goto renew_continue
       end
       local crt, err = x509.new(cert_entity.cert)
       if err then
@@ -297,13 +326,22 @@ local function renew_certificate_storage(conf)
       kong.log.info("previous key is not defined, creating new key")
     end
 
+::renew_dbless::
+
     kong.log.info("renew certificate for host ", host)
     err = update_certificate(conf, host, key)
     if err then
       kong.log.err("failed to renew certificate: ", err)
       return
     end
+
 ::renew_continue::
+    if clean_renew_conf then
+      err = st:delete(renew_conf_key)
+      if err then
+        kong.log.warn("error deleting unneeded renew config key \"", renew_conf_key, "\"")
+      end
+    end
   end
 
 end
@@ -374,4 +412,6 @@ return {
   _save = save,
   _order = order,
   _account_name = account_name,
+  _renew_key_prefix = RENEW_KEY_PREFIX,
+  _renew_certificate_storage = renew_certificate_storage,
 }

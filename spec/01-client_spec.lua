@@ -1,6 +1,7 @@
 local util = require("resty.acme.util")
 
 local helpers = require "spec.helpers"
+local cjson = require "cjson"
 
 local pkey = require("resty.openssl.pkey")
 local x509 = require("resty.openssl.x509")
@@ -22,17 +23,18 @@ for _, strategy in helpers.each_strategy() do
 end
 table.insert(strategies, "off")
 
+local proper_config = {
+  account_email = "someone@somedomain.com",
+  api_uri = "http://api.acme.org",
+  storage = "shm",
+  storage_config = {
+    shm = { shm_name = "kong" },
+  },
+  renew_threshold_days = 30,
+}
+
 for _, strategy in ipairs(strategies) do
   local _, db
-
-  local proper_config = {
-    account_email = "someone@somedomain.com",
-    api_uri = "http://api.acme.org",
-    storage = "shm",
-    storage_config = {
-      shm = { shm_name = "kong" },
-    }
-  }
 
   lazy_setup(function()
     _, db = helpers.get_db_utils(strategy, {
@@ -164,6 +166,59 @@ for _, strategy in helpers.each_strategy() do
         new_cert, err = db.certificates:select({ id = cert.id })
         assert.is_nil(err)
         assert.is_nil(new_cert)
+      end)
+    end)
+  end)
+end
+
+for _, strategy in ipairs(strategies) do
+  describe("Plugin: acme (client.renew) [#" .. strategy .. "]", function()
+    local bp
+    local cert
+    local host = "test1.com"
+
+    lazy_setup(function()
+      bp, _ = helpers.get_db_utils(strategy, {
+        "certificates",
+        "snis",
+      }, { "acme", })
+
+      local key, crt = new_cert_key_pair()
+      cert = bp.certificates:insert {
+        cert = crt,
+        key = key,
+        tags = { "managed-by-acme" },
+      }
+
+      bp.snis:insert {
+        name = host,
+        certificate = cert,
+        tags = { "managed-by-acme" },
+      }
+      client = require("kong.plugins.acme.client")
+
+    end)
+
+    describe("storage", function()
+      it("deletes renew config is cert is deleted", function()
+        local c, err = client.new(proper_config)
+        assert.is_nil(err)
+
+        local host = "dne.konghq.com"
+        -- write a dummy renew config
+        err = c.storage:set(client._renew_key_prefix .. host, cjson.encode({
+          host = host,
+          -- make it due for renewal
+          expire_at = ngx.time() - 23333,
+        }))
+        assert.is_nil(err)
+        -- do the renewal
+        err = client._renew_certificate_storage(proper_config)
+        assert.is_nil(err)
+        -- the dummy config should now be deleted
+        local v, err = c.storage:get(client._renew_key_prefix .. host)
+        assert.is_nil(err)
+        assert.is_nil(v)
       end)
     end)
 
