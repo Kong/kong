@@ -86,6 +86,7 @@ for _, strategy in helpers.each_strategy() do
       enabled = true,
       name = "acl",
       config = {
+        blacklist = ngx.null,
         whitelist = { "*" },
         hide_groups_header = false,
       }
@@ -163,7 +164,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equals("andru", consumer_def.username)
         assert.equals("donalds", consumer_def.custom_id)
 
-        local plugin = assert(db.plugins:select({ id = plugin_def.id }))
+        local plugin = assert(db.plugins:select({ id = plugin_def.id }, { nulls = true }))
         assert.equals(plugin_def.id, plugin.id)
         assert.equals(service.id, plugin.service.id)
         assert.equals("acl", plugin.name)
@@ -254,6 +255,11 @@ for _, strategy in helpers.each_strategy() do
         assert.equals(plugin_def.id, plugin.id)
         assert.equals(service.id, plugin.service)
         assert.equals("acl", plugin.name)
+
+        -- lyaml.load above returns null as its own format
+        assert(plugin.config.blacklist == lyaml.null)
+        plugin.config.blacklist = ngx.null
+
         assert.same(plugin_def.config, plugin.config)
 
         --[[ FIXME this case is known to cause an issue
