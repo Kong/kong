@@ -72,7 +72,13 @@ describe("kong config", function()
           config:
             port: 10000
             host: 127.0.0.1
-
+      plugins:
+      - name: correlation-id
+        id: 467f719f-a544-4a8f-bc4b-7cd12913a9d4
+        config:
+          header_name: null
+          generator: "uuid"
+          echo_downstream: false
     ]])
 
     finally(function()
@@ -113,6 +119,26 @@ describe("kong config", function()
     local body = assert.res_status(200, res)
     local json = cjson.decode(body)
     assert.equals(2, #json.data)
+
+    local res = client:get("/plugins/467f719f-a544-4a8f-bc4b-7cd12913a9d4")
+    local body = assert.res_status(200, res)
+    local json = cjson.decode(body)
+    json.created_at = nil
+    json.protocols = nil
+    assert.same({
+      name = "correlation-id",
+      id = "467f719f-a544-4a8f-bc4b-7cd12913a9d4",
+      route = ngx.null,
+      service = ngx.null,
+      consumer = ngx.null,
+      enabled = true,
+      config = {
+        header_name = ngx.null,
+        generator = "uuid",
+        echo_downstream = false,
+      },
+      tags = ngx.null,
+    }, json)
 
     assert(helpers.stop_kong())
   end)

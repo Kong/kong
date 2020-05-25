@@ -78,13 +78,13 @@ function Config:parse_file(filename, accept, old_hash)
 end
 
 
-local function convert_yaml_nulls(tbl)
+local function convert_nulls(tbl, from, to)
   for k,v in pairs(tbl) do
-    if v == lyaml.null then
-      tbl[k] = null
+    if v == from then
+      tbl[k] = to
 
     elseif type(v) == "table" then
-      tbl[k] = convert_yaml_nulls(v)
+      tbl[k] = convert_nulls(v, from, to)
     end
   end
 
@@ -114,7 +114,7 @@ function Config:parse_string(contents, filename, accept, old_hash)
       dc_table = nil
 
     elseif type(dc_table) == "table" then
-      convert_yaml_nulls(dc_table)
+      convert_nulls(dc_table, lyaml.null, null)
     end
 
   elseif accept.json and filename:match("json$") then
@@ -180,7 +180,8 @@ end
 
 
 function declarative.to_yaml_string(entities)
-  local pok, yaml, err = pcall(lyaml.dump, {entities})
+  convert_nulls(entities, null, lyaml.null)
+  local pok, yaml, err = pcall(lyaml.dump, { entities })
   if not pok then
     return nil, yaml
   end
@@ -275,7 +276,11 @@ function declarative.export_from_db(fd)
     end
 
     local first_row = true
-    for row, err in kong.db[name]:each() do
+    for row, err in kong.db[name]:each(nil, { nulls = true }) do
+      if err then
+        return nil, err
+      end
+
       for _, fname in ipairs(fks) do
         if type(row[fname]) == "table" then
           local id = row[fname].id
@@ -327,6 +332,10 @@ function declarative.export_config()
     end
 
     for row, err in kong.db[name]:each() do
+      if err then
+        return nil, err
+      end
+
       for _, fname in ipairs(fks) do
         if type(row[fname]) == "table" then
           local id = row[fname].id
