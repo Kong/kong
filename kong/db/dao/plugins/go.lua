@@ -242,6 +242,14 @@ do
       return ngx.ctx[v]
     end,
 
+    ["kong.get_ctx_shared"] = function(k)
+      return kong.ctx.shared[k]
+    end,
+
+    ["kong.set_ctx_shared"] = function(k, v)
+      kong.ctx.shared[k] = v
+    end,
+
     ["kong.nginx.req_start_time"] = ngx.req.start_time,
 
     ["kong.request.get_query"] = function(max)
@@ -377,7 +385,7 @@ do
 
     if instance_info
       and instance_info.id
-      and instance_info.seq == instance_info.conf.__seq__
+      and instance_info.seq == conf.__seq__
     then
       -- exact match, return it
       return instance_info.id
@@ -409,6 +417,8 @@ do
     end
 
     instance_info.id = status.Id
+    instance_info.conf = conf
+    instance_info.seq = conf.__seq__
     instance_info.Config = status.Config
 
     if old_instance_id then

@@ -8,7 +8,6 @@ local Errors = require "kong.db.errors"
 local singletons = require "kong.singletons"
 local hooks = require "kong.hooks"
 
-
 local ngx      = ngx
 local sub      = string.sub
 local find     = string.find

@@ -3,6 +3,11 @@ local ngx_ssl = require "ngx.ssl"
 local pl_utils = require "pl.utils"
 local mlcache = require "resty.mlcache"
 
+if jit.arch == 'arm64' then
+  jit.off(mlcache.get_bulk)        -- "temporary" workaround for issue #5748 on ARM
+end
+
+
 
 local ngx_log     = ngx.log
 local ERR         = ngx.ERR
@@ -19,6 +24,7 @@ local set_priv_key = ngx_ssl.set_priv_key
 
 local default_cert_and_key
 
+local DEFAULT_SNI = "*"
 
 local function log(lvl, ...)
   ngx_log(lvl, "[ssl] ", ...)
@@ -156,7 +162,7 @@ local function find_certificate(sni)
 
   local sni_wild_pref, sni_wild_suf = produce_wild_snis(sni)
 
-  local bulk = mlcache.new_bulk(3)
+  local bulk = mlcache.new_bulk(4)
 
   bulk:add("snis:" .. sni, nil, fetch_sni, sni)
 
@@ -167,6 +173,8 @@ local function find_certificate(sni)
   if sni_wild_suf then
     bulk:add("snis:" .. sni_wild_suf, nil, fetch_sni, sni_wild_suf)
   end
+
+  bulk:add("snis:" .. DEFAULT_SNI, nil, fetch_sni, DEFAULT_SNI)
 
   local res, err = kong.core_cache:get_bulk(bulk)
   if err then
@@ -186,14 +194,12 @@ local function find_certificate(sni)
 end
 
 
-local function execute(ctx)
+local function execute()
   local sn, err = server_name()
   if err then
     log(ERR, "could not retrieve SNI: ", err)
     return ngx.exit(ngx.ERROR)
   end
-
-  ctx.sni_server_name = sn
 
   local cert_and_key, err = find_certificate(sn)
   if err then

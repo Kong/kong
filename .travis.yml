@@ -1,9 +1,6 @@
 dist: xenial
 
-language: generic
-
-jdk:
-  - oraclejdk8
+language: go
 
 go:
   - "1.13.x"
@@ -24,6 +21,7 @@ addons:
       - net-tools
       - libpcre3-dev
       - libpasswdqc-dev
+      - valgrind
       - build-essential
   hosts:
     - grpcs_1.test
@@ -34,7 +32,9 @@ env:
     - INSTALL_CACHE=$HOME/install-cache
     - DOWNLOAD_ROOT=$HOME/download-root
     - KONG_TEST_PG_DATABASE=travis
-    - KONG_TEST_PG_USER=postgres
+    - KONG_TEST_PG_USER=travis
+    - KONG_TEST_PG_RO_USER=travis_ro
+    - KONG_TEST_PG_HOST=localhost
     - JOBS=2
     - DOCKER_MACHINE_ARM64_NAME=travis-ci-kong-${TRAVIS_JOB_ID}
     # Related to packaging and master build
@@ -87,10 +87,10 @@ jobs:
   include:
     - stage: lint and unit
       script:
-      - luacheck -q .
+      - make lint
       # - scripts/autodoc-admin-api
-      - bin/busted -v -o gtest spec/01-unit
-      - bin/busted -v -o gtest spec-ee/01-unit
+      - bin/busted -v -o htest spec/01-unit
+      - bin/busted -v -o htest spec-ee/01-unit
       env:
         - KONG_DATABASE=none
     # package as a test step, to see if this commit breaks our packaging

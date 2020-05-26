@@ -162,6 +162,17 @@ qq{
                 body_filter   = "forced false",
                 log           = "forced false",
                 admin_api     = "forced false",
+            }, {
+                method        = "error",
+                args          = { 500 },
+                init_worker   = false,
+                certificate   = "pending",
+                rewrite       = true,
+                access        = true,
+                header_filter = "pending",
+                body_filter   = false,
+                log           = false,
+                admin_api     = true,
             }
         }
 

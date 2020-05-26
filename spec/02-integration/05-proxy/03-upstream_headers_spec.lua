@@ -281,6 +281,25 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
+      describe("X-Forwarded-Prefix", function()
+        it("should be added if not present in request", function()
+          local headers = request_headers {
+            ["Host"] = "headers-inspect.com",
+          }
+
+          assert.equal("/", headers["x-forwarded-prefix"])
+        end)
+
+        it("should be replaced if present in request", function()
+          local headers = request_headers {
+            ["Host"]               = "headers-inspect.com",
+            ["X-Forwarded-Prefix"] = "/replaced",
+          }
+
+          assert.equal("/", headers["x-forwarded-prefix"])
+        end)
+      end)
+
       describe("with the downstream host preserved", function()
         it("should be added if not present in request while preserving the downstream host", function()
           local headers = request_headers {
@@ -293,6 +312,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("http", headers["x-forwarded-proto"])
           assert.equal("preserved.com", headers["x-forwarded-host"])
           assert.equal(helpers.get_proxy_port(false), tonumber(headers["x-forwarded-port"]))
+          assert.equal("/", headers["x-forwarded-prefix"])
         end)
 
         it("should be added if present in request while preserving the downstream host", function()
@@ -311,6 +331,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("http", headers["x-forwarded-proto"])
           assert.equal("preserved.com", headers["x-forwarded-host"])
           assert.equal(helpers.get_proxy_port(false), tonumber(headers["x-forwarded-port"]))
+          assert.equal("/", headers["x-forwarded-prefix"])
         end)
       end)
 
@@ -328,6 +349,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("http", headers["x-forwarded-proto"])
           assert.equal("headers-inspect.com", headers["x-forwarded-host"])
           assert.equal(helpers.get_proxy_port(false), tonumber(headers["x-forwarded-port"]))
+          assert.equal("/", headers["x-forwarded-prefix"])
         end)
 
         it("if present in request while discarding the downstream host", function()
@@ -348,6 +370,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("http", headers["x-forwarded-proto"])
           assert.equal("headers-inspect.com", headers["x-forwarded-host"])
           assert.equal(helpers.get_proxy_port(false), tonumber(headers["x-forwarded-port"]))
+          assert.equal("/", headers["x-forwarded-prefix"])
         end)
       end)
 
@@ -458,7 +481,25 @@ for _, strategy in helpers.each_strategy() do
 
           assert.equal("80", headers["x-forwarded-port"])
         end)
+      end)
 
+      describe("X-Forwarded-Prefix", function()
+        it("should be added if not present in request", function()
+          local headers = request_headers {
+            ["Host"] = "headers-inspect.com",
+          }
+
+          assert.equal("/", headers["x-forwarded-prefix"])
+        end)
+
+        it("should be forwarded if present in request", function()
+          local headers = request_headers {
+            ["Host"]             = "headers-inspect.com",
+            ["X-Forwarded-Prefix"] = "/original-path",
+          }
+
+          assert.equal("/original-path", headers["x-forwarded-prefix"])
+        end)
       end)
 
     end)
@@ -567,6 +608,25 @@ for _, strategy in helpers.each_strategy() do
           }
 
           assert.equal(helpers.get_proxy_port(false), tonumber(headers["x-forwarded-port"]))
+        end)
+      end)
+
+      describe("X-Forwarded-Prefix", function()
+        it("should be added if not present in request", function()
+          local headers = request_headers {
+            ["Host"] = "headers-inspect.com",
+          }
+
+          assert.equal("/", headers["x-forwarded-prefix"])
+        end)
+
+        it("should be replaced if present in request", function()
+          local headers = request_headers {
+            ["Host"]             = "headers-inspect.com",
+            ["X-Forwarded-Prefix"] = "/untrusted",
+          }
+
+          assert.equal("/", headers["x-forwarded-prefix"])
         end)
       end)
     end)

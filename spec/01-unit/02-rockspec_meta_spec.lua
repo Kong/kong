@@ -68,19 +68,6 @@ describe("rockspec/meta", function()
   end)
 
   describe("modules", function()
-    it("are all included in rockspec", function()
-      for _, src in ipairs(lua_srcs) do
-        local rel_src = src:sub(3) -- strip './'
-        local found
-        for mod_name, mod_path in pairs(rock.build.modules) do
-          if mod_path == rel_src then
-            found = true
-            break
-          end
-        end
-        assert(found, "could not find module entry for Lua file: " .. src)
-      end
-    end)
 
     it("all modules named as their path", function()
       for mod_name, mod_path in pairs(rock.build.modules) do

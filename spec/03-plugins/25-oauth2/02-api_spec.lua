@@ -1,6 +1,7 @@
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 local admin_api = require "spec.fixtures.admin_api"
+local secret = require "kong.plugins.oauth2.secret"
 
 
 for _, strategy in helpers.each_strategy() do
@@ -147,6 +148,79 @@ for _, strategy in helpers.each_strategy() do
             }
           })
           assert.res_status(201, res)
+        end)
+        it("creates oauth2 credential with a hashed auto-generated client_secret", function()
+          -- this is quite useless as nobody knows the client_secret
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/consumers/bob/oauth2",
+            body    = {
+              name          = "Test APP",
+              redirect_uris = { "http://google.com/" },
+              hash_secret = true,
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = cjson.decode(assert.res_status(201, res))
+          assert.equal(true, body.hash_secret)
+          assert.equal(false, secret.needs_rehash(body.client_secret))
+        end)
+        it("creates oauth2 credential with a hashed client_secret", function()
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/consumers/bob/oauth2",
+            body    = {
+              name          = "Test APP",
+              redirect_uris = { "http://google.com/" },
+              client_secret = "test",
+              hash_secret   = true,
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = cjson.decode(assert.res_status(201, res))
+          assert.equal(true, body.hash_secret)
+          assert.equal(false, secret.needs_rehash(body.client_secret))
+          assert.equal(true, secret.verify("test", body.client_secret))
+          assert.equal(false, secret.verify("invalid", body.client_secret))
+        end)
+        it("creates oauth2 credential without hashing the auto-generated client_secret", function()
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/consumers/bob/oauth2",
+            body    = {
+              name          = "Test APP",
+              redirect_uris = { "http://google.com/" },
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = cjson.decode(assert.res_status(201, res))
+          assert.equal(false, body.hash_secret)
+          assert.equal(true, secret.needs_rehash(body.client_secret))
+        end)
+        it("creates oauth2 credential without hashing the client_secret", function()
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/consumers/bob/oauth2",
+            body    = {
+              name          = "Test APP",
+              redirect_uris = { "http://google.com/" },
+              client_secret = "test",
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = cjson.decode(assert.res_status(201, res))
+          assert.equal(false, body.hash_secret)
+          assert.equal(true, secret.needs_rehash(body.client_secret))
+          assert.equal(false, secret.verify("test", body.client_secret))
+          assert.equal(false, secret.verify("invalid", body.client_secret))
         end)
         describe("errors", function()
           it("returns bad request", function()
@@ -444,6 +518,44 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
             assert.same({ redirect_uris = { "cannot parse 'not-valid'" } }, json.fields)
+          end)
+          it("updating client_secret requires hash_secret", function()
+            local res = assert(admin_client:send {
+              method  = "PATCH",
+              path    = "/consumers/bob/oauth2/" .. credential.id,
+              body    = {
+                client_secret = "test",
+              },
+              headers = {
+                ["Content-Type"] = "application/json"
+              }
+            })
+            local body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({
+              ["@entity"] = {
+                  "all or none of these fields must be set: 'hash_secret', 'client_secret'"
+                }
+              }, json.fields)
+          end)
+          it("updating hash_secret requires client_secret", function()
+            local res = assert(admin_client:send {
+              method  = "PATCH",
+              path    = "/consumers/bob/oauth2/" .. credential.id,
+              body    = {
+                hash_secret = true,
+              },
+              headers = {
+                ["Content-Type"] = "application/json"
+              }
+            })
+            local body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({
+              ["@entity"] = {
+                  "all or none of these fields must be set: 'hash_secret', 'client_secret'"
+                }
+              }, json.fields)
           end)
         end)
       end)

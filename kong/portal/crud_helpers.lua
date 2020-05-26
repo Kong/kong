@@ -250,6 +250,8 @@ function _M.update_credential(self, db, helpers, opts)
     return kong.response.exit(404, { message = "Not found" })
   end
 
+  self.params.consumer = self.consumer
+
   credential, _, err_t = self.credential_collection:update({ id = cred_id }, self.params)
   if not credential then
     return endpoints.handle_error(err_t)

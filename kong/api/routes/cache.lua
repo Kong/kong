@@ -31,6 +31,7 @@ return {
 
     DELETE = function(self)
       kong.cache:invalidate_local(self.params.key)
+      kong.core_cache:invalidate_local(self.params.key)
 
       return kong.response.exit(204) -- no content
     end,

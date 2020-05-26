@@ -69,12 +69,6 @@ local function load_plugin_from_db(key)
     return nil, tostring(err)
   end
 
-  if type(row) == 'table' then
-    row.__key__ = key
-    row.__seq__ = next_seq
-    next_seq = next_seq + 1
-  end
-
   return row
 end
 
@@ -231,6 +225,12 @@ local function load_configuration(ctx,
   end
 
   local cfg = plugin.config or {}
+
+  if not cfg.__key__ then
+    cfg.__key__ = key
+    cfg.__seq__ = next_seq
+    next_seq = next_seq + 1
+  end
 
   cfg.route_id    = plugin.route and plugin.route.id
   cfg.service_id  = plugin.service and plugin.service.id

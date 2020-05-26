@@ -180,6 +180,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(consumer_def.id, json.headers["x-consumer-id"])
           assert.equal(consumer_def.username, json.headers["x-consumer-username"])
           assert.equal(consumer_def.custom_id, json.headers["x-consumer-custom-id"])
+          assert.equal(basicauth_credential_def.username, json.headers["x-credential-identifier"])
           assert.equal(basicauth_credential_def.username, json.headers["x-credential-username"])
         end)
       end)

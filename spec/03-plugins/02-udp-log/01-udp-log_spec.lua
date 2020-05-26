@@ -121,9 +121,7 @@ for _, strategy in helpers.each_strategy() do
       assert.True(is_latencies_sum_adding_up)
     end)
 
-    -- XXX EE: this test fails randomly, both locally and on travis
-    -- but managed to get a couple of successes
-    it("#flaky logs proper latencies (#grpc)", function()
+    it("logs proper latencies (#grpc) #flaky", function()
       local udp_thread = helpers.udp_server(UDP_PORT)
 
       -- Making the request
@@ -159,9 +157,7 @@ for _, strategy in helpers.each_strategy() do
       assert.True(is_latencies_sum_adding_up)
     end)
 
-    -- XXX EE: this test fails randomly, both locally and on travis
-    -- but managed to get a couple of successes
-    it("#flaky logs proper latencies (#grpcs)", function()
+    it("logs proper latencies (#grpcs) #flaky", function()
       local udp_thread = helpers.udp_server(UDP_PORT)
 
       -- Making the request

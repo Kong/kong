@@ -168,7 +168,7 @@ local function overwrites()
 
       if trace_data then
         local args = select(1, ...)
-        if args then
+        if type(args) == "table" then
           t:add_data("args", setmetatable(args, __data_mt))
         end
       end

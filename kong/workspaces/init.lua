@@ -651,8 +651,8 @@ end
 function _M.resolve_ws_scope(ctx, route)
 
   local ws_scope_key = format("apis_ws_resolution:%s", route.id)
-  local workspaces, err = singletons.cache:get(ws_scope_key, nil,
-                                               load_workspace_scope, ctx, route)
+  local workspaces, err = kong.core_cache:get(ws_scope_key, nil,
+                                              load_workspace_scope, ctx, route)
   if err then
     return nil, err
   end

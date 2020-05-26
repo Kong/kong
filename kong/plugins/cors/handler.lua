@@ -52,10 +52,21 @@ local function normalize_origin(domain)
   }
 end
 
+local function add_vary_header(header_filter)
+  if header_filter then
+    kong.response.add_header("vary", "Origin")
+  else
+    kong.response.set_header("vary", "Origin")
+  end
+end
 
-local function configure_origin(conf)
+local function configure_origin(conf, header_filter)
   local n_origins = conf.origins ~= nil and #conf.origins or 0
   local set_header = kong.response.set_header
+
+  -- always set Vary header (it can be used for calculating cache key)
+  -- https://github.com/rs/cors/issues/10
+  add_vary_header(header_filter)
 
   if n_origins == 0 then
     set_header("Access-Control-Allow-Origin", "*")
@@ -68,7 +79,6 @@ local function configure_origin(conf)
       return true
     end
 
-    set_header("Vary", "Origin")
 
     -- if this doesnt look like a regex, set the ACAO header directly
     -- otherwise, we'll fall through to an iterative search and
@@ -147,17 +157,17 @@ local function configure_origin(conf)
 
       if found then
         set_header("Access-Control-Allow-Origin", normalized_req_origin.domain)
-        set_header("Vary", "Origin")
         return false
       end
     end
   end
 
+  kong.response.clear_header("Access-Control-Allow-Origin")
   return false
 end
 
 
-local function configure_credentials(conf, allow_all)
+local function configure_credentials(conf, allow_all, header_filter)
   local set_header = kong.response.set_header
 
   if not conf.credentials then
@@ -175,7 +185,6 @@ local function configure_credentials(conf, allow_all)
   if req_origin then
     set_header("Access-Control-Allow-Origin", req_origin)
     set_header("Access-Control-Allow-Credentials", true)
-    set_header("Vary", "Origin")
   end
 end
 
@@ -197,8 +206,8 @@ function CorsHandler:access(conf)
     return
   end
 
-  local allow_all = configure_origin(conf)
-  configure_credentials(conf, allow_all)
+  local allow_all = configure_origin(conf, false)
+  configure_credentials(conf, allow_all, false)
 
   local set_header = kong.response.set_header
 
@@ -232,8 +241,8 @@ function CorsHandler:header_filter(conf)
     return
   end
 
-  local allow_all = configure_origin(conf)
-  configure_credentials(conf, allow_all)
+  local allow_all = configure_origin(conf, true)
+  configure_credentials(conf, allow_all, true)
 
   if conf.exposed_headers and #conf.exposed_headers > 0 then
     kong.response.set_header("Access-Control-Expose-Headers",

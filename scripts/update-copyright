@@ -1,0 +1,479 @@
+#!/usr/bin/env resty
+
+--[[
+Usage: ./scripts/update-copyright
+
+The COPYRIGHT file should be updated after running this. Changes are not added to git, visual
+review is recommended.
+
+Assumes the following command-line utilities are available:
+
+* mkdir
+* find
+* curl
+* luarocks
+
+This command creates a temporary "work" folder where it does a lot of temporary work,
+including installing rocks inside said folder.
+
+Requires internet connection in order to download luarocks and license files.
+]]
+
+setmetatable(_G, nil)
+
+local url = require "socket.url"
+
+local fmt = string.format
+
+local OPENSSL_DIR = os.getenv("OPENSSL_DIR")
+assert(OPENSSL_DIR, "please set the OPENSSL_DIR env variable (needed for installing luaOSSL)")
+
+local CRYPTO_DIR = os.getenv("CRYPTO_DIR")
+assert(CRYPTO_DIR, "please set the CRYPTO_DIR env variable (needed for installing luaOSSL)")
+
+local work_folder = os.tmpname() .. "-update-copyright"
+
+local MIT_LICENSE = [[
+%s
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+]]
+
+-- The script will attempt downloading a more recent version of the license file for these projects
+local HARDCODED_DEPENDENCIES = {
+  ["OpenResty"] = {
+    url = "https://openresty.org",
+    repo_url = "https://github.com/openresty/openresty",
+  },
+  ["LuaRocks"] = {
+    url = "https://luarocks.org",
+    repo_url = "https://github.com/luarocks/luarocks",
+  },
+  ["luaossl"] = { -- the rockspec information is not up to date
+    url = "http://25thandclement.com/~william/projects/luaossl.html",
+    repo_url = "https://github.com/wahern/luaossl",
+  },
+  -- go-pdk dependencies:
+  ["go-codec"] = {
+    url = "https://github.com/ugorji/go",
+  },
+  ["testify"] = {
+    url = "https://github.com/stretchr/testify",
+  },
+  ["go-difflib"] = {
+    url = "https://github.com/pmezard/go-difflib",
+  },
+  ["go-spew"] = {
+    url = "https://github.com/davecgh/go-spew",
+  },
+}
+
+-- rocks whose license text cannot be easily found
+-- i.e. they don't have a github repo, or don't have a LICENSE file in the repo root,
+-- or don't have a README markdown file from which to parse the license
+local HARDCODED_ROCK_LICENSES = {
+  ["LPeg"] = {
+    url = "http://www.inf.puc-rio.br/~roberto/lpeg/lpeg.html#license",
+    text = MIT_LICENSE:format("Copyright © 2007-2019 Lua.org, PUC-Rio."),
+  },
+  ["lrandom"] = {
+    url = "http://webserver2.tecgraf.puc-rio.br/~lhf/ftp/lua/install.html#license",
+    text = MIT_LICENSE:format("Copyright (C) 2018 Luiz Henrique de Figueiredo"),
+  },
+  ["lua-MessagePack"] = {
+    url = "https://fperrad.frama.io/lua-MessagePack/#copyright-and-license",
+    text = MIT_LICENSE:format("Copyright © 2012-2019 François Perrad"),
+  },
+  ["LuaSocket"] = {
+    url = "https://github.com/diegonehab/luasocket/blob/master/LICENSE",
+    text = MIT_LICENSE:format("Copyright © 2004-2013 Diego Nehab"),
+  },
+  ["luasyslog"] = {
+    url = "https://web.archive.org/web/20101223090603/http://lua.net-core.org/sputnik.lua?p=Telesto:About",
+    text = MIT_LICENSE:format("Copyright © 2007-2007 netcore.org, DarkGod"),
+  },
+  ["mimetypes"] = {
+    url = "https://bitbucket.org/leafstorm/lua-mimetypes/src/default/LICENSE",
+    text = MIT_LICENSE:format('Copyright (c) 2011 Matthew "LeafStorm" Frazier') ..
+    [[
+======
+
+In addition, the MIME types contained in the Software were
+originally obtained from the Python 2.7.1 ``mimetypes.py`` module,
+though they have been considerably modified and augmented.
+Said file was made available under the Python Software Foundation
+license (http://python.org/psf/license/).
+    ]]
+    ,
+  },
+}
+
+-- Try these to get the license file from a github repo:
+local LICENSE_ATTEMPTS = {
+  "LICENSE",
+  "LICENSE.txt",
+  "LICENSE.md",
+  "MIT-LICENSE.txt",
+  "COPYRIGHT",
+  "COPYING",
+}
+
+-- Try to get the readme from a github repo using:
+local README_ATTEMPTS = {
+  "README.md",
+  "README.markdown",
+}
+
+-- Try to find the license text inside a readme markdown using these header lines:
+local README_LICENSE_HEADERS = {
+  "license",
+  "copyright and license",
+  "license %(mit%)",
+}
+
+
+local function write_dot()
+  local out = io.output()
+  out:write(".")
+  out:flush()
+end
+
+
+-- "a string. With stuff!" -> "a-string-with-stuff"
+local function to_anchor(str)
+  return str:lower():gsub("%W+", "-"):gsub("^%-", ""):gsub("%-$", "")
+end
+
+
+-- returns nil for non-github urls. Returns a "cleaned up" url for github urls
+local function get_github_repo_url(repo_url)
+  local parsed_url = assert(url.parse(repo_url))
+
+  if parsed_url.host ~= "github.com" then
+    return nil
+  end
+  parsed_url.scheme = "https"
+
+  local without_dotgit = parsed_url.path:match("(.*).git$")
+  if without_dotgit then
+    parsed_url.path = without_dotgit
+  end
+
+  local without_archive_tgz = parsed_url.path:match("(.*)/archive/.*.tar.gz$")
+  if without_archive_tgz then
+    parsed_url.path = without_archive_tgz
+  end
+
+  local without_wiki = parsed_url.path:match("(.*)/wiki$")
+  if without_wiki then
+    parsed_url.path = without_wiki
+  end
+
+  return url.build(parsed_url)
+end
+
+
+-- returns the homepage, or the github repo url if none provided in the rock
+local function get_rock_homepage(rock)
+  if rock.description and rock.description.homepage then
+    return rock.description.homepage
+  end
+
+  if rock.source and rock.source.url then
+    local gh_url = get_github_repo_url(rock.source.url)
+    if gh_url then
+      return gh_url
+    end
+  end
+
+  error("could not find the homepage for " .. rock.package)
+end
+
+
+-- Downloads a file using curl. Returns the contents of the file if found, nil otherwise
+local function download_file(file_url)
+  local filepath = work_folder .. "/download.tmp"
+  assert(os.execute("rm -rf " .. filepath))
+  if os.execute(fmt("curl --fail --silent %s > %s", file_url, filepath)) then
+    local f = io.open(filepath, "r")
+    local text = f:read("*a")
+    f:close()
+    return text
+  end
+end
+
+
+-- Finds the start of a license section inside a markdown file.
+--
+-- If the line is the start of a license section, it is returned,
+-- plus an offset (more about this in a second).
+--
+-- If the line is not the start of a license section, nil is returned.
+--
+-- The offset is 1 for a 1-liner header or 2 for a 2-liner header.
+--
+-- ## This is a 1-liner header
+--
+-- This is a 2-liner header (it is followed by a line of - or =)
+-- ==============================================================
+local function detect_markdown_license_start(line, next_line)
+  local low_line = line:lower()
+  for _, header in ipairs(README_LICENSE_HEADERS) do
+    if low_line:match("^#+ " .. header .. "$") then
+      return line, 1
+    end
+
+    if low_line == header
+    and next_line
+    and (next_line:match("^=+$") or next_line:match("^%-+$"))
+    then
+      return line, 2
+    end
+  end
+end
+
+
+-- returns truthy if the passed line looks like the end of a license section in a markdown file
+-- * A new markdown header is found (with 1-line or 2-line headers)
+-- * The string [Back to TOC](#table-of-contents) is found
+-- * Non-inline links are found (these can be put at the end of the file, after the license)
+local function is_markdown_license_end(line, next_line)
+  return line:match("^#+ .+$") -- markdown 1-line header found
+      or line == "[Back to TOC](#table-of-contents)"
+      or line:match("^ *%[.+%]: .+$") -- non-inline links
+      or next_line
+        and (next_line:match("^=+$") or next_line:match("^%-+$")) -- markdown 2-liner header
+end
+
+-- Given some markdown text, find the markdown section where the license is, and return:
+-- On the first returned value, the header of the license section
+-- On the second returned value, the text of the license section
+-- Or nil if no license is found
+local function extract_license_from_markdown(markdown)
+  local lines = {}
+  for line in markdown:gmatch("([^\r\n]*)[\r\n]?") do
+    lines[#lines + 1] = line
+  end
+
+  local license_lines = {}
+  local license_header, offset
+
+  local i = 1
+  while i < #lines do
+    local line, next_line = lines[i], lines[i + 1]
+    if license_header then
+      -- We are reading the license.
+
+      if is_markdown_license_end(line, next_line) then
+        -- check if we have reached an end
+        return license_header, table.concat(license_lines, "\n")
+      end
+
+      -- if no end reached, attach current line
+      license_lines[#license_lines + 1] = line
+    else
+      license_header, offset = detect_markdown_license_start(line, next_line)
+      if license_header then
+        i = i + offset
+      end
+    end
+
+    i = i + 1
+  end
+
+  -- we are reading the license and reached the end of the file. concat and send
+  if license_header then
+    return license_header, table.concat(license_lines, "\n")
+  end
+end
+
+
+local function find_and_download_license(main_url, alt_url)
+  local gh_url = get_github_repo_url(main_url)
+  if not gh_url and alt_url then
+    gh_url = get_github_repo_url(alt_url)
+  end
+
+  if not gh_url then
+    error(fmt("Could not find github repo for: %s / %s", main_url, alt_url))
+  end
+
+  local parsed_url = url.parse(gh_url)
+  local user, reponame = parsed_url.path:match("^/(.*)/(.*)")
+  if user then
+    parsed_url.scheme = "https"
+    parsed_url.host = "raw.githubusercontent.com"
+    for _, attempt in ipairs(LICENSE_ATTEMPTS) do
+      parsed_url.path = fmt("/%s/%s/master/%s", user, reponame, attempt)
+
+      local attempt_url = url.build(parsed_url)
+      local text = download_file(attempt_url)
+      if text then
+        parsed_url.host = "github.com"
+        parsed_url.path = fmt("/%s/%s/blob/master/%s", user, reponame, attempt)
+        local url_for_humans = url.build(parsed_url)
+        return url_for_humans, text
+      end
+    end
+
+    for _, readme_attempt in ipairs(README_ATTEMPTS) do
+      parsed_url.path = fmt("/%s/%s/master/%s", user, reponame, readme_attempt)
+      local readme_url = url.build(parsed_url)
+      local readme_markdown = download_file(readme_url)
+      if readme_markdown then
+        local header, text = extract_license_from_markdown(readme_markdown)
+        if header then
+          parsed_url.host = "github.com"
+          parsed_url.path = fmt("/%s/%s", user, reponame)
+          parsed_url.fragment = to_anchor(header)
+          local url_for_humans = url.build(parsed_url)
+          return url_for_humans, text
+        end
+      end
+    end
+  end
+
+  error("Could not find license file for " .. gh_url)
+end
+
+
+-----
+
+assert(os.execute(fmt("mkdir -p %s", work_folder)))
+print("Work folder is " .. work_folder)
+
+print("Finding and downloading license texts from non-rock dependencies")
+local licenses = {}
+
+for name, dep in pairs(HARDCODED_DEPENDENCIES) do
+  local license_url, license_text = find_and_download_license(dep.url, dep.repo_url)
+  licenses[#licenses + 1] = {
+    library = name,
+    library_url = dep.url,
+    url = license_url,
+    text = license_text,
+  }
+  write_dot()
+end
+print("")
+
+print(fmt("Installing rocks in work folder. (Install log: %s/luarocks.log) ...", work_folder))
+
+assert(os.execute(fmt("cp kong*.rockspec %s", work_folder)))
+assert(os.execute(fmt("luarocks --lua-version=5.1 --tree %s make %s/kong*.rockspec OPENSSL_DIR=%s CRYPTO_DIR=%s 2>&1 > %s/luarocks.log",
+                      work_folder, work_folder, OPENSSL_DIR, CRYPTO_DIR, work_folder)))
+
+local rocklist_path = fmt("%s/rocklist.txt", work_folder)
+assert(os.execute(fmt("find %s/lib | grep rockspec > %s", work_folder, rocklist_path)))
+
+print("Parsing rockfiles ...")
+
+local rocklist = io.open(rocklist_path, "r")
+local rocks = {}
+for rockpath in rocklist:lines() do
+  local rockfile = io.open(rockpath, "r")
+  local rocktext = rockfile:read("*a")
+  rockfile:close()
+
+  -- parse the text of the rockspec and fill up the `rock` variable
+  local rock = {}
+  local rockchunk = assert(loadstring(rocktext))
+  setfenv(rockchunk, rock)
+  assert(pcall(rockchunk))
+  if rock.package ~= "kong" then -- skip kong itself
+    rocks[#rocks + 1] = rock
+  end
+end
+rocklist:close()
+
+-- sort alphabetically by package
+table.sort(rocks, function(a, b) return a.package:lower() < b.package:lower() end)
+
+
+print("Searching and downloading license texts from rock repos")
+for _, rock in ipairs(rocks) do
+  -- if it was in HARDCODED_DEPENDENCIES, it is already in licenses at this point
+  if not HARDCODED_DEPENDENCIES[rock.package] then
+    local homepage = get_rock_homepage(rock)
+    local license_url, license_text
+    local hardcoded = HARDCODED_ROCK_LICENSES[rock.package]
+    if hardcoded then
+      license_url, license_text = hardcoded.url, hardcoded.text
+    else
+      local source_url = rock.source and rock.source.url or nil
+      license_url, license_text = find_and_download_license(homepage, source_url)
+    end
+
+    licenses[#licenses + 1] = {
+      library = rock.package,
+      library_url = homepage,
+      url = license_url,
+      text = license_text,
+    }
+  end
+
+  write_dot()
+end
+print("")
+
+
+print("Writing licenses into COPYRIGHT file")
+
+-- sort alphabetically by library name
+table.sort(licenses, function(a, b) return a.library:lower() < b.library:lower() end)
+
+local cf = io.open("COPYRIGHT", "w")
+
+cf:write[[
+%%%%%%%%%
+
+Library
+
+Library URL
+License URL
+
+License text
+
+
+]]
+
+local LICENSE_FORMAT = [[
+%%%%%%%%%%%%%%%%%%
+
+%s
+
+%s
+%s
+
+%s
+
+]]
+for _, license in ipairs(licenses) do
+  cf:write(fmt(LICENSE_FORMAT,
+    license.library,
+    license.library_url,
+    license.url,
+    license.text))
+end
+
+cf:close()
+
+print("Cleaning up " .. work_folder)
+assert(os.execute("rm -rf " .. work_folder))
+
+print("All done")

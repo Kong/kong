@@ -43,7 +43,6 @@ local unpack       = unpack
 local ERR   = ngx.ERR
 local WARN  = ngx.WARN
 local DEBUG = ngx.DEBUG
-local ERROR = ngx.ERROR
 local COMMA = byte(",")
 local SPACE = byte(" ")
 
@@ -93,7 +92,7 @@ do
 
       local ok, err = kong_shm:safe_set("kong:mem:" .. pid(), count)
       if not ok then
-        log(ERROR, "could not record Lua VM allocated memory: ", err)
+        log(ERR, "could not record Lua VM allocated memory: ", err)
       end
 
       last = ngx.time()
@@ -179,7 +178,6 @@ end
 local function register_events()
   -- initialize local local_events hooks
   local db             = kong.db
-  local cache          = kong.cache
   local core_cache     = kong.core_cache
   local worker_events  = kong.worker_events
   local cluster_events = kong.cluster_events
@@ -457,7 +455,7 @@ local function register_events()
     local target = data.entity
     if target.entity_type == "apis" or target.entity_type == "routes" then
       local ws_scope_key = fmt("apis_ws_resolution:%s", target.entity_id)
-      cache:invalidate(ws_scope_key)
+      core_cache:invalidate(ws_scope_key)
     end
   end, "crud", "workspace_entities")
 
@@ -614,7 +612,7 @@ do
 
 
   get_updated_plugins_iterator = function()
-    if kong.configuration.router_consistency == "strict" then
+    if kong.configuration.worker_consistency == "strict" then
       local ok, err = rebuild_plugins_iterator(PLUGINS_ITERATOR_SYNC_OPTS)
       if not ok then
         -- If an error happens while updating, log it and return non-updated
@@ -837,7 +835,7 @@ do
 
 
   get_updated_router = function()
-    if kong.configuration.router_consistency == "strict" then
+    if kong.configuration.worker_consistency == "strict" then
       local ok, err = rebuild_router(ROUTER_SYNC_OPTS)
       if not ok then
         -- If an error happens while updating, log it and return non-updated
@@ -1009,9 +1007,9 @@ return {
         balancer.init()
       end)
 
-      local router_update_frequency = kong.configuration.router_update_frequency or 1
+      local worker_state_update_frequency = kong.configuration.worker_state_update_frequency or 1
 
-      timer_every(router_update_frequency, function(premature)
+      timer_every(worker_state_update_frequency, function(premature)
         if premature then
           return
         end
@@ -1026,7 +1024,7 @@ return {
         end
       end)
 
-      timer_every(router_update_frequency, function(premature)
+      timer_every(worker_state_update_frequency, function(premature)
         if premature then
           return
         end
@@ -1076,7 +1074,7 @@ return {
     before = function(ctx)
       local router = get_updated_router()
 
-      local match_t = router.exec(ctx)
+      local match_t = router.exec()
       if not match_t then
         log(ERR, "no Route found with those values")
         return exit(500)
@@ -1101,8 +1099,8 @@ return {
     end
   },
   certificate = {
-    before = function(ctx)
-      certificate.execute(ctx)
+    before = function(_)
+      certificate.execute()
     end
   },
   rewrite = {
@@ -1144,6 +1142,7 @@ return {
       local forwarded_proto
       local forwarded_host
       local forwarded_port
+      local forwarded_prefix
 
       -- X-Forwarded-* Headers Parsing
       --
@@ -1156,14 +1155,27 @@ return {
 
       local trusted_ip = kong.ip.is_trusted(realip_remote_addr)
       if trusted_ip then
-        forwarded_proto = var.http_x_forwarded_proto or scheme
-        forwarded_host  = var.http_x_forwarded_host  or host
-        forwarded_port  = var.http_x_forwarded_port  or port
+        forwarded_proto  = var.http_x_forwarded_proto  or scheme
+        forwarded_host   = var.http_x_forwarded_host   or host
+        forwarded_port   = var.http_x_forwarded_port   or port
+        forwarded_prefix = var.http_x_forwarded_prefix
 
       else
-        forwarded_proto = scheme
-        forwarded_host  = host
-        forwarded_port  = port
+        forwarded_proto  = scheme
+        forwarded_host   = host
+        forwarded_port   = port
+      end
+
+      if not forwarded_prefix then
+        forwarded_prefix = var.request_uri
+        local p = find(forwarded_prefix, "?", 2, true)
+        if p then
+          forwarded_prefix = sub(forwarded_prefix, 1, p - 1)
+        end
+
+        if forwarded_prefix == "" then
+          forwarded_prefix = "/"
+        end
       end
 
       local protocols = route.protocols
@@ -1179,10 +1191,11 @@ return {
           })
         end
 
-        if redirect_status_code == 301 or
-          redirect_status_code == 302 or
-          redirect_status_code == 307 or
-          redirect_status_code == 308 then
+        if redirect_status_code == 301
+        or redirect_status_code == 302
+        or redirect_status_code == 307
+        or redirect_status_code == 308
+        then
           header["Location"] = "https://" .. forwarded_host .. var.request_uri
           return kong.response.exit(redirect_status_code)
         end
@@ -1249,9 +1262,10 @@ return {
         var.upstream_x_forwarded_for = var.remote_addr
       end
 
-      var.upstream_x_forwarded_proto = forwarded_proto
-      var.upstream_x_forwarded_host  = forwarded_host
-      var.upstream_x_forwarded_port  = forwarded_port
+      var.upstream_x_forwarded_proto  = forwarded_proto
+      var.upstream_x_forwarded_host   = forwarded_host
+      var.upstream_x_forwarded_port   = forwarded_port
+      var.upstream_x_forwarded_prefix = forwarded_prefix
 
       local err
       ctx.workspaces, err = workspaces.resolve_ws_scope(ctx, route.protocols and route)
@@ -1453,7 +1467,7 @@ return {
       -- If response was produced by an upstream (ie, not by a Kong plugin)
       -- Report HTTP status for health checks
       local balancer_data = ctx.balancer_data
-      if balancer_data and balancer_data.balancer and balancer_data.ip then
+      if balancer_data and balancer_data.balancer_handle then
         local status = ngx.status
         if status == 504 then
           balancer_data.balancer.report_timeout(balancer_data.balancer_handle)

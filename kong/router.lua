@@ -1151,6 +1151,9 @@ function _M.new(routes)
   -- iterations over sets of routes per request
   local categories = {}
 
+  -- all routes indexed by id
+  local routes_by_id = {}
+
 
   local cache = lrucache.new(MATCH_LRUCACHE_SIZE)
 
@@ -1162,11 +1165,11 @@ function _M.new(routes)
 
     for i = 1, #routes do
 
-      local paths = routes[i].route.paths
+      local route = utils.deep_copy(routes[i], false)
+      local paths = utils.deep_copy(route.route.paths, false)
       if paths ~= nil and #paths > 1 then
         -- split routes by paths to sort properly
         for j = 1, #paths do
-          local route = routes[i]
           local index = #marshalled_routes + 1
           local err
 
@@ -1181,12 +1184,15 @@ function _M.new(routes)
         local index = #marshalled_routes + 1
         local err
 
-        marshalled_routes[index], err = marshall_route(routes[i])
+        marshalled_routes[index], err = marshall_route(route)
         if not marshalled_routes[index] then
           return nil, err
         end
       end
 
+      if routes[i].route.id ~= nil then
+        routes_by_id[routes[i].route.id] = routes[i]
+      end
     end
 
     -- sort wildcard hosts and uri regexes since those rules
@@ -1550,6 +1556,10 @@ function _M.new(routes)
             local upstream_url_t = matched_route.upstream_url_t
             local matches        = ctx.matches
 
+            if matched_route.route.id and routes_by_id[matched_route.route.id].route then
+              matched_route.route = routes_by_id[matched_route.route.id].route
+            end
+
             -- Path construction
 
             if matched_route.type == "http" then
@@ -1739,12 +1749,15 @@ function _M.new(routes)
     end
 
   else -- stream
-    function self.exec(ctx)
+    local server_name = require("ngx.ssl").server_name
+
+    function self.exec()
       local src_ip = var.remote_addr
       local src_port = tonumber(var.remote_port, 10)
       local dst_ip = var.server_addr
       local dst_port = tonumber(var.server_port, 10)
-      local sni = ctx.sni_server_name
+      -- error value for non-TLS connections ignored intentionally
+      local sni, _ = server_name()
 
       return find_route(nil, nil, nil, nil,
                         src_ip, src_port,

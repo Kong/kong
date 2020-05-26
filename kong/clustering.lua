@@ -24,9 +24,13 @@ local ngx_time = ngx.time
 local new_tab = require("table.new")
 local ngx_var = ngx.var
 local io_open = io.open
+local table_insert = table.insert
+local table_remove = table.remove
+local inflate_gzip = utils.inflate_gzip
+local deflate_gzip = utils.deflate_gzip
 
 
-local MAX_PAYLOAD = 65536 -- 64KB
+local MAX_PAYLOAD = 4 * 1024 * 1024 -- 4MB
 local PING_INTERVAL = 30 -- 30 seconds
 local WS_OPTS = {
   max_payload_len = MAX_PAYLOAD,
@@ -40,7 +44,7 @@ local CERT, CERT_KEY
 local clients = setmetatable({}, WEAK_KEY_MT)
 local shdict = ngx.shared.kong_clustering -- only when role == "control_plane"
 local prefix = ngx.config.prefix()
-local CONFIG_CACHE = prefix .. "/config.cache.json"
+local CONFIG_CACHE = prefix .. "/config.cache.json.gz"
 local declarative_config
 
 
@@ -77,7 +81,7 @@ local function update_config(config_table, update_cache)
 
     else
       local res
-      res, err = f:write(cjson_encode(config_table))
+      res, err = f:write(assert(deflate_gzip(cjson_encode(config_table))))
       if not res then
         ngx_log(ngx_ERR, "unable to write cache file: ", err)
       end
@@ -116,12 +120,22 @@ local function communicate(premature, conf)
   local c = assert(ws_client:new(WS_OPTS))
   local uri = "wss://" .. address .. "/v1/outlet?node_id=" ..
               kong.node.get_id() .. "&node_hostname=" .. utils.get_hostname()
-  local res, err = c:connect(uri, { ssl_verify = true,
-                                    client_cert = CERT,
-                                    client_priv_key = CERT_KEY,
-                                    server_name = "kong_clustering",
-                                  }
-                            )
+
+  local opts = {
+    ssl_verify = true,
+    client_cert = CERT,
+    client_priv_key = CERT_KEY,
+  }
+  if conf.cluster_mtls == "shared" then
+    opts.server_name = "kong_clustering"
+  else
+    -- server_name will be set to the host if it is not explicitly defined here
+    if conf.cluster_server_name ~= "" then
+      opts.server_name = conf.cluster_server_name
+    end
+  end
+
+  local res, err = c:connect(uri, opts)
   if not res then
     local delay = math.random(5, 10)
 
@@ -155,6 +169,8 @@ local function communicate(premature, conf)
     end
 
     if typ == "binary" then
+      data = assert(inflate_gzip(data))
+
       local msg = assert(cjson_decode(data))
 
       if msg.type == "reconfigure" then
@@ -175,8 +191,7 @@ local function communicate(premature, conf)
 end
 
 
-function _M.handle_cp_websocket()
-  -- use mutual TLS authentication
+local function validate_shared_cert()
   local cert = ngx_var.ssl_client_raw_cert
 
   if not cert then
@@ -193,6 +208,14 @@ function _M.handle_cp_websocket()
                      "during handshake, expected digest: " .. CERT_DIGEST ..
                      " got: " .. digest)
     return ngx_exit(444)
+  end
+end
+
+
+function _M.handle_cp_websocket()
+  -- use mutual TLS authentication
+  if kong.configuration.cluster_mtls == "shared" then
+    validate_shared_cert()
   end
 
   local node_id = ngx_var.arg_node_id
@@ -213,16 +236,22 @@ function _M.handle_cp_websocket()
   local queue = { sem = sem, }
   clients[wb] = queue
 
-  local res
-  -- unconditionally send config update to new clients to
-  -- ensure they have latest version running
-  res, err = declarative.export_config()
-  if not res then
-    ngx_log(ngx_ERR, "unable to export config from database: ".. err)
-  end
+  do
+    local res
+    -- unconditionally send config update to new clients to
+    -- ensure they have latest version running
+    res, err = declarative.export_config()
+    if not res then
+      ngx_log(ngx_ERR, "unable to export config from database: ".. err)
+    end
 
-  table.insert(queue, res)
-  queue.sem:post()
+    local payload = cjson_encode({ type = "reconfigure",
+                                   config_table = res,
+                                 })
+    payload = assert(deflate_gzip(payload))
+    table_insert(queue, payload)
+    queue.sem:post()
+  end
 
   -- connection established
   -- ping thread
@@ -235,14 +264,10 @@ function _M.handle_cp_websocket()
       end
 
       assert(typ == "ping")
-      local _
-      _, err = wb:send_pong()
-      if err then
-        ngx_log(ngx_ERR, "failed to send PONG back to data plane: ", err)
-        return ngx_exit(ngx_ERR)
-      end
 
-      ngx_log(ngx_DEBUG, "sent PONG packet to control plane")
+      -- queue PONG to avoid races
+      table_insert(queue, "PONG")
+      queue.sem:post()
 
       local ok
       ok, err = shdict:safe_set(node_id,
@@ -262,17 +287,27 @@ function _M.handle_cp_websocket()
   while not exiting() do
     local ok, err = sem:wait(10)
     if ok then
-      local config = table.remove(queue, 1)
-      assert(config, "config queue can not be empty after semaphore returns")
+      local payload = table_remove(queue, 1)
+      assert(payload, "config queue can not be empty after semaphore returns")
 
-      local _, err = wb:send_binary(cjson_encode({ type = "reconfigure",
-                                                       config_table = config,
-                                                     }))
-      if err then
-        ngx_log(ngx_ERR, "unable to send updated configuration to node: ", err)
+      if payload == "PONG" then
+        local _
+        _, err = wb:send_pong()
+        if err then
+          ngx_log(ngx_ERR, "failed to send PONG back to data plane: ", err)
+          return ngx_exit(ngx_ERR)
+        end
 
-      else
-        ngx_log(ngx_DEBUG, "sent config update to node")
+        ngx_log(ngx_DEBUG, "sent PONG packet to data plane")
+
+      else -- config update
+        local _, err = wb:send_binary(payload)
+        if err then
+          ngx_log(ngx_ERR, "unable to send updated configuration to node: ", err)
+
+        else
+          ngx_log(ngx_DEBUG, "sent config update to node")
+        end
       end
 
     else -- not ok
@@ -297,10 +332,15 @@ end
 
 
 local function push_config(config_table)
+  local payload = cjson_encode({ type = "reconfigure",
+                                 config_table = config_table,
+                               })
+  payload = assert(deflate_gzip(payload))
+
   local n = 0
 
   for _, queue in pairs(clients) do
-    table.insert(queue, config_table)
+    table_insert(queue, payload)
     queue.sem:post()
 
     n = n + 1
@@ -384,14 +424,24 @@ function _M.init_worker(conf)
 
         if config then
           ngx_log(ngx_INFO, "found cached copy of data-plane config, loading..")
-          config = cjson_decode(config)
 
+          local err
+
+          config, err = inflate_gzip(config)
           if config then
-            local res
-            res, err = update_config(config, false)
-            if not res then
-              ngx_log(ngx_ERR, "unable to running config from cache: ", err)
+            config = cjson_decode(config)
+
+            if config then
+              local res
+              res, err = update_config(config, false)
+              if not res then
+                ngx_log(ngx_ERR, "unable to running config from cache: ", err)
+              end
             end
+
+          else
+            ngx_log(ngx_ERR, "unable to inflate cached config: ",
+                    err, ", ignoring...")
           end
         end
       end
@@ -405,13 +455,23 @@ function _M.init_worker(conf)
     -- ROLE = "control_plane"
 
     kong.worker_events.register(function(data)
+      -- we have to re-broadcast event using `post` because the dao
+      -- events were sent using `post_local` which means not all workers
+      -- can receive it
+      local res, err = kong.worker_events.post("clustering", "push_config")
+      if not res then
+        ngx_log(ngx_ERR, "unable to broadcast event: " .. err)
+      end
+    end, "dao:crud")
+
+    kong.worker_events.register(function(data)
       local res, err = declarative.export_config()
       if not res then
         ngx_log(ngx_ERR, "unable to export config from database: " .. err)
       end
 
       push_config(res)
-    end, "dao:crud")
+    end, "clustering", "push_config")
   end
 end
 

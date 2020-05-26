@@ -624,7 +624,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("ldap-auth-advanced - authentication groups", function()
+    describe("#ldap ldap-auth-advanced - authentication groups", function()
       local super_admin, read_only_admin, multiple_groups_admin, other_ws_admin
       local skeleton_key = "passw2rd1111A$"
       lazy_setup(function()

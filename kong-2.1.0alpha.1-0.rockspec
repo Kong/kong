@@ -1,9 +1,9 @@
 package = "kong"
-version = "2.0.0-0"
+version = "2.1.0alpha.1-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.0.0"
+  tag = "2.1.0-alpha.1"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -17,15 +17,16 @@ dependencies = {
   "penlight == 1.7.0",
   "lua-resty-http == 0.15",
   "lua-resty-jit-uuid == 0.0.7",
+  "lua-ffi-zlib == 0.5",
   "multipart == 0.5.6",
   "version == 1.0.1",
   "kong-redis-cluster == 1.1-0",
-  "kong-lapis == 1.7.0.1",
+  "kong-lapis == 1.8.1.2",
   "lua-cassandra == 1.5.0",
-  "pgmoon == 1.10.0",
+  "pgmoon == 1.11.0",
   "luatz == 0.4",
   "lua_system_constants == 0.1.4",
-  "lyaml == 6.2.4",
+  "lyaml == 6.2.5",
   "lua-resty-iputils == 0.3.0",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
@@ -36,29 +37,30 @@ dependencies = {
   "bcrypt == 2.1",
   "lpeg_patterns == 0.5",
   "http == 0.3",
-  "lua-resty-dns-client == 4.1.3",
+  "lua-resty-dns-client == 4.2.0",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-mediador == 0.1.2",
-  "lua-resty-healthcheck == 1.1.2",
+  "lua-resty-healthcheck == 1.2.0",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.1",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.5.2-1",
-  "lua-resty-counter == 0.2.0",
+  "lua-resty-openssl == 0.6.0",
+  "lua-resty-counter == 0.2.1",
   "lua-resty-template == 1.9-1",
   "lua-resty-passwdqc == 1.1-1",
   "lua-resty-ipmatcher == 0.6",
   -- external Kong plugins
   "kong-plugin-kubernetes-sidecar-injector ~> 0.2.1",
-  "kong-plugin-azure-functions ~> 0.4.2",
+  "kong-plugin-azure-functions ~> 0.4",
   "kong-plugin-serverless-functions ~> 1.0",
-  "kong-prometheus-plugin ~> 0.7.1",
+  "kong-prometheus-plugin ~> 0.8",
   "kong-plugin-session ~> 2.4",
-  "kong-proxy-cache-plugin ~> 1.3.0",
-  "kong-plugin-request-transformer ~> 1.2.4",
-  "kong-plugin-aws-lambda ~> 3.1.0",
-  "kong-plugin-zipkin ~> 0.2",
+  "kong-proxy-cache-plugin ~> 1.3",
+  "kong-plugin-request-transformer ~> 1.2",
+  "kong-plugin-aws-lambda ~> 3.4",
+  "kong-plugin-zipkin ~> 1.0",
   "kong-plugin-acme ~> 0.2",
+  "kong-plugin-grpc-web ~> 0.1",
 }
 build = {
   type = "builtin",
@@ -357,6 +359,7 @@ build = {
     ["kong.db.migrations.core.006_130_to_140"] = "kong/db/migrations/core/006_130_to_140.lua",
     ["kong.db.migrations.core.007_140_to_150"] = "kong/db/migrations/core/007_140_to_150.lua",
     ["kong.db.migrations.core.008_150_to_200"] = "kong/db/migrations/core/008_150_to_200.lua",
+    ["kong.db.migrations.core.009_200_to_210"] = "kong/db/migrations/core/009_200_to_210.lua",
 
     ["kong.pdk"] = "kong/pdk/init.lua",
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",
@@ -404,10 +407,13 @@ build = {
     ["kong.plugins.oauth2.migrations"] = "kong/plugins/oauth2/migrations/init.lua",
     ["kong.plugins.oauth2.migrations.000_base_oauth2"] = "kong/plugins/oauth2/migrations/000_base_oauth2.lua",
     ["kong.plugins.oauth2.migrations.003_130_to_140"] = "kong/plugins/oauth2/migrations/003_130_to_140.lua",
+    ["kong.plugins.oauth2.migrations.004_200_to_210"] = "kong/plugins/oauth2/migrations/004_200_to_210.lua",
     ["kong.plugins.oauth2.handler"] = "kong/plugins/oauth2/handler.lua",
+    ["kong.plugins.oauth2.secret"] = "kong/plugins/oauth2/secret.lua",
     ["kong.plugins.oauth2.access"] = "kong/plugins/oauth2/access.lua",
     ["kong.plugins.oauth2.schema"] = "kong/plugins/oauth2/schema.lua",
     ["kong.plugins.oauth2.daos"] = "kong/plugins/oauth2/daos.lua",
+    ["kong.plugins.oauth2.daos.oauth2_tokens"] = "kong/plugins/oauth2/daos/oauth2_tokens.lua",
 
 
     ["kong.plugins.log-serializers.basic"] = "kong/plugins/log-serializers/basic.lua",
@@ -427,6 +433,8 @@ build = {
     ["kong.plugins.rate-limiting.migrations"] = "kong/plugins/rate-limiting/migrations/init.lua",
     ["kong.plugins.rate-limiting.migrations.000_base_rate_limiting"] = "kong/plugins/rate-limiting/migrations/000_base_rate_limiting.lua",
     ["kong.plugins.rate-limiting.migrations.003_10_to_112"] = "kong/plugins/rate-limiting/migrations/003_10_to_112.lua",
+    ["kong.plugins.rate-limiting.migrations.004_200_to_210"] = "kong/plugins/rate-limiting/migrations/004_200_to_210.lua",
+    ["kong.plugins.rate-limiting.expiration"] = "kong/plugins/rate-limiting/expiration.lua",
     ["kong.plugins.rate-limiting.handler"] = "kong/plugins/rate-limiting/handler.lua",
     ["kong.plugins.rate-limiting.schema"] = "kong/plugins/rate-limiting/schema.lua",
     ["kong.plugins.rate-limiting.daos"] = "kong/plugins/rate-limiting/daos.lua",

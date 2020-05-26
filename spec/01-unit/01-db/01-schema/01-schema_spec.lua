@@ -2826,6 +2826,109 @@ describe("schema", function()
       assert.same(ngx.null, data.i)
     end)
 
+    it("produces nil for empty string fields with selects", function()
+      local Test = Schema.new({
+        fields = {
+          { str = { type = "string" }, },
+          { rec = { type = "record", fields = { {
+            str = { type = "string" }, }, {
+            arr = { type = "array", elements = { type = "string" } }, }, {
+            set = { type = "set", elements = { type = "string" } }, }, {
+            map = { type = "map", keys = { type = "string" }, values = { type = "string" } }, }, {
+            est = { type = "string", len_min = 0 }, }, {
+            lst = { type = "string", legacy = true }, }, } } },
+          { arr = { type = "array", elements = { type = "string" } }, },
+          { set = { type = "set", elements = { type = "string" } }, },
+          { map = { type = "map", keys = { type = "string" }, values = { type = "string" } }, },
+          { est = { type = "string", len_min = 0 }, },
+          { lst = { type = "string", legacy = true }, },
+        }
+      })
+      local data, err = Test:process_auto_fields({
+        str = "",
+        rec = {
+          str = "",
+          arr = { "", "a", "" },
+          set = { "", "a", "" },
+          map = { key = "" },
+          est = "",
+          lst = "",
+        },
+        arr = { "", "a", "" },
+        set = { "", "a", "" },
+        map = { key = "" },
+        est = "",
+        lst = "",
+      }, "select")
+
+      assert.is_nil(err)
+      assert.equal(nil, data.str)              -- string
+      assert.same({"", "a", ""}, data.arr)     -- array, TODO: should we remove empty strings from arrays?
+      assert.same({"", "a" }, data.set)        -- set,   TODO: should we remove empty strings from sets?
+      assert.same({ key = "" }, data.map)      -- map,   TODO: should we remove empty strings from maps?
+      assert.equal("", data.est)
+      assert.equal("", data.lst)
+
+      -- record
+      assert.equal(nil, data.rec.str)          -- string
+      assert.same({"", "a", ""}, data.rec.arr) -- array, TODO: should we remove empty strings from arrays?
+      assert.same({"", "a" }, data.rec.set)    -- set,   TODO: should we remove empty strings from sets?
+      assert.same({ key = "" }, data.rec.map)  -- map,   TODO: should we remove empty strings from maps?
+      assert.equal("", data.rec.est)
+      assert.equal("", data.rec.lst)
+    end)
+
+    it("produces ngx.null (when asked) for empty string fields with selects", function()
+      local Test = Schema.new({
+        fields = {
+          { str = { type = "string" }, },
+          { rec = { type = "record", fields = { {
+            str = { type = "string" }, }, {
+            arr = { type = "array", elements = { type = "string" } }, }, {
+            set = { type = "set", elements = { type = "string" } }, }, {
+            map = { type = "map", keys = { type = "string" }, values = { type = "string" } }, }, {
+            est = { type = "string", len_min = 0 }, }, {
+            lst = { type = "string", legacy = true }, }, } } },
+          { arr = { type = "array", elements = { type = "string" } }, },
+          { set = { type = "set", elements = { type = "string" } }, },
+          { map = { type = "map", keys = { type = "string" }, values = { type = "string" } }, },
+          { est = { type = "string", len_min = 0 }, },
+          { lst = { type = "string", legacy = true }, },
+        }
+      })
+      local data, err = Test:process_auto_fields({
+        str = "",
+        rec = {
+          str = "",
+          arr = { "", "a", "" },
+          set = { "", "a", "" },
+          map = { key = "" },
+          est = "",
+          lst = "",
+        },
+        arr = { "", "a", "" },
+        set = { "", "a", "" },
+        map = { key = "" },
+        est = "",
+        lst = "",
+      }, "select", true)
+      assert.is_nil(err)
+      assert.equal(cjson.null, data.str)       -- string
+      assert.same({"", "a", ""}, data.arr)     -- array, TODO: should we set null empty strings from arrays?
+      assert.same({"", "a" }, data.set)        -- set,   TODO: should we set null empty strings from sets?
+      assert.same({ key = "" }, data.map)      -- map,   TODO: should we set null empty strings from maps?
+      assert.equal("", data.est)
+      assert.equal("", data.lst)
+
+      -- record
+      assert.equal(cjson.null, data.rec.str)   -- string
+      assert.same({"", "a", ""}, data.rec.arr) -- array, TODO: should we set null empty strings from arrays?
+      assert.same({"", "a" }, data.rec.set)    -- set,   TODO: should we set null empty strings from sets?
+      assert.same({ key = "" }, data.rec.map)  -- map,   TODO: should we set null empty strings from maps?
+      assert.equal("", data.rec.est)
+      assert.equal("", data.rec.lst)
+    end)
+
     it("does not produce non-required fields on 'update'", function()
       local Test = Schema.new({
         fields = {
@@ -3344,51 +3447,6 @@ describe("schema", function()
       end
     end)
 
-    it("sets 'read_before_write' to true when updating field type record", function()
-      local Test = Schema.new({
-        name = "test",
-        fields = {
-          { config = { type = "record", fields = { foo = { type = "string" } } } },
-        }
-      })
-
-      for _, operation in pairs{ "insert", "update", "select", "delete" } do
-        local assertion = assert.falsy
-
-        if operation == "update" then
-          assertion = assert.truthy
-        end
-
-        local _, _, process_auto_fields = Test:process_auto_fields({
-          config = {
-            foo = "dog"
-          }
-        }, operation)
-
-        assertion(process_auto_fields)
-      end
-    end)
-
-    it("sets 'read_before_write' to false when not updating field type record", function()
-      local Test = Schema.new({
-        name = "test",
-        fields = {
-          { config = { type = "record", fields = { foo = { type = "string" } } } },
-          { name = { type = "string" } }
-        }
-      })
-
-      for _, operation in pairs{ "insert", "update", "select", "delete" } do
-        local assertion = assert.falsy
-
-        local _, _, process_auto_fields = Test:process_auto_fields({
-          name = "cat"
-        }, operation)
-
-        assertion(process_auto_fields)
-      end
-    end)
-
     it("correctly flags check_immutable_fields when immutable present in schema", function()
       local test_schema = {
         name = "test",
@@ -3400,7 +3458,7 @@ describe("schema", function()
       local test_entity = { name = "bob" }
 
       local TestEntities = Schema.new(test_schema)
-      local _, _, _, check_immutable_fields =
+      local _, _, check_immutable_fields =
         TestEntities:process_auto_fields(test_entity, "update")
 
       assert.truthy(check_immutable_fields)
@@ -3417,7 +3475,7 @@ describe("schema", function()
       local test_entity = { name = "bob" }
 
       local TestEntities = Schema.new(test_schema)
-      local _, _, _, check_immutable_fields =
+      local _, _, check_immutable_fields =
         TestEntities:process_auto_fields(test_entity, "update")
 
       assert.falsy(check_immutable_fields)

@@ -52,6 +52,7 @@ function usage() {
    step "homebrew"         "bump version and submit a PR to homebrew-kong"
    step "luarocks"         "upload to LuaRocks" "<api-key>"
    step "vagrant"          "bump version and submit a PR to kong-vagrant"
+   step "pongo"            "bump version and submit a PR to kong-pongo"
    exit 0
 }
 
@@ -549,6 +550,22 @@ case "$step" in
       SUCCESS "Make sure you get the PR above approved and merged."
       ;;
    #---------------------------------------------------------------------------
+   pongo)
+      if [ -d ../kong-pongo ]
+      then
+         cd ../kong-pongo
+      else
+         cd ..
+         git clone https://github.com/kong/kong-pongo
+         cd kong-pongo
+      fi
+
+      git checkout master
+      git pull
+      ./assets/add_version.sh CE $version
+      SUCCESS "Make sure you get the PR above approved and merged."
+      ;;
+   #---------------------------------------------------------------------------
    vagrant)
       if [ -d ../kong-vagrant ]
       then
@@ -566,7 +583,7 @@ case "$step" in
 
       git diff
 
-      CONFIRM "If everything looks all right, press Enter to commit and send a PR to https://github.com/kong/homebrew-kong" \
+      CONFIRM "If everything looks all right, press Enter to commit and send a PR to https://github.com/kong/kong-vagrant" \
               "or Ctrl-C to cancel."
 
       set -e

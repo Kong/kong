@@ -38,13 +38,13 @@ do
   local ngx = ngx
 
 
-  function Connector:store_connection(conn)
+  function Connector:store_connection(conn, operation)
     if not past_init and ngx and ngx.get_phase() ~= "init" then
       past_init = true
     end
 
     if ngx and past_init then
-      ngx.ctx.connection = conn
+      ngx.ctx["connection_" .. (operation or "write")] = conn
 
     else
       self.connection = conn
@@ -52,13 +52,13 @@ do
   end
 
 
-  function Connector:get_stored_connection()
+  function Connector:get_stored_connection(operation)
     if not past_init and ngx and ngx.get_phase() ~= "init" then
       past_init = true
     end
 
     if ngx and past_init then
-      return ngx.ctx.connection
+      return ngx.ctx["connection_" .. (operation or "write")]
     end
 
     return self.connection

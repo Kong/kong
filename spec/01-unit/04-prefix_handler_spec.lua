@@ -50,12 +50,27 @@ describe("NGINX conf compiler", function()
         assert.equal(key, helpers.file.read(conf.admin_ssl_cert_key_default))
       end)
     end)
+    describe("status", function()
+      it("auto-generates SSL certificate and key", function()
+        assert(prefix_handler.gen_default_ssl_cert(conf, "status"))
+        assert(exists(conf.status_ssl_cert_default))
+        assert(exists(conf.status_ssl_cert_key_default))
+      end)
+      it("does not re-generate if they already exist", function()
+        assert(prefix_handler.gen_default_ssl_cert(conf, "status"))
+        local cer = helpers.file.read(conf.status_ssl_cert_default)
+        local key = helpers.file.read(conf.status_ssl_cert_key_default)
+        assert(prefix_handler.gen_default_ssl_cert(conf, "status"))
+        assert.equal(cer, helpers.file.read(conf.status_ssl_cert_default))
+        assert.equal(key, helpers.file.read(conf.status_ssl_cert_key_default))
+      end)
+    end)
   end)
 
   describe("compile_kong_conf()", function()
     it("compiles the Kong NGINX conf chunk", function()
       local kong_nginx_conf = prefix_handler.compile_kong_conf(helpers.test_conf)
-      assert.matches("lua_package_path%s+'%./spec/fixtures/custom_plugins/%?%.lua;;'", kong_nginx_conf)
+      assert.matches("lua_package_path%s+'%./spec/fixtures/custom_plugins/%?%.lua;.+'", kong_nginx_conf)
       assert.matches("listen%s+0%.0%.0%.0:9000;", kong_nginx_conf)
       assert.matches("listen%s+127%.0%.0%.1:9001;", kong_nginx_conf)
       assert.matches("server_name%s+kong;", kong_nginx_conf)
@@ -631,6 +646,19 @@ describe("NGINX conf compiler", function()
       assert.matches("worker_connections%s+%d+;", nginx_conf)
       assert.matches("multi_accept%s+on;", nginx_conf)
     end)
+    it("compiles with correct auto values", function()
+      local conf = assert(conf_loader(nil, {
+        nginx_main_worker_rlimit_nofile = "auto",
+        nginx_events_worker_connections = "auto",
+      }))
+
+      local ulimit = prefix_handler.get_ulimit()
+      ulimit = math.min(ulimit, 16384)
+
+      local nginx_conf = prefix_handler.compile_nginx_conf(conf)
+      assert.matches("worker_rlimit_nofile%s+" .. ulimit .. ";", nginx_conf)
+      assert.matches("worker_connections%s+" .. ulimit .. ";", nginx_conf)
+    end)
     it("converts dns_resolver to string", function()
       local nginx_conf = prefix_handler.compile_nginx_conf({
         dns_resolver = { "8.8.8.8", "8.8.4.4" }
@@ -773,8 +801,9 @@ describe("NGINX conf compiler", function()
       it("generates default SSL cert", function()
         local conf = conf_loader(nil, {
           prefix = tmp_config.prefix,
-          proxy_listen = "127.0.0.1:8000 ssl",
-          admin_listen = "127.0.0.1:8001 ssl",
+          proxy_listen  = "127.0.0.1:8000 ssl",
+          admin_listen  = "127.0.0.1:8001 ssl",
+          status_listen = "127.0.0.1:8002 ssl",
         })
 
         assert(prefix_handler.prepare_prefix(conf))
@@ -783,6 +812,8 @@ describe("NGINX conf compiler", function()
         assert.truthy(exists(conf.ssl_cert_key_default))
         assert.truthy(exists(conf.admin_ssl_cert_default))
         assert.truthy(exists(conf.admin_ssl_cert_key_default))
+        assert.truthy(exists(conf.status_ssl_cert_default))
+        assert.truthy(exists(conf.status_ssl_cert_key_default))
       end)
     end)
 

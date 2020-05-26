@@ -32,7 +32,7 @@ end
 
 for _, strategy in helpers.each_strategy() do
   describe("audit_log with #" .. strategy, function()
-    local admin_client, proxy_client, proxy_ssl_client
+    local admin_client, proxy_client
     local db, bp
 
     setup(function()
@@ -52,7 +52,6 @@ for _, strategy in helpers.each_strategy() do
     before_each(function()
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
-      proxy_ssl_client = helpers.proxy_ssl_client()
 
       db:truncate("audit_objects")
       db:truncate("audit_requests")
@@ -240,26 +239,27 @@ for _, strategy in helpers.each_strategy() do
                 scopes = { "email", "profile", "user.email" },
               },
             })
-            ngx.sleep(1) -- XXX the plugin is not set and doesn't
-                         -- capture the /oauth2/authorize route if we
-                         -- don't wait a bit.
 
-            local res = assert(proxy_ssl_client:send {
-              method  = "POST",
-              path    = "/oauth2/authorize",
-              body    = {
-                provision_key = plugin.config.provision_key,
-                client_id = client1.client_id,
-                authenticated_userid = "userid123",
-                scope = "email",
-                response_type = "code",
-                state = "hello"
-              },
-              headers = {
-                ["Content-Type"] = "application/json"
-              }
-            })
-            assert.res_status(200, res)
+            helpers.wait_until(function()
+              local proxy_ssl_client = helpers.proxy_ssl_client()
+              local res = assert(proxy_ssl_client:send {
+                method  = "POST",
+                path    = "/oauth2/authorize",
+                body    = {
+                  provision_key = plugin.config.provision_key,
+                  client_id = client1.client_id,
+                  authenticated_userid = "userid123",
+                  scope = "email",
+                  response_type = "code",
+                  state = "hello"
+                },
+                headers = {
+                  ["Content-Type"] = "application/json"
+                }
+              })
+              proxy_ssl_client:close()
+              return res.status == 200
+            end)
 
             helpers.wait_until(function()
               local rows = fetch_all(db.audit_objects)
