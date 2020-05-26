@@ -105,15 +105,15 @@ local function execute(args)
     end
     filename = pl_path.abspath(filename)
 
-    local dc_table, err = dc:parse_file(filename, accepted_formats)
-    if not dc_table then
+    local entities, err, _, meta = dc:parse_file(filename, accepted_formats)
+    if not entities then
       error("Failed parsing:\n" .. err)
     end
 
     if args.command == "db_import" then
       log("parse successful, beginning import")
 
-      local ok, err = declarative.load_into_db(dc_table)
+      local ok, err = declarative.load_into_db(entities, meta)
       if not ok then
         error("Failed importing:\n" .. err)
       end
@@ -127,8 +127,7 @@ local function execute(args)
         kong_reports.toggle(true)
 
         local report = {
-          decl_fmt_version = dc_table._format_version,
-          decl_transform = dc_table._transform,
+          decl_fmt_version = meta._format_version,
         }
         kong_reports.send("config-db-import", report)
       end
