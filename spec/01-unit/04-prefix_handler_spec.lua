@@ -198,20 +198,7 @@ describe("NGINX conf compiler", function()
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("lua_ssl_trusted_certificate%s+.*spec/fixtures/kong_spec%.key", kong_nginx_conf)
     end)
-    it("compiles without anonymous reports", function()
-      local conf = assert(conf_loader(nil, {
-        anonymous_reports = false,
-      }))
-      local nginx_conf = prefix_handler.compile_kong_conf(conf)
-      assert.not_matches("error_log%s+syslog:server=.+ error;", nginx_conf)
-    end)
-    it("compiles with anonymous reports", function()
-      local conf = assert(conf_loader(nil, {
-        anonymous_reports = true,
-      }))
-      local nginx_conf = prefix_handler.compile_kong_conf(conf)
-      assert.matches("error_log%s+syslog:server=.+:61828 error;", nginx_conf)
-    end)
+
     it("defines the client_max_body_size by default", function()
       local conf = assert(conf_loader(nil, {}))
       local nginx_conf = prefix_handler.compile_kong_conf(conf)
