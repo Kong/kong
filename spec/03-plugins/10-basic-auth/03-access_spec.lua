@@ -288,9 +288,10 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.is_string(json.headers["x-consumer-id"])
-        assert.equal("bob", json.headers["x-consumer-username"])
-        assert.equal("bob", json.headers["x-credential-identifier"])
+        assert.equal('bob', json.headers["x-consumer-username"])
+        assert.equal('bob', json.headers["x-credential-identifier"])
         assert.equal('bob', json.headers["x-credential-username"])
+        assert.equal('basic-auth', json.headers["x-authentication-type"])
       end)
 
     end)
@@ -343,6 +344,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal('bob', body.headers["x-consumer-username"])
         assert.equal('user123', body.headers["x-credential-identifier"])
         assert.equal('user123', body.headers["x-credential-username"])
+        assert.equal('basic-auth', body.headers["x-authentication-type"])
         assert.is_nil(body.headers["x-anonymous-consumer"])
       end)
 
@@ -359,6 +361,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal('no-body', body.headers["x-consumer-username"])
         assert.equal(nil, body.headers["x-credential-identifier"])
         assert.equal(nil, body.headers["x-credential-username"])
+        assert.equal(nil, body.headers["x-authentication-type"])
       end)
 
       it("works with wrong credentials and username in anonymous", function()

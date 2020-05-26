@@ -159,7 +159,7 @@ local function authenticate(conf, given_credentials)
 end
 
 
-local function set_consumer(consumer, credential)
+local function set_consumer(consumer, credential, conf)
   kong.client.authenticate(consumer, credential)
 
   local set_header = kong.service.request.set_header
@@ -193,6 +193,7 @@ local function set_consumer(consumer, credential)
 
   if credential then
     clear_header(constants.HEADERS.ANONYMOUS)
+    set_header(constants.HEADERS.AUTHENTICATION_TYPE, conf.name)
   else
     set_header(constants.HEADERS.ANONYMOUS, true)
   end
@@ -233,7 +234,7 @@ local function do_authentication(conf)
     kong.service.request.clear_header(PROXY_AUTHORIZATION)
   end
 
-  set_consumer(nil, credential)
+  set_consumer(nil, credential, conf)
 
   return true
 end
@@ -258,7 +259,7 @@ function _M.execute(conf)
         return error(err)
       end
 
-      set_consumer(consumer)
+      set_consumer(consumer, nil, conf)
 
     else
       return kong.response.error(err.status, err.message, err.headers)

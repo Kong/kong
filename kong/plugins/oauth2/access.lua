@@ -891,7 +891,7 @@ local function load_oauth2_credential_into_memory(credential_id)
 end
 
 
-local function set_consumer(consumer, credential, token)
+local function set_consumer(consumer, credential, conf, token)
   kong.client.authenticate(consumer, credential)
 
   local set_header = kong.service.request.set_header
@@ -925,6 +925,7 @@ local function set_consumer(consumer, credential, token)
 
   if credential then
     clear_header(constants.HEADERS.ANONYMOUS)
+    set_header(constants.HEADERS.AUTHENTICATION_TYPE, conf.name)
   else
     set_header(constants.HEADERS.ANONYMOUS, true)
   end
@@ -1032,7 +1033,7 @@ local function do_authentication(conf)
     return error(err)
   end
 
-  set_consumer(consumer, credential, token)
+  set_consumer(consumer, credential, conf, token)
 
   return true
 end
@@ -1071,7 +1072,7 @@ function _M.execute(conf)
         return error(err)
       end
 
-      set_consumer(consumer)
+      set_consumer(consumer, nil, conf)
 
     else
       return kong.response.exit(err.status, err.message, err.headers)

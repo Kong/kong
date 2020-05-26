@@ -8,7 +8,7 @@ local error = error
 
 local KeyAuthHandler = {
   PRIORITY = 1003,
-  VERSION = "2.2.0",
+  VERSION = "2.3.0",
 }
 
 
@@ -25,7 +25,7 @@ local function load_credential(key)
 end
 
 
-local function set_consumer(consumer, credential)
+local function set_consumer(consumer, credential, conf)
   kong.client.authenticate(consumer, credential)
 
   local set_header = kong.service.request.set_header
@@ -59,6 +59,7 @@ local function set_consumer(consumer, credential)
 
   if credential then
     clear_header(constants.HEADERS.ANONYMOUS)
+    set_header(constants.HEADERS.AUTHENTICATION_TYPE, conf.name)
   else
     set_header(constants.HEADERS.ANONYMOUS, true)
   end
@@ -160,7 +161,7 @@ local function do_authentication(conf)
     return nil, { status = 500, message = "An unexpected error occurred" }
   end
 
-  set_consumer(consumer, credential)
+  set_consumer(consumer, credential, conf)
 
   return true
 end
@@ -190,7 +191,7 @@ function KeyAuthHandler:access(conf)
         return error(err)
       end
 
-      set_consumer(consumer)
+      set_consumer(consumer, nil, conf)
 
     else
       return kong.response.error(err.status, err.message, err.headers)

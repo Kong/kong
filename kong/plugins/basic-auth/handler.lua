@@ -4,7 +4,7 @@ local access = require "kong.plugins.basic-auth.access"
 
 local BasicAuthHandler = {
   PRIORITY = 1001,
-  VERSION = "2.2.0",
+  VERSION = "2.3.0",
 }
 
 

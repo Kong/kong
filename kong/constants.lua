@@ -78,6 +78,7 @@ return {
     CONSUMER_USERNAME = "X-Consumer-Username",
     CREDENTIAL_USERNAME = "X-Credential-Username", -- TODO: deprecated, use CREDENTIAL_IDENTIFIER instead
     CREDENTIAL_IDENTIFIER = "X-Credential-Identifier",
+    AUTHENTICATION_TYPE = "X-Authentication-Type",
     RATELIMIT_LIMIT = "X-RateLimit-Limit",
     RATELIMIT_REMAINING = "X-RateLimit-Remaining",
     CONSUMER_GROUPS = "X-Consumer-Groups",

@@ -13,7 +13,7 @@ local re_gmatch = ngx.re.gmatch
 
 local JwtHandler = {
   PRIORITY = 1005,
-  VERSION = "2.2.0",
+  VERSION = "2.3.0",
 }
 
 
@@ -76,7 +76,7 @@ local function load_credential(jwt_secret_key)
 end
 
 
-local function set_consumer(consumer, credential, token)
+local function set_consumer(consumer, credential, conf, token)
   kong.client.authenticate(consumer, credential)
 
   local set_header = kong.service.request.set_header
@@ -110,6 +110,7 @@ local function set_consumer(consumer, credential, token)
 
   if credential then
     clear_header(constants.HEADERS.ANONYMOUS)
+    set_header(constants.HEADERS.AUTHENTICATION_TYPE, conf.name)
   else
     set_header(constants.HEADERS.ANONYMOUS, true)
   end
@@ -223,7 +224,7 @@ local function do_authentication(conf)
     }
   end
 
-  set_consumer(consumer, jwt_secret, token)
+  set_consumer(consumer, jwt_secret, conf, token)
 
   return true
 end
@@ -253,7 +254,7 @@ function JwtHandler:access(conf)
         return error(err)
       end
 
-      set_consumer(consumer)
+      set_consumer(consumer, nil, conf)
 
     else
       return kong.response.exit(err.status, err.errors or { message = err.message })
