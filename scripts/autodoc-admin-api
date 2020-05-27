@@ -287,7 +287,7 @@ local function assert_data(value, description)
     error("\n\n" ..
           "****************************************\n" ..
           "Missing " .. description .. "\n" ..
-          "-- please document it in autodoc/data/admin-api.lua\n" ..
+          "-- please document it in autodoc/data/(ee-)?admin-api.lua\n" ..
           "****************************************\n", 2)
   end
 

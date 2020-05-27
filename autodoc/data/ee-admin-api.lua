@@ -22,9 +22,116 @@ return {
       ["/services/:services/document_objects"] = {
         endpoint = false,
       },
-    }
+    },
   },
   general = {
+    kong = {
+
+      ["/userinfo"] = {
+        GET = {
+          title = [[userinfo info]],
+          endpoint = [[<div class="endpoint get">/userinfo</div>]],
+          description =[[
+            Retrieve user info.
+          ]],
+          response = [[]],
+        }
+      },
+
+      ["/auth"] = {},
+      ["/admins"] = {},
+      ["/admins/:admins"] = {},
+      ["/admins/:admin/roles"] = {},
+      ["/admins/password_resets"] = {},
+      ["/admins/:admin/workspaces"] = {},
+      ["/admins/register"] = {},
+      ["/admins/self/password"] = {},
+      ["/admins/self/token"] = {},
+
+
+
+["/applications"] = {},
+["/applications/:applications"] = {},
+["/applications/:applications/application_instances"] = {},
+["/applications/:applications/application_instances/:application_instances"] = {},
+["/applications/:applications/credentials/:plugin"] = {},
+["/applications/:applications/credentials/:plugin/:credential_id"] = {},
+
+
+["/developers"] = {},
+["/developers/roles"] = {},
+["/developers/roles/:rbac_roles"] = {},
+["/developers/:developers"] = {},
+["/developers/:developers/applications"] = {},
+["/developers/:developers/applications/:applications"] = {},
+["/developers/:developers/applications/:applications/credentials/:plugin"] = {},
+["/developers/:developers/applications/:applications/credentials/:plugin/:credential_id"] = {},
+["/developers/:developers/applications/:applications/application_instances"] = {},
+["/developers/:developers/applications/:applications/application_instances/:application_instances"] = {},
+["/developers/:email_or_id/plugins/"] = {},
+["/developers/:email_or_id/plugins/:id"] = {},
+["/developers/:developers/credentials/:plugin"] = {},
+["/developers/:developers/credentials/:plugin/:credential_id"] = {},
+["/developers/invite"] = {},
+
+  ["/entities/migrate"] = {},
+
+
+["/event-hooks"] = {},
+["/event-hooks/:event_hooks"] = {},
+["/event-hooks/:event_hooks/test"] = {},
+["/event-hooks/:event_hooks/ping"] = {},
+["/event-hooks/sources"] = {},
+["/event-hooks/sources/:source"] = {},
+["/event-hooks/sources/:source/:event"] = {},
+
+  ["/files"] = {},
+  ["/files/partials/*"] = {},
+  ["/files/:files"] = {},
+
+
+
+["/groups"] = {},
+["/groups/:groups"] = {},
+["/groups/:groups/roles"] = {},
+
+  ["/keyring"] = {},
+  ["/keyring/active"] = {},
+  ["/keyring/export"] = {},
+  ["/keyring/import"] = {},
+  ["/keyring/import/raw"] = {},
+  ["/keyring/generate"] = {},
+  ["/keyring/activate"] = {},
+  ["/keyring/remove"] = {},
+  ["/keyring/vault/sync"] = {},
+
+  ["/license/report"] = {},
+
+
+
+  ["/oas-config"] = {},
+
+["/workspaces"] = {},
+["/workspaces/:workspaces"] = {},
+["/workspaces/:workspaces/entities"] = {},
+["/workspaces/:workspaces/entities/:entity_id"] = {},
+["/workspaces/:workspaces/meta"] = {},
+
+["/rbac/users"] = {},
+["/rbac/users/:rbac_users"] = {},
+["/rbac/users/:rbac_users/permissions"] = {},
+["/rbac/users/:rbac_users/roles"] = {},
+["/rbac/roles"] = {},
+["/rbac/roles/:rbac_roles/permissions"] = {},
+["/rbac/roles/:rbac_roles"] = {},
+["/rbac/roles/:rbac_roles/entities"] = {},
+["/rbac/roles/:rbac_roles/entities/:entity_id"] = {},
+["/rbac/roles/:rbac_roles/entities/permissions"] = {},
+["/rbac/roles/:rbac_roles/endpoints"] = {},
+["/rbac/roles/:rbac_roles/endpoints/:workspace/*"] = {},
+["/rbac/roles/:rbac_roles/endpoints/permissions"] = {},
+
+    },
     admins = { -- FIXME fix these endpoints, or make Admins generated
       title = [[Admins routes]],
       description = "",
