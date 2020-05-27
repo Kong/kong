@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [0.2.4](#024---20200526)
 - [0.2.3](#023---20200518)
 - [0.2.2](#022---20200211)
 - [0.2.1](#021---20200123)
@@ -7,6 +8,11 @@
 - [0.1.2](#012---20191216)
 - [0.1.1](#011---20191212)
 - [0.1.0](#010---20191212)
+
+##  [0.2.4] - 2020/05/26
+
+- Add endpoints to actively create and renew certificates.
+- Cleanup renew config when the certificate is deleted in the storage.
 
 ##  [0.2.3] - 2020/05/18
 
@@ -39,6 +45,7 @@
 
 - Initial release of ACME plugin for Kong.
 
+[0.2.4]: https://github.com/Kong/kong-plugin-acme/compare/0.2.3...0.2.4
 [0.2.3]: https://github.com/Kong/kong-plugin-acme/compare/0.2.2...0.2.3
 [0.2.2]: https://github.com/Kong/kong-plugin-acme/compare/0.2.1...0.2.2
 [0.2.1]: https://github.com/Kong/kong-plugin-acme/compare/0.2.0...0.2.1

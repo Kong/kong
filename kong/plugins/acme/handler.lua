@@ -13,7 +13,7 @@ local domains_matcher
 local LetsencryptHandler = {}
 
 LetsencryptHandler.PRIORITY = 999
-LetsencryptHandler.VERSION = "0.2.3"
+LetsencryptHandler.VERSION = "0.2.4"
 
 local function build_domain_matcher(domains)
   local domains_plain = {}
