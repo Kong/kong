@@ -1130,6 +1130,8 @@ function OICHandler.access(_, conf)
       if iss then
         if sub(iss, -33) == "/.well-known/openid-configuration" then
           iss = sub(iss, 1, -34)
+        elseif sub(iss, -39) == "/.well-known/oauth-authorization-server" then
+          iss = sub(iss, 1, -40)
         end
 
         if sub(iss, -1) == "/" then
