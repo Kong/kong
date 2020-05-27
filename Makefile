@@ -28,7 +28,7 @@ RESTY_VERSION ?= `grep RESTY_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk
 RESTY_LUAROCKS_VERSION ?= `grep RESTY_LUAROCKS_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 RESTY_OPENSSL_VERSION ?= `grep RESTY_OPENSSL_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 RESTY_PCRE_VERSION ?= `grep RESTY_PCRE_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
-KONG_BUILD_TOOLS ?= '4.4.0'
+KONG_BUILD_TOOLS ?= '4.5.0'
 OPENRESTY_PATCHES_BRANCH ?= master
 KONG_NGINX_MODULE_BRANCH ?= master
 
@@ -36,29 +36,28 @@ PACKAGE_TYPE ?= deb
 REPOSITORY_NAME ?= kong-${PACKAGE_TYPE}
 REPOSITORY_OS_NAME ?= ${RESTY_IMAGE_BASE}
 KONG_PACKAGE_NAME ?= kong
-KONG_VERSION ?= `cat $(KONG_SOURCE_LOCATION)/kong-*.rockspec | grep -m1 tag | awk '{print $$3}' | sed 's/"//g'`
 
-BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
-ISTAG = false
-ISPRERELEASE = false
+TAG := $(shell git describe --exact-match HEAD || true)
 
-ifeq ($(BRANCH),HEAD)
+ifneq ($(TAG),)
 	# We're building a tag
 	ISTAG = true
-	BRANCH = $(shell git describe --tags --abbrev=0)
-	POSSIBLE_VERSION = $(shell git describe --tags --abbrev=0 | awk -F"-" '{print $$1}')
 	POSSIBLE_PRERELEASE_NAME = $(shell git describe --tags --abbrev=0 | awk -F"-" '{print $$2}')
 	ifneq ($(POSSIBLE_PRERELEASE_NAME),)
 		# We're building a pre-release tag
-		KONG_VERSION = ${BRANCH}
+		KONG_VERSION ?= ${TAG}
 		REPOSITORY_NAME = kong-prerelease
+	else
+	   # We're building a semver release tag
+		KONG_VERSION ?= `cat $(KONG_SOURCE_LOCATION)/kong-*.rockspec | grep -m1 tag | awk '{print $$3}' | sed 's/"//g'`
 	endif
 else
-	# We're releasing a branch. Presumably a daily build
+    ISTAG = false
+    BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD)
 	REPOSITORY_NAME = kong-${BRANCH}
 	REPOSITORY_OS_NAME = ${BRANCH}
-	KONG_PACKAGE_NAME = kong-${BRANCH}
-	KONG_VERSION = `date +%Y-%m-%d`
+	KONG_PACKAGE_NAME ?= kong-${BRANCH}
+	KONG_VERSION ?= `date +%Y-%m-%d`
 endif
 
 release:
