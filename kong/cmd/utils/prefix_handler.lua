@@ -14,12 +14,9 @@ local pl_utils = require "pl.utils"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local pl_dir = require "pl.dir"
-local socket = require "socket"
 local log = require "kong.cmd.utils.log"
-local constants = require "kong.constants"
 local ffi = require "ffi"
 local bit = require "bit"
-local fmt = string.format
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 
 local function gen_default_ssl_cert(kong_config, admin)
@@ -125,11 +122,6 @@ local function compile_conf(kong_config, conf_template)
     ipairs = ipairs,
     tostring = tostring
   }
-
-  if kong_config.anonymous_reports and socket.dns.toip(constants.REPORTS.ADDRESS) then
-    compile_env["syslog_reports"] = fmt("error_log syslog:server=%s:%d error;",
-                                        constants.REPORTS.ADDRESS, constants.REPORTS.SYSLOG_PORT)
-  end
 
   do
     local worker_rlimit_nofile
