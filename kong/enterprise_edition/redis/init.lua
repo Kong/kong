@@ -111,6 +111,7 @@ end
 -- Perform any needed Redis configuration; e.g., parse Sentinel addresses
 function _M.init_conf(conf)
   if is_redis_cluster(conf) then
+    table.sort(conf.cluster_addresses)
     conf.parsed_cluster_addresses =
       parse_addresses(conf.cluster_addresses, "ip")
   elseif is_redis_sentinel(conf) then
@@ -147,7 +148,7 @@ function _M.connection(conf)
     local err
     red, err = redis_cluster:new({
       dict_name = "kong_locks",
-      name = "redis-cluster",
+      name = "redis-cluster" .. table.concat(conf.cluster_addresses),
       serv_list = conf.parsed_cluster_addresses,
       auth = conf.password,
     })

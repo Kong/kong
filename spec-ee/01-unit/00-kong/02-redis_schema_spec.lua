@@ -1,6 +1,9 @@
 local redis = require "kong.enterprise_edition.redis".config_schema
 local Entity = require "kong.db.schema.entity"
+local redis_connection = require "kong.enterprise_edition.redis".connection
+local redis_init_conf = require "kong.enterprise_edition.redis".init_conf
 
+require("resty.dns.client").init(nil)
 
 describe("redis schema", function()
   local Redis = assert(Entity.new(redis))
@@ -49,6 +52,44 @@ describe("redis schema", function()
 
     assert.is_nil(err)
     assert.is_true(ok)
+  end)
+
+  it("redis clusters need to be specific to a configuration", function()
+    -- Simulate the creation of a plugin configuration with redis cluster
+    local configA = {
+      redis = {
+        cluster_addresses = { "redis:6379" },
+      }
+    }
+
+    redis_init_conf(configA.redis)
+    local connectionA = redis_connection(configA.redis)
+    assert.same("redis-clusterredis:6379", connectionA.config.name)
+
+    -- Simulate the creation of another plugin configuration with redis cluster
+    local configB = {
+      redis = {
+        cluster_addresses = { "redis:6380" },
+      }
+    }
+
+    redis_init_conf(configB.redis)
+    local connectionB = redis_connection(configB.redis)
+    assert.same("redis-clusterredis:6380", connectionB.config.name)
+
+    -- Make sure that `cluster_addresses` is sorted
+    local configC = {
+      redis = {
+        cluster_addresses = {
+          "redis:6380",
+          "redis:6379",
+        }
+      }
+    }
+
+    redis_init_conf(configC.redis)
+    local connectionC = redis_connection(configC.redis)
+    assert.same("redis-clusterredis:6379redis:6380", connectionC.config.name)
   end)
 
   it("errors with invalid redis sentinel data", function()
