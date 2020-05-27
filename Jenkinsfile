@@ -1,8 +1,5 @@
 pipeline {
     agent none
-    triggers {
-        cron(env.BRANCH_NAME == 'master' | env.BRANCH_NAME == 'next' ? '@daily' : '')
-    }
     options {
         retry(1)
         timeout(time: 2, unit: 'HOURS')
@@ -47,23 +44,11 @@ pipeline {
         stage('Integration Tests') {
             when {
                 beforeAgent true
-                anyOf {
-                    allOf {
-                        buildingTag()
-                        not { triggeredBy 'TimerTrigger' }
-                    }
-                    allOf {
-                        triggeredBy 'TimerTrigger'
-                        anyOf { branch 'master'; branch 'next' }
-                    }
+                allOf {
+                    buildingTag()
+                    not { triggeredBy 'TimerTrigger' }
                 }
             }
-            /* the above when statement evaluates to:
-                if (
-                  ( buildingtag && not cron ) ||
-                  ( ( branch = master || branch = next) && cron )
-                )
-            */
             parallel {
                 stage('dbless') {
                     agent {
@@ -145,18 +130,36 @@ pipeline {
                 }
             }
         }
+        stage('Release Per Commit') {
+            when {
+                beforeAgent true
+                anyOf { branch 'master'; branch 'next' }
+            }
+            agent {
+                node {
+                    label 'docker-compose'
+                }
+            }
+            environment {
+                KONG_PACKAGE_NAME = "kong"
+                KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
+                KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                BINTRAY_USR = 'kong-inc_travis-ci@kong'
+                BINTRAY_KEY = credentials('bintray_travis_key')
+                DEBUG = 0
+            }
+            steps {
+                sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
+                sh 'make setup-kong-build-tools'
+                sh 'KONG_VERSION=`git rev-parse --short HEAD` RELEASE_DOCKER_ONLY=true PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=latest make release'
+            }
+        }
         stage('Release') {
             when {
                 beforeAgent true
-                anyOf {
-                    allOf {
-                        triggeredBy 'TimerTrigger'
-                        anyOf { branch 'master'; branch 'next' }
-                    }
-                    allOf {
-                        buildingTag()
-                        not { triggeredBy 'TimerTrigger' }
-                    }
+                allOf {
+                    buildingTag()
+                    not { triggeredBy 'TimerTrigger' }
                 }
             }
             parallel {
@@ -308,7 +311,7 @@ pipeline {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         sh 'PACKAGE_TYPE=src RESTY_IMAGE_BASE=src make release'
-                        sh 'PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=latest make release'
+                        sh 'PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=1 make release'
                         sh 'PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=1 make release'
                     }
                 }
