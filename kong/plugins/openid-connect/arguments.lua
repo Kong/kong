@@ -25,6 +25,7 @@ local base64         = codec.base64
 local nothing        = function() return nil end
 
 
+local CONTENT_TYPE   = "Content-Type"
 local CONTENT_LENGTH = "Content-Length"
 
 
@@ -84,7 +85,13 @@ local function create_get_conf_args(get_conf_arg)
 end
 
 
-local function create_get_headers()
+local function create_get_headers(hdrs)
+  if hdrs then
+    return function()
+      return hdrs
+    end
+  end
+
   local initialized = false
   local headers
 
@@ -213,7 +220,13 @@ local function create_get_arg(args)
 end
 
 
-local function create_get_uri_args()
+local function create_get_uri_args(uargs)
+  if uargs then
+    return function()
+      return uargs
+    end
+  end
+
   local initialized = false
   local uri_args
 
@@ -250,9 +263,15 @@ local function create_clear_uri_arg(uargs)
 end
 
 
-local function create_get_post_args(content_type)
+local function create_get_post_args(content_type, pargs)
   if sub(content_type, 1, 33) ~= "application/x-www-form-urlencoded" then
     return nothing
+  end
+
+  if pargs then
+    return function()
+      return pargs
+    end
   end
 
   local initialized = false
@@ -294,7 +313,13 @@ local function create_clear_post_arg(pargs)
 end
 
 
-local function create_get_json_args(content_type)
+local function create_get_json_args(content_type, jargs)
+  if jargs then
+    return function()
+      return jargs
+    end
+  end
+
   if sub(content_type, 1, 16) ~= "application/json" then
     return nothing
   end
@@ -400,20 +425,29 @@ local function create_get_req_arg(get_header, get_uri_arg, get_body_arg)
 end
 
 
-return function(conf)
-  local content_type = var.content_type or ""
+return function(conf, hdrs, uargs, pargs, jargs)
+  local content_type
+  if hdrs then
+    content_type = hdrs[CONTENT_TYPE]
+  else
+    content_type = var.content_type
+  end
+
+  if not content_type then
+    content_type = ""
+  end
 
   local conf_arg       = create_get_conf_arg(conf)
   local conf_args      = create_get_conf_args(conf_arg)
-  local headers        = create_get_headers()
+  local headers        = create_get_headers(hdrs)
   local header         = create_get_header(headers)
-  local uri_args       = create_get_uri_args()
+  local uri_args       = create_get_uri_args(uargs)
   local uri_arg        = create_get_arg(uri_args)
   local clear_uri_arg  = create_clear_uri_arg(uri_args)
-  local post_args      = create_get_post_args(content_type)
+  local post_args      = create_get_post_args(content_type, pargs)
   local post_arg       = create_get_arg(post_args)
   local clear_post_arg = create_clear_post_arg(post_args)
-  local json_args      = create_get_json_args(content_type)
+  local json_args      = create_get_json_args(content_type, jargs)
   local json_arg       = create_get_arg(json_args)
   local clear_json_arg = create_clear_json_arg(json_args)
   local body_arg       = create_get_body_arg(post_arg, json_arg)

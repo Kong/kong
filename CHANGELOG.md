@@ -10,6 +10,7 @@
 - Add `config.session_redis_cluster_nodes`
 - Add `config.session_redis_cluster_maxredirections`
 - Add `config.preserve_query_args`
+- Add `config.introspection_headers_client`
 - Bump `lua-resty-session` dependency to `3.5`
 - Change in issuer normalization that also removes standard OAuth 2.0
   Authorization Server Metadata suffix from issuer

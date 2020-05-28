@@ -611,6 +611,15 @@ local config = {
             },
           },
           {
+            introspection_headers_client = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
             introspection_post_args_names = {
               required = false,
               type     = "array",

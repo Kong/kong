@@ -6,6 +6,7 @@ local OICHandler = {
 
 local cache           = require "kong.plugins.openid-connect.cache"
 local arguments       = require "kong.plugins.openid-connect.arguments"
+local introspect      = require "kong.plugins.openid-connect.introspect"
 local log             = require "kong.plugins.openid-connect.log"
 local openid          = require "kong.openid-connect"
 local uri             = require "kong.openid-connect.uri"
@@ -191,57 +192,6 @@ local function create_get_http_opts(args)
     options.ssl_verify                = args.get_conf_arg("ssl_verify", true)
     options.timeout                   = args.get_conf_arg("timeout", 10000)
     return options
-  end
-end
-
-
-local function create_introspect_token(args, oic)
-  local endpoint    = args.get_conf_arg("introspection_endpoint")
-  local auth_method = args.get_conf_arg("introspection_endpoint_auth_method")
-  local hint        = args.get_conf_arg("introspection_hint", "access_token")
-  local use_cache   = args.get_conf_arg("cache_introspection")
-  local headers     = args.get_conf_args("introspection_headers_names", "introspection_headers_values")
-
-  return function(access_token, ttl)
-    local pargs       = args.get_conf_args("introspection_post_args_names", "introspection_post_args_values")
-    local client_args = args.get_conf_arg("introspection_post_args_client")
-    if client_args then
-      for _, client_arg_name in ipairs(client_args) do
-        local extra_arg = args.get_uri_arg(client_arg_name)
-        if extra_arg then
-          if type(pargs) ~= "table" then
-            pargs = {}
-          end
-
-          pargs[client_arg_name] = extra_arg
-
-        else
-          extra_arg = args.get_post_arg(client_arg_name)
-          if extra_arg then
-            if type(pargs) ~= "table" then
-              pargs = {}
-            end
-
-            pargs[client_arg_name] = extra_arg
-          end
-        end
-      end
-    end
-
-    local opts = {
-      introspection_endpoint             = endpoint,
-      introspection_endpoint_auth_method = auth_method,
-      headers                            = headers,
-      args                               = pargs,
-    }
-
-    if use_cache then
-      log("introspecting token with caching enabled")
-      return cache.introspection.load(oic, access_token, hint, ttl, true, opts)
-    end
-
-    log("introspecting token")
-    return cache.introspection.load(oic, access_token, hint, ttl, false, opts)
   end
 end
 
@@ -1162,7 +1112,7 @@ function OICHandler.access(_, conf)
   end
 
   -- initialize functions
-  local introspect_token = create_introspect_token(args, oic)
+  local introspect_token = introspect.new(args, oic, cache)
   local session_open     = create_session_open(args, secret)
 
   -- load enabled authentication methods
