@@ -70,7 +70,7 @@ jobs:
   pdk:
     name: PDK
     runs-on: ubuntu-18.04
-    needs: lint-unit-tests
+    needs: build
 
     env:
       TEST_SUITE: pdk
@@ -100,7 +100,7 @@ jobs:
   package-and-smoke-test:
     name: Package and smoke test Kong
     runs-on: ubuntu-18.04
-    needs: lint-unit-tests
+    needs: build
     if: contains(github.ref, 'merge')
 
     steps:
@@ -130,7 +130,7 @@ jobs:
   integration-tests-dbless:
     name: DB-less integration tests
     runs-on: ubuntu-18.04
-    needs: lint-unit-tests
+    needs: build
 
     env:
       TEST_DATABASE: 'off'
@@ -160,7 +160,7 @@ jobs:
   integration-tests-with-databases:
     name: ${{matrix.database}} (${{ matrix.suite }}) ${{ matrix.split }} integration tests
     runs-on: ubuntu-18.04
-    needs: lint-unit-tests
+    needs: build
 
     strategy:
       matrix:
