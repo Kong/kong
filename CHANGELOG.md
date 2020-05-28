@@ -11,6 +11,7 @@
 - Add `config.session_redis_cluster_maxredirections`
 - Add `config.preserve_query_args`
 - Add `config.introspection_headers_client`
+- Chore cookie removal function to be more robust
 - Change `config.verify_parameters` default parameter from `true` to `false`
 - Bump `lua-resty-session` dependency to `3.5`
 - Change in issuer normalization that also removes standard OAuth 2.0
