@@ -28,7 +28,7 @@ RESTY_VERSION ?= `grep RESTY_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk
 RESTY_LUAROCKS_VERSION ?= `grep RESTY_LUAROCKS_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 RESTY_OPENSSL_VERSION ?= `grep RESTY_OPENSSL_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 RESTY_PCRE_VERSION ?= `grep RESTY_PCRE_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
-KONG_BUILD_TOOLS ?= '4.5.0'
+KONG_BUILD_TOOLS ?= '4.6.0'
 OPENRESTY_PATCHES_BRANCH ?= master
 KONG_NGINX_MODULE_BRANCH ?= master
 
@@ -45,15 +45,18 @@ ifneq ($(TAG),)
 	POSSIBLE_PRERELEASE_NAME = $(shell git describe --tags --abbrev=0 | awk -F"-" '{print $$2}')
 	ifneq ($(POSSIBLE_PRERELEASE_NAME),)
 		# We're building a pre-release tag
+    OFFICIAL_RELEASE = false
 		KONG_VERSION ?= ${TAG}
 		REPOSITORY_NAME = kong-prerelease
 	else
-	   # We're building a semver release tag
+	  # We're building a semver release tag
+    OFFICIAL_RELEASE = true
 		KONG_VERSION ?= `cat $(KONG_SOURCE_LOCATION)/kong-*.rockspec | grep -m1 tag | awk '{print $$3}' | sed 's/"//g'`
 	endif
 else
-    ISTAG = false
-    BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD)
+  OFFICIAL_RELEASE = false
+  ISTAG = false
+  BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD)
 	REPOSITORY_NAME = kong-${BRANCH}
 	REPOSITORY_OS_NAME = ${BRANCH}
 	KONG_PACKAGE_NAME ?= kong-${BRANCH}
@@ -76,6 +79,7 @@ endif
 	REPOSITORY_OS_NAME=${REPOSITORY_OS_NAME} \
 	KONG_PACKAGE_NAME=${KONG_PACKAGE_NAME} \
 	KONG_VERSION=${KONG_VERSION} \
+	OFFICIAL_RELEASE=$(OFFICIAL_RELEASE) \
 	release-kong
 
 setup-ci:
