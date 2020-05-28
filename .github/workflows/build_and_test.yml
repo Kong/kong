@@ -101,7 +101,6 @@ jobs:
     name: Package and smoke test Kong
     runs-on: ubuntu-18.04
     needs: build
-    if: contains(github.ref, 'merge')
 
     steps:
     - name: Set env
