@@ -2193,7 +2193,7 @@ local function pid_dead(pid, timeout)
 
   repeat
     if not pl_utils.execute("ps -p " .. pid .. " >/dev/null 2>&1") then
-      return
+      return true
     end
     -- still running, wait some more
     ngx.sleep(0.05)
