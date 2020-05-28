@@ -1372,7 +1372,7 @@ local config = {
             verify_parameters = {
               required = false,
               type     = "boolean",
-              default  = true,
+              default  = false,
             },
           },
           {
