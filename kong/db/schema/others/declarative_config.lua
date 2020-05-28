@@ -586,16 +586,17 @@ local function flatten(self, input)
     return nil, by_key
   end
 
-  local output = {}
+  local meta = {}
   for key, value in pairs(processed) do
     if key:sub(1,1) == "_" then
-      output[key] = value
+      meta[key] = value
     end
   end
 
+  local entities = {}
   for entity, entries in pairs(by_id) do
     local schema = all_schemas[entity]
-    output[entity] = {}
+    entities[entity] = {}
     for id, entry in pairs(entries) do
       local flat_entry = {}
       for name, field in schema:each_field(entry) do
@@ -610,11 +611,11 @@ local function flatten(self, input)
         end
       end
 
-      output[entity][id] = flat_entry
+      entities[entity][id] = flat_entry
     end
   end
 
-  return output
+  return entities, nil, meta
 end
 
 

@@ -64,6 +64,21 @@ local function pretty_print_error(err_t, item, indent)
 end
 
 
+-- @treturn table|nil a table with the following format:
+--   {
+--     services: {
+--       ["<uuid>"] = { ... },
+--       ...
+--     },
+
+--   }
+-- @treturn nil|string error message, only if error happened
+-- @treturn nil|table err_t, only if error happened
+-- @treturn table|nil a table with the following format:
+--   {
+--     _format_version: 2.1,
+--     _transform: true,
+--   }
 function Config:parse_file(filename, accept, old_hash)
   if type(filename) ~= "string" then
     error("filename must be a string", 2)
@@ -78,18 +93,21 @@ function Config:parse_file(filename, accept, old_hash)
 end
 
 
--- first return item: a table with the following format:
+-- @treturn table|nil a table with the following format:
 --   {
---     _format_version: 2.1,
---     _transform: true,
 --     services: {
 --       ["<uuid>"] = { ... },
 --       ...
 --     },
+
 --   }
---   or nil, if error.happened
--- second return item: error message, only if error happened
--- third return item: err_t, only if error happened
+-- @treturn nil|string error message, only if error happened
+-- @treturn nil|table err_t, only if error happened
+-- @treturn table|nil a table with the following format:
+--   {
+--     _format_version: 2.1,
+--     _transform: true,
+--   }
 function Config:parse_string(contents, filename, accept, old_hash)
   -- we don't care about the strength of the hash
   -- because declarative config is only loaded by Kong administrators,
@@ -98,7 +116,7 @@ function Config:parse_string(contents, filename, accept, old_hash)
 
   if old_hash and old_hash == new_hash then
     local err = "configuration is identical"
-    return nil, err, { error = err }
+    return nil, err, { error = err }, nil
   end
 
   -- do not accept Lua by default
@@ -157,7 +175,7 @@ function Config:parse_string(contents, filename, accept, old_hash)
 end
 
 
--- first return item: a table with the following format:
+-- @tparam dc_table A table with the following format:
 --   {
 --     _format_version: 2.1,
 --     _transform: true,
@@ -166,26 +184,39 @@ end
 --       ...
 --     },
 --   }
---   or nil, if error.happened
--- second return item: given hash if everything went well,
---   new hash if everything went well and no given hash,
---   or error message, if error happened
--- third return item: err_t, only if error happened
+--   This table is not flattened: entities can exist inside other entities
+-- @treturn table|nil A table with the following format:
+--   {
+--     services: {
+--       ["<uuid>"] = { ... },
+--       ...
+--     },
+--   }
+--   This table is flattened - there are no nested entities inside other entities
+-- @treturn nil|string error message if error
+-- @treturn nil|table err_t if error
+-- @treturn table|nil A table with the following format:
+--   {
+--     _format_version: 2.1,
+--     _transform: true,
+--   }
+-- @treturn string|nil given hash if everything went well,
+--                     new hash if everything went well and no given hash,
 function Config:parse_table(dc_table, hash)
   if type(dc_table) ~= "table" then
     error("expected a table as input", 2)
   end
 
-  local dc_table, err_t = self.schema:flatten(dc_table)
+  local entities, err_t, meta = self.schema:flatten(dc_table)
   if err_t then
     return nil, pretty_print_error(err_t), err_t
   end
 
   if not hash then
-    hash = md5(cjson.encode(dc_table))
+    hash = md5(cjson.encode({ entities, meta }))
   end
 
-  return dc_table, hash
+  return entities, nil, nil, meta, hash
 end
 
 
@@ -203,8 +234,8 @@ function declarative.to_yaml_string(tbl)
 end
 
 
-function declarative.to_yaml_file(dc_table, filename)
-  local yaml, err = declarative.to_yaml_string(dc_table)
+function declarative.to_yaml_file(entities, filename)
+  local yaml, err = declarative.to_yaml_string(entities)
   if not yaml then
     return nil, err
   end
@@ -225,14 +256,14 @@ function declarative.to_yaml_file(dc_table, filename)
 end
 
 
-function declarative.load_into_db(dc_table)
-  assert(type(dc_table) == "table")
+function declarative.load_into_db(entities, meta)
+  assert(type(entities) == "table")
 
   local schemas = {}
-  for entity_name, _ in pairs(dc_table) do
+  for entity_name, _ in pairs(entities) do
     if kong.db[entity_name] then
       table.insert(schemas, kong.db[entity_name].schema)
-    elseif entity_name:sub(1, 1) ~= "_" then
+    else
       return nil, "unknown entity: " .. entity_name
     end
   end
@@ -242,12 +273,12 @@ function declarative.load_into_db(dc_table)
   end
 
   local options = {
-    transform = dc_table._transform,
+    transform = meta._transform,
   }
   local schema, primary_key, ok, err, err_t
   for i = 1, #sorted_schemas do
     schema = sorted_schemas[i]
-    for _, entity in pairs(dc_table[schema.name]) do
+    for _, entity in pairs(entities[schema.name]) do
       entity = deepcopy(entity)
       entity._tags = nil
 
@@ -389,17 +420,20 @@ function declarative.get_current_hash()
 end
 
 
--- dc_table format:
+-- entities format:
 --   {
---     _format_version: 2.1,
---     _transform: true,
 --     services: {
 --       ["<uuid>"] = { ... },
 --       ...
 --     },
 --     ...
 --   }
-function declarative.load_into_cache(dc_table, hash, shadow_page)
+-- meta format:
+--   {
+--     _format_version: 2.1,
+--     _transform: true,
+--   }
+function declarative.load_into_cache(entities, meta, hash, shadow_page)
   -- Array of strings with this format:
   -- "<tag_name>|<entity_name>|<uuid>".
   -- For example, a service tagged "admin" would produce
@@ -414,13 +448,10 @@ function declarative.load_into_cache(dc_table, hash, shadow_page)
   kong.core_cache:purge(SHADOW)
   kong.cache:purge(SHADOW)
 
-  for entity_name, items in pairs(dc_table) do
+  for entity_name, items in pairs(entities) do
     local dao = kong.db[entity_name]
     if not dao then
-      if entity_name:sub(1, 1) ~= "_" then
-        return nil, "unknown entity: " .. entity_name
-      end
-      goto next_entity
+      return nil, "unknown entity: " .. entity_name
     end
     local schema = dao.schema
 
@@ -451,7 +482,7 @@ function declarative.load_into_cache(dc_table, hash, shadow_page)
       end
     end
 
-    local transform = dc_table._transform == nil and true or dc_table._transform
+    local transform = meta._transform == nil and true or meta._transform
     local ids = {}
     for id, item in pairs(items) do
       table.insert(ids, id)
@@ -551,7 +582,6 @@ function declarative.load_into_cache(dc_table, hash, shadow_page)
         return nil, err
       end
     end
-    ::next_entity::
   end
 
   for tag_name, tags in pairs(tags_by_name) do
@@ -580,7 +610,7 @@ function declarative.load_into_cache(dc_table, hash, shadow_page)
 end
 
 
-function declarative.load_into_cache_with_events(dc_table, hash)
+function declarative.load_into_cache_with_events(entities, meta, hash)
 
   -- ensure any previous update finished (we're flipped to the latest page)
   local ok, err = kong.worker_events.poll()
@@ -600,7 +630,7 @@ function declarative.load_into_cache_with_events(dc_table, hash)
       return nil, err
     end
 
-    local json = cjson.encode({ dc_table, hash, })
+    local json = cjson.encode({ entities, meta, hash, })
     local bytes
     bytes, err = sock:send(json)
     sock:close()
@@ -620,7 +650,7 @@ function declarative.load_into_cache_with_events(dc_table, hash)
     return nil, err
   end
 
-  ok, err = declarative.load_into_cache(dc_table, hash, SHADOW)
+  ok, err = declarative.load_into_cache(entities, meta, hash, SHADOW)
 
   if ok then
     ok, err = kong.worker_events.post("declarative", "flip_config", true)

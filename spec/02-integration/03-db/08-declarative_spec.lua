@@ -137,13 +137,12 @@ for _, strategy in helpers.each_strategy() do
         plugins = { [plugin_def.id] = plugin_def },
         acls = { [acl_def.id] = acl_def  },
         basicauth_credentials = { [basicauth_credential_def.id] = basicauth_credential_def },
-      }))
+      }, { _transform = true }))
 
       -- import without performing transformations
       assert(declarative.load_into_db({
-        _transform = false,
         basicauth_credentials = { [basicauth_hashed_credential_def.id] = basicauth_hashed_credential_def },
-      }))
+      }, { _transform = false }))
     end)
 
     describe("load_into_db", function()
