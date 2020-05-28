@@ -1,8 +1,12 @@
+## 0.4.2 (16-may-2020)
+
+- Bump ljsonschema lib to 1.0.0, see [pr #3](https://github.com/Tieske/lua-resty-ljsonschema/pull/3)
+
 ## 0.4.1
 
 - Add configuration to plugin which allow it to return validation error back
-  to the client as part of request response 
-  
+  to the client as part of request response
+
 ## 0.4.0
 
 - bump lua-resty-jsonschema to fix issue with too many local variables
