@@ -338,7 +338,7 @@ for _, strategy in helpers.each_strategy() do
           assert.same({ message = "API rate limit exceeded" }, json)
         end)
 
-        it_with_retry("handles multiple limits", function()
+        it_with_retry("handles multiple limits #flaky", function()
           local limits = {
             minute = 3,
             hour   = 5
