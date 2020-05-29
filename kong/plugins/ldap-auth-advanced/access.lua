@@ -353,7 +353,7 @@ local function do_authentication(conf)
       return false, { status = 500 }
     end
 
-    return false, {status = 403, message = "Invalid authentication credentials"}
+    return false, { status = 401, message = "Unauthorized" }
   end
 
   if conf.hide_credentials then
@@ -368,13 +368,13 @@ local function do_authentication(conf)
     if not consumer then
       kong.log.debug("consumer not found, checking anonymous")
       if err then
-        return false, { status = 403, "kong consumer was not found (" .. err .. ")" }
+        return false, { status = 401, message = "Unauthorized" }
       end
 
       consumer, err = load_consumers(anonymous, { 'id' }, ttl)
 
       if err then
-        return false, { status = 403, "kong consumer was not found (" .. err .. ")" }
+        return false, { status = 401, message = "Unauthorized" }
       end
 
     else
