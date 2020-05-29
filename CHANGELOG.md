@@ -1,3 +1,8 @@
+## v1.5.1
+
+- Fix `openid_connect/responses`, adding missing `redirect` method to fix 
+crashing code on handler.
+
 ## v1.5.0
 
 - Add support for Redis Clusters for session storage
