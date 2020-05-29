@@ -17,6 +17,8 @@ local encode_args    = ngx.encode_args
 local select         = select
 local ipairs         = ipairs
 local lower          = string.lower
+local find           = string.find
+local gsub           = string.gsub
 local type           = type
 local null           = ngx.null
 local next           = next
@@ -425,6 +427,92 @@ local function create_get_req_arg(get_header, get_uri_arg, get_body_arg)
 end
 
 
+local function is_named_cookie(cookie, name)
+    if not cookie or cookie == "" then
+        return false, nil
+    end
+
+    cookie = gsub(cookie, "^%s+", "")
+    if cookie == "" then
+        return false, nil
+    end
+
+    cookie = gsub(cookie, "%s+$", "")
+    if cookie == "" then
+        return false, nil
+    end
+
+    local eq_pos = find(cookie, "=", 1, true)
+    if not eq_pos then
+        return false, cookie
+    end
+
+    local cookie_name = sub(cookie, 1, eq_pos - 1)
+    if cookie_name == "" then
+        return false, cookie
+    end
+
+    cookie_name = gsub(cookie_name, "%s+$", "")
+    if cookie_name == "" then
+        return false, cookie
+    end
+
+    if cookie_name ~= name then
+      return false, cookie
+    end
+
+    return true, cookie
+end
+
+
+local function clear_cookie(name, cookies)
+  cookies = cookies or var.http_cookie
+  if not cookies or cookies == "" then
+      return
+  end
+
+  local results = {}
+  local found
+  local i = 1
+  local j = 0
+  local sc_pos = find(cookies, ";", i, true)
+  while sc_pos do
+      local is_named, cookie = is_named_cookie(sub(cookies, i, sc_pos - 1), name)
+      if is_named then
+          found = true
+      elseif cookie then
+          j = j + 1
+          results[j] = cookie
+      end
+
+      i = sc_pos + 1
+      sc_pos = find(cookies, ";", i, true)
+  end
+
+  local is_named, cookie
+  if i == 1 then
+      is_named, cookie = is_named_cookie(cookies, name)
+  else
+      is_named, cookie = is_named_cookie(sub(cookies, i), name)
+  end
+
+  if not is_named and cookie then
+      if not found then
+          return
+      end
+
+      j = j + 1
+      results[j] = cookie
+  end
+
+  if j == 0 then
+      clear_header("Cookie")
+  else
+      set_header("Cookie", results)
+  end
+end
+
+
 return function(conf, hdrs, uargs, pargs, jargs)
   local content_type
   if hdrs then
@@ -471,5 +559,6 @@ return function(conf, hdrs, uargs, pargs, jargs)
     clear_json_arg = clear_json_arg,
     get_body_arg   = body_arg,
     get_req_arg    = req_arg,
+    clear_cookie   = clear_cookie,
   }
 end
