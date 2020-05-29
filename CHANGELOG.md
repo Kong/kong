@@ -1,4 +1,4 @@
-## (Upcoming) v1.5.0
+## v1.5.0
 
 - Add support for Redis Clusters for session storage
 - Add `config.session_redis_connect_timeout`
