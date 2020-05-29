@@ -1,7 +1,7 @@
 local codec          = require "kong.openid-connect.codec"
 
 
-local sub            = string.sub
+local kong           = kong
 local ngx            = ngx
 local var            = ngx.var
 local get_headers    = ngx.req.get_headers
@@ -14,11 +14,14 @@ local set_body_data  = ngx.req.set_body_data
 local get_post_args  = ngx.req.get_post_args
 local get_body_data  = ngx.req.get_body_data
 local encode_args    = ngx.encode_args
+local tonumber       = tonumber
 local select         = select
 local ipairs         = ipairs
+local concat         = table.concat
 local lower          = string.lower
 local find           = string.find
 local gsub           = string.gsub
+local sub            = string.sub
 local type           = type
 local null           = ngx.null
 local next           = next
@@ -29,6 +32,11 @@ local nothing        = function() return nil end
 
 local CONTENT_TYPE   = "Content-Type"
 local CONTENT_LENGTH = "Content-Length"
+local PARAM_TYPES_ALL = {
+  "header",
+  "query",
+  "body",
+}
 
 
 local function get_value(value)
@@ -513,6 +521,245 @@ local function clear_cookie(name, cookies)
 end
 
 
+local function create_get_http_opts(get_conf_arg)
+  local initialized
+  local http_version
+  local http_proxy
+  local http_proxy_authorization
+  local https_proxy
+  local https_proxy_authorization
+  local no_proxy
+  local keepalive
+  local ssl_verify
+  local timeout
+  return function(options)
+    if not initialized then
+      http_version              = get_conf_arg("http_version", 1.1)
+      http_proxy                = get_conf_arg("http_proxy")
+      http_proxy_authorization  = get_conf_arg("http_proxy_authorization")
+      https_proxy               = get_conf_arg("https_proxy")
+      https_proxy_authorization = get_conf_arg("https_proxy_authorization")
+      no_proxy                  = get_conf_arg("no_proxy")
+      keepalive                 = get_conf_arg("keepalive", true)
+      ssl_verify                = get_conf_arg("ssl_verify", true)
+      timeout                   = get_conf_arg("timeout", 10000)
+      initialized               = true
+    end
+
+    options = options or {}
+    options.http_version              = http_version
+    options.http_proxy                = http_proxy
+    options.http_proxy_authorization  = http_proxy_authorization
+    options.https_proxy               = https_proxy
+    options.https_proxy_authorization = https_proxy_authorization
+    options.no_proxy                  = no_proxy
+    options.keepalive                 = keepalive
+    options.ssl_verify                = ssl_verify
+    options.timeout                   = timeout
+    return options
+  end
+end
+
+
+local function decode_basic_auth(basic_auth)
+  if not basic_auth then
+    return nil
+  end
+
+  local s = find(basic_auth, ":", 2, true)
+  if s then
+    local username = sub(basic_auth, 1, s - 1)
+    local password = sub(basic_auth, s + 1)
+    return username, password
+  end
+end
+
+
+local function create_get_credentials(get_conf_arg, get_header, get_uri_arg, get_body_arg)
+  return function(credential_type, usr_arg, pwd_arg)
+    local password_param_type = get_conf_arg(credential_type .. "_param_type", PARAM_TYPES_ALL)
+    for _, location in ipairs(password_param_type) do
+      if location == "header" then
+        local grant_type = get_header("Grant-Type", "X")
+        if not grant_type or grant_type == credential_type then
+          local username, password = decode_basic_auth(get_header("authorization:basic"))
+          if username and password then
+            return username, password, "header"
+          end
+        end
+
+      elseif location == "query" then
+        local grant_type = get_uri_arg("grant_type")
+        if not grant_type or grant_type == credential_type then
+          local username = get_uri_arg(usr_arg)
+          local password = get_uri_arg(pwd_arg)
+          if username and password then
+            return username, password, "query"
+          end
+        end
+
+      elseif location == "body" then
+        local grant_type = get_body_arg("grant_type")
+        if not grant_type or grant_type == credential_type then
+          local username, loc = get_body_arg(usr_arg)
+          local password = get_body_arg(pwd_arg)
+          if username and password then
+            return username, password, loc
+          end
+        end
+      end
+    end
+  end
+end
+
+
+local function create_get_param_types(get_conf_arg)
+  return function(name, default)
+    return get_conf_arg(name, default or PARAM_TYPES_ALL)
+  end
+end
+
+
+local function create_get_auth_methods(get_conf_arg)
+  local ret
+  return function()
+    if not ret then
+      local auth_methods = get_conf_arg("auth_methods", {
+        "password",
+        "client_credentials",
+        "authorization_code",
+        "bearer",
+        "introspection",
+        "kong_oauth2",
+        "refresh_token",
+        "session",
+      })
+
+      ret = {}
+      for _, auth_method in ipairs(auth_methods) do
+        ret[auth_method] = true
+      end
+    end
+
+    return ret
+  end
+end
+
+
+local function create_get_redirect_uri(get_header)
+  return function()
+    -- we try to use current url as a redirect_uri by default
+    -- if none is configured.
+    local scheme
+    local host
+    local port
+
+    if kong.ip.is_trusted(var.realip_remote_addr or var.remote_addr) then
+      scheme = get_header("X-Forwarded-Proto")
+      if not scheme then
+        scheme = var.scheme
+        if type(scheme) == "table" then
+          scheme = scheme[1]
+        end
+      end
+
+      scheme = lower(scheme)
+
+      host = get_header("X-Forwarded-Host")
+      if host then
+        local s = find(host, "@", 1, true)
+        if s then
+          host = sub(host, s + 1)
+        end
+
+        s = find(host, ":", 1, true)
+        host = s and lower(sub(host, 1, s - 1)) or lower(host)
+
+      else
+        host = var.host
+        if type(host) == "table" then
+          host = host[1]
+        end
+      end
+
+      port = get_header("X-Forwarded-Port")
+      if port then
+        port = tonumber(port)
+        if not port or port < 1 or port > 65535 then
+          local h = get_header("X-Forwarded-Host")
+          if h then
+            local s = find(h, "@", 1, true)
+            if s then
+              h = sub(h, s + 1)
+            end
+
+            s = find(h, ":", 1, true)
+            if s then
+              port = tonumber(sub(h, s + 1))
+            end
+          end
+        end
+      end
+
+      if not port or port < 1 or port > 65535 then
+        port = var.server_port
+        if type(port) == "table" then
+          port = port[1]
+        end
+
+        port = tonumber(port)
+      end
+
+    else
+      scheme = var.scheme
+      if type(scheme) == "table" then
+        scheme = scheme[1]
+      end
+
+      host = var.host
+      if type(host) == "table" then
+        host = host[1]
+      end
+
+      port = var.server_port
+      if type(port) == "table" then
+        port = port[1]
+      end
+
+      port = tonumber(port)
+    end
+
+    local u = var.request_uri
+    if type(u) == "table" then
+      u = u[1]
+    end
+
+    do
+      local s = find(u, "?", 2, true)
+      if s then
+        u = sub(u, 1, s - 1)
+      end
+    end
+
+    local url = { scheme, "://", host }
+
+    if port == 80 and scheme == "http" then
+      url[4] = u
+
+    elseif port == 443 and scheme == "https" then
+      url[4] = u
+
+    else
+      url[4] = ":"
+      url[5] = port
+      url[6] = u
+    end
+
+    return concat(url)
+  end
+end
+
+
 return function(conf, hdrs, uargs, pargs, jargs)
   local content_type
   if hdrs then
@@ -540,25 +787,36 @@ return function(conf, hdrs, uargs, pargs, jargs)
   local clear_json_arg = create_clear_json_arg(json_args)
   local body_arg       = create_get_body_arg(post_arg, json_arg)
   local req_arg        = create_get_req_arg(header, uri_arg, body_arg)
+  local http_opts      = create_get_http_opts(conf_arg)
+  local credentials    = create_get_credentials(conf_arg, header, uri_arg, body_arg)
+  local param_types    = create_get_param_types(conf_arg)
+  local auth_methods   = create_get_auth_methods(conf_arg)
+  local redirect_uri   = create_get_redirect_uri(header)
 
   return {
-    get_value      = get_value,
-    get_conf_args  = conf_args,
-    get_conf_arg   = conf_arg,
-    get_headers    = headers,
-    get_header     = header,
-    clear_header   = clear_header_arg,
-    get_uri_args   = uri_args,
-    get_uri_arg    = uri_arg,
-    clear_uri_arg  = clear_uri_arg,
-    get_post_args  = post_args,
-    get_post_arg   = post_arg,
-    clear_post_arg = clear_post_arg,
-    get_json_args  = json_args,
-    get_json_arg   = json_arg,
-    clear_json_arg = clear_json_arg,
-    get_body_arg   = body_arg,
-    get_req_arg    = req_arg,
-    clear_cookie   = clear_cookie,
+    get_value        = get_value,
+    get_conf_args    = conf_args,
+    get_conf_arg     = conf_arg,
+    get_headers      = headers,
+    get_header       = header,
+    clear_header     = clear_header_arg,
+    set_uri_args     = set_uri_args,
+    get_uri_args     = uri_args,
+    get_uri_arg      = uri_arg,
+    clear_uri_arg    = clear_uri_arg,
+    get_post_args    = post_args,
+    get_post_arg     = post_arg,
+    clear_post_arg   = clear_post_arg,
+    get_json_args    = json_args,
+    get_json_arg     = json_arg,
+    clear_json_arg   = clear_json_arg,
+    get_body_arg     = body_arg,
+    get_req_arg      = req_arg,
+    clear_cookie     = clear_cookie,
+    get_http_opts    = http_opts,
+    get_credentials  = credentials,
+    get_param_types  = param_types,
+    get_auth_methods = auth_methods,
+    get_redirect_uri = redirect_uri,
   }
 end

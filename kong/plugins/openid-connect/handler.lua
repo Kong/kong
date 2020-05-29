@@ -4,31 +4,31 @@ local OICHandler = {
 }
 
 
+local log             = require "kong.plugins.openid-connect.log"
 local cache           = require "kong.plugins.openid-connect.cache"
+local claims          = require "kong.plugins.openid-connect.claims"
+local clients         = require "kong.plugins.openid-connect.clients"
+local headers         = require "kong.plugins.openid-connect.headers"
+local sessions        = require "kong.plugins.openid-connect.sessions"
+local consumers       = require "kong.plugins.openid-connect.consumers"
+local responses       = require "kong.plugins.openid-connect.responses"
 local arguments       = require "kong.plugins.openid-connect.arguments"
 local introspect      = require "kong.plugins.openid-connect.introspect"
-local log             = require "kong.plugins.openid-connect.log"
+local unexpected      = require "kong.plugins.openid-connect.unexpected"
+
+
 local openid          = require "kong.openid-connect"
-local uri             = require "kong.openid-connect.uri"
 local set             = require "kong.openid-connect.set"
 local hash            = require "kong.openid-connect.hash"
 local codec           = require "kong.openid-connect.codec"
-local constants       = require "kong.constants"
-local session_factory = require "resty.session"
 
 
 local kong            = kong
 local ngx             = ngx
-local redirect        = ngx.redirect
 local var             = ngx.var
 local time            = ngx.time
-local null            = ngx.null
-local header          = ngx.header
-local set_header      = ngx.req.set_header
-local set_uri_args    = ngx.req.set_uri_args
 local escape_uri      = ngx.escape_uri
 local encode_base64   = ngx.encode_base64
-local tonumber        = tonumber
 local tostring        = tostring
 local ipairs          = ipairs
 local concat          = table.concat
@@ -41,888 +41,6 @@ local json            = codec.json
 local base64url       = codec.base64url
 
 
-local PRIVATE_KEY_JWKS = {}
-
-
-local PARAM_TYPES_ALL = {
-  "header",
-  "query",
-  "body",
-}
-
-
-local function unexpected(trusted_client, ...)
-  log.err(...)
-
-  if trusted_client.unexpected_redirect_uri then
-    return redirect(trusted_client.unexpected_redirect_uri)
-  end
-
-  local message = "An unexpected error occurred"
-  if trusted_client.display_errors then
-    local err = concat({...}, " ")
-    if err ~= "" then
-      message = message .. " (" .. err .. ")"
-    end
-  end
-
-  return kong.response.exit(500, { message = message })
-end
-
-
-local function create_session_open(args, secret)
-  local strategy = args.get_conf_arg("session_strategy", "default")
-  local storage  = args.get_conf_arg("session_storage", "cookie")
-
-  local redis, memcache
-
-  if storage == "memcache" then
-    log("loading configuration for memcache session storage")
-    memcache = {
-      uselocking = false,
-      prefix     = args.get_conf_arg("session_memcache_prefix", "sessions"),
-      socket     = args.get_conf_arg("session_memcache_socket"),
-      host       = args.get_conf_arg("session_memcache_host", "127.0.0.1"),
-      port       = args.get_conf_arg("session_memcache_port", 11211),
-    }
-
-  elseif storage == "redis" then
-    log("loading configuration for redis session storage")
-    local cluster_nodes = args.get_conf_arg("session_redis_cluster_nodes")
-    if cluster_nodes then
-      redis = {
-        uselocking      = false,
-        prefix          = args.get_conf_arg("session_redis_prefix", "sessions"),
-        auth            = args.get_conf_arg("session_redis_auth"),
-        connect_timeout = args.get_conf_arg("session_redis_connect_timeout"),
-        cluster         = {
-          nodes           = cluster_nodes,
-          name            = "redis-cluster",
-          dict            = "kong_locks",
-          maxredirections = args.get_conf_arg("session_redis_cluster_maxredirections"),
-        }
-      }
-
-    else
-      redis = {
-        uselocking      = false,
-        prefix          = args.get_conf_arg("session_redis_prefix", "sessions"),
-        socket          = args.get_conf_arg("session_redis_socket"),
-        host            = args.get_conf_arg("session_redis_host", "127.0.0.1"),
-        port            = args.get_conf_arg("session_redis_port", 6379),
-        auth            = args.get_conf_arg("session_redis_auth"),
-        connect_timeout = args.get_conf_arg("session_redis_connect_timeout"),
-        read_timeout    = args.get_conf_arg("session_redis_read_timeout"),
-        send_timeout    = args.get_conf_arg("session_redis_send_timeout"),
-        ssl             = args.get_conf_arg("session_redis_ssl", false),
-        ssl_verify      = args.get_conf_arg("session_redis_ssl_verify", false),
-        server_name     = args.get_conf_arg("session_redis_server_name"),
-      }
-    end
-  end
-
-  return function(options)
-    options.strategy = strategy
-    options.storage  = storage
-    options.memcache = memcache
-    options.redis    = redis
-    options.secret   = secret
-
-    log("trying to open session using cookie named '", options.name, "'")
-    return session_factory.open(options)
-  end
-end
-
-
-local function create_get_http_opts(args)
-  return function(options)
-    options = options or {}
-    options.http_version              = args.get_conf_arg("http_version", 1.1)
-    options.http_proxy                = args.get_conf_arg("http_proxy")
-    options.http_proxy_authorization  = args.get_conf_arg("http_proxy_authorization")
-    options.https_proxy               = args.get_conf_arg("https_proxy")
-    options.https_proxy_authorization = args.get_conf_arg("https_proxy_authorization")
-    options.no_proxy                  = args.get_conf_arg("no_proxy")
-    options.keepalive                 = args.get_conf_arg("keepalive", true)
-    options.ssl_verify                = args.get_conf_arg("ssl_verify", true)
-    options.timeout                   = args.get_conf_arg("timeout", 10000)
-    return options
-  end
-end
-
-
-local function redirect_uri(args)
-  -- we try to use current url as a redirect_uri by default
-  -- if none is configured.
-  local scheme
-  local host
-  local port
-
-  if kong.ip.is_trusted(var.realip_remote_addr or var.remote_addr) then
-    scheme = args.get_header("X-Forwarded-Proto")
-    if not scheme then
-      scheme = var.scheme
-      if type(scheme) == "table" then
-        scheme = scheme[1]
-      end
-    end
-
-    scheme = lower(scheme)
-
-    host = args.get_header("X-Forwarded-Host")
-    if host then
-      local s = find(host, "@", 1, true)
-      if s then
-        host = sub(host, s + 1)
-      end
-
-      s = find(host, ":", 1, true)
-      host = s and lower(sub(host, 1, s - 1)) or lower(host)
-
-    else
-      host = var.host
-      if type(host) == "table" then
-        host = host[1]
-      end
-    end
-
-    port = args.get_header("X-Forwarded-Port")
-    if port then
-      port = tonumber(port)
-      if not port or port < 1 or port > 65535 then
-        local h = args.get_header("X-Forwarded-Host")
-        if h then
-          local s = find(h, "@", 1, true)
-          if s then
-            h = sub(h, s + 1)
-          end
-
-          s = find(h, ":", 1, true)
-          if s then
-            port = tonumber(sub(h, s + 1))
-          end
-        end
-      end
-    end
-
-    if not port or port < 1 or port > 65535 then
-      port = var.server_port
-      if type(port) == "table" then
-        port = port[1]
-      end
-
-      port = tonumber(port)
-    end
-
-  else
-    scheme = var.scheme
-    if type(scheme) == "table" then
-      scheme = scheme[1]
-    end
-
-    host = var.host
-    if type(host) == "table" then
-      host = host[1]
-    end
-
-    port = var.server_port
-    if type(port) == "table" then
-      port = port[1]
-    end
-
-    port = tonumber(port)
-  end
-
-  local u = var.request_uri
-  if type(u) == "table" then
-    u = u[1]
-  end
-
-  do
-    local s = find(u, "?", 2, true)
-    if s then
-      u = sub(u, 1, s - 1)
-    end
-  end
-
-  local url = { scheme, "://", host }
-
-  if port == 80 and scheme == "http" then
-    url[4] = u
-
-  elseif port == 443 and scheme == "https" then
-    url[4] = u
-
-  else
-    url[4] = ":"
-    url[5] = port
-    url[6] = u
-  end
-
-  return concat(url)
-end
-
-
-local function find_claim(token, search)
-  if type(token) ~= "table" then
-    return nil
-  end
-
-  local search_t = type(search)
-  local t = token
-  if search_t == "string" then
-    if not t[search] then
-      return nil
-    end
-    t = t[search]
-
-  elseif search_t == "table" then
-    for _, claim in ipairs(search) do
-      if not t[claim] then
-        return nil
-      end
-
-      t = t[claim]
-    end
-
-  else
-    return nil
-  end
-
-  if type(t) == "table" then
-    return concat(t, " ")
-  end
-
-  return tostring(t)
-end
-
-
-local function find_consumer(token, claim, anonymous, consumer_by, ttl)
-  if not token then
-    return nil, "token for consumer mapping was not found"
-  end
-
-  if type(token) ~= "table" then
-    return nil, "opaque token cannot be used for consumer mapping"
-  end
-
-  local payload = token.payload
-
-  if not payload then
-    return nil, "token payload was not found for consumer mapping"
-  end
-
-  if type(payload) ~= "table" then
-    return nil, "invalid token payload was specified for consumer mapping"
-  end
-
-  local subject = find_claim(payload, claim)
-  if not subject then
-    if type(claim) == "table" then
-      return nil, "claim (" .. concat(claim, ",") .. ") was not found for consumer mapping"
-    end
-
-    return nil, "claim (" .. tostring(claim) .. ") was not found for consumer mapping"
-  end
-
-  return cache.consumers.load(subject, anonymous, consumer_by, ttl)
-end
-
-
-local function set_consumer(ctx, consumer, credential)
-  local head = constants.HEADERS
-
-  if consumer then
-    log("setting kong consumer context and headers")
-
-    ctx.authenticated_consumer = consumer
-
-    if credential and credential ~= null then
-      ctx.authenticated_credential = credential
-
-    else
-      set_header(head.ANONYMOUS, nil)
-
-      if consumer.id and consumer.id ~= null then
-        ctx.authenticated_credential = {
-          consumer_id = consumer.id
-        }
-      else
-        ctx.authenticated_credential = nil
-      end
-    end
-
-    if consumer.id and consumer.id ~= null then
-      set_header(head.CONSUMER_ID, consumer.id)
-    else
-      set_header(head.CONSUMER_ID, nil)
-    end
-
-    if consumer.custom_id and consumer.custom_id ~= null then
-      set_header(head.CONSUMER_CUSTOM_ID, consumer.custom_id)
-    else
-      set_header(head.CONSUMER_CUSTOM_ID, nil)
-    end
-
-    if consumer.username and consumer.username ~= null then
-      set_header(head.CONSUMER_USERNAME, consumer.username)
-    else
-      set_header(head.CONSUMER_USERNAME, nil)
-    end
-
-  elseif not ctx.authenticated_credential then
-    log("removing possible remnants of anonymous")
-
-    ctx.authenticated_consumer   = nil
-    ctx.authenticated_credential = nil
-
-    set_header(head.CONSUMER_ID,        nil)
-    set_header(head.CONSUMER_CUSTOM_ID, nil)
-    set_header(head.CONSUMER_USERNAME,  nil)
-
-    set_header(head.ANONYMOUS,          nil)
-  end
-end
-
-
-local function find_trusted_client_by_arg(arg, clients)
-  if not arg then
-    return nil
-  end
-
-  local client_index = tonumber(arg)
-  if client_index then
-    if clients[client_index] then
-      local client_id = clients[client_index]
-      if client_id then
-        return client_id, client_index
-      end
-    end
-
-    return
-  end
-
-  for i, c in ipairs(clients) do
-    if arg == c then
-      return clients[i], i
-    end
-  end
-end
-
-
-local function find_trusted_client(args)
-  -- load client configuration
-  local clients        = args.get_conf_arg("client_id",      {})
-  local secrets        = args.get_conf_arg("client_secret",  {})
-  local auths          = args.get_conf_arg("client_auth",    {})
-  local algs           = args.get_conf_arg("client_alg",     {})
-  local jwks           = args.get_conf_arg("client_jwk",     {})
-  local redirects      = args.get_conf_arg("redirect_uri",   {})
-  local display_errors = args.get_conf_arg("display_errors", false)
-
-  local login_redirect_uris        = args.get_conf_arg("login_redirect_uri",        {})
-  local logout_redirect_uris       = args.get_conf_arg("logout_redirect_uri",       {})
-  local forbidden_redirect_uris    = args.get_conf_arg("forbidden_redirect_uri",    {})
-  local unauthorized_redirect_uris = args.get_conf_arg("unauthorized_redirect_uri", {})
-  local unexpected_redirect_uris   = args.get_conf_arg("unexpected_redirect_uris",  {})
-
-  clients.n = #clients
-
-  local client_id
-  local client_index
-
-  if clients.n > 1 then
-    local client_arg_name = args.get_conf_arg("client_arg", "client_id")
-    client_id, client_index = find_trusted_client_by_arg(args.get_header(client_arg_name, "X"), clients)
-    if not client_id then
-      client_id, client_index = find_trusted_client_by_arg(args.get_uri_arg(client_arg_name), clients)
-      if not client_id then
-        client_id, client_index = find_trusted_client_by_arg(args.get_body_arg(client_arg_name), clients)
-      end
-    end
-  end
-
-  local client = {
-    clients                    = clients,
-    secrets                    = secrets,
-    auths                      = auths,
-    algs                       = algs,
-    jwks                       = jwks,
-    redirects                  = redirects,
-    login_redirect_uris        = login_redirect_uris,
-    logout_redirect_uris       = logout_redirect_uris,
-    forbidden_redirect_uris    = forbidden_redirect_uris,
-    forbidden_destroy_session  = args.get_conf_arg("forbidden_destroy_session", true),
-    unauthorized_redirect_uris = unauthorized_redirect_uris,
-    unexpected_redirect_uris   = unexpected_redirect_uris,
-  }
-
-  if client_id then
-    client.id                        = client_id
-    client.index                     = client_index
-    client.secret                    = secrets[client_index]                    or secrets[1]
-    client.auth                      = auths[client_index]                      or auths[1]
-    client.jwk                       = jwks[client_index]                       or jwks[1]
-    client.alg                       = algs[client_index]                       or algs[1]
-    client.redirect_uri              = redirects[client_index]                  or redirects[1] or redirect_uri(args)
-    client.login_redirect_uri        = login_redirect_uris[client_index]        or login_redirect_uris[1]
-    client.logout_redirect_uri       = logout_redirect_uris[client_index]       or logout_redirect_uris[1]
-    client.forbidden_redirect_uri    = forbidden_redirect_uris[client_index]    or forbidden_redirect_uris[1]
-    client.unauthorized_redirect_uri = unauthorized_redirect_uris[client_index] or unauthorized_redirect_uris[1]
-    client.unexpected_redirect_uri   = unexpected_redirect_uris[client_index]   or unexpected_redirect_uris[1]
-
-  else
-    client.id                        = clients[1]
-    client.index                     = 1
-    client.secret                    = secrets[1]
-    client.auth                      = auths[1]
-    client.alg                       = algs[1]
-    client.jwk                       = jwks[1]
-    client.redirect_uri              = redirects[1] or redirect_uri(args)
-    client.login_redirect_uri        = login_redirect_uris[1]
-    client.logout_redirect_uri       = logout_redirect_uris[1]
-    client.forbidden_redirect_uri    = forbidden_redirect_uris[1]
-    client.unauthorized_redirect_uri = unauthorized_redirect_uris[1]
-    client.unexpected_redirect_uri   = unexpected_redirect_uris[1]
-  end
-
-  if not client.jwk then
-    client.jwk = PRIVATE_KEY_JWKS[client.alg] or PRIVATE_KEY_JWKS.RS256
-  end
-
-  client.display_errors = display_errors
-
-  return client
-end
-
-
-local function reset_trusted_client(new_client_index, trusted_client, oic, options)
-  if not new_client_index or new_client_index == trusted_client.index or trusted_client.clients.n < 2 then
-    return
-  end
-
-  local new_id, new_index = find_trusted_client_by_arg(new_client_index, trusted_client.clients)
-  if not new_id then
-    return
-  end
-
-  trusted_client.index                     = new_index
-  trusted_client.id                        = new_id
-  trusted_client.secret                    = trusted_client.secrets[new_client_index] or
-                                             trusted_client.secret
-  trusted_client.auth                      = trusted_client.auths[new_client_index] or
-                                             trusted_client.auth
-  trusted_client.jwk                       = trusted_client.jwk[new_client_index] or
-                                             trusted_client.jwk
-  trusted_client.alg                       = trusted_client.algs[new_client_index] or
-                                             trusted_client.alg
-  trusted_client.redirect_uri              = trusted_client.redirects[new_client_index] or
-                                             trusted_client.redirect_uri
-  trusted_client.login_redirect_uri        = trusted_client.login_redirect_uris[new_client_index] or
-                                             trusted_client.login_redirect_uri
-  trusted_client.logout_redirect_uri       = trusted_client.logout_redirect_uris[new_client_index] or
-                                             trusted_client.logout_redirect_uri
-  trusted_client.forbidden_redirect_uri    = trusted_client.forbidden_redirect_uris[new_client_index] or
-                                             trusted_client.forbidden_redirect_uri
-  trusted_client.unauthorized_redirect_uri = trusted_client.unauthorized_redirect_uris[new_client_index] or
-                                             trusted_client.unauthorized_redirect_uri
-  trusted_client.unexpected_redirect_uri   = trusted_client.unexpected_redirect_uris[new_client_index] or
-                                             trusted_client.unexpected_redirect_uri
-
-  if not trusted_client.jwk then
-    trusted_client.jwk = PRIVATE_KEY_JWKS[trusted_client.alg] or PRIVATE_KEY_JWKS.RS256
-  end
-
-  options.client_id     = trusted_client.id
-  options.client_secret = trusted_client.secret
-  options.client_auth   = trusted_client.auth
-  options.client_alg    = trusted_client.alg
-  options.redirect_uri  = trusted_client.redirect_uri
-
-  oic.options:reset(options)
-end
-
-
-local function append_header(name, value)
-  if type(value) == "table" then
-    for _, val in ipairs(value) do
-      append_header(name, val)
-    end
-
-  else
-    local header_value = header[name]
-
-    if header_value ~= nil then
-      if type(header_value) == "table" then
-        header_value[#header_value+1] = value
-
-      else
-
-        header_value = { header_value, value }
-      end
-
-    else
-      header_value = value
-    end
-
-    header[name] = header_value
-  end
-end
-
-
-local function set_upstream_header(header_key, header_value)
-  if not header_key or not header_value or header_value == null then
-    return
-  end
-
-  if header_key == "authorization:bearer" then
-    set_header("Authorization", "Bearer " .. header_value)
-
-  elseif header_key == "authorization:basic" then
-    set_header("Authorization", "Basic " .. header_value)
-
-  else
-    set_header(header_key, header_value)
-  end
-end
-
-
-local function set_downstream_header(header_key, header_value)
-  if not header_key or not header_value or header_value == null then
-    return
-  end
-
-  if header_key == "authorization:bearer" then
-    append_header("Authorization", "Bearer " .. header_value)
-
-  elseif header_key == "authorization:basic" then
-    append_header("Authorization", "Basic " .. header_value)
-
-  else
-    append_header(header_key, header_value)
-  end
-end
-
-
-local function get_header_value(header_value)
-  if not header_value or header_value == null then
-    return
-  end
-
-  local val_type = type(header_value)
-  if val_type == "table" then
-    header_value = json.encode(header_value)
-    if header_value then
-      header_value = encode_base64(header_value)
-    end
-
-  elseif val_type ~= "string" then
-    return tostring(header_value)
-  end
-
-  return header_value
-end
-
-
-local function set_headers(args, header_key, header_value)
-  if not header_key or not header_value or header_value == null then
-    return
-  end
-
-  local us = "upstream_"   .. header_key
-  local ds = "downstream_" .. header_key
-
-  do
-    local value
-
-    local usm = args.get_conf_arg(us .. "_header")
-    if usm then
-      if type(header_value) == "function" then
-        value = header_value()
-
-      else
-        value = header_value
-      end
-
-      if value and value ~= null then
-        set_upstream_header(usm, get_header_value(value))
-      end
-    end
-
-    local dsm = args.get_conf_arg(ds .. "_header")
-    if dsm then
-      if not usm then
-        if type(header_value) == "function" then
-          value = header_value()
-
-        else
-          value = header_value
-        end
-      end
-
-      if value and value ~= null then
-        set_downstream_header(dsm, get_header_value(value))
-      end
-    end
-  end
-end
-
-
-local function anonymous_access(ctx, anonymous, trusted_client)
-  local consumer_token = {
-    payload = {
-      id = anonymous
-    }
-  }
-
-  local consumer, err = find_consumer(consumer_token, "id", true, "id")
-  if type(consumer) ~= "table" then
-    if err then
-      return unexpected(trusted_client, "anonymous consumer was not found (", err, ")")
-
-    else
-      return unexpected(trusted_client, "anonymous consumer was not found")
-    end
-  end
-
-  local head = constants.HEADERS
-
-  ctx.authenticated_consumer   = consumer
-  ctx.authenticated_credential = nil
-
-  if consumer.id and consumer.id ~= null then
-    set_header(head.CONSUMER_ID, consumer.id)
-  else
-    set_header(head.CONSUMER_ID, nil)
-  end
-
-  if consumer.custom_id and consumer.custom_id ~= null then
-    set_header(head.CONSUMER_CUSTOM_ID, consumer.custom_id)
-  else
-    set_header(head.CONSUMER_CUSTOM_ID, nil)
-  end
-
-  if consumer.username and consumer.username ~= null then
-    set_header(head.CONSUMER_USERNAME, consumer.username)
-  else
-    set_header(head.CONSUMER_USERNAME, nil)
-  end
-
-  set_header(head.ANONYMOUS, true)
-end
-
-
-local function unauthorized(ctx, issuer, msg, err, session, anonymous, trusted_client)
-  if err then
-    log.notice(err)
-  end
-
-  if session then
-    session:destroy()
-  end
-
-  if anonymous then
-    return anonymous_access(ctx, anonymous, trusted_client)
-  end
-
-  if trusted_client.unauthorized_redirect_uri then
-    return redirect(trusted_client.unauthorized_redirect_uri)
-  end
-
-  if trusted_client.display_errors and err then
-    msg = msg .. " (" .. err .. ")"
-  end
-
-  local parts = uri.parse(issuer)
-
-  return kong.response.exit(401, { message = msg }, {
-    ["WWW-Authenticate"] = 'Bearer realm="' .. (parts.host or "kong") .. '"'
-  })
-end
-
-
-local function forbidden(ctx, issuer, msg, err, session, anonymous, trusted_client)
-  if err then
-    log.notice(err)
-  end
-
-  if session and trusted_client.forbidden_destroy_session then
-    session:destroy()
-  end
-
-  if anonymous then
-    return anonymous_access(ctx, anonymous, trusted_client)
-  end
-
-  if trusted_client.forbidden_redirect_uri then
-    return redirect(trusted_client.forbidden_redirect_uri)
-  end
-
-  if trusted_client.display_errors and err then
-    msg = msg .. " (" .. err .. ")"
-  end
-
-  local parts = uri.parse(issuer)
-
-  return kong.response.exit(403, { message = msg }, {
-    ["WWW-Authenticate"] = 'Bearer realm="' .. (parts.host or "kong") .. '"'
-  })
-end
-
-
-local function success(response)
-  if not response then
-    return kong.response.exit(204)
-  end
-
-  return kong.response.exit(200, response)
-end
-
-
-local function get_auth_methods(get_conf_arg)
-  local auth_methods = get_conf_arg("auth_methods", {
-    "password",
-    "client_credentials",
-    "authorization_code",
-    "bearer",
-    "introspection",
-    "kong_oauth2",
-    "refresh_token",
-    "session",
-  })
-
-  local ret = {}
-  for _, auth_method in ipairs(auth_methods) do
-    ret[auth_method] = true
-  end
-  return ret
-end
-
-
-local function decode_basic_auth(basic_auth)
-  if not basic_auth then
-    return nil
-  end
-
-  local s = find(basic_auth, ":", 2, true)
-  if s then
-    local username = sub(basic_auth, 1, s - 1)
-    local password = sub(basic_auth, s + 1)
-    return username, password
-  end
-end
-
-
-local function get_credentials(args, credential_type, usr_arg, pwd_arg)
-  local password_param_type = args.get_conf_arg(credential_type .. "_param_type", PARAM_TYPES_ALL)
-
-  for _, location in ipairs(password_param_type) do
-    if location == "header" then
-      local grant_type = args.get_header("Grant-Type", "X")
-      if not grant_type or grant_type == credential_type then
-        local username, password = decode_basic_auth(args.get_header("authorization:basic"))
-        if username and password then
-          return username, password, "header"
-        end
-      end
-
-    elseif location == "query" then
-      local grant_type = args.get_uri_arg("grant_type")
-      if not grant_type or grant_type == credential_type then
-        local username = args.get_uri_arg(usr_arg)
-        local password = args.get_uri_arg(pwd_arg)
-        if username and password then
-          return username, password, "query"
-        end
-      end
-
-    elseif location == "body" then
-      local grant_type = args.get_body_arg("grant_type")
-      if not grant_type or grant_type == credential_type then
-        local username, loc = args.get_body_arg(usr_arg)
-        local password = args.get_body_arg(pwd_arg)
-        if username and password then
-          return username, password, loc
-        end
-      end
-    end
-  end
-end
-
-
-local function replay_downstream_headers(args, headers, auth_method)
-  if headers and auth_method then
-    local replay_for = args.get_conf_arg("token_headers_grants")
-    if not replay_for then
-      return
-    end
-    log("replaying token endpoint request headers")
-    local replay_prefix = args.get_conf_arg("token_headers_prefix")
-    for _, v in ipairs(replay_for) do
-      if v == auth_method then
-        local replay_headers = args.get_conf_arg("token_headers_replay")
-        if replay_headers then
-          for _, replay_header in ipairs(replay_headers) do
-            local extra_header = headers[replay_header]
-            if extra_header then
-              if replay_prefix then
-                append_header(replay_prefix .. replay_header, extra_header)
-
-              else
-                append_header(replay_header, extra_header)
-              end
-            end
-          end
-        end
-        return
-      end
-    end
-  end
-end
-
-
-local function get_exp(access_token, tokens_encoded, now, exp_default)
-  if access_token and type(access_token) == "table" then
-    local exp
-
-    if type(access_token.payload) == "table" then
-      if access_token.payload.exp then
-        exp = tonumber(access_token.payload.exp)
-        if exp then
-          return exp
-        end
-      end
-    end
-
-    exp = tonumber(access_token.exp)
-    if exp then
-      return exp
-    end
-  end
-
-  if tokens_encoded and type(tokens_encoded) == "table" then
-    if tokens_encoded.expires_in then
-      local expires_in = tonumber(tokens_encoded.expires_in)
-      if expires_in then
-        if expires_in == 0 then
-          return 0
-        end
-
-        return now + expires_in
-      end
-    end
-  end
-
-  return exp_default
-end
-
-
-local function no_cache_headers()
-  header["Cache-Control"] = "no-cache, no-store"
-  header["Pragma"]        = "no-cache"
-end
-
-
 local function rediscover_keys(issuer, options)
   return function()
     return cache.issuers.rediscover(issuer, options)
@@ -931,18 +49,7 @@ end
 
 
 function OICHandler.init_worker()
-  local keys, err = kong.db.oic_jwks:get()
-  if not keys then
-    log.err(err)
-
-  else
-    for _, jwk in ipairs(keys.jwks.keys) do
-      if jwk.alg ~= "HS256" and jwk.alg ~= "HS384" and jwk.alg ~= "HS512" then
-        PRIVATE_KEY_JWKS[jwk.alg] = jwk
-      end
-    end
-  end
-
+  clients.init_worker()
   cache.init_worker()
 end
 
@@ -950,17 +57,11 @@ end
 function OICHandler.access(_, conf)
   local ctx = ngx.ctx
   local args = arguments(conf)
-  args.get_http_opts = create_get_http_opts(args)
 
   -- check if preflight request and whether it should be authenticated
   if not args.get_conf_arg("run_on_preflight", true) and var.request_method == "OPTIONS" then
     return
   end
-
-  local trusted_client = find_trusted_client(args)
-
-  local unauthorized_error_message = args.get_conf_arg("unauthorized_error_message", "Unauthorized")
-  local forbidden_error_message = args.get_conf_arg("forbidden_error_message", "Forbidden")
 
   local anonymous = args.get_conf_arg("anonymous")
   if anonymous and ctx.authenticated_credential then
@@ -969,6 +70,8 @@ function OICHandler.access(_, conf)
     log("skipping because user is already authenticated")
     return
   end
+
+  local client = clients.find(args)
 
   -- common variables
   local ok, err
@@ -980,53 +83,44 @@ function OICHandler.access(_, conf)
     local issuer
     local issuer_uri = args.get_conf_arg("issuer")
 
-    local discovery_options = args.get_http_opts {
+    local discovery_options = args.get_http_opts({
       headers               = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
       rediscovery_lifetime  = args.get_conf_arg("rediscovery_lifetime", 300),
       extra_jwks_uris       = args.get_conf_arg("extra_jwks_uris"),
-    }
+    })
 
     issuer, err = cache.issuers.load(issuer_uri, discovery_options)
     if type(issuer) ~= "table" then
-      return unexpected(trusted_client, err or "discovery information could not be loaded")
+      return unexpected(client, err or "discovery information could not be loaded")
     end
 
-    options = {
-      client_id                 = trusted_client.id,
-      client_secret             = trusted_client.secret,
-      client_auth               = trusted_client.auth,
-      client_alg                = trusted_client.alg,
-      client_jwk                = trusted_client.jwk,
-      redirect_uri              = trusted_client.redirect_uri,
-      scope                     = args.get_conf_arg("scopes", {}),
-      response_mode             = args.get_conf_arg("response_mode"),
-      response_type             = args.get_conf_arg("response_type"),
-      audience                  = args.get_conf_arg("audience"),
-      domains                   = args.get_conf_arg("domains"),
-      max_age                   = args.get_conf_arg("max_age"),
-      timeout                   = args.get_conf_arg("timeout", 10000),
-      leeway                    = args.get_conf_arg("leeway", 0),
-      http_version              = args.get_conf_arg("http_version", 1.1),
-      http_proxy                = args.get_conf_arg("http_proxy"),
-      http_proxy_authorization  = args.get_conf_arg("http_proxy_authorization"),
-      https_proxy               = args.get_conf_arg("https_proxy"),
-      https_proxy_authorization = args.get_conf_arg("http_proxy_authorization"),
-      authorization_endpoint    = args.get_conf_arg("authorization_endpoint"),
-      token_endpoint            = args.get_conf_arg("token_endpoint"),
-      no_proxy                  = args.get_conf_arg("no_proxy"),
-      keepalive                 = args.get_conf_arg("keepalive", true),
-      ssl_verify                = args.get_conf_arg("ssl_verify", true),
-      verify_parameters         = args.get_conf_arg("verify_parameters"),
-      verify_nonce              = args.get_conf_arg("verify_nonce"),
-      verify_signature          = args.get_conf_arg("verify_signature"),
-      verify_claims             = args.get_conf_arg("verify_claims"),
-      rediscover_keys           = rediscover_keys(issuer_uri, discovery_options),
-    }
+    options = args.get_http_opts({
+      client_id              = client.id,
+      client_secret          = client.secret,
+      client_auth            = client.auth,
+      client_alg             = client.alg,
+      client_jwk             = client.jwk,
+      redirect_uri           = client.redirect_uri,
+      scope                  = args.get_conf_arg("scopes", {}),
+      response_mode          = args.get_conf_arg("response_mode"),
+      response_type          = args.get_conf_arg("response_type"),
+      audience               = args.get_conf_arg("audience"),
+      domains                = args.get_conf_arg("domains"),
+      max_age                = args.get_conf_arg("max_age"),
+      leeway                 = args.get_conf_arg("leeway", 0),
+      authorization_endpoint = args.get_conf_arg("authorization_endpoint"),
+      token_endpoint         = args.get_conf_arg("token_endpoint"),
+      verify_parameters      = args.get_conf_arg("verify_parameters"),
+      verify_nonce           = args.get_conf_arg("verify_nonce"),
+      verify_signature       = args.get_conf_arg("verify_signature"),
+      verify_claims          = args.get_conf_arg("verify_claims"),
+      rediscover_keys        = rediscover_keys(issuer_uri, discovery_options),
+    })
 
     log("initializing library")
     oic, err = openid.new(options, issuer.configuration, issuer.keys)
     if type(oic) ~= "table" then
-      return unexpected(trusted_client, err or "unable to initialize library")
+      return unexpected(client, err or "unable to initialize library")
     end
 
     iss = oic.configuration.issuer
@@ -1068,10 +162,10 @@ function OICHandler.access(_, conf)
 
   -- initialize functions
   local introspect_token = introspect.new(args, oic, cache)
-  local session_open     = create_session_open(args, secret)
+  local session_open     = sessions.new(args, secret)
 
   -- load enabled authentication methods
-  local auth_methods = get_auth_methods(args.get_conf_arg)
+  local auth_methods = args.get_auth_methods()
 
   -- dynamic login redirect uri (only used with authorization code flow)
   local dynamic_login_redirect_uri
@@ -1122,6 +216,8 @@ function OICHandler.access(_, conf)
     end
   end
 
+  local response = responses.new(args, ctx, iss, client, anonymous, session)
+
   -- logout
   do
     local logout = false
@@ -1169,7 +265,7 @@ function OICHandler.access(_, conf)
       if logout then
         local id_token
         if session_present and type(session_data) == "table" then
-          reset_trusted_client(session_data.client, trusted_client, oic, options)
+          clients.reset(session_data.client, client, oic, options)
 
           if type(session_data.tokens) == "table" then
             id_token = session_data.tokens.id_token
@@ -1215,7 +311,7 @@ function OICHandler.access(_, conf)
           session:destroy()
         end
 
-        no_cache_headers()
+        headers.no_cache()
 
         local end_session_endpoint = args.get_conf_arg("end_session_endpoint", oic.configuration.end_session_endpoint)
         if end_session_endpoint then
@@ -1234,22 +330,22 @@ function OICHandler.access(_, conf)
             redirect_params_added = true
           end
 
-          if trusted_client.logout_redirect_uri then
+          if client.logout_redirect_uri then
             u[i+1] = redirect_params_added and "&post_logout_redirect_uri=" or "?post_logout_redirect_uri="
-            u[i+2] = escape_uri(trusted_client.logout_redirect_uri)
+            u[i+2] = escape_uri(client.logout_redirect_uri)
           end
 
           log("redirecting to end session endpoint")
-          return redirect(concat(u))
+          return response.redirect(concat(u))
 
         else
-          if trusted_client.logout_redirect_uri then
+          if client.logout_redirect_uri then
             log("redirecting to logout redirect uri")
-            return redirect(trusted_client.logout_redirect_uri)
+            return response.redirect(client.logout_redirect_uri)
           end
 
           log("logout response")
-          return success()
+          return response.success()
         end
       end
     end
@@ -1272,7 +368,7 @@ function OICHandler.access(_, conf)
     -- bearer token authentication
     if auth_methods.bearer or auth_methods.introspection or auth_methods.kong_oauth2 then
       log("trying to find bearer token")
-      local bearer_token_param_type = args.get_conf_arg("bearer_token_param_type", PARAM_TYPES_ALL)
+      local bearer_token_param_type = args.get_param_types("bearer_token_param_type")
       for _, location in ipairs(bearer_token_param_type) do
         if location == "header" then
           bearer_token = args.get_header("authorization:bearer")
@@ -1343,7 +439,7 @@ function OICHandler.access(_, conf)
       if bearer_token then
         log("found bearer token")
         session_data = {
-          client = trusted_client.index,
+          client = client.index,
           tokens = {
             access_token = bearer_token,
           },
@@ -1357,7 +453,7 @@ function OICHandler.access(_, conf)
 
           local id_token, loc = args.get_req_arg(
             id_token_param_name,
-            args.get_conf_arg("id_token_param_type", PARAM_TYPES_ALL)
+            args.get_param_types("id_token_param_type")
           )
 
           if id_token then
@@ -1397,7 +493,7 @@ function OICHandler.access(_, conf)
 
           local refresh_token, loc = args.get_req_arg(
             refresh_token_param_name,
-            args.get_conf_arg("refresh_token_param_type", PARAM_TYPES_ALL)
+            args.get_param_types("refresh_token_param_type")
           )
 
           if loc == "header" then
@@ -1443,13 +539,13 @@ function OICHandler.access(_, conf)
           local usr, pwd, loc1
           if auth_methods.password then
             log("trying to find credentials for password grant")
-            usr, pwd, loc1 = get_credentials(args, "password", "username",  "password")
+            usr, pwd, loc1 = args.get_credentials("password", "username",  "password")
           end
 
           local cid, sec, loc2
           if auth_methods.client_credentials then
             log("trying to find credentials for client credentials grant")
-            cid, sec, loc2 = get_credentials(args, "client_credentials", "client_id", "client_secret")
+            cid, sec, loc2 = args.get_credentials("client_credentials", "client_id", "client_secret")
           end
 
           if usr and pwd and cid and sec then
@@ -1495,7 +591,6 @@ function OICHandler.access(_, conf)
             }
 
           else
-
             log("credentials for client credentials or password grants were not found")
           end
 
@@ -1584,7 +679,7 @@ function OICHandler.access(_, conf)
               local nonce         = authorization_data.nonce
               local code_verifier = authorization_data.code_verifier
 
-              reset_trusted_client(authorization_data.client, trusted_client, oic, options)
+              clients.reset(authorization_data.client, client, oic, options)
 
               -- authorization code response
               token_endpoint_args = {
@@ -1599,15 +694,13 @@ function OICHandler.access(_, conf)
               if type(token_endpoint_args) ~= "table" then
                 log("invalid authorization code flow")
 
-                no_cache_headers()
+                headers.no_cache()
 
                 if args.get_uri_arg("state") == state then
-                  return unauthorized(ctx, iss, unauthorized_error_message, err,
-                                      authorization, anonymous, trusted_client)
+                  return response.unauthorized(err)
 
                 elseif args.get_post_arg("state") == state then
-                  return unauthorized(ctx, iss, unauthorized_error_message, err,
-                                      authorization, anonymous, trusted_client)
+                  return response.unauthorized(err)
 
                 else
                   log(err)
@@ -1616,7 +709,7 @@ function OICHandler.access(_, conf)
                 log("creating authorization code flow request with previous parameters")
                 token_endpoint_args, err = oic.authorization:request {
                   args          = authorization_data.args,
-                  client        = trusted_client.index,
+                  client        = client.index,
                   state         = state,
                   nonce         = nonce,
                   code_verifier = code_verifier,
@@ -1624,7 +717,7 @@ function OICHandler.access(_, conf)
 
                 if type(token_endpoint_args) ~= "table" then
                   log("unable to start authorization code flow request with previous parameters")
-                  return unexpected(trusted_client, err)
+                  return unexpected(client, err)
                 end
 
                 log("starting a new authorization code flow with previous parameters")
@@ -1633,14 +726,14 @@ function OICHandler.access(_, conf)
                 -- had closed the previous, but with same parameters
                 -- as before.
                 authorization:start()
-                authorization.data.uri = redirect_uri(args)
+                authorization.data.uri = args.get_redirect_uri()
                 if args.get_conf_arg("preserve_query_args") then
                   authorization.data.uri_args = var.args
                 end
                 authorization:save()
 
                 log("redirecting client to openid connect provider with previous parameters")
-                return redirect(token_endpoint_args.url)
+                return response.redirect(token_endpoint_args.url)
               end
 
               log("authorization code flow verified")
@@ -1679,7 +772,7 @@ function OICHandler.access(_, conf)
           if type(token_endpoint_args) ~= "table" then
             log("creating authorization code flow request")
 
-            no_cache_headers()
+            headers.no_cache()
 
             local extra_args  = args.get_conf_args("authorization_query_args_names",
                                                    "authorization_query_args_values")
@@ -1713,13 +806,13 @@ function OICHandler.access(_, conf)
 
             if type(token_endpoint_args) ~= "table" then
               log("unable to start authorization code flow request")
-              return unexpected(trusted_client, err)
+              return unexpected(client, err)
             end
 
             authorization.data = {
-              uri           = redirect_uri(args),
+              uri           = args.get_redirect_uri(),
               args          = extra_args,
-              client        = trusted_client.index,
+              client        = client.index,
               state         = token_endpoint_args.state,
               nonce         = token_endpoint_args.nonce,
               code_verifier = token_endpoint_args.code_verifier,
@@ -1732,20 +825,14 @@ function OICHandler.access(_, conf)
             authorization:save()
 
             log("redirecting client to openid connect provider")
-            return redirect(token_endpoint_args.url)
+            return response.redirect(token_endpoint_args.url)
 
           else
             log("authenticating using authorization code flow")
           end
 
         else
-          return unauthorized(ctx,
-                              iss,
-                              unauthorized_error_message,
-                              "no suitable authorization credentials were provided",
-                              nil,
-                              anonymous,
-                              trusted_client)
+          return response.unauthorized("no suitable authorization credentials were provided")
         end
       end
 
@@ -1828,8 +915,7 @@ function OICHandler.access(_, conf)
       if type(tokens_decoded) ~= "table" then
         if not auth_methods.kong_oauth2 and not auth_methods.introspection then
           log("unable to verify bearer token")
-          return unauthorized(ctx, iss, unauthorized_error_message, err or "invalid jwt token",
-                              session, anonymous, trusted_client)
+          return response.unauthorized(err or "invalid jwt token")
         end
 
         if err then
@@ -1845,8 +931,7 @@ function OICHandler.access(_, conf)
       if type(tokens_decoded) ~= "table" then
         tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
         if not tokens_decoded then
-          return unauthorized(ctx, iss, unauthorized_error_message,
-                              err, session, anonymous, trusted_client)
+          return response.unauthorized(err)
         end
       end
 
@@ -1861,9 +946,7 @@ function OICHandler.access(_, conf)
       end
 
       if not access_token then
-        return unauthorized(ctx, iss, unauthorized_error_message,
-                            "access token not found",
-                            session, anonymous, trusted_client)
+        return response.unauthorized("access token not found")
       end
 
       if auth_methods.kong_oauth2 then
@@ -1897,8 +980,7 @@ function OICHandler.access(_, conf)
 
         if type(token_introspected) ~= "table" or token_introspected.active ~= true then
           log("authentication with opaque bearer token failed")
-          return unauthorized(ctx, iss, unauthorized_error_message, err or "invalid or inactive token",
-                              session, anonymous, trusted_client)
+          return response.unauthorized(err or "invalid or inactive token")
         end
 
         auth_method = "introspection"
@@ -1907,7 +989,7 @@ function OICHandler.access(_, conf)
         auth_method = "kong_oauth2"
       end
 
-      exp = get_exp(token_introspected, tokens_encoded, ttl.now, exp_default)
+      exp = claims.exp(token_introspected, tokens_encoded, ttl.now, exp_default)
 
     else
       log("bearer token verified")
@@ -1920,22 +1002,19 @@ function OICHandler.access(_, conf)
             log("jwt bearer token is active and not revoked")
 
           else
-            return unauthorized(ctx, iss, unauthorized_error_message,
-                                "jwt bearer token is not active anymore or has been revoked",
-                                session, anonymous, trusted_client)
+            return response.unauthorized("jwt bearer token is not active anymore or has been revoked")
           end
 
         else
           log("unable to introspect jwt bearer token")
-          return unauthorized(ctx, iss, unauthorized_error_message, err,
-                              session, anonymous, trusted_client)
+          return response.unauthorized(err)
         end
 
-        exp = get_exp(jwt_token_introspected, tokens_encoded, ttl.now, exp_default)
+        exp = claims.exp(jwt_token_introspected, tokens_encoded, ttl.now, exp_default)
       end
 
       if not exp then
-        exp = get_exp(tokens_decoded.access_token, tokens_encoded, ttl.now, exp_default)
+        exp = claims.exp(tokens_decoded.access_token, tokens_encoded, ttl.now, exp_default)
       end
 
       log("authenticated using jwt bearer token")
@@ -1945,7 +1024,7 @@ function OICHandler.access(_, conf)
     if auth_methods.session then
       session_modified = true
       session.data = {
-        client  = trusted_client.index,
+        client  = client.index,
         tokens  = tokens_encoded,
         expires = exp,
       }
@@ -2045,8 +1124,7 @@ function OICHandler.access(_, conf)
 
     if type(tokens_encoded) ~= "table" then
       log("unable to exchange credentials with tokens")
-      return unauthorized(ctx, iss, unauthorized_error_message, err,
-                          session, anonymous, trusted_client)
+      return response.unauthorized(err)
     end
 
     if type(tokens_decoded) ~= "table" then
@@ -2054,20 +1132,19 @@ function OICHandler.access(_, conf)
       tokens_decoded, err = oic.token:verify(tokens_encoded, auth_params)
       if type(tokens_decoded) ~= "table" then
         log("token verification failed")
-        return unauthorized(ctx, iss, unauthorized_error_message, err,
-                            session, anonymous, trusted_client)
+        return response.unauthorized(err)
 
       else
         log("tokens verified")
       end
     end
 
-    exp = get_exp(tokens_decoded.access_token, tokens_encoded, ttl.now, exp_default)
+    exp = claims.exp(tokens_decoded.access_token, tokens_encoded, ttl.now, exp_default)
 
     if auth_methods.session then
       session_modified = true
       session.data = {
-        client  = trusted_client.index,
+        client  = client.index,
         tokens  = tokens_encoded,
         expires = exp,
       }
@@ -2085,19 +1162,12 @@ function OICHandler.access(_, conf)
     end
 
   else
-    return unauthorized(ctx,
-                        iss,
-                        unauthorized_error_message,
-                        "unable to authenticate with any enabled authentication method",
-                        nil,
-                        anonymous,
-                        trusted_client)
+    return response.unauthorized("unable to authenticate with any enabled authentication method")
   end
 
   log("checking for access token")
   if type(tokens_encoded) ~= "table" or not tokens_encoded.access_token then
-    return unauthorized(ctx, iss, unauthorized_error_message, "access token was not found",
-                        session, anonymous, trusted_client)
+    return response.unauthorized("access token was not found")
 
   else
     log("found access token")
@@ -2156,13 +1226,7 @@ function OICHandler.access(_, conf)
 
         if type(tokens_decoded) ~= "table" then
           log("reverifying tokens failed")
-          return unauthorized(ctx,
-                              iss,
-                              unauthorized_error_message,
-                              err,
-                              session,
-                              anonymous,
-                              trusted_client)
+          return response.unauthorized(err)
 
         else
           log("reverified tokens")
@@ -2174,24 +1238,12 @@ function OICHandler.access(_, conf)
     log("access token has expired")
 
     if not refresh_tokens then
-      return unauthorized(ctx,
-                          iss,
-                          unauthorized_error_message,
-                          "access token has expired and refreshing of tokens was disabled",
-                          session,
-                          anonymous,
-                          trusted_client)
+      return response.unauthorized("access token has expired and refreshing of tokens was disabled")
     end
 
     -- access token has expired, try to refresh the access token before proxying
     if not tokens_encoded.refresh_token then
-      return unauthorized(ctx,
-                          iss,
-                          unauthorized_error_message,
-                          "access token cannot be refreshed in absence of refresh token",
-                          session,
-                          anonymous,
-                          trusted_client)
+      return response.unauthorized("access token cannot be refreshed in absence of refresh token")
     end
 
     log("trying to refresh access token using refresh token")
@@ -2202,13 +1254,7 @@ function OICHandler.access(_, conf)
     tokens_refreshed, err = oic.token:refresh(refresh_token)
     if type(tokens_refreshed) ~= "table" then
       log("unable to refresh access token using refresh token")
-      return unauthorized(ctx,
-                          iss,
-                          unauthorized_error_message,
-                          err,
-                          session,
-                          anonymous,
-                          trusted_client)
+      return response.unauthorized(err)
 
     else
       log("refreshed access token using refresh token")
@@ -2229,13 +1275,7 @@ function OICHandler.access(_, conf)
 
     if type(tokens_decoded) ~= "table" then
       log("unable to verify refreshed tokens")
-      return unauthorized(ctx,
-                          iss,
-                          unauthorized_error_message,
-                          err,
-                          session,
-                          anonymous,
-                          trusted_client)
+      return response.unauthorized(err)
 
     else
       log("verified refreshed tokens")
@@ -2243,7 +1283,7 @@ function OICHandler.access(_, conf)
 
     tokens_encoded = tokens_refreshed
 
-    exp = get_exp(tokens_decoded.access_token, tokens_encoded, ttl.now, exp_default)
+    exp = claims.exp(tokens_decoded.access_token, tokens_encoded, ttl.now, exp_default)
 
     if exp > 0 then
       local ttl_new = exp - ttl.now
@@ -2272,7 +1312,7 @@ function OICHandler.access(_, conf)
       end
 
       session.data = {
-        client  = trusted_client.index,
+        client  = client.index,
         tokens  = tokens_encoded,
         expires = exp,
       }
@@ -2299,13 +1339,7 @@ function OICHandler.access(_, conf)
         log("validating jwt claim against jwt session cookie")
         local jwt_session_cookie_value = args.get_value(var["cookie_" .. jwt_session_cookie])
         if not jwt_session_cookie_value then
-          return unauthorized(ctx,
-                              iss,
-                              unauthorized_error_message,
-                              "jwt session cookie was not specified for session claim verification",
-                              session,
-                              anonymous,
-                              trusted_client)
+          return response.unauthorized("jwt session cookie was not specified for session claim verification")
         end
 
         local jwt_session_claim_value
@@ -2313,25 +1347,13 @@ function OICHandler.access(_, conf)
         jwt_session_claim_value = tokens_decoded.access_token.payload[jwt_session_claim]
 
         if not jwt_session_claim_value then
-          return unauthorized(ctx,
-                              iss,
-                              unauthorized_error_message,
-                              "jwt session claim (" .. jwt_session_claim ..
-                                ") was not specified in jwt access token",
-                              session,
-                              anonymous,
-                              trusted_client)
+          return response.unauthorized("jwt session claim (", jwt_session_claim,
+                                       ") was not specified in jwt access token")
         end
 
         if jwt_session_claim_value ~= jwt_session_cookie_value then
-          return unauthorized(ctx,
-                              iss,
-                              unauthorized_error_message,
-                              "invalid jwt session claim (" .. jwt_session_claim ..
-                                ") was specified in jwt access token",
-                              session,
-                              anonymous,
-                              trusted_client)
+          return response.unauthorized("invalid jwt session claim (", jwt_session_claim,
+                                       ") was specified in jwt access token")
         end
 
         log("jwt claim matches jwt session cookie")
@@ -2349,7 +1371,7 @@ function OICHandler.access(_, conf)
 
       local access_token_scopes
       if type(token_introspected) == "table" then
-        access_token_scopes = find_claim(token_introspected, scopes_claim)
+        access_token_scopes = claims.find(token_introspected, scopes_claim)
         if access_token_scopes then
           log("scopes found in introspection results")
         else
@@ -2357,7 +1379,7 @@ function OICHandler.access(_, conf)
         end
 
       elseif type(jwt_token_introspected) == "table" then
-        access_token_scopes = find_claim(jwt_token_introspected, scopes_claim)
+        access_token_scopes = claims.find(jwt_token_introspected, scopes_claim)
         if access_token_scopes then
           log("scopes found in jwt introspection results")
         else
@@ -2375,7 +1397,7 @@ function OICHandler.access(_, conf)
         end
 
         if type(tokens_decoded) == "table" and type(tokens_decoded.access_token) == "table" then
-          access_token_scopes = find_claim(tokens_decoded.access_token.payload, scopes_claim)
+          access_token_scopes = claims.find(tokens_decoded.access_token.payload, scopes_claim)
           if access_token_scopes then
             log("scopes found in access token")
           else
@@ -2385,13 +1407,7 @@ function OICHandler.access(_, conf)
       end
 
       if not access_token_scopes then
-        return forbidden(ctx,
-                         iss,
-                         forbidden_error_message,
-                         "scopes required but no scopes found",
-                         session,
-                         anonymous,
-                         trusted_client)
+        return response.forbidden("scopes required but no scopes found")
       end
 
       access_token_scopes = set.new(access_token_scopes)
@@ -2408,13 +1424,8 @@ function OICHandler.access(_, conf)
         log("required scopes were found")
 
       else
-        return forbidden(ctx,
-                         iss,
-                         forbidden_error_message,
-                         "required scopes were not found [ " .. concat(access_token_scopes, ", ") .. " ]",
-                         session,
-                         anonymous,
-                         trusted_client)
+        return response.forbidden("required scopes were not found [ ",
+                                  concat(access_token_scopes, ", "), " ]")
       end
     end
 
@@ -2426,7 +1437,7 @@ function OICHandler.access(_, conf)
 
       local access_token_audience
       if type(token_introspected) == "table" then
-        access_token_audience = find_claim(token_introspected, audience_claim)
+        access_token_audience = claims.find(token_introspected, audience_claim)
         if access_token_audience then
           log("audience found in introspection results")
         else
@@ -2434,7 +1445,7 @@ function OICHandler.access(_, conf)
         end
 
       elseif type(jwt_token_introspected) == "table" then
-        access_token_audience = find_claim(jwt_token_introspected, audience_claim)
+        access_token_audience = claims.find(jwt_token_introspected, audience_claim)
         if access_token_audience then
           log("audience found in jwt introspection results")
         else
@@ -2452,7 +1463,7 @@ function OICHandler.access(_, conf)
         end
 
         if type(tokens_decoded) == "table" and type(tokens_decoded.access_token) == "table" then
-          access_token_audience = find_claim(tokens_decoded.access_token.payload, audience_claim)
+          access_token_audience = claims.find(tokens_decoded.access_token.payload, audience_claim)
           if access_token_audience then
             log("audience found in access token")
           else
@@ -2462,13 +1473,7 @@ function OICHandler.access(_, conf)
       end
 
       if not access_token_audience then
-        return forbidden(ctx,
-                         iss,
-                         forbidden_error_message,
-                         "audience required but no audience found",
-                         session,
-                         anonymous,
-                         trusted_client)
+        return response.forbidden("audience required but no audience found")
       end
 
       access_token_audience = set.new(access_token_audience)
@@ -2485,13 +1490,8 @@ function OICHandler.access(_, conf)
         log("required audience was found")
 
       else
-        return forbidden(ctx,
-                         iss,
-                         forbidden_error_message,
-                         "required audience was not found [ " .. concat(access_token_audience, ", ") .. " ]",
-                         session,
-                         anonymous,
-                         trusted_client)
+        return response.forbidden("required audience was not found [ ",
+                                  concat(access_token_audience, ", "), " ]")
       end
     end
   end
@@ -2512,7 +1512,7 @@ function OICHandler.access(_, conf)
       if not consumer then
         if type(token_introspected) == "table" then
           log("trying to find consumer using introspection response")
-          consumer, err = find_consumer({ payload = token_introspected }, consumer_claim, false, consumer_by, ttl)
+          consumer, err = consumers.find({ payload = token_introspected }, consumer_claim, false, consumer_by, ttl)
           if consumer then
             log("consumer was found with introspection results")
           elseif err then
@@ -2523,7 +1523,7 @@ function OICHandler.access(_, conf)
 
         elseif type(jwt_token_introspected) == "table" then
           log("trying to find consumer using jwt introspection response")
-          consumer, err = find_consumer({ payload = jwt_token_introspected }, consumer_claim, false, consumer_by, ttl)
+          consumer, err = consumers.find({ payload = jwt_token_introspected }, consumer_claim, false, consumer_by, ttl)
           if consumer then
             log("consumer was found with jwt introspection results")
           elseif err then
@@ -2546,7 +1546,7 @@ function OICHandler.access(_, conf)
         if type(tokens_decoded) == "table" then
           if type(tokens_decoded.id_token) == "table" then
             log("trying to find consumer using id token")
-            consumer, err = find_consumer(tokens_decoded.id_token, consumer_claim, false, consumer_by, ttl)
+            consumer, err = consumers.find(tokens_decoded.id_token, consumer_claim, false, consumer_by, ttl)
             if consumer then
               log("consumer was found with id token")
             elseif err then
@@ -2558,7 +1558,7 @@ function OICHandler.access(_, conf)
 
           if not consumer and type(tokens_decoded.access_token) == "table" then
             log("trying to find consumer using access token")
-            consumer, err = find_consumer(tokens_decoded.access_token, consumer_claim, false, consumer_by, ttl)
+            consumer, err = consumers.find(tokens_decoded.access_token, consumer_claim, false, consumer_by, ttl)
             if consumer then
               log("consumer was found with access token")
             elseif err then
@@ -2592,7 +1592,7 @@ function OICHandler.access(_, conf)
 
         if type(userinfo) == "table" then
           log("trying to find consumer using user info")
-          consumer, err = find_consumer({ payload = userinfo }, consumer_claim, false, consumer_by, ttl)
+          consumer, err = consumers.find({ payload = userinfo }, consumer_claim, false, consumer_by, ttl)
           if consumer then
             log("consumer was found with user info")
           elseif err then
@@ -2612,22 +1612,9 @@ function OICHandler.access(_, conf)
 
         else
           if err then
-            return forbidden(ctx,
-                             iss,
-                             forbidden_error_message,
-                             "kong consumer was not found (" .. err .. ")",
-                             session,
-                             anonymous,
-                             trusted_client)
-
+            return response.forbidden("kong consumer was not found (", err, ")")
           else
-            return forbidden(ctx,
-                             iss,
-                             forbidden_error_message,
-                             "kong consumer was not found",
-                             session,
-                             anonymous,
-                             trusted_client)
+            return response.forbidden("kong consumer was not found")
           end
         end
 
@@ -2638,7 +1625,7 @@ function OICHandler.access(_, conf)
   end
 
   -- setting consumer context and headers
-  set_consumer(ctx, consumer, credential)
+  consumers.set(ctx, consumer, credential)
 
   if not consumer then
     -- setting credential by arbitrary claim, in case when consumer mapping was not used
@@ -2648,18 +1635,17 @@ function OICHandler.access(_, conf)
 
       local credential_value
       if type(token_introspected) == "table" then
-        credential_value = find_claim(token_introspected, credential_claim)
+        credential_value = claims.find(token_introspected, credential_claim)
         if credential_value then
           log("credential claim found in introspection results")
-
         else
           log("credential claim not found in introspection results")
         end
+
       elseif type(jwt_token_introspected) == "table" then
-        credential_value = find_claim(jwt_token_introspected, credential_claim)
+        credential_value = claims.find(jwt_token_introspected, credential_claim)
         if credential_value then
           log("credential claim found in jwt introspection results")
-
         else
           log("credential claim not found in jwt introspection results")
         end
@@ -2676,7 +1662,7 @@ function OICHandler.access(_, conf)
 
         if type(tokens_decoded) == "table" then
           if type(tokens_decoded.id_token) == "table" then
-            credential_value = find_claim(tokens_decoded.id_token.payload, credential_claim)
+            credential_value = claims.find(tokens_decoded.id_token.payload, credential_claim)
             if credential_value then
               log("credential claim found in id token")
             else
@@ -2685,7 +1671,7 @@ function OICHandler.access(_, conf)
           end
 
           if not credential_value and type(tokens_decoded.access_token) == "table" then
-            credential_value = find_claim(tokens_decoded.access_token.payload, credential_claim)
+            credential_value = claims.find(tokens_decoded.access_token.payload, credential_claim)
             if credential_value then
               log("credential claim found in access token")
             else
@@ -2717,7 +1703,7 @@ function OICHandler.access(_, conf)
 
         if type(userinfo) == "table" then
           log("trying to find credential using user info")
-          credential_value = find_claim(userinfo, credential_claim)
+          credential_value = claims.find(userinfo, credential_claim)
           if credential_value then
             log("credential claim found in user info")
           else
@@ -2747,7 +1733,7 @@ function OICHandler.access(_, conf)
 
       local authenticated_groups
       if type(token_introspected) == "table" then
-        authenticated_groups = find_claim(token_introspected, authenticated_groups_claim)
+        authenticated_groups = claims.find(token_introspected, authenticated_groups_claim)
         if authenticated_groups then
           log("authenticated groups claim found in introspection results")
         else
@@ -2766,7 +1752,7 @@ function OICHandler.access(_, conf)
 
         if type(tokens_decoded) == "table" then
           if type(tokens_decoded.id_token) == "table" then
-            authenticated_groups = find_claim(tokens_decoded.id_token.payload, authenticated_groups_claim)
+            authenticated_groups = claims.find(tokens_decoded.id_token.payload, authenticated_groups_claim)
             if authenticated_groups then
               log("authenticated groups found in id token")
             else
@@ -2775,7 +1761,7 @@ function OICHandler.access(_, conf)
           end
 
           if not authenticated_groups and type(tokens_decoded.access_token) == "table" then
-            authenticated_groups = find_claim(tokens_decoded.access_token.payload, authenticated_groups_claim)
+            authenticated_groups = claims.find(tokens_decoded.access_token.payload, authenticated_groups_claim)
             if authenticated_groups then
               log("authenticated groups claim found in access token")
             else
@@ -2807,7 +1793,7 @@ function OICHandler.access(_, conf)
 
         if type(userinfo) == "table" then
           log("trying to find credential using user info")
-          authenticated_groups = find_claim(userinfo, authenticated_groups_claim)
+          authenticated_groups = claims.find(userinfo, authenticated_groups_claim)
           if authenticated_groups then
             log("authenticated groups claim found in user info")
           else
@@ -2826,7 +1812,7 @@ function OICHandler.access(_, conf)
   end
 
   -- here we replay token endpoint request response headers, if any
-  replay_downstream_headers(args, downstream_headers, auth_method)
+  headers.replay_downstream(args, downstream_headers, auth_method)
 
   -- proprietary token exchange
   local token_exchanged
@@ -2834,12 +1820,12 @@ function OICHandler.access(_, conf)
     local exchange_token_endpoint = args.get_conf_arg("token_exchange_endpoint")
     if exchange_token_endpoint then
       local error_status
-      local opts = args.get_http_opts {
+      local opts = args.get_http_opts({
         method  = "POST",
         headers = {
           Authorization = "Bearer " .. tokens_encoded.access_token,
         },
-      }
+      })
 
       if args.get_conf_arg("cache_token_exchange") then
         log("trying to exchange access token with caching enabled")
@@ -2854,28 +1840,16 @@ function OICHandler.access(_, conf)
 
       if not token_exchanged or error_status ~= 200 then
         if error_status == 401 then
-          return unauthorized(ctx,
-                              iss,
-                              unauthorized_error_message,
-                              err or "exchange token endpoint returned unauthorized",
-                              session,
-                              anonymous,
-                              trusted_client)
+          return response.unauthorized(err or "exchange token endpoint returned unauthorized")
 
         elseif error_status == 403 then
-          return forbidden(ctx,
-                           iss,
-                           forbidden_error_message,
-                           err or "exchange token endpoint returned forbidden",
-                           session,
-                           anonymous,
-                           trusted_client)
+          return response.forbidden(err or "exchange token endpoint returned forbidden")
 
         else
           if err then
-            return unexpected(trusted_client, err)
+            return unexpected(client, err)
           else
-            return unexpected(trusted_client, "exchange token endpoint returned ", error_status or "unknown")
+            return unexpected(client, "exchange token endpoint returned ", error_status or "unknown")
           end
         end
 
@@ -2897,11 +1871,11 @@ function OICHandler.access(_, conf)
           if name then
             local value
             if type(token_introspected) == "table" then
-              value = get_header_value(args.get_value(token_introspected[claim]))
+              value = headers.get(args.get_value(token_introspected[claim]))
             end
 
             if not value and type(jwt_token_introspected) == "table" then
-              value = get_header_value(args.get_value(jwt_token_introspected[claim]))
+              value = headers.get(args.get_value(jwt_token_introspected[claim]))
             end
 
             if not value and type(tokens_encoded) == "table" then
@@ -2915,11 +1889,11 @@ function OICHandler.access(_, conf)
 
               if type(tokens_decoded) == "table" then
                 if type(tokens_decoded.access_token) == "table" then
-                  value = get_header_value(args.get_value(tokens_decoded.access_token.payload[claim]))
+                  value = headers.get(args.get_value(tokens_decoded.access_token.payload[claim]))
                 end
 
                 if not value and type(tokens_decoded.id_token) == "table" then
-                  value = get_header_value(args.get_value(tokens_decoded.id_token.payload[claim]))
+                  value = headers.get(args.get_value(tokens_decoded.id_token.payload[claim]))
                 end
               end
             end
@@ -2945,12 +1919,12 @@ function OICHandler.access(_, conf)
               end
 
               if type(userinfo) == "table" then
-                value = get_header_value(args.get_value(userinfo[claim]))
+                value = headers.get(args.get_value(userinfo[claim]))
               end
             end
 
             if value then
-              set_upstream_header(name, value)
+              headers.set_upstream(name, value)
             end
           end
         end
@@ -2967,11 +1941,11 @@ function OICHandler.access(_, conf)
           if name then
             local value
             if type(token_introspected) == "table" then
-              value = get_header_value(args.get_value(token_introspected[claim]))
+              value = headers.get(args.get_value(token_introspected[claim]))
             end
 
             if not value and type(jwt_token_introspected) == "table" then
-              value = get_header_value(args.get_value(jwt_token_introspected[claim]))
+              value = headers.get(args.get_value(jwt_token_introspected[claim]))
             end
 
             if not value and type(tokens_encoded) == "table" then
@@ -2985,11 +1959,11 @@ function OICHandler.access(_, conf)
 
               if type(tokens_decoded) == "table" then
                 if type(tokens_decoded.access_token) == "table" then
-                  value = get_header_value(args.get_value(tokens_decoded.access_token.payload[claim]))
+                  value = headers.get(args.get_value(tokens_decoded.access_token.payload[claim]))
                 end
 
                 if not value and type(tokens_decoded.id_token) == "table" then
-                  value = get_header_value(args.get_value(tokens_decoded.id_token.payload[claim]))
+                  value = headers.get(args.get_value(tokens_decoded.id_token.payload[claim]))
                 end
               end
             end
@@ -3015,12 +1989,12 @@ function OICHandler.access(_, conf)
               end
 
               if type(userinfo) == "table" then
-                value = get_header_value(args.get_value(userinfo[claim]))
+                value = headers.get(args.get_value(userinfo[claim]))
               end
             end
 
             if value then
-              set_downstream_header(name, value)
+              headers.set_downstream(name, value)
             end
           end
         end
@@ -3028,14 +2002,14 @@ function OICHandler.access(_, conf)
     end
 
     -- full headers
-    set_headers(args, "access_token",  token_exchanged or tokens_encoded.access_token)
-    set_headers(args, "id_token",      tokens_encoded.id_token)
-    set_headers(args, "refresh_token", tokens_encoded.refresh_token)
-    set_headers(args, "introspection", token_introspected or jwt_token_introspected or function()
+    headers.set(args, "access_token",  token_exchanged or tokens_encoded.access_token)
+    headers.set(args, "id_token",      tokens_encoded.id_token)
+    headers.set(args, "refresh_token", tokens_encoded.refresh_token)
+    headers.set(args, "introspection", token_introspected or jwt_token_introspected or function()
       return introspect_token(tokens_encoded.access_token, ttl)
     end)
 
-    set_headers(args, "user_info", userinfo or function()
+    headers.set(args, "user_info", userinfo or function()
       if not userinfo_loaded then
         if cache_userinfo then
           userinfo = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
@@ -3049,7 +2023,7 @@ function OICHandler.access(_, conf)
       end
     end)
 
-    set_headers(args, "access_token_jwk", function()
+    headers.set(args, "access_token_jwk", function()
       if decode_tokens and type(tokens_decoded) ~= "table" then
         decode_tokens = false
         tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
@@ -3066,7 +2040,7 @@ function OICHandler.access(_, conf)
       end
     end)
 
-    set_headers(args, "id_token_jwk", function()
+    headers.set(args, "id_token_jwk", function()
       if decode_tokens and type(tokens_decoded) ~= "table" then
         decode_tokens = false
         tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
@@ -3084,7 +2058,7 @@ function OICHandler.access(_, conf)
     end)
 
     -- session headers
-    set_headers(args, "session_id", function()
+    headers.set(args, "session_id", function()
       if session and session.id and session.encoder then
         return session.encoder.encode(session.id)
       end
@@ -3141,22 +2115,23 @@ function OICHandler.access(_, conf)
               end
             end
 
-            local response
+            local response_tokens
             if output_introspection then
               if token_introspected then
-                response = token_introspected
+                response_tokens = token_introspected
               elseif jwt_token_introspected then
-                response = jwt_token_introspected
+                response_tokens = jwt_token_introspected
               elseif output_tokens then
-                response = tokens_encoded
+                response_tokens = tokens_encoded
               end
 
             elseif output_tokens then
-              response = tokens_encoded
+              response_tokens = tokens_encoded
             end
 
-            if response then
-              login_response = response
+            if response_tokens then
+              login_response = response_tokens
+
             elseif tokens_encoded then
               for _, name in ipairs(login_tokens) do
                 if tokens_encoded[name] then
@@ -3167,11 +2142,11 @@ function OICHandler.access(_, conf)
           end
 
           log("login with response login action")
-          return success(args.get_value(login_response))
+          return response.success(args.get_value(login_response))
 
         elseif login_action == "redirect" then
-          local login_redirect_uri = trusted_client.login_redirect_uri or
-                                     dynamic_login_redirect_uri
+          local login_redirect_uri = client.login_redirect_uri or
+            dynamic_login_redirect_uri
 
           if login_redirect_uri then
             local query
@@ -3271,10 +2246,10 @@ function OICHandler.access(_, conf)
               login_redirect_uri = login_redirect_uri .. fragment
             end
 
-            no_cache_headers()
+            headers.no_cache()
 
             log("login with redirect login action")
-            return redirect(login_redirect_uri)
+            return response.redirect(login_redirect_uri)
 
           else
             log.notice("login action was set to redirect but no login redirect uri was specified")
@@ -3286,7 +2261,7 @@ function OICHandler.access(_, conf)
 
   if dynamic_login_redirect_uri_args then
     log("preserving uri args")
-    set_uri_args(dynamic_login_redirect_uri_args)
+    args.set_uri_args(dynamic_login_redirect_uri_args)
   end
 
   log("proxying to upstream")

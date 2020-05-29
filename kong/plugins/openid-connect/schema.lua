@@ -22,19 +22,10 @@ local function validate_issuer(conf)
     return true
   end
 
-  local options = {
-    http_version              = args.get_conf_arg("http_version", 1.1),
-    http_proxy                = args.get_conf_arg("http_proxy"),
-    http_proxy_authorization  = args.get_conf_arg("http_proxy_authorization"),
-    https_proxy               = args.get_conf_arg("https_proxy"),
-    https_proxy_authorization = args.get_conf_arg("https_proxy_authorization"),
-    no_proxy                  = args.get_conf_arg("no_proxy"),
-    keepalive                 = args.get_conf_arg("keepalive", true),
-    ssl_verify                = args.get_conf_arg("ssl_verify", true),
-    timeout                   = args.get_conf_arg("timeout", 10000),
-    extra_jwks_uris           = args.get_conf_arg("extra_jwks_uris"),
-    headers                   = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
-  }
+  local options = args.get_http_opts({
+    extra_jwks_uris = args.get_conf_arg("extra_jwks_uris"),
+    headers         = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
+  })
 
   local issuer = cache.issuers.load(issuer_uri, options)
   if not issuer then
