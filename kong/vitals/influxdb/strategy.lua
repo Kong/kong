@@ -4,7 +4,8 @@ local _M = {}
 local cjson = require "cjson"
 local ffi   = require "ffi"
 local http  = require "resty.http"
-
+local workspaces = require "kong.workspaces"
+local enums        = require "kong.enterprise_edition.dao.enums"
 
 local ipairs        = ipairs
 local math_floor    = math.floor
@@ -634,37 +635,83 @@ local function status_code_query(entity_id, entity, seconds_from_now, interval)
 end
 _M.status_code_query = status_code_query
 
+-- @param entity: consumer or service DAO
+local function resolve_entity_metadata(entity)
+  local is_service = not not entity.name
+  if is_service then
+    return { name = entity.name }
+  end
+  if entity.type == enums.CONSUMERS.TYPE.APPLICATION then
+    return {
+      name = "",
+      app_id = entity.username:sub(0, entity.username:find("_") - 1),
+      app_name = entity.username:sub(entity.username:find("_") + 1)  
+    }
+  end
+  return {
+    name = entity.username or entity.custom_id,
+    app_id = "",
+    app_name = "",
+  }
+end
+_M.resolve_entity_metadata = resolve_entity_metadata
 
+
+-- @param[type=string] entity: consumer or service
+-- @param[type=nullable-string] entity_id: UUID or null, signifies how each row is indexed
+-- @param[type=string] interval: seconds, minutes, hours, days, weeks, months
+-- @param[type=number] start_ts: seconds from now
 function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   start_ts = start_ts or 36000
+  local plural_entity = entity .. 's'
+  local is_timeseries_report = not not entity_id
+  local entities = {}
+  if is_timeseries_report then
+    workspaces.run_with_ws_scope({}, function()
+      local row = kong.db[plural_entity]:select({ id = entity_id})
+      entities[row.id] = resolve_entity_metadata(row)
+    end)
+  else
+    workspaces.run_with_ws_scope({}, function()
+      for row in kong.db[plural_entity]:each() do
+        entities[row.id] = resolve_entity_metadata(row)
+      end
+    end)
+  end
 
   local seconds_from_now = ngx.time() - start_ts
   local result = query(self, status_code_query(entity_id, entity, seconds_from_now, interval))
   local stats = {}
+  local is_consumer = entity == "consumer"
   for _, series in ipairs(result) do
     for _, value in ipairs(series.values) do
-      local key
-      if entity_id == nil then
-        local lookup = {
+      local index, entity_metadata
+      if is_timeseries_report then
+        local timestamp = tostring(value[1])
+        index = timestamp
+        entity_metadata = entities[entity_id] or {}
+      else
+        local entity_tag = {
           consumer = series.tags.consumer,
           service = series.tags.service
         }
-        key = lookup[entity]
-      else
-        key = tostring(value[1]) -- timestamp
+        local id = entity_tag[entity]
+        index = id
+        entity_metadata = entities[id] or {}
       end
-
-      if stats[key] == nil then
-        stats[key] = { ["total"]=0, ["2XX"]=0, ["4XX"]=0, ["5XX"]=0 }
+      local has_index = index ~= ''
+      if has_index then
+        stats[index] = stats[index] or { ["total"] = 0, ["2XX"] = 0, ["4XX"] = 0, ["5XX"] = 0 }
+        local status_group = tostring(series.tags.status_f):sub(1, 1) .. "XX"
+        local request_count = value[2]
+        stats[index]["total"] = stats[index]["total"] + request_count
+        stats[index][status_group] = stats[index][status_group] + request_count
+        stats[index]["name"] = entity_metadata.name
+        if is_consumer then
+          stats[index]["app_id"] = entity_metadata.app_id
+          stats[index]["app_name"] = entity_metadata.app_name
+        end
       end
-
-      local status_group = tostring(series.tags.status_f):sub(1, 1) .. "XX"
-
-      local current_total = stats[key]["total"] or 0
-      local current_status = stats[key][status_group] or 0
-
-      stats[key]["total"] = current_total + value[2]
-      stats[key][status_group] = current_status + value[2]
     end
   end
 
@@ -672,13 +719,24 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
     earliest_ts = start_ts,
     latest_ts = ngx.time(),
     stat_labels = {
+      "name",
       "total",
       "2XX",
       "4XX",
       "5XX"
     },
   }
-
+  if is_consumer then
+    meta.stat_labels = {
+      "name",
+      "app_name",
+      "app_id",
+      "total",
+      "2XX",
+      "4XX",
+      "5XX"
+    }
+  end
   return { stats=stats, meta=meta }
 end
 
@@ -724,10 +782,7 @@ function _M:latency_report(hostname, interval, start_ts)
       else
         key = tostring(value[1]) -- timestamp
       end
-
-      if stats[key] == nil then
-        stats[key] = {}
-      end
+      stats[key] = stats[key] or {}
 
       for i, column in pairs(columns) do
         if value[i+1] ~= cjson.null then
