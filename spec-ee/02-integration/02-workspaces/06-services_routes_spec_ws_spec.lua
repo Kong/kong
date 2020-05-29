@@ -18,7 +18,7 @@ end
 
 for _, strategy in helpers.each_strategy() do
 describe("services routes ws spec", function()
-  it("Admin API #" .. strategy, function()
+  describe("Admin API #" .. strategy, function()
     local bp
     local db
     local _
@@ -467,11 +467,22 @@ describe("services routes ws spec", function()
           },
         }
 
-        -- XXX pending on a core fix
-        -- https://github.com/Kong/kong/commit/6c1fb394c69521bfdbd65ea04f338555f6d3691d
-        -- [[
+        local inputs2 = {
+          ["application/x-www-form-urlencoded"] = {
+            name = "key-auth",
+            ["config.key_names[1]"] = "key",
+            created_at = 1461276890000
+          },
+          ["application/json"] = {
+            name = "key-auth",
+            config = {
+              key_names = {"key"}
+            },
+            created_at = 1461276890000
+          },
+        }
 
-        it_content_types("#flaky creates if not exists", function(content_type)
+        it_content_types("creates if not exists", function(content_type)
           return function()
             local res = assert(client:send {
               method = "PUT",
@@ -479,14 +490,14 @@ describe("services routes ws spec", function()
               body = inputs[content_type],
               headers = { ["Content-Type"] = content_type }
             })
-            local body = assert.res_status(201, res)
+            local body = assert.res_status(200, res)
             local json = cjson.decode(body)
             assert.equal("key-auth", json.name)
             assert.same({ "apikey", "key" }, json.config.key_names)
           end
         end)
 
-        it_content_types("#flaky replaces if exists", function(content_type)
+        it_content_types("replaces if exists", function(content_type)
           return function()
             local res = assert(client:send {
               method = "PUT",
@@ -494,13 +505,13 @@ describe("services routes ws spec", function()
               body = inputs[content_type],
               headers = { ["Content-Type"] = content_type }
             })
-            local body = assert.res_status(201, res)
+            local body = assert.res_status(200, res)
             local json = cjson.decode(body)
 
             res = assert(client:send {
               method = "PUT",
               path = "/foo/services/" .. service.id .. "/plugins/" .. json.id,
-              body = inputs[content_type],
+              body = inputs2[content_type],
               headers = { ["Content-Type"] = content_type }
             })
             body = assert.res_status(200, res)
@@ -509,8 +520,6 @@ describe("services routes ws spec", function()
             assert.same({ "key" }, json.config.key_names)
           end
         end)
-
-        -- ]]
 
         it_content_types("overrides a plugin previous config if partial", function(content_type)
           return function()
@@ -598,7 +607,7 @@ describe("services routes ws spec", function()
       end)
     end)
 
-    describe("#o errors", function()
+    describe("errors", function()
       it("handles malformed JSON body", function()
         local res = client:post("/foo/services", {
           body    = '{"hello": "world"',
