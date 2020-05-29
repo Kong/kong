@@ -1826,6 +1826,12 @@ local function load(path, custom_conf, opts)
       "encrypted via SSL")
   end
 
+  -- warn user if rbac is on without admin_gui set
+  local ok, err = ee_conf_loader.validate_enforce_rbac(conf)
+  if not ok then
+    log.warn(err)
+  end
+
   -- preserve user-facing name `enforce_rbac` but use
   -- `rbac` in code to minimize changes
   conf.rbac = conf.enforce_rbac

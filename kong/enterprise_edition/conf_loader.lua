@@ -388,6 +388,18 @@ local function validate_route_path_pattern(conf, errors)
   end
 end
 
+local function validate_enforce_rbac(conf)
+  -- when `enforce_rbac` xor `admin_gui_auth` means,
+  -- one is enable and the other is disable.
+  -- checking `not a ~= not b`, since `enforce_rbac` 
+  -- has multiple valuses.
+  if conf.enforce_rbac == "off" ~= not conf.admin_gui_auth then
+    return nil, "RBAC authorization is " .. conf.enforce_rbac ..
+      " and admin_gui_auth is \'" .. tostring(conf.admin_gui_auth) .. "\'"
+  end
+
+  return true
+end
 
 local function validate(conf, errors)
   validate_admin_gui_authentication(conf, errors)
@@ -422,9 +434,9 @@ local function validate(conf, errors)
   validate_route_path_pattern(conf, errors)
 end
 
-
 return {
   validate = validate,
+  validate_enforce_rbac = validate_enforce_rbac,
   -- only exposed for unit testing :-(
   validate_admin_gui_authentication = validate_admin_gui_authentication,
   validate_admin_gui_session = validate_admin_gui_session,

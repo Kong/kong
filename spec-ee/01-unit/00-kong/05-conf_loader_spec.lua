@@ -320,6 +320,42 @@ describe("ee conf loader", function()
   before_each(function()
     msgs = {}
   end)
+
+  describe("validate_enforce_rbac()", function()
+    it("returns error if admin_gui_auth is set and enforce_rbac off", function()
+      local _, err = ee_conf_loader.validate_enforce_rbac({ admin_gui_auth = "basic-auth",
+                                             enforce_rbac = "off",
+                                           })
+
+      local expected = "RBAC authorization is off" ..
+                         " and admin_gui_auth is 'basic-auth'"
+
+      assert.same(expected, err)
+    end)
+
+    it("returns error if admin_gui_auth not set and enforce_rbac on", function()
+      local _, err = ee_conf_loader.validate_enforce_rbac({ enforce_rbac = "on" })
+
+      local expected = "RBAC authorization is on" ..
+                         " and admin_gui_auth is 'nil'"
+
+      assert.same(expected, err)
+    end)
+
+    it("returns nil if admin_gui_auth not set and enforce_rbac off", function()
+      local _, err = ee_conf_loader.validate_enforce_rbac({ enforce_rbac = "off" })
+
+      assert.is_nil(err)
+    end)
+
+    it("returns nil if admin_gui_auth is set and enforce_rbac on", function()
+      local _, err = ee_conf_loader.validate_enforce_rbac({ admin_gui_auth = "basic-auth",
+                                             enforce_rbac = "on" })
+
+      assert.is_nil(err)
+    end)
+  end)
+
   describe("validate_admin_gui_authentication()", function()
     it("returns error if admin_gui_auth value is not supported", function()
       ee_conf_loader.validate_admin_gui_authentication({ admin_gui_auth ="foo",
