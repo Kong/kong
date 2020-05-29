@@ -103,6 +103,7 @@ local function new(args, ctx, issuer, client, anonymous, session)
       return forbidden(err, msg, ctx, issuer, client, anonymous, session)
     end,
     success = success,
+    redirect = redirect,
   }
 end
 
