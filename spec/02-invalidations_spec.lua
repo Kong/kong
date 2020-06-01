@@ -91,7 +91,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
                 authorization = "ldap " .. ngx.encode_base64("einstein:wrongpassword")
               }
             })
-            assert.res_status(403, res)
+            assert.res_status(401, res)
 
             local cache_key = cache_key(plugin.config, "einstein", "wrongpassword")
             res = assert(admin_client:send {

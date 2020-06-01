@@ -375,9 +375,9 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               authorization    = "ldap " .. ngx.encode_base64("nobody:found"),
             }
           })
-          assert.response(res).has.status(403)
+          assert.response(res).has.status(401)
           local json = assert.response(res).has.jsonbody()
-          assert.equal("Invalid authentication credentials", json.message)
+          assert.equal("Unauthorized", json.message)
         end)
     
         it("passes if attribute is cn instead of uid with bind_dn", function()
@@ -417,9 +417,9 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               authorization = "abcd"
             }
           })
-          assert.response(res).has.status(403)
+          assert.response(res).has.status(401)
           local json = assert.response(res).has.jsonbody()
-          assert.equal("Invalid authentication credentials", json.message)
+          assert.equal("Unauthorized", json.message)
         end)
         it("returns 'invalid credentials' when credential value is in wrong format in proxy-authorization header", function()
           local res = assert(proxy_client:send {
@@ -430,9 +430,9 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ["proxy-authorization"] = "abcd"
             }
           })
-          assert.response(res).has.status(403)
+          assert.response(res).has.status(401)
           local json = assert.response(res).has.jsonbody()
-          assert.equal("Invalid authentication credentials", json.message)
+          assert.equal("Unauthorized", json.message)
         end)
         it("returns 'invalid credentials' when credential value is missing in authorization header", function()
           local res = assert(proxy_client:send {
@@ -443,9 +443,9 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               authorization = "ldap "
             }
           })
-          assert.response(res).has.status(403)
+          assert.response(res).has.status(401)
           local json = assert.response(res).has.jsonbody()
-          assert.equal("Invalid authentication credentials", json.message)
+          assert.equal("Unauthorized", json.message)
         end)
         it("passes if credential is valid in post request", function()
           local res = assert(proxy_client:send {
@@ -471,7 +471,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ["content-type"] = "application/x-www-form-urlencoded",
             }
           })
-          assert.response(r).has.status(403)
+          assert.response(r).has.status(401)
         end)
         it("passes if credential is valid and starts with space in post request", function()
           local res = assert(proxy_client:send {
@@ -518,7 +518,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               authorization = "ldap " .. ngx.encode_base64("einstein:")
             }
           })
-          assert.response(res).has.status(403)
+          assert.response(res).has.status(401)
         end)
         it("authorization fails with correct status with wrong very long password", function()
           local res = assert(proxy_client:send {
@@ -529,7 +529,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
     	      authorization = "ldap " .. ngx.encode_base64("einstein:e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566")
             }
           })
-          assert.response(res).has.status(403)
+          assert.response(res).has.status(401)
         end)
         it("authorization fails if credential has multiple encoded usernames or passwords separated by ':' in get request", function()
           local res = assert(proxy_client:send {
@@ -540,7 +540,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               authorization = "ldap " .. ngx.encode_base64("einstein:password:another_password")
             }
           })
-          assert.response(res).has.status(403)
+          assert.response(res).has.status(401)
         end)
         it("does not pass if credential is invalid in get request", function()
           local res = assert(proxy_client:send {
@@ -551,7 +551,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               authorization = "ldap " .. ngx.encode_base64("einstein:wrong_password")
             }
           })
-          assert.response(res).has.status(403)
+          assert.response(res).has.status(401)
         end)
         it("does not hide credential sent along with authorization header to upstream server", function()
           local res = assert(proxy_client:send {
@@ -602,7 +602,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ["content-type"] = "application/x-www-form-urlencoded",
             }
           })
-          assert.response(r).has.status(403)
+          assert.response(r).has.status(401)
         end)
         it("passes if credential is valid in get request using global plugin", function()
           local res = assert(proxy_client:send {
