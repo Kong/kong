@@ -2,6 +2,7 @@ local kong_default_conf = require "kong.templates.kong_defaults"
 local pl_stringio = require "pl.stringio"
 local pl_stringx = require "pl.stringx"
 local constants = require "kong.constants"
+local listeners = require "kong.conf_loader.listeners"
 local pl_pretty = require "pl.pretty"
 local pl_config = require "pl.config"
 local pl_file = require "pl.file"
@@ -932,106 +933,6 @@ local function overrides(k, default_v, opts, file_conf, arg_conf)
 end
 
 
--- @param value The options string to check for flags (whitespace separated)
--- @param flags List of boolean flags to check for.
--- @returns 1) remainder string after all flags removed, 2) table with flag
--- booleans, 3) sanitized flags string
-local function parse_option_flags(value, flags)
-  assert(type(value) == "string")
-
-  value = " " .. value .. " "
-
-  local sanitized = ""
-  local result = {}
-
-  for _, flag in ipairs(flags) do
-    local count
-    local patt = "%s(" .. flag .. ")%s"
-
-    local found = value:match(patt)
-    if found then
-      -- replace pattern like `backlog=%d+` with actual values
-      flag = found
-    end
-
-    value, count = value:gsub(patt, " ")
-
-    if count > 0 then
-      result[flag] = true
-      sanitized = sanitized .. " " .. flag
-
-    else
-      result[flag] = false
-    end
-  end
-
-  return pl_stringx.strip(value), result, pl_stringx.strip(sanitized)
-end
-
-
--- Parses a listener address line.
--- Supports multiple (comma separated) addresses, with flags such as
--- 'ssl' and 'http2' added to the end.
--- Pre- and postfixed whitespace as well as comma's are allowed.
--- "off" as a first entry will return empty tables.
--- @param values list of entries (strings)
--- @param flags array of strings listing accepted flags.
--- @return list of parsed entries, each entry having fields
--- `listener` (string, full listener), `ip` (normalized string)
--- `port` (number), and a boolean entry for each flag added to the entry
--- (e.g. `ssl`).
-local function parse_listeners(values, flags)
-  assert(type(flags) == "table")
-  local list = {}
-  local usage = "must be of form: [off] | <ip>:<port> [" ..
-                concat(flags, "] [") .. "], [... next entry ...]"
-
-  if #values == 0 then
-    return nil, usage
-  end
-
-  if pl_stringx.strip(values[1]) == "off" then
-    return list
-  end
-
-  for _, entry in ipairs(values) do
-    -- parse the flags
-    local remainder, listener, cleaned_flags = parse_option_flags(entry, flags)
-
-    -- verify IP for remainder
-    local ip
-
-    if utils.hostname_type(remainder) == "name" then
-      -- it's not an IP address, so a name/wildcard/regex
-      ip = {}
-      ip.host, ip.port = remainder:match("(.+):([%d]+)$")
-
-    else
-      -- It's an IPv4 or IPv6, normalize it
-      ip = utils.normalize_ip(remainder)
-      -- nginx requires brackets in IPv6 addresses, but normalize_ip does
-      -- not include them (due to backwards compatibility with its other uses)
-      if ip and ip.type == "ipv6" then
-        ip.host = "[" .. ip.host .. "]"
-      end
-    end
-
-    if not ip or not ip.port then
-      return nil, usage
-    end
-
-    listener.ip = ip.host
-    listener.port = ip.port
-    listener.listener = ip.host .. ":" .. ip.port ..
-                        (#cleaned_flags == 0 and "" or " " .. cleaned_flags)
-
-    table.insert(list, listener)
-  end
-
-  return list
-end
-
-
 local function parse_nginx_directives(dyn_namespace, conf, injected_in_namespace)
   conf = conf or {}
   local directives = {}
@@ -1445,74 +1346,15 @@ local function load(path, custom_conf, opts)
     end)
   end
 
-  do
-    local http_flags = { "ssl", "http2", "proxy_protocol", "deferred",
-                         "bind", "reuseport", "backlog=%d+" }
-    local stream_flags = { "ssl", "proxy_protocol", "bind", "reuseport",
-                           "backlog=%d+" }
-
-    -- extract ports/listen ips
-    conf.proxy_listeners, err = parse_listeners(conf.proxy_listen, http_flags)
-    if err then
-      return nil, "proxy_listen " .. err
-    end
-    setmetatable(conf.proxy_listeners, _nop_tostring_mt)
-
-    conf.proxy_ssl_enabled = false
-    for _, listener in ipairs(conf.proxy_listeners) do
-      if listener.ssl == true then
-        conf.proxy_ssl_enabled = true
-        break
-      end
-    end
-
-    conf.stream_listeners, err = parse_listeners(conf.stream_listen, stream_flags)
-    if err then
-      return nil, "stream_listen " .. err
-    end
-    setmetatable(conf.stream_listeners, _nop_tostring_mt)
-
-    conf.stream_proxy_ssl_enabled = false
-    for _, listener in ipairs(conf.stream_listeners) do
-      if listener.ssl == true then
-        conf.stream_proxy_ssl_enabled = true
-        break
-      end
-    end
-
-    conf.admin_listeners, err = parse_listeners(conf.admin_listen, http_flags)
-    if err then
-      return nil, "admin_listen " .. err
-    end
-    setmetatable(conf.admin_listeners, _nop_tostring_mt)
-
-    conf.admin_ssl_enabled = false
-    for _, listener in ipairs(conf.admin_listeners) do
-      if listener.ssl == true then
-        conf.admin_ssl_enabled = true
-        break
-      end
-    end
-
-    conf.status_listeners, err = parse_listeners(conf.status_listen, { "ssl" })
-    if err then
-      return nil, "status_listen " .. err
-    end
-    setmetatable(conf.status_listeners, _nop_tostring_mt)
-
-    conf.status_ssl_enabled = false
-    for _, listener in ipairs(conf.status_listeners) do
-      if listener.ssl == true then
-        conf.status_ssl_enabled = true
-        break
-      end
-    end
-
-    conf.cluster_listeners, err = parse_listeners(conf.cluster_listen, http_flags)
-    if err then
-      return nil, "cluster_listen " .. err
-    end
-    setmetatable(conf.cluster_listeners, _nop_tostring_mt)
+  ok, err = listeners.parse(conf, {
+    { name = "proxy_listen",   subsystem = "http",   ssl_flag = "proxy_ssl_enabled" },
+    { name = "stream_listen",  subsystem = "stream", ssl_flag = "stream_proxy_ssl_enabled" },
+    { name = "admin_listen",   subsystem = "http",   ssl_flag = "admin_ssl_enabled" },
+    { name = "status_listen",  flags = { "ssl" },    ssl_flag = "status_ssl_enabled" },
+    { name = "cluster_listen", subsystem = "http" },
+  })
+  if not ok then
+    return nil, err
   end
 
   do

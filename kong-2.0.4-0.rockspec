@@ -63,12 +63,14 @@ build = {
     ["kong.constants"] = "kong/constants.lua",
     ["kong.singletons"] = "kong/singletons.lua",
     ["kong.concurrency"] = "kong/concurrency.lua",
-    ["kong.conf_loader"] = "kong/conf_loader.lua",
     ["kong.cache_warmup"] = "kong/cache_warmup.lua",
     ["kong.globalpatches"] = "kong/globalpatches.lua",
     ["kong.error_handlers"] = "kong/error_handlers.lua",
     ["kong.clustering"] = "kong/clustering.lua",
     ["kong.hooks"] = "kong/hooks.lua",
+
+    ["kong.conf_loader"] = "kong/conf_loader/init.lua",
+    ["kong.conf_loader.listeners"] = "kong/conf_loader/listeners.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
