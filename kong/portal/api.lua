@@ -616,6 +616,38 @@ return {
     end
   },
 
+  ["/session"] = {
+    before = function(self, db, helpers)
+      auth.authenticate_api_session(self, db, helpers)
+    end,
+    GET = function(self, dao, helpers)
+      local user_session = kong.ctx.shared.authenticated_session
+      local cookie = user_session and user_session.cookie
+
+      if not user_session or (user_session and not user_session.expires) then
+        return endpoints.handle_error('could not find session')
+      end
+
+      if cookie then
+        if not cookie.renew or not cookie.lifetime then
+          return endpoints.handle_error('could not find session cookie data')
+        end
+      end
+
+      return kong.response.exit(200, {
+        session = {
+          expires = user_session.expires, -- unix timestamp seconds
+          cookie = {
+            discard = user_session.cookie.discard,
+            renew = user_session.cookie.renew,
+            idletime = user_session.cookie.idletime,
+            lifetime = user_session.cookie.lifetime,
+          },
+        }
+      })
+    end,
+  },
+
   ["/developer/meta_fields"] = {
     before = function(self, dao_factory, helpers)
       crud_helpers.exit_if_portal_disabled()

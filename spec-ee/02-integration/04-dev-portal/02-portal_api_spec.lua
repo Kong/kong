@@ -4856,6 +4856,82 @@ for _, strategy in helpers.each_strategy() do
           end)
         end)
       end)
+
+      describe("Session", function()
+        local cookie
+
+        lazy_setup(function()
+          helpers.stop_kong()
+          assert(db:truncate())
+
+          assert(helpers.start_kong({
+            database   = strategy,
+            portal_session_conf = PORTAL_SESSION_CONF,
+            portal = true,
+            vitals  = true,
+            portal_auth = "basic-auth",
+            enforce_rbac = rbac,
+            portal_auto_approve = "on",
+            admin_gui_url = "http://localhost:8080",
+          }))
+
+          configure_portal(db, {
+            portal = true,
+            portal_auth = "basic-auth",
+            portal_auto_approve = true,
+          })
+
+          portal_api_client = assert(ee_helpers.portal_api_client())
+
+          local res = register_developer(portal_api_client, "basic-auth")
+          assert.res_status(200, res)
+          cookie = authenticate(portal_api_client, "basic-auth", true)
+
+          close_clients(portal_api_client)
+        end)
+
+        lazy_teardown(function()
+          helpers.stop_kong()
+        end)
+
+        before_each(function()
+          portal_api_client = assert(ee_helpers.portal_api_client())
+        end)
+
+        after_each(function()
+          close_clients(portal_api_client)
+        end)
+
+        describe("/session", function()
+          describe("GET", function()
+            it("returns 401 when unauthenticated", function()
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/session",
+              })
+
+              assert.res_status(401, res)
+            end)
+
+            it("returns session when authenticated", function()
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/session",
+                headers = {
+                  ["Cookie"] = cookie,
+                },
+              })
+
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.is.truthy(json.session.expires)
+              assert.is.truthy(json.session.cookie)
+              assert.is.truthy(json.session.cookie.lifetime)
+              assert.is.truthy(json.session.cookie.renew)
+            end)
+          end)
+        end)
+      end)
     end)
   end
 end
