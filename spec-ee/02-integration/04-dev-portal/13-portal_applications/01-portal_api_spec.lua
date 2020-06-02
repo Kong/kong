@@ -290,6 +290,8 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("POST", function()
+          local developer, developer_two
+
           before_each(function()
             portal_api_client = assert(ee_helpers.portal_api_client())
 
@@ -299,7 +301,19 @@ for _, strategy in helpers.each_strategy() do
               meta = "{\"full_name\":\"1337\"}",
             })
 
-            assert.res_status(200, res)
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+            developer = resp_body_json.developer
+
+            local res = register_developer(portal_api_client, {
+              email = "dev2@konghq.com",
+              password = "kong",
+              meta = "{\"full_name\":\"wow\"}",
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+            developer_two = resp_body_json.developer
           end)
 
           after_each(function()
@@ -332,6 +346,36 @@ for _, strategy in helpers.each_strategy() do
 
             assert.equal("myfirstapp", resp_body_json.name)
             assert.equal("http://dog.com", resp_body_json.redirect_uri)
+          end)
+
+          it("ignores developer in body", function()
+            assert.is_nil(db.consumers:select_by_username(developer.id .. "_new_app"))
+            assert.is_nil(db.consumers:select_by_username(developer_two.id .. "_new_app"))
+
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "POST",
+              path = "/applications",
+              body = {
+                name = "new_app",
+                redirect_uri = "http://dog.com",
+                developer = { id = developer_two.id },
+              },
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(developer.id, resp_body_json.developer.id)
+            assert(db.consumers:select_by_username(developer.id .. "_new_app"))
+            assert.is_nil(db.consumers:select_by_username(developer_two.id .. "_new_app"))
           end)
 
           it("should return 409 when creating a pre-existing application", function()

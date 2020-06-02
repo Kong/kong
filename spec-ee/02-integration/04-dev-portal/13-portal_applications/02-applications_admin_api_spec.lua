@@ -255,7 +255,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/applications/:application", function()
-      local application, developer, application_instance
+      local application, developer, developer_two, application_instance
 
       describe("GET", function()
         lazy_setup(function()
@@ -313,6 +313,12 @@ for _, strategy in helpers.each_strategy() do
             meta = '{ "full_name": "todd" }',
           }))
 
+          developer_two = assert(db.developers:insert({
+            email = "cat@mew.com",
+            password = "catto",
+            meta = '{ "full_name": "simba" }',
+          }))
+
           application = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
@@ -346,6 +352,33 @@ for _, strategy in helpers.each_strategy() do
           db:truncate("developers")
           db:truncate("applications")
           db:truncate("application_entities")
+        end)
+
+        it("ignores developer in body", function()
+          assert.is_nil(db.consumers:select_by_username(developer.id .. "new_app"))
+          assert.is_nil(db.consumers:select_by_username(developer_two.id .. "_new_app"))
+
+          print(require("inspect")(developer_two))
+
+          local res = assert(client:send({
+            method = "PATCH",
+            path = "/applications/" .. application.id,
+            body = {
+              name = "new_app",
+              developer = { id = developer_two.id },
+            },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          print(require("inspect")(json))
+
+
+          assert.equal(developer.id, json.developer.id)
+          assert(db.consumers:select_by_username(developer.id .. "_new_app"))
+          assert.is_nil(db.consumers:select_by_username(developer_two.id .. "_new_app"))
         end)
 
         it("updates consumer name when 'name' is updated", function()

@@ -359,11 +359,18 @@ return {
         return kong.response.exit(404, { message = "Not found" })
       end
 
-      self.params.developer = developer
+      self.developer = developer
     end,
 
     POST = function(self, db, helpers)
-      local application, _, err_t = kong.db.applications:insert(self.params)
+      local application = {
+        developer = self.developer,
+        name = self.params.name,
+        redirect_uri = self.params.redirect_uri,
+        custom_id = self.params.custom_id
+      }
+
+      local application, _, err_t = kong.db.applications:insert(application)
       if err_t then
         return endpoints.handle_error(err_t)
       end
@@ -373,7 +380,7 @@ return {
 
     GET = function(self, db, helpers)
       local applications = {}
-      for application, err in kong.db.applications:each_for_developer({ id = self.params.developer.id }) do
+      for application, err in kong.db.applications:each_for_developer({ id = self.developer.id }) do
         table.insert(applications, application)
       end
 
@@ -426,8 +433,14 @@ return {
     end,
 
     PATCH = function(self, db, helpers)
+      local application = {
+        name = self.params.name,
+        redirect_uri = self.params.redirect_uri,
+        custom_id = self.params.custom_id
+      }
+
       local application, _, err_t =
-        kong.db.applications:update({ id = self.application.id }, self.params)
+        kong.db.applications:update({ id = self.application.id }, application)
 
       if not application then
         return endpoints.handle_error(err_t)

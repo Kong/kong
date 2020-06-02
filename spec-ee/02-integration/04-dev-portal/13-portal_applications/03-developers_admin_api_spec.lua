@@ -483,7 +483,6 @@ for _, strategy in helpers.each_strategy() do
             method = "POST",
             path = "/developers/" .. developer_one.id .. "/applications",
             body = {
-              developer = { id = developer_one.id },
               name = "coolapp",
               redirect_uri = "http://coolapp.com",
             },
@@ -492,6 +491,29 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(201, res)
           assert(db.consumers:select_by_username(developer_one.id .. "_coolapp"))
+        end)
+
+        it("ignores developer in body", function()
+          assert.is_nil(db.consumers:select_by_username(developer_one.id .. "_new_app"))
+          assert.is_nil(db.consumers:select_by_username(developer_two.id .. "_new_app"))
+
+          local res = assert(client:send({
+            method = "POST",
+            path = "/developers/" .. developer_one.id .. "/applications",
+            body = {
+              name = "new_app",
+              developer = { id = developer_two.id },
+              redirect_uri = "http://coolapp.com",
+            },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+
+          assert.equal(developer_one.id, json.developer.id)
+          assert(db.consumers:select_by_username(developer_one.id .. "_new_app"))
+          assert.is_nil(db.consumers:select_by_username(developer_two.id .. "_new_app"))
         end)
 
         it("cannot create an application with missing params", function()
@@ -657,7 +679,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(consumer.username, developer_one.id .. "_" .. new_name)
         end)
 
-        it("cannot update application with wrong developer", function()    
+        it("cannot update application with wrong developer", function()
           local new_name = "new_app_woah_cool"
           local res = assert(client:send({
             method = "PATCH",
@@ -668,6 +690,29 @@ for _, strategy in helpers.each_strategy() do
             headers = {["Content-Type"] = "application/json"}
           }))
           assert.equal(404, res.status)
+        end)
+
+        it("ignores developer in body", function()
+          assert.is_nil(db.consumers:select_by_username(developer_one.id .. "_new_app"))
+          assert.is_nil(db.consumers:select_by_username(developer_two.id .. "_new_app"))
+
+          local res = assert(client:send({
+            method = "PATCH",
+            path = "/developers/" .. developer_one.id .. "/applications/" .. app_one.id,
+            body = {
+              name = "new_app",
+              developer = { id = developer_two.id },
+              redirect_uri = "http://coolapp.com",
+            },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.equal(developer_one.id, json.developer.id)
+          assert(db.consumers:select_by_username(developer_one.id .. "_new_app"))
+          assert.is_nil(db.consumers:select_by_username(developer_two.id .. "_new_app"))
         end)
 
         it("updates oauth2 credentials when 'name' updated", function()
