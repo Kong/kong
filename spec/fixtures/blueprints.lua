@@ -380,6 +380,22 @@ function _M.new(db)
     }
   end)
 
+  local rbac_users_seq = new_sequence("rbac_user-%d")
+  res.rbac_users = new_blueprint(db.rbac_users, function()
+    return {
+      name = rbac_users_seq:next(),
+    }
+  end)
+
+  res.cluster_ca = new_blueprint(db.cluster_ca, function()
+    local ca_key = cluster_ca_tools.new_key()
+    local ca_cert = cluster_ca_tools.new_ca(ca_key)
+    return {
+      key = ca_key:toPEM("private"),
+      cert = ca_cert:toPEM(),
+    }
+  end)
+
   return res
 end
 

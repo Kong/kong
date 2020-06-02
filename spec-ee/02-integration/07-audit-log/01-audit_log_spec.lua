@@ -443,7 +443,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         audit_log  = "on",
         audit_log_ignore_paths = "/consumers,/foo,^/status,/routes$," ..
-                                 "/one/.+/two,/[bad-regex"
+                                 "/one/.+/two,/[bad-regex,/.*/plugins"
       }))
     end)
 
@@ -577,6 +577,23 @@ for _, strategy in helpers.each_strategy() do
           }
         }))
         assert.res_status(201, res)
+
+        helpers.wait_until(function()
+          return 1 == #fetch_all(db.audit_requests)
+        end)
+
+        res = assert(admin_client:send({
+          method = "GET",
+          path   = "/foo/plugins",
+          body   = {
+            name = "test",
+            host = "example.com",
+          },
+          headers = {
+            ["content-type"] = "application/json",
+          }
+        }))
+        assert.res_status(200, res)
 
         helpers.wait_until(function()
           return 1 == #fetch_all(db.audit_requests)
