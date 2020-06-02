@@ -28,7 +28,7 @@ pipeline {
             }
             agent {
                 node {
-                    label 'docker-compose'
+                    label 'bionic'
                 }
             }
             environment {
@@ -53,7 +53,7 @@ pipeline {
                 stage('dbless') {
                     agent {
                         node {
-                            label 'docker-compose'
+                            label 'bionic'
                         }
                     }
                     environment {
@@ -73,7 +73,7 @@ pipeline {
                 stage('postgres') {
                     agent {
                         node {
-                            label 'docker-compose'
+                            label 'bionic'
                         }
                     }
                     environment {
@@ -92,7 +92,7 @@ pipeline {
                 stage('postgres plugins') {
                     agent {
                         node {
-                            label 'docker-compose'
+                            label 'bionic'
                         }
                     }
                     environment {
@@ -112,7 +112,7 @@ pipeline {
                 stage('cassandra') {
                     agent {
                         node {
-                            label 'docker-compose'
+                            label 'bionic'
                         }
                     }
                     environment {
@@ -137,7 +137,7 @@ pipeline {
             }
             agent {
                 node {
-                    label 'docker-compose'
+                    label 'bionic'
                 }
             }
             environment {
@@ -166,7 +166,7 @@ pipeline {
                 stage('Ubuntu Xenial Release') {
                     agent {
                         node {
-                            label 'docker-compose'
+                            label 'bionic'
                         }
                     }
                     environment {
@@ -198,7 +198,7 @@ pipeline {
                 stage('Ubuntu Releases') {
                     agent {
                         node {
-                            label 'docker-compose'
+                            label 'bionic'
                         }
                     }
                     environment {
@@ -220,7 +220,7 @@ pipeline {
                 stage('Centos Releases') {
                     agent {
                         node {
-                            label 'docker-compose'
+                            label 'bionic'
                         }
                     }
                     environment {
@@ -246,7 +246,7 @@ pipeline {
                 stage('RedHat Releases') {
                     agent {
                         node {
-                            label 'docker-compose'
+                            label 'bionic'
                         }
                     }
                     environment {
@@ -271,7 +271,7 @@ pipeline {
                 stage('Debian Releases') {
                     agent {
                         node {
-                            label 'docker-compose'
+                            label 'bionic'
                         }
                     }
                     environment {
@@ -295,7 +295,7 @@ pipeline {
                 stage('Other Releases'){
                     agent {
                         node {
-                            label 'docker-compose'
+                            label 'bionic'
                         }
                     }
                     environment {
