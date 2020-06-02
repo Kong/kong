@@ -143,6 +143,30 @@ return {
             -- Do nothing, accept existing state
           END;
         $$;
+
+        DO $$
+          BEGIN
+            ALTER TABLE services ADD COLUMN "tls_verify" BOOLEAN NOT NULL;
+          EXCEPTION WHEN duplicate_column THEN
+            -- Do nothing, accept existing state
+          END;
+        $$;
+
+        DO $$
+          BEGIN
+            ALTER TABLE services ADD COLUMN "tls_verify_depth" SMALLINT;
+          EXCEPTION WHEN duplicate_column THEN
+            -- Do nothing, accept existing state
+          END;
+        $$;
+
+        DO $$
+          BEGIN
+            ALTER TABLE services ADD COLUMN "ca_certificates" TEXT[];
+          EXCEPTION WHEN duplicate_column THEN
+            -- Do nothing, accept existing state
+          END;
+        $$;
     ]] .. ws_migration_up(operations.postgres.up),
 
     teardown = function(connector)
@@ -159,6 +183,10 @@ return {
 
       DROP INDEX IF EXISTS ca_certificates_cert_idx;
       CREATE INDEX IF NOT EXISTS ca_certificates_cert_digest_idx ON ca_certificates(cert_digest);
+
+      ALTER TABLE services ADD tls_verify boolean;
+      ALTER TABLE services ADD tls_verify_depth int;
+      ALTER TABLE services ADD ca_certificates set<text>;
     ]] .. ws_migration_up(operations.cassandra.up),
 
     teardown = function(connector)

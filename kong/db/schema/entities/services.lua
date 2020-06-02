@@ -40,6 +40,9 @@ return {
     { read_timeout       = nonzero_timeout { default = 60000 }, },
     { tags               = typedefs.tags },
     { client_certificate = { type = "foreign", reference = "certificates" }, },
+    { tls_verify         = { type = "boolean", required = true, default = false, }, },
+    { tls_verify_depth   = { type = "integer", default = null, between = { 0, 64 }, }, },
+    { ca_certificates    = { type = "array", elements = { type = "string", uuid = true, }, }, },
     -- { load_balancer = { type = "foreign", reference = "load_balancers" } },
   },
 
