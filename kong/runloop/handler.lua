@@ -422,6 +422,7 @@ local function register_events()
 
   if db.strategy == "off" then
     worker_events.register(function()
+      kong.cache:flip()
       core_cache:flip()
     end, "declarative", "flip_config")
   end
