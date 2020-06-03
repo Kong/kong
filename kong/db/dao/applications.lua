@@ -2,18 +2,111 @@ local Errors = require "kong.db.errors"
 local Schema = require "kong.db.schema"
 local pl_stringx   = require "pl.stringx"
 local uuid         = require("kong.tools.utils").uuid
-local endpoints    = require "kong.api.endpoints"
 local enums        = require "kong.enterprise_edition.dao.enums"
 local applications = require "kong.db.schema.entities.applications"
 
+local kong = kong
+local null = ngx.null
+local fmt = string.format
+local tostring = tostring
+
+
 local _Applications = {}
+
+
+local APP_UNIQUE_ERROR = "application already exists with %s: '%s'"
+
+
+-- list of attributes that need to mapped from consumers to applications
+-- when formatting errors
+--
+-- key = original key on the consumer error object
+-- value = new key as it will appear on an application error object
+--
+-- e.g.
+-- consumer.username -> application.name
+-- consumer.custom_id --> application.custom_id
+local APP_CONSUMER_ERROR_MAP = {
+  username = "name",
+  custom_id = "custom_id",
+}
+
+
+-- This table contains application auth strategy specific config
+local app_strategies = {
+  ["kong-oauth2"] = {
+    required_params = { "redirect_uri" },
+
+    post_insert = function(application)
+      return kong.db.daos["oauth2_credentials"]:insert({
+        name = application.name,
+        redirect_uris = { application.redirect_uri },
+        consumer = application.consumer,
+      })
+    end,
+
+    post_update = function(application)
+      local consumer_pk = { id = application.consumer.id }
+      local creds = kong.db.daos["oauth2_credentials"]
+
+      for row, err in creds:each_for_consumer(consumer_pk) do
+        if err then
+          return nil, err
+        end
+
+        local ok, err, err_t = creds:update({ id = row.id }, {
+          redirect_uris = { application.redirect_uri },
+          name = application.name,
+        })
+
+        if not ok then
+          return nil, err, err_t
+        end
+      end
+
+      return true
+    end,
+  },
+
+  ["external-oauth2"] = {
+    required_params = { "custom_id" },
+    post_insert = function() return true end,
+    post_update = function() return true end,
+  },
+}
 
 
 local function create_consumer(entity, developer)
   return kong.db.consumers:insert({
     username = developer.id .. "_" ..  entity.name,
     type = enums.CONSUMERS.TYPE.APPLICATION,
+    custom_id = entity.custom_id,
   })
+end
+
+
+-- This function checks for the presence of strategy-specific required params
+-- Because these params vary by strategy, they are not validated by the schema
+local function validate_required_strategy_params(self, op_type, entity, required)
+  local missing_val
+
+  -- for updates, we want to check if value is ngx.null
+  -- otherwise for insert, we are checking for nil
+  if op_type == "update" then
+    missing_val = null
+  end
+
+  for _, key in ipairs(required) do
+    if entity[key] == missing_val then
+      local err_t = self.errors:schema_violation({
+        [key] = "required field missing"
+      })
+
+      return nil, tostring(err_t), err_t
+    end
+  end
+
+  return true
 end
 
 
@@ -22,6 +115,49 @@ local function validate_application(entity)
   temp.consumer = { id = uuid() }
 
   return Schema.new(applications):validate_insert(temp)
+end
+
+
+local function get_app_auth_strategy()
+  local portal_app_auth = kong.configuration.portal_app_auth
+  if not portal_app_auth then
+    return nil, "portal_app_auth not set"
+  end
+
+  local app_auth_strategy = app_strategies[portal_app_auth]
+  if not app_auth_strategy then
+    return nil, "invalid portal_app_auth strategy"
+  end
+
+  return app_auth_strategy
+end
+
+
+-- create new error referring to applications if we encounter
+-- a unique violation on consumer 'username' or 'custom_id'
+-- otherwise, original error is returned
+local function map_app_consumer_errors(self, entity, err, err_t)
+  if type(err_t) ~= "table" then
+    return nil, err, err_t
+  end
+
+  if err_t.code == Errors.codes.UNIQUE_VIOLATION and err_t.fields then
+    for orig_key, new_key in pairs(APP_CONSUMER_ERROR_MAP) do
+      if err_t.fields[orig_key] then
+        local new_err = fmt(APP_UNIQUE_ERROR, new_key, tostring(entity[new_key]))
+        local new_err_t = {
+          code = err_t.code,
+          fields = { [new_key] = new_err },
+          name = "unique constraint violation",
+          message = new_err,
+        }
+        return nil, new_err, new_err_t
+      end
+    end
+  end
+
+  -- otherwise, return original error
+  return nil, err, err_t
 end
 
 
@@ -41,6 +177,17 @@ end
 
 -- Creates an application, and an associated consumer
 function _Applications:insert(entity, options)
+  local app_auth_strategy, err = get_app_auth_strategy()
+  if not app_auth_strategy then
+    return nil, err
+  end
+
+  local ok, err, err_t = validate_required_strategy_params(self, "insert",
+                                     entity, app_auth_strategy.required_params)
+  if not ok then
+    return nil, err, err_t
+  end
+
   if entity.name then
     entity.name = pl_stringx.rstrip(entity.name)
   end
@@ -56,12 +203,9 @@ function _Applications:insert(entity, options)
     return nil, err, err_t
   end
 
-  local consumer = create_consumer(entity, developer)
+  local consumer, err, err_t = create_consumer(entity, developer)
   if not consumer then
-    local code = Errors.codes.UNIQUE_VIOLATION
-    local err = "application insert: application already exists with name: '" .. entity.name .. "'"
-    local err_t = { code = code, fields = { name = "application already exists with name: '" .. entity.name .. "'"} }
-    return nil, err, err_t
+    return map_app_consumer_errors(self, entity, err, err_t)
   end
 
   entity.consumer = { id = consumer.id }
@@ -72,12 +216,8 @@ function _Applications:insert(entity, options)
     return nil, err, err_t
   end
 
-  local cred, err, err_t = kong.db.daos["oauth2_credentials"]:insert({
-    name = application.name,
-    redirect_uris = { application.redirect_uri },
-    consumer = application.consumer
-  })
-  if not cred then
+  local ok, err, err_t = app_auth_strategy.post_insert(application)
+  if not ok then
     kong.db.consumers:delete({ id = consumer.id })
     kong.db.applications:delete({ id = application.id })
     return nil, err, err_t
@@ -91,8 +231,15 @@ function _Applications:update(application_pk, entity, options)
   entity.consumer = nil
   entity.developer = nil
 
-  if entity.name then
-    entity.name = pl_stringx.rstrip(entity.name)
+  local app_auth_strategy, err = get_app_auth_strategy()
+  if not app_auth_strategy then
+    return nil, err
+  end
+
+  local ok, err, err_t = validate_required_strategy_params(self, "update",
+                                     entity, app_auth_strategy.required_params)
+  if not ok then
+    return nil, err, err_t
   end
 
   local application, err, err_t = self.super.select(self, application_pk)
@@ -100,39 +247,42 @@ function _Applications:update(application_pk, entity, options)
     return nil, err, err_t
   end
 
-  if entity.redirect_uri or entity.name then
-    if entity.name then
-      local developer = kong.db.developers:select({ id = application.developer.id })
-      if developer then
-        local ok = kong.db.consumers:update({ id = application.consumer.id }, {
-          username = developer.id .. "_" .. entity.name,
-        })
+  local consumer_updates = {}
 
-        if not ok then
-          local code = Errors.codes.UNIQUE_VIOLATION
-          local err = "application insert: application already exists with name: '" .. entity.name .. "'"
-          local err_t = { code = code, fields = { name = "application already exists with name: '" .. entity.name .. "'"} }
-          return nil, err, err_t
-        end
-      end
-    end
-
-    application, err, err_t = self.super.update(self, application_pk, entity, options)
-    if not application then
+  if entity.name then
+    entity.name = pl_stringx.rstrip(entity.name)
+    local developer, err, err_t = kong.db.developers:select({
+      id = application.developer.id,
+    })
+    if not developer then
       return nil, err, err_t
     end
 
-    local plugin = kong.db.daos["oauth2_credentials"]
-    for row, err in plugin:each_for_consumer({ id = application.consumer.id }) do
-      if err then
-        return endpoints.handle_error(err)
-      end
+    consumer_updates.username = developer.id .. "_" .. entity.name
+  end
 
-      plugin:update(
-        { id = row.id },
-        { redirect_uris = { application.redirect_uri }, name = application.name, }
-      )
+  if entity.custom_id then
+    consumer_updates.custom_id = entity.custom_id
+  end
+
+  if next(consumer_updates) then
+    local ok, err, err_t = kong.db.consumers:update({
+      id = application.consumer.id
+    }, consumer_updates)
+    if not ok then
+      return map_app_consumer_errors(self, entity, err, err_t)
     end
+  end
+
+  application, err, err_t = self.super.update(self, application_pk, entity,
+                                                                      options)
+  if not application then
+    return nil, err, err_t
+  end
+
+  local ok, err, err_t = app_auth_strategy.post_update(application)
+  if not ok then
+    return nil, err, err_t
   end
 
   return application

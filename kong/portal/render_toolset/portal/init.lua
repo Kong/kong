@@ -124,6 +124,7 @@ return function()
   portal.specs = get_all_specs
   portal.specs_by_tag = get_specs_by_tag
   portal.developer_meta_fields = get_developer_meta_fields(workspace_conf)
+  portal.app_auth = conf.portal_app_auth
 
   portal.files = function()
     return singletons.db.files:select_all()
@@ -134,4 +135,5 @@ return function()
   end
 
   return portal
+
 end

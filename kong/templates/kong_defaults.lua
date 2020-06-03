@@ -47,6 +47,7 @@ portal_api_ssl_cert_key = NONE
 portal_api_access_log = logs/portal_api_access.log
 portal_api_error_log = logs/portal_api_error.log
 
+portal_app_auth = kong-oauth2
 portal_auto_approve = off
 portal_auth = NONE
 portal_auth_password_complexity =

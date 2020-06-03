@@ -127,6 +127,7 @@ for _, strategy in helpers.each_strategy() do
             portal_session_conf = PORTAL_SESSION_CONF,
             portal = true,
             portal_auth = "basic-auth",
+            portal_app_auth = "external-oauth2",
             enforce_rbac = rbac,
             portal_auto_approve = true,
             admin_gui_url = "http://localhost:8080",
@@ -184,7 +185,7 @@ for _, strategy in helpers.each_strategy() do
                   path = "/applications",
                   body = {
                     name = dev .. "s_app_" .. i,
-                    redirect_uri= "http://dog.com"
+                    custom_id = dev .. "_doggo_" .. i,
                   },
                   headers = {
                     ["Content-Type"] = "application/json",
@@ -290,8 +291,6 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("POST", function()
-          local developer, developer_two
-
           before_each(function()
             portal_api_client = assert(ee_helpers.portal_api_client())
 
@@ -301,19 +300,7 @@ for _, strategy in helpers.each_strategy() do
               meta = "{\"full_name\":\"1337\"}",
             })
 
-            local body = assert.res_status(200, res)
-            local resp_body_json = cjson.decode(body)
-            developer = resp_body_json.developer
-
-            local res = register_developer(portal_api_client, {
-              email = "dev2@konghq.com",
-              password = "kong",
-              meta = "{\"full_name\":\"wow\"}",
-            })
-
-            local body = assert.res_status(200, res)
-            local resp_body_json = cjson.decode(body)
-            developer_two = resp_body_json.developer
+            assert.res_status(200, res)
           end)
 
           after_each(function()
@@ -333,7 +320,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri= "http://dog.com"
+                custom_id = "doggo",
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -345,40 +332,10 @@ for _, strategy in helpers.each_strategy() do
             local resp_body_json = cjson.decode(body)
 
             assert.equal("myfirstapp", resp_body_json.name)
-            assert.equal("http://dog.com", resp_body_json.redirect_uri)
+            assert.equal("doggo", resp_body_json.custom_id)
           end)
 
-          it("ignores developer in body", function()
-            assert.is_nil(db.consumers:select_by_username(developer.id .. "_new_app"))
-            assert.is_nil(db.consumers:select_by_username(developer_two.id .. "_new_app"))
-
-            local cookie = authenticate(portal_api_client, {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
-            }, true)
-
-            local res = assert(portal_api_client:send {
-              method = "POST",
-              path = "/applications",
-              body = {
-                name = "new_app",
-                redirect_uri = "http://dog.com",
-                developer = { id = developer_two.id },
-              },
-              headers = {
-                ["Content-Type"] = "application/json",
-                ["Cookie"] = cookie
-              }
-            })
-
-            local body = assert.res_status(200, res)
-            local resp_body_json = cjson.decode(body)
-
-            assert.equal(developer.id, resp_body_json.developer.id)
-            assert(db.consumers:select_by_username(developer.id .. "_new_app"))
-            assert.is_nil(db.consumers:select_by_username(developer_two.id .. "_new_app"))
-          end)
-
-          it("should return 409 when creating a pre-existing application", function()
+          it("should return 409 when creating application with the same name", function()
             local cookie = authenticate(portal_api_client, {
               ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
             }, true)
@@ -388,7 +345,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri= "http://dog.com"
+                custom_id = "doggo",
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -403,7 +360,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri= "http://dog.com"
+                custom_id = "doggo_two",
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -417,6 +374,45 @@ for _, strategy in helpers.each_strategy() do
             assert.equal("application already exists with name: 'myfirstapp'", resp_body_json.fields.name)
           end)
 
+          it("should return 409 when creating application with the same custom_id", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "POST",
+              path = "/applications",
+              body = {
+                name = "myfirstapp",
+                custom_id = "doggo",
+              },
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Cookie"] = cookie
+              }
+            })
+
+            assert.res_status(200, res)
+
+            res = assert(portal_api_client:send {
+              method = "POST",
+              path = "/applications",
+              body = {
+                name = "myfirstapp_two",
+                custom_id = "doggo",
+              },
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(409, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal("application already exists with custom_id: 'doggo'", resp_body_json.fields.custom_id)
+          end)
+
           it("should return 409 when creating a pre-existing application with whitespace added to name", function()
             local cookie = authenticate(portal_api_client, {
               ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
@@ -427,7 +423,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri= "http://dog.com"
+                custom_id = "doggo",
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -442,7 +438,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp ",
-                redirect_uri= "http://dog.com"
+                custom_id = "doggo",
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -465,7 +461,7 @@ for _, strategy in helpers.each_strategy() do
               method = "POST",
               path = "/applications",
               body = {
-                redirect_uri= "http://dog.com"
+                custom_id = "doggo",
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -491,6 +487,7 @@ for _, strategy in helpers.each_strategy() do
             portal_session_conf = PORTAL_SESSION_CONF,
             portal = true,
             portal_auth = "basic-auth",
+            portal_app_auth = "external-oauth2",
             portal_auto_approve = true,
             admin_gui_url = "http://localhost:8080",
           }))
@@ -543,7 +540,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri= "http://dog.com"
+                custom_id = "doggo",
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -576,7 +573,7 @@ for _, strategy in helpers.each_strategy() do
             local resp_body_json = cjson.decode(body)
 
             assert.equal("myfirstapp", resp_body_json.name)
-            assert.equal("http://dog.com", resp_body_json.redirect_uri)
+            assert.equal("doggo", resp_body_json.custom_id)
           end)
 
           it("developer gets 400 when requesting a non-existent Application", function()
@@ -594,7 +591,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("PATCH", function()
-          local application, cookie
+          local application, application_2, cookie
 
           before_each(function()
             portal_api_client = assert(ee_helpers.portal_api_client())
@@ -616,7 +613,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri= "http://dog.com"
+                custom_id = "doggo",
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -626,6 +623,22 @@ for _, strategy in helpers.each_strategy() do
 
             local body = assert.res_status(200, res)
             application = cjson.decode(body)
+
+            local res = assert(portal_api_client:send {
+              method = "POST",
+              path = "/applications",
+              body = {
+                name = "myotherapp",
+                custom_id = "doggo_2",
+              },
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            application_2 = cjson.decode(body)
           end)
 
           after_each(function()
@@ -641,7 +654,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications/" .. application.id,
               body = {
                 name = "mysecondapp",
-                redirect_uri = "http://cat.com",
+                custom_id = "catto",
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -653,15 +666,36 @@ for _, strategy in helpers.each_strategy() do
             local resp_body_json = cjson.decode(body)
 
             assert.equal("mysecondapp", resp_body_json.name)
-            assert.equal("http://cat.com", resp_body_json.redirect_uri)
+            assert.equal("catto", resp_body_json.custom_id)
           end)
 
-          it("developer cannot update application with invalid 'redirec_uri'", function()
+          it("developer cannot update application with duplicate name", function()
             local res = assert(portal_api_client:send {
               method = "PATCH",
               path = "/applications/" .. application.id,
               body = {
-                redirect_uri = "bobobo",
+                name = application_2.name,
+                custom_id = "catto",
+              },
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(409, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal("application already exists with name: 'myotherapp'", resp_body_json.fields.name)
+          end)
+
+          it("developer cannot update application with null custom_id", function()
+            local res = assert(portal_api_client:send {
+              method = "PATCH",
+              path = "/applications/" .. application.id,
+              body = {
+                name = "mysecondapp",
+                custom_id = ngx.null,
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -672,10 +706,30 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(400, res)
             local resp_body_json = cjson.decode(body)
 
-            assert.equal("missing host in url", resp_body_json.fields.redirect_uri)
+            assert.equal("required field missing", resp_body_json.fields.custom_id)
           end)
 
-          it("developer cannot update applications foriegn keys", function()
+          it("developer cannot update application with duplicate custom_id", function()
+            local res = assert(portal_api_client:send {
+              method = "PATCH",
+              path = "/applications/" .. application.id,
+              body = {
+                name = "mysecondapp",
+                custom_id = application_2.custom_id,
+              },
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(409, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal("application already exists with custom_id: 'doggo_2'", resp_body_json.fields.custom_id)
+          end)
+
+          it("developer cannot update applications foreign keys", function()
             local res = assert(portal_api_client:send {
               method = "PATCH",
               path = "/applications/" .. application.id,
@@ -720,7 +774,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri= "http://dog.com"
+                custom_id = "doggo",
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -763,338 +817,6 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-      describe("/applications/:applications/credentials", function()
-        lazy_setup(function()
-          helpers.stop_kong()
-          assert(db:truncate())
-
-          assert(helpers.start_kong({
-            database = strategy,
-            portal_session_conf = PORTAL_SESSION_CONF,
-            portal = true,
-            portal_auth = "basic-auth",
-            portal_auto_approve = true,
-            admin_gui_url = "http://localhost:8080",
-          }))
-
-          configure_portal(db, {
-            portal = true,
-            portal_auth = "basic-auth",
-            portal_auto_approve = true,
-          })
-
-          insert_files(db)
-
-          portal_api_client = assert(ee_helpers.portal_api_client())
-
-          close_clients(portal_api_client)
-        end)
-
-        lazy_teardown(function()
-          helpers.stop_kong(nil, true, true)
-        end)
-
-        before_each(function()
-          portal_api_client = assert(ee_helpers.portal_api_client())
-        end)
-
-        after_each(function()
-          close_clients(portal_api_client)
-        end)
-
-        describe("GET", function()
-          local application, cookie
-
-          before_each(function()
-            portal_api_client = assert(ee_helpers.portal_api_client())
-
-            local res = register_developer(portal_api_client, {
-              email = "dale@konghq.com",
-              password = "kong",
-              meta = "{\"full_name\":\"1337\"}",
-            })
-
-            assert.res_status(200, res)
-
-            cookie = authenticate(portal_api_client, {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
-            }, true)
-
-            local res = assert(portal_api_client:send {
-              method = "POST",
-              path = "/applications",
-              body = {
-                name = "myfirstapp",
-                redirect_uri= "http://dog.com"
-              },
-              headers = {
-                ["Content-Type"] = "application/json",
-                ["Cookie"] = cookie
-              }
-            })
-
-            local body = assert.res_status(200, res)
-            application = cjson.decode(body)
-
-            for i=1, 9 do
-              res = assert(portal_api_client:send {
-                method = "POST",
-                path = "/applications/" .. application.id .. "/credentials",
-                body = {},
-                headers = {
-                  ["Content-Type"] = "application/json",
-                  ["Cookie"] = cookie
-                }
-              })
-
-              assert.res_status(201, res)
-            end
-          end)
-
-          after_each(function()
-            assert(db:truncate('basicauth_credentials'))
-            assert(db:truncate('applications'))
-            assert(db:truncate('consumers'))
-            assert(db:truncate('developers'))
-          end)
-
-          it("developer can retrieve credentials attached to application", function()
-            local res = assert(portal_api_client:send {
-              method = "GET",
-              path = "/applications/" .. application.id .. "/credentials",
-              headers = {
-                ["Cookie"] = cookie,
-                ["Content-Type"] = "application/json",
-              }
-            })
-
-            local body = assert.res_status(200, res)
-            local resp_body_json = cjson.decode(body)
-
-            for i, credential in ipairs(resp_body_json.data) do
-              assert.equal(application.consumer.id, credential.consumer.id)
-            end
-
-            assert.equal(10, resp_body_json.total)
-          end)
-
-          it("paginates properly", function()
-            local res = assert(portal_api_client:send {
-              method = "GET",
-              path = "/applications/" .. application.id .. "/credentials?size=4",
-              headers = {
-                ["Cookie"] = cookie,
-                ["Content-Type"] = "application/json",
-              }
-            })
-
-            local body = assert.res_status(200, res)
-            local resp_body_json = cjson.decode(body)
-            assert.equal(4, resp_body_json.total)
-
-            local res = assert(portal_api_client:send {
-              method = "GET",
-              path = resp_body_json.next,
-              headers = {
-                ["Cookie"] = cookie,
-                ["Content-Type"] = "application/json",
-              }
-            })
-
-            local body = assert.res_status(200, res)
-            resp_body_json = cjson.decode(body)
-            assert.equal(4, resp_body_json.total)
-
-            local res = assert(portal_api_client:send {
-              method = "GET",
-              path = resp_body_json.next,
-              headers = {
-                ["Cookie"] = cookie,
-                ["Content-Type"] = "application/json",
-              }
-            })
-
-            local body = assert.res_status(200, res)
-            resp_body_json = cjson.decode(body)
-
-            assert.equal(2, resp_body_json.total)
-            assert.equal(ngx.null, resp_body_json.next)
-          end)
-        end)
-
-        describe("POST", function()
-          local application, cookie
-
-          before_each(function()
-            portal_api_client = assert(ee_helpers.portal_api_client())
-
-            local res = register_developer(portal_api_client, {
-              email = "dale@konghq.com",
-              password = "kong",
-              meta = "{\"full_name\":\"1337\"}",
-            })
-
-            assert.res_status(200, res)
-
-            cookie = authenticate(portal_api_client, {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
-            }, true)
-
-            local res = assert(portal_api_client:send {
-              method = "POST",
-              path = "/applications",
-              body = {
-                name = "myfirstapp",
-                redirect_uri= "http://dog.com"
-              },
-              headers = {
-                ["Content-Type"] = "application/json",
-                ["Cookie"] = cookie
-              }
-            })
-
-            local body = assert.res_status(200, res)
-            application = cjson.decode(body)
-          end)
-
-
-          after_each(function()
-            assert(db:truncate('basicauth_credentials'))
-            assert(db:truncate('applications'))
-            assert(db:truncate('consumers'))
-            assert(db:truncate('developers'))
-          end)
-
-          it("developer can create an application credential", function()
-            local res = assert(portal_api_client:send {
-              method = "POST",
-              path = "/applications/" .. application.id .. "/credentials",
-              body = {},
-              headers = {
-                ["Cookie"] = cookie,
-                ["Content-Type"] = "application/json",
-              }
-            })
-
-            local body = assert.res_status(201, res)
-            local resp_body_json = cjson.decode(body)
-
-            assert.equal(application.consumer.id, resp_body_json.consumer.id)
-          end)
-        end)
-      end)
-
-      describe("/applications/:applications/credentials/:credentials", function()
-        lazy_setup(function()
-          helpers.stop_kong()
-          assert(db:truncate())
-
-          assert(helpers.start_kong({
-            database = strategy,
-            portal_session_conf = PORTAL_SESSION_CONF,
-            portal = true,
-            portal_auth = "basic-auth",
-            portal_auto_approve = true,
-            admin_gui_url = "http://localhost:8080",
-          }))
-
-          configure_portal(db, {
-            portal = true,
-            portal_auth = "basic-auth",
-            portal_auto_approve = true,
-          })
-
-          insert_files(db)
-
-          portal_api_client = assert(ee_helpers.portal_api_client())
-
-          close_clients(portal_api_client)
-        end)
-
-        lazy_teardown(function()
-          helpers.stop_kong(nil, true, true)
-        end)
-
-        before_each(function()
-          portal_api_client = assert(ee_helpers.portal_api_client())
-        end)
-
-        after_each(function()
-          close_clients(portal_api_client)
-        end)
-
-        describe("GET", function()
-          local application, cookie, credential
-
-          before_each(function()
-            portal_api_client = assert(ee_helpers.portal_api_client())
-
-            local res = register_developer(portal_api_client, {
-              email = "dale@konghq.com",
-              password = "kong",
-              meta = "{\"full_name\":\"1337\"}",
-            })
-
-            assert.res_status(200, res)
-
-            cookie = authenticate(portal_api_client, {
-              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
-            }, true)
-
-            local res = assert(portal_api_client:send {
-              method = "POST",
-              path = "/applications",
-              body = {
-                name = "myfirstapp",
-                redirect_uri= "http://dog.com"
-              },
-              headers = {
-                ["Content-Type"] = "application/json",
-                ["Cookie"] = cookie
-              }
-            })
-
-            local body = assert.res_status(200, res)
-            application = cjson.decode(body)
-
-            res = assert(portal_api_client:send {
-              method = "GET",
-              path = "/applications/" .. application.id .. "/credentials",
-              body = {},
-              headers = {
-                ["Content-Type"] = "application/json",
-                ["Cookie"] = cookie
-              }
-            })
-
-            local body = assert.res_status(200, res)
-            credential = cjson.decode(body).data[1]
-          end)
-
-          after_each(function()
-            assert(db:truncate('basicauth_credentials'))
-            assert(db:truncate('applications'))
-            assert(db:truncate('consumers'))
-            assert(db:truncate('developers'))
-          end)
-
-          it("can GET a specific credential", function()
-            local res = assert(portal_api_client:send {
-              method = "GET",
-              path = "/applications/" .. application.id .. "/credentials/" .. credential.id,
-              headers = {
-                ["Cookie"] = cookie,
-                ["Content-Type"] = "application/json",
-              }
-            })
-
-            local body = assert.res_status(200, res)
-            local resp_body_json = cjson.decode(body)
-            assert.equal(credential.id, resp_body_json.id)
-          end)
-        end)
-      end)
-
       describe("/applications/:applications/application_instances", function()
         lazy_setup(function()
           helpers.stop_kong()
@@ -1105,6 +827,7 @@ for _, strategy in helpers.each_strategy() do
             portal_session_conf = PORTAL_SESSION_CONF,
             portal = true,
             portal_auth = "basic-auth",
+            portal_app_auth = "external-oauth2",
             portal_auto_approve = true,
             admin_gui_url = "http://localhost:8080",
           }))
@@ -1159,7 +882,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri= "http://dog.com"
+                custom_id = "doggo"
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -1188,7 +911,6 @@ for _, strategy in helpers.each_strategy() do
 
             assert(db.plugins:insert({
               config = {
-                enable_authorization_code = true,
                 display_name = "dope plugin",
               },
               name = "application-registration",
@@ -1282,7 +1004,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri= "http://dog.com"
+                custom_id = "doggo",
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -1311,7 +1033,6 @@ for _, strategy in helpers.each_strategy() do
 
             assert(db.plugins:insert({
               config = {
-                enable_authorization_code = true,
                 display_name = "dope plugin",
               },
               name = "application-registration",
@@ -1336,7 +1057,6 @@ for _, strategy in helpers.each_strategy() do
 
             assert(db.plugins:insert({
               config = {
-                enable_authorization_code = true,
                 display_name = "dope plugin",
               },
               name = "application-registration",
@@ -1473,6 +1193,7 @@ for _, strategy in helpers.each_strategy() do
             portal_session_conf = PORTAL_SESSION_CONF,
             portal = true,
             portal_auth = "basic-auth",
+            portal_app_auth = "external-oauth2",
             portal_auto_approve = true,
             admin_gui_url = "http://localhost:8080",
           }))
@@ -1527,7 +1248,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri= "http://dog.com"
+                custom_id = "doggo",
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -1556,7 +1277,6 @@ for _, strategy in helpers.each_strategy() do
 
             assert(db.plugins:insert({
               config = {
-                enable_authorization_code = true,
                 display_name = "dope plugin",
               },
               name = "application-registration",
@@ -1645,7 +1365,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/applications",
               body = {
                 name = "myfirstapp",
-                redirect_uri= "http://dog.com"
+                custom_id = "doggo",
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -1674,7 +1394,6 @@ for _, strategy in helpers.each_strategy() do
 
             assert(db.plugins:insert({
               config = {
-                enable_authorization_code = true,
                 display_name = "dope plugin",
               },
               name = "application-registration",
@@ -1745,7 +1464,7 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-      describe("/application_services", function()
+      pending("/application_services", function()
         lazy_setup(function()
           helpers.stop_kong()
           assert(db:truncate())
@@ -1755,6 +1474,7 @@ for _, strategy in helpers.each_strategy() do
             portal_session_conf = PORTAL_SESSION_CONF,
             portal = true,
             portal_auth = "basic-auth",
+            portal_app_auth = "external-oauth2",
             portal_auto_approve = true,
             admin_gui_url = "http://localhost:8080",
           }))
@@ -1825,7 +1545,6 @@ for _, strategy in helpers.each_strategy() do
 
                 assert(db.plugins:insert({
                   config = {
-                    enable_authorization_code = true,
                     display_name = "this service has application_registration",
                   },
                   name = "application-registration",
@@ -1836,7 +1555,6 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           lazy_teardown(function()
-            -- assert(db:truncate('basicauth_credentials'))
             assert(db:truncate('consumers'))
             assert(db:truncate('developers'))
             assert(db:truncate('services'))

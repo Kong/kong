@@ -540,4 +540,35 @@ describe("ee conf loader", function()
       assert.same(expected, msgs)
     end)
   end)
+
+  describe("portal_app_auth", function()
+    it("no errors for unset", function()
+      ee_conf_loader.validate_portal_app_auth({
+      }, msgs)
+
+
+      assert.same({}, msgs)
+    end)
+
+    it("accepts kong-oauth", function()
+      ee_conf_loader.validate_portal_app_auth({
+        portal_app_auth = "kong-oauth2",
+      }, msgs)
+
+
+      assert.same({}, msgs)
+    end)
+
+    it("does not accept invalid string", function()
+      ee_conf_loader.validate_portal_app_auth({
+        portal_app_auth = "not-valid",
+      }, msgs)
+
+      local expected = {
+        "portal_app_auth must be not set or one of: kong-oauth2, external-oauth2"
+      }
+
+      assert.same(expected, msgs)
+    end)
+  end)
 end)

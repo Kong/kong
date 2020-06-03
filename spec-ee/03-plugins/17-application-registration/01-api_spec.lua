@@ -49,7 +49,6 @@ for _, strategy in helpers.each_strategy() do
             route = { id = route.id },
             config = {
               display_name = "my service",
-              enable_authorization_code = true,
             },
           },
           headers = {
@@ -81,7 +80,6 @@ for _, strategy in helpers.each_strategy() do
             consumer = { id = consumer.id },
             config = {
               display_name = "my service",
-              enable_authorization_code = true,
             },
           },
           headers = {
@@ -109,7 +107,6 @@ for _, strategy in helpers.each_strategy() do
             name  = "application-registration",
             config = {
               display_name = "my service",
-              enable_authorization_code = true,
             },
           },
           headers = {
@@ -140,7 +137,6 @@ for _, strategy in helpers.each_strategy() do
             service = { id = service.id },
             config = {
               display_name = "my service",
-              enable_authorization_code = true,
             },
           },
           headers = {

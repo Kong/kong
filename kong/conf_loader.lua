@@ -567,6 +567,7 @@ local CONF_INFERENCES = {
   portal_api_error_log = {typ = "string"},
   portal_api_listen = {typ = "array"},
   portal_api_url = {typ = "string"},
+  portal_app_auth = {typ = "string"},
 
   proxy_uri = {typ = "string"},
   portal_auth = {typ = "string"},

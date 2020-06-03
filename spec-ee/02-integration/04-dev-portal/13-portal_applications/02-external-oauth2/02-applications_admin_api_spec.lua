@@ -30,11 +30,14 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database = strategy,
         portal = true,
+        portal_app_auth = "external-oauth2",
         portal_auth = "basic-auth",
         portal_session_conf = "{ \"secret\": \"super-secret\" }",
       }))
 
-      singletons.configuration = { portal_auth = "basic-auth" }
+      -- these need to be set so that setup and before hooks have the correct conf
+      singletons.configuration = { portal_auth = "basic-auth",  portal_app_auth = "external-oauth2"}
+      kong.configuration = { portal_auth = "basic-auth",  portal_app_auth = "external-oauth2" }
     end)
 
     lazy_teardown(function()
@@ -64,7 +67,7 @@ for _, strategy in helpers.each_strategy() do
           assert(db.applications:insert({
             developer = { id = developer_one.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo",
           }))
 
           developer_two = assert(db.developers:insert({
@@ -76,7 +79,7 @@ for _, strategy in helpers.each_strategy() do
           assert(db.applications:insert({
             developer = { id = developer_two.id },
             name = "catnipIsDope",
-            redirect_uri = "http://puur.com",
+            custom_id = "catto",
           }))
         end)
 
@@ -145,13 +148,13 @@ for _, strategy in helpers.each_strategy() do
           app_one = assert(db.applications:insert({
             developer = { id = developer_one.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo",
           }))
 
           assert(db.applications:insert({
             developer = { id = developer_two.id },
             name = "catnipIsDope",
-            redirect_uri = "http://puur.com",
+            custom_id = "catto",
           }))
         end)
 
@@ -169,7 +172,7 @@ for _, strategy in helpers.each_strategy() do
             body = {
               developer = { id = developer_one.id },
               name = "coolapp",
-              redirect_uri = "http://coolapp.com",
+              custom_id = "coolboi",
             },
             headers = {["Content-Type"] = "application/json"}
           }))
@@ -179,7 +182,7 @@ for _, strategy in helpers.each_strategy() do
 
           assert.equal(json.developer.id, developer_one.id)
           assert.equal(json.name, "coolapp")
-          assert.equal(json.redirect_uri, "http://coolapp.com")
+          assert.equal(json.custom_id, "coolboi")
         end)
 
 
@@ -190,7 +193,7 @@ for _, strategy in helpers.each_strategy() do
             body = {
               developer = { id = developer_two.id },
               name = app_one.name,
-              redirect_uri = app_one.redirect_uri,
+              custom_id = "custom",
             },
             headers = {["Content-Type"] = "application/json"}
           }))
@@ -200,7 +203,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert.equal(json.developer.id, developer_two.id)
           assert.equal(json.name, app_one.name)
-          assert.equal(json.redirect_uri, app_one.redirect_uri)
         end)
 
         it("creates a consumer alongside the application", function()
@@ -212,20 +214,41 @@ for _, strategy in helpers.each_strategy() do
             body = {
               developer = { id = developer_one.id },
               name = "coolapp",
-              redirect_uri = "http://coolapp.com",
+              custom_id = "coolboi",
             },
             headers = {["Content-Type"] = "application/json"}
           }))
 
           assert.res_status(201, res)
-          assert(db.consumers:select_by_username(developer_one.id .. "_coolapp"))
+          local consumer = assert(db.consumers:select_by_username(developer_one.id .. "_coolapp"))
+          assert("coolboi", consumer.custom_id)
         end)
 
-        it("cannot create an application with missing params", function()
+        it("cannot create an application with missing name", function()
           local res = assert(client:send({
             method = "POST",
             path = "/applications",
-            body = {},
+            body = {
+              developer = { id = developer_one.id },
+              custom_id = "coolboi",
+            },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+
+          assert.equal(json.fields.name, "required field missing")
+        end)
+
+        it("cannot create an application with missing developer", function()
+          local res = assert(client:send({
+            method = "POST",
+            path = "/applications",
+            body = {
+              name = "coolapp",
+              custom_id = "coolboi",
+            },
             headers = {["Content-Type"] = "application/json"}
           }))
 
@@ -233,8 +256,23 @@ for _, strategy in helpers.each_strategy() do
           local json = cjson.decode(body)
 
           assert.equal(json.fields.developer, "required field missing")
-          assert.equal(json.fields.name, "required field missing")
-          assert.equal(json.fields.redirect_uri, "required field missing")
+        end)
+
+        it("cannot create an application with missing custom_id", function()
+          local res = assert(client:send({
+            method = "POST",
+            path = "/applications",
+            body = {
+              developer = { id = developer_one.id },
+              name = "coolapp",
+            },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+
+          assert.equal(json.fields.custom_id, "required field missing")
         end)
 
         it("cannot create an application with the same name for the same developer", function()
@@ -244,7 +282,22 @@ for _, strategy in helpers.each_strategy() do
             body = {
               developer = { id = developer_one.id },
               name = app_one.name,
-              redirect_uri = app_one.redirect_uri,
+              custom_id = "custom_two",
+            },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          assert.res_status(409, res)
+        end)
+
+        it("cannot create an application with the same custom_id as another app", function()
+          local res = assert(client:send({
+            method = "POST",
+            path = "/applications",
+            body = {
+              developer = { id = developer_one.id },
+              name = "different name",
+              custom_id = app_one.custom_id,
             },
             headers = {["Content-Type"] = "application/json"}
           }))
@@ -255,7 +308,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/applications/:application", function()
-      local application, developer, developer_two, application_instance
+      local application, developer, application_instance
 
       describe("GET", function()
         lazy_setup(function()
@@ -268,7 +321,7 @@ for _, strategy in helpers.each_strategy() do
           application = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo",
           }))
         end)
 
@@ -306,6 +359,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("PATCH", function()
+        local application_2
+
         before_each(function()
           developer = assert(db.developers:insert({
             email = "dog@bork.com",
@@ -313,16 +368,16 @@ for _, strategy in helpers.each_strategy() do
             meta = '{ "full_name": "todd" }',
           }))
 
-          developer_two = assert(db.developers:insert({
-            email = "cat@mew.com",
-            password = "catto",
-            meta = '{ "full_name": "simba" }',
-          }))
-
           application = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo",
+          }))
+
+          application_2 = assert(db.applications:insert({
+            developer = { id = developer.id },
+            name = "app2",
+            custom_id = "doggo_2",
           }))
 
           local service = assert(db.services:insert({
@@ -332,7 +387,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert(db.plugins:insert({
             config = {
-              enable_authorization_code = true,
               display_name = "dope plugin",
             },
             name = "application-registration",
@@ -351,37 +405,9 @@ for _, strategy in helpers.each_strategy() do
           db:truncate("consumers")
           db:truncate("developers")
           db:truncate("applications")
-          db:truncate("application_entities")
         end)
 
-        it("ignores developer in body", function()
-          assert.is_nil(db.consumers:select_by_username(developer.id .. "new_app"))
-          assert.is_nil(db.consumers:select_by_username(developer_two.id .. "_new_app"))
-
-          print(require("inspect")(developer_two))
-
-          local res = assert(client:send({
-            method = "PATCH",
-            path = "/applications/" .. application.id,
-            body = {
-              name = "new_app",
-              developer = { id = developer_two.id },
-            },
-            headers = {["Content-Type"] = "application/json"}
-          }))
-
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-
-          print(require("inspect")(json))
-
-
-          assert.equal(developer.id, json.developer.id)
-          assert(db.consumers:select_by_username(developer.id .. "_new_app"))
-          assert.is_nil(db.consumers:select_by_username(developer_two.id .. "_new_app"))
-        end)
-
-        it("updates consumer name when 'name' is updated", function()
+        it("updates consumer username when 'name' is updated", function()
           local new_name = "new_app_woah_cool"
           local res = assert(client:send({
             method = "PATCH",
@@ -398,42 +424,68 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(consumer.username, developer.id .. "_" .. new_name)
         end)
 
-        it("updates oauth2 credentials when 'name' updated", function()
-          local new_name = "new_app_woah_cool"
+        it("updates consumer custom_id when 'custom_id' is updated", function()
           local res = assert(client:send({
             method = "PATCH",
             path = "/applications/" .. application.id,
             body = {
-              name = new_name,
+              custom_id = "supersweet",
             },
             headers = {["Content-Type"] = "application/json"}
           }))
           assert.equal(200, res.status)
 
-          for row, err in db.daos["oauth2_credentials"]:each_for_consumer({ id = application.consumer.id }) do
-            if row then
-              assert.equal(row.name, new_name)
-            end
-          end
+          local consumer = assert(kong.db.consumers:select({ id = application.consumer.id }))
+
+          assert.equal(consumer.custom_id, "supersweet")
         end)
 
-        it("updates oauth2 credentials when 'redirect_uri' updated", function()
-          local new_uri = "http://dog.com"
+        it("cannot update application with null custom_id", function()
           local res = assert(client:send({
             method = "PATCH",
             path = "/applications/" .. application.id,
             body = {
-              redirect_uri = new_uri,
+              custom_id = ngx.null,
             },
             headers = {["Content-Type"] = "application/json"}
           }))
-          assert.equal(200, res.status)
 
-          for row, err in db.daos["oauth2_credentials"]:each_for_consumer({ id = application.consumer.id }) do
-            if row then
-              assert.equal(row.redirect_uris[1], new_uri)
-            end
-          end
+          local body = assert.res_status(400, res)
+          local resp_body_json = cjson.decode(body)
+
+          assert.equal("required field missing", resp_body_json.fields.custom_id)
+        end)
+
+        it("cannot update application with duplicate custom_id", function()
+          local res = assert(client:send({
+            method = "PATCH",
+            path = "/applications/" .. application.id,
+            body = {
+              custom_id = application_2.custom_id,
+            },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          local body = assert.res_status(409, res)
+          local resp_body_json = cjson.decode(body)
+
+          assert.equal("application already exists with custom_id: 'doggo_2'", resp_body_json.fields.custom_id)
+        end)
+
+        it("cannot update application with duplicate name", function()
+          local res = assert(client:send({
+            method = "PATCH",
+            path = "/applications/" .. application.id,
+            body = {
+              name = application_2.name,
+            },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          local body = assert.res_status(409, res)
+          local resp_body_json = cjson.decode(body)
+
+          assert.equal("application already exists with name: 'app2'", resp_body_json.fields.name)
         end)
       end)
 
@@ -448,7 +500,7 @@ for _, strategy in helpers.each_strategy() do
           application = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo",
           }))
 
           local service = assert(db.services:insert({
@@ -458,7 +510,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert(db.plugins:insert({
             config = {
-              enable_authorization_code = true,
               display_name = "dope plugin",
             },
             name = "application-registration",
@@ -477,7 +528,6 @@ for _, strategy in helpers.each_strategy() do
           db:truncate("consumers")
           db:truncate("developers")
           db:truncate("applications")
-          db:truncate("application_entities")
         end)
 
         it("delete cascades to applications related entities", function()
@@ -493,15 +543,6 @@ for _, strategy in helpers.each_strategy() do
 
           res = db.consumers:select({ id = application.consumer.id })
           assert.is_nil(res)
-
-          local creds = {}
-          for row, err in db.daos["oauth2_credentials"]:each_for_consumer({ id = application.consumer.id }) do
-            if row then
-              table.insert(creds, row)
-            end
-          end
-
-          assert.is_nil(next(creds))
         end)
 
         it("can create an application with the same name after deletion", function()
@@ -514,334 +555,8 @@ for _, strategy in helpers.each_strategy() do
           assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo",
           }))
-        end)
-      end)
-    end)
-
-    describe("/applications/:applications/credentials/:plugin", function()
-      describe("GET", function()
-        local developer, application, application_two
-
-        lazy_setup(function()
-          developer = assert(db.developers:insert({
-            email = "bob@bork.com",
-            password = "woof",
-            meta = '{ "full_name": "todd" }',
-          }))
-
-          application = assert(db.applications:insert({
-            developer = { id = developer.id },
-            name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
-          }))
-
-          application_two = assert(db.applications:insert({
-            developer = { id = developer.id },
-            name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
-          }))
-        end)
-
-        lazy_teardown(function()
-          db:truncate('basicauth_credentials')
-          db:truncate("services")
-          db:truncate("consumers")
-          db:truncate("developers")
-          db:truncate("applications")
-        end)
-
-        it("can retrieve oauth2 creds attached to an application", function()
-          local res = assert(client:send({
-            method = "GET",
-            path = "/applications/" .. application.id .. "/credentials/oauth2",
-            headers = {["Content-Type"] = "application/json"}
-          }))
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-
-          assert.equal(#json.data, 1)
-          assert.equal(json.data[1].consumer.id, application.consumer.id)
-        end)
-
-        it("does not retrieve oauth2 creds attached to a different app", function()
-          local res = assert(client:send({
-            method = "GET",
-            path = "/applications/" .. application.id .. "/credentials/oauth2",
-            headers = {["Content-Type"] = "application/json"}
-          }))
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-
-          assert.equal(#json.data, 1)
-          assert.not_equal(json.data[1].consumer.id, application_two.consumer.id)
-        end)
-
-        it("does not retrieve creds of a different auth type", function()
-          local res = assert(client:send({
-            method = "GET",
-            path = "/applications/" .. application.id .. "/credentials/keyauth",
-            headers = {["Content-Type"] = "application/json"}
-          }))
-          assert.res_status(404, res)
-        end)
-      end)
-
-      describe("POST", function()
-        local developer, application
-
-        before_each(function()
-          developer = assert(db.developers:insert({
-            email = "dog@bork.com",
-            password = "woof",
-            meta = '{ "full_name": "todd" }',
-          }))
-
-          application = assert(db.applications:insert({
-            developer = { id = developer.id },
-            name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
-          }))
-
-          assert(db.applications:insert({
-            developer = { id = developer.id },
-            name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
-          }))
-        end)
-
-        after_each(function()
-          db:truncate('basicauth_credentials')
-          db:truncate("services")
-          db:truncate("consumers")
-          db:truncate("developers")
-          db:truncate("applications")
-        end)
-
-        it("can create a new credential set", function()
-          local res = assert(client:send({
-            method = "POST",
-            path = "/applications/" .. application.id .. "/credentials/oauth2",
-            body = {},
-            headers = {["Content-Type"] = "application/json"}
-          }))
-          assert.res_status(201, res)
-        end)
-
-        it("cannot set any attributes in created entity", function()
-          local res = assert(client:send({
-            method = "POST",
-            path = "/applications/" .. application.id .. "/credentials/oauth2",
-            body = {
-              consumer = { id = utils.uuid() },
-              name = "coolAppYo",
-              redirect_uris = { "http://dog.com" },
-            },
-            headers = {["Content-Type"] = "application/json"}
-          }))
-          local body = assert.res_status(201, res)
-          local json = cjson.decode(body)
-
-          assert.equal(json.name, application.name)
-          assert.equal(json.consumer.id, application.consumer.id)
-          assert.equal(json.redirect_uris[1], application.redirect_uri)
-        end)
-      end)
-    end)
-
-    describe("/applications/:applications/credentials/:plugin/:credential", function()
-      describe("GET", function()
-        local developer, application, application_two
-
-        lazy_setup(function()
-          developer = assert(db.developers:insert({
-            email = "dog@bork.com",
-            password = "woof",
-            meta = '{ "full_name": "todd" }',
-          }))
-
-          application = assert(db.applications:insert({
-            developer = { id = developer.id },
-            name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
-          }))
-
-          application_two = assert(db.applications:insert({
-            developer = { id = developer.id },
-            name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
-          }))
-        end)
-
-        lazy_teardown(function()
-          db:truncate('basicauth_credentials')
-          db:truncate("services")
-          db:truncate("consumers")
-          db:truncate("developers")
-          db:truncate("applications")
-        end)
-
-        it("can retrieve oauth2 creds attached to an application", function()
-          local res = assert(client:send({
-            method = "GET",
-            path = "/applications/" .. application.id .. "/credentials/oauth2",
-            headers = {["Content-Type"] = "application/json"}
-          }))
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          local cred = json.data[1]
-
-          local res = assert(client:send({
-            method = "GET",
-            path = "/applications/" .. application.id .. "/credentials/oauth2/" .. cred.id,
-            headers = {["Content-Type"] = "application/json"}
-          }))
-
-          body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-
-          assert.equal(json.id, cred.id)
-        end)
-
-        it("does not retrieve oauth2 creds attached to a different app", function()
-          local res = assert(client:send({
-            method = "GET",
-            path = "/applications/" .. application.id .. "/credentials/oauth2",
-            headers = {["Content-Type"] = "application/json"}
-          }))
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          local cred = json.data[1]
-
-          local res = assert(client:send({
-            method = "GET",
-            path = "/applications/" .. application_two.id .. "/credentials/oauth2/" .. cred.id,
-            headers = {["Content-Type"] = "application/json"}
-          }))
-
-          assert.res_status(404, res)
-        end)
-
-        it("does not retrieve creds of a different auth type", function()
-          local res = assert(client:send({
-            method = "GET",
-            path = "/applications/" .. application.id .. "/credentials/keyauth/" .. utils.uuid(),
-            headers = {["Content-Type"] = "application/json"}
-          }))
-          assert.res_status(404, res)
-        end)
-      end)
-
-      describe("PATCH", function()
-        lazy_teardown(function()
-          db:truncate('basicauth_credentials')
-          db:truncate("services")
-          db:truncate("consumers")
-          db:truncate("developers")
-          db:truncate("applications")
-        end)
-
-        it("cannot patch a oauth cred", function()
-          local developer = assert(db.developers:insert({
-            email = "dog@bork.com",
-            password = "woof",
-            meta = '{ "full_name": "todd" }',
-          }))
-
-          local application = assert(db.applications:insert({
-            developer = { id = developer.id },
-            name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
-          }))
-
-          local res = assert(client:send({
-            method = "PATCH",
-            path = "/applications/" .. application.id .. "/credentials/oauth2/" .. utils.uuid(),
-            body = {},
-            headers = {["Content-Type"] = "application/json"}
-          }))
-
-          assert.res_status(405, res)
-        end)
-      end)
-
-      describe("DELETE", function()
-        local developer, application, application_two, cred
-
-        before_each(function()
-          developer = assert(db.developers:insert({
-            email = "dog@bork.com",
-            password = "woof",
-            meta = '{ "full_name": "todd" }',
-          }))
-
-          application = assert(db.applications:insert({
-            developer = { id = developer.id },
-            name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
-          }))
-
-          local creds = {}
-          for row, err in db.daos["oauth2_credentials"]:each_for_consumer({ id = application.consumer.id }) do
-            if row then
-              table.insert(creds, row)
-            end
-          end
-
-          cred = creds[1]
-
-          application_two = assert(db.applications:insert({
-            developer = { id = developer.id },
-            name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
-          }))
-
-          creds = {}
-          for row, err in db.daos["oauth2_credentials"]:each_for_consumer({ id = application.consumer.id }) do
-            if row then
-              table.insert(creds, row)
-            end
-          end
-        end)
-
-        after_each(function()
-          db:truncate('basicauth_credentials')
-          db:truncate("services")
-          db:truncate("consumers")
-          db:truncate("developers")
-          db:truncate("applications")
-        end)
-
-        it("can delete credential for application", function()
-          local res = assert(client:send({
-            method = "DELETE",
-            path = "/applications/" .. application.id .. "/credentials/oauth2/" .. cred.id,
-            headers = {["Content-Type"] = "application/json"}
-          }))
-          assert.res_status(204, res)
-
-          assert.is_nil(db.daos["oauth2_credentials"]:select({ id = cred.id }))
-        end)
-
-        it("cannot delete credential when wrong application is set", function()
-          local res = assert(client:send({
-            method = "DELETE",
-            path = "/applications/" .. application_two.id .. "/credentials/oauth2/" .. cred.id,
-            headers = {["Content-Type"] = "application/json"}
-          }))
-          assert.res_status(404, res)
-
-          assert(db.daos["oauth2_credentials"]:select({ id = cred.id }))
-        end)
-
-        it("always returns 204 if uuid is wrong", function()
-          local res = assert(client:send({
-            method = "DELETE",
-            path = "/applications/" .. application_two.id .. "/credentials/oauth2/" .. utils.uuid(),
-            headers = {["Content-Type"] = "application/json"}
-          }))
-          assert.res_status(204, res)
         end)
       end)
     end)
@@ -882,7 +597,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert(db.plugins:insert({
             config = {
-              enable_authorization_code = true,
               display_name = "dope plugin one",
             },
             name = "application-registration",
@@ -891,7 +605,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert(db.plugins:insert({
             config = {
-              enable_authorization_code = true,
               display_name = "dope plugin two",
             },
             name = "application-registration",
@@ -900,7 +613,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert(db.plugins:insert({
             config = {
-              enable_authorization_code = true,
               display_name = "dope plugin three",
             },
             name = "application-registration",
@@ -910,7 +622,7 @@ for _, strategy in helpers.each_strategy() do
           application_one = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo",
           }))
 
           application_instance_one = assert(db.application_instances:insert({
@@ -921,7 +633,7 @@ for _, strategy in helpers.each_strategy() do
           application_two = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "catnipIsRad",
-            redirect_uri = "http://meow.com",
+            custom_id = "catto",
           }))
 
           application_instance_two = assert(db.application_instances:insert({
@@ -932,7 +644,7 @@ for _, strategy in helpers.each_strategy() do
           application_three = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "cherpcherp",
-            redirect_uri = "http://birds.com",
+            custom_id = "birb",
           }))
 
           assert(db.application_instances:insert({
@@ -957,7 +669,6 @@ for _, strategy in helpers.each_strategy() do
           db:truncate("consumers")
           db:truncate("developers")
           db:truncate("applications")
-          db:truncate("application_entities")
         end)
 
         it("can retrieve application instances", function()
@@ -1040,7 +751,6 @@ for _, strategy in helpers.each_strategy() do
 
           plugin = assert(db.plugins:insert({
             config = {
-              enable_authorization_code = true,
               display_name = "dope plugin",
             },
             name = "application-registration",
@@ -1050,7 +760,7 @@ for _, strategy in helpers.each_strategy() do
           application = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo",
           }))
         end)
 
@@ -1060,7 +770,6 @@ for _, strategy in helpers.each_strategy() do
           db:truncate("consumers")
           db:truncate("developers")
           db:truncate("applications")
-          db:truncate("application_entities")
         end)
 
         it("can create an application instance", function()
@@ -1205,7 +914,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert(db.plugins:insert({
             config = {
-              enable_authorization_code = true,
               display_name = "dope plugin",
             },
             name = "application-registration",
@@ -1215,13 +923,13 @@ for _, strategy in helpers.each_strategy() do
           application_one = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo",
           }))
 
           application_two = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo2",
           }))
 
           application_instance_one = assert(db.application_instances:insert({
@@ -1244,7 +952,6 @@ for _, strategy in helpers.each_strategy() do
           db:truncate("consumers")
           db:truncate("developers")
           db:truncate("applications")
-          db:truncate("application_entities")
         end)
 
 
@@ -1331,7 +1038,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert(db.plugins:insert({
             config = {
-              enable_authorization_code = true,
               display_name = "dope plugin",
             },
             name = "application-registration",
@@ -1341,7 +1047,7 @@ for _, strategy in helpers.each_strategy() do
           application = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo",
           }))
         end)
 
@@ -1351,7 +1057,6 @@ for _, strategy in helpers.each_strategy() do
           db:truncate("consumers")
           db:truncate("developers")
           db:truncate("applications")
-          db:truncate("application_entities")
         end)
 
         it("can patch status", function()
@@ -1404,7 +1109,7 @@ for _, strategy in helpers.each_strategy() do
           local application_two = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo2",
           }))
 
           local application_instance = assert(db.application_instances:insert({
@@ -1513,7 +1218,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert(db.plugins:insert({
             config = {
-              enable_authorization_code = true,
               display_name = "dope plugin",
             },
             name = "application-registration",
@@ -1523,7 +1227,7 @@ for _, strategy in helpers.each_strategy() do
           application = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo",
           }))
 
           application_instance = assert(db.application_instances:insert({
@@ -1539,7 +1243,6 @@ for _, strategy in helpers.each_strategy() do
           db:truncate("consumers")
           db:truncate("developers")
           db:truncate("applications")
-          db:truncate("application_entities")
         end)
 
         it("can delete existing application_instance", function()

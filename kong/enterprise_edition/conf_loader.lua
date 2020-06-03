@@ -191,6 +191,17 @@ local function validate_portal_auth_password_complexity(conf, errors)
   end
 end
 
+local function validate_portal_app_auth(conf, errors)
+  local portal_app_auth = conf.portal_app_auth
+  if not portal_app_auth or portal_app_auth == "" then
+    return
+  end
+
+  if portal_app_auth ~= "kong-oauth2" and
+    portal_app_auth ~= "external-oauth2" then
+    errors[#errors+1] = "portal_app_auth must be not set or one of: kong-oauth2, external-oauth2"
+  end
+end
 
 local function validate_admin_gui_ssl(conf, errors)
   if (table.concat(conf.admin_gui_listen, ",") .. " "):find("%sssl[%s,]") then
@@ -414,6 +425,7 @@ local function validate(conf, errors)
     validate_portal_smtp_config(conf, errors)
     validate_portal_session(conf, errors)
     validate_portal_auth_password_complexity(conf, errors)
+    validate_portal_app_auth(conf, errors)
 
     local portal_gui_host = conf.portal_gui_host
     if not portal_gui_host or portal_gui_host == "" then
@@ -446,4 +458,5 @@ return {
   validate_portal_cors_origins = validate_portal_cors_origins,
   validate_tracing = validate_tracing,
   validate_route_path_pattern = validate_route_path_pattern,
+  validate_portal_app_auth = validate_portal_app_auth
 }

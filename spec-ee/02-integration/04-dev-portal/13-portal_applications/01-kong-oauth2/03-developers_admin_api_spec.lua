@@ -30,11 +30,14 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database = strategy,
         portal = true,
+        portal_app_auth = "kong-oauth2",
         portal_auth = "basic-auth",
         portal_session_conf = "{ \"secret\": \"super-secret\" }",
       }))
 
-      singletons.configuration = { portal_auth = "basic-auth" }
+      -- these need to be set so that setup and before hooks have the correct conf
+      singletons.configuration = { portal_auth = "basic-auth",  portal_app_auth = "kong-oauth2" }
+      kong.configuration = { portal_auth = "basic-auth",  portal_app_auth = "kong-oauth2" }
     end)
 
     lazy_teardown(function()
@@ -74,6 +77,13 @@ for _, strategy in helpers.each_strategy() do
           assert(db.plugins:insert({
             config = {
               enable_authorization_code = true,
+            },
+            name = "oauth2",
+            service = { id = service_one.id },
+          }))
+
+          assert(db.plugins:insert({
+            config = {
               display_name = "dope plugin one",
             },
             name = "application-registration",
@@ -83,6 +93,13 @@ for _, strategy in helpers.each_strategy() do
           assert(db.plugins:insert({
             config = {
               enable_authorization_code = true,
+            },
+            name = "oauth2",
+            service = { id = service_two.id },
+          }))
+
+          assert(db.plugins:insert({
+            config = {
               display_name = "dope plugin one",
             },
             name = "application-registration",
@@ -260,6 +277,13 @@ for _, strategy in helpers.each_strategy() do
           assert(db.plugins:insert({
             config = {
               enable_authorization_code = true,
+            },
+            name = "oauth2",
+            service = { id = service.id },
+          }))
+
+          assert(db.plugins:insert({
+            config = {
               display_name = "dope plugin one",
             },
             name = "application-registration",
@@ -516,11 +540,13 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(db.consumers:select_by_username(developer_two.id .. "_new_app"))
         end)
 
-        it("cannot create an application with missing params", function()
+        it("cannot create an application with missing name", function()
           local res = assert(client:send({
             method = "POST",
             path = "/developers/" .. developer_one.id .. "/applications",
-            body = {},
+            body = {
+              redirect_uri = "http://coolapp.com",
+            },
             headers = {["Content-Type"] = "application/json"}
           }))
 
@@ -528,6 +554,21 @@ for _, strategy in helpers.each_strategy() do
           local json = cjson.decode(body)
 
           assert.equal(json.fields.name, "required field missing")
+        end)
+
+        it("cannot create an application with missing redirect_uri", function()
+          local res = assert(client:send({
+            method = "POST",
+            path = "/developers/" .. developer_one.id .. "/applications",
+            body = {
+              name = "coolapp",
+            },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+
           assert.equal(json.fields.redirect_uri, "required field missing")
         end)
 
@@ -662,7 +703,7 @@ for _, strategy in helpers.each_strategy() do
           db:truncate("applications")
         end)
 
-        it("updates consumer name when 'name' is updated", function()
+        it("updates consumer username when 'name' is updated", function()
           local new_name = "new_app_woah_cool"
           local res = assert(client:send({
             method = "PATCH",
@@ -675,7 +716,6 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(200, res.status)
 
           local consumer = assert(kong.db.consumers:select({ id = app_one.consumer.id }))
-
           assert.equal(consumer.username, developer_one.id .. "_" .. new_name)
         end)
 
@@ -1244,6 +1284,13 @@ for _, strategy in helpers.each_strategy() do
           assert(db.plugins:insert({
             config = {
               enable_authorization_code = true,
+            },
+            name = "oauth2",
+            service = { id = service_one.id },
+          }))
+
+          assert(db.plugins:insert({
+            config = {
               display_name = "dope plugin one",
             },
             name = "application-registration",
@@ -1253,6 +1300,13 @@ for _, strategy in helpers.each_strategy() do
           assert(db.plugins:insert({
             config = {
               enable_authorization_code = true,
+            },
+            name = "oauth2",
+            service = { id = service_two.id },
+          }))
+
+          assert(db.plugins:insert({
+            config = {
               display_name = "dope plugin two",
             },
             name = "application-registration",
@@ -1262,6 +1316,13 @@ for _, strategy in helpers.each_strategy() do
           assert(db.plugins:insert({
             config = {
               enable_authorization_code = true,
+            },
+            name = "oauth2",
+            service = { id = service_three.id },
+          }))
+
+          assert(db.plugins:insert({
+            config = {
               display_name = "dope plugin three",
             },
             name = "application-registration",
@@ -1409,9 +1470,16 @@ for _, strategy in helpers.each_strategy() do
             meta = '{ "full_name": "todd" }',
           }))
 
-          plugin = assert(db.plugins:insert({
+          assert(db.plugins:insert({
             config = {
               enable_authorization_code = true,
+            },
+            name = "oauth2",
+            service = { id = service.id },
+          }))
+
+          plugin = assert(db.plugins:insert({
+            config = {
               display_name = "dope plugin",
             },
             name = "application-registration",
@@ -1632,6 +1700,13 @@ for _, strategy in helpers.each_strategy() do
           assert(db.plugins:insert({
             config = {
               enable_authorization_code = true,
+            },
+            name = "oauth2",
+            service = { id = service.id },
+          }))
+
+          assert(db.plugins:insert({
+            config = {
               display_name = "dope plugin",
             },
             name = "application-registration",
@@ -1780,6 +1855,13 @@ for _, strategy in helpers.each_strategy() do
           assert(db.plugins:insert({
             config = {
               enable_authorization_code = true,
+            },
+            name = "oauth2",
+            service = { id = service.id },
+          }))
+
+          assert(db.plugins:insert({
+            config = {
               display_name = "dope plugin",
             },
             name = "application-registration",
@@ -1985,6 +2067,13 @@ for _, strategy in helpers.each_strategy() do
           assert(db.plugins:insert({
             config = {
               enable_authorization_code = true,
+            },
+            name = "oauth2",
+            service = { id = service.id },
+          }))
+
+          assert(db.plugins:insert({
+            config = {
               display_name = "dope plugin",
             },
             name = "application-registration",

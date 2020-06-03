@@ -28,10 +28,13 @@ for _, strategy in helpers.each_strategy() do
         database = strategy,
         portal = true,
         portal_auth = "basic-auth",
+        portal_app_auth = "external-oauth2",
         portal_session_conf = "{ \"secret\": \"super-secret\" }",
       }))
 
-      singletons.configuration = { portal_auth = "basic-auth" }
+      -- these need to be set so that setup and before hooks have the correct conf
+      singletons.configuration = { portal_auth = "basic-auth",  portal_app_auth = "external-oauth2" }
+      kong.configuration = { portal_auth = "basic-auth",  portal_app_auth = "external-oauth2" }
     end)
 
     lazy_teardown(function()
@@ -74,7 +77,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert(db.plugins:insert({
             config = {
-              enable_authorization_code = true,
               display_name = "dope plugin",
             },
             name = "application-registration",
@@ -83,7 +85,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert(db.plugins:insert({
             config = {
-              enable_authorization_code = true,
               display_name = "dope plugin",
             },
             name = "application-registration",
@@ -93,13 +94,13 @@ for _, strategy in helpers.each_strategy() do
           application_one = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo",
           }))
 
           application_two = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo2",
           }))
 
           assert(db.application_instances:insert({
@@ -192,7 +193,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert(db.plugins:insert({
             config = {
-              enable_authorization_code = true,
               display_name = "dope plugin",
             },
             name = "application-registration",
@@ -201,7 +201,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert(db.plugins:insert({
             config = {
-              enable_authorization_code = true,
               display_name = "dope plugin",
             },
             name = "application-registration",
@@ -211,13 +210,13 @@ for _, strategy in helpers.each_strategy() do
           application_one = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo",
           }))
 
           application_two = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo2",
           }))
 
           assert(db.application_instances:insert({
@@ -252,7 +251,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(#json.data, 1)
           assert.equal(json.data[1].application.id, application_one.id)
           assert(json.data[1].application.developer.email)
-          assert(json.data[1].application.redirect_uri)
+          assert(json.data[1].application.custom_id)
 
           res = assert(client:send({
             method = "GET",
@@ -265,7 +264,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(#json.data, 1)
           assert.equal(json.data[1].application.id, application_two.id)
           assert(json.data[1].application.developer.email)
-          assert(json.data[1].application.redirect_uri)
+          assert(json.data[1].application.custom_id)
         end)
 
         it("returns empty results when service has no application services", function()
@@ -316,7 +315,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert(db.plugins:insert({
             config = {
-              enable_authorization_code = true,
               display_name = "dope plugin",
             },
             name = "application-registration",
@@ -325,7 +323,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert(db.plugins:insert({
             config = {
-              enable_authorization_code = true,
               display_name = "dope plugin",
             },
             name = "application-registration",
@@ -335,13 +332,13 @@ for _, strategy in helpers.each_strategy() do
           application_one = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo",
           }))
 
           application_two = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo2",
           }))
 
           app_instance_one = assert(db.application_instances:insert({
@@ -375,7 +372,7 @@ for _, strategy in helpers.each_strategy() do
 
           assert.equal(json.application.id, application_one.id)
           assert(json.application.developer.email)
-          assert(json.application.redirect_uri)
+          assert(json.application.custom_id)
 
           res = assert(client:send({
             method = "GET",
@@ -387,7 +384,7 @@ for _, strategy in helpers.each_strategy() do
 
           assert.equal(json.application.id, application_two.id)
           assert(json.application.developer.email)
-          assert(json.application.redirect_uri)
+          assert(json.application.custom_id)
         end)
 
         it("cannot retrieve instance from wrong service", function()
@@ -427,7 +424,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert(db.plugins:insert({
             config = {
-              enable_authorization_code = true,
               display_name = "dope plugin",
             },
             name = "application-registration",
@@ -436,7 +432,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert(db.plugins:insert({
             config = {
-              enable_authorization_code = true,
               display_name = "dope plugin",
             },
             name = "application-registration",
@@ -446,13 +441,13 @@ for _, strategy in helpers.each_strategy() do
           application_one = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo"
           }))
 
           application_two = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo2"
           }))
 
           app_instance_one = assert(db.application_instances:insert({
@@ -551,7 +546,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert(db.plugins:insert({
             config = {
-              enable_authorization_code = true,
               display_name = "dope plugin",
             },
             name = "application-registration",
@@ -560,7 +554,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert(db.plugins:insert({
             config = {
-              enable_authorization_code = true,
               display_name = "dope plugin",
             },
             name = "application-registration",
@@ -570,13 +563,13 @@ for _, strategy in helpers.each_strategy() do
           application_one = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo",
           }))
 
           application_two = assert(db.applications:insert({
             developer = { id = developer.id },
             name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
+            custom_id = "doggo2",
           }))
 
           app_instance_one = assert(db.application_instances:insert({
