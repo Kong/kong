@@ -99,7 +99,7 @@ or via the administration API:
 $ # add the plugin to the route
 $ curl -XPOST localhost:8001/routes/web-service/plugins \
   --data name=grpc-web \
-  --data proto=path/to/hello.proto
+  --data config.proto=path/to/hello.proto
 ```
 
 With this setup, we can support gRPC-Web/JSON clients using `Content-Type` headers like `application/grpc-web+json` or `application/grpc-web-text+json`.
