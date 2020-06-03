@@ -140,7 +140,6 @@ return {
   },
   REPORTS = {
     ADDRESS = "kong-hf.konghq.com",
-    SYSLOG_PORT = 61828,
     STATS_PORT = 61830
   },
   DICTS = {

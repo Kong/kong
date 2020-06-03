@@ -309,7 +309,7 @@ do
         end
 
         if not ok then
-          log(ERR, "[healthchecks] failed setting peer status (upstream: ", hc.name, "): ", err)
+          log(WARN, "[healthchecks] failed setting peer status (upstream: ", hc.name, "): ", err)
         end
       end
 
@@ -429,9 +429,6 @@ do
     if not balancer then
       return nil, "failed creating balancer:" .. err
     end
-
-    singletons.core_cache:invalidate_local("balancer:upstreams:" .. upstream.id)
-    singletons.core_cache:invalidate_local("balancer:targets:" .. upstream.id)
 
     target_histories[balancer] = {}
 
