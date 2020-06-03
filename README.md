@@ -62,10 +62,11 @@ $ curl https://mydomain.com -k
 
 # OR create from Admin API with version >= 0.2.4
 # User can also use this endpoint to force "renew" a certificate
-$ curl http://localhost:8001/acme/create -d host=mydomain.com
+$ curl http://localhost:8001/acme -d host=mydomain.com
 
-# Furthermore, it's possible to run sanity test before creating any certificate
-$ curl http://localhost:8001/acme/create -d host=mydomain.com -d test_only=1
+# Furthermore, it's possible to run sanity test on your Kong setup
+# before creating any certificate
+$ curl http://localhost:8001/acme -d host=mydomain.com -d test_http_challenge_flow=true
 
 $ curl https://mydomain.com
 # Now gives you a valid Let's Encrypt certicate
@@ -81,7 +82,7 @@ It's also possible to actively trigger the renewal starting version 0.2.4. The f
 schedules renewal in background and return immediately.
 
 ```bash
-$ curl http://localhost:8001/acme/renew -XPOST
+$ curl http://localhost:8001/acme -XPATCH
 ```
 
 ### Plugin Config

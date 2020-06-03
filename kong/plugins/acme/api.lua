@@ -14,7 +14,7 @@ local function find_plugin()
 end
 
 return {
-  ["/acme/create"] = {
+  ["/acme"] = {
     POST = function(self)
       local plugin, err = find_plugin()
       if err then
@@ -34,7 +34,7 @@ return {
         return kong.response.exit(400, { message = "port is not allowed in host" })
       end
 
-      if self.params.test_only then
+      if self.params.test_http_challenge_flow == "true" then
         local check_path = string.format("http://%s/.well-known/acme-challenge/", host)
         local httpc = http.new()
         local res, err = httpc:request_uri(check_path .. "x")
@@ -64,12 +64,10 @@ return {
       local msg = "certificate for host " .. host .. " is created"
       return kong.response.exit(201, { message = msg })
     end,
-  },
 
-  ["/acme/renew"] = {
-    POST = function()
+    PATCH = function()
       client.renew_certificate()
-      return kong.response.exit(202)
+      return kong.response.exit(202, { message = "Renewal process started successfully" })
     end,
   },
 }
