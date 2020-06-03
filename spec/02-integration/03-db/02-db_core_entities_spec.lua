@@ -1359,6 +1359,9 @@ for _, strategy in helpers.each_strategy() do
             retries            = 5,
             tags               = ngx.null,
             client_certificate = ngx.null,
+            ca_certificates    = ngx.null,
+            tls_verify         = ngx.null,
+            tls_verify_depth   = ngx.null,
           }, service)
         end)
 
@@ -1374,6 +1377,9 @@ for _, strategy in helpers.each_strategy() do
             read_timeout       = 10000,
             retries            = 6,
             client_certificate = { id = certificate.id },
+            ca_certificates    = { "c67521dd-8393-48fb-8d70-c5e251fb4b4c", },
+            tls_verify         = ngx.null,
+            tls_verify_depth   = ngx.null,
           })
           assert.is_nil(err_t)
           assert.is_nil(err)
@@ -1397,6 +1403,9 @@ for _, strategy in helpers.each_strategy() do
             read_timeout       = 10000,
             retries            = 6,
             client_certificate = { id = certificate.id },
+            ca_certificates    = { "c67521dd-8393-48fb-8d70-c5e251fb4b4c", },
+            tls_verify         = ngx.null,
+            tls_verify_depth   = ngx.null,
           }, service)
         end)
 
