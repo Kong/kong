@@ -12,6 +12,7 @@ for _, strategy in helpers.each_strategy() do
     local bp
     lazy_setup(function()
       local db = assert(DB.new(helpers.test_conf, strategy))
+      kong.db = db
       assert(db:init_connector())
       assert(db.plugins:load_plugin_schemas(helpers.test_conf.loaded_plugins))
       assert(db:truncate())

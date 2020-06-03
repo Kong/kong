@@ -288,6 +288,12 @@ local function get_db_utils(strategy, tables, plugins)
     end
   end
 
+  -- Clean workspaces from the context - otherwise, migrations will fail,
+  -- as some of them have dao calls
+  -- If `no_truncate` is falsey, `dao:truncate` and `db:truncate` are called,
+  -- and these set the workspace back again to the new `default` workspace
+  ngx.ctx.workspace = nil
+
   -- DAO (DB module)
   local db = assert(DB.new(conf, strategy))
   assert(db:init_connector())
@@ -307,11 +313,14 @@ local function get_db_utils(strategy, tables, plugins)
   -- not necessary to implement "truncate trigger" in Cassandra
   db:truncate("tags")
 
-  -- cleanup new DB tables
+  _G.kong.db = db
+
+  -- cleanup tables
   if not tables then
     assert(db:truncate())
 
   else
+    tables[#tables + 1] = "workspaces"
     truncate_tables(db, tables)
   end
 
@@ -331,7 +340,10 @@ local function get_db_utils(strategy, tables, plugins)
     end
   end
 
-  _G.kong.db = db
+  if strategy ~= "off" then
+    local workspaces = require "kong.workspaces"
+    workspaces.upsert_default(db)
+  end
 
   return bp, db
 end
@@ -2209,7 +2221,7 @@ local function pid_dead(pid, timeout)
     -- still running, wait some more
     ngx.sleep(0.05)
   until ngx.now() >= max_time
-  
+
   return false
 end
 
@@ -2471,6 +2483,7 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc)
   if not preserve_dc then
     config_yml = nil
   end
+  ngx.ctx.workspace = nil
 
   return true
 end
@@ -2618,6 +2631,17 @@ end
       wait_pid(pid_path, timeout)
     end
   end,
+
+  with_current_ws = function(ws,fn, db)
+    local old_ws = ngx.ctx.workspace
+    ngx.ctx.workspace = nil
+    ws = ws or {db.workspaces:select_by_name("default")}
+    ngx.ctx.workspace = ws[1] and ws[1].id
+    local res = fn()
+    ngx.ctx.workspace = old_ws
+    return res
+  end,
+
   signal = function(prefix, signal, pid_path)
     local kill = require "kong.cmd.utils.kill"
 

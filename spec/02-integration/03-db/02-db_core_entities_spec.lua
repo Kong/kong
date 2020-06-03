@@ -506,6 +506,26 @@ for _, strategy in helpers.each_strategy() do
 
         end)
 
+        it("errors on invalid workspace", function()
+          local route, err, err_t = db.routes:insert({
+            protocols = { "http" },
+            hosts = { "example.com" },
+            service = assert(db.services:insert({ host = "service.com" })),
+            path_handling = "v1",
+          }, { nulls = true, workspace = "8a139c70-49a1-4ba2-98a6-bb36f534269d", })
+          assert.is_nil(route)
+          assert.is_string(err)
+          assert.is_table(err_t)
+          assert.same({
+            code     = Errors.codes.INVALID_WORKSPACE,
+            name     = "invalid workspace",
+            strategy = strategy,
+            message  = unindent([[
+              invalid workspace '8a139c70-49a1-4ba2-98a6-bb36f534269d'
+            ]], true, true),
+          }, err_t)
+        end)
+
         it("errors on invalid fields", function()
           local route, err, err_t = db.routes:insert({})
           assert.is_nil(route)
@@ -1649,10 +1669,12 @@ for _, strategy in helpers.each_strategy() do
         local s1, s2
         before_each(function()
           if s1 then
-            assert(db.services:delete({ id = s1.id }))
+            local ok, err = db.services:delete({ id = s1.id })
+            assert(ok, tostring(err))
           end
           if s2 then
-            assert(db.services:delete({ id = s2.id }))
+            local ok, err = db.services:delete({ id = s2.id })
+            assert(ok, tostring(err))
           end
 
           s1 = assert(db.services:insert({

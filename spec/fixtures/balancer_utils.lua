@@ -44,6 +44,9 @@ local healthchecks_defaults = {
 }
 
 
+local prefix = ""
+
+
 local function healthchecks_config(config)
   return utils.deep_merge(healthchecks_defaults, config)
 end
@@ -77,14 +80,14 @@ end
 
 
 local function post_target_endpoint(upstream_id, host, port, endpoint)
-  local url = "/upstreams/" .. upstream_id
-                            .. "/targets/"
-                            .. utils.format_host(host, port)
-                            .. "/" .. endpoint
+  local path = "/upstreams/" .. upstream_id
+                             .. "/targets/"
+                             .. utils.format_host(host, port)
+                             .. "/" .. endpoint
   local api_client = helpers.admin_client()
   local res, err = assert(api_client:send {
     method = "POST",
-    path = url,
+    path = prefix .. path,
     headers = {
       ["Content-Type"] = "application/json",
     },
@@ -180,6 +183,7 @@ end
 
 
 local add_upstream
+local remove_upstream
 local patch_upstream
 local get_upstream
 local get_upstream_health
@@ -206,7 +210,7 @@ do
     local api_client = helpers.admin_client(nil, forced_port)
     local res, err = api_client:send({
       method = method,
-      path = path,
+      path = prefix .. path,
       headers = {
         ["Content-Type"] = "application/json"
       },
@@ -223,16 +227,17 @@ do
 
   add_upstream = function(bp, data)
     local upstream_id = utils.uuid()
-    local upstream_name = gen_sym("upstream")
-    if TEST_LOG then
-      print("ADDING UPSTREAM ", upstream_id)
-    end
     local req = utils.deep_copy(data) or {}
-    req.name = req.name or upstream_name
+    local upstream_name = req.name or gen_sym("upstream")
+    req.name = upstream_name
     req.slots = req.slots or SLOTS
     req.id = upstream_id
     bp.upstreams:insert(req)
     return upstream_name, upstream_id
+  end
+
+  remove_upstream = function(bp, upstream_id)
+    bp.upstreams:remove({ id = upstream_id })
   end
 
   patch_upstream = function(upstream_id, data)
@@ -501,6 +506,39 @@ local function get_db_utils_for_dc_and_admin_api(strategy, tables)
 end
 
 
+local function setup_prefix(p)
+  prefix = p
+  local bp = require("spec.fixtures.admin_api")
+  bp.set_prefix(prefix)
+end
+
+
+local function teardown_prefix()
+  prefix = ""
+  local bp = require("spec.fixtures.admin_api")
+  bp.set_prefix(prefix)
+end
+
+
+local function test_with_prefixes(_it, strategy, prefixes)
+  return function(description, fn)
+    if strategy == "off" then
+      _it(description, fn)
+      return
+    end
+
+    for _, name in ipairs(prefixes) do
+      _it(name .. ": " .. description, function()
+        setup_prefix("/" .. name)
+        local ok = fn()
+        teardown_prefix()
+        return ok
+      end)
+    end
+  end
+end
+
+
 local localhosts = {
   ipv4 = "127.0.0.1",
   ipv6 = "[0000:0000:0000:0000:0000:0000:0000:0001]",
@@ -516,6 +554,7 @@ local balancer_utils = {}
 balancer_utils.add_api = add_api
 balancer_utils.add_target = add_target
 balancer_utils.add_upstream = add_upstream
+balancer_utils.remove_upstream = remove_upstream
 balancer_utils.begin_testcase_setup = begin_testcase_setup
 balancer_utils.begin_testcase_setup_update = begin_testcase_setup_update
 balancer_utils.client_requests = client_requests
@@ -544,6 +583,7 @@ balancer_utils.SLOTS = SLOTS
 balancer_utils.tcp_client_requests = tcp_client_requests
 balancer_utils.TIMEOUT = TIMEOUT
 balancer_utils.wait_for_router_update = wait_for_router_update
+balancer_utils.test_with_prefixes = test_with_prefixes
 
 
 return balancer_utils

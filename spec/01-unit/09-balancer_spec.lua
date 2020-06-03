@@ -1,6 +1,8 @@
 local utils = require "kong.tools.utils"
 local mocker = require "spec.fixtures.mocker"
 
+local ws_id = utils.uuid()
+
 local function setup_it_block(consistency)
   local cache_table = {}
 
@@ -35,6 +37,11 @@ local function setup_it_block(consistency)
         worker_state_update_frequency = 0.1,
       },
       core_cache = mock_cache(cache_table),
+    },
+    ngx = {
+      ctx = {
+        workspace = ws_id,
+      }
     }
   })
 end
@@ -112,16 +119,16 @@ for _, consistency in ipairs({"strict", "eventual"}) do
       passive_hc.passive.unhealthy.http_failures = 1
 
       UPSTREAMS_FIXTURES = {
-        [1] = { id = "a", name = "mashape", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
-        [2] = { id = "b", name = "kong",    slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
-        [3] = { id = "c", name = "gelato",  slots = 20, healthchecks = hc_defaults, algorithm = "round-robin" },
-        [4] = { id = "d", name = "galileo", slots = 20, healthchecks = hc_defaults, algorithm = "round-robin" },
-        [5] = { id = "e", name = "upstream_e", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
-        [6] = { id = "f", name = "upstream_f", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
-        [7] = { id = "hc_" .. consistency, name = "upstream_hc_" .. consistency, slots = 10, healthchecks = passive_hc, algorithm = "round-robin" },
-        [8] = { id = "ph", name = "upstream_ph", slots = 10, healthchecks = passive_hc, algorithm = "round-robin" },
-        [9] = { id = "otes", name = "upstream_otes", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
-        [10] = { id = "otee", name = "upstream_otee", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
+        [1] = { id = "a", ws_id = ws_id, name = "mashape", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
+        [2] = { id = "b", ws_id = ws_id, name = "kong",    slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
+        [3] = { id = "c", ws_id = ws_id, name = "gelato",  slots = 20, healthchecks = hc_defaults, algorithm = "round-robin" },
+        [4] = { id = "d", ws_id = ws_id, name = "galileo", slots = 20, healthchecks = hc_defaults, algorithm = "round-robin" },
+        [5] = { id = "e", ws_id = ws_id, name = "upstream_e", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
+        [6] = { id = "f", ws_id = ws_id, name = "upstream_f", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
+        [7] = { id = "hc_" .. consistency, ws_id = ws_id, name = "upstream_hc_" .. consistency, slots = 10, healthchecks = passive_hc, algorithm = "round-robin" },
+        [8] = { id = "ph", ws_id = ws_id, name = "upstream_ph", slots = 10, healthchecks = passive_hc, algorithm = "round-robin" },
+        [9] = { id = "otes", ws_id = ws_id, name = "upstream_otes", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
+        [10] = { id = "otee", ws_id = ws_id, name = "upstream_otee", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
       }
       upstream_hc = UPSTREAMS_FIXTURES[7]
       upstream_ph = UPSTREAMS_FIXTURES[8]
@@ -132,120 +139,136 @@ for _, consistency in ipairs({"strict", "eventual"}) do
         -- 1st upstream; a
         {
           id = "a1",
+          ws_id = ws_id,
           created_at = "003",
-          upstream = { id = "a" },
+          upstream = { id = "a", ws_id = ws_id },
           target = "localhost:80",
           weight = 10,
         },
         {
           id = "a2",
+          ws_id = ws_id,
           created_at = "002",
-          upstream = { id = "a" },
+          upstream = { id = "a", ws_id = ws_id },
           target = "localhost:80",
           weight = 10,
         },
         {
           id = "a3",
+          ws_id = ws_id,
           created_at = "001",
-          upstream = { id = "a" },
+          upstream = { id = "a", ws_id = ws_id },
           target = "localhost:80",
           weight = 10,
         },
         {
           id = "a4",
+          ws_id = ws_id,
           created_at = "002",  -- same timestamp as "a2"
-          upstream = { id = "a" },
+          upstream = { id = "a", ws_id = ws_id },
           target = "localhost:80",
           weight = 10,
         },
         -- 2nd upstream; b
         {
           id = "b1",
+          ws_id = ws_id,
           created_at = "003",
-          upstream = { id = "b" },
+          upstream = { id = "b", ws_id = ws_id },
           target = "localhost:80",
           weight = 10,
         },
         -- 3rd upstream: e (removed and re-added)
         {
           id = "e1",
+          ws_id = ws_id,
           created_at = "001",
-          upstream = { id = "e" },
+          upstream = { id = "e", ws_id = ws_id },
           target = "127.0.0.1:2112",
           weight = 10,
         },
         {
           id = "e2",
+          ws_id = ws_id,
           created_at = "002",
-          upstream = { id = "e" },
+          upstream = { id = "e", ws_id = ws_id },
           target = "127.0.0.1:2112",
           weight = 0,
         },
         {
           id = "e3",
+          ws_id = ws_id,
           created_at = "003",
-          upstream = { id = "e" },
+          upstream = { id = "e", ws_id = ws_id },
           target = "127.0.0.1:2112",
           weight = 10,
         },
         -- 4th upstream: f (removed and not re-added)
         {
           id = "f1",
+          ws_id = ws_id,
           created_at = "001",
-          upstream = { id = "f" },
+          upstream = { id = "f", ws_id = ws_id },
           target = "127.0.0.1:5150",
           weight = 10,
         },
         {
           id = "f2",
+          ws_id = ws_id,
           created_at = "002",
-          upstream = { id = "f" },
+          upstream = { id = "f", ws_id = ws_id },
           target = "127.0.0.1:5150",
           weight = 0,
         },
         {
           id = "f3",
+          ws_id = ws_id,
           created_at = "003",
-          upstream = { id = "f" },
+          upstream = { id = "f", ws_id = ws_id },
           target = "127.0.0.1:2112",
           weight = 10,
         },
         -- upstream_hc
         {
           id = "hc1" .. consistency,
+          ws_id = ws_id,
           created_at = "001",
-          upstream = { id = "hc_" .. consistency },
+          upstream = { id = "hc_" .. consistency, ws_id = ws_id },
           target = "localhost:1111",
           weight = 10,
         },
         -- upstream_ph
         {
           id = "ph1",
+          ws_id = ws_id,
           created_at = "001",
-          upstream = { id = "ph" },
+          upstream = { id = "ph", ws_id = ws_id },
           target = "localhost:1111",
           weight = 10,
         },
         {
           id = "ph2",
+          ws_id = ws_id,
           created_at = "001",
-          upstream = { id = "ph" },
+          upstream = { id = "ph", ws_id = ws_id },
           target = "127.0.0.1:2222",
           weight = 10,
         },
         -- upstream_otes
         {
           id = "otes1",
+          ws_id = ws_id,
           created_at = "001",
-          upstream = { id = "otes" },
+          upstream = { id = "otes", ws_id = ws_id },
           target = "localhost:1111",
           weight = 10,
         },
         -- upstream_otee
         {
           id = "otee1",
+          ws_id = ws_id,
           created_at = "001",
-          upstream = { id = "otee" },
+          upstream = { id = "otee", ws_id = ws_id },
           target = "localhost:1111",
           weight = 10,
         },
@@ -409,8 +432,8 @@ for _, consistency in ipairs({"strict", "eventual"}) do
       it("retrieves all upstreams as a dictionary", function()
         assert.is.table(upstreams_dict)
         for _, u in ipairs(UPSTREAMS_FIXTURES) do
-          assert.equal(upstreams_dict[u.name], u.id)
-          upstreams_dict[u.name] = nil -- remove each match
+          assert.equal(upstreams_dict[ws_id .. ":" .. u.name], u.id)
+          upstreams_dict[ws_id .. ":" .. u.name] = nil -- remove each match
         end
         assert.is_nil(next(upstreams_dict)) -- should be empty now
       end)
@@ -423,7 +446,7 @@ for _, consistency in ipairs({"strict", "eventual"}) do
 
         local fixture_dict = {}
         for _, upstream in ipairs(UPSTREAMS_FIXTURES) do
-          fixture_dict[upstream.name] = upstream.id
+          fixture_dict[ws_id .. ":" .. upstream.name] = upstream.id
         end
 
         assert.same(fixture_dict, upstreams_dict)
@@ -466,8 +489,9 @@ for _, consistency in ipairs({"strict", "eventual"}) do
 
           table.insert(TARGETS_FIXTURES, {
             id = "otes2",
+            ws_id = ws_id,
             created_at = "002",
-            upstream = { id = "otes" },
+            upstream = { id = "otes", ws_id = ws_id },
             target = "localhost:1112",
             weight = 10,
           })
