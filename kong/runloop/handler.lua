@@ -820,10 +820,12 @@ do
       end
 
       local tls_verify = service.tls_verify
-      res, err = kong.service.set_tls_verify(tls_verify)
-      if not res then
-        log(CRIT, "unable to set upstream TLS verification to: ",
-                 tls_verify, ", err: ", err)
+      if tls_verify then
+        res, err = kong.service.set_tls_verify(tls_verify)
+        if not res then
+          log(CRIT, "unable to set upstream TLS verification to: ",
+                   tls_verify, ", err: ", err)
+        end
       end
 
       local tls_verify_depth = service.tls_verify_depth
