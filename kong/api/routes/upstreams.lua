@@ -6,6 +6,7 @@ local kong = kong
 local escape_uri = ngx.escape_uri
 local unescape_uri = ngx.unescape_uri
 local null = ngx.null
+local tostring = tostring
 local fmt = string.format
 
 
@@ -44,6 +45,64 @@ local function post_health(self, db, is_healthy)
   end
 
   return kong.response.exit(204)
+end
+
+
+local function select_target_cb(self, db, upstream, target)
+  if target and target.weight ~= 0 then
+    return kong.response.exit(200, target)
+  end
+
+  return kong.response.exit(404, { message = "Not found" })
+end
+
+
+local function update_target_cb(self, db, upstream, target)
+  return kong.response.exit(405, { message = "Method not allowed" })
+end
+
+
+local function delete_target_cb(self, db, upstream, target)
+  self.params.targets = db.targets.schema:extract_pk_values(target)
+  local _, _, err_t = endpoints.delete_entity(self, db, db.targets.schema)
+  if err_t then
+    return endpoints.handle_error(err_t)
+  end
+
+  return kong.response.exit(204) -- no content
+end
+
+
+local function target_endpoint(self, db, callback)
+  local upstream, _, err_t = endpoints.select_entity(self, db, db.upstreams.schema)
+  if err_t then
+    return endpoints.handle_error(err_t)
+  end
+
+  if not upstream then
+    return kong.response.exit(404, { message = "Not found" })
+  end
+
+  local target
+  if utils.is_valid_uuid(unescape_uri(self.params.targets)) then
+    target, _, err_t = endpoints.select_entity(self, db, db.targets.schema)
+
+  else
+    local opts = endpoints.extract_options(self.args.uri, db.targets.schema, "select")
+    local upstream_pk = db.upstreams.schema:extract_pk_values(upstream)
+    local filter = { target = unescape_uri(self.params.targets) }
+    target, _, err_t = db.targets:select_by_upstream_filter(upstream_pk, filter, opts)
+  end
+
+  if err_t then
+    return endpoints.handle_error(err_t)
+  end
+
+  if not target or target.upstream.id ~= upstream.id then
+    return kong.response.exit(404, { message = "Not found" })
+  end
+
+  return callback(self, db, upstream, target)
 end
 
 
@@ -135,42 +194,14 @@ return {
 
   ["/upstreams/:upstreams/targets/:targets"] = {
     DELETE = function(self, db)
-      local upstream, _, err_t = endpoints.select_entity(self, db, db.upstreams.schema)
-      if err_t then
-        return endpoints.handle_error(err_t)
-      end
-
-      if not upstream then
-        return kong.response.exit(404, { message = "Not found" })
-      end
-
-      local target
-      if utils.is_valid_uuid(unescape_uri(self.params.targets)) then
-        target, _, err_t = endpoints.select_entity(self, db, db.targets.schema)
-
-      else
-        local opts = endpoints.extract_options(self.args.uri, db.targets.schema, "select")
-        local upstream_pk = db.upstreams.schema:extract_pk_values(upstream)
-        local filter = { target = unescape_uri(self.params.targets) }
-        target, _, err_t = db.targets:select_by_upstream_filter(upstream_pk, filter, opts)
-      end
-
-      if err_t then
-        return endpoints.handle_error(err_t)
-      end
-
-      if not target or target.upstream.id ~= upstream.id then
-        return kong.response.exit(404, { message = "Not found" })
-      end
-
-      self.params.targets = db.upstreams.schema:extract_pk_values(target)
-      _, _, err_t = endpoints.delete_entity(self, db, db.targets.schema)
-      if err_t then
-        return endpoints.handle_error(err_t)
-      end
-
-      return kong.response.exit(204) -- no content
-    end
+      return target_endpoint(self, db, delete_target_cb)
+    end,
+    GET = function(self, db)
+      return target_endpoint(self, db, select_target_cb)
+    end,
+    PATCH = function(self, db)
+      return target_endpoint(self, db, update_target_cb)
+    end,
   },
 }
 
