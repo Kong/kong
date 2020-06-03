@@ -111,6 +111,18 @@ function _TARGETS:insert(entity, options)
 end
 
 
+function _TARGETS:upsert(pk, entity, options)
+  entity.id = pk.id
+  return self:insert(entity, options)
+end
+
+
+function _TARGETS:upsert_by_target(unique_key, entity, options)
+  entity.target = unique_key
+  return self:insert(entity, options)
+end
+
+
 function _TARGETS:delete(pk)
   local target, err, err_t = self:select(pk)
   if err then
@@ -335,7 +347,8 @@ function _TARGETS:select_by_upstream_filter(upstream_pk, filter, options)
     return nil, err, err_t
   end
 
-  for _, t in ipairs(targets) do
+  for i = #targets, 1, -1 do
+    local t = targets[i]
     if t.id == filter.id or t.target == filter.target then
       return t
     end
