@@ -1,4 +1,6 @@
 local declarative_config = require "kong.db.schema.others.declarative_config"
+local workspaces = require "kong.workspaces"
+
 
 
 local kong = kong
@@ -10,6 +12,7 @@ local tostring = tostring
 local tonumber = tonumber
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
+local null          = ngx.null
 
 
 local off = {}
@@ -29,9 +32,26 @@ local function nil_cb()
 end
 
 
+local function ws(self, options)
+  if not self.schema.workspaceable then
+    return ""
+  end
+
+  if options then
+    if options.workspace == null then
+      return "*"
+    end
+    if options.workspace then
+      return options.workspace
+    end
+  end
+  return workspaces.get_workspace_id() or kong.default_workspace
+end
+
+
 -- Returns a dict of entity_ids tagged according to the given criteria.
 -- Currently only the following kinds of keys are supported:
--- * A key like `services|list` will only return service ids
+-- * A key like `services|<ws_id>|@list` will only return service keys
 -- @tparam string the key to be used when filtering
 -- @tparam table tag_names an array of tag names (strings)
 -- @tparam string|nil tags_cond either "or", "and". `nil` means "or"
@@ -137,7 +157,7 @@ local function page_for_key(self, key, size, offset, options)
       break
     end
 
-    -- Tags are stored "tags|list" and "tags:<tagname>|list" as strings,
+    -- Tags are stored "tags|@list" and "tags:<tagname>|@list" as strings,
     -- encoded like "admin|services|<a service uuid>"
     -- We decode them into lua tables here
     if schema_name == "tags" then
@@ -148,14 +168,15 @@ local function page_for_key(self, key, size, offset, options)
 
       item = { tag = tag_name, entity_name = entity_name, entity_id = uuid }
 
-    -- The rest of entities' lists (i.e. "services|list") only contain ids, so in order to
+    -- The rest of entities' lists (i.e. "services|<ws_id>|@list") only contain ids, so in order to
     -- get the entities we must do an additional cache access per entry
     else
-      item = cache:get(schema_name .. ":" .. item .. "::::", nil, nil_cb)
+      item = cache:get(item, nil, nil_cb)
     end
 
     item = self.schema:process_auto_fields(item, "select", true, {
-      no_defaults = true
+      no_defaults = true,
+      show_ws_id = true,
     })
 
     ret[i - offset + 1] = item
@@ -180,7 +201,8 @@ local function select_by_key(self, key)
   end
 
   entity =  self.schema:process_auto_fields(entity, "select", true, {
-    no_defaults = true
+    no_defaults = true,
+    show_ws_id = true,
   })
 
   return entity
@@ -188,25 +210,39 @@ end
 
 
 local function page(self, size, offset, options)
-  local key = self.schema.name .. "|list"
+  local ws_id = ws(self, options)
+  local key = self.schema.name .. "|" .. ws_id .. "|@list"
   return page_for_key(self, key, size, offset, options)
 end
 
 
-local function select(self, pk)
+local function select(self, pk, options)
+  local ws_id = ws(self, options)
   local id = declarative_config.pk_string(self.schema, pk)
-  local key = self.schema.name .. ":" .. id .. "::::"
+  local key = self.schema.name .. ":" .. id .. ":::::" .. ws_id
   return select_by_key(self, key)
 end
 
 
-local function select_by_field(self, field, value)
+local function select_by_field(self, field, value, options)
   if type(value) == "table" then
     local _
     _, value = next(value)
   end
 
-  local key = self.schema.name .. "|" .. field .. ":" .. value
+  local ws_id = ws(self, options)
+
+  if field ~= "cache_key" then
+    local unique_across_ws = self.schema.fields[field].unique_across_ws
+    if unique_across_ws then
+      ws_id = ""
+    end
+
+    -- only accept global query by field if field is unique across workspaces
+    assert(not options or options.workspace ~= null or unique_across_ws)
+  end
+
+  local key = self.schema.name .. "|" .. ws_id .. "|" .. field .. ":" .. value
   return select_by_key(self, key)
 end
 
@@ -250,13 +286,22 @@ function off.new(connector, schema, errors)
     page_for_key = page_for_key,
   }
 
+  if not kong.default_workspace then
+    -- This is not the id for the default workspace in DB-less.
+    -- This is a sentinel value for the init() phase before
+    -- the declarative config is actually loaded.
+    kong.default_workspace = "00000000-0000-0000-0000-000000000000"
+  end
+
   local name = self.schema.name
   for fname, fdata in schema:each_field() do
     if fdata.type == "foreign" then
       local entity = fdata.reference
       local method = "page_for_" .. fname
       self[method] = function(_, foreign_key, size, offset, options)
-        local key = name .. "|" .. entity .. "|" .. foreign_key.id .. "|list"
+        local ws_id = ws(self, options)
+
+        local key = name .. "|" .. ws_id .. "|" .. entity .. "|" .. foreign_key.id .. "|@list"
         return page_for_key(self, key, size, offset, options)
       end
     end

@@ -1626,11 +1626,9 @@ function Schema:process_auto_fields(data, context, nulls, opts)
           data[key] = nulls and null or nil
         end
 
-      else
-        -- set non defined fields to nil, except meta fields (ttl) if enabled
-        if not (self.ttl and key == "ttl") then
-          data[key] = nil
-        end
+      elseif not ((key == "ttl" and self.ttl) or
+                  (key == "ws_id" and opts and opts.show_ws_id)) then
+        data[key] = nil
       end
     end
   end
