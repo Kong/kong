@@ -2359,6 +2359,14 @@ for _, strategy in helpers.each_strategy() do
           assert.not_nil(page)
           assert.is_string(offset)
         end)
+
+        it("respects nulls=true on targets too", function()
+          local page = db.targets:page_for_upstream({
+            id = upstream.id,
+          }, 1, nil, { nulls = true })
+          assert.not_nil(page)
+          assert.equal(cjson.null, page[1].tags)
+        end)
       end)
     end)
 

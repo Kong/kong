@@ -2,6 +2,7 @@ local connector = require "kong.db.strategies.connector"
 
 
 local tostring = tostring
+local type = type
 
 
 local iteration = {}
