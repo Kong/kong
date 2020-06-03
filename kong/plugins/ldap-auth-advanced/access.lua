@@ -350,10 +350,11 @@ local function do_authentication(conf)
     end
 
     if err then
-      return false, { status = 500 }
+      kong.log.err("load consumer error when 'not authorized'", err)
+      return false, { status = 500, message = "An unexpected error occurred" }
     end
 
-    return false, {status = 403, message = "Invalid authentication credentials"}
+    return false, { status = 401, message = "Unauthorized" }
   end
 
   if conf.hide_credentials then
@@ -368,13 +369,15 @@ local function do_authentication(conf)
     if not consumer then
       kong.log.debug("consumer not found, checking anonymous")
       if err then
-        return false, { status = 403, "kong consumer was not found (" .. err .. ")" }
+        kong.log.err("load consumer error when not 'conf.consumer_optional'", err)
+        return false, { status = 500, message = "An unexpected error occurred" }
       end
 
       consumer, err = load_consumers(anonymous, { 'id' }, ttl)
 
       if err then
-        return false, { status = 403, "kong consumer was not found (" .. err .. ")" }
+        kong.log.err("load anonymous consumer error", err)
+        return false, { status = 500, message = "An unexpected error occurred" }
       end
 
     else
