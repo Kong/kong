@@ -162,7 +162,7 @@ return {
 
         DO $$
           BEGIN
-            ALTER TABLE services ADD COLUMN "ca_certificates" TEXT[];
+            ALTER TABLE services ADD COLUMN "ca_certificates" UUID[];
           EXCEPTION WHEN duplicate_column THEN
             -- Do nothing, accept existing state
           END;
@@ -186,7 +186,7 @@ return {
 
       ALTER TABLE services ADD tls_verify boolean;
       ALTER TABLE services ADD tls_verify_depth int;
-      ALTER TABLE services ADD ca_certificates set<text>;
+      ALTER TABLE services ADD ca_certificates set<uuid>;
     ]] .. ws_migration_up(operations.cassandra.up),
 
     teardown = function(connector)

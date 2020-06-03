@@ -3,6 +3,7 @@ local ssl_fixtures = require "spec.fixtures.ssl"
 
 
 local fixtures = {
+  dns_mock = helpers.dns_mock.new(),
   http_mock = {
     upstream_mtls = [[
       server {
@@ -42,6 +43,12 @@ local fixtures = {
 }
 
 
+fixtures.dns_mock:A {
+  name = "example.com",
+  address = "127.0.0.1",
+}
+
+
 for _, strategy in helpers.each_strategy() do
   describe("overriding upstream TLS parameters for database #" .. strategy, function()
     local proxy_client, admin_client
@@ -59,12 +66,12 @@ for _, strategy in helpers.each_strategy() do
 
       service_mtls = assert(bp.services:insert({
         name = "protected-service-mtls",
-        url = "https://127.0.0.1:16798/"
+        url = "https://127.0.0.1:16798/",
       }))
 
       service_tls = assert(bp.services:insert({
         name = "protected-service",
-        url = "https://127.0.0.1:16799/"
+        url = "https://example.com:16799/", -- domain name needed for hostname check
       }))
 
       certificate = assert(bp.certificates:insert({
@@ -227,7 +234,7 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-      describe("#only tls_verify_depth", function()
+      describe("tls_verify_depth", function()
         lazy_setup(function()
           local res = assert(admin_client:patch("/services/" .. service_tls.id, {
             body = {
