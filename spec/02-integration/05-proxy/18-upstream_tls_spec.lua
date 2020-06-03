@@ -188,7 +188,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equals("it works", body)
         end)
 
-        it("turn it on, request is blocked", function()
+        it("#db turn it on, request is blocked", function()
           local res = assert(admin_client:patch("/services/" .. service_tls.id, {
             body = {
               tls_verify = true,
@@ -211,7 +211,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("ca_certificates", function()
-        it("request is allowed through once correct CA certificate is set", function()
+        it("#db request is allowed through once correct CA certificate is set", function()
           local res = assert(admin_client:patch("/services/" .. service_tls.id, {
             body = {
               tls_verify = true,
@@ -234,7 +234,7 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-      describe("tls_verify_depth", function()
+      describe("#db tls_verify_depth", function()
         lazy_setup(function()
           local res = assert(admin_client:patch("/services/" .. service_tls.id, {
             body = {
