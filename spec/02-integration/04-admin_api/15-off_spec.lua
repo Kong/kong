@@ -307,10 +307,9 @@ describe("Admin API #off", function()
 
         assert.response(res).has.status(413)
 
-        client:close()
-        client = assert(helpers.admin_client())
-
         helpers.wait_until(function()
+          client:close()
+          client = assert(helpers.admin_client())
           res = assert(client:send {
             method = "GET",
             path = "/consumers/previous",
@@ -964,8 +963,7 @@ describe("Admin API #off with Unique Foreign #unique", function()
     assert.equal(references.data[1].note, "note")
     assert.equal(references.data[1].unique_foreign.id, foreigns.data[1].id)
 
-
-    local res = assert(client:get("/cache/unique_references|unique_foreign:" ..
+    local res = assert(client:get("/cache/unique_references||unique_foreign:" ..
                                   foreigns.data[1].id))
     local body = assert.res_status(200, res)
     local cached_reference = cjson.decode(body)
@@ -974,7 +972,7 @@ describe("Admin API #off with Unique Foreign #unique", function()
 
     local cache = {
       get = function(_, k)
-        if k ~= "unique_references|unique_foreign:" .. foreigns.data[1].id then
+        if k ~= "unique_references||unique_foreign:" .. foreigns.data[1].id then
           return nil
         end
 

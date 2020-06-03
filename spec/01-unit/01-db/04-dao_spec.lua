@@ -448,7 +448,7 @@ describe("DAO", function()
       -- setting u as an explicit null
       local data = { a = 42, b = "foo", u = null }
       local cache_key = dao:cache_key(data)
-      assert.equals("Foo:foo::::", cache_key)
+      assert.equals("Foo:foo:::::", cache_key)
     end)
 
     it("converts nil in composite cache_key to empty string", function()
@@ -457,7 +457,7 @@ describe("DAO", function()
 
       local data = { a = 42, b = "foo", u = nil }
       local cache_key = dao:cache_key(data)
-      assert.equals("Foo:foo::::", cache_key)
+      assert.equals("Foo:foo:::::", cache_key)
     end)
   end)
 end)
