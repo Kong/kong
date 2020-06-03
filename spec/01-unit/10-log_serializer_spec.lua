@@ -1,5 +1,7 @@
-require "spec.helpers"
-local basic = require "kong.plugins.log-serializers.basic"
+local helpers = require("spec.helpers")
+local basic = require("kong.plugins.log-serializers.basic")
+local pl_file = require("pl.file")
+local LOG_PHASE = require("kong.pdk.private.phases").phases.log
 
 describe("Log Serializer", function()
   before_each(function()
@@ -25,6 +27,9 @@ describe("Log Serializer", function()
         request_time = 2,
         remote_addr = "1.1.1.1"
       },
+      update_time = ngx.update_time,
+      sleep = ngx.sleep,
+      time = ngx.time,
       req = {
         get_uri_args = function() return {"arg1", "arg2"} end,
         get_method = function() return "POST" end,
@@ -33,17 +38,18 @@ describe("Log Serializer", function()
       },
       resp = {
         get_headers = function() return {header1 = "respheader1", header2 = "respheader2", ["set-cookie"] = "delicious=delicacy"} end
-      }
+      },
     }
 
     package.loaded["kong.pdk.request"] = nil
     local pdk_request = require "kong.pdk.request"
     kong.request = pdk_request.new(kong)
+    kong.ctx.core.phase = LOG_PHASE
   end)
 
   describe("Basic", function()
     it("serializes without API, Consumer or Authenticated entity", function()
-      local res = basic.serialize(ngx, kong)
+      local res = kong.log.serialize(ngx, kong)
       assert.is_table(res)
 
       -- Simple properties
@@ -81,7 +87,7 @@ describe("Log Serializer", function()
 
     it("uses port map (ngx.ctx.host_port) for request url ", function()
       ngx.ctx.host_port = 5000
-      local res = basic.serialize(ngx, kong)
+      local res = kong.log.serialize(ngx, kong)
       assert.is_table(res)
       assert.is_table(res.request)
       assert.equal("http://test.com:5000/request_uri", res.request.url)
@@ -91,7 +97,7 @@ describe("Log Serializer", function()
       ngx.ctx.route = { id = "my_route" }
       ngx.ctx.service = { id = "my_service" }
 
-      local res = basic.serialize(ngx, kong)
+      local res = kong.log.serialize(ngx, kong)
       assert.is_table(res)
 
       assert.equal("my_route", res.route.id)
@@ -103,7 +109,7 @@ describe("Log Serializer", function()
     it("serializes the Consumer object", function()
       ngx.ctx.authenticated_consumer = {id = "someconsumer"}
 
-      local res = basic.serialize(ngx, kong)
+      local res = kong.log.serialize(ngx, kong)
       assert.is_table(res)
 
       assert.equal("someconsumer", res.consumer.id)
@@ -115,7 +121,7 @@ describe("Log Serializer", function()
       ngx.ctx.authenticated_credential = {id = "somecred",
                                           consumer_id = "user1"}
 
-      local res = basic.serialize(ngx, kong)
+      local res = kong.log.serialize(ngx, kong)
       assert.is_table(res)
 
       assert.same({id = "somecred", consumer_id = "user1"},
@@ -131,7 +137,7 @@ describe("Log Serializer", function()
         { ip = "127.0.0.1", port = 1234 },
       }
 
-      local res = basic.serialize(ngx, kong)
+      local res = kong.log.serialize(ngx, kong)
       assert.is_table(res)
 
       assert.same({
@@ -154,10 +160,34 @@ describe("Log Serializer", function()
     it("does not fail when the 'balancer_data' structure is missing", function()
       ngx.ctx.balancer_data = nil
 
-      local res = basic.serialize(ngx, kong)
+      local res = kong.log.serialize(ngx, kong)
       assert.is_table(res)
 
       assert.is_nil(res.tries)
+    end)
+
+    it("basic serializer proxy works with a deprecation warning", function()
+      local warned = false
+      local orig_warn = kong.log.warn
+
+      kong.log.warn = function(msg)
+        assert.is_false(warned, "duplicate warning")
+
+        warned = true
+
+        return orig_warn(msg)
+      end
+
+      local res = basic.serialize(ngx, kong)
+      assert.is_table(res)
+
+      assert.equals("1.1.1.1", res.client_ip)
+
+      -- 2nd time
+      res = basic.serialize(ngx, kong)
+      assert.is_table(res)
+
+      kong.log.warn = orig_warn
     end)
   end)
 end)

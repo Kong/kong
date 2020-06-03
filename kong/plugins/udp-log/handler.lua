@@ -1,4 +1,3 @@
-local serializer = require "kong.plugins.log-serializers.basic"
 local cjson = require "cjson"
 
 
@@ -44,7 +43,7 @@ local UdpLogHandler = {
 
 
 function UdpLogHandler:log(conf)
-  local ok, err = timer_at(0, log, conf, cjson.encode(serializer.serialize(ngx)))
+  local ok, err = timer_at(0, log, conf, cjson.encode(kong.log.serialize()))
   if not ok then
     kong.log.err("could not create timer: ", err)
   end

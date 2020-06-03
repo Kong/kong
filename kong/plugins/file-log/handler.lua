@@ -2,7 +2,6 @@
 local ffi = require "ffi"
 local cjson = require "cjson"
 local system_constants = require "lua_system_constants"
-local serializer = require "kong.plugins.log-serializers.basic"
 
 
 local kong = kong
@@ -71,7 +70,7 @@ local FileLogHandler = {
 
 
 function FileLogHandler:log(conf)
-  local message = serializer.serialize(ngx)
+  local message = kong.log.serialize()
   log(conf, message)
 end
 
