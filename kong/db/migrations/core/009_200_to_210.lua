@@ -146,7 +146,7 @@ return {
 
         DO $$
           BEGIN
-            ALTER TABLE services ADD COLUMN "tls_verify" BOOLEAN NOT NULL;
+            ALTER TABLE services ADD COLUMN "tls_verify" BOOLEAN;
           EXCEPTION WHEN duplicate_column THEN
             -- Do nothing, accept existing state
           END;

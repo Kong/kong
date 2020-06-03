@@ -1404,8 +1404,6 @@ for _, strategy in helpers.each_strategy() do
             retries            = 6,
             client_certificate = { id = certificate.id },
             ca_certificates    = { "c67521dd-8393-48fb-8d70-c5e251fb4b4c", },
-            tls_verify         = ngx.null,
-            tls_verify_depth   = ngx.null,
           }, service)
         end)
 
