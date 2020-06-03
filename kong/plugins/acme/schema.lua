@@ -49,7 +49,7 @@ local schema = {
           match = "%w*%p*@+%w*%.?%w*",
           required = true,
         }, },
-        { api_uri = typedefs.url({ default = "https://acme-v02.api.letsencrypt.org" }),
+        { api_uri = typedefs.url({ default = "https://acme-v02.api.letsencrypt.org/directory" }),
         },
         { tos_accepted = {
           type = "boolean",
