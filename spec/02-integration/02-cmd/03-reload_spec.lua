@@ -493,7 +493,7 @@ end)
 end
 
 
-describe("key-auth plugin invalidation on dbless reload", function()
+describe("key-auth plugin invalidation on dbless reload #off", function()
   it("(regression - issue 5705)", function()
     local admin_client
     local proxy_client
@@ -501,7 +501,7 @@ describe("key-auth plugin invalidation on dbless reload", function()
       _format_version: "1.1"
       services:
       - name: my-service
-        url: https://example.com
+        url: https://127.0.0.1:15556
         plugins:
         - name: key-auth
         routes:
@@ -570,7 +570,7 @@ describe("key-auth plugin invalidation on dbless reload", function()
       _format_version: "1.1"
       services:
       - name: my-service
-        url: https://example.com
+        url: https://127.0.0.1:15556
         plugins:
         - name: key-auth
         routes:
