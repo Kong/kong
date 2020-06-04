@@ -8,6 +8,7 @@ return {
     primary_key = { "id" },
     cache_key = { "username" },
     endpoint_key = "username",
+    workspaceable = true,
     admin_api_name = "basic-auths",
     admin_api_nested_name = "basic-auth",
     fields = {

@@ -6,6 +6,7 @@ return {
     name = "acls",
     primary_key = { "id" },
     cache_key = { "consumer", "group" },
+    workspaceable = true,
     fields = {
       { id = typedefs.uuid },
       { created_at = typedefs.auto_timestamp_s },
