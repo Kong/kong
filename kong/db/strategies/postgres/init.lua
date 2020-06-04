@@ -2,6 +2,7 @@ local arrays        = require "pgmoon.arrays"
 local json          = require "pgmoon.json"
 local cjson         = require "cjson"
 local cjson_safe    = require "cjson.safe"
+local pl_tablex     = require "pl.tablex"
 
 
 local encode_base64 = ngx.encode_base64
@@ -10,6 +11,7 @@ local encode_array  = arrays.encode_array
 local encode_json   = json.encode_json
 local setmetatable  = setmetatable
 local update_time   = ngx.update_time
+local get_phase     = ngx.get_phase
 local tonumber      = tonumber
 local concat        = table.concat
 local insert        = table.insert
@@ -68,14 +70,21 @@ local function now_updated()
 end
 
 
+-- @param name Query name, for debugging purposes
+-- @param query A string describing an array of single-quoted strings which
+-- contain parts of an SQL query including numeric placeholders like $0, $1, etc.
+-- All parts of that array were processed via using string.format("%q"),
+-- so that all newlines and quotes are preserved.
+-- @return Produces a function which, given an array of arguments,
+-- interpolates them in the right places and outputs a ready-to-use SQL query.
 local function compile(name, query)
-  local c = [[
+  local c = [=====[
     local v = ... or {}
-    return concat { [=[]]
-    .. query:gsub("$(%d+)", "]=], v[%1], [=[")
-    .. [[]=]
+    return concat { ]=====]
+    .. query:gsub("$(%d+)", [[", v[%1], "]])
+    .. [=====[
     }
-  ]]
+  ]=====]
   return load(c, "=" .. name, "t", { concat = concat })
 end
 
@@ -94,7 +103,9 @@ local function expand(name, map)
       for _, key in ipairs(map) do
         if key.entity == entity then
           insert(exps, 'row["' .. key.from .. '"] ~= null')
-          insert(keys, fmt('["%s"] = row["%s"]', key.to, key.from))
+          if key.to ~= "ws_id" then
+            insert(keys, fmt('["%s"] = row["%s"]', key.to, key.from))
+          end
           insert(nils, fmt('row["%s"] = nil', key.from))
         end
       end
@@ -386,6 +397,10 @@ local function toerror(strategy, err, primary_key, entity)
     end
     return nil, errors:primary_key_violation(primary_key)
 
+  elseif find(err, "violates foreign key constraint .*_ws_id_fkey") then
+    local ws_id = err:match("ws_id%)=%(([^)]*)%)") or "null"
+    return nil, errors:invalid_workspace(ws_id)
+
   elseif find(err, "violates foreign key constraint", 1, true) then
     log(NOTICE, err)
     if find(err, "is not present in table", 1, true) then
@@ -470,7 +485,31 @@ local function get_ttl_value(strategy, attributes, options)
 end
 
 
+local function get_ws_id()
+  local phase = get_phase()
+  if phase ~= "init" and phase ~= "init_worker" then
+    return ngx.ctx.workspace or kong.default_workspace
+  end
+end
+
+
 local function execute(strategy, statement_name, attributes, options)
+  local ws_id
+  local has_ws_id = strategy.schema.workspaceable
+  if has_ws_id then
+    if options and options.workspace then
+      if options.workspace ~= null then
+        ws_id = options.workspace
+      end
+    else
+      ws_id = get_ws_id()
+    end
+
+    if not ws_id then
+      statement_name = statement_name .. "_global"
+    end
+  end
+
   local connector = strategy.connector
   local statement = strategy.statements[statement_name]
   if not attributes then
@@ -487,9 +526,13 @@ local function execute(strategy, statement_name, attributes, options)
   local is_update = options and options.update
   local has_ttl   = strategy.schema.ttl
 
+  if has_ws_id then
+    assert(ws_id == nil or type(ws_id) == "string")
+    argv[0] = escape_literal(connector, ws_id, "ws_id")
+  end
+
   for i = 1, argc do
     local name = argn[i]
-
     local value
     if has_ttl and name == "ttl" then
       value = (options and options.ttl)
@@ -523,31 +566,26 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
   local limit = size + 1
 
   local statement_name
-  local attributes
+  local attributes = {
+    [LIMIT] = limit,
+  }
+
+  local suffix = token and "_next" or "_first"
+  if foreign_entity_name then
+    statement_name = "page_for_" .. foreign_entity_name .. suffix
+    attributes[foreign_entity_name] = foreign_key
+
+  elseif options and options.tags then
+    statement_name = options.tags_cond == "or" and
+                    "page_by_tags_or" .. suffix or
+                    "page_by_tags_and" .. suffix
+    attributes.tags = options.tags
+
+  else
+    statement_name = "page" .. suffix
+  end
 
   if token then
-    if foreign_entity_name then
-      statement_name = "page_for_" .. foreign_entity_name .. "_next"
-      attributes     = {
-        [foreign_entity_name] = foreign_key,
-        [LIMIT]               = limit,
-      }
-
-    elseif options and options.tags then
-      statement_name = options.tags_cond == "or" and
-                      "page_by_tags_or_next" or
-                      "page_by_tags_and_next"
-      attributes     = {
-        tags    = options.tags,
-        [LIMIT] = limit,
-      }
-    else
-      statement_name = "page_next"
-      attributes     = {
-        [LIMIT] = limit,
-      }
-    end
-
     local token_decoded = decode_base64(token)
     if not token_decoded then
       return nil, self.errors:invalid_offset(token, "bad base64 encoding")
@@ -560,28 +598,6 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
 
     for i, field_name in ipairs(self.schema.primary_key) do
       attributes[field_name] = token_decoded[i]
-    end
-
-  else
-    if foreign_entity_name then
-      statement_name = "page_for_" .. foreign_entity_name .. "_first"
-      attributes     = {
-        [foreign_entity_name] = foreign_key,
-        [LIMIT]               = limit,
-      }
-    elseif options and options.tags then
-      statement_name = options.tags_cond == "or" and
-                      "page_by_tags_or_first" or
-                      "page_by_tags_and_first"
-      attributes     = {
-        tags    = options.tags,
-        [LIMIT] = limit,
-      }
-    else
-      statement_name = "page_first"
-      attributes     = {
-        [LIMIT] = limit,
-      }
     end
   end
 
@@ -828,19 +844,48 @@ end
 
 
 local function where_clause(where, ...)
-  local exps = {}
-  for i = 1, select("#", ...) do
-    local exp = select(i, ...)
-    if exp then
-      insert(exps, exp)
+  local inputs = table.pack(...) -- luacheck: ignore
+  return function(add_ws)
+    local exps = {}
+    for i = 1, inputs.n do
+      local exp = inputs[i]
+      if exp then
+        if add_ws then
+          insert(exps, exp)
+        else
+          if not exp:match("%(\"ws_id\" = ") then
+            insert(exps, exp)
+          end
+        end
+      end
     end
-  end
 
-  if #exps == 0 then
-    return ""
-  end
+    if #exps == 0 then
+      return ""
+    end
 
-  return where .. concat(exps, "\n" .. rep(" ", #where - 4) .. "AND ") .. "\n"
+    return where .. concat(exps, "\n" .. rep(" ", #where - 4) .. "AND ") .. "\n"
+  end
+end
+
+
+local function conflict_list(has_ws_id, ...)
+  local inputs = table.pack(...) -- luacheck: ignore
+  return function(add_ws)
+    local exps = inputs
+    if add_ws and has_ws_id then
+      insert(exps, 1, '"ws_id"')
+    end
+
+    return concat(exps, ", ")
+  end
+end
+
+
+-- placeholders in queries must always be constructed as a single string,
+-- to avoid ending up genering code like this: `concat { "... $", "2 AND ..." }`
+local function placeholder(n)
+  return "$" .. n
 end
 
 
@@ -858,6 +903,7 @@ function _M.new(connector, schema, errors)
   local has_ttl                       = schema.ttl == true
   local has_tags                      = schema.fields.tags ~= nil
   local has_composite_cache_key       = schema.cache_key and #schema.cache_key > 1
+  local has_ws_id                     = schema.workspaceable == true
   local fields                        = {}
   local fields_hash                   = {}
 
@@ -904,6 +950,7 @@ function _M.new(connector, schema, errors)
           is_used_in_primary_key     = primary_key_fields[field_name] ~= nil,
           is_part_of_composite_key   = #foreign_schema.primary_key > 1,
           is_unique                  = foreign_field.unique == true,
+          is_unique_across_ws        = foreign_field.unique_across_ws == true,
           is_endpoint_key            = schema.endpoint_key == field_name,
           is_unique_foreign          = is_unique_foreign,
         }
@@ -943,6 +990,7 @@ function _M.new(connector, schema, errors)
         is_used_in_primary_key   = is_used_in_primary_key,
         is_part_of_composite_key = is_part_of_composite_key,
         is_unique                = field.unique == true,
+        is_unique_across_ws      = field.unique_across_ws == true,
         is_endpoint_key          = schema.endpoint_key == field_name,
       }
 
@@ -992,9 +1040,10 @@ function _M.new(connector, schema, errors)
        and ((referenced_table and not is_part_of_composite_key)
             or is_unique_foreign
             or is_unique
-            or (is_endpoint_key and not is_unique)) then
-            -- treat endpoint_key like a unique key anyway,
-            -- they are indexed (example: target.target)
+            or (is_endpoint_key and not is_unique))
+    then
+      -- treat endpoint_key like a unique key anyway,
+      -- they are indexed (example: target.target)
       insert(unique_fields, field)
     end
   end
@@ -1012,6 +1061,16 @@ function _M.new(connector, schema, errors)
     insert(update_args_names, "cache_key")
     insert(update_expressions, cache_key_escaped .. " = $" .. #update_names)
     insert(upsert_expressions, cache_key_escaped .. " = "  .. "EXCLUDED." .. cache_key_escaped)
+  end
+
+  local ws_id_escaped
+  if has_ws_id then
+    ws_id_escaped = escape_identifier(connector, "ws_id")
+    insert(select_expressions, ws_id_escaped)
+    insert(update_names, "ws_id")
+    insert(update_args_names, "ws_id")
+    insert(update_expressions, ws_id_escaped .. " = $0")
+    insert(upsert_expressions, ws_id_escaped .. " = "  .. "EXCLUDED." .. ws_id_escaped)
   end
 
   local ttl_escaped
@@ -1049,6 +1108,17 @@ function _M.new(connector, schema, errors)
     insert(insert_names, "cache_key")
     insert(insert_expressions, "$" .. #insert_names)
     insert(insert_columns, cache_key_escaped)
+  end
+
+  local ws_id_select_where
+  if has_ws_id then
+    fields_hash.ws_id = { type = "string", uuid = true }
+
+    insert(insert_names, "ws_id")
+    insert(insert_expressions, "$0")
+    insert(insert_columns, ws_id_escaped)
+
+    ws_id_select_where = "(" .. ws_id_escaped .. " = $0)"
   end
 
   local ttl_select_where
@@ -1104,11 +1174,37 @@ function _M.new(connector, schema, errors)
     }
   }, _mt)
 
-  local function add_statement(name, opts)
-    opts.make = compile(table_name .. "_" .. name, opts.code)
-    opts.code = nil
-    opts.argc = #opts.argn
-    self.statements[name] = opts
+  self.statements["truncate_global"] = self.statements["truncate"]
+
+  local add_statement
+  do
+    local function add(name, opts, add_ws)
+      local orig_argn = opts.argn
+      opts = pl_tablex.deepcopy(opts)
+
+      -- ensure LIMIT table is the same
+      for i, n in ipairs(orig_argn) do
+        if type(n) == "table" then
+          opts.argn[i] = n
+        end
+      end
+
+      for i = 1, #opts.code do
+        if type(opts.code[i]) == "function" then
+          opts.code[i] = opts.code[i](add_ws)
+        end
+        opts.code[i] = string.format("%q", opts.code[i])
+      end
+      opts.make = compile(table_name .. "_" .. name, concat(opts.code, ", "))
+      opts.code = nil
+      opts.argc = #opts.argn
+      self.statements[name] = opts
+    end
+
+    add_statement = function(name, opts)
+      add(name .. "_global", opts, false)
+      add(name, opts, true)
+    end
   end
 
   add_statement("insert", {
@@ -1117,7 +1213,7 @@ function _M.new(connector, schema, errors)
     cols = insert_columns,
     argn = insert_names,
     argv = insert_args,
-    code = concat {
+    code =  {
       "INSERT INTO ",  table_name_escaped, " (", insert_columns, ")\n",
       "     VALUES (", insert_expressions, ")\n",
       "  RETURNING ", select_expressions, ";",
@@ -1129,7 +1225,7 @@ function _M.new(connector, schema, errors)
     expr = upsert_expressions,
     argn = insert_names,
     argv = insert_args,
-    code = concat {
+    code =  {
       "INSERT INTO ",  table_name_escaped, " (", insert_columns, ")\n",
       "     VALUES (", insert_expressions, ")\n",
       "ON CONFLICT (", pk_escaped, ") DO UPDATE\n",
@@ -1143,12 +1239,13 @@ function _M.new(connector, schema, errors)
     expr = update_expressions,
     argn = update_args_names,
     argv = update_args,
-    code = concat {
+    code =  {
       "   UPDATE ",  table_name_escaped, "\n",
       "      SET ",  update_expressions, "\n",
       where_clause(
       "    WHERE ", "(" .. pk_escaped .. ") = (" .. update_placeholders .. ")",
-                    ttl_select_where),
+                    ttl_select_where,
+                    ws_id_select_where),
       "RETURNING ", select_expressions, ";",
     }
   })
@@ -1157,12 +1254,13 @@ function _M.new(connector, schema, errors)
     operation = "write",
     argn = primary_key_names,
     argv = primary_key_args,
-    code = concat {
+    code = {
       "DELETE\n",
       "  FROM ", table_name_escaped, "\n",
       where_clause(
       " WHERE ", "(" .. pk_escaped .. ") = (" .. primary_key_placeholders .. ")",
-                 ttl_select_where):sub(1, -2), ";"
+                 ttl_select_where,
+                 ws_id_select_where), ";"
     }
   })
 
@@ -1171,12 +1269,13 @@ function _M.new(connector, schema, errors)
     expr = select_expressions,
     argn = primary_key_names,
     argv = primary_key_args,
-    code = concat {
+    code = {
       "SELECT ",  select_expressions, "\n",
       "  FROM ",  table_name_escaped, "\n",
       where_clause(
       " WHERE ", "(" .. pk_escaped .. ") = (" .. primary_key_placeholders .. ")",
-                 ttl_select_where),
+                 ttl_select_where,
+                 ws_id_select_where),
       " LIMIT 1;"
     }
   })
@@ -1185,11 +1284,12 @@ function _M.new(connector, schema, errors)
     operation = "read",
     argn = { LIMIT },
     argv = single_args,
-    code = concat {
+    code = {
       "  SELECT ",  select_expressions, "\n",
       "    FROM ",  table_name_escaped, "\n",
       where_clause(
-      "   WHERE ", ttl_select_where),
+      "   WHERE ", ttl_select_where,
+                   ws_id_select_where),
       "ORDER BY ",  pk_escaped, "\n",
       "   LIMIT $1;";
     }
@@ -1199,14 +1299,15 @@ function _M.new(connector, schema, errors)
     operation = "read",
     argn = page_next_names,
     argv = page_next_args,
-    code = concat {
+    code = {
       "  SELECT ",  select_expressions, "\n",
       "    FROM ",  table_name_escaped, "\n",
       where_clause(
       "   WHERE ", "(" .. pk_escaped .. ") > (" .. primary_key_placeholders .. ")",
-                   ttl_select_where),
+                   ttl_select_where,
+                   ws_id_select_where),
       "ORDER BY ",  pk_escaped, "\n",
-      "   LIMIT $", #page_next_names, ";"
+      "   LIMIT " .. placeholder(#page_next_names), ";"
     }
   })
 
@@ -1228,12 +1329,12 @@ function _M.new(connector, schema, errors)
       for i, fk_name in ipairs(fk_names) do
         insert(argn_first, fk_name)
         insert(argn_next, fk_name)
-        insert(fk_placeholders, "$" .. i)
+        insert(fk_placeholders, placeholder(i))
       end
 
       for i, primary_key_name in ipairs(primary_key_names) do
         insert(argn_next, primary_key_name)
-        insert(pk_placeholders, "$" .. i + #fk_names)
+        insert(pk_placeholders, placeholder(i + #fk_names))
       end
 
       insert(argn_first, LIMIT)
@@ -1248,14 +1349,15 @@ function _M.new(connector, schema, errors)
         operation = "read",
         argn = argn_first,
         argv = argv_first,
-        code = concat {
+        code = {
           "  SELECT ",  select_expressions, "\n",
           "    FROM ",  table_name_escaped, "\n",
           where_clause(
           "   WHERE ", "(" .. foreign_key_names .. ") = (" .. fk_placeholders .. ")",
-                       ttl_select_where),
-          "ORDER BY ",  pk_escaped, "\n",
-          "   LIMIT $", #argn_first, ";";
+                       ttl_select_where,
+                       ws_id_select_where),
+          "ORDER BY ", pk_escaped, "\n",
+          "   LIMIT ", placeholder(#argn_first), ";";
         }
       })
 
@@ -1263,15 +1365,16 @@ function _M.new(connector, schema, errors)
         operation = "read",
         argn = argn_next,
         argv = argv_next,
-        code = concat {
+        code = {
           "  SELECT ",  select_expressions, "\n",
           "    FROM ",  table_name_escaped, "\n",
           where_clause(
           "   WHERE ", "(" .. foreign_key_names .. ") = (" .. fk_placeholders .. ")",
                        "(" .. pk_escaped .. ") > (" .. pk_placeholders .. ")",
-                       ttl_select_where),
-          "ORDER BY ",  pk_escaped, "\n",
-          "   LIMIT $", #argn_next, ";"
+                       ttl_select_where,
+                       ws_id_select_where),
+          "ORDER BY ", pk_escaped, "\n",
+          "   LIMIT ", placeholder(#argn_next), ";"
         }
       })
 
@@ -1287,7 +1390,7 @@ function _M.new(connector, schema, errors)
 
     for i, primary_key_name in ipairs(primary_key_names) do
       insert(argn_next, primary_key_name)
-      pk_placeholders[i] = "$" .. i + 1
+      pk_placeholders[i] = placeholder(i + 1)
     end
     insert(argn_next, LIMIT)
 
@@ -1297,12 +1400,13 @@ function _M.new(connector, schema, errors)
         operation = "read",
         argn = argn_first,
         argv = {},
-        code = concat {
+        code = {
           "  SELECT ",  select_expressions, "\n",
           "    FROM ",  table_name_escaped, "\n",
           where_clause(
           "   WHERE ", "tags " .. op .. " $1",
-                       ttl_select_where),
+                       ttl_select_where,
+                       ws_id_select_where),
           "ORDER BY ",  pk_escaped, "\n",
           "   LIMIT $2;";
         },
@@ -1312,15 +1416,16 @@ function _M.new(connector, schema, errors)
         operation = "read",
         argn = argn_next,
         argv = {},
-        code = concat {
+        code = {
           "  SELECT ",  select_expressions, "\n",
           "    FROM ",  table_name_escaped, "\n",
           where_clause(
           "   WHERE ", "tags " .. op .. " $1",
                        "(" .. pk_escaped .. ") > (" .. concat(pk_placeholders, ", ") .. ")",
-                       ttl_select_where),
-          "ORDER BY ",  pk_escaped, "\n",
-          "   LIMIT $", #argn_next, ";"
+                       ttl_select_where,
+                       ws_id_select_where),
+          "ORDER BY ", pk_escaped, "\n",
+          "   LIMIT ", placeholder(#argn_next), ";"
         }
       })
     end
@@ -1346,12 +1451,13 @@ function _M.new(connector, schema, errors)
         operation = "read",
         argn = single_names,
         argv = single_args,
-        code = concat {
+        code = {
           "SELECT ",  select_expressions, "\n",
           "  FROM ",  table_name_escaped, "\n",
           where_clause(
           " WHERE ",  unique_escaped .. " = $1",
-                      ttl_select_where),
+                      ttl_select_where,
+                      ws_id_select_where),
           " LIMIT 1;"
         },
       })
@@ -1367,12 +1473,13 @@ function _M.new(connector, schema, errors)
         operation = "write",
         argn = update_by_args_names,
         argv = update_by_args,
-        code = concat {
+        code = {
           "   UPDATE ", table_name_escaped, "\n",
           "      SET ", update_expressions, "\n",
           where_clause(
           "    WHERE ", unique_escaped .. " = $" .. #update_names + 1,
-                        ttl_select_where),
+                        ttl_select_where,
+                        ws_id_select_where),
           "RETURNING ", select_expressions, ";",
         }
       })
@@ -1382,14 +1489,16 @@ function _M.new(connector, schema, errors)
         conflict_key = escape_identifier(connector, "cache_key")
       end
 
+      local use_ws_id = has_ws_id and not unique_field.is_unique_across_ws
+
       add_statement("upsert_by_" .. field_name, {
         operation = "write",
         argn = insert_names,
         argv = insert_args,
-        code = concat {
+        code = {
           "INSERT INTO ",  table_name_escaped, " (", insert_columns, ")\n",
           "     VALUES (", insert_expressions, ")\n",
-          "ON CONFLICT (", conflict_key, ") DO UPDATE\n",
+          "ON CONFLICT (", conflict_list(use_ws_id, conflict_key), ") DO UPDATE\n",
           "        SET ",  upsert_expressions, "\n",
           "  RETURNING ",  select_expressions, ";",
         }
@@ -1399,12 +1508,13 @@ function _M.new(connector, schema, errors)
         operation = "write",
         argn = single_names,
         argv = single_args,
-        code = concat {
+        code = {
           "DELETE\n",
           "  FROM ",  table_name_escaped, "\n",
           where_clause(
           " WHERE ",  unique_escaped .. " = $1",
-                      ttl_select_where):sub(1, -2), ";"
+                      ttl_select_where,
+                      ws_id_select_where), ";"
         }
       })
     end
