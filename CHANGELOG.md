@@ -1,7 +1,13 @@
+## v1.5.2 (Upcoming)
+
+- Fix `consumers` to call right funtion when setting anonymous consumer.
+
+
 ## v1.5.1
 
-- Fix `openid_connect/responses`, adding missing `redirect` method to fix 
-crashing code on handler.
+- Fix `responses`, adding missing `redirect` method to fix
+  crashing code on handler.
+
 
 ## v1.5.0
 

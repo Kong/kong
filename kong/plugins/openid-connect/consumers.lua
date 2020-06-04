@@ -109,7 +109,7 @@ local function set_anonymous(ctx, anonymous, client)
     }
   }
 
-  local consumer, err = set_consumer(consumer_token, "id", true, "id")
+  local consumer, err = find_consumer(consumer_token, "id", true, "id")
   if type(consumer) ~= "table" then
     if err then
       return unexpected(client, "anonymous consumer was not found (", err, ")")
