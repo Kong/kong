@@ -79,7 +79,7 @@ local function execute(args)
 
   package.path = conf.lua_package_path .. ";" .. package.path
 
-  local dc, err = declarative.new_config(conf)
+  local dc, err = declarative.new_config(conf, true)
   if not dc then
     error(err)
   end
