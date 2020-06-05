@@ -26,15 +26,18 @@ local Config = {}
 -- specific list of plugins (and their configurations and custom
 -- entities) from a given Kong config.
 -- @tparam table kong_config The Kong configuration table
+-- @tparam boolean partial Input is not a full representation
+-- of the database (e.g. for db_import)
 -- @treturn table A Config schema adjusted for this configuration
-function declarative.new_config(kong_config)
+function declarative.new_config(kong_config, partial)
   local schema, err = declarative_config.load(kong_config.loaded_plugins)
   if not schema then
     return nil, err
   end
 
   local self = {
-    schema = schema
+    schema = schema,
+    partial = partial,
   }
   setmetatable(self, { __index = Config })
   return self
