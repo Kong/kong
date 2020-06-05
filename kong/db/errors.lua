@@ -42,7 +42,9 @@ local ERRORS              = {
   FOREIGN_KEYS_UNRESOLVED = 13, -- foreign key(s) could not be resolved
   DECLARATIVE_CONFIG      = 14, -- error parsing declarative configuration
   TRANSFORMATION_ERROR    = 15, -- error with dao transformations
-  INVALID_FOREIGN_KEY     = 16,
+  INVALID_FOREIGN_KEY     = 16, -- foreign key is valid for matching a row
+  INVALID_WORKSPACE       = 17, -- strategy reports a workspace error
+  INVALID_UNIQUE_GLOBAL   = 18, -- unique field value is invalid for global query
 }
 
 
@@ -66,6 +68,8 @@ local ERRORS_NAMES                 = {
   [ERRORS.DECLARATIVE_CONFIG]      = "invalid declarative configuration",
   [ERRORS.TRANSFORMATION_ERROR]    = "transformation error",
   [ERRORS.INVALID_FOREIGN_KEY]     = "invalid foreign key",
+  [ERRORS.INVALID_WORKSPACE]       = "invalid workspace",
+  [ERRORS.INVALID_UNIQUE_GLOBAL]   = "unique key %s is invalid for global query",
 }
 
 
@@ -482,6 +486,27 @@ function _M:declarative_config(err_t)
                       pl_pretty(err_t, ""))
 
   return new_err_t(self, ERRORS.DECLARATIVE_CONFIG, message, err_t)
+end
+
+
+function _M:invalid_workspace(ws_id)
+  if type(ws_id) ~= "string" then
+    error("ws_id must be a string", 2)
+  end
+
+  local message = fmt("invalid workspace '%s'", ws_id)
+
+  return new_err_t(self, ERRORS.INVALID_WORKSPACE, message)
+end
+
+
+function _M:invalid_unique_global(name, err)
+  if type(err) ~= "string" then
+    error("err must be a string", 2)
+  end
+
+  return new_err_t(self, ERRORS.INVALID_UNIQUE_GLOBAL, err, nil,
+                   fmt(ERRORS_NAMES[ERRORS.INVALID_UNIQUE_GLOBAL], name))
 end
 
 

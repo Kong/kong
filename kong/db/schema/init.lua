@@ -31,6 +31,7 @@ Schema.__index     = Schema
 
 
 local _cache = {}
+local _workspaceable = {}
 
 
 local new_tab
@@ -1627,7 +1628,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
       else
         -- set non defined fields to nil, except meta fields (ttl) if enabled
-        if not self.ttl or key ~= "ttl" then
+        if not (self.ttl and key == "ttl") then
           data[key] = nil
         end
       end
@@ -1969,6 +1970,23 @@ end
 
 
 function Schema:get_constraints()
+  if self.name == "workspaces" then
+    -- merge explicit and implicit constraints for workspaces
+    for _, e in ipairs(_cache["workspaces"].constraints) do
+      local found = false
+      for _, w in ipairs(_workspaceable) do
+        if w == e then
+          found = true
+          break
+        end
+      end
+      if not found then
+        table.insert(_workspaceable, e)
+      end
+    end
+    return _workspaceable
+  end
+
   return _cache[self.name].constraints
 end
 
@@ -2106,6 +2124,13 @@ function Schema.new(definition, is_subschema)
           on_delete  = field.on_delete,
         })
       end
+    end
+  end
+
+  if self.workspaceable and self.name then
+    if not _workspaceable[self.name] then
+      _workspaceable[self.name] = true
+      table.insert(_workspaceable, { schema = self })
     end
   end
 
