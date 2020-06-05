@@ -21,6 +21,7 @@ local default_port = 80
 return {
   name = "services",
   primary_key = { "id" },
+  workspaceable = true,
   endpoint_key = "name",
 
   fields = {
