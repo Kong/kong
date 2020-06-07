@@ -6,6 +6,12 @@ return {
         type = "record",
         fields = {
           {
+            phase = {
+              type = "string",
+              default = "header_filter",
+            },
+          },
+          {
             mode = {
               type = "string",
             },

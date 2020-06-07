@@ -395,47 +395,6 @@ local function list_migrations(migtable)
 end
 
 
-local buffered_proxy
-do
-  local HTTP_METHODS = {
-    GET       = ngx.HTTP_GET,
-    HEAD      = ngx.HTTP_HEAD,
-    PUT       = ngx.HTTP_PUT,
-    POST      = ngx.HTTP_POST,
-    DELETE    = ngx.HTTP_DELETE,
-    OPTIONS   = ngx.HTTP_OPTIONS,
-    MKCOL     = ngx.HTTP_MKCOL,
-    COPY      = ngx.HTTP_COPY,
-    MOVE      = ngx.HTTP_MOVE,
-    PROPFIND  = ngx.HTTP_PROPFIND,
-    PROPPATCH = ngx.HTTP_PROPPATCH,
-    LOCK      = ngx.HTTP_LOCK,
-    UNLOCK    = ngx.HTTP_UNLOCK,
-    PATCH     = ngx.HTTP_PATCH,
-    TRACE     = ngx.HTTP_TRACE,
-  }
-
-  buffered_proxy = function(ctx)
-    ngx.req.read_body()
-
-    local options = {
-      always_forward_body = true,
-      share_all_vars      = true,
-      method              = HTTP_METHODS[ngx.req.get_method()],
-      ctx                 = ctx,
-    }
-
-    local res = ngx.location.capture("/kong_buffered_http", options)
-    if res.truncated then
-      ngx.status = 502
-      return kong_error_handlers(ngx)
-    end
-
-    return kong.response.exit(res.status, res.body, res.header)
-  end
-end
-
-
 -- Kong public context handlers.
 -- @section kong_handlers
 
@@ -622,7 +581,6 @@ function Kong.init_worker()
 
   runloop.init_worker.before()
 
-
   -- run plugins init_worker context
   ok, err = runloop.update_plugins_iterator()
   if not ok then
@@ -632,6 +590,8 @@ function Kong.init_worker()
 
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_plugins_iterator(plugins_iterator, "init_worker")
+
+  runloop.init_worker.after()
 
   if go.is_on() then
     go.manage_pluginserver()
@@ -692,9 +652,9 @@ function Kong.ssl_certificate()
   ngx.ctx.workspace = kong.default_workspace
 
   runloop.certificate.before(ctx)
-
   local plugins_iterator = runloop.get_updated_plugins_iterator()
   execute_plugins_iterator(plugins_iterator, "certificate", ctx)
+  runloop.certificate.after(ctx)
 end
 
 
@@ -743,6 +703,8 @@ function Kong.rewrite()
 
   ctx.workspace = kong.default_workspace
   execute_plugins_iterator(plugins_iterator, "rewrite", ctx)
+
+  runloop.rewrite.after(ctx)
 
   ctx.KONG_REWRITE_ENDED_AT = get_now_ms()
   ctx.KONG_REWRITE_TIME = ctx.KONG_REWRITE_ENDED_AT - ctx.KONG_REWRITE_START
@@ -794,8 +756,113 @@ function Kong.access()
   -- we intent to proxy, though balancer may fail on that
   ctx.KONG_PROXIED = true
 
-  if kong.ctx.core.buffered_proxying then
-    return buffered_proxy(ctx)
+  return Kong.response()
+end
+
+do
+  local HTTP_METHODS = {
+    GET       = ngx.HTTP_GET,
+    HEAD      = ngx.HTTP_HEAD,
+    PUT       = ngx.HTTP_PUT,
+    POST      = ngx.HTTP_POST,
+    DELETE    = ngx.HTTP_DELETE,
+    OPTIONS   = ngx.HTTP_OPTIONS,
+    MKCOL     = ngx.HTTP_MKCOL,
+    COPY      = ngx.HTTP_COPY,
+    MOVE      = ngx.HTTP_MOVE,
+    PROPFIND  = ngx.HTTP_PROPFIND,
+    PROPPATCH = ngx.HTTP_PROPPATCH,
+    LOCK      = ngx.HTTP_LOCK,
+    UNLOCK    = ngx.HTTP_UNLOCK,
+    PATCH     = ngx.HTTP_PATCH,
+    TRACE     = ngx.HTTP_TRACE,
+  }
+
+  function Kong.response()
+    if ngx.req.http_version() >= 2 then
+      return
+    end
+
+    local plugins_iterator = runloop.get_plugins_iterator()
+
+    local ctx = ngx.ctx
+    local buffered_proxying = kong.ctx.core.buffered_proxying
+    if not buffered_proxying then
+      for plugin in plugins_iterator:iterate("response", ctx) do
+        if plugin.handler.response and plugin.handler._go then
+          buffered_proxying = true
+          break
+        end
+      end
+
+      if not buffered_proxying then
+        return
+      end
+
+      kong.ctx.core.buffered_proxying = true
+    end
+
+    -- buffered proxying (that also executes the balancer)
+    ngx.req.read_body()
+
+    local options = {
+      always_forward_body = true,
+      share_all_vars      = true,
+      method              = HTTP_METHODS[ngx.req.get_method()],
+      ctx                 = ctx,
+    }
+
+    local res = ngx.location.capture("/kong_buffered_http", options)
+    if res.truncated then
+      ngx.status = 502
+      return kong_error_handlers(ngx)
+    end
+
+    local status = res.status
+    local headers = res.header
+    local body = res.body
+
+    local core = kong.ctx.core
+    core.buffered_status = status
+    core.buffered_headers = headers
+    core.buffered_body = body
+
+    -- fake response phase (this runs after the balancer)
+    if not ctx.KONG_RESPONSE_START then
+      ctx.KONG_RESPONSE_START = get_now_ms()
+
+      if ctx.KONG_BALANCER_START and not ctx.KONG_BALANCER_ENDED_AT then
+        ctx.KONG_BALANCER_ENDED_AT = ctx.KONG_RESPONSE_START
+        ctx.KONG_BALANCER_TIME = ctx.KONG_BALANCER_ENDED_AT -
+          ctx.KONG_BALANCER_START
+      end
+    end
+
+    if not ctx.KONG_WAITING_TIME then
+      ctx.KONG_WAITING_TIME = ctx.KONG_RESPONSE_START -
+        (ctx.KONG_BALANCER_ENDED_AT or ctx.KONG_ACCESS_ENDED_AT)
+    end
+
+    if not ctx.KONG_PROXY_LATENCY then
+      ctx.KONG_PROXY_LATENCY = ctx.KONG_RESPONSE_START - ctx.KONG_PROCESSING_START
+    end
+
+    kong_global.set_phase(kong, PHASES.response)
+
+    kong.response.set_status(status)
+    kong.response.set_headers(headers)
+
+    runloop.response.before(ctx)
+    execute_plugins_iterator(plugins_iterator, "response", ctx)
+    runloop.response.after(ctx)
+
+    ctx.KONG_RESPONSE_ENDED_AT = get_now_ms()
+    ctx.KONG_RESPONSE_TIME = ctx.KONG_RESPONSE_ENDED_AT - ctx.KONG_RESPONSE_START
+
+    -- buffered response
+    ngx.print(body)
+    -- jump over the balancer to header_filter
+    ngx.exit(status)
   end
 end
 
@@ -978,6 +1045,7 @@ function Kong.header_filter()
     if ctx.KONG_REWRITE_START and not ctx.KONG_REWRITE_ENDED_AT then
       ctx.KONG_REWRITE_ENDED_AT = ctx.KONG_BALANCER_START or
                                   ctx.KONG_ACCESS_START or
+                                  ctx.KONG_RESPONSE_START or
                                   ctx.KONG_HEADER_FILTER_START
       ctx.KONG_REWRITE_TIME = ctx.KONG_REWRITE_ENDED_AT -
                               ctx.KONG_REWRITE_START
@@ -985,28 +1053,40 @@ function Kong.header_filter()
 
     if ctx.KONG_ACCESS_START and not ctx.KONG_ACCESS_ENDED_AT then
       ctx.KONG_ACCESS_ENDED_AT = ctx.KONG_BALANCER_START or
+                                 ctx.KONG_RESPONSE_START or
                                  ctx.KONG_HEADER_FILTER_START
       ctx.KONG_ACCESS_TIME = ctx.KONG_ACCESS_ENDED_AT -
                              ctx.KONG_ACCESS_START
     end
 
     if ctx.KONG_BALANCER_START and not ctx.KONG_BALANCER_ENDED_AT then
-      ctx.KONG_BALANCER_ENDED_AT = ctx.KONG_HEADER_FILTER_START
+      ctx.KONG_BALANCER_ENDED_AT = ctx.KONG_RESPONSE_START or
+                                   ctx.KONG_HEADER_FILTER_START
       ctx.KONG_BALANCER_TIME = ctx.KONG_BALANCER_ENDED_AT -
                                ctx.KONG_BALANCER_START
+    end
+
+    if ctx.KONG_RESPONSE_START and not ctx.KONG_RESPONSE_ENDED_AT then
+      ctx.KONG_RESPONSE_ENDED_AT = ctx.KONG_HEADER_FILTER_START
+      ctx.KONG_RESPONSE_TIME = ctx.KONG_RESPONSE_ENDED_AT -
+                               ctx.KONG_RESPONSE_START
     end
   end
 
   if ctx.KONG_PROXIED then
-    ctx.KONG_WAITING_TIME = ctx.KONG_HEADER_FILTER_START -
-                           (ctx.KONG_BALANCER_ENDED_AT or ctx.KONG_ACCESS_ENDED_AT)
+    if not ctx.KONG_WAITING_TIME then
+      ctx.KONG_WAITING_TIME = (ctx.KONG_RESPONSE_START    or ctx.KONG_HEADER_FILTER_START) -
+                              (ctx.KONG_BALANCER_ENDED_AT or ctx.KONG_ACCESS_ENDED_AT)
+    end
 
     if not ctx.KONG_PROXY_LATENCY then
-      ctx.KONG_PROXY_LATENCY = ctx.KONG_HEADER_FILTER_START - ctx.KONG_PROCESSING_START
+      ctx.KONG_PROXY_LATENCY = (ctx.KONG_RESPONSE_START or ctx.KONG_HEADER_FILTER_START) -
+                                ctx.KONG_PROCESSING_START
     end
 
   elseif not ctx.KONG_RESPONSE_LATENCY then
-    ctx.KONG_RESPONSE_LATENCY = ctx.KONG_HEADER_FILTER_START - ctx.KONG_PROCESSING_START
+    ctx.KONG_RESPONSE_LATENCY = (ctx.KONG_RESPONSE_START or ctx.KONG_HEADER_FILTER_START) -
+                                 ctx.KONG_PROCESSING_START
   end
 
   kong_global.set_phase(kong, PHASES.header_filter)
@@ -1029,6 +1109,7 @@ function Kong.body_filter()
     if ctx.KONG_REWRITE_START and not ctx.KONG_REWRITE_ENDED_AT then
       ctx.KONG_REWRITE_ENDED_AT = ctx.KONG_ACCESS_START or
                                   ctx.KONG_BALANCER_START or
+                                  ctx.KONG_RESPONSE_START or
                                   ctx.KONG_HEADER_FILTER_START or
                                   ctx.KONG_BODY_FILTER_START
       ctx.KONG_REWRITE_TIME = ctx.KONG_REWRITE_ENDED_AT -
@@ -1037,6 +1118,7 @@ function Kong.body_filter()
 
     if ctx.KONG_ACCESS_START and not ctx.KONG_ACCESS_ENDED_AT then
       ctx.KONG_ACCESS_ENDED_AT = ctx.KONG_BALANCER_START or
+                                 ctx.KONG_RESPONSE_START or
                                  ctx.KONG_HEADER_FILTER_START or
                                  ctx.KONG_BODY_FILTER_START
       ctx.KONG_ACCESS_TIME = ctx.KONG_ACCESS_ENDED_AT -
@@ -1044,10 +1126,18 @@ function Kong.body_filter()
     end
 
     if ctx.KONG_BALANCER_START and not ctx.KONG_BALANCER_ENDED_AT then
-      ctx.KONG_BALANCER_ENDED_AT = ctx.KONG_HEADER_FILTER_START or
+      ctx.KONG_BALANCER_ENDED_AT = ctx.KONG_RESPONSE_START or
+                                   ctx.KONG_HEADER_FILTER_START or
                                    ctx.KONG_BODY_FILTER_START
       ctx.KONG_BALANCER_TIME = ctx.KONG_BALANCER_ENDED_AT -
                                ctx.KONG_BALANCER_START
+    end
+
+    if ctx.KONG_RESPONSE_START and not ctx.KONG_RESPONSE_ENDED_AT then
+      ctx.KONG_RESPONSE_ENDED_AT = ctx.KONG_HEADER_FILTER_START or
+                                   ctx.KONG_BODY_FILTER_START
+      ctx.KONG_RESPONSE_TIME = ctx.KONG_RESPONSE_ENDED_AT -
+                               ctx.KONG_RESPONSE_START
     end
 
     if ctx.KONG_HEADER_FILTER_START and not ctx.KONG_HEADER_FILTER_ENDED_AT then
@@ -1075,10 +1165,11 @@ function Kong.body_filter()
   ctx.KONG_BODY_FILTER_TIME = ctx.KONG_BODY_FILTER_ENDED_AT - ctx.KONG_BODY_FILTER_START
 
   if ctx.KONG_PROXIED then
-    -- time spent receiving the response (header_filter + body_filter)
+    -- time spent receiving the response ((response +) header_filter + body_filter)
     -- we could use $upstream_response_time but we need to distinguish the waiting time
     -- from the receiving time in our logging plugins (especially ALF serializer).
-    ctx.KONG_RECEIVE_TIME = ctx.KONG_BODY_FILTER_ENDED_AT - (ctx.KONG_HEADER_FILTER_START or
+    ctx.KONG_RECEIVE_TIME = ctx.KONG_BODY_FILTER_ENDED_AT - (ctx.KONG_RESPONSE_START or
+                                                             ctx.KONG_HEADER_FILTER_START or
                                                              ctx.KONG_BALANCER_ENDED_AT or
                                                              ctx.KONG_BALANCER_START or
                                                              ctx.KONG_ACCESS_ENDED_AT)
@@ -1104,15 +1195,10 @@ function Kong.log()
       end
 
     else
-      if ctx.KONG_BODY_FILTER_START and not ctx.KONG_BODY_FILTER_ENDED_AT then
-        ctx.KONG_BODY_FILTER_ENDED_AT = ctx.KONG_LOG_START
-        ctx.KONG_BODY_FILTER_TIME = ctx.KONG_BODY_FILTER_ENDED_AT -
-                                    ctx.KONG_BODY_FILTER_START
-      end
-
       if ctx.KONG_REWRITE_START and not ctx.KONG_REWRITE_ENDED_AT then
         ctx.KONG_REWRITE_ENDED_AT = ctx.KONG_ACCESS_START or
                                     ctx.KONG_BALANCER_START or
+                                    ctx.KONG_RESPONSE_START or
                                     ctx.KONG_HEADER_FILTER_START or
                                     ctx.BODY_FILTER_START or
                                     ctx.KONG_LOG_START
@@ -1122,6 +1208,7 @@ function Kong.log()
 
       if ctx.KONG_ACCESS_START and not ctx.KONG_ACCESS_ENDED_AT then
         ctx.KONG_ACCESS_ENDED_AT = ctx.KONG_BALANCER_START or
+                                   ctx.KONG_RESPONSE_START or
                                    ctx.KONG_HEADER_FILTER_START or
                                    ctx.BODY_FILTER_START or
                                    ctx.KONG_LOG_START
@@ -1130,7 +1217,8 @@ function Kong.log()
       end
 
       if ctx.KONG_BALANCER_START and not ctx.KONG_BALANCER_ENDED_AT then
-        ctx.KONG_BALANCER_ENDED_AT = ctx.KONG_HEADER_FILTER_START or
+        ctx.KONG_BALANCER_ENDED_AT = ctx.KONG_RESPONSE_START or
+                                     ctx.KONG_HEADER_FILTER_START or
                                      ctx.BODY_FILTER_START or
                                      ctx.KONG_LOG_START
         ctx.KONG_BALANCER_TIME = ctx.KONG_BALANCER_ENDED_AT -
@@ -1143,6 +1231,12 @@ function Kong.log()
         ctx.KONG_HEADER_FILTER_TIME = ctx.KONG_HEADER_FILTER_ENDED_AT -
                                       ctx.KONG_HEADER_FILTER_START
       end
+
+      if ctx.KONG_BODY_FILTER_START and not ctx.KONG_BODY_FILTER_ENDED_AT then
+        ctx.KONG_BODY_FILTER_ENDED_AT = ctx.KONG_LOG_START
+        ctx.KONG_BODY_FILTER_TIME = ctx.KONG_BODY_FILTER_ENDED_AT -
+                                    ctx.KONG_BODY_FILTER_START
+      end
     end
   end
 
@@ -1150,6 +1244,7 @@ function Kong.log()
 
   local ctx = ngx.ctx
 
+  runloop.log.before(ctx)
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_plugins_iterator(plugins_iterator, "log", ctx)
   runloop.log.after(ctx)

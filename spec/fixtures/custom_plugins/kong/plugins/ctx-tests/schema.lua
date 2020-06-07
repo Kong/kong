@@ -13,6 +13,12 @@ return {
       config = {
         type = "record",
         fields = {
+          {
+            buffered = {
+              type = "boolean",
+              default = false,
+            },
+          }
         },
       },
     },

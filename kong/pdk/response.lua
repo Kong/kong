@@ -42,7 +42,8 @@ end
 local PHASES = phase_checker.phases
 
 
-local header_body_log = phase_checker.new(PHASES.header_filter,
+local header_body_log = phase_checker.new(PHASES.response,
+                                          PHASES.header_filter,
                                           PHASES.body_filter,
                                           PHASES.log,
                                           PHASES.error,
@@ -50,6 +51,7 @@ local header_body_log = phase_checker.new(PHASES.header_filter,
 
 local rewrite_access_header = phase_checker.new(PHASES.rewrite,
                                                 PHASES.access,
+                                                PHASES.response,
                                                 PHASES.header_filter,
                                                 PHASES.error,
                                                 PHASES.admin_api)
@@ -783,13 +785,7 @@ local function new(self, major_version)
     -- return kong.response.exit(200, "Success")
     -- ```
     function _RESPONSE.exit(status, body, headers)
-      local is_buffered_exit = self.ctx.core.buffered_proxying
-                           and self.ctx.core.phase == PHASES.balancer
-                           and ngx.get_phase()     == "access"
-
-      if not is_buffered_exit then
-        check_phase(rewrite_access_header)
-      end
+      check_phase(rewrite_access_header)
 
       if ngx.headers_sent then
         error("headers have already been sent", 2)
@@ -815,15 +811,7 @@ local function new(self, major_version)
       end
 
       local ctx = ngx.ctx
-
-      if is_buffered_exit then
-        self.ctx.core.buffered_status = status
-        self.ctx.core.buffered_headers = headers
-        self.ctx.core.buffered_body = body
-
-      else
-        ctx.KONG_EXITED = true
-      end
+      ctx.KONG_EXITED = true
 
       if ctx.delay_response and not ctx.delayed_response then
         ctx.delayed_response = {
@@ -969,13 +957,7 @@ local function new(self, major_version)
   --
   -- return kong.response.error(403)
   function _RESPONSE.error(status, message, headers)
-    local is_buffered_exit = self.ctx.core.buffered_proxying
-                         and self.ctx.core.phase == PHASES.balancer
-                         and ngx.get_phase()     == "access"
-
-    if not is_buffered_exit then
-      check_phase(rewrite_access_header)
-    end
+    check_phase(rewrite_access_header)
 
     if ngx.headers_sent then
       error("headers have already been sent", 2)
@@ -1031,14 +1013,7 @@ local function new(self, major_version)
 
     local ctx = ngx.ctx
 
-    if is_buffered_exit then
-      self.ctx.core.buffered_status = status
-      self.ctx.core.buffered_headers = headers
-      self.ctx.core.buffered_body = body
-
-    else
-      ctx.KONG_EXITED = true
-    end
+    ctx.KONG_EXITED = true
 
     if ctx.delay_response and not ctx.delayed_response then
       ctx.delayed_response = {
@@ -1053,7 +1028,6 @@ local function new(self, major_version)
     else
       return send(status, body, headers)
     end
-
   end
 
   return _RESPONSE

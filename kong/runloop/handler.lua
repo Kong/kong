@@ -37,6 +37,9 @@ local clear_header = ngx.req.clear_header
 local unpack       = unpack
 
 
+local NOOP = function() end
+
+
 local ERR   = ngx.ERR
 local CRIT  = ngx.CRIT
 local WARN  = ngx.WARN
@@ -1030,7 +1033,8 @@ return {
         }
       end
 
-    end
+    end,
+    after = NOOP,
   },
   preread = {
     before = function(ctx)
@@ -1067,7 +1071,8 @@ return {
   certificate = {
     before = function(_)
       certificate.execute()
-    end
+    end,
+    after = NOOP,
   },
   rewrite = {
     before = function(ctx)
@@ -1078,6 +1083,7 @@ return {
       ctx.http_proxy_authorization = var.http_proxy_authorization
       ctx.http_te                  = var.http_te
     end,
+    after = NOOP,
   },
   access = {
     before = function(ctx)
@@ -1338,6 +1344,10 @@ return {
       end
     end
   },
+  response = {
+    before = NOOP,
+    after = NOOP,
+  },
   header_filter = {
     before = function(ctx)
       if not ctx.KONG_PROXIED then
@@ -1415,6 +1425,7 @@ return {
     end
   },
   log = {
+    before = NOOP,
     after = function(ctx)
       update_lua_mem()
 

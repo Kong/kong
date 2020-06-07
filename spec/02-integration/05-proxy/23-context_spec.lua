@@ -28,6 +28,26 @@ for _, strategy in helpers.each_strategy() do
           protocols = {
             "http", "https", "tcp", "tls", "grpc", "grpcs"
           },
+          config = {
+            buffered = false,
+          }
+        }
+
+        local buffered_route = bp.routes:insert {
+          paths   = { "/buffered" },
+        }
+
+        bp.plugins:insert {
+          name = "ctx-tests",
+          route = { id = buffered_route.id },
+          service = null,
+          consumer = null,
+          protocols = {
+            "http", "https", "tcp", "tls", "grpc", "grpcs"
+          },
+          config = {
+            buffered = true,
+          }
         }
 
         assert(helpers.start_kong({
@@ -54,8 +74,16 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("context values are correctly calculated", function()
-        local res = assert(proxy_client:get("/status/278"))
-        assert.res_status(278, res)
+        local res = assert(proxy_client:get("/status/231"))
+        assert.res_status(231, res)
+
+        local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
+        assert.not_matches("[ctx-tests]", err_log, nil, true)
+      end)
+
+      it("context values are correctly calculated (buffered)", function()
+        local res = assert(proxy_client:get("/buffered/status/232"))
+        assert.res_status(232, res)
 
         local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
         assert.not_matches("[ctx-tests]", err_log, nil, true)
