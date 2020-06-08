@@ -96,7 +96,13 @@ local function new()
       error("port must be an integer between 0 and 65535: given " .. port, 2)
     end
 
-    ngx.var.upstream_host = host
+    local scheme = ngx.var.upstream_scheme or ngx.var.scheme
+    if scheme == "http" and port == 80 or
+       scheme == "https" and port == 443 then
+      ngx.var.upstream_host = host
+    else
+      ngx.var.upstream_host = host .. ":" .. port
+    end
     ngx.ctx.balancer_data.host = host
     ngx.ctx.balancer_data.port = port
   end
