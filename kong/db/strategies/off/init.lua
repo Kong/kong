@@ -157,9 +157,11 @@ local function page_for_key(self, key, size, offset, options)
       break
     end
 
-    -- Tags are stored "tags|@list" and "tags:<tagname>|@list" as strings,
-    -- encoded like "admin|services|<a service uuid>"
-    -- We decode them into lua tables here
+    -- Tags are stored in the cache entries "tags||@list" and "tags:<tagname>|@list"
+    -- The contents of both of these entries is an array of strings
+    -- Each of these strings has the form "<tag>|<entity_name>|<entity_id>"
+    -- For example "admin|services|<a service uuid>"
+    -- This loop transforms each individual string into tables.
     if schema_name == "tags" then
       local tag_name, entity_name, uuid = string.match(item, "^([^|]+)|([^|]+)|(.+)$")
       if not tag_name then
@@ -246,44 +248,44 @@ local function select_by_field(self, field, value, options)
   return select_by_key(self, key)
 end
 
-
-function off.new(connector, schema, errors)
+do
   local unsupported = function(operation)
-    local err = fmt("cannot %s '%s' entities when not using a database",
-                    operation, schema.name)
-    return function()
-      return nil, errors:operation_unsupported(err)
+    return function(self)
+      local err = fmt("cannot %s '%s' entities when not using a database",
+                      operation, self.schema.name)
+      return nil, self.errors:operation_unsupported(err)
     end
   end
 
   local unsupported_by = function(operation)
-    local err = fmt("cannot %s '%s' entities by '%s' when not using a database",
-                    operation, schema.name, '%s')
-    return function(_, field_name)
-      return nil, errors:operation_unsupported(fmt(err, field_name))
+
+    return function(self, field_name)
+      local err = fmt("cannot %s '%s' entities by '%s' when not using a database",
+                      operation, self.schema.name, '%s')
+      return nil, self.errors:operation_unsupported(fmt(err, field_name))
     end
   end
 
+  _mt.select = select
+  _mt.page = page
+  _mt.select_by_field = select_by_field
+  _mt.insert = unsupported("create")
+  _mt.update = unsupported("update")
+  _mt.upsert = unsupported("create or update")
+  _mt.delete = unsupported("remove")
+  _mt.update_by_field = unsupported_by("update")
+  _mt.upsert_by_field = unsupported_by("create or update")
+  _mt.delete_by_field = unsupported_by("remove")
+  _mt.truncate = function() return true end
+  -- off-strategy specific methods:
+  _mt.page_for_key = page_for_key
+end
+
+function off.new(connector, schema, errors)
   local self = {
     connector = connector, -- instance of kong.db.strategies.off.connector
     schema = schema,
     errors = errors,
-    page = page,
-    select = select,
-    select_by_field = select_by_field,
-
-    insert = unsupported("create"),
-    update = unsupported("update"),
-    upsert = unsupported("create or update"),
-    delete = unsupported("remove"),
-    update_by_field = unsupported_by("update"),
-    upsert_by_field = unsupported_by("create or update"),
-    delete_by_field = unsupported_by("remove"),
-
-    truncate = function() return true end,
-
-    -- off-strategy specific methods:
-    page_for_key = page_for_key,
   }
 
   if not kong.default_workspace then

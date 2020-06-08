@@ -666,6 +666,8 @@ function declarative.load_into_cache(entities, meta, hash, shadow_page)
       end
 
       if item.tags then
+
+        local ws = schema.workspaceable and ws_id or ""
         for _, tag_name in ipairs(item.tags) do
           table.insert(tags, tag_name .. "|" .. entity_name .. "|" .. id)
 
@@ -673,7 +675,8 @@ function declarative.load_into_cache(entities, meta, hash, shadow_page)
           table.insert(tags_by_name[tag_name], tag_name .. "|" .. entity_name .. "|" .. id)
 
           taggings[tag_name] = taggings[tag_name] or {}
-          taggings[tag_name][cache_key] = true
+          taggings[tag_name][ws] = taggings[tag_name][ws] or {}
+          taggings[tag_name][ws][cache_key] = true
         end
       end
     end
@@ -700,21 +703,24 @@ function declarative.load_into_cache(entities, meta, hash, shadow_page)
       end
     end
 
-    -- taggings:admin|services|@list -> uuids of services tagged "admin"
-    for tag_name, keys_dict in pairs(taggings) do
-      local key = "taggings:" .. tag_name .. "|" .. entity_name .. "|@list"
-      -- transform the dict into a sorted array
-      local arr = {}
-      local len = 0
-      for id in pairs(keys_dict) do
-        len = len + 1
-        arr[len] = id
-      end
-      -- stay consistent with pagination
-      table.sort(arr)
-      local ok, err = kong.core_cache:safe_set(key, arr, shadow_page)
-      if not ok then
-        return nil, err
+    -- taggings:admin|services|ws_id|@list -> uuids of services tagged "admin" on workspace ws_id
+    for tag_name, workspaces_dict in pairs(taggings) do
+      for ws_id, keys_dict in pairs(workspaces_dict) do
+        local key = "taggings:" .. tag_name .. "|" .. entity_name .. "|" .. ws_id .. "|@list"
+
+        -- transform the dict into a sorted array
+        local arr = {}
+        local len = 0
+        for id in pairs(keys_dict) do
+          len = len + 1
+          arr[len] = id
+        end
+        -- stay consistent with pagination
+        table.sort(arr)
+        local ok, err = kong.core_cache:safe_set(key, arr, shadow_page)
+        if not ok then
+          return nil, err
+        end
       end
     end
   end
