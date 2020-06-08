@@ -686,13 +686,16 @@ describe("Admin API #off", function()
 
       assert.response(res).has.status(201)
 
-      local sock = ngx.socket.tcp()
-      assert(sock:connect("127.0.0.1", 9011))
-      assert(sock:send("hi\n"))
       helpers.wait_until(function()
-        return sock:receive() == "hi"
+        local sock = ngx.socket.tcp()
+        assert(sock:connect("127.0.0.1", 9011))
+        assert(sock:send("hi\n"))
+        local pok = pcall(helpers.wait_until, function()
+          return sock:receive() == "hi"
+        end, 1)
+        sock:close()
+        return pok == true
       end)
-      sock:close()
     end)
   end)
 
