@@ -112,6 +112,7 @@ local set_more_tries   = ngx_balancer.set_more_tries
 
 
 local declarative_entities
+local declarative_meta
 local schema_state
 
 
@@ -248,25 +249,25 @@ end
 
 local function parse_declarative_config(kong_config)
   if kong_config.database ~= "off" then
-    return {}
+    return {}, {}
   end
 
   if not kong_config.declarative_config then
-    return {}
+    return {}, {}
   end
 
   local dc = declarative.new_config(kong_config)
-  local entities, err = dc:parse_file(kong_config.declarative_config)
+  local entities, err, _, meta = dc:parse_file(kong_config.declarative_config)
   if not entities then
     return nil, "error parsing declarative config file " ..
                 kong_config.declarative_config .. ":\n" .. err
   end
 
-  return entities
+  return entities, nil, meta
 end
 
 
-local function load_declarative_config(kong_config, entities)
+local function load_declarative_config(kong_config, entities, meta)
   if kong_config.database ~= "off" then
     return true
   end
@@ -289,7 +290,7 @@ local function load_declarative_config(kong_config, entities)
       return true
     end
 
-    local ok, err = declarative.load_into_cache(entities)
+    local ok, err = declarative.load_into_cache(entities, meta)
     if not ok then
       return nil, err
     end
@@ -441,7 +442,7 @@ function Kong.init()
 
   if kong.configuration.database == "off" then
     local err
-    declarative_entities, err = parse_declarative_config(kong.configuration)
+    declarative_entities, err, declarative_meta = parse_declarative_config(kong.configuration)
     if not declarative_entities then
       error(err)
     end
@@ -537,7 +538,8 @@ function Kong.init_worker()
 
   kong.db:set_events_handler(worker_events)
 
-  ok, err = load_declarative_config(kong.configuration, declarative_entities)
+  ok, err = load_declarative_config(kong.configuration,
+    declarative_entities, declarative_meta)
   if not ok then
     stash_init_worker_error("failed to load declarative config file: " .. err)
     return

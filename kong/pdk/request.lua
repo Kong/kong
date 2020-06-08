@@ -30,6 +30,7 @@ cjson.decode_array_with_array_mt(true)
 local function new(self)
   local _REQUEST = {}
 
+  local HOST_PORTS             = self.configuration.host_ports or {}
 
   local MIN_HEADERS            = 1
   local MAX_HEADERS_DEFAULT    = 100
@@ -200,6 +201,13 @@ local function new(self)
   -- **Note**: we do not currently offer support for Forwarded HTTP Extension
   -- (RFC 7239) since it is not supported by ngx_http_realip_module.
   --
+  -- When running Kong behind the L4 port mapping (or forwarding) you can also
+  -- configure:
+  -- * [port\_maps](https://getkong.org/docs/latest/configuration/#port_maps)
+  --
+  -- `port_maps` configuration parameter enables this function to return the
+  -- port to which the port Kong is listening to is mapped to (in case they differ).
+  --
   -- @function kong.request.get_forwarded_port
   -- @phases rewrite, access, header_filter, body_filter, log, admin_api
   -- @treturn number the forwarded port
@@ -232,7 +240,13 @@ local function new(self)
       end
     end
 
-    return _REQUEST.get_port()
+    local host_port = ngx.ctx.host_port
+    if host_port then
+      return host_port
+    end
+
+    local port = _REQUEST.get_port()
+    return HOST_PORTS[port] or port
   end
 
 

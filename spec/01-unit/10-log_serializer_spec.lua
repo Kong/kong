@@ -79,6 +79,14 @@ describe("Log Serializer", function()
       assert.is_table(res.tries)
     end)
 
+    it("uses port map (ngx.ctx.host_port) for request url ", function()
+      ngx.ctx.host_port = 5000
+      local res = basic.serialize(ngx, kong)
+      assert.is_table(res)
+      assert.is_table(res.request)
+      assert.equal("http://test.com:5000/request_uri", res.request.url)
+    end)
+
     it("serializes the matching Route and Services", function()
       ngx.ctx.route = { id = "my_route" }
       ngx.ctx.service = { id = "my_service" }

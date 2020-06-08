@@ -193,7 +193,8 @@ end
 
 local function build_fields(entities, include_foreign)
   local fields = {
-    { _format_version = { type = "string", required = true, eq = "1.1" } },
+    { _format_version = { type = "string", required = true, one_of = {"1.1", "2.1"} } },
+    { _transform = { type = "boolean", default = true } },
   }
   add_extra_attributes(fields, {
     _comment = true,
@@ -449,6 +450,8 @@ local function get_key_for_uuid_gen(entity, item, schema, parent_fk, child_key)
   if schema.cache_key then
     return pk_name, build_cache_key(entity, item, schema, parent_fk, child_key)
   end
+
+  return pk_name
 end
 
 
@@ -486,7 +489,7 @@ local function generate_ids(input, known_entities, parent_entity)
 end
 
 
-local function populate_ids(input, known_entities, parent_entity, by_id, by_key)
+local function populate_ids_for_validation(input, known_entities, parent_entity, by_id, by_key)
   local by_id  = by_id  or {}
   local by_key = by_key or {}
   for _, entity in ipairs(known_entities) do
@@ -509,11 +512,15 @@ local function populate_ids(input, known_entities, parent_entity, by_id, by_key)
     for _, item in ipairs(input[entity]) do
       local pk_name, key = get_key_for_uuid_gen(entity, item, schema,
                                                 parent_fk, child_key)
-      if key and not item[pk_name] then
-        item[pk_name] = generate_uuid(schema.name, key)
+      if pk_name and not item[pk_name] then
+        if key then
+          item[pk_name] = generate_uuid(schema.name, key)
+        else
+          item[pk_name] = utils.uuid()
+        end
       end
 
-      populate_ids(item, known_entities, entity, by_id, by_key)
+      populate_ids_for_validation(item, known_entities, entity, by_id, by_key)
 
       local item_id = DeclarativeConfig.pk_string(schema, item)
       by_id[entity] = by_id[entity] or {}
@@ -554,8 +561,37 @@ local function populate_ids(input, known_entities, parent_entity, by_id, by_key)
 end
 
 
+local function extract_null_errors(err)
+  local ret = {}
+  for k, v in pairs(err) do
+    local t = type(v)
+    if t == "table" then
+      local res = extract_null_errors(v)
+      if not next(res) then
+        ret[k] = nil
+      else
+        ret[k] = res
+      end
+
+    elseif t == "string" and v ~= "value must be null" then
+      ret[k] = nil
+    else
+      ret[k] = v
+    end
+  end
+
+  return ret
+end
+
+
 local function flatten(self, input)
-  local output = {}
+  -- manually set transform here
+  -- we can't do this in the schema with a `default` because validate
+  -- needs to happen before process_auto_fields, which
+  -- is the one in charge of filling out default values
+  if input._transform == nil then
+    input._transform = true
+  end
 
   local ok, err = self:validate(input)
   if not ok then
@@ -563,10 +599,13 @@ local function flatten(self, input)
     -- and that is the reason why we try to validate the input again with the
     -- filled foreign keys
     local input_copy = utils.deep_copy(input, false)
-    populate_ids(input_copy, self.known_entities)
+    populate_ids_for_validation(input_copy, self.known_entities)
     local schema = DeclarativeConfig.load(self.plugin_set, true)
-    if not schema:validate(input_copy) then
-      return nil, err
+
+    local ok2, err2 = schema:validate(input_copy)
+    if not ok2 then
+      local err3 = utils.deep_merge(err2, extract_null_errors(err))
+      return nil, err3
     end
   end
 
@@ -579,9 +618,17 @@ local function flatten(self, input)
     return nil, by_key
   end
 
+  local meta = {}
+  for key, value in pairs(processed) do
+    if key:sub(1,1) == "_" then
+      meta[key] = value
+    end
+  end
+
+  local entities = {}
   for entity, entries in pairs(by_id) do
     local schema = all_schemas[entity]
-    output[entity] = {}
+    entities[entity] = {}
     for id, entry in pairs(entries) do
       local flat_entry = {}
       for name, field in schema:each_field(entry) do
@@ -596,11 +643,11 @@ local function flatten(self, input)
         end
       end
 
-      output[entity][id] = flat_entry
+      entities[entity][id] = flat_entry
     end
   end
 
-  return output
+  return entities, nil, meta
 end
 
 
