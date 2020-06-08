@@ -337,7 +337,7 @@ function _M:purge(shadow_page)
     page = (self.curr_mlcache == 1) and 2 or 1
   end
 
-  local ok, err = self.mlcaches[page]:purge()
+  local ok, err = self.mlcaches[page]:purge(true)
   if not ok then
     log(ERR, "failed to purge cache: ", err)
   end

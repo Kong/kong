@@ -10,7 +10,16 @@ return [[
 # _format_version is mandatory,
 # it specifies the minimum version of Kong that supports the format
 
-_format_version: "1.1"
+_format_version: "2.1"
+
+# _transform is optional, defaulting to true.
+# It specifies whether schema transformations should be applied when importing this file
+# as a rule of thumb, leave this setting to true if you are importing credentials
+# with plain passwords, which need to be encrypted/hashed before storing on the database.
+# On the other hand, if you are reimporting a database with passwords already encrypted/hashed,
+# set it to false.
+
+_transform: true
 
 # Each Kong entity (core entity or custom entity introduced by a plugin)
 # can be listed in the top-level as an array of objects:

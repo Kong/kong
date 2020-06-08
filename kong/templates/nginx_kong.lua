@@ -2,9 +2,6 @@ return [[
 charset UTF-8;
 server_tokens off;
 
-> if anonymous_reports then
-${{SYSLOG_REPORTS}}
-> end
 error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
 lua_package_path       '${{LUA_PACKAGE_PATH}};;';

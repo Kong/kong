@@ -777,6 +777,11 @@ local function http2_client(host, port, tls)
   local port = assert(port)
   tls = tls or false
 
+  -- if Kong/lua-pack is loaded, unload it first
+  -- so lua-http can use implementation from compat53.string
+  package.loaded.string.unpack = nil
+  package.loaded.string.pack = nil
+
   local request = require "http.request"
   local req = request.new_from_uri({
     scheme = tls and "https" or "http",
@@ -2194,6 +2199,20 @@ local function get_pid_from_file(pid_path)
 end
 
 
+local function pid_dead(pid, timeout)
+  local max_time = ngx.now() + (timeout or 10)
+
+  repeat
+    if not pl_utils.execute("ps -p " .. pid .. " >/dev/null 2>&1") then
+      return true
+    end
+    -- still running, wait some more
+    ngx.sleep(0.05)
+  until ngx.now() >= max_time
+  
+  return false
+end
+
 -- Waits for the termination of a pid.
 -- @param pid_path Filename of the pid file.
 -- @param timeout (optional) in seconds, defaults to 10.
@@ -2201,15 +2220,9 @@ local function wait_pid(pid_path, timeout, is_retry)
   local pid = get_pid_from_file(pid_path)
 
   if pid then
-    local max_time = ngx.now() + (timeout or 10)
-
-    repeat
-      if not pl_utils.execute("ps -p " .. pid .. " >/dev/null 2>&1") then
-        return
-      end
-      -- still running, wait some more
-      ngx.sleep(0.05)
-    until ngx.now() >= max_time
+    if pid_dead(pid, timeout) then
+      return
+    end
 
     if is_retry then
       return
@@ -2632,6 +2645,10 @@ end
 
     local cmd = string.format("pkill %s -P `cat %s`", signal, pid_path)
     local _, code = pl_utils.execute(cmd)
+
+    if not pid_dead(pid_path) then
+      return false
+    end
 
     return code
   end,

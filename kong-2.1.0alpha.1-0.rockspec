@@ -36,12 +36,12 @@ dependencies = {
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.1",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.6.0",
+  "lua-resty-openssl == 0.6.2",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6",
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 0.4",
-  "kong-plugin-zipkin ~> 1.0",
+  "kong-plugin-zipkin ~> 1.1",
   "kong-plugin-serverless-functions ~> 1.0",
   "kong-prometheus-plugin ~> 0.8",
   "kong-proxy-cache-plugin ~> 1.3",
@@ -50,6 +50,7 @@ dependencies = {
   "kong-plugin-aws-lambda ~> 3.4",
   "kong-plugin-acme ~> 0.2",
   "kong-plugin-grpc-web ~> 0.1",
+  "kong-plugin-grpc-gateway ~> 0.1",
 }
 build = {
   type = "builtin",
@@ -63,12 +64,14 @@ build = {
     ["kong.constants"] = "kong/constants.lua",
     ["kong.singletons"] = "kong/singletons.lua",
     ["kong.concurrency"] = "kong/concurrency.lua",
-    ["kong.conf_loader"] = "kong/conf_loader.lua",
     ["kong.cache_warmup"] = "kong/cache_warmup.lua",
     ["kong.globalpatches"] = "kong/globalpatches.lua",
     ["kong.error_handlers"] = "kong/error_handlers.lua",
     ["kong.clustering"] = "kong/clustering.lua",
     ["kong.hooks"] = "kong/hooks.lua",
+
+    ["kong.conf_loader"] = "kong/conf_loader/init.lua",
+    ["kong.conf_loader.listeners"] = "kong/conf_loader/listeners.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
