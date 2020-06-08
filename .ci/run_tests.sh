@@ -77,7 +77,8 @@ if [ "$TEST_SUITE" == "plugins" ]; then
         cyan "--------------------------------------"
         echo
 
-        git clone https://github.com/Kong/$REPOSITORY.git --branch $VERSION --single-branch /tmp/test-$REPOSITORY
+        git clone https://github.com/Kong/$REPOSITORY.git --branch $VERSION --single-branch /tmp/test-$REPOSITORY || \
+        git clone https://github.com/Kong/$REPOSITORY.git --branch v$VERSION --single-branch /tmp/test-$REPOSITORY
         cp -R /tmp/test-$REPOSITORY/spec/fixtures/* spec/fixtures/ || true
         pushd /tmp/test-$REPOSITORY
         luarocks make

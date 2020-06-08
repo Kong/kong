@@ -131,13 +131,6 @@ branch="release/$xyzversion"
 xyxversion="$major.$minor.0-(alpha|beta).n"
 prev_version="$xyzversion"
 
-echo ${major}
-echo ${minor}
-echo ${patch}
-echo ${branch}
-echo ${xyzversion}
-echo ${version}
-
 if ! [[ "$version" =~ ^[0-9]+.[0-9]+.0-(alpha|beta)\.[0-9]$ ]]
 then
    die "first argument must be a version in x.y.z-(alpha|beta).n format"
@@ -262,14 +255,7 @@ function try_to_commit() {
 case "$step" in
    #---------------------------------------------------------------------------
    switch)
-      if [ $(git status --untracked-files=no --porcelain | wc -l) != "0" ]
-      then
-         die "Local tree is not clean, please commit or stash before running this."
-      fi
-
       set -e
-      git checkout chore/prerelease
-      # FIX ME
       git pull
       git checkout "$branch" || true
       git checkout -B "$branch" || true
@@ -304,7 +290,7 @@ case "$step" in
          die "No changes in CHANGELOG.md to commit. Did you write the changelog?"
       fi
 
-      git diff
+      git diff CHANGELOG.md
 
       CONFIRM "If everything looks all right, press Enter to commit" \
               "or Ctrl-C to cancel."
@@ -334,7 +320,7 @@ case "$step" in
          sed -i 's/^  tag = ".*"/  tag = "'$version'"/' "$old_rockspec"
       fi
 
-      git diff HEAD
+      git diff kong/meta.lua $old_rockspec
 
       CONFIRM "If everything looks all right, press Enter to make the release commit" \
               "or Ctrl-C to cancel."

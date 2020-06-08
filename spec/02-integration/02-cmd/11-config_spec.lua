@@ -401,6 +401,7 @@ describe("kong config", function()
     table.sort(toplevel_keys)
     assert.same({
       "_format_version",
+      "_transform",
       "acls",
       "consumers",
       "keyauth_credentials",
@@ -409,7 +410,8 @@ describe("kong config", function()
       "services",
     }, toplevel_keys)
 
-    assert.equals("1.1", yaml._format_version)
+    assert.equals("2.1", yaml._format_version)
+    assert.equals(false, yaml._transform)
 
     assert.equals(2, #yaml.services)
     table.sort(yaml.services, sort_by_name)

@@ -66,7 +66,7 @@ local function new()
 
 
   ---
-  -- Sets the host and port on which to connect to for proxying the request. ]]
+  -- Sets the host and port on which to connect to for proxying the request.
   -- Using this method is equivalent to ask Kong to not run the load-balancing
   -- phase for this request, and consider it manually overridden.
   -- Load-balancing components such as retries and health-checks will also be

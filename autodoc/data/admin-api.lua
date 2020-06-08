@@ -531,8 +531,8 @@ return {
                     },
                     ...
                   ],
-                  "offset" = "c47139f3-d780-483d-8a97-17e9adc5a7ab",
-                  "next" = "/tags?offset=c47139f3-d780-483d-8a97-17e9adc5a7ab",
+                  "offset": "c47139f3-d780-483d-8a97-17e9adc5a7ab",
+                  "next": "/tags?offset=c47139f3-d780-483d-8a97-17e9adc5a7ab",
                 }
             }
             ```
@@ -569,8 +569,8 @@ return {
                     },
                     ...
                   ],
-                  "offset" = "1fb491c4-f4a7-4bca-aeba-7f3bcee4d2f9",
-                  "next" = "/tags/example?offset=1fb491c4-f4a7-4bca-aeba-7f3bcee4d2f9",
+                  "offset": "1fb491c4-f4a7-4bca-aeba-7f3bcee4d2f9",
+                  "next": "/tags/example?offset=1fb491c4-f4a7-4bca-aeba-7f3bcee4d2f9",
                 }
             }
             ```
@@ -719,7 +719,7 @@ return {
         Both versions of the algorithm detect "double slashes" when combining paths, replacing them by single
         slashes.
 
-        On the following table, `s` is the Service and `r` is the Route.
+        In the following table, `s` is the Service and `r` is the Route.
 
         | `s.path` | `r.path` | `r.strip_path` | `r.path_handling` | request path | proxied path  |
         |----------|----------|----------------|-------------------|--------------|---------------|
@@ -1261,9 +1261,9 @@ return {
               any traffic to this Target via this Upstream.
 
             When the request query parameter `balancer_health` is set to `1`, the
-            `data` field of the response refers to the whole Upstream, and its `health`
+            `data` field of the response refers to the Upstream itself, and its `health`
             attribute is defined by the state of all of Upstream's Targets, according
-            to the field [health checker's threshold][healthchecks.threshold].
+            to the field `healthchecks.threshold`.
           ]],
           endpoint = [[
             <div class="endpoint get indent">/upstreams/{name or id}/health/</div>
@@ -1276,7 +1276,7 @@ return {
           request_query = [[
             Attributes | Description
             ---:| ---
-            `balancer_health`<br>*optional* | If set to 1, Kong will return the health status of the whole Upstream.
+            `balancer_health`<br>*optional* | If set to 1, Kong will return the health status of the Upstream itself. See the `healthchecks.threshold` property.
           ]],
           response = [[
             ```
@@ -1934,10 +1934,44 @@ return {
       {
         title = [[Supported Content Types]],
         text = [[
-          The Admin API accepts 2 content types on every endpoint:
+          The Admin API accepts 3 content types on every endpoint:
+
+          - **application/json**
+
+          Handy for complex bodies (ex: complex plugin configuration), in that case simply send
+          a JSON representation of the data you want to send. Example:
+
+          ```json
+          {
+              "config": {
+                  "limit": 10,
+                  "period": "seconds"
+              }
+          }
+          ```
+
 
           - **application/x-www-form-urlencoded**
-          - **application/json**
+
+          Simple enough for basic request bodies, you will probably use it most of the time.
+          Note that when sending nested values, Kong expects nested objects to be referenced
+          with dotted keys. Example:
+
+          ```
+          config.limit=10&config.period=seconds
+          ```
+
+
+          - **multipart/form-data**
+
+          Similar to url-encoded, this content type uses dotted keys to reference nested objects.
+          Here is an example of sending a Lua file to the pre-function Kong plugin:
+
+          ```
+          curl -i -X POST http://localhost:8001/services/plugin-testing/plugins \
+               -F "name=pre-function" \
+               -F "config.functions=@custom-auth.lua"
+          ```
         ]],
       },
     },

@@ -125,6 +125,29 @@
                                  # This value can be set to `off`, thus disabling
                                  # the plugin server and Go plugin loading.
 
+#port_maps =                     # With this configuration parameter you can
+                                 # let the Kong to know about the port from
+                                 # which the packets are forwarded to it. This
+                                 # is fairly common when running Kong in a
+                                 # containerized or virtualized environment.
+                                 # For example `port_maps=80:8000, 443:8443`
+                                 # instructs Kong that the port 80 is mapped
+                                 # to 8000 (and the port 443 to 8443), where
+                                 # 8000 and 8443 are the ports the Kong is
+                                 # listening to.
+                                 #
+                                 # This parameter helps Kong to set proper
+                                 # forwarded upstream HTTP request header or to
+                                 # get proper forwarded port with a Kong PDK
+                                 # (in case other means determining it have
+                                 # failed). It changes routing by a destination
+                                 # port to route by a port from which packets
+                                 # are forwarded to Kong, and similarly it
+                                 # changes the default plugin log serializer to
+                                 # use the port according to this mapping
+                                 # instead of reporting the port Kong is
+                                 # listening to.
+
 #anonymous_reports = on          # Send anonymous usage data such as error
                                  # stack traces to help improve Kong.
 

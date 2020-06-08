@@ -293,34 +293,37 @@ function _TARGETS:page_for_upstream_with_health(upstream_pk, ...)
     ngx.log(ngx.ERR, "failed getting upstream health: ", err)
   end
 
-  for _, target in ipairs(targets) do
-    -- In case of DNS errors when registering a target,
-    -- that error happens inside lua-resty-dns-client
-    -- and the end-result is that it just doesn't launch the callback,
-    -- which means kong.runloop.balancer and healthchecks don't get
-    -- notified about the target at all. We extrapolate the DNS error
-    -- out of the fact that the target is missing from the balancer.
-    -- Note that lua-resty-dns-client does retry by itself,
-    -- meaning that if DNS is down and it eventually resumes working, the
-    -- library will issue the callback and the target will change state.
-    if health_info[target.target] ~= nil and
-      #health_info[target.target].addresses > 0 then
-      target.health = "HEALTHCHECKS_OFF"
-      -- If any of the target addresses are healthy, then the target is
-      -- considered healthy.
-      for _, address in ipairs(health_info[target.target].addresses) do
-        if address.health == "HEALTHY" then
-          target.health = "HEALTHY"
-          break
-        elseif address.health == "UNHEALTHY" then
-          target.health = "UNHEALTHY"
-        end
+  if health_info then
+    for _, target in ipairs(targets) do
+      -- In case of DNS errors when registering a target,
+      -- that error happens inside lua-resty-dns-client
+      -- and the end-result is that it just doesn't launch the callback,
+      -- which means kong.runloop.balancer and healthchecks don't get
+      -- notified about the target at all. We extrapolate the DNS error
+      -- out of the fact that the target is missing from the balancer.
+      -- Note that lua-resty-dns-client does retry by itself,
+      -- meaning that if DNS is down and it eventually resumes working, the
+      -- library will issue the callback and the target will change state.
+      if health_info[target.target] ~= nil and
+        #health_info[target.target].addresses > 0 then
+        target.health = "HEALTHCHECKS_OFF"
+        -- If any of the target addresses are healthy, then the target is
+        -- considered healthy.
+        for _, address in ipairs(health_info[target.target].addresses) do
+          if address.health == "HEALTHY" then
+            target.health = "HEALTHY"
+            break
+          elseif address.health == "UNHEALTHY" then
+            target.health = "UNHEALTHY"
+          end
 
+        end
+      else
+        target.health = "DNS_ERROR"
       end
-    else
-      target.health = "DNS_ERROR"
+      target.data = health_info[target.target]
     end
-    target.data = health_info[target.target]
+
   end
 
   return targets, nil, nil, next_offset
