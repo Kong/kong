@@ -1757,7 +1757,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(kong_nginx_http_current_connections{state=~\"activ|reading|writing|waiting\", instance=~\"$instance\"}[1m])) by (state)",
+              "expr": "sum(rate(kong_nginx_http_current_connections{state=~\"active|reading|writing|waiting\", instance=~\"$instance\"}[1m])) by (state)",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{state}}",
