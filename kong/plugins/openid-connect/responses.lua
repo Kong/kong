@@ -100,7 +100,7 @@ local function new(args, ctx, issuer, client, anonymous, session)
         err = concat({ ... }, " ")
       end
 
-      return forbidden(err, msg, ctx, issuer, client, anonymous, session)
+      return unauthorized(err, msg, ctx, issuer, client, anonymous, session)
     end,
     success = success,
     redirect = redirect,

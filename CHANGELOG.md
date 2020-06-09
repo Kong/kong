@@ -1,6 +1,7 @@
 ## v1.5.2 (Upcoming)
 
-- Fix `consumers` to call right funtion when setting anonymous consumer.
+- Fix `consumers` to call right function when setting anonymous consumer.
+- Fix `unauthorized` responses giving `403` instead of `401` as status code.
 
 
 ## v1.5.1
