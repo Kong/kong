@@ -28,6 +28,7 @@ local function nil_cb()
   return nil
 end
 
+
 -- Returns a dict of entity_ids tagged according to the given criteria.
 -- Currently only the following kinds of keys are supported:
 -- * A key like `services|list` will only return service ids
@@ -153,6 +154,10 @@ local function page_for_key(self, key, size, offset, options)
       item = cache:get(schema_name .. ":" .. item .. "::::", nil, nil_cb)
     end
 
+    item = self.schema:process_auto_fields(item, "select", true, {
+      no_defaults = true
+    })
+
     ret[i - offset + 1] = item
   end
 
@@ -169,7 +174,16 @@ local function select_by_key(self, key)
     return nil
   end
 
-  return kong.core_cache:get(key, nil, nil_cb)
+  local entity, err = kong.core_cache:get(key, nil, nil_cb)
+  if not entity then
+    return nil, err
+  end
+
+  entity =  self.schema:process_auto_fields(entity, "select", true, {
+    no_defaults = true
+  })
+
+  return entity
 end
 
 
