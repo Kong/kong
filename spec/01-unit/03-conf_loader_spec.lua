@@ -909,6 +909,89 @@ describe("Configuration loader", function()
           assert.True(helpers.path.isabs(conf.admin_ssl_cert_key))
         end)
       end)
+      describe("hybrid", function()
+        it("requires database = 'off'", function()
+          local conf, err = conf_loader(nil, {
+            role = "data_plane",
+          })
+          assert.equal("only in-memory storage can be used when role = \"data_plane\"\n" ..
+                       "Hint: set database = off in your kong.conf", err)
+          assert.is_nil(conf)
+        end)
+        it("requires both cluster cert and key to exist", function()
+          local conf, err = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+          })
+          assert.equal("cluster certificate and key must be provided to use Hybrid mode", err)
+          assert.is_nil(conf)
+        end)
+        it("requires both cluster cert and key to exist", function()
+          local conf, err = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+            cluster_cert = "spec/fixtures/kong_clustering_client.crt"
+          })
+          assert.equal("cluster certificate and key must be provided to use Hybrid mode", err)
+          assert.is_nil(conf)
+        end)
+        it("requires cluster cert and key to exist", function()
+          local conf, err = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+            cluster_cert = "/path/cert.pem",
+            cluster_cert_key = "/path/cert_key.pem"
+          })
+
+          assert.equal("cluster_cert: no such file at /path/cert.pem", err)
+          assert.is_nil(conf)
+
+          conf, err = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+            cluster_cert = "spec/fixtures/kong_clustering_client.crt",
+            cluster_cert_key = "/path/cert_key.pem"
+          })
+
+          assert.equal("cluster_cert_key: no such file at /path/cert_key.pem", err)
+          assert.is_nil(conf)
+        end)
+        it("check hybrid mode DP certificate expiry", function()
+          local conf, err = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+            cluster_cert = "spec/fixtures/kong_clustering_client_expired.crt",
+            cluster_cert_key = "/path/cert_key.pem"
+          })
+
+          assert.equal("cluster_cert: certificate \"spec/fixtures/kong_clustering_client_expired.crt\" has expired", err)
+          assert.is_nil(conf)
+        end)
+        it("check hybrid mode CP CA certificate constraint", function()
+          local conf, err = conf_loader(nil, {
+            role = "control_plane",
+            cluster_mtls = "pki",
+            cluster_cert = "spec/fixtures/kong_clustering_client.crt",
+            cluster_cert_key = "spec/fixtures/kong_clustering_client.key",
+            cluster_ca_cert = "spec/fixtures/kong_clustering_client.crt",
+          })
+
+          assert.equal("cluster_ca_cert: certificate \"spec/fixtures/kong_clustering_client.crt\" does not " ..
+                       "appear to be a CA because it is missing the \"CA\" basic constraint", err)
+          assert.is_nil(conf)
+
+          conf, err = conf_loader(nil, {
+            role = "control_plane",
+            cluster_mtls = "pki",
+            cluster_cert = "spec/fixtures/kong_clustering_client.crt",
+            cluster_cert_key = "spec/fixtures/kong_clustering_client.key",
+            cluster_ca_cert = "spec/fixtures/kong_clustering_ca.crt",
+          })
+
+          assert.is_nil(err)
+          assert.is_table(conf)
+        end)
+      end)
     end)
     it("honors path if provided even if a default file exists", function()
       conf_loader.add_default_path("spec/fixtures/to-strip.conf")

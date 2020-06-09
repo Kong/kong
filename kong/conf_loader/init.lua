@@ -12,6 +12,7 @@ local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local env = require "kong.cmd.utils.env"
 local ip = require "resty.mediador.ip"
+local x509 = require "resty.openssl.x509"
 
 
 local fmt = string.format
@@ -528,6 +529,45 @@ local _nop_tostring_mt = {
 }
 
 
+-- check for issues with cert, return true is cert is okay,
+-- nil, err if cert is not acceptable
+-- currently only certificate expiry is checked. more checks can
+-- be added later
+local function check_cert(path, ca)
+  local content, err = pl_file.read(path)
+  if not content then
+    return nil, "unable to open \"" .. path .. "\": " .. err
+  end
+
+  local cert
+  cert, err = x509.new(content)
+  if not cert then
+    return nil, "unable to load \"" .. path .. "\": " .. err
+  end
+
+  local not_after
+  not_after, err = cert:get_not_after()
+  if not not_after then
+    return nil, "unable to get \"Not After\" attribute from \"" .. path ..
+           "\": " .. err
+  end
+
+  if ngx.time() > not_after then
+    return nil, "certificate \"" .. path .. "\" has expired"
+  end
+
+  if ca then
+    local res = cert:get_basic_constraints("ca")
+    if not res then
+      return nil, "certificate \"" .. path .. "\" does not appear to be" ..
+                  " a CA because it is missing the \"CA\" basic constraint"
+    end
+  end
+
+  return true
+end
+
+
 -- Validate properties (type/enum/custom) and infer their type.
 -- @param[type=table] conf The configuration table to treat.
 local function check_and_infer(conf, opts)
@@ -833,8 +873,20 @@ local function check_and_infer(conf, opts)
       errors[#errors + 1] = "admin_listen must be specified when role = \"control_plane\""
     end
 
-    if conf.cluster_mtls == "pki" and not conf.cluster_ca_cert then
-      errors[#errors + 1] = "cluster_ca_cert must be specified when cluster_mtls = \"pki\""
+    if conf.cluster_mtls == "pki" then
+      if not conf.cluster_ca_cert then
+        errors[#errors + 1] = "cluster_ca_cert must be specified when cluster_mtls = \"pki\""
+
+      elseif not pl_path.exists(conf.cluster_ca_cert) then
+        errors[#errors + 1] = "cluster_ca_cert: no such file at " ..
+                              conf.cluster_ca_cert
+
+      else
+        local res, err = check_cert(conf.cluster_ca_cert, true)
+        if not res then
+          errors[#errors + 1] = "cluster_ca_cert: " .. err
+        end
+      end
     end
 
     if #conf.cluster_listen < 1 or pl_stringx.strip(conf.cluster_listen[1]) == "off" then
@@ -864,6 +916,12 @@ local function check_and_infer(conf, opts)
       if not pl_path.exists(conf.cluster_cert) then
         errors[#errors + 1] = "cluster_cert: no such file at " ..
                               conf.cluster_cert
+
+      else
+        local res, err = check_cert(conf.cluster_cert)
+        if not res then
+          errors[#errors + 1] = "cluster_cert: " .. err
+        end
       end
 
       if not pl_path.exists(conf.cluster_cert_key) then
