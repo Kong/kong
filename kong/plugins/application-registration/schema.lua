@@ -15,6 +15,7 @@ return {
           { display_name = { type = "string", unique = true, required = true }, },
           { description = { type = "string", unique = true }, },
           { auto_approve = { type = "boolean", required = true, default = false }, },
+          { show_issuer = { type = "boolean", required = true, default = false }, },
         },
       },
     },

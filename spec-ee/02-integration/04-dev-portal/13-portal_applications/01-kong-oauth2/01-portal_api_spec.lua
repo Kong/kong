@@ -1922,7 +1922,8 @@ for _, strategy in helpers.each_strategy() do
 
                 assert(db.plugins:insert({
                   config = {
-                    enable_authorization_code = true,
+                    enable_authorization_code = i % 4 == 0,
+                    enable_implicit_grant = i % 4 ~= 0,
                   },
                   name = "oauth2",
                   service = { id = service_id },
@@ -1930,7 +1931,7 @@ for _, strategy in helpers.each_strategy() do
 
                 assert(db.plugins:insert({
                   config = {
-                    display_name = "this service has application_registration",
+                    display_name = "" .. i,
                   },
                   name = "application-registration",
                   service = { id = service_id },
@@ -1959,6 +1960,12 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(200, res)
             local resp_body_json = cjson.decode(body)
             assert.equal(5, resp_body_json.total)
+
+            for i, v in ipairs(resp_body_json.data) do
+              assert.equal(v.app_registration_config.display_name, v.name)
+              assert.equal(v.auth_plugin_config.enable_authorization_code, tonumber(v.name) % 4 == 0)
+              assert.equal(v.auth_plugin_config.enable_implicit_grant, tonumber(v.name) % 4 ~= 0)
+            end
           end)
 
           it("paginates properly", function()

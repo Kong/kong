@@ -14,6 +14,8 @@ local dao_helpers        = require "kong.portal.dao_helpers"
 local file_helpers = require "kong.portal.file_helpers"
 local kong = kong
 
+local app_auth_strategies = require "kong.portal.app_auth_strategies"
+
 local PORTAL_DEVELOPER_META_FIELDS = constants.WORKSPACE_CONFIG.PORTAL_DEVELOPER_META_FIELDS
 local PORTAL_AUTH = constants.WORKSPACE_CONFIG.PORTAL_AUTH
 local PORTAL_AUTO_APPROVE = constants.WORKSPACE_CONFIG.PORTAL_AUTO_APPROVE
@@ -800,11 +802,16 @@ return {
         return endpoints.handle_error(err_t)
       end
 
+      local app_auth_type = kong.configuration.portal_app_auth
+      local app_auth_strategy = app_auth_strategies[app_auth_type]
+      local auth_config
       for i, v in ipairs(rows) do
         local service, _, err_t = db.services:select(v.service)
         if err_t then
           return endpoints.handle_error(err_t)
         end
+
+        auth_config = app_auth_strategy.build_service_auth_config(service, v)
 
         local document_object
         for row, err in db.document_objects:each_for_service({ id = v.service.id }) do
@@ -829,16 +836,9 @@ return {
         application_services[i] = {
           id = service.id,
           name = v.config.display_name,
-          description = v.config.description,
-          auth_header_name = v.config.auth_header_name,
-          provision_key = v.config.provision_key,
-          auto_approve = v.config.auto_approve,
-          scopes = v.config.scopes,
-          enable_implicit_grant = v.config.enable_implicit_grant,
-          enable_password_grant = v.config.enable_password_grant,
-          enable_client_credentials = v.config.enable_client_credentials,
-          enable_authorization_code = v.config.enable_authorization_code,
           document_route = route,
+          app_registration_config = v.config,
+          auth_plugin_config = auth_config,
         }
       end
 
