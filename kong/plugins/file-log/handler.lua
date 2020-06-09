@@ -5,7 +5,6 @@ local system_constants = require "lua_system_constants"
 
 
 local kong = kong
-local ngx = ngx
 
 
 local O_CREAT = system_constants.O_CREAT()

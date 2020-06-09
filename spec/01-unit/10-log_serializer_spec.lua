@@ -1,6 +1,5 @@
-local helpers = require("spec.helpers")
+require("spec.helpers")
 local basic = require("kong.plugins.log-serializers.basic")
-local pl_file = require("pl.file")
 local LOG_PHASE = require("kong.pdk.private.phases").phases.log
 
 describe("Log Serializer", function()
