@@ -1,6 +1,7 @@
 return {
   known = {
     general_files = {
+      -- "kong/api/routes/kong.lua",
       "kong/api/routes/admins.lua",
       "kong/api/routes/applications.lua",
       "kong/api/routes/audit.lua",
@@ -15,133 +16,33 @@ return {
       "kong/api/routes/rbac.lua",
       "kong/api/routes/vitals.lua",
       "kong/api/routes/workspaces.lua",
-    }
-  },
-  entities = {
-    services = {
-      ["/services/:services/document_objects"] = {
-        endpoint = false,
+    },
+    entities = {
+      services = {
+        ["/services/:services/document_objects"] = {
+          endpoint = false,
+        },
       },
     },
   },
+
   general = {
     kong = {
-
-      ["/userinfo"] = {
-        GET = {
-          title = [[userinfo info]],
-          endpoint = [[<div class="endpoint get">/userinfo</div>]],
-          description =[[
-            Retrieve user info.
-          ]],
-          response = [[]],
-        }
-      },
-
-      ["/auth"] = {},
-      ["/admins"] = {},
-      ["/admins/:admins"] = {},
-      ["/admins/:admin/roles"] = {},
-      ["/admins/password_resets"] = {},
-      ["/admins/:admin/workspaces"] = {},
-      ["/admins/register"] = {},
-      ["/admins/self/password"] = {},
-      ["/admins/self/token"] = {},
-
-
-
-["/applications"] = {},
-["/applications/:applications"] = {},
-["/applications/:applications/application_instances"] = {},
-["/applications/:applications/application_instances/:application_instances"] = {},
-["/applications/:applications/credentials/:plugin"] = {},
-["/applications/:applications/credentials/:plugin/:credential_id"] = {},
-
-
-["/developers"] = {},
-["/developers/roles"] = {},
-["/developers/roles/:rbac_roles"] = {},
-["/developers/:developers"] = {},
-["/developers/:developers/applications"] = {},
-["/developers/:developers/applications/:applications"] = {},
-["/developers/:developers/applications/:applications/credentials/:plugin"] = {},
-["/developers/:developers/applications/:applications/credentials/:plugin/:credential_id"] = {},
-["/developers/:developers/applications/:applications/application_instances"] = {},
-["/developers/:developers/applications/:applications/application_instances/:application_instances"] = {},
-["/developers/:email_or_id/plugins/"] = {},
-["/developers/:email_or_id/plugins/:id"] = {},
-["/developers/:developers/credentials/:plugin"] = {},
-["/developers/:developers/credentials/:plugin/:credential_id"] = {},
-["/developers/invite"] = {},
-
-  ["/entities/migrate"] = {},
-
-
-["/event-hooks"] = {},
-["/event-hooks/:event_hooks"] = {},
-["/event-hooks/:event_hooks/test"] = {},
-["/event-hooks/:event_hooks/ping"] = {},
-["/event-hooks/sources"] = {},
-["/event-hooks/sources/:source"] = {},
-["/event-hooks/sources/:source/:event"] = {},
-
-  ["/files"] = {},
-  ["/files/partials/*"] = {},
-  ["/files/:files"] = {},
-
-
-
-["/groups"] = {},
-["/groups/:groups"] = {},
-["/groups/:groups/roles"] = {},
-
-  ["/keyring"] = {},
-  ["/keyring/active"] = {},
-  ["/keyring/export"] = {},
-  ["/keyring/import"] = {},
-  ["/keyring/import/raw"] = {},
-  ["/keyring/generate"] = {},
-  ["/keyring/activate"] = {},
-  ["/keyring/remove"] = {},
-  ["/keyring/vault/sync"] = {},
-
-  ["/license/report"] = {},
-
-
-
-  ["/oas-config"] = {},
-
-["/workspaces"] = {},
-["/workspaces/:workspaces"] = {},
-["/workspaces/:workspaces/entities"] = {},
-["/workspaces/:workspaces/entities/:entity_id"] = {},
-["/workspaces/:workspaces/meta"] = {},
-
-["/rbac/users"] = {},
-["/rbac/users/:rbac_users"] = {},
-["/rbac/users/:rbac_users/permissions"] = {},
-["/rbac/users/:rbac_users/roles"] = {},
-["/rbac/roles"] = {},
-["/rbac/roles/:rbac_roles/permissions"] = {},
-["/rbac/roles/:rbac_roles"] = {},
-["/rbac/roles/:rbac_roles/entities"] = {},
-["/rbac/roles/:rbac_roles/entities/:entity_id"] = {},
-["/rbac/roles/:rbac_roles/entities/permissions"] = {},
-["/rbac/roles/:rbac_roles/endpoints"] = {},
-["/rbac/roles/:rbac_roles/endpoints/:workspace/*"] = {},
-["/rbac/roles/:rbac_roles/endpoints/permissions"] = {},
-
+      -- userinfo and auth have to be documented in the CE one
+      ["/userinfo"] = {},       --  ee?
+      ["/auth"] = {},           --  ee?
     },
     admins = { -- FIXME fix these endpoints, or make Admins generated
       title = [[Admins routes]],
       description = "",
-      GET = {
-        title = [[Retrieve all Admins]],
-        endpoint = [[<div class="endpoint get">/admins</div>]],
-        description =[[
+      ["/admins"] = {
+        GET = {
+          title = [[Retrieve all Admins]],
+          endpoint = [[<div class="endpoint get">/admins</div>]],
+          description =[[
           Retrieve all the Admins in Kong.
         ]],
-        response = [[
+          response = [[
           ```
           HTTP 200 OK
           ```
@@ -168,14 +69,14 @@ return {
           }
           ```
         ]]
-      },
-      POST = {
-        title = [[Create Admin]],
-        endpoint = [[<div class="endpoint post">/admins</div>]],
-        description = [[
+        },
+        POST = {
+          title = [[Create Admin]],
+          endpoint = [[<div class="endpoint post">/admins</div>]],
+          description = [[
           Create a new Admin.
         ]],
-        response = [[
+          response = [[
           ```
           HTTP 201 Created
           ```
@@ -194,48 +95,132 @@ return {
           }
           ```
         ]]
+        },
       },
+      ["/admins/:admins"] = {},
+      ["/admins/:admin/roles"] = {},
+      ["/admins/self/token"] = {},
+      ["/admins/:admin/workspaces"] = {},
+      ["/admins/password_resets"] = {},
+      ["/admins/self/password"] = {},
+      ["/admins/register"] = {},
+
     }, -- FIXME keep adding endpoints here
 
     applications = {
       description = [[ applications endpoints ]],
+        ["/applications"] = {},
+        ["/applications/:applications"] = {},
+        ["/applications/:applications/application_instances"] = {},
+        ["/applications/:applications/application_instances/:application_instances"] = {},
+        ["/applications/:applications/credentials/:plugin"] = {},
+        ["/applications/:applications/credentials/:plugin/:credential_id"] = {},
     },
+
     audit = {
       description = [[ audit endpoints ]],
+        ["/audit/requests"] = {},
+        ["/audit/objects"] = {},
     },
 
     developers = {
-      description = [[ developers endpoints]]
+      description = [[ developers endpoints]],
+      ["/developers"] = {},
+      ["/developers/roles"] = {},
+      ["/developers/roles/:rbac_roles"] = {},
+      ["/developers/:developers"] = {},
+      ["/developers/:developers/applications"] = {},
+      ["/developers/:developers/applications/:applications"] = {},
+      ["/developers/:developers/applications/:applications/credentials/:plugin"] = {},
+      ["/developers/:developers/applications/:applications/credentials/:plugin/:credential_id"] = {},
+      ["/developers/:developers/applications/:applications/application_instances"] = {},
+      ["/developers/:developers/applications/:applications/application_instances/:application_instances"] = {},
+      ["/developers/:email_or_id/plugins/"] = {},
+      ["/developers/:email_or_id/plugins/:id"] = {},
+      ["/developers/:developers/credentials/:plugin"] = {},
+      ["/developers/:developers/credentials/:plugin/:credential_id"] = {},
+      ["/developers/invite"] = {},
     },
     entities = {
-      description = [[ entities endpoints]]
+      description = [[ entities endpoints]],
+      ["/entities/migrate"] = {},
     },
     event_hooks = {
-      description = [[ event_hooks endpoints]]
+      description = [[ event_hooks endpoints]],
+      ["/event-hooks"] = {},
+      ["/event-hooks/:event_hooks"] = {},
+      ["/event-hooks/:event_hooks/test"] = {},
+      ["/event-hooks/:event_hooks/ping"] = {},
+      ["/event-hooks/sources"] = {},
+      ["/event-hooks/sources/:source"] = {},
+      ["/event-hooks/sources/:source/:event"] = {},
     },
+
     files = {
-      description = [[ files endpoints]]
+      description = [[ files endpoints]],
+      ["/files"] = {},
+      ["/files/partials/*"] = {},
+      ["/files/:files"] = {},
     },
+
     groups = {
-      description = [[ groups endpoints]]
+      description = [[ groups endpoints]],
+      ["/groups"] = {},
+      ["/groups/:groups"] = {},
+      ["/groups/:groups/roles"] = {},
     },
+
     keyring = {
-      description = [[ keyring endpoints ]]
+      description = [[ keyring endpoints ]],
+      ["/keyring"] = {},
+      ["/keyring/active"] = {},
+      ["/keyring/export"] = {},
+      ["/keyring/import"] = {},
+      ["/keyring/import/raw"] = {},
+      ["/keyring/generate"] = {},
+      ["/keyring/activate"] = {},
+      ["/keyring/remove"] = {},
+      ["/keyring/vault/sync"] = {},
     },
+
     license = {
-      description = [[ license endpoints ]]
+      description = [[ license endpoints ]],
+      ["/license/report"] = {},
     },
+
     oas_config = {
-      description = [[ oas_config endpoints ]]
+      description = [[ oas_config endpoints ]],
+      ["/oas-config"] = {},
     },
     rbac = {
-      description = [[ rbac endpoints ]]
-    },
+      description = [[ rbac endpoints ]],
+
+      ["/rbac/users"] = {},
+      ["/rbac/users/:rbac_users"] = {},
+      ["/rbac/users/:rbac_users/permissions"] = {},
+      ["/rbac/users/:rbac_users/roles"] = {},
+      ["/rbac/roles"] = {},
+      ["/rbac/roles/:rbac_roles/permissions"] = {},
+      ["/rbac/roles/:rbac_roles"] = {},
+      ["/rbac/roles/:rbac_roles/entities"] = {},
+      ["/rbac/roles/:rbac_roles/entities/:entity_id"] = {},
+      ["/rbac/roles/:rbac_roles/entities/permissions"] = {},
+      ["/rbac/roles/:rbac_roles/endpoints"] = {},
+      ["/rbac/roles/:rbac_roles/endpoints/:workspace/*"] = {},
+      ["/rbac/roles/:rbac_roles/endpoints/permissions"] = {},
+   },
     vitals = {
-      description = [[ vitals endpoints ]]
+      description = [[ vitals endpoints ]],
+
     },
+
     workspaces = {
-      description = [[ workspaces endpoints ]]
+      description = [[ workspaces endpoints ]],
+["/workspaces"] = {},
+["/workspaces/:workspaces"] = {},
+["/workspaces/:workspaces/entities"] = {},
+["/workspaces/:workspaces/entities/:entity_id"] = {},
+["/workspaces/:workspaces/meta"] = {},
     },
   }
 }

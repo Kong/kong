@@ -163,6 +163,8 @@ return {
     kong = {
       title = [[Information routes]],
       description = "",
+      ["/userinfo"] = {}, --  Although this is in ee, it has to be documented here Probably a bug in deep_merge
+      ["/auth"] = {}, --  Although this is in ee, it has to be documented here Probably a bug in deep_merge
       ["/"] = {
         GET = {
           title = [[Retrieve node information]],
