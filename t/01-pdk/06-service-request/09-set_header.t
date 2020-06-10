@@ -438,3 +438,142 @@ X-Foo: {}
 X-Bar: {nil}
 --- no_error_log
 [error]
+
+
+
+=== TEST 14: service.set_target() sets Host header sent to the service with port
+# regression test for #5945
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
+    server {
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
+
+        location /t {
+            content_by_lua_block {
+                ngx.say("host: ", ngx.req.get_headers()["Host"])
+            }
+        }
+    }
+}
+--- config
+    location = /t {
+
+        set $upstream_host '';
+
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            ngx.ctx.balancer_data = {
+                host = "foo.xyz"
+            }
+
+            pdk.service.set_target("example.test", 1234)
+
+        }
+
+        proxy_set_header Host $upstream_host;
+        proxy_pass http://unix:/$TEST_NGINX_NXSOCK/nginx.sock;
+    }
+--- request
+GET /t
+--- response_body
+host: example.test:1234
+--- no_error_log
+[error]
+
+
+
+=== TEST 15: service.set_target() sets Host header sent to the service without port when default port is used
+# regression test for #5945
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
+    server {
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
+
+        location /t {
+            content_by_lua_block {
+                ngx.say("host: ", ngx.req.get_headers()["Host"])
+            }
+        }
+    }
+}
+--- config
+    location = /t {
+
+        set $upstream_host '';
+
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            ngx.ctx.balancer_data = {
+                host = "foo.xyz"
+            }
+
+            pdk.service.set_target("example.test", 80)
+
+        }
+
+        proxy_set_header Host $upstream_host;
+        proxy_pass http://unix:/$TEST_NGINX_NXSOCK/nginx.sock;
+    }
+--- request
+GET /t
+--- response_body
+host: example.test
+--- no_error_log
+[error]
+
+
+
+=== TEST 16: service.set_target() sets Host header sent to the service with port
+# regression test for #5945
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
+    server {
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
+
+        location /t {
+            content_by_lua_block {
+                ngx.say("host: ", ngx.req.get_headers()["Host"])
+            }
+        }
+    }
+}
+--- config
+    location = /t {
+
+        set $upstream_host '';
+        set $upstream_scheme '';
+
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            ngx.ctx.balancer_data = {
+                host = "foo.xyz"
+            }
+
+            pdk.service.request.set_scheme("https")
+            pdk.service.set_target("example.test", 80)
+
+        }
+
+        proxy_set_header Host $upstream_host;
+        proxy_pass http://unix:/$TEST_NGINX_NXSOCK/nginx.sock;
+    }
+--- request
+GET /t
+--- response_body
+host: example.test:80
+--- no_error_log
+[error]
+
+
