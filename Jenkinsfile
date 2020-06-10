@@ -215,6 +215,7 @@ pipeline {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         sh 'RESTY_IMAGE_TAG=bionic make release'
+                        sh 'RESTY_IMAGE_TAG=focal make release'
                     }
                 }
                 stage('Centos Releases') {
