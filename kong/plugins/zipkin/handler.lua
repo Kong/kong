@@ -131,6 +131,14 @@ if subsystem == "http" then
     request_span:set_tag("http.method", method)
     request_span:set_tag("http.path", req.get_path())
 
+    local static_tags = conf.static_tags
+    if type(static_tags) == "table" then
+      for i = 1, #static_tags do
+        local tag = static_tags[i]
+        request_span:set_tag(tag.name, tag.value)
+      end
+    end
+
     ctx.zipkin = {
       request_span = request_span,
       header_type = header_type,
@@ -204,6 +212,14 @@ elseif subsystem == "stream" then
     request_span.port = kong.client.get_forwarded_port()
 
     request_span:set_tag("lc", "kong")
+
+    local static_tags = conf.static_tags
+    if type(static_tags) == "table" then
+      for i = 1, #static_tags do
+        local tag = static_tags[i]
+        request_span:set_tag(tag.name, tag.value)
+      end
+    end
 
     ctx.zipkin = {
       request_span = request_span,

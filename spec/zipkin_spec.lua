@@ -160,6 +160,9 @@ describe("http integration tests with zipkin server [#"
         sample_ratio = 1,
         http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
         traceid_byte_count = traceid_byte_count,
+        static_tags = {
+          { name = "static", value = "ok" },
+        }
       }
     })
 
@@ -239,7 +242,8 @@ describe("http integration tests with zipkin server [#"
       ["http.method"] = "GET",
       ["http.path"] = "/",
       ["http.status_code"] = "200", -- found (matches server status)
-      lc = "kong"
+      lc = "kong",
+      static = "ok",
     }, request_tags)
     local consumer_port = request_span.remoteEndpoint.port
     assert_is_integer(consumer_port)
@@ -312,7 +316,8 @@ describe("http integration tests with zipkin server [#"
       ["http.method"] = "POST",
       ["http.path"] = "/hello.HelloService/SayHello",
       ["http.status_code"] = "200", -- found (matches server status)
-      lc = "kong"
+      lc = "kong",
+      static = "ok",
     }, request_tags)
     local consumer_port = request_span.remoteEndpoint.port
     assert_is_integer(consumer_port)
@@ -393,7 +398,10 @@ describe("http integration tests with zipkin server [#"
     local request_tags = request_span.tags
     assert.truthy(request_tags["kong.node.id"]:match("^[%x-]+$"))
     request_tags["kong.node.id"] = nil
-    assert.same({ lc = "kong" }, request_tags)
+    assert.same({
+      lc = "kong",
+      static = "ok",
+    }, request_tags)
     local consumer_port = request_span.remoteEndpoint.port
     assert_is_integer(consumer_port)
     assert.same({
@@ -484,7 +492,8 @@ describe("http integration tests with zipkin server [#"
       ["http.method"] = "GET",
       ["http.path"] = "/foobar",
       ["http.status_code"] = "404", -- note that this was "not found"
-      lc = "kong"
+      lc = "kong",
+      static = "ok",
     }, request_tags)
     local consumer_port = request_span.remoteEndpoint.port
     assert_is_integer(consumer_port)
