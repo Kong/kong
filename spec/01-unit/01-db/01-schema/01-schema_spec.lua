@@ -1687,6 +1687,23 @@ describe("schema", function()
       }))
     end)
 
+    it("fails on invalid input", function()
+      local Test = Schema.new({
+        fields = {
+          { a = { type = "string"  }, },
+          { b = { type = "number" }, },
+          { c = { type = "number", default = 110 }, },
+        }
+      })
+      Test.primary_key = { "a", "c" }
+      local ok, err = Test:validate_primary_key(1234)
+      assert.falsy(ok)
+      assert.same({
+        a = 'missing primary key',
+        c = 'missing primary key' ,
+      }, err)
+    end)
+
   end)
 
   describe("validate_insert", function()

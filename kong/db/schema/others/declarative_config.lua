@@ -560,19 +560,21 @@ local function populate_ids_for_validation(input, known_entities, parent_entity,
 end
 
 
-local function extract_null_errors(err)
+local function extract_pk_errors(err)
   local ret = {}
   for k, v in pairs(err) do
     local t = type(v)
     if t == "table" then
-      local res = extract_null_errors(v)
+      local res = extract_pk_errors(v)
       if not next(res) then
         ret[k] = nil
       else
         ret[k] = res
       end
 
-    elseif t == "string" and v ~= "value must be null" then
+    elseif t == "string" and v ~= "value must be null"
+                         and v ~= "expected a string"
+    then
       ret[k] = nil
     else
       ret[k] = v
@@ -597,7 +599,7 @@ local function flatten(self, input)
 
     local ok2, err2 = schema:validate(input_copy)
     if not ok2 then
-      local err3 = utils.deep_merge(err2, extract_null_errors(err))
+      local err3 = utils.deep_merge(err2, extract_pk_errors(err))
       return nil, err3
     end
   end

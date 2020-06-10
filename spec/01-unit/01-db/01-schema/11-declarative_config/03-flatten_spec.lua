@@ -2032,5 +2032,52 @@ describe("declarative config: flatten", function()
       local _, err = DeclarativeConfig:flatten(config)
       assert.equal(nil, err)
     end)
+
+    it("fixes #5974 - validation error on invalid input", function()
+      local config = assert(lyaml.load([[
+        _format_version: "1.1"
+
+        routes:
+        - hosts: [example.com]
+          methods: [GET]
+          paths: [/test]
+          name: 1585809442270
+          service: 1585809442270
+
+        services:
+        - {connect_timeout: 20000, name: '1585809442270', url: 'http://example.com'}
+      ]]))
+
+      local _, err = DeclarativeConfig:flatten(config)
+      assert.same({
+        routes = {
+          {
+            name = 'expected a string',
+            service = 'expected a string',
+          }
+        }
+      }, err)
+    end)
+
+    it("fixes #5974 - validation error on invalid input (with valid input)", function()
+      local config = assert(lyaml.load([[
+        _format_version: "1.1"
+
+        routes:
+        - hosts: [example.com]
+          methods: [GET]
+          paths: [/test]
+          name: "1585809442270"
+          service: "1585809442270"
+
+        services:
+        - {connect_timeout: 20000, name: '1585809442270', url: 'http://example.com'}
+      ]]))
+
+      local ok, err = DeclarativeConfig:flatten(config)
+      assert.truthy(ok)
+      assert.is_nil(err)
+    end)
+
   end)
 end)

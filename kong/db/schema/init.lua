@@ -1361,13 +1361,15 @@ end
 -- entries.
 -- @return True on success; nil, error message and error table otherwise.
 function Schema:validate_primary_key(pk, ignore_others)
+  local pk_is_table = type(pk) == "table"
+
   local pk_set = {}
   local errors = {}
 
   for _, k in ipairs(self.primary_key) do
     pk_set[k] = true
     local field = self.fields[k]
-    local v = pk[k]
+    local v = pk_is_table and pk[k]
 
     if not v then
       errors[k] = validation_errors.MISSING_PK
@@ -1381,7 +1383,7 @@ function Schema:validate_primary_key(pk, ignore_others)
     end
   end
 
-  if not ignore_others then
+  if not ignore_others and pk_is_table then
     for k, _ in pairs(pk) do
       if not pk_set[k] then
         errors[k] = validation_errors.NOT_PK
