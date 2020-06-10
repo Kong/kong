@@ -48,7 +48,7 @@ describe("Log Serializer", function()
 
   describe("Basic", function()
     it("serializes without API, Consumer or Authenticated entity", function()
-      local res = kong.log.serialize(ngx, kong)
+      local res = kong.log.serialize({ngx = ngx, kong = kong, })
       assert.is_table(res)
 
       -- Simple properties
@@ -86,7 +86,7 @@ describe("Log Serializer", function()
 
     it("uses port map (ngx.ctx.host_port) for request url ", function()
       ngx.ctx.host_port = 5000
-      local res = kong.log.serialize(ngx, kong)
+      local res = kong.log.serialize({ngx = ngx, kong = kong, })
       assert.is_table(res)
       assert.is_table(res.request)
       assert.equal("http://test.com:5000/request_uri", res.request.url)
@@ -96,7 +96,7 @@ describe("Log Serializer", function()
       ngx.ctx.route = { id = "my_route" }
       ngx.ctx.service = { id = "my_service" }
 
-      local res = kong.log.serialize(ngx, kong)
+      local res = kong.log.serialize({ngx = ngx, kong = kong, })
       assert.is_table(res)
 
       assert.equal("my_route", res.route.id)
@@ -108,7 +108,7 @@ describe("Log Serializer", function()
     it("serializes the Consumer object", function()
       ngx.ctx.authenticated_consumer = {id = "someconsumer"}
 
-      local res = kong.log.serialize(ngx, kong)
+      local res = kong.log.serialize({ngx = ngx, kong = kong, })
       assert.is_table(res)
 
       assert.equal("someconsumer", res.consumer.id)
@@ -120,7 +120,7 @@ describe("Log Serializer", function()
       ngx.ctx.authenticated_credential = {id = "somecred",
                                           consumer_id = "user1"}
 
-      local res = kong.log.serialize(ngx, kong)
+      local res = kong.log.serialize({ngx = ngx, kong = kong, })
       assert.is_table(res)
 
       assert.same({id = "somecred", consumer_id = "user1"},
@@ -136,7 +136,7 @@ describe("Log Serializer", function()
         { ip = "127.0.0.1", port = 1234 },
       }
 
-      local res = kong.log.serialize(ngx, kong)
+      local res = kong.log.serialize({ngx = ngx, kong = kong, })
       assert.is_table(res)
 
       assert.same({
@@ -159,7 +159,7 @@ describe("Log Serializer", function()
     it("does not fail when the 'balancer_data' structure is missing", function()
       ngx.ctx.balancer_data = nil
 
-      local res = kong.log.serialize(ngx, kong)
+      local res = kong.log.serialize({ngx = ngx, kong = kong, })
       assert.is_table(res)
 
       assert.is_nil(res.tries)
@@ -177,13 +177,13 @@ describe("Log Serializer", function()
         return orig_warn(msg)
       end
 
-      local res = basic.serialize(ngx, kong)
+      local res = basic.serialize({ngx = ngx, kong = kong, })
       assert.is_table(res)
 
       assert.equals("1.1.1.1", res.client_ip)
 
       -- 2nd time
-      res = basic.serialize(ngx, kong)
+      res = basic.serialize({ngx = ngx, kong = kong, })
       assert.is_table(res)
 
       kong.log.warn = orig_warn

@@ -13,7 +13,6 @@
 local errlog = require "ngx.errlog"
 local ngx_re = require "ngx.re"
 local inspect = require "inspect"
-local tablex = require "pl.tablex"
 local ngx_ssl = require "ngx.ssl"
 local phase_checker = require "kong.pdk.private.phases"
 
@@ -468,7 +467,6 @@ local _log_mt = {
 local serialize
 
 do
-  local EMPTY = tablex.readonly({})
   local REDACTED_REQUEST_HEADERS = { "authorization", "proxy-authorization" }
   local REDACTED_RESPONSE_HEADERS = {}
 
@@ -479,16 +477,11 @@ do
   -- @phases log
   -- @usage
   -- kong.log.serialize()
-  function serialize(ongx, okong)
+  function serialize(options)
     check_phase(PHASES_LOG)
 
-    if not ongx then
-      ongx = ngx
-    end
-
-    if not okong then
-      okong = kong
-    end
+    local ongx = (options or {}).ngx or ngx
+    local okong = (options or {}).kong or kong
 
     local ctx = ongx.ctx
     local var = ongx.var
@@ -546,7 +539,7 @@ do
         headers = resp_headers,
         size = var.bytes_sent
       },
-      tries = (ctx.balancer_data or EMPTY).tries,
+      tries = (ctx.balancer_data or {}).tries,
       latencies = {
         kong = (ctx.KONG_ACCESS_TIME or 0) +
                (ctx.KONG_RECEIVE_TIME or 0) +

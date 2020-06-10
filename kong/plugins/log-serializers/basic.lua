@@ -7,7 +7,7 @@ local kong = kong
 local WARNING_SHOWN = false
 
 
-function _M.serialize(ongx, okong)
+function _M.serialize(options)
   if not WARNING_SHOWN then
     kong.log.warn("basic log serializer has been deprecated, please modify " ..
                   "your plugin to use the kong.log.serialize PDK function " ..
@@ -15,7 +15,7 @@ function _M.serialize(ongx, okong)
     WARNING_SHOWN = true
   end
 
-  return kong.log.serialize(ongx, okong)
+  return kong.log.serialize(options)
 end
 
 

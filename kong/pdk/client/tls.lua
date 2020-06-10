@@ -116,6 +116,8 @@ local function new()
   -- [$ssl_client_verify](https://nginx.org/en/docs/http/ngx_http_ssl_module.html#var_ssl_client_verify)
   -- Nginx variable.
   --
+  -- Only "SUCCESS", "NONE" or "FAILED:<reason>" are accepted values.
+  --
   -- This function does not return anything on success, and throws an Lua error
   -- in case of failures.
   --
