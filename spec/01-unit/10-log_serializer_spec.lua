@@ -28,11 +28,11 @@ describe("Log Serializer", function()
       req = {
         get_uri_args = function() return {"arg1", "arg2"} end,
         get_method = function() return "POST" end,
-        get_headers = function() return {"header1", "header2"} end,
+        get_headers = function() return {header1 = "header1", header2 = "header2", authorization = "authorization"} end,
         start_time = function() return 3 end
       },
       resp = {
-        get_headers = function() return {"respheader1", "respheader2"} end
+        get_headers = function() return {header1 = "respheader1", header2 = "respheader2", ["set-cookie"] = "delicious=delicacy"} end
       }
     }
 
@@ -58,7 +58,7 @@ describe("Log Serializer", function()
 
       -- Request
       assert.is_table(res.request)
-      assert.same({"header1", "header2"}, res.request.headers)
+      assert.same({header1 = "header1", header2 = "header2", authorization = "REDACTED"}, res.request.headers)
       assert.equal("POST", res.request.method)
       assert.same({"arg1", "arg2"}, res.request.querystring)
       assert.equal("http://test.com:80/request_uri", res.request.url)
@@ -68,7 +68,7 @@ describe("Log Serializer", function()
 
       -- Response
       assert.is_table(res.response)
-      assert.same({"respheader1", "respheader2"}, res.response.headers)
+      assert.same({header1 = "respheader1", header2 = "respheader2", ["set-cookie"] = "delicious=delicacy"}, res.response.headers)
       assert.equal(99, res.response.size)
 
       assert.is_nil(res.api)
@@ -77,6 +77,14 @@ describe("Log Serializer", function()
 
       -- Tries
       assert.is_table(res.tries)
+    end)
+
+    it("uses port map (ngx.ctx.host_port) for request url ", function()
+      ngx.ctx.host_port = 5000
+      local res = basic.serialize(ngx, kong)
+      assert.is_table(res)
+      assert.is_table(res.request)
+      assert.equal("http://test.com:5000/request_uri", res.request.url)
     end)
 
     it("serializes the matching Route and Services", function()

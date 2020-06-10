@@ -2,6 +2,7 @@ local helpers = require "spec.helpers"
 local pl_utils = require "pl.utils"
 local utils = require "kong.tools.utils"
 local DB = require "kong.db.init"
+local tb_clone = require "table.clone"
 
 
 -- Current number of migrations to execute in a new install
@@ -21,6 +22,10 @@ for _, strategy in helpers.each_strategy() do
     env = env or {}
     env.database = strategy
     env.plugins = env.plugins or "off"
+    -- note: run migration command tests in a separate schema
+    -- so it won't affect default schema's ACL which are specially
+    -- set for readonly mode tests later
+    env.pg_schema = "kong_migrations_tests"
 
     local lpath
     if not no_lua_path_overrides then
@@ -34,7 +39,10 @@ for _, strategy in helpers.each_strategy() do
 
 
   local function init_db()
-    local db = assert(DB.new(helpers.test_conf, strategy))
+    local tmp_conf = tb_clone(helpers.test_conf)
+    tmp_conf.pg_schema = "kong_migrations_tests"
+
+    local db = assert(DB.new(tmp_conf, strategy))
     assert(db:init_connector())
     assert(db:connect())
     finally(function()
@@ -128,6 +136,17 @@ for _, strategy in helpers.each_strategy() do
         code, stdout = run_kong("migrations bootstrap")
         assert.same(0, code)
         assert.match("Database already bootstrapped", stdout, 1, true)
+      end)
+
+      it("#db does bootstrap twice if forced", function()
+        local code = run_kong("migrations bootstrap")
+        assert.same(0, code)
+        local stdout
+        code, stdout = run_kong("migrations bootstrap --force")
+        assert.same(0, code)
+        assert.match("\nmigrating core", stdout, 1, true)
+        assert.match("\n" .. nr_migrations .. " migration", stdout, 1, true)
+        assert.match("\nDatabase is up-to-date\n", stdout, 1, true)
       end)
 
       pending("-q suppresses all output", function()

@@ -40,7 +40,7 @@ local ssl_params = {
   protocol = "any",
   key = "spec/fixtures/kong_spec.key",
   certificate = "spec/fixtures/kong_spec.crt",
-  verify = "peer",
+  verify = "none",
   options = "all",
 }
 

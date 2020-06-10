@@ -193,7 +193,8 @@ end
 
 local function build_fields(entities, include_foreign)
   local fields = {
-    { _format_version = { type = "string", required = true, eq = "1.1" } },
+    { _format_version = { type = "string", required = true, one_of = {"1.1", "2.1"} } },
+    { _transform = { type = "boolean", default = true } },
   }
   add_extra_attributes(fields, {
     _comment = true,
@@ -560,21 +561,19 @@ local function populate_ids_for_validation(input, known_entities, parent_entity,
 end
 
 
-local function extract_pk_errors(err)
+local function extract_null_errors(err)
   local ret = {}
   for k, v in pairs(err) do
     local t = type(v)
     if t == "table" then
-      local res = extract_pk_errors(v)
+      local res = extract_null_errors(v)
       if not next(res) then
         ret[k] = nil
       else
         ret[k] = res
       end
 
-    elseif t == "string" and v ~= "value must be null"
-                         and v ~= "expected a string"
-    then
+    elseif t == "string" and v ~= "value must be null" then
       ret[k] = nil
     else
       ret[k] = v
@@ -586,7 +585,13 @@ end
 
 
 local function flatten(self, input)
-  local output = {}
+  -- manually set transform here
+  -- we can't do this in the schema with a `default` because validate
+  -- needs to happen before process_auto_fields, which
+  -- is the one in charge of filling out default values
+  if input._transform == nil then
+    input._transform = true
+  end
 
   local ok, err = self:validate(input)
   if not ok then
@@ -599,7 +604,7 @@ local function flatten(self, input)
 
     local ok2, err2 = schema:validate(input_copy)
     if not ok2 then
-      local err3 = utils.deep_merge(err2, extract_pk_errors(err))
+      local err3 = utils.deep_merge(err2, extract_null_errors(err))
       return nil, err3
     end
   end
@@ -613,9 +618,17 @@ local function flatten(self, input)
     return nil, by_key
   end
 
+  local meta = {}
+  for key, value in pairs(processed) do
+    if key:sub(1,1) == "_" then
+      meta[key] = value
+    end
+  end
+
+  local entities = {}
   for entity, entries in pairs(by_id) do
     local schema = all_schemas[entity]
-    output[entity] = {}
+    entities[entity] = {}
     for id, entry in pairs(entries) do
       local flat_entry = {}
       for name, field in schema:each_field(entry) do
@@ -630,11 +643,11 @@ local function flatten(self, input)
         end
       end
 
-      output[entity][id] = flat_entry
+      entities[entity][id] = flat_entry
     end
   end
 
-  return output
+  return entities, nil, meta
 end
 
 

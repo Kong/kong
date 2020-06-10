@@ -1,16 +1,20 @@
 local url = require "socket.url"
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
+local sha256 = require "resty.sha256"
 local timestamp = require "kong.tools.timestamp"
+local secret = require "kong.plugins.oauth2.secret"
 
 
 local kong = kong
 local type = type
 local next = next
 local table = table
+local error = error
 local split = utils.split
 local strip = utils.strip
 local string_find = string.find
+local string_gsub = string.gsub
 local check_https = utils.check_https
 local encode_args = utils.encode_args
 local random_string = utils.random_string
@@ -20,6 +24,7 @@ local table_contains = utils.table_contains
 local ngx_decode_args = ngx.decode_args
 local ngx_re_gmatch = ngx.re.gmatch
 local ngx_decode_base64 = ngx.decode_base64
+local ngx_encode_base64 = ngx.encode_base64
 
 
 local _M = {}
@@ -29,6 +34,11 @@ local EMPTY = {}
 local RESPONSE_TYPE = "response_type"
 local STATE = "state"
 local CODE = "code"
+local CODE_CHALLENGE = "code_challenge"
+local CODE_CHALLENGE_METHOD = "code_challenge_method"
+local CODE_VERIFIER = "code_verifier"
+local CLIENT_TYPE_PUBLIC = "public"
+local CLIENT_TYPE_CONFIDENTIAL = "confidential"
 local TOKEN = "token"
 local REFRESH_TOKEN = "refresh_token"
 local SCOPE = "scope"
@@ -45,21 +55,42 @@ local ERROR = "error"
 local AUTHENTICATED_USERID = "authenticated_userid"
 
 
-local function internal_server_error(err)
-  kong.log.err(err)
-  return kong.response.exit(500, { message = "An unexpected error occurred" })
+local base64url_encode
+local base64url_decode
+do
+  local BASE64URL_ENCODE_CHARS = "[+/]"
+  local BASE64URL_ENCODE_SUBST = {
+    ["+"] = "-",
+    ["/"] = "_",
+  }
+
+  base64url_encode = function(value)
+    value = ngx_encode_base64(value, true)
+    if not value then
+      return nil
+    end
+
+    return string_gsub(value, BASE64URL_ENCODE_CHARS, BASE64URL_ENCODE_SUBST)
+  end
+
+
+  local BASE64URL_DECODE_CHARS = "[-_]"
+  local BASE64URL_DECODE_SUBST = {
+    ["-"] = "+",
+    ["_"] = "/",
+  }
+
+  base64url_decode = function(value)
+    value = string_gsub(value, BASE64URL_DECODE_CHARS, BASE64URL_DECODE_SUBST)
+    return ngx_decode_base64(value)
+  end
 end
 
 
 local function generate_token(conf, service, credential, authenticated_userid,
-                              scope, state, expiration, disable_refresh)
+                              scope, state, disable_refresh, existing_token)
 
-  local token_expiration = expiration or conf.token_expiration
-
-  local refresh_token
-  if not disable_refresh and token_expiration > 0 then
-    refresh_token = random_string()
-  end
+  local token_expiration = conf.token_expiration
 
   local refresh_token_ttl
   if conf.refresh_token_ttl and conf.refresh_token_ttl > 0 then
@@ -71,21 +102,41 @@ local function generate_token(conf, service, credential, authenticated_userid,
     service_id = service.id
   end
 
-  local token, err = kong.db.oauth2_tokens:insert({
-    service = service_id and { id = service_id } or nil,
-    credential = { id = credential.id },
-    authenticated_userid = authenticated_userid,
-    expires_in = token_expiration,
-    refresh_token = refresh_token,
-    scope = scope
-  }, {
-    -- Access tokens (and their associated refresh token) are being
-    -- permanently deleted after 'refresh_token_ttl' seconds
-    ttl = token_expiration > 0 and refresh_token_ttl or nil
-  })
+  local refresh_token
+  local token, err
+  if existing_token and conf.reuse_refresh_token then
+    token, err = kong.db.oauth2_tokens:update({
+      id = existing_token.id
+    }, {
+      access_token = random_string(),
+      expires_in = token_expiration,
+      created_at = timestamp.get_utc() / 1000
+    }, {
+      -- Access tokens (and their associated refresh token) are being
+      -- permanently deleted after 'refresh_token_ttl' seconds
+      ttl = token_expiration > 0 and refresh_token_ttl or nil
+    })
+    refresh_token = token.refresh_token  -- required for output
+  else
+    if not disable_refresh and token_expiration > 0 then
+      refresh_token = random_string()
+    end
+    token, err = kong.db.oauth2_tokens:insert({
+      service = service_id and { id = service_id } or nil,
+      credential = { id = credential.id },
+      authenticated_userid = authenticated_userid,
+      expires_in = token_expiration,
+      refresh_token = refresh_token,
+      scope = scope
+    }, {
+      -- Access tokens (and their associated refresh token) are being
+      -- permanently deleted after 'refresh_token_ttl' seconds
+      ttl = token_expiration > 0 and refresh_token_ttl or nil
+    })
+  end
 
   if err then
-    return internal_server_error(err)
+    return error(err)
   end
 
   return {
@@ -97,6 +148,7 @@ local function generate_token(conf, service, credential, authenticated_userid,
   }
 end
 
+
 local function load_oauth2_credential_by_client_id(client_id)
   local credential, err = kong.db.oauth2_credentials:select_by_client_id(client_id)
   if err then
@@ -106,6 +158,7 @@ local function load_oauth2_credential_by_client_id(client_id)
   return credential
 end
 
+
 local function get_redirect_uris(client_id)
   local client, err
   if client_id and client_id ~= "" then
@@ -114,12 +167,13 @@ local function get_redirect_uris(client_id)
                                  load_oauth2_credential_by_client_id,
                                  client_id)
     if err then
-      return internal_server_error(err)
+      return error(err)
     end
   end
 
   return client and client.redirect_uris or nil, client
 end
+
 
 local function retrieve_parameters()
   -- OAuth2 parameters could be in both the querystring or body
@@ -134,6 +188,7 @@ local function retrieve_parameters()
 
   return uri_args
 end
+
 
 local function retrieve_scope(parameters, conf)
   local scope = parameters[SCOPE]
@@ -159,6 +214,47 @@ local function retrieve_scope(parameters, conf)
   if #scopes > 0 then
     return table.concat(scopes, " ")
   end -- else return nil
+end
+
+local function retrieve_code_challenge(parameters)
+  local challenge        = parameters[CODE_CHALLENGE]
+  local challenge_method = parameters[CODE_CHALLENGE_METHOD]
+
+  if challenge_method and not challenge then
+    return nil, CODE_CHALLENGE .. " is required when code_method is present"
+  end
+
+  if challenge then
+    local challenge_decoded = base64url_decode(challenge)
+    if challenge_decoded then
+      challenge = base64url_encode(challenge_decoded)
+    end
+
+    if challenge_method and challenge_method ~= "S256" then
+      if challenge_method ~= "s256" then
+        return nil, CODE_CHALLENGE_METHOD .. " is not supported, must be S256"
+      end
+
+      challenge_method = "S256"
+    end
+  end
+
+  return challenge, nil, challenge_method or "S256"
+end
+
+local function requires_pkce(conf, client, used_pkce)
+  if not client then
+    return false
+  end
+
+  if used_pkce -- only set on token endpoint
+  or (client.client_type == CLIENT_TYPE_PUBLIC       and conf.pkce ~= "none")
+  or (client.client_type == CLIENT_TYPE_CONFIDENTIAL and conf.pkce == "strict")
+  then
+    return true
+  end
+
+  return false
 end
 
 local function authorize(conf)
@@ -238,6 +334,21 @@ local function authorize(conf)
 
       parsed_redirect_uri = url.parse(redirect_uri)
 
+      local challenge, err, challenge_method = retrieve_code_challenge(parameters)
+      if err then
+        response_params = {
+          [ERROR] = "invalid_request",
+          error_description = err
+        }
+      elseif client and not challenge and requires_pkce(conf, client) then
+        response_params = {
+          [ERROR] = "invalid_request",
+          error_description = CODE_CHALLENGE .. " is required for " .. CLIENT_TYPE_PUBLIC .. " clients"
+        }
+      elseif not challenge then -- do not save a code method unless we have a challenge
+        challenge_method = nil
+      end
+
       -- If there are no errors, keep processing the request
       if not response_params[ERROR] then
         if response_type == CODE then
@@ -250,13 +361,15 @@ local function authorize(conf)
             service = service_id and { id = service_id } or nil,
             credential = { id = client.id },
             authenticated_userid = parameters[AUTHENTICATED_USERID],
-            scope = scopes
+            scope = scopes,
+            challenge = challenge,
+            challenge_method = challenge_method
           }, {
             ttl = 300
           })
 
           if err then
-            return internal_server_error(err)
+            error(err)
           end
 
           response_params = {
@@ -268,7 +381,7 @@ local function authorize(conf)
           response_params = generate_token(conf, kong.router.get_service(),
                                            client,
                                            parameters[AUTHENTICATED_USERID],
-                                           scopes, state, nil, true)
+                                           scopes, state, true)
           is_implicit_grant = true
         end
       end
@@ -309,6 +422,7 @@ local function authorize(conf)
   })
 end
 
+
 local function retrieve_client_credentials(parameters, conf)
   local client_id, client_secret, from_authorization_header
   local authorization_header = kong.request.get_header(conf.auth_header_name)
@@ -341,9 +455,52 @@ local function retrieve_client_credentials(parameters, conf)
         client_secret = basic_parts[2]
       end
     end
+
+  elseif parameters[CLIENT_ID] then
+    client_id = parameters[CLIENT_ID]
   end
 
   return client_id, client_secret, from_authorization_header
+end
+
+local function validate_pkce_verifier(parameters, auth_code)
+  local verifier = parameters[CODE_VERIFIER]
+  if not verifier then
+    return {
+      [ERROR] = "invalid_request",
+      error_description = CODE_VERIFIER .. " is required for PKCE authorization requests",
+    }
+  elseif type(verifier) ~= "string" then
+    return {
+      [ERROR] = "invalid_request",
+      error_description = CODE_VERIFIER .. " is not a string",
+    }
+  end
+
+  if #verifier < 43 or #verifier > 128 then
+    return {
+      [ERROR] = "invalid_request",
+      error_description = CODE_VERIFIER .. " must be between 43 and 128 characters",
+    }
+  end
+
+  local s256 = sha256:new()
+  s256:update(verifier)
+  local digest = s256:final()
+
+  local challenge = base64url_encode(digest)
+
+  if not challenge
+  or not auth_code.challenge
+  or challenge ~= auth_code.challenge
+  then
+    return {
+      [ERROR] = "invalid_grant",
+      error_description = "Invalid " .. CODE
+    }
+  end
+
+  return nil
 end
 
 local function issue_token(conf)
@@ -409,16 +566,45 @@ local function issue_token(conf)
       end
     end
 
-    if client and client.client_secret ~= client_secret then
-      response_params = {
-        [ERROR] = "invalid_client",
-        error_description = "Invalid client authentication"
-      }
+    if client then
+      if client.client_type == CLIENT_TYPE_CONFIDENTIAL then
+        local authenticated
+        if client.hash_secret then
+          authenticated = secret.verify(client_secret, client.client_secret)
+          if authenticated and secret.needs_rehash(client.client_secret) then
+            local pk = kong.db.oauth2_credentials.schema:extract_pk_values(client)
+            local ok, err = kong.db.oauth2_credentials:update(pk, {
+              client_secret = client_secret,
+              hash_secret   = true,
+            })
 
-      if from_authorization_header then
-        invalid_client_properties = {
-          status = 401,
-          www_authenticate = "Basic realm=\"OAuth2.0\""
+            if not ok then
+              kong.log.warn(err)
+            end
+          end
+
+        else
+          authenticated = client.client_secret == client_secret
+        end
+
+        if not authenticated then
+          response_params = {
+            [ERROR] = "invalid_client",
+            error_description = "Invalid client authentication"
+          }
+
+          if from_authorization_header then
+            invalid_client_properties = {
+              status = 401,
+              www_authenticate = "Basic realm=\"OAuth2.0\""
+            }
+          end
+        end
+
+      elseif client.client_type == CLIENT_TYPE_PUBLIC and strip(client_secret) ~= "" then
+        response_params = {
+          [ERROR] = "invalid_request",
+          error_description = "client_secret is disallowed for " .. CLIENT_TYPE_PUBLIC .. " clients"
         }
       end
     end
@@ -434,28 +620,50 @@ local function issue_token(conf)
 
         local auth_code =
           code and kong.db.oauth2_authorization_codes:select_by_code(code)
-
-        if not auth_code or (service_id and service_id ~= auth_code.service.id)
-        then
+        if not auth_code or (service_id and service_id ~= auth_code.service.id) then
           response_params = {
             [ERROR] = "invalid_request",
             error_description = "Invalid " .. CODE
           }
-
         elseif auth_code.credential.id ~= client.id then
           response_params = {
             [ERROR] = "invalid_request",
             error_description = "Invalid " .. CODE
           }
+        end
 
-        else
-          response_params = generate_token(conf, kong.router.get_service(),
-                                           client,
-                                           auth_code.authenticated_userid,
-                                           auth_code.scope, state)
+        -- if the code was generated by a PKCE request, then check the code verifier
+        local client_requires_pkce = auth_code and requires_pkce(conf, client, auth_code.challenge_method)
+        if not response_params[ERROR] and client_requires_pkce then
+          local err = validate_pkce_verifier(parameters, auth_code)
+          if err then
+            response_params = err
+          end
+        end
 
-          -- Delete authorization code so it cannot be reused
-          kong.db.oauth2_authorization_codes:delete({ id = auth_code.id })
+        if not response_params[ERROR] then
+          if not auth_code or (service_id and service_id ~= auth_code.service.id)
+          then
+            response_params = {
+              [ERROR] = "invalid_request",
+              error_description = "Invalid " .. CODE
+            }
+
+          elseif auth_code.credential.id ~= client.id then
+            response_params = {
+              [ERROR] = "invalid_request",
+              error_description = "Invalid " .. CODE
+            }
+
+          else
+            response_params = generate_token(conf, kong.router.get_service(),
+              client,
+              auth_code.authenticated_userid,
+              auth_code.scope, state)
+
+            -- Delete authorization code so it cannot be reused
+            kong.db.oauth2_authorization_codes:delete({ id = auth_code.id })
+          end
         end
 
       elseif grant_type == GRANT_CLIENT_CREDENTIALS then
@@ -484,7 +692,7 @@ local function issue_token(conf)
             response_params = generate_token(conf, kong.router.get_service(),
                                              client,
                                              parameters.authenticated_userid,
-                                             scope, state, nil, true)
+                                             scope, state, true)
           end
         end
 
@@ -547,9 +755,11 @@ local function issue_token(conf)
             response_params = generate_token(conf, kong.router.get_service(),
                                              client,
                                              token.authenticated_userid,
-                                             token.scope, state)
-            -- Delete old token
-            kong.db.oauth2_tokens:delete({ id = token.id })
+                                             token.scope, state, false, token)
+            -- Delete old token if refresh token not persisted
+            if not conf.reuse_refresh_token then
+              kong.db.oauth2_tokens:delete({ id = token.id })
+            end
           end
         end
       end
@@ -561,16 +771,17 @@ local function issue_token(conf)
 
   -- Sending response in JSON format
   return kong.response.exit(response_params[ERROR] and
-                             (invalid_client_properties and
-                              invalid_client_properties.status or 400) or 200,
-                              response_params, {
-                                ["cache-control"] = "no-store",
-                                ["pragma"] = "no-cache",
-                                ["www-authenticate"] = invalid_client_properties and
-                                                       invalid_client_properties.www_authenticate
-                              }
-                            )
+                            (invalid_client_properties and
+                             invalid_client_properties.status or 400) or 200,
+                             response_params, {
+                               ["cache-control"] = "no-store",
+                               ["pragma"] = "no-cache",
+                               ["www-authenticate"] = invalid_client_properties and
+                                                      invalid_client_properties.www_authenticate
+                             }
+                           )
 end
+
 
 local function load_token(conf, service, access_token)
   local credentials, err =
@@ -601,6 +812,7 @@ local function load_token(conf, service, access_token)
   return credentials
 end
 
+
 local function retrieve_token(conf, access_token)
   local token, err
 
@@ -611,12 +823,13 @@ local function retrieve_token(conf, access_token)
                                 kong.router.get_service(),
                                 access_token)
     if err then
-      return internal_server_error(err)
+      return error(err)
     end
   end
 
   return token
 end
+
 
 local function parse_access_token(conf)
   local found_in = {}
@@ -667,6 +880,7 @@ local function parse_access_token(conf)
   return access_token
 end
 
+
 local function load_oauth2_credential_into_memory(credential_id)
   local result, err = kong.db.oauth2_credentials:select { id = credential_id }
   if err then
@@ -676,7 +890,10 @@ local function load_oauth2_credential_into_memory(credential_id)
   return result
 end
 
+
 local function set_consumer(consumer, credential, token)
+  kong.client.authenticate(consumer, credential)
+
   local set_header = kong.service.request.set_header
   local clear_header = kong.service.request.clear_header
 
@@ -698,30 +915,33 @@ local function set_consumer(consumer, credential, token)
     clear_header(constants.HEADERS.CONSUMER_USERNAME)
   end
 
-  kong.client.authenticate(consumer, credential)
-
-  if credential then
-    if token.scope then
-      set_header("x-authenticated-scope", token.scope)
-    else
-      clear_header("x-authenticated-scope")
-    end
-
-    if token.authenticated_userid then
-      set_header("x-authenticated-userid", token.authenticated_userid)
-    else
-      clear_header("x-authenticated-userid")
-    end
-
-    clear_header(constants.HEADERS.ANONYMOUS) -- in case of auth plugins concatenation
-
+  if credential and credential.client_id then
+    set_header(constants.HEADERS.CREDENTIAL_IDENTIFIER, credential.client_id)
   else
-    set_header(constants.HEADERS.ANONYMOUS, true)
-    clear_header("x-authenticated-scope")
-    clear_header("x-authenticated-userid")
+    clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
   end
 
+  clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
+
+  if credential then
+    clear_header(constants.HEADERS.ANONYMOUS)
+  else
+    set_header(constants.HEADERS.ANONYMOUS, true)
+  end
+
+  if token and token.scope then
+    set_header("X-Authenticated-Scope", token.scope)
+  else
+    clear_header("X-Authenticated-Scope")
+  end
+
+  if token and token.authenticated_userid then
+    set_header("X-Authenticated-UserId", token.authenticated_userid)
+  else
+    clear_header("X-Authenticated-UserId")
+  end
 end
+
 
 local function do_authentication(conf)
   local access_token = parse_access_token(conf);
@@ -799,7 +1019,7 @@ local function do_authentication(conf)
                                          load_oauth2_credential_into_memory,
                                          token.credential.id)
   if err then
-    return internal_server_error(err)
+    return error(err)
   end
 
   -- Retrieve the consumer from the credential
@@ -809,7 +1029,7 @@ local function do_authentication(conf)
                                       kong.client.load_consumer,
                                       credential.consumer.id)
   if err then
-    return internal_server_error(err)
+    return error(err)
   end
 
   set_consumer(consumer, credential, token)
@@ -848,11 +1068,10 @@ function _M.execute(conf)
                                                 kong.client.load_consumer,
                                                 conf.anonymous, true)
       if err then
-        kong.log.err("failed to load anonymous consumer:", err)
-        return kong.response.exit(500, { message = "An unexpected error occurred" })
+        return error(err)
       end
 
-      set_consumer(consumer, nil, nil)
+      set_consumer(consumer)
 
     else
       return kong.response.exit(err.status, err.message, err.headers)

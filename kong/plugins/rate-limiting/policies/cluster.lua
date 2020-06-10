@@ -9,6 +9,27 @@ local floor = math.floor
 local fmt = string.format
 
 
+local EXPIRATION = require "kong.plugins.rate-limiting.expiration"
+
+
+local find
+do
+  local find_pk = {}
+
+  find = function(identifier, period, current_timestamp, service_id, route_id)
+      local periods = timestamp.get_timestamps(current_timestamp)
+
+      find_pk.identifier  = identifier
+      find_pk.period      = period
+      find_pk.period_date = floor(periods[period] / 1000)
+      find_pk.service_id  = service_id
+      find_pk.route_id    = route_id
+
+      return kong.db.ratelimiting_metrics:select(find_pk)
+  end
+end
+
+
 return {
   cassandra = {
     increment = function(connector, limits, identifier, current_timestamp, service_id, route_id, value)
@@ -41,51 +62,22 @@ return {
 
       return true
     end,
-    find = function(connector, identifier, period, current_timestamp, service_id, route_id)
-      local periods = timestamp.get_timestamps(current_timestamp)
-
-      local rows, err = connector:query([[
-        SELECT value
-          FROM ratelimiting_metrics
-         WHERE identifier = ?
-           AND period = ?
-           AND period_date = ?
-           AND service_id = ?
-           AND route_id = ?
-      ]], {
-        identifier,
-        period,
-        cassandra.timestamp(periods[period]),
-        cassandra.uuid(service_id),
-        cassandra.uuid(route_id),
-      })
-
-      if not rows then
-        return nil, err
-      end
-
-      if #rows <= 1 then
-        return rows[1]
-      end
-
-      return nil, "bad rows result"
-    end,
+    find = find,
   },
   postgres = {
     increment = function(connector, limits, identifier, current_timestamp, service_id, route_id, value)
       local buf = { "BEGIN" }
       local len = 1
       local periods = timestamp.get_timestamps(current_timestamp)
-
       for period, period_date in pairs(periods) do
         if limits[period] then
           len = len + 1
           buf[len] = fmt([[
-            INSERT INTO "ratelimiting_metrics" ("identifier", "period", "period_date", "service_id", "route_id", "value")
-                 VALUES ('%s', '%s', TO_TIMESTAMP('%s') AT TIME ZONE 'UTC', '%s', '%s', %d)
+            INSERT INTO "ratelimiting_metrics" ("identifier", "period", "period_date", "service_id", "route_id", "value", "ttl")
+                 VALUES ('%s', '%s', TO_TIMESTAMP('%s') AT TIME ZONE 'UTC', '%s', '%s', %d, CURRENT_TIMESTAMP AT TIME ZONE 'UTC' + INTERVAL '%d second')
             ON CONFLICT ("identifier", "period", "period_date", "service_id", "route_id") DO UPDATE
                     SET "value" = "ratelimiting_metrics"."value" + EXCLUDED."value"
-          ]], identifier, period, floor(period_date / 1000), service_id, route_id, value)
+          ]], identifier, period, floor(period_date / 1000), service_id, route_id, value, EXPIRATION[period])
         end
       end
 
@@ -107,26 +99,6 @@ return {
 
       return true
     end,
-    find = function(connector, identifier, period, current_timestamp, service_id, route_id)
-      local periods = timestamp.get_timestamps(current_timestamp)
-
-      local sql = fmt([[
-        SELECT "value"
-          FROM "ratelimiting_metrics"
-         WHERE "identifier" = '%s'
-           AND "period" = '%s'
-           AND "period_date" = TO_TIMESTAMP('%s') AT TIME ZONE 'UTC'
-           AND "service_id" = '%s'
-           AND "route_id" = '%s'
-         LIMIT 1;
-      ]], identifier, period, floor(periods[period] / 1000), service_id, route_id)
-
-      local res, err = connector:query(sql)
-      if not res or err then
-        return nil, err
-      end
-
-      return res[1]
-    end,
+    find = find,
   },
 }

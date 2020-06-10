@@ -60,7 +60,13 @@ log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 
 -- Add to package path so dao helpers can insert custom plugins
 -- (while running from the busted environment)
-package.path = CUSTOM_PLUGIN_PATH .. ";" .. package.path
+do
+  local paths = {}
+  table.insert(paths, os.getenv("KONG_LUA_PACKAGE_PATH"))
+  table.insert(paths, CUSTOM_PLUGIN_PATH)
+  table.insert(paths, package.path)
+  package.path = table.concat(paths, ";")
+end
 
 --- Returns the OpenResty version.
 -- Extract the current OpenResty version in use and returns
@@ -770,6 +776,11 @@ local function http2_client(host, port, tls)
   local host = assert(host)
   local port = assert(port)
   tls = tls or false
+
+  -- if Kong/lua-pack is loaded, unload it first
+  -- so lua-http can use implementation from compat53.string
+  package.loaded.string.unpack = nil
+  package.loaded.string.pack = nil
 
   local request = require "http.request"
   local req = request.new_from_uri({

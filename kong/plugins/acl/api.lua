@@ -23,7 +23,7 @@ return {
           end
 
           if not consumer then
-            return kong.response.exit(404, { message = "Not found" })
+            return kong.response.error(404)
           end
 
           consumer_id = consumer.id
@@ -39,7 +39,7 @@ return {
           self.params.acls = escape_uri(acl.id)
         else
           if self.req.method ~= "PUT" then
-            return kong.response.exit(404, { message = "Not found" })
+            return kong.response.error(404)
           end
 
           self.params.acls = utils.uuid()

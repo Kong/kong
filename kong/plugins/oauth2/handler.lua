@@ -1,12 +1,15 @@
 local access = require "kong.plugins.oauth2.access"
 
-local OAuthHandler = {}
+
+local OAuthHandler = {
+  PRIORITY = 1004,
+  VERSION = "2.1.0",
+}
+
 
 function OAuthHandler:access(conf)
   access.execute(conf)
 end
 
-OAuthHandler.PRIORITY = 1004
-OAuthHandler.VERSION = "2.0.0"
 
 return OAuthHandler

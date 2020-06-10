@@ -2,6 +2,7 @@ local cjson = require "cjson"
 local iteration = require "kong.db.iteration"
 local utils = require "kong.tools.utils"
 local defaults = require "kong.db.strategies.connector".defaults
+local hooks = require "kong.hooks"
 
 
 local setmetatable = setmetatable
@@ -18,6 +19,7 @@ local next         = next
 local log          = ngx.log
 local fmt          = string.format
 local match        = string.match
+local run_hook     = hooks.run_hook
 
 
 local ERR          = ngx.ERR
@@ -264,6 +266,12 @@ local function validate_options_value(self, options)
     end
   end
 
+  if options.transform ~= nil then
+    if type(options.transform) ~= "boolean" then
+      errors.transform = "must be a boolean"
+    end
+  end
+
   if next(errors) then
     return nil, errors
   end
@@ -332,6 +340,20 @@ end
 
 
 local function check_insert(self, entity, options)
+  local transform
+  if options ~= nil then
+    local ok, errors = validate_options_value(self, options)
+    if not ok then
+      local err_t = self.errors:invalid_options(errors)
+      return nil, tostring(err_t), err_t
+    end
+    transform = options.transform
+  end
+
+  if transform == nil then
+    transform = true
+  end
+
   local entity_to_insert, err = self.schema:process_auto_fields(entity, "insert")
   if not entity_to_insert then
     local err_t = self.errors:schema_violation(err)
@@ -349,16 +371,10 @@ local function check_insert(self, entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  entity_to_insert, err = self.schema:transform(entity_to_insert, entity, "insert")
-  if not entity_to_insert then
-    err_t = self.errors:transformation_error(err)
-    return nil, tostring(err_t), err_t
-  end
-
-  if options ~= nil then
-    ok, errors = validate_options_value(self, options)
-    if not ok then
-      local err_t = self.errors:invalid_options(errors)
+  if transform then
+    entity_to_insert, err = self.schema:transform(entity_to_insert, entity, "insert")
+    if not entity_to_insert then
+      err_t = self.errors:transformation_error(err)
       return nil, tostring(err_t), err_t
     end
   end
@@ -372,6 +388,21 @@ end
 
 
 local function check_update(self, key, entity, options, name)
+
+  local transform
+  if options ~= nil then
+    local ok, errors = validate_options_value(self, options)
+    if not ok then
+      local err_t = self.errors:invalid_options(errors)
+      return nil, nil, tostring(err_t), err_t
+    end
+    transform = options.transform
+  end
+
+  if transform == nil then
+    transform = true
+  end
+
   local entity_to_update, err, check_immutable_fields =
     self.schema:process_auto_fields(entity, "update")
   if not entity_to_update then
@@ -408,7 +439,7 @@ local function check_update(self, key, entity, options, name)
 
   local ok, err, err_t = resolve_foreign(self, entity_to_update)
   if not ok then
-    return nil, err, err_t
+    return nil, nil, err, err_t
   end
 
   local ok, errors = self.schema:validate_update(entity_to_update, entity, rbw_entity)
@@ -417,16 +448,10 @@ local function check_update(self, key, entity, options, name)
     return nil, nil, tostring(err_t), err_t
   end
 
-  entity_to_update, err = self.schema:transform(entity_to_update, entity, "update")
-  if not entity_to_update then
-    err_t = self.errors:transformation_error(err)
-    return nil, nil, tostring(err_t), err_t
-  end
-
-  if options ~= nil then
-    ok, errors = validate_options_value(self, options)
-    if not ok then
-      local err_t = self.errors:invalid_options(errors)
+  if transform then
+    entity_to_update, err = self.schema:transform(entity_to_update, entity, "update")
+    if not entity_to_update then
+      err_t = self.errors:transformation_error(err)
       return nil, nil, tostring(err_t), err_t
     end
   end
@@ -440,6 +465,20 @@ end
 
 
 local function check_upsert(self, key, entity, options, name)
+  local transform
+  if options ~= nil then
+    local ok, errors = validate_options_value(self, options)
+    if not ok then
+      local err_t = self.errors:invalid_options(errors)
+      return nil, tostring(err_t), err_t
+    end
+    transform = options.transform
+  end
+
+  if transform == nil then
+    transform = true
+  end
+
   local entity_to_upsert, err =
     self.schema:process_auto_fields(entity, "upsert")
   if not entity_to_upsert then
@@ -477,16 +516,10 @@ local function check_upsert(self, key, entity, options, name)
     entity_to_upsert[name] = nil
   end
 
-  entity_to_upsert, err = self.schema:transform(entity_to_upsert, entity, "upsert")
-  if not entity_to_upsert then
-    err_t = self.errors:transformation_error(err)
-    return nil, nil, tostring(err_t), err_t
-  end
-
-  if options ~= nil then
-    local ok, errors = validate_options_value(self, options)
-    if not ok then
-      local err_t = self.errors:invalid_options(errors)
+  if transform then
+    entity_to_upsert, err = self.schema:transform(entity_to_upsert, entity, "upsert")
+    if not entity_to_upsert then
+      err_t = self.errors:transformation_error(err)
       return nil, nil, tostring(err_t), err_t
     end
   end
@@ -579,6 +612,14 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
+        local ok, err_t = run_hook("dao:page_for:pre",
+                                   foreign_key,
+                                   self.schema.name,
+                                   options)
+        if not ok then
+          return nil, tostring(err_t), err_t
+        end
+
         local strategy = self.strategy
 
         local rows, err_t, new_offset = strategy[page_method_name](strategy,
@@ -594,6 +635,14 @@ local function generate_foreign_key_methods(schema)
         entities, err, err_t = self:rows_to_entities(rows, options)
         if err then
           return nil, err, err_t
+        end
+
+        entities, err_t = run_hook("dao:page_for:post",
+                                   entities,
+                                   self.schema.name,
+                                   options)
+        if not entities then
+          return nil, tostring(err_t), err_t
         end
 
         return entities, nil, nil, new_offset
@@ -669,6 +718,14 @@ local function generate_foreign_key_methods(schema)
           end
         end
 
+        local ok, err_t = run_hook("dao:select_by:pre",
+                                   unique_value,
+                                   self.schema.name,
+                                   options)
+        if not ok then
+          return nil, tostring(err_t), err_t
+        end
+
         local row, err_t = self.strategy:select_by_field(name, unique_value, options)
         if err_t then
           return nil, tostring(err_t), err_t
@@ -678,7 +735,21 @@ local function generate_foreign_key_methods(schema)
           return nil
         end
 
-        return self:row_to_entity(row, options)
+        local err
+        row, err, err_t = self:row_to_entity(row, options)
+        if not row then
+          return nil, err, err_t
+        end
+
+        row, err_t = run_hook("dao:select_by:post",
+                              row,
+                              self.schema.name,
+                              options)
+        if not row then
+          return nil, tostring(err_t), err_t
+        end
+
+        return row
       end
 
       methods["update_by_" .. name] = function(self, unique_value, entity, options)
@@ -706,6 +777,14 @@ local function generate_foreign_key_methods(schema)
           return nil, err, err_t
         end
 
+        local ok, err_t = run_hook("dao:update_by:pre",
+                                   unique_value,
+                                   self.schema.name,
+                                   options)
+        if not ok then
+          return nil, tostring(err_t), err_t
+        end
+
         local row, err_t = self.strategy:update_by_field(name, unique_value,
                                                          entity_to_update, options)
         if not row then
@@ -715,6 +794,14 @@ local function generate_foreign_key_methods(schema)
         row, err, err_t = self:row_to_entity(row, options)
         if not row then
           return nil, err, err_t
+        end
+
+        row, err_t = run_hook("dao:update_by:post",
+                              row,
+                              self.schema.name,
+                              options)
+        if not row then
+          return nil, tostring(err_t), err_t
         end
 
         self:post_crud_event("update", row, rbw_entity, options)
@@ -750,6 +837,14 @@ local function generate_foreign_key_methods(schema)
           return nil, err, err_t
         end
 
+        local ok, err_t = run_hook("dao:upsert_by:pre",
+                                   entity_to_upsert,
+                                   self.schema.name,
+                                   options)
+        if not ok then
+          return nil, tostring(err_t), err_t
+        end
+
         local row, err_t = self.strategy:upsert_by_field(name, unique_value,
                                                          entity_to_upsert, options)
         if not row then
@@ -759,6 +854,14 @@ local function generate_foreign_key_methods(schema)
         row, err, err_t = self:row_to_entity(row, options)
         if not row then
           return nil, err, err_t
+        end
+
+        row, err_t = run_hook("dao:upsert_by:post",
+                              row,
+                              self.schema.name,
+                              options)
+        if not row then
+          return nil, tostring(err_t), err_t
         end
 
         if rbw_entity then
@@ -807,9 +910,26 @@ local function generate_foreign_key_methods(schema)
 
         local cascade_entries = find_cascade_delete_entities(self, entity)
 
+        local ok, err_t = run_hook("dao:delete_by:pre",
+                                   entity,
+                                   self.schema.name,
+                                   cascade_entries,
+                                   options)
+        if not ok then
+          return nil, tostring(err_t), err_t
+        end
+
         local _
         _, err_t = self.strategy:delete_by_field(name, unique_value, options)
         if err_t then
+          return nil, tostring(err_t), err_t
+        end
+
+        entity, err_t = run_hook("dao:delete_by:post",
+                                 entity,
+                                 "routes",
+                                 options)
+        if not entity then
           return nil, tostring(err_t), err_t
         end
 
@@ -875,6 +995,12 @@ function DAO:select(primary_key, options)
     end
   end
 
+  local err_t
+  ok, err_t = run_hook("dao:select:pre", primary_key, self.schema.name, options)
+  if not ok then
+    return nil, tostring(err_t), err_t
+  end
+
   local row, err_t = self.strategy:select(primary_key, options)
   if err_t then
     return nil, tostring(err_t), err_t
@@ -884,7 +1010,18 @@ function DAO:select(primary_key, options)
     return nil
   end
 
-  return self:row_to_entity(row, options)
+  local err
+  row, err, err_t = self:row_to_entity(row, options)
+  if not row then
+    return nil, err, err_t
+  end
+
+  row, err_t = run_hook("dao:select:post", row, self.schema.name, options)
+  if not row then
+    return nil, tostring(err_t), err_t
+  end
+
+  return row
 end
 
 
@@ -916,6 +1053,11 @@ function DAO:page(size, offset, options)
     return nil, tostring(err_t), err_t
   end
 
+  local ok, err_t = run_hook("dao:page:pre", size, self.schema.name, options)
+  if not ok then
+    return nil, tostring(err_t), err_t
+  end
+
   local rows, err_t, offset = self.strategy:page(size, offset, options)
   if err_t then
     return nil, tostring(err_t), err_t
@@ -925,6 +1067,11 @@ function DAO:page(size, offset, options)
   entities, err, err_t = self:rows_to_entities(rows, options)
   if not entities then
     return nil, err, err_t
+  end
+
+  entities, err_t = run_hook("dao:page:post", entities, self.schema.name, options)
+  if not entities then
+    return nil, tostring(err_t), err_t
   end
 
   return entities, err, err_t, offset
@@ -975,6 +1122,11 @@ function DAO:insert(entity, options)
     return nil, err, err_t
   end
 
+  local ok, err_t = run_hook("dao:insert:pre", entity, self.schema.name, options)
+  if not ok then
+    return nil, tostring(err_t), err_t
+  end
+
   local row, err_t = self.strategy:insert(entity_to_insert, options)
   if not row then
     return nil, tostring(err_t), err_t
@@ -983,6 +1135,11 @@ function DAO:insert(entity, options)
   row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
+  end
+
+  row, err_t = run_hook("dao:insert:post", row, self.schema.name, options)
+  if not row then
+    return nil, tostring(err_t), err_t
   end
 
   self:post_crud_event("create", row, nil, options)
@@ -1013,6 +1170,14 @@ function DAO:update(primary_key, entity, options)
     return nil, err, err_t
   end
 
+  local ok, err_t = run_hook("dao:update:pre",
+                             entity_to_update,
+                             self.schema.name,
+                             options)
+  if not ok then
+    return nil, tostring(err_t), err_t
+  end
+
   local row, err_t = self.strategy:update(primary_key, entity_to_update, options)
   if not row then
     return nil, tostring(err_t), err_t
@@ -1021,6 +1186,14 @@ function DAO:update(primary_key, entity, options)
   row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
+  end
+
+  row, err_t = run_hook("dao:update:post",
+                        row,
+                        self.schema.name,
+                        options)
+  if not row then
+    return nil, tostring(err_t), err_t
   end
 
   self:post_crud_event("update", row, rbw_entity, options)
@@ -1051,6 +1224,14 @@ function DAO:upsert(primary_key, entity, options)
     return nil, err, err_t
   end
 
+  local ok, err_t = run_hook("dao:upsert:pre",
+                             entity_to_upsert,
+                             self.schema.name,
+                             options)
+  if not ok then
+    return nil, tostring(err_t), err_t
+  end
+
   local row, err_t = self.strategy:upsert(primary_key, entity_to_upsert, options)
   if not row then
     return nil, tostring(err_t), err_t
@@ -1059,6 +1240,11 @@ function DAO:upsert(primary_key, entity, options)
   row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
+  end
+
+  row, err_t = run_hook("dao:upsert:post", row, self.schema.name, options)
+  if not row then
+    return nil, tostring(err_t), err_t
   end
 
   if rbw_entity then
@@ -1103,9 +1289,23 @@ function DAO:delete(primary_key, options)
 
   local cascade_entries = find_cascade_delete_entities(self, primary_key)
 
+  local ok, err_t = run_hook("dao:delete:pre",
+                             entity,
+                             self.schema.name,
+                             cascade_entries,
+                             options)
+  if not ok then
+    return nil, tostring(err_t)
+  end
+
   local _
   _, err_t = self.strategy:delete(primary_key, options)
   if err_t then
+    return nil, tostring(err_t), err_t
+  end
+
+  entity, err_t = run_hook("dao:delete:post", entity, self.schema.name, options)
+  if not entity then
     return nil, tostring(err_t), err_t
   end
 
@@ -1130,6 +1330,14 @@ function DAO:select_by_cache_key(cache_key, options)
     return self["select_by_" .. ck_definition[1]](self, cache_key, options)
   end
 
+  local ok, err_t = run_hook("dao:select_by_cache_key:pre",
+                             cache_key,
+                             self.schema.name,
+                             options)
+  if not ok then
+    return nil, tostring(err_t), err_t
+  end
+
   local row, err_t = self.strategy:select_by_field("cache_key", cache_key, options)
   if err_t then
     return nil, tostring(err_t), err_t
@@ -1139,7 +1347,21 @@ function DAO:select_by_cache_key(cache_key, options)
     return nil
   end
 
-  return self:row_to_entity(row, options)
+  local err
+  row, err, err_t = self:row_to_entity(row, options)
+  if not row then
+    return nil, err, err_t
+  end
+
+  row, err_t = run_hook("dao:select_by_cache_key:post",
+                        row,
+                        self.schema.name,
+                        options)
+  if not row then
+    return nil, tostring(err_t), err_t
+  end
+
+  return row
 end
 
 
@@ -1165,11 +1387,21 @@ end
 
 
 function DAO:row_to_entity(row, options)
+  local transform, nulls
   if options ~= nil then
     validate_options_type(options)
+    local ok, errors = validate_options_value(self, options)
+    if not ok then
+      local err_t = self.errors:invalid_options(errors)
+      return nil, tostring(err_t), err_t
+    end
+    transform = options.transform
+    nulls = options.nulls
   end
 
-  local nulls = options and options.nulls
+  if transform == nil then
+    transform = true
+  end
 
   local entity, errors = self.schema:process_auto_fields(row, "select", nulls)
   if not entity then
@@ -1177,13 +1409,16 @@ function DAO:row_to_entity(row, options)
     return nil, tostring(err_t), err_t
   end
 
-  local transformed_entity, err = self.schema:transform(entity, row, "select")
-  if not transformed_entity then
-    local err_t = self.errors:transformation_error(err)
-    return nil, tostring(err_t), err_t
+  if transform then
+    local err
+    entity, err = self.schema:transform(entity, row, "select")
+    if not entity then
+      local err_t = self.errors:transformation_error(err)
+      return nil, tostring(err_t), err_t
+    end
   end
 
-  return transformed_entity
+  return entity
 end
 
 

@@ -1,27 +1,23 @@
-local basic_serializer = require "kong.plugins.log-serializers.basic"
-local statsd_logger    = require "kong.plugins.datadog.statsd_logger"
+local serializer = require "kong.plugins.log-serializers.basic"
+local statsd_logger = require "kong.plugins.datadog.statsd_logger"
 
 
-local ngx_log       = ngx.log
-local ngx_timer_at  = ngx.timer.at
-local string_gsub   = string.gsub
-local pairs         = pairs
-local NGX_ERR       = ngx.ERR
-
-
-local DatadogHandler    = {}
-DatadogHandler.PRIORITY = 10
-DatadogHandler.VERSION = "3.0.0"
+local kong     = kong
+local ngx      = ngx
+local timer_at = ngx.timer.at
+local insert   = table.insert
+local gsub     = string.gsub
+local pairs    = pairs
 
 
 local get_consumer_id = {
   consumer_id = function(consumer)
-    return consumer and string_gsub(consumer.id, "-", "_")
+    return consumer and gsub(consumer.id, "-", "_")
   end,
-  custom_id   = function(consumer)
+  custom_id = function(consumer)
     return consumer and consumer.custom_id
   end,
-  username    = function(consumer)
+  username = function(consumer)
     return consumer and consumer.username
   end
 }
@@ -30,11 +26,11 @@ local get_consumer_id = {
 local function compose_tags(service_name, status, consumer_id, tags)
   local result = {"name:" ..service_name, "status:"..status}
   if consumer_id ~= nil then
-    table.insert(result, "consumer:" ..consumer_id)
+    insert(result, "consumer:" ..consumer_id)
   end
   if tags ~= nil then
     for _, v in pairs(tags) do
-      table.insert(result, v)
+      insert(result, v)
     end
   end
   return result
@@ -46,9 +42,9 @@ local function log(premature, conf, message)
     return
   end
 
-  local name = string_gsub(message.service.name ~= ngx.null and
-                           message.service.name or message.service.host,
-                           "%.", "_")
+  local name = gsub(message.service.name ~= ngx.null and
+                    message.service.name or message.service.host,
+                    "%.", "_")
 
   local stat_name  = {
     request_size     = "request.size",
@@ -69,7 +65,7 @@ local function log(premature, conf, message)
 
   local logger, err = statsd_logger:new(conf)
   if err then
-    ngx_log(NGX_ERR, "failed to create Statsd logger: ", err)
+    kong.log.err("failed to create Statsd logger: ", err)
     return
   end
 
@@ -90,17 +86,23 @@ local function log(premature, conf, message)
 end
 
 
+local DatadogHandler = {
+  PRIORITY = 10,
+  VERSION = "3.0.1",
+}
+
+
 function DatadogHandler:log(conf)
   if not ngx.ctx.service then
     return
   end
 
-  local message = basic_serializer.serialize(ngx)
-
-  local ok, err = ngx_timer_at(0, log, conf, message)
+  local message = serializer.serialize(ngx)
+  local ok, err = timer_at(0, log, conf, message)
   if not ok then
-    ngx_log(NGX_ERR, "failed to create timer: ", err)
+    kong.log.err("failed to create timer: ", err)
   end
 end
+
 
 return DatadogHandler

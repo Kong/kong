@@ -97,6 +97,17 @@ qq{
                 log           = true,
                 admin_api     = true,
             }, {
+                method        = "get_forwarded_path",
+                args          = {},
+                init_worker   = false,
+                certificate   = "pending",
+                rewrite       = true,
+                access        = true,
+                header_filter = true,
+                body_filter   = true,
+                log           = true,
+                admin_api     = true,
+            }, {
                 method        = "get_http_version",
                 args          = {},
                 init_worker   = false,

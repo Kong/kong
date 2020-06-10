@@ -200,9 +200,9 @@ function CassandraConnector.new(kong_config)
     keyspace   = cluster_options.keyspace,
     opts       = {
       write_consistency =
-        cassandra.consistencies[kong_config.cassandra_consistency:lower()],
+        cassandra.consistencies[kong_config.cassandra_write_consistency:lower()],
       read_consistency =
-        cassandra.consistencies[kong_config.cassandra_consistency:lower()],
+        cassandra.consistencies[kong_config.cassandra_read_consistency:lower()],
       serial_consistency = serial_consistency,
     },
     refresh_frequency = kong_config.cassandra_refresh_frequency,

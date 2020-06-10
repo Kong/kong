@@ -626,17 +626,19 @@ describe("Admin API #off", function()
 
         local body = assert.response(res).has.status(200)
         local json = cjson.decode(body)
-        local yaml_config = lyaml.load(json.config)
-        local expected_config = lyaml.load [[
-_format_version: "1.1"
-consumers:
-- created_at: 1566863706
-  username: bobo
-  id: d885e256-1abe-5e24-80b6-8f68fe59ea8e
-  custom_id: ~
-  tags: ~
-]]
-        assert.same(expected_config, yaml_config)
+        local config = assert(lyaml.load(json.config))
+        assert.same({
+          _format_version = "2.1",
+          _transform = false,
+          consumers = {
+            { id = "d885e256-1abe-5e24-80b6-8f68fe59ea8e",
+              created_at = 1566863706,
+              username = "bobo",
+              custom_id = lyaml.null,
+              tags = lyaml.null,
+            },
+          },
+        }, config)
       end)
     end)
 
