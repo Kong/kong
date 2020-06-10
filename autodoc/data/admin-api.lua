@@ -674,8 +674,8 @@ return {
         },
         ca_certificates = {
           description = [[
-            UUID of `CA Certificate` object that are used as trust store while verifying
-            upstream server's TLS certificate.
+            Array of `CA Certificate` object UUIDs that are used to build the trust store
+            while verifying upstream server's TLS certificate.
             If set to `null` when Nginx default is respected. If default CA list in Nginx
             are not specified and TLS verification is enabled, then handshake with upstream
             server will always fail (because no CA are trusted).
