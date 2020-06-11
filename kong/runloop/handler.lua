@@ -493,22 +493,30 @@ do
                    plugins_iterator_version, timeout)
   end
 
-
-  get_updated_plugins_iterator = function()
-    if kong.configuration.router_consistency == "strict" then
-      local ok, err = rebuild_plugins_iterator(PLUGINS_ITERATOR_SYNC_OPTS)
+  local build_initial_plugins_iterator = function()
+     local ok, err = rebuild_plugins_iterator(PLUGINS_ITERATOR_SYNC_OPTS)
       if not ok then
         -- If an error happens while updating, log it and return non-updated
         -- version
         log(ERR, "could not rebuild plugins iterator: ", err,
-                 " (stale plugins iterator will be used)")
+                 " (stale plugins iterator will be used if available)")
       end
+  end
+
+  get_updated_plugins_iterator = function()
+    if kong.configuration.router_consistency == "strict"
+    or not plugins_iterator
+    then
+      build_initial_plugins_iterator()
     end
     return plugins_iterator
   end
 
 
   get_plugins_iterator = function()
+    if not plugins_iterator then
+      build_initial_plugins_iterator()
+    end
     return plugins_iterator
   end
 
