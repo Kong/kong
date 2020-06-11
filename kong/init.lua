@@ -550,16 +550,15 @@ function Kong.init_worker()
 
   runloop.init_worker.before()
 
+  local init_worker_plugins_iterator = runloop.build_plugins_iterator_for_init_worker_phase()
+  execute_plugins_iterator(init_worker_plugins_iterator, "init_worker")
 
   -- run plugins init_worker context
-  ok, err = runloop.update_plugins_iterator()
+  local retries = 5
+  ok, err = runloop.update_plugins_iterator(retries)
   if not ok then
-    stash_init_worker_error("failed to build the plugins iterator: " .. err)
-    return
+    ngx_log(ngx_ERR, "failed to build the plugins iterator: ", err)
   end
-
-  local plugins_iterator = runloop.get_plugins_iterator()
-  execute_plugins_iterator(plugins_iterator, "init_worker")
 
   if go.is_on() then
     go.manage_pluginserver()

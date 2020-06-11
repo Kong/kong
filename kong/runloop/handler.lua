@@ -849,11 +849,17 @@ local function set_init_versions_in_cache()
   return true
 end
 
+local function build_plugins_iterator_for_init_worker_phase()
+  return PluginsIterator.new_for_init_worker_phase()
+end
+
 
 -- in the table below the `before` and `after` is to indicate when they run:
 -- before or after the plugins
 return {
   build_router = build_router,
+
+  build_plugins_iterator_for_init_worker_phase = build_plugins_iterator_for_init_worker_phase,
 
   build_plugins_iterator = build_plugins_iterator,
   update_plugins_iterator = update_plugins_iterator,

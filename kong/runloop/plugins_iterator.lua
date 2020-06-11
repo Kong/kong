@@ -10,6 +10,7 @@ local pairs        = pairs
 local ipairs       = ipairs
 local assert       = assert
 local tostring     = tostring
+local insert       = table.insert
 
 
 local EMPTY_T      = {}
@@ -42,7 +43,10 @@ local loaded_plugins
 
 
 local function get_loaded_plugins()
-  return assert(kong.db.plugins:get_handlers())
+  if not loaded_plugins then
+    loaded_plugins = assert(kong.db.plugins:get_handlers())
+  end
+  return loaded_plugins
 end
 
 
@@ -261,7 +265,6 @@ local PluginsIterator = {}
 -- @param[type=table] ctx Nginx context table
 -- @treturn function iterator
 local function iterate(self, phase, ctx)
-  -- no ctx, we are in init_worker phase
   if ctx and not ctx.plugins then
     ctx.plugins = {}
   end
@@ -280,25 +283,58 @@ local function iterate(self, phase, ctx)
 end
 
 
+function PluginsIterator.new_for_init_worker_phase()
+  loaded_plugins = get_loaded_plugins()
+
+  local loaded_plugins_with_init_worker = {}
+  for _, plugin in ipairs(loaded_plugins) do
+    local phase_handler = plugin.handler.init_worker
+    if type(phase_handler) == "function" then
+      insert(loaded_plugins_with_init_worker, plugin)
+    end
+  end
+
+  local get_next = function(self)
+    local i = self.i + 1
+    local plugin = self.loaded[i]
+    if not plugin then
+      return nil
+    end
+    self.i = i
+    return plugin
+  end
+
+  local iterate = function(self, ctx)
+    local iteration = {
+      i = 0,
+      loaded = loaded_plugins_with_init_worker,
+    }
+
+    return get_next, iteration
+  end
+
+  return {
+    iterate = iterate,
+  }
+end
+
 function PluginsIterator.new(version)
   if not version then
     error("version must be given", 2)
   end
 
-  loaded_plugins = loaded_plugins or get_loaded_plugins()
+  loaded_plugins = get_loaded_plugins()
 
   local map = {}
   local combos = {}
   local phases
   if subsystem == "stream" then
     phases = {
-      init_worker = {},
       preread     = {},
       log         = {},
     }
   else
     phases = {
-      init_worker   = {},
       certificate   = {},
       rewrite       = {},
       access        = {},
@@ -358,7 +394,7 @@ function PluginsIterator.new(version)
 
   for _, plugin in ipairs(loaded_plugins) do
     for phase_name, phase in pairs(phases) do
-      if phase_name == "init_worker" or combos[plugin.name] then
+      if combos[plugin.name] then
         local phase_handler = plugin.handler[phase_name]
         if type(phase_handler) == "function"
         and phase_handler ~= BasePlugin[phase_name] then
