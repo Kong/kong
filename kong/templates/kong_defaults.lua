@@ -188,6 +188,7 @@ pg_password = NONE
 pg_ssl = off
 pg_ssl_required = off
 pg_ssl_verify = off
+pg_ssl_version = tlsv1
 pg_max_concurrent_queries = 0
 pg_semaphore_timeout = 60000
 
@@ -199,7 +200,9 @@ pg_ro_timeout = NONE
 pg_ro_user = NONE
 pg_ro_password = NONE
 pg_ro_ssl = NONE
+pg_ro_ssl_required = NONE
 pg_ro_ssl_verify = NONE
+pg_ro_ssl_version = NONE
 pg_ro_max_concurrent_queries = NONE
 pg_ro_semaphore_timeout = NONE
 

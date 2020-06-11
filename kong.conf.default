@@ -792,6 +792,10 @@
 #pg_ssl = off                    # Toggles client-server TLS connections
                                  # between Kong and PostgreSQL.
 
+#pg_ssl_version = tlsv1          # When using ssl between Kong and PostgreSQL,
+                                 # the version of tls to use. Accepted values are
+                                 # `tlsv1` or `tlsv1_2`
+
 #pg_ssl_required = off           # When `pg_ssl` is on this determines if
                                  # TLS must be used between Kong and PostgreSQL.
 
@@ -847,8 +851,16 @@
 #pg_ro_ssl = <pg_ssl>            # Same as `pg_ssl`, but for the
                                  # read-only connection.
 
+#pg_ro_ssl_required = <pg_ssl_required>  
+                                 # Same as `pg_ssl_required`, but for the
+                                 # read-only connection.
+
 #pg_ro_ssl_verify = <pg_ssl_verify>
                                  # Same as `pg_ssl_verify`, but for the
+                                 # read-only connection.
+
+#pg_ro_ssl_version = <pg_ssl_version>       
+                                 # Same as `pg_ssl_version`, but for the
                                  # read-only connection.
 
 #pg_ro_max_concurrent_queries = <pg_max_concurrent_queries>

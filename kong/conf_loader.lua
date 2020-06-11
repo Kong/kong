@@ -338,6 +338,7 @@ local CONF_INFERENCES = {
   pg_ssl = { typ = "boolean" },
   pg_ssl_required = { typ = "boolean" },
   pg_ssl_verify = { typ = "boolean" },
+  pg_ssl_version = { typ = "string"},
   pg_max_concurrent_queries = { typ = "number" },
   pg_semaphore_timeout = { typ = "number" },
 
@@ -345,7 +346,9 @@ local CONF_INFERENCES = {
   pg_ro_timeout = { typ = "number" },
   pg_ro_password = { typ = "string" },
   pg_ro_ssl = { typ = "boolean" },
+  pg_ro_ssl_required = { typ = "boolean" },
   pg_ro_ssl_verify = { typ = "boolean" },
+  pg_ro_ssl_version = { typ = "string"},
   pg_ro_max_concurrent_queries = { typ = "number" },
   pg_ro_semaphore_timeout = { typ = "number" },
 
