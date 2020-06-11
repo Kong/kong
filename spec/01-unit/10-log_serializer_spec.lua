@@ -177,13 +177,13 @@ describe("Log Serializer", function()
         return orig_warn(msg)
       end
 
-      local res = basic.serialize({ngx = ngx, kong = kong, })
+      local res = basic.serialize(ngx, kong)
       assert.is_table(res)
 
       assert.equals("1.1.1.1", res.client_ip)
 
       -- 2nd time
-      res = basic.serialize({ngx = ngx, kong = kong, })
+      res = basic.serialize(ngx, kong)
       assert.is_table(res)
 
       kong.log.warn = orig_warn
