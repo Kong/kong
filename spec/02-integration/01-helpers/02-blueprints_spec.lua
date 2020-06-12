@@ -128,9 +128,9 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("inserts acl plugins", function()
-      local p = bp.acl_plugins:insert({ config = { whitelist = {"admin"} } })
+      local p = bp.acl_plugins:insert({ config = { allow = {"admin"} } })
       assert.equals("acl", p.name)
-      assert.same({"admin"}, p.config.whitelist)
+      assert.same({"admin"}, p.config.allow)
       assert.matches(UUID_PATTERN, p.id)
     end)
 

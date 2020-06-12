@@ -1,25 +1,9 @@
 local operations = require "kong.db.migrations.operations.200_to_210"
 
 
-local plugin_entities = {
-  {
-    name = "acls",
-    primary_key = "id",
-    uniques = {},
-    fks = {{name = "consumer", reference = "consumers", on_delete = "cascade"}},
-  }
-}
-
-
-local function ws_migration_up(ops)
-  return ops:ws_adjust_fields(plugin_entities)
-end
-
-
 local function ws_migration_teardown(ops)
   return function(connector)
-    ops:ws_adjust_data(connector, plugin_entities)
-    ops:fixup_plugin_config(connector, "acl", function(config)
+    ops:fixup_plugin_config(connector, "bot-detection", function(config)
       config.allow = config.whitelist
       config.whitelist = nil
       config.deny = config.blacklist
@@ -32,12 +16,12 @@ end
 
 return {
   postgres = {
-    up = ws_migration_up(operations.postgres.up),
+    up = "",
     teardown = ws_migration_teardown(operations.postgres.teardown),
   },
 
   cassandra = {
-    up = ws_migration_up(operations.cassandra.up),
+    up = "",
     teardown = ws_migration_teardown(operations.cassandra.teardown),
   },
 }

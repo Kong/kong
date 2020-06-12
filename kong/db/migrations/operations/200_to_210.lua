@@ -168,6 +168,32 @@ local postgres = {
       -- Postgres doesn't need this
     end,
 
+
+    ------------------------------------------------------------------------------
+    -- General function to fixup a plugin configuration
+    fixup_plugin_config = function(_, connector, plugin_name, fixup_fn)
+      local pgmoon_json = require("pgmoon.json")
+
+      for row, err in connector:iterate("SELECT * FROM 'plugins'") do
+        if err then
+          return nil, err
+        end
+
+        if row.name == plugin_name then
+          local fix = fixup_fn(row.config)
+
+          if fix then
+            assert(connector:query(render([[
+              UPDATE plugins SET config = '%s' WHERE id = '%s'
+            ]], {
+              pgmoon_json.json_encode(row.config),
+              row.id,
+            })))
+          end
+        end
+      end
+    end,
+
   },
 
 }
@@ -333,6 +359,38 @@ local cassandra = {
           })
 
           assert(connector:query(cql))
+        end
+      end
+    end,
+
+    ------------------------------------------------------------------------------
+    -- General function to fixup a plugin configuration
+    fixup_plugin_config = function(_, connector, plugin_name, fixup_fn)
+      local cassandra = require("cassandra")
+      local cjson = require("cjson")
+
+      local coordinator = assert(connector:connect_migrations())
+
+      for rows, err in coordinator:iterate("SELECT * FROM plugins") do
+        if err then
+          return nil, err
+        end
+
+        for _, row in ipairs(rows) do
+          if row.name == plugin_name then
+            assert(type(row.config) == "string")
+            local config = cjson.decode(row.config)
+            local fix = fixup_fn(config)
+
+            if fix then
+              assert(connector:query([[
+                UPDATE plugins SET config = ? WHERE id = ?
+              ]], {
+                cassandra.text(cjson.encode(config)),
+                cassandra.uuid(row.id)
+              }))
+            end
+          end
         end
       end
     end,

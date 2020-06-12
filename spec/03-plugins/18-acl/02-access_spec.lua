@@ -97,7 +97,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route1.id },
         config = {
-          whitelist = { "admin" },
+          allow = { "admin" },
         }
       }
 
@@ -109,7 +109,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route1b.id },
         config = {
-          whitelist = { "admin" },
+          allow = { "admin" },
         }
       }
 
@@ -130,7 +130,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route2.id },
         config = {
-          whitelist = { "admin" },
+          allow = { "admin" },
         }
       }
 
@@ -148,7 +148,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route2b.id },
         config = {
-          whitelist = { "admin" },
+          allow = { "admin" },
         }
       }
 
@@ -170,7 +170,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route2c.id },
         config = {
-          whitelist = { "admin" },
+          allow = { "admin" },
         }
       }
 
@@ -192,7 +192,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route3.id },
         config = {
-          blacklist = { "admin" }
+          deny = { "admin" }
         }
       }
 
@@ -210,7 +210,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route3b.id },
         config = {
-          blacklist = { "admin" }
+          deny = { "admin" }
         }
       }
 
@@ -232,7 +232,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route3c.id },
         config = {
-          blacklist = { "admin" }
+          deny = { "admin" }
         }
       }
 
@@ -254,7 +254,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route4.id },
         config = {
-          whitelist = { "admin", "pro" }
+          allow = { "admin", "pro" }
         }
       }
 
@@ -272,7 +272,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route4b.id },
         config = {
-          whitelist = { "admin", "pro" }
+          allow = { "admin", "pro" }
         }
       }
 
@@ -294,7 +294,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route4c.id },
         config = {
-          whitelist = { "admin", "pro" }
+          allow = { "admin", "pro" }
         }
       }
 
@@ -316,7 +316,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route5.id },
         config = {
-          blacklist = { "admin", "pro" }
+          deny = { "admin", "pro" }
         }
       }
 
@@ -334,7 +334,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route5b.id },
         config = {
-          blacklist = { "admin", "pro" }
+          deny = { "admin", "pro" }
         }
       }
 
@@ -356,7 +356,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route5c.id },
         config = {
-          blacklist = { "admin", "pro" }
+          deny = { "admin", "pro" }
         }
       }
 
@@ -378,7 +378,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route6.id },
         config = {
-          blacklist = { "admin", "pro", "hello" }
+          deny = { "admin", "pro", "hello" }
         }
       }
 
@@ -396,7 +396,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route6b.id },
         config = {
-          blacklist = { "admin", "pro", "hello" }
+          deny = { "admin", "pro", "hello" }
         }
       }
 
@@ -418,7 +418,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route6c.id },
         config = {
-          blacklist = { "admin", "pro", "hello" }
+          deny = { "admin", "pro", "hello" }
         }
       }
 
@@ -440,7 +440,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route7.id },
         config = {
-          whitelist = { "admin", "pro", "hello" }
+          allow = { "admin", "pro", "hello" }
         }
       }
 
@@ -458,7 +458,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route7b.id },
         config = {
-          whitelist = { "admin", "pro", "hello" }
+          allow = { "admin", "pro", "hello" }
         }
       }
 
@@ -480,7 +480,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route8.id },
         config = {
-          whitelist = { "anonymous" }
+          allow = { "anonymous" }
         }
       }
 
@@ -500,7 +500,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route8b.id },
         config = {
-          whitelist = { "anonymous" }
+          allow = { "anonymous" }
         }
       }
 
@@ -530,7 +530,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route9.id },
         config = {
-          whitelist = { "admin" },
+          allow = { "admin" },
           hide_groups_header = true
         }
       }
@@ -549,7 +549,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route9b.id },
         config = {
-          whitelist = { "admin" },
+          allow = { "admin" },
           hide_groups_header = true
         }
       }
@@ -572,7 +572,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route10.id },
         config = {
-          whitelist = { "admin" },
+          allow = { "admin" },
           hide_groups_header = false
         }
       }
@@ -591,7 +591,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route10b.id },
         config = {
-          whitelist = { "admin" },
+          allow = { "admin" },
           hide_groups_header = false
         }
       }
@@ -614,7 +614,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route11.id },
         config = {
-          whitelist = { "admin", "anonymous" },
+          allow = { "admin", "anonymous" },
           hide_groups_header = false
         }
       }
@@ -645,7 +645,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route12.id },
         config = {
-          whitelist = { "anonymous" },
+          allow = { "anonymous" },
           hide_groups_header = false
         }
       }
@@ -676,7 +676,7 @@ for _, strategy in helpers.each_strategy() do
         name = "acl",
         route = { id = route13.id },
         config = {
-          whitelist = { "anonymous" },
+          allow = { "anonymous" },
           hide_groups_header = false
         }
       }
@@ -795,7 +795,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "You cannot consume this service" }, json)
       end)
 
-      it("should fail when not in whitelist", function()
+      it("should fail when not allowed", function()
         local res = assert(proxy_client:get("/status/200?apikey=apikey123", {
           headers = {
             ["Host"] = "acl2.com"
@@ -806,7 +806,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "You cannot consume this service" }, json)
       end)
 
-      it("should fail when not in whitelist with authenticated groups", function()
+      it("should fail when not allowed with authenticated groups", function()
         local res = assert(proxy_client:get("/status/200", {
           headers = {
             ["Host"] = "acl2c.com"
@@ -817,7 +817,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "You cannot consume this service" }, json)
       end)
 
-      it("should work when in whitelist", function()
+      it("should work when allowed", function()
         local res = assert(proxy_client:get("/request?apikey=apikey124", {
           headers = {
             ["Host"] = "acl2.com"
@@ -828,7 +828,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(nil, body.headers["x-authenticated-groups"])
       end)
 
-      it("should work when in whitelist with authenticated groups", function()
+      it("should work when allowed with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
             ["Host"] = "acl2b.com"
@@ -883,7 +883,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(nil, body.headers["x-consumer-groups"])
       end)
 
-      it("should work when not in blacklist", function()
+      it("should work when not denied", function()
         local res = assert(proxy_client:get("/request?apikey=apikey123", {
           headers = {
             ["Host"] = "acl3.com"
@@ -892,7 +892,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
       end)
 
-      it("should work when not in blacklist with authenticated groups", function()
+      it("should work when not denied with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
             ["Host"] = "acl3b.com"
@@ -901,7 +901,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
       end)
 
-      it("should fail when in blacklist", function()
+      it("should fail when denied", function()
         local res = assert(proxy_client:get("/request?apikey=apikey124", {
           headers = {
             ["Host"] = "acl3.com"
@@ -912,7 +912,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "You cannot consume this service" }, json)
       end)
 
-      it("should fail when in blacklist with authenticated groups", function()
+      it("should fail when denied with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
             ["Host"] = "acl3c.com"
@@ -925,7 +925,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("Multi lists", function()
-      it("should work when in whitelist", function()
+      it("should work when allowed", function()
         local res = assert(proxy_client:get("/request?apikey=apikey125", {
           headers = {
             ["Host"] = "acl4.com"
@@ -936,7 +936,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(nil, body.headers["x-authenticated-groups"])
       end)
 
-      it("should work when in whitelist with authenticated groups", function()
+      it("should work when allowed with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
             ["Host"] = "acl4b.com"
@@ -947,7 +947,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(nil, body.headers["x-consumer-groups"])
       end)
 
-      it("should fail when not in whitelist", function()
+      it("should fail when not allowed", function()
         local res = assert(proxy_client:get("/request?apikey=apikey126", {
           headers = {
             ["Host"] = "acl4.com"
@@ -958,7 +958,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "You cannot consume this service" }, json)
       end)
 
-      it("should fail when not in whitelist with authenticated groups", function()
+      it("should fail when not allowed with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
             ["Host"] = "acl4c.com"
@@ -969,7 +969,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "You cannot consume this service" }, json)
       end)
 
-      it("should fail when in blacklist", function()
+      it("should fail when denied", function()
         local res = assert(proxy_client:get("/request?apikey=apikey125", {
           headers = {
             ["Host"] = "acl5.com"
@@ -980,7 +980,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "You cannot consume this service" }, json)
       end)
 
-      it("should fail when in blacklist with authenticated groups", function()
+      it("should fail when denied with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
             ["Host"] = "acl5b.com"
@@ -992,7 +992,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
 
-      it("should work when not in blacklist", function()
+      it("should work when not denied", function()
         local res = assert(proxy_client:get("/request?apikey=apikey126", {
           headers = {
             ["Host"] = "acl5.com"
@@ -1001,7 +1001,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
       end)
 
-      it("should work when not in blacklist with authenticated groups", function()
+      it("should work when not denied with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
             ["Host"] = "acl5c.com"
@@ -1010,7 +1010,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
       end)
 
-      it("should not work when one of the ACLs in the blacklist", function()
+      it("should not work when one of the ACLs denied", function()
         local res = assert(proxy_client:get("/request?apikey=apikey126", {
           headers = {
             ["Host"] = "acl6.com"
@@ -1021,7 +1021,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "You cannot consume this service" }, json)
       end)
 
-      it("should not work when one of the ACLs in the blacklist with authenticated groups", function()
+      it("should not work when one of the ACLs denied with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
             ["Host"] = "acl6b.com"
@@ -1032,7 +1032,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "You cannot consume this service" }, json)
       end)
 
-      it("should work when one of the ACLs in the whitelist", function()
+      it("should work when one of the ACLs is allowed", function()
         local res = assert(proxy_client:get("/request?apikey=apikey126", {
           headers = {
             ["Host"] = "acl7.com"
@@ -1041,7 +1041,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
       end)
 
-      it("should work when one of the ACLs in the whitelist with authenticated groups", function()
+      it("should work when one of the ACLs is allowed with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
             ["Host"] = "acl7b.com"
@@ -1050,7 +1050,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
       end)
 
-      it("should not work when at least one of the ACLs in the blacklist", function()
+      it("should not work when at least one of the ACLs denied", function()
         local res = assert(proxy_client:get("/request?apikey=apikey125", {
           headers = {
             ["Host"] = "acl6.com"
@@ -1061,7 +1061,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "You cannot consume this service" }, json)
       end)
 
-      it("should not work when at least one of the ACLs in the blacklist with authenticated groups", function()
+      it("should not work when at least one of the ACLs denied with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
             ["Host"] = "acl6c.com"
@@ -1125,7 +1125,7 @@ for _, strategy in helpers.each_strategy() do
             },
             body = {
               name   = "acl",
-              config = { whitelist = { "admin" .. i } },
+              config = { allow = { "admin" .. i } },
               route  = { id = json.id },
             }
           }))
@@ -1204,7 +1204,7 @@ for _, strategy in helpers.each_strategy() do
             },
             body = {
               name   = "acl",
-              config = { whitelist = { "admin" .. i } },
+              config = { allow = { "admin" .. i } },
               route  = { id = json.id },
             }
           }))
@@ -1322,71 +1322,71 @@ for _, strategy in helpers.each_strategy() do
       }
 
       do
-        local whitelist_everyone = bp.routes:insert {
-          hosts = { "whitelist-everyone.test" },
+        local allow_everyone = bp.routes:insert {
+          hosts = { "allow-everyone.test" },
         }
         bp.plugins:insert {
           name = "acl",
-          route = { id = whitelist_everyone.id },
+          route = { id = allow_everyone.id },
           config = {
-            whitelist = { "everyone" },
+            allow = { "everyone" },
           },
         }
       end
 
       do
-        local whitelist_none = bp.routes:insert {
-          hosts = { "whitelist-none.test" },
+        local allow_none = bp.routes:insert {
+          hosts = { "allow-none.test" },
         }
         bp.plugins:insert {
           name = "acl",
-          route = { id = whitelist_none.id },
+          route = { id = allow_none.id },
           config = {
-            whitelist = { "none" },
+            allow = { "none" },
           },
         }
       end
 
       do
-        local blacklist_everyone = bp.routes:insert {
-          hosts = { "blacklist-everyone.test" },
+        local deny_everyone = bp.routes:insert {
+          hosts = { "deny-everyone.test" },
         }
         bp.plugins:insert {
           name = "acl",
-          route = { id = blacklist_everyone.id },
+          route = { id = deny_everyone.id },
           config = {
-            whitelist = { "everyone" },
+            allow = { "everyone" },
           },
         }
       end
 
       do
-        local blacklist_none = bp.routes:insert {
-          hosts = { "blacklist-none.test" },
+        local deny_none = bp.routes:insert {
+          hosts = { "deny-none.test" },
         }
         bp.plugins:insert {
           name = "acl",
-          route = { id = blacklist_none.id },
+          route = { id = deny_none.id },
           config = {
-            whitelist = { "none" },
+            allow = { "none" },
           },
         }
       end
 
       do
-        local whitelist_everyone_anonymous = bp.routes:insert {
-          hosts = { "whitelist-everyone-anonymous.test" },
+        local allow_everyone_anonymous = bp.routes:insert {
+          hosts = { "allow-everyone-anonymous.test" },
         }
         bp.plugins:insert {
           name = "acl",
-          route = { id = whitelist_everyone_anonymous.id },
+          route = { id = allow_everyone_anonymous.id },
           config = {
-            whitelist = { "everyone" },
+            allow = { "everyone" },
           },
         }
         bp.plugins:insert {
           name = "key-auth",
-          route = { id = whitelist_everyone_anonymous.id },
+          route = { id = allow_everyone_anonymous.id },
           config = {
             anonymous = anonymous.id,
           }
@@ -1394,19 +1394,19 @@ for _, strategy in helpers.each_strategy() do
       end
 
       do
-        local whitelist_everyone_anonymous_with_group = bp.routes:insert {
-          hosts = { "whitelist-everyone-anonymous-with-group.test" },
+        local allow_everyone_anonymous_with_group = bp.routes:insert {
+          hosts = { "allow-everyone-anonymous-with-group.test" },
         }
         bp.plugins:insert {
           name = "acl",
-          route = { id = whitelist_everyone_anonymous_with_group.id },
+          route = { id = allow_everyone_anonymous_with_group.id },
           config = {
-            whitelist = { "everyone" },
+            allow = { "everyone" },
           },
         }
         bp.plugins:insert {
           name = "key-auth",
-          route = { id = whitelist_everyone_anonymous_with_group.id },
+          route = { id = allow_everyone_anonymous_with_group.id },
           config = {
             anonymous = anonymous_with_group.id,
           }
@@ -1414,19 +1414,19 @@ for _, strategy in helpers.each_strategy() do
       end
 
       do
-        local whitelist_none_anonymous = bp.routes:insert {
-          hosts = { "whitelist-none-anonymous.test" },
+        local allow_none_anonymous = bp.routes:insert {
+          hosts = { "allow-none-anonymous.test" },
         }
         bp.plugins:insert {
           name = "acl",
-          route = { id = whitelist_none_anonymous.id },
+          route = { id = allow_none_anonymous.id },
           config = {
-            whitelist = { "none" },
+            allow = { "none" },
           },
         }
         bp.plugins:insert {
           name = "key-auth",
-          route = { id = whitelist_none_anonymous.id },
+          route = { id = allow_none_anonymous.id },
           config = {
             anonymous = anonymous.id,
           }
@@ -1434,19 +1434,19 @@ for _, strategy in helpers.each_strategy() do
       end
 
       do
-        local whitelist_none_anonymous_with_group = bp.routes:insert {
-          hosts = { "whitelist-none-anonymous-with-group.test" },
+        local allow_none_anonymous_with_group = bp.routes:insert {
+          hosts = { "allow-none-anonymous-with-group.test" },
         }
         bp.plugins:insert {
           name = "acl",
-          route = { id = whitelist_none_anonymous_with_group.id },
+          route = { id = allow_none_anonymous_with_group.id },
           config = {
-            whitelist = { "none" },
+            allow = { "none" },
           },
         }
         bp.plugins:insert {
           name = "key-auth",
-          route = { id = whitelist_none_anonymous_with_group.id },
+          route = { id = allow_none_anonymous_with_group.id },
           config = {
             anonymous = anonymous_with_group.id,
           }
@@ -1454,19 +1454,19 @@ for _, strategy in helpers.each_strategy() do
       end
 
       do
-        local blacklist_everyone_anonymous = bp.routes:insert {
-          hosts = { "blacklist-everyone-anonymous.test" },
+        local deny_everyone_anonymous = bp.routes:insert {
+          hosts = { "deny-everyone-anonymous.test" },
         }
         bp.plugins:insert {
           name = "acl",
-          route = { id = blacklist_everyone_anonymous.id },
+          route = { id = deny_everyone_anonymous.id },
           config = {
-            blacklist = { "everyone" },
+            deny = { "everyone" },
           },
         }
         bp.plugins:insert {
           name = "key-auth",
-          route = { id = blacklist_everyone_anonymous.id },
+          route = { id = deny_everyone_anonymous.id },
           config = {
             anonymous = anonymous.id,
           }
@@ -1474,19 +1474,19 @@ for _, strategy in helpers.each_strategy() do
       end
 
       do
-        local blacklist_everyone_anonymous_with_group = bp.routes:insert {
-          hosts = { "blacklist-everyone-anonymous-with-group.test" },
+        local deny_everyone_anonymous_with_group = bp.routes:insert {
+          hosts = { "deny-everyone-anonymous-with-group.test" },
         }
         bp.plugins:insert {
           name = "acl",
-          route = { id = blacklist_everyone_anonymous_with_group.id },
+          route = { id = deny_everyone_anonymous_with_group.id },
           config = {
-            blacklist = { "everyone" },
+            deny = { "everyone" },
           },
         }
         bp.plugins:insert {
           name = "key-auth",
-          route = { id = blacklist_everyone_anonymous_with_group.id },
+          route = { id = deny_everyone_anonymous_with_group.id },
           config = {
             anonymous = anonymous_with_group.id,
           }
@@ -1494,19 +1494,19 @@ for _, strategy in helpers.each_strategy() do
       end
 
       do
-        local blacklist_none_anonymous = bp.routes:insert {
-          hosts = { "blacklist-none-anonymous.test" },
+        local deny_none_anonymous = bp.routes:insert {
+          hosts = { "deny-none-anonymous.test" },
         }
         bp.plugins:insert {
           name = "acl",
-          route = { id = blacklist_none_anonymous.id },
+          route = { id = deny_none_anonymous.id },
           config = {
-            blacklist = { "none" },
+            deny = { "none" },
           },
         }
         bp.plugins:insert {
           name = "key-auth",
-          route = { id = blacklist_none_anonymous.id },
+          route = { id = deny_none_anonymous.id },
           config = {
             anonymous = anonymous.id,
           }
@@ -1514,19 +1514,19 @@ for _, strategy in helpers.each_strategy() do
       end
 
       do
-        local blacklist_none_anonymous_with_group = bp.routes:insert {
-          hosts = { "blacklist-none-anonymous-with-group.test" },
+        local deny_none_anonymous_with_group = bp.routes:insert {
+          hosts = { "deny-none-anonymous-with-group.test" },
         }
         bp.plugins:insert {
           name = "acl",
-          route = { id = blacklist_none_anonymous_with_group.id },
+          route = { id = deny_none_anonymous_with_group.id },
           config = {
-            blacklist = { "none" },
+            deny = { "none" },
           },
         }
         bp.plugins:insert {
           name = "key-auth",
-          route = { id = blacklist_none_anonymous_with_group.id },
+          route = { id = deny_none_anonymous_with_group.id },
           config = {
             anonymous = anonymous_with_group.id,
           }
@@ -1558,7 +1558,7 @@ for _, strategy in helpers.each_strategy() do
       it("returns 401", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            Host = "whitelist-everyone.test"
+            Host = "allow-everyone.test"
           }
         }))
         local body = cjson.decode(assert.res_status(401, res))
@@ -1567,7 +1567,7 @@ for _, strategy in helpers.each_strategy() do
 
         local res = assert(proxy_client:get("/request", {
           headers = {
-            Host = "whitelist-none.test"
+            Host = "allow-none.test"
           }
         }))
         local body = cjson.decode(assert.res_status(401, res))
@@ -1576,7 +1576,7 @@ for _, strategy in helpers.each_strategy() do
 
         local res = assert(proxy_client:get("/request", {
           headers = {
-            Host = "blacklist-everyone.test"
+            Host = "deny-everyone.test"
           }
         }))
         local body = cjson.decode(assert.res_status(401, res))
@@ -1585,7 +1585,7 @@ for _, strategy in helpers.each_strategy() do
 
         local res = assert(proxy_client:get("/request", {
           headers = {
-            Host = "blacklist-none.test"
+            Host = "deny-none.test"
           }
         }))
         local body = cjson.decode(assert.res_status(401, res))
@@ -1598,7 +1598,7 @@ for _, strategy in helpers.each_strategy() do
       it("returns 401", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            Host = "whitelist-everyone-anonymous.test"
+            Host = "allow-everyone-anonymous.test"
           }
         }))
         local body = cjson.decode(assert.res_status(401, res))
@@ -1607,7 +1607,7 @@ for _, strategy in helpers.each_strategy() do
 
         local res = assert(proxy_client:get("/request", {
           headers = {
-            Host = "whitelist-none-anonymous.test"
+            Host = "allow-none-anonymous.test"
           }
         }))
         local body = cjson.decode(assert.res_status(401, res))
@@ -1616,7 +1616,7 @@ for _, strategy in helpers.each_strategy() do
 
         local res = assert(proxy_client:get("/request", {
           headers = {
-            Host = "blacklist-everyone-anonymous.test"
+            Host = "deny-everyone-anonymous.test"
           }
         }))
         local body = cjson.decode(assert.res_status(401, res))
@@ -1625,7 +1625,7 @@ for _, strategy in helpers.each_strategy() do
 
         local res = assert(proxy_client:get("/request", {
           headers = {
-            Host = "blacklist-none-anonymous.test"
+            Host = "deny-none-anonymous.test"
           }
         }))
         local body = cjson.decode(assert.res_status(401, res))
@@ -1638,7 +1638,7 @@ for _, strategy in helpers.each_strategy() do
       it("returns 200", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            Host = "whitelist-everyone-anonymous-with-group.test"
+            Host = "allow-everyone-anonymous-with-group.test"
           }
         }))
         local body = cjson.decode(assert.res_status(200, res))
@@ -1647,7 +1647,7 @@ for _, strategy in helpers.each_strategy() do
 
         local res = assert(proxy_client:get("/request", {
           headers = {
-            Host = "blacklist-none-anonymous-with-group.test"
+            Host = "deny-none-anonymous-with-group.test"
           }
         }))
         local body = cjson.decode(assert.res_status(200, res))
@@ -1658,7 +1658,7 @@ for _, strategy in helpers.each_strategy() do
       it("returns 403", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            Host = "whitelist-none-anonymous-with-group.test"
+            Host = "allow-none-anonymous-with-group.test"
           }
         }))
         local body = cjson.decode(assert.res_status(403, res))
@@ -1667,7 +1667,7 @@ for _, strategy in helpers.each_strategy() do
 
         local res = assert(proxy_client:get("/request", {
           headers = {
-            Host = "blacklist-everyone-anonymous-with-group.test"
+            Host = "deny-everyone-anonymous-with-group.test"
           }
         }))
         local body = cjson.decode(assert.res_status(403, res))

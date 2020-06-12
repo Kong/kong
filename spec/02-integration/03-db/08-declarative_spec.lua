@@ -87,8 +87,8 @@ for _, strategy in helpers.each_strategy() do
       enabled = true,
       name = "acl",
       config = {
-        blacklist = ngx.null,
-        whitelist = { "*" },
+        deny = ngx.null,
+        allow = { "*" },
         hide_groups_header = false,
       }
     }
@@ -291,8 +291,8 @@ for _, strategy in helpers.each_strategy() do
         assert.equals("acl", plugin.name)
 
         -- lyaml.load above returns null as its own format
-        assert(plugin.config.blacklist == lyaml.null)
-        plugin.config.blacklist = ngx.null
+        assert(plugin.config.deny == lyaml.null)
+        plugin.config.deny = ngx.null
 
         assert.same(plugin_def.config, plugin.config)
 

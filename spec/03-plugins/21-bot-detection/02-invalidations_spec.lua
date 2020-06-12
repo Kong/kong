@@ -64,7 +64,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "PATCH",
         path    = "/plugins/" .. plugin.id,
         body    = {
-          config = { blacklist = { "helloworld" } },
+          config = { deny = { "helloworld" } },
         },
         headers = {
           ["content-type"]     = "application/json"
@@ -103,7 +103,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "PATCH",
         path    = "/plugins/" .. plugin.id,
         body    = {
-          config = { whitelist = { "facebookexternalhit/1.1" } },
+          config = { allow = { "facebookexternalhit/1.1" } },
         },
         headers = {
           ["content-type"] = "application/json",
