@@ -54,6 +54,13 @@ local _mt = {}
 _mt.__index = _mt
 
 
+local function format_cql(...)
+ return (fmt(...):gsub("^%s*", "")
+                 :gsub("%s*$", "")
+                 :gsub("\n%s*", "\n"))
+end
+
+
 local function get_ws_id()
   local phase = get_phase()
   return (phase ~= "init" and phase ~= "init_worker")
@@ -66,7 +73,7 @@ local function is_partitioned(self)
 
   -- Assume a release version number of 3 & greater will use the same schema.
   if self.connector.major_version >= 3 then
-    cql = fmt([[
+    cql = format_cql([[
       SELECT * FROM system_schema.columns
       WHERE keyspace_name = '%s'
       AND table_name = '%s'
@@ -74,7 +81,7 @@ local function is_partitioned(self)
     ]], self.connector.keyspace, self.schema.name)
 
   else
-    cql = fmt([[
+    cql = format_cql([[
       SELECT * FROM system.schema_columns
       WHERE keyspace_name = '%s'
       AND columnfamily_name = '%s'
@@ -152,129 +159,129 @@ local function build_queries(self)
 
   if partitioned then
     return {
-      insert = fmt([[
+      insert = format_cql([[
         INSERT INTO %s (partition, %s) VALUES ('%s', %s) IF NOT EXISTS
       ]], schema.name, insert_columns, schema.name, insert_bind_args),
 
-      insert_ttl = fmt([[
+      insert_ttl = format_cql([[
         INSERT INTO %s (partition, %s) VALUES ('%s', %s) IF NOT EXISTS USING TTL %s
       ]], schema.name, insert_columns, schema.name, insert_bind_args, "%u"),
 
-      insert_no_transaction = fmt([[
+      insert_no_transaction = format_cql([[
         INSERT INTO %s (partition, %s) VALUES ('%s', %s)
       ]], schema.name, insert_columns, schema.name, insert_bind_args),
 
-      insert_no_transaction_ttl = fmt([[
+      insert_no_transaction_ttl = format_cql([[
         INSERT INTO %s (partition, %s) VALUES ('%s', %s) USING TTL %s
       ]], schema.name, insert_columns, schema.name, insert_bind_args, "%u"),
 
-      select = fmt([[
+      select = format_cql([[
         SELECT %s FROM %s WHERE partition = '%s' AND %s
       ]], select_columns, schema.name, schema.name, select_bind_args),
 
-      select_page = fmt([[
+      select_page = format_cql([[
         SELECT %s FROM %s WHERE partition = '%s'
       ]], select_columns, schema.name, schema.name),
 
-      select_with_filter = fmt([[
+      select_with_filter = format_cql([[
         SELECT %s FROM %s WHERE partition = '%s' AND %s
       ]], select_columns, schema.name, schema.name, "%s"),
 
-      select_tags_cond_and_first_tag = fmt([[
+      select_tags_cond_and_first_tag = format_cql([[
         SELECT entity_id FROM tags WHERE entity_name = '%s' AND tag = ?
       ]], schema.name),
 
-      select_tags_cond_and_next_tags = fmt([[
+      select_tags_cond_and_next_tags = format_cql([[
         SELECT entity_id FROM tags WHERE entity_name = '%s' AND tag = ? AND entity_id IN ?
       ]], schema.name),
 
-      select_tags_cond_or = fmt([[
+      select_tags_cond_or = format_cql([[
         SELECT tag, entity_id, other_tags FROM tags WHERE entity_name = '%s' AND tag IN ?
       ]], schema.name),
 
-      update = fmt([[
+      update = format_cql([[
         UPDATE %s SET %s WHERE partition = '%s' AND %s IF EXISTS
       ]], schema.name, "%s", schema.name, select_bind_args),
 
-      update_ttl = fmt([[
+      update_ttl = format_cql([[
         UPDATE %s USING TTL %s SET %s WHERE partition = '%s' AND %s IF EXISTS
       ]], schema.name, "%u", "%s", schema.name, select_bind_args),
 
-      upsert = fmt([[
+      upsert = format_cql([[
         UPDATE %s SET %s WHERE partition = '%s' AND %s
       ]], schema.name, "%s", schema.name, select_bind_args),
 
-      upsert_ttl = fmt([[
+      upsert_ttl = format_cql([[
         UPDATE %s USING TTL %s SET %s WHERE partition = '%s' AND %s
       ]], schema.name, "%u", "%s", schema.name, select_bind_args),
 
-      delete = fmt([[
+      delete = format_cql([[
         DELETE FROM %s WHERE partition = '%s' AND %s
       ]], schema.name, schema.name, select_bind_args),
     }
   end
 
   return {
-    insert = fmt([[
+    insert = format_cql([[
       INSERT INTO %s (%s) VALUES (%s) IF NOT EXISTS
     ]], schema.name, insert_columns, insert_bind_args),
 
-    insert_ttl = fmt([[
+    insert_ttl = format_cql([[
       INSERT INTO %s (%s) VALUES (%s) IF NOT EXISTS USING TTL %s
     ]], schema.name, insert_columns, insert_bind_args, "%u"),
 
-    insert_no_transaction = fmt([[
+    insert_no_transaction = format_cql([[
       INSERT INTO %s (%s) VALUES (%s)
     ]], schema.name, insert_columns, insert_bind_args),
 
-    insert_no_transaction_ttl = fmt([[
+    insert_no_transaction_ttl = format_cql([[
       INSERT INTO %s ( %s) VALUES (%s) USING TTL %s
     ]], schema.name, insert_columns, insert_bind_args, "%u"),
 
     -- might raise a "you must enable ALLOW FILTERING" error
-    select = fmt([[
+    select = format_cql([[
       SELECT %s FROM %s WHERE %s
     ]], select_columns, schema.name, select_bind_args),
 
     -- might raise a "you must enable ALLOW FILTERING" error
-    select_page = fmt([[
+    select_page = format_cql([[
       SELECT %s FROM %s
     ]], select_columns, schema.name),
 
     -- might raise a "you must enable ALLOW FILTERING" error
-    select_with_filter = fmt([[
+    select_with_filter = format_cql([[
       SELECT %s FROM %s WHERE %s
     ]], select_columns, schema.name, "%s"),
 
-    select_tags_cond_and_first_tag = fmt([[
+    select_tags_cond_and_first_tag = format_cql([[
       SELECT entity_id FROM tags WHERE entity_name = '%s' AND tag = ?
     ]], schema.name),
 
-    select_tags_cond_and_next_tags = fmt([[
+    select_tags_cond_and_next_tags = format_cql([[
       SELECT entity_id FROM tags WHERE entity_name = '%s' AND tag = ? AND entity_id IN ?
     ]], schema.name),
 
-    select_tags_cond_or = fmt([[
+    select_tags_cond_or = format_cql([[
       SELECT tag, entity_id, other_tags FROM tags WHERE entity_name = '%s' AND tag IN ?
     ]], schema.name),
 
-    update = fmt([[
+    update = format_cql([[
       UPDATE %s SET %s WHERE %s IF EXISTS
     ]], schema.name, "%s", select_bind_args),
 
-    update_ttl = fmt([[
+    update_ttl = format_cql([[
       UPDATE %s USING TTL %s SET %s WHERE %s IF EXISTS
     ]], schema.name, "%u", "%s", select_bind_args),
 
-    upsert = fmt([[
+    upsert = format_cql([[
       UPDATE %s SET %s WHERE %s
     ]], schema.name, "%s", select_bind_args),
 
-    upsert_ttl = fmt([[
+    upsert_ttl = format_cql([[
       UPDATE %s USING TTL %s SET %s WHERE %s
     ]], schema.name, "%u", "%s", select_bind_args),
 
-    delete = fmt([[
+    delete = format_cql([[
       DELETE FROM %s WHERE %s
     ]], schema.name, select_bind_args),
   }
