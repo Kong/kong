@@ -67,7 +67,6 @@ _G.kong = kong_global.new() -- no versioned PDK for plugins for now
 
 local DB = require "kong.db"
 local dns = require "kong.tools.dns"
-local utils = require "kong.tools.utils"
 local lapis = require "lapis"
 local runloop = require "kong.runloop.handler"
 local clustering = require "kong.clustering"
@@ -203,6 +202,7 @@ end
 
 
 local function execute_plugins_iterator(plugins_iterator, phase, ctx)
+  local old_ws = ctx and ctx.workspace
   for plugin, configuration in plugins_iterator:iterate(phase, ctx) do
     if ctx then
       if plugin.handler._go then
@@ -215,6 +215,10 @@ local function execute_plugins_iterator(plugins_iterator, phase, ctx)
     kong_global.set_namespaced_log(kong, plugin.name)
     plugin.handler[phase](plugin.handler, configuration)
     kong_global.reset_log(kong)
+
+    if ctx then
+      ctx.workspace = old_ws
+    end
   end
 end
 
@@ -230,6 +234,7 @@ local function execute_cache_warmup(kong_config)
       return nil, err
     end
   end
+
   return true
 end
 
@@ -256,14 +261,18 @@ end
 
 local function parse_declarative_config(kong_config)
   if kong_config.database ~= "off" then
-    return {}, {}
-  end
-
-  if not kong_config.declarative_config then
-    return {}, {}
+    return {}, nil, {}
   end
 
   local dc = declarative.new_config(kong_config)
+
+  if not kong_config.declarative_config then
+    -- return an empty configuration,
+    -- including only the default workspace
+    local entities, _, _, meta = dc:parse_table({ _format_version = "2.1" })
+    return entities, nil, meta
+  end
+
   local entities, err, _, meta = dc:parse_file(kong_config.declarative_config)
   if not entities then
     return nil, "error parsing declarative config file " ..
@@ -279,19 +288,10 @@ local function load_declarative_config(kong_config, entities, meta)
     return true
   end
 
-  if not kong_config.declarative_config then
-    -- no configuration yet, just build empty plugins iterator
-    local ok, err = runloop.build_plugins_iterator(utils.uuid())
-    if not ok then
-      error("error building initial plugins iterator: " .. err)
-    end
-    return true
-  end
-
   local opts = {
     name = "declarative_config",
   }
-  return concurrency.with_worker_mutex(opts, function()
+  local ok, err = concurrency.with_worker_mutex(opts, function()
     local value = ngx.shared.kong:get("declarative_config:loaded")
     if value then
       return true
@@ -302,8 +302,10 @@ local function load_declarative_config(kong_config, entities, meta)
       return nil, err
     end
 
-    kong.log.notice("declarative config loaded from ",
-                    kong_config.declarative_config)
+    if kong_config.declarative_config then
+      kong.log.notice("declarative config loaded from ",
+                      kong_config.declarative_config)
+    end
 
     ok, err = runloop.build_plugins_iterator("init")
     if not ok then
@@ -319,6 +321,13 @@ local function load_declarative_config(kong_config, entities, meta)
 
     return true
   end)
+
+  if ok then
+    local default_ws = kong.db.workspaces:select_by_name("default")
+    kong.default_workspace = default_ws and default_ws.id
+  end
+
+  return ok, err
 end
 
 
@@ -455,6 +464,9 @@ function Kong.init()
     end
 
   else
+    local default_ws = db.workspaces:select_by_name("default")
+    kong.default_workspace = default_ws and default_ws.id
+
     local ok, err = runloop.build_plugins_iterator("init")
     if not ok then
       error("error building initial plugins: " .. tostring(err))
@@ -625,6 +637,9 @@ function Kong.ssl_certificate()
   local ctx = ngx.ctx
   log_init_worker_errors(ctx)
 
+  -- this is the first phase to run on an HTTPS request
+  ngx.ctx.workspace = kong.default_workspace
+
   runloop.certificate.before(ctx)
 
   local plugins_iterator = runloop.get_updated_plugins_iterator()
@@ -669,9 +684,13 @@ function Kong.rewrite()
   if is_https then
     plugins_iterator = runloop.get_plugins_iterator()
   else
+    -- this is the first phase to run on a plain HTTP request
+    ngx.ctx.workspace = kong.default_workspace
+
     plugins_iterator = runloop.get_updated_plugins_iterator()
   end
 
+  ctx.workspace = kong.default_workspace
   execute_plugins_iterator(plugins_iterator, "rewrite", ctx)
 
   ctx.KONG_REWRITE_ENDED_AT = get_now_ms()
@@ -696,6 +715,7 @@ function Kong.access()
 
   ctx.delay_response = true
 
+  local old_ws = ctx.workspace
   local plugins_iterator = runloop.get_plugins_iterator()
   for plugin, plugin_conf in plugins_iterator:iterate("access", ctx) do
     if plugin.handler._go then
@@ -717,6 +737,7 @@ function Kong.access()
 
       kong_global.reset_log(kong)
     end
+    ctx.workspace = old_ws
   end
 
   if ctx.delayed_response then
@@ -919,6 +940,10 @@ function Kong.header_filter()
     ctx.KONG_PROCESSING_START = ngx.req.start_time() * 1000
   end
 
+  if not ctx.workspace then
+    ctx.workspace = kong.default_workspace
+  end
+
   if not ctx.KONG_HEADER_FILTER_START then
     ctx.KONG_HEADER_FILTER_START = get_now_ms()
 
@@ -1115,12 +1140,14 @@ function Kong.handle_error()
   local ctx = ngx.ctx
   ctx.KONG_UNEXPECTED = true
 
+  local old_ws = ctx.workspace
   log_init_worker_errors(ctx)
 
   if not ctx.plugins then
     local plugins_iterator = runloop.get_updated_plugins_iterator()
     for _ in plugins_iterator:iterate("content", ctx) do
       -- just build list of plugins
+      ctx.workspace = old_ws
     end
   end
 
@@ -1162,6 +1189,11 @@ end
 
 
 function Kong.admin_content(options)
+  local ctx = ngx.ctx
+  if not ctx.workspace then
+    ctx.workspace = kong.default_workspace
+  end
+
   return serve_content("kong.api", options)
 end
 

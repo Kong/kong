@@ -1,6 +1,8 @@
 local pl_tablex = require "pl.tablex"
 local singletons = require "kong.singletons"
+local workspaces = require "kong.workspaces"
 local utils = require "kong.tools.utils"
+local hooks = require "kong.hooks"
 
 -- due to startup/require order, cannot use the ones from 'singletons' here
 local dns_client = require "resty.dns.client"
@@ -12,7 +14,11 @@ local log = ngx.log
 local sleep = ngx.sleep
 local min = math.min
 local max = math.max
+local sub = string.sub
+local null = ngx.null
+local find = string.find
 local timer_at = ngx.timer.at
+local run_hook = hooks.run_hook
 
 local CRIT  = ngx.CRIT
 local ERR   = ngx.ERR
@@ -21,6 +27,8 @@ local DEBUG = ngx.DEBUG
 local EMPTY_T = pl_tablex.readonly {}
 local worker_state_VERSION = "proxy-state:version"
 local TTL_ZERO = { ttl = 0 }
+local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
+
 
 -- for unit-testing purposes only
 local _load_upstreams_dict_into_memory
@@ -104,7 +112,7 @@ end
 -- @param upstream_id string
 -- @return the upstream table, or nil+error
 local function load_upstream_into_memory(upstream_id)
-  local upstream, err = singletons.db.upstreams:select({id = upstream_id})
+  local upstream, err = singletons.db.upstreams:select({id = upstream_id}, GLOBAL_QUERY_OPTS)
   if not upstream then
     return nil, err
   end
@@ -133,7 +141,7 @@ end
 local function load_targets_into_memory(upstream_id)
 
   local target_history, err, err_t =
-    singletons.db.targets:select_by_upstream_raw({ id = upstream_id })
+    singletons.db.targets:select_by_upstream_raw({ id = upstream_id }, GLOBAL_QUERY_OPTS)
 
   if not target_history then
     return nil, err, err_t
@@ -368,7 +376,7 @@ do
       end
 
       local healthchecker, err = healthcheck.new({
-        name = upstream.name,
+        name = assert(upstream.ws_id) .. ":" .. upstream.name,
         shm_name = "kong_healthchecks",
         checks = checks,
       })
@@ -572,13 +580,13 @@ local function load_upstreams_dict_into_memory()
   local upstreams_dict = {}
 
   -- build a dictionary, indexed by the upstream name
-  for up, err in singletons.db.upstreams:each() do
+  for up, err in singletons.db.upstreams:each(nil, GLOBAL_QUERY_OPTS) do
     if err then
       log(CRIT, "could not obtain list of upstreams: ", err)
       return nil
     end
 
-    upstreams_dict[up.name] = up.id
+    upstreams_dict[up.ws_id .. ":" .. up.name] = up.id
   end
 
   return upstreams_dict
@@ -614,12 +622,14 @@ end
 -- @param upstream_name string.
 -- @return upstream table, or `false` if not found, or nil+error
 local function get_upstream_by_name(upstream_name)
+  local ws_id = workspaces.get_workspace_id()
+
   local upstreams_dict, err = get_all_upstreams()
   if err then
     return nil, err
   end
 
-  local upstream_id = upstreams_dict[upstream_name]
+  local upstream_id = upstreams_dict[ws_id .. ":" .. upstream_name]
   if not upstream_id then
     return false -- no upstream by this name
   end
@@ -696,7 +706,8 @@ local function on_target_event(operation, target)
 
   if operation == "reset" then
     local upstreams = get_all_upstreams()
-    for name, id in pairs(upstreams) do
+    for ws_and_name, id in pairs(upstreams) do
+      local name = sub(ws_and_name, (find(ws_and_name, ":", 1, true)))
       do_target_event("create", id, name)
     end
 
@@ -714,7 +725,7 @@ end
 -- @return integer value or nil if there is no hash to calculate
 local create_hash = function(upstream, ctx)
   local hash_on = upstream.hash_on
-  if hash_on == "none" or hash_on == nil or hash_on == ngx.null then
+  if hash_on == "none" or hash_on == nil or hash_on == null then
     return -- not hashing, exit fast
   end
 
@@ -793,7 +804,9 @@ do
     end
 
     local oks, errs = 0, 0
-    for name, id in pairs(upstreams) do
+    for ws_and_name, id in pairs(upstreams) do
+      local name = sub(ws_and_name, (find(ws_and_name, ":", 1, true)))
+
       local upstream = get_upstream_by_id(id)
       local ok, err
       if upstream ~= nil then
@@ -1005,7 +1018,9 @@ local function on_upstream_event(operation, upstream_data)
 
   elseif operation == "delete_all" then
     local upstreams = get_all_upstreams()
-    for name, id in pairs(upstreams) do
+    for ws_and_name, id in pairs(upstreams) do
+      local name = sub(ws_and_name, (find(ws_and_name, ":", 1, true)))
+
       do_upstream_event("delete", id, name)
     end
 
@@ -1075,9 +1090,11 @@ local function execute(target, ctx)
   local ip, port, hostname, handle
   if balancer then
     -- have to invoke the ring-balancer
+    local hstate = run_hook("balancer:get_peer:pre", target.host)
     ip, port, hostname, handle = balancer:getPeer(dns_cache_only,
                                           target.balancer_handle,
                                           hash_value)
+    run_hook("balancer:get_peer:post", hstate)
     if not ip and
       (port == "No peers are available" or port == "Balancer is unhealthy") then
       return nil, "failure to get a peer from the ring-balancer", 503
@@ -1089,7 +1106,9 @@ local function execute(target, ctx)
   else
     -- have to do a regular DNS lookup
     local try_list
+    local hstate = run_hook("balancer:to_ip:pre", target.host)
     ip, port, try_list = toip(target.host, target.port, dns_cache_only)
+    run_hook("balancer:to_ip:post", hstate)
     hostname = target.host
     if not ip then
       log(ERR, "DNS resolution failed: ", port, ". Tried: ", tostring(try_list))

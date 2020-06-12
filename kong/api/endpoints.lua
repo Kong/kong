@@ -1,6 +1,7 @@
 local Errors       = require "kong.db.errors"
 local utils        = require "kong.tools.utils"
 local arguments    = require "kong.api.arguments"
+local workspaces   = require "kong.workspaces"
 local app_helpers  = require "lapis.application"
 
 
@@ -131,6 +132,7 @@ local function extract_options(args, schema, context)
       page_size     = 100,
       max_page_size = 1000,
     },
+    workspace = workspaces.get_workspace_id(),
   }
 
   if args and schema and context then

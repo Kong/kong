@@ -139,6 +139,8 @@ build = {
     ["kong.runloop.plugins_iterator"] = "kong/runloop/plugins_iterator.lua",
     ["kong.runloop.balancer"] = "kong/runloop/balancer.lua",
 
+    ["kong.workspaces"] = "kong/workspaces/init.lua",
+
     ["kong.db"] = "kong/db/init.lua",
     ["kong.db.errors"] = "kong/db/errors.lua",
     ["kong.db.iteration"] = "kong/db/iteration.lua",
