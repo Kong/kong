@@ -298,6 +298,8 @@ build = {
 
     ["kong.plugins.ip-restriction.handler"] = "kong/plugins/ip-restriction/handler.lua",
     ["kong.plugins.ip-restriction.schema"] = "kong/plugins/ip-restriction/schema.lua",
+    ["kong.plugins.ip-restriction.migrations"] = "kong/plugins/ip-restriction/migrations/init.lua",
+    ["kong.plugins.ip-restriction.migrations.001_200_to_210"] = "kong/plugins/ip-restriction/migrations/001_200_to_210.lua",
 
     ["kong.plugins.acl.migrations"] = "kong/plugins/acl/migrations/init.lua",
     ["kong.plugins.acl.migrations.000_base_acl"] = "kong/plugins/acl/migrations/000_base_acl.lua",
@@ -355,6 +357,8 @@ build = {
     ["kong.plugins.bot-detection.handler"] = "kong/plugins/bot-detection/handler.lua",
     ["kong.plugins.bot-detection.schema"] = "kong/plugins/bot-detection/schema.lua",
     ["kong.plugins.bot-detection.rules"] = "kong/plugins/bot-detection/rules.lua",
+    ["kong.plugins.bot-detection.migrations"] = "kong/plugins/bot-detection/migrations/init.lua",
+    ["kong.plugins.bot-detection.migrations.001_200_to_210"] = "kong/plugins/bot-detection/migrations/001_200_to_210.lua",
 
     ["kong.plugins.request-termination.handler"] = "kong/plugins/request-termination/handler.lua",
     ["kong.plugins.request-termination.schema"] = "kong/plugins/request-termination/schema.lua",

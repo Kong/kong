@@ -46,13 +46,13 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
-    it("fails when whitelisting a bad regex", function()
+    it("fails when using a bad regex in allow", function()
       local res = assert(proxy_client:send {
         method  = "POST",
         path    = "/plugins/",
         body    = {
-          name                 = "bot-detection",
-          config = { whitelist = { BAD_REGEX } },
+          name = "bot-detection",
+          config = { allow = { BAD_REGEX } },
           route = { id = route1.id }
         },
         headers = {
@@ -62,16 +62,16 @@ for _, strategy in helpers.each_strategy() do
       local body = assert.response(res).has.status(400)
       local json = cjson.decode(body)
       assert.same("schema violation", json.name)
-      assert.same({ "not a valid regex: " .. BAD_REGEX }, json.fields.config.whitelist)
+      assert.same({ "not a valid regex: " .. BAD_REGEX }, json.fields.config.allow)
     end)
 
-    it("fails when blacklisting a bad regex", function()
+    it("fails when using a bad regex in deny", function()
       local res = assert(proxy_client:send {
         method  = "POST",
         path    = "/plugins/",
         body    = {
-          name                 = "bot-detection",
-          config = { whitelist = { BAD_REGEX } },
+          name = "bot-detection",
+          config = { allow = { BAD_REGEX } },
           route = { id = route2.id }
         },
         headers = {

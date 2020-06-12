@@ -246,6 +246,7 @@ local shorthands_array = {
 }
 
 table.insert(field_schema, { entity_checks = entity_checks_schema })
+table.insert(field_schema, { shorthands = shorthands_array })
 
 local meta_errors = {
   ATTRIBUTE = "field of type '%s' cannot have attribute '%s'",
