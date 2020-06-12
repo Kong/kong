@@ -565,16 +565,16 @@ do
     workspaces = workspaces or ngx.ctx.workspaces or {}
 
     -- for access phase
-    local upstreams_dict = {}
+    local upstreams_dict, err
     for _, workspace in ipairs(workspaces) do
-      local upstreams_dict, err = singletons.cache:get("balancer:upstreams:" .. workspace.id , nil,
+      upstreams_dict, err = singletons.cache:get("balancer:upstreams:" .. workspace.id , nil,
         load_upstreams_dict_into_memory, {workspace})
       if err then
         return nil, err
       end
 
-      if next(upstreams_dict) then
-        return  upstreams_dict
+      if next(upstreams_dict or {}) then
+        return upstreams_dict
       end
     end
 
