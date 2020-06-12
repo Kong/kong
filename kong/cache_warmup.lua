@@ -9,7 +9,11 @@ local tostring = tostring
 local ipairs = ipairs
 local math = math
 local kong = kong
+local null = ngx.null
 local ngx = ngx
+
+
+local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
 
 function cache_warmup._mock_kong(mock_kong)
@@ -54,7 +58,7 @@ local function cache_warmup_single_entity(dao)
     host_count = 0
   end
 
-  for entity, err in dao:each() do
+  for entity, err in dao:each(nil, GLOBAL_QUERY_OPTS) do
     if err then
       return nil, err
     end

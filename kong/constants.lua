@@ -93,6 +93,7 @@ return {
   -- Notice that the order in which they are listed is important:
   -- schemas of dependencies need to be loaded first.
   CORE_ENTITIES = {
+    "workspaces",
     "consumers",
     "certificates",
     "services",
@@ -113,6 +114,7 @@ return {
     plugins = true,
     tags = true,
     ca_certificates = true,
+    workspaces = true,
   },
   ENTITY_CACHE_STORE = setmetatable({
     consumers = "cache",

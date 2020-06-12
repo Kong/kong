@@ -1,9 +1,11 @@
 local BasePlugin   = require "kong.plugins.base_plugin"
+local workspaces   = require "kong.workspaces"
 local constants    = require "kong.constants"
 local utils        = require "kong.tools.utils"
 
 
 local kong         = kong
+local null         = ngx.null
 local type         = type
 local error        = error
 local pairs        = pairs
@@ -14,6 +16,7 @@ local tostring     = tostring
 
 local EMPTY_T      = {}
 local TTL_ZERO     = { ttl = 0 }
+local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
 
 local COMBO_R      = 1
@@ -83,10 +86,13 @@ local function load_configuration(ctx,
                                   route_id,
                                   service_id,
                                   consumer_id)
+  local ws_id = workspaces.get_workspace_id() or kong.default_workspace
   local key = kong.db.plugins:cache_key(name,
                                         route_id,
                                         service_id,
-                                        consumer_id)
+                                        consumer_id,
+                                        nil,
+                                        ws_id)
   local plugin, err = kong.core_cache:get(key,
                                           nil,
                                           load_plugin_from_db,
@@ -265,13 +271,21 @@ local function iterate(self, phase, ctx)
   if ctx and not ctx.plugins then
     ctx.plugins = {}
   end
+  local ws_id = workspaces.get_workspace_id() or kong.default_workspace
+
+  local ws = self.ws[ws_id]
+  if not ws then
+    return function()
+      return nil
+    end
+  end
 
   local iteration = {
     configure = MUST_LOAD_CONFIGURATION_IN_PHASES[phase],
     loaded = self.loaded,
-    phases = self.phases[phase] or EMPTY_T,
-    combos = self.combos,
-    map = self.map,
+    phases = ws.phases[phase] or EMPTY_T,
+    combos = ws.combos,
+    map = ws.map,
     ctx = ctx,
     i = 0,
   }
@@ -280,15 +294,7 @@ local function iterate(self, phase, ctx)
 end
 
 
-function PluginsIterator.new(version)
-  if not version then
-    error("version must be given", 2)
-  end
-
-  loaded_plugins = loaded_plugins or get_loaded_plugins()
-
-  local map = {}
-  local combos = {}
+local function new_ws_data()
   local phases
   if subsystem == "stream" then
     phases = {
@@ -307,10 +313,35 @@ function PluginsIterator.new(version)
       log           = {},
     }
   end
+  return {
+    map = {},
+    combos = {},
+    phases = phases,
+  }
+end
+
+
+function PluginsIterator.new(version)
+  if not version then
+    error("version must be given", 2)
+  end
+  loaded_plugins = loaded_plugins or get_loaded_plugins()
+
+  local ws = {
+    [kong.default_workspace] = new_ws_data()
+  }
 
   local counter = 0
   local page_size = kong.db.plugins.pagination.page_size
-  for plugin, err in kong.db.plugins:each() do
+  for plugin, err in kong.db.plugins:each(nil, GLOBAL_QUERY_OPTS) do
+    local data = ws[plugin.ws_id]
+    if not data then
+      data = new_ws_data()
+      ws[plugin.ws_id] = data
+    end
+    local map = data.map
+    local combos = data.combos
+
     if err then
       return nil, err
     end
@@ -357,22 +388,22 @@ function PluginsIterator.new(version)
   end
 
   for _, plugin in ipairs(loaded_plugins) do
-    for phase_name, phase in pairs(phases) do
-      if phase_name == "init_worker" or combos[plugin.name] then
-        local phase_handler = plugin.handler[phase_name]
-        if type(phase_handler) == "function"
-        and phase_handler ~= BasePlugin[phase_name] then
-          phase[plugin.name] = true
+    for _, data in pairs(ws) do
+      for phase_name, phase in pairs(data.phases) do
+        if phase_name == "init_worker" or data.combos[plugin.name] then
+          local phase_handler = plugin.handler[phase_name]
+          if type(phase_handler) == "function"
+          and phase_handler ~= BasePlugin[phase_name] then
+            phase[plugin.name] = true
+          end
         end
       end
     end
   end
 
   return {
-    map = map,
     version = version,
-    phases = phases,
-    combos = combos,
+    ws = ws,
     loaded = loaded_plugins,
     iterate = iterate,
   }

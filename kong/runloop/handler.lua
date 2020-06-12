@@ -28,6 +28,7 @@ local ngx          = ngx
 local var          = ngx.var
 local log          = ngx.log
 local exit         = ngx.exit
+local null         = ngx.null
 local header       = ngx.header
 local timer_at     = ngx.timer.at
 local timer_every  = ngx.timer.every
@@ -55,6 +56,7 @@ local ROUTER_SYNC_OPTS
 local ROUTER_ASYNC_OPTS
 local PLUGINS_ITERATOR_SYNC_OPTS
 local PLUGINS_ITERATOR_ASYNC_OPTS
+local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
 
 local get_plugins_iterator, get_updated_plugins_iterator
@@ -282,7 +284,7 @@ local function register_events()
     log(DEBUG, "[events] SSL cert updated, invalidating cached certificates")
     local certificate = data.entity
 
-    for sni, err in db.snis:each_for_certificate({ id = certificate.id }) do
+    for sni, err in db.snis:each_for_certificate({ id = certificate.id }, nil, GLOBAL_QUERY_OPTS) do
       if err then
         log(ERR, "[events] could not find associated snis for certificate: ",
           err)
@@ -424,9 +426,11 @@ local function register_events()
 
 
   if db.strategy == "off" then
-    worker_events.register(function()
+    worker_events.register(function(default_ws)
       kong.cache:flip()
       core_cache:flip()
+      kong.default_workspace = default_ws
+      ngx.ctx.workspace = kong.default_workspace
     end, "declarative", "flip_config")
   end
 end
@@ -541,7 +545,7 @@ do
 
 
   local function load_service_from_db(service_pk)
-    local service, err = kong.db.services:select(service_pk)
+    local service, err = kong.db.services:select(service_pk, GLOBAL_QUERY_OPTS)
     if service == nil then
       -- the third value means "do not cache"
       return nil, err, -1
@@ -553,7 +557,7 @@ do
   local function build_services_init_cache(db)
     local services_init_cache = {}
 
-    for service, err in db.services:each() do
+    for service, err in db.services:each(nil, GLOBAL_QUERY_OPTS) do
       if err then
         return nil, err
       end
@@ -581,7 +585,8 @@ do
 
     -- kong.core_cache is available, not in init phase
     if kong.core_cache then
-      local cache_key = db.services:cache_key(service_pk.id)
+      local cache_key = db.services:cache_key(service_pk.id, nil, nil, nil, nil,
+                                              route.ws_id)
       service, err = kong.core_cache:get(cache_key, TTL_ZERO,
                                     load_service_from_db, service_pk)
 
@@ -639,7 +644,7 @@ do
 
     local counter = 0
     local page_size = db.routes.pagination.page_size
-    for route, err in db.routes:each() do
+    for route, err in db.routes:each(nil, GLOBAL_QUERY_OPTS) do
       if err then
         return nil, "could not load routes: " .. err
       end
@@ -971,6 +976,8 @@ return {
         return exit(500)
       end
 
+      ngx.ctx.workspace = match_t.route and match_t.route.ws_id
+
       local route = match_t.route
       local service = match_t.service
       local upstream_url_t = match_t.upstream_url_t
@@ -1020,6 +1027,8 @@ return {
       if not match_t then
         return kong.response.exit(404, { message = "no Route matched with those values" })
       end
+
+      ngx.ctx.workspace = match_t.route and match_t.route.ws_id
 
       local http_version   = ngx.req.http_version()
       local scheme         = var.scheme
