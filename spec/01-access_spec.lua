@@ -102,7 +102,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert.response(res).has.status(200)
       local json = assert.response(res).has.jsonbody()
-      assert.same("https://httpbin.org/anything/test-func-name/and/then/some", json.url)
+      assert.matches("httpbin.org/anything/test%-func%-name/and/then/some", json.url)
     end)
 
     it("passes the method", function()
