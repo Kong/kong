@@ -10,6 +10,7 @@ local MigrationSchema = Schema.new(Migration)
 
 local fmt = string.format
 local max = math.max
+local null = ngx.null
 
 
 local function prefix_err(db, err)
@@ -137,6 +138,14 @@ local function get_executed_migrations_for_subsystem(self, subsystem_name)
 end
 
 
+local function value_or_empty_table(value)
+  if value == nil or value == null then
+    return {}
+  end
+  return value
+end
+
+
 -- @return a table with the following structure:
 -- {
 --   executed_migrations = Subsystem[] | nil
@@ -201,8 +210,8 @@ function State.load(db)
     for _, row in ipairs(rows) do
       rows_as_hash[row.subsystem] = {
         last_executed = row.last_executed,
-        executed = row.executed or {},
-        pending = row.pending or {},
+        executed = value_or_empty_table(row.executed),
+        pending = value_or_empty_table(row.pending),
       }
     end
   end
