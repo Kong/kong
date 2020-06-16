@@ -22,7 +22,7 @@ dependencies = {
   "kong-redis-cluster == 1.1-0",
   "kong-lapis == 1.7.0.1",
   "lua-cassandra == 1.5.0",
-  "pgmoon == 1.10.0",
+  "pgmoon == 1.11.0",
   "luatz == 0.4",
   "http == 0.3",
   "lua_system_constants == 0.1.4",

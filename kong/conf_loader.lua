@@ -181,6 +181,7 @@ local CONF_INFERENCES = {
   pg_ssl = { typ = "boolean" },
   pg_ssl_required = { typ = "boolean" },
   pg_ssl_verify = { typ = "boolean" },
+  pg_ssl_version = { typ = "string"},
   pg_max_concurrent_queries = { typ = "number" },
   pg_semaphore_timeout = { typ = "number" },
 
