@@ -8,7 +8,7 @@ local kong = kong
 local PortalAppHandler = {}
 
 PortalAppHandler.PRIORITY = 995
-PortalAppHandler.VERSION = "1.0.0"
+PortalAppHandler.VERSION = "2.0.0"
 
 
 function PortalAppHandler:access(conf)
