@@ -4,6 +4,7 @@ local hooks = require "kong.hooks"
 
 local tostring = tostring
 local run_hook = hooks.run_hook
+local type = type
 
 
 local iteration = {}
