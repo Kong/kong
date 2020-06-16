@@ -232,6 +232,9 @@ local function escape_literal(connector, literal, field)
           jsons[i] = cjson.encode(v)
         end
         return encode_array(jsons) .. '::JSONB[]'
+
+      elseif et == "string" and elements.uuid then
+        return encode_array(literal) .. '::UUID[]'
       end
 
       return encode_array(literal)

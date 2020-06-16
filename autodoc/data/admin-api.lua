@@ -659,6 +659,32 @@ return {
             to the upstream server.
           ]],
         },
+        tls_verify = {
+          description = [[
+            Whether to enable verification of upstream server TLS certificate.
+            If set to `null` then Nginx default is respected.
+          ]],
+          example = true,
+        },
+        tls_verify_depth = {
+          description = [[
+            Maximum depth of chain while verifying upstream server's TLS certificate.
+            If set to `null` when Nginx default is respected.
+          ]],
+        },
+        ca_certificates = {
+          description = [[
+            Array of `CA Certificate` object UUIDs that are used to build the trust store
+            while verifying upstream server's TLS certificate.
+            If set to `null` when Nginx default is respected. If default CA list in Nginx
+            are not specified and TLS verification is enabled, then handshake with upstream
+            server will always fail (because no CA are trusted).
+          ]],
+          example = {
+            "4e3ad2e4-0bc4-4638-8e34-c84a417ba39b",
+            "51e77dc2-8f3e-4afa-9d0e-0e3bbbcfd515",
+          }
+        },
         tags = {
           description = [[
             An optional set of strings associated with the Service, for grouping and filtering.

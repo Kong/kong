@@ -38,6 +38,7 @@ local unpack       = unpack
 
 
 local ERR   = ngx.ERR
+local CRIT  = ngx.CRIT
 local WARN  = ngx.WARN
 local DEBUG = ngx.DEBUG
 local COMMA = byte(",")
@@ -766,6 +767,7 @@ end
 local balancer_prepare
 do
   local get_certificate = certificate.get_certificate
+  local get_ca_certificate_store = certificate.get_ca_certificate_store
   local subsystem = ngx.config.subsystem
 
   function balancer_prepare(ctx, scheme, host_type, host, port,
@@ -799,7 +801,9 @@ do
     ctx.balancer_address = balancer_data -- for plugin backward compatibility
 
     if service then
+      local res, err
       local client_certificate = service.client_certificate
+
       if client_certificate then
         local cert, err = get_certificate(client_certificate)
         if not cert then
@@ -808,11 +812,45 @@ do
           return
         end
 
-        local res
         res, err = kong.service.set_tls_cert_key(cert.cert, cert.key)
         if not res then
           log(ERR, "unable to apply upstream client TLS certificate ",
                    client_certificate.id, ": ", err)
+        end
+      end
+
+      local tls_verify = service.tls_verify
+      if tls_verify then
+        res, err = kong.service.set_tls_verify(tls_verify)
+        if not res then
+          log(CRIT, "unable to set upstream TLS verification to: ",
+                   tls_verify, ", err: ", err)
+        end
+      end
+
+      local tls_verify_depth = service.tls_verify_depth
+      if tls_verify_depth then
+        res, err = kong.service.set_tls_verify_depth(tls_verify_depth)
+        if not res then
+          log(CRIT, "unable to set upstream TLS verification to: ",
+                   tls_verify, ", err: ", err)
+          -- in case verify can not be enabled, request can no longer be
+          -- processed without potentially compromising security
+          return kong.response.exit(500)
+        end
+      end
+
+      local ca_certificates = service.ca_certificates
+      if ca_certificates then
+        res, err = get_ca_certificate_store(ca_certificates)
+        if not res then
+          log(CRIT, "unable to get upstream TLS CA store, err: ", err)
+
+        else
+          res, err = kong.service.set_tls_verify_store(res)
+          if not res then
+            log(CRIT, "unable to set upstream TLS CA store, err: ", err)
+          end
         end
       end
     end
