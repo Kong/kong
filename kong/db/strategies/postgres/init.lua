@@ -5,6 +5,8 @@ local cjson_safe    = require "cjson.safe"
 local pl_tablex     = require "pl.tablex"
 
 
+local kong          = kong
+local ngx           = ngx
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local encode_array  = arrays.encode_array
@@ -15,10 +17,12 @@ local get_phase     = ngx.get_phase
 local tonumber      = tonumber
 local concat        = table.concat
 local insert        = table.insert
+local assert        = assert
 local ipairs        = ipairs
 local pairs         = pairs
 local error         = error
 local upper         = string.upper
+local pack          = table.pack -- luacheck: ignore
 local null          = ngx.null
 local type          = type
 local load          = load
@@ -245,105 +249,6 @@ local function escape_literal(connector, literal, field)
   end
 
   return connector:escape_literal(literal)
-end
-
-
-local function field_type_to_postgres_type(field)
-  if field.timestamp then
-    return "TIMESTAMP WITH TIME ZONE"
-
-  elseif field.uuid then
-    return "UUID"
-  end
-
-  local t = field.type
-
-  if t == "string" then
-    return "TEXT"
-
-  elseif t == "boolean" then
-    return "BOOLEAN"
-
-  elseif t == "integer" then
-    return "BIGINT"
-
-  elseif t == "number" then
-    return "DOUBLE PRECISION"
-
-  elseif t == "array" or t == "set" then
-    local elements = field.elements
-
-    if elements.timestamp then
-      return "TIMESTAMP[] WITH TIME ZONE", 1
-
-    elseif field.uuid then
-      return "UUID[]", 1
-    end
-
-    local et = elements.type
-
-    if et == "string" then
-      return "TEXT[]", 1
-
-    elseif et == "boolean" then
-      return "BOOLEAN[]", 1
-
-    elseif et == "integer" then
-      return "BIGINT[]", 1
-
-    elseif et == "number" then
-      return "DOUBLE PRECISION[]", 1
-
-    elseif et == "array" or et == "set" then
-      local dm = 1
-      local el = elements
-      repeat
-        dm = dm + 1
-        el = el.elements
-        et = el.type
-      until et ~= "array" and et ~= "set"
-
-      local brackets = rep("[]", dm)
-
-      if el.timestamp then
-        return "TIMESTAMP" .. brackets .. " WITH TIME ZONE", dm
-
-      elseif field.uuid then
-        return "UUID" .. brackets, dm
-      end
-
-      if et == "string" then
-        return "TEXT" .. brackets, dm
-
-      elseif et == "boolean" then
-        return "BOOLEAN" .. brackets, dm
-
-      elseif et == "integer" then
-        return "BIGINT" .. brackets, dm
-
-      elseif et == "number" then
-        return "DOUBLE PRECISION" .. brackets, dm
-
-      elseif et == "map" or et == "record" then
-        return "JSONB" .. brackets, dm
-
-      else
-        return "UNKNOWN" .. brackets, dm
-      end
-
-    elseif et == "map" or et == "record" then
-      return "JSONB[]", 1
-
-    else
-      return "UNKNOWN[]", 1
-    end
-
-  elseif t == "map" or t == "record" then
-    return "JSONB"
-
-  else
-    return "UNKNOWN"
-  end
 end
 
 
@@ -847,7 +752,7 @@ end
 
 
 local function where_clause(where, ...)
-  local inputs = table.pack(...) -- luacheck: ignore
+  local inputs = pack(...)
   return function(add_ws)
     local exps = {}
     for i = 1, inputs.n do
@@ -873,7 +778,7 @@ end
 
 
 local function conflict_list(has_ws_id, ...)
-  local inputs = table.pack(...) -- luacheck: ignore
+  local inputs = pack(...)
   return function(add_ws)
     local exps = inputs
     if add_ws and has_ws_id then
@@ -949,7 +854,6 @@ function _M.new(connector, schema, errors)
           name_escaped               = escape_identifier(connector, name),
           name_expression            = escape_identifier(connector, name, foreign_field),
           field_name                 = field_name,
-          type_postgres              = field_type_to_postgres_type(foreign_field),
           is_used_in_primary_key     = primary_key_fields[field_name] ~= nil,
           is_part_of_composite_key   = #foreign_schema.primary_key > 1,
           is_unique                  = foreign_field.unique == true,
@@ -989,7 +893,6 @@ function _M.new(connector, schema, errors)
         name                     = field_name,
         name_escaped             = escape_identifier(connector, field_name),
         name_expression          = escape_identifier(connector, field_name, field),
-        type_postgres            = field_type_to_postgres_type(field),
         is_used_in_primary_key   = is_used_in_primary_key,
         is_part_of_composite_key = is_part_of_composite_key,
         is_unique                = field.unique == true,
@@ -1196,7 +1099,7 @@ function _M.new(connector, schema, errors)
         if type(opts.code[i]) == "function" then
           opts.code[i] = opts.code[i](add_ws)
         end
-        opts.code[i] = string.format("%q", opts.code[i])
+        opts.code[i] = fmt("%q", opts.code[i])
       end
       opts.make = compile(table_name .. "_" .. name, concat(opts.code, ", "))
       opts.code = nil
