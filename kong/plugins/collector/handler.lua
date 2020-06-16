@@ -184,6 +184,14 @@ end
 
 function CollectorHandler:log(conf)
   local entry = kong.ctx.plugin.serialized_request
+
+  -- If the `access` function isn't executed, the `entry` variable
+  -- is not going to be initialized properly, leading to stack traces
+  if not entry then
+    kong.log.err("Serialized Request plugin not initialized.")
+    return
+  end
+
   local response_entry = basic_serializer.serialize(ngx)
   entry["response"] = response_entry["response"]
   entry["request"]["post_data"] = kong.ctx.plugin.request_body
