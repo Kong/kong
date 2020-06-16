@@ -125,7 +125,8 @@ local function get_workspace_entity_counts()
     end
 
     if workspace_entity_counters_count[entity.entity_type] then
-      workspace_entity_counters_count[entity.entity_type] = entity.count
+      local current_count = workspace_entity_counters_count[entity.entity_type]
+      workspace_entity_counters_count[entity.entity_type] = current_count + entity.count
     end
   end
 

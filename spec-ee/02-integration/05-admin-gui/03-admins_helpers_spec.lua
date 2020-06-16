@@ -391,6 +391,8 @@ for _, strategy in helpers.each_strategy() do
       it("keeps admin.rbac_token_enabled and rbac_user.enabled in sync", function()
         local params = {
           rbac_token_enabled = false,
+          username = admins[1].username,
+          email = admins[1].email,
         }
 
         local res = assert(admins_helpers.update(params, admins[1], { db = db }))

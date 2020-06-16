@@ -294,6 +294,28 @@ describe("file helpers", function()
         assert.equals(parsed_file.headmatter.dog, "cat")
       end)
 
+      it("can respect delimiters in content block", function()
+        file = {
+          path = "content/home.txt",
+          contents = [[
+            ---
+            layout: home.html
+            dog: cat
+            ---
+
+            This is content
+            ---
+            This is also content
+            ---
+            One more piece of content
+          ]]
+        }
+
+        parsed_file = file_helpers.parse_content(file)
+
+        assert.equals(parsed_file.body:gsub("%s+", ""), "Thisiscontent---Thisisalsocontent---Onemorepieceofcontent")
+      end)
+
       it("can decode valid spec headmatter", function()
         singletons.db = {
           files = {
