@@ -17,6 +17,8 @@ local go = {}
 
 
 local reset_instances   -- forward declaration
+local reset_instance
+local reset_and_get_instance
 local preloaded_stuff = {}
 
 
@@ -375,6 +377,16 @@ do
     instances = {}
   end
 
+  function reset_instance(plugin_name, conf)
+    local key = type(conf) == "table" and conf.__key__ or plugin_name
+    instances[key] = nil
+  end
+
+  function reset_and_get_instance(plugin_name, conf)
+    reset_instance(plugin_name, conf)
+    return get_instance(plugin_name, conf)
+  end
+
   function get_instance(plugin_name, conf)
     local key = type(conf) == "table" and conf.__key__ or plugin_name
     local instance_info = instances[key]
@@ -472,7 +484,11 @@ local get_plugin do
           preloaded_stuff.basic_serializer = basic_serializer.serialize(ngx)
           ngx_timer_at(0, function()
             local instance_id = get_instance(plugin_name, conf)
-            bridge_loop(instance_id, phase)
+            local _, err = bridge_loop(instance_id, phase)
+            if err and string.match(err, "No plugin instance") then
+              instance_id = reset_and_get_instance(plugin_name, conf)
+              bridge_loop(instance_id, phase)
+            end
             preloaded_stuff.basic_serializer = nil
           end)
         end
@@ -480,7 +496,11 @@ local get_plugin do
       else
         plugin[phase] = function(self, conf)
           local instance_id = get_instance(plugin_name, conf)
-          bridge_loop(instance_id, phase)
+          local _, err = bridge_loop(instance_id, phase)
+          if err and string.match(err, "No plugin instance") then
+            instance_id = reset_and_get_instance(plugin_name, conf)
+            bridge_loop(instance_id, phase)
+          end
         end
       end
     end
