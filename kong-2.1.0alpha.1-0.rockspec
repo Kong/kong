@@ -50,12 +50,12 @@ dependencies = {
   "lua-resty-ipmatcher == 0.6",
   -- external Kong plugins
   "kong-plugin-kubernetes-sidecar-injector ~> 0.2.1",
-  "kong-plugin-azure-functions ~> 0.4",
+  "kong-plugin-azure-functions ~> 0.4.2",
   "kong-plugin-serverless-functions ~> 1.0",
   "kong-prometheus-plugin ~> 0.8",
   "kong-plugin-session ~> 2.4",
   "kong-proxy-cache-plugin ~> 1.3",
-  "kong-plugin-request-transformer ~> 1.2",
+  "kong-plugin-request-transformer ~> 1.2.4",
   "kong-plugin-aws-lambda ~> 3.4",
   "kong-plugin-zipkin ~> 1.0",
   "kong-plugin-acme ~> 0.2",
@@ -205,6 +205,7 @@ build = {
     ["kong.enterprise_edition.db.migrations.enterprise"] = "kong/enterprise_edition/db/migrations/enterprise/init.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.000_base"] = "kong/enterprise_edition/db/migrations/enterprise/000_base.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.006_1301_to_1500"] = "kong/enterprise_edition/db/migrations/enterprise/006_1301_to_1500.lua",
+    ["kong.enterprise_edition.db.migrations.enterprise.006_1301_to_1302"] = "kong/enterprise_edition/db/migrations/enterprise/006_1301_to_1302.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.007_1500_to_2100"] = "kong/enterprise_edition/db/migrations/enterprise/007_1500_to_2100.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",

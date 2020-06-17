@@ -388,20 +388,21 @@ function _M.update(params, admin_to_update, opts)
       end
     end
 
-    -- keep rbac_user in sync
-    if params.rbac_token_enabled ~= nil then
-      local _, err = workspaces.run_with_ws_scope(
-        {},
-        db.rbac_users.update,
-        db.rbac_users,
-        { id = admin_to_update.rbac_user.id },
-        {
-          enabled = params.rbac_token_enabled,
-        }
-      )
-      if err then
-        return nil, err
-      end
+  end
+
+  -- keep rbac_user in sync
+  if params.rbac_token_enabled ~= nil then
+    local _, err = workspaces.run_with_ws_scope(
+      {},
+      db.rbac_users.update,
+      db.rbac_users,
+      { id = admin_to_update.rbac_user.id },
+      {
+        enabled = params.rbac_token_enabled,
+      }
+    )
+    if err then
+      return nil, err
     end
   end
 

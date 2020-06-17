@@ -377,6 +377,13 @@ function _M.new(db)
     }
   end)
 
+  local rbac_users_seq = new_sequence("rbac_user-%d")
+  res.rbac_users = new_blueprint(db.rbac_users, function()
+    return {
+      name = rbac_users_seq:next(),
+    }
+  end)
+
   return res
 end
 

@@ -504,7 +504,7 @@ function _M:select_stats(query_type, level, node_id, start_ts)
     earliest_ts = start_ts,
     interval = query_type,
     interval_width = duration_to_interval[query_type],
-    latest_ts = ngx_time(), 
+    latest_ts = ngx_time(),
     level = level,
     workspace_id = ngx.ctx.workspaces[1].id,
     stat_labels = {

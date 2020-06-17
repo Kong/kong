@@ -23,6 +23,9 @@ local function execute(args)
   kong.db = db
   assert(db:init_connector())
   assert(db:connect())
+
+  kong.db.plugins:load_plugin_schemas(conf.loaded_plugins)
+
   assert(run_file(args[1], args))
 end
 
