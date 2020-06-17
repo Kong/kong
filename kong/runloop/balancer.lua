@@ -18,6 +18,7 @@ local sub = string.sub
 local null = ngx.null
 local find = string.find
 local timer_at = ngx.timer.at
+local worker_pid = ngx.worker.id
 local run_hook = hooks.run_hook
 
 local CRIT  = ngx.CRIT
@@ -77,6 +78,7 @@ local noop = function() end
 -- functions forward-declarations
 local create_balancers
 local is_worker_state_stale
+local is_leader_state_updated
 local set_worker_state_stale
 local set_worker_state_updated
 
@@ -834,21 +836,39 @@ do
     return false
   end
 
+  is_leader_state_updated = function()
+    local leader_state_version = kong.core_cache:get("leader-state:version", nil, noop)
+    if leader_state_version ~= nil then
+      return true
+    end
+
+    return false
+  end
+
   set_worker_state_stale = function()
     log(DEBUG, "invalidating proxy state")
     kong.core_cache:invalidate(worker_state_VERSION)
+    kong.core_cache:invalidate("leader-state:version")
   end
 
 
   set_worker_state_updated = function()
     worker_state_version = kong.core_cache:get(worker_state_VERSION, TTL_ZERO, utils.uuid)
     log(DEBUG, "proxy state is updated")
+
+    if worker_pid() == 0 then
+      local ok, err = kong.core_cache:get("leader-state:version", TTL_ZERO, utils.uuid)
+
+      if not ok then
+        return nil, "failed to update leader worker version in cache: " .. tostring(err)
+      end
+    end
   end
 
 end
 
 
-local function update_balancer_state(premature)
+local function update_balancer_state_leader(premature)
   local concurrency = require "kong.concurrency"
 
   if premature then
@@ -880,11 +900,44 @@ local function update_balancer_state(premature)
   end)
 
   local frequency = kong.configuration.worker_state_update_frequency or 1
-  local _, err = timer_at(frequency, update_balancer_state)
+  local _, err = timer_at(frequency, update_balancer_state_leader)
   if err then
-    log(CRIT, "unable to reschedule update proxy state timer: ", err)
+    log(CRIT, "unable to reschedule update leader proxy state timer: ", err)
   end
 
+end
+
+
+local function update_balancer_state_follower(premature)
+  local concurrency = require "kong.concurrency"
+
+  if premature then
+    return
+  end
+
+  local opts = {
+    name = "balancer_state",
+    timeout = 0,
+    on_timeout = "return_true",
+  }
+
+  concurrency.with_coroutine_mutex(opts, function()
+    if is_worker_state_stale() and is_leader_state_updated() then
+      singletons.core_cache:invalidate_local("balancer:upstreams")
+      local _, err = singletons.core_cache:get("balancer:upstreams", nil, noop)
+      if err then
+        log(CRIT, "failed updating list of upstreams: ", err)
+      else
+        set_worker_state_updated()
+      end
+    end
+  end)
+
+  local frequency = kong.configuration.worker_state_update_frequency or 1
+  local _, err = timer_at(frequency, update_balancer_state_follower)
+  if err then
+    log(CRIT, "unable to reschedule update follower proxy state timer: ", err)
+  end
 end
 
 
@@ -921,7 +974,15 @@ local function init()
 
   if kong.configuration.worker_consistency == "eventual" then
     local frequency = kong.configuration.worker_state_update_frequency or 1
-    local _, err = timer_at(frequency, update_balancer_state)
+
+    local _, err
+
+    if worker_pid() == 0 then
+      _, err = timer_at(frequency, update_balancer_state_leader)
+    else
+      _, err = timer_at(frequency, update_balancer_state_follower)
+    end
+
     if err then
       log(CRIT, "unable to start update proxy state timer: ", err)
     else
