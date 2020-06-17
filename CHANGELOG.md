@@ -1,5 +1,6 @@
 # Table of Contents
 
+ - [1.7.8](#178---20200617)
  - [1.7.7](#177---20200616)
  - [1.7.4](#174---20200409)
  - [1.7.3](#173---20200408)
@@ -10,6 +11,11 @@
  - [1.5.0](#150---20190813)
 
 ## Unreleased
+
+## 1.7.8 - 2020/06/17
+
+#### Summary
+- Removing an error log line for when a situation occurs that is normal/expected
 
 ## 1.7.7 - 2020/06/16
 
