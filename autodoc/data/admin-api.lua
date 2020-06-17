@@ -1707,6 +1707,16 @@ return {
         ---:| ---
         `${foreign_entity} ${endpoint_key} or id`<br>**required** | The unique identifier or the `${endpoint_key}` attribute of the ${ForeignEntity} whose ${Entities} are to be retrieved. When using this endpoint, only ${Entities} associated to the specified ${ForeignEntity} will be listed.
       ]],
+      fk_endpoint_w_fek = [[
+        ##### List ${Entities} Associated to a Specific ${ForeignEntity}
+
+        <div class="endpoint ${method} indent">/${foreign_entities_url}/{${foreign_entity} ${endpoint_key} or id}/${entities_url}</div>
+
+        {:.indent}
+        Attributes | Description
+        ---:| ---
+        `${foreign_entity} ${endpoint_key} or id`<br>**required** | The unique identifier or the `${endpoint_key}` attribute of the ${ForeignEntity} whose ${Entities} are to be retrieved. When using this endpoint, only ${Entities} associated to the specified ${ForeignEntity} will be listed.
+      ]],
       request_query = [[
         Attributes | Description
         ---:| ---
@@ -1758,6 +1768,16 @@ return {
         ---:| ---
         `${foreign_entity} ${endpoint_key} or id`<br>**required** | The unique identifier or the `${endpoint_key}` attribute of the ${ForeignEntity} that should be associated to the newly-created ${Entity}.
       ]],
+      fk_endpoint_w_fek = [[
+        ##### Create ${Entity} Associated to a Specific ${ForeignEntity}
+
+        <div class="endpoint ${method} indent">/${foreign_entities_url}/{${foreign_entity} ${endpoint_key} or id}/${entities_url}</div>
+
+        {:.indent}
+        Attributes | Description
+        ---:| ---
+        `${foreign_entity} ${endpoint_key} or id`<br>**required** | The unique identifier or the `${endpoint_key}` attribute of the ${ForeignEntity} that should be associated to the newly-created ${Entity}.
+      ]],
       request_body = [[
         {{ page.${entity}_body }}
       ]],
@@ -1795,6 +1815,16 @@ return {
       Attributes | Description
       ---:| ---
       `${entity} ${endpoint_key} or id`<br>**required** | The unique identifier **or** the ${endpoint_key} of the ${Entity} associated to the ${ForeignEntity} to be ${passive_verb}.
+    ]],
+    fk_endpoint_w_fek = [[
+      ##### ${Active_verb} ${ForeignEntity} Associated to a Specific ${Entity}
+
+      <div class="endpoint ${method} indent">/${entities_url}/{${entity} id}/${foreign_entity_url}</div>
+
+      {:.indent}
+      Attributes | Description
+      ---:| ---
+      `${entity} id`<br>**required** | The unique identifier of the ${Entity} associated to the ${ForeignEntity} to be ${passive_verb}.
     ]],
     endpoint = [[
       ##### ${Active_verb} ${Entity}
