@@ -282,6 +282,7 @@ local CONF_INFERENCES = {
   audit_log_ignore_tables = {typ = "array"},
   audit_log_record_ttl = {typ = "number"},
   audit_log_signing_key = {typ = "string"},
+  audit_log_payload_exclude = {typ = "array"},
 
   admin_api_uri = {typ = "string"},
   admin_gui_listen = {typ = "array"},

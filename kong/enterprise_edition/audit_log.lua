@@ -3,6 +3,8 @@ local pl_file = require "pl.file"
 local pl_sort = require "pl.tablex".sort
 local singletons = require "kong.singletons"
 local utils = require "kong.tools.utils"
+local find = string.find
+local lower = string.lower
 
 
 local _M = {}
@@ -26,6 +28,26 @@ local function request_id()
   end
 
   return utils.uuid()
+end
+
+
+local function is_json_body(content_type)
+  return content_type and find(lower(content_type), "application/json", nil, true)
+end
+
+
+local function filter_table(data, attributes)
+  if type(data) ~= "table" then return data, nil end
+
+  local excluded = {}
+  for _, v in ipairs(attributes) do
+    if data[v] ~= nil then
+      table.insert(excluded, v)
+      data[v] = nil
+    end
+  end
+
+  return data, excluded
 end
 
 
@@ -179,15 +201,47 @@ local function admin_log_handler()
     end
   end
 
+  local filtered_payload = ngx.req.get_body_data()
+  local attributes_filtered
+
+  -- check if the request content-type is an application/json
+  -- if so then filter data
+  local content_type = ngx.req.get_headers()["content-type"]
+  if(content_type and is_json_body(content_type)) then
+    local err
+    local ok, res = pcall(cjson.decode, filtered_payload)
+
+    if not ok then
+      err = res
+    end
+
+    if ok then
+      filtered_payload, attributes_filtered = filter_table(
+        res,
+        singletons.configuration.audit_log_payload_exclude
+      )
+
+      filtered_payload, err = cjson.encode(filtered_payload)
+      attributes_filtered = #attributes_filtered > 0 and table.concat(attributes_filtered, ',') or nil
+    end
+
+    if err then
+      kong.log.err("could not deserialize/serialize JSON payload to table: ", err)
+    end
+  end
+
+
+
   local data = {
-    request_id   = request_id(),
-    client_ip    = ngx.var.remote_addr,
-    path         = uri,
-    payload      = ngx.req.get_body_data(),
-    method       = ngx.req.get_method(),
-    status       = ngx.status,
-    workspace    = ngx.ctx.workspaces and ngx.ctx.workspaces[1] and
-                   ngx.ctx.workspaces[1].id,
+    request_id           = request_id(),
+    client_ip            = ngx.var.remote_addr,
+    path                 = uri,
+    payload              = filtered_payload,
+    removed_from_payload = attributes_filtered,
+    method               = ngx.req.get_method(),
+    status               = ngx.status,
+    workspace            = ngx.ctx.workspaces and ngx.ctx.workspaces[1] and
+                           ngx.ctx.workspaces[1].id,
   }
 
 
