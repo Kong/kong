@@ -322,8 +322,14 @@ local function register_events()
     local operation = data.operation
     local target = data.entity
 
-    -- => to balancer update
-    balancer.on_target_event(operation, target)
+    local upstream_id = target.upstream.id
+    local upstream_cache_key = "balancer:upstreams:" .. upstream_id
+    local upstream = core_cache:get(upstream_cache_key, nil, function() end)
+
+    if upstream then
+      -- => to balancer update
+      balancer.on_target_event(operation, target)
+    end
   end, "balancer", "targets")
 
 
