@@ -93,6 +93,17 @@ qq{
                 body_filter   = false,
                 log           = true,
                 admin_api     = false,
+            }, {
+                method        = "set_client_verify",
+                args          = { "SUCCESS", },
+                init_worker   = "forced false",
+                certificate   = "forced false",
+                rewrite       = nil,
+                access        = nil,
+                header_filter = "forced false",
+                body_filter   = "forced false",
+                log           = "forced false",
+                admin_api     = false,
             },
         }
 

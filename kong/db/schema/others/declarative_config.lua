@@ -584,6 +584,30 @@ local function extract_null_errors(err)
 end
 
 
+local function find_default_ws(entities)
+  for k, v in pairs(entities.workspaces or {}) do
+    if v.name == "default" then return v.id end
+  end
+end
+
+
+local function insert_default_workspace_if_not_given(self, entities)
+  local default_workspace = find_default_ws(entities) or utils.uuid()
+
+  if not entities.workspaces then
+    entities.workspaces = {}
+  end
+
+  if not entities.workspaces[default_workspace] then
+    local entity = all_schemas["workspaces"]:process_auto_fields({
+      name = "default",
+      id = default_workspace,
+    }, "insert")
+    entities.workspaces[default_workspace] = entity
+  end
+end
+
+
 local function flatten(self, input)
   -- manually set transform here
   -- we can't do this in the schema with a `default` because validate
@@ -726,6 +750,7 @@ function DeclarativeConfig.load(plugin_set, include_foreign)
 
   schema.known_entities = known_entities
   schema.flatten = flatten
+  schema.insert_default_workspace_if_not_given = insert_default_workspace_if_not_given
   schema.plugin_set = plugin_set
 
   return schema, nil, def

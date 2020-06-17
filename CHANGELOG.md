@@ -3167,8 +3167,7 @@ but will be dropped in subsequent ones.
   result in an HTTP `500` error if configured globally.
   [#2906](https://github.com/Kong/kong/pull/2906)
 - ip-restriction: Fixed support for the `0.0.0.0/0` CIDR block. This block is
-  now supported and won't trigger an error when used in the `whitelist` or
-  `blacklist` properties.
+  now supported and won't trigger an error when used in this plugin's properties.
   [#2918](https://github.com/Kong/kong/pull/2918)
 
 ### Added
@@ -3251,8 +3250,7 @@ but will be dropped in subsequent ones.
   Thanks [@kjsteuer](https://github.com/kjsteuer) for the fix!
   [#2702](https://github.com/Mashape/kong/pull/2702)
 - ip-restriction: Fixed support for the `0.0.0.0/0` CIDR block. This block is
-  now supported and won't trigger an error when used in the `whitelist` or
-  `blacklist` properties.
+  now supported and won't trigger an error when used in this plugin's properties.
   [#2918](https://github.com/Mashape/kong/pull/2918)
 
 [Back to TOC](#table-of-contents)
@@ -4750,7 +4748,7 @@ The old routes are still maintained but will be removed in upcoming versions. Co
 - Plugins
   - **New OAuth 2.0 plugin.** [#341](https://github.com/Kong/kong/pull/341) [#169](https://github.com/Kong/kong/pull/169)
   - **New Mashape Analytics plugin.** [#360](https://github.com/Kong/kong/pull/360) [#272](https://github.com/Kong/kong/pull/272)
-  - **New IP whitelisting/blacklisting plugin.** [#379](https://github.com/Kong/kong/pull/379)
+  - **New IP restriction plugin.** [#379](https://github.com/Kong/kong/pull/379)
   - Ratelimiting: support for multiple limits. [#382](https://github.com/Kong/kong/pull/382) [#205](https://github.com/Kong/kong/pull/205)
   - HTTP logging: support for HTTPS endpoint. [#342](https://github.com/Kong/kong/issues/342)
   - Logging plugins: new properties for logs timing. [#351](https://github.com/Kong/kong/issues/351)

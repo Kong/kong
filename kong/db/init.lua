@@ -5,6 +5,7 @@ local Strategies   = require "kong.db.strategies"
 local MetaSchema   = require "kong.db.schema.metaschema"
 local constants    = require "kong.constants"
 local log          = require "kong.cmd.utils.log"
+local workspaces   = require "kong.workspaces"
 local utils        = require "kong.tools.utils"
 
 
@@ -210,6 +211,11 @@ function DB:truncate(table_name)
     ok, err = self.connector:truncate_table(table_name)
   else
     ok, err = self.connector:truncate()
+  end
+
+  -- re-create default workspace on full or workspaces truncate
+  if not table_name or table_name == "workspaces" then
+    workspaces.upsert_default()
   end
 
   if not ok then

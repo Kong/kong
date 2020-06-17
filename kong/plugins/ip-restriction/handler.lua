@@ -34,16 +34,16 @@ function IpRestrictionHandler:access(conf)
     return kong.response.error(403, "Cannot identify the client IP address, unix domain sockets are not supported.")
   end
 
-  if conf.blacklist and #conf.blacklist > 0 then
-    local blocked_blacklist = match_bin(conf.blacklist, binary_remote_addr)
-    if blocked_blacklist then
+  if conf.deny and #conf.deny > 0 then
+    local blocked = match_bin(conf.deny, binary_remote_addr)
+    if blocked then
       return kong.response.error(403, "Your IP address is not allowed")
     end
   end
 
-  if conf.whitelist and #conf.whitelist > 0 then
-    local allowed_whitelist = match_bin(conf.whitelist, binary_remote_addr)
-    if not allowed_whitelist then
+  if conf.allow and #conf.allow > 0 then
+    local allowed = match_bin(conf.allow, binary_remote_addr)
+    if not allowed then
       return kong.response.error(403, "Your IP address is not allowed")
     end
   end

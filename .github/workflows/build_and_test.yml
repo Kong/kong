@@ -1,16 +1,6 @@
 name: Build & Test
 
-on:
-  pull_request:
-    branches:
-      - '*'
-  push:
-    branches:    
-      - master
-      - next
-      - 'releases/*'
-    tags:
-      - '*'
+on: [push, pull_request]
 
 jobs:
   build:

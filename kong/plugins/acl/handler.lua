@@ -10,8 +10,8 @@ local kong = kong
 
 
 local EMPTY = tablex.readonly {}
-local BLACK = "BLACK"
-local WHITE = "WHITE"
+local DENY = "DENY"
+local ALLOW = "ALLOW"
 
 
 local mt_cache = { __mode = "k" }
@@ -20,7 +20,7 @@ local config_cache = setmetatable({}, mt_cache)
 
 local function get_to_be_blocked(config, groups, in_group)
   local to_be_blocked
-  if config.type == BLACK then
+  if config.type == DENY then
     to_be_blocked = in_group
   else
     to_be_blocked = not in_group
@@ -47,12 +47,12 @@ function ACLHandler:access(conf)
   -- simplify our plugins 'conf' table
   local config = config_cache[conf]
   if not config then
-    local config_type = (conf.blacklist or EMPTY)[1] and BLACK or WHITE
+    local config_type = (conf.deny or EMPTY)[1] and DENY or ALLOW
 
     config = {
       hide_groups_header = conf.hide_groups_header,
       type = config_type,
-      groups = config_type == BLACK and conf.blacklist or conf.whitelist,
+      groups = config_type == DENY and conf.deny or conf.allow,
       cache = setmetatable({}, mt_cache),
     }
 
@@ -99,7 +99,7 @@ function ACLHandler:access(conf)
       end
 
       if not consumer_groups then
-        if config.type == BLACK and credential then
+        if config.type == DENY and credential then
           consumer_groups = EMPTY
 
         else

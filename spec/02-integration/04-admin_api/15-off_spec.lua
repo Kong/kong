@@ -1,14 +1,14 @@
 local cjson    = require "cjson"
+local lyaml    = require "lyaml"
 local utils    = require "kong.tools.utils"
 local pl_utils = require "pl.utils"
 local helpers  = require "spec.helpers"
 local Errors   = require "kong.db.errors"
 local mocker   = require("spec.fixtures.mocker")
-local lyaml    = require "lyaml"
 
 
 local WORKER_SYNC_TIMEOUT = 10
-local MEM_CACHE_SIZE = "5m"
+local MEM_CACHE_SIZE = "15m"
 
 
 local function it_content_types(title, fn)
@@ -307,10 +307,9 @@ describe("Admin API #off", function()
 
         assert.response(res).has.status(413)
 
-        client:close()
-        client = assert(helpers.admin_client())
-
         helpers.wait_until(function()
+          client:close()
+          client = assert(helpers.admin_client())
           res = assert(client:send {
             method = "GET",
             path = "/consumers/previous",
@@ -337,6 +336,27 @@ describe("Admin API #off", function()
             _format_version: "1.1"
             consumers:
             - username: bobby
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        assert.response(res).has.status(201)
+      end)
+
+      it("accepts configuration containing null as a YAML string", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            _format_version: "1.1"
+            routes:
+            - paths:
+              - "/"
+              service: null
             ]],
           },
           headers = {
@@ -613,6 +633,8 @@ describe("Admin API #off", function()
             { id = "d885e256-1abe-5e24-80b6-8f68fe59ea8e",
               created_at = 1566863706,
               username = "bobo",
+              custom_id = lyaml.null,
+              tags = lyaml.null,
             },
           },
         }, config)
@@ -663,13 +685,16 @@ describe("Admin API #off", function()
 
       assert.response(res).has.status(201)
 
-      local sock = ngx.socket.tcp()
-      assert(sock:connect("127.0.0.1", 9011))
-      assert(sock:send("hi\n"))
       helpers.wait_until(function()
-        return sock:receive() == "hi"
+        local sock = ngx.socket.tcp()
+        assert(sock:connect("127.0.0.1", 9011))
+        assert(sock:send("hi\n"))
+        local pok = pcall(helpers.wait_until, function()
+          return sock:receive() == "hi"
+        end, 1)
+        sock:close()
+        return pok == true
       end)
-      sock:close()
     end)
   end)
 
@@ -938,8 +963,7 @@ describe("Admin API #off with Unique Foreign #unique", function()
     assert.equal(references.data[1].note, "note")
     assert.equal(references.data[1].unique_foreign.id, foreigns.data[1].id)
 
-
-    local res = assert(client:get("/cache/unique_references|unique_foreign:" ..
+    local res = assert(client:get("/cache/unique_references||unique_foreign:" ..
                                   foreigns.data[1].id))
     local body = assert.res_status(200, res)
     local cached_reference = cjson.decode(body)
@@ -948,7 +972,7 @@ describe("Admin API #off with Unique Foreign #unique", function()
 
     local cache = {
       get = function(_, k)
-        if k ~= "unique_references|unique_foreign:" .. foreigns.data[1].id then
+        if k ~= "unique_references||unique_foreign:" .. foreigns.data[1].id then
           return nil
         end
 

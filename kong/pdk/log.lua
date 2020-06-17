@@ -13,6 +13,8 @@
 local errlog = require "ngx.errlog"
 local ngx_re = require "ngx.re"
 local inspect = require "inspect"
+local ngx_ssl = require "ngx.ssl"
+local phase_checker = require "kong.pdk.private.phases"
 
 
 local sub = string.sub
@@ -24,11 +26,15 @@ local getinfo = debug.getinfo
 local reverse = string.reverse
 local tostring = tostring
 local setmetatable = setmetatable
+local ngx = ngx
+local kong = kong
+local check_phase = phase_checker.check
 
 
 local _PREFIX = "[kong] "
 local _DEFAULT_FORMAT = "%file_src:%line_src %message"
 local _DEFAULT_NAMESPACED_FORMAT = "%file_src:%line_src [%namespace] %message"
+local PHASES_LOG = phase_checker.phases.log
 
 
 local _LEVELS = {
@@ -458,6 +464,101 @@ local _log_mt = {
 }
 
 
+local serialize
+
+do
+  local REDACTED_REQUEST_HEADERS = { "authorization", "proxy-authorization" }
+  local REDACTED_RESPONSE_HEADERS = {}
+
+  ---
+  -- Generates a table that contains information that are helpful for logging.
+  --
+  -- @function kong.log.serialize
+  -- @phases log
+  -- @usage
+  -- kong.log.serialize()
+  function serialize(options)
+    check_phase(PHASES_LOG)
+
+    local ongx = (options or {}).ngx or ngx
+    local okong = (options or {}).kong or kong
+
+    local ctx = ongx.ctx
+    local var = ongx.var
+    local req = ongx.req
+
+    local authenticated_entity
+    if ctx.authenticated_credential ~= nil then
+      authenticated_entity = {
+        id = ctx.authenticated_credential.id,
+        consumer_id = ctx.authenticated_credential.consumer_id
+      }
+    end
+
+    local request_tls
+    local request_tls_ver = ngx_ssl.get_tls1_version_str()
+    if request_tls_ver then
+      request_tls = {
+        version = request_tls_ver,
+        cipher = var.ssl_cipher,
+        client_verify = ngx.ctx.CLIENT_VERIFY_OVERRIDE or var.ssl_client_verify,
+      }
+    end
+
+    local request_uri = var.request_uri or ""
+
+    local req_headers = okong.request.get_headers()
+    for _, header in ipairs(REDACTED_REQUEST_HEADERS) do
+      if req_headers[header] then
+        req_headers[header] = "REDACTED"
+      end
+    end
+
+    local resp_headers = ongx.resp.get_headers()
+    for _, header in ipairs(REDACTED_RESPONSE_HEADERS) do
+      if resp_headers[header] then
+        resp_headers[header] = "REDACTED"
+      end
+    end
+
+    local host_port = ctx.host_port or var.server_port
+
+    return {
+      request = {
+        uri = request_uri,
+        url = var.scheme .. "://" .. var.host .. ":" .. host_port .. request_uri,
+        querystring = okong.request.get_query(), -- parameters, as a table
+        method = okong.request.get_method(), -- http method
+        headers = req_headers,
+        size = var.request_length,
+        tls = request_tls
+      },
+      upstream_uri = var.upstream_uri,
+      response = {
+        status = ongx.status,
+        headers = resp_headers,
+        size = var.bytes_sent
+      },
+      tries = (ctx.balancer_data or {}).tries,
+      latencies = {
+        kong = (ctx.KONG_ACCESS_TIME or 0) +
+               (ctx.KONG_RECEIVE_TIME or 0) +
+               (ctx.KONG_REWRITE_TIME or 0) +
+               (ctx.KONG_BALANCER_TIME or 0),
+        proxy = ctx.KONG_WAITING_TIME or -1,
+        request = var.request_time * 1000
+      },
+      authenticated_entity = authenticated_entity,
+      route = ctx.route,
+      service = ctx.service,
+      consumer = ctx.authenticated_consumer,
+      client_ip = var.remote_addr,
+      started_at = req.start_time() * 1000
+    }
+  end
+end
+
+
 local function new_log(namespace, format)
   if type(namespace) ~= "string" then
     error("namespace must be a string", 2)
@@ -505,6 +606,8 @@ local function new_log(namespace, format)
   self.set_format(format)
 
   self.inspect = new_inspect(format)
+
+  self.serialize = serialize
 
   return setmetatable(self, _log_mt)
 end

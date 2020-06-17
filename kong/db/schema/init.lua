@@ -31,6 +31,7 @@ Schema.__index     = Schema
 
 
 local _cache = {}
+local _workspaceable = {}
 
 
 local new_tab
@@ -958,8 +959,9 @@ end
 -- fill its slot in `entity` with an appropriate default value,
 -- if possible.
 -- @param field The field definition table.
-local function handle_missing_field(field, value)
-  if field.default ~= nil then
+local function handle_missing_field(field, value, opts)
+  local no_defaults = opts and opts.no_defaults
+  if field.default ~= nil and not no_defaults then
     local copy = tablex.deepcopy(field.default)
     if (field.type == "array" or field.type == "set")
       and type(copy) == "table"
@@ -1470,9 +1472,9 @@ local function should_recurse_record(context, value, field)
 end
 
 
-local function adjust_field_for_context(field, value, context, nulls)
+local function adjust_field_for_context(field, value, context, nulls, opts)
   if context == "select" and value == null and field.required == true then
-    return handle_missing_field(field, value)
+    return handle_missing_field(field, value, opts)
   end
 
   if field.abstract then
@@ -1481,10 +1483,10 @@ local function adjust_field_for_context(field, value, context, nulls)
 
   if field.type == "record" then
     if should_recurse_record(context, value, field) then
-      value = value or handle_missing_field(field, value)
+      value = value or handle_missing_field(field, value, opts)
       if type(value) == "table" then
         local field_schema = get_field_schema(field)
-        return field_schema:process_auto_fields(value, context, nulls)
+        return field_schema:process_auto_fields(value, context, nulls, opts)
       end
     end
 
@@ -1504,13 +1506,13 @@ local function adjust_field_for_context(field, value, context, nulls)
 
     if subfield then
       for i, e in ipairs(value) do
-        value[i] = adjust_field_for_context(subfield, e, context, nulls)
+        value[i] = adjust_field_for_context(subfield, e, context, nulls, opts)
       end
     end
   end
 
   if value == nil and context ~= "update" then
-    return handle_missing_field(field, value)
+    return handle_missing_field(field, value, opts)
   end
 
   return value
@@ -1530,7 +1532,7 @@ end
 -- @param nulls boolean: return nulls as explicit ngx.null values
 -- @return A new table, with the auto fields containing
 -- appropriate updated values.
-function Schema:process_auto_fields(data, context, nulls)
+function Schema:process_auto_fields(data, context, nulls, opts)
   ngx.update_time()
 
   local now_s  = ngx_time()
@@ -1593,7 +1595,7 @@ function Schema:process_auto_fields(data, context, nulls)
       end
     end
 
-    data[key] = adjust_field_for_context(field, data[key], context, nulls)
+    data[key] = adjust_field_for_context(field, data[key], context, nulls, opts)
 
     if context == "select" and data[key] == null and not nulls then
       data[key] = nil
@@ -1624,11 +1626,9 @@ function Schema:process_auto_fields(data, context, nulls)
           data[key] = nulls and null or nil
         end
 
-      else
-        -- set non defined fields to nil, except meta fields (ttl) if enabled
-        if not self.ttl or key ~= "ttl" then
-          data[key] = nil
-        end
+      elseif not ((key == "ttl" and self.ttl) or
+                  (key == "ws_id" and opts and opts.show_ws_id)) then
+        data[key] = nil
       end
     end
   end
@@ -1968,6 +1968,23 @@ end
 
 
 function Schema:get_constraints()
+  if self.name == "workspaces" then
+    -- merge explicit and implicit constraints for workspaces
+    for _, e in ipairs(_cache["workspaces"].constraints) do
+      local found = false
+      for _, w in ipairs(_workspaceable) do
+        if w == e then
+          found = true
+          break
+        end
+      end
+      if not found then
+        table.insert(_workspaceable, e)
+      end
+    end
+    return _workspaceable
+  end
+
   return _cache[self.name].constraints
 end
 
@@ -2105,6 +2122,13 @@ function Schema.new(definition, is_subschema)
           on_delete  = field.on_delete,
         })
       end
+    end
+  end
+
+  if self.workspaceable and self.name then
+    if not _workspaceable[self.name] then
+      _workspaceable[self.name] = true
+      table.insert(_workspaceable, { schema = self })
     end
   end
 

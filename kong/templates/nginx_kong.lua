@@ -60,14 +60,15 @@ init_worker_by_lua_block {
 > if (role == "traditional" or role == "data_plane") and #proxy_listeners > 0 then
 upstream kong_upstream {
     server 0.0.0.1;
-    balancer_by_lua_block {
-        Kong.balancer()
-    }
 
     # injected nginx_upstream_* directives
 > for _, el in ipairs(nginx_upstream_directives) do
     $(el.name) $(el.value);
 > end
+
+    balancer_by_lua_block {
+        Kong.balancer()
+    }
 }
 
 server {

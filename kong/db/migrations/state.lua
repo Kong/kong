@@ -2,8 +2,6 @@ local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local Schema = require "kong.db.schema"
 local Migration = require "kong.db.schema.others.migrations"
-local pl_path = require "pl.path"
-local pl_dir = require "pl.dir"
 local Errors = require "kong.db.errors"
 
 
@@ -12,6 +10,7 @@ local MigrationSchema = Schema.new(Migration)
 
 local fmt = string.format
 local max = math.max
+local null = ngx.null
 
 
 local function prefix_err(db, err)
@@ -54,67 +53,34 @@ local function load_subsystems(db, plugin_names)
     error("plugin_names must be a table", 2)
   end
 
-  local namespace = "kong.db.migrations"
-  local core_namespace = fmt("%s.core", namespace)
+  local subsystems = require("kong.db.migrations.subsystems")
 
-  local res = {
-    {
-      name = "core",
-      namespace = core_namespace,
-      migrations_index = require(core_namespace),
-    },
-  }
+  local res = {}
+  for _, ss in ipairs(subsystems) do
+    if ss.name:match("%*") then
+      for plugin_name in pairs(plugin_names) do
+        local namespace = ss.namespace:gsub("%*", plugin_name)
 
-  -- load core subsystems
+        local ok, mig_idx = utils.load_module_if_exists(namespace)
+        if ok then
+          if type(mig_idx) ~= "table" then
+            return nil, fmt_err(db, "migrations index from '%s' must be a table",
+                                namespace)
+          end
 
-  local core_path = pl_path.package_path(core_namespace)
-
-  local dir_path, n = string.gsub(pl_path.abspath(core_path),
-                                  "core" .. pl_path.sep .. "init%.lua$", "")
-  if n ~= 1 then
-    return nil, prefix_err(db, "failed to substitute migrations path in "
-                           .. dir_path)
-  end
-
-  local dirs = pl_dir.getdirectories(dir_path)
-
-  for _, dir in ipairs(dirs) do
-    if not string.find(dir, "core$") then
-      local name = pl_path.basename(dir)
-      local namespace = fmt("%s.%s", namespace, name)
-      local filepath = dir .. pl_path.sep .. "init.lua"
-      local index = assert(loadfile(filepath))
-
-      local mig_idx = index()
-      if type(mig_idx) ~= "table" then
-        return nil, fmt_err(db, "migrations index at '%s' must be a table",
-                            filepath)
+          table.insert(res, {
+            name = ss.name_pattern:format(plugin_name),
+            namespace = namespace,
+            migrations_index = mig_idx,
+          })
+        end
       end
 
+    else
       table.insert(res, {
-        name = name,
-        namespace = namespace,
-        migrations_index = mig_idx,
-      })
-    end
-  end
-
-  -- load plugins
-
-  for plugin_name in pairs(plugin_names) do
-    local namespace = "kong.plugins." .. plugin_name .. ".migrations"
-
-    local ok, mig_idx = utils.load_module_if_exists(namespace)
-    if ok then
-      if type(mig_idx) ~= "table" then
-        return nil, fmt_err(db, "migrations index from '%s' must be a table",
-                            namespace)
-      end
-
-      table.insert(res, {
-        name = plugin_name,
-        namespace = namespace,
-        migrations_index = mig_idx,
+        name = ss.name,
+        namespace = ss.namespace,
+        migrations_index = require(ss.namespace),
       })
     end
   end
@@ -169,6 +135,14 @@ local function get_executed_migrations_for_subsystem(self, subsystem_name)
       return subsys.migrations
     end
   end
+end
+
+
+local function value_or_empty_table(value)
+  if value == nil or value == null then
+    return {}
+  end
+  return value
 end
 
 
@@ -236,8 +210,8 @@ function State.load(db)
     for _, row in ipairs(rows) do
       rows_as_hash[row.subsystem] = {
         last_executed = row.last_executed,
-        executed = row.executed or {},
-        pending = row.pending or {},
+        executed = value_or_empty_table(row.executed),
+        pending = value_or_empty_table(row.pending),
       }
     end
   end
@@ -340,4 +314,3 @@ end
 
 
 return State
-

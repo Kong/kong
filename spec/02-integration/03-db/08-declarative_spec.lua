@@ -87,10 +87,27 @@ for _, strategy in helpers.each_strategy() do
       enabled = true,
       name = "acl",
       config = {
-        whitelist = { "*" },
+        deny = ngx.null,
+        allow = { "*" },
         hide_groups_header = false,
       }
     }
+
+    --[[ FIXME this case is known to cause an issue
+    local plugin_with_null_def = {
+      _tags = ngx.null,
+      created_at = 1547047308,
+      id = "57f5af80-8a44-4fbe-bd00-43ab58e2e5a5",
+      service = { id = service_def.id },
+      enabled = true,
+      name = "correlation-id",
+      config = {
+        header_name = ngx.null,
+        generator = "uuid",
+        echo_downstream = false,
+      }
+    }
+    --]]
 
     local acl_def = {
       _tags = ngx.null,
@@ -134,7 +151,9 @@ for _, strategy in helpers.each_strategy() do
         routes = { [route_def.id] = route_def },
         services = { [service_def.id] = service_def },
         consumers = { [consumer_def.id] = consumer_def },
-        plugins = { [plugin_def.id] = plugin_def },
+        plugins = { [plugin_def.id] = plugin_def,
+        -- [plugin_with_null_def.id] = plugin_with_null_def,
+        },
         acls = { [acl_def.id] = acl_def  },
         basicauth_credentials = { [basicauth_credential_def.id] = basicauth_credential_def },
       }, { _transform = true }))
@@ -172,7 +191,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equals("andru", consumer_def.username)
         assert.equals("donalds", consumer_def.custom_id)
 
-        local plugin = assert(db.plugins:select({ id = plugin_def.id }))
+        local plugin = assert(db.plugins:select({ id = plugin_def.id }, { nulls = true }))
         assert.equals(plugin_def.id, plugin.id)
         assert.equals(service.id, plugin.service.id)
         assert.equals("acl", plugin.name)
@@ -270,7 +289,20 @@ for _, strategy in helpers.each_strategy() do
         assert.equals(plugin_def.id, plugin.id)
         assert.equals(service.id, plugin.service)
         assert.equals("acl", plugin.name)
+
+        -- lyaml.load above returns null as its own format
+        assert(plugin.config.deny == lyaml.null)
+        plugin.config.deny = ngx.null
+
         assert.same(plugin_def.config, plugin.config)
+
+        --[[ FIXME this case is known to cause an issue
+        local plugin_with_null = assert(db.plugins:select({ id = plugin_with_null_def.id }, { nulls = true }))
+        assert.equals(plugin_with_null_def.id, plugin_with_null.id)
+        assert.equals(service.id, plugin_with_null.service.id)
+        assert.equals("correlation-id", plugin_with_null.name)
+        assert.same(plugin_with_null_def.config, plugin_with_null.config
+        --]]
 
         assert.equals(1, #yaml.acls)
         local acl = assert(yaml.acls[1])

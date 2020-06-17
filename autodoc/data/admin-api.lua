@@ -659,6 +659,32 @@ return {
             to the upstream server.
           ]],
         },
+        tls_verify = {
+          description = [[
+            Whether to enable verification of upstream server TLS certificate.
+            If set to `null` then Nginx default is respected.
+          ]],
+          example = true,
+        },
+        tls_verify_depth = {
+          description = [[
+            Maximum depth of chain while verifying upstream server's TLS certificate.
+            If set to `null` when Nginx default is respected.
+          ]],
+        },
+        ca_certificates = {
+          description = [[
+            Array of `CA Certificate` object UUIDs that are used to build the trust store
+            while verifying upstream server's TLS certificate.
+            If set to `null` when Nginx default is respected. If default CA list in Nginx
+            are not specified and TLS verification is enabled, then handshake with upstream
+            server will always fail (because no CA are trusted).
+          ]],
+          example = {
+            "4e3ad2e4-0bc4-4638-8e34-c84a417ba39b",
+            "51e77dc2-8f3e-4afa-9d0e-0e3bbbcfd515",
+          }
+        },
         tags = {
           description = [[
             An optional set of strings associated with the Service, for grouping and filtering.
@@ -1681,6 +1707,16 @@ return {
         ---:| ---
         `${foreign_entity} ${endpoint_key} or id`<br>**required** | The unique identifier or the `${endpoint_key}` attribute of the ${ForeignEntity} whose ${Entities} are to be retrieved. When using this endpoint, only ${Entities} associated to the specified ${ForeignEntity} will be listed.
       ]],
+      fk_endpoint_w_fek = [[
+        ##### List ${Entities} Associated to a Specific ${ForeignEntity}
+
+        <div class="endpoint ${method} indent">/${foreign_entities_url}/{${foreign_entity} ${endpoint_key} or id}/${entities_url}</div>
+
+        {:.indent}
+        Attributes | Description
+        ---:| ---
+        `${foreign_entity} ${endpoint_key} or id`<br>**required** | The unique identifier or the `${endpoint_key}` attribute of the ${ForeignEntity} whose ${Entities} are to be retrieved. When using this endpoint, only ${Entities} associated to the specified ${ForeignEntity} will be listed.
+      ]],
       request_query = [[
         Attributes | Description
         ---:| ---
@@ -1732,6 +1768,16 @@ return {
         ---:| ---
         `${foreign_entity} ${endpoint_key} or id`<br>**required** | The unique identifier or the `${endpoint_key}` attribute of the ${ForeignEntity} that should be associated to the newly-created ${Entity}.
       ]],
+      fk_endpoint_w_fek = [[
+        ##### Create ${Entity} Associated to a Specific ${ForeignEntity}
+
+        <div class="endpoint ${method} indent">/${foreign_entities_url}/{${foreign_entity} ${endpoint_key} or id}/${entities_url}</div>
+
+        {:.indent}
+        Attributes | Description
+        ---:| ---
+        `${foreign_entity} ${endpoint_key} or id`<br>**required** | The unique identifier or the `${endpoint_key}` attribute of the ${ForeignEntity} that should be associated to the newly-created ${Entity}.
+      ]],
       request_body = [[
         {{ page.${entity}_body }}
       ]],
@@ -1769,6 +1815,16 @@ return {
       Attributes | Description
       ---:| ---
       `${entity} ${endpoint_key} or id`<br>**required** | The unique identifier **or** the ${endpoint_key} of the ${Entity} associated to the ${ForeignEntity} to be ${passive_verb}.
+    ]],
+    fk_endpoint_w_fek = [[
+      ##### ${Active_verb} ${ForeignEntity} Associated to a Specific ${Entity}
+
+      <div class="endpoint ${method} indent">/${entities_url}/{${entity} id}/${foreign_entity_url}</div>
+
+      {:.indent}
+      Attributes | Description
+      ---:| ---
+      `${entity} id`<br>**required** | The unique identifier of the ${Entity} associated to the ${ForeignEntity} to be ${passive_verb}.
     ]],
     endpoint = [[
       ##### ${Active_verb} ${Entity}

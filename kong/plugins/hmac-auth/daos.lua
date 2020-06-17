@@ -7,6 +7,8 @@ return {
     name = "hmacauth_credentials",
     endpoint_key = "username",
     cache_key = { "username" },
+    workspaceable = true,
+
     admin_api_name = "hmac-auths",
     admin_api_nested_name = "hmac-auth",
     fields = {

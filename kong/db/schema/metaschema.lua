@@ -63,6 +63,7 @@ local field_schema = {
   { reference = { type = "string" }, },
   { auto = { type = "boolean" }, },
   { unique = { type = "boolean" }, },
+  { unique_across_ws = { type = "boolean" }, },
   { on_delete = { type = "string", one_of = { "restrict", "cascade", "null" } }, },
   { default = { type = "self" }, },
   { abstract = { type = "boolean" }, },
@@ -82,12 +83,20 @@ for _, field in ipairs(field_schema) do
   data.nilable = not data.required
 end
 
+local field_entity_checks = {
+  -- if 'unique_across_ws' is set, then 'unique' must be set too
+  conditional = {
+    if_field = "unique_across_ws", if_match = { eq = true },
+    then_field = "unique", then_match = { eq = true, required = true },
+  }
+}
+
 local fields_array = {
   type = "array",
   elements = {
     type = "map",
     keys = { type = "string" },
-    values = { type = "record", fields = field_schema },
+    values = { type = "record", fields = field_schema, entity_checks = field_entity_checks },
     required = true,
     len_eq = 1,
   },
@@ -237,6 +246,7 @@ local shorthands_array = {
 }
 
 table.insert(field_schema, { entity_checks = entity_checks_schema })
+table.insert(field_schema, { shorthands = shorthands_array })
 
 local meta_errors = {
   ATTRIBUTE = "field of type '%s' cannot have attribute '%s'",
@@ -301,6 +311,12 @@ local attribute_types = {
     ["string"] = true,
   },
   unique = {
+    ["string"] = true,
+    ["number"] = true,
+    ["integer"] = true,
+    ["foreign"] = true,
+  },
+  unique_across_ws = {
     ["string"] = true,
     ["number"] = true,
     ["integer"] = true,
@@ -438,6 +454,12 @@ local MetaSchema = Schema.new({
         type = "array",
         elements = { type = "string" },
         required = true,
+      },
+    },
+    {
+      workspaceable = {
+        type = "boolean",
+        nilable = true
       },
     },
     {

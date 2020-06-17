@@ -92,7 +92,7 @@ local function format_target(target)
 end
 
 
-function _TARGETS:insert(entity)
+function _TARGETS:insert(entity, options)
   if entity.target then
     local formatted_target, err = format_target(entity.target)
     if not formatted_target then
@@ -106,9 +106,20 @@ function _TARGETS:insert(entity)
   -- entry AFTER the cleanup, such that the cleanup will be picked up by the
   -- other nodes based on the event of the newly added entry
   clean_history(self, entity.upstream)
-  local row, err, err_t = self.super.insert(self, entity)
 
-  return row, err, err_t
+  return self.super.insert(self, entity, options)
+end
+
+
+function _TARGETS:upsert(pk, entity, options)
+  entity.id = pk.id
+  return self:insert(entity, options)
+end
+
+
+function _TARGETS:upsert_by_target(unique_key, entity, options)
+  entity.target = unique_key
+  return self:insert(entity, options)
 end
 
 
@@ -126,8 +137,8 @@ function _TARGETS:delete(pk)
 end
 
 
-function _TARGETS:select(pk)
-  local target, err, err_t = self.super.select(self, pk)
+function _TARGETS:select(pk, options)
+  local target, err, err_t = self.super.select(self, pk, options)
   if err then
     return nil, err, err_t
   end
@@ -144,7 +155,7 @@ function _TARGETS:select(pk)
 end
 
 
-function _TARGETS:delete_by_target(tgt)
+function _TARGETS:delete_by_target(tgt, options)
   local target, err, err_t = self:select_by_target(tgt)
   if err then
     return nil, err, err_t
@@ -154,7 +165,7 @@ function _TARGETS:delete_by_target(tgt)
     target   = target.target,
     upstream = target.upstream,
     weight   = 0,
-  })
+  }, options)
 end
 
 
@@ -336,7 +347,8 @@ function _TARGETS:select_by_upstream_filter(upstream_pk, filter, options)
     return nil, err, err_t
   end
 
-  for _, t in ipairs(targets) do
+  for i = #targets, 1, -1 do
+    local t = targets[i]
     if t.id == filter.id or t.target == filter.target then
       return t
     end

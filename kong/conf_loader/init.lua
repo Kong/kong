@@ -190,6 +190,67 @@ local PREFIX_PATHS = {
 }
 
 
+local function upstream_keepalive_deprecated_properties(conf)
+  -- nginx_http_upstream_keepalive -> nginx_upstream_keepalive
+  if conf.nginx_upstream_keepalive == nil then
+    if conf.nginx_http_upstream_keepalive ~= nil then
+      conf.nginx_upstream_keepalive = conf.nginx_http_upstream_keepalive
+    end
+  end
+
+  -- upstream_keepalive -> nginx_upstream_keepalive + nginx_http_upstream_keepalive
+  if conf.nginx_upstream_keepalive == nil then
+    if conf.upstream_keepalive ~= nil then
+      if conf.upstream_keepalive == 0 then
+        conf.nginx_upstream_keepalive = "NONE"
+        conf.nginx_http_upstream_keepalive = "NONE"
+
+      else
+        conf.nginx_upstream_keepalive = tostring(conf.upstream_keepalive)
+        conf.nginx_http_upstream_keepalive = tostring(conf.upstream_keepalive)
+      end
+    end
+  end
+
+  -- nginx_upstream_keepalive -> upstream_keepalive_pool_size
+  if conf.upstream_keepalive_pool_size == nil then
+    if conf.nginx_upstream_keepalive ~= nil then
+      if conf.nginx_upstream_keepalive == "NONE" then
+        conf.upstream_keepalive_pool_size = 0
+
+      else
+        conf.upstream_keepalive_pool_size = tonumber(conf.nginx_upstream_keepalive)
+      end
+    end
+  end
+
+  -- nginx_http_upstream_keepalive_requests -> nginx_upstream_keepalive_requests
+  if conf.nginx_upstream_keepalive_requests == nil then
+    conf.nginx_upstream_keepalive_requests = conf.nginx_http_upstream_keepalive_requests
+  end
+
+  -- nginx_upstream_keepalive_requests -> upstream_keepalive_max_requests
+  if conf.upstream_keepalive_max_requests == nil
+     and conf.nginx_upstream_keepalive_requests ~= nil
+  then
+    conf.upstream_keepalive_max_requests = tonumber(conf.nginx_upstream_keepalive_requests)
+  end
+
+  -- nginx_http_upstream_keepalive_timeout -> nginx_upstream_keepalive_timeout
+  if conf.nginx_upstream_keepalive_timeout == nil then
+    conf.nginx_upstream_keepalive_timeout = conf.nginx_http_upstream_keepalive_timeout
+  end
+  --
+  -- nginx_upstream_keepalive_timeout -> upstream_keepalive_idle_timeout
+  if conf.upstream_keepalive_idle_timeout == nil
+     and conf.nginx_upstream_keepalive_timeout ~= nil
+  then
+    conf.upstream_keepalive_idle_timeout =
+      utils.nginx_conf_time_to_seconds(conf.nginx_upstream_keepalive_timeout)
+  end
+end
+
+
 -- By default, all properties in the configuration are considered to
 -- be strings/numbers, but if we want to forcefully infer their type, specify it
 -- in this table.
@@ -233,53 +294,66 @@ local CONF_INFERENCES = {
       replacement = "nginx_main_worker_processes",
     },
   },
-  upstream_keepalive = { -- TODO: remove since deprecated in 1.3
+
+  -- TODO: remove since deprecated in 1.3
+  upstream_keepalive = {
     typ = "number",
     deprecated = {
-      replacement = "nginx_upstream_keepalive",
-      alias = function(conf)
-        if tonumber(conf.upstream_keepalive) == 0 then
-          conf.nginx_upstream_keepalive = "NONE"
+      replacement = "upstream_keepalive_pool_size",
+      alias = upstream_keepalive_deprecated_properties,
+    }
+  },
 
-        elseif conf.nginx_upstream_keepalive == nil then
-          conf.nginx_upstream_keepalive = tostring(conf.upstream_keepalive)
-        end
-      end,
-    }
-  },
-  nginx_http_upstream_keepalive = { -- TODO: remove since deprecated in 2.0
+  -- TODO: remove since deprecated in 2.0
+  nginx_http_upstream_keepalive = {
     typ = "string",
     deprecated = {
-      replacement = "nginx_upstream_keepalive",
-      alias = function(conf)
-        if conf.nginx_upstream_keepalive == nil then
-          conf.nginx_upstream_keepalive = tostring(conf.nginx_http_upstream_keepalive)
-        end
-      end,
+      replacement = "upstream_keepalive_pool_size",
+      alias = upstream_keepalive_deprecated_properties,
     }
   },
-  nginx_http_upstream_keepalive_timeout = { -- TODO: remove since deprecated in 2.0
+  nginx_http_upstream_keepalive_requests = {
     typ = "string",
     deprecated = {
-      replacement = "nginx_upstream_keepalive_timeout",
-      alias = function(conf)
-        if conf.nginx_upstream_keepalive_timeout == nil then
-          conf.nginx_upstream_keepalive_timeout = tostring(conf.nginx_http_upstream_keepalive_timeout)
-        end
-      end,
+      replacement = "upstream_keepalive_max_requests",
+      alias = upstream_keepalive_deprecated_properties,
     }
   },
-  nginx_http_upstream_keepalive_requests = { -- TODO: remove since deprecated in 2.0
+  nginx_http_upstream_keepalive_timeout = {
     typ = "string",
     deprecated = {
-      replacement = "nginx_upstream_keepalive_requests",
-      alias = function(conf)
-        if conf.nginx_upstream_keepalive_requests == nil then
-          conf.nginx_upstream_keepalive_requests = tostring(conf.nginx_http_upstream_keepalive_requests)
-        end
-      end,
+      replacement = "upstream_keepalive_idle_timeout",
+      alias = upstream_keepalive_deprecated_properties,
     }
   },
+
+  -- TODO: remove since deprecated in 2.1
+  nginx_upstream_keepalive = {
+    typ = "string",
+    deprecated = {
+      replacement = "upstream_keepalive_pool_size",
+      alias = upstream_keepalive_deprecated_properties,
+    }
+  },
+  nginx_upstream_keepalive_requests = {
+    typ = "string",
+    deprecated = {
+      replacement = "upstream_keepalive_max_requests",
+      alias = upstream_keepalive_deprecated_properties,
+    }
+  },
+  nginx_upstream_keepalive_timeout = {
+    typ = "string",
+    deprecated = {
+      replacement = "upstream_keepalive_idle_timeout",
+      alias = upstream_keepalive_deprecated_properties,
+    }
+  },
+
+  upstream_keepalive_pool_size = { typ = "number" },
+  upstream_keepalive_max_requests = { typ = "number" },
+  upstream_keepalive_idle_timeout = { typ = "number" },
+
   headers = { typ = "array" },
   trusted_ips = { typ = "array" },
   real_ip_header = {
@@ -296,14 +370,24 @@ local CONF_INFERENCES = {
   },
   client_max_body_size = {
     typ = "string",
-    alias = {
+    deprecated = {
       replacement = "nginx_http_client_max_body_size",
+      alias = function(conf)
+        if conf.nginx_http_client_max_body_size == nil then
+          conf.nginx_http_client_max_body_size = conf.client_max_body_size
+        end
+      end,
     }
   },
   client_body_buffer_size = {
     typ = "string",
-    alias = {
+    deprecated = {
       replacement = "nginx_http_client_body_buffer_size",
+      alias = function(conf)
+        if conf.nginx_http_client_body_buffer_size == nil then
+          conf.nginx_http_client_body_buffer_size = conf.client_body_buffer_size
+        end
+      end,
     }
   },
   error_default_type = { enum = {
@@ -871,6 +955,18 @@ local function check_and_infer(conf, opts)
                               conf.cluster_cert_key
       end
     end
+  end
+
+  if conf.upstream_keepalive_pool_size < 0 then
+    errors[#errors + 1] = "upstream_keepalive_pool_size must be 0 or greater"
+  end
+
+  if conf.upstream_keepalive_max_requests < 0 then
+    errors[#errors + 1] = "upstream_keepalive_max_requests must be 0 or greater"
+  end
+
+  if conf.upstream_keepalive_idle_timeout < 0 then
+    errors[#errors + 1] = "upstream_keepalive_idle_timeout must be 0 or greater"
   end
 
   return #errors == 0, errors[1], errors

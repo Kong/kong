@@ -1,5 +1,8 @@
 local mocker = require "spec.fixtures.mocker"
 local balancer = require "kong.runloop.balancer"
+local utils = require "kong.tools.utils"
+
+local ws_id = utils.uuid()
 
 local function setup_it_block()
   local cache_table = {}
@@ -34,6 +37,11 @@ local function setup_it_block()
         worker_consistency = "strict",
       },
       core_cache = mock_cache(cache_table),
+    },
+    ngx = {
+      ctx = {
+        workspace = ws_id,
+      }
     }
   })
   balancer.init()

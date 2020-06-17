@@ -1003,6 +1003,40 @@ end
 
 
 do
+  local NGX_ERROR = ngx.ERROR
+
+  if not pcall(ffi.typeof, "ngx_uint_t") then
+    ffi.cdef [[
+      typedef uintptr_t ngx_uint_t;
+    ]]
+  end
+
+  -- ngx_str_t defined by lua-resty-core
+  local s = ffi.new("ngx_str_t[1]")
+  s[0].data = "10"
+  s[0].len = 2
+
+  if not pcall(function() C.ngx_parse_time(s, 0) end) then
+    ffi.cdef [[
+      ngx_int_t ngx_parse_time(ngx_str_t *line, ngx_uint_t is_sec);
+    ]]
+  end
+
+  function _M.nginx_conf_time_to_seconds(str)
+    s[0].data = str
+    s[0].len = #str
+
+    local ret = C.ngx_parse_time(s, 1)
+    if ret == NGX_ERROR then
+      error("bad argument #1 'str'", 2)
+    end
+
+    return tonumber(ret, 10)
+  end
+end
+
+
+do
   -- lua-ffi-zlib allocated buffer of length +1,
   -- so use 64KB - 1 instead
   local GZIP_CHUNK_SIZE = 65535
