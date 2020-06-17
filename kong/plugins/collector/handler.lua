@@ -188,7 +188,6 @@ function CollectorHandler:log(conf)
   -- If the `access` function isn't executed, the `entry` variable
   -- is not going to be initialized properly, leading to stack traces
   if not entry then
-    kong.log.err("Serialized Request plugin not initialized.")
     return
   end
 
