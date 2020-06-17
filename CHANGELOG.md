@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [0.9.0](#090---20200617)
 - [0.8.0](#080---20200424)
 - [0.7.1](#071---20200105)
 - [0.7.0](#070---20191204)
@@ -15,6 +16,14 @@
 - [0.2.0](#020---20180924)
 - [0.1.0](#010---20180615)
 
+
+##  [0.9.0] - 2020/06/17
+
+- Expose healthiness of upstream targets
+  (Thanks, [carnei-ro](https://github.com/carnei-ro)!)
+  [#88](https://github.com/Kong/kong-plugin-prometheus/pull/88)
+- Fix a typo on the dashboard
+  (Thanks, [Monska85](https://github.com/Monska85)!)
 
 ##  [0.8.0] - 2020/04/24
 
