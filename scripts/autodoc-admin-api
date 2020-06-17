@@ -687,6 +687,8 @@ local function gen_fk_endpoint(edata, templates, subs, parent_endpoint, method, 
   else
     if has_ek then
       tk = "fk_endpoint_w_ek"
+    elseif has_fek then
+      tk = "fk_endpoint_w_fek"
     else
       tk = "fk_endpoint"
     end
