@@ -93,7 +93,7 @@ end
 local CollectorHandler = BasePlugin:extend()
 
 CollectorHandler.PRIORITY = 903
-CollectorHandler.VERSION = "1.7.7"
+CollectorHandler.VERSION = "1.7.8"
 
 
 local function remove_sensible_data_from_table(a_table, depth)
@@ -188,7 +188,6 @@ function CollectorHandler:log(conf)
   -- If the `access` function isn't executed, the `entry` variable
   -- is not going to be initialized properly, leading to stack traces
   if not entry then
-    kong.log.err("Serialized Request plugin not initialized.")
     return
   end
 
