@@ -151,6 +151,11 @@ kong_nginx_http_current_connections{state="writing"} 1
 # HELP kong_nginx_metric_errors_total Number of nginx-lua-prometheus errors
 # TYPE kong_nginx_metric_errors_total counter
 kong_nginx_metric_errors_total 0
+# HELP kong_upstream_target_health Health status of targets of upstream. States = healthchecks_off|healthy|unhealthy|dns_error, value is 1 when state is populated.
+kong_upstream_target_health{upstream="<upstream_name>",target="<target>",address="<ip>:<port>",state="healthchecks_off"} 0
+kong_upstream_target_health{upstream="<upstream_name>",target="<target>",address="<ip>:<port>",state="healthy"} 1
+kong_upstream_target_health{upstream="<upstream_name>",target="<target>",address="<ip>:<port>",state="unhealthy"} 0
+kong_upstream_target_health{upstream="<upstream_name>",target="<target>",address="<ip>:<port>",state="dns_error"} 0
 
 ```
 

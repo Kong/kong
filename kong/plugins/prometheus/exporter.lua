@@ -1,7 +1,10 @@
 local kong = kong
 local ngx = ngx
 local find = string.find
+local lower = string.lower
+local concat = table.concat
 local select = select
+local balancer = require("kong.runloop.balancer")
 
 local DEFAULT_BUCKETS = { 1, 2, 5, 7, 10, 15, 20, 25, 30, 40, 50, 60, 70,
                           80, 90, 100, 200, 300, 400, 500, 1000,
@@ -30,6 +33,12 @@ local function init()
   metrics.db_reachable = prometheus:gauge("datastore_reachable",
                                           "Datastore reachable from Kong, " ..
                                           "0 is unreachable")
+  metrics.upstream_target_health = prometheus:gauge("upstream_target_health",
+                                          "Health status of targets of upstream. " ..
+                                          "States = healthchecks_off|healthy|unhealthy|dns_error, " ..
+                                          "value is 1 when state is populated.",
+                                          {"upstream", "target", "address", "state"})
+
   local memory_stats = {}
   memory_stats.worker_vms = prometheus:gauge("memory_workers_lua_vms_bytes",
                                              "Allocated bytes in worker Lua VM",
@@ -72,6 +81,22 @@ end
 -- Since in the prometheus library we create a new table for each diverged label
 -- so putting the "more dynamic" label at the end will save us some memory
 local labels_table = {0, 0, 0}
+local upstream_target_addr_health_table = {
+  { value = 0, labels = { 0, 0, 0, "healthchecks_off" } },
+  { value = 0, labels = { 0, 0, 0, "healthy" } },
+  { value = 0, labels = { 0, 0, 0, "unhealthy" } },
+  { value = 0, labels = { 0, 0, 0, "dns_error" } },
+}
+
+local function set_healthiness_metrics(table, upstream, target, address, status, metrics_bucket)
+  for i = 1, #table do
+    table[i]['labels'][1] = upstream
+    table[i]['labels'][2] = target
+    table[i]['labels'][3] = address
+    table[i]['value'] = (status == table[i]['labels'][4]) and 1 or 0
+    metrics_bucket:set(table[i]['value'], table[i]['labels'])
+  end
+end
 
 local function log(message)
   if not metrics then
@@ -166,6 +191,39 @@ local function collect()
     metrics.db_reachable:set(0)
     kong.log.err("prometheus: failed to reach database while processing",
                  "/metrics endpoint: ", err)
+  end
+
+  -- erase all target/upstream metrics, prevent exposing old metrics
+  metrics.upstream_target_health:reset()
+
+  -- upstream targets accessible?
+  local upstreams_dict = balancer.get_all_upstreams()
+  for key, upstream_id in pairs(upstreams_dict) do
+    local _, upstream_name = key:match("^([^:]*):(.-)$")
+    upstream_name = upstream_name and upstream_name or key
+    -- based on logic from kong.db.dao.targets
+    local health_info
+    health_info, err = balancer.get_upstream_health(upstream_id)
+    if err then
+      kong.log.err("failed getting upstream health: ", err)
+    end
+
+    if health_info then
+      for target_name, target_info in pairs(health_info) do
+        if target_info ~= nil and target_info.addresses ~= nil and
+          #target_info.addresses > 0 then
+          -- healthchecks_off|healthy|unhealthy
+          for _, address in ipairs(target_info.addresses) do
+            local address_label = concat({address.ip, ':', address.port})
+            local status = lower(address.health)
+            set_healthiness_metrics(upstream_target_addr_health_table, upstream_name, target_name, address_label, status, metrics.upstream_target_health)
+          end
+        else
+          -- dns_error
+          set_healthiness_metrics(upstream_target_addr_health_table, upstream_name, target_name, '', 'dns_error', metrics.upstream_target_health)
+        end
+      end
+    end
   end
 
   -- memory stats
