@@ -1708,6 +1708,7 @@ describe("declarative config: flatten", function()
               } },
             upstreams = { {
                 algorithm = "round-robin",
+                client_certificate = null,
                 created_at = 1234567890,
                 hash_fallback = "none",
                 hash_fallback_header = null,
@@ -1758,6 +1759,7 @@ describe("declarative config: flatten", function()
                 tags = null,
               }, {
                 algorithm = "round-robin",
+                client_certificate = null,
                 created_at = 1234567890,
                 hash_fallback = "none",
                 hash_fallback_header = null,
