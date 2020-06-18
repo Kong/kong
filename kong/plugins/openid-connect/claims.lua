@@ -75,7 +75,6 @@ local function get_exp(access_token, tokens_encoded, now, exp_default)
 end
 
 
-
 return {
   find = find_claim,
   exp  = get_exp,

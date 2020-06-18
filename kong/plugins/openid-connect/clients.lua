@@ -1,5 +1,6 @@
 local log      = require "kong.plugins.openid-connect.log"
 
+
 local kong     = kong
 local tonumber = tonumber
 local ipairs   = ipairs

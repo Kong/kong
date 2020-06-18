@@ -1,5 +1,5 @@
-local log       = require "kong.plugins.openid-connect.log"
 local uri       = require "kong.openid-connect.uri"
+local log       = require "kong.plugins.openid-connect.log"
 local consumers = require "kong.plugins.openid-connect.consumers"
 
 

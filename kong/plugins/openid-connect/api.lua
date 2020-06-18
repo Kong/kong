@@ -1,12 +1,12 @@
-local endpoints = require "kong.api.endpoints"
-local json = require "cjson.safe"
+local endpoints  = require "kong.api.endpoints"
+local json       = require "cjson.safe"
 
 
 local escape_uri = ngx.escape_uri
-local ipairs = ipairs
-local kong = kong
-local null = ngx.null
-local fmt = string.format
+local ipairs     = ipairs
+local kong       = kong
+local null       = ngx.null
+local fmt        = string.format
 
 
 local function issuer(row)
@@ -105,6 +105,7 @@ return {
       DELETE = endpoints.delete_entity_endpoint(issuers_schema),
     },
   },
+
   ["/openid-connect/jwks"] = {
     schema = jwks_schema,
     methods = {
