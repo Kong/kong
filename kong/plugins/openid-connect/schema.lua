@@ -879,11 +879,12 @@ local config = {
                   {
                     ip = typedefs.ip {
                       required = true,
+                      default  = "127.0.0.1",
                     },
                   },
                   {
                     port = typedefs.port {
-                      default  = 6379
+                      default = 6379,
                     },
                   },
                 },
