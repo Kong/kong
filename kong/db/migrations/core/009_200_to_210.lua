@@ -152,6 +152,15 @@ return {
           END;
         $$;
 
+        -- add certificates reference to upstreams table
+        DO $$
+          BEGIN
+            ALTER TABLE IF EXISTS ONLY "upstreams" ADD "client_certificate_id" UUID REFERENCES "certificates" ("id");
+          EXCEPTION WHEN DUPLICATE_COLUMN THEN
+            -- Do nothing, accept existing state
+          END;
+        $$;
+
         DO $$
           BEGIN
             ALTER TABLE services ADD COLUMN "tls_verify_depth" SMALLINT;
@@ -167,8 +176,14 @@ return {
             -- Do nothing, accept existing state
           END;
         $$;
-    ]] .. ws_migration_up(operations.postgres.up),
 
+        DO $$
+          BEGIN
+            CREATE INDEX IF NOT EXISTS "upstreams_fkey_client_certificate" ON "upstreams" ("client_certificate_id");
+          EXCEPTION WHEN UNDEFINED_COLUMN THEN
+            -- Do nothing, accept existing state
+        END$$;
+    ]] .. ws_migration_up(operations.postgres.up),
     teardown = function(connector)
       ws_migration_teardown(operations.postgres.teardown)(connector)
 
@@ -187,8 +202,11 @@ return {
       ALTER TABLE services ADD tls_verify boolean;
       ALTER TABLE services ADD tls_verify_depth int;
       ALTER TABLE services ADD ca_certificates set<uuid>;
-    ]] .. ws_migration_up(operations.cassandra.up),
 
+      -- add certificates reference to upstreams table
+      ALTER TABLE upstreams ADD client_certificate_id uuid;
+      CREATE INDEX IF NOT EXISTS upstreams_client_certificate_id_idx ON upstreams(client_certificate_id);
+    ]] .. ws_migration_up(operations.cassandra.up),
     teardown = function(connector)
       ws_migration_teardown(operations.cassandra.teardown)(connector)
 

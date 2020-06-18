@@ -33,6 +33,7 @@ describe("kong.db.dao with foreign_key", function()
   local dao, strategy
 
   lazy_setup(function()
+    assert(Entity.new(require("kong.db.schema.entities.certificates")))
     assert(Entity.new(require("kong.db.schema.entities.upstreams")))
     local schema = assert(Entity.new(require("kong.db.schema.entities.targets")))
 
@@ -48,7 +49,7 @@ describe("kong.db.dao with foreign_key", function()
     local _, err, _ = dao:each_for_upstream({ id = "7b0c42a0-e5f9-458e-9afd-6201a7879971" }, nil, { tags = { "foo" } })
 
     assert.is_nil(err)
-    
+
     assert.spy(s).was_not_called()
     assert.spy(spage).was_called(1)
 
