@@ -1,6 +1,5 @@
 local pl_pretty = require("pl.pretty").write
 local pl_keys = require("pl.tablex").keys
-local utils = require "kong.tools.utils"
 
 
 local type         = type
@@ -73,6 +72,8 @@ local ERRORS_NAMES               = {
   [ERRORS.INVALID_UNIQUE_GLOBAL]   = "unique key %s is invalid for global query",
 }
 
+
+-- XXXCORE dynamically add this to the module from another file
 local function add_ee_error(name, code, message)
   if ERRORS_NAMES[code] then
     error("already used code " .. code)
@@ -367,16 +368,6 @@ function _M:unique_violation(unique_key)
     error("unique_key must be a table", 2)
   end
 
-  -- EE: remove workspace prefix
-  for k, v in pairs(unique_key) do
-    if type(v) ~= "userdata" and type(v) ~= "table" then
-      local ws_value = utils.split(v , ":")
-      if #ws_value > 1 then
-        unique_key[k] = ws_value[2]
-      end
-    end
-  end
-
   local message = fmt("UNIQUE violation detected on '%s'",
                       pl_pretty(unique_key, ""):gsub("\"userdata: NULL\"", "null"))
 
@@ -429,6 +420,7 @@ function _M:database_error(err)
 end
 
 
+-- XXXCORE dynamically add this to the module from another file
 function _M:unauthorized_operation(rbac_ctx)
   if type(rbac_ctx) ~= "table" then
     error("User and Action must be provided", 2)
