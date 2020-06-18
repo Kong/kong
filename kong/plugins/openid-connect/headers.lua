@@ -1,8 +1,7 @@
 local log           = require "kong.plugins.openid-connect.log"
-local codec         = require "kong.openid-connect.codec"
+local json          = require "cjson.safe"
 
 
-local json          = codec.json
 local type          = type
 local ipairs        = ipairs
 local tostring      = tostring

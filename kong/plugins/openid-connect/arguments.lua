@@ -1,4 +1,4 @@
-local codec          = require "kong.openid-connect.codec"
+local json           = require "cjson.safe"
 
 
 local kong           = kong
@@ -25,8 +25,7 @@ local sub            = string.sub
 local type           = type
 local null           = ngx.null
 local next           = next
-local json           = codec.json
-local base64         = codec.base64
+local decode_base64  = ngx.decode_base64
 local nothing        = function() return nil end
 
 
@@ -170,7 +169,7 @@ local function create_get_header(hdrs)
       elseif basic then
         if sub(value_prefix, 1, 5) == "basic" then
           header_arg = sub(header_arg, 7)
-          local decoded = base64.decode(header_arg)
+          local decoded = decode_base64(header_arg)
           if decoded then
             header_arg = decoded
           end

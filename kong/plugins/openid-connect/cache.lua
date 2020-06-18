@@ -5,16 +5,15 @@ local log           = require "kong.plugins.openid-connect.log"
 local configuration = require "kong.openid-connect.configuration"
 local keys          = require "kong.openid-connect.keys"
 local hash          = require "kong.openid-connect.hash"
-local codec         = require "kong.openid-connect.codec"
 local utils         = require "kong.tools.utils"
 local http          = require "resty.http"
+local json          = require "cjson.safe"
 
 
 local concat        = table.concat
 local insert        = table.insert
 local ipairs        = ipairs
-local json          = codec.json
-local base64        = codec.base64
+local encode_base64 = ngx.encode_base64
 local type          = type
 local ngx           = ngx
 local null          = ngx.null
@@ -117,7 +116,7 @@ end
 
 
 local function get_secret()
-  return sub(base64.encode(utils.get_rand_bytes(32)), 1, 32)
+  return sub(encode_base64(utils.get_rand_bytes(32), true), 1, 32)
 end
 
 
@@ -632,10 +631,10 @@ function introspection.load(oic, access_token, hint, ttl, use_cache, opts)
     return nil, "no access token given for token introspection"
   end
 
-  local key = cache_key(base64.encode(hash.S256(concat({
+  local key = cache_key(encode_base64(hash.S256(concat({
     opts.introspection_endpoint or oic.configuration.issuer,
     access_token
-  }, "#introspection="))))
+  }, "#introspection=")), true))
 
   local res
   local err
@@ -693,37 +692,37 @@ function tokens.load(oic, args, ttl, use_cache, flush)
         return nil, "no credentials given for refresh token grant"
       end
 
-      key = cache_key(base64.encode(hash.S256(concat {
+      key = cache_key(encode_base64(hash.S256(concat {
         iss,
         "#grant_type=refresh_token&",
         args.refresh_token,
-      })))
+      }), true))
 
     elseif args.grant_type == "password" then
       if not args.username or not args.password then
         return nil, "no credentials given for password grant"
       end
 
-      key = cache_key(base64.encode(hash.S256(concat {
+      key = cache_key(encode_base64(hash.S256(concat {
         iss,
         "#grant_type=password&",
         args.username,
         "&",
         args.password,
-      })))
+      }), true))
 
     elseif args.grant_type == "client_credentials" then
       if not args.client_id or not args.client_secret then
         return nil, "no credentials given for client credentials grant"
       end
 
-      key = cache_key(base64.encode(hash.S256(concat {
+      key = cache_key(encode_base64(hash.S256(concat {
         iss,
         "#grant_type=client_credentials&",
         args.client_id,
         "&",
         args.client_secret,
-      })))
+      }), true))
     end
 
     if flush and key then
@@ -813,10 +812,10 @@ function token_exchange.load(access_token, endpoint, opts, ttl, use_cache)
     return nil, "no token exchange endpoint given for token exchange"
   end
 
-  local key = cache_key(base64.encode(hash.S256(concat({
+  local key = cache_key(encode_base64(hash.S256(concat({
     endpoint,
     access_token
-  }, "#exchange="))))
+  }, "#exchange=")), true))
 
   local res
   local err
@@ -861,10 +860,10 @@ function userinfo.load(oic, access_token, ttl, use_cache)
     return nil, "no access token given for user info"
   end
 
-  local key = cache_key(base64.encode(hash.S256(concat({
+  local key = cache_key(encode_base64(hash.S256(concat({
     oic.configuration.issuer,
     access_token
-  }, "#userinfo="))))
+  }, "#userinfo=")), true))
 
   if use_cache and key then
     return cache_get("oic:" .. key, ttl, userinfo_load, oic, access_token)
