@@ -3,6 +3,7 @@ local singletons = require "kong.singletons"
 local workspaces = require "kong.workspaces"
 local utils = require "kong.tools.utils"
 local hooks = require "kong.hooks"
+local get_certificate = require("kong.runloop.certificate").get_certificate
 
 -- due to startup/require order, cannot use the ones from 'singletons' here
 local dns_client = require "resty.dns.client"
@@ -357,6 +358,17 @@ do
       end
     end
 
+
+    local parsed_cert, parsed_key
+    local function parse_global_cert_and_key()
+      if not parsed_cert then
+        local pl_file = require("pl.file")
+        parsed_cert = assert(pl_file.read(kong.configuration.client_ssl_cert))
+        parsed_key = assert(pl_file.read(kong.configuration.client_ssl_cert_key))
+      end
+
+      return parsed_cert, parsed_key
+    end
     ----------------------------------------------------------------------------
     -- Create a healthchecker object.
     -- @param upstream An upstream entity table.
@@ -375,10 +387,28 @@ do
         checks.active.unhealthy.interval = 0
       end
 
+      local ssl_cert, ssl_key
+      if upstream.client_certificate then
+        local cert, err = get_certificate(upstream.client_certificate)
+        if not cert then
+          log(ERR, "unable to fetch upstream client TLS certificate ",
+              upstream.client_certificate.id, ": ", err)
+          return nil, err
+        end
+
+        ssl_cert = cert.cert
+        ssl_key = cert.key
+
+      elseif kong.configuration.client_ssl then
+        ssl_cert, ssl_key = parse_global_cert_and_key()
+      end
+
       local healthchecker, err = healthcheck.new({
         name = assert(upstream.ws_id) .. ":" .. upstream.name,
         shm_name = "kong_healthchecks",
         checks = checks,
+        ssl_cert = ssl_cert,
+        ssl_key = ssl_key,
       })
 
       if not healthchecker then
