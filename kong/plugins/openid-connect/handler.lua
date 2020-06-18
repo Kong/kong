@@ -143,7 +143,7 @@ function OICHandler.access(_, conf)
     if not secret then
       secret = issuer.secret
     elseif #secret ~= 32 then
-      secret = sub(encode_base64(hash.S256(secret)), 1, 32)
+      secret = sub(encode_base64(hash.S256(secret), true), 1, 32)
     end
   end
 
@@ -930,56 +930,53 @@ function OICHandler.access(_, conf)
     if not auth_methods.bearer or type(tokens_decoded) ~= "table" or type(tokens_decoded.access_token) ~= "table" then
       if type(tokens_decoded) ~= "table" then
         tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
-        if not tokens_decoded then
+        if type(tokens_decoded) ~= "table" then
           return response.unauthorized(err)
         end
       end
 
-      local access_token
-      if type(tokens_decoded.access_token) ~= "table" then
-        log("opaque bearer token was provided")
-        access_token = tokens_decoded.access_token
-
-      elseif type(tokens_encoded) == "table" then
-        log("bearer authentication was not enabled")
-        access_token = tokens_encoded.access_token
+      local access_token = type(tokens_encoded) == "table" and tokens_encoded.access_token
+      if not access_token then
+        return response.unauthorized("bearer token not found")
       end
 
-      if not access_token then
-        return response.unauthorized("access token not found")
+      if type(tokens_decoded.access_token) == "table" then
+        log("jwt bearer token was provided")
+      else
+        log("opaque bearer token was provided")
       end
 
       if auth_methods.kong_oauth2 then
         log("trying to find matching kong oauth2 token")
-        token_introspected, credential, consumer = cache.kong_oauth2.load(
-          ctx, access_token, ttl, true)
+        token_introspected, credential, consumer = cache.kong_oauth2.load(ctx, access_token, ttl, true)
         if type(token_introspected) == "table" then
-          log("found matching kong oauth2 token")
+          log("authenticated using kong oauth2")
           token_introspected.active = true
 
         else
-          log("matching kong oauth2 token was not found")
+          log("unable to authenticate with kong oauth2")
         end
       end
 
       if type(token_introspected) ~= "table" or token_introspected.active ~= true then
         if auth_methods.introspection then
+          log("trying to introspect bearer token")
           token_introspected, err = introspect_token(access_token, ttl)
           if type(token_introspected) == "table" then
-            if token_introspected.active then
-              log("authenticated using oauth2 introspection")
+            if token_introspected.active == true then
+              log("authenticated using introspection")
 
             else
-              log("opaque token is not active anymore")
+              log("token is not active anymore")
             end
 
           else
-            log("unable to authenticate using oauth2 introspection")
+            log("unable to authenticate using introspection")
           end
         end
 
         if type(token_introspected) ~= "table" or token_introspected.active ~= true then
-          log("authentication with opaque bearer token failed")
+          log("authentication with bearer token failed")
           return response.unauthorized(err or "invalid or inactive token")
         end
 
@@ -1018,6 +1015,7 @@ function OICHandler.access(_, conf)
       end
 
       log("authenticated using jwt bearer token")
+
       auth_method = "bearer"
     end
 
