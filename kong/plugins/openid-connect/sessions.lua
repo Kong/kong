@@ -42,7 +42,7 @@ local function new(args, secret)
             n = n + 3
           end
 
-          local hash = encode_base64(hash.S256(concat(name, ";", 1, n)), true)
+          local hashed_name = encode_base64(hash.S256(concat(name, ";", 1, n)), true)
 
           redis = {
             uselocking      = false,
@@ -51,7 +51,7 @@ local function new(args, secret)
             connect_timeout = args.get_conf_arg("session_redis_connect_timeout"),
             cluster         = {
               nodes           = cluster_nodes,
-              name            = "redis-cluster:" .. hash,
+              name            = "redis-cluster:" .. hashed_name,
               dict            = "kong_locks",
               maxredirections = args.get_conf_arg("session_redis_cluster_maxredirections"),
             }
