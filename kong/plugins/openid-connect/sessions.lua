@@ -1,5 +1,11 @@
-local log     = require "kong.plugins.openid-connect.log"
-local session = require "resty.session"
+local log           = require "kong.plugins.openid-connect.log"
+local hash          = require "kong.openid-connect.hash"
+local session       = require "resty.session"
+
+
+local ipairs        = ipairs
+local concat        = table.concat
+local encode_base64 = ngx.encode_base64
 
 
 local function new(args, secret)
@@ -27,6 +33,17 @@ local function new(args, secret)
         log("loading configuration for redis session storage")
         local cluster_nodes = args.get_conf_arg("session_redis_cluster_nodes")
         if cluster_nodes then
+          local n = 0
+          local name = {}
+          for _, node in ipairs(cluster_nodes) do
+            name[n+1] = node.ip   or "127.0.0.1"
+            name[n+2] = ":"
+            name[n+3] = node.port or 6379
+            n = n + 3
+          end
+
+          local hash = encode_base64(hash.S256(concat(name, ";", 1, n)), true)
+
           redis = {
             uselocking      = false,
             prefix          = args.get_conf_arg("session_redis_prefix", "sessions"),
@@ -34,7 +51,7 @@ local function new(args, secret)
             connect_timeout = args.get_conf_arg("session_redis_connect_timeout"),
             cluster         = {
               nodes           = cluster_nodes,
-              name            = "redis-cluster",
+              name            = "redis-cluster:" .. hash,
               dict            = "kong_locks",
               maxredirections = args.get_conf_arg("session_redis_cluster_maxredirections"),
             }
