@@ -84,20 +84,24 @@ end
 
 
 function _M.find_all()
-  -- gets the first 100 admins, not workspaced
-  -- TODO: make admins truly paginated and workspace-aware
-  local all_admins, err = kong.db.admins:page()
-  if err then
-    return nil, err
+-- XXXCORE TODO
+  local all_admins = {}
+  for admin, err in kong.db.admins:each() do
+    if err then
+      return nil, nil, err
+    end
+
+    table.insert(all_admins, admin)
   end
 
   local ws_admins = {}
   setmetatable(ws_admins, cjson.empty_array_mt)
   for _, v in ipairs(all_admins) do
-    v.workspaces = rbac.find_all_ws_for_rbac_user(v.rbac_user)
+    local rbac_user = kong.db.rbac_users:select(v.rbac_user, { workspace = null, show_ws_id = true })
+    v.workspaces = rbac.find_all_ws_for_rbac_user(rbac_user)
 
     for _, ws in ipairs(v.workspaces) do
-      if ws.name == ngx.ctx.workspaces[1].name or ws.name == '*' then
+      if ws.id == ngx.ctx.workspace or ws.name == '*' then
         ws_admins[#ws_admins + 1] = transmogrify(v)
         break
       end
@@ -115,15 +119,17 @@ end
 
 
 function _M.validate(params, db, admin_to_update)
-  local all_admins, err = kong.db.admins:select_all({})
+  local all_admins = {}
+  for admin, err in kong.db.admins:each(nil, { show_ws_id = true }) do
+    if err then
+      return nil, nil, err
+    end
 
-  if err then
-    -- unable to complete validation, so no success and no validation messages
-    return nil, nil, err
+    table.insert(all_admins, admin)
   end
 
   local matches = 0
-  local consumer, rbac_user
+  local consumer, rbac_user, err
   for _, admin in ipairs(all_admins) do
     -- if we're doing an update, don't compare us to ourself
     if admin_to_update and admin_to_update.id == admin.id then
@@ -142,12 +148,7 @@ function _M.validate(params, db, admin_to_update)
     -- need to make sure that the parameters passed will be unique across
     -- all rbac_users. TODO - figure out how to find all rbac_users in
     -- global scope.
-    rbac_user, err = workspaces.run_with_ws_scope(
-      {},
-      db.rbac_users.select,
-      db.rbac_users,
-      { id = admin.rbac_user.id }
-    )
+    rbac_user, err = kong.db.rbac_users:select({ id = admin.rbac_user.id }, { workspace = null, show_ws_id = true })
     if not rbac_user then
       -- bad data: can't have an admin without an rbac_user
       return nil, nil, (err or "rbac_user not found for admin " .. admin.id)
@@ -161,13 +162,7 @@ function _M.validate(params, db, admin_to_update)
       matches = matches + 1
     end
 
-    consumer, err = workspaces.run_with_ws_scope(
-      {},
-      db.consumers.select,
-      db.consumers,
-      { id = admin.consumer.id })
-
-
+    consumer, err = db.consumers:select({ id = admin.consumer.id }, { workspace = null, show_ws_id = true })
     if not consumer then
       -- again, we should never get here: admins must have consumers
       return nil, nil, err or "consumer not found for admin " .. admin.id
@@ -451,21 +446,22 @@ function _M.update_token(admin, params)
   admin.rbac_user.user_token = token
   admin.rbac_user.user_token_ident = rbac.get_token_ident(token)
 
+  local save_ws_id = admin.rbac_user.ws_id
+  admin.rbac_user.ws_id = nil
   local check_result, err = kong.db.rbac_users.schema:validate(admin.rbac_user)
   if not check_result then
     local err_t = kong.db.errors:schema_violation(err)
     return nil, err_t
   end
+  admin.rbac_user.ws_id = save_ws_id
 
-  local _, err = workspaces.run_with_ws_scope(
-    {},
-    kong.db.rbac_users.update,
-    kong.db.rbac_users,
+  local _, err = kong.db.rbac_users:update(
     { id = admin.rbac_user.id },
     {
       user_token = admin.rbac_user.user_token,
       user_token_ident = admin.rbac_user.user_token_ident
-    }
+    },
+    { workspace = null }
   )
 
   if err then
@@ -509,18 +505,14 @@ function _M.find_by_username_or_id(username_or_id, raw, require_workspace_ctx)
   local admin, err
 
   if utils.is_valid_uuid(username_or_id) then
-    admin, err = workspaces.run_with_ws_scope({}, function ()
-      return kong.db.admins:select({ id = username_or_id })
-    end)
+    admin, err = kong.db.admins:select({ id = username_or_id })
     if err then
       return nil, err
     end
   end
 
   if not admin then
-    admin, err = workspaces.run_with_ws_scope({}, function ()
-      return kong.db.admins:select_by_username(username_or_id)
-    end)
+    admin, err = kong.db.admins:select_by_username(username_or_id)
     if err then
       return nil, err
     end
@@ -530,7 +522,9 @@ function _M.find_by_username_or_id(username_or_id, raw, require_workspace_ctx)
     return nil
   end
 
-  local wss, err = rbac.find_all_ws_for_rbac_user(admin.rbac_user)
+  local rbac_user = kong.db.rbac_users:select(admin.rbac_user, { workspace = null, show_ws_id = true })
+
+  local wss, err = rbac.find_all_ws_for_rbac_user(rbac_user)
 
   admin.workspaces = wss
 
@@ -538,8 +532,14 @@ function _M.find_by_username_or_id(username_or_id, raw, require_workspace_ctx)
     return nil, err
   end
 
-  local c_ws_name = ngx.ctx.workspaces[1] and ngx.ctx.workspaces[1].name
+  local c_ws_id = ngx.ctx.workspace
 
+  if not c_ws_id then
+    return raw and admin or transmogrify(admin)
+  end
+
+  local ws = kong.db.workspaces:select({ id = c_ws_id })
+  local c_ws_name = ws and ws.name
   if not c_ws_name or not require_workspace_ctx then
     return raw and admin or transmogrify(admin)
   end
@@ -550,16 +550,6 @@ function _M.find_by_username_or_id(username_or_id, raw, require_workspace_ctx)
       return raw and admin or transmogrify(admin)
     end
   end
-end
-
-
-function _M.find_by_email(email)
-  local admins, err = kong.db.admins:select_all({ email = email })
-  if err then
-    return nil, err
-  end
-
-  return admins[1]
 end
 
 
@@ -574,7 +564,8 @@ function _M.workspaces_for_admin(username_or_id)
     return { code = 404, body = { message = "not found" }}
   end
 
-  local wss = rbac.find_all_ws_for_rbac_user(admin.rbac_user)
+  local rbac_user = kong.db.rbac_users:select(admin.rbac_user, { workspace = null, show_ws_id = true })
+  local wss = rbac.find_all_ws_for_rbac_user(rbac_user)
 
   return {
     code = 200,
@@ -585,25 +576,24 @@ end
 
 function _M.reset_password(plugin, collection, consumer, new_password, secret_id)
   log(DEBUG, _log_prefix, "searching ", plugin.name, "creds for consumer ", consumer.id)
-  workspaces.run_with_ws_scope({}, function()
-    for row, err in collection:each_for_consumer({ id = consumer.id }) do
-      if err then
-        return nil, err
-      end
-
-      local _, err = collection:update(
-        { id = row.id },
-        {
-          consumer = { id = consumer.id },
-          [plugin.credential_key] = new_password,
-        }
-      )
-
-      if err then
-        return nil, err
-      end
+  for row, err in collection:each_for_consumer({ id = consumer.id }, nil, { workspace = null }) do
+    if err then
+      return nil, err
     end
-  end)
+
+    local _, err = collection:update(
+      { id = row.id },
+      {
+        consumer = { id = consumer.id },
+        [plugin.credential_key] = new_password,
+      },
+      { workspace = null }
+    )
+
+    if err then
+      return nil, err
+    end
+  end
 
   log(DEBUG, _log_prefix, "password was reset, updating secrets")
   local ok, err = secrets.consume_secret(secret_id)

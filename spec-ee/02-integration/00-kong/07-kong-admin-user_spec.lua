@@ -33,12 +33,18 @@ for _, strategy in helpers.each_strategy() do
 
       helpers.bootstrap_database(db)
 
-      local admins = db.admins:select_all()
-      assert.equal(1, #admins)
+      local n = 0
+      for _ in db.admins:each() do
+        n = n + 1
+      end
+      assert.equal(1, n)
+
+      local default_ws = assert(db.workspaces:select_by_name("default"))
 
       local consumer = db.consumers:each()()
-      local cred = db.basicauth_credentials:each()()
-      assert.same(crypto.hash(consumer.id, os.getenv("KONG_PASSWORD"))  , cred.password)
+      local cred = db.basicauth_credentials:each(nil, { nulls = true, show_ws_id = true })()
+      assert(cred.ws_id == default_ws.id)
+      assert.same(crypto.hash(consumer.id, os.getenv("KONG_PASSWORD")), cred.password)
     end)
 
   end)

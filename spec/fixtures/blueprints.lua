@@ -3,7 +3,6 @@ local utils = require "kong.tools.utils"
 
 local deep_merge = utils.deep_merge
 local fmt = string.format
-local workspaces = require "kong.workspaces"
 
 
 local Blueprint   = {}

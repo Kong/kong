@@ -1,7 +1,6 @@
-local singletons = require "kong.singletons"
-local workspaces = require "kong.workspaces"
 local ee_jwt = require "kong.enterprise_edition.jwt"
 local enums = require "kong.enterprise_edition.dao.enums"
+
 
 local INVALIDATED = enums.TOKENS.STATUS.INVALIDATED
 local PENDING = enums.TOKENS.STATUS.PENDING
@@ -11,8 +10,6 @@ local _M = {}
 
 
 function _M.create(consumer, client_addr, expiry)
-  local reset_secrets = singletons.db.consumer_reset_secrets
-
   -- Invalidate pending resets
   local ok, err = _M.invalidate_pending_resets(consumer)
   if not ok then
@@ -20,14 +17,10 @@ function _M.create(consumer, client_addr, expiry)
   end
 
   -- Generate new reset
-  -- Dao validate the fk exists in ws, since 'consumer' is workspacable
-  -- Use {} as ws_scope, the validation will use `select` instead of `select_ws`
-  local row, err = workspaces.run_with_ws_scope({}, function()
-    return reset_secrets:insert({
-      consumer = { id = consumer.id },
-      client_addr = client_addr,
-    })
-  end)
+  local row, err = kong.db.consumer_reset_secrets:insert({
+    consumer = { id = consumer.id },
+    client_addr = client_addr,
+  })
 
   if err then
     return nil, err
@@ -49,15 +42,16 @@ end
 
 
 function _M.invalidate_pending_resets(consumer)
-  local reset_secrets = singletons.db.consumer_reset_secrets
 
-  for secret, err in reset_secrets:each_for_consumer({ id = consumer.id }) do
+  for secret, err in kong.db.consumer_reset_secrets:each_for_consumer({
+    id = consumer.id
+  }) do
     if err then
       return nil, err
     end
 
     if secret.status == PENDING then
-      local _, err = reset_secrets:update({
+      local _, err = kong.db.consumer_reset_secrets:update({
         id = secret.id,
       }, {
         status = INVALIDATED,
@@ -73,7 +67,7 @@ end
 
 
 function _M.consume_secret(secret_id)
-  return singletons.db.consumer_reset_secrets:update({
+  return kong.db.consumer_reset_secrets:update({
     id = secret_id,
   }, {
     status = CONSUMED,

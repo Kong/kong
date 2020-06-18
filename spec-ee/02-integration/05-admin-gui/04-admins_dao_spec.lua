@@ -1,6 +1,5 @@
 local helpers = require "spec.helpers"
 local singletons = require "kong.singletons"
-local workspaces = require "kong.workspaces"
 local enums = require "kong.enterprise_edition.dao.enums"
 
 
@@ -8,7 +7,6 @@ for _, strategy in helpers.each_strategy() do
   local db, dao, admins, _
 
   local function truncate_tables()
-    db:truncate("workspace_entities")
     db:truncate("consumers")
     db:truncate("rbac_user_roles")
     db:truncate("rbac_roles")
@@ -27,9 +25,8 @@ for _, strategy in helpers.each_strategy() do
 
       -- consumers are workspaceable, so we need a workspace context
       -- TODO: do admins need to be workspaceable? Preferably not.
-      ngx.ctx.workspaces = {
-        workspaces.fetch_workspace("default")
-      }
+      local default_ws = assert(db.workspaces:select_by_name("default"))
+      ngx.ctx.workspace = default_ws.id
     end)
 
     lazy_teardown(function()
@@ -171,11 +168,8 @@ for _, strategy in helpers.each_strategy() do
         assert.same(err, "failed!")
 
         -- leave no trace
-        local consumers = assert(#kong.db.consumers:select_all({ username = "gruce" }))
-        assert.same(0, consumers)
-
-        local rbac_users = assert(#kong.db.rbac_users:select_all({ name = "gruce" }))
-        assert.same(0, rbac_users)
+        assert.same(nil, kong.db.consumers:select_by_username("gruce"))
+        assert.same(nil, kong.db.rbac_users:select_by_name("gruce"))
       end)
 
       it("rolls back the rbac_user and consumer if we can't create the admin", function()
@@ -192,11 +186,8 @@ for _, strategy in helpers.each_strategy() do
         assert.same(err, "failed!")
 
         -- leave no trace
-        local consumers = assert(#kong.db.consumers:select_all({ username = "gruce" }))
-        assert.same(0, consumers)
-
-        local rbac_users = assert(#kong.db.rbac_users:select_all({ name = "gruce" }))
-        assert.same(0, rbac_users)
+        assert.same(nil, kong.db.consumers:select_by_username("gruce"))
+        assert.same(nil, kong.db.rbac_users:select_by_name("gruce"))
       end)
     end)
   end)

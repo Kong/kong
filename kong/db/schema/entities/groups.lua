@@ -8,6 +8,7 @@ return {
   endpoint_key       = "name",
   admin_api_name = "groups",
   workspaceable      = false,
+  db_export = false,
 
   fields = {
     { id             = typedefs.uuid },
