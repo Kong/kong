@@ -38,10 +38,21 @@ transformations, and more through plugins.
 
 [![][kong-benefits]][kong-url]
 
+Kong has been built with the following leading principles:
+
+* **High Performance**: Sub-millisecond processing latency to support mission 
+  critical use cases and high throughput.
+* **Extensibility**: With a pluggable architecture to extend Kong in Lua or GoLang 
+  with Kong's Plugin SDK.
+* **Portability**: To run on every platform, every cloud and to natively support 
+  Kubernetes via our modern Ingress Controller.
+
 ## Features
 
-- **Cloud-Native**: Platform agnostic, Kong can run from bare metal to
-  Kubernetes.
+- **Cloud-Native**: Platform agnostic, Kong can run on any platform - from bare
+  metal to containers - and it can run on every cloud natively.
+- **Kubernetes-Native**: Declaratively configure Kong with native Kubernetes CRDs
+  using the official Ingress Controller to route and connect all L4 + L7 traffic. 
 - **Dynamic Load Balancing**: Load balance traffic across multiple upstream
   services.
 - **Hash-based Load Balancing**: Load balance with consistent hashing/sticky
@@ -91,6 +102,8 @@ Hub](https://docs.konghq.com/hub/).
 Kong comes in many shapes. While this repository contains its core's source
 code, other repos are also under active development:
 
+- [Kubernetes Ingress Controller for Kong](https://github.com/Kong/kubernetes-ingress-controller):
+  Use Kong for Kubernetes Ingress.
 - [Kong Docker](https://github.com/Kong/docker-kong): A Dockerfile for
   running Kong in Docker.
 - [Kong Packages](https://github.com/Kong/kong/releases): Pre-built packages
@@ -109,10 +122,10 @@ code, other repos are also under active development:
   Heroku in one click.
 - [Kong and Instaclustr](https://www.instaclustr.com/solutions/managed-cassandra-for-kong/): Let
   Instaclustr manage your Cassandra cluster.
-- [Kubernetes Ingress Controller for Kong](https://github.com/Kong/kubernetes-ingress-controller):
-  Use Kong for Kubernetes Ingress.
 - [Nightly Builds][kong-nightly-master]: Builds of the master branch available
   every morning at about 9AM PST.
+
+You can find every supported distribution at the [official installation page](https://konghq.com/install/).
 
 ## Development
 
