@@ -430,7 +430,7 @@ end
 
 
 function declarative.export_from_db(fd)
-  return export_from_db(fd_emitter.new(fd), true)
+  return export_from_db(fd_emitter.new(fd), false)
 end
 
 
