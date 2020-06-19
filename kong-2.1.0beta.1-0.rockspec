@@ -108,6 +108,7 @@ build = {
     ["kong.enterprise_edition.crud_helpers"] = "kong/enterprise_edition/crud_helpers.lua",
     ["kong.enterprise_edition.dao.enums"] = "kong/enterprise_edition/dao/enums.lua",
     ["kong.enterprise_edition.dao.factory"] = "kong/enterprise_edition/dao/factory.lua",
+    ["kong.enterprise_edition.db.migrations.operations.1500_to_2100"] = "kong/enterprise_edition/db/migrations/operations/1500_to_2100.lua",
     ["kong.enterprise_edition.db.migrations.helpers"] = "kong/enterprise_edition/db/migrations/helpers.lua",
     ["kong.enterprise_edition.db.migrations.migrate_core_entities"] = "kong/enterprise_edition/db/migrations/migrate_core_entities.lua",
     ["kong.enterprise_edition.db.typedefs"] = "kong/enterprise_edition/db/typedefs.lua",

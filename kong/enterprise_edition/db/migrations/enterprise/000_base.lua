@@ -46,10 +46,13 @@ local base_seed = {
       "-- super admin role", sa
     }, "\n"), { ["read-only"] = ro_id, ["admin"] = ad_id, ["super-admin"] = sa_id }
   end,
-  seed = function(self, password)
-    local ws_q, ws_id = self:add_workspace(DEFAULT_WORKSPACE)
+  seed = function(self, password, connector)
+
+    -- connector is only used for Cassandra, which runs in teardown
+    local ws_q, ws_id = self:add_default_workspace(connector)
+
     local ws = {
-      id = ws_id,
+      id = ws_id, -- id is nil in Postgres, which handles ws.id internally
       name = "default",
     }
     local roles_q, roles_ids = self:add_default_rbac_roles(ws)
@@ -96,7 +99,7 @@ local postgres  = {
       [[ DO $$
          DECLARE tmp record;
          BEGIN
-         SELECT * into tmp FROM workspaces LIMIT 1;
+         SELECT * into tmp FROM workspace_entities LIMIT 1;
          IF NOT FOUND THEN
       ]],
       self.super.seed(self, password),
@@ -106,15 +109,17 @@ local postgres  = {
     }
     return table.concat(query, "\n")
   end,
-  add_workspace = function(self, name)
+  add_default_workspace = function(self)
     local ws_uuid = self:uuid()
-    return fmt("INSERT INTO workspaces(id, name) VALUES ('%s', '%s') ON CONFLICT DO NOTHING;", ws_uuid, name), ws_uuid
+    return fmt([[
+      INSERT INTO workspaces(id, name) VALUES ('%s', 'default') ON CONFLICT DO NOTHING;
+    ]], ws_uuid)
   end,
 
   add_to_ws = function(self, ws, entity_id, entity, field, value)
     -- XXX Properly sql escape this
     local value = value and "'" .. value .. "'" or "NULL"
-    return fmt("INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES ('%s', '%s', '%s', '%s', '%s', %s);", ws.id, ws.name, entity_id, entity, field, value)
+    return fmt("INSERT INTO workspace_entities(workspace_id, workspace_name, entity_id, entity_type, unique_field_name, unique_field_value) VALUES ((select id from workspaces where name = 'default' limit 1)::uuid, '%s', '%s', '%s', '%s', %s);", ws.name, entity_id, entity, field, value)
   end,
 
   add_rbac_user = function(self, name, password, comment, ws)
@@ -177,17 +182,22 @@ local postgres  = {
     }, "\n")
   end,
   is_seeded = function(self, connector)
-    local res = connector:query("SELECT COUNT(*) AS ct FROM workspaces;")
+    local res = connector:query("SELECT COUNT(*) AS ct FROM workspace_entities;")
     return res and res[1].ct and res[1].ct > 0 or false
   end,
 }
 
 local cassandra = {
   super = base_seed,
-  add_workspace = function(self, name)
+  add_default_workspace = function(self, connector)
     local ws_uuid = self:uuid()
 
-    return fmt("INSERT INTO workspaces(id, name, config, meta, created_at) VALUES (%s, '%s', '{\"portal\":false}', '{}', '%s');", ws_uuid, name, self:ts()), ws_uuid
+    local default_ws = connector:query("SELECT * FROM workspaces WHERE name = 'default'")
+    if default_ws and default_ws[1] then
+      return "", default_ws[1].id
+    end
+
+    return fmt("INSERT INTO workspaces(id, name, config, meta, created_at) VALUES (%s, '%s', '{\"portal\":false}', '{}', '%s');", ws_uuid, DEFAULT_WORKSPACE, self:ts()), ws_uuid
   end,
 
   add_to_ws = function(self, ws, entity_id, entity, field, value)
@@ -256,7 +266,7 @@ local cassandra = {
     }, "\n")
   end,
   is_seeded = function(self, connector)
-    local res = connector:query("SELECT COUNT(*) AS ct FROM workspaces;")
+    local res = connector:query("SELECT COUNT(*) AS ct FROM workspace_entities;")
     return res and res[1].ct and res[1].ct > 0 or false
   end,
 }
@@ -1048,7 +1058,7 @@ return {
       -- seeding in cassandra is in teardown phase.
       local seeder = seed_strategies.cassandra
       if not seeder:is_seeded(connector) then
-        assert(connector:query(seeder:seed(password)))
+        assert(connector:query(seeder:seed(password, connector)))
       end
     end,
   },

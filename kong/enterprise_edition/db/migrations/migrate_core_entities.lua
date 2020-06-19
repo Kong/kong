@@ -8,9 +8,17 @@ local concat = table.concat
 local ngx = ngx
 local ngx_null = ngx.null
 
-local unique_accross_ws = workspaces.unique_accross_ws
+
+-- XXXCORE FIXME this information now lives in the schema for fields
+local unique_accross_ws = {
+  plugins    = true,
+  rbac_users = true,
+  workspaces = true,
+  snis = true,
+}
+
 local DEFAULT_WORKSPACE = workspaces.DEFAULT_WORKSPACE
-local WORKSPACE_DELIMITER = workspaces.WORKSPACE_DELIMITER
+local WORKSPACE_DELIMITER = ":"
 
 -- More than WORKSPACE_THRESHOLD entities, and we do not run this migration
 local WORKSPACE_THRESHOLD = 100

@@ -1,4 +1,5 @@
 local log = require "kong.cmd.utils.log"
+local ee_db = require "kong.enterprise_edition.db"
 
 
 local MIGRATIONS_MUTEX_KEY = "migrations"
@@ -216,7 +217,7 @@ local function migrate_core_entities(schema_state, db, opts)
 
 
   local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
-    assert(db:run_core_entity_migrations(opts))
+    assert(ee_db.run_core_entity_migrations(opts))
   end)
   if err then
     error(err)
