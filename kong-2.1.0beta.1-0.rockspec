@@ -126,6 +126,8 @@ build = {
     ["kong.enterprise_edition.distributions_constants"] = "kong/enterprise_edition/distributions_constants.lua",
     ["kong.enterprise_edition.pdk.response"] = "kong/enterprise_edition/pdk/response.lua",
     ["kong.enterprise_edition.event_hooks"] = "kong/enterprise_edition/event_hooks.lua",
+    ["kong.enterprise_edition.runloop.handler"] = "kong/enterprise_edition/runloop/handler.lua",
+    ["kong.enterprise_edition.db"] = "kong/enterprise_edition/db/init.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
