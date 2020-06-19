@@ -1,4 +1,5 @@
-local ee_constants = require "kong.enterprise_edition.distributions_constants"
+local dist_constants = require "kong.enterprise_edition.distributions_constants"
+local ee_constants = require "kong.enterprise_edition.constants"
 
 local plugins = {
   "jwt",
@@ -41,7 +42,7 @@ local plugins = {
   "grpc-gateway",
 }
 
-for _, plugin in ipairs(ee_constants.plugins) do
+for _, plugin in ipairs(dist_constants.plugins) do
   table.insert(plugins, plugin)
 end
 
@@ -50,10 +51,11 @@ for i = 1, #plugins do
   plugin_map[plugins[i]] = true
 end
 
-local deprecated_plugins = {
-  "route-by-header",
-  "upstream-tls",
-}
+local deprecated_plugins = {} -- no currently deprecated plugin
+
+for _, plugin in ipairs(ee_constants.EE_DEPRECATED_PLUGIN_LIST) do
+  table.insert(deprecated_plugins, plugin)
+end
 
 local deprecated_plugin_map = {}
 for _, plugin in ipairs(deprecated_plugins) do
@@ -155,9 +157,6 @@ local constants = {
     "kong_db_cache_miss",
     "kong_process_events",
     "kong_cluster_events",
-    "kong_counters",
-    "kong_vitals_counters",
-    "kong_vitals_lists",
     "kong_healthchecks",
     "kong_rate_limiting_counters",
   },
@@ -173,77 +172,43 @@ local constants = {
   },
   PROTOCOLS = protocols,
   PROTOCOLS_WITH_SUBSYSTEM = protocols_with_subsystem,
-  PORTAL_PREFIX = "__PORTAL-",
-  WORKSPACE_CONFIG = {
-    PORTAL = "portal",
-    PORTAL_AUTH = "portal_auth",
-    PORTAL_AUTH_CONF = "portal_auth_conf",
-    PORTAL_AUTO_APPROVE = "portal_auto_approve",
-    PORTAL_TOKEN_EXP = "portal_token_exp",
-    PORTAL_INVITE_EMAIL = "portal_invite_email",
-    PORTAL_ACCESS_REQUEST_EMAIL = "portal_access_request_email",
-    PORTAL_APPROVED_EMAIL = "portal_approved_email",
-    PORTAL_RESET_EMAIL = "portal_reset_email",
-    PORTAL_RESET_SUCCESS_EMAIL = "portal_reset_success_email",
-    PORTAL_EMAILS_FROM = "portal_emails_from",
-    PORTAL_EMAILS_REPLY_TO = "portal_emails_reply_to",
-    PORTAL_SESSION_CONF = "portal_session_conf",
-    PORTAL_CORS_ORIGINS = "portal_cors_origins",
-    PORTAL_DEVELOPER_META_FIELDS = "portal_developer_meta_fields",
-    PORTAL_IS_LEGACY = "portal_is_legacy"
-  },
-  PORTAL_RENDERER = {
-    EXTENSION_LIST = {
-      "txt", "md", "html", "json", "yaml", "yml",
-    },
-    SPEC_EXT_LIST = {
-      "json", "yaml", "yml",
-    },
-    ROUTE_TYPES = {
-      EXPLICIT = "explicit", COLLECTION = "collection", DEFAULT = "defualt",
-    },
-    FALLBACK_404 = '<html><head><title>404 Not Found</title></head><body>' ..
-      '<h1>404 Not Found</h1><p>The page you are requesting cannot be found.</p>' ..
-      '</body></html>',
-    FALLBACK_EMAIL = [[
-      <!DOCTYPE html>
-      <html>
-        <head>
-        </head>
-        <body>
-          <h4>{{page.heading}}</h4>
-          <p>
-            {*page.body*}
-          </p>
-        </body>
-      </html>
-    ]],
-    SITEMAP = [[<?xml version="1.0" encoding="UTF-8"?>
-
-      <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-        {% for idx, url_obj in ipairs(xml_urlset) do %}
-          <url>
-            {% for key, value in pairs(url_obj) do %}
-              <{*key*}>{*value*}</{*key*}>
-            {% end %}
-          </url>
-        {% end %}
-      </urlset>
-    ]],
-    LAYOUTS = {
-      UNSET = "__UNSET__",
-      LOGIN = "login",
-      UNAUTHORIZED = "unauthorized",
-    },
-    PRIORITY_INDEX_OFFSET = 6,
-  },
 }
 
 
 -- Make the CORE_ENTITIES table usable both as an ordered array and as a set
+-- This sets whether entity uses kong.core_cache (true) or kong.cache
 for _, v in ipairs(constants.CORE_ENTITIES) do
   constants.CORE_ENTITIES[v] = true
 end
+
+
+-- EE [[
+
+-- Add all top-level ee_constants into constants (replaces existing ones)
+for k, v in pairs(ee_constants) do
+  constants[k] = v
+end
+
+-- Add EE_ENTITIES to the CORE_ENTITIES list
+for _, v in ipairs(ee_constants.EE_ENTITIES) do
+  table.insert(constants.CORE_ENTITIES, v)
+end
+
+-- Add EE_DICTS to DICTS list
+for _, v in ipairs(ee_constants.EE_DICTS) do
+  table.insert(constants.DICTS, v)
+end
+
+-- XXX EE: we need consumers to use kong.cache for portal auth to work
+constants.CORE_ENTITIES["consumers"] = nil
+
+-- XXX EE: For now do not set kong.core_cache on enterprise entities.
+-- Let's see what happens
+-- for _, v in ipairs(ee_constants.EE_ENTITIES) do
+--   constants.CORE_ENTITIES[v] = true
+-- end
+
+-- EE ]]
 
 
 return constants

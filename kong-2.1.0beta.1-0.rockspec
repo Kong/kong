@@ -105,6 +105,7 @@ build = {
     ["kong.enterprise_edition.audit_log"] = "kong/enterprise_edition/audit_log.lua",
     ["kong.enterprise_edition.auth_helpers"] = "kong/enterprise_edition/auth_helpers.lua",
     ["kong.enterprise_edition.conf_loader"] = "kong/enterprise_edition/conf_loader.lua",
+    ["kong.enterprise_edition.constants"] = "kong/enterprise_edition/constants.lua",
     ["kong.enterprise_edition.consumer_reset_secret_helpers"] = "kong/enterprise_edition/consumer_reset_secret_helpers.lua",
     ["kong.enterprise_edition.crud_helpers"] = "kong/enterprise_edition/crud_helpers.lua",
     ["kong.enterprise_edition.dao.enums"] = "kong/enterprise_edition/dao/enums.lua",
