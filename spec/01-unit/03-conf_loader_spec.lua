@@ -38,7 +38,7 @@ describe("Configuration loader", function()
     assert.equal("1", conf.nginx_main_worker_processes)
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
     assert.same({"0.0.0.0:9000", "0.0.0.0:9443 http2 ssl",
-                 "0.0.0.0:9002 http2"}, conf.proxy_listen)
+                 "0.0.0.0:9002 http2", "0.0.0.0:9445 http2 ssl"}, conf.proxy_listen)
     assert.is_nil(getmetatable(conf))
   end)
   it("preserves default properties if not in given file", function()
@@ -57,7 +57,7 @@ describe("Configuration loader", function()
     assert.equal("auto", conf.nginx_main_worker_processes)
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
     assert.same({"0.0.0.0:9000", "0.0.0.0:9443 http2 ssl",
-                 "0.0.0.0:9002 http2"}, conf.proxy_listen)
+                 "0.0.0.0:9002 http2", "0.0.0.0:9445 http2 ssl"}, conf.proxy_listen)
     assert.is_nil(getmetatable(conf))
   end)
   it("strips extraneous properties (not in defaults)", function()
@@ -83,7 +83,10 @@ describe("Configuration loader", function()
       plugins = "foo, bar",
     }))
     assert.is_not_nil(conf.loaded_plugins)
-    assert.same(2, tablex.size(conf.loaded_plugins))
+    -- this is to account for ee_conf_loader adding required "cors" and "session" plugin
+    assert.same(4, tablex.size(conf.loaded_plugins))
+    assert.True(conf.loaded_plugins["cors"])
+    assert.True(conf.loaded_plugins["session"])
     assert.True(conf.loaded_plugins["foo"])
     assert.True(conf.loaded_plugins["bar"])
   end)
@@ -506,7 +509,7 @@ describe("Configuration loader", function()
       assert.True(conf.cassandra_ssl)
       assert.True(conf.pg_ssl)
     end)
-    it("infer arrays (comma-separated strings)", function()
+    it("#flaky infer arrays (comma-separated strings)", function()
       local conf = assert(conf_loader())
       assert.same({"127.0.0.1"}, conf.cassandra_contact_points)
       assert.same({"dc1:2", "dc2:3"}, conf.cassandra_data_centers)
@@ -547,7 +550,7 @@ describe("Configuration loader", function()
       local conf, err = conf_loader(nil, {
         database = "mysql"
       })
-      assert.equal("database has an invalid value: 'mysql' (postgres, cassandra, off)", err)
+      assert.equal("database has an invalid value: 'mysql' (postgres, cassandra)", err)
       assert.is_nil(conf)
 
       local conf, err = conf_loader(nil, {
@@ -1109,6 +1112,24 @@ describe("Configuration loader", function()
 
       assert.equal("123456", conf.pg_password)
       assert.equal("123456", conf.cassandra_password)
+    end)
+  end)
+
+  describe("ignore escaped octothorpe in portal_auth_conf", function()
+    -- it("breaks when octothorpe is not escaped", function()
+    --   local conf = assert(conf_loader(nil, {
+    --     portal_auth_conf = '{"secret": "12#3456"}'
+    --   }))
+
+    --   assert.equal('{"secret": "1', conf.portal_auth_conf)
+    -- end)
+
+    it("accepts when octothorpe is escaped", function()
+      local conf = assert(conf_loader(nil, {
+        portal_auth_conf = '{"secret": "12\\#3456"}'
+      }))
+
+      assert.equal('{"secret": "12#3456"}', conf.portal_auth_conf)
     end)
   end)
 

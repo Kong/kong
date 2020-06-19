@@ -71,6 +71,7 @@ local field_schema = {
   { legacy = { type = "boolean" }, },
   { immutable = { type = "boolean" }, },
   { err = { type = "string" } },
+  { encrypted = { type = "boolean" }, },
 }
 
 for _, field in ipairs(validators) do

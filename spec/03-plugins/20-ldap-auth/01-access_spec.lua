@@ -512,6 +512,20 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             value = assert.request(res).has.header("x-consumer-username")
             assert.equal('no-body', value)
           end)
+          it("works with wrong credentials and username in anonymous", function()
+            local res = assert(proxy_client:send {
+              method  = "GET",
+              path    = "/request",
+              headers = {
+                host  = "ldap7.com"
+              }
+            })
+            assert.response(res).has.status(200)
+            local value = assert.request(res).has.header("x-anonymous-consumer")
+            assert.are.equal("true", value)
+            value = assert.request(res).has.header("x-consumer-username")
+            assert.equal('no-body', value)
+          end)
           it("errors when anonymous user doesn't exist", function()
             local res = assert(proxy_client:send {
               method  = "GET",

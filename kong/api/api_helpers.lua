@@ -173,7 +173,7 @@ do
 
         else
           out[k] = fdata_to_jsonable(v, "maybe")
-        end
+      end
 
       elseif type(v) == "number" then
         if v ~= v then
@@ -184,7 +184,7 @@ do
           out[k] = "-inf"
         else
           out[k] = v
-        end
+      end
 
       elseif type(v) ~= "function" then
         out[k] = v

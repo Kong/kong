@@ -44,7 +44,7 @@ for _, strategy in helpers.each_strategy() do
     local service_fixture
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, {
+      local bp, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
         "plugins",
@@ -54,7 +54,9 @@ for _, strategy in helpers.each_strategy() do
       })
 
       -- insert single fixture Service
-      service_fixture = bp.services:insert()
+      helpers.with_current_ws(nil, function()
+        service_fixture = bp.services:insert()
+      end, db)
 
       local db_update_propagation = strategy == "cassandra" and 0.1 or 0
 
@@ -67,7 +69,7 @@ for _, strategy in helpers.each_strategy() do
         db_update_frequency   = POLL_INTERVAL,
         db_update_propagation = db_update_propagation,
         nginx_conf            = "spec/fixtures/custom_nginx.template",
-        router_update_frequency = POLL_INTERVAL,
+        worker_state_update_frequency = POLL_INTERVAL,
       })
 
       assert(helpers.start_kong {
@@ -78,7 +80,7 @@ for _, strategy in helpers.each_strategy() do
         admin_listen          = "0.0.0.0:9001",
         db_update_frequency   = POLL_INTERVAL,
         db_update_propagation = db_update_propagation,
-        router_update_frequency = POLL_INTERVAL,
+        worker_state_update_frequency = POLL_INTERVAL,
       })
 
       admin_client_1 = helpers.http_client("127.0.0.1", 8001)

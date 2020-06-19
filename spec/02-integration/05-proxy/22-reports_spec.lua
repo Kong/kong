@@ -294,7 +294,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
 
-    it("reports grpc requests", function()
+    it("reports #grpc requests", function()
       local grpc_client = helpers.proxy_client_grpc()
       assert(grpc_client({
         service = "hello.HelloService.SayHello",
@@ -318,7 +318,7 @@ for _, strategy in helpers.each_strategy() do
       assert.match("wss_reqs=0", reports_data[1])
     end)
 
-    it("reports grpcs requests", function()
+    it("reports #grpc grpcs requests", function()
       local grpcs_client = assert(helpers.proxy_client_grpcs())
       grpcs_client({
         service = "hello.HelloService.SayHello",

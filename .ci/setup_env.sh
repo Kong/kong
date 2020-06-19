@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# set -e
+# set -eu
 
 dep_version() {
     grep $1 .requirements | sed -e 's/.*=//' | tr -d '\n'
@@ -23,18 +23,24 @@ DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
 BUILD_TOOLS_DOWNLOAD=$INSTALL_ROOT/kong-build-tools
 GO_PLUGINSERVER_DOWNLOAD=$INSTALL_ROOT/go-pluginserver
 
-KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:=master}
-KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:=master}
+# XXX kong-ee specific, for now at least
+# - Allow overriding via ENV_VAR (for CI)
+# - should be set in .requirements
+# - defaults to master
+KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:-$(dep_version KONG_NGINX_MODULE_BRANCH)}
+KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:-master}
+
+KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:-$(dep_version KONG_BUILD_TOOLS_BRANCH)}
+KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:-master}
 
 if [ ! -d $BUILD_TOOLS_DOWNLOAD ]; then
-    git clone -b $KONG_BUILD_TOOLS_BRANCH https://github.com/Kong/kong-build-tools.git $BUILD_TOOLS_DOWNLOAD
-else
-    pushd $BUILD_TOOLS_DOWNLOAD
-        git fetch
-        git reset --hard origin/$KONG_BUILD_TOOLS_BRANCH
-    popd
+    git clone https://github.com/Kong/kong-build-tools.git $BUILD_TOOLS_DOWNLOAD
 fi
 
+pushd $BUILD_TOOLS_DOWNLOAD
+    git fetch --all
+    git reset --hard $KONG_BUILD_TOOLS_BRANCH || git reset --hard origin/$KONG_BUILD_TOOLS_BRANCH
+popd
 export PATH=$BUILD_TOOLS_DOWNLOAD/openresty-build-tools:$PATH
 
 if [ ! -d $GO_PLUGINSERVER_DOWNLOAD ]; then
@@ -58,6 +64,18 @@ export PATH=$GO_PLUGINSERVER_DOWNLOAD:$PATH
 # Install
 #--------
 
+echo kong-ngx-build \
+    --work $DOWNLOAD_ROOT \
+    --prefix $INSTALL_ROOT \
+    --openresty $OPENRESTY \
+    --kong-nginx-module $KONG_NGINX_MODULE_BRANCH \
+    --luarocks $LUAROCKS \
+    --openssl $OPENSSL \
+    -j $JOBS
+
+# XXX Some versions of kong-ngx-build grok at having no EDITION set, always
+# use test2 or quote envs
+EDITION=""
 kong-ngx-build \
     --work $DOWNLOAD_ROOT \
     --prefix $INSTALL_ROOT \
@@ -76,6 +94,7 @@ export OPENSSL_DIR=$OPENSSL_INSTALL # for LuaSec install
 
 export PATH=$OPENSSL_INSTALL/bin:$OPENRESTY_INSTALL/nginx/sbin:$OPENRESTY_INSTALL/bin:$LUAROCKS_INSTALL/bin:$PATH
 export LD_LIBRARY_PATH=$OPENSSL_INSTALL/lib:$LD_LIBRARY_PATH # for openssl's CLI invoked in the test suite
+
 
 eval `luarocks path`
 

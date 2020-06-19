@@ -60,6 +60,10 @@ describe("DNS", function()
   lazy_setup(function()
     stub(ngx, "log")
     singletons = require "kong.singletons"
+    _G.kong = singletons
+
+
+    ngx.ctx.workspaces = {}
 
     singletons.core_cache = {
       get = function() return {} end
@@ -71,6 +75,16 @@ describe("DNS", function()
       find_all = function(self) return {} end
     }
     --]]
+
+    singletons.db = {}
+    singletons.db.workspaces = {
+      select_all = function()
+        return {}
+      end,
+      each = function()
+        return function() return nil end
+      end
+    }
 
     singletons.origins = {}
 

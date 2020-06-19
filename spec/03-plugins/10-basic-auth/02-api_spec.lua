@@ -524,7 +524,12 @@ for _, strategy in helpers.each_strategy() do
           })
         end)
 
-        it("does not allow updating consumer as it would invalidate the password", function()
+        -- XXX EE: flakyness involves a dangling workspace_entity that points
+        -- to a non existent consumer username. Also, these tests are not unit
+        -- tests, since they can't be run individually and depend on db state.
+        -- Every time the basicauth_credentials table is being truncated,
+        -- dangling workspace_entities are left in there.
+        it("does not allow updating consumer as it would invalidate the password #flaky", function()
           local res = assert(admin_client:send {
             method = "PATCH",
             path = "/basic-auths/bob",

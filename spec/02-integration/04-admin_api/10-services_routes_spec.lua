@@ -5,6 +5,7 @@ local Errors  = require "kong.db.errors"
 
 
 local unindent = helpers.unindent
+local with_current_ws = helpers.with_current_ws
 
 
 local function it_content_types(title, fn)
@@ -152,7 +153,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("GET", function()
         describe("with data", function()
-          lazy_setup(function()
+          setup(function()
             db:truncate("services")
             for _ = 1, 10 do
               assert(bp.named_services:insert())
@@ -446,21 +447,24 @@ for _, strategy in helpers.each_strategy() do
       describe("/services/{service}/routes", function()
         it_content_types("lists all routes belonging to service", function(content_type)
           return function()
-            local service = db.services:insert({
-              protocol = "http",
-              host     = "service.com",
-            })
+            local service, route
+            with_current_ws(nil, function()
+              service = assert(db.services:insert({
+                protocol = "http",
+                host     = "service.com",
+              }))
 
-            local route = db.routes:insert({
-              protocol = "http",
-              hosts    = { "service.com" },
-              service  = service,
-            })
+              route = db.routes:insert({
+                protocol = "http",
+                hosts    = { "service.com" },
+                service  = service,
+              })
 
-            local _ = db.routes:insert({
-              protocol = "http",
-              hosts    = { "service.com" },
-            })
+              local _ = db.routes:insert({
+                protocol = "http",
+                hosts    = { "service.com" },
+              })
+            end, db)
 
             local res = client:get("/services/" .. service.id .. "/routes", {
               headers = { ["Content-Type"] = content_type },

@@ -173,6 +173,49 @@ describe("Admin API: #" .. strategy, function()
         end
       end)
 
+      for typ, key in pairs(ssl_fixtures.key_encrypted) do
+        it("fails on " .. typ .. " encrypted private key without passphrase", function()
+          local res = client:post("/certificates", {
+            body    = {
+              cert  = ssl_fixtures.cert,
+              key   = key,
+            },
+            headers = { ["Content-Type"] = "application/json" },
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.matches("key is encrypted", json.message)
+        end)
+
+        it("fails on " .. typ .. " encrypted private key with incorrect passphrase", function()
+          local res = client:post("/certificates", {
+            body    = {
+              cert       = ssl_fixtures.cert,
+              key        = key,
+              passphrase = "notmypassphrase",
+            },
+            headers = { ["Content-Type"] = "application/json" },
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.matches("Incorrect private key passphrase", json.message)
+        end)
+
+        it("decrypts " .. typ .. " encrypted private key with correct passphrase", function()
+          local res = client:post("/certificates", {
+            body    = {
+              cert       = ssl_fixtures.cert,
+              key        = key,
+              passphrase = ssl_fixtures.key_passphrase,
+            },
+            headers = { ["Content-Type"] = "application/json" },
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.is_nil(json.message)
+        end)
+      end
+
       it_content_types("creates a certificate and returns it with the snis pseudo-property", function(content_type)
         return function()
           local n1 = get_name()
@@ -409,6 +452,49 @@ describe("Admin API: #" .. strategy, function()
           }
         }, cjson.decode(body))
       end)
+
+      for typ, key in pairs(ssl_fixtures.key_encrypted) do
+        it("fails on " .. typ .. " encrypted private key without passphrase", function()
+          local res = client:put("/certificates/" .. utils.uuid(), {
+            body    = {
+              cert  = ssl_fixtures.cert,
+              key   = key,
+            },
+            headers = { ["Content-Type"] = "application/json" },
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.matches("key is encrypted", json.message)
+        end)
+
+        it("fails on " .. typ .. " encrypted private key with incorrect passphrase", function()
+          local res = client:put("/certificates/" .. utils.uuid(), {
+            body    = {
+              cert       = ssl_fixtures.cert,
+              key        = key,
+              passphrase = "notmypassphrase",
+            },
+            headers = { ["Content-Type"] = "application/json" },
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.matches("Incorrect private key passphrase", json.message)
+        end)
+
+        it("decrypts " .. typ .. " encrypted private key with correct passphrase", function()
+          local res = client:put("/certificates/" .. utils.uuid(), {
+            body    = {
+              cert       = ssl_fixtures.cert,
+              key        = key,
+              passphrase = ssl_fixtures.key_passphrase,
+            },
+            headers = { ["Content-Type"] = "application/json" },
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.is_nil(json.message)
+        end)
+      end
     end)
 
     describe("PATCH", function()
@@ -662,6 +748,52 @@ describe("Admin API: #" .. strategy, function()
           end
         end
       end)
+
+      for typ, key in pairs(ssl_fixtures.key_encrypted) do
+        it("fails on " .. typ .. " encrypted private key without passphrase", function()
+          local certificate = add_certificate()
+          local res = client:patch("/certificates/" .. certificate.id, {
+            body    = {
+              cert  = ssl_fixtures.cert,
+              key   = key,
+            },
+            headers = { ["Content-Type"] = "application/json" },
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.matches("key is encrypted", json.message)
+        end)
+
+        it("fails on " .. typ .. " encrypted private key with incorrect passphrase", function()
+          local certificate = add_certificate()
+          local res = client:patch("/certificates/" .. certificate.id, {
+            body    = {
+              cert       = ssl_fixtures.cert,
+              key        = key,
+              passphrase = "notmypassphrase",
+            },
+            headers = { ["Content-Type"] = "application/json" },
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.matches("Incorrect private key passphrase", json.message)
+        end)
+
+        it("decrypts " .. typ .. " encrypted private key with correct passphrase", function()
+          local certificate = add_certificate()
+          local res = client:patch("/certificates/" .. certificate.id, {
+            body    = {
+              cert       = ssl_fixtures.cert,
+              key        = key,
+              passphrase = ssl_fixtures.key_passphrase,
+            },
+            headers = { ["Content-Type"] = "application/json" },
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.is_nil(json.message)
+        end)
+      end
     end)
 
     describe("DELETE", function()
@@ -988,6 +1120,33 @@ describe("Admin API: #" .. strategy, function()
 
         local res = client:delete("/snis/" .. n1)
         assert.res_status(204, res)
+      end)
+    end)
+
+    describe("certificates through sni name", function()
+      it("get a certificate if sni not exist", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/certificates/non-existent.com",
+        })
+
+        assert.res_status(404, res)
+      end)
+      it("patch a certificate if sni not exist", function()
+        local res = assert(client:send {
+          method = "PATCH",
+          path = "/certificates/non-existent.com",
+        })
+
+        assert.res_status(404, res)
+      end)
+      it("delete a certificate if sni not exist", function()
+        local res = assert(client:send {
+          method = "DELETE",
+          path = "/certificates/non-existent.com",
+        })
+
+        assert.res_status(404, res)
       end)
     end)
   end)

@@ -200,7 +200,7 @@ local function do_authentication(conf)
 end
 
 
-function _M.execute(conf)
+function _M.execute(conf, exit_handler)
   if conf.anonymous and kong.client.get_credential() then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
@@ -222,7 +222,13 @@ function _M.execute(conf)
       set_consumer(consumer)
 
     else
-      return kong.response.error(err.status, err.message, err.headers)
+      ---EE [[
+      if exit_handler then
+        return exit_handler(err)
+      end
+      --]] EE
+
+      return kong.response.exit(err.status, { message = err.message }, err.headers)
     end
   end
 end

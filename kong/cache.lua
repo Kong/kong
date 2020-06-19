@@ -1,4 +1,5 @@
 local resty_mlcache = require "resty.mlcache"
+local reports = require "kong.reports"
 
 
 local type    = type
@@ -178,14 +179,14 @@ function _M.new(opts)
             for _, event_t in pairs(events) do
               opts.worker_events.register(function(data)
                 event_t.handler(data)
-              end, channel_name, event_t.channel)
+                                          end, channel_name, event_t.channel)
             end
           end,
           broadcast = function(channel, data)
             local ok, err = opts.worker_events.post(channel_name, channel, data)
             if not ok then
               log(ERR, "failed to post event '", channel_name, "', '",
-                       channel, "': ", err)
+                channel, "': ", err)
             end
           end
         }
@@ -205,6 +206,7 @@ function _M.new(opts)
   end
 
   local self          = {
+    vitals            = _G.kong.vitals,
     cluster_events    = opts.cluster_events,
     mlcache           = mlcaches[curr_mlcache],
     mlcaches          = mlcaches,
@@ -240,12 +242,15 @@ function _M:get(key, opts, cb, ...)
 
   --log(DEBUG, "get from key: ", key)
 
-  local v, err = self.mlcache:get(key, opts, cb, ...)
+  local v, err, hit_lvl = self.mlcache:get(key, opts, cb, ...)
   if err then
     return nil, "failed to get from node cache: " .. err
   end
 
-  return v
+  kong.vitals:cache_accessed(hit_lvl, key, v)
+  reports.report_cached_entity(v, key)
+
+  return v, nil, hit_lvl
 end
 
 
@@ -313,7 +318,7 @@ function _M:invalidate_local(key)
 end
 
 
-function _M:invalidate(key)
+function _M:invalidate(key, workspaces)
   if type(key) ~= "string" then
     error("key must be a string", 2)
   end
@@ -325,6 +330,20 @@ function _M:invalidate(key)
   local ok, err = self.cluster_events:broadcast("invalidations", key)
   if not ok then
     log(ERR, "failed to broadcast cached entity invalidation: ", err)
+  end
+
+  workspaces = workspaces or {}
+  for _, ws in ipairs(workspaces) do
+
+    local key_ws = key .. ws.id
+    self:invalidate_local(key_ws)
+
+    log(DEBUG, "broadcasting (cluster) invalidation for key: '", key_ws, "' ")
+
+    local ok, err = self.cluster_events:broadcast("invalidations", key_ws)
+    if not ok then
+      log(ERR, "failed to broadcast cached entity invalidation: ", err)
+    end
   end
 end
 

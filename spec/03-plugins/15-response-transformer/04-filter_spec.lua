@@ -12,6 +12,7 @@ for _, strategy in helpers.each_strategy() do
         "plugins",
       })
 
+
       local route1 = bp.routes:insert({
         hosts = { "response.com" },
       })

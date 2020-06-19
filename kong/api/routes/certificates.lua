@@ -1,6 +1,7 @@
 local endpoints   = require "kong.api.endpoints"
 local arguments   = require "kong.api.arguments"
 local utils       = require "kong.tools.utils"
+local openssl_pkey = require "resty.openssl.pkey"
 
 
 local ngx = ngx
@@ -97,22 +98,60 @@ local function prepare_args(self)
   self.args.post.snis = snis
 end
 
+local function prepare_passphrase(self)
+  local passphrase = self.args.post.passphrase
+  -- decrypt private key if passphrase is provided
+  if passphrase then
+    -- unset the passphrase from post args to make DAO happy
+    self.args.post.passphrase = nil
+    local pkey, err = openssl_pkey.new(self.args.post.key, {
+      format = "PEM",
+      passphrase = passphrase
+    })
+    if err then
+      return kong.response.exit(400, { message = "Incorrect private key passphrase" })
+    end
+    local pem, err = pkey:to_PEM("private")
+    if err then
+      ngx.log(ngx.ERR, "failed to export private key: ", err)
+      return kong.response.exit(500)
+    end
+    -- pass on the decrypted PEM key
+    self.args.post.key = pem
+  end
+end
+
 
 return {
+  ["/certificates"] = {
+    POST = function(self, _, _, parent)
+      prepare_passphrase(self)
+      return parent()
+    end,
+  },
+
   ["/certificates/:certificates"] = {
     before = prepare_params,
 
+    -- XXX EE [[ wrap function within dropping parent, so we can still support
+    -- post_process on parent for get_entity_endpoint
     -- override to include the snis list when getting an individual certificate
-    GET = endpoints.get_entity_endpoint(kong.db.certificates.schema,
-                                        nil, nil, "select_with_name_list"),
+    GET = function(self, db, helpers, parent)
+      return endpoints.get_entity_endpoint(
+        kong.db.certificates.schema, nil, nil, "select_with_name_list"
+      )(self, db, helpers)
+    end,
+    -- XXX EE ]]
 
     PUT = function(self, _, _, parent)
       prepare_args(self)
+      prepare_passphrase(self)
       return parent()
     end,
 
     PATCH = function(self, _, _, parent)
       prepare_args(self)
+      prepare_passphrase(self)
       return parent()
     end
   },
@@ -125,4 +164,3 @@ return {
     before = prepare_params,
   },
 }
-

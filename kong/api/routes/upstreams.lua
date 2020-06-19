@@ -10,6 +10,9 @@ local tostring = tostring
 local fmt = string.format
 
 
+-- XXX merge: previous post_health implementation added an `id` field in the
+-- broadcast packet, so routes with the same name in different workspaces would
+-- not interfere with each other
 local function post_health(self, db, is_healthy)
   local upstream, _, err_t = endpoints.select_entity(self, db, db.upstreams.schema)
   if err_t then
@@ -204,4 +207,3 @@ return {
     end,
   },
 }
-

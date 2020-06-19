@@ -84,6 +84,10 @@ if not pok then
 end
 
 local admin_api_data = require("autodoc.data.admin-api")
+local ok, ee_admin_api_data = pcall(require, "autodoc.data.ee-admin-api")
+if not ok then
+  ee_admin_api_data = {}
+end
 
 local function deep_merge(t1, t2)
   local copy = {}
@@ -93,6 +97,8 @@ local function deep_merge(t1, t2)
   for k, v in pairs(t2) do
     if type(v) == "table" and type(t1[k]) == "table" then
       copy[k] = deep_merge(t1[k], v)
+    elseif type(k) == "number" then
+      table.insert(copy, v)
     else
       copy[k] = v
     end
@@ -104,6 +110,8 @@ local dbless_data = pl_tablex.deepcopy(admin_api_data)
 local dbless_overrides = dbless_data.dbless
 dbless_data.dbless = nil
 dbless_data = deep_merge(dbless_data, dbless_overrides)
+
+admin_api_data = deep_merge(admin_api_data, pl_tablex.deepcopy(ee_admin_api_data))
 
 local Endpoints = require("kong.api.endpoints")
 
@@ -279,7 +287,7 @@ local function assert_data(value, description)
     error("\n\n" ..
           "****************************************\n" ..
           "Missing " .. description .. "\n" ..
-          "-- please document it in autodoc/data/admin-api.lua\n" ..
+          "-- please document it in autodoc/data/(ee-)?admin-api.lua\n" ..
           "****************************************\n", 2)
   end
 

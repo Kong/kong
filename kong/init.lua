@@ -64,11 +64,12 @@ local PHASES = kong_global.phases
 
 _G.kong = kong_global.new() -- no versioned PDK for plugins for now
 
-
 local DB = require "kong.db"
 local dns = require "kong.tools.dns"
 local lapis = require "lapis"
 local runloop = require "kong.runloop.handler"
+local tracing = require "kong.tracing"
+local keyring = require "kong.keyring.startup"
 local clustering = require "kong.clustering"
 local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
@@ -82,6 +83,16 @@ local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
 local go = require "kong.db.dao.plugins.go"
 
+
+local internal_proxies = require "kong.enterprise_edition.proxies"
+local vitals = require "kong.vitals"
+local sales_counters = require "kong.counters.sales"
+local ee = require "kong.enterprise_edition"
+local portal_auth = require "kong.portal.auth"
+local portal_emails = require "kong.portal.emails"
+local admin_emails = require "kong.enterprise_edition.admin.emails"
+local portal_router = require "kong.portal.router"
+local invoke_plugin = require "kong.enterprise_edition.invoke_plugin"
 
 local kong             = kong
 local ngx              = ngx
@@ -243,7 +254,6 @@ local function get_now_ms()
   update_time()
   return now() * 1000 -- time is kept in seconds with millisecond resolution.
 end
-
 
 local function flush_delayed_response(ctx)
   ctx.delay_response = false
@@ -414,8 +424,15 @@ function Kong.init()
   local config = assert(conf_loader(conf_path, nil, { from_kong_env = true }))
 
   kong_global.init_pdk(kong, config, nil) -- nil: latest PDK
+  tracing.init(config)
+
+  local err = ee.feature_flags_init(config)
+  if err then
+    error(tostring(err))
+  end
 
   local db = assert(DB.new(config))
+  tracing.connector_query_wrap(db.connector)
   assert(db:init_connector())
 
   schema_state = assert(db:schema_state())
@@ -425,9 +442,9 @@ function Kong.init()
     if schema_state.missing_migrations then
       ngx_log(ngx_WARN, "database is missing some migrations:\n",
                         schema_state.missing_migrations)
-    end
+  end
 
-    if schema_state.pending_migrations then
+  if schema_state.pending_migrations then
       ngx_log(ngx_WARN, "database has pending migrations:\n",
                         schema_state.pending_migrations)
     end
@@ -445,9 +462,45 @@ function Kong.init()
   kong.db = db
   kong.dns = singletons.dns
 
+  -- XXX EE [[
+  kong.license = ee.read_license_info()
+  singletons.internal_proxies = internal_proxies.new()
+  singletons.portal_emails = portal_emails.new(config)
+  singletons.admin_emails = admin_emails.new(config)
+  singletons.portal_router = portal_router.new(db)
+
+  local reports = require "kong.reports"
+  local l = kong.license and
+            kong.license.license.payload.license_key or
+            nil
+  reports.add_immutable_value("license_key", l)
+  reports.add_immutable_value("enterprise", true)
+
+  if config.anonymous_reports then
+    reports.add_ping_value("rbac_enforced", singletons.configuration.rbac ~= "off")
+    reports.add_entity_reports()
+  end
+  kong.vitals = vitals.new {
+      db             = db,
+      flush_interval = config.vitals_flush_interval,
+      delete_interval_pg = config.vitals_delete_interval_pg,
+      ttl_seconds    = config.vitals_ttl_seconds,
+      ttl_minutes    = config.vitals_ttl_minutes,
+  }
+
+
+  local counters_strategy = require("kong.counters.sales.strategies." .. kong.db.strategy):new(kong.db)
+  kong.sales_counters = sales_counters.new({ strategy = counters_strategy })
+  -- ]]
+
+
   if subsystem == "stream" or config.proxy_ssl_enabled then
     certificate.init()
   end
+
+  -- XXX EE [[
+  keyring.init(config)
+  -- ]]
 
   if subsystem == "http" then
     clustering.init(config)
@@ -456,12 +509,18 @@ function Kong.init()
   -- Load plugins as late as possible so that everything is set up
   assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
 
+
+  singletons.invoke_plugin = invoke_plugin.new {
+    loaded_plugins = db.plugins:get_handlers(),
+    kong_global = kong_global,
+  }
+
   if kong.configuration.database == "off" then
     local err
     declarative_entities, err, declarative_meta = parse_declarative_config(kong.configuration)
     if not declarative_entities then
       error(err)
-    end
+  end
 
   else
     local default_ws = db.workspaces:select_by_name("default")
@@ -470,10 +529,12 @@ function Kong.init()
     local ok, err = runloop.build_plugins_iterator("init")
     if not ok then
       error("error building initial plugins: " .. tostring(err))
-    end
+  end
 
     assert(runloop.build_router("init"))
   end
+
+  ee.handlers.init.after()
 
   db:close()
 end
@@ -526,7 +587,19 @@ function Kong.init_worker()
   end
   kong.cluster_events = cluster_events
 
-  local cache, err = kong_global.init_cache(kong.configuration, cluster_events, worker_events)
+  -- vitals functions require a timer, so must start in worker context
+  local ok, err = kong.vitals:init()
+  if not ok then
+    ngx.log(ngx.CRIT, "could not initialize vitals: ", err)
+  end
+
+  -- sales counters functions require a timer, so must start in worker context
+  local ok, err = kong.sales_counters:init()
+  if not ok then
+    ngx.log(ngx.WARN, "could not initialize license report module: ", err)
+  end
+
+  local cache, err = kong_global.init_cache(kong.configuration, cluster_events, worker_events, kong.vitals)
   if not cache then
     stash_init_worker_error("failed to instantiate 'kong.cache' module: " ..
                             err)
@@ -557,6 +630,10 @@ function Kong.init_worker()
 
   kong.db:set_events_handler(worker_events)
 
+  -- XXX EE [[
+  keyring.init_worker(kong.configuration)
+  -- ]]
+
   ok, err = load_declarative_config(kong.configuration,
     declarative_entities, declarative_meta)
   if not ok then
@@ -581,6 +658,10 @@ function Kong.init_worker()
 
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_plugins_iterator(plugins_iterator, "init_worker")
+
+  -- XXX EE [[
+  ee.handlers.init_worker.after(ngx.ctx)
+  -- ]]
 
   if go.is_on() then
     go.manage_pluginserver()
@@ -700,6 +781,7 @@ end
 
 function Kong.access()
   local ctx = ngx.ctx
+  ctx.is_proxy_request = true
   if not ctx.KONG_ACCESS_START then
     ctx.KONG_ACCESS_START = get_now_ms()
 
@@ -733,6 +815,12 @@ function Kong.access()
           status_code = 500,
           content     = { message  = "An unexpected error occurred" },
         }
+      end
+
+      local ok, err = portal_auth.verify_developer_status(ctx.authenticated_consumer)
+      if not ok then
+        ctx.delay_response = false
+        return kong.response.exit(401, { message = err })
       end
 
       kong_global.reset_log(kong)
@@ -773,6 +861,9 @@ end
 
 
 function Kong.balancer()
+  local trace = tracing.trace("balancer")
+
+  kong_global.set_phase(kong, PHASES.balancer)
   -- This may be called multiple times, and no yielding here!
   local now_ms = get_now_ms()
 
@@ -811,6 +902,7 @@ function Kong.balancer()
   balancer_data.try_count = balancer_data.try_count + 1
   tries[balancer_data.try_count] = current_try
 
+  -- runloop.balancer.before(ctx)
   current_try.balancer_start = now_ms
 
   if balancer_data.try_count > 1 then
@@ -931,11 +1023,16 @@ function Kong.balancer()
   -- time spent in Kong before sending the request to upstream
   -- start_time() is kept in seconds with millisecond resolution.
   ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_PROCESSING_START
+
+  -- runloop.balancer.after(ctx)
+  -- ee.handlers.balancer.after(ctx)
+  trace:finish()
 end
 
 
 function Kong.header_filter()
   local ctx = ngx.ctx
+  ctx.is_proxy_request = true
   if not ctx.KONG_PROCESSING_START then
     ctx.KONG_PROCESSING_START = ngx.req.start_time() * 1000
   end
@@ -987,6 +1084,7 @@ function Kong.header_filter()
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_plugins_iterator(plugins_iterator, "header_filter", ctx)
   runloop.header_filter.after(ctx)
+  ee.handlers.header_filter.after(ctx)
 
   ctx.KONG_HEADER_FILTER_ENDED_AT = get_now_ms()
   ctx.KONG_HEADER_FILTER_TIME = ctx.KONG_HEADER_FILTER_ENDED_AT - ctx.KONG_HEADER_FILTER_START
@@ -1125,6 +1223,7 @@ function Kong.log()
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_plugins_iterator(plugins_iterator, "log", ctx)
   runloop.log.after(ctx)
+  ee.handlers.log.after(ctx, ngx.status)
 
 
   -- this is not used for now, but perhaps we need it later?
@@ -1167,17 +1266,33 @@ local function serve_content(module, options)
 
   options = options or {}
 
-  header["Access-Control-Allow-Origin"] = options.allow_origin or "*"
+  -- if we support authentication via plugin as well as via RBAC token, then
+  -- use cors plugin in api/init.lua to process cors requests and
+  -- support the right origins, headers, etc.
+  if not singletons.configuration.admin_gui_auth then
+    header["Access-Control-Allow-Origin"] = options.allow_origin or "*"
 
-  if ngx.req.get_method() == "OPTIONS" then
-    header["Access-Control-Allow-Methods"] = "GET, HEAD, PUT, PATCH, POST, DELETE"
-    header["Access-Control-Allow-Headers"] = "Content-Type"
+    if ngx.req.get_method() == "OPTIONS" then
+      header["Access-Control-Allow-Methods"] = options.acam or
+        "GET, HEAD, PATCH, POST, PUT, DELETE"
+      header["Access-Control-Allow-Headers"] = options.acah or "Content-Type"
 
-    ctx.KONG_ADMIN_CONTENT_ENDED_AT = get_now_ms()
-    ctx.KONG_ADMIN_CONTENT_TIME = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_ADMIN_CONTENT_START
-    ctx.KONG_ADMIN_LATENCY = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_PROCESSING_START
+      ctx.KONG_ADMIN_CONTENT_ENDED_AT = get_now_ms()
+      ctx.KONG_ADMIN_CONTENT_TIME = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_ADMIN_CONTENT_START
+      ctx.KONG_ADMIN_LATENCY = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_PROCESSING_START
 
-    return ngx.exit(204)
+      return ngx.exit(204)
+    end
+  end
+
+  local headers = ngx.req.get_headers()
+
+  if headers["Kong-Request-Type"] == "editor"  then
+    header["Access-Control-Allow-Origin"] = singletons.configuration.admin_gui_url or "*"
+    header["Access-Control-Allow-Credentials"] = true
+    header["Content-Type"] = 'text/html'
+
+    return lapis.serve("kong.portal.gui")
   end
 
   lapis.serve(module)
@@ -1231,6 +1346,24 @@ function Kong.admin_header_filter()
   --ctx.KONG_ADMIN_HEADER_FILTER_TIME = ctx.KONG_ADMIN_HEADER_FILTER_ENDED_AT - ctx.KONG_ADMIN_HEADER_FILTER_START
 end
 
+
+function Kong.serve_portal_api()
+  kong_global.set_phase(kong, PHASES.admin_api)
+
+  return lapis.serve("kong.portal")
+end
+
+function Kong.serve_portal_gui()
+  kong_global.set_phase(kong, PHASES.admin_api)
+
+  return lapis.serve("kong.portal.gui")
+end
+
+function Kong.serve_portal_assets()
+  kong_global.set_phase(kong, PHASES.admin_api)
+
+   return lapis.serve("kong.portal.gui")
+end
 
 function Kong.status_content()
   return serve_content("kong.status")

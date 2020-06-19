@@ -4,6 +4,9 @@ local constants    = require "kong.constants"
 local utils        = require "kong.tools.utils"
 
 
+local tracing = require "kong.tracing"
+
+
 local kong         = kong
 local null         = ngx.null
 local type         = type
@@ -86,6 +89,9 @@ local function load_configuration(ctx,
                                   route_id,
                                   service_id,
                                   consumer_id)
+
+  local trace = tracing.trace("load_plugin_config", { plugin_name = name })
+
   local ws_id = workspaces.get_workspace_id() or kong.default_workspace
   local key = kong.db.plugins:cache_key(name,
                                         route_id,
@@ -97,6 +103,9 @@ local function load_configuration(ctx,
                                           nil,
                                           load_plugin_from_db,
                                           key)
+
+  trace:finish()
+
   if err then
     ctx.delay_response = false
     ngx.log(ngx.ERR, tostring(err))

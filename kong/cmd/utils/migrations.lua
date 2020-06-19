@@ -16,7 +16,7 @@ local function check_state(schema_state)
       error(NEEDS_BOOTSTRAP_MSG)
     end
 
-    if schema_state.new_migrations then
+  if schema_state.new_migrations then
       error("New migrations available; run 'kong migrations up' to proceed")
     end
   end
@@ -136,12 +136,12 @@ local function finish(schema_state, db, opts)
     end
 
     if schema_state.pending_migrations then
-      log.debug("pending migrations to finish:\n%s",
-                schema_state.pending_migrations)
+    log.debug("pending migrations to finish:\n%s",
+              schema_state.pending_migrations)
 
-      assert(db:run_migrations(schema_state.pending_migrations, {
-        run_teardown = true,
-      }))
+    assert(db:run_migrations(schema_state.pending_migrations, {
+      run_teardown = true,
+    }))
 
       schema_state = assert(db:schema_state())
     end
@@ -201,11 +201,41 @@ local function reset(schema_state, db, ttl)
 end
 
 
+local function migrate_core_entities(schema_state, db, opts)
+
+  check_state(schema_state)
+
+  if schema_state.new_migrations then
+    error("database has pending migrations; run 'kong migrations up'")
+  elseif schema_state.pending_migrations then
+    error("database has pending migrations; run 'kong migrations finish'")
+  elseif schema_state.needs_bootstrap then
+    error("cannot run migrate-community-to-enterprise on a non-bootstrapped " ..
+          "database")
+  end
+
+
+  local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
+    assert(db:run_core_entity_migrations(opts))
+  end)
+  if err then
+    error(err)
+  end
+
+  if not ok then
+    log(NOT_LEADER_MSG)
+  end
+
+  return ok
+end
+
+
 return {
   up = up,
   reset = reset,
   finish = finish,
   bootstrap = bootstrap,
   check_state = check_state,
+  migrate_core_entities = migrate_core_entities,
   NEEDS_BOOTSTRAP_MSG = NEEDS_BOOTSTRAP_MSG,
 }

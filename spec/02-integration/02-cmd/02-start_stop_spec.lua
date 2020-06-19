@@ -63,7 +63,7 @@ describe("kong start/stop #" .. strategy, function()
       assert(helpers.kong_exec("start", {
         prefix = helpers.test_conf.prefix,
         database = strategy,
-        cassandra_contact_points = "localhost",
+        cassandra_contact_points = os.getenv("KONG_CASSANDRA_CONTACT_POINTS") or "localhost",
         cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
       }))
       assert(helpers.kong_exec("stop", {
@@ -113,11 +113,26 @@ describe("kong start/stop #" .. strategy, function()
       local _, _, stdout = assert(helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path, {
         pg_password = "do not print",
         cassandra_password = "do not print",
+        smtp_password = "do not print",
+        admin_gui_auth = "key-auth",
+        admin_gui_auth_conf = '{ "keys": "never-ever-show" }',
+        admin_gui_session_conf = '{ "keys": "never-ever-show" }',
+        enforce_rbac = "on",
+        portal = "on",
+        portal_auth = "key-auth",
+        portal_auth_conf = '{ "keys": "never-ever-show" }',
+        portal_session_conf = '{ "secret": "never-ever-show" }',
       }))
       assert.matches('KONG_PG_PASSWORD ENV found with "******"', stdout, nil, true)
       assert.matches('KONG_CASSANDRA_PASSWORD ENV found with "******"', stdout, nil, true)
+      assert.matches('KONG_SMTP_PASSWORD ENV found with "******"', stdout, nil, true)
       assert.matches('pg_password = "******"', stdout, nil, true)
       assert.matches('cassandra_password = "******"', stdout, nil, true)
+      assert.matches('smtp_password = "******"', stdout, nil, true)
+      assert.matches('admin_gui_auth_conf = "******"', stdout, nil, true)
+      assert.matches('admin_gui_session_conf = "******"', stdout, nil, true)
+      assert.matches('portal_auth_conf = "******"', stdout, nil, true)
+      assert.matches('portal_session_conf = "******"', stdout, nil, true)
     end)
   end)
 
@@ -125,7 +140,15 @@ describe("kong start/stop #" .. strategy, function()
     local templ_fixture = "spec/fixtures/custom_nginx.template"
 
     it("accept a custom Nginx configuration", function()
+      -- XXX: the previous test leaves the prefix in a wrong state that
+      -- makes consecutive tests fail. Adding the following prefix
+      -- "reset" fixes it but adding those as finally step of the
+      -- problematic one doesn't
+      helpers.clean_prefix()
+      helpers.prepare_prefix()
+
       assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path .. " --nginx-conf " .. templ_fixture))
+
       assert.truthy(helpers.path.exists(helpers.test_conf.nginx_conf))
 
       local contents = helpers.file.read(helpers.test_conf.nginx_conf)
@@ -134,7 +157,7 @@ describe("kong start/stop #" .. strategy, function()
     end)
   end)
 
-  describe("/etc/hosts resolving in CLI", function()
+  describe("#flaky /etc/hosts resolving in CLI", function()
     it("resolves #cassandra hostname", function()
       assert(helpers.kong_exec("start --vv --run-migrations --conf " .. helpers.test_conf_path, {
         cassandra_contact_points = "localhost",
@@ -437,8 +460,8 @@ describe("kong start/stop #" .. strategy, function()
           helpers.stop_kong()
           helpers.kill_all()
           pcall(helpers.dir.rmtree)
-        end)
-      end)
+  end)
+end)
     end
 
     if strategy == "off" then

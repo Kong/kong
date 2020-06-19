@@ -163,6 +163,8 @@ return {
     kong = {
       title = [[Information routes]],
       description = "",
+      ["/userinfo"] = {}, --  Although this is in ee, it has to be documented here Probably a bug in deep_merge
+      ["/auth"] = {}, --  Although this is in ee, it has to be documented here Probably a bug in deep_merge
       ["/"] = {
         GET = {
           title = [[Retrieve node information]],
@@ -602,6 +604,10 @@ return {
         of how Kong proxies traffic.
       ]],
 
+      ["/services/:services/document_objects"] = {
+        endpoint = false,
+      },
+
       ["/services/:services/client_certificate"] = {
         endpoint = false,
       },
@@ -904,6 +910,13 @@ return {
         id = { skip = true },
         created_at = { skip = true },
         updated_at = { skip = true },
+        type = {
+          kind = "required",
+          description = [[
+            The type of consumer. It can be `0` (proxy), `1` (developer), `2` (admin) or `3` (application)
+          ]],
+          example = 0,
+        },
         username = {
           kind = "semi-optional",
           description = [[
@@ -1075,6 +1088,10 @@ return {
         id = { skip = true },
         created_at = { skip = true },
         updated_at = { skip = true },
+        run_on = {
+          skip = true,
+          example = "first",
+        },
         name = {
           description = [[
             The name of the Plugin that's going to be added. Currently the

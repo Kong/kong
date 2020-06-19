@@ -1,4 +1,5 @@
 local declarative_config = require "kong.db.schema.others.declarative_config"
+local DEFAULT_WORKSPACE = require "kong.workspaces".DEFAULT_WORKSPACE
 local helpers = require "spec.helpers"
 local lyaml = require "lyaml"
 
@@ -23,6 +24,7 @@ describe("declarative config: process_auto_fields", function()
         config = DeclarativeConfig:process_auto_fields(config, "select", false)
         assert.same({
           _format_version = "1.1",
+          _workspace = "default",
           _transform = true,
           services = {}
         }, config)
@@ -48,6 +50,7 @@ describe("declarative config: process_auto_fields", function()
         config = DeclarativeConfig:process_auto_fields(config, "select", false)
         assert.same({
           _format_version = "1.1",
+          _workspace = "default",
           _transform = true,
           services = {
             {
@@ -89,6 +92,7 @@ describe("declarative config: process_auto_fields", function()
         config = DeclarativeConfig:process_auto_fields(config, "select", false)
         assert.same({
           _format_version = "1.1",
+          _workspace = "default",
           _transform = true,
           services = {
             {
@@ -116,6 +120,7 @@ describe("declarative config: process_auto_fields", function()
         config = DeclarativeConfig:process_auto_fields(config, "select", false)
         assert.same({
           _format_version = "1.1",
+          _workspace = "default",
           _transform = true,
           plugins = {}
         }, config)
@@ -139,6 +144,7 @@ describe("declarative config: process_auto_fields", function()
         config = DeclarativeConfig:process_auto_fields(config, "select", false)
         assert.same({
           _format_version = "1.1",
+          _workspace = "default",
           _transform = true,
           plugins = {
             {
@@ -190,6 +196,7 @@ describe("declarative config: process_auto_fields", function()
         config = DeclarativeConfig:process_auto_fields(config, "select", false)
         assert.same({
           _format_version = "1.1",
+          _workspace = "default",
           _transform = true,
           plugins = {
             {
@@ -239,6 +246,7 @@ describe("declarative config: process_auto_fields", function()
           config = DeclarativeConfig:process_auto_fields(config, "select", false)
           assert.same({
             _format_version = "1.1",
+            _workspace = "default",
             _transform = true,
             services = {
               {
@@ -287,7 +295,8 @@ describe("declarative config: process_auto_fields", function()
           config = DeclarativeConfig:process_auto_fields(config, "select", false)
           assert.same({
             _format_version = "1.1",
-            _transform = true,
+           _workspace = "default",
+           _transform = true,
             services = {
               {
                 name = "foo",
@@ -380,6 +389,7 @@ describe("declarative config: process_auto_fields", function()
           config = DeclarativeConfig:process_auto_fields(config, "select", false)
           assert.same({
             _format_version = "1.1",
+            _workspace = "default",
             _transform = true,
             services = {
               {
@@ -427,6 +437,7 @@ describe("declarative config: process_auto_fields", function()
           config = DeclarativeConfig:process_auto_fields(config, "select", false)
           assert.same({
             _format_version = "1.1",
+            _workspace = "default",
             _transform = true,
             services = {
               {
@@ -513,6 +524,7 @@ describe("declarative config: process_auto_fields", function()
           config = DeclarativeConfig:process_auto_fields(config, "select", false)
           assert.same({
             _format_version = "1.1",
+            _workspace = "default",
             _transform = true,
             services = {
               {
@@ -576,6 +588,7 @@ describe("declarative config: process_auto_fields", function()
           config = DeclarativeConfig:process_auto_fields(config, "select", false)
           assert.same({
             _format_version = "1.1",
+            _workspace = "default",
             _transform = true,
             services = {
               {
@@ -679,6 +692,26 @@ describe("declarative config: process_auto_fields", function()
     end)
   end)
 
+  describe("workspaces", function()
+    local fmt = string.format
+    local function test_conf(yml)
+      local config = assert(lyaml.load(fmt([[
+          _format_version: "1.1"
+          %s
+        ]], yml)))
+      return DeclarativeConfig:process_auto_fields(config, "select", false)
+    end
+
+    it("defaults to  'default' workspace", function()
+      assert.equals(DEFAULT_WORKSPACE, test_conf("")._workspace )
+    end)
+
+    it("sets different ws", function()
+      assert.equals("foo", test_conf("_workspace: foo")._workspace )
+    end)
+  end)
+
+
   describe("custom entities", function()
     describe("oauth2_credentials:", function()
       it("accepts an empty list", function()
@@ -689,6 +722,7 @@ describe("declarative config: process_auto_fields", function()
         config = DeclarativeConfig:process_auto_fields(config, "select", false)
         assert.same({
           _format_version = "1.1",
+          _workspace = "default",
           _transform = true,
           oauth2_credentials = {}
         }, config)
@@ -709,6 +743,7 @@ describe("declarative config: process_auto_fields", function()
         config = DeclarativeConfig:process_auto_fields(config, "select", false)
         assert.same({
           _format_version = "1.1",
+          _workspace = "default",
           _transform = true,
           oauth2_credentials = {
             {
@@ -741,9 +776,11 @@ describe("declarative config: process_auto_fields", function()
           config = DeclarativeConfig:process_auto_fields(config, "select", false)
           assert.same({
             _format_version = "1.1",
+            _workspace = "default",
             _transform = true,
             consumers = {
               {
+                type = 0,
                 username = "bob",
                 oauth2_credentials = {},
               }
@@ -767,9 +804,11 @@ describe("declarative config: process_auto_fields", function()
           config = DeclarativeConfig:process_auto_fields(config, "select", false)
           assert.same({
             _format_version = "1.1",
+            _workspace = "default",
             _transform = true,
             consumers = {
               {
+                type = 0,
                 username = "bob",
                 oauth2_credentials = {
                   {
@@ -804,6 +843,7 @@ describe("declarative config: process_auto_fields", function()
           config = DeclarativeConfig:process_auto_fields(config, "select", false)
           assert.same({
             _format_version = "1.1",
+            _workspace = "default",
             _transform = true,
             oauth2_credentials = {
               {
@@ -832,6 +872,7 @@ describe("declarative config: process_auto_fields", function()
           config = DeclarativeConfig:process_auto_fields(config, "select", false)
           assert.same({
             _format_version = "1.1",
+            _workspace = "default",
             _transform = true,
             oauth2_credentials = {
               {

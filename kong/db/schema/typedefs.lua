@@ -189,7 +189,16 @@ end
 
 
 local function validate_key(key)
-  local _, err =  openssl_pkey.new(key)
+  -- requires a unencrypted PEM-encoded key
+  local ok, _, err = pcall(openssl_pkey.new, key, {
+    format = "PEM",
+    passphrase_cb = function()
+      error("shouldn't reach here", 2)
+    end,
+  })
+  if not ok then
+    err = "key is encrypted"
+  end
   if err then
     return nil, "invalid key: " .. err
   end
@@ -349,6 +358,18 @@ typedefs.key = Schema.define {
   custom_validator = validate_key,
 }
 
+-- XXX: EE keep for now. Remove on 2.0
+typedefs.run_on = Schema.define {
+  type = "string",
+  required = false,
+  one_of = { "first", "second", "all" },
+}
+
+typedefs.run_on_first = Schema.define {
+  type = "string",
+  required = false,
+  one_of = { "first" },
+}
 
 typedefs.tag = Schema.define {
   type = "string",

@@ -29,14 +29,14 @@ describe("rockspec/meta", function()
 
     it("has a _VERSION field", function()
       assert.is_string(meta._VERSION)
-      assert.matches("%d+%.%d+%.%d+", meta._VERSION)
+      assert.matches("%d+%.%d+%.%d+", meta._CORE_VERSION)
     end)
 
     it("has a _VERSION_TABLE field", function()
-      assert.is_table(meta._VERSION_TABLE)
-      assert.is_number(meta._VERSION_TABLE.major)
-      assert.is_number(meta._VERSION_TABLE.minor)
-      assert.is_number(meta._VERSION_TABLE.patch)
+      assert.is_table(meta._CORE_VERSION_TABLE)
+      assert.is_number(meta._CORE_VERSION_TABLE.major)
+      assert.is_number(meta._CORE_VERSION_TABLE.minor)
+      assert.is_number(meta._CORE_VERSION_TABLE.patch)
       -- suffix optional
     end)
 
@@ -55,7 +55,7 @@ describe("rockspec/meta", function()
   end)
 
   it("has same version as meta", function()
-    assert.matches(meta._VERSION, rock.version:match("(.-)%-.*$"))
+    assert.matches(meta._CORE_VERSION, rock.version:match("(.-)%-.*$"))
   end)
 
   it("has same name as meta", function()
@@ -63,7 +63,7 @@ describe("rockspec/meta", function()
   end)
 
   it("has correct version in filename", function()
-    local pattern = meta._VERSION:gsub("%.", "%%."):gsub("-", "%%-")
+    local pattern = meta._CORE_VERSION:gsub("%.", "%%."):gsub("-", "%%-")
     assert.matches(pattern, rock_filename)
   end)
 

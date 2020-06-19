@@ -656,6 +656,10 @@ describe("Admin API: #" .. strategy, function()
     end)
 
     describe("DELETE", function()
+      before_each(function()
+        assert(db:truncate("upstreams"))
+      end)
+
       it("by id", function(content_type)
           local res = assert(client:send {
             method = "POST",

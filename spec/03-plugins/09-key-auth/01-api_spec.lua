@@ -407,7 +407,10 @@ for _, strategy in helpers.each_strategy() do
       describe("GET", function()
         lazy_setup(function()
           db:truncate("keyauth_credentials")
-
+          db:truncate("consumers")
+          consumer = bp.consumers:insert({
+            username = "bob"
+          }, { nulls = true })
           for i = 1, 3 do
             bp.keyauth_credentials:insert {
               consumer = { id = consumer.id },

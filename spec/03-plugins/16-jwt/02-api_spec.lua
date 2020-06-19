@@ -371,15 +371,20 @@ for _, strategy in helpers.each_strategy() do
       local consumer2
       describe("GET", function()
         lazy_setup(function()
-          consumer2 = bp.consumers:insert {
-            username = "bob-the-buidler"
-          }
-        end)
-        before_each(function()
           db:truncate("jwt_secrets")
+          db:truncate("consumers")
+          consumer = bp.consumers:insert {
+            username = "bob"
+          }
+
           bp.jwt_secrets:insert {
             consumer = { id = consumer.id },
           }
+
+          consumer2 = bp.consumers:insert {
+            username = "bob-the-buidler"
+          }
+
           bp.jwt_secrets:insert {
             consumer = { id = consumer2.id },
           }
@@ -522,6 +527,10 @@ for _, strategy in helpers.each_strategy() do
         local credential
         before_each(function()
           db:truncate("jwt_secrets")
+          db:truncate("consumers")
+          consumer = bp.consumers:insert({
+            username = "bob"
+          }, { nulls = true })
           credential = bp.jwt_secrets:insert {
             consumer = { id = consumer.id },
           }

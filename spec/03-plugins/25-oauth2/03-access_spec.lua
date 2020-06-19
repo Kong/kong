@@ -461,7 +461,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         config   = {
           scopes                   = { "email", "profile", "user.email" },
           global_credentials       = true,
-          reuse_refresh_token = true,
+          persistent_refresh_token = true,
         },
       })
 

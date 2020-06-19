@@ -24,6 +24,7 @@ endif
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
 KONG_BUILD_TOOLS_LOCATION ?= $(KONG_SOURCE_LOCATION)/../kong-build-tools
+KONG_GMP_VERSION ?= `grep KONG_GMP_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 RESTY_VERSION ?= `grep RESTY_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 RESTY_LUAROCKS_VERSION ?= `grep RESTY_LUAROCKS_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 RESTY_OPENSSL_VERSION ?= `grep RESTY_OPENSSL_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
@@ -134,14 +135,26 @@ lint:
 test:
 	@$(TEST_CMD) spec/01-unit
 
+test-ee:
+	@$(TEST_CMD) spec-ee/01-unit
+
 test-integration:
 	@$(TEST_CMD) spec/02-integration
+
+test-integration-ee:
+	@$(TEST_CMD) spec-ee/02-integration
 
 test-plugins:
 	@$(TEST_CMD) spec/03-plugins
 
+test-plugins-ee:
+	@$(TEST_CMD) spec-ee/03-plugins
+
 test-all:
 	@$(TEST_CMD) spec/
+
+test-all-ee:
+	@$(TEST_CMD) spec-ee/
 
 pdk-phase-checks:
 	rm -f t/phase_checks.stats

@@ -6,7 +6,8 @@ local tb_clone = require "table.clone"
 
 
 -- Current number of migrations to execute in a new install
-local nr_migrations = 1 -- 11
+-- additional 1 for EE
+local nr_migrations = 1 + 1 -- 11
 
 
 local lua_path = [[ KONG_LUA_PATH_OVERRIDE="./spec/fixtures/migrations/?.lua;]] ..
@@ -178,14 +179,14 @@ for _, strategy in helpers.each_strategy() do
         assert.match("Executed migrations:", stdout, 1, true)
 
         if strategy ~= "off" then
-          local db = init_db()
-          -- valid CQL and SQL; don't expect to go over one page in CQL here
-          local rows = db.connector:query([[SELECT * FROM schema_meta;]])
-          local n = 0
-          for _, row in ipairs(rows) do
-            n = n + #row.executed
-          end
-          assert.same(nr_migrations, n)
+        local db = init_db()
+        -- valid CQL and SQL; don't expect to go over one page in CQL here
+        local rows = db.connector:query([[SELECT * FROM schema_meta;]])
+        local n = 0
+        for _, row in ipairs(rows) do
+          n = n + #row.executed
+        end
+        assert.same(nr_migrations, n)
         end
       end)
 
@@ -195,9 +196,14 @@ for _, strategy in helpers.each_strategy() do
           plugins = "with-migrations",
         })
         assert.same(5, code)
+        -- assert.match("database has new migrations available:\n" ..
+        --              "session: 000_base_session\n" ..
+        --              "with-migrations: 000_base_with_migrations, 001_14_to_15",
         assert.match("Executed migrations:\n" ..
-                     "core: 000_base\n\n" ..
+                     "      core: 000_base\n" ..
+                     "enterprise: 000_base\n\n" ..
                      "New migrations available:\n" ..
+                     "        session: 000_base_session\n" ..
                      "with-migrations: 000_base_with_migrations, 001_14_to_15\n\n" ..
                      "Run 'kong migrations up' to proceed",
                      stdout, 1, true)
@@ -221,8 +227,8 @@ for _, strategy in helpers.each_strategy() do
         code, stdout, stderr = run_kong("migrations up", {
           plugins = "with-migrations",
         })
-        assert.match("2 migrations processed", stdout .. "\n" .. stderr, 1, true)
-        assert.match("1 executed", stdout .. "\n" .. stderr, 1, true)
+        assert.match("3 migrations processed", stdout .. "\n" .. stderr, 1, true)
+        assert.match("2 executed", stdout .. "\n" .. stderr, 1, true)
         assert.match("1 pending", stdout .. "\n" .. stderr, 1, true)
         assert.same(0, code)
 
@@ -240,7 +246,7 @@ for _, strategy in helpers.each_strategy() do
           pending = pending + (type(row.pending) == "table" and #row.pending or 0)
         end
 
-        assert.same(nr_migrations + 1, executed)
+        assert.same(nr_migrations + 2, executed)
         assert.same(1, pending)
       end)
 
@@ -292,7 +298,7 @@ for _, strategy in helpers.each_strategy() do
           pending = pending + (type(row.pending) == "table" and #row.pending or 0)
         end
         --assert.same({}, rows)
-        assert.same(nr_migrations + 2, executed)
+        assert.same(nr_migrations + 3, executed)
         assert.same(0, pending)
       end)
 

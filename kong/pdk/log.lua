@@ -553,7 +553,8 @@ do
       service = ctx.service,
       consumer = ctx.authenticated_consumer,
       client_ip = var.remote_addr,
-      started_at = req.start_time() * 1000
+      started_at = req.start_time() * 1000,
+      workspace = ngx.ctx.workspace,
     }
   end
 end

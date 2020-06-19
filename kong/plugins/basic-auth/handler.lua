@@ -8,8 +8,10 @@ local BasicAuthHandler = {
 }
 
 
-function BasicAuthHandler:access(conf)
-  access.execute(conf)
+function BasicAuthHandler:access(conf, exit_handler)
+  ---EE [[
+  return access.execute(conf, exit_handler)
+  --]] EE
 end
 
 

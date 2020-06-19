@@ -800,6 +800,19 @@ for _, strategy in helpers.each_strategy() do
         assert.equal('no-body', body.headers["x-consumer-username"])
         assert.equal(nil, body.headers["x-credential-identifier"])
       end)
+      it("works with wrong credentials and username in anonymous", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"] = "jwt13.com"
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.equal('true', body.headers["x-anonymous-consumer"])
+        assert.equal('no-body', body.headers["x-consumer-username"])
+        assert.equal(nil, body.headers["x-credential-identifier"])
+      end)
       it("errors when anonymous user doesn't exist", function()
         local res = assert(proxy_client:send {
           method  = "GET",

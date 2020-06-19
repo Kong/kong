@@ -7,6 +7,9 @@ error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 $(el.name) $(el.value);
 > end
 
+env KONG_LICENSE_DATA;
+env KONG_LICENSE_PATH;
+
 events {
     # injected nginx_events_* directives
 > for _, el in ipairs(nginx_events_directives) do

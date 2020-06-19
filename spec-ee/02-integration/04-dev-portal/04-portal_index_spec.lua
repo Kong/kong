@@ -1,0 +1,531 @@
+local ee_helpers = require "spec-ee.helpers"
+local helpers    = require "spec.helpers"
+
+local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
+
+
+local function configure_portal(db, workspace_name)
+  local workspace = db.workspaces:select_by_name(workspace_name)
+
+  db.workspaces:update({
+    id = workspace.id
+  },
+  {
+    config = {
+      portal = true,
+    }
+  })
+end
+
+
+local function close_clients(clients)
+  for idx, client in ipairs(clients) do
+    client:close()
+  end
+end
+
+
+local function client_request(params)
+  local client = assert(helpers.admin_client())
+  local res = assert(client:send(params))
+  res.body = res.body_reader()
+
+  close_clients({ client })
+
+  return res
+end
+
+
+local function gui_client_request(params)
+  local portal_gui_client = assert(ee_helpers.portal_gui_client())
+  local res = assert(portal_gui_client:send(params))
+  res.body = res.body_reader()
+
+  close_clients({ portal_gui_client })
+  return res
+end
+
+
+local function create_workspace_files(workspace_name)
+  -- portal conf
+  client_request({
+    method = "POST",
+    path = "/" .. workspace_name .. "/files",
+    body = {
+      path = "portal.conf.yaml",
+      contents = [[
+        name: Kong Portal
+        theme:
+          name: test-theme
+      ]],
+    },
+    headers = {["Content-Type"] = "application/json"},
+  })
+
+  -- theme conf
+  client_request({
+    method = "POST",
+    path = "/" .. workspace_name .. "/files",
+    body = {
+      path = "themes/test-theme/theme.conf.yaml",
+      contents = [[
+        name: Kong
+        fonts:
+          base: Roboto
+          code: Roboto Mono
+          headings: Lato
+        colors:
+          header:
+            value: '#FFFFFF'
+            description: Background for header
+          page:
+            value: '#FFFFFF'
+            description: Background on pages
+          hero:
+            value: '#003459'
+            description: 'Background for hero text on hompage, about, login, contact us...'
+      ]]
+    },
+    headers = {["Content-Type"] = "application/json"},
+  })
+
+  -- layout-base
+  client_request({
+    method = "POST",
+    path = "/" .. workspace_name .. "/files",
+    body = {
+      path = "themes/test-theme/layouts/base.html",
+      contents = [[
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>{{portal.name}} - {{ page.title }} </title>
+            <link href="assets/styles/site.css" rel="stylesheet" />
+          </head>
+          <body>
+            <div class="page">
+             {* blocks.content *}
+            </div>
+            <p>workspace is {{portal.workspace}}</p>
+          </body>
+        </html>
+      ]]
+    },
+    headers = {["Content-Type"] = "application/json"},
+  })
+
+  -- layout-home
+  client_request({
+    method = "POST",
+    path = "/" .. workspace_name .. "/files",
+    body = {
+      path = "themes/test-theme/layouts/home.html",
+      contents = [[
+        {% layout = "layouts/base.html" %}
+
+        {-content-}
+        <div>
+          <div class="hero">
+            <h1>{{page.hero.title}}</h1>
+          </div>
+          <p>{{page.body}}</p>
+        <div>
+        {-content-}
+      ]]
+    },
+    headers = {["Content-Type"] = "application/json"},
+  })
+
+  -- layout-about
+  client_request({
+    method = "POST",
+    path = "/" .. workspace_name .. "/files",
+    body = {
+      path = "themes/test-theme/layouts/about.html",
+      contents = [[
+        {% layout = "layouts/base.html" %}
+
+        {-content-}
+        <div>
+          <p>{{page.stringy}}</p>
+        <div>
+        {-content-}
+      ]]
+    },
+    headers = {["Content-Type"] = "application/json"},
+  })
+
+  -- layout-404
+  client_request({
+    method = "POST",
+    path = "/" .. workspace_name .. "/files",
+    body = {
+      path = "themes/test-theme/layouts/system/404.html",
+      contents = [[
+        {% layout = "layouts/base.html" %}
+
+        {-content-}
+        <div>
+          <h1>You found this super cute 404 🐈</h1>
+        <div>
+        {-content-}
+      ]]
+    },
+    headers = {["Content-Type"] = "application/json"},
+  })
+
+   -- content-index
+  client_request({
+    method = "POST",
+    path = "/" .. workspace_name .. "/files",
+    body = {
+      path = "content/index.txt",
+      contents = [[
+        ---
+        layout: home.html
+
+        title: test home-y
+
+        hero:
+          title: Making Data Available. Sometimes. Someplaces
+
+        body: wow much website
+        ---
+      ]]
+    },
+    headers = {["Content-Type"] = "application/json"},
+  })
+
+  -- content-about
+  client_request({
+    method = "POST",
+    path = "/" .. workspace_name .. "/files",
+    body = {
+      path = "content/about.txt",
+      contents = [[
+        ---
+        layout: about.html
+
+        title: About Us
+
+        stringy: we are about passing tests
+        ---
+      ]]
+    },
+    headers = {["Content-Type"] = "application/json"},
+  })
+
+end
+
+
+for _, strategy in helpers.each_strategy() do
+
+  describe("router #" .. strategy, function ()
+    describe("portal_gui_use_subdomains = off", function()
+      local db
+
+      setup(function()
+        _, db, _ = helpers.get_db_utils(strategy)
+        assert(helpers.start_kong({
+          database    = strategy,
+          portal      = true,
+          portal_gui_use_subdomains = false,
+          portal_is_legacy = false,
+          portal_auth = "basic-auth",
+          portal_auto_approve = true,
+          portal_session_conf = PORTAL_SESSION_CONF,
+        }))
+
+        configure_portal(db, "default")
+
+
+        local res = client_request({
+          method = "POST",
+          path = "/workspaces",
+          body = {
+            name = "team_gruce",
+            config = {
+              portal_auth = "key-auth",
+              portal = true
+            },
+          },
+          headers = {["Content-Type"] = "application/json"},
+        })
+        assert.equals(201, res.status)
+
+        ngx.sleep(5)
+        db:truncate("files")
+
+        create_workspace_files("default")
+        create_workspace_files("team_gruce")
+        ngx.sleep(2)
+      end)
+
+      teardown(function()
+        db:truncate()
+        helpers.stop_kong()
+      end)
+
+      it("correctly identifies default workspace", function()
+        local res = gui_client_request({
+          method = "GET",
+          path = "/",
+        })
+        assert.equals(res.status, 200)
+        assert.not_nil(string.match(res.body, 'wow much website'))
+        assert.not_nil(string.match(res.body, 'workspace is default'))
+
+
+        local res = gui_client_request({
+          method = "GET",
+          path = "/default",
+        })
+        assert.equals(res.status, 200)
+        assert.not_nil(string.match(res.body, 'wow much website'))
+        assert.not_nil(string.match(res.body, 'workspace is default'))
+
+        local res = gui_client_request({
+          method = "GET",
+          path = "/about",
+        })
+        assert.equals(res.status, 200)
+
+        assert.not_nil(string.match(res.body, 'we are about passing tests'))
+        assert.not_nil(string.match(res.body, 'workspace is default'))
+
+        local res = gui_client_request({
+          method = "GET",
+          path = "/default/about",
+        })
+        assert.equals(res.status, 200)
+
+        assert.not_nil(string.match(res.body, 'we are about passing tests'))
+        assert.not_nil(string.match(res.body, 'workspace is default'))
+
+        local res = gui_client_request({
+          method = "GET",
+          path = "/badroute",
+        })
+        assert.equals(res.status, 200)
+
+        assert.not_nil(string.match(res.body, 'super cute 404 🐈'))
+        assert.not_nil(string.match(res.body, 'workspace is default'))
+
+
+        local res = gui_client_request({
+          method = "GET",
+          path = "/default/badroute",
+        })
+        assert.equals(res.status, 200)
+
+        assert.not_nil(string.match(res.body, 'super cute 404 🐈'))
+        assert.not_nil(string.match(res.body, 'workspace is default'))
+
+      end)
+
+      it("correctly identifies custom workspace", function()
+        local res = gui_client_request({
+          method = "GET",
+          path = "/team_gruce",
+        })
+        assert.equals(res.status, 200)
+        assert.not_nil(string.match(res.body, 'wow much website'))
+        assert.not_nil(string.match(res.body, 'workspace is team_gruce'))
+
+
+        local res = gui_client_request({
+          method = "GET",
+          path = "/team_gruce/about",
+        })
+        assert.equals(res.status, 200)
+
+        assert.not_nil(string.match(res.body, 'we are about passing tests'))
+        assert.not_nil(string.match(res.body, 'workspace is team_gruce'))
+
+        local res = gui_client_request({
+          method = "GET",
+          path = "/team_gruce/badroute",
+        })
+        assert.equals(res.status, 200)
+
+        assert.not_nil(string.match(res.body, 'super cute 404 🐈'))
+        assert.not_nil(string.match(res.body, 'workspace is team_gruce'))
+
+      end)
+    end)
+
+    describe("portal_gui_use_subdomains = on", function()
+      local db
+      local portal_gui_host, portal_gui_protocol
+
+      setup(function()
+        _, db, _ = helpers.get_db_utils(strategy)
+        portal_gui_host = 'cat.hotdog.com'
+        portal_gui_protocol = 'http'
+
+        assert(helpers.start_kong({
+          database    = strategy,
+          portal      = true,
+          portal_auth = "basic-auth",
+          portal_auto_approve = true,
+          portal_is_legacy = false,
+          portal_gui_use_subdomains = true,
+          portal_session_conf = PORTAL_SESSION_CONF,
+          portal_gui_host = portal_gui_host,
+          portal_gui_protocol = portal_gui_protocol,
+        }))
+
+        configure_portal(db, "default")
+
+        local res = client_request({
+          method = "POST",
+          path = "/workspaces",
+          body = {
+            name = "team_gruce",
+            config = {
+              portal_auth = "key-auth",
+              portal = true,
+            },
+          },
+          headers = {["Content-Type"] = "application/json"},
+        })
+        assert.equals(201, res.status)
+
+        ngx.sleep(5)
+        db:truncate('files')
+
+        create_workspace_files("default")
+        create_workspace_files("team_gruce")
+        ngx.sleep(2)
+      end)
+
+      teardown(function()
+        db:truncate()
+        helpers.stop_kong()
+      end)
+
+      it("correctly identifies default workspace", function()
+        local res = gui_client_request({
+          method = "GET",
+          path = "/",
+          headers = {
+            ['Origin'] = portal_gui_protocol .. '://default.' .. portal_gui_host,
+            ['Host'] = 'default.' .. portal_gui_host,
+          },
+        })
+        assert.equals(200, res.status)
+
+        assert.not_nil(string.match(res.body, 'wow much website'))
+        assert.not_nil(string.match(res.body, 'workspace is default'))
+
+        res = gui_client_request({
+          method = "GET",
+          path = "/about",
+          headers = {
+            ['Origin'] = portal_gui_protocol .. '://default.' .. portal_gui_host,
+            ['Host'] = 'default.' .. portal_gui_host,
+          },
+        })
+        assert.equals(200, res.status)
+
+        assert.not_nil(string.match(res.body, 'we are about passing tests'))
+        assert.not_nil(string.match(res.body, 'workspace is default'))
+
+        res = gui_client_request({
+          method = "GET",
+          path = "/badroute",
+          headers = {
+            ['Origin'] = portal_gui_protocol .. '://default.' .. portal_gui_host,
+            ['Host'] = 'default.' .. portal_gui_host,
+          },
+        })
+        assert.equals(200, res.status)
+
+        assert.not_nil(string.match(res.body, 'super cute 404 🐈'))
+        assert.not_nil(string.match(res.body, 'workspace is default'))
+
+      end)
+
+      it("correctly identifies custom workspace", function()
+        local res = gui_client_request({
+          method = "GET",
+          path = "/",
+          headers = {
+            ['Origin'] = portal_gui_protocol .. '://team_gruce.' .. portal_gui_host,
+            ['Host'] = 'team_gruce.' .. portal_gui_host,
+          },
+        })
+        assert.equals(200, res.status)
+
+        assert.not_nil(string.match(res.body, 'wow much website'))
+        assert.not_nil(string.match(res.body, 'workspace is team_gruce'))
+
+        res = gui_client_request({
+          method = "GET",
+          path = "/about",
+          headers = {
+            ['Origin'] = portal_gui_protocol .. '://team_gruce.' .. portal_gui_host,
+            ['Host'] = 'team_gruce.' .. portal_gui_host,
+          },
+        })
+        assert.equals(200, res.status)
+
+        assert.not_nil(string.match(res.body, 'we are about passing tests'))
+        assert.not_nil(string.match(res.body, 'workspace is team_gruce'))
+
+        res = gui_client_request({
+          method = "GET",
+          path = "/badroute",
+          headers = {
+            ['Origin'] = portal_gui_protocol .. '://team_gruce.' .. portal_gui_host,
+            ['Host'] = 'team_gruce.' .. portal_gui_host,
+          },
+        })
+        assert.equals(200, res.status)
+
+        assert.not_nil(string.match(res.body, 'super cute 404 🐈'))
+        assert.not_nil(string.match(res.body, 'workspace is team_gruce'))
+
+      end)
+
+      it("returns 500 if subdomain not included", function()
+        local res = gui_client_request({
+          method = "GET",
+          path = "/",
+          headers = {
+            ['Origin'] = portal_gui_protocol .. '://' .. portal_gui_host,
+            ['Host'] = portal_gui_host,
+          },
+        })
+        assert.equals(500, res.status)
+        assert.not_nil(string.match(res.body, '{"message":"An unexpected error occurred"}'))
+      end)
+
+      it("returns 500 if subdomain is not a recognized workspace", function()
+        local res = gui_client_request({
+          method = "GET",
+          path = "/",
+          headers = {
+            ['Origin'] = portal_gui_protocol .. '://wrong_workspace.' .. portal_gui_host,
+            ['Host'] = 'wrong_workspace.' .. portal_gui_host,
+          },
+        })
+        assert.equals(500, res.status)
+        assert.not_nil(string.match(res.body, '{"message":"An unexpected error occurred"}'))
+      end)
+
+      it("returns 500 if subdomain is invalid", function()
+        local res = gui_client_request({
+          method = "GET",
+          path = "/",
+          headers = {
+            ['Origin'] = portal_gui_protocol .. '://wrong_workspace,' .. portal_gui_host,
+            ['Host'] = 'wrong_workspace,' .. portal_gui_host,
+          },
+        })
+        assert.equals(500, res.status)
+        assert.not_nil(string.match(res.body, '{"message":"An unexpected error occurred"}'))
+      end)
+    end)
+  end)
+end

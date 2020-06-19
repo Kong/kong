@@ -1,5 +1,6 @@
 local pl_pretty = require("pl.pretty").write
 local pl_keys = require("pl.tablex").keys
+local utils = require "kong.tools.utils"
 
 
 local type         = type
@@ -26,18 +27,18 @@ end
 -- error codes
 
 
-local ERRORS              = {
-  INVALID_PRIMARY_KEY     = 1,
-  SCHEMA_VIOLATION        = 2,
-  PRIMARY_KEY_VIOLATION   = 3,  -- primary key already exists (HTTP 400)
-  FOREIGN_KEY_VIOLATION   = 4,  -- foreign entity does not exist (HTTP 400)
-  UNIQUE_VIOLATION        = 5,  -- unique key already exists (HTTP 409)
-  NOT_FOUND               = 6,  -- WHERE clause leads nowhere (HTTP 404)
-  INVALID_OFFSET          = 7,  -- page(size, offset) is invalid
-  DATABASE_ERROR          = 8,  -- connection refused or DB error (HTTP 500)
-  INVALID_SIZE            = 9,  -- page(size, offset) is invalid
-  INVALID_UNIQUE          = 10, -- unique field value is invalid
-  INVALID_OPTIONS         = 11, -- invalid options given
+local ERRORS            = {
+  INVALID_PRIMARY_KEY   =  1,
+  SCHEMA_VIOLATION      =  2,
+  PRIMARY_KEY_VIOLATION =  3,  -- primary key already exists (HTTP 400)
+  FOREIGN_KEY_VIOLATION =  4,  -- foreign entity does not exist (HTTP 400)
+  UNIQUE_VIOLATION      =  5,  -- unique key already exists (HTTP 409)
+  NOT_FOUND             =  6,  -- WHERE clause leads nowhere (HTTP 404)
+  INVALID_OFFSET        =  7,  -- page(size, offset) is invalid
+  DATABASE_ERROR        =  8,  -- connection refused or DB error (HTTP 500)
+  INVALID_SIZE          =  9,  -- page(size, offset) is invalid
+  INVALID_UNIQUE        =  10, -- unique field value is invalid
+  INVALID_OPTIONS       =  11, -- invalid options given
   OPERATION_UNSUPPORTED   = 12, -- operation is not supported with this strategy
   FOREIGN_KEYS_UNRESOLVED = 13, -- foreign key(s) could not be resolved
   DECLARATIVE_CONFIG      = 14, -- error parsing declarative configuration
@@ -51,18 +52,18 @@ local ERRORS              = {
 -- error codes messages
 
 
-local ERRORS_NAMES                 = {
-  [ERRORS.INVALID_PRIMARY_KEY]     = "invalid primary key",
-  [ERRORS.SCHEMA_VIOLATION]        = "schema violation",
-  [ERRORS.PRIMARY_KEY_VIOLATION]   = "primary key violation",
-  [ERRORS.FOREIGN_KEY_VIOLATION]   = "foreign key violation",
-  [ERRORS.UNIQUE_VIOLATION]        = "unique constraint violation",
-  [ERRORS.NOT_FOUND]               = "not found",
-  [ERRORS.INVALID_OFFSET]          = "invalid offset",
-  [ERRORS.DATABASE_ERROR]          = "database error",
-  [ERRORS.INVALID_SIZE]            = "invalid size",
-  [ERRORS.INVALID_UNIQUE]          = "invalid unique %s",
-  [ERRORS.INVALID_OPTIONS]         = "invalid options",
+local ERRORS_NAMES               = {
+  [ERRORS.INVALID_PRIMARY_KEY]   = "invalid primary key",
+  [ERRORS.SCHEMA_VIOLATION]      = "schema violation",
+  [ERRORS.PRIMARY_KEY_VIOLATION] = "primary key violation",
+  [ERRORS.FOREIGN_KEY_VIOLATION] = "foreign key violation",
+  [ERRORS.UNIQUE_VIOLATION]      = "unique constraint violation",
+  [ERRORS.NOT_FOUND]             = "not found",
+  [ERRORS.INVALID_OFFSET]        = "invalid offset",
+  [ERRORS.DATABASE_ERROR]        = "database error",
+  [ERRORS.INVALID_SIZE]          = "invalid size",
+  [ERRORS.INVALID_UNIQUE]        = "invalid unique %s",
+  [ERRORS.INVALID_OPTIONS]       = "invalid options",
   [ERRORS.OPERATION_UNSUPPORTED]   = "operation unsupported",
   [ERRORS.FOREIGN_KEYS_UNRESOLVED] = "foreign keys unresolved",
   [ERRORS.DECLARATIVE_CONFIG]      = "invalid declarative configuration",
@@ -71,6 +72,18 @@ local ERRORS_NAMES                 = {
   [ERRORS.INVALID_WORKSPACE]       = "invalid workspace",
   [ERRORS.INVALID_UNIQUE_GLOBAL]   = "unique key %s is invalid for global query",
 }
+
+local function add_ee_error(name, code, message)
+  if ERRORS_NAMES[code] then
+    error("already used code " .. code)
+  end
+
+  ERRORS[name] = code
+  ERRORS_NAMES[code] = message
+end
+
+add_ee_error("RBAC_ERROR", 99, "unauthorized access") -- Forbidden operation (403)
+
 
 
 -- err_t metatable definition
@@ -354,6 +367,16 @@ function _M:unique_violation(unique_key)
     error("unique_key must be a table", 2)
   end
 
+  -- EE: remove workspace prefix
+  for k, v in pairs(unique_key) do
+    if type(v) ~= "userdata" and type(v) ~= "table" then
+      local ws_value = utils.split(v , ":")
+      if #ws_value > 1 then
+        unique_key[k] = ws_value[2]
+      end
+    end
+  end
+
   local message = fmt("UNIQUE violation detected on '%s'",
                       pl_pretty(unique_key, ""):gsub("\"userdata: NULL\"", "null"))
 
@@ -403,6 +426,18 @@ end
 function _M:database_error(err)
   err = err or ERRORS_NAMES[ERRORS.DATABASE_ERROR]
   return new_err_t(self, ERRORS.DATABASE_ERROR, err)
+end
+
+
+function _M:unauthorized_operation(rbac_ctx)
+  if type(rbac_ctx) ~= "table" then
+    error("User and Action must be provided", 2)
+  end
+
+  local message = fmt("%s, you do not have permissions to %s this resource",
+                  rbac_ctx.username, rbac_ctx.action)
+
+  return new_err_t(self, ERRORS.RBAC_ERROR, message)
 end
 
 

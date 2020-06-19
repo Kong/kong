@@ -4,6 +4,8 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/Kong/kong/blob/master/LICENSE)
 [![Twitter](https://img.shields.io/twitter/follow/thekonginc.svg?style=social&label=Follow)](https://twitter.com/intent/follow?screen_name=thekonginc)
 
+:monkey: [Master Preview Environment](http://master.kong-ee.previewer.konghq.com:8002/dashboard)
+
 Kong is a cloud-native, fast, scalable, and distributed Microservice
 Abstraction Layer *(also known as an API Gateway or API Middleware)*.
 Made available as an open-source project in 2015, its core values are
@@ -12,12 +14,12 @@ high performance and extensibility.
 Actively maintained, Kong is widely used in production at companies ranging
 from startups to Global 5000 as well as government organizations.
 
-[Installation](https://konghq.com/install) |
-[Documentation](https://docs.konghq.com) |
+[Installation](https://docs.konghq.com/enterprise/latest/deployment/installation/overview/) |
+[Documentation](https://docs.konghq.com/enterprise) |
 [Forum](https://discuss.konghq.com) |
 [Blog](https://konghq.com/blog) |
 IRC (freenode): [#kong](https://webchat.freenode.net/?channels=kong) |
-[Nightly Builds][kong-nightly-master]
+[RefPlat Builds][kong-nightly-master]
 
 ## Summary
 
@@ -261,9 +263,9 @@ limitations under the License.
 [kong-url]: https://konghq.com/
 [kong-logo]: https://konghq.com/wp-content/uploads/2018/05/kong-logo-github-readme.png
 [kong-benefits]: https://konghq.com/wp-content/uploads/2018/05/kong-benefits-github-readme.png
-[kong-nightly-master]: https://bintray.com/kong/kong-nightly/master
-[badge-travis-url]: https://travis-ci.org/Kong/kong/branches
-[badge-travis-image]: https://travis-ci.org/Kong/kong.svg?branch=master
+[kong-nightly-master]: https://bintray.com/kong/kong-enterprise-edition-cloud-deb/ubuntu
+[badge-travis-url]: https://travis-ci.org/Kong/kong-ee/branches
+[badge-travis-image]: https://api.travis-ci.org/Kong/kong-ee.svg?token=BfzyBZDa3icGPsKGmBHb&branch=master
 
 [busted]: https://github.com/Olivine-Labs/busted
 [luacheck]: https://github.com/mpeterv/luacheck

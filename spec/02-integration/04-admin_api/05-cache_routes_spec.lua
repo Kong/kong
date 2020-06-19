@@ -52,7 +52,7 @@ describe("Admin API /cache [#" .. strategy .. "]", function()
       proxy_client:close()
     end
 
-    helpers.stop_kong()
+    helpers.stop_kong(nil, true )
   end)
 
 

@@ -4,6 +4,9 @@ local base = require "resty.core.base"
 local workspaces = {}
 
 
+workspaces.DEFAULT_WORKSPACE = "default"
+
+
 function workspaces.upsert_default()
   local old_default_ws_id = kong.default_workspace
   local default_ws, err = kong.db.workspaces:select_by_name("default")

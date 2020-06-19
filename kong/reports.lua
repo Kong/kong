@@ -21,6 +21,7 @@ local WARN = ngx.WARN
 local sub = string.sub
 
 
+local HOUR = 3600
 local PING_INTERVAL = 3600
 local PING_KEY = "events:reports"
 
@@ -382,6 +383,83 @@ do
 end
 
 
+local function increment_counter(counter, entity)
+  if not entity or not entity.id then
+    return
+  end
+
+  if counter ~= "routes" and
+    counter ~= "services" and
+    counter ~= "workspaces" and
+    counter ~= "consumers" then
+      return
+  end
+
+  local dict = ngx.shared["kong_reports_" .. counter]
+  if dict then
+    dict:set(entity.id, true, HOUR*3)
+  end
+end
+
+
+local function str_begins_with(s, pref)
+  return string.sub(s, 1, #pref) == pref
+end
+
+-- Takes entity into account in case it needs to be counted for PHL
+-- reporting.  It's the function responsibility to increment it only
+-- if needed (not seen before).
+local function report_cached_entity(entity, key)
+  if type(entity) ~= "table" then
+    return
+  end
+
+  local found = false
+  if entity.consumer_id then
+    increment_counter("consumers", {id = entity.consumer_id})
+    found = true
+  end
+
+  if entity.service_id then
+    increment_counter("services", {id = entity.service_id})
+    found = true
+  end
+
+  if entity.route then
+    increment_counter("routes", entity.route)
+    found = true
+  end
+
+  if entity.service then
+    increment_counter("services", entity.service)
+    found = true
+  end
+
+  if not found and key and str_begins_with(key, "apis_ws_resolution:") then
+    increment_counter("workspaces", entity.id)
+  end
+
+end
+
+local function add_entity_reports()
+  local shm = ngx.shared
+
+  local reported_entities = {
+    r = "routes",
+    c = "consumers",
+    s = "services",
+    w = "workspaces",
+  }
+
+  for k, v in pairs(reported_entities) do
+    add_ping_value(k, function()
+      return shm["kong_reports_" .. v] and
+        #shm["kong_reports_" .. v]:get_keys(70000)
+    end)
+  end
+end
+
+
 return {
   -- plugin handler
   init_worker = function()
@@ -428,6 +506,8 @@ return {
   end,
   send = send_report,
   retrieve_redis_version = retrieve_redis_version,
+  report_cached_entity = report_cached_entity,
+  add_entity_reports = add_entity_reports,
   -- exposed for unit test
   _create_counter = create_counter,
   -- exposed for integration test

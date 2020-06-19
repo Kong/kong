@@ -139,8 +139,8 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local cert = bp.certificates:insert {
-        cert  = ssl_fixtures.cert,
-        key   = ssl_fixtures.key,
+          cert  = ssl_fixtures.cert,
+          key   = ssl_fixtures.key,
       }
 
       bp.snis:insert {

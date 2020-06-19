@@ -31,6 +31,9 @@ for _, strategy in helpers.each_strategy() do
 
       db:truncate("ratelimiting_metrics")
 
+      ngx.ctx.workspaces = nil
+      ngx.ctx.workspaces = db.workspaces:select_all({name = "default"})
+
       local consumer1 = bp.consumers:insert {
         username = "consumer1"
       }
@@ -279,6 +282,9 @@ for _, strategy in helpers.each_strategy() do
         db:truncate("plugins")
         db:truncate("keyauth_credentials")
 
+        ngx.ctx.workspaces = nil
+        ngx.ctx.workspaces = db.workspaces:select_all({name = "default"})
+
         do
           local service = bp.services:insert {
             name = "example",
@@ -498,6 +504,9 @@ for _, strategy in helpers.each_strategy() do
         db:truncate("plugins")
         db:truncate("keyauth_credentials")
 
+        ngx.ctx.workspaces = nil
+        ngx.ctx.workspaces = db.workspaces:select_all({name = "default"})
+
         local service = bp.services:insert {
           name = "example",
         }
@@ -572,6 +581,9 @@ for _, strategy in helpers.each_strategy() do
         db:truncate("consumers")
         db:truncate("plugins")
         db:truncate("keyauth_credentials")
+
+        ngx.ctx.workspaces = nil
+        ngx.ctx.workspaces = db.workspaces:select_all({name = "default"})
 
         do
           -- service to mock HTTP 502
@@ -1135,10 +1147,7 @@ for _, strategy in helpers.each_strategy() do
 
             helpers.stop_kong()
 
-            db:truncate("routes")
-            db:truncate("services")
-            db:truncate("plugins")
-
+            bp = helpers.get_db_utils()
             -- never used as the plugins short-circuit
             local service = assert(bp.services:insert {
               name = "mock-service",

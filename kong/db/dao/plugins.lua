@@ -1,6 +1,8 @@
 local constants = require "kong.constants"
 local utils = require "kong.tools.utils"
 local DAO = require "kong.db.dao"
+local wokspaces = require "kong.workspaces"
+local tracing = require "kong.tracing"
 local plugin_loader = require "kong.db.schema.plugin_loader"
 local BasePlugin = require "kong.plugins.base_plugin"
 local go = require "kong.db.dao.plugins.go"
@@ -144,7 +146,6 @@ end
 
 local function load_plugin_handler(plugin)
   -- NOTE: no version _G.kong (nor PDK) in plugins main chunk
-
   local plugin_handler = "kong.plugins." .. plugin .. ".handler"
   local ok, handler = utils.load_module_if_exists(plugin_handler)
   if not ok and go.is_on() then
@@ -157,16 +158,19 @@ local function load_plugin_handler(plugin)
     return nil, plugin .. " plugin is enabled but not installed;\n" .. handler
   end
 
+  -- XXX EE: add tracing to plugins
+  tracing.plugin_wrap(handler, plugin)
+
   return handler
 end
 
 
 local function load_plugin_entity_strategy(schema, db, plugin)
-  local Strategy = require(fmt("kong.db.strategies.%s", db.strategy))
-  local strategy, err = Strategy.new(db.connector, schema, db.errors)
-  if not strategy then
-    return nil, err
-  end
+        local Strategy = require(fmt("kong.db.strategies.%s", db.strategy))
+            local strategy, err = Strategy.new(db.connector, schema, db.errors)
+            if not strategy then
+              return nil, err
+            end
 
   local custom_strat = fmt("kong.plugins.%s.strategies.%s.%s",
                            plugin, db.strategy, schema.name)
@@ -201,6 +205,15 @@ local function load_plugin_entity_strategy(schema, db, plugin)
     return nil, err
   end
   db.daos[schema.name] = dao
+  -- XXX EE: maybe schema_def comming from plugin_entity_loader?
+  if schema.workspaceable then
+    local unique_keys = {}
+    for field_name, field_schema in schema:each_field() do
+      if field_schema.unique then
+        unique_keys[field_name] = field_schema
+      end
+    end
+  end
 end
 
 

@@ -457,8 +457,9 @@ describe("Admin API #" .. strategy, function()
                   },
                 }
               }
+              },
             }
-          })
+          )
           assert.same(200, status)
         end)
 

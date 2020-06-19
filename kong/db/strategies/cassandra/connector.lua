@@ -522,6 +522,52 @@ function CassandraConnector:batch(query_args, opts, operation, logged)
 end
 
 
+function CassandraConnector:batch(query_args, opts, operation, logged)
+  if operation ~= nil and operation ~= "read" and operation ~= "write" then
+    error("operation must be 'read' or 'write', was: " .. tostring(operation), 2)
+  end
+
+  if not opts then
+    opts = {}
+  end
+
+  if operation == "write" then
+    opts.consistency = self.opts.write_consistency
+
+  else
+    opts.consistency = self.opts.read_consistency
+  end
+
+  opts.serial_consistency = self.opts.serial_consistency
+
+  opts.logged = logged
+
+  local conn = self:get_stored_connection()
+
+  local coordinator = conn
+
+  if not conn then
+    local err
+    coordinator, err = self.cluster:next_coordinator()
+    if not coordinator then
+      return nil, err
+    end
+  end
+
+  local res, err = coordinator:batch(query_args, opts)
+
+  if not conn then
+    coordinator:setkeepalive()
+  end
+
+  if err then
+    return nil, err
+  end
+
+  return res
+end
+
+
 local function select_keyspaces(self)
   local conn = self:get_stored_connection()
   if not conn then
@@ -959,6 +1005,56 @@ do
     end
 
     return true
+  end
+
+  -- XXX EE: We expose this function for migrate_core_entities
+  -- used to be private and used for api migrations, then was deleted.
+  -- delete maybe one day
+  function CassandraConnector:escape(literal, type)
+    local null = ngx.null
+    if literal == nil or literal == null then
+      return cassandra.null
+    end
+
+    if type == "string" then
+      return cassandra.text(literal)
+    end
+
+    if type == "boolean" then
+      return cassandra.boolean(literal)
+    end
+
+    if type == "integer" then
+      return cassandra.int(literal)
+    end
+
+    if type == "timestamp" then
+      return cassandra.timestamp(literal * 1000)
+    end
+
+    if type == "uuid" then
+      return cassandra.uuid(literal)
+    end
+
+    if type == "counter" then
+      return cassandra.counter(literal)
+    end
+
+    if type == "array" then
+      local t = {}
+
+      for i = 1, #literal do
+        if literal[i] == nil or literal[i] == null then
+          t[i] = cassandra.null
+        else
+          t[i] = cassandra.text(literal[i])
+        end
+      end
+
+      return cassandra.list(t)
+    end
+
+    return self:escape_literal(literal)
   end
 
 

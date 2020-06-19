@@ -1,15 +1,24 @@
 local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
 local conf_loader = require "kong.conf_loader"
+local ee_api = require "kong.enterprise_edition.api_helpers"
+local admins = require "kong.enterprise_edition.admins_helpers"
+local auth_helpers = require "kong.enterprise_edition.auth_helpers"
 local cjson = require "cjson"
+local rbac = require "kong.rbac"
 local api_helpers = require "kong.api.api_helpers"
 local Schema = require "kong.db.schema"
 local Errors = require "kong.db.errors"
+local workspaces = require "kong.workspaces"
+local endpoints  = require "kong.api.endpoints"
 
 local sub = string.sub
 local kong = kong
 local knode  = (kong and kong.node) and kong.node or
                require "kong.pdk.node".new()
+local log = ngx.log
+local DEBUG = ngx.DEBUG
+local ERR = ngx.ERR
 local errors = Errors.new()
 
 
@@ -24,6 +33,93 @@ local strip_foreign_schemas = function(fields)
     local fdata = field[fname]
     if fdata["type"] == "foreign" then
       fdata.schema = nil
+    end
+  end
+end
+
+local function ws_and_rbac_helper(self, dao_factory, helpers)
+  local admin_auth = singletons.configuration.admin_gui_auth
+
+  if not admin_auth and not ngx.ctx.rbac then
+    return kong.response.exit(404, { message = "Not found" })
+  end
+
+  -- For when only RBAC token comes in
+  if not self.admin then
+    local admins, err = kong.db.admins:page_for_rbac_user({
+      id = ngx.ctx.rbac.user.id
+    })
+
+    if err then
+      return kong.response.exit(500, err)
+    end
+
+    if not admins[1] then
+      -- no admin associated with this rbac_user
+      return kong.response.exit(404, { message = "Not found" })
+    end
+
+    ee_api.attach_consumer_and_workspaces(self, admins[1].consumer.id)
+    self.admin = admins[1]
+  end
+
+  -- now to get the right permission set
+  self.permissions = {
+    endpoints = {
+      ["*"] = {
+        ["*"] = {
+          actions = { "delete", "create", "update", "read", },
+          negative = false,
+        }
+      }
+    },
+    entities = {
+      ["*"] = {
+        actions = { "delete", "create", "update", "read", },
+        negative = false,
+      }
+    },
+  }
+
+  -- get roles across all workspaces
+  local roles, err = workspaces.run_with_ws_scope({}, rbac.get_user_roles,
+    kong.db,
+    ngx.ctx.rbac.user)
+  local group_roles = workspaces.run_with_ws_scope({}, rbac.get_groups_roles,
+    kong.db,
+    ngx.ctx.authenticated_groups)
+  roles = rbac.merge_roles(roles, group_roles)
+  ee_api.attach_workspaces_roles(self, roles)
+
+  if err then
+    log(ERR, "[userinfo] ", err)
+    return kong.response.exit(500, err)
+  end
+
+  local rbac_enabled = singletons.configuration.rbac
+  if rbac_enabled == "on" or rbac_enabled == "both" then
+    self.permissions.endpoints = rbac.readable_endpoints_permissions(roles)
+  end
+
+  if rbac_enabled == "entity" or rbac_enabled == "both" then
+    self.permissions.entities = rbac.readable_entities_permissions(roles)
+  end
+
+  -- fetch workspace resources from workspace entities
+  self.workspaces = {}
+
+  local ws_dict = {} -- dict to keep track of which workspaces we have added
+  local ws, err
+  for k, v in ipairs(self.workspace_entities) do
+    if not ws_dict[v.workspace_id] then
+      ws, err = kong.db.workspaces:select({id = v.workspace_id})
+      if err then
+        return helpers.yield_error(err)
+      end
+      ws_dict[v.workspace_id] = true
+      if ws then
+        self.workspaces[#self.workspaces + 1] = ws
+      end
     end
   end
 end
@@ -48,6 +144,8 @@ return {
             set[row.name] = true
           end
         end
+
+        singletons.internal_proxies:add_internal_plugins(distinct_plugins, set)
       end
 
       do
@@ -66,6 +164,12 @@ return {
             end
           end
         end
+      end
+
+      local license
+      if kong.license then
+        license = utils.deep_copy(kong.license).license.payload
+        license.license_key = nil
       end
 
       local node_id, err = knode.get_id()
@@ -89,8 +193,48 @@ return {
         lua_version = lua_version,
         configuration = conf_loader.remove_sensitive(singletons.configuration),
         prng_seeds = prng_seeds,
+        license = license,
       })
     end
+  },
+  --- Retrieves current user info, either an admin or an rbac user
+  -- This route is whitelisted from RBAC validation. It requires that an admin
+  -- is set on the headers, but should only work for a consumer that is set when
+  -- an authentication plugin has set the admin_gui_auth_header.
+  -- See for reference: kong.rbac.authorize_request_endpoint()
+  ["/userinfo"] = {
+    GET = function(self, dao, helpers)
+      ws_and_rbac_helper(self, dao, helpers)
+
+      local user_session = kong.ctx.shared.authenticated_session
+      local cookie = user_session and user_session.cookie
+
+      if not user_session or (user_session and not user_session.expires) then
+        return endpoints.handle_error('could not find session')
+      end
+
+      if cookie then
+        if not cookie.renew or not cookie.lifetime then
+          return endpoints.handle_error('could not find session cookie data')
+        end
+      end
+
+      return kong.response.exit(200, {
+        admin = admins.transmogrify(self.admin),
+        groups = self.groups,
+        permissions = self.permissions,
+        workspaces = self.workspaces,
+        session = {
+          expires = user_session.expires, -- unix timestamp seconds
+          cookie = {
+            discard = user_session.cookie.discard,
+            renew = user_session.cookie.renew,
+            idletime = user_session.cookie.idletime,
+            lifetime = user_session.cookie.lifetime,
+          },
+        }
+      })
+    end,
   },
   ["/endpoints"] = {
     GET = function(self, dao, helpers)
@@ -167,5 +311,117 @@ return {
       strip_foreign_schemas(copy.fields)
       return kong.response.exit(200, copy)
     end
+  },
+  ["/auth"] = {
+    before = function(self, dao_factory, helpers)
+      local gui_auth = singletons.configuration.admin_gui_auth
+      local gui_auth_conf = singletons.configuration.admin_gui_auth_conf
+      local invoke_plugin = singletons.invoke_plugin
+
+      local _log_prefix = "kong[auth]"
+
+      if not gui_auth and not ngx.ctx.rbac then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+
+      local admin, err = ee_api.validate_admin()
+      if not admin then
+        log(DEBUG, _log_prefix, "Admin not found")
+        return kong.response.exit(401, { message = "Unauthorized" })
+      end
+
+      if err then
+        log(ERR, _log_prefix, err)
+        return kong.response.exit(500, err)
+      end
+
+      -- Check if an admin exists before going through auth plugin flow
+      if self.params.validate_user then
+        return admin and true
+      end
+
+      local consumer_id = admin.consumer.id
+
+      ee_api.attach_consumer_and_workspaces(self, consumer_id)
+
+      local session_conf = singletons.configuration.admin_gui_session_conf
+
+      -- run the session plugin access to see if we have a current session
+      -- with a valid authenticated consumer.
+      local ok, err = invoke_plugin({
+        name = "session",
+        config = session_conf,
+        phases = { "access" },
+        api_type = ee_api.apis.ADMIN,
+        db = kong.db,
+      })
+
+      if err or not ok then
+        log(ERR, _log_prefix, err)
+        return kong.response.exit(500, { message = "An unexpected error occurred" })
+      end
+
+      -- logging out
+      if kong.request.get_method() == 'DELETE' then
+        return
+      end
+
+      -- apply auth plugin
+      local plugin_auth_response
+      if not ngx.ctx.authenticated_consumer then
+        plugin_auth_response, err = invoke_plugin({
+          name = gui_auth,
+          config = gui_auth_conf,
+          phases = { "access" },
+          api_type = ee_api.apis.ADMIN,
+          db = kong.db,
+          exit_handler = function (res) return res end,
+        })
+
+        if err or not plugin_auth_response then
+          log(ERR, _log_prefix, err)
+          return kong.response.exit(500, err)
+        end
+      end
+
+      -- Plugin ran but consumer was not created on context
+      if not ngx.ctx.authenticated_consumer and not plugin_auth_response then
+        log(DEBUG, _log_prefix, "no consumer mapped from plugin ", gui_auth)
+
+        return kong.response.exit(401, { message = "Unauthorized" })
+      end
+
+      local max_attempts = singletons.configuration.admin_gui_auth_login_attempts
+      auth_helpers.plugin_res_handler(plugin_auth_response, admin, max_attempts)
+
+      if self.consumer
+         and ngx.ctx.authenticated_consumer.id ~= self.consumer.id
+      then
+        log(DEBUG, _log_prefix, "authenticated consumer is not an admin")
+        return kong.response.exit(401, { message = "Unauthorized" })
+      end
+
+      local ok, err = invoke_plugin({
+        name = "session",
+        config = session_conf,
+        phases = { "header_filter" },
+        api_type = ee_api.apis.ADMIN,
+        db = kong.db,
+      })
+
+      if err or not ok then
+        log(ERR, _log_prefix, err)
+        return kong.response.exit(500, err)
+      end
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      return kong.response.exit(200)
+    end,
+
+    DELETE = function(self, dao_factory, helpers)
+      -- stub for logging out
+      return kong.response.exit(200)
+    end,
   },
 }

@@ -35,7 +35,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     before_each(function()
@@ -306,7 +306,7 @@ for _, strategy in helpers.each_strategy() do
                   schema violation
                   (must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https')
                 ]], true, true),
-                fields  = {
+                fields = {
                   ["@entity"] = {
                     "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https'",
                   }

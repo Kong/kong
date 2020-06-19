@@ -3,6 +3,7 @@ local utils        = require "kong.tools.utils"
 local arguments    = require "kong.api.arguments"
 local workspaces   = require "kong.workspaces"
 local app_helpers  = require "lapis.application"
+local cjson        = require "cjson"
 
 
 local kong         = kong
@@ -36,6 +37,10 @@ local ERRORS_HTTP_CODES = {
   [Errors.codes.OPERATION_UNSUPPORTED]   = 405,
   [Errors.codes.FOREIGN_KEYS_UNRESOLVED] = 400,
 }
+
+
+-- Enterprise error http codes
+ERRORS_HTTP_CODES[Errors.codes.RBAC_ERROR] = 403
 
 
 local function get_message(default, ...)
@@ -142,6 +147,15 @@ local function extract_options(args, schema, context)
       options.ttl = args.ttl
       args.ttl = nil
     end
+
+    ---[[ EE
+    -- consumer paging filter by type
+    if schema.name == "consumers" and schema.fields and schema.fields.type
+      and args.type and context == "page"
+    then
+      options.type = args.type
+    end
+    --]] EE
 
     if schema.fields.tags and args.tags ~= nil and context == "page" then
       local tags = args.tags
@@ -266,13 +280,13 @@ local function delete_entity(...)
   return query_entity("delete", ...)
 end
 
+local function page_collection(...)
+  return query_entity("page", ...)
+end
+
 
 local function insert_entity(...)
   return query_entity("insert", ...)
-end
-
-local function page_collection(...)
-  return query_entity("page", ...)
 end
 
 
@@ -287,7 +301,7 @@ end
 --
 -- /services
 local function get_collection_endpoint(schema, foreign_schema, foreign_field_name, method)
-  return not foreign_schema and function(self, db, helpers)
+  return not foreign_schema and function(self, db, helpers, post_process, prefix_path)
     local next_page_tags = ""
 
     local args = self.args.uri
@@ -300,19 +314,33 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       return handle_error(err_t)
     end
 
+    -- post process data
+    local p_data = {}
+    if type(post_process) == "function" then
+      for i, row in ipairs(data) do
+        local p_row = post_process(row)
+        if p_row and next(p_row) then
+          p_data[#p_data+1] = p_row
+        end
+      end
+    else
+      p_data = data
+    end
+
     local next_page = offset and fmt("/%s?offset=%s%s",
+                                     prefix_path or
                                      schema.admin_api_name or
                                      schema.name,
                                      escape_uri(offset),
                                      next_page_tags) or null
 
     return ok {
-      data   = data,
+      data   = setmetatable(p_data, cjson.empty_array_mt),
       offset = offset,
       next   = next_page,
     }
 
-  end or function(self, db, helpers)
+  end or function(self, db, helpers, post_process, prefix_path)
     local foreign_entity, _, err_t = select_entity(self, db, foreign_schema)
     if err_t then
       return handle_error(err_t)
@@ -330,6 +358,19 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       return handle_error(err_t)
     end
 
+    -- post process data
+    local p_data = {}
+    if type(post_process) == "function" then
+      for i, row in ipairs(data) do
+        local p_row = post_process(row)
+        if p_row and next(p_row) then
+          p_data[#p_data+1] = p_row
+        end
+      end
+    else
+      p_data = data
+    end
+
     local foreign_key = self.params[foreign_schema.name]
     local next_page = offset and fmt("/%s/%s/%s?offset=%s",
                                      foreign_schema.admin_api_name or
@@ -341,7 +382,7 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
                                      escape_uri(offset)) or null
 
     return ok {
-      data   = data,
+      data   = setmetatable(p_data, cjson.empty_array_mt),
       offset = offset,
       next   = next_page,
     }
@@ -403,7 +444,7 @@ end
 -- /services/:services
 -- /services/:services/routes/:routes
 local function get_entity_endpoint(schema, foreign_schema, foreign_field_name, method, is_foreign_entity_endpoint)
-  return function(self, db, helpers)
+  return function(self, db, helpers, post_process)
     local entity, _, err_t
     if foreign_schema then
       entity, _, err_t = select_entity(self, db, schema)
@@ -456,6 +497,21 @@ local function get_entity_endpoint(schema, foreign_schema, foreign_field_name, m
         end
       end
     end
+
+    ---EE [[
+    -- need to PR upstream
+    if post_process then
+      local n_entity
+      n_entity, _, err_t = post_process(entity)
+      if err_t then
+        return handle_error(err_t)
+      end
+
+      if n_entity then
+        entity = n_entity
+      end
+    end
+    --]] EE
 
     return ok(entity)
   end
@@ -557,7 +613,7 @@ end
 -- /services/:services
 -- /services/:services/routes/:routes
 local function patch_entity_endpoint(schema, foreign_schema, foreign_field_name, method, is_foreign_entity_endpoint)
-  return not foreign_schema and function(self, db, helpers)
+  return not foreign_schema and function(self, db, helpers, post_process)
     local entity, _, err_t = update_entity(self, db, schema, method)
     if err_t then
       return handle_error(err_t)
@@ -565,6 +621,19 @@ local function patch_entity_endpoint(schema, foreign_schema, foreign_field_name,
 
     if not entity then
       return not_found()
+    end
+
+    -- XXX EE only - need to PR upstream
+    if post_process then
+      local n_entity
+      n_entity, _, err_t = post_process(entity)
+      if err_t then
+        return handle_error(err_t)
+      end
+
+      if n_entity then
+        entity = n_entity
+      end
     end
 
     return ok(entity)

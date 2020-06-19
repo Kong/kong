@@ -17,10 +17,11 @@ describe("headers [#" .. strategy .. "]", function()
 
   describe("Server/Via", function()
     local proxy_client
-    local bp
+    local bp, db -- luacheck: ignore
 
     local function start(config)
       return function()
+        helpers.with_current_ws(nil, function()
         bp.routes:insert {
           hosts = { "headers-inspect.com" },
         }
@@ -30,11 +31,12 @@ describe("headers [#" .. strategy .. "]", function()
         config.nginx_conf = "spec/fixtures/custom_nginx.template"
 
         assert(helpers.start_kong(config))
+        end, db)
       end
     end
 
     lazy_setup(function()
-      bp = helpers.get_db_utils(strategy, {
+      bp, db, _ = helpers.get_db_utils(strategy, {
         "routes",
         "services",
       }, {
@@ -249,9 +251,11 @@ describe("headers [#" .. strategy .. "]", function()
 
     local function start(config)
       return function()
+        helpers.with_current_ws(nil, function()
         bp.routes:insert {
           hosts = { "headers-inspect.com" },
         }
+        end, db)
 
         local service = bp.services:insert({
           protocol = helpers.mock_upstream_protocol,

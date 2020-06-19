@@ -281,7 +281,6 @@ function declarative.to_yaml_file(entities, filename)
   return true
 end
 
-
 local function find_or_create_current_workspace(name)
   name = name or "default"
 
@@ -321,7 +320,7 @@ function declarative.load_into_db(entities, meta)
     return nil, err
   end
 
-  local _, err, err_t = find_or_create_current_workspace("default")
+  local _, err, err_t = find_or_create_current_workspace(meta._workspace or "default")
   if err then
     return nil, err, err_t
   end

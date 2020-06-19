@@ -9,8 +9,12 @@ local reports      = require "kong.reports"
 local constants    = require "kong.constants"
 local singletons   = require "kong.singletons"
 local certificate  = require "kong.runloop.certificate"
+local workspaces   = require "kong.workspaces"
+local tracing      = require "kong.tracing"
 local concurrency  = require "kong.concurrency"
 local PluginsIterator = require "kong.runloop.plugins_iterator"
+local file_helpers = require "kong.portal.file_helpers"
+local event_hooks = require "kong.enterprise_edition.event_hooks"
 
 
 local kong         = kong
@@ -26,7 +30,7 @@ local lower        = string.lower
 local fmt          = string.format
 local ngx          = ngx
 local var          = ngx.var
-local log          = ngx.log
+local log         = ngx.log
 local exit         = ngx.exit
 local null         = ngx.null
 local header       = ngx.header
@@ -163,6 +167,19 @@ local function csv(s)
   return csv_iterator, s, 1
 end
 
+local function get_all_workspaces()
+  local wss = {}
+  for w, err in kong.db.workspaces:each(nil, {skip_rbac = true}) do
+    if err then
+      return nil, err
+    end
+
+    table.insert(wss, w)
+  end
+
+  return wss
+end
+
 
 local function register_events()
   -- initialize local local_events hooks
@@ -174,11 +191,15 @@ local function register_events()
 
   -- events dispatcher
 
-
   worker_events.register(function(data)
     if not data.schema then
       log(ERR, "[events] missing schema in crud subscriber")
       return
+    end
+
+    local workspaces, err = get_all_workspaces()
+    if err then
+      log(ngx.ERR, "[events] could not fetch workspaces: ", err)
     end
 
     if not data.entity then
@@ -189,20 +210,24 @@ local function register_events()
     -- invalidate this entity anywhere it is cached if it has a
     -- caching key
 
-    local cache_key = db[data.schema.name]:cache_key(data.entity)
+    local cache_key = db[data.schema.name]:cache_key(data.entity, nil, nil,
+                                                     nil, nil, true)
     local cache_obj = kong[constants.ENTITY_CACHE_STORE[data.schema.name]]
 
     if cache_key then
-      cache_obj:invalidate(cache_key)
+      cache_obj:invalidate(cache_key, workspaces)
     end
 
     -- if we had an update, but the cache key was part of what was updated,
     -- we need to invalidate the previous entity as well
 
     if data.old_entity then
-      local old_cache_key = db[data.schema.name]:cache_key(data.old_entity)
+      local old_cache_key = db[data.schema.name]:cache_key(
+        data.old_entity, nil, nil, nil, nil, true
+      )
+
       if old_cache_key and cache_key ~= old_cache_key then
-        cache_obj:invalidate(old_cache_key)
+        cache_obj:invalidate(old_cache_key, workspaces)
       end
     end
 
@@ -215,7 +240,7 @@ local function register_events()
 
     local entity_channel           = data.schema.table or data.schema.name
     local entity_operation_channel = fmt("%s:%s", entity_channel,
-      data.operation)
+                                         data.operation)
 
     -- crud:routes
     local ok, err = worker_events.post_local("crud", entity_channel, data)
@@ -244,8 +269,8 @@ local function register_events()
 
   worker_events.register(function(data)
     if data.operation ~= "create" and
-      data.operation ~= "delete"
-      then
+        data.operation ~= "delete"
+    then
       -- no need to rebuild the router if we just added a Service
       -- since no Route is pointing to that Service yet.
       -- ditto for deletion: if a Service if being deleted, it is
@@ -288,7 +313,7 @@ local function register_events()
     for sni, err in db.snis:each_for_certificate({ id = certificate.id }, nil, GLOBAL_QUERY_OPTS) do
       if err then
         log(ERR, "[events] could not find associated snis for certificate: ",
-          err)
+                  err)
         break
       end
 
@@ -312,7 +337,7 @@ local function register_events()
       })
     if not ok then
       log(ERR, "failed broadcasting target ",
-        operation, " to workers: ", err)
+          operation, " to workers: ", err)
     end
     -- => to cluster_events handler
     local key = fmt("%s:%s", operation, target.upstream.id)
@@ -329,7 +354,8 @@ local function register_events()
     local target = data.entity
 
     -- => to balancer update
-    balancer.on_target_event(operation, target)
+    workspaces.run_with_ws_scope({}, balancer.on_target_event,
+                                  operation, target)
   end, "balancer", "targets")
 
 
@@ -385,7 +411,7 @@ local function register_events()
       })
     if not ok then
       log(ERR, "failed broadcasting upstream ",
-        operation, " to workers: ", err)
+          operation, " to workers: ", err)
     end
     -- => to cluster_events handler
     local key = fmt("%s:%s:%s", operation, upstream.id, upstream.name)
@@ -401,8 +427,15 @@ local function register_events()
     local operation = data.operation
     local upstream = data.entity
 
+    local workspace_list, err = get_all_workspaces()
+    if err then
+      log(ngx.ERR, "[events] could not fetch workspaces: ", err)
+      return
+    end
+
     -- => to balancer update
-    balancer.on_upstream_event(operation, upstream)
+    workspaces.run_with_ws_scope({}, balancer.on_upstream_event, operation,
+                                 upstream, workspace_list)
   end, "balancer", "upstreams")
 
 
@@ -423,6 +456,40 @@ local function register_events()
   end)
 
 
+  worker_events.register(function(data)
+    log(DEBUG, "[events] workspace_entites updated, invalidating API workspace scope")
+    local target = data.entity
+    if target.entity_type == "apis" or target.entity_type == "routes" then
+      local ws_scope_key = fmt("apis_ws_resolution:%s", target.entity_id)
+      core_cache:invalidate(ws_scope_key)
+    end
+  end, "crud", "workspace_entities")
+
+  -- initialize balancers for active healthchecks
+  ngx.timer.at(0, function()
+    workspaces.run_with_ws_scope({}, balancer.init)
+  end)
+
+  if singletons.configuration.audit_log then
+    log(DEBUG, "register audit log events handler")
+    local audit_log = require "kong.enterprise_edition.audit_log"
+    worker_events.register(audit_log.dao_audit_handler, "dao:crud")
+  end
+
+  -- rbac token ident cache handling
+  worker_events.register(function(data)
+    singletons.cache:invalidate("rbac_user_token_ident:" ..
+                                data.entity.user_token_ident)
+
+    -- clear a patched ident range cache, if appropriate
+    -- this might be nil if we in-place upgrade a pt token
+    if data.old_entity and data.old_entity.user_token_ident then
+      singletons.cache:invalidate("rbac_user_token_ident:" ..
+                                  data.old_entity.user_token_ident)
+    end
+  end, "crud", "rbac_users")
+
+
   -- declarative config updates
 
 
@@ -434,6 +501,57 @@ local function register_events()
       ngx.ctx.workspace = kong.default_workspace
     end, "declarative", "flip_config")
   end
+
+
+  -- portal router events
+  worker_events.register(function(data)
+    local file = data.entity
+    if file_helpers.is_config_path(file.path) or
+       file_helpers.is_content_path(file.path) or
+       file_helpers.is_spec_path(file.path) then
+      local workspace = workspaces.get_workspace()
+      local cache_key = "portal_router-" .. workspace.name .. ":version"
+      local cache_val = tostring(file.created_at) .. file.checksum
+
+      -- to node worker event
+      local ok, err = worker_events.post("portal", "router", {
+        cache_key = cache_key,
+        cache_val = cache_val,
+      })
+      if not ok then
+        log(ERR, "failed broadcasting portal:router event to workers: ", err)
+      end
+
+      -- to cluster worker event
+      local cluster_key = cache_key .. "|" .. cache_val
+      local ok, err = cluster_events:broadcast("portal:router", cluster_key)
+      if not ok then
+        log(ERR, "failed broadcasting portal:router event to cluster: ", err)
+      end
+    end
+  end, "crud", "files")
+
+
+  cluster_events:subscribe("portal:router", function(data)
+    local cache_key, cache_val = unpack(utils.split(data, "|"))
+    local ok, err = worker_events.post("portal", "router", {
+      cache_key = cache_key,
+      cache_val = cache_val,
+    })
+    if not ok then
+      log(ERR, "failed broadcasting portal:router event to workers: ", err)
+    end
+  end)
+
+
+  worker_events.register(function(data)
+    singletons.portal_router.set_version(data.cache_key, data.cache_val)
+  end, "portal", "router")
+
+  if event_hooks.enabled() then
+    worker_events.register(event_hooks.crud, "crud", "event_hooks")
+  end
+
 end
 
 
@@ -680,6 +798,7 @@ do
     end
 
     local new_router, err = Router.new(routes)
+    tracing.wrap_router(new_router)
     if not new_router then
       return nil, "could not create router: " .. err
     end
@@ -1077,7 +1196,7 @@ return {
 
       local route          = match_t.route
       local service        = match_t.service
-      local upstream_url_t = match_t.upstream_url_t
+      local upstream_url_t     = match_t.upstream_url_t
 
       local realip_remote_addr = var.realip_remote_addr
       local forwarded_proto
@@ -1207,6 +1326,16 @@ return {
       var.upstream_x_forwarded_host   = forwarded_host
       var.upstream_x_forwarded_port   = forwarded_port
       var.upstream_x_forwarded_prefix = forwarded_prefix
+
+      local err
+      ctx.workspaces, err = workspaces.resolve_ws_scope(ctx, route.protocols and route)
+      ctx.log_request_workspaces = ctx.workspaces
+      if err then
+        ngx.log(ngx.ERR, "failed to retrieve workspace for the request (reason: "
+                         .. tostring(err) .. ")")
+
+        return kong.response.exit(500, { message = "An unexpected error occurred"})
+      end
 
       -- At this point, the router and `balancer_setup_stage1` have been
       -- executed; detect requests that need to be redirected from `proxy_pass`
@@ -1348,8 +1477,8 @@ return {
 
       if not ok then
         log(WARN, "failed to set the cookie for hash-based load balancing: ", err,
-                  " (key=", hash_cookie.key,
-                  ", path=", hash_cookie.path, ")")
+                      " (key=", hash_cookie.key,
+                      ", path=", hash_cookie.path, ")")
       end
     end,
     after = function(ctx)
@@ -1388,6 +1517,8 @@ return {
       if kong.configuration.anonymous_reports then
         reports.log(ctx)
       end
+
+      tracing.flush()
 
       if not ctx.KONG_PROXIED then
         return

@@ -22,15 +22,15 @@ describe("NGINX conf compiler", function()
     end)
     describe("proxy", function()
       it("auto-generates SSL certificate and key", function()
-        assert(prefix_handler.gen_default_ssl_cert(conf))
+        assert(prefix_handler.gen_default_ssl_cert(conf, "default"))
         assert(exists(conf.ssl_cert_default))
         assert(exists(conf.ssl_cert_key_default))
       end)
       it("does not re-generate if they already exist", function()
-        assert(prefix_handler.gen_default_ssl_cert(conf))
+        assert(prefix_handler.gen_default_ssl_cert(conf, "default"))
         local cer = helpers.file.read(conf.ssl_cert_default)
         local key = helpers.file.read(conf.ssl_cert_key_default)
-        assert(prefix_handler.gen_default_ssl_cert(conf))
+        assert(prefix_handler.gen_default_ssl_cert(conf, "default"))
         assert.equal(cer, helpers.file.read(conf.ssl_cert_default))
         assert.equal(key, helpers.file.read(conf.ssl_cert_key_default))
       end)
@@ -162,6 +162,9 @@ describe("NGINX conf compiler", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         proxy_listen = "127.0.0.1:8000",
         admin_listen = "127.0.0.1:8001",
+        admin_gui_listen = "0.0.0.0:9002",
+        portal_gui_listen = "0.0.0.0:9003",
+        portal_api_listen = "0.0.0.0:9004",
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.not_matches("listen%s+%d+%.%d+%.%d+%.%d+:%d+ ssl;", kong_nginx_conf)
@@ -722,6 +725,18 @@ describe("NGINX conf compiler", function()
         pg_schema = "foo",
         prefix = tmp_config.prefix,
       }))
+
+      -- Workaround for random iteration of pairs in find_dynamic_keys
+      table.sort(conf.nginx_proxy_directives,
+        function(a, b) return a.name < b.name end)
+      table.sort(in_prefix_kong_conf.nginx_proxy_directives,
+        function(a, b) return a.name < b.name end)
+
+      table.sort(conf.nginx_http_directives,
+        function(a, b) return a.name < b.name end)
+      table.sort(in_prefix_kong_conf.nginx_http_directives,
+        function(a, b) return a.name < b.name end)
+
       assert.same(conf, in_prefix_kong_conf)
     end)
     it("writes custom plugins in Kong conf", function()
@@ -743,6 +758,9 @@ describe("NGINX conf compiler", function()
           prefix = tmp_config.prefix,
           proxy_listen = "127.0.0.1:8000",
           admin_listen = "127.0.0.1:8001",
+          admin_gui_listen = "0.0.0.0:9002",
+          portal_gui_listen = "0.0.0.0:9003",
+          portal_api_listen = "0.0.0.0:9004",
         })
 
         assert(prefix_handler.prepare_prefix(conf))
@@ -757,6 +775,15 @@ describe("NGINX conf compiler", function()
           ssl_cert_key = "spec/fixtures/kong_spec.key",
           admin_ssl_cert = "spec/fixtures/kong_spec.crt",
           admin_ssl_cert_key = "spec/fixtures/kong_spec.key",
+          admin_gui_listen = "0.0.0.0:9002, 0.0.0.0:9445 ssl",
+          admin_gui_ssl_cert = "spec/fixtures/kong_spec.crt",
+          admin_gui_ssl_cert_key = "spec/fixtures/kong_spec.key",
+          portal_gui_listen = "0.0.0.0:9003, 0.0.0.0:9446 ssl",
+          portal_gui_ssl_cert = "spec/fixtures/kong_spec.crt",
+          portal_gui_ssl_cert_key = "spec/fixtures/kong_spec.key",
+          portal_api_listen = "0.0.0.0:9004, 0.0.0.0:9447 ssl",
+          portal_api_ssl_cert = "spec/fixtures/kong_spec.crt",
+          portal_api_ssl_cert_key = "spec/fixtures/kong_spec.key",
         })
 
         assert(prefix_handler.prepare_prefix(conf))
@@ -998,4 +1025,3 @@ describe("NGINX conf compiler", function()
     end)
   end)
 end)
-

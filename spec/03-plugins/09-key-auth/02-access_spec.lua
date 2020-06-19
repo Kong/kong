@@ -569,20 +569,21 @@ for _, strategy in helpers.each_strategy() do
         end)
       end
 
-      it("fails with 'key_in_body' and unsupported content type", function()
-        local res = assert(proxy_client:send {
-          path = "/status/200",
-          headers = {
-            ["Host"] = "key-auth6.com",
-            ["Content-Type"] = "text/plain",
-          },
-          body = "foobar",
-        })
+      -- EE: FT-891
+      -- it("fails with 'key_in_body' and unsupported content type", function()
+      --   local res = assert(proxy_client:send {
+      --     path = "/status/200",
+      --     headers = {
+      --       ["Host"] = "key-auth6.com",
+      --       ["Content-Type"] = "text/plain",
+      --     },
+      --     body = "foobar",
+      --   })
 
-        local body = assert.res_status(400, res)
-        local json = cjson.decode(body)
-        assert.same({ message = "Cannot process request body" }, json)
-      end)
+      --   local body = assert.res_status(400, res)
+      --   local json = cjson.decode(body)
+      --   assert.same({ message = "Cannot process request body" }, json)
+      -- end)
     end)
 
     describe("config.anonymous", function()
@@ -612,6 +613,18 @@ for _, strategy in helpers.each_strategy() do
         assert.equal('true', body.headers["x-anonymous-consumer"])
         assert.equal(nil, body.headers["x-credential-identifier"])
         assert.equal(nil, body.headers["x-credential-username"])
+        assert.equal('no-body', body.headers["x-consumer-username"])
+      end)
+      it("works with wrong credentials and username as anonymous", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"] = "key-auth10.com"
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.equal('true', body.headers["x-anonymous-consumer"])
         assert.equal('no-body', body.headers["x-consumer-username"])
       end)
       it("works with wrong credentials and username as anonymous", function()

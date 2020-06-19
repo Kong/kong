@@ -13,9 +13,101 @@ go_plugins_dir = off
 port_maps = NONE
 host_ports = NONE
 anonymous_reports = on
+enforce_rbac = off
+rbac_auth_header = Kong-Admin-Token
+vitals = on
+vitals_flush_interval = 10
+vitals_delete_interval_pg = 30
+vitals_ttl_seconds = 3600
+vitals_ttl_minutes = 90000
+
+vitals_strategy = database
+vitals_statsd_address = NONE
+vitals_statsd_prefix = kong
+vitals_statsd_udp_packet_size = 1024
+vitals_tsdb_address = NONE
+vitals_tsdb_user = NONE
+vitals_tsdb_password = NONE
+vitals_prometheus_scrape_interval = 5
+
+portal = off
+portal_is_legacy = off
+portal_gui_listen = 0.0.0.0:8003, 0.0.0.0:8446 ssl
+portal_gui_protocol = http
+portal_gui_host = 127.0.0.1:8003
+portal_cors_origins = NONE
+portal_gui_use_subdomains = off
+portal_gui_ssl_cert = NONE
+portal_gui_ssl_cert_key = NONE
+portal_gui_access_log = logs/portal_gui_access.log
+portal_gui_error_log = logs/portal_gui_error.log
+
+portal_api_listen = 0.0.0.0:8004, 0.0.0.0:8447 ssl
+portal_api_url = NONE
+portal_api_ssl_cert = NONE
+portal_api_ssl_cert_key = NONE
+portal_api_access_log = logs/portal_api_access.log
+portal_api_error_log = logs/portal_api_error.log
+
+portal_app_auth = kong-oauth2
+portal_auto_approve = off
+portal_auth = NONE
+portal_auth_password_complexity =
+portal_auth_conf = NONE
+portal_auth_login_attempts = 0
+portal_token_exp = 21600
+portal_session_conf =
+
+portal_email_verification = false
+portal_invite_email = true
+portal_access_request_email = true
+portal_approved_email = true
+portal_reset_email = true
+portal_reset_success_email = true
+portal_emails_from = NONE
+portal_emails_reply_to = NONE
+
+smtp_host = localhost
+smtp_port = 25
+smtp_starttls = off
+smtp_username = NONE
+smtp_password = NONE
+smtp_ssl = off
+smtp_auth_type = NONE
+smtp_domain = localhost.localdomain
+smtp_timeout_connect = 60000
+smtp_timeout_send = 60000
+smtp_timeout_read = 60000
+
+proxy_url = NONE
+
+audit_log = off
+audit_log_record_ttl = 2592000
+audit_log_ignore_methods =
+audit_log_ignore_paths =
+audit_log_ignore_tables =
+audit_log_signing_key =
 
 proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
 stream_listen = off
+
+admin_api_uri = NONE
+admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
+admin_gui_url =
+admin_gui_access_log = logs/admin_gui_access.log
+admin_gui_error_log = logs/admin_gui_error.log
+admin_gui_flags = {}
+admin_gui_auth =
+admin_gui_auth_conf =
+admin_gui_auth_header = Kong-Admin-User
+admin_gui_auth_password_complexity =
+admin_gui_session_conf =
+admin_gui_auth_login_attempts = 0
+admin_approved_email = true
+admin_emails_from = ""
+admin_emails_reply_to = NONE
+admin_invitation_expiry = 259200
+
 admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 http2 ssl reuseport backlog=16384
 status_listen = off
 cluster_listen = 0.0.0.0:8005
@@ -51,6 +143,9 @@ error_default_type = text/plain
 upstream_keepalive_pool_size = 60
 upstream_keepalive_max_requests = 100
 upstream_keepalive_idle_timeout = 60
+
+admin_gui_ssl_cert = NONE
+admin_gui_ssl_cert_key = NONE
 
 nginx_main_daemon = on
 nginx_main_user = nobody nobody
@@ -96,7 +191,9 @@ pg_timeout = 5000
 pg_user = kong
 pg_password = NONE
 pg_ssl = off
+pg_ssl_required = off
 pg_ssl_verify = off
+pg_ssl_version = tlsv1
 pg_max_concurrent_queries = 0
 pg_semaphore_timeout = 60000
 
@@ -108,7 +205,9 @@ pg_ro_timeout = NONE
 pg_ro_user = NONE
 pg_ro_password = NONE
 pg_ro_ssl = NONE
+pg_ro_ssl_required = NONE
 pg_ro_ssl_verify = NONE
+pg_ro_ssl_version = NONE
 pg_ro_max_concurrent_queries = NONE
 pg_ro_semaphore_timeout = NONE
 
@@ -157,6 +256,34 @@ lua_ssl_verify_depth = 1
 lua_package_path = ./?.lua;./?/init.lua;
 lua_package_cpath = NONE
 
+feature_conf_path = NONE
+
+smtp_admin_emails = NONE
+smtp_mock = on
+
+tracing = off
+tracing_write_endpoint =
+tracing_write_strategy = file
+tracing_time_threshold = 0
+tracing_types = all
+tracing_debug_header =
+generate_trace_details = off
+route_validation_strategy = smart
+enforce_route_path_pattern = NONE
+
+keyring_enabled = off
+keyring_blob_path =
+keyring_public_key =
+keyring_private_key =
+keyring_strategy = cluster
+keyring_vault_host =
+keyring_vault_mount =
+keyring_vault_path =
+keyring_vault_token =
+
 role = traditional
+
+event_hooks_enabled = off
+
 kic = off
 ]]

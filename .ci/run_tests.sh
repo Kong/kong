@@ -8,7 +8,7 @@ function red() {
     echo -e "\033[1;31m$*\033[0m"
 }
 
-export BUSTED_ARGS="--no-k -o htest -v --exclude-tags=flaky,ipv6,squid"
+export BUSTED_ARGS=${BUSTED_ARGS:-"-o htest -v --exclude-tags=flaky,ipv6,squid"}
 
 if [ "$KONG_TEST_DATABASE" == "postgres" ]; then
     export TEST_CMD="bin/busted $BUSTED_ARGS,cassandra,off"
@@ -65,6 +65,7 @@ if [ "$TEST_SUITE" == "plugins" ]; then
         $TEST_CMD $p || echo "* $p" >> .failed
     done
 
+    XXX EE: we cannot run some of these tests because of dbless
     cat kong-*.rockspec | grep kong- | grep -v zipkin | grep -v sidecar | grep "~" | while read line ; do
         REPOSITORY=`echo $line | sed "s/\"/ /g" | awk -F" " '{print $1}'`
         VERSION=`luarocks show $REPOSITORY | grep $REPOSITORY | head -1 | awk -F" " '{print $2}' | cut -f1 -d"-"`
@@ -102,9 +103,14 @@ fi
 if [ "$TEST_SUITE" == "pdk" ]; then
     TEST_NGINX_RANDOMIZE=1 prove -I. -j$JOBS -r t/01-pdk
 fi
-if [ "$TEST_SUITE" == "unit" ]; then
-    unset KONG_TEST_NGINX_USER KONG_PG_PASSWORD KONG_TEST_PG_PASSWORD
-    scripts/autodoc-admin-api
-    bin/busted -v -o gtest spec/01-unit
-    make lint
+
+
+# EE tests
+if [ "$TEST_SUITE" == "unit-ee" ]; then
+    make test-ee
+elif [ "$TEST_SUITE" == "integration-ee" ]; then
+    cd .ci/ad-server && make build-ad-server && make clone-plugin && cd ../..
+    make test-integration-ee
+elif [ "$TEST_SUITE" == "plugins-ee" ]; then
+    make test-plugins-ee
 fi

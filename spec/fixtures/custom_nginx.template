@@ -57,6 +57,13 @@ http {
 > end
     lua_shared_dict kong_mock_upstream_loggers  10m;
 
+    lua_shared_dict kong_vitals_counters 5m;
+    lua_shared_dict kong_vitals_lists   1m;
+    lua_shared_dict kong_counters       1m;
+    lua_shared_dict kong_reports_consumers       1m;
+    lua_shared_dict kong_reports_routes          1m;
+    lua_shared_dict kong_reports_services        1m;
+
     underscores_in_headers on;
 > if ssl_ciphers then
     ssl_ciphers ${{SSL_CIPHERS}};
@@ -155,6 +162,8 @@ http {
             set $upstream_x_forwarded_port   '';
             set $upstream_x_forwarded_prefix '';
             set $kong_proxy_mode             'http';
+
+            set $set_request_id $request_id;
 
             proxy_http_version    1.1;
             proxy_set_header      TE                 $upstream_te;
@@ -288,16 +297,24 @@ http {
         ssl_session_cache   shared:AdminSSL:10m;
 > end
 
-        # injected nginx_admin_* directives
-> for _, el in ipairs(nginx_admin_directives) do
+    # injected nginx_admin_* directives
+> for _, el in ipairs(nginx_admin_directives)  do
         $(el.name) $(el.value);
 > end
 
         location / {
             default_type application/json;
             content_by_lua_block {
-                Kong.admin_content()
+                Kong.admin_content({
+                    acah = "Content-Type, ${{RBAC_AUTH_HEADER}}",
+                })
             }
+
+            log_by_lua_block {
+                local audit_log = require "kong.enterprise_edition.audit_log"
+                audit_log.admin_log_handler()
+            }
+
             header_filter_by_lua_block {
                 Kong.admin_header_filter()
             }
@@ -656,6 +673,10 @@ stream {
 > if database == "cassandra" then
     lua_shared_dict stream_kong_cassandra              5m;
 > end
+
+    lua_shared_dict stream_kong_vitals_counters 50m;
+    lua_shared_dict stream_kong_counters 50m;
+    lua_shared_dict stream_kong_vitals_lists     1m;
 
 > if ssl_ciphers then
     ssl_ciphers ${{SSL_CIPHERS}};

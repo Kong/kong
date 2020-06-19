@@ -392,6 +392,25 @@ suite.
   plugins (those plugins still live in the core repository as of now, but will
   eventually be externalized)
 
+All tests of Kong Enterprise Edition functionality go into `spec-ee` to
+reduce collision and merge conflicts with CE tests.
+
+- `spec-ee/01-unit`
+- `spec-ee/02-integration`
+
+Unit and integration tests are both organized loosely by "feature". This reduces
+the possibility of numeric collision within `kong-ee` branches / pull requests.
+If there is a collision, the first PR merged to master wins, and the next must
+renumber its test folders. Ideally, the feature number is consistent in the unit
+and integration directories; that is, if RBAC unit tests are in `01-unit/01-rbac`,
+then RBAC integration tests should be in `02-integration/01-rbac`.
+
+Naming convention: <counter>-<function_tested>_spec.lua
+- Test files start with a 2-digit counter and a -.
+- The name of the spec includes the functionality or module being tested, words
+separated by _.
+- The name ends with `_spec.lua`
+
 A few guidelines when writing tests:
 
 - Use appropriate `describe` and `it` blocks, so it's obvious what is being

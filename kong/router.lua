@@ -1739,7 +1739,7 @@ function _M.new(routes)
             header["Kong-Service-Id"] = match_t.service.id
           end
 
-          if match_t.service.name then
+        if match_t.service.name then
             header["Kong-Service-Name"] = match_t.service.name
           end
         end

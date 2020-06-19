@@ -47,14 +47,17 @@ local http = require "resty.http"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
+local singletons = require "kong.singletons"
 local ffi = require "ffi"
+local invoke_plugin = require "kong.enterprise_edition.invoke_plugin"
+local portal_router = require "kong.portal.router"
+local rbac = require "kong.rbac"
 
 
 ffi.cdef [[
   int setenv(const char *name, const char *value, int overwrite);
   int unsetenv(const char *name);
 ]]
-
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 
@@ -177,6 +180,11 @@ db.plugins:load_plugin_schemas(conf.loaded_plugins)
 local blueprints = assert(Blueprints.new(db))
 local dcbp
 local config_yml
+
+
+kong.db = db
+singletons.db = db
+
 
 --- Iterator over DB strategies.
 -- @name each_strategy
@@ -309,9 +317,18 @@ local function get_db_utils(strategy, tables, plugins)
   db:truncate("plugins")
   assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
 
+  -- XXX EE
+  singletons.invoke_plugin = invoke_plugin.new {
+    loaded_plugins = db.plugins:get_handlers(),
+    kong_global = kong_global,
+  }
+
   -- cleanup the tags table, since it will be hacky and
   -- not necessary to implement "truncate trigger" in Cassandra
   db:truncate("tags")
+
+  -- initialize portal router
+  singletons.portal_router = portal_router.new(db)
 
   _G.kong.db = db
 
@@ -339,6 +356,8 @@ local function get_db_utils(strategy, tables, plugins)
       conf.loaded_plugins[plugin] = false
     end
   end
+
+  rbac.register_dao_hooks(db)
 
   if strategy ~= "off" then
     local workspaces = require "kong.workspaces"
@@ -1013,11 +1032,11 @@ local function tcp_server(port, opts)
 
             oks = oks + 1
 
-            client:send((opts.prefix or "") .. line .. "\n")
+        client:send((opts.prefix or "") .. line .. "\n")
           end
 
-          client:close()
-        end
+        client:close()
+      end
       end
       server:close()
       return line
@@ -2656,6 +2675,7 @@ end
 
     return kill.kill(pid_path, signal)
   end,
+
   -- send signal to all Nginx workers, not including the master
   signal_workers = function(prefix, signal, pid_path)
     if not pid_path then

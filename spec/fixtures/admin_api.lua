@@ -3,11 +3,14 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 
+local prefix = ""
+
+
 local function api_send(method, path, body, forced_port)
   local api_client = helpers.admin_client(nil, forced_port)
   local res, err = api_client:send({
     method = method,
-    path = path,
+    path = prefix .. path,
     headers = {
       ["Content-Type"] = "application/json"
     },
@@ -34,6 +37,7 @@ end
 
 
 local admin_api_as_db = {}
+
 
 for name, dao in pairs(helpers.db.daos) do
   local admin_api_name = dao.schema.admin_api_name or name
@@ -76,4 +80,13 @@ admin_api_as_db["targets"] = {
 }
 
 
-return blueprints.new(admin_api_as_db)
+local bp = blueprints.new(admin_api_as_db)
+
+
+function bp.set_prefix(p)
+  prefix = p
+end
+
+
+return bp
+

@@ -94,6 +94,7 @@ describe("kong config", function()
     ]])
 
     finally(function()
+      helpers.stop_kong()
       os.remove(filename)
       os.remove(dns_hostsfile)
     end)
@@ -383,7 +384,24 @@ describe("kong config", function()
     assert(helpers.stop_kong())
   end)
 
-  it("#db config db_export exports a yaml file", function()
+  it("#db config db_import can import resources that require database checks", function()
+    local filename = helpers.make_yaml_file([[
+      _format_version: "1.1"
+      rbac_users:
+      - user_token_ident: 0beec
+        user_token: $2b$09$Shxh6hHpoyEj9STVLx4Sz.WYT/XHocnccETcJVcMxF3iGFquOdP7C
+        id: d0d2f130-23bb-4f43-b8ac-9917ac1f3c72
+        enabled: true
+        name: foo
+        created_at: 1574889958
+    ]])
+
+    assert(helpers.kong_exec("config db_import " .. filename, {
+      prefix = helpers.test_conf.prefix,
+    }))
+  end)
+
+  it("#flaky #db config db_export exports a yaml file", function() -- XXX EE: db export
     assert(db.plugins:truncate())
     assert(db.routes:truncate())
     assert(db.services:truncate())

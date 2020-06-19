@@ -17,7 +17,7 @@ for _, strategy in helpers.each_strategy() do
       end
 
       for i = 1, #arr do
-        local service = assert(bp.services:insert())
+        local service = assert(bp.services:insert(nil))
         local route   = arr[i]
         route.service = service
         bp.routes:insert(route)
@@ -58,10 +58,7 @@ for _, strategy in helpers.each_strategy() do
     end
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy, {
-        "routes",
-        "services",
-      })
+      bp, db  = helpers.get_db_utils(strategy)
     end)
 
     before_each(function()

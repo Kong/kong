@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 
-describe("worker respawn", function()
+describe("#off worker respawn", function()
   local admin_client, proxy_client
 
   lazy_setup(function()

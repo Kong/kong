@@ -26,6 +26,11 @@ describe("Admin API - tags", function()
           assert.same(consumer.tags, row.tags)
         end
 
+        assert(bp.consumers:insert({
+          username = "adminapi-filter-by-tag-3",
+          tags = {"consumer3"}
+        }))
+
         assert(helpers.start_kong {
           database = strategy,
         })

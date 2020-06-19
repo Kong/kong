@@ -15,11 +15,12 @@ local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local pl_dir = require "pl.dir"
 local log = require "kong.cmd.utils.log"
+local ee = require "kong.enterprise_edition"
 local ffi = require "ffi"
 local bit = require "bit"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 
-local function gen_default_ssl_cert(kong_config, target)
+local function gen_default_ssl_cert(kong_config, pair_type)
   -- create SSL folder
   local ok, err = pl_dir.makepath(pl_path.join(kong_config.prefix, "ssl"))
   if not ok then
@@ -27,21 +28,37 @@ local function gen_default_ssl_cert(kong_config, target)
   end
 
   local ssl_cert, ssl_cert_key
-  if target == "admin" then
+  if pair_type == "admin" then
     ssl_cert = kong_config.admin_ssl_cert_default
     ssl_cert_key = kong_config.admin_ssl_cert_key_default
 
-  elseif target == "status" then
+  elseif pair_type == "status" then
     ssl_cert = kong_config.status_ssl_cert_default
     ssl_cert_key = kong_config.status_ssl_cert_key_default
 
-  else
+  elseif pair_type == "admin_gui" then
+    ssl_cert = kong_config.admin_gui_ssl_cert_default
+    ssl_cert_key = kong_config.admin_gui_ssl_cert_key_default
+
+  elseif pair_type == "portal_api" then
+    ssl_cert = kong_config.portal_api_ssl_cert_default
+    ssl_cert_key = kong_config.portal_api_ssl_cert_key_default
+
+  elseif pair_type == "portal_gui" then
+    ssl_cert = kong_config.portal_gui_ssl_cert_default
+    ssl_cert_key = kong_config.portal_gui_ssl_cert_key_default
+
+  elseif pair_type == "default" then
     ssl_cert = kong_config.ssl_cert_default
     ssl_cert_key = kong_config.ssl_cert_key_default
+
+  else
+    error("Invalid type " .. pair_type .. " in gen_default_ssl_cert")
   end
 
   if not pl_path.exists(ssl_cert) and not pl_path.exists(ssl_cert_key) then
-    log.verbose("generating %s SSL certificate and key", target or "default")
+    log.verbose("generating %s %s SSL certificate and key",
+                pair_type or "default")
 
     local key = openssl_pkey.new { bits = 2048 }
 
@@ -97,7 +114,8 @@ local function gen_default_ssl_cert(kong_config, target)
     end
 
   else
-    log.verbose("%s SSL certificate found at %s", target or "default", ssl_cert)
+    log.verbose("%s SSL certificate found at %s",
+                pair_type or "default", ssl_cert)
   end
 
   return true
@@ -189,7 +207,7 @@ end
 local function write_env_file(path, data)
   local c = require "lua_system_constants"
 
-  local flags = bit.bor(c.O_CREAT(), c.O_WRONLY())
+  local flags = bit.bor(c.O_CREAT(), c.O_WRONLY(), c.O_TRUNC())
   local mode  = bit.bor(c.S_IRUSR(), c.S_IWUSR(), c.S_IRGRP())
 
   local fd = ffi.C.open(path, flags, mode)
@@ -270,11 +288,28 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     end
   end
 
+  -- Portal API and GUI Logs
+  local log_files = {
+    kong_config.nginx_portal_api_acc_logs,
+    kong_config.nginx_portal_api_err_logs,
+    kong_config.nginx_portal_gui_acc_logs,
+    kong_config.nginx_portal_gui_err_logs,
+  }
+
+  for _, log_file in ipairs(log_files) do
+    if not pl_path.exists(log_file) then
+      local ok, err = pl_file.write(log_file, "")
+      if not ok then
+        return nil, err
+      end
+    end
+  end
+
   -- generate default SSL certs if needed
   if not kong_config.ssl_cert and not kong_config.ssl_cert_key and
     (kong_config.proxy_ssl_enabled or kong_config.stream_listeners[1] ~= nil) then
     log.verbose("SSL enabled, no custom certificate set: using default certificate")
-    local ok, err = gen_default_ssl_cert(kong_config)
+    local ok, err = gen_default_ssl_cert(kong_config, "default")
     if not ok then
       return nil, err
     end
@@ -292,6 +327,46 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     kong_config.admin_ssl_cert = kong_config.admin_ssl_cert_default
     kong_config.admin_ssl_cert_key = kong_config.admin_ssl_cert_key_default
   end
+  if kong_config.admin_gui_ssl_enabled and not kong_config.admin_gui_ssl_cert and
+    not kong_config.admin_gui_ssl_cert_key
+  then
+    log.verbose("Admin GUI SSL enabled, no custom certificate set: " ..
+                "using default certificate")
+    local ok, err = gen_default_ssl_cert(kong_config, "admin_gui")
+    if not ok then
+      return nil, err
+    end
+    kong_config.admin_gui_ssl_cert = kong_config.admin_gui_ssl_cert_default
+    kong_config.admin_gui_ssl_cert_key = kong_config.admin_gui_ssl_cert_key_default
+  end
+
+  -- Developer Portal GUI & API SSL Certificate Handling
+  if kong_config.portal_gui_ssl_enabled and not kong_config.portal_gui_ssl_cert and
+    not kong_config.portal_gui_ssl_cert_key
+  then
+    log.verbose("Developer Portal GUI SSL enabled, no custom certificate set: " ..
+                "using default certificate")
+    local ok, err = gen_default_ssl_cert(kong_config, "portal_gui")
+    if not ok then
+      return nil, err
+    end
+    kong_config.portal_gui_ssl_cert = kong_config.portal_gui_ssl_cert_default
+    kong_config.portal_gui_ssl_cert_key = kong_config.portal_gui_ssl_cert_key_default
+  end
+
+  if kong_config.portal_api_ssl_enabled and not kong_config.portal_api_ssl_cert and
+    not kong_config.portal_api_ssl_cert_key
+  then
+    log.verbose("Developer Portal API SSL enabled, no custom certificate set: " ..
+                "using default certificate")
+    local ok, err = gen_default_ssl_cert(kong_config, "portal_api")
+    if not ok then
+      return nil, err
+    end
+    kong_config.portal_api_ssl_cert = kong_config.portal_api_ssl_cert_default
+    kong_config.portal_api_ssl_cert_key = kong_config.portal_api_ssl_cert_key_default
+  end
+
 
   if kong_config.status_ssl_enabled and not kong_config.status_ssl_cert and
      not kong_config.status_ssl_cert_key then
@@ -378,6 +453,11 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
                                  table.concat(buf, "\n") .. "\n")
   if not ok then
     return nil, err
+  end
+
+  -- setup Kong Enterprise interfaces based on current configuration
+  if kong_config.admin_gui_listeners then
+    ee.prepare_admin(kong_config)
   end
 
   return true

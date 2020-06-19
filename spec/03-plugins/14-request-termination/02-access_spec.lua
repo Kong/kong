@@ -10,6 +10,7 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: request-termination (access) [#" .. strategy .. "]", function()
     local proxy_client
     local admin_client
+    local plugin_body
 
     lazy_setup(function()
       local bp, db = helpers.get_db_utils(strategy, {
@@ -51,50 +52,50 @@ for _, strategy in helpers.each_strategy() do
       })
 
       bp.plugins:insert {
-        name   = "request-termination",
-        route  = { id = route1.id },
-        config = {},
+        name     = "request-termination",
+        route = { id = route1.id },
+        config   = {},
       }
 
       bp.plugins:insert {
-        name   = "request-termination",
-        route  = { id = route2.id },
-        config = {
+        name     = "request-termination",
+        route = { id = route2.id },
+        config   = {
           status_code = 404,
         },
       }
 
       bp.plugins:insert {
-        name   = "request-termination",
-        route  = { id = route3.id },
-        config = {
+        name     = "request-termination",
+        route = { id = route3.id },
+        config   = {
           status_code = 406,
           message     = "Invalid",
         },
       }
 
       bp.plugins:insert {
-        name   = "request-termination",
-        route  = { id = route4.id },
-        config = {
+        name     = "request-termination",
+        route = { id = route4.id },
+        config   = {
           body = "<html><body><h1>Service is down for maintenance</h1></body></html>",
         },
       }
 
       bp.plugins:insert {
-        name   = "request-termination",
-        route  = { id = route5.id },
-        config = {
+        name     = "request-termination",
+        route = { id = route5.id },
+        config   = {
           status_code  = 451,
           content_type = "text/html",
           body         = "<html><body><h1>Service is down due to content infringement</h1></body></html>",
         },
       }
 
-      bp.plugins:insert {
-        name   = "request-termination",
-        route  = { id = route6.id },
-        config = {
+      plugin_body = bp.plugins:insert {
+        name     = "request-termination",
+        route = { id = route6.id },
+        config   = {
           status_code = 503,
           body        = '{"code": 1, "message": "Service unavailable"}',
         },
@@ -236,6 +237,52 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(503, res)
         local json = cjson.decode(body)
         assert.same({ code = 1, message = "Service unavailable" }, json)
+      end)
+
+      it("patch config to use message", function()
+        local res = assert(admin_client:send {
+          method = "PATCH",
+          path = "/plugins/" .. plugin_body.id,
+          body = {
+            config = {
+              message = "Invalid",
+              body = ngx.null
+            }
+          },
+          headers = {
+            ["Content-type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local plugin = cjson.decode(body)
+        assert.equal(ngx.null, plugin.config.body)
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "api6.request-termination.com"
+          }
+        })
+        local body = assert.res_status(503, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Invalid" }, json)
+      end)
+
+      it("patch to set message and body both null", function()
+        local res = assert(admin_client:send {
+          method = "PATCH",
+          path = "/plugins/" .. plugin_body.id,
+          body = {
+            config = {
+              message = ngx.null,
+              body = ngx.null
+            }
+          },
+          headers = {
+            ["Content-type"] = "application/json"
+          }
+        })
+        assert.res_status(200, res)
       end)
     end)
 

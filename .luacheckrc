@@ -36,12 +36,20 @@ files["kong/hooks.lua"] = {
 }
 
 
-files["kong/plugins/ldap-auth/*.lua"] = {
+files["kong/plugins/ldap-auth*/*.lua"] = {
     read_globals = {
         "bit.mod",
         "string.pack",
         "string.unpack",
     },
+}
+
+
+files["kong/tracing/init.lua"] = {
+    read_globals = {
+        "table.pack",
+        "table.unpack",
+    }
 }
 
 
@@ -51,4 +59,30 @@ files["spec/**/*.lua"] = {
 
 files["spec-old-api/**/*.lua"] = {
     std = "ngx_lua+busted",
+}
+
+files["spec-ee/**/*.lua"] = {
+    std = "ngx_lua+busted",
+}
+
+files["kong/keyring/init.lua"] = {
+    read_globals = {
+        "table.pack",
+        "table.unpack",
+    }
+}
+
+
+files["kong/hooks.lua"] = {
+    read_globals = {
+        "table.pack",
+        "table.unpack",
+    }
+}
+
+
+files["spec-ee/01-unit/07-keyring/01-init_spec.lua"] = {
+    read_globals = {
+        "table.pack",
+    }
 }

@@ -96,7 +96,7 @@ end
 
 for _, strategy in helpers.each_strategy() do
 
-  describe("gRPC Proxying [#" .. strategy .. "]", function()
+  describe("#grpc Proxying [#" .. strategy .. "]", function()
     local grpc_client
     local grpcs_client
     local bp

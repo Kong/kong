@@ -3,6 +3,7 @@ local utils = require "kong.tools.utils"
 
 local deep_merge = utils.deep_merge
 local fmt = string.format
+local workspaces = require "kong.workspaces"
 
 
 local Blueprint   = {}
@@ -135,6 +136,13 @@ function _M.new(db)
     return {
       custom_id = consumer_custom_id_seq:next(),
       username  = consumer_username_seq:next(),
+    }
+  end)
+
+  local developer_email_seq = new_sequence("dev-%d@example.com")
+  res.developers = new_blueprint(db.developers, function()
+    return {
+      email = developer_email_seq:next(),
     }
   end)
 
@@ -366,7 +374,22 @@ function _M.new(db)
     }
   end)
 
+  local rbac_roles_seq = new_sequence("rbac_role-%d")
+  res.rbac_roles = new_blueprint(db.rbac_roles, function()
+    return {
+      name = rbac_roles_seq:next(),
+    }
+  end)
+
+  local rbac_users_seq = new_sequence("rbac_user-%d")
+  res.rbac_users = new_blueprint(db.rbac_users, function()
+    return {
+      name = rbac_users_seq:next(),
+    }
+  end)
+
   return res
 end
+
 
 return _M
