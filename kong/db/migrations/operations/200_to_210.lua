@@ -174,7 +174,7 @@ local postgres = {
     fixup_plugin_config = function(_, connector, plugin_name, fixup_fn)
       local pgmoon_json = require("pgmoon.json")
 
-      for row, err in connector:iterate("SELECT * FROM 'plugins'") do
+      for row, err in connector:iterate([[SELECT * FROM "plugins"]]) do
         if err then
           return nil, err
         end
