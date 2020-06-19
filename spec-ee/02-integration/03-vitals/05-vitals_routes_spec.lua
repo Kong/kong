@@ -1,5 +1,4 @@
 local helpers     = require "spec.helpers"
-local workspaces  = require "kong.workspaces"
 local utils       = require "kong.tools.utils"
 local cassandra   = require "kong.vitals.cassandra.strategy"
 local postgres    = require "kong.vitals.postgres.strategy"
@@ -800,7 +799,7 @@ for _, db_strategy in helpers.each_strategy() do
         before_each(function()
           db:truncate("vitals_code_classes_by_workspace")
 
-          workspace = workspaces.fetch_workspace("default")
+          workspace = db.workspaces:select_by_name("default")
           assert.not_nil(workspace)
 
           workspace_id = workspace.id
@@ -1431,7 +1430,7 @@ for _, db_strategy in helpers.each_strategy() do
             local consumer = assert(bp.consumers:insert_ws({
               username  = "bob",
               custom_id = "1234"
-            }, workspaces.fetch_workspace("default")))
+            }, db.workspaces:select_by_name("default")))
 
             local now        = time()
             local minute     = now - (now % 60)
@@ -1490,7 +1489,7 @@ for _, db_strategy in helpers.each_strategy() do
             local consumer = assert(bp.consumers:insert_ws({
               username  = "bob",
               custom_id = "1234"
-            }, workspaces.fetch_workspace("default")))
+            }, db.workspaces:select_by_name("default")))
 
             local minute_start_at = time() - (time() % 60)
             local route_id        = utils.uuid()
@@ -1547,7 +1546,7 @@ for _, db_strategy in helpers.each_strategy() do
             local consumer = assert(bp.consumers:insert_ws({
               username  = "bob",
               custom_id = "1234"
-            }, workspaces.fetch_workspace("default")))
+            }, db.workspaces:select_by_name("default")))
 
             local res = assert(client:send {
               methd = "GET",
@@ -1645,11 +1644,11 @@ for _, db_strategy in helpers.each_strategy() do
             local consumer = assert(bp.consumers:insert_ws({
               username  = "bob",
               custom_id = "1234"
-            }, workspaces.fetch_workspace("default")))
+            }, db.workspaces:select_by_name("default")))
 
             local route = assert(bp.routes:insert_ws({
               paths = {"/my-route"}
-            }, workspaces.fetch_workspace("default")))
+            }, db.workspaces:select_by_name("default")))
 
             local route_id = route.id
 
@@ -1710,11 +1709,11 @@ for _, db_strategy in helpers.each_strategy() do
             local consumer = assert(bp.consumers:insert_ws({
               username  = "bob",
               custom_id = "1234"
-            }, workspaces.fetch_workspace("default")))
+            }, db.workspaces:select_by_name("default")))
 
             local route = assert(bp.routes:insert_ws({
               paths = {"/my-route"}
-            }, workspaces.fetch_workspace("default")))
+            }, db.workspaces:select_by_name("default")))
 
             local route_id = route.id
 
@@ -1773,7 +1772,7 @@ for _, db_strategy in helpers.each_strategy() do
             local consumer = assert(bp.consumers:insert_ws({
               username  = "bob",
               custom_id = "1234"
-            }, workspaces.fetch_workspace("default")))
+            }, db.workspaces:select_by_name("default")))
 
             local res = assert(client:send {
               methd = "GET",
@@ -1936,7 +1935,7 @@ for _, db_strategy in helpers.each_strategy() do
             local consumer = assert(bp.consumers:insert_ws({
               username  = "bob",
               custom_id = "1234"
-            }, workspaces.fetch_workspace("default")))
+            }, db.workspaces:select_by_name("default")))
 
             local res = assert(client:send {
               methd = "GET",
@@ -1955,7 +1954,7 @@ for _, db_strategy in helpers.each_strategy() do
             local consumer = assert(bp.consumers:insert_ws({
               username  = "bob",
               custom_id = "1234"
-            }, workspaces.fetch_workspace("default")))
+            }, db.workspaces:select_by_name("default")))
 
             local res = assert(client:send {
               methd = "GET",

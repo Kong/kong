@@ -167,7 +167,7 @@ app:before_filter(function(self)
   local invoke_plugin = singletons.invoke_plugin
   local ws_name = self.params.workspace_name or workspaces.DEFAULT_WORKSPACE
 
-  local ws, err = workspaces.fetch_workspace(ws_name)
+  local ws, err = kong.db.workspaces:select_by_name(ws_name)
   if err then
     ngx.log(ngx.ERR, err)
     return kong.response.exit(500, { message = "An unexpected error occurred" })

@@ -48,7 +48,7 @@ function _M.set_workspace_by_subdomain(self)
 
   local ws_name = split_host[1]
 
-  local workspace, err = workspaces.fetch_workspace(ws_name)
+  local workspace, err = kong.db.workspaces:select_by_name(ws_name)
   if err then
     ngx.log(ngx.ERR, err)
     return kong.response.exit(500, { message = "An unexpected error occurred" })
@@ -65,7 +65,7 @@ end
 
 function _M.set_workspace_by_path(self)
   local workspace_name = self.params.workspace_name or workspaces.DEFAULT_WORKSPACE
-  local workspace, err = workspaces.fetch_workspace(workspace_name)
+  local workspace, err = kong.db.workspaces:select_by_name(workspace_name)
 
   if err then
     ngx.log(ngx.ERR, err)
@@ -79,7 +79,7 @@ function _M.set_workspace_by_path(self)
 
   -- unable to find workspace associated with workspace_name, fallback to default
   if not workspace then
-    workspace, err = workspaces.fetch_workspace(workspaces.DEFAULT_WORKSPACE)
+    workspace, err = kong.db.workspaces:select_by_name(workspaces.DEFAULT_WORKSPACE)
     if err then
       ngx.log(ngx.ERR, err)
       return kong.response.exit(500, { message = "An unexpected error occurred" })

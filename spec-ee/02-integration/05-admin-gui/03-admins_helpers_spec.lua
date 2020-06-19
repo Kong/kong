@@ -36,7 +36,7 @@ for _, strategy in helpers.each_strategy() do
 
       singletons.db = db
 
-      default_ws = assert(workspaces.fetch_workspace("default"))
+      default_ws = assert(db.workspaces:select_by_name("default"))
       another_ws = assert(db.workspaces:insert({ name = "ws1" }))
 
       for i = 1, 4 do

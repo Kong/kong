@@ -8,58 +8,6 @@ describe("route_collision", function()
   _G.kong = {
     db = DB.new(kong_config)
   }
-  local workspaceable_relations = workspaces.get_workspaceable_relations()
-  describe("workspaceable relations", function()
-    it("is a table", function()
-      assert.is_table(workspaceable_relations)
-    end)
-    it("is immutable", function()
-      local ok, err = pcall(function()
-        workspaceable_relations.newfield = 123
-      end)
-      assert.falsy(ok)
-      assert.matches("immutable table", err)
-    end)
-    it("iterates", function()
-      local items = {
-        rel1 = { primary_key = "id1", primary_keys = {id1 = true} },
-        rel2 = { primary_key = "id2", primary_keys = {id2 = true} },
-        rel3 = {
-          primary_key = "id3",
-          primary_keys = {id3 = true},
-          unique_keys = {
-            field1 = {
-              schema = {
-                fields = {
-                  id = {
-                    dao_insert_value = true,
-                    required = true,
-                    type = "id"
-                  },
-                  field1 = {
-                    required = true,
-                    type = "string",
-                    unique = true
-                  },
-                },
-              },
-              table = "rel3"
-            }
-          }
-        },
-      }
-      for k, v in pairs(workspaceable_relations) do
-        if items[k] then
-          assert.is_same(v, items[k])
-        end
-      end
-    end)
-    it("has a protected metatable", function()
-      local ok, val = pcall(getmetatable, workspaceable_relations)
-      assert.is_true(ok)
-      assert.is_false(val)
-    end)
-  end)
 
   describe("adding a route", function()
     local routes

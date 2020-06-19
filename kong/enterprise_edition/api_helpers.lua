@@ -457,7 +457,7 @@ function _M.before_filter(self)
     local ws_name = self.params.workspace_name or workspaces.DEFAULT_WORKSPACE
 
     -- fetch the workspace for current request
-    local workspace, err = workspaces.fetch_workspace(ws_name)
+    local workspace, err = kong.db.workspaces:select_by_name(ws_name)
     if err then
       ngx.log(ngx.ERR, err)
       return kong.response.exit(500, { message = "And unexpected error occurred" })
