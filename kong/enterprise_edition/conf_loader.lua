@@ -1,8 +1,155 @@
-local cjson        = require "cjson.safe"
-local pl_path      = require "pl.path"
-local pl_stringx   = require "pl.stringx"
 local enterprise_utils = require "kong.enterprise_edition.utils"
+local listeners = require "kong.conf_loader.listeners"
+local log = require "kong.cmd.utils.log"
+
+local pl_stringx = require "pl.stringx"
+local pl_path = require "pl.path"
+local pl_file = require "pl.file"
+local cjson = require "cjson.safe"
+
+
 local re_match = ngx.re.match
+
+
+local EE_PREFIX_PATHS = {
+  nginx_portal_api_acc_logs = {"logs", "portal_api_access.log"},
+  nginx_portal_api_err_logs = {"logs", "portal_api_error.log"},
+
+  nginx_portal_gui_acc_logs = {"logs", "portal_gui_access.log"},
+  nginx_portal_gui_err_logs = {"logs", "portal_gui_error.log"},
+
+  admin_gui_ssl_cert_default = {"ssl", "admin-gui-kong-default.crt"},
+  admin_gui_ssl_cert_key_default = {"ssl", "admin-gui-kong-default.key"},
+
+  portal_api_ssl_cert_default = {"ssl", "portal-api-kong-default.crt"},
+  portal_api_ssl_cert_key_default = {"ssl", "portal-api-kong-default.key"},
+
+  portal_gui_ssl_cert_default = {"ssl", "portal-gui-kong-default.crt"},
+  portal_gui_ssl_cert_key_default = {"ssl", "portal-gui-kong-default.key"},
+}
+
+
+local EE_CONF_INFERENCES = {
+  enforce_rbac = {enum = {"on", "off", "both", "entity"}},
+  rbac_auth_header = {typ = "string"},
+
+  vitals = {typ = "boolean"},
+  vitals_flush_interval = {typ = "number"},
+  vitals_delete_interval_pg = {typ = "number"},
+  vitals_ttl_seconds = {typ = "number"},
+  vitals_ttl_minutes = {typ = "number"},
+
+  vitals_strategy = {typ = "string"},
+  vitals_statsd_address = {typ = "string"},
+  vitals_statsd_prefix = {typ = "string"},
+  vitals_statsd_udp_packet_size = {typ = "number"},
+  vitals_tsdb_address = {typ = "string"},
+  vitals_tsdb_user = {typ = "string"},
+  vitals_tsdb_password = {typ = "string"},
+  vitals_prometheus_scrape_interval = {typ = "number"},
+
+  audit_log = {typ = "boolean"},
+  audit_log_ignore_methods = {typ = "array"},
+  audit_log_ignore_paths = {typ = "array"},
+  audit_log_ignore_tables = {typ = "array"},
+  audit_log_record_ttl = {typ = "number"},
+  audit_log_signing_key = {typ = "string"},
+
+  admin_api_uri = {typ = "string"},
+  admin_gui_listen = {typ = "array"},
+  admin_gui_error_log = {typ = "string"},
+  admin_gui_access_log = {typ = "string"},
+  admin_gui_flags = {typ = "string"},
+  admin_gui_auth = {typ = "string"},
+  admin_gui_auth_conf = {typ = "string"},
+  admin_gui_auth_header = {typ = "string"},
+  admin_gui_auth_password_complexity = {typ = "string"},
+  admin_gui_session_conf = {typ = "string"},
+  admin_gui_auth_login_attempts = {typ = "number"},
+  admin_emails_from = {typ = "string"},
+  admin_emails_reply_to = {typ = "string"},
+  admin_invitation_expiry = {typ = "number"},
+
+  portal = {typ = "boolean"},
+  portal_is_legacy = {typ = "boolean"},
+  portal_gui_listen = {typ = "array"},
+  portal_gui_host = {typ = "string"},
+  portal_gui_protocol = {typ = "string"},
+  portal_cors_origins = {typ = "array"},
+  portal_gui_use_subdomains = {typ = "boolean"},
+  portal_session_conf = {typ = "string"},
+
+  portal_api_access_log = {typ = "string"},
+  portal_api_error_log = {typ = "string"},
+  portal_api_listen = {typ = "array"},
+  portal_api_url = {typ = "string"},
+  portal_app_auth = {typ = "string"},
+
+  proxy_uri = {typ = "string"},
+  portal_auth = {typ = "string"},
+  portal_auth_password_complexity = {typ = "string"},
+  portal_auth_conf = {typ = "string"},
+  portal_auth_login_attempts = {typ = "number"},
+  portal_token_exp = {typ = "number"},
+  portal_auto_approve = {typ = "boolean"},
+  portal_email_verification = {typ = "boolean"},
+  portal_invite_email = {typ = "boolean"},
+  portal_access_request_email = {typ = "boolean"},
+  portal_approved_email = {typ = "boolean"},
+  portal_reset_email = {typ = "boolean"},
+  portal_reset_success_email = {typ = "boolean"},
+  portal_emails_from = {typ = "string"},
+  portal_emails_reply_to = {typ = "string"},
+
+  smtp_host = {typ = "string"},
+  smtp_port = {typ = "number"},
+  smtp_starttls = {typ = "boolean"},
+  smtp_username = {typ = "string"},
+  smtp_password = {typ = "string"},
+  smtp_ssl = {typ = "boolean"},
+  smtp_auth_type = {typ = "string"},
+  smtp_domain = {typ = "string"},
+  smtp_timeout_connect = {typ = "number"},
+  smtp_timeout_send = {typ = "number"},
+  smtp_timeout_read = {typ = "number"},
+
+  smtp_admin_emails = {typ = "array"},
+  smtp_mock = {typ = "boolean"},
+
+  tracing = {typ = "boolean"},
+  tracing_write_strategy = {enum = {"file", "file_raw", "tcp", "tls", "udp",
+                                    "http"}},
+  tracing_write_endpoint = {typ = "string"},
+  tracing_time_threshold = {typ = "number"},
+  tracing_types = {typ = "array"},
+  tracing_debug_header = {typ = "string"},
+  generate_trace_details = {typ = "boolean"},
+
+  keyring_enabled = { typ = "boolean" },
+  keyring_blob_path = { typ = "string" },
+  keyring_public_key = { typ = "string" },
+  keyring_private_key = { typ = "string" },
+  keyring_strategy = { enum = { "cluster", "vault" }, },
+  keyring_vault_host = { typ = "string" },
+  keyring_vault_mount = { typ = "string" },
+  keyring_vault_path = { typ = "string" },
+  keyring_vault_token = { typ = "string" },
+
+  event_hooks_enabled = { typ = "boolean" },
+
+  route_validation_strategy = { enum = {"smart", "path", "off"}},
+  enforce_route_path_pattern = {typ = "string"},
+}
+
+
+local EE_CONF_SENSITIVE = {
+  smtp_password = true,
+  admin_gui_auth_header = true,
+  admin_gui_auth_conf = true,
+  admin_gui_session_conf = true,
+  portal_auth_conf = true,
+  portal_session_conf = true,
+}
 
 
 -- @param value The options string to check for flags (whitespace separated)
@@ -402,7 +549,7 @@ end
 local function validate_enforce_rbac(conf)
   -- when `enforce_rbac` xor `admin_gui_auth` means,
   -- one is enable and the other is disable.
-  -- checking `not a ~= not b`, since `enforce_rbac` 
+  -- checking `not a ~= not b`, since `enforce_rbac`
   -- has multiple valuses.
   if conf.enforce_rbac == "off" ~= not conf.admin_gui_auth then
     return nil, "RBAC authorization is " .. conf.enforce_rbac ..
@@ -444,12 +591,157 @@ local function validate(conf, errors)
   add_ee_required_plugins(conf)
   validate_tracing(conf, errors)
   validate_route_path_pattern(conf, errors)
+
+  if conf.portal then
+    if (table.concat(conf.portal_api_listen, ",") .. " "):find("%sssl[%s,]") then
+      if conf.portal_api_ssl_cert and not conf.portal_api_ssl_cert_key then
+        errors[#errors+1] = "portal_api_ssl_cert_key must be specified"
+      elseif conf.portal_api_ssl_cert_key and not conf.portal_api_ssl_cert then
+        errors[#errors+1] = "portal_api_ssl_cert must be specified"
+      end
+
+      if conf.portal_api_ssl_cert and not pl_path.exists(conf.portal_api_ssl_cert) then
+        errors[#errors+1] = "portal_api_ssl_cert: no such file at " .. conf.portal_api_ssl_cert
+      end
+      if conf.portal_api_ssl_cert_key and not pl_path.exists(conf.portal_api_ssl_cert_key) then
+        errors[#errors+1] = "portal_api_ssl_cert_key: no such file at " .. conf.portal_api_ssl_cert_key
+      end
+    end
+
+    if (table.concat(conf.portal_gui_listen, ",") .. " "):find("%sssl[%s,]") then
+      if conf.portal_gui_ssl_cert and not conf.portal_gui_ssl_cert_key then
+        errors[#errors+1] = "portal_gui_ssl_cert_key must be specified"
+      elseif conf.portal_gui_ssl_cert_key and not conf.portal_gui_ssl_cert then
+        errors[#errors+1] = "portal_gui_ssl_cert must be specified"
+      end
+
+      if conf.portal_gui_ssl_cert and not pl_path.exists(conf.portal_gui_ssl_cert) then
+        errors[#errors+1] = "portal_gui_ssl_cert: no such file at " .. conf.portal_gui_ssl_cert
+      end
+      if conf.portal_gui_ssl_cert_key and not pl_path.exists(conf.portal_gui_ssl_cert_key) then
+        errors[#errors+1] = "portal_gui_ssl_cert_key: no such file at " .. conf.portal_gui_ssl_cert_key
+      end
+    end
+  end
+
+  -- portal auth conf json conversion
+  if conf.portal_auth and conf.portal_auth_conf then
+    conf.portal_auth_conf = string.gsub(conf.portal_auth_conf, "#", "\\#")
+    local json, err = cjson.decode(tostring(conf.portal_auth_conf))
+    if json then
+      conf.portal_auth_conf = json
+
+      -- used for writing back to prefix/.kong_env as a string
+      setmetatable(conf.portal_auth_conf, {
+        __tostring = function (v)
+          return assert(cjson.encode(v))
+        end
+      })
+    end
+
+    if err then
+      errors[#errors+1] = "portal_auth_conf must be valid json: "
+        .. err
+        .. " - " .. conf.portal_auth_conf
+    end
+  end
+
+  if conf.audit_log_signing_key then
+    local k = pl_path.abspath(conf.audit_log_signing_key)
+
+    local resty_rsa = require "resty.rsa"
+    local p, err = resty_rsa:new({ private_key = pl_file.read(k) })
+    if not p then
+      errors[#errors + 1] = "audit_log_signing_key: invalid RSA private key ("
+                            .. err .. ")"
+    end
+
+    conf.audit_log_signing_key = k
+  end
 end
 
+
+local function load(conf)
+  local ok, err = listeners.parse(conf, {
+    { name = "admin_gui_listen", subsystem = "http", ssl_flag = "admin_gui_ssl_enabled" },
+  })
+  if not ok then
+    return nil, err
+  end
+
+  if conf.portal then
+    ok, err = listeners.parse(conf, {
+      { name = "portal_gui_listen", subsystem = "http", ssl_flag = "portal_gui_ssl_enabled" },
+      { name = "portal_api_listen", subsystem = "http", ssl_flag = "portal_api_ssl_enabled" },
+    })
+    if not ok then
+      return nil, err
+    end
+  end
+
+  if conf.admin_gui_ssl_cert and conf.admin_gui_ssl_cert_key then
+    conf.admin_gui_ssl_cert = pl_path.abspath(conf.admin_gui_ssl_cert)
+    conf.admin_gui_ssl_cert_key = pl_path.abspath(conf.admin_gui_ssl_cert_key)
+  end
+
+  if conf.portal then
+    if conf.portal_api_ssl_cert and conf.portal_api_ssl_cert_key then
+      conf.portal_api_ssl_cert = pl_path.abspath(conf.portal_api_ssl_cert)
+      conf.portal_api_ssl_cert_key = pl_path.abspath(conf.portal_api_ssl_cert_key)
+    end
+
+    if conf.portal_gui_ssl_cert and conf.portal_gui_ssl_cert_key then
+      conf.portal_gui_ssl_cert = pl_path.abspath(conf.portal_gui_ssl_cert)
+      conf.portal_gui_ssl_cert_key = pl_path.abspath(conf.portal_gui_ssl_cert_key)
+    end
+  end
+
+  -- warn user if admin_gui_auth is on but admin_gui_url is empty
+  if conf.admin_gui_auth and not conf.admin_gui_url then
+    log.warn("when admin_gui_auth is set, admin_gui_url is required")
+  end
+
+  -- warn user if ssl is disabled and rbac is enforced
+  -- TODO CE would probably benefit from some helpers - eg, see
+  -- kong.enterprise_edition.select_listener
+  local ssl_on = (table.concat(conf.admin_listen, ",") .. " "):find("%sssl[%s,]")
+  if conf.enforce_rbac ~= "off" and not ssl_on then
+    log.warn("RBAC authorization is enabled but Admin API calls will not be " ..
+      "encrypted via SSL")
+  end
+
+  -- warn user if rbac is on without admin_gui set
+  local ok, err = validate_enforce_rbac(conf)
+  if not ok then
+    log.warn(err)
+  end
+
+  -- preserve user-facing name `enforce_rbac` but use
+  -- `rbac` in code to minimize changes
+  conf.rbac = conf.enforce_rbac
+
+  return true
+end
+
+
+local function add(dst, src)
+  for k, v in pairs(src) do
+    dst[k] = v
+  end
+end
+
+
 return {
+  EE_PREFIX_PATHS = EE_PREFIX_PATHS,
+  EE_CONF_INFERENCES = EE_CONF_INFERENCES,
+  EE_CONF_SENSITIVE = EE_CONF_SENSITIVE,
+
   validate = validate,
-  validate_enforce_rbac = validate_enforce_rbac,
+  load = load,
+  add = add,
+
   -- only exposed for unit testing :-(
+  validate_enforce_rbac = validate_enforce_rbac,
   validate_admin_gui_authentication = validate_admin_gui_authentication,
   validate_admin_gui_session = validate_admin_gui_session,
   validate_admin_gui_ssl = validate_admin_gui_ssl,

@@ -163,4 +163,8 @@ function listeners.parse(conf, listener_configs)
 end
 
 
+-- for tests only
+listeners._parse_listeners = parse_listeners
+
+
 return listeners
