@@ -129,6 +129,7 @@ build = {
     ["kong.enterprise_edition.event_hooks"] = "kong/enterprise_edition/event_hooks.lua",
     ["kong.enterprise_edition.runloop.handler"] = "kong/enterprise_edition/runloop/handler.lua",
     ["kong.enterprise_edition.db"] = "kong/enterprise_edition/db/init.lua",
+    ["kong.enterprise_edition.workspaces.scope"] = "kong/enterprise_edition/workspaces/scope.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",

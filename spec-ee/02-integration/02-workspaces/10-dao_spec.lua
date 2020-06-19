@@ -1,10 +1,10 @@
 local helpers    = require "spec.helpers"
 local utils   = require "kong.tools.utils"
-local workspaces = require "kong.workspaces"
+local scope = require "kong.enterprise_edition.workspaces.scope"
 
 for _, strategy in helpers.each_strategy() do
   describe("kong.db [#" .. strategy .. "]", function()
-    local run_ws = workspaces.run_with_ws_scope
+    local run_ws = scope.run_with_ws_scope
     local bp, db
     -- workspaces objects
     local s1

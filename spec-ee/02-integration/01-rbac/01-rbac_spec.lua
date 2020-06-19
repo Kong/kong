@@ -1,6 +1,6 @@
 local spec_helpers = require "spec.helpers"
 local utils       = require "kong.tools.utils"
-local workspaces = require "kong.workspaces"
+local scope = require "kong.enterprise_edition.workspaces.scope"
 local bit = require "bit"
 
 
@@ -917,11 +917,11 @@ describe("(#" .. strategy .. ")", function()
         }
       end
 
-      default_ws = assert(workspaces.fetch_workspace("default"))
+      default_ws = assert(db.workspaces:select_by_name("default"))
       another_ws = assert(db.workspaces:insert({ name = "ws1" }))
 
       local function generate_user (i, ws, endpoint_workspace)
-        return workspaces.run_with_ws_scope({ws}, function ()
+        return scope.run_with_ws_scope({ws}, function ()
           local user = assert(db.rbac_users:insert({
             name = "some-user-" .. i,
             user_token = "billgatesletmeinnow" .. i,
@@ -934,7 +934,7 @@ describe("(#" .. strategy .. ")", function()
           if endpoint_workspace then
             role = db.rbac_roles:insert({ name = "role" .. i })
 
-            workspaces.run_with_ws_scope({}, function ()
+            scope.run_with_ws_scope({}, function ()
               assert(db.rbac_user_roles:insert({
                 user = user,
                 role = role,
@@ -970,7 +970,7 @@ describe("(#" .. strategy .. ")", function()
       users[4] = generate_user(4, default_ws, nil)
 
       users[5] = generate_user(5, default_ws, "*")
-      workspaces.run_with_ws_scope({default_ws}, function ()
+      scope.run_with_ws_scope({default_ws}, function ()
         assert(db.rbac_role_endpoints:insert({
           role = users[5].role,
           workspace = "*",

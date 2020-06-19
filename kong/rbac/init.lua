@@ -2,6 +2,7 @@ local _M = {}
 
 local bit        = require "bit"
 local workspaces = require "kong.workspaces"
+local scope      = require "kong.enterprise_edition.workspaces.scope"
 local utils      = require "kong.tools.utils"
 local cjson      = require "cjson"
 local tablex     = require "pl.tablex"
@@ -408,7 +409,7 @@ end
 
 local function retrieve_roles_ids(db, user_id)
   local relationship_ids = {}
-  workspaces.run_with_ws_scope({}, function()
+  scope.run_with_ws_scope({}, function()
     for row, err in db.rbac_user_roles:each_for_user({id = user_id}, nil, {skip_rbac = true}) do
       if err then
         return nil, err
@@ -517,7 +518,7 @@ function _M.get_groups_roles(db, groups)
       for i = 1, #relationship_ids do
         local rbac_role_id = relationship_ids[i]["rbac_role"].id
         local role_entity_key = db.rbac_roles:cache_key(rbac_role_id)
-        workspaces.run_with_ws_scope({}, function ()
+        scope.run_with_ws_scope({}, function ()
           local relationship, err = cache:get(role_entity_key, nil,
           retrieve_relationship_entity, "rbac_roles", rbac_role_id)
           if err then
@@ -875,7 +876,7 @@ local function add_default_role_entity_permission(entity, table_name)
     })
   end
 
-  return workspaces.run_with_ws_scope({}, insert)
+  return scope.run_with_ws_scope({}, insert)
 end
 _M.add_default_role_entity_permission = add_default_role_entity_permission
 
@@ -1408,7 +1409,7 @@ load_rbac_ctx = function(ctx, rbac_user, groups)
     local must_update
     user, must_update = validate_rbac_token(token_users, rbac_token)
     if must_update then
-      workspaces.run_with_ws_scope({},
+      scope.run_with_ws_scope({},
         update_user_token,
         user)
     end
@@ -1432,7 +1433,7 @@ load_rbac_ctx = function(ctx, rbac_user, groups)
   local _roles = {}
   local _entities_perms = {}
   local _endpoints_perms = {}
-  local group_roles, err = workspaces.run_with_ws_scope({}, _M.get_groups_roles,
+  local group_roles, err = scope.run_with_ws_scope({}, _M.get_groups_roles,
                                                         kong.db,
                                                         ngx.ctx.authenticated_groups)
   if err then
@@ -1591,14 +1592,14 @@ end
 
 function _M.find_all_ws_for_rbac_user(rbac_user)
     -- get roles across all workspaces
-  local roles, err = workspaces.run_with_ws_scope({}, _M.get_user_roles,
+  local roles, err = scope.run_with_ws_scope({}, _M.get_user_roles,
                                                   kong.db,
                                                   rbac_user)
   if err then
     return nil, err
   end
 
-  local group_roles, err = workspaces.run_with_ws_scope({},
+  local group_roles, err = scope.run_with_ws_scope({},
                                                    _M.get_groups_roles,
                                                    kong.db,
                                                    ngx.ctx.authenticated_groups)

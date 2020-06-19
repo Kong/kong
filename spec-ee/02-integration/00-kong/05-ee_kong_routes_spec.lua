@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local enums = require "kong.enterprise_edition.dao.enums"
 local admins = require "kong.enterprise_edition.admins_helpers"
-local workspaces = require "kong.workspaces"
+local scope = require "kong.enterprise_edition.workspaces.scope"
 local ee_helpers = require "spec-ee.helpers"
 local rbac = require "kong.rbac"
 
@@ -191,7 +191,7 @@ for _, strategy in helpers.each_strategy() do
         if err then
           ws1 = db.workspaces:select_by_name("test-ws-1")
         end
-        local role1 = workspaces.run_with_ws_scope({ws1}, function ()
+        local role1 = scope.run_with_ws_scope({ws1}, function ()
           return db.rbac_roles:insert({ name = "hello" })
         end)
         assert(role1)
@@ -391,7 +391,7 @@ for _, strategy in helpers.each_strategy() do
       local json = cjson.decode(res)
 
       assert.same(1, #json.workspaces)
-      assert.equal(workspaces.DEFAULT_WORKSPACE, json.workspaces[1].name)
+      assert.equal("default", json.workspaces[1].name)
     end)
 
     it("session", function()

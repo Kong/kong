@@ -1,6 +1,6 @@
 local enums      = require "kong.enterprise_edition.dao.enums"
 local rbac       = require "kong.rbac"
-local workspaces = require "kong.workspaces"
+local scope      = require "kong.enterprise_edition.workspaces.scope"
 local singletons = require "kong.singletons"
 local admins     = require "kong.enterprise_edition.admins_helpers"
 local ee_api     = require "kong.enterprise_edition.api_helpers"
@@ -186,7 +186,7 @@ return {
 
       -- we've now validated that all our roles exist, and this user exists,
       -- so time to create the assignment
-      workspaces.run_with_ws_scope({}, function ()
+      scope.run_with_ws_scope({}, function ()
         for i = 1, #roles do
           local _, _, err_t = db.rbac_user_roles:insert({
             user = self.admin.rbac_user,

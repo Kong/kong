@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local ee_helpers = require "spec-ee.helpers"
-local workspaces = require "kong.workspaces"
+local scope = require "kong.enterprise_edition.workspaces.scope"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local utils = require "kong.tools.utils"
 local admins_helpers = require "kong.enterprise_edition.admins_helpers"
@@ -26,7 +26,7 @@ end
 local function setup_ws_defaults(dao, db, workspace)
   local endpoint = "*"
   if not workspace then
-    workspace = workspaces.DEFAULT_WORKSPACE
+    workspace = "default"
     endpoint = "*"
   end
 
@@ -51,7 +51,7 @@ end
 
 
 local function admin(db, workspace, name, role, email)
-  return workspaces.run_with_ws_scope({workspace}, function ()
+  return scope.run_with_ws_scope({workspace}, function ()
     local admin = assert(db.admins:insert({
       username = name,
       email = email,
@@ -115,7 +115,7 @@ for _, strategy in helpers.each_strategy() do
 
         client = assert(helpers.admin_client())
 
-        local ws = setup_ws_defaults(dao, db, workspaces.DEFAULT_WORKSPACE)
+        local ws = setup_ws_defaults(dao, db, "default")
         super_admin = admin(db, ws, 'mars', 'super-admin','test@konghq.com')
         read_only_admin = admin(db, ws, 'gruce', 'read-only', 'test1@konghq.com')
 
@@ -948,7 +948,7 @@ for _, strategy in helpers.each_strategy() do
 
             client = assert(helpers.admin_client())
 
-            local ws = setup_ws_defaults(dao, db, workspaces.DEFAULT_WORKSPACE)
+            local ws = setup_ws_defaults(dao, db, "default")
             super_admin = admin(db, ws, 'mars', 'super-admin','test@konghq.com')
 
             assert(db.basicauth_credentials:insert {
@@ -992,7 +992,7 @@ for _, strategy in helpers.each_strategy() do
 
             client = assert(helpers.admin_client())
 
-            local ws = setup_ws_defaults(dao, db, workspaces.DEFAULT_WORKSPACE)
+            local ws = setup_ws_defaults(dao, db, "default")
             super_admin = admin(db, ws, 'mars', 'super-admin','test@konghq.com')
             read_only_admin1 = admin(db, ws, 'gruce1', 'read-only', 'test1@konghq.com')
             read_only_admin2 = admin(db, ws, 'gruce2', 'read-only', 'test2@konghq.com')
@@ -1196,7 +1196,7 @@ for _, strategy in helpers.each_strategy() do
 
         client = assert(helpers.admin_client())
 
-        local ws = setup_ws_defaults(dao, db, workspaces.DEFAULT_WORKSPACE)
+        local ws = setup_ws_defaults(dao, db, "default")
         super_admin = admin(db, ws, "mars", "super-admin","test@konghq.com")
         disabled_admin = admin(db, ws, "disabled", "super-admin","disabled@konghq.com")
 

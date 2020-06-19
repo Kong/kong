@@ -1,5 +1,5 @@
 local singletons  = require "kong.singletons"
-local workspaces  = require "kong.workspaces"
+local scope = require "kong.enterprise_edition.workspaces.scope"
 local Router      = require "kong.router"
 local core_handler = require "kong.runloop.handler"
 local uuid = require("kong.tools.utils").uuid
@@ -84,7 +84,7 @@ end
 
 local function rebuild_routes(db)
 if kong.configuration.route_validation_strategy == 'smart'  then
-    workspaces.run_with_ws_scope({},
+    scope.run_with_ws_scope({},
       core_handler.build_router,
       db,
       uuid())
@@ -128,7 +128,7 @@ return {
       -- create temporary router
       rebuild_routes(db)
 
-      local r = workspaces.run_with_ws_scope({},
+      local r = scope.run_with_ws_scope({},
         build_router_without,
         self.params.routes
       )

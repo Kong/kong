@@ -9,7 +9,7 @@ local rbac = require "kong.rbac"
 local api_helpers = require "kong.api.api_helpers"
 local Schema = require "kong.db.schema"
 local Errors = require "kong.db.errors"
-local workspaces = require "kong.workspaces"
+local scope = require "kong.enterprise_edition.workspaces.scope"
 local endpoints  = require "kong.api.endpoints"
 
 local sub = string.sub
@@ -82,10 +82,10 @@ local function ws_and_rbac_helper(self, dao_factory, helpers)
   }
 
   -- get roles across all workspaces
-  local roles, err = workspaces.run_with_ws_scope({}, rbac.get_user_roles,
+  local roles, err = scope.run_with_ws_scope({}, rbac.get_user_roles,
     kong.db,
     ngx.ctx.rbac.user)
-  local group_roles = workspaces.run_with_ws_scope({}, rbac.get_groups_roles,
+  local group_roles = scope.run_with_ws_scope({}, rbac.get_groups_roles,
     kong.db,
     ngx.ctx.authenticated_groups)
   roles = rbac.merge_roles(roles, group_roles)

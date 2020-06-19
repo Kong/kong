@@ -1,6 +1,6 @@
 local singletons = require "kong.singletons"
 local enums = require "kong.enterprise_edition.dao.enums"
-local workspaces = require "kong.workspaces"
+local scope = require "kong.enterprise_edition.workspaces.scope"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local ee_utils = require "kong.enterprise_edition.utils"
 local utils = require "kong.tools.utils"
@@ -322,7 +322,7 @@ function _M.update(params, admin_to_update, opts)
     }
   end
 
-  local admin, err = workspaces.run_with_ws_scope(
+  local admin, err = scope.run_with_ws_scope(
     {},
     db.admins.update,
     db.admins,
@@ -350,7 +350,7 @@ function _M.update(params, admin_to_update, opts)
     params.custom_id and params.custom_id ~= admin_to_update.custom_id
   then
     -- update consumer
-    local _, err = workspaces.run_with_ws_scope(
+    local _, err = scope.run_with_ws_scope(
                    {},
                    db.consumers.update,
                    db.consumers,
@@ -372,7 +372,7 @@ function _M.update(params, admin_to_update, opts)
       end
 
       if creds[1] then
-        local _, err = workspaces.run_with_ws_scope({},
+        local _, err = scope.run_with_ws_scope({},
                        db.basicauth_credentials.update,
                        db.basicauth_credentials,
                        { id = creds[1].id },
@@ -386,7 +386,7 @@ function _M.update(params, admin_to_update, opts)
 
   -- keep rbac_user in sync
   if params.rbac_token_enabled ~= nil then
-    local _, err = workspaces.run_with_ws_scope(
+    local _, err = scope.run_with_ws_scope(
       {},
       db.rbac_users.update,
       db.rbac_users,
@@ -415,7 +415,7 @@ function _M.update_password(admin, params)
     return { code = 400, body = { message = bad_req_message }}
   end
 
-  local _, err = workspaces.run_with_ws_scope(
+  local _, err = scope.run_with_ws_scope(
                  {},
                  kong.db.basicauth_credentials.update,
                  kong.db.basicauth_credentials,

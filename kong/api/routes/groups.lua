@@ -1,6 +1,6 @@
 local endpoints          = require "kong.api.endpoints"
 local utils              = require "kong.tools.utils"
-local workspaces         = require "kong.workspaces"
+local scope = require "kong.enterprise_edition.workspaces.scope"
 
 local groups             = kong.db.groups
 local group_rbac_roles   = kong.db.group_rbac_roles
@@ -128,7 +128,7 @@ return {
       local cache_key = db["group_rbac_roles"]:cache_key(self.params.groups.id)
       kong.cache:invalidate(cache_key)
 
-      workspaces.run_with_ws_scope({{ id = self.params.workspace_id }}, function()
+      scope.run_with_ws_scope({{ id = self.params.workspace_id }}, function()
           local _, _, err_t = group_rbac_roles:insert({
             rbac_role = { id = self.params.rbac_role_id },
             workspace = { id = self.params.workspace_id },
@@ -162,7 +162,7 @@ return {
       local cache_key = db["group_rbac_roles"]:cache_key(self.params.groups.id)
       kong.cache:invalidate(cache_key)
 
-      workspaces.run_with_ws_scope({{ id = self.params.workspace_id }}, function()
+      scope.run_with_ws_scope({{ id = self.params.workspace_id }}, function()
           local _, err = group_rbac_roles:delete({
             rbac_role = { id = self.params.rbac_role_id },
             group 	  = { id = self.params.groups.id },
