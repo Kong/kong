@@ -480,9 +480,9 @@ function declarative.get_current_hash()
 end
 
 
-local function find_default_ws(entities)
+local function find_ws(entities, name)
   for _, v in pairs(entities.workspaces or {}) do
-    if v.name == "default" then
+    if v.name == name or v.id == name then
       return v.id
     end
   end
@@ -510,8 +510,10 @@ function declarative.load_into_cache(entities, meta, hash, shadow_page)
   local tags = {}
   meta = meta or {}
 
-  local default_workspace = assert(find_default_ws(entities))
-  local fallback_workspace = meta._workspace or default_workspace
+  local default_workspace = assert(find_ws(entities, "default"))
+  local fallback_workspace = meta._workspace
+                             and find_ws(entities, meta._workspace)
+                             or  default_workspace
 
   assert(type(fallback_workspace) == "string")
 
