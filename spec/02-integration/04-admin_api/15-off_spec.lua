@@ -627,6 +627,9 @@ describe("Admin API #off", function()
         local body = assert.response(res).has.status(200)
         local json = cjson.decode(body)
         local config = assert(lyaml.load(json.config))
+        config.workspaces[1].id = "<uuid>" -- see below
+        config.workspaces[1].created_at = 12345 -- see below
+        assert:set_parameter("TableFormatLevel", -1)
         assert.same({
           _format_version = "2.1",
           _transform = false,
@@ -638,6 +641,36 @@ describe("Admin API #off", function()
               custom_id = lyaml.null,
               tags = lyaml.null,
             },
+          },
+          workspaces = {
+            { id = "<uuid>", -- see above
+              created_at = 12345, -- see above
+              name = "default",
+              comment = {},
+              config = {
+                meta = {},
+                portal = false,
+                portal_access_request_email = {},
+                portal_approved_email = {},
+                portal_auth = {},
+                portal_auth_conf = {},
+                portal_auto_approve = {},
+                portal_cors_origins = {},
+                portal_developer_meta_fields = '[{"label":"Full Name","title":"full_name","validator":{"required":true,"type":"string"}}]',
+                portal_emails_from = {},
+                portal_emails_reply_to = {},
+                portal_invite_email = {},
+                portal_is_legacy = {},
+                portal_reset_email = {},
+                portal_reset_success_email = {},
+                portal_session_conf = {},
+                portal_token_exp = {},
+              },
+              meta = {
+                color = {},
+                thumbnail = {},
+              },
+            }
           },
         }, config)
       end)
