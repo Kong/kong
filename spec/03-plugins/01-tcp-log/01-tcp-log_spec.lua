@@ -330,7 +330,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("NONE", log_message.request.tls.client_verify)
     end)
 
-    it("TLS client_verify can be overwritten", function()
+    it("#flaky TLS client_verify can be overwritten", function()
       local thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
 
       -- Making the request
