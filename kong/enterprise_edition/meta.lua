@@ -2,9 +2,9 @@ local strip = (require "pl.stringx").strip
 
 local version = setmetatable({
   x = 2,
-  y = 0,
+  y = 1,
   z = 0,
-  e = 1,
+  e = 0,
 }, {
   __tostring = function(t)
     return string.format("%d.%d.%d.%d", t.x, t.y, t.z, t.e)
