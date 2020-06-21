@@ -1,5 +1,5 @@
 local helpers     = require "spec.helpers"
-local conf_loader = require "kong.conf_loader"
+local listeners = require "kong.conf_loader.listeners"
 local cjson = require "cjson.safe"
 local assert = require "luassert"
 local utils = require "kong.tools.utils"
@@ -276,8 +276,8 @@ end
 
 
 local http_flags = { "ssl", "http2", "proxy_protocol", "transparent" }
-_M.portal_api_listeners = conf_loader.parse_listeners(helpers.test_conf.portal_api_listen, http_flags)
-_M.portal_gui_listeners = conf_loader.parse_listeners(helpers.test_conf.portal_gui_listen, http_flags)
-_M.admin_gui_listeners = conf_loader.parse_listeners(helpers.test_conf.admin_gui_listen, http_flags)
+_M.portal_api_listeners = listeners._parse_listeners(helpers.test_conf.portal_api_listen, http_flags)
+_M.portal_gui_listeners = listeners._parse_listeners(helpers.test_conf.portal_gui_listen, http_flags)
+_M.admin_gui_listeners = listeners._parse_listeners(helpers.test_conf.admin_gui_listen, http_flags)
 
 return _M

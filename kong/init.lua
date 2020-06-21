@@ -464,7 +464,7 @@ function Kong.init()
 
   -- XXX EE [[
   kong.license = ee.read_license_info()
-  singletons.internal_proxies = internal_proxies.new()
+  kong.internal_proxies = internal_proxies.new()
   singletons.portal_emails = portal_emails.new(config)
   singletons.admin_emails = admin_emails.new(config)
   singletons.portal_router = portal_router.new(db)

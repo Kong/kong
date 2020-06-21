@@ -2,8 +2,9 @@ local singletons  = require "kong.singletons"
 local utils       = require "kong.tools.utils"
 local core_handler = require "kong.runloop.handler"
 local uuid = require("kong.tools.utils").uuid
-local workspaces = require "kong.workspaces"
+local route_collision = require "kong.enterprise_edition.workspaces.route_collision"
 local portal_crud = require "kong.portal.crud_helpers"
+
 
 local kong = kong
 
@@ -34,7 +35,7 @@ return {
     end,
 
     POST = function(self, _, _, parent)
-      local ok, err = workspaces.is_route_crud_allowed(self, singletons.router, true)
+      local ok, err = route_collision.is_route_crud_allowed(self, singletons.router, true)
       if not ok then
         return kong.response.exit(err.code, {message = err.message})
       end
@@ -49,7 +50,7 @@ return {
 
   ["/services/:services/routes/:routes"] = {
     PATCH = function(self, _, _, parent)
-      local ok, err = workspaces.is_route_crud_allowed(self, singletons.router, true)
+      local ok, err = route_collision.is_route_crud_allowed(self, singletons.router, true)
       if not ok then
         return kong.response.exit(err.code, {message = err.message})
       end

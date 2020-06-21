@@ -1,6 +1,7 @@
-local singletons  = require "kong.singletons"
+local route_collision = require "kong.enterprise_edition.workspaces.route_collision"
 local scope = require "kong.enterprise_edition.workspaces.scope"
-local Router      = require "kong.router"
+local Router = require "kong.router"
+local singletons = require "kong.singletons"
 local core_handler = require "kong.runloop.handler"
 local uuid = require("kong.tools.utils").uuid
 
@@ -12,7 +13,7 @@ local GLOBAL_QUERY_OPTS = { workspace = null }
 
 local function build_router_without(excluded_route)
   local routes, i = {}, 0
-  local db = singletons.db
+  local db = kong.db
   local routes_iterator = db.routes:each(nil, GLOBAL_QUERY_OPTS)
 
   local route, err = routes_iterator()
@@ -55,7 +56,7 @@ local function build_router_without(excluded_route)
   end
 
   -- inject internal proxies into the router
-  local _, err = singletons.internal_proxies:build_routes(i, routes)
+  local _, err = kong.internal_proxies:build_routes(i, routes)
   if err then
     return nil, err
   end
@@ -97,7 +98,7 @@ return {
     POST = function(self, db, helpers, parent)
       rebuild_routes(db)
 
-      local ok, err = workspaces.is_route_crud_allowed(self, singletons.router, true)
+      local ok, err = route_collision.is_route_crud_allowed(self, singletons.router, true)
       if not ok then
         return kong.response.exit(err.code, {message = err.message})
       end
@@ -133,7 +134,7 @@ return {
         self.params.routes
       )
 
-      local ok, err = workspaces.is_route_crud_allowed(self, r)
+      local ok, err = route_collision.is_route_crud_allowed(self, r)
       if not ok then
         return kong.response.exit(err.code, {message = err.message})
       end

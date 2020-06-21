@@ -1,6 +1,6 @@
-local workspaces = require "kong.workspaces"
+local route_collision = require "kong.enterprise_edition.workspaces.route_collision"
 
-describe("workspaces", function()
+describe("route_collision", function()
   local DB = require "kong.db"
   local kong_config = {
     database = "postgres"
@@ -130,61 +130,61 @@ describe("workspaces", function()
 
       local r = assert(Router.new(routes))
 
-      assert.equal("api-2", workspaces.match_route(r, "GET", "/my-api2", "h1").route.name)
+      assert.equal("api-2", route_collision._match_route(r, "GET", "/my-api2", "h1").route.name)
     end)
 
     it("adds root route to an empty router", function()
       local Router = require "kong.router"
       local r = Router.new({})
-      assert.truthy(workspaces.validate_route_for_ws(r, "GET", "/", "bla"))
+      assert.truthy(route_collision._validate_route_for_ws(r, "GET", "/", "bla"))
     end)
 
     it("adds route in the same ws", function()
       local Router = require "kong.router"
       local r = Router.new(routes)
-      assert.truthy(workspaces.validate_route_for_ws(r, "GET", "/api4", "host4", nil, nil, {id = "ws4"}))
+      assert.truthy(route_collision._validate_route_for_ws(r, "GET", "/api4", "host4", nil, nil, {id = "ws4"}))
     end)
 
     it("ADD route in different ws, no host in existing one", function()
       local Router = require "kong.router"
       local r = Router.new(routes)
-      assert.falsy(workspaces.validate_route_for_ws(r, "GET", "/my-api2", "hi", nil, nil, {id = "ws3"}))
+      assert.falsy(route_collision._validate_route_for_ws(r, "GET", "/my-api2", "hi", nil, nil, {id = "ws3"}))
     end)
 
     it("NOT add route in different ws, with same wildcard host", function()
       local Router = require "kong.router"
       local r = Router.new(routes)
-      assert.equal("api-3", workspaces.match_route(r, "GET", "/my-api3",
+      assert.equal("api-3", route_collision._match_route(r, "GET", "/my-api3",
                                                    "h*").route.name)
       assert.falsy(
-        workspaces.validate_route_for_ws(r, "GET", "/my-api3", "*", nil, nil, {id = "ws4"}))
+        route_collision._validate_route_for_ws(r, "GET", "/my-api3", "*", nil, nil, {id = "ws4"}))
     end)
 
     it("ADD route in different ws, with different wildcard host", function()
       local Router = require "kong.router"
       local r = Router.new(routes)
-      assert.equal("api-3", workspaces.match_route(r, "GET", "/my-api3", "h*").route.name)
-      assert.truthy(workspaces.validate_route_for_ws(r, "GET", "/my-api3", "*.foo.com", nil, nil, {id = "ws4"}))
+      assert.equal("api-3", route_collision._match_route(r, "GET", "/my-api3", "h*").route.name)
+      assert.truthy(route_collision._validate_route_for_ws(r, "GET", "/my-api3", "*.foo.com", nil, nil, {id = "ws4"}))
     end)
 
     it("NOT add route in different ws, with full host in the conflicting route", function()
       local Router = require "kong.router"
       local r = Router.new(routes)
-      assert.equal("api-4", workspaces.match_route(r, "GET", "/api4", "host4").route.name)
-      assert.falsy(workspaces.validate_route_for_ws(r, "GET", "/api4", "host4", nil, nil, {id = "different"}))
+      assert.equal("api-4", route_collision._match_route(r, "GET", "/api4", "host4").route.name)
+      assert.falsy(route_collision._validate_route_for_ws(r, "GET", "/api4", "host4", nil, nil, {id = "different"}))
     end)
 
   end)
   describe("permutations", function()
     it("works for single array", function()
-      local iter = workspaces.permutations({1,2})
+      local iter = route_collision._permutations({1,2})
       assert.are.same({1}, iter())
       assert.are.same({2}, iter())
       assert.falsy(iter())
     end)
 
     it("works for 2 arrays", function()
-      local iter = workspaces.permutations({1,2}, {3,4})
+      local iter = route_collision._permutations({1,2}, {3,4})
       assert.are.same({1,3}, iter())
       assert.are.same({1,4}, iter())
       assert.are.same({2,3}, iter())
@@ -193,32 +193,32 @@ describe("workspaces", function()
     end)
 
     it("works for single-pos-array", function()
-      local iter = workspaces.permutations({1}, {3,4})
+      local iter = route_collision._permutations({1}, {3,4})
       assert.are.same({1,3}, iter())
       assert.are.same({1,4}, iter())
       assert.falsy(iter())
-      iter = workspaces.permutations({1,2}, {4})
+      iter = route_collision._permutations({1,2}, {4})
       assert.are.same({1,4}, iter())
       assert.are.same({2,4}, iter())
       assert.falsy(iter())
     end)
 
     it("works for n arrays", function()
-      local iter = workspaces.permutations({1}, {2}, {3,4})
+      local iter = route_collision._permutations({1}, {2}, {3,4})
       assert.are.same({1, 2, 3}, iter())
       assert.are.same({1, 2, 4}, iter())
       assert.falsy(iter())
     end)
 
     it("works for n arrays", function()
-      local iter = workspaces.permutations({2}, {3,4})
+      local iter = route_collision._permutations({2}, {3,4})
       assert.are.same({2,3}, iter())
       assert.are.same({2,4}, iter())
       assert.falsy(iter())
     end)
 
     it("iterates ok with set of only an empty string", function()
-      local iter = workspaces.permutations({""}, {3,4})
+      local iter = route_collision._permutations({""}, {3,4})
       assert.are.same({"", 3}, iter())
       assert.are.same({"", 4}, iter())
       assert.falsy(iter())
@@ -226,7 +226,7 @@ describe("workspaces", function()
 
     it("works as a loop iterator", function()
       local res = {}
-      for i in workspaces.permutations({1}, {2,3}) do
+      for i in route_collision._permutations({1}, {2,3}) do
         res[#res+1] = i
       end
       assert.are.same({{1,2}, {1,3}}, res)

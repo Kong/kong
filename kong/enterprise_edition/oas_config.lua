@@ -4,7 +4,7 @@ local cjson      = require "cjson.safe"
 local pl_stringx = require "pl.stringx"
 local pl_tablex  = require "pl.tablex"
 local socket_url = require "socket.url"
-local workspaces = require "kong.workspaces"
+local route_collision = require "kong.enterprise_edition.workspaces.route_collision"
 
 local yaml_load    = lyaml.load
 local cjson_decode = cjson.decode
@@ -209,7 +209,7 @@ function _M.create_routes(spec, services)
         },
       }
 
-      local ok, err = workspaces.is_route_crud_allowed(route_conf, singletons.router)
+      local ok, err = route_collision.is_route_crud_allowed(route_conf, singletons.router)
       if not ok then
         return nil, err
       end
