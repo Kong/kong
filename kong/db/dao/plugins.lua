@@ -1,7 +1,6 @@
 local constants = require "kong.constants"
 local utils = require "kong.tools.utils"
 local DAO = require "kong.db.dao"
-local wokspaces = require "kong.workspaces"
 local tracing = require "kong.tracing"
 local plugin_loader = require "kong.db.schema.plugin_loader"
 local BasePlugin = require "kong.plugins.base_plugin"
@@ -205,15 +204,6 @@ local function load_plugin_entity_strategy(schema, db, plugin)
     return nil, err
   end
   db.daos[schema.name] = dao
-  -- XXX EE: maybe schema_def comming from plugin_entity_loader?
-  if schema.workspaceable then
-    local unique_keys = {}
-    for field_name, field_schema in schema:each_field() do
-      if field_schema.unique then
-        unique_keys[field_name] = field_schema
-      end
-    end
-  end
 end
 
 
