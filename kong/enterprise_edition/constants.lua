@@ -9,7 +9,6 @@ return {
   EE_ENTITIES = {
     "files",
     "legacy_files",
-    "workspace_entities",
     "workspace_entity_counters",
     "consumer_reset_secrets",
     "credentials",
