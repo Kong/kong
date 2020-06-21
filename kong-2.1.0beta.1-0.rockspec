@@ -96,6 +96,7 @@ build = {
     ["kong.counters.sales"] = "kong/counters/sales/init.lua",
     ["kong.counters.sales.strategies.postgres"] = "kong/counters/sales/strategies/postgres/init.lua",
     ["kong.counters.sales.strategies.cassandra"] = "kong/counters/sales/strategies/cassandra/init.lua",
+    ["kong.counters.sales.strategies.off"] = "kong/counters/sales/strategies/off/init.lua",
 
     ["kong.enterprise_edition"] = "kong/enterprise_edition/init.lua",
     ["kong.enterprise_edition.admin.emails"] = "kong/enterprise_edition/admin/emails.lua",

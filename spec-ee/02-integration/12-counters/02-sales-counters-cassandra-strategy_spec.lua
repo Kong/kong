@@ -13,7 +13,7 @@ local license_creation_date_in_sec = os.time({
 })
 
 for _, strategy in helpers.each_strategy({"cassandra"}) do
-  describe("sales counters postgres strategy", function()
+  describe("sales counters strategy #" .. strategy, function()
     local strategy
     local cluster
     local db
