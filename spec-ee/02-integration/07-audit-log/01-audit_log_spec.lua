@@ -72,7 +72,7 @@ for _, strategy in helpers.each_strategy() do
 
         helpers.wait_until(function()
           local rows = fetch_all(db.audit_requests)
-          return 1 == #rows and req_id == rows[1].request_id
+          return #rows == 1 and req_id == rows[1].request_id
         end)
       end)
 
@@ -101,7 +101,7 @@ for _, strategy in helpers.each_strategy() do
 
         helpers.wait_until(function()
           local rows = fetch_all(db.audit_requests)
-          return 1 == #rows and req_id == rows[1].request_id
+          return #rows == 1 and req_id == rows[1].request_id
                             and type(rows[1].request_timestamp) == "number"
         end)
       end)
@@ -163,14 +163,13 @@ for _, strategy in helpers.each_strategy() do
                 ["Content-Type"] = "application/json",
               }
             }))
-            local consumer = cjson.decode(assert.res_status(201, res))
+            local service = cjson.decode(assert.res_status(201, res))
 
             local rows
 
             helpers.wait_until(function()
               rows = fetch_all(db.audit_objects)
-
-              return 3 == #rows
+              return #rows == 1
             end)
 
             for _, object in ipairs(rows) do
@@ -194,14 +193,15 @@ for _, strategy in helpers.each_strategy() do
 
             helpers.wait_until(function()
               rows = fetch_all(db.audit_objects)
-              return 6 == #rows
+              return #rows == 2
             end)
 
             res = assert(admin_client:send({
               method = "POST",
               path   = "/rbac/roles/role123/entities",
               body   = {
-                entity_id = consumer.id,
+                entity_id = service.id,
+                entity_type = "services",
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -211,7 +211,7 @@ for _, strategy in helpers.each_strategy() do
 
             helpers.wait_until(function()
               rows = fetch_all(db.audit_objects)
-              return 7 == #rows
+              return #rows == 3
             end)
           end)
 
@@ -294,7 +294,7 @@ for _, strategy in helpers.each_strategy() do
 
             helpers.wait_until(function()
               rows = fetch_all(db.audit_objects)
-              return 3 == #rows
+              return #rows == 1
             end)
 
             for _, object in ipairs(rows) do
@@ -320,7 +320,7 @@ for _, strategy in helpers.each_strategy() do
 
             helpers.wait_until(function()
               rows = fetch_all(db.audit_objects)
-              return 4 == #rows
+              return #rows == 1
             end)
 
             for _, object in ipairs(rows) do
@@ -351,14 +351,10 @@ for _, strategy in helpers.each_strategy() do
 
             helpers.wait_until(function()
               rows = fetch_all(db.audit_objects)
-              return 3 == #rows
+              return #rows == 1
             end)
 
-            -- 1 row for the main entity, plus 2 in workspace_entities, one
-            -- for each non-nil unique field, plus PK
             assert.same("create", rows[1].operation)
-            assert.same("create", rows[2].operation)
-            assert.same("create", rows[3].operation)
           end)
         end)
       end)
@@ -428,7 +424,7 @@ for _, strategy in helpers.each_strategy() do
 
         helpers.wait_until(function()
           local rows = fetch_all(db.audit_requests)
-          return 1 == #rows
+          return #rows == 1
         end)
       end)
     end)
@@ -498,7 +494,7 @@ for _, strategy in helpers.each_strategy() do
 
         helpers.wait_until(function()
           local rows = fetch_all(db.audit_requests)
-          return 0 == #rows
+          return #rows == 0
         end)
 
         db:truncate("audit_objects")
@@ -512,7 +508,7 @@ for _, strategy in helpers.each_strategy() do
 
         helpers.wait_until(function()
           local rows = fetch_all(db.audit_requests)
-          return 0 == #rows
+          return #rows == 0
         end)
 
         db:truncate("audit_objects")
@@ -702,20 +698,16 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(201, res)
 
-        -- 3 entries, 2 for the previous 2 object creations
-        -- and 1 for the workspace_association
         local rows
-
         helpers.wait_until(function()
           rows = fetch_all(db.audit_objects)
-          return 4 == #rows
+          return #rows == 2
         end)
 
         for _, row in ipairs(rows) do
           local f = {
             services = true,
             workspaces = true,
-            workspace_entities = true
           }
 
           assert.is_true(f[row.dao_name])
@@ -773,7 +765,7 @@ for _, strategy in helpers.each_strategy() do
         local rows
         helpers.wait_until(function()
           rows = fetch_all(db.audit_objects)
-          return 3 == #rows
+          return #rows == 0
         end)
 
         for _, row in ipairs(rows) do
@@ -803,7 +795,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(201, res)
 
         helpers.wait_until(function()
-          return 3 == #fetch_all(db.audit_objects)
+          return #fetch_all(db.audit_objects) == 1
         end)
       end)
     end)
@@ -915,9 +907,9 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  -- This test is for cases when ngx.ctx.workspaces is not set correctly
+  -- This test is for cases when ngx.ctx.workspace is not set correctly
   -- when serving requests like "GET /userinfo" or "GET /default/kong".
-  describe("audit_log with rbac and admin_gui_auth" .. strategy, function()
+  describe("audit_log with rbac and admin_gui_auth #" .. strategy, function()
     local db, admin_client, proxy_client
 
     setup(function()
@@ -959,7 +951,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(401, res)
 
         helpers.wait_until(function()
-          return 1 == #fetch_all(db.audit_requests)
+          return #fetch_all(db.audit_requests) == 1
         end)
       end)
     end)
