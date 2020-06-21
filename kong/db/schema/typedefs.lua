@@ -358,13 +358,6 @@ typedefs.key = Schema.define {
   custom_validator = validate_key,
 }
 
--- XXX: EE keep for now. Remove on 2.0
-typedefs.run_on = Schema.define {
-  type = "string",
-  required = false,
-  one_of = { "first", "second", "all" },
-}
-
 typedefs.run_on_first = Schema.define {
   type = "string",
   required = false,
