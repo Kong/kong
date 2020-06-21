@@ -25,11 +25,17 @@ for _, strategy in helpers.each_strategy() do
       assert(db:schema_reset())
       helpers.bootstrap_database(db)
 
-      local workspaces = db.workspaces:select_all()
+      local workspaces = {}
+      for ws in db.workspaces:each(nil, { nulls = false }) do
+        table.insert(workspaces, ws)
+      end
       local default_ws = workspaces[1]
       assert.equal(1, #workspaces)
       assert.equal("default", default_ws.name)
-      assert.same({}, default_ws.meta)
+      assert.same({
+        color = ngx.null,
+        thumbnail = ngx.null,
+      }, default_ws.meta)
       assert.is_not_nil(default_ws.created_at)
       assert.equal(false , default_ws.config.portal)
     end)

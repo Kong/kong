@@ -5,7 +5,7 @@ local singletons = require "kong.singletons"
 
 for _, strategy in helpers.each_strategy() do
 
-describe("Workspaces helpers", function()
+describe("Workspaces helpers #" .. strategy, function()
   local db
 
   setup(function()
@@ -13,7 +13,8 @@ describe("Workspaces helpers", function()
     singletons.db = db
   end)
 
-  describe("upsert_default", function()
+  -- XXXCORE no longer needed
+  pending("upsert_default", function()
     it("returns existing default workspace", function()
       local ws1, ws2, err
 
