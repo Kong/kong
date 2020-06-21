@@ -227,10 +227,6 @@ build = {
     ["kong.db.schema.entities.login_attempts"] = "kong/db/schema/entities/login_attempts.lua",
 
     ["kong.rbac"] = "kong/rbac/init.lua",
-    ["kong.rbac.migrations.01_defaults"] = "kong/rbac/migrations/01_defaults.lua",
-    ["kong.rbac.migrations.03_user_default_role"] = "kong/rbac/migrations/03_user_default_role.lua",
-    ["kong.rbac.migrations.04_kong_admin_basic_auth"] = "kong/rbac/migrations/04_kong_admin_basic_auth.lua",
-    ["kong.rbac.migrations.05_super_admin"] = "kong/rbac/migrations/05_super_admin.lua",
 
     ["kong.workspaces"] = "kong/workspaces/init.lua",
     ["kong.workspaces.counters"] = "kong/workspaces/counters.lua",
@@ -289,6 +285,7 @@ build = {
     ["kong.db.dao.targets"] = "kong/db/dao/targets.lua",
     ["kong.db.dao.plugins"] = "kong/db/dao/plugins.lua",
     ["kong.db.dao.rbac_role_endpoints"] = "kong/db/dao/rbac_role_endpoints.lua",
+    ["kong.db.dao.rbac_users"] = "kong/db/dao/rbac_users.lua",
     ["kong.db.dao.workspaces"] = "kong/db/dao/workspaces.lua",
     ["kong.db.dao.plugins.go"] = "kong/db/dao/plugins/go.lua",
     ["kong.db.dao.tags"] = "kong/db/dao/tags.lua",

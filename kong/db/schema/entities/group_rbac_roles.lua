@@ -5,6 +5,7 @@ return {
 	generate_admin_api  = false,
   admin_api_nested_name = "roles",
 	primary_key 		= { "group", "rbac_role" },
+  db_export = false,
 	fields = {
 		{ created_at     = typedefs.auto_timestamp_s },
 		{ group = { type = "foreign", required = true, reference = "groups", on_delete = "cascade" } },

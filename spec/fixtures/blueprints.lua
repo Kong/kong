@@ -373,6 +373,15 @@ function _M.new(db)
     }
   end)
 
+  local rbac_user_name_seq = new_sequence("rbac_user-%d")
+  local rbac_user_user_token_seq = new_sequence("rbac_user_token-%d")
+  res.rbac_users = new_blueprint(db.rbac_users, function()
+    return {
+      name = rbac_user_name_seq:next(),
+      user_token = rbac_user_user_token_seq:next(),
+    }
+  end)
+
   local rbac_roles_seq = new_sequence("rbac_role-%d")
   res.rbac_roles = new_blueprint(db.rbac_roles, function()
     return {

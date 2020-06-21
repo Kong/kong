@@ -7,6 +7,7 @@ return {
   endpoint_key = "name",
   primary_key = { "id" },
   workspaceable = true,
+  db_export = false,
   fields = {
     { id             = typedefs.uuid, },
     { name           =  {type = "string", required = true, unique = true}}, -- we accept '@' so it's not a typedef.name

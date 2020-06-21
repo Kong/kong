@@ -922,10 +922,11 @@ describe("(#" .. strategy .. ")", function()
 
       local function generate_user (i, ws, endpoint_workspace)
         return workspaces.run_with_ws_scope({ws}, function ()
-          local user = assert(db.rbac_users:insert {
+          local user = assert(db.rbac_users:insert({
             name = "some-user-" .. i,
             user_token = "billgatesletmeinnow" .. i,
-          })
+          }, { show_ws_id = true }))
+          assert(user.ws_id)
 
           local endpoints = {}
           local role
@@ -961,12 +962,10 @@ describe("(#" .. strategy .. ")", function()
       users[1] = generate_user(1, default_ws, "*")
       users[2] = generate_user(2, another_ws, another_ws.name)
       users[3] = generate_user(3, default_ws, "*")
-      workspaces.run_with_ws_scope({}, function ()
-        assert(db.rbac_user_roles:insert({
-          user = users[3].user,
-          role = users[2].role
-        }))
-      end)
+      assert(db.rbac_user_roles:insert({
+        user = users[3].user,
+        role = users[2].role
+      }))
 
       users[4] = generate_user(4, default_ws, nil)
 
@@ -982,7 +981,7 @@ describe("(#" .. strategy .. ")", function()
     end)
 
     before_each(function()
-      ngx.ctx.workspaces = { default_ws }
+      ngx.ctx.workspace = default_ws.id
     end)
 
 
