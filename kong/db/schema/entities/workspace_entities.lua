@@ -5,6 +5,7 @@ return {
   name = "workspace_entities",
   primary_key = { "workspace_id", "entity_id", "unique_field_name" },
   generate_admin_api = false,
+  db_export = false,
 
   fields = {
     { workspace_id = typedefs.uuid },

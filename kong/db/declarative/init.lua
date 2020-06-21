@@ -511,7 +511,7 @@ function declarative.load_into_cache(entities, meta, hash, shadow_page)
   meta = meta or {}
 
   local default_workspace = assert(find_default_ws(entities))
-  local fallback_workspace = default_workspace
+  local fallback_workspace = meta._workspace or default_workspace
 
   assert(type(fallback_workspace) == "string")
 

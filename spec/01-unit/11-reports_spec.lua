@@ -112,7 +112,7 @@ describe("reports", function()
         assert.matches("database=cassandra", res, nil, true)
       end)
 
-      pending("off", function() -- XXX EE: enable when dbless is on
+      it("off", function()
         local conf = assert(conf_loader(nil, {
           database = "off",
         }))
@@ -153,8 +153,7 @@ describe("reports", function()
         assert.matches("role=control_plane", res, nil, true)
       end)
 
-      -- XXXCORE to be enabled when hybrid mode arrives in EE
-      pending("data_plane", function()
+      it("data_plane", function()
         local conf = assert(conf_loader(nil, {
           role = "data_plane",
           database = "off",

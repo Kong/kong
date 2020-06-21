@@ -19,6 +19,9 @@ local core_entities
 local errors = Errors.new("declarative")
 
 
+local UUID_PATTERN = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
+
+
 -- Maps a foreign fields to foreign entity names
 -- e.g. `foreign_references["routes"]["service"] = "services"`
 local foreign_references = {}
@@ -716,6 +719,18 @@ function DeclarativeConfig.load(plugin_set, include_foreign)
     local definition = utils.deep_copy(mod, false)
     all_schemas[entity] = Entity.new(definition)
 
+
+    -- if we set the field as "foreign", what the load expects is a
+    -- nested structure {workspace = {id = '1232131'}}. The name ws_id
+    -- is 'arbitrary', so the machinery wouldn't know anyway. Then,
+    -- I'm going for the simple 'uuid', and not nesting at all. This
+    -- has to be 'paired' with the export part also (not done)
+
+
+    if all_schemas[entity].workspaceable then
+      table.insert(all_schemas[entity].fields, { ws_id = { type = "string", match = UUID_PATTERN } })
+    end
+
     -- load core entities subschemas
     assert(load_entity_subschemas(entity, all_schemas[entity]))
   end
@@ -729,6 +744,11 @@ function DeclarativeConfig.load(plugin_set, include_foreign)
     for entity, schema in pairs(entities) do
       all_schemas[entity] = schema
       table.insert(known_entities, entity)
+
+      if all_schemas[entity].workspaceable then
+        table.insert(all_schemas[entity].fields, { ws_id = { type = "string", match = UUID_PATTERN } })
+      end
+
     end
   end
 

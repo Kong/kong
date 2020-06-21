@@ -246,8 +246,6 @@ for _, strategy in helpers.each_strategy() do
           "routes",
           "services",
           "snis",
-          "workspace_entities", -- XXX EE
-          "workspace_entity_counters",   -- XXX EE
           "workspaces",
         }, toplevel_keys)
 
