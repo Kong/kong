@@ -339,7 +339,6 @@ build = {
     ["kong.db.strategies.cassandra.tags"] = "kong/db/strategies/cassandra/tags.lua",
     -- [[ XXX EE
     ["kong.db.strategies.cassandra.plugins"] = "kong/db/strategies/cassandra/plugins.lua",
-    ["kong.db.strategies.cassandra.consumers"] = "kong/db/strategies/cassandra/consumers.lua",
     ["kong.db.strategies.cassandra.rbac_role_endpoints"] = "kong/db/strategies/cassandra/rbac_role_endpoints.lua",
     ["kong.db.strategies.cassandra.keyring_meta"] = "kong/db/strategies/cassandra/keyring_meta.lua",
     -- EE ]]
@@ -348,7 +347,6 @@ build = {
     ["kong.db.strategies.postgres.tags"] = "kong/db/strategies/postgres/tags.lua",
     -- XXX EE [[
     ["kong.db.strategies.postgres.plugins"] = "kong/db/strategies/postgres/plugins.lua",
-    ["kong.db.strategies.postgres.consumers"] = "kong/db/strategies/postgres/consumers.lua",
     -- EE ]]
     ["kong.db.strategies.off"] = "kong/db/strategies/off/init.lua",
     ["kong.db.strategies.off.connector"] = "kong/db/strategies/off/connector.lua",
