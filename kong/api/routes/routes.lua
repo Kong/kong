@@ -7,12 +7,13 @@ local uuid = require("kong.tools.utils").uuid
 
 local kong = kong
 local null = ngx.null
+local GLOBAL_QUERY_OPTS = { workspace = null }
 
 
 local function build_router_without(excluded_route)
   local routes, i = {}, 0
   local db = singletons.db
-  local routes_iterator = db.routes:each()
+  local routes_iterator = db.routes:each(nil, GLOBAL_QUERY_OPTS)
 
   local route, err = routes_iterator()
   while route do
@@ -25,7 +26,7 @@ local function build_router_without(excluded_route)
     local service
 
     -- TODO: db requests in loop, problem or not
-    service, err = db.services:select(service_pk)
+    service, err = db.services:select(service_pk, GLOBAL_QUERY_OPTS)
     if not service then
       return nil, "could not find service for route (" .. route.id .. "): " .. err
     end
@@ -59,6 +60,7 @@ local function build_router_without(excluded_route)
     return nil, err
   end
 
+  -- XXXCORE there are additional criteria for sorting routes nowadays
   table.sort(routes, function(r1, r2)
     r1, r2 = r1.route, r2.route
 
@@ -113,8 +115,7 @@ return {
       rebuild_routes(db)
       return parent()
     end,
-    POST = function(self, db, helpers, parent)
-      --todo change it to PUT, handle route collision
+    PUT = function(self, db, helpers, parent)
       rebuild_routes(db)
       return parent()
     end,

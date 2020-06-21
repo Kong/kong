@@ -104,24 +104,6 @@ local function ws_and_rbac_helper(self, dao_factory, helpers)
   if rbac_enabled == "entity" or rbac_enabled == "both" then
     self.permissions.entities = rbac.readable_entities_permissions(roles)
   end
-
-  -- fetch workspace resources from workspace entities
-  self.workspaces = {}
-
-  local ws_dict = {} -- dict to keep track of which workspaces we have added
-  local ws, err
-  for k, v in ipairs(self.workspace_entities) do
-    if not ws_dict[v.workspace_id] then
-      ws, err = kong.db.workspaces:select({id = v.workspace_id})
-      if err then
-        return helpers.yield_error(err)
-      end
-      ws_dict[v.workspace_id] = true
-      if ws then
-        self.workspaces[#self.workspaces + 1] = ws
-      end
-    end
-  end
 end
 
 
@@ -145,7 +127,7 @@ return {
           end
         end
 
-        singletons.internal_proxies:add_internal_plugins(distinct_plugins, set)
+        kong.internal_proxies:add_internal_plugins(distinct_plugins, set)
       end
 
       do

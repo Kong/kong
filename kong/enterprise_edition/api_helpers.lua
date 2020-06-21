@@ -14,6 +14,7 @@ local kong = kong
 local log = ngx.log
 local ERR = ngx.ERR
 local DEBUG = ngx.DEBUG
+local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
 
 local _M = {}
 
@@ -110,8 +111,8 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
   end
 
   -- execute rbac and auth check without a workspace specified
-  local old_ws = ctx.workspaces
-  ctx.workspaces = {}
+  local old_ws = ctx.workspace
+  ctx.workspace = nil
 
   local admin, err = _M.validate_admin()
 
@@ -142,7 +143,7 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
 
   admin.rbac_user = rbac_user
 
-  -- sets self.workspace_entities, ngx.ctx.workspaces, and self.consumer
+  -- sets self.workspaces, ngx.ctx.workspace, and self.consumer
   _M.attach_consumer_and_workspaces(self, consumer_id)
 
   local session_conf = singletons.configuration.admin_gui_session_conf
@@ -214,14 +215,14 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
   self.groups = ctx.authenticated_groups
   self.admin = admin
   -- set back workspace context from request
-  ctx.workspaces = old_ws
+  ctx.workspace = old_ws
 end
 
 
 function _M.attach_consumer_and_workspaces(self, consumer_id)
   local workspace = _M.attach_workspaces(self, consumer_id)
 
-  ngx.ctx.workspaces = { workspace }
+  ngx.ctx.workspace = workspace.id
 
   _M.attach_consumer(self, consumer_id)
 end
@@ -245,33 +246,36 @@ function _M.attach_workspaces_roles(self, roles)
     return
   end
 
-  for k, role in ipairs(roles) do
-    local entities, err = kong.db.workspace_entities:select_all({ -- XXX EE painful
-      entity_id = role.id,
-      unique_field_name = "id",
-      entity_type = "rbac_roles",
-    })
-
+  for _, role in ipairs(roles) do
+    local rbac_role, err = kong.db.rbac_roles:select({ id = role.id }, GLOBAL_QUERY_OPTS)
     if err then
       kong.log.err("Error fetching workspaces for role: ", role.id, ": ", err)
       return endpoints.handle_error()
     end
 
-    for j, entity in ipairs(entities) do
-      self.workspace_entities[#self.workspace_entities + 1] = entity
+    if not self.workspaces_hash[rbac_role.ws_id] then
+      local ws, err = kong.db.workspaces:select({ id = rbac_role.ws_id })
+      if err then
+        kong.log.err("Error fetching workspaces for role: ", role.id, ": ", err)
+        return endpoints.handle_error()
+      end
+
+      table.insert(self.workspaces, ws)
+      self.workspaces_hash[ws.id] = ws
     end
   end
 end
 
 
 function _M.attach_workspaces(self, consumer_id)
-  local workspace_entities, err = kong.db.workspace_entities:select_all({ -- XXX EE painful
-    entity_id = consumer_id,
-    unique_field_name = "id",
-    entity_type = "consumers",
-  })
+  local consumer, ws, err
+  consumer, err = kong.db.consumers:select({ id = consumer_id }, GLOBAL_QUERY_OPTS)
+  if consumer and not err then
+    ws, err = kong.db.workspaces:select({ id = consumer.ws_id })
+  end
 
-  self.workspace_entities = workspace_entities
+  self.workspaces = { ws }
+  self.workspaces_hash = { [ ws.id ] = ws }
 
   if err then
     log(ERR, _log_prefix, "Error fetching workspaces for consumer_id: ",
@@ -279,45 +283,15 @@ function _M.attach_workspaces(self, consumer_id)
     return endpoints.handle_error()
   end
 
-  if not next(workspace_entities) then
+  if not ws then
     log(ERR, "no workspace found for rbac_user:" .. consumer_id)
     return endpoints.handle_error()
   end
 
   return {
-    id = self.workspace_entities[1].workspace_id,
-    name = self.workspace_entities[1].workspace_name,
+    id = ws.id,
+    name = ws.name,
   }
-end
-
-
--- given an entity uuid, look up its entity collection name;
--- it is only called if the user does not pass in an entity_type
-function _M.resolve_entity_type(db, entity_id)
-
-  -- the workspaces module has a function that does a similar search in
-  -- a constant number of db calls, but is restricted to workspaceable
-  -- entities. try that first; if it isn't able to resolve the entity
-  -- type, continue our linear search
-  local typ, entity, _ = workspaces.resolve_entity_type(entity_id)
-  if typ and entity then
-    return typ, entity, nil
-  end
-
-  -- search in all of new dao
-  for name, dao in pairs(db.daos) do
-    local pk_name = dao.schema.primary_key[1]
-    if dao.schema.fields[pk_name].uuid then
-      local row = dao:select({
-        [pk_name] = entity_id,
-      })
-      if row then
-        return name, row, nil
-      end
-    end
-  end
-
-  return false, nil, "entity " .. entity_id .. " does not belong to any relation"
 end
 
 
@@ -475,8 +449,8 @@ function _M.before_filter(self)
     -- in case of endpoint with missing `/`, this block is executed twice.
     -- So previous workspace should be dropped
     ngx.ctx.admin_api_request = true
-    ngx.ctx.workspaces = nil
     ngx.ctx.rbac = nil
+    workspaces.set_workspace(nil)
 
     -- workspace name: if no workspace name was provided as the first segment
     -- in the path (:8001/:workspace/), consider it is the default workspace
@@ -493,7 +467,7 @@ function _M.before_filter(self)
     end
 
     -- set fetched workspace reference into the context
-    ngx.ctx.workspaces = { workspace }
+    workspaces.set_workspace(workspace)
     self.params.workspace_name = nil
 
     local origin = singletons.configuration.admin_gui_url or "*"
