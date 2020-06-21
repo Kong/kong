@@ -12,6 +12,7 @@ local auth_helpers       = require "kong.enterprise_edition.auth_helpers"
 local secrets            = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local dao_helpers        = require "kong.portal.dao_helpers"
 local file_helpers = require "kong.portal.file_helpers"
+local workspace_config = require "kong.portal.workspace_config"
 local kong = kong
 
 local app_auth_strategies = require "kong.portal.app_auth_strategies"
@@ -80,15 +81,15 @@ return {
   ["/files/unauthenticated"] = {
     -- List all unauthenticated files stored in the portal file system
     GET = function(self, db, helpers)
-      local files, err, err_t = db.files:select_all({
-        auth = false,
-        type = self.params.type,
-      }, {
-        skip_rbac = true,
-      })
+      local files = {}
+      for file, err in db.files:each(nil, { skip_rbac = true }) do
+        if err then
+          return endpoints.handle_error(err)
+        end
 
-      if err then
-        return endpoints.handle_error(err_t)
+        if file.auth == false and (self.params.type == nil or file.type == self.params.type) then
+          table.insert(files, file)
+        end
       end
 
       local paginated_results, _, err_t = crud_helpers.paginate(self, files)
@@ -103,21 +104,22 @@ return {
   ["/files"] = {
     before = function(self, db, helpers)
       local ws = get_workspace()
-      local portal_auth = workspaces.retrieve_ws_config(PORTAL_AUTH, ws)
+      local portal_auth = workspace_config.retrieve(PORTAL_AUTH, ws)
       if portal_auth and portal_auth ~= "" then
         auth.authenticate_api_session(self, db, helpers)
       end
     end,
 
     GET = function(self, db, helpers)
-      local files, err, err_t = db.files:select_all({
-        type = self.params.type,
-      }, {
-        skip_rbac = true ,
-      })
+      local files = {}
+      for file, err in db.files:each(nil, { skip_rbac = true }) do
+        if err then
+          return endpoints.handle_error(err)
+        end
 
-      if err then
-        return endpoints.handle_error(err_t)
+        if self.params.type == nil or file.type == self.params.type then
+          table.insert(files, file)
+        end
       end
 
       local paginated_results, _, err_t = crud_helpers.paginate(self, files)
@@ -132,7 +134,7 @@ return {
   ["/files/*"] = {
     before = function(self, db, helpers)
       local ws = get_workspace()
-      local portal_auth = workspaces.retrieve_ws_config(PORTAL_AUTH, ws)
+      local portal_auth = workspace_config.retrieve(PORTAL_AUTH, ws)
       if portal_auth and portal_auth ~= "" then
         auth.authenticate_api_session(self, db, helpers)
       end
@@ -195,7 +197,7 @@ return {
          singletons.configuration.portal_email_verification then
 
         local workspace = workspaces.get_workspace()
-        local token_ttl = workspaces.retrieve_ws_config(PORTAL_TOKEN_EXP, workspace)
+        local token_ttl = workspace_config.retrieve(PORTAL_TOKEN_EXP, workspace)
         local jwt, err = secrets.create(developer.consumer, ngx.var.remote_addr, token_ttl)
         if not jwt then
           return endpoints.handle_error(err)
@@ -245,7 +247,7 @@ return {
       end
 
       local workspace = get_workspace()
-      local auto_approve = workspaces.retrieve_ws_config(PORTAL_AUTO_APPROVE, workspace)
+      local auto_approve = workspace_config.retrieve(PORTAL_AUTO_APPROVE, workspace)
 
       local status = enums.CONSUMERS.STATUS.PENDING
       if auto_approve then
@@ -352,7 +354,7 @@ return {
       end
 
       local workspace = workspaces.get_workspace()
-      local token_ttl = workspaces.retrieve_ws_config(PORTAL_TOKEN_EXP, workspace)
+      local token_ttl = workspace_config.retrieve(PORTAL_TOKEN_EXP, workspace)
       local jwt, err = secrets.create(developer.consumer, ngx.var.remote_addr, token_ttl)
       if not jwt then
         return endpoints.handle_error(err)
@@ -526,7 +528,7 @@ return {
       auth.validate_auth_plugin(self, db, helpers)
 
       local workspace = get_workspace()
-      local token_ttl = workspaces.retrieve_ws_config(PORTAL_TOKEN_EXP,
+      local token_ttl = workspace_config.retrieve(PORTAL_TOKEN_EXP,
                                                      workspace)
 
       local developer, _, err_t = db.developers:select_by_email(
@@ -573,9 +575,13 @@ return {
       local distinct_plugins = {}
 
       do
-        local rows, err = db.plugins:select_all()
-        if err then
-          return kong.response.exit(500, { message = "An unexpected error occurred" })
+        local rows = {}
+        for row, err in db.plugins:each() do
+          if err then
+            return kong.response.exit(500, { message = "An unexpected error occurred" })
+          end
+
+          table.insert(rows, row)
         end
 
         local map = {}
@@ -657,7 +663,7 @@ return {
 
     GET = function(self, dao_factory, helpers)
       local workspace = get_workspace()
-      local developer_extra_fields = workspaces.retrieve_ws_config(PORTAL_DEVELOPER_META_FIELDS, workspace)
+      local developer_extra_fields = workspace_config.retrieve(PORTAL_DEVELOPER_META_FIELDS, workspace)
       return kong.response.exit(200, developer_extra_fields)
     end,
   },
@@ -794,12 +800,15 @@ return {
     GET = function(self, db, helpers)
       local application_services = setmetatable({}, cjson.empty_array_mt)
 
-      local rows, _, err_t = db.plugins:select_all({
-        name = "application-registration",
-      })
+      local rows = {}
+      for row, err in db.plugins:each() do
+        if err then
+          return kong.response.exit(500, { message = "An unexpected error occurred" })
+        end
 
-      if err_t then
-        return endpoints.handle_error(err_t)
+        if row.name == "application-registration" then
+          table.insert(rows, row)
+        end
       end
 
       local app_auth_type = kong.configuration.portal_app_auth

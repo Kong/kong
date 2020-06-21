@@ -10,6 +10,8 @@ local EtluaWidget = require("lapis.etlua").EtluaWidget
 local constants = require "kong.constants"
 local ws_constants = constants.WORKSPACE_CONFIG
 local renderer = require "kong.portal.renderer"
+local workspace_config = require "kong.portal.workspace_config"
+
 
 local kong = kong
 
@@ -19,7 +21,7 @@ local app = lapis.Application()
 
 local function is_legacy()
   local workspace = workspaces.get_workspace()
-  return workspaces.retrieve_ws_config(ws_constants.PORTAL_IS_LEGACY, workspace)
+  return workspace_config.retrieve(ws_constants.PORTAL_IS_LEGACY, workspace)
 end
 
 

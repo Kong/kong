@@ -17,6 +17,7 @@ local app_helpers = require "lapis.application"
 local api_helpers = require "kong.api.api_helpers"
 local tracing = require "kong.tracing"
 local counters = require "kong.workspaces.counters"
+local workspace_config = require "kong.portal.workspace_config"
 
 
 local kong = kong
@@ -346,11 +347,11 @@ function _M.prepare_portal(self, kong_config)
 
   local rbac_enforced = kong_config.rbac == "both" or kong_config.rbac == "on"
 
-  local portal_gui_url = workspaces.build_ws_portal_gui_url(kong_config, workspace)
-  local portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+  local portal_gui_url = workspace_config.build_ws_portal_gui_url(kong_config, workspace)
+  local portal_auth = workspace_config.retrieve(ws_constants.PORTAL_AUTH, workspace)
 
   local opts = { explicitly_ws = true }
-  local portal_developer_meta_fields = workspaces.retrieve_ws_config(
+  local portal_developer_meta_fields = workspace_config.retrieve(
                             ws_constants.PORTAL_DEVELOPER_META_FIELDS,
                             workspace, opts) or '[]'
 

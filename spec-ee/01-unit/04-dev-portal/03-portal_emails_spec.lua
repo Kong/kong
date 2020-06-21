@@ -1,3 +1,4 @@
+_G.kong = {}
 local emails     = require "kong.portal.emails"
 local singletons  = require "kong.singletons"
 
@@ -24,6 +25,14 @@ describe("ee portal emails", function()
         select_by_path = function(self, path)
           return _files[path]
         end,
+      }
+    }
+    ngx.ctx.workspace = "mock_uuid"
+    kong.db = {
+      workspaces = {
+        select = function()
+          return { id = ngx.ctx.workspace }
+        end
       }
     }
   end)

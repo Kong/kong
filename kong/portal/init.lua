@@ -9,6 +9,7 @@ local ee_api = require "kong.enterprise_edition.api_helpers"
 local workspaces = require "kong.workspaces"
 local Errors = require "kong.db.errors"
 local crud_helpers = require "kong.portal.crud_helpers"
+local workspace_config = require "kong.portal.workspace_config"
 
 
 local kong = kong
@@ -160,7 +161,7 @@ app:before_filter(function(self)
   -- in case of endpoint with missing `/`, this block is executed twice.
   -- So previous workspace should be dropped
   ctx.admin_api_request = true
-  ctx.workspaces = nil
+  ctx.workspace = nil
   ctx.rbac = nil
 
   local invoke_plugin = singletons.invoke_plugin
@@ -178,14 +179,14 @@ app:before_filter(function(self)
 
   -- save workspace name in the context; if not passed, default workspace is
   -- 'default'
-  ctx.workspaces = { ws }
+  ctx.workspace = ws.id
   self.params.workspace_name = nil
 
   -- if portal is not enabled in both kong.conf and workspace, return 404
   crud_helpers.exit_if_portal_disabled()
 
   local cors_conf = {
-    origins = workspaces.build_ws_portal_cors_origins(ws),
+    origins = workspace_config.build_ws_portal_cors_origins(ws),
     methods = { "GET", "PUT", "PATCH", "DELETE", "POST" },
     credentials = true,
   }

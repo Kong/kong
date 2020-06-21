@@ -929,7 +929,10 @@ for _, strategy in helpers.each_strategy() do
 
               assert.res_status(200, res)
 
-              local secrets = db.consumer_reset_secrets:select_all()
+              local secrets = {}
+              for row in db.consumer_reset_secrets:each(nil, { workspace = ngx.null }) do
+                table.insert(secrets, row)
+              end
               assert.equals(0, #secrets)
             end)
 

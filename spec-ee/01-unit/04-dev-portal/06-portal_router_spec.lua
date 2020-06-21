@@ -37,9 +37,6 @@ local function populate_files(router_files)
         end
         return pairs(files)
       end,
-      select_all = function()
-        return {}
-      end,
       select_by_path = function(self, path)
         return _files[path]
       end,

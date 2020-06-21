@@ -326,9 +326,6 @@ describe("file helpers", function()
               end
               return pairs(files)
             end,
-            select_all = function()
-              return {}
-            end,
             select_by_path = function(self, path)
               return {}
             end,
@@ -591,9 +588,6 @@ describe("file helpers", function()
                 files[v] = ""
               end
               return pairs(files)
-            end,
-            select_all = function()
-              return {}
             end,
             select_by_path = function(self, path)
               return router_files[path]

@@ -7,6 +7,8 @@ local endpoints   = require "kong.api.endpoints"
 local enums       = require "kong.enterprise_edition.dao.enums"
 local files       = require "kong.portal.migrations.01_initial_files"
 local constants    = require "kong.constants"
+local workspace_config = require "kong.portal.workspace_config"
+
 
 local kong = kong
 local type = type
@@ -565,10 +567,7 @@ end
 
 local function initialize_portal_files(premature, workspace, db)
   -- Check if any files exist
-  local any_file = workspaces.run_with_ws_scope(
-    { workspace },
-    db.files.each,
-    db.files )()
+  local any_file = db.files:each(nil, { workspace = workspace.id })()
 
   -- if we already have files, return
   if any_file then
@@ -577,14 +576,8 @@ local function initialize_portal_files(premature, workspace, db)
 
   -- if no files for this workspace, create them!
   for _, file in ipairs(files) do
-    local ok, err = workspaces.run_with_ws_scope(
-      { workspace },
-      db.files.insert,
-      db.files,
-      {
-        path = file.path,
-        contents = file.contents,
-      })
+    local entity = { path = file.path, contents = file.contents }
+    local ok, err = db.files:insert(entity, { workspace = workspace.id })
 
     if not ok then
       return nil, err
@@ -616,7 +609,7 @@ end
 function _M.exit_if_portal_disabled()
   local ws = workspaces.get_workspace()
   local opts = { explicitly_ws = true }
-  local enabled_in_ws = workspaces.retrieve_ws_config(PORTAL, ws, opts)
+  local enabled_in_ws = workspace_config.retrieve(PORTAL, ws, opts)
   local enabled_in_conf = kong.configuration.portal
   if not enabled_in_conf or not enabled_in_ws then
     return kong.response.exit(404, { message = "Not Found" })

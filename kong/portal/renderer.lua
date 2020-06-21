@@ -8,6 +8,7 @@ local lyaml        = require "lyaml"
 local handler      = require "kong.portal.render_toolset.handler"
 local constants    = require "kong.constants"
 local emails       = require "kong.portal.emails"
+local workspace_config = require "kong.portal.workspace_config"
 
 local LAYOUTS = constants.PORTAL_RENDERER.LAYOUTS
 local FALLBACK_404 = constants.PORTAL_RENDERER.FALLBACK_404
@@ -76,7 +77,7 @@ local function build_url_obj(route, page, url_map)
   end
 
   local url_items = {}
-  local page_url = workspaces.build_ws_portal_gui_url(kong.configuration, workspace) .. route
+  local page_url = workspace_config.build_ws_portal_gui_url(kong.configuration, workspace) .. route
   page_url = pl_stringx.rstrip(page_url, '/')
   url_items["loc"] = page_url
 
@@ -220,7 +221,7 @@ local function set_layout_by_permission(route_config, developer, workspace, conf
   local file
   local headmatter = route_config.headmatter or {}
   local workspace = workspaces.get_workspace()
-  local portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH,
+  local portal_auth = workspace_config.retrieve(ws_constants.PORTAL_AUTH,
                                                     workspace)
 
   local no_auth = portal_auth == nil or portal_auth == ''
@@ -297,7 +298,7 @@ local function set_portal_config()
   for _, v in ipairs(portal_conf_values) do
     if not contents["config"][v] then
       local ws = workspaces.get_workspace()
-      contents["config"][v] = workspaces.retrieve_ws_config("portal_" .. v, ws)
+      contents["config"][v] = workspace_config.retrieve("portal_" .. v, ws)
     end
   end
 

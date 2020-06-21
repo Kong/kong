@@ -249,6 +249,7 @@ build = {
     ["kong.portal.template"] = "kong/portal/template.lua",
     ["kong.portal.legacy_renderer"] = "kong/portal/legacy_renderer.lua",
     ["kong.portal.app_auth_strategies"] = "kong/portal/app_auth_strategies.lua",
+    ["kong.portal.workspace_config"] = "kong/portal/workspace_config.lua",
     ["kong.portal.render_toolset.base"] = "kong/portal/render_toolset/base/init.lua",
     ["kong.portal.render_toolset.looper"] = "kong/portal/render_toolset/looper.lua",
     ["kong.portal.render_toolset.markdown"] = "kong/portal/render_toolset/markdown.lua",

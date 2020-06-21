@@ -4,6 +4,8 @@ local singletons    = require "kong.singletons"
 local markdown      = require "kong.portal.render_toolset.markdown"
 local lyaml         = require "lyaml"
 local looper        = require "kong.portal.render_toolset.looper"
+local workspace_config = require "kong.portal.workspace_config"
+
 
 local yaml_load     = lyaml.load
 
@@ -24,7 +26,7 @@ return function()
   local render_ctx = singletons.render_ctx
   local workspace = workspaces.get_workspace()
   local workspace_path_gsub = "^/" .. workspace.name .. "/"
-  local portal_gui_url = workspaces.build_ws_portal_gui_url(conf, workspace)
+  local portal_gui_url = workspace_config.build_ws_portal_gui_url(conf, workspace)
   local route_config = render_ctx.route_config or {}
 
   local page = {}

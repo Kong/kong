@@ -5,6 +5,8 @@ local singletons    = require "kong.singletons"
 local ee            = require "kong.enterprise_edition"
 local permissions   = require "kong.portal.permissions"
 local looper        = require "kong.portal.render_toolset.looper"
+local workspace_config = require "kong.portal.workspace_config"
+
 
 local function parse_developer_field(item)
   local SCHEMA_TO_FIELD_TYPE = { string = "text", number = "number" }
@@ -105,7 +107,7 @@ return function()
   local render_ctx = singletons.render_ctx
   local workspace = workspaces.get_workspace()
   local workspace_conf = ee.prepare_portal(render_ctx, singletons.configuration)
-  local portal_gui_url = workspaces.build_ws_portal_gui_url(conf, workspace)
+  local portal_gui_url = workspace_config.build_ws_portal_gui_url(conf, workspace)
   local portal = helpers.tbl.deepcopy(render_ctx.portal or {})
 
   -- Add any fields that might have been missed
@@ -127,8 +129,12 @@ return function()
   portal.app_auth = conf.portal_app_auth
 
   portal.files = function()
-    return singletons.db.files:select_all()
-  end
+    local rows = {}
+    for row in singletons.db.files:each() do
+      table.insert(rows, row)
+    end
+    return rows
+ end
 
   if portal.api_url ~= "" and portal.api_url ~= nil then
     portal.api_url = portal.api_url .. '/' .. portal.workspace

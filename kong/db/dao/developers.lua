@@ -4,6 +4,7 @@ local constants = require "kong.constants"
 local workspaces = require "kong.workspaces"
 local dao_helpers = require "kong.portal.dao_helpers"
 local developers  = require "kong.db.schema.entities.developers"
+local workspace_config = require "kong.portal.workspace_config"
 
 local ws_constants = constants.WORKSPACE_CONFIG
 
@@ -47,7 +48,7 @@ function _Developers:insert(entity, options)
   -- ensure portal_auth is set
   local workspace = workspaces.get_workspace()
 
-  self.portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+  self.portal_auth = workspace_config.retrieve(ws_constants.PORTAL_AUTH, workspace)
   if not self.portal_auth then
     local err = "portal_auth must be enabled create a developer"
     local err_t = { code = Errors.codes.SCHEMA_VIOLATION, message = err }

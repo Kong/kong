@@ -7,12 +7,6 @@ describe("page", function()
     singletons = require "kong.singletons"
     workspaces = require "kong.workspaces"
 
-    singletons.db = {
-      files = {
-        select_all = function() return {} end
-      }
-    }
-
     singletons.configuration = {
       portal = "on",
       portal_gui_listeners = {"127.0.0.1:8003"},
@@ -112,7 +106,7 @@ describe("page", function()
       assert.equals(theme.color("blue"), "#123456")
       assert.is_nil(theme.color("red"))
     end)
-  
+
     it('normalizes font values', function()
       assert.equals(theme.fonts.fancy, "sofancy")
       assert.equals(theme.fonts.ugly, "muchugly")
