@@ -8,10 +8,10 @@ local kong = kong
 
 
 local function rebuild_routes()
-  local old_wss = ngx.ctx.workspaces
-  ngx.ctx.workspaces = {}
+  local old_ws = ngx.ctx.workspace
+  ngx.ctx.workspace = nil
   core_handler.build_router(singletons.db, uuid())
-  ngx.ctx.workspaces = old_wss
+  ngx.ctx.workspace = old_ws
 end
 
 

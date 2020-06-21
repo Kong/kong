@@ -26,10 +26,7 @@ local _M = {}
 
 
 local function rebuild_routes()
-  local old_wss = ngx.ctx.workspaces
-  ngx.ctx.workspaces = {}
   core_handler.build_router(singletons.db, uuid())
-  ngx.ctx.workspaces = old_wss
 end
 
 
