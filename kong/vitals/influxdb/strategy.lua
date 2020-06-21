@@ -4,8 +4,7 @@ local _M = {}
 local cjson = require "cjson"
 local ffi   = require "ffi"
 local http  = require "resty.http"
-local workspaces = require "kong.workspaces"
-local enums        = require "kong.enterprise_edition.dao.enums"
+local enums = require "kong.enterprise_edition.dao.enums"
 
 local ipairs        = ipairs
 local math_floor    = math.floor
@@ -16,6 +15,7 @@ local table_concat  = table.concat
 local table_insert  = table.insert
 local tonumber      = tonumber
 local tostring      = tostring
+local null          = ngx.null
 
 
 local BUF_SIZE = 5000 -- number of points to buffer before flushing
@@ -346,7 +346,7 @@ function _M:select_status_codes(opts)
     interval = duration_to_interval[opts.duration],
     latest_ts = ngx_time(),
     level = "cluster",
-    workspace_id = ngx.ctx.workspaces[1].id,
+    workspace_id = ngx.ctx.workspace,
     stat_labels = {},
   }
 
@@ -504,9 +504,9 @@ function _M:select_stats(query_type, level, node_id, start_ts)
     earliest_ts = start_ts,
     interval = query_type,
     interval_width = duration_to_interval[query_type],
-    latest_ts = ngx_time(), 
+    latest_ts = ngx_time(),
     level = level,
-    workspace_id = ngx.ctx.workspaces[1].id,
+    workspace_id = ngx.ctx.workspace,
     stat_labels = {
       "cache_datastore_hits_total",
       "cache_datastore_misses_total",
@@ -626,7 +626,7 @@ local function status_code_query(entity_id, entity, seconds_from_now, interval)
   local where_clause = " WHERE time > now() - " .. seconds_from_now .. "s"
   local group_by = " GROUP BY status_f, "
   if entity_id == nil then
-    group_by = group_by .. entity 
+    group_by = group_by .. entity
   else
     where_clause = where_clause .. " and " .. entity .. "='" .. entity_id .."'"
     group_by = group_by .. " time(" .. interval_to_duration[interval] .. "s)"
@@ -645,7 +645,7 @@ local function resolve_entity_metadata(entity)
     return {
       name = "",
       app_id = entity.username:sub(0, entity.username:find("_") - 1),
-      app_name = entity.username:sub(entity.username:find("_") + 1)  
+      app_name = entity.username:sub(entity.username:find("_") + 1)
     }
   end
   return {
@@ -667,16 +667,12 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   local is_timeseries_report = not not entity_id
   local entities = {}
   if is_timeseries_report then
-    workspaces.run_with_ws_scope({}, function()
-      local row = kong.db[plural_entity]:select({ id = entity_id})
-      entities[row.id] = resolve_entity_metadata(row)
-    end)
+    local row = kong.db[plural_entity]:select({ id = entity_id }, { workspace = null })
+    entities[row.id] = resolve_entity_metadata(row)
   else
-    workspaces.run_with_ws_scope({}, function()
-      for row in kong.db[plural_entity]:each() do
-        entities[row.id] = resolve_entity_metadata(row)
-      end
-    end)
+    for row in kong.db[plural_entity]:each(nil, { workspace = null }) do
+      entities[row.id] = resolve_entity_metadata(row)
+    end
   end
 
   local seconds_from_now = ngx.time() - start_ts
@@ -801,7 +797,7 @@ function _M:latency_report(hostname, interval, start_ts)
     latest_ts = ngx.time(),
     stat_labels = columns,
   }
-  
+
   return { stats=stats, meta=meta }
 end
 function _M:log()
@@ -824,7 +820,7 @@ function _M:log()
   table_insert(tags, "service=" .. ctx.service.id)
   table_insert(tags, "status_f=" .. ngx.status)
   table_insert(tags, "wid=" .. self.wid)
-  table_insert(tags, "workspace=" .. ctx.workspaces[1].id)
+  table_insert(tags, "workspace=" .. ctx.workspace)
 
   local k = (ctx.KONG_ACCESS_TIME or 0) + (ctx.KONG_RECEIVE_TIME or 0) +
     (ctx.KONG_REWRITE_TIME or 0) + (ctx.KONG_BALANCER_TIME or 0)

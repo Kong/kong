@@ -163,7 +163,7 @@ return {
         start_ts    = self.params.start_ts,
         entity_id   = self.params.service_id,
         level       = "cluster",
-        workspace_id = ngx.ctx.workspaces[1] and ngx.ctx.workspaces[1].id,
+        workspace_id = ngx.ctx.workspace,
       }
 
       local status_codes, err = kong.vitals:get_status_codes(opts)
@@ -197,7 +197,7 @@ return {
         start_ts    = self.params.start_ts,
         entity_id   = self.params.route_id,
         level       = "cluster",
-        workspace_id = ngx.ctx.workspaces[1] and ngx.ctx.workspaces[1].id,
+        workspace_id = ngx.ctx.workspace,
       }
 
       local status_codes, err = kong.vitals:get_status_codes(opts)
@@ -251,7 +251,7 @@ return {
         start_ts    = self.params.start_ts,
         entity_id   = self.consumer.id,
         level       = "cluster",
-        workspace_id = ngx.ctx.workspaces[1] and ngx.ctx.workspaces[1].id,
+        workspace_id = ngx.ctx.workspace,
       }
 
       local requested_routes, err = kong.vitals:get_status_codes(opts, "route_id")
@@ -277,7 +277,7 @@ return {
       -- status_code_classes. Otherwise, we assume you meant cluster-level.
       if string.find(ngx.var.uri, "/vitals") > 1 then
         entity_type = "workspace"
-        entity_id = ngx.ctx.workspaces[1] and ngx.ctx.workspaces[1].id
+        entity_id = ngx.ctx.workspace
       end
 
       local opts = {

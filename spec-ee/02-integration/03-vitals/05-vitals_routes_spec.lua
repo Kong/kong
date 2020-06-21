@@ -1008,7 +1008,7 @@ for _, db_strategy in helpers.each_strategy() do
 
             local expected = {
               meta = {
-                workspace_id = ngx.ctx.workspaces[1].id,
+                workspace_id = ngx.ctx.workspace,
                 entity_type = "service",
                 entity_id   = service_id,
                 earliest_ts = now - 1,
@@ -1065,7 +1065,7 @@ for _, db_strategy in helpers.each_strategy() do
 
             local expected = {
               meta = {
-                workspace_id = ngx.ctx.workspaces[1].id,
+                workspace_id = ngx.ctx.workspace,
                 entity_type = "service",
                 entity_id   = service_id,
                 earliest_ts = minute_start_at - 60,
@@ -1229,7 +1229,7 @@ for _, db_strategy in helpers.each_strategy() do
 
             local expected = {
               meta = {
-                workspace_id = ngx.ctx.workspaces[1].id,
+                workspace_id = ngx.ctx.workspace,
                 entity_type = "route",
                 entity_id   = route_id,
                 earliest_ts = now - 1,
@@ -1281,7 +1281,7 @@ for _, db_strategy in helpers.each_strategy() do
 
             local expected = {
               meta = {
-                workspace_id = ngx.ctx.workspaces[1].id,
+                workspace_id = ngx.ctx.workspace,
                 entity_type = "route",
                 entity_id   = route_id,
                 earliest_ts = minute_start_at - 60,
@@ -1679,7 +1679,7 @@ for _, db_strategy in helpers.each_strategy() do
 
             local expected = {
               meta = {
-                workspace_id = ngx.ctx.workspaces[1].id,
+                workspace_id = ngx.ctx.workspace,
                 entity_type = "consumer_route",
                 entity_id   = consumer.id,
                 earliest_ts = now - 1,
@@ -1742,7 +1742,7 @@ for _, db_strategy in helpers.each_strategy() do
 
             local expected = {
               meta = {
-                workspace_id = ngx.ctx.workspaces[1].id,
+                workspace_id = ngx.ctx.workspace,
                 entity_type = "consumer_route",
                 entity_id   = consumer.id,
                 earliest_ts = minute_start_at - 60,
