@@ -45,12 +45,12 @@ end
 
 return {
   ["/workspaces"] = {
-    -- before = function(self)
-    --   -- FT-258
-    --   if ngx.ctx.workspace ~= kong.default_workspace then
-    --     return kong.response.exit(404, {message = "Not found"})
-    --   end
-    -- end,
+    before = function(self)
+      -- FT-258
+      if workspaces.get_workspace_id() ~= kong.default_workspace then
+        return kong.response.exit(404, {message = "Not found"})
+      end
+    end,
 
     POST = function(self, _, _, parent)
       return parent(portal_post_process)
