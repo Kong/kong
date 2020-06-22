@@ -112,6 +112,29 @@
   read operations through the read-only replica instead of the main Postgres
   connection.
   [#5584](https://github.com/Kong/kong/pull/5584)
+- Introducing **dynamic upstream keepalive pools**. This change prevents virtual
+  host confusion when Kong proxies traffic to virtual services (hosted on the
+  same IP/port) over TLS.
+  Keepalive pools are now created by the `upstream IP/upstream port/SNI/client
+  certificate` tuple instead of `IP/port` only. Users running Kong in front of
+  virtual services should consider adjusting their keepalive settings
+  appropriately.
+
+  This change required the introduction of new configuration properties and
+  the deprecation of older ones:
+    - New properties:
+        * `upstream_keepalive_pool_size`
+        * `upstream_keepalive_max_requests`
+        * `upstream_keepalive_idle_timeout`
+    - Deprecated properties:
+        * `nginx_upstream_keepalive`
+        * `nginx_upstream_keepalive_requests`
+        * `nginx_upstream_keepalive_timeout`
+
+  Additionally, this change allows for specifying an indefinite amount of max
+  requests and idle timeout threshold for upstream keepalive connections, a
+  capability that was previously removed by Nginx 1.15.3.
+  [#5771](https://github.com/Kong/kong/pull/5771)
 - The default certificate for the proxy can now be configured via Admin API
   using the `/certificates` endpoint. A special `*` SNI has been introduced
   which stands for the default certificate.
@@ -133,31 +156,14 @@
   `cassandra_consistency` property was deprecated.
   Thanks [Abhishekvrshny](https://github.com/Abhishekvrshny) for the patch!
   [#5812](https://github.com/Kong/kong/pull/5812)
-- Introduce new properties for upstream keepalive pooling and deprecate
-  old properties.
-  New properties:
-    * `upstream_keepalive_pool_size`
-    * `upstream_keepalive_max_requests`
-    * `upstream_keepalive_id`
-  Deprecated properties:
-    * `upstream_keepalive`
-    * `nginx_http_upstream_keepalive`
-    * `nginx_http_upstream_keepalive_requests`
-    * `nginx_http_upstream_keepalive_timeout`
-    * `nginx_upstream_keepalive`
-    * `nginx_upstream_keepalive_requests`
-    * `nginx_upstream_keepalive_timeout`
-  [#5771](https://github.com/Kong/kong/pull/5771)
-- Use dynamic upstream keepalive pools.
-  [#5771](https://github.com/Kong/kong/pull/5771)
 - Introduce certificate expiry and CA constraint checks to Hybrid Mode
   certificates (`cluster_cert` and `cluster_ca_cert`).
   [#6000](https://github.com/Kong/kong/pull/6000)
 - Introduce new attributes to the Services entity, allowing for customizations
-  in TLS verification parameters
+  in TLS verification parameters:
   * `tls_verify`: whether TLS verification is enabled while handshaking
     with the upstream Service
-  * `tls_verify_depth`: the maximum depth of verificatio when validating
+  * `tls_verify_depth`: the maximum depth of verification when validating
     upstream Service's TLS certificate
   * `ca_certificates`: the CA trust store to use when validating upstream
     Service's TLS certificate
