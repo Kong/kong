@@ -14,7 +14,6 @@ return {
   name = "canary",
   fields = {
     { consumer = typedefs.no_consumer },
-    { run_on = typedefs.run_on_first },
     { config = {
         type = "record",
         fields = {
@@ -54,7 +53,7 @@ return {
           }},
           { groups = {
               type = "array",
-              elements = { type = "string" }           
+              elements = { type = "string" }
           }}
         }
     }}
@@ -67,8 +66,7 @@ return {
     }},
     { conditional_at_least_one_of = {
         if_field = "config.hash", if_match = { one_of = { "consumer", "ip", "none" }},
-        then_at_least_one_of = { "config.percentage", "config.start" } 
+        then_at_least_one_of = { "config.percentage", "config.start" }
     }}
   }
 }
-
