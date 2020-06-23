@@ -110,9 +110,23 @@
 
 ##### Core
 
-- :fireworks: **Asynchronous upstream updates**: when `worker_consistency` is
-  set to `eventual`, upstreams will not be updated in the context of Admin API calls,
-  but rather in a background timer.
+- :fireworks: **Asynchronous upstream updates**: Kong's load balancer is now able to
+  update its internal structures asynchronously instead of onto the request/stream
+  path.
+
+  This change required the introduction of new configuration properties and the
+  deprecation of older ones:
+    - New properties:
+      * `worker_consistency`
+      * `worker_state_update_frequency`
+    - Deprecated properties:
+      * `router_consistency`
+      * `router_update_frequency`
+
+  The new `worker_consistency` property is similar to `router_consistency` and accepts
+  either of `strict` (default, synchronous) or `eventual` (asynchronous). Unlike its
+  deprecated counterpart, this new property aims at configuring the consistency of *all*
+  internal structures of Kong, and not only the router.
   [#5325](https://github.com/Kong/kong/pull/5325)
 - :fireworks: **Read-Only Postgres**: Kong users are now able to configure
   a read-only Postgres replica. When configured, Kong will attempt to fulfill
