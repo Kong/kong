@@ -16,7 +16,6 @@ end
 return {
   name = "route-transformer",
   fields = {
-    { run_on = typedefs.run_on_first },
     { config = {
         type = "record",
         fields = {
