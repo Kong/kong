@@ -5121,7 +5121,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[2.1.0 UNRELEASED]: https://github.com/Kong/kong/compare/2.0.4...2.1.0 UNRELEASED
+[2.1.0 UNRELEASED]: https://github.com/Kong/kong/compare/2.0.4...2.1.0-beta.1
 [2.0.4]: https://github.com/Kong/kong/compare/2.0.3...2.0.4
 [2.0.3]: https://github.com/Kong/kong/compare/2.0.2...2.0.3
 [2.0.2]: https://github.com/Kong/kong/compare/2.0.1...2.0.2
