@@ -32,6 +32,7 @@ script:
 
 notifications:
   slack:
+    if: branch = master AND type != pull_request
     on_success: change
     on_failure: always
     rooms:
