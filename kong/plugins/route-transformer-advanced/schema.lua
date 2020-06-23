@@ -1,4 +1,3 @@
-local typedefs = require "kong.db.schema.typedefs"
 local pl_template = require "pl.template"
 
 
@@ -16,7 +15,6 @@ end
 return {
   name = "route-transformer",
   fields = {
-    { run_on = typedefs.run_on_first },
     { config = {
         type = "record",
         fields = {
