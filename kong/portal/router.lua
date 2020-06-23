@@ -1,6 +1,7 @@
 local file_helpers = require "kong.portal.file_helpers"
-local workspaces   = require "kong.workspaces"
-local constants    = require "kong.constants"
+local workspaces = require "kong.workspaces"
+local constants = require "kong.constants"
+local scope = require "kong.enterprise_edition.workspaces.scope"
 
 local timer_at = ngx.timer.at
 
@@ -163,7 +164,7 @@ return {
         -- due to many concurrent requests.
         if local_version ~= global_version and not is_building then
           timer_at(0, function()
-            workspaces.run_with_ws_scope({ws}, function()
+            scope.run_with_ws_scope({ws}, function()
               is_building = true
               local ws_router = build_ws_router(db, ws, {})
               if ws_router then

@@ -1,19 +1,23 @@
 local helpers    = require "spec.helpers"
 local utils   = require "kong.tools.utils"
-local workspaces = require "kong.workspaces"
+local scope = require "kong.enterprise_edition.workspaces.scope"
 
 for _, strategy in helpers.each_strategy() do
   describe("kong.db [#" .. strategy .. "]", function()
-    local run_ws = workspaces.run_with_ws_scope
+    local run_ws = scope.run_with_ws_scope
     local bp, db
     -- workspaces objects
     local s1
     local w1, w1s1
 
-    local sort_by_name
-
     lazy_setup(function()
-      bp, db, _ = helpers.get_db_utils(strategy, nil, { "key-auth" })
+      bp, db, _ = helpers.get_db_utils(strategy, {
+        "routes",
+        "plugins",
+        "services",
+        "consumers",
+        "workspaces",
+      }, { "key-auth" })
 
       -- Default workspace
       s1 = bp.services:insert({ name = "s1" })
@@ -25,11 +29,6 @@ for _, strategy in helpers.each_strategy() do
       w1s1 = bp.services:insert_ws({ name = "w1s1" }, w1)
       bp.routes:insert({ name = "w1r1", paths = { "/" }, service = s1 })
       bp.consumers:insert_ws({ username = "w1c1" }, w1)
-
-      -- sorting function
-      sort_by_name = function(a, b)
-        return a.name < b.name
-      end
     end)
 
     lazy_teardown(function()
@@ -45,20 +44,6 @@ for _, strategy in helpers.each_strategy() do
         end
 
         assert.same(2, #rows)
-      end)
-
-      describe("select_all():", function()
-        it("returns services for workspace [default]", function()
-          local res = db.services:select_all()
-          assert.same({ s1 }, res)
-        end)
-
-        it("returns services for workspace [w1]", function()
-          local res = run_ws({ w1 }, function()
-            return db.services:select_all()
-          end)
-          assert.same({ w1s1 }, res)
-        end)
       end)
 
       describe("select():", function()
@@ -83,31 +68,6 @@ for _, strategy in helpers.each_strategy() do
           end)
           assert.same(w1s1, res)
         end)
-
-        it("returns shared service [s0] from workspace [default] and workspace [w1]", function()
-          local res, err
-          local s0 = assert(bp.services:insert({ name = "s0" }))
-
-          -- selecting service [s0] from workspace [w1] before sharing service entity
-          res, err = run_ws({ w1 }, function()
-            return db.services:select({ id = s0.id })
-          end)
-          assert.is_nil(err)
-          assert.is_nil(res)
-
-          -- adding shared service [s0] with workspace [w1]
-          assert.is_nil(workspaces.add_entity_relation("services", s0, w1))
-
-          -- selecting shared service [s0] from workspaces [default, w1]
-          assert.same(s0, run_ws({ w1 }, function()
-            return db.services:select({ id = s0.id })
-          end))
-
-          -- cleanup
-          local ok, err = db.services:delete({ id = s0.id })
-          assert.is_nil(err)
-          assert.is_true(ok)
-        end)
       end)
 
       describe("page():", function()
@@ -120,34 +80,6 @@ for _, strategy in helpers.each_strategy() do
             return db.services:page()
           end)
           assert.not_same({ s1 }, res)
-        end)
-
-        it("returns shared service [s0] from workspace [default] and workspace [w1]", function()
-          local res, err
-          local s0 = assert(bp.services:insert({ name = "s0" }))
-
-          -- selecting service [s0] from workspace [w1] before sharing service entity
-          res, err = run_ws({ w1 }, function()
-            return db.services:page()
-          end)
-          assert.is_nil(err)
-          assert.same({ w1s1 }, res)
-
-          -- adding shared service [s0] with workspace [w1]
-          assert.is_nil(workspaces.add_entity_relation("services", s0, w1))
-
-          -- geting page which includes shared service [s0] from workspaces [w1]
-          res = run_ws({ w1 }, function()
-            return db.services:page()
-          end)
-          table.sort(res, sort_by_name)
-
-          assert.same({ s0, w1s1 }, res)
-
-          -- cleanup, removing shared service [s0]
-          local ok, err = db.services:delete({ id = s0.id })
-          assert.is_nil(err)
-          assert.is_true(ok)
         end)
       end)
 
@@ -167,47 +99,6 @@ for _, strategy in helpers.each_strategy() do
             return res
           end)
           assert.not_same({ s1 }, res_services)
-        end)
-
-        it("returns set of services [w1s1, s0] where service [s0] is shared with workspace [w1]", function()
-          local s0 = assert(bp.services:insert({ name = "s0" }))
-
-          local res_services = {}
-          for row in db.services:each() do
-            table.insert(res_services, row)
-          end
-          table.sort(res_services, sort_by_name)
-          assert.same({ s0, s1 }, res_services)
-
-          -- checking existence before sharing service
-          res_services = {}
-          local iterator = run_ws({ w1 }, function()
-            return db.services:each()
-          end)
-          for row in iterator do
-            table.insert(res_services, row)
-          end
-          table.sort(res_services, sort_by_name)
-          assert.same({ w1s1 }, res_services)
-
-          -- adding shared service [s0] with workspace [w1]
-          assert.is_nil(workspaces.add_entity_relation("services", s0, w1))
-
-          -- checking existence after adding sharing service
-          res_services = {}
-          iterator = run_ws({ w1 }, function()
-            return db.services:each()
-          end)
-          for row in iterator do
-            table.insert(res_services, row)
-          end
-          table.sort(res_services, sort_by_name)
-          assert.same({ s0, w1s1 }, res_services)
-
-          -- cleanup, removing shared service [s0]
-          local ok, err = db.services:delete({ id = s0.id })
-          assert.is_nil(err)
-          assert.is_true(ok)
         end)
       end)
 
@@ -229,7 +120,6 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           assert.is_true(ok)
         end)
-
       end)
 
       describe("update():", function()
@@ -265,45 +155,6 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           assert.is_true(ok)
         end)
-
-        it("updates shared service [s0] in workspace [w1]", function()
-          local res, err
-          local s0 = assert(bp.services:insert({ name = "s0" }))
-
-          -- fails to update before [s0] is beign shared
-          res, err = run_ws({ w1 }, function()
-            return db.services:update({ id = s0.id }, { name = "s0-test" })
-          end)
-          assert.is_nil(res)
-          assert.same("[" .. strategy .. "] could not find the entity with primary key '{id=\"" .. s0.id .. "\"}'", err)
-
-          -- adding shared service [s0] with workspace [w1]
-          assert.is_nil(workspaces.add_entity_relation("services", s0, w1))
-
-          -- succeeds to update after [s0] is beign shared
-          res, err = run_ws({ w1 }, function()
-            return db.services:update({ id = s0.id }, { name = "s0-test" })
-          end)
-          assert.same("s0-test", res.name)
-          assert.is_nil(err)
-
-          local ok, err = db.services:delete({ id = s0.id })
-          assert.is_nil(err)
-          assert.is_true(ok)
-        end)
-
-        it("does not mess up cacheable columns that contain colons", function()
-          local res, err
-          local c = bp.consumers:insert({ username = "foobar" })
-
-          c.username = "http://hello-world"
-          res, err = db.consumers:update({ id = c.id }, c)
-          assert.is_nil(err)
-          assert.same("http://hello-world", res.username)
-
-          db.consumers:delete(c)
-        end)
-
       end)
 
       describe("upsert():", function()
@@ -312,6 +163,12 @@ for _, strategy in helpers.each_strategy() do
           local s, err = db.services:upsert({ id = utils.uuid() }, { name = "upsert", host = "httpbin.org" })
           assert.is_nil(err)
           assert.not_nil(s)
+
+          finally(function()
+            local ok, err = db.services:delete({ id = s.id })
+            assert.is_nil(err)
+            assert.is_true(ok)
+          end)
 
           res, err = db.services:select({ id = s.id })
           assert.is_nil(err)
@@ -322,10 +179,6 @@ for _, strategy in helpers.each_strategy() do
           end)
           assert.is_nil(res)
           assert.is_nil(err)
-
-          local ok, err = db.services:delete({ id = s.id })
-          assert.is_nil(err)
-          assert.is_true(ok)
         end)
 
         it("upserts an existing service in workspace [default]", function()
@@ -386,47 +239,6 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           assert.is_nil(res)
         end)
-
-        it("deletes a shared service [s0] from workspace [w1]", function()
-          local ok, err
-          local s0 = assert(bp.services:insert({ name = "s0" }))
-
-          -- checking for existence
-          assert.is_nil(run_ws({ w1 }, function()
-            return db.services:select({ id = s0.id })
-          end))
-
-          ok, err = run_ws({ w1 }, function()
-            return db.services:delete({ id = s0.id })
-          end)
-          assert.is_true(ok)
-          assert.is_nil(err)
-
-          -- adding shared service [s0] with workspace [w1]
-          assert.is_nil(workspaces.add_entity_relation("services", s0, w1))
-
-          -- checking if it has been added
-          assert.same(s0, run_ws({ w1 }, function()
-            return db.services:select({ id = s0.id })
-          end))
-
-          -- removing from workspace [w1]
-          ok, err = run_ws({ w1 }, function()
-            return db.services:delete({ id = s0.id })
-          end)
-          assert.is_true(ok)
-          assert.is_nil(err)
-
-          -- checking if it has been removed from workspace [w1]
-          assert.is_nil(run_ws({ w1 }, function()
-            return db.services:select({ id = s0.id })
-          end))
-
-          -- cleanup
-          ok, err = db.services:delete({ id = s0.id })
-          assert.is_nil(err)
-          assert.is_true(ok)
-        end)
       end)
 
       describe("select_by_cache_key():", function()
@@ -459,53 +271,11 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           assert.is_true(ok)
         end)
-        it("selects plugin from workspace [w1] by cache key and fails to select from workspace [default]", function()
-          local res, p, p_cache_key_ws, ok, err
-
-          run_ws({ w1 }, function()
-            p, err = bp.plugins:insert({ name = "key-auth" })
-            assert.is_nil(err)
-
-            res, err = db.plugins:select({ id = p.id })
-            assert.is_nil(err)
-            assert.same(res, p)
-
-            -- loads plugin from db with ws info
-            p_cache_key_ws = db.plugins:cache_key(p)
-
-            -- retrieving plugin entity from workspace w1 with ws info
-            res, err = db.plugins:select_by_cache_key(p_cache_key_ws, { include_ws = true })
-
-            assert.is_nil(err)
-            assert.is_not.same(p, res)
-            assert.same(res.workspace_id, w1.id)
-            assert.same(res.workspace_name, w1.name)
-
-            -- retrieving plugin entity from workspace w1 without ws info
-            res, err = db.plugins:select_by_cache_key(p_cache_key_ws)
-            assert.is_nil(err)
-            assert.same(p, res)
-            assert.is_nil(res.workspace_id)
-            assert.is_nil(res.workspace_name)
-          end)
-
-          -- make sure the plugin still exists out of run_ws
-          assert.is_not_nil(p)
-
-          -- retrieving plugin entity from workspace [default]
-          res, err = db.plugins:select({ id = p.id })
-          assert.is_nil(err)
-          assert.is_nil(res)
-
-          -- cleanup, removing plugin
-          ok, err = db.plugins:delete({ id = p.id })
-          assert.is_nil(err)
-          assert.is_true(ok)
-        end)
       end)
 
       describe("cache_key():", function()
-        it("retrieves different cache key for different workspaces", function()
+        -- XXXCORE is this really necessary? since id's are globally unique (uuids)...
+        pending("retrieves different cache key for different workspaces", function()
           local res, res_1, res_2, err
 
           -- adding new plugin to run tests against
@@ -566,3 +336,4 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 end
+

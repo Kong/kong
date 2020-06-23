@@ -2,6 +2,7 @@ local pl_tablex   = require "pl.tablex"
 local pl_stringx   = require "pl.stringx"
 local constants    = require "kong.constants"
 local workspaces = require "kong.workspaces"
+local workspace_config = require "kong.portal.workspace_config"
 local ws_constants = constants.WORKSPACE_CONFIG
 local endpoints          = require "kong.api.endpoints"
 
@@ -26,7 +27,7 @@ local function build_url_obj(page, path, url_map)
   local workspace = workspaces.get_workspace()
   local url_items = {}
 
-  local page_url = workspaces.build_ws_portal_gui_url(kong.configuration, workspace) .. '/' .. path
+  local page_url = workspace_config.build_ws_portal_gui_url(kong.configuration, workspace) .. '/' .. path
   page_url = pl_stringx.rstrip(page_url, '/')
   url_items["loc"] = page_url
 
@@ -246,13 +247,13 @@ local function retrieve_page_and_spec(self)
   local is_authenticated = self.developer ~= nil
   local workspace = workspaces.get_workspace()
 
-  local portal_enabled = workspaces.retrieve_ws_config(ws_constants.PORTAL,
+  local portal_enabled = workspace_config.retrieve(ws_constants.PORTAL,
                                                                     workspace)
   if not portal_enabled then
     return portal_disabled
   end
 
-  local portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH,
+  local portal_auth = workspace_config.retrieve(ws_constants.PORTAL_AUTH,
                                                                     workspace)
 
   local path = self.path
@@ -322,28 +323,20 @@ end
 
 local function compile_sitemap(self)
   local is_authenticated = self.developer ~= nil
-  local page_filter = { type = 'page', auth = false }
-  local spec_filter = { type = 'spec', auth = false }
 
-  if is_authenticated then
-    page_filter = { type = 'page' }
-    spec_filter = { type = 'spec' }
-  end
+  local pages = {}
+  local specs = {}
+  for row, err in kong.db.files:each(nil, { skip_rbac = true }) do
+    if err then
+      return endpoints.handle_error(err)
+    end
 
-  local pages, err, err_t = kong.db.files:select_all(page_filter, {
-    skip_rbac = true,
-  })
+    if row.type == "page" and (is_authenticated or row.auth == false) then
+      table.insert(pages, row)
 
-  if err then
-    return endpoints.handle_error(err_t)
-  end
-
-  local specs, err, err_t = kong.db.files:select_all(spec_filter, {
-    skip_rbac = true,
-  })
-
-  if err then
-    return endpoints.handle_error(err_t)
+    elseif row.type == "spec" and (is_authenticated or row.auth == false) then
+      table.insert(specs, row)
+    end
   end
 
   return build_xml_template(pages, specs)

@@ -86,18 +86,21 @@ function _ApplicationInstances:insert(entity, options)
   local ok, err = validate_insert(entity)
   if not ok then
     local err_t = { code = Errors.codes.SCHEMA_VIOLATION, fields = err }
-    ngx.log(ngx.DEBUG, tostring(err))
+    kong.log.debug(tostring(err))
     return nil, err, err_t
   end
 
-  -- check if application reg plugin is enabled on service
-  local application_registrations = kong.db.plugins:select_all({
-    name = "application-registration",
-  })
   local application_registration
-  for _, v in ipairs(application_registrations) do
-    if v.service.id == entity.service.id then
-      application_registration = v
+  -- check if application reg plugin is enabled on service
+  for plugin, err in kong.db.plugins:each() do
+    if err then
+      kong.log.err(err)
+      break
+    end
+
+    if plugin.name == "application-registration"
+    and plugin.service.id == entity.service.id then
+      application_registration = plugin
       break
     end
   end

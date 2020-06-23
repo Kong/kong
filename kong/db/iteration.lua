@@ -4,6 +4,7 @@ local hooks = require "kong.hooks"
 
 local tostring = tostring
 local run_hook = hooks.run_hook
+local type = type
 
 
 local iteration = {}
@@ -96,7 +97,7 @@ function iteration.by_row(self, pager, size, options)
       return row, nil, page
     end
 
-    row, err, err_t = self:row_to_entity(row)
+    row, err, err_t = self:row_to_entity(row, options)
     if not row then
       failed = true
       return false, err, err_t

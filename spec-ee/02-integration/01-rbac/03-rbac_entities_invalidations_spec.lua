@@ -1,6 +1,6 @@
 local cjson        = require "cjson"
 local helpers      = require "spec.helpers"
-local rbac_migrations_defaults = require "kong.rbac.migrations.01_defaults"
+local ee_helpers   = require "spec-ee.helpers"
 
 local POLL_INTERVAL = 0.3
 
@@ -90,7 +90,8 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
 
       service = bp.services:insert()
 
-      rbac_migrations_defaults.up(nil, nil, db)
+      ee_helpers.register_rbac_resources(db)
+
       -- a few extra mock entities for our test
 
       db.rbac_users:insert({

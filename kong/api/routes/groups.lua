@@ -1,6 +1,6 @@
 local endpoints          = require "kong.api.endpoints"
 local utils              = require "kong.tools.utils"
-local workspaces         = require "kong.workspaces"
+local scope = require "kong.enterprise_edition.workspaces.scope"
 
 local groups             = kong.db.groups
 local group_rbac_roles   = kong.db.group_rbac_roles
@@ -24,7 +24,7 @@ local function response_filter(group, role, workspace)
 end
 
 local function post_process_action(row)
-  local rbac_role_row, err_role = rbac_roles:select({ id = row.rbac_role.id })
+  local rbac_role_row, err_role = rbac_roles:select({ id = row.rbac_role.id }, { workspace = ngx.null })
   local group_row, err_group = groups:select({ id = row.group.id })
 
   if err_role or err_group then
@@ -96,12 +96,10 @@ return {
     end,
 
     GET = function(self, db, helpers)
-      workspaces.run_with_ws_scope({}, function()
-          return endpoints.get_collection_endpoint(group_rbac_roles.schema,
+      return endpoints.get_collection_endpoint(group_rbac_roles.schema,
                                                groups.schema, "group")
                                               (self, db, helpers,
                                                post_process_action)
-      end)
     end,
 
     POST = function(self, db, helpers)
@@ -116,13 +114,11 @@ return {
         if not self.params[key] then
           return kong.response.exit(400, { message = "must provide the " .. key })
         end
+      end
 
-        entities[schema] = workspaces.run_with_ws_scope(
-          -- ws_scope is a ws array
-          {{ id = self.params.workspace_id }},
-          db[schema].select, db[schema],
-          { id = self.params[key] }
-        )
+      for schema, key in pairs(check_list) do
+        entities[schema] = db[schema]:select({ id = self.params[key] },
+                                             { workspace = self.params.workspace_id })
 
         if not entities[schema] then
           return kong.response.exit(404, { message = "Not found" })
@@ -132,7 +128,7 @@ return {
       local cache_key = db["group_rbac_roles"]:cache_key(self.params.groups.id)
       kong.cache:invalidate(cache_key)
 
-      workspaces.run_with_ws_scope({{ id = self.params.workspace_id }}, function()
+      scope.run_with_ws_scope({{ id = self.params.workspace_id }}, function()
           local _, _, err_t = group_rbac_roles:insert({
             rbac_role = { id = self.params.rbac_role_id },
             workspace = { id = self.params.workspace_id },
@@ -166,12 +162,12 @@ return {
       local cache_key = db["group_rbac_roles"]:cache_key(self.params.groups.id)
       kong.cache:invalidate(cache_key)
 
-      workspaces.run_with_ws_scope({{ id = self.params.workspace_id }}, function()
+      scope.run_with_ws_scope({{ id = self.params.workspace_id }}, function()
           local _, err = group_rbac_roles:delete({
             rbac_role = { id = self.params.rbac_role_id },
             group 	  = { id = self.params.groups.id },
           })
-          
+
           if err then
             kong.log.err('DELETE /groups/:groups/roles:', err)
           end

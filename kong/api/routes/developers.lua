@@ -8,6 +8,8 @@ local crud_helpers = require "kong.portal.crud_helpers"
 local enums   = require "kong.enterprise_edition.dao.enums"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local dao_helpers = require "kong.portal.dao_helpers"
+local workspace_config = require "kong.portal.workspace_config"
+
 
 local cjson = require "cjson"
 local rbac = require "kong.rbac"
@@ -76,7 +78,7 @@ end
 
 local function get_developer_status()
   local workspace = workspaces.get_workspace()
-  local auto_approve = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE,
+  local auto_approve = workspace_config.retrieve(ws_constants.PORTAL_AUTO_APPROVE,
                                                      workspace)
 
   if auto_approve then
@@ -129,9 +131,22 @@ return {
       self.params.role = nil
       self.params.status = tonumber(self.params.status)
 
-      local developers, err, err_t = db.developers:select_all(self.params)
-      if err then
-        return endpoints.handle_error(err_t)
+      local developers = {}
+      for developer, err in db.developers:each() do
+        if err then
+          return endpoints.handle_error(err)
+        end
+
+        local ok = true
+        if self.params.status and self.params.status ~= developer.status then
+          ok = false
+        end
+        if self.params.custom_id and self.params.custom_id ~= developer.custom_id then
+          ok = false
+        end
+        if ok then
+          table.insert(developers, developer)
+        end
       end
 
       local post_process = function(developer)
@@ -200,7 +215,7 @@ return {
 
         local workspace = workspaces.get_workspace()
         local token_ttl =
-          workspaces.retrieve_ws_config(ws_constants.PORTAL_TOKEN_EXP,
+          workspace_config.retrieve(ws_constants.PORTAL_TOKEN_EXP,
                                         workspace)
 
         local jwt, err = secrets.create(developer.consumer, ngx.var.remote_addr,
@@ -230,9 +245,12 @@ return {
     end,
 
     GET = function(self, db, helpers, parent)
-      local roles, err, err_t = db.rbac_roles:select_all()
-      if err then
-        return endpoints.handle_error(err_t)
+      local roles = {}
+      for role, err in db.rbac_roles:each() do
+        if err then
+          return endpoints.handle_error(err)
+        end
+        table.insert(roles, role)
       end
 
       local res, _, err_t = crud_helpers.paginate(self, roles,

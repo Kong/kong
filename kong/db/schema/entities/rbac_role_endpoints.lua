@@ -7,6 +7,7 @@ return {
   generate_admin_api = false,
   admin_api_nested_name = "endpoints",
   primary_key = { "role", "workspace", "endpoint" },
+  db_export = false,
   fields = {
     { role = { type = "foreign", required = true, reference = "rbac_roles", on_delete = "cascade" } },
     { workspace = {type = "string", required = true, default = workspaces.DEFAULT_WORKSPACE}},

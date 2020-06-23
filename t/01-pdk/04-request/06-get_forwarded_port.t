@@ -162,3 +162,58 @@ GET /t
 port: nil
 --- no_error_log
 [error]
+
+
+
+=== TEST 7: request.get_forwarded_port() returns published port when configured
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new({
+                host_ports = {
+                    [tonumber(ngx.var.server_port)] = 29181
+                }
+            })
+
+            ngx.say("port: ", pdk.request.get_forwarded_port())
+            ngx.say("type: ", type(pdk.request.get_forwarded_port()))
+        }
+    }
+--- request
+GET /t
+--- response_body
+port: 29181
+type: number
+--- no_error_log
+[error]
+
+
+
+=== TEST 8: request.get_forwarded_port() does not return published port when X-Forwarded-Port is trusted
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new({
+                trusted_ips = { "0.0.0.0/0", "::/0" },
+                host_ports = {
+                    [tonumber(ngx.var.server_port)] = 29181
+                }
+            })
+
+            ngx.say("port: ", pdk.request.get_forwarded_port())
+            ngx.say("type: ", type(pdk.request.get_forwarded_port()))
+        }
+    }
+--- request
+GET /t
+--- more_headers
+X-Forwarded-Port: 1234
+--- response_body
+port: 1234
+type: number
+--- no_error_log
+[error]

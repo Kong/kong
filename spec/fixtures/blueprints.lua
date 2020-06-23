@@ -3,7 +3,6 @@ local utils = require "kong.tools.utils"
 
 local deep_merge = utils.deep_merge
 local fmt = string.format
-local workspaces = require "kong.workspaces"
 
 
 local Blueprint   = {}
@@ -27,8 +26,12 @@ end
 
 -- insert blueprint in workspace specified by `ws`
 function Blueprint:insert_ws(overrides, workspace)
-  local entity = workspaces.run_with_ws_scope({workspace},
-    self.insert, self, overrides)
+  local old_workspace = ngx.ctx.workspace
+
+  ngx.ctx.workspace = workspace.id
+  local entity = self:insert(overrides)
+  ngx.ctx.workspace = old_workspace
+
   return entity
 end
 
@@ -367,6 +370,15 @@ function _M.new(db)
     return {
       name   = "rewriter",
       config = {},
+    }
+  end)
+
+  local rbac_user_name_seq = new_sequence("rbac_user-%d")
+  local rbac_user_user_token_seq = new_sequence("rbac_user_token-%d")
+  res.rbac_users = new_blueprint(db.rbac_users, function()
+    return {
+      name = rbac_user_name_seq:next(),
+      user_token = rbac_user_user_token_seq:next(),
     }
   end)
 

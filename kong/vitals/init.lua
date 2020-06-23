@@ -252,6 +252,8 @@ function _M.new(opts)
         strategy_opts.delete_interval = opts.delete_interval_pg or 90000
       elseif db.strategy == "cassandra" then
         db_strategy = require "kong.vitals.cassandra.strategy"
+      elseif db.strategy == "off" then
+        db_strategy = require "kong.vitals.off.strategy"
       else
         return error("no vitals strategy for " .. db.strategy)
       end
@@ -1499,23 +1501,13 @@ function _M:log_phase_after_plugins(ctx, status)
   local seconds = time()
   local minutes = seconds - (seconds % 60)
 
-  -- TODO: add ctx.workspace_ids and dispense with all this
-  local workspaces = {}
-  local i = 1
-
-  if ctx.workspaces then
-    for _, v in ipairs(ctx.workspaces) do
-      workspaces[i] = v.id
-      i = i + 1
-    end
-  end
-  workspaces = table.concat(workspaces, ",")
+  local workspace = ctx.workspace or ""
 
   local key = (ctx.service and ctx.service.id or "") .. "|" ..
     (ctx.route and ctx.route.id or "") .. "|" ..
     (status or "") .. "|" ..
     (ctx.authenticated_consumer and ctx.authenticated_consumer.id or "") .. "|" ..
-    workspaces .. "|"
+    workspace .. "|"
 
   local key_prefixes = {
     seconds .. "|1|",

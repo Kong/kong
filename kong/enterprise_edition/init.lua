@@ -15,6 +15,9 @@ local ee_api = require "kong.enterprise_edition.api_helpers"
 local utils = require "kong.tools.utils"
 local app_helpers = require "lapis.application"
 local api_helpers = require "kong.api.api_helpers"
+local tracing = require "kong.tracing"
+local counters = require "kong.workspaces.counters"
+local workspace_config = require "kong.portal.workspace_config"
 
 
 local kong = kong
@@ -26,6 +29,7 @@ _M.handlers = {
   init = {
     after = function()
       rbac.register_dao_hooks(kong.db)
+      counters.register_dao_hooks()
 
       hooks.register_hook("api:init:pre", function(app)
         app:before_filter(ee_api.before_filter)
@@ -77,6 +81,23 @@ _M.handlers = {
 
       hooks.register_hook("api:helpers:attach_routes", prepend_workspace_prefix)
       hooks.register_hook("api:helpers:attach_new_db_routes", prepend_workspace_prefix)
+
+      hooks.register_hook("balancer:get_peer:pre", function(target_host)
+        return tracing.trace("balancer.getPeer", { qname = target_host })
+      end)
+
+      hooks.register_hook("balancer:get_peer:post", function(trace)
+        trace:finish()
+      end)
+
+      hooks.register_hook("balancer:to_ip:pre", function(target_host)
+        return tracing.trace("balancer.toip", { qname = target_host })
+      end)
+
+      hooks.register_hook("balancer:to-ip:post", function(trace)
+        trace:finish()
+      end)
+
     end
   },
   init_worker = {
@@ -161,6 +182,8 @@ _M.handlers = {
   },
   log = {
     after = function(ctx, status)
+      tracing.flush()
+
       if not ctx.is_internal then
         kong.vitals:log_latency(ctx.KONG_PROXY_LATENCY)
         kong.vitals:log_request(ctx)
@@ -324,11 +347,11 @@ function _M.prepare_portal(self, kong_config)
 
   local rbac_enforced = kong_config.rbac == "both" or kong_config.rbac == "on"
 
-  local portal_gui_url = workspaces.build_ws_portal_gui_url(kong_config, workspace)
-  local portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+  local portal_gui_url = workspace_config.build_ws_portal_gui_url(kong_config, workspace)
+  local portal_auth = workspace_config.retrieve(ws_constants.PORTAL_AUTH, workspace)
 
   local opts = { explicitly_ws = true }
-  local portal_developer_meta_fields = workspaces.retrieve_ws_config(
+  local portal_developer_meta_fields = workspace_config.retrieve(
                             ws_constants.PORTAL_DEVELOPER_META_FIELDS,
                             workspace, opts) or '[]'
 

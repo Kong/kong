@@ -1,18 +1,20 @@
-local singletons  = require "kong.singletons"
-local workspaces  = require "kong.workspaces"
-local Router      = require "kong.router"
+local route_collision = require "kong.enterprise_edition.workspaces.route_collision"
+local scope = require "kong.enterprise_edition.workspaces.scope"
+local Router = require "kong.router"
+local singletons = require "kong.singletons"
 local core_handler = require "kong.runloop.handler"
 local uuid = require("kong.tools.utils").uuid
 
 
 local kong = kong
 local null = ngx.null
+local GLOBAL_QUERY_OPTS = { workspace = null }
 
 
 local function build_router_without(excluded_route)
   local routes, i = {}, 0
-  local db = singletons.db
-  local routes_iterator = db.routes:each()
+  local db = kong.db
+  local routes_iterator = db.routes:each(nil, GLOBAL_QUERY_OPTS)
 
   local route, err = routes_iterator()
   while route do
@@ -25,7 +27,7 @@ local function build_router_without(excluded_route)
     local service
 
     -- TODO: db requests in loop, problem or not
-    service, err = db.services:select(service_pk)
+    service, err = db.services:select(service_pk, GLOBAL_QUERY_OPTS)
     if not service then
       return nil, "could not find service for route (" .. route.id .. "): " .. err
     end
@@ -54,11 +56,12 @@ local function build_router_without(excluded_route)
   end
 
   -- inject internal proxies into the router
-  local _, err = singletons.internal_proxies:build_routes(i, routes)
+  local _, err = kong.internal_proxies:build_routes(i, routes)
   if err then
     return nil, err
   end
 
+  -- XXXCORE there are additional criteria for sorting routes nowadays
   table.sort(routes, function(r1, r2)
     r1, r2 = r1.route, r2.route
 
@@ -82,7 +85,7 @@ end
 
 local function rebuild_routes(db)
 if kong.configuration.route_validation_strategy == 'smart'  then
-    workspaces.run_with_ws_scope({},
+    scope.run_with_ws_scope({},
       core_handler.build_router,
       db,
       uuid())
@@ -95,7 +98,7 @@ return {
     POST = function(self, db, helpers, parent)
       rebuild_routes(db)
 
-      local ok, err = workspaces.is_route_crud_allowed(self, singletons.router, true)
+      local ok, err = route_collision.is_route_crud_allowed(self, singletons.router, true)
       if not ok then
         return kong.response.exit(err.code, {message = err.message})
       end
@@ -113,8 +116,7 @@ return {
       rebuild_routes(db)
       return parent()
     end,
-    POST = function(self, db, helpers, parent)
-      --todo change it to PUT, handle route collision
+    PUT = function(self, db, helpers, parent)
       rebuild_routes(db)
       return parent()
     end,
@@ -127,12 +129,12 @@ return {
       -- create temporary router
       rebuild_routes(db)
 
-      local r = workspaces.run_with_ws_scope({},
+      local r = scope.run_with_ws_scope({},
         build_router_without,
         self.params.routes
       )
 
-      local ok, err = workspaces.is_route_crud_allowed(self, r)
+      local ok, err = route_collision.is_route_crud_allowed(self, r)
       if not ok then
         return kong.response.exit(err.code, {message = err.message})
       end

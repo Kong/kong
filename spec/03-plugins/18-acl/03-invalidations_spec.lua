@@ -65,7 +65,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "acl",
         route = { id = route1.id },
         config   = {
-          whitelist = {"admin"}
+          allow = {"admin"}
         }
       }
 
@@ -82,7 +82,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "acl",
         route = { id = route2.id },
         config   = {
-          whitelist = { "ya" }
+          allow = { "ya" }
         }
       }
 

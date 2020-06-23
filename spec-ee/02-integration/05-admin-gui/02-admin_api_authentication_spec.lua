@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local ee_helpers = require "spec-ee.helpers"
-local workspaces = require "kong.workspaces"
+local scope = require "kong.enterprise_edition.workspaces.scope"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local utils = require "kong.tools.utils"
 local admins_helpers = require "kong.enterprise_edition.admins_helpers"
@@ -12,7 +12,6 @@ local post = ee_helpers.post
 local get_admin_cookie_basic_auth = ee_helpers.get_admin_cookie_basic_auth
 
 local function truncate_tables(db)
-  db:truncate("workspace_entities")
   db:truncate("consumers")
   db:truncate("admins")
   db:truncate("rbac_role_endpoints")
@@ -27,7 +26,7 @@ end
 local function setup_ws_defaults(dao, db, workspace)
   local endpoint = "*"
   if not workspace then
-    workspace = workspaces.DEFAULT_WORKSPACE
+    workspace = "default"
     endpoint = "*"
   end
 
@@ -40,7 +39,7 @@ local function setup_ws_defaults(dao, db, workspace)
     ws = db.workspaces:select_by_name(workspace)
   end
 
-  ngx.ctx.workspaces = { ws }
+  ngx.ctx.workspace = ws.id
 
   -- create a record we can use to test inter-workspace calls
   assert(db.services:insert({  host = workspace .. "-example.com", }))
@@ -52,7 +51,7 @@ end
 
 
 local function admin(db, workspace, name, role, email)
-  return workspaces.run_with_ws_scope({workspace}, function ()
+  return scope.run_with_ws_scope({workspace}, function ()
     local admin = assert(db.admins:insert({
       username = name,
       email = email,
@@ -61,10 +60,10 @@ local function admin(db, workspace, name, role, email)
 
     if role then
       local role = db.rbac_roles:select_by_name(role)
-      db.rbac_user_roles:insert({
+      assert(db.rbac_user_roles:insert({
         user = { id = admin.rbac_user.id },
         role = { id = role.id }
-      })
+      }))
     end
 
     local raw_user_token = utils.uuid()
@@ -116,7 +115,7 @@ for _, strategy in helpers.each_strategy() do
 
         client = assert(helpers.admin_client())
 
-        local ws = setup_ws_defaults(dao, db, workspaces.DEFAULT_WORKSPACE)
+        local ws = setup_ws_defaults(dao, db, "default")
         super_admin = admin(db, ws, 'mars', 'super-admin','test@konghq.com')
         read_only_admin = admin(db, ws, 'gruce', 'read-only', 'test1@konghq.com')
 
@@ -435,8 +434,11 @@ for _, strategy in helpers.each_strategy() do
         lazy_setup(function()
           cookie = get_admin_cookie_basic_auth(client, super_admin.username, 'hunter1')
 
-          -- by default, rbac_user uses primary_key with no-workspace to generates cache_key.
-          cache_key = db.rbac_users:cache_key(super_admin.rbac_user.id, '', '', '', '', true)
+          local save_ws = ngx.ctx.workspace
+          ngx.ctx.workspace = nil
+          -- produce a cache_key without a workspace
+          cache_key = db.rbac_users:cache_key(super_admin.rbac_user.id)
+          ngx.ctx.workspace = save_ws
         end)
 
         it("updates rbac_users cache when admin updates rbac token", function()
@@ -694,7 +696,7 @@ for _, strategy in helpers.each_strategy() do
           actions = "create,read,update,delete",
           negative = false,
         }, { ['Kong-Admin-Token'] = 'letmein-*' }, 201)
-        ngx.ctx.workspaces = {}
+        ngx.ctx.workspace = ngx.null
         assert(db.group_rbac_roles:insert({
           group = group3,
           rbac_role = { id = another_role.id },
@@ -946,7 +948,7 @@ for _, strategy in helpers.each_strategy() do
 
             client = assert(helpers.admin_client())
 
-            local ws = setup_ws_defaults(dao, db, workspaces.DEFAULT_WORKSPACE)
+            local ws = setup_ws_defaults(dao, db, "default")
             super_admin = admin(db, ws, 'mars', 'super-admin','test@konghq.com')
 
             assert(db.basicauth_credentials:insert {
@@ -990,7 +992,7 @@ for _, strategy in helpers.each_strategy() do
 
             client = assert(helpers.admin_client())
 
-            local ws = setup_ws_defaults(dao, db, workspaces.DEFAULT_WORKSPACE)
+            local ws = setup_ws_defaults(dao, db, "default")
             super_admin = admin(db, ws, 'mars', 'super-admin','test@konghq.com')
             read_only_admin1 = admin(db, ws, 'gruce1', 'read-only', 'test1@konghq.com')
             read_only_admin2 = admin(db, ws, 'gruce2', 'read-only', 'test2@konghq.com')
@@ -1138,8 +1140,8 @@ for _, strategy in helpers.each_strategy() do
               assert.equals(7, db.login_attempts:select({consumer = read_only_admin3.consumer}).attempts["127.0.0.1"])
 
               -- create a token for updating password
-              local jwt = secrets.create(read_only_admin3.consumer, "localhost",
-                                         ngx.time() + 100000)
+              local jwt = assert(secrets.create(read_only_admin3.consumer, "localhost",
+                                                ngx.time() + 100000))
 
              -- update their password
               local res = assert(client:send {
@@ -1194,7 +1196,7 @@ for _, strategy in helpers.each_strategy() do
 
         client = assert(helpers.admin_client())
 
-        local ws = setup_ws_defaults(dao, db, workspaces.DEFAULT_WORKSPACE)
+        local ws = setup_ws_defaults(dao, db, "default")
         super_admin = admin(db, ws, "mars", "super-admin","test@konghq.com")
         disabled_admin = admin(db, ws, "disabled", "super-admin","disabled@konghq.com")
 

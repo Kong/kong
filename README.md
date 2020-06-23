@@ -60,7 +60,7 @@ transformations, and more through plugins.
 - **OAuth2.0**: Easily add OAuth2.0 authentication to your APIs.
 - **Logging**: Log requests and responses to your system over HTTP, TCP, UDP,
   or to disk.
-- **Security**: ACL, Bot detection, whitelist/blacklist IPs, etc...
+- **Security**: ACL, Bot detection, allow/deny IPs, etc...
 - **Syslog**: Logging to System log.
 - **SSL**: Setup a Specific SSL Certificate for an underlying service or API.
 - **Monitoring**: Live monitoring provides key load and performance server

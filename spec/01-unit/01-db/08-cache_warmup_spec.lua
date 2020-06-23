@@ -5,7 +5,6 @@ local function mock_entity(db_data, entity_name, cache_key)
   return {
     schema = {
       name = entity_name,
-      primary_key = {"id"},
     },
     each = function()
       local i = 0
@@ -92,9 +91,6 @@ describe("cache_warmup", function()
       db = {
         my_entity = mock_entity(db_data, "my_entity", "aaa"),
         another_entity = mock_entity(db_data, "another_entity", "xxx"),
-        workspace_entities = {
-          select_all = function() return {} end
-        },
       },
       core_cache = mock_cache(cache_table),
       cache = mock_cache({}),
@@ -128,9 +124,6 @@ describe("cache_warmup", function()
       db = {
         my_entity = mock_entity(db_data, "my_entity", "aaa"),
         routes = mock_entity(db_data, "routes", "xxx"),
-        workspace_entities = {
-          select_all = function() return {} end
-        },
       },
       core_cache = mock_cache(cache_table),
       cache = mock_cache({}),
@@ -168,9 +161,6 @@ describe("cache_warmup", function()
       db = {
         my_entity = mock_entity(db_data, "my_entity", "aaa"),
         services = mock_entity(db_data, "services", "name"),
-        workspace_entities = {
-          select_all = function() return {} end
-        },
       },
       core_cache = mock_cache(cache_table),
       cache = mock_cache({}),
@@ -203,11 +193,7 @@ describe("cache_warmup", function()
     local logged_warnings = {}
 
     local kong = {
-      db = {
-        workspace_entities = {
-          select_all = function() return {} end
-        },
-      },
+      db = {},
       core_cache = {},
       cache = {},
       log = mock_log(logged_warnings),
@@ -239,9 +225,6 @@ describe("cache_warmup", function()
       db = {
         my_entity = mock_entity(db_data, "my_entity", "aaa"),
         another_entity = mock_entity(db_data, "another_entity", "xxx"),
-        workspace_entities = {
-          select_all = function() return {} end
-        },
       },
       core_cache = mock_cache(cache_table, 3),
       cache = mock_cache({}, 3),

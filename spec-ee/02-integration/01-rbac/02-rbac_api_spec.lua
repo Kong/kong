@@ -129,7 +129,6 @@ describe("Admin API RBAC with #" .. strategy, function()
     db:truncate("rbac_role_endpoints")
     db:truncate("developers")
     db:truncate("consumers")
-    db:truncate("workspace_entities")
     db:truncate("basicauth_credentials")
 
     if client then
@@ -1777,11 +1776,27 @@ describe("Admin API RBAC with #" .. strategy, function()
         })
         assert.res_status(201, res)
 
+        -- entity_type must be valid
         res = assert(client:send {
           method = "POST",
           path = "/rbac/roles/mock-role/entities",
           body = {
             entity_id = e_id,
+            entity_type = "services", -- incorrect
+            actions = "read",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          },
+        })
+        assert.res_status(400, res)
+
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/entities",
+          body = {
+            entity_id = e_id,
+            entity_type = "consumers",
             actions = "read",
           },
           headers = {
@@ -1789,8 +1804,8 @@ describe("Admin API RBAC with #" .. strategy, function()
           },
         })
 
-        local body = assert.res_status(201, res)
-        local json = cjson.decode(body)
+        body = assert.res_status(201, res)
+        json = cjson.decode(body)
 
         assert.equals(json.entity_id, e_id)
         assert.is_false(json.negative)
@@ -1831,6 +1846,7 @@ describe("Admin API RBAC with #" .. strategy, function()
           path = "/rbac/roles/mock-role/entities",
           body = {
             entity_id = w_id,
+            entity_type = "workspaces",
             actions = "read",
           },
           headers = {
@@ -1867,6 +1883,7 @@ describe("Admin API RBAC with #" .. strategy, function()
             path = "/rbac/roles/dne-role/entities",
             body = {
               entity_id = w_id,
+              entity_type = "workspaces",
               actions = "read",
             },
             headers = {
@@ -1934,6 +1951,7 @@ describe("Admin API RBAC with #" .. strategy, function()
           path = "/rbac/roles/mock-role/entities",
           body = {
             entity_id = e_id,
+            entity_type = "consumers",
             actions = "read",
           },
           headers = {
@@ -1947,6 +1965,7 @@ describe("Admin API RBAC with #" .. strategy, function()
           path = "/rbac/roles/mock-role/entities",
           body = {
             entity_id = w_id,
+            entity_type = "consumers",
             actions = "read",
           },
           headers = {
@@ -2038,6 +2057,7 @@ describe("Admin API RBAC with #" .. strategy, function()
           path = "/rbac/roles/mock-role/entities",
           body = {
             entity_id = e_id,
+            entity_type = "consumers",
             actions = "read",
           },
           headers = {
@@ -2131,6 +2151,7 @@ describe("Admin API RBAC with #" .. strategy, function()
           path = "/rbac/roles/mock-role/entities",
           body = {
             entity_id = e_id,
+            entity_type = "consumers",
             actions = "read",
           },
           headers = {
@@ -2191,6 +2212,7 @@ describe("Admin API RBAC with #" .. strategy, function()
           path = "/rbac/roles/mock-role/entities",
           body = {
             entity_id = e_id,
+            entity_type = "consumers",
             actions = "read",
             comment = "foo",
           },
@@ -2374,6 +2396,7 @@ describe("Admin API RBAC with #" .. strategy, function()
           path = "/rbac/roles/mock-role/entities",
           body = {
             entity_id = e_id,
+            entity_type = "consumers",
             actions = "read",
             comment = "foo",
           },
@@ -3539,9 +3562,9 @@ for _, strategy in helpers.each_strategy() do
 
     post("/rbac/users", {name = "bob", user_token = "bob"})
     post("/rbac/roles" , {name = "mock-role"})
-    post("/rbac/roles/mock-role/entities", {entity_id = services[2].id, actions = "read"})
-    post("/rbac/roles/mock-role/entities", {entity_id = services[3].id, actions = "delete"})
-    post("/rbac/roles/mock-role/entities", {entity_id = services[4].id, actions = "update"})
+    post("/rbac/roles/mock-role/entities", {entity_id = services[2].id, entity_type = "services", actions = "read"})
+    post("/rbac/roles/mock-role/entities", {entity_id = services[3].id, entity_type = "services", actions = "delete"})
+    post("/rbac/roles/mock-role/entities", {entity_id = services[4].id, entity_type = "services", actions = "update"})
     post("/rbac/users/bob/roles", {roles = "mock-role"})
 
     helpers.stop_kong()

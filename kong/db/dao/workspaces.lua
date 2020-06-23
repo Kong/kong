@@ -1,9 +1,10 @@
 local portal_helpers = require "kong.portal.dao_helpers"
 
-local _Workspaces = {}
+
+local Workspaces = {}
 
 
-function _Workspaces:insert(entity, options)
+function Workspaces:insert(entity, options)
   local entity, err = portal_helpers.set_portal_conf({}, entity)
   if not entity then
     return kong.response.exit(400, { message = err })
@@ -13,7 +14,7 @@ function _Workspaces:insert(entity, options)
 end
 
 
-function _Workspaces:update(workspace_pk, entity, options)
+function Workspaces:update(workspace_pk, entity, options)
   local ws, err, err_t = self.db.workspaces:select({ id = workspace_pk.id })
   if err then
     return nil, err, err_t
@@ -28,7 +29,7 @@ function _Workspaces:update(workspace_pk, entity, options)
 end
 
 
-function _Workspaces:update_by_name(workspace_name, entity, options)
+function Workspaces:update_by_name(workspace_name, entity, options)
   local ws, err, err_t = self.db.workspaces:select_by_name(workspace_name)
   if err then
     return nil, err, err_t
@@ -43,4 +44,21 @@ function _Workspaces:update_by_name(workspace_name, entity, options)
 end
 
 
-return _Workspaces
+function Workspaces:truncate()
+  self.super.truncate(self)
+  if kong.configuration.database == "off" then
+    return true
+  end
+
+  local default_ws, err = self:insert({ name = "default" })
+  if err then
+    kong.log.err(err)
+    return
+  end
+
+  ngx.ctx.workspace = default_ws.id
+  kong.default_workspace = default_ws.id
+end
+
+
+return Workspaces

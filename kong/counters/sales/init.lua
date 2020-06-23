@@ -101,15 +101,16 @@ local function get_counters_data(strategy)
 end
 
 local function get_workspaces_count()
-  -- probably it is better to use :each() but since it is being run once a quarter
-  -- don't think it is a big problem
-  local workspaces, err = kong.db.workspaces:select_all()
-  if err then
-    log(ngx.WARN, "failed to get count of workspaces: ", err)
-    return nil
-  end
+  local n = 0
+  for _, err in kong.db.workspaces:each() do
+    if err then
+      kong.log.warn("failed to get count of workspaces: ", err)
+      return nil
+    end
 
-  return #workspaces;
+    n = n + 1
+  end
+  return n
 end
 
 local function get_workspace_entity_counts()

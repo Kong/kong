@@ -300,9 +300,9 @@ local function get_db_utils(strategy, tables, plugins)
   -- as some of them have dao calls
   -- If `no_truncate` is falsey, `dao:truncate` and `db:truncate` are called,
   -- and these set the workspace back again to the new `default` workspace
-  ngx.ctx.workspaces = nil
+  ngx.ctx.workspace = nil
 
-  -- new DAO (DB module)
+  -- DAO (DB module)
   local db = assert(DB.new(conf, strategy))
   assert(db:init_connector())
 
@@ -330,18 +330,14 @@ local function get_db_utils(strategy, tables, plugins)
   -- initialize portal router
   singletons.portal_router = portal_router.new(db)
 
-  -- cleanup new DB tables
+  _G.kong.db = db
+
+  -- cleanup tables
   if not tables then
     assert(db:truncate())
 
   else
-    -- if specific tables were passed, make sure to truncate
-    -- workspace_entities and rbac_role_entities as well, as
-    -- relationships might end up in an inconsistent state
     tables[#tables + 1] = "workspaces"
-    tables[#tables + 1] = "workspace_entities"
-    tables[#tables + 1] = "rbac_role_entities"
-    ngx.ctx.workspaces = nil
     truncate_tables(db, tables)
   end
 
@@ -363,9 +359,10 @@ local function get_db_utils(strategy, tables, plugins)
 
   rbac.register_dao_hooks(db)
 
-  local workspaces = require "kong.workspaces"
-  ngx.ctx.workspaces = { workspaces.upsert_default(db) }
-  _G.kong.db = db
+  if strategy ~= "off" then
+    local workspaces = require "kong.workspaces"
+    workspaces.upsert_default(db)
+  end
 
   return bp, db
 end
@@ -810,6 +807,11 @@ local function http2_client(host, port, tls)
   local host = assert(host)
   local port = assert(port)
   tls = tls or false
+
+  -- if Kong/lua-pack is loaded, unload it first
+  -- so lua-http can use implementation from compat53.string
+  package.loaded.string.unpack = nil
+  package.loaded.string.pack = nil
 
   local request = require "http.request"
   local req = request.new_from_uri({
@@ -2228,6 +2230,20 @@ local function get_pid_from_file(pid_path)
 end
 
 
+local function pid_dead(pid, timeout)
+  local max_time = ngx.now() + (timeout or 10)
+
+  repeat
+    if not pl_utils.execute("ps -p " .. pid .. " >/dev/null 2>&1") then
+      return true
+    end
+    -- still running, wait some more
+    ngx.sleep(0.05)
+  until ngx.now() >= max_time
+
+  return false
+end
+
 -- Waits for the termination of a pid.
 -- @param pid_path Filename of the pid file.
 -- @param timeout (optional) in seconds, defaults to 10.
@@ -2235,15 +2251,9 @@ local function wait_pid(pid_path, timeout, is_retry)
   local pid = get_pid_from_file(pid_path)
 
   if pid then
-    local max_time = ngx.now() + (timeout or 10)
-
-    repeat
-      if not pl_utils.execute("ps -p " .. pid .. " >/dev/null 2>&1") then
-        return
-      end
-      -- still running, wait some more
-      ngx.sleep(0.05)
-    until ngx.now() >= max_time
+    if pid_dead(pid, timeout) then
+      return
+    end
 
     if is_retry then
       return
@@ -2492,7 +2502,7 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc)
   if not preserve_dc then
     config_yml = nil
   end
-  ngx.ctx.workspaces = nil
+  ngx.ctx.workspace = nil
 
   return true
 end
@@ -2642,12 +2652,12 @@ end
   end,
 
   with_current_ws = function(ws,fn, db)
-    local old_ws = ngx.ctx.workspaces
-    ngx.ctx.workspaces = nil
+    local old_ws = ngx.ctx.workspace
+    ngx.ctx.workspace = nil
     ws = ws or {db.workspaces:select_by_name("default")}
-    ngx.ctx.workspaces = ws
+    ngx.ctx.workspace = ws[1] and ws[1].id
     local res = fn()
-    ngx.ctx.workspaces = old_ws
+    ngx.ctx.workspace = old_ws
     return res
   end,
 
@@ -2679,6 +2689,10 @@ end
 
     local cmd = string.format("pkill %s -P `cat %s`", signal, pid_path)
     local _, code = pl_utils.execute(cmd)
+
+    if not pid_dead(pid_path) then
+      return false
+    end
 
     return code
   end,

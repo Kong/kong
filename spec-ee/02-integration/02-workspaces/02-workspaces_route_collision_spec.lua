@@ -67,46 +67,10 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-describe("DB [".. strategy .. "] sharing ", function()
-  lazy_setup(function()
-    helpers.get_db_utils(strategy)
 
-    assert(helpers.start_kong({
-      database = strategy,
-    }))
-
-    client = assert(helpers.admin_client())
-
-    post("/workspaces", {name = "ws1"})
-    post("/workspaces", {name = "ws2"})
-    post("/workspaces", {name = "ws3"})
-  end)
-
-  it("is allowed from the workspace where the entity lives", function()
-    -- create consumer in default workspace
-    local s1 = post("/services", {name = "s1", host="foo.com"})
-    -- share it with ws1, from default workspace
-    post("/workspaces/ws1/entities", {entities = s1.id})
-  end)
-
-  it("is not allowed from a workspace that doesn't own the entity", function()
-    -- create consumer in ws1 workspace
-    local s2 = post("/ws1/services", {name = "s2", host = "bar.com"})
-    -- try to share it from default, while it is in ws1
-    post("/workspaces/ws2/entities", {entities = s2.id}, nil, 404)
-    -- try to share it from ws3, where neither the entity nor ws1 belong to
-    post("/ws3/workspaces/ws2/entities", {entities = s2.id}, nil, 404)
-  end)
-
-  lazy_teardown(function()
-    helpers.stop_kong()
-    client:close()
-  end)
-end)
-
-describe("DB [".. strategy .. "] routes are checked for colisions ", function()
+describe("DB [#".. strategy .. "] routes are checked for colisions ", function()
   local route, default_service, service_ws2
-  setup(function()
+  lazy_setup(function()
     helpers.get_db_utils(strategy, {
       "services",
       "routes",
@@ -164,7 +128,7 @@ describe("DB [".. strategy .. "] routes are checked for colisions ", function()
     })
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
     client:close()
   end)
@@ -228,7 +192,7 @@ describe("DB [".. strategy .. "] routes are checked for colisions ", function()
   -- Collides when a route swallows traffic from a different ws.
   it_content_types("when the hosts attribute is set", function(content_type)
     local headers = { ["Content-Type"] = content_type }
-    
+
     return function()
       post("/ws2/services/default-service/routes", {
         hosts = "example.com",
@@ -246,7 +210,7 @@ describe("DB [".. strategy .. "] routes are checked for colisions ", function()
       }, headers, 409)
     end
   end)
-  
+
   it_content_types("headers", function(content_type)
     return function()
       if content_type == "multipart/form-data" then
@@ -344,22 +308,29 @@ describe("DB [".. strategy .. "] routes are checked for colisions ", function()
   end)
 
   it_content_types("when PATCHing", function(content_type)
+    local function array_for(s)
+      if content_type == "application/json" then
+        return { s }
+      else
+        return s
+      end
+    end
     return function()
       local headers = { ["Content-Type"] = content_type }
 
       patch("/ws2/routes/route_ws2", {
-        paths = "/test",
+        paths = array_for("/test"),
       }, headers, 409)
 
       patch("/ws2/services/" .. service_ws2.id .. "/routes/route_ws2", {
-        paths = "/test",
+        paths = array_for("/test"),
       }, headers, 409)
     end
   end)
 end)
 
 describe("DB [".. strategy .. "] with route_validation_strategy = off", function()
-  setup(function()
+  lazy_setup(function()
     helpers.get_db_utils(strategy, {
       "services",
       "routes",
@@ -379,7 +350,7 @@ describe("DB [".. strategy .. "] with route_validation_strategy = off", function
     post("/ws1/services/default-service/routes", {['hosts[]'] = "example.org"})
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
     client:close()
   end)
@@ -388,8 +359,6 @@ describe("DB [".. strategy .. "] with route_validation_strategy = off", function
     post("/ws2/services/default-service/routes",
       {['hosts[]'] = "example.org"})
   end)
-
-
 
 end)
 

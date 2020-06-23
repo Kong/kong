@@ -3,7 +3,6 @@ local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local stringx = require "pl.stringx"
 local helpers = require "spec.helpers"
-local workspaces = require "kong.workspaces"
 local ee_helpers = require "spec-ee.helpers"
 local singletons = require "kong.singletons"
 local legacy_files = require "kong.portal.migrations.01_legacy_files"
@@ -13,16 +12,12 @@ local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": 
 
 local function seed_legacy_files(workspace, db)
   for _, file in ipairs(legacy_files) do
-    local ok, err = workspaces.run_with_ws_scope(
-      { workspace },
-      db.legacy_files.insert,
-      db.legacy_files,
-      {
-        name = file.name,
-        contents = file.contents,
-        auth = file.auth,
-        type = file.type
-      })
+    local ok, err = db.legacy_files:insert({
+      name = file.name,
+      contents = file.contents,
+      auth = file.auth,
+      type = file.type
+    }, { workspace = workspace.id })
 
     if not ok then
       return nil, err
@@ -552,44 +547,49 @@ for _, strategy in helpers.each_strategy() do
               },
               headers = {["Content-Type"] = "application/json"},
             })
-
-            local workspace = db.workspaces:select_all({ name = "noauth-test" })
-            seed_legacy_files(workspace[1], db)
-
             assert.equals(201, res.status)
 
-            -- sleep to allow time for threaded file migrations to complete
-            ngx.sleep(5)
+            local workspace = db.workspaces:select_by_name("noauth-test")
+            seed_legacy_files(workspace, db)
 
-            res = client_request({
-              method = "GET",
-              path = "/noauth-test/files/unauthenticated/404"
-            })
-            noauth_not_found = cjson.decode(res.body)
+            helpers.wait_until(function()
+              res = client_request({
+                method = "GET",
+                path = "/noauth-test/files/unauthenticated/404"
+              })
+              assert.same(200, res.status)
+              noauth_not_found = cjson.decode(res.body)
 
-            res = client_request({
-              method = "GET",
-              path = "/noauth-test/files/unauthenticated/login",
-            })
-            noauth_login = cjson.decode(res.body)
+              res = client_request({
+                method = "GET",
+                path = "/noauth-test/files/unauthenticated/login",
+              })
+              assert.same(200, res.status)
+              noauth_login = cjson.decode(res.body)
 
-            res = client_request({
-              method = "GET",
-              path = "/noauth-test/files/unauthenticated/register",
-            })
-            noauth_register = cjson.decode(res.body)
+              res = client_request({
+                method = "GET",
+                path = "/noauth-test/files/unauthenticated/register",
+              })
+              assert.same(200, res.status)
+              noauth_register = cjson.decode(res.body)
 
-            res = client_request({
-              method = "GET",
-              path = "/noauth-test/files/dashboard",
-            })
-            noauth_dashboard = cjson.decode(res.body)
+              res = client_request({
+                method = "GET",
+                path = "/noauth-test/files/dashboard",
+              })
+              assert.same(200, res.status)
+              noauth_dashboard = cjson.decode(res.body)
 
-            res = client_request({
-              method = "GET",
-              path = "/noauth-test/files/settings",
-            })
-            noauth_settings = cjson.decode(res.body)
+              res = client_request({
+                method = "GET",
+                path = "/noauth-test/files/settings",
+              })
+              assert.same(200, res.status)
+              noauth_settings = cjson.decode(res.body)
+
+              return true
+            end)
           end)
 
           lazy_teardown(function()
@@ -608,6 +608,8 @@ for _, strategy in helpers.each_strategy() do
             local body = res.body
 
             assert.equals(200, status)
+            assert(noauth_dashboard.id)
+            assert(body)
             assert.equals(0, stringx.count(body, noauth_dashboard.id))
             assert.equals(1, stringx.count(body, noauth_not_found.id))
 
@@ -1528,8 +1530,8 @@ for _, strategy in helpers.each_strategy() do
 
         assert.equals(res.status, 201)
 
-        local workspace = db.workspaces:select_all({ name = "sitemaptest" })
-        seed_legacy_files(workspace[1], db)
+        local workspace = db.workspaces:select_by_name("sitemaptest")
+        seed_legacy_files(workspace, db)
 
         -- sleep to allow time for threaded file migrations to complete
         ngx.sleep(5)

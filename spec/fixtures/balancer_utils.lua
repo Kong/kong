@@ -183,6 +183,7 @@ end
 
 
 local add_upstream
+local remove_upstream
 local patch_upstream
 local get_upstream
 local get_upstream_health
@@ -226,9 +227,6 @@ do
 
   add_upstream = function(bp, data)
     local upstream_id = utils.uuid()
-    if TEST_LOG then
-      print("ADDING UPSTREAM ", upstream_id)
-    end
     local req = utils.deep_copy(data) or {}
     local upstream_name = req.name or gen_sym("upstream")
     req.name = upstream_name
@@ -236,6 +234,10 @@ do
     req.id = upstream_id
     bp.upstreams:insert(req)
     return upstream_name, upstream_id
+  end
+
+  remove_upstream = function(bp, upstream_id)
+    bp.upstreams:remove({ id = upstream_id })
   end
 
   patch_upstream = function(upstream_id, data)
@@ -552,6 +554,7 @@ local balancer_utils = {}
 balancer_utils.add_api = add_api
 balancer_utils.add_target = add_target
 balancer_utils.add_upstream = add_upstream
+balancer_utils.remove_upstream = remove_upstream
 balancer_utils.begin_testcase_setup = begin_testcase_setup
 balancer_utils.begin_testcase_setup_update = begin_testcase_setup_update
 balancer_utils.client_requests = client_requests

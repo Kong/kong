@@ -5,7 +5,6 @@ local Errors  = require "kong.db.errors"
 
 
 local unindent = helpers.unindent
-local with_current_ws = helpers.with_current_ws
 
 
 local function it_content_types(title, fn)
@@ -17,15 +16,14 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-describe("services routes ws spec", function()
-  describe("Admin API #" .. strategy, function()
+  describe("services routes ws spec Admin API #" .. strategy, function()
     local bp
     local db
     local _
     local client
     local foo_ws
 
-    setup(function()
+    lazy_setup(function()
       bp, db, _ = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
@@ -39,7 +37,7 @@ describe("services routes ws spec", function()
       client = assert(helpers.admin_client())
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 
@@ -50,9 +48,6 @@ describe("services routes ws spec", function()
 
       client = assert(helpers.admin_client())
 
-      -- XXX truncate workspace_entities behind the scenes? maybe have a
-      -- spec helper to do so?
-      db:truncate("workspace_entities")
       db:truncate("services")
       db:truncate("routes")
       db:truncate("plugins")
@@ -128,11 +123,11 @@ describe("services routes ws spec", function()
       local service
 
       before_each(function()
-        service = bp.services:insert_ws({
+        service = bp.services:insert({
           name = "my-service",
           protocol = "http",
           host = "example.com",
-        }, foo_ws)
+        }, { workspace = foo_ws.id, nulls = true })
       end)
 
       describe("GET", function()
@@ -146,9 +141,6 @@ describe("services routes ws spec", function()
           local body = assert.res_status(200, res)
 
           local json = cjson.decode(body)
-          json.path = nil
-          json.tags = nil
-          json.client_certificate = nil
           assert.same(service, json)
         end)
 
@@ -157,9 +149,6 @@ describe("services routes ws spec", function()
           local body = assert.res_status(200, res)
 
           local json = cjson.decode(body)
-          json.path = nil
-          json.tags = nil
-          json.client_certificate = nil
           assert.same(service, json)
         end)
 
@@ -191,13 +180,8 @@ describe("services routes ws spec", function()
             assert.equal("https",    json.protocol)
             assert.equal(service.id, json.id)
 
-            with_current_ws({ foo_ws }, function ()
-              local in_db = assert(db.services:select({ id = service.id }))
-              json.path = nil
-              json.tags = nil
-              json.client_certificate = nil
-              assert.same(json, in_db)
-            end, db)
+            local in_db = assert(db.services:select({ id = service.id }, { workspace = foo_ws.id, nulls = true }))
+            assert.same(json, in_db)
           end
         end)
 
@@ -231,13 +215,8 @@ describe("services routes ws spec", function()
             assert.equal(service.id,   json.id)
             assert.equal(service.name, json.name)
 
-            with_current_ws({ foo_ws }, function ()
-              local in_db = assert(db.services:select_by_name(service.name))
-              json.path = nil
-              json.tags = nil
-              json.client_certificate = nil
-              assert.same(json, in_db)
-            end, db)
+            local in_db = assert(db.services:select_by_name(service.name, { workspace = foo_ws.id, nulls = true }))
+            assert.same(json, in_db)
           end
         end)
       end)
@@ -256,11 +235,9 @@ describe("services routes ws spec", function()
           local body = assert.res_status(204, res)
           assert.equal("", body)
 
-          with_current_ws({ foo_ws }, function ()
-            local in_db, err = db.services:select({ id = service.id })
-            assert.is_nil(err)
-            assert.is_nil(in_db)
-          end, db)
+          local in_db, err = db.services:select({ id = service.id }, { workspace = foo_ws.id })
+          assert.is_nil(err)
+          assert.is_nil(in_db)
         end)
 
         it("deletes a service by name", function()
@@ -565,11 +542,7 @@ describe("services routes ws spec", function()
             local json = cjson.decode(body)
             assert.False(json.enabled)
 
-            with_current_ws({foo_ws}, function()
-              plugin = assert(db.plugins:select {
-                id = plugin.id,
-              })
-            end)
+            plugin = assert(db.plugins:select({ id = plugin.id }, { workspace = foo_ws.id }))
             assert.False(plugin.enabled)
           end
         end)
@@ -673,5 +646,4 @@ describe("services routes ws spec", function()
       end)
     end)
   end)
-end)
 end

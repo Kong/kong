@@ -8,12 +8,58 @@ local concat = table.concat
 local ngx = ngx
 local ngx_null = ngx.null
 
-local unique_accross_ws = workspaces.unique_accross_ws
+
+-- XXXCORE FIXME this information now lives in the schema for fields
+local unique_accross_ws = {
+  plugins    = true,
+  rbac_users = true,
+  workspaces = true,
+  snis = true,
+}
+
 local DEFAULT_WORKSPACE = workspaces.DEFAULT_WORKSPACE
-local WORKSPACE_DELIMITER = workspaces.WORKSPACE_DELIMITER
+local WORKSPACE_DELIMITER = ":"
 
 -- More than WORKSPACE_THRESHOLD entities, and we do not run this migration
 local WORKSPACE_THRESHOLD = 100
+
+
+-- cache
+local workspaceable_relations = nil
+
+
+local function get_workspaceable_relations()
+  if not workspaceable_relations then
+    workspaceable_relations = {}
+    for name, dao in pairs(kong.db.daos) do
+      local schema = dao.schema
+      if schema.workspaceable then
+        local constraints = {
+          unique_keys = {},
+          primary_keys = schema.primary_key,
+          primary_key = schema.primary_key[1],
+        }
+        for fname, fdata in schema:each_field() do
+          if fdata.unique then
+            constraints.unique_keys[fname] = true
+          end
+        end
+        workspaceable_relations[name] = constraints
+      end
+    end
+  end
+
+  return setmetatable({},  {
+    __index = workspaceable_relations,
+    __newindex = function()
+      error "immutable table"
+    end,
+    __pairs = function()
+      return next, workspaceable_relations, nil
+    end,
+    __metatable = false,
+  })
+end
 
 
 local strategies = function(connector)
@@ -289,7 +335,7 @@ local function migrate_core_entities(db, opts)
   local conf = opts.conf
 
   db.plugins:load_plugin_schemas(conf.loaded_plugins)
-  local entities = workspaces.get_workspaceable_relations()
+  local entities = get_workspaceable_relations()
 
   local queries = strategies(connector)[strategy]
 

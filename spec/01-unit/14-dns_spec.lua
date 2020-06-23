@@ -1,5 +1,8 @@
 local mocker = require "spec.fixtures.mocker"
 local balancer = require "kong.runloop.balancer"
+local utils = require "kong.tools.utils"
+
+local ws_id = utils.uuid()
 
 local function setup_it_block()
   local cache_table = {}
@@ -34,6 +37,11 @@ local function setup_it_block()
         worker_consistency = "strict",
       },
       core_cache = mock_cache(cache_table),
+    },
+    ngx = {
+      ctx = {
+        workspace = ws_id,
+      }
     }
   })
   balancer.init()
@@ -52,10 +60,6 @@ describe("DNS", function()
   lazy_setup(function()
     stub(ngx, "log")
     singletons = require "kong.singletons"
-    _G.kong = singletons
-
-
-    ngx.ctx.workspaces = {}
 
     singletons.core_cache = {
       get = function() return {} end
@@ -67,16 +71,6 @@ describe("DNS", function()
       find_all = function(self) return {} end
     }
     --]]
-
-    singletons.db = {}
-    singletons.db.workspaces = {
-      select_all = function()
-        return {}
-      end,
-      each = function()
-        return function() return nil end
-      end
-    }
 
     singletons.origins = {}
 

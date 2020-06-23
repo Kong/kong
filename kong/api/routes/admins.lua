@@ -1,6 +1,6 @@
 local enums      = require "kong.enterprise_edition.dao.enums"
 local rbac       = require "kong.rbac"
-local workspaces = require "kong.workspaces"
+local scope      = require "kong.enterprise_edition.workspaces.scope"
 local singletons = require "kong.singletons"
 local admins     = require "kong.enterprise_edition.admins_helpers"
 local ee_api     = require "kong.enterprise_edition.api_helpers"
@@ -76,7 +76,7 @@ return {
     POST = function(self, db, helpers, parent)
       local res, err = admins.create(self.params, {
         token_optional = self.token_optional,
-        workspace = ngx.ctx.workspaces[1],
+        workspace = { id = ngx.ctx.workspace },
         remote_addr = ngx.var.remote_addr,
         db = db,
       })
@@ -186,7 +186,7 @@ return {
 
       -- we've now validated that all our roles exist, and this user exists,
       -- so time to create the assignment
-      workspaces.run_with_ws_scope({}, function ()
+      scope.run_with_ws_scope({}, function ()
         for i = 1, #roles do
           local _, _, err_t = db.rbac_user_roles:insert({
             user = self.admin.rbac_user,
@@ -263,8 +263,7 @@ return {
       end
 
       -- if you've forgotten your password, this is all we know about you
-      self.admin = admins.find_by_email(self.params.email)
-
+      self.admin = kong.db.admins:select_by_email(self.params.email)
       if not self.admin then
         kong.log.err("Failed to find admin with email" .. self.params.email)
         return kong.response.exit(200)
@@ -367,8 +366,6 @@ return {
 
       -- this block is a little messy. A consumer cannot logically belong to
       -- >1 admin, but the schema doesn't generate select_by for foreign keys.
-      -- could also use `select_all` here, but for now prefer to use CE
-      -- functions where possible.
       local res = {}
       for row, err in db.admins:each_for_consumer({ id = self.consumer_id }) do
         if err then
@@ -411,30 +408,12 @@ return {
       end
 
       -- Find the workspace the rbac_user is in
-local refs, err = db.workspace_entities:select_all({ -- XXX EE replace with rbac_user.ws_id
-        entity_type = "rbac_users",
-        entity_id = admin.rbac_user.id,
-        unique_field_name = "id",
-      })
-
-      if err then
+      local rbac_user, err = db.rbac_users:select({ id = admin.rbac_user.id }, { show_ws_id = true })
+      if not rbac_user then
         return endpoints.handle_error(err)
       end
 
-      -- Set the current workspace so the credential is created there
-      local rbac_user_ws = {
-        id = refs[1].workspace_id,
-        name = refs[1].workspace_name,
-      }
-
-      local _, err = workspaces.run_with_ws_scope(
-                                { rbac_user_ws },
-                                credential_dao.insert,
-                                credential_dao,
-                                credential_data)
-
-      -- local _, err = credential_dao:insert(credential_data)
-
+      local _, err = credential_dao:insert(credential_data, { workspace = rbac_user.ws_id })
       if err then
         return endpoints.handle_error(err)
       end

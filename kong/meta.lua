@@ -4,7 +4,7 @@ local version = setmetatable({
   major = 2,
   minor = 1,
   patch = 0,
-  suffix = "alpha.1"
+  suffix = "beta.1"
 }, {
   -- our Makefile during certain releases adjusts this line. Any changes to
   -- the format need to be reflected in both places

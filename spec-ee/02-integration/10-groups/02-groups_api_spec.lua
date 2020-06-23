@@ -1,4 +1,4 @@
-local workspaces = require "kong.workspaces"
+local scope = require "kong.enterprise_edition.workspaces.scope"
 local helpers	   = require "spec.helpers"
 local cjson 	   = require "cjson"
 local utils 	   = require "kong.tools.utils"
@@ -238,11 +238,11 @@ for _, strategy in helpers.each_strategy() do
 
         if not workspace then
           workspace = assert(db.workspaces:insert({ name = "test_ws_" .. utils.uuid()}))
-          workspaces.run_with_ws_scope({ workspace }, function()
+          scope.run_with_ws_scope({ workspace }, function()
             role, token = register_resources(db, workspace.name)
           end)
         else
-          workspaces.run_with_ws_scope({ workspace }, function()
+          scope.run_with_ws_scope({ workspace }, function()
             role = assert(db.rbac_roles:insert(
               { name = "test_role_" .. utils.uuid() }
             ))
@@ -262,7 +262,7 @@ for _, strategy in helpers.each_strategy() do
           group 	  = { id = group.id },
         }
 
-        workspaces.run_with_ws_scope({ workspace }, function()
+        scope.run_with_ws_scope({ workspace }, function()
           assert(db.group_rbac_roles:insert(mapping))
         end)
       end

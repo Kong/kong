@@ -1,11 +1,14 @@
 local cjson    = require "cjson"
+local lyaml    = require "lyaml"
 local utils    = require "kong.tools.utils"
 local pl_utils = require "pl.utils"
 local helpers  = require "spec.helpers"
 local Errors   = require "kong.db.errors"
 local mocker   = require("spec.fixtures.mocker")
 
+
 local WORKER_SYNC_TIMEOUT = 10
+local MEM_CACHE_SIZE = "15m"
 
 
 local function it_content_types(title, fn)
@@ -24,7 +27,7 @@ describe("Admin API #off", function()
   lazy_setup(function()
     assert(helpers.start_kong({
       database = "off",
-      mem_cache_size = "10m",
+      mem_cache_size = MEM_CACHE_SIZE,
       stream_listen = "127.0.0.1:9011",
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
@@ -304,10 +307,9 @@ describe("Admin API #off", function()
 
         assert.response(res).has.status(413)
 
-        client:close()
-        client = assert(helpers.admin_client())
-
         helpers.wait_until(function()
+          client:close()
+          client = assert(helpers.admin_client())
           res = assert(client:send {
             method = "GET",
             path = "/consumers/previous",
@@ -334,6 +336,27 @@ describe("Admin API #off", function()
             _format_version: "1.1"
             consumers:
             - username: bobby
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        assert.response(res).has.status(201)
+      end)
+
+      it("accepts configuration containing null as a YAML string", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            _format_version: "1.1"
+            routes:
+            - paths:
+              - "/"
+              service: null
             ]],
           },
           headers = {
@@ -585,6 +608,7 @@ describe("Admin API #off", function()
                 username = "bobo",
                 id = "d885e256-1abe-5e24-80b6-8f68fe59ea8e",
                 created_at = 1566863706,
+                type = 0, -- XXX EE
               },
             },
           },
@@ -602,12 +626,53 @@ describe("Admin API #off", function()
 
         local body = assert.response(res).has.status(200)
         local json = cjson.decode(body)
-        local expected_config = "_format_version: '1.1'\n" ..
-          "consumers:\n" ..
-          "- created_at: 1566863706\n" ..
-          "  username: bobo\n" ..
-          "  id: d885e256-1abe-5e24-80b6-8f68fe59ea8e\n"
-        assert.same(expected_config, json.config)
+        local config = assert(lyaml.load(json.config))
+        config.workspaces[1].id = "<uuid>" -- see below
+        config.workspaces[1].created_at = 12345 -- see below
+        assert:set_parameter("TableFormatLevel", -1)
+        assert.same({
+          _format_version = "2.1",
+          _transform = false,
+          consumers = {
+            { id = "d885e256-1abe-5e24-80b6-8f68fe59ea8e",
+              created_at = 1566863706,
+              username = "bobo",
+              type = 0,
+              custom_id = lyaml.null,
+              tags = lyaml.null,
+            },
+          },
+          workspaces = {
+            { id = "<uuid>", -- see above
+              created_at = 12345, -- see above
+              name = "default",
+              comment = {},
+              config = {
+                meta = {},
+                portal = false,
+                portal_access_request_email = {},
+                portal_approved_email = {},
+                portal_auth = {},
+                portal_auth_conf = {},
+                portal_auto_approve = {},
+                portal_cors_origins = {},
+                portal_developer_meta_fields = '[{"label":"Full Name","title":"full_name","validator":{"required":true,"type":"string"}}]',
+                portal_emails_from = {},
+                portal_emails_reply_to = {},
+                portal_invite_email = {},
+                portal_is_legacy = {},
+                portal_reset_email = {},
+                portal_reset_success_email = {},
+                portal_session_conf = {},
+                portal_token_exp = {},
+              },
+              meta = {
+                color = {},
+                thumbnail = {},
+              },
+            }
+          },
+        }, config)
       end)
     end)
 
@@ -655,11 +720,16 @@ describe("Admin API #off", function()
 
       assert.response(res).has.status(201)
 
-      local sock = ngx.socket.tcp()
-      assert(sock:connect("127.0.0.1", 9011))
-      assert(sock:send("hi\n"))
-      assert.equals(sock:receive(), "hi")
-      sock:close()
+      helpers.wait_until(function()
+        local sock = ngx.socket.tcp()
+        assert(sock:connect("127.0.0.1", 9011))
+        assert(sock:send("hi\n"))
+        local pok = pcall(helpers.wait_until, function()
+          return sock:receive() == "hi"
+        end, 1)
+        sock:close()
+        return pok == true
+      end)
     end)
   end)
 
@@ -751,7 +821,7 @@ describe("Admin API (concurrency tests) #off", function()
     assert(helpers.start_kong({
       database = "off",
       nginx_worker_processes = 8,
-      mem_cache_size = "10m",
+      mem_cache_size = MEM_CACHE_SIZE,
     }))
 
     client = assert(helpers.admin_client())
@@ -874,7 +944,7 @@ describe("Admin API #off with Unique Foreign #unique", function()
       database = "off",
       plugins = "unique-foreign",
       nginx_worker_processes = 1,
-      mem_cache_size = "10m",
+      mem_cache_size = MEM_CACHE_SIZE,
     }))
   end)
 
@@ -928,8 +998,7 @@ describe("Admin API #off with Unique Foreign #unique", function()
     assert.equal(references.data[1].note, "note")
     assert.equal(references.data[1].unique_foreign.id, foreigns.data[1].id)
 
-
-    local res = assert(client:get("/cache/unique_references|unique_foreign:" ..
+    local res = assert(client:get("/cache/unique_references||unique_foreign:" ..
                                   foreigns.data[1].id))
     local body = assert.res_status(200, res)
     local cached_reference = cjson.decode(body)
@@ -938,7 +1007,7 @@ describe("Admin API #off with Unique Foreign #unique", function()
 
     local cache = {
       get = function(_, k)
-        if k ~= "unique_references|unique_foreign:" .. foreigns.data[1].id then
+        if k ~= "unique_references||unique_foreign:" .. foreigns.data[1].id then
           return nil
         end
 

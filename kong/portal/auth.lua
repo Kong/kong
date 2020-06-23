@@ -6,6 +6,7 @@ local enums         = require "kong.enterprise_edition.dao.enums"
 local singletons    = require "kong.singletons"
 local rbac          = require "kong.rbac"
 local auth_helpers  = require "kong.enterprise_edition.auth_helpers"
+local workspace_config = require "kong.portal.workspace_config"
 
 local ws_constants  = constants.WORKSPACE_CONFIG
 
@@ -55,7 +56,7 @@ local auth_plugins = {
 
 local function get_oidc_developer_status()
   local workspace = workspaces.get_workspace()
-  local auto_approve = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
+  local auto_approve = workspace_config.retrieve(ws_constants.PORTAL_AUTO_APPROVE, workspace)
 
   if auto_approve then
     return enums.CONSUMERS.STATUS.APPROVED
@@ -79,7 +80,7 @@ end
 
 local function check_oidc_session()
   local workspace = workspaces.get_workspace()
-  local conf = workspaces.retrieve_ws_config(
+  local conf = workspace_config.retrieve(
                                       ws_constants.PORTAL_AUTH_CONF, workspace)
   conf = utils.deep_copy(conf or {})
   local cookie_name = get_conf_arg(conf, "session_cookie_name", "session")
@@ -134,7 +135,7 @@ end
 
 function _M.validate_auth_plugin(self, db, helpers, portal_auth)
   local workspace = workspaces.get_workspace()
-  portal_auth = portal_auth or workspaces.retrieve_ws_config(
+  portal_auth = portal_auth or workspace_config.retrieve(
                                           ws_constants.PORTAL_AUTH, workspace)
 
   self.plugin = auth_plugins[portal_auth]
@@ -229,7 +230,7 @@ function _M.login(self, db, helpers)
   end
 
   local workspace = workspaces.get_workspace()
-  local auth_conf = workspaces.retrieve_ws_config(
+  local auth_conf = workspace_config.retrieve(
                                       ws_constants.PORTAL_AUTH_CONF, workspace)
 
   local plugin_auth_response, err = invoke_plugin({
@@ -255,7 +256,7 @@ function _M.login(self, db, helpers)
   -- run session header_filter to attach session to response
   if self.plugin.name ~= "openid-connect" then
     local opts = { decode_json = true }
-    local session_conf = workspaces.retrieve_ws_config(
+    local session_conf = workspace_config.retrieve(
                              ws_constants.PORTAL_SESSION_CONF, workspace, opts)
     session_conf = _M.add_required_session_conf(session_conf, workspace)
 
@@ -296,7 +297,7 @@ function _M.authenticate_api_session(self, db, helpers)
 
   if self.plugin.name == "openid-connect" then
     -- if openid-connect, use the plugin to verify auth
-    local auth_conf = workspaces.retrieve_ws_config(
+    local auth_conf = workspace_config.retrieve(
                                       ws_constants.PORTAL_AUTH_CONF, workspace)
     ok, err = invoke_plugin({
       name = self.plugin.name,
@@ -313,7 +314,7 @@ function _M.authenticate_api_session(self, db, helpers)
   else
     -- otherwise, verify the session
     local opts = { decode_json = true }
-    local session_conf = workspaces.retrieve_ws_config(
+    local session_conf = workspace_config.retrieve(
                              ws_constants.PORTAL_SESSION_CONF, workspace, opts)
     session_conf = _M.add_required_session_conf(session_conf, workspace)
 
@@ -347,7 +348,7 @@ end
 function _M.authenticate_gui_session(self, db, helpers)
   local invoke_plugin = singletons.invoke_plugin
   local workspace = workspaces.get_workspace()
-  local portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH,
+  local portal_auth = workspace_config.retrieve(ws_constants.PORTAL_AUTH,
                                                     workspace)
 
   if portal_auth == nil or portal_auth == '' then
@@ -378,7 +379,7 @@ function _M.authenticate_gui_session(self, db, helpers)
       return
     end
 
-    local auth_conf = workspaces.retrieve_ws_config(
+    local auth_conf = workspace_config.retrieve(
                                       ws_constants.PORTAL_AUTH_CONF, workspace)
     ok, err = invoke_plugin({
       name = self.plugin.name,
@@ -390,7 +391,7 @@ function _M.authenticate_gui_session(self, db, helpers)
   else
     -- otherwise, verify the session
     local opts = { decode_json = true }
-    local session_conf = workspaces.retrieve_ws_config(
+    local session_conf = workspace_config.retrieve(
                             ws_constants.PORTAL_SESSION_CONF, workspace, opts)
     session_conf = _M.add_required_session_conf(session_conf, workspace)
 

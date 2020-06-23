@@ -33,11 +33,30 @@ describe("tracing [#" .. strategy .. "] details", function()
     local proxy_client, trace_log
 
     setup(function()
-      local bp, _, _ = helpers.get_db_utils(strategy)
+      local bp, _, _ = helpers.get_db_utils(strategy, {
+        "services",
+        "routes",
+        "consumers",
+        "basicauth_credentials",
+      })
 
-      bp.routes:insert {
+      local consumer = bp.consumers:insert {
+        username = "bob",
+      }
+
+      local route = bp.routes:insert {
         hosts = { "example.com" },
-        service = bp.services:insert()
+      }
+
+      bp.plugins:insert {
+        name = "basic-auth",
+        route = route,
+      }
+
+      bp.basicauth_credentials:insert {
+        username = "user123",
+        password = "password123",
+        consumer = { id = consumer.id },
       }
 
       os.remove(TRACE_LOG_PATH)
@@ -74,6 +93,7 @@ describe("tracing [#" .. strategy .. "] details", function()
       local res = assert(proxy_client:send({
         method = "GET",
         headers = {
+          Authorization = "Basic dXNlcjEyMzpwYXNzd29yZDEyMw==",
           Host = "example.com",
         }
       }))

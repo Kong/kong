@@ -1,12 +1,14 @@
 local BasePlugin   = require "kong.plugins.base_plugin"
+local workspaces   = require "kong.workspaces"
 local constants    = require "kong.constants"
 local utils        = require "kong.tools.utils"
 
 
-local kong         = kong
-local singletons   = require "kong.singletons"
-local tracing      = require "kong.tracing"
+local tracing = require "kong.tracing"
 
+
+local kong         = kong
+local null         = ngx.null
 local type         = type
 local error        = error
 local pairs        = pairs
@@ -17,6 +19,7 @@ local tostring     = tostring
 
 local EMPTY_T      = {}
 local TTL_ZERO     = { ttl = 0 }
+local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
 
 local COMBO_R      = 1
@@ -64,7 +67,7 @@ local next_seq = 0
 -- Loads a plugin config from the datastore.
 -- @return plugin config table or an empty sentinel table in case of a db-miss
 local function load_plugin_from_db(key)
-  local row, err = kong.db.plugins:select_by_cache_key(key, {include_ws = true})
+  local row, err = kong.db.plugins:select_by_cache_key(key)
   if err then
     return nil, tostring(err)
   end
@@ -73,123 +76,7 @@ local function load_plugin_from_db(key)
 end
 
 
--- TODO relying on `select_by_cache_key_migrating` is likely not the best
--- alternative here; for one, it might (will?) be removed in a future release;
--- second, it can likely be optimized for our purposes here (fetching a plugin
--- without a workspace available)
-local function load_plugin_into_memory_global_scope(key)
-  local row, err = kong.db.plugins.strategy:select_by_cache_key_migrating(key)
-  if err then
-    return nil, err
-  end
-
-  return row and kong.db.plugins:row_to_entity(row)
-end
-
-
-local function load_plugin_into_memory_ws(ctx, key)
-  local ws_scope = ctx.workspaces or {}
-
-  -- query with "global cache key" - no workspace attached to it
-  local plugin, err, hit_level = kong.core_cache:get(key, nil,
-                    load_plugin_into_memory_global_scope, key)
-
-  if err then
-    return nil, err
-  end
-
-  -- if plugin is nil and hit_level is 1 or 2, it means the value came
-  -- from L1 or L2 cache, so it's was negative cached
-  if not plugin and hit_level < 3 then
-    return plugin
-  end
-
-  -- if workspace scope is empty, we can't query by cache_key, so
-  -- attempt to find a plugin for the given combination of name/service/route/
-  -- consumer (pre-0.15 way)
-  if #ws_scope == 0 then
-    return plugin
-  end
-
-  local found
-
-  -- iterate for all workspaces in the context; if a plugin is found for some of
-  -- them, return it; otherwise, cache a negative entry
-  for _, ws in ipairs(ws_scope) do
-    local plugin_cache_key = key .. ws.id
-
-    -- attempt finding the plugin in the L1 (LRU) cache
-    plugin = singletons.core_cache.mlcache.lru:get(plugin_cache_key)
-
-    if plugin then
-      found = true
-
-      if plugin.enabled ~= nil then -- using .enabled as a sentinel for positive cache -
-        return plugin        -- if it was a negative cache, such field would not
-                             -- be there
-      end
-    end
-
-    -- if plugin is nil, that means it wasn't found so far, so do an L2 (shm) lookup
-    if not plugin then
-      local ttl
-      ttl, err, plugin = singletons.core_cache:probe(plugin_cache_key)
-      if err then
-        return nil, err
-      end
-
-      -- :set causes the value to be written back to L1, so subsequent requests
-      -- will find a cached entry there (positive or negative)
-      singletons.core_cache.mlcache.lru:set(plugin_cache_key, plugin)
-
-      if ttl then -- ttl means a cached value was found (positive or negative)
-        found = true
-
-        if plugin and plugin.enabled ~= nil then -- if positive, return (again, using
-                                          -- `.enabled` as a sentinel)
-          return plugin
-        end
-      end
-    end
-  end
-
-  -- plugin is negative cached
-  if found then
-     return plugin
-  end
-
-  for _, ws in ipairs(ws_scope) do
-    local plugin_cache_key = key .. ws.id
-    plugin = load_plugin_from_db(plugin_cache_key)
-
-    if plugin and  ws.id == plugin.workspace_id then
-
-      -- +ve cache plugin and return
-      -- no further DB call required
-      local _, err = kong.core_cache:get(plugin_cache_key, nil, function ()
-        return plugin
-      end)
-      if err then
-        return nil, err
-      end
-
-      return plugin
-    end
-
-    -- -ve cache plugin and continue
-    local _, err = kong.core_cache:get(plugin_cache_key, nil, function ()
-      return plugin
-    end)
-    if err then
-      return nil, err
-    end
-  end
-
-  return plugin
-end
-
-
---- Load the configuration for a plugin entry in the DB.
+--- Load the configuration for a plugin entry.
 -- Given a Route, Service, Consumer and a plugin name, retrieve the plugin's
 -- configuration if it exists. Results are cached in ngx.dict
 -- @param[type=string] name Name of the plugin being tested for configuration.
@@ -199,19 +86,24 @@ end
 -- @treturn table Plugin configuration, if retrieved.
 local function load_configuration(ctx,
                                   name,
-                                         route_id,
-                                         service_id,
-                                         consumer_id)
+                                  route_id,
+                                  service_id,
+                                  consumer_id)
+
   local trace = tracing.trace("load_plugin_config", { plugin_name = name })
 
+  local ws_id = workspaces.get_workspace_id() or kong.default_workspace
   local key = kong.db.plugins:cache_key(name,
                                         route_id,
                                         service_id,
                                         consumer_id,
-                                        nil, -- placeholder for api_id
-                                        true)
-  local ws_scope = ctx.workspaces or {}
-  local plugin, err = load_plugin_into_memory_ws(ctx, key)
+                                        nil,
+                                        ws_id)
+  local plugin, err = kong.core_cache:get(key,
+                                          nil,
+                                          load_plugin_from_db,
+                                          key)
+
   trace:finish()
 
   if err then
@@ -236,18 +128,6 @@ local function load_configuration(ctx,
   cfg.service_id  = plugin.service and plugin.service.id
   cfg.consumer_id = plugin.consumer and plugin.consumer.id
 
-  -- when workspace scope is not empty or nil:
-  -- narrow the scope to workspace where plugin is found
-  -- add the workspace to plugin_configuration
-  if #ws_scope > 0 then
-    local plugin_ws = {
-      id = plugin.workspace_id,
-      name = plugin.workspace_name
-    }
-    ctx.workspaces = { plugin_ws }
-    cfg.workspace = plugin_ws
-  end
-
   return cfg
 end
 
@@ -260,19 +140,19 @@ local function load_configuration_through_combos(ctx, combos, plugin)
   local service  = ctx.service
   local consumer = ctx.authenticated_consumer
 
-    if route and plugin.no_route then
-      route = nil
-    end
-    if service and plugin.no_service then
-      service = nil
-    end
-    if consumer and plugin.no_consumer then
-      consumer = nil
-    end
+  if route and plugin.no_route then
+    route = nil
+  end
+  if service and plugin.no_service then
+    service = nil
+  end
+  if consumer and plugin.no_consumer then
+    consumer = nil
+  end
 
-    local    route_id = route    and    route.id or nil
-    local  service_id = service  and  service.id or nil
-    local consumer_id = consumer and consumer.id or nil
+  local    route_id = route    and    route.id or nil
+  local  service_id = service  and  service.id or nil
+  local consumer_id = consumer and consumer.id or nil
 
   if route_id and service_id and consumer_id and combos[COMBO_RSC]
     and combos.both[route_id] == service_id
@@ -281,8 +161,8 @@ local function load_configuration_through_combos(ctx, combos, plugin)
                                               consumer_id)
     if plugin_configuration then
       return plugin_configuration
-        end
-      end
+    end
+  end
 
   if route_id and consumer_id and combos[COMBO_RC]
     and combos.routes[route_id]
@@ -291,8 +171,8 @@ local function load_configuration_through_combos(ctx, combos, plugin)
                                               consumer_id)
     if plugin_configuration then
       return plugin_configuration
-        end
-      end
+    end
+  end
 
   if service_id and consumer_id and combos[COMBO_SC]
     and combos.services[service_id]
@@ -301,8 +181,8 @@ local function load_configuration_through_combos(ctx, combos, plugin)
                                               consumer_id)
     if plugin_configuration then
       return plugin_configuration
-        end
-      end
+    end
+  end
 
   if route_id and service_id and combos[COMBO_RS]
     and combos.both[route_id] == service_id
@@ -310,29 +190,29 @@ local function load_configuration_through_combos(ctx, combos, plugin)
     plugin_configuration = load_configuration(ctx, name, route_id, service_id)
     if plugin_configuration then
       return plugin_configuration
-        end
-      end
+    end
+  end
 
   if consumer_id and combos[COMBO_C] then
     plugin_configuration = load_configuration(ctx, name, nil, nil, consumer_id)
-        if plugin_configuration then
+    if plugin_configuration then
       return plugin_configuration
-        end
-      end
+    end
+  end
 
   if route_id and combos[COMBO_R] and combos.routes[route_id] then
     plugin_configuration = load_configuration(ctx, name, route_id)
     if plugin_configuration then
       return plugin_configuration
-        end
-      end
+    end
+  end
 
   if service_id and combos[COMBO_S] and combos.services[service_id] then
     plugin_configuration = load_configuration(ctx, name, nil, service_id)
     if plugin_configuration then
       return plugin_configuration
-        end
-      end
+    end
+  end
 
   if combos[COMBO_GLOBAL] then
     return load_configuration(ctx, name)
@@ -376,47 +256,8 @@ local function get_next(self)
     end
   end
 
-  -- return the plugin configuration
-  local plugin_configuration = ctx.plugins[plugin.name]
-  if plugin_configuration then
-
-    -- when workspace scope not empty return plugin
-    -- only if it has workspace information.
-    -- even the global plugin will have workspace detail as it is re-fetched
-    -- plugins in access phase
-    if ctx.workspaces then
-      if plugin_configuration.workspace then
-
-        -- Added in EE:
-        local phase = self.phases
-        if phase and phase[plugin.name]
-        and (ctx.plugins[plugin.name] or self.phase == "init_worker") then
-          return plugin, ctx.plugins[plugin.name]
-        end
-
-        return get_next(self)
-      end
-
-      -- ignore global plugin fetched in earlier phase
-      -- as it has not been applied in current workspace
-      return get_next(self)
-    end
-
-    -- Added in EE:
-    local phase = self.phases
-    if phase and phase[plugin.name]
-    and (ctx.plugins[plugin.name] or self.phase == "init_worker") then
-      return plugin, ctx.plugins[plugin.name]
-    end
-
-    -- when workspace scope empty, return global plugin
-    -- fetched in earlier phase
-    return get_next(self) -- Load next plugin
-
-  -- XXX EE
-  -- if self.phases[name] and plugins[name] then
-  --   return plugin, plugins[name]
-  -- XXX EE/
+  if self.phases[name] and plugins[name] then
+    return plugin, plugins[name]
   end
 
   return get_next(self) -- Load next plugin
@@ -439,16 +280,21 @@ local function iterate(self, phase, ctx)
   if ctx and not ctx.plugins then
     ctx.plugins = {}
   end
+  local ws_id = workspaces.get_workspace_id() or kong.default_workspace
+
+  local ws = self.ws[ws_id]
+  if not ws then
+    return function()
+      return nil
+    end
+  end
 
   local iteration = {
-    -- XXX EE
-    -- iterator = self,
-    -- phase = phase,
     configure = MUST_LOAD_CONFIGURATION_IN_PHASES[phase],
     loaded = self.loaded,
-    phases = self.phases[phase] or EMPTY_T,
-    combos = self.combos,
-    map = self.map,
+    phases = ws.phases[phase] or EMPTY_T,
+    combos = ws.combos,
+    map = ws.map,
     ctx = ctx,
     i = 0,
   }
@@ -457,15 +303,7 @@ local function iterate(self, phase, ctx)
 end
 
 
-function PluginsIterator.new(version)
-  if not version then
-    error("version must be given", 2)
-  end
-
-  loaded_plugins = loaded_plugins or get_loaded_plugins()
-
-  local map = {}
-  local combos = {}
+local function new_ws_data()
   local phases
   if subsystem == "stream" then
     phases = {
@@ -484,10 +322,35 @@ function PluginsIterator.new(version)
       log           = {},
     }
   end
+  return {
+    map = {},
+    combos = {},
+    phases = phases,
+  }
+end
+
+
+function PluginsIterator.new(version)
+  if not version then
+    error("version must be given", 2)
+  end
+  loaded_plugins = loaded_plugins or get_loaded_plugins()
+
+  local ws = {
+    [kong.default_workspace] = new_ws_data()
+  }
 
   local counter = 0
   local page_size = kong.db.plugins.pagination.page_size
-  for plugin, err in kong.db.plugins:each() do
+  for plugin, err in kong.db.plugins:each(nil, GLOBAL_QUERY_OPTS) do
+    local data = ws[plugin.ws_id]
+    if not data then
+      data = new_ws_data()
+      ws[plugin.ws_id] = data
+    end
+    local map = data.map
+    local combos = data.combos
+
     if err then
       return nil, err
     end
@@ -534,22 +397,22 @@ function PluginsIterator.new(version)
   end
 
   for _, plugin in ipairs(loaded_plugins) do
-    for phase_name, phase in pairs(phases) do
-      if phase_name == "init_worker" or combos[plugin.name] then
-        local phase_handler = plugin.handler[phase_name]
-        if type(phase_handler) == "function"
-        and phase_handler ~= BasePlugin[phase_name] then
-          phase[plugin.name] = true
+    for _, data in pairs(ws) do
+      for phase_name, phase in pairs(data.phases) do
+        if phase_name == "init_worker" or data.combos[plugin.name] then
+          local phase_handler = plugin.handler[phase_name]
+          if type(phase_handler) == "function"
+          and phase_handler ~= BasePlugin[phase_name] then
+            phase[plugin.name] = true
+          end
         end
       end
     end
   end
 
   return {
-    map = map,
     version = version,
-    phases = phases,
-    combos = combos,
+    ws = ws,
     loaded = loaded_plugins,
     iterate = iterate,
   }

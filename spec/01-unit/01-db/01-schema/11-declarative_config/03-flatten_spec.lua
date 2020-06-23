@@ -1,8 +1,9 @@
 local declarative_config = require "kong.db.schema.others.declarative_config"
 local helpers = require "spec.helpers"
 local lyaml = require "lyaml"
+local cjson = require "cjson"
 local tablex = require "pl.tablex"
-
+local utils = require "kong.tools.utils"
 
 local null = ngx.null
 
@@ -46,7 +47,7 @@ local function idempotent(tbl, err)
 
   local function recurse_fields(t)
     for k,v in sortedpairs(t) do
-      if k == "id" then
+      if k == "id" and utils.is_valid_uuid(v) then
         t[k] = "UUID"
       end
       if k == "client_id" or k == "client_secret" or k == "access_token" then
@@ -133,7 +134,11 @@ describe("declarative config: flatten", function()
               write_timeout = 60000,
               retries = 5,
               tags = {"hello", "world"},
-              client_certificate = null
+              client_certificate = null,
+              tls_verify_depth = null,
+              tls_verify = null,
+              ca_certificates = null,
+              ws_id = null,
             },
             {
               id = "UUID",
@@ -149,7 +154,11 @@ describe("declarative config: flatten", function()
               write_timeout = 60000,
               retries = 5,
               tags = null,
-              client_certificate = null
+              client_certificate = null,
+              tls_verify_depth = null,
+              tls_verify = null,
+              ca_certificates = null,
+              ws_id = null,
             },
           }
         }, idempotent(config))
@@ -187,7 +196,8 @@ describe("declarative config: flatten", function()
               sources = null,
               strip_path = true,
               path_handling = "v1",
-              updated_at = 1234567890
+              updated_at = 1234567890,
+              ws_id = null,
             }
           }
         }, idempotent(config))
@@ -218,7 +228,11 @@ describe("declarative config: flatten", function()
               read_timeout = 60000,
               write_timeout = 60000,
               retries = 5,
-              client_certificate = null
+              client_certificate = null,
+              tls_verify_depth = null,
+              tls_verify = null,
+              ca_certificates = null,
+              ws_id = null,
             }
           }
         }, idempotent(config))
@@ -257,6 +271,7 @@ describe("declarative config: flatten", function()
             {
               id = "UUID",
               tags = null,
+              ws_id = null,
               created_at = 1234567890,
               consumer = null,
               service = null,
@@ -278,6 +293,7 @@ describe("declarative config: flatten", function()
             {
               id = "UUID",
               tags = null,
+              ws_id = null,
               created_at = 1234567890,
               consumer = null,
               service = null,
@@ -346,6 +362,7 @@ describe("declarative config: flatten", function()
           consumers = {
             {
               tags = null,
+              ws_id = null,
               created_at = 1234567890,
               custom_id = null,
               id = "UUID",
@@ -356,6 +373,7 @@ describe("declarative config: flatten", function()
           plugins = {
             {
               tags = null,
+              ws_id = null,
               config = {
                 content_type = "application/json",
                 flush_timeout = 2,
@@ -381,6 +399,7 @@ describe("declarative config: flatten", function()
             },
             {
               tags = null,
+              ws_id = null,
               config = {
                 anonymous = null,
                 hide_credentials = false,
@@ -403,6 +422,7 @@ describe("declarative config: flatten", function()
           routes = {
             {
               tags = null,
+              ws_id = null,
               created_at = 1234567890,
               destinations = null,
               hosts = null,
@@ -428,6 +448,7 @@ describe("declarative config: flatten", function()
           services = {
             {
               tags = null,
+              ws_id = null,
               connect_timeout = 60000,
               created_at = 1234567890,
               host = "example.com",
@@ -440,7 +461,10 @@ describe("declarative config: flatten", function()
               retries = 5,
               updated_at = 1234567890,
               write_timeout = 60000,
-              client_certificate = null
+              client_certificate = null,
+              tls_verify_depth = null,
+              tls_verify = null,
+              ca_certificates = null,
             }
           }
         }, idempotent(config))
@@ -474,7 +498,11 @@ describe("declarative config: flatten", function()
                 retries = 5,
                 updated_at = 1234567890,
                 write_timeout = 60000,
-                client_certificate = null
+                client_certificate = null,
+                tls_verify_depth = null,
+                tls_verify = null,
+                ca_certificates = null,
+                ws_id = null,
               }
             }
           }, idempotent(config))
@@ -526,7 +554,8 @@ describe("declarative config: flatten", function()
                 service = {
                   id = "UUID"
                 },
-                tags = null
+                tags = null,
+                ws_id = null,
               }, {
                 config = {
                   content_type = "application/json",
@@ -548,7 +577,8 @@ describe("declarative config: flatten", function()
                 service = {
                   id = "UUID"
                 },
-                tags = null
+                tags = null,
+                ws_id = null,
               }, {
                 config = {
                   anonymous = null,
@@ -567,7 +597,8 @@ describe("declarative config: flatten", function()
                 service = {
                   id = "UUID"
                 },
-                tags = null
+                tags = null,
+                ws_id = null,
               }, {
                 config = {
                   host = "127.0.0.1",
@@ -587,7 +618,8 @@ describe("declarative config: flatten", function()
                 service = {
                   id = "UUID"
                 },
-                tags = null
+                tags = null,
+                ws_id = null,
               } },
             services = { {
                 connect_timeout = 60000,
@@ -603,7 +635,11 @@ describe("declarative config: flatten", function()
                 tags = null,
                 updated_at = 1234567890,
                 write_timeout = 60000,
-                client_certificate = null
+                client_certificate = null,
+                tls_verify_depth = null,
+                tls_verify = null,
+                ca_certificates = null,
+                ws_id = null,
               }, {
                 connect_timeout = 60000,
                 created_at = 1234567890,
@@ -618,7 +654,11 @@ describe("declarative config: flatten", function()
                 tags = null,
                 updated_at = 1234567890,
                 write_timeout = 60000,
-                client_certificate = null
+                client_certificate = null,
+                tls_verify_depth = null,
+                tls_verify = null,
+                ca_certificates = null,
+                ws_id = null,
               } }
           }, idempotent(config))
         end)
@@ -650,7 +690,11 @@ describe("declarative config: flatten", function()
                 retries = 5,
                 updated_at = 1234567890,
                 write_timeout = 60000,
-                client_certificate = null
+                client_certificate = null,
+                tls_verify_depth = null,
+                tls_verify = null,
+                ca_certificates = null,
+                ws_id = null,
               }
             }
           }, idempotent(config))
@@ -691,7 +735,8 @@ describe("declarative config: flatten", function()
                 strip_path = true,
                 path_handling = "v1",
                 tags = null,
-                updated_at = 1234567890
+                updated_at = 1234567890,
+                ws_id = null,
               } },
             services = { {
                 connect_timeout = 60000,
@@ -707,7 +752,11 @@ describe("declarative config: flatten", function()
                 tags = null,
                 updated_at = 1234567890,
                 write_timeout = 60000,
-                client_certificate = null
+                client_certificate = null,
+                tls_verify_depth = null,
+                tls_verify = null,
+                ca_certificates = null,
+                ws_id = null,
               } }
           }, idempotent(config))
         end)
@@ -766,7 +815,8 @@ describe("declarative config: flatten", function()
                 strip_path = true,
                 path_handling = "v1",
                 tags = null,
-                updated_at = 1234567890
+                updated_at = 1234567890,
+                ws_id = null,
               }, {
                 created_at = 1234567890,
                 destinations = null,
@@ -788,7 +838,8 @@ describe("declarative config: flatten", function()
                 strip_path = true,
                 path_handling = "v1",
                 tags = null,
-                updated_at = 1234567890
+                updated_at = 1234567890,
+                ws_id = null,
               }, {
                 created_at = 1234567890,
                 destinations = null,
@@ -810,7 +861,8 @@ describe("declarative config: flatten", function()
                 strip_path = true,
                 path_handling = "v1",
                 tags = null,
-                updated_at = 1234567890
+                updated_at = 1234567890,
+                ws_id = null,
               }, {
                 created_at = 1234567890,
                 destinations = null,
@@ -832,7 +884,8 @@ describe("declarative config: flatten", function()
                 strip_path = true,
                 path_handling = "v1",
                 tags = null,
-                updated_at = 1234567890
+                updated_at = 1234567890,
+                ws_id = null,
               } },
             services = { {
                 connect_timeout = 60000,
@@ -848,7 +901,11 @@ describe("declarative config: flatten", function()
                 tags = null,
                 updated_at = 1234567890,
                 write_timeout = 60000,
-                client_certificate = null
+                client_certificate = null,
+                tls_verify_depth = null,
+                tls_verify = null,
+                ca_certificates = null,
+                ws_id = null,
               }, {
                 connect_timeout = 60000,
                 created_at = 1234567890,
@@ -863,7 +920,11 @@ describe("declarative config: flatten", function()
                 tags = null,
                 updated_at = 1234567890,
                 write_timeout = 60000,
-                client_certificate = null
+                client_certificate = null,
+                tls_verify_depth = null,
+                tls_verify = null,
+                ca_certificates = null,
+                ws_id = null,
               } }
           }, idempotent(config))
         end)
@@ -907,7 +968,8 @@ describe("declarative config: flatten", function()
                 sources = null,
                 strip_path = true,
                 path_handling = "v1",
-                updated_at = 1234567890
+                updated_at = 1234567890,
+                ws_id = null,
               }
             },
             services = {
@@ -925,7 +987,11 @@ describe("declarative config: flatten", function()
                 retries = 5,
                 updated_at = 1234567890,
                 write_timeout = 60000,
-                client_certificate = null
+                client_certificate = null,
+                tls_verify_depth = null,
+                tls_verify = null,
+                ca_certificates = null,
+                ws_id = null,
               }
             }
           }, idempotent(config))
@@ -980,7 +1046,8 @@ describe("declarative config: flatten", function()
                   id = "UUID"
                 },
                 service = null,
-                tags = null
+                tags = null,
+                ws_id = null,
               }, {
                 config = {
                   content_type = "application/json",
@@ -1002,7 +1069,8 @@ describe("declarative config: flatten", function()
                   id = "UUID"
                 },
                 service = null,
-                tags = null
+                tags = null,
+                ws_id = null,
               }, {
                 config = {
                   anonymous = null,
@@ -1021,7 +1089,8 @@ describe("declarative config: flatten", function()
                   id = "UUID"
                 },
                 service = null,
-                tags = null
+                tags = null,
+                ws_id = null,
               }, {
                 config = {
                   host = "127.0.0.1",
@@ -1041,7 +1110,8 @@ describe("declarative config: flatten", function()
                   id = "UUID"
                 },
                 service = null,
-                tags = null
+                tags = null,
+                ws_id = null,
               } },
             routes = { {
                 created_at = 1234567890,
@@ -1064,6 +1134,7 @@ describe("declarative config: flatten", function()
                 strip_path = true,
                 path_handling = "v1",
                 tags = null,
+                ws_id = null,
                 updated_at = 1234567890
               }, {
                 created_at = 1234567890,
@@ -1086,6 +1157,7 @@ describe("declarative config: flatten", function()
                 strip_path = true,
                 path_handling = "v1",
                 tags = null,
+                ws_id = null,
                 updated_at = 1234567890
               } },
             services = { {
@@ -1100,9 +1172,13 @@ describe("declarative config: flatten", function()
                 read_timeout = 60000,
                 retries = 5,
                 tags = null,
+                ws_id = null,
                 updated_at = 1234567890,
                 write_timeout = 60000,
-                client_certificate = null
+                client_certificate = null,
+                tls_verify_depth = null,
+                tls_verify = null,
+                ca_certificates = null,
               }, {
                 connect_timeout = 60000,
                 created_at = 1234567890,
@@ -1115,9 +1191,13 @@ describe("declarative config: flatten", function()
                 read_timeout = 60000,
                 retries = 5,
                 tags = null,
+                ws_id = null,
                 updated_at = 1234567890,
                 write_timeout = 60000,
-                client_certificate = null
+                client_certificate = null,
+                tls_verify_depth = null,
+                tls_verify = null,
+                ca_certificates = null,
               } }
           }, idempotent(config))
         end)
@@ -1147,6 +1227,7 @@ describe("declarative config: flatten", function()
               target = '127.0.0.1:6661',
               upstream = { id = 'UUID' },
               weight = 1,
+              ws_id = null,
             },
             {
               created_at = 1234567890,
@@ -1155,6 +1236,7 @@ describe("declarative config: flatten", function()
               target = '127.0.0.1:6661',
               upstream = { id = 'UUID' },
               weight = 1,
+              ws_id = null,
             },
           },
 
@@ -1197,6 +1279,7 @@ describe("declarative config: flatten", function()
               created_at = 1234567890,
               tags = null,
               type = 0, -- XXX EE
+              ws_id = null,
             },
           },
         }, idempotent(config))
@@ -1221,6 +1304,7 @@ describe("declarative config: flatten", function()
               created_at = 1234567890,
               tags = null,
               type = 0, -- XXX EE
+              ws_id = null,
             },
           },
           basicauth_credentials = {
@@ -1233,6 +1317,7 @@ describe("declarative config: flatten", function()
               password = 'password',
               created_at = 1234567890,
               tags = null,
+              ws_id = null,
             },
           },
         }, idempotent(config))
@@ -1259,6 +1344,7 @@ describe("declarative config: flatten", function()
               created_at = 1234567890,
               tags = null,
               type = 0, -- XXX EE
+              ws_id = null,
             },
           },
           basicauth_credentials = {
@@ -1271,6 +1357,7 @@ describe("declarative config: flatten", function()
               password = 'password',
               created_at = 1234567890,
               tags = null,
+              ws_id = null,
             },
           },
         }, idempotent(config))
@@ -1326,6 +1413,7 @@ describe("declarative config: flatten", function()
               created_at = 1234567890,
               tags = null,
               type = 0, -- XXX EE
+              ws_id = null,
             },
           },
           basicauth_credentials = {
@@ -1338,6 +1426,7 @@ describe("declarative config: flatten", function()
               password = 'password',
               created_at = 1234567890,
               tags = null,
+              ws_id = null,
             },
           },
         }, idempotent(config))
@@ -1393,6 +1482,7 @@ describe("declarative config: flatten", function()
               created_at = 1234567890,
               tags = null,
               type = 0, -- XXX EE
+              ws_id = null,
             },
           },
           basicauth_credentials = {
@@ -1405,6 +1495,7 @@ describe("declarative config: flatten", function()
               password = 'password',
               created_at = 1234567890,
               tags = null,
+              ws_id = null,
             },
           },
         }, idempotent(config))
@@ -1429,6 +1520,9 @@ describe("declarative config: flatten", function()
             {
               ["@entity"] = {
                 "all or none of these fields must be set: 'password', 'consumer.id'",
+              },
+              ["consumer"] = {
+                ["id"] = "missing primary key"
               },
             },
           },
@@ -1457,6 +1551,7 @@ describe("declarative config: flatten", function()
               created_at = 1234567890,
               tags = null,
               type = 0, -- XXX EE
+              ws_id = null,
             },
           },
           basicauth_credentials = {
@@ -1469,6 +1564,7 @@ describe("declarative config: flatten", function()
               password = 'password',
               created_at = 1234567890,
               tags = null,
+              ws_id = null,
             },
           },
         }, idempotent(config))
@@ -1492,6 +1588,9 @@ describe("declarative config: flatten", function()
             {
               ["@entity"] = {
                 "all or none of these fields must be set: 'password', 'consumer.id'",
+              },
+              ["consumer"] = {
+                ["id"] = "missing primary key"
               },
             },
           },
@@ -1569,6 +1668,7 @@ describe("declarative config: flatten", function()
               name = "another-credential",
               redirect_uris = { "https://example.test" },
               tags = { "tag2" },
+              ws_id = null,
             }, {
               client_id = "RANDOM",
               client_secret = "RANDOM",
@@ -1582,6 +1682,7 @@ describe("declarative config: flatten", function()
               name = "my-credential",
               redirect_uris = { "https://example.com" },
               tags = { "tag1" },
+              ws_id = null,
             } }
         }, idempotent(config))
       end)
@@ -1616,7 +1717,8 @@ describe("declarative config: flatten", function()
                 id = "UUID",
                 tags = null,
                 type = 0,
-                username = "foo"
+                username = "foo",
+                ws_id = null,
               } },
             jwt_secrets = { {
                 algorithm = "RS256",
@@ -1628,6 +1730,7 @@ describe("declarative config: flatten", function()
                 key = "https://keycloak/auth/realms/foo",
                 rsa_public_key = key:gsub("\\n", "\n"),
                 tags = null,
+                ws_id = null,
               } }
           }, idempotent(config))
         end)
@@ -1659,7 +1762,8 @@ describe("declarative config: flatten", function()
                 upstream = {
                   id = "UUID"
                 },
-                weight = 1
+                weight = 1,
+                ws_id = null,
               }, {
                 created_at = 1234567890,
                 id = "UUID",
@@ -1668,7 +1772,8 @@ describe("declarative config: flatten", function()
                 upstream = {
                   id = "UUID"
                 },
-                weight = 1
+                weight = 1,
+                ws_id = null,
               } },
             upstreams = { {
                 algorithm = "round-robin",
@@ -1719,7 +1824,8 @@ describe("declarative config: flatten", function()
                 id = "UUID",
                 name = "first-upstream",
                 slots = 10000,
-                tags = null
+                tags = null,
+                ws_id = null,
               }, {
                 algorithm = "round-robin",
                 created_at = 1234567890,
@@ -1769,7 +1875,8 @@ describe("declarative config: flatten", function()
                 id = "UUID",
                 name = "second-upstream",
                 slots = 10000,
-                tags = null
+                tags = null,
+                ws_id = null,
               } }
           }, idempotent(config))
 
@@ -1795,6 +1902,7 @@ describe("declarative config: flatten", function()
                 tags = null,
                 username = "bob",
                 type = 0,
+                ws_id = null,
               } }
           }, idempotent(config))
 
@@ -1822,6 +1930,7 @@ describe("declarative config: flatten", function()
                 tags = null,
                 username = "bob",
                 type = 0,
+                ws_id = null,
               } },
             oauth2_credentials = { {
                 client_id = "RANDOM",
@@ -1836,6 +1945,7 @@ describe("declarative config: flatten", function()
                 name = "another-credential",
                 redirect_uris = { "https://example.test" },
                 tags = null,
+                ws_id = null,
               }, {
                 client_id = "RANDOM",
                 client_secret = "RANDOM",
@@ -1849,6 +1959,7 @@ describe("declarative config: flatten", function()
                 name = "my-credential",
                 redirect_uris = { "https://example.com" },
                 tags = null,
+                ws_id = null,
               } }
           }, idempotent(config))
         end)
@@ -1882,7 +1993,8 @@ describe("declarative config: flatten", function()
                 id = "UUID",
                 name = "my-credential",
                 redirect_uris = { "https://example.com" },
-                tags = null
+                tags = null,
+                ws_id = null,
               } }
           }, idempotent(config))
         end)
@@ -1919,6 +2031,7 @@ describe("declarative config: flatten", function()
                 name = "my-credential",
                 redirect_uris = { "https://example.com" },
                 tags = null,
+                ws_id = null,
               } },
             oauth2_tokens = {
               {
@@ -1933,7 +2046,8 @@ describe("declarative config: flatten", function()
                 refresh_token = null,
                 scope = "bar",
                 service = null,
-                token_type = "bearer"
+                token_type = "bearer",
+                ws_id = null,
               }, {
                 access_token = "RANDOM",
                 authenticated_userid = null,
@@ -1946,7 +2060,8 @@ describe("declarative config: flatten", function()
                 refresh_token = null,
                 scope = "foo",
                 service = null,
-                token_type = "bearer"
+                token_type = "bearer",
+                ws_id = null,
               }
             }
           }, idempotent(config))
@@ -1956,4 +2071,101 @@ describe("declarative config: flatten", function()
     end)
   end)
 
+  describe("issues", function()
+    it("fixes #5750 - misleading error messages", function()
+      local config = assert(cjson.decode([[
+        {
+          "_format_version": "1.1",
+          "consumers": [
+            {
+              "username": "consumer-test",
+              "basicauth_credentials": [
+                {
+                  "username": "some_user",
+                  "password": "some_password"
+                }
+              ]
+            }
+          ],
+          "plugins": [
+            {
+              "name": "request-transformer",
+              "config": {
+                "add": {
+                  "body": [],
+                  "headers": [],
+                  "querystring": []
+                },
+                "append": {
+                  "body": [],
+                  "headers": [
+                    "X-Another-Header:foo"
+                  ],
+                  "querystring": []
+                },
+                "remove": {
+                  "body": [],
+                  "headers": [
+                    "X-Another-Header"
+                  ],
+                  "querystring": []
+                },
+                "rename": {
+                  "body": [],
+                  "headers": [],
+                  "querystring": []
+                },
+                "replace": {
+                  "body": [],
+                  "headers": [],
+                  "querystring": [],
+                  "uri": null
+                }
+              },
+              "route": "does-not-exist",
+              "enabled": true,
+              "protocols": [
+                "http",
+                "https"
+              ]
+            }
+          ]
+        }
+      ]]))
+      local err
+      config, err = DeclarativeConfig:flatten(config)
+      assert.equal(nil, config)
+      assert.same({
+        plugins = {
+            {
+              ["route"] = {
+                ["id"] = "missing primary key"
+              },
+            },
+          },
+        }, idempotent(err))
+    end)
+    it("fixes #5920 - validation error on valid input", function()
+      local config = assert(lyaml.load([[
+        _format_version: "1.1"
+
+        services:
+        - name: test-service
+          routes:
+          - paths:
+            - /test/path
+            plugins:
+            - name: key-auth
+          url: https://example.com
+
+        consumers:
+        - username: test-user
+          basicauth_credentials:
+          - username: test-username
+            password: test-password
+      ]]))
+      local _, err = DeclarativeConfig:flatten(config)
+      assert.equal(nil, err)
+    end)
+  end)
 end)

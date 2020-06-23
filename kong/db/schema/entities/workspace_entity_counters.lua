@@ -5,6 +5,7 @@ return {
   name = "workspace_entity_counters",
   primary_key = { "workspace_id", "entity_type"},
   generate_admin_api = false,
+  db_export = false,
 
   fields = {
     { workspace_id = typedefs.uuid },

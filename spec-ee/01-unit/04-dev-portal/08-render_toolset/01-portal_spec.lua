@@ -31,8 +31,8 @@ describe("portal", function()
 
     singletons.db = {}
     singletons.db.files = {
-      select_all = function()
-        return {
+      each = function()
+        local files = {
           {
             path = "content/hello-world.txt",
             contents = "---layout: hello-world.html---",
@@ -42,6 +42,11 @@ describe("portal", function()
             contents = "spec"
           },
         }
+        local i = 0
+        return function()
+          i = i + 1
+          return files[i]
+        end
       end
     }
 

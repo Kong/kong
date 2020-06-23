@@ -967,5 +967,37 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
     end)
+
+    describe("(using port maps configuration)", function()
+      local proxy_port = helpers.get_proxy_port(false)
+
+      lazy_setup(start_kong {
+        database         = strategy,
+        nginx_conf       = "spec/fixtures/custom_nginx.template",
+        lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
+        port_maps        =  "80:" .. proxy_port,
+      })
+
+      lazy_teardown(stop_kong)
+
+      describe("X-Forwarded-Port", function()
+        it("should be added if not present in request", function()
+          local headers = request_headers {
+            ["Host"] = "headers-inspect.com",
+          }
+
+          assert.equal(80, tonumber(headers["x-forwarded-port"]))
+        end)
+
+        it("should be replaced if present in request", function()
+          local headers = request_headers {
+            ["Host"]             = "headers-inspect.com",
+            ["X-Forwarded-Port"] = "81",
+          }
+
+          assert.equal(80, tonumber(headers["x-forwarded-port"]))
+        end)
+      end)
+    end)
   end)
 end

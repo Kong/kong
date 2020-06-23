@@ -1,4 +1,3 @@
-local serializer = require "kong.plugins.log-serializers.basic"
 local BatchQueue = require "kong.tools.batch_queue"
 local cjson = require "cjson"
 local url = require "socket.url"
@@ -142,7 +141,7 @@ local HttpLogHandler = {
 
 
 function HttpLogHandler:log(conf)
-  local entry = cjson.encode(serializer.serialize(ngx))
+  local entry = cjson.encode(kong.log.serialize())
 
   local queue_id = get_queue_id(conf)
   local q = queues[queue_id]

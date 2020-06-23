@@ -5,6 +5,8 @@ local utils        = require "kong.tools.utils"
 local file_helpers = require "kong.portal.file_helpers"
 local workspaces = require "kong.workspaces"
 local constants = require "kong.constants"
+local workspace_config = require "kong.portal.workspace_config"
+
 
 local kong = kong
 
@@ -33,7 +35,7 @@ return {
     GET = function(self, db, helpers, parent)
       local type = self.params.type
 
-      local is_legacy = workspaces.retrieve_ws_config(ws_constants.PORTAL_IS_LEGACY,
+      local is_legacy = workspace_config.retrieve(ws_constants.PORTAL_IS_LEGACY,
                                                       workspaces.get_workspace())
 
       local files = {}

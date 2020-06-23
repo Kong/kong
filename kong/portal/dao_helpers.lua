@@ -11,6 +11,8 @@ local rbac       = require "kong.rbac"
 local enterprise_utils = require "kong.enterprise_edition.utils"
 local MetaSchema = require "kong.db.schema.metaschema"
 local ee_auth_helpers = require "kong.enterprise_edition.auth_helpers"
+local workspace_config = require "kong.portal.workspace_config"
+
 
 local log = ngx.log
 local ERR = ngx.ERR
@@ -57,7 +59,7 @@ end
 
 local function validate_developer_password(password)
   local workspace = workspaces.get_workspace()
-  local portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+  local portal_auth = workspace_config.retrieve(ws_constants.PORTAL_AUTH, workspace)
   if portal_auth ~= "basic-auth" then
     return true
   end
@@ -94,8 +96,8 @@ end
 
 local function get_developer_status()
   local workspace = workspaces.get_workspace()
-  local auto_approve = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTO_APPROVE, workspace)
-  local auth_type = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+  local auto_approve = workspace_config.retrieve(ws_constants.PORTAL_AUTO_APPROVE, workspace)
+  local auth_type = workspace_config.retrieve(ws_constants.PORTAL_AUTH, workspace)
 
   if singletons.configuration.portal_email_verification and auth_type ~= "openid-connect" then
     return enums.CONSUMERS.STATUS.UNVERIFIED
@@ -422,7 +424,7 @@ end
 
 -- For a given conf key and value, returns the required value for validation
 -- * if value is ngx.null, meaning "set to default", returns value from kong.conf
--- * if value is nil, meaning it was not sent in the req, returns result of retrieve_ws_config
+-- * if value is nil, meaning it was not sent in the req, returns result of retrieve
 -- * if type is invalid, returns err
 -- * if encode flag and type is table, will re assign and return encoded value
 -- * otherwise, value will pass through
@@ -433,7 +435,7 @@ local function get_conf_value(key, entity_config, req_type, ws, encode)
     return kong.configuration[key]
   elseif value == nil then
      -- return with either ws or kong.conf
-    return workspaces.retrieve_ws_config(key, ws)
+    return workspace_config.retrieve(key, ws)
   elseif type(value) ~= req_type then
     return nil, "'config." .. key .. "' must be type '" .. req_type .. "'"
   elseif encode and type(value) == "table" then
@@ -583,7 +585,7 @@ local function create_developer(self, entity, options)
   end
 
   local workspace = workspaces.get_workspace()
-  local portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+  local portal_auth = workspace_config.retrieve(ws_constants.PORTAL_AUTH, workspace)
 
   if portal_auth ~= "openid-connect" then
     -- validate auth plugin
@@ -718,7 +720,7 @@ local function update_developer(self, developer, entity, options)
 
     -- retrieve portal auth plugin type
     -- TODO: Determine whether this need to be applied to `self`
-    self.portal_auth = workspaces.retrieve_ws_config(ws_constants.PORTAL_AUTH, workspace)
+    self.portal_auth = workspace_config.retrieve(ws_constants.PORTAL_AUTH, workspace)
     if not self.portal_auth or self.portal_auth == "" then
       local code = Errors.codes.DATABASE_ERROR
       local err = "developer update: portal auth must be turned on to update developer fields"

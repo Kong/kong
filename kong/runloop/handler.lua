@@ -1,6 +1,7 @@
 -- Kong runloop
 
 local ck           = require "resty.cookie"
+local ee           = require "kong.enterprise_edition.runloop.handler"
 local meta         = require "kong.meta"
 local utils        = require "kong.tools.utils"
 local Router       = require "kong.router"
@@ -9,12 +10,8 @@ local reports      = require "kong.reports"
 local constants    = require "kong.constants"
 local singletons   = require "kong.singletons"
 local certificate  = require "kong.runloop.certificate"
-local workspaces   = require "kong.workspaces"
-local tracing      = require "kong.tracing"
 local concurrency  = require "kong.concurrency"
 local PluginsIterator = require "kong.runloop.plugins_iterator"
-local file_helpers = require "kong.portal.file_helpers"
-local event_hooks = require "kong.enterprise_edition.event_hooks"
 
 
 local kong         = kong
@@ -30,8 +27,9 @@ local lower        = string.lower
 local fmt          = string.format
 local ngx          = ngx
 local var          = ngx.var
-local log         = ngx.log
+local log          = ngx.log
 local exit         = ngx.exit
+local null         = ngx.null
 local header       = ngx.header
 local timer_at     = ngx.timer.at
 local timer_every  = ngx.timer.every
@@ -41,10 +39,14 @@ local unpack       = unpack
 
 
 local ERR   = ngx.ERR
+local CRIT  = ngx.CRIT
 local WARN  = ngx.WARN
 local DEBUG = ngx.DEBUG
 local COMMA = byte(",")
 local SPACE = byte(" ")
+
+
+local HOST_PORTS = {}
 
 
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
@@ -56,6 +58,7 @@ local ROUTER_SYNC_OPTS
 local ROUTER_ASYNC_OPTS
 local PLUGINS_ITERATOR_SYNC_OPTS
 local PLUGINS_ITERATOR_ASYNC_OPTS
+local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
 
 local get_plugins_iterator, get_updated_plugins_iterator
@@ -161,19 +164,6 @@ local function csv(s)
   return csv_iterator, s, 1
 end
 
-local function get_all_workspaces()
-  local wss = {}
-  for w, err in kong.db.workspaces:each(nil, {skip_rbac = true}) do
-    if err then
-      return nil, err
-    end
-
-    table.insert(wss, w)
-  end
-
-  return wss
-end
-
 
 local function register_events()
   -- initialize local local_events hooks
@@ -185,15 +175,11 @@ local function register_events()
 
   -- events dispatcher
 
+
   worker_events.register(function(data)
     if not data.schema then
       log(ERR, "[events] missing schema in crud subscriber")
       return
-    end
-
-    local workspaces, err = get_all_workspaces()
-    if err then
-      log(ngx.ERR, "[events] could not fetch workspaces: ", err)
     end
 
     if not data.entity then
@@ -204,24 +190,20 @@ local function register_events()
     -- invalidate this entity anywhere it is cached if it has a
     -- caching key
 
-    local cache_key = db[data.schema.name]:cache_key(data.entity, nil, nil,
-                                                     nil, nil, true)
+    local cache_key = db[data.schema.name]:cache_key(data.entity)
     local cache_obj = kong[constants.ENTITY_CACHE_STORE[data.schema.name]]
 
     if cache_key then
-      cache_obj:invalidate(cache_key, workspaces)
+      cache_obj:invalidate(cache_key)
     end
 
     -- if we had an update, but the cache key was part of what was updated,
     -- we need to invalidate the previous entity as well
 
     if data.old_entity then
-      local old_cache_key = db[data.schema.name]:cache_key(
-        data.old_entity, nil, nil, nil, nil, true
-      )
-
+      local old_cache_key = db[data.schema.name]:cache_key(data.old_entity)
       if old_cache_key and cache_key ~= old_cache_key then
-        cache_obj:invalidate(old_cache_key, workspaces)
+        cache_obj:invalidate(old_cache_key)
       end
     end
 
@@ -234,7 +216,7 @@ local function register_events()
 
     local entity_channel           = data.schema.table or data.schema.name
     local entity_operation_channel = fmt("%s:%s", entity_channel,
-                                         data.operation)
+      data.operation)
 
     -- crud:routes
     local ok, err = worker_events.post_local("crud", entity_channel, data)
@@ -263,8 +245,8 @@ local function register_events()
 
   worker_events.register(function(data)
     if data.operation ~= "create" and
-        data.operation ~= "delete"
-    then
+      data.operation ~= "delete"
+      then
       -- no need to rebuild the router if we just added a Service
       -- since no Route is pointing to that Service yet.
       -- ditto for deletion: if a Service if being deleted, it is
@@ -304,10 +286,10 @@ local function register_events()
     log(DEBUG, "[events] SSL cert updated, invalidating cached certificates")
     local certificate = data.entity
 
-    for sni, err in db.snis:each_for_certificate({ id = certificate.id }) do
+    for sni, err in db.snis:each_for_certificate({ id = certificate.id }, nil, GLOBAL_QUERY_OPTS) do
       if err then
         log(ERR, "[events] could not find associated snis for certificate: ",
-                  err)
+          err)
         break
       end
 
@@ -331,7 +313,7 @@ local function register_events()
       })
     if not ok then
       log(ERR, "failed broadcasting target ",
-          operation, " to workers: ", err)
+        operation, " to workers: ", err)
     end
     -- => to cluster_events handler
     local key = fmt("%s:%s", operation, target.upstream.id)
@@ -348,8 +330,7 @@ local function register_events()
     local target = data.entity
 
     -- => to balancer update
-    workspaces.run_with_ws_scope({}, balancer.on_target_event,
-                                  operation, target)
+    balancer.on_target_event(operation, target)
   end, "balancer", "targets")
 
 
@@ -405,7 +386,7 @@ local function register_events()
       })
     if not ok then
       log(ERR, "failed broadcasting upstream ",
-          operation, " to workers: ", err)
+        operation, " to workers: ", err)
     end
     -- => to cluster_events handler
     local key = fmt("%s:%s:%s", operation, upstream.id, upstream.name)
@@ -421,15 +402,8 @@ local function register_events()
     local operation = data.operation
     local upstream = data.entity
 
-    local workspace_list, err = get_all_workspaces()
-    if err then
-      log(ngx.ERR, "[events] could not fetch workspaces: ", err)
-      return
-    end
-
     -- => to balancer update
-    workspaces.run_with_ws_scope({}, balancer.on_upstream_event, operation,
-                                 upstream, workspace_list)
+    balancer.on_upstream_event(operation, upstream)
   end, "balancer", "upstreams")
 
 
@@ -450,99 +424,20 @@ local function register_events()
   end)
 
 
-  worker_events.register(function(data)
-    log(DEBUG, "[events] workspace_entites updated, invalidating API workspace scope")
-    local target = data.entity
-    if target.entity_type == "apis" or target.entity_type == "routes" then
-      local ws_scope_key = fmt("apis_ws_resolution:%s", target.entity_id)
-      core_cache:invalidate(ws_scope_key)
-    end
-  end, "crud", "workspace_entities")
-
-  -- initialize balancers for active healthchecks
-  ngx.timer.at(0, function()
-    workspaces.run_with_ws_scope({}, balancer.init)
-  end)
-
-  if singletons.configuration.audit_log then
-    log(DEBUG, "register audit log events handler")
-    local audit_log = require "kong.enterprise_edition.audit_log"
-    worker_events.register(audit_log.dao_audit_handler, "dao:crud")
-  end
-
-  -- rbac token ident cache handling
-  worker_events.register(function(data)
-    singletons.cache:invalidate("rbac_user_token_ident:" ..
-                                data.entity.user_token_ident)
-
-    -- clear a patched ident range cache, if appropriate
-    -- this might be nil if we in-place upgrade a pt token
-    if data.old_entity and data.old_entity.user_token_ident then
-      singletons.cache:invalidate("rbac_user_token_ident:" ..
-                                  data.old_entity.user_token_ident)
-    end
-  end, "crud", "rbac_users")
+  ee.register_events()
 
 
   -- declarative config updates
 
 
   if db.strategy == "off" then
-    worker_events.register(function()
+    worker_events.register(function(default_ws)
+      kong.cache:flip()
       core_cache:flip()
+      kong.default_workspace = default_ws
+      ngx.ctx.workspace = kong.default_workspace
     end, "declarative", "flip_config")
   end
-
-
-  -- portal router events
-  worker_events.register(function(data)
-    local file = data.entity
-    if file_helpers.is_config_path(file.path) or
-       file_helpers.is_content_path(file.path) or
-       file_helpers.is_spec_path(file.path) then
-      local workspace = workspaces.get_workspace()
-      local cache_key = "portal_router-" .. workspace.name .. ":version"
-      local cache_val = tostring(file.created_at) .. file.checksum
-
-      -- to node worker event
-      local ok, err = worker_events.post("portal", "router", {
-        cache_key = cache_key,
-        cache_val = cache_val,
-      })
-      if not ok then
-        log(ERR, "failed broadcasting portal:router event to workers: ", err)
-      end
-
-      -- to cluster worker event
-      local cluster_key = cache_key .. "|" .. cache_val
-      local ok, err = cluster_events:broadcast("portal:router", cluster_key)
-      if not ok then
-        log(ERR, "failed broadcasting portal:router event to cluster: ", err)
-      end
-    end
-  end, "crud", "files")
-
-
-  cluster_events:subscribe("portal:router", function(data)
-    local cache_key, cache_val = unpack(utils.split(data, "|"))
-    local ok, err = worker_events.post("portal", "router", {
-      cache_key = cache_key,
-      cache_val = cache_val,
-    })
-    if not ok then
-      log(ERR, "failed broadcasting portal:router event to workers: ", err)
-    end
-  end)
-
-
-  worker_events.register(function(data)
-    singletons.portal_router.set_version(data.cache_key, data.cache_val)
-  end, "portal", "router")
-
-  if event_hooks.enabled() then
-    worker_events.register(event_hooks.crud, "crud", "event_hooks")
-  end
-
 end
 
 
@@ -655,7 +550,7 @@ do
 
 
   local function load_service_from_db(service_pk)
-    local service, err = kong.db.services:select(service_pk)
+    local service, err = kong.db.services:select(service_pk, GLOBAL_QUERY_OPTS)
     if service == nil then
       -- the third value means "do not cache"
       return nil, err, -1
@@ -667,7 +562,7 @@ do
   local function build_services_init_cache(db)
     local services_init_cache = {}
 
-    for service, err in db.services:each() do
+    for service, err in db.services:each(nil, GLOBAL_QUERY_OPTS) do
       if err then
         return nil, err
       end
@@ -695,7 +590,8 @@ do
 
     -- kong.core_cache is available, not in init phase
     if kong.core_cache then
-      local cache_key = db.services:cache_key(service_pk.id)
+      local cache_key = db.services:cache_key(service_pk.id, nil, nil, nil, nil,
+                                              route.ws_id)
       service, err = kong.core_cache:get(cache_key, TTL_ZERO,
                                     load_service_from_db, service_pk)
 
@@ -753,7 +649,7 @@ do
 
     local counter = 0
     local page_size = db.routes.pagination.page_size
-    for route, err in db.routes:each() do
+    for route, err in db.routes:each(nil, GLOBAL_QUERY_OPTS) do
       if err then
         return nil, "could not load routes: " .. err
       end
@@ -788,7 +684,10 @@ do
     end
 
     local new_router, err = Router.new(routes)
-    tracing.wrap_router(new_router)
+
+    -- XXXCORE replace with a hook
+    new_router = ee.new_router(new_router)
+
     if not new_router then
       return nil, "could not create router: " .. err
     end
@@ -876,6 +775,7 @@ end
 local balancer_prepare
 do
   local get_certificate = certificate.get_certificate
+  local get_ca_certificate_store = certificate.get_ca_certificate_store
   local subsystem = ngx.config.subsystem
 
   function balancer_prepare(ctx, scheme, host_type, host, port,
@@ -909,7 +809,9 @@ do
     ctx.balancer_address = balancer_data -- for plugin backward compatibility
 
     if service then
+      local res, err
       local client_certificate = service.client_certificate
+
       if client_certificate then
         local cert, err = get_certificate(client_certificate)
         if not cert then
@@ -918,11 +820,45 @@ do
           return
         end
 
-        local res
         res, err = kong.service.set_tls_cert_key(cert.cert, cert.key)
         if not res then
           log(ERR, "unable to apply upstream client TLS certificate ",
                    client_certificate.id, ": ", err)
+        end
+      end
+
+      local tls_verify = service.tls_verify
+      if tls_verify then
+        res, err = kong.service.set_tls_verify(tls_verify)
+        if not res then
+          log(CRIT, "unable to set upstream TLS verification to: ",
+                   tls_verify, ", err: ", err)
+        end
+      end
+
+      local tls_verify_depth = service.tls_verify_depth
+      if tls_verify_depth then
+        res, err = kong.service.set_tls_verify_depth(tls_verify_depth)
+        if not res then
+          log(CRIT, "unable to set upstream TLS verification to: ",
+                   tls_verify, ", err: ", err)
+          -- in case verify can not be enabled, request can no longer be
+          -- processed without potentially compromising security
+          return kong.response.exit(500)
+        end
+      end
+
+      local ca_certificates = service.ca_certificates
+      if ca_certificates then
+        res, err = get_ca_certificate_store(ca_certificates)
+        if not res then
+          log(CRIT, "unable to get upstream TLS CA store, err: ", err)
+
+        else
+          res, err = kong.service.set_tls_verify_store(res)
+          if not res then
+            log(CRIT, "unable to set upstream TLS CA store, err: ", err)
+          end
         end
       end
     end
@@ -990,6 +926,10 @@ return {
 
   init_worker = {
     before = function()
+      if kong.configuration.host_ports then
+        HOST_PORTS = kong.configuration.host_ports
+      end
+
       if kong.configuration.anonymous_reports then
         reports.configure_ping(kong.configuration)
         reports.add_ping_value("database_version", kong.db.infos.db_ver)
@@ -1072,6 +1012,8 @@ return {
   },
   preread = {
     before = function(ctx)
+      ctx.host_port = HOST_PORTS[var.server_port] or var.server_port
+
       local router = get_updated_router()
 
       local match_t = router.exec()
@@ -1079,6 +1021,8 @@ return {
         log(ERR, "no Route found with those values")
         return exit(500)
       end
+
+      ngx.ctx.workspace = match_t.route and match_t.route.ws_id
 
       local route = match_t.route
       local service = match_t.service
@@ -1105,6 +1049,8 @@ return {
   },
   rewrite = {
     before = function(ctx)
+      ctx.host_port = HOST_PORTS[var.server_port] or var.server_port
+
       -- special handling for proxy-authorization and te headers in case
       -- the plugin(s) want to specify them (store the original)
       ctx.http_proxy_authorization = var.http_proxy_authorization
@@ -1128,15 +1074,18 @@ return {
         return kong.response.exit(404, { message = "no Route matched with those values" })
       end
 
+      ngx.ctx.workspace = match_t.route and match_t.route.ws_id
+
       local http_version   = ngx.req.http_version()
       local scheme         = var.scheme
       local host           = var.host
-      local port           = tonumber(var.server_port, 10)
+      local port           = tonumber(ctx.host_port, 10)
+                          or tonumber(var.server_port, 10)
       local content_type   = var.content_type
 
       local route          = match_t.route
       local service        = match_t.service
-      local upstream_url_t     = match_t.upstream_url_t
+      local upstream_url_t = match_t.upstream_url_t
 
       local realip_remote_addr = var.realip_remote_addr
       local forwarded_proto
@@ -1266,16 +1215,6 @@ return {
       var.upstream_x_forwarded_host   = forwarded_host
       var.upstream_x_forwarded_port   = forwarded_port
       var.upstream_x_forwarded_prefix = forwarded_prefix
-
-      local err
-      ctx.workspaces, err = workspaces.resolve_ws_scope(ctx, route.protocols and route)
-      ctx.log_request_workspaces = ctx.workspaces
-      if err then
-        ngx.log(ngx.ERR, "failed to retrieve workspace for the request (reason: "
-                         .. tostring(err) .. ")")
-
-        return kong.response.exit(500, { message = "An unexpected error occurred"})
-      end
 
       -- At this point, the router and `balancer_setup_stage1` have been
       -- executed; detect requests that need to be redirected from `proxy_pass`
@@ -1417,8 +1356,8 @@ return {
 
       if not ok then
         log(WARN, "failed to set the cookie for hash-based load balancing: ", err,
-                      " (key=", hash_cookie.key,
-                      ", path=", hash_cookie.path, ")")
+                  " (key=", hash_cookie.key,
+                  ", path=", hash_cookie.path, ")")
       end
     end,
     after = function(ctx)
@@ -1457,8 +1396,6 @@ return {
       if kong.configuration.anonymous_reports then
         reports.log(ctx)
       end
-
-      tracing.flush()
 
       if not ctx.KONG_PROXIED then
         return

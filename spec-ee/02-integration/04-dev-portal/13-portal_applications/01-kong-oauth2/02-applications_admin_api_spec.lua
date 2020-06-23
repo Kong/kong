@@ -402,8 +402,6 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(db.consumers:select_by_username(developer.id .. "new_app"))
           assert.is_nil(db.consumers:select_by_username(developer_two.id .. "_new_app"))
 
-          print(require("inspect")(developer_two))
-
           local res = assert(client:send({
             method = "PATCH",
             path = "/applications/" .. application.id,
@@ -416,9 +414,6 @@ for _, strategy in helpers.each_strategy() do
 
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-
-          print(require("inspect")(json))
-
 
           assert.equal(developer.id, json.developer.id)
           assert(db.consumers:select_by_username(developer.id .. "_new_app"))

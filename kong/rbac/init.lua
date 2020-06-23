@@ -2,6 +2,7 @@ local _M = {}
 
 local bit        = require "bit"
 local workspaces = require "kong.workspaces"
+local scope      = require "kong.enterprise_edition.workspaces.scope"
 local utils      = require "kong.tools.utils"
 local cjson      = require "cjson"
 local tablex     = require "pl.tablex"
@@ -16,6 +17,7 @@ local fmt    = string.format
 local lshift = bit.lshift
 local rshift = bit.rshift
 local find   = string.find
+local null   = ngx.null
 local setmetatable = setmetatable
 local getmetatable = getmetatable
 local register_hook = hooks.register_hook
@@ -278,7 +280,7 @@ end
 local function retrieve_relationship_entity(foreign_factory_key, foreign_id)
   local relationship, err = kong.db[foreign_factory_key]:select({
     id = foreign_id },
-    { skip_rbac = true })
+    { skip_rbac = true, workspace = null })
   if err then
     return nil, err
   end
@@ -305,6 +307,8 @@ _M.user_can_manage_endpoints_from = user_can_manage_endpoints_from
 local function retrieve_user(id)
   local user, err = kong.db.rbac_users:select({id = id}, {
     skip_rbac = true,
+    show_ws_id = true,
+    workspace = null,
   })
 
   if err then
@@ -363,7 +367,7 @@ local function get_role_entities(db, role, opts)
   opts = opts or {}
   opts.skip_rbac = true
   local res = {}
-  for role, err in db.rbac_role_entities:each_for_role({id = role.id}, nil,  opts) do
+  for role, err in db.rbac_role_entities:each_for_role({id = role.id}, nil, opts) do
     if err then
       return nil, err
     end
@@ -405,7 +409,7 @@ end
 
 local function retrieve_roles_ids(db, user_id)
   local relationship_ids = {}
-  workspaces.run_with_ws_scope({}, function()
+  scope.run_with_ws_scope({}, function()
     for row, err in db.rbac_user_roles:each_for_user({id = user_id}, nil, {skip_rbac = true}) do
       if err then
         return nil, err
@@ -514,7 +518,7 @@ function _M.get_groups_roles(db, groups)
       for i = 1, #relationship_ids do
         local rbac_role_id = relationship_ids[i]["rbac_role"].id
         local role_entity_key = db.rbac_roles:cache_key(rbac_role_id)
-        workspaces.run_with_ws_scope({}, function ()
+        scope.run_with_ws_scope({}, function ()
           local relationship, err = cache:get(role_entity_key, nil,
           retrieve_relationship_entity, "rbac_roles", rbac_role_id)
           if err then
@@ -719,11 +723,14 @@ local function get_rbac_user_info(rbac_user, groups)
     return user
   end
 
+  -- XXXCORE instead of flipping the ctx like this, use opts.workspace in DB queries
   local ctx = ngx.ctx
-  local old_ws_ctx = ctx.workspaces
+  local old_ws_ctx = ctx.workspace
+  ctx.workspace = nil
+
   local user, err = load_rbac_ctx(ctx, rbac_user, groups)
 
-  ctx.workspaces = old_ws_ctx
+  ctx.workspace = old_ws_ctx
 
   if err then
     return nil, err
@@ -869,7 +876,7 @@ local function add_default_role_entity_permission(entity, table_name)
     })
   end
 
-  return workspaces.run_with_ws_scope({}, insert)
+  return scope.run_with_ws_scope({}, insert)
 end
 _M.add_default_role_entity_permission = add_default_role_entity_permission
 
@@ -945,7 +952,6 @@ function _M.validate_entity_operation(entity, table_name)
   end
 
   -- rbac does not apply to "system tables" - e.g., many-to-many tables
-  -- like workspace_entities
   if is_system_table(table_name) then
     return true
   end
@@ -979,11 +985,12 @@ function _M.validate_entity_operation(entity, table_name)
   local entity_id = schema.primary_key[1]
 
   if schema.workspaceable then
-    local wss = kong.db.workspace_entities:select_all({  -- XXX EE: REMOVE MERGE
-      entity_id= entity[entity_id]
-    })
-    if wss and wss[1] then
-      entity.ws_id=wss[1].workspace_id
+    if not entity.ws_id then
+      local db_entity = kong.db[table_name]:select({ id = entity_id },
+        { skip_rbac = true, workspace = null, show_ws_id = true })
+      if db_entity then
+        entity = db_entity
+      end
     end
   end
 
@@ -1272,12 +1279,12 @@ end
 -- it is called directly by the rbac_user DAO to validate uniqueness of tokens
 -- or when searching directly for legacy plaintext tokens
 function _M.retrieve_token_users(ident, k)
-  local opts = { skip_rbac = true }
+  local opts = { workspace = null, show_ws_id = true, skip_rbac = true }
 
   local users = {}
   if k == "user_token" then
     -- user_token is unique
-    local user, err = kong.db.rbac_users:select_by_user_token(ident, nil, opts)
+    local user, err = kong.db.rbac_users:select_by_user_token(ident, opts)
     if err then
       return nil, err
     end
@@ -1311,15 +1318,10 @@ local function get_token_users(rbac_token)
 
   local cache_key = "rbac_user_token_ident:" .. ident
 
-  local function cache_get()
-    return kong.cache:get(cache_key,
-                          nil,
-                          _M.retrieve_token_users,
-                          ident,
-                          "user_token_ident")
-  end
-
-  local token_users, err = workspaces.run_with_ws_scope({}, cache_get)
+  local token_users, err = kong.cache:get(cache_key, nil,
+                             _M.retrieve_token_users,
+                             ident,
+                             "user_token_ident")
   if err then
     return nil, err
   end
@@ -1407,7 +1409,7 @@ load_rbac_ctx = function(ctx, rbac_user, groups)
     local must_update
     user, must_update = validate_rbac_token(token_users, rbac_token)
     if must_update then
-      workspaces.run_with_ws_scope({},
+      scope.run_with_ws_scope({},
         update_user_token,
         user)
     end
@@ -1418,7 +1420,7 @@ load_rbac_ctx = function(ctx, rbac_user, groups)
     end
   end
 
-  local user_ws_scope, err = workspaces.resolve_user_ws_scope(ctx, user)
+  local user_ws_scope, err = _M.find_all_ws_for_rbac_user(user)
   if err then
     kong.log.err(err)
     return kong.response.exit(500, { message = "An unexpected error occurred" })
@@ -1431,7 +1433,7 @@ load_rbac_ctx = function(ctx, rbac_user, groups)
   local _roles = {}
   local _entities_perms = {}
   local _endpoints_perms = {}
-  local group_roles, err = workspaces.run_with_ws_scope({}, _M.get_groups_roles,
+  local group_roles, err = scope.run_with_ws_scope({}, _M.get_groups_roles,
                                                         kong.db,
                                                         ngx.ctx.authenticated_groups)
   if err then
@@ -1440,7 +1442,8 @@ load_rbac_ctx = function(ctx, rbac_user, groups)
   end
 
   for _, workspace in ipairs(user_ws_scope) do
-    ngx.ctx.workspaces = { workspace }
+    -- XXXCORE instead of setting this, use workspace id in DB queries
+    ngx.ctx.workspace = workspace.id
 
     local roles, err = get_user_roles(kong.db, user)
     if err then
@@ -1543,7 +1546,7 @@ function _M.validate_endpoint(route_name, route, rbac_user, groups)
   end
 
   local  ok = _M.authorize_request_endpoint(rbac_ctx.endpoints_perms,
-                                            workspaces.get_workspaces()[1].name,
+                                            workspaces.get_workspace().name,
                                             route, route_name, rbac_ctx.action)
   if not ok then
     local err = fmt("%s, you do not have permissions to %s this resource",
@@ -1589,14 +1592,14 @@ end
 
 function _M.find_all_ws_for_rbac_user(rbac_user)
     -- get roles across all workspaces
-  local roles, err = workspaces.run_with_ws_scope({}, _M.get_user_roles,
+  local roles, err = scope.run_with_ws_scope({}, _M.get_user_roles,
                                                   kong.db,
                                                   rbac_user)
   if err then
     return nil, err
   end
 
-  local group_roles, err = workspaces.run_with_ws_scope({},
+  local group_roles, err = scope.run_with_ws_scope({},
                                                    _M.get_groups_roles,
                                                    kong.db,
                                                    ngx.ctx.authenticated_groups)
@@ -1610,38 +1613,29 @@ function _M.find_all_ws_for_rbac_user(rbac_user)
   local wss = {}
   local wsNameMap = {}
 
+  local opts = { workspaces = null, show_ws_id = true }
   for _, role in ipairs(roles) do
-    workspaces.run_with_ws_scope({}, function ()
-      for _, role_endpoint in ipairs(_M.get_role_endpoints(kong.db, role)) do
-        local wsName = role_endpoint.workspace
-        if wsName == "*" then
-          if not wsNameMap[wsName] then
-            wss[#wss + 1] = { name = "*" }
-            wsNameMap["*"] = true
-          end
-        else
-          if not wsNameMap[wsName] then
-            wsNameMap[wsName] = true
-            wss[#wss + 1] = kong.db.workspaces:select_by_name(wsName)
-          end
+    for _, role_endpoint in ipairs(_M.get_role_endpoints(kong.db, role, opts)) do
+      local wsName = role_endpoint.workspace
+      if wsName == "*" then
+        if not wsNameMap[wsName] then
+          wss[#wss + 1] = { name = "*" }
+          wsNameMap["*"] = true
+        end
+      else
+        if not wsNameMap[wsName] then
+          wsNameMap[wsName] = true
+          wss[#wss + 1] = kong.db.workspaces:select_by_name(wsName, opts)
         end
       end
-    end)
+    end
   end
 
-  -- TODO: just read the rbac_user.workspace_id once ready
-  local rows, err = workspaces.find_workspaces_by_entity({
-    entity_id = rbac_user.id,
-    entity_type = "rbac_users",
-    unique_field_name = "id",
-  })
+  local rbac_user_ws_id = assert(rbac_user.ws_id)
+  local ws = kong.db.workspaces:select({ id = rbac_user_ws_id })
 
-  if err then
-    return nil, err
-  end
-
-  if not wsNameMap[rows[1].workspace_name] then
-    wss[#wss + 1] = kong.db.workspaces:select_by_name(rows[1].workspace_name)
+  if not wsNameMap[ws.name] then
+    wss[#wss + 1] = ws
   end
 
   return wss
@@ -1650,19 +1644,16 @@ end
 do
   local reports = require "kong.reports"
   local rbac_users_count = function()
-    -- XXX consider iterating for :each() workspace, select ws ,
-    -- "rbac_users" for performance reasons
-    local counts, err = kong.db.workspace_entity_counters:select_all({
-      entity_type = "rbac_users"
-    })
-    if err then
-      log(ngx.WARN, "failed to get count of RBAC users: ", err)
-      return nil
-    end
-
     local c = 0
-    for _, entity_counter in ipairs(counts) do
-      c = c + entity_counter.count or 0
+    for counter, err in kong.db.workspace_entity_counters:each() do
+      if err then
+        kong.log.warn("failed to get count of RBAC users: ", err)
+        return nil
+      end
+
+      if counter.entity_type == "rbac_users" then
+        c = c + (counter.count or 0)
+      end
     end
 
     return c

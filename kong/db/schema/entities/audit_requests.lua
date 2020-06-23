@@ -5,6 +5,7 @@ return {
   name = "audit_requests",
   primary_key = { "request_id" },
   generate_admin_api = false,
+  admin_api_name = "audit/requests",
   workspaceable = false,
   ttl = true,
 

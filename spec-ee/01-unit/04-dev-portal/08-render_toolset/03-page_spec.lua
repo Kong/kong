@@ -22,12 +22,6 @@ describe("page", function()
       }
     }
 
-    singletons.db = {
-      files = {
-        select_all = function() return {} end
-      }
-    }
-
     singletons.configuration = {
       portal = "on",
       portal_gui_listeners = {"127.0.0.1:8003"},
@@ -95,7 +89,7 @@ describe("page", function()
     before_each(function()
       snapshot = assert:snapshot()
     end)
-  
+
     it("can parse body from .txt file", function()
       singletons.render_ctx = {
         path = "/default/hello-world",

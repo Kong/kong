@@ -12,6 +12,7 @@ for _, strategy in helpers.each_strategy() do
     local bp
     lazy_setup(function()
       local db = assert(DB.new(helpers.test_conf, strategy))
+      kong.db = db
       assert(db:init_connector())
       assert(db.plugins:load_plugin_schemas(helpers.test_conf.loaded_plugins))
       assert(db:truncate())
@@ -127,9 +128,9 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("inserts acl plugins", function()
-      local p = bp.acl_plugins:insert({ config = { whitelist = {"admin"} } })
+      local p = bp.acl_plugins:insert({ config = { allow = {"admin"} } })
       assert.equals("acl", p.name)
-      assert.same({"admin"}, p.config.whitelist)
+      assert.same({"admin"}, p.config.allow)
       assert.matches(UUID_PATTERN, p.id)
     end)
 

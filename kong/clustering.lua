@@ -55,9 +55,9 @@ local function update_config(config_table, update_cache)
     declarative_config = declarative.new_config(kong.configuration)
   end
 
-  local entities, _, _, _, new_hash = declarative_config:parse_table(config_table)
+  local entities, err, _, meta, new_hash = declarative_config:parse_table(config_table)
   if not entities then
-    return nil, "bad config received from control plane"
+    return nil, "bad config received from control plane " .. err
   end
 
   if declarative.get_current_hash() == new_hash then
@@ -68,7 +68,8 @@ local function update_config(config_table, update_cache)
 
   -- NOTE: no worker mutex needed as this code can only be
   -- executed by worker 0
-  local res, err = declarative.load_into_cache_with_events(entities, new_hash)
+  local res, err =
+    declarative.load_into_cache_with_events(entities, meta, new_hash)
   if not res then
     return nil, err
   end

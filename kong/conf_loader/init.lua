@@ -2,12 +2,12 @@ local kong_default_conf = require "kong.templates.kong_defaults"
 local pl_stringio = require "pl.stringio"
 local pl_stringx = require "pl.stringx"
 local constants = require "kong.constants"
+local listeners = require "kong.conf_loader.listeners"
 local pl_pretty = require "pl.pretty"
 local pl_config = require "pl.config"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local tablex = require "pl.tablex"
-local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local env = require "kong.cmd.utils.env"
@@ -188,24 +188,71 @@ local PREFIX_PATHS = {
 
   status_ssl_cert_default = {"ssl", "status-kong-default.crt"},
   status_ssl_cert_key_default = {"ssl", "status-kong-default.key"},
-
-  -- EE code [[
-  nginx_portal_api_acc_logs = {"logs", "portal_api_access.log"},
-  nginx_portal_api_err_logs = {"logs", "portal_api_error.log"}
-  ;
-  nginx_portal_gui_acc_logs = {"logs", "portal_gui_access.log"},
-  nginx_portal_gui_err_logs = {"logs", "portal_gui_error.log"}
-  ;
-  admin_gui_ssl_cert_default = {"ssl", "admin-gui-kong-default.crt"},
-  admin_gui_ssl_cert_key_default = {"ssl", "admin-gui-kong-default.key"}
-  ;
-  portal_api_ssl_cert_default = {"ssl", "portal-api-kong-default.crt"},
-  portal_api_ssl_cert_key_default = {"ssl", "portal-api-kong-default.key"}
-  ;
-  portal_gui_ssl_cert_default = {"ssl", "portal-gui-kong-default.crt"},
-  portal_gui_ssl_cert_key_default = {"ssl", "portal-gui-kong-default.key"},
-  -- ]]
 }
+
+
+ee_conf_loader.add(PREFIX_PATHS, ee_conf_loader.EE_PREFIX_PATHS)
+
+
+local function upstream_keepalive_deprecated_properties(conf)
+  -- nginx_http_upstream_keepalive -> nginx_upstream_keepalive
+  if conf.nginx_upstream_keepalive == nil then
+    if conf.nginx_http_upstream_keepalive ~= nil then
+      conf.nginx_upstream_keepalive = conf.nginx_http_upstream_keepalive
+    end
+  end
+
+  -- upstream_keepalive -> nginx_upstream_keepalive + nginx_http_upstream_keepalive
+  if conf.nginx_upstream_keepalive == nil then
+    if conf.upstream_keepalive ~= nil then
+      if conf.upstream_keepalive == 0 then
+        conf.nginx_upstream_keepalive = "NONE"
+        conf.nginx_http_upstream_keepalive = "NONE"
+
+      else
+        conf.nginx_upstream_keepalive = tostring(conf.upstream_keepalive)
+        conf.nginx_http_upstream_keepalive = tostring(conf.upstream_keepalive)
+      end
+    end
+  end
+
+  -- nginx_upstream_keepalive -> upstream_keepalive_pool_size
+  if conf.upstream_keepalive_pool_size == nil then
+    if conf.nginx_upstream_keepalive ~= nil then
+      if conf.nginx_upstream_keepalive == "NONE" then
+        conf.upstream_keepalive_pool_size = 0
+
+      else
+        conf.upstream_keepalive_pool_size = tonumber(conf.nginx_upstream_keepalive)
+      end
+    end
+  end
+
+  -- nginx_http_upstream_keepalive_requests -> nginx_upstream_keepalive_requests
+  if conf.nginx_upstream_keepalive_requests == nil then
+    conf.nginx_upstream_keepalive_requests = conf.nginx_http_upstream_keepalive_requests
+  end
+
+  -- nginx_upstream_keepalive_requests -> upstream_keepalive_max_requests
+  if conf.upstream_keepalive_max_requests == nil
+     and conf.nginx_upstream_keepalive_requests ~= nil
+  then
+    conf.upstream_keepalive_max_requests = tonumber(conf.nginx_upstream_keepalive_requests)
+  end
+
+  -- nginx_http_upstream_keepalive_timeout -> nginx_upstream_keepalive_timeout
+  if conf.nginx_upstream_keepalive_timeout == nil then
+    conf.nginx_upstream_keepalive_timeout = conf.nginx_http_upstream_keepalive_timeout
+  end
+  --
+  -- nginx_upstream_keepalive_timeout -> upstream_keepalive_idle_timeout
+  if conf.upstream_keepalive_idle_timeout == nil
+     and conf.nginx_upstream_keepalive_timeout ~= nil
+  then
+    conf.upstream_keepalive_idle_timeout =
+      utils.nginx_conf_time_to_seconds(conf.nginx_upstream_keepalive_timeout)
+  end
+end
 
 
 -- By default, all properties in the configuration are considered to
@@ -221,6 +268,7 @@ local PREFIX_PATHS = {
 -- `array`: a comma-separated list
 local CONF_INFERENCES = {
   -- forced string inferences (or else are retrieved as numbers)
+  port_maps = { typ = "array" },
   proxy_listen = { typ = "array" },
   admin_listen = { typ = "array" },
   status_listen = { typ = "array" },
@@ -250,53 +298,66 @@ local CONF_INFERENCES = {
       replacement = "nginx_main_worker_processes",
     },
   },
-  upstream_keepalive = { -- TODO: remove since deprecated in 1.3
+
+  -- TODO: remove since deprecated in 1.3
+  upstream_keepalive = {
     typ = "number",
     deprecated = {
-      replacement = "nginx_upstream_keepalive",
-      alias = function(conf)
-        if tonumber(conf.upstream_keepalive) == 0 then
-          conf.nginx_upstream_keepalive = "NONE"
+      replacement = "upstream_keepalive_pool_size",
+      alias = upstream_keepalive_deprecated_properties,
+    }
+  },
 
-        elseif conf.nginx_upstream_keepalive == nil then
-          conf.nginx_upstream_keepalive = tostring(conf.upstream_keepalive)
-        end
-      end,
-    }
-  },
-  nginx_http_upstream_keepalive = { -- TODO: remove since deprecated in 2.0
+  -- TODO: remove since deprecated in 2.0
+  nginx_http_upstream_keepalive = {
     typ = "string",
     deprecated = {
-      replacement = "nginx_upstream_keepalive",
-      alias = function(conf)
-        if conf.nginx_upstream_keepalive == nil then
-          conf.nginx_upstream_keepalive = tostring(conf.nginx_http_upstream_keepalive)
-        end
-      end,
+      replacement = "upstream_keepalive_pool_size",
+      alias = upstream_keepalive_deprecated_properties,
     }
   },
-  nginx_http_upstream_keepalive_timeout = { -- TODO: remove since deprecated in 2.0
+  nginx_http_upstream_keepalive_requests = {
     typ = "string",
     deprecated = {
-      replacement = "nginx_upstream_keepalive_timeout",
-      alias = function(conf)
-        if conf.nginx_upstream_keepalive_timeout == nil then
-          conf.nginx_upstream_keepalive_timeout = tostring(conf.nginx_http_upstream_keepalive_timeout)
-        end
-      end,
+      replacement = "upstream_keepalive_max_requests",
+      alias = upstream_keepalive_deprecated_properties,
     }
   },
-  nginx_http_upstream_keepalive_requests = { -- TODO: remove since deprecated in 2.0
+  nginx_http_upstream_keepalive_timeout = {
     typ = "string",
     deprecated = {
-      replacement = "nginx_upstream_keepalive_requests",
-      alias = function(conf)
-        if conf.nginx_upstream_keepalive_requests == nil then
-          conf.nginx_upstream_keepalive_requests = tostring(conf.nginx_http_upstream_keepalive_requests)
-        end
-      end,
+      replacement = "upstream_keepalive_idle_timeout",
+      alias = upstream_keepalive_deprecated_properties,
     }
   },
+
+  -- TODO: remove since deprecated in 2.1
+  nginx_upstream_keepalive = {
+    typ = "string",
+    deprecated = {
+      replacement = "upstream_keepalive_pool_size",
+      alias = upstream_keepalive_deprecated_properties,
+    }
+  },
+  nginx_upstream_keepalive_requests = {
+    typ = "string",
+    deprecated = {
+      replacement = "upstream_keepalive_max_requests",
+      alias = upstream_keepalive_deprecated_properties,
+    }
+  },
+  nginx_upstream_keepalive_timeout = {
+    typ = "string",
+    deprecated = {
+      replacement = "upstream_keepalive_idle_timeout",
+      alias = upstream_keepalive_deprecated_properties,
+    }
+  },
+
+  upstream_keepalive_pool_size = { typ = "number" },
+  upstream_keepalive_max_requests = { typ = "number" },
+  upstream_keepalive_idle_timeout = { typ = "number" },
+
   headers = { typ = "array" },
   trusted_ips = { typ = "array" },
   real_ip_header = {
@@ -313,14 +374,24 @@ local CONF_INFERENCES = {
   },
   client_max_body_size = {
     typ = "string",
-    alias = {
+    deprecated = {
       replacement = "nginx_http_client_max_body_size",
+      alias = function(conf)
+        if conf.nginx_http_client_max_body_size == nil then
+          conf.nginx_http_client_max_body_size = conf.client_max_body_size
+        end
+      end,
     }
   },
   client_body_buffer_size = {
     typ = "string",
-    alias = {
+    deprecated = {
       replacement = "nginx_http_client_body_buffer_size",
+      alias = function(conf)
+        if conf.nginx_http_client_body_buffer_size == nil then
+          conf.nginx_http_client_body_buffer_size = conf.client_body_buffer_size
+        end
+      end,
     }
   },
   error_default_type = { enum = {
@@ -331,7 +402,7 @@ local CONF_INFERENCES = {
                          }
                        },
 
-  database = { enum = { "postgres", "cassandra"}  },  -- XXX EE , "off" is disabled in enterprise
+  database = { enum = { "postgres", "cassandra", "off" }  },
   pg_port = { typ = "number" },
   pg_timeout = { typ = "number" },
   pg_password = { typ = "string" },
@@ -515,118 +586,10 @@ local CONF_INFERENCES = {
   cluster_ca_cert = { typ = "string" },
   cluster_server_name = { typ = "string" },
   kic = { typ = "boolean" },
-
-  -- XXX: EE confs
-  enforce_rbac = {enum = {"on", "off", "both", "entity"}},
-  rbac_auth_header = {typ = "string"},
-
-  vitals = {typ = "boolean"},
-  vitals_flush_interval = {typ = "number"},
-  vitals_delete_interval_pg = {typ = "number"},
-  vitals_ttl_seconds = {typ = "number"},
-  vitals_ttl_minutes = {typ = "number"},
-
-  vitals_strategy = {typ = "string"},
-  vitals_statsd_address = {typ = "string"},
-  vitals_statsd_prefix = {typ = "string"},
-  vitals_statsd_udp_packet_size = {typ = "number"},
-  vitals_tsdb_address = {typ = "string"},
-  vitals_tsdb_user = {typ = "string"},
-  vitals_tsdb_password = {typ = "string"},
-  vitals_prometheus_scrape_interval = {typ = "number"},
-
-  audit_log = {typ = "boolean"},
-  audit_log_ignore_methods = {typ = "array"},
-  audit_log_ignore_paths = {typ = "array"},
-  audit_log_ignore_tables = {typ = "array"},
-  audit_log_record_ttl = {typ = "number"},
-  audit_log_signing_key = {typ = "string"},
-
-  admin_api_uri = {typ = "string"},
-  admin_gui_listen = {typ = "array"},
-  admin_gui_error_log = {typ = "string"},
-  admin_gui_access_log = {typ = "string"},
-  admin_gui_flags = {typ = "string"},
-  admin_gui_auth = {typ = "string"},
-  admin_gui_auth_conf = {typ = "string"},
-  admin_gui_auth_header = {typ = "string"},
-  admin_gui_auth_password_complexity = {typ = "string"},
-  admin_gui_session_conf = {typ = "string"},
-  admin_gui_auth_login_attempts = {typ = "number"},
-  admin_emails_from = {typ = "string"},
-  admin_emails_reply_to = {typ = "string"},
-  admin_invitation_expiry = {typ = "number"},
-
-  portal = {typ = "boolean"},
-  portal_is_legacy = {typ = "boolean"},
-  portal_gui_listen = {typ = "array"},
-  portal_gui_host = {typ = "string"},
-  portal_gui_protocol = {typ = "string"},
-  portal_cors_origins = {typ = "array"},
-  portal_gui_use_subdomains = {typ = "boolean"},
-  portal_session_conf = {typ = "string"},
-
-  portal_api_access_log = {typ = "string"},
-  portal_api_error_log = {typ = "string"},
-  portal_api_listen = {typ = "array"},
-  portal_api_url = {typ = "string"},
-  portal_app_auth = {typ = "string"},
-
-  proxy_uri = {typ = "string"},
-  portal_auth = {typ = "string"},
-  portal_auth_password_complexity = {typ = "string"},
-  portal_auth_conf = {typ = "string"},
-  portal_auth_login_attempts = {typ = "number"},
-  portal_token_exp = {typ = "number"},
-  portal_auto_approve = {typ = "boolean"},
-  portal_email_verification = {typ = "boolean"},
-  portal_invite_email = {typ = "boolean"},
-  portal_access_request_email = {typ = "boolean"},
-  portal_approved_email = {typ = "boolean"},
-  portal_reset_email = {typ = "boolean"},
-  portal_reset_success_email = {typ = "boolean"},
-  portal_emails_from = {typ = "string"},
-  portal_emails_reply_to = {typ = "string"},
-
-  smtp_host = {typ = "string"},
-  smtp_port = {typ = "number"},
-  smtp_starttls = {typ = "boolean"},
-  smtp_username = {typ = "string"},
-  smtp_password = {typ = "string"},
-  smtp_ssl = {typ = "boolean"},
-  smtp_auth_type = {typ = "string"},
-  smtp_domain = {typ = "string"},
-  smtp_timeout_connect = {typ = "number"},
-  smtp_timeout_send = {typ = "number"},
-  smtp_timeout_read = {typ = "number"},
-
-  smtp_admin_emails = {typ = "array"},
-  smtp_mock = {typ = "boolean"},
-
-  tracing = {typ = "boolean"},
-  tracing_write_strategy = {enum = {"file", "file_raw", "tcp", "tls", "udp",
-                                    "http"}},
-  tracing_write_endpoint = {typ = "string"},
-  tracing_time_threshold = {typ = "number"},
-  tracing_types = {typ = "array"},
-  tracing_debug_header = {typ = "string"},
-  generate_trace_details = {typ = "boolean"},
-
-  keyring_enabled = { typ = "boolean" },
-  keyring_blob_path = { typ = "string" },
-  keyring_public_key = { typ = "string" },
-  keyring_private_key = { typ = "string" },
-  keyring_strategy = { enum = { "cluster", "vault" }, },
-  keyring_vault_host = { typ = "string" },
-  keyring_vault_mount = { typ = "string" },
-  keyring_vault_path = { typ = "string" },
-  keyring_vault_token = { typ = "string" },
-
-  event_hooks_enabled = { typ = "boolean" },
-
-  route_validation_strategy = { enum = {"smart", "path", "off"}},
-  enforce_route_path_pattern = {typ = "string"},
 }
+
+
+ee_conf_loader.add(CONF_INFERENCES, ee_conf_loader.EE_CONF_INFERENCES)
 
 
 -- List of settings whose values must not be printed when
@@ -636,13 +599,9 @@ local CONF_SENSITIVE = {
   pg_password = true,
   pg_ro_password = true,
   cassandra_password = true,
-  smtp_password = true,
-  admin_gui_auth_header = true,
-  admin_gui_auth_conf = true,
-  admin_gui_session_conf = true,
-  portal_auth_conf = true,
-  portal_session_conf = true,
 }
+
+ee_conf_loader.add(CONF_SENSITIVE, ee_conf_loader.EE_CONF_SENSITIVE)
 
 
 local typ_checks = {
@@ -738,6 +697,34 @@ local function check_and_infer(conf, opts)
   -- custom validations
   ---------------------
 
+  conf.host_ports = {}
+  if conf.port_maps then
+    local MIN_PORT = 1
+    local MAX_PORT = 65535
+
+    for _, port_map in ipairs(conf.port_maps) do
+      local colpos = string.find(port_map, ":", nil, true)
+      if not colpos then
+        errors[#errors + 1] = "invalid port mapping (`port_maps`): " .. port_map
+
+      else
+        local host_port_str = string.sub(port_map, 1, colpos - 1)
+        local host_port_num = tonumber(host_port_str, 10)
+        local kong_port_str = string.sub(port_map, colpos + 1)
+        local kong_port_num = tonumber(kong_port_str, 10)
+
+        if  (host_port_num and host_port_num >= MIN_PORT and host_port_num <= MAX_PORT)
+        and (kong_port_num and kong_port_num >= MIN_PORT and kong_port_num <= MAX_PORT)
+        then
+            conf.host_ports[kong_port_num] = host_port_num
+            conf.host_ports[kong_port_str] = host_port_num
+        else
+          errors[#errors + 1] = "invalid port mapping (`port_maps`): " .. port_map
+        end
+      end
+    end
+  end
+
   if conf.database == "cassandra" then
     if string.find(conf.cassandra_lb_policy, "DCAware", nil, true)
        and not conf.cassandra_local_datacenter
@@ -829,74 +816,6 @@ local function check_and_infer(conf, opts)
 
   -- enterprise validations
   ee_conf_loader.validate(conf, errors)
-
-  -- TODO: move these to ee_conf_loader
-  if conf.portal then
-    if (table.concat(conf.portal_api_listen, ",") .. " "):find("%sssl[%s,]") then
-      if conf.portal_api_ssl_cert and not conf.portal_api_ssl_cert_key then
-        errors[#errors+1] = "portal_api_ssl_cert_key must be specified"
-      elseif conf.portal_api_ssl_cert_key and not conf.portal_api_ssl_cert then
-        errors[#errors+1] = "portal_api_ssl_cert must be specified"
-      end
-
-      if conf.portal_api_ssl_cert and not pl_path.exists(conf.portal_api_ssl_cert) then
-        errors[#errors+1] = "portal_api_ssl_cert: no such file at " .. conf.portal_api_ssl_cert
-      end
-      if conf.portal_api_ssl_cert_key and not pl_path.exists(conf.portal_api_ssl_cert_key) then
-        errors[#errors+1] = "portal_api_ssl_cert_key: no such file at " .. conf.portal_api_ssl_cert_key
-      end
-    end
-
-    if (table.concat(conf.portal_gui_listen, ",") .. " "):find("%sssl[%s,]") then
-      if conf.portal_gui_ssl_cert and not conf.portal_gui_ssl_cert_key then
-        errors[#errors+1] = "portal_gui_ssl_cert_key must be specified"
-      elseif conf.portal_gui_ssl_cert_key and not conf.portal_gui_ssl_cert then
-        errors[#errors+1] = "portal_gui_ssl_cert must be specified"
-      end
-
-      if conf.portal_gui_ssl_cert and not pl_path.exists(conf.portal_gui_ssl_cert) then
-        errors[#errors+1] = "portal_gui_ssl_cert: no such file at " .. conf.portal_gui_ssl_cert
-      end
-      if conf.portal_gui_ssl_cert_key and not pl_path.exists(conf.portal_gui_ssl_cert_key) then
-        errors[#errors+1] = "portal_gui_ssl_cert_key: no such file at " .. conf.portal_gui_ssl_cert_key
-      end
-    end
-  end
-
-  -- portal auth conf json conversion
-  if conf.portal_auth and conf.portal_auth_conf then
-    conf.portal_auth_conf = string.gsub(conf.portal_auth_conf, "#", "\\#")
-    local json, err = cjson.decode(tostring(conf.portal_auth_conf))
-    if json then
-      conf.portal_auth_conf = json
-
-      -- used for writing back to prefix/.kong_env as a string
-      setmetatable(conf.portal_auth_conf, {
-        __tostring = function (v)
-          return assert(cjson.encode(v))
-        end
-      })
-    end
-
-    if err then
-      errors[#errors+1] = "portal_auth_conf must be valid json: "
-        .. err
-        .. " - " .. conf.portal_auth_conf
-    end
-  end
-
-  if conf.audit_log_signing_key then
-    local k = pl_path.abspath(conf.audit_log_signing_key)
-
-    local resty_rsa = require "resty.rsa"
-    local p, err = resty_rsa:new({ private_key = pl_file.read(k) })
-    if not p then
-      errors[#errors + 1] = "audit_log_signing_key: invalid RSA private key ("
-                            .. err .. ")"
-    end
-
-    conf.audit_log_signing_key = k
-  end
 
   if conf.lua_ssl_trusted_certificate and
      not pl_path.exists(conf.lua_ssl_trusted_certificate)
@@ -1055,6 +974,18 @@ local function check_and_infer(conf, opts)
     end
   end
 
+  if conf.upstream_keepalive_pool_size < 0 then
+    errors[#errors + 1] = "upstream_keepalive_pool_size must be 0 or greater"
+  end
+
+  if conf.upstream_keepalive_max_requests < 0 then
+    errors[#errors + 1] = "upstream_keepalive_max_requests must be 0 or greater"
+  end
+
+  if conf.upstream_keepalive_idle_timeout < 0 then
+    errors[#errors + 1] = "upstream_keepalive_idle_timeout must be 0 or greater"
+  end
+
   return #errors == 0, errors[1], errors
 end
 
@@ -1112,106 +1043,6 @@ local function overrides(k, default_v, opts, file_conf, arg_conf)
   end
 
   return value, k
-end
-
-
--- @param value The options string to check for flags (whitespace separated)
--- @param flags List of boolean flags to check for.
--- @returns 1) remainder string after all flags removed, 2) table with flag
--- booleans, 3) sanitized flags string
-local function parse_option_flags(value, flags)
-  assert(type(value) == "string")
-
-  value = " " .. value .. " "
-
-  local sanitized = ""
-  local result = {}
-
-  for _, flag in ipairs(flags) do
-    local count
-    local patt = "%s(" .. flag .. ")%s"
-
-    local found = value:match(patt)
-    if found then
-      -- replace pattern like `backlog=%d+` with actual values
-      flag = found
-    end
-
-    value, count = value:gsub(patt, " ")
-
-    if count > 0 then
-      result[flag] = true
-      sanitized = sanitized .. " " .. flag
-
-    else
-      result[flag] = false
-    end
-  end
-
-  return pl_stringx.strip(value), result, pl_stringx.strip(sanitized)
-end
-
-
--- Parses a listener address line.
--- Supports multiple (comma separated) addresses, with flags such as
--- 'ssl' and 'http2' added to the end.
--- Pre- and postfixed whitespace as well as comma's are allowed.
--- "off" as a first entry will return empty tables.
--- @param values list of entries (strings)
--- @param flags array of strings listing accepted flags.
--- @return list of parsed entries, each entry having fields
--- `listener` (string, full listener), `ip` (normalized string)
--- `port` (number), and a boolean entry for each flag added to the entry
--- (e.g. `ssl`).
-local function parse_listeners(values, flags)
-  assert(type(flags) == "table")
-  local list = {}
-  local usage = "must be of form: [off] | <ip>:<port> [" ..
-                concat(flags, "] [") .. "], [... next entry ...]"
-
-  if #values == 0 then
-    return nil, usage
-  end
-
-  if pl_stringx.strip(values[1]) == "off" then
-    return list
-  end
-
-  for _, entry in ipairs(values) do
-    -- parse the flags
-    local remainder, listener, cleaned_flags = parse_option_flags(entry, flags)
-
-    -- verify IP for remainder
-    local ip
-
-    if utils.hostname_type(remainder) == "name" then
-      -- it's not an IP address, so a name/wildcard/regex
-      ip = {}
-      ip.host, ip.port = remainder:match("(.+):([%d]+)$")
-
-    else
-      -- It's an IPv4 or IPv6, normalize it
-      ip = utils.normalize_ip(remainder)
-      -- nginx requires brackets in IPv6 addresses, but normalize_ip does
-      -- not include them (due to backwards compatibility with its other uses)
-      if ip and ip.type == "ipv6" then
-        ip.host = "[" .. ip.host .. "]"
-      end
-    end
-
-    if not ip or not ip.port then
-      return nil, usage
-    end
-
-    listener.ip = ip.host
-    listener.port = ip.port
-    listener.listener = ip.host .. ":" .. ip.port ..
-                        (#cleaned_flags == 0 and "" or " " .. cleaned_flags)
-
-    table.insert(list, listener)
-  end
-
-  return list
 end
 
 
@@ -1628,120 +1459,15 @@ local function load(path, custom_conf, opts)
     end)
   end
 
-  do
-    local http_flags = { "ssl", "http2", "proxy_protocol", "deferred",
-                         "bind", "reuseport", "backlog=%d+" }
-    local stream_flags = { "ssl", "proxy_protocol", "bind", "reuseport",
-                           "backlog=%d+" }
-
-    -- extract ports/listen ips
-    conf.proxy_listeners, err = parse_listeners(conf.proxy_listen, http_flags)
-    if err then
-      return nil, "proxy_listen " .. err
-    end
-    setmetatable(conf.proxy_listeners, _nop_tostring_mt)
-
-    conf.proxy_ssl_enabled = false
-    for _, listener in ipairs(conf.proxy_listeners) do
-      if listener.ssl == true then
-        conf.proxy_ssl_enabled = true
-        break
-      end
-    end
-
-    conf.stream_listeners, err = parse_listeners(conf.stream_listen, stream_flags)
-    if err then
-      return nil, "stream_listen " .. err
-    end
-    setmetatable(conf.stream_listeners, _nop_tostring_mt)
-
-    conf.stream_proxy_ssl_enabled = false
-    for _, listener in ipairs(conf.stream_listeners) do
-      if listener.ssl == true then
-        conf.stream_proxy_ssl_enabled = true
-        break
-      end
-    end
-
-    conf.admin_listeners, err = parse_listeners(conf.admin_listen, http_flags)
-    if err then
-      return nil, "admin_listen " .. err
-    end
-    setmetatable(conf.admin_listeners, _nop_tostring_mt)
-
-    conf.admin_ssl_enabled = false
-    for _, listener in ipairs(conf.admin_listeners) do
-      if listener.ssl == true then
-        conf.admin_ssl_enabled = true
-        break
-      end
-    end
-
-    conf.admin_gui_listeners, err = parse_listeners(conf.admin_gui_listen, http_flags)
-    if err then
-      return nil, "admin_gui_listen " .. err
-    end
-
-    setmetatable(conf.admin_gui_listeners, _nop_tostring_mt)  -- do not pass on, parse again
-    conf.admin_gui_ssl_enabled = false
-
-    for _, listener in ipairs(conf.admin_gui_listeners) do
-      if listener.ssl == true then
-        conf.admin_gui_ssl_enabled = true
-        break
-      end
-    end
-
-    if conf.portal then
-      conf.portal_gui_listeners, err = parse_listeners(conf.portal_gui_listen, http_flags)
-      if err then
-        return nil, "portal_gui_listen " .. err
-      end
-
-      setmetatable(conf.portal_gui_listeners, _nop_tostring_mt)
-      conf.portal_gui_ssl_enabled = false
-
-      for _, listener in ipairs(conf.portal_gui_listeners) do
-        if listener.ssl == true then
-          conf.portal_gui_ssl_enabled = true
-          break
-        end
-      end
-
-      conf.portal_api_listeners, err = parse_listeners(conf.portal_api_listen, http_flags)
-      if err then
-        return nil, "portal_api_listen " .. err
-      end
-
-      setmetatable(conf.portal_api_listeners, _nop_tostring_mt)
-      conf.portal_api_ssl_enabled = false
-
-      for _, listener in ipairs(conf.portal_api_listeners) do
-        if listener.ssl == true then
-          conf.portal_api_ssl_enabled = true
-          break
-        end
-      end
-    end
-    conf.status_listeners, err = parse_listeners(conf.status_listen, { "ssl" })
-    if err then
-      return nil, "status_listen " .. err
-    end
-    setmetatable(conf.status_listeners, _nop_tostring_mt)
-
-    conf.status_ssl_enabled = false
-    for _, listener in ipairs(conf.status_listeners) do
-      if listener.ssl == true then
-        conf.status_ssl_enabled = true
-        break
-      end
-    end
-
-    conf.cluster_listeners, err = parse_listeners(conf.cluster_listen, http_flags)
-    if err then
-      return nil, "cluster_listen " .. err
-    end
-    setmetatable(conf.cluster_listeners, _nop_tostring_mt)
+  ok, err = listeners.parse(conf, {
+    { name = "proxy_listen",   subsystem = "http",   ssl_flag = "proxy_ssl_enabled" },
+    { name = "stream_listen",  subsystem = "stream", ssl_flag = "stream_proxy_ssl_enabled" },
+    { name = "admin_listen",   subsystem = "http",   ssl_flag = "admin_ssl_enabled" },
+    { name = "status_listen",  flags = { "ssl" },    ssl_flag = "status_ssl_enabled" },
+    { name = "cluster_listen", subsystem = "http" },
+  })
+  if not ok then
+    return nil, err
   end
 
   do
@@ -1799,46 +1525,10 @@ local function load(path, custom_conf, opts)
     conf.admin_ssl_cert_key = pl_path.abspath(conf.admin_ssl_cert_key)
   end
 
-  if conf.admin_gui_ssl_cert and conf.admin_gui_ssl_cert_key then
-    conf.admin_gui_ssl_cert = pl_path.abspath(conf.admin_gui_ssl_cert)
-    conf.admin_gui_ssl_cert_key = pl_path.abspath(conf.admin_gui_ssl_cert_key)
-  end
-
-  if conf.portal then
-    if conf.portal_api_ssl_cert and conf.portal_api_ssl_cert_key then
-      conf.portal_api_ssl_cert = pl_path.abspath(conf.portal_api_ssl_cert)
-      conf.portal_api_ssl_cert_key = pl_path.abspath(conf.portal_api_ssl_cert_key)
-    end
-
-    if conf.portal_gui_ssl_cert and conf.portal_gui_ssl_cert_key then
-      conf.portal_gui_ssl_cert = pl_path.abspath(conf.portal_gui_ssl_cert)
-      conf.portal_gui_ssl_cert_key = pl_path.abspath(conf.portal_gui_ssl_cert_key)
-    end
-  end
-
-  -- warn user if admin_gui_auth is on but admin_gui_url is empty
-  if conf.admin_gui_auth and not conf.admin_gui_url then
-    log.warn("when admin_gui_auth is set, admin_gui_url is required")
-  end
-
-  -- warn user if ssl is disabled and rbac is enforced
-  -- TODO CE would probably benefit from some helpers - eg, see
-  -- kong.enterprise_edition.select_listener
-  local ssl_on = (table.concat(conf.admin_listen, ",") .. " "):find("%sssl[%s,]")
-  if conf.enforce_rbac ~= "off" and not ssl_on then
-    log.warn("RBAC authorization is enabled but Admin API calls will not be " ..
-      "encrypted via SSL")
-  end
-
-  -- warn user if rbac is on without admin_gui set
-  local ok, err = ee_conf_loader.validate_enforce_rbac(conf)
+  ok, err = ee_conf_loader.load(conf)
   if not ok then
-    log.warn(err)
+    return nil, err
   end
-
-  -- preserve user-facing name `enforce_rbac` but use
-  -- `rbac` in code to minimize changes
-  conf.rbac = conf.enforce_rbac
 
   if conf.lua_ssl_trusted_certificate then
     conf.lua_ssl_trusted_certificate =
@@ -1889,7 +1579,6 @@ return setmetatable({
 
     return purged_conf
   end,
-  parse_listeners = parse_listeners,
 }, {
   __call = function(_, ...)
     return load(...)

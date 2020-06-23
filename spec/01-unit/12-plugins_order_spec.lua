@@ -65,6 +65,7 @@ describe("Plugins", function()
       "basic-auth",
       "hmac-auth",
       "acme",
+      "grpc-gateway",
       "application-registration",
       "ip-restriction",
       "request-size-limiting",
@@ -85,6 +86,7 @@ describe("Plugins", function()
       "tcp-log",
       "loggly",
       "syslog",
+      "grpc-web",
       "request-termination",
       "post-function",
     }

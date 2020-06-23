@@ -7,7 +7,6 @@ return {
     { consumer = typedefs.no_consumer },
     { service = { type = "foreign", reference = "services", ne = null, on_delete = "cascade" }, },
     { route = typedefs.no_route },
-    { run_on = typedefs.run_on_first },
     { protocols = typedefs.protocols_http },
     { config = {
         type = "record",

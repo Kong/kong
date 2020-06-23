@@ -3,7 +3,6 @@ local utils = require "kong.tools.utils"
 local enums = require "kong.enterprise_edition.dao.enums"
 local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 local basicauth_crypto = require "kong.plugins.basic-auth.crypto"
-local workspaces = require "kong.workspaces"
 local singletons = require "kong.singletons"
 local cjson = require "cjson"
 
@@ -13,12 +12,18 @@ local cache = {
 for _, strategy in helpers.each_strategy() do
 
   describe("admin_helpers with #" .. strategy, function()
-    local db, factory
-    local default_ws, another_ws
+    local db
     local admins = {}
+    local default_ws, another_ws
 
     lazy_setup(function()
-      _, db, factory = helpers.get_db_utils(strategy)
+      _, db = helpers.get_db_utils(strategy, {
+        "workspaces",
+        "admins",
+        "basicauth_credentials",
+        "rbac_users",
+        "consumers",
+      })
 
       if _G.kong then
         _G.kong.db = db
@@ -29,12 +34,9 @@ for _, strategy in helpers.each_strategy() do
         }
       end
 
-      admins = db.admins
-
       singletons.db = db
-      singletons.dao = factory
 
-      default_ws = assert(workspaces.fetch_workspace("default"))
+      default_ws = assert(db.workspaces:select_by_name("default"))
       another_ws = assert(db.workspaces:insert({ name = "ws1" }))
 
       for i = 1, 4 do
@@ -44,14 +46,14 @@ for _, strategy in helpers.each_strategy() do
         local custom_id = i % 2 == 0 and ("admin-" .. i) or ngx.null
 
         -- consumers are workspaceable, so need to have a ws in context
-        ngx.ctx.workspaces = { ws_to_use }
+        ngx.ctx.workspace = ws_to_use.id
 
-        local admin = assert(db.admins:insert {
+        local admin = assert(db.admins:insert({
           email = "admin-" .. i .. "@test.com",
           status = enums.CONSUMERS.STATUS.APPROVED,
           username = "admin-" .. i,
           custom_id = custom_id,
-        })
+        }, { show_ws_id = true }))
 
         admins[i] = admin
       end
@@ -59,12 +61,11 @@ for _, strategy in helpers.each_strategy() do
 
     before_each(function()
       -- default to default workspace. ;-) each test can override
-      ngx.ctx.workspaces = { default_ws }
+      ngx.ctx.workspace = default_ws.id
     end)
 
     lazy_teardown(function()
       db:truncate("basicauth_credentials")
-      db:truncate("workspace_entities")
       db:truncate("workspaces")
       db:truncate("consumers")
       db:truncate("rbac_user_roles")

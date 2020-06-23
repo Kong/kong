@@ -1755,7 +1755,8 @@ function _M.new(routes)
       local src_ip = var.remote_addr
       local src_port = tonumber(var.remote_port, 10)
       local dst_ip = var.server_addr
-      local dst_port = tonumber(var.server_port, 10)
+      local dst_port = tonumber(ngx.ctx.host_port, 10)
+                    or tonumber(var.server_port, 10)
       -- error value for non-TLS connections ignored intentionally
       local sni, _ = server_name()
 

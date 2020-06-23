@@ -11,12 +11,6 @@ describe("user", function()
       path = "/default/hello-world",
     }
 
-    singletons.db = {
-      files = {
-        select_all = function() return {} end
-      }
-    }
-
     singletons.configuration = {
       portal = "on",
       portal_gui_listeners = {"127.0.0.1:8003"},

@@ -9,7 +9,7 @@ local rbac = require "kong.rbac"
 local api_helpers = require "kong.api.api_helpers"
 local Schema = require "kong.db.schema"
 local Errors = require "kong.db.errors"
-local workspaces = require "kong.workspaces"
+local scope = require "kong.enterprise_edition.workspaces.scope"
 local endpoints  = require "kong.api.endpoints"
 
 local sub = string.sub
@@ -82,10 +82,10 @@ local function ws_and_rbac_helper(self, dao_factory, helpers)
   }
 
   -- get roles across all workspaces
-  local roles, err = workspaces.run_with_ws_scope({}, rbac.get_user_roles,
+  local roles, err = scope.run_with_ws_scope({}, rbac.get_user_roles,
     kong.db,
     ngx.ctx.rbac.user)
-  local group_roles = workspaces.run_with_ws_scope({}, rbac.get_groups_roles,
+  local group_roles = scope.run_with_ws_scope({}, rbac.get_groups_roles,
     kong.db,
     ngx.ctx.authenticated_groups)
   roles = rbac.merge_roles(roles, group_roles)
@@ -103,24 +103,6 @@ local function ws_and_rbac_helper(self, dao_factory, helpers)
 
   if rbac_enabled == "entity" or rbac_enabled == "both" then
     self.permissions.entities = rbac.readable_entities_permissions(roles)
-  end
-
-  -- fetch workspace resources from workspace entities
-  self.workspaces = {}
-
-  local ws_dict = {} -- dict to keep track of which workspaces we have added
-  local ws, err
-  for k, v in ipairs(self.workspace_entities) do
-    if not ws_dict[v.workspace_id] then
-      ws, err = kong.db.workspaces:select({id = v.workspace_id})
-      if err then
-        return helpers.yield_error(err)
-      end
-      ws_dict[v.workspace_id] = true
-      if ws then
-        self.workspaces[#self.workspaces + 1] = ws
-      end
-    end
   end
 end
 
@@ -145,7 +127,7 @@ return {
           end
         end
 
-        singletons.internal_proxies:add_internal_plugins(distinct_plugins, set)
+        kong.internal_proxies:add_internal_plugins(distinct_plugins, set)
       end
 
       do

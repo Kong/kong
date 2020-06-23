@@ -29,10 +29,9 @@ RESTY_VERSION ?= `grep RESTY_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk
 RESTY_LUAROCKS_VERSION ?= `grep RESTY_LUAROCKS_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 RESTY_OPENSSL_VERSION ?= `grep RESTY_OPENSSL_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 RESTY_PCRE_VERSION ?= `grep RESTY_PCRE_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
-KONG_BUILD_TOOLS ?= '4.4.0'
-KONG_VERSION ?= `cat $(KONG_SOURCE_LOCATION)/kong-*.rockspec | grep tag | awk '{print $$3}' | sed 's/"//g'`
-OPENRESTY_PATCHES_BRANCH ?= `grep OPENRESTY_PATCHES_BRANCH $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
-KONG_NGINX_MODULE_BRANCH ?= `grep KONG_NGINX_MODULE_BRANCH $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
+KONG_BUILD_TOOLS ?= '4.6.1'
+OPENRESTY_PATCHES_BRANCH ?= master
+KONG_NGINX_MODULE_BRANCH ?= master
 
 PACKAGE_TYPE ?= deb
 REPOSITORY_NAME ?= kong-${PACKAGE_TYPE}
@@ -41,26 +40,29 @@ KONG_PACKAGE_NAME ?= kong
 # This logic should mirror the kong-build-tools equivalent
 KONG_VERSION ?= `echo $(KONG_SOURCE_LOCATION)/kong-*.rockspec | sed 's,.*/,,' | cut -d- -f2`
 
-BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
-ISTAG = false
-ISPRERELEASE = false
+TAG := $(shell git describe --exact-match HEAD || true)
 
-ifeq ($(BRANCH),HEAD)
+ifneq ($(TAG),)
 	# We're building a tag
 	ISTAG = true
-	BRANCH = $(shell git describe --tags --abbrev=0)
-	POSSIBLE_VERSION = $(shell git describe --tags --abbrev=0 | awk -F"-" '{print $$1}')
 	POSSIBLE_PRERELEASE_NAME = $(shell git describe --tags --abbrev=0 | awk -F"-" '{print $$2}')
 	ifneq ($(POSSIBLE_PRERELEASE_NAME),)
 		# We're building a pre-release tag
+		OFFICIAL_RELEASE = false
 		REPOSITORY_NAME = kong-prerelease
+	else
+		# We're building a semver release tag
+		OFFICIAL_RELEASE = true
+		KONG_VERSION ?= `cat $(KONG_SOURCE_LOCATION)/kong-*.rockspec | grep -m1 tag | awk '{print $$3}' | sed 's/"//g'`
 	endif
 else
-	# We're releasing a branch. Presumably a daily build
+	OFFICIAL_RELEASE = false
+	ISTAG = false
+	BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD)
 	REPOSITORY_NAME = kong-${BRANCH}
 	REPOSITORY_OS_NAME = ${BRANCH}
-	KONG_PACKAGE_NAME = kong-${BRANCH}
-	KONG_VERSION = `date +%Y-%m-%d`
+	KONG_PACKAGE_NAME ?= kong-${BRANCH}
+	KONG_VERSION ?= `date +%Y-%m-%d`
 endif
 
 release:
@@ -79,6 +81,7 @@ endif
 	REPOSITORY_OS_NAME=${REPOSITORY_OS_NAME} \
 	KONG_PACKAGE_NAME=${KONG_PACKAGE_NAME} \
 	KONG_VERSION=${KONG_VERSION} \
+	OFFICIAL_RELEASE=$(OFFICIAL_RELEASE) \
 	release-kong
 
 setup-ci:

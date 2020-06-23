@@ -6,16 +6,18 @@ local LOG_ROUNDS = 9
 
 return {
   name = "rbac_users",
+  dao = "kong.db.dao.rbac_users",
   generate_admin_api = false,
   admin_api_name = "rbac/users",
   primary_key = { "id" },
   endpoint_key = "name",
   workspaceable = true,
+  db_export = false,
   fields = {
     { id             = typedefs.uuid, },
     { created_at     = typedefs.auto_timestamp_s },
     { name           = {type = "string", required = true, unique = true}},
-    { user_token     = {type = "string", required = true, unique = true}},
+    { user_token     = {type = "string", required = true, unique = true, unique_across_ws = true }},
     { user_token_ident = { type = "string"}},
     { comment = { type = "string"} },
     { enabled = { type = "boolean", required = true, default = true}}

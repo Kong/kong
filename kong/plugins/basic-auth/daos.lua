@@ -9,10 +9,6 @@ return {
     cache_key = { "username" },
     endpoint_key = "username",
     workspaceable = true,
-
-    -- Passwords are hashed on insertion, so the exported passwords would be encrypted.
-    -- Importing them back would require "plain" unencrypted passwords instead
-    db_export = false,
     admin_api_name = "basic-auths",
     admin_api_nested_name = "basic-auth",
     fields = {

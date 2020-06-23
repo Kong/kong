@@ -1,5 +1,5 @@
 local helpers = require "spec.helpers"
-local workspaces = require "kong.workspaces"
+local scope = require "kong.enterprise_edition.workspaces.scope"
 
 
 for _, strategy in helpers.each_strategy() do
@@ -11,48 +11,37 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it(":delete", function()
-      db:truncate("services")
-      db:truncate("plugins")
+      db:truncate("consumers")
       db:truncate("workspaces")
-      db:truncate("workspace_entities")
 
       local w1 = assert(bp.workspaces:insert({ name = "w1" }))
-      local s1 = assert(bp.services:insert_ws({ name = "s1" }, w1))
-      assert(bp.plugins:insert_ws({
-        name = "key-auth",
-        service = {id = s1.id },
+      local c1 = assert(bp.consumers:insert_ws({ username = "c1" }, w1))
+      assert(bp.basicauth_credentials:insert_ws({
+        username = "gruce",
+        password = "ovo",
+        consumer = { id = c1.id },
       }, w1))
 
-      local ws_entities = db.workspace_entities:select_all()
-      assert(#ws_entities > 0)
-
-      assert(workspaces.run_with_ws_scope({ w1 }, function()
-        return db.services:delete({ id = s1.id })
+      assert(scope.run_with_ws_scope({ w1 }, function()
+        return db.consumers:delete({ id = c1.id })
       end))
-
-      local ws_entities = db.workspace_entities:select_all()
-      assert(#ws_entities == 0)
     end)
 
     it(":delete_by", function()
-      db:truncate("services")
-      db:truncate("plugins")
+      db:truncate("consumers")
       db:truncate("workspaces")
-      db:truncate("workspace_entities")
 
       local w1 = assert(bp.workspaces:insert({ name = "w1" }))
-      local s1 = assert(bp.services:insert_ws({ name = "s1" }, w1))
-      assert(bp.plugins:insert_ws({
-        name = "key-auth",
-        service = { id = s1.id }
+      local c1 = assert(bp.consumers:insert_ws({ username = "c1" }, w1))
+      assert(bp.basicauth_credentials:insert_ws({
+        username = "gruce",
+        password = "ovo",
+        consumer = { id = c1.id },
       }, w1))
 
-      assert(workspaces.run_with_ws_scope({ w1 }, function()
-        return db.services:delete_by_name(s1.name)
+      assert(scope.run_with_ws_scope({ w1 }, function()
+        return db.consumers:delete_by_username(c1.username)
       end))
-
-      local ws_entities = db.workspace_entities:select_all()
-      assert(#ws_entities == 0, #ws_entities)
     end)
   end)
 end

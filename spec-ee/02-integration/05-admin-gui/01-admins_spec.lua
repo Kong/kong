@@ -4,7 +4,7 @@ local enums      = require "kong.enterprise_edition.dao.enums"
 local utils      = require "kong.tools.utils"
 local ee_jwt     = require "kong.enterprise_edition.jwt"
 local ee_helpers = require "spec-ee.helpers"
-local workspaces = require "kong.workspaces"
+local scope = require "kong.enterprise_edition.workspaces.scope"
 local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local ee_utils = require "kong.enterprise_edition.utils"
@@ -37,7 +37,7 @@ for _, strategy in helpers.each_strategy() do
 
       ee_helpers.register_rbac_resources(db)
 
-      workspaces.run_with_ws_scope({ another_ws }, function()
+      scope.run_with_ws_scope({ another_ws }, function()
         ee_helpers.register_rbac_resources(db, "another-one")
       end)
 
@@ -502,7 +502,7 @@ for _, strategy in helpers.each_strategy() do
 
           it("retrieves workspaces for an admin outside default", function()
             local lesser_admin
-            workspaces.run_with_ws_scope({another_ws}, function ()
+            scope.run_with_ws_scope({another_ws}, function ()
               lesser_admin = ee_helpers.create_admin('outside_default@gmail.com',
                                                      nil, 0, bp, db)
             end)
@@ -667,9 +667,7 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(201, res)
 
-          reset_secret = db.consumer_reset_secrets:select_all({
-            id = reset_secret.id
-          })[1]
+          reset_secret = db.consumer_reset_secrets:select({ id = reset_secret.id })
 
           assert.equal(enums.TOKENS.STATUS.CONSUMED, reset_secret.status)
         end)
@@ -709,9 +707,7 @@ for _, strategy in helpers.each_strategy() do
 
         local admin = res.body.admin
 
-        local reset_secret = db.consumer_reset_secrets:select_all({
-          id = admin.consumer.id
-        })[1]
+        local reset_secret = db.consumer_reset_secrets:select({ id = admin.consumer.id })
         assert.equal(nil, reset_secret)
 
         local res = assert(client:send {
@@ -805,6 +801,7 @@ for _, strategy in helpers.each_strategy() do
       local db
       local admin
       local outside_admin
+      local default_ws
 
       lazy_setup(function()
         _, db = helpers.get_db_utils(strategy)
@@ -822,6 +819,8 @@ for _, strategy in helpers.each_strategy() do
             configuration = config,
           }
         end
+
+        default_ws = assert(db.workspaces:select_by_name("default"))
 
         assert(helpers.start_kong({
           database = strategy,
@@ -862,7 +861,7 @@ for _, strategy in helpers.each_strategy() do
           token_optional = false,
           remote_addr = "localhost",
           db = db,
-          workspace = ngx.ctx.workspaces[1],
+          workspace = default_ws,
           raw = true,
         }))
 
@@ -1140,6 +1139,7 @@ for _, strategy in helpers.each_strategy() do
       local client
       local db
       local admin
+      local default_ws
 
       local password_reset = function (client, cookie, body)
         return client:send {
@@ -1156,6 +1156,8 @@ for _, strategy in helpers.each_strategy() do
 
       lazy_setup(function()
         _, db = helpers.get_db_utils(strategy)
+
+        default_ws = assert(db.workspaces:select_by_name("default"))
 
         assert(helpers.start_kong({
           database = strategy,
@@ -1176,7 +1178,7 @@ for _, strategy in helpers.each_strategy() do
           token_optional = false,
           remote_addr = "localhost",
           db = db,
-          workspace = ngx.ctx.workspaces[1],
+          workspace = default_ws,
           raw = true,
         }))
 
@@ -1277,9 +1279,12 @@ for _, strategy in helpers.each_strategy() do
 
   describe("Admin API - /admins/:admin/roles #" .. strategy, function()
     local db, client
+    local default_ws
 
     lazy_setup(function()
       _, db = helpers.get_db_utils(strategy)
+
+      default_ws = assert(db.workspaces:select_by_name("default"))
 
       assert(helpers.start_kong({
         database = strategy,
@@ -1295,7 +1300,6 @@ for _, strategy in helpers.each_strategy() do
       db:truncate("rbac_role_endpoints")
       db:truncate("consumers")
       db:truncate("admins")
-      db:truncate("workspace_entities")
 
       if client then
         client:close()
@@ -1318,7 +1322,6 @@ for _, strategy in helpers.each_strategy() do
       db:truncate("rbac_role_endpoints")
       db:truncate("consumers")
       db:truncate("admins")
-      db:truncate("workspace_entities")
     end)
 
 
@@ -1331,7 +1334,7 @@ for _, strategy in helpers.each_strategy() do
         }, {
           token_optional = true,
           db = db,
-          workspace = ngx.ctx.workspaces[1]
+          workspace = default_ws
         }))
 
         local res = assert(client:send {
@@ -1372,7 +1375,7 @@ for _, strategy in helpers.each_strategy() do
         }, {
           token_optional = true,
           db = db,
-          workspace = ngx.ctx.workspaces[1]
+          workspace = default_ws
         }))
 
         local res = assert(client:send {
@@ -1442,7 +1445,7 @@ for _, strategy in helpers.each_strategy() do
           }, {
             token_optional = true,
             db = db,
-            workspace = ngx.ctx.workspaces[1]
+            workspace = default_ws
           }))
 
           local res = assert(client:send {
@@ -1470,7 +1473,7 @@ for _, strategy in helpers.each_strategy() do
           }, {
             token_optional = true,
             db = db,
-            workspace = ngx.ctx.workspaces[1]
+            workspace = default_ws
           }))
 
           local res = assert(client:send {
@@ -1523,7 +1526,7 @@ for _, strategy in helpers.each_strategy() do
         }, {
           token_optional = true,
           db = db,
-          workspace = ngx.ctx.workspaces[1],
+          workspace = default_ws,
         }))
 
         local res = assert(client:send {
@@ -1580,7 +1583,7 @@ for _, strategy in helpers.each_strategy() do
         }, {
           token_optional = true,
           db = db,
-          workspace = ngx.ctx.workspaces[1],
+          workspace = default_ws,
         }))
 
         local res = assert(client:send {
@@ -1620,7 +1623,7 @@ for _, strategy in helpers.each_strategy() do
         }, {
           token_optional = true,
           db = db,
-          workspace = ngx.ctx.workspaces[1]
+          workspace = default_ws
         }))
 
         local res = assert(client:send {
@@ -1703,7 +1706,7 @@ for _, strategy in helpers.each_strategy() do
         }, {
           token_optional = true,
           db = db,
-          workspace = ngx.ctx.workspaces[1]
+          workspace = default_ws
         }))
 
         local res = assert(client:send {
@@ -1769,7 +1772,7 @@ for _, strategy in helpers.each_strategy() do
           }, {
             token_optional = true,
             db = db,
-            workspace = ngx.ctx.workspaces[1]
+            workspace = default_ws
           }))
 
           local res = assert(client:send {
@@ -1850,7 +1853,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_nil(err)
       assert.same("another-one", ws.name)
       local role = db.rbac_roles:insert({ name = "another-one" })
-      workspaces.run_with_ws_scope({ws}, function ()
+      scope.run_with_ws_scope({ws}, function ()
         outside_admin, _ = kong.db.admins:insert({
           username = "outsider1",
           email = "outsider1@konghq.com",
@@ -1860,7 +1863,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_not_nil(role)
       end)
 
-      workspaces.run_with_ws_scope({ws}, function ()
+      scope.run_with_ws_scope({ws}, function ()
         assert(db.basicauth_credentials:insert {
           username    = outside_admin.username,
           password    = "outsider1pass",
@@ -1876,7 +1879,6 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_teardown(function()
       helpers.stop_kong()
-      db:truncate("workspace_entities")
       db:truncate("consumers")
       db:truncate("rbac_user_roles")
       db:truncate("rbac_roles")

@@ -107,19 +107,7 @@ function DB.new(kong_config, strategy)
       if not strategy then
         return nil, fmt("no strategy found for schema '%s'", schema.name)
       end
-
       daos[schema.name] = DAO.new(self, schema, strategy, errors)
-
-      if schema.workspaceable then
-        local unique = {}
-        for field_name, field_schema in pairs(schema.fields) do
-          if field_schema.unique then
-            unique[field_name] = field_schema
-          end
-        end
-        workspaces.register_workspaceable_relation(schema.name, schema.primary_key,
-                                                   unique)
-      end
     end
   end
 
@@ -324,72 +312,66 @@ do
       timeout = ttl,
     }
     return concurrency.with_worker_mutex(mutex_opts, function(elapsed)
-    if elapsed ~= 0 then
-      -- we did not acquire the worker lock, but it was released
-      return false
-    end
+      if elapsed ~= 0 then
+        -- we did not acquire the worker lock, but it was released
+        return false
+      end
 
-    -- add lock table if not present
-    local ok, err = self.connector:setup_locks(DEFAULT_LOCKS_TTL, true)
-    if not ok then
-      return nil, prefix_err(self, err)
-    end
+      -- worker lock acquired, other workers are waiting on it
+      -- now acquire cluster lock via strategy-specific connector
 
-    -- worker lock acquired, other workers are waiting on it
-    -- now acquire cluster lock via strategy-specific connector
-
-    local ok, err = self.connector:insert_lock(key, ttl, owner)
-    if err then
+      local ok, err = self.connector:insert_lock(key, ttl, owner)
+      if err then
         return nil, prefix_err(self, "failed to insert cluster lock: " .. err)
-    end
+      end
 
-    if not ok then
-      if no_wait then
-        -- don't wait on cluster locked
+      if not ok then
+        if no_wait then
+          -- don't wait on cluster locked
           return false
-      end
-
-      -- waiting on cluster lock
-      local step = 0.1
-      local cluster_elapsed = 0
-
-      while cluster_elapsed < ttl do
-        ngx.sleep(step)
-        cluster_elapsed = cluster_elapsed + step
-
-        if cluster_elapsed >= ttl then
-          break
         end
 
-        local locked, err = self.connector:read_lock(key)
-        if err then
+        -- waiting on cluster lock
+        local step = 0.1
+        local cluster_elapsed = 0
+
+        while cluster_elapsed < ttl do
+          ngx.sleep(step)
+          cluster_elapsed = cluster_elapsed + step
+
+          if cluster_elapsed >= ttl then
+            break
+          end
+
+          local locked, err = self.connector:read_lock(key)
+          if err then
             return nil, prefix_err(self, "failed to read cluster lock: " .. err)
-        end
+          end
 
-        if not locked then
-          -- the cluster lock was released
+          if not locked then
+            -- the cluster lock was released
             return false
-        end
+          end
 
-        step = math.min(step * 3, MAX_LOCK_WAIT_STEP)
-      end
+          step = math.min(step * 3, MAX_LOCK_WAIT_STEP)
+        end
 
         return nil, prefix_err(self, "timeout")
-    end
+      end
 
-    -- cluster lock acquired, run callback
+      -- cluster lock acquired, run callback
 
-    local pok, perr = xpcall(cb, debug.traceback)
-    if not pok then
-      self.connector:remove_lock(key, owner)
+      local pok, perr = xpcall(cb, debug.traceback)
+      if not pok then
+        self.connector:remove_lock(key, owner)
 
         return nil, prefix_err(self, "cluster_mutex callback threw an error: "
-                                   .. perr)
-    end
+                                     .. perr)
+      end
 
-    if not no_cleanup then
-      self.connector:remove_lock(key, owner)
-    end
+      if not no_cleanup then
+        self.connector:remove_lock(key, owner)
+      end
 
       return true
     end)
@@ -635,16 +617,6 @@ do
     self.connector:close()
 
     return true
-  end
-
-  function DB:run_core_entity_migrations(opts)
-    local ok, err = self.connector:connect_migrations()
-    if not ok then
-      return nil, prefix_err(self, err)
-    end
-
-    local migrate_core_entities = require "kong.enterprise_edition.db.migrations.migrate_core_entities"
-    return migrate_core_entities(self, opts)
   end
 
 

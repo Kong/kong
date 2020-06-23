@@ -1,6 +1,5 @@
 local lsyslog = require "lsyslog"
 local cjson = require "cjson"
-local serializer = require "kong.plugins.log-serializers.basic"
 
 
 local kong = kong
@@ -54,7 +53,7 @@ local SysLogHandler = {
 
 
 function SysLogHandler:log(conf)
-  local message = serializer.serialize(ngx)
+  local message = kong.log.serialize()
   local ok, err = timer_at(0, log, conf, message)
   if not ok then
     kong.log.err("failed to create timer: ", err)

@@ -4,9 +4,8 @@ local bit       = require "bit"
 local cjson     = require "cjson"
 local singletons = require "kong.singletons"
 local tablex     = require "pl.tablex"
-local api_helpers = require "kong.enterprise_edition.api_helpers"
-local workspaces = require "kong.workspaces"
 local constants = require "kong.constants"
+local workspaces = require "kong.workspaces"
 
 
 local kong       = kong
@@ -440,22 +439,21 @@ return {
         return kong.response.exit(400, "Missing required parameter: 'entity_id'")
       end
 
-      local entity_type = "wildcard"
-      if self.params.entity_id ~= "*" then
-        local _, err
-        entity_type, _, err = api_helpers.resolve_entity_type(singletons.db,
-                                                              self.params.entity_id)
-        -- database error
-        if entity_type == nil then
-          return kong.response.exit(500, err)
-        end
-        -- entity doesn't exist
-        if entity_type == false then
-          return kong.response.exit(400, err)
-        end
+      local entity_type = self.params.entity_type
+      if self.params.entity_id == "*" then
+        entity_type = "wildcard"
       end
 
-      self.params.entity_type = entity_type
+      if not entity_type then
+        return kong.response.exit(400, "Missing required parameter: 'entity_type'")
+      end
+
+      if entity_type ~= "wildcard" then
+        local row = db[entity_type]:select({ id = self.params.entity_id })
+        if not row then
+          return kong.response.exit(400, "There is no entity of type '" .. entity_type .. "' with given entity_id")
+        end
+      end
 
       local role_entity, _, err_t = db.rbac_role_entities:insert({
         entity_id = self.params.entity_id,
@@ -604,33 +602,38 @@ return {
           kong.response.exit(400, {message = "'endpoint' is a required field"})
         end
 
-        local ctx = ngx.ctx
-        local request_ws = ctx.workspaces[1]
+        local request_ws_id = workspaces.get_workspace_id()
 
-        -- if the `workspace` parameter wasn't passed, fallback to the current
-        -- request's workspace
-        self.params.workspace = self.params.workspace or request_ws.name
+        local ws_name
+        if self.params.workspace ~= "*" then
+          local w, err
+          if self.params.workspace then
+            w, err = kong.db.workspaces:select_by_name(self.params.workspace)
+            if err then
+              helpers.yield_error(err)
+            end
 
-        local ws_name = self.params.workspace
+            if not w then
+              local err = fmt("Workspace %s does not exist", self.params.workspace)
+              kong.response.exit(404, { message = err})
+            end
+          else
+            w, err = kong.db.workspaces:select({ id = request_ws_id })
+            if err then
+              helpers.yield_error(err)
+            end
 
-        if ws_name ~= "*" then
-          local w, err = workspaces.run_with_ws_scope({}, singletons.db.workspaces.select_by_name, singletons.db.workspaces,
-            ws_name
-          )
-          if err then
-            helpers.yield_error(err)
+            self.params.workspace = w.name
           end
-          if not w then
-            local err = fmt("Workspace %s does not exist", self.params.workspace)
-            kong.response.exit(404, { message = err})
-          end
+
+          ws_name = w.name
         end
 
         if not rbac_operation_allowed(singletons.configuration,
-          ctx.rbac, request_ws, ws_name) then
+          ngx.ctx.rbac, request_ws_id, ws_name) then
           local err_str = fmt(
             "%s is not allowed to create cross workspace permissions",
-            ctx.rbac.user.name)
+            ngx.ctx.rbac.user.name)
           kong.response.exit(403, {message = err_str})
         end
 
@@ -649,7 +652,7 @@ return {
         end
 
         self.params.rbac_roles = nil
-        local row, _, err_t = singletons.db.rbac_role_endpoints:insert(self.params)
+        local row, _, err_t = kong.db.rbac_role_endpoints:insert(self.params)
         if err_t then
           return endpoints.handle_error(err_t)
         end

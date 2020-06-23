@@ -7,7 +7,7 @@ local license_creation_date = "2019-03-03"
 
 
 for _, strategy in helpers.each_strategy({"postgres"}) do
-  describe("Postgres strategy", function()
+  describe("Sales counters strategy #" .. strategy, function()
     local strategy
     local db
     local snapshot

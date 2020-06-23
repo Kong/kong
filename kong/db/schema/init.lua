@@ -2,7 +2,6 @@ local tablex       = require "pl.tablex"
 local pretty       = require "pl.pretty"
 local utils        = require "kong.tools.utils"
 local cjson        = require "cjson"
-local keyring      = require "kong.keyring"
 
 
 local setmetatable = setmetatable
@@ -32,6 +31,7 @@ Schema.__index     = Schema
 
 
 local _cache = {}
+local _workspaceable = {}
 
 
 local new_tab
@@ -844,9 +844,9 @@ function Schema:validate_field(field, value)
     end
 
     local ok, err = validate_elements(self, field, value)
-      if not ok then
-        return nil, err
-      end
+    if not ok then
+      return nil, err
+    end
 
   elseif field.type == "set" then
     if not is_sequence(value) then
@@ -855,9 +855,9 @@ function Schema:validate_field(field, value)
 
     field.elements.required = true
     local ok, err = validate_elements(self, field, value)
-        if not ok then
-          return nil, err
-        end
+    if not ok then
+      return nil, err
+    end
 
   elseif field.type == "map" then
     if type(value) ~= "table" then
@@ -893,8 +893,8 @@ function Schema:validate_field(field, value)
 
   elseif field.type == "foreign" then
     if field.schema and field.schema.validate_primary_key then
-    local ok, errs = field.schema:validate_primary_key(value, true)
-    if not ok then
+      local ok, errs = field.schema:validate_primary_key(value, true)
+      if not ok then
         if type(value) == "table" and field.schema.validate then
           local foreign_ok, foreign_errs = field.schema:validate(value, false)
           if not foreign_ok then
@@ -959,8 +959,9 @@ end
 -- fill its slot in `entity` with an appropriate default value,
 -- if possible.
 -- @param field The field definition table.
-local function handle_missing_field(field, value)
-  if field.default ~= nil then
+local function handle_missing_field(field, value, opts)
+  local no_defaults = opts and opts.no_defaults
+  if field.default ~= nil and not no_defaults then
     local copy = tablex.deepcopy(field.default)
     if (field.type == "array" or field.type == "set")
       and type(copy) == "table"
@@ -1082,12 +1083,12 @@ validate_fields = function(self, input)
       kong.log.debug("ignoring validation on ttl field")
     else
       field, err = resolve_field(self, k, field, subschema)
-    if field then
-      _, errors[k] = self:validate_field(field, v)
-    else
-      errors[k] = err
+      if field then
+        _, errors[k] = self:validate_field(field, v)
+      else
+        errors[k] = err
+      end
     end
-  end
   end
 
   if next(errors) then
@@ -1095,9 +1096,6 @@ validate_fields = function(self, input)
   end
   return true, errors
 end
-
--- XXX EE-only: expose validate_fields for use in DAO:select_all
-Schema.validate_fields = validate_fields
 
 
 local function insert_entity_error(errors, err)
@@ -1263,9 +1261,9 @@ do
       local check_name = next(check)
       local arg = check[check_name]
       if arg and arg ~= null then
-      run_entity_check(self, check_name, input, arg, full_check, errors)
+        run_entity_check(self, check_name, input, arg, full_check, errors)
+      end
     end
-  end
   end
 
   --- Run entity checks over the whole table.
@@ -1478,28 +1476,27 @@ local function should_recurse_record(context, value, field)
 end
 
 
-local function adjust_field_for_context(field, value, context, nulls)
+local function adjust_field_for_context(field, value, context, nulls, opts)
   if context == "select" and value == null and field.required == true then
-    return handle_missing_field(field, value)
+    return handle_missing_field(field, value, opts)
   end
 
   if field.abstract then
     return value
-    end
+  end
 
   if field.type == "record" then
     if should_recurse_record(context, value, field) then
-      value = value or handle_missing_field(field, value)
+      value = value or handle_missing_field(field, value, opts)
       if type(value) == "table" then
         local field_schema = get_field_schema(field)
-        field = field_schema:process_auto_fields(value, context, nulls)
-        return field_schema:post_process_fields(field, context)
+        return field_schema:process_auto_fields(value, context, nulls, opts)
       end
     end
 
   elseif type(value) == "table" then
     local subfield
-  if field.type == "array" then
+    if field.type == "array" then
       value = make_array(value)
       subfield = field.elements
 
@@ -1509,50 +1506,20 @@ local function adjust_field_for_context(field, value, context, nulls)
 
     elseif field.type == "map" then
       subfield = field.values
-  end
+    end
 
     if subfield then
       for i, e in ipairs(value) do
-        value[i] = adjust_field_for_context(subfield, e, context, nulls)
+        value[i] = adjust_field_for_context(subfield, e, context, nulls, opts)
       end
     end
   end
 
   if value == nil and context ~= "update" then
-    return handle_missing_field(field, value)
+    return handle_missing_field(field, value, opts)
   end
 
   return value
-end
-
-
-function Schema:post_process_fields(input, context)
-  --ngx.update_time()
-
-  --local output = tablex.deepcopy(input)
-
-  for key, field in self:each_field(input) do
-    if field.encrypted and field.type == "string" then
-      if (context == "insert" or context == "upsert" or context == "update") then
-        input[key] = keyring.encrypt(input[key])
-      elseif context == "select" then
-        input[key] = keyring.decrypt(input[key])
-      end
-
-    elseif field.encrypted and field.type == "array" then
-      if (context == "insert" or context == "upsert" or context == "update") then
-        for i = 1, #input[key] do
-          input[key][i] = keyring.encrypt(input[key][i])
-        end
-      elseif context == "select" then
-        for i = 1, #input[key] do
-          input[key][i] = keyring.decrypt(input[key][i])
-        end
-      end
-    end
-  end
-
-  return input
 end
 
 
@@ -1569,7 +1536,7 @@ end
 -- @param nulls boolean: return nulls as explicit ngx.null values
 -- @return A new table, with the auto fields containing
 -- appropriate updated values.
-function Schema:process_auto_fields(data, context, nulls)
+function Schema:process_auto_fields(data, context, nulls, opts)
   ngx.update_time()
 
   local now_s  = ngx_time()
@@ -1612,20 +1579,18 @@ function Schema:process_auto_fields(data, context, nulls)
           data[key] = utils.random_string()
         end
 
-      -- if it is auto field and timestamp we want to add current timestamp
-      -- for `insert` and `upsert` contexts if the timestamp is not set yet
-      elseif field.timestamp == true
-        and (context == "insert" or context == "upsert")
-        and (data[key] == null or data[key] == nil) then
+      elseif key == "updated_at" and (context == "insert" or
+                                      context == "upsert" or
+                                      context == "update") then
         if field.type == "number" then
           data[key] = now_ms
         elseif field.type == "integer" then
           data[key] = now_s
         end
 
-      elseif key == "updated_at" and (context == "insert" or
-        context == "upsert" or
-        context == "update") then
+      elseif field.timestamp == true
+             and (context == "insert" or context == "upsert")
+             and (data[key] == null or data[key] == nil) then
         if field.type == "number" then
           data[key] = now_ms
         elseif field.type == "integer" then
@@ -1634,7 +1599,7 @@ function Schema:process_auto_fields(data, context, nulls)
       end
     end
 
-    data[key] = adjust_field_for_context(field, data[key], context, nulls)
+    data[key] = adjust_field_for_context(field, data[key], context, nulls, opts)
 
     if context == "select" and data[key] == null and not nulls then
       data[key] = nil
@@ -1665,19 +1630,9 @@ function Schema:process_auto_fields(data, context, nulls)
           data[key] = nulls and null or nil
         end
 
-      else
-        -- set non defined fields to nil, except meta fields (ttl) if enabled
-        if not (self.ttl and key == "ttl")
-
-        -- XXX EE: when coming from select_by_cache_key, entities
-        -- (plugins) come with workspace_(id|name) fields that we
-        -- shouldn't remove as they are needed down the line.
-        and key ~= "workspace_id"
-        and key ~= "workspace_name"
-
-        then
-          data[key] = nil
-        end
+      elseif not ((key == "ttl" and self.ttl) or
+                  (key == "ws_id" and opts and opts.show_ws_id)) then
+        data[key] = nil
       end
     end
   end
@@ -2017,6 +1972,23 @@ end
 
 
 function Schema:get_constraints()
+  if self.name == "workspaces" then
+    -- merge explicit and implicit constraints for workspaces
+    for _, e in ipairs(_cache["workspaces"].constraints) do
+      local found = false
+      for _, w in ipairs(_workspaceable) do
+        if w == e then
+          found = true
+          break
+        end
+      end
+      if not found then
+        table.insert(_workspaceable, e)
+      end
+    end
+    return _workspaceable
+  end
+
   return _cache[self.name].constraints
 end
 
@@ -2047,7 +2019,7 @@ function Schema:transform(input, original_input, context)
     return input
   end
 
-  local output = input
+  local output = nil
   for _, transformation in ipairs(self.transformations) do
     local transform
     if context == "select" then
@@ -2064,11 +2036,11 @@ function Schema:transform(input, original_input, context)
     local args = {}
     local argc = 0
     for _, input_field_name in ipairs(transformation.input) do
-      local value = get_field(original_input or input, input_field_name)
+      local value = get_field(output or original_input or input, input_field_name)
       if is_nonempty(value) then
         argc = argc + 1
         if original_input then
-          args[argc] = get_field(input, input_field_name)
+          args[argc] = get_field(output or input, input_field_name)
         else
           args[argc] = value
         end
@@ -2080,10 +2052,10 @@ function Schema:transform(input, original_input, context)
 
     if transformation.needs then
       for _, need in ipairs(transformation.needs) do
-        local value = get_field(input, need)
+        local value = get_field(output or input, need)
         if is_nonempty(value) then
           argc = argc + 1
-          args[argc] = get_field(input, need)
+          args[argc] = get_field(output or input, need)
 
         else
           goto next
@@ -2096,12 +2068,12 @@ function Schema:transform(input, original_input, context)
       return nil, validation_errors.TRANSFORMATION_ERROR:format(err)
     end
 
-    output = self:merge_values(data, output)
+    output = self:merge_values(data, output or input)
 
     ::next::
   end
 
-  return output
+  return output or input
 end
 
 
@@ -2157,11 +2129,22 @@ function Schema.new(definition, is_subschema)
     end
   end
 
+  if self.workspaceable and self.name then
+    if not _workspaceable[self.name] then
+      _workspaceable[self.name] = true
+      table.insert(_workspaceable, { schema = self })
+    end
+  end
+
   if self.name then
-    _cache[self.name] = {
-      schema = self,
-      constraints = {},
-    }
+    -- do not reset the constraints list if a schema in reloaded
+    if not _cache[self.name] then
+      _cache[self.name] = {
+        constraints = {},
+      }
+    end
+    -- but always update the schema object in cache
+    _cache[self.name].schema = self
   end
 
   return self

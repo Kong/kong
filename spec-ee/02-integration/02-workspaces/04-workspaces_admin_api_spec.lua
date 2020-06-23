@@ -13,27 +13,27 @@ for _, strategy in helpers.each_strategy() do
 describe("Workspaces Admin API (#" .. strategy .. "): ", function()
   local client,  db, bp
 
-  setup(function()
+  lazy_setup(function()
     bp, db = helpers.get_db_utils(strategy)
 
+    db:truncate("workspaces")
     assert(helpers.start_kong({
       database = strategy,
       portal = true,
     }))
-
-    client = assert(helpers.admin_client())
   end)
 
   before_each(function()
-    db:truncate("workspaces")
-    db:truncate("workspace_entities")
-  end)
-
-  teardown(function()
     if client then
       client:close()
     end
+    client = assert(helpers.admin_client())
+  end)
 
+  lazy_teardown(function()
+    if client then
+      client:close()
+    end
     helpers.stop_kong()
   end)
 
@@ -81,11 +81,11 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
       it("handles unique constraint conflicts", function()
         bp.workspaces:insert({
-          name = "foo",
+          name = "uniquefoo",
         })
         local res = assert(client:post("/workspaces", {
           body   = {
-            name = "foo",
+            name = "uniquefoo",
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -124,27 +124,28 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
           }
         }))
 
-        -- sleep to allow time for threaded file migrations to complete
-        ngx.sleep(5)
-
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
 
         assert.is_true(utils.is_valid_uuid(json.id))
         assert.equals("ws-with-portal", json.name)
 
-        local res = assert(client:get("/ws-with-portal/files"))
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.truthy(#json.data > 0)
+        helpers.wait_until(function()
+          local client = assert(helpers.admin_client())
+          local res = assert(client:get("/ws-with-portal/files"))
+          if res.status ~= 200 then
+            client:close()
+            print(res.status)
+            return false
+          end
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          client:close()
+          return #json.data > 0
+        end)
       end)
 
       describe("portal_auth_conf", function()
-        after_each(function()
-          db:truncate("files")
-          db:truncate("workspaces")
-          db:truncate("workspace_entities")
-        end)
 
         it("(basic-auth) handles invalid config object", function()
           local res = assert(client:post("/workspaces", {
@@ -191,7 +192,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         it("(basic-auth) accepts valid config", function()
           local res = assert(client:post("/workspaces", {
             body   = {
-              name = "foo",
+              name = "basicvalid",
               config = {
                 portal_auth = "basic-auth",
                 portal_auth_conf = {
@@ -255,7 +256,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         it("(key-auth) accepts valid config", function()
           local res = assert(client:post("/workspaces", {
             body   = {
-              name = "foo",
+              name = "keyvalid",
               config = {
                 portal_auth = "key-auth",
                 portal_auth_conf = {
@@ -309,7 +310,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
           local res = assert(client:post("/workspaces", {
             body   = {
-              name = "foo",
+              name = "portalmetavalid",
               config = {
                 portal_auth = "key-auth",
                 portal_auth_conf = {
@@ -334,6 +335,15 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
     end)
 
     describe("GET", function()
+      lazy_setup(function()
+        helpers.stop_kong()
+        db:truncate("workspaces")
+        assert(helpers.start_kong({
+          database = strategy,
+          portal = true,
+        }))
+      end)
+
       it("retrieves a list of workspaces", function()
         local num_to_create = 4
         assert(bp.workspaces:insert_n(num_to_create))
@@ -416,10 +426,10 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
       it("updates an existing entity", function()
         assert(bp.workspaces:insert {
-          name = "foo",
+          name = "upfoo",
         })
 
-        local res = assert(client:patch("/workspaces/foo", {
+        local res = assert(client:patch("/workspaces/upfoo", {
           body   = {
             comment = "foo comment",
             meta = {
@@ -431,9 +441,6 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
             ["Content-Type"] = "application/json",
           }
         }))
-
-        -- sleep to allow time for threaded file migrations to complete
-        ngx.sleep(5)
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -459,14 +466,18 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
           }
         }))
 
-        -- sleep to allow time for threaded file migrations to complete
-        ngx.sleep(5)
-
-        -- make sure /files exists
-        local res = assert(client:get("/rad-portal-man/files"))
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.truthy(#json.data > 0)
+        helpers.wait_until(function()
+          local client = assert(helpers.admin_client())
+          local res = assert(client:get("/rad-portal-man/files"))
+          if res.status ~= 200 then
+            client:close()
+            return false
+          end
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          client:close()
+          return #json.data > 0
+        end)
       end)
 
       it("respects previoulsy set config values on update", function()
@@ -539,19 +550,17 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
         before_each(function()
           db:truncate("files")
-          db:truncate("workspaces")
-          db:truncate("workspace_entities")
         end)
 
-        it("allows PATCH withv'portal_auth_conf' without 'portal_auth' value", function()
+        it("allows PATCH with 'portal_auth_conf' without 'portal_auth' value", function()
           assert(bp.workspaces:insert {
-            name = "rad-portal-man",
+            name = "rad-portal-dude",
             config = {
               portal = true
             }
           })
 
-          local res = client:patch("/workspaces/rad-portal-man", {
+          local res = client:patch("/workspaces/rad-portal-dude", {
             body = {
               config = {
                 portal_auth_conf = {
@@ -569,13 +578,13 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
         it("(basic-auth) allows PATCH when setting 'portal_auth' in same call", function()
           assert(bp.workspaces:insert {
-            name = "rad-portal-man",
+            name = "sick-portal-dude",
             config = {
               portal = true
             }
           })
 
-          local res = client:patch("/workspaces/rad-portal-man", {
+          local res = client:patch("/workspaces/sick-portal-dude", {
             body = {
               config = {
                 portal_auth_conf = {
@@ -597,7 +606,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
         it("(basic-auth) allows PATCH with no previous 'portal_auth_conf' value", function()
           assert(bp.workspaces:insert {
-            name = "rad-portal-man",
+            name = "sick-portal-man",
             config = {
               portal = true,
               portal_auth = 'basic-auth',
@@ -605,7 +614,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
             }
           })
 
-          local res = client:patch("/workspaces/rad-portal-man", {
+          local res = client:patch("/workspaces/sick-portal-man", {
             body = {
               config = {
                 portal_auth_conf = {
@@ -710,21 +719,16 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
       end)
 
       describe("portal_session_conf", function()
-        before_each(function()
-          db:truncate("files")
-          db:truncate("workspaces")
-          db:truncate("workspace_entities")
-        end)
 
         it("(basic-auth) requires portal_session conf when portal_auth is basic-auth", function()
           assert(bp.workspaces:insert {
-            name = "rad-portal-man",
+            name = "rad-portal-girl",
             config = {
               portal = true
             }
           })
 
-          local res = client:patch("/workspaces/rad-portal-man", {
+          local res = client:patch("/workspaces/rad-portal-girl", {
             body = {
               config = {
                 portal_auth = "basic-auth"
@@ -742,13 +746,13 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
         it("(key-auth) requires portal_session conf when portal_auth is key-auth", function()
           assert(bp.workspaces:insert {
-            name = "rad-portal-man",
+            name = "sick-portal-girl",
             config = {
               portal = true
             }
           })
 
-          local res = client:patch("/workspaces/rad-portal-man", {
+          local res = client:patch("/workspaces/sick-portal-girl", {
             body = {
               config = {
                 portal_auth = "key-auth"
@@ -766,13 +770,13 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
         it("(nil auth) does not require portal_session conf when portal_auth is not set", function()
           assert(bp.workspaces:insert {
-            name = "rad-portal-man",
+            name = "sweet-portal-fella",
             config = {
               portal = false,
             }
           })
 
-          local res = client:patch("/workspaces/rad-portal-man", {
+          local res = client:patch("/workspaces/sweet-portal-fella", {
             body = {
               config = {
                 portal = true,
@@ -789,13 +793,13 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
         it("(null auth) does not require portal_session conf when portal_auth is not set", function()
           assert(bp.workspaces:insert {
-            name = "rad-portal-man",
+            name = "sweet-portal-girl",
             config = {
               portal = false,
             }
           })
 
-          local res = client:patch("/workspaces/rad-portal-man", {
+          local res = client:patch("/workspaces/sweet-portal-girl", {
             body = {
               config = {
                 portal = true,
@@ -812,13 +816,13 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
         it("(auth off) does not require portal_session conf when portal_auth is not set", function()
           assert(bp.workspaces:insert {
-            name = "rad-portal-man",
+            name = "rad-portal-fella",
             config = {
               portal = false,
             }
           })
 
-          local res = client:patch("/workspaces/rad-portal-man", {
+          local res = client:patch("/workspaces/rad-portal-fella", {
             body = {
               config = {
                 portal = true,
@@ -835,13 +839,13 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
         it("requires portal_session_conf to be a table", function()
           assert(bp.workspaces:insert {
-            name = "rad-portal-man",
+            name = "rad-portal",
             config = {
               portal = true,
             }
           })
 
-          local res = client:patch("/workspaces/rad-portal-man", {
+          local res = client:patch("/workspaces/rad-portal", {
             body = {
               config = {
                 portal_auth = "basic-auth",
@@ -860,13 +864,13 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
         it("requires secret to be a string", function()
           assert(bp.workspaces:insert {
-            name = "rad-portal-man",
+            name = "sweet-portal",
             config = {
               portal = true,
             }
           })
 
-          local res = client:patch("/workspaces/rad-portal-man", {
+          local res = client:patch("/workspaces/sweet-portal", {
             body = {
               config = {
                 portal_auth = "basic-auth",
@@ -885,13 +889,13 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
         pending("(openid-connect) does not require portal_session conf when portal_auth is openid-connect", function()
           assert(bp.workspaces:insert {
-            name = "rad-portal-man",
+            name = "sick-portal",
             config = {
               portal = true
             }
           })
 
-          local res = client:patch("/workspaces/rad-portal-man", {
+          local res = client:patch("/workspaces/sick-portal", {
             body = {
               config = {
                 portal_auth = "openid-connect",
@@ -910,13 +914,13 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
         it("accepts valid config", function()
           assert(bp.workspaces:insert {
-            name = "rad-portal-man",
+            name = "awesome-portal-man",
             config = {
               portal = true,
             }
           })
 
-          local res = client:patch("/workspaces/rad-portal-man", {
+          local res = client:patch("/workspaces/awesome-portal-man", {
             body = {
               config = {
                 portal_auth = "basic-auth",
@@ -935,7 +939,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
         it("overrides previous values", function()
           assert(bp.workspaces:insert {
-            name = "rad-portal-man",
+            name = "awesome-portal-dude",
             config = {
               portal = true,
               portal_auth = "basic-auth",
@@ -945,7 +949,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
             }
           })
 
-          local res = client:patch("/workspaces/rad-portal-man", {
+          local res = client:patch("/workspaces/awesome-portal-dude", {
             body = {
               config = {
                 portal_auth = "basic-auth",
@@ -981,17 +985,17 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
       it("retrieves a single workspace", function()
         assert(bp.workspaces:insert {
-          name = "foo",
+          name = "foo-fighter",
           meta = {
             color = "red",
           }
         })
 
-        local res = assert(client:get("/workspaces/foo"))
+        local res = assert(client:get("/workspaces/foo-fighter"))
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.equals("foo", json.name)
+        assert.equals("foo-fighter", json.name)
         assert.equals("red", json.meta.color)
       end)
 
@@ -1001,12 +1005,12 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
       it("returns 404 if we call from another workspace", function()
         assert(bp.workspaces:insert {
-          name = "foo",
+          name = "foo2",
         })
-        assert.res_status(404, client:get("/foo/workspaces/default"))
-        assert.res_status(200, client:get("/workspaces/foo"))
-        assert.res_status(200, client:get("/default/workspaces/foo"))
-        assert.res_status(200, client:get("/foo/workspaces/foo"))
+        assert.res_status(404, client:get("/foo2/workspaces/default"))
+        assert.res_status(200, client:get("/workspaces/foo2"))
+        assert.res_status(200, client:get("/default/workspaces/foo2"))
+        assert.res_status(200, client:get("/foo2/workspaces/foo2"))
       end)
     end)
 
@@ -1017,9 +1021,9 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
       it("removes a workspace", function()
         assert(bp.workspaces:insert {
-          name = "bar",
+          name = "barbecue",
         })
-        assert.res_status(204, client:delete("/workspaces/bar"))
+        assert.res_status(204, client:delete("/workspaces/barbecue"))
       end)
 
       it("sends the appropriate status on an invalid entity", function()
@@ -1028,347 +1032,15 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
       it("refuses to delete a non empty workspace", function()
         local ws = assert(bp.workspaces:insert {
-          name = "foo",
+          name = "footos",
         })
         bp.services:insert_ws({}, ws)
 
         local res = assert(client:send {
           method = "delete",
-          path   = "/workspaces/foo",
+          path   = "/workspaces/footos",
         })
         assert.res_status(400, res)
-      end)
-    end)
-  end)
-
-  describe("/workspaces/:workspace/entites", function()
-    describe("GET", function()
-      it("returns a list of entities associated with the default workspace", function()
-        local res = assert(client:send{
-          method = "GET",
-          path = "/workspaces/default/entities",
-        })
-
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-
-        -- no entity associated with it by default
-        -- previously, when workspaces were workspaceable, the count was 2,
-        -- given default was in default, and each entity adds two rows in
-        -- workspace_entities
-        assert.equals(0, #json.data)
-      end)
-
-      it("returns a list of entities associated with the workspace", function()
-        assert(bp.workspaces:insert {
-          name = "foo"
-        })
-        -- create some entities
-        local services = bp.services:insert_n(10)
-
-        -- share them
-        for _, service in ipairs(services) do
-          assert.res_status(201, client:post("/workspaces/foo/entities", {
-            body = {
-              entities = service.id
-            },
-            headers = {
-              ["Content-Type"] = "application/json",
-            }
-          }))
-        end
-
-        local res = assert(client:send {
-          method = "GET",
-          path = "/workspaces/foo/entities",
-        })
-
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-
-        assert(10, #json.data)
-        for _, entity in ipairs(json.data) do
-          assert.same("services", entity.entity_type)
-        end
-      end)
-    end)
-
-    describe("POST", function()
-      describe("handles errors", function()
-        it("on duplicate association", function()
-          assert(bp.workspaces:insert {
-            name = "foo"
-          })
-          local service = assert(bp.services:insert())
-
-          local res = assert(client:post("/workspaces/foo/entities", {
-            body = {
-              entities = service.id,
-            },
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
-          }))
-          assert.res_status(201, res)
-
-          local res = assert(client:post("/workspaces/foo/entities", {
-            body = {
-              entities = service.id,
-            },
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
-          }))
-          local json = cjson.decode(assert.res_status(409, res))
-          assert.matches("Entity '" .. service.id .. "' " ..
-                         "already associated with workspace", json.message, nil,
-                         true)
-        end)
-
-        it("on invalid UUID", function()
-          assert(bp.workspaces:insert {
-            name = "foo"
-          })
-
-          local res = assert(client:post("/workspaces/foo/entities", {
-            body = {
-              entities = "nop",
-            },
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
-          }))
-
-          local body = assert.res_status(400, res)
-          local json = cjson.decode(body)
-
-          assert.equals("'nop' is not a valid UUID", json.message)
-        end)
-
-        it("without inserting some valid rows prior to failure", function()
-          local ws = assert(bp.workspaces:insert {
-            name = "foo"
-          })
-
-          local n = db.workspace_entities:select_all({
-            workspace_id = ws.id
-          })
-          n = #n
-
-          local res = assert(client:post("/workspaces/foo/entities", {
-            body = {
-              entities = utils.uuid() .. ",nop",
-            },
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
-          }))
-
-          local body = assert.res_status(400, res)
-          local json = cjson.decode(body)
-          assert.equals("'nop' is not a valid UUID", json.message)
-
-          local new_n = db.workspace_entities:select_all({
-            workspace_id = ws.id
-          })
-          new_n = #new_n
-          assert.same(n, new_n)
-        end)
-      end)
-    end)
-
-    describe("DELETE", function()
-      it("fails to remove an unexisting entity relationship", function()
-        assert.res_status(404, client:send {
-          method = "DELETE",
-          path = "/workspaces/foo/entities",
-          body = {
-            entities = utils.uuid()
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-      end)
-
-      it("does not leave dangling entities (old dao)", function()
-        -- create a workspace
-        assert(bp.workspaces:insert({
-          name = "foo",
-        }))
-        -- create a service
-        local service = assert(bp.services:insert())
-
-        -- share with workspace foo
-        assert.res_status(201, client:post("/workspaces/foo/entities", {
-          body = {
-            entities = service.id
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        }))
-
-        -- now, delete the entity from foo
-        assert.res_status(204, client:delete("/workspaces/foo/entities", {
-          body = {
-            entities = service.id
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        }))
-
-        -- and delete it from default, too
-        assert.res_status(204, client:delete("/workspaces/default/entities", {
-          body = {
-            entities = service.id
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        }))
-
-        -- the entity must be gone - as it was deleted from both workspaces
-        -- it belonged to
-        local res, err = db.services:select({
-          id = service.id
-        })
-        assert.is_nil(err)
-        assert.is_nil(res)
-
-        -- and we must be able to create an entity with that same name again
-        assert.res_status(201, client:send {
-          method = "POST",
-          path = "/services",
-          body = {
-            name = "foo",
-            host= "foo.com",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-      end)
-
-      it("removes a relationship", function()
-        -- create a workspace
-        assert(bp.workspaces:insert({
-          name = "foo",
-        }))
-        -- create a service
-        local service = assert(bp.services:insert())
-
-        -- share with workspace foo
-        assert.res_status(201, client:post("/workspaces/foo/entities", {
-          body = {
-            entities = service.id
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        }))
-
-        -- now, delete the entity from foo
-        assert.res_status(204, client:send {
-          method = "DELETE",
-          path = "/workspaces/foo/entities",
-          body = {
-            entities = service.id
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-
-        -- now, delete the entity from foo
-        local json = cjson.decode(assert.res_status(200, client:get("/workspaces/foo/entities", {
-          body = {
-            entities = service.id
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })))
-
-        assert.truthy(#json.data == 0)
-      end)
-
-      it("sends the appropriate status on an invalid entity", function()
-        assert(bp.workspaces:insert({
-          name = "foo",
-        }))
-        assert.res_status(404, client:delete("/workspaces/foo/entities", {
-          body = {
-            entities = utils.uuid(),
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        }))
-      end)
-    end)
-  end)
-
-  describe("/workspaces/:workspace/entites/:entity", function()
-    describe("GET", function()
-      it("returns a single relation representation", function()
-        -- create a workspace
-        local ws = assert(bp.workspaces:insert({
-          name = "foo",
-        }))
-        -- create a service
-        local service = assert(bp.services:insert_ws(nil, ws))
-
-        local res = assert(client:send {
-          method = "GET",
-          path = "/workspaces/foo/entities/" .. service.id,
-        })
-
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-
-        assert.equals(json.workspace_id, ws.id)
-        assert.equals(json.entity_id, service.id)
-        assert.equals(json.entity_type, "services")
-      end)
-
-      it("sends the appropriate status on an invalid entity", function()
-        -- create a workspace
-        assert(bp.workspaces:insert({
-          name = "foo",
-        }))
-
-        assert.res_status(404, client:send {
-          method = "GET",
-          path = "/workspaces/foo/entities/" .. utils.uuid(),
-        })
-      end)
-    end)
-
-    describe("DELETE", function()
-      it("removes a single relation representation", function()
-        -- create a workspace
-        local ws = assert(bp.workspaces:insert({
-          name = "foo",
-        }))
-        -- create a service
-        local service = assert(bp.services:insert_ws(nil, ws))
-
-        assert.res_status(204, client:send({
-          method = "DELETE",
-          path = "/workspaces/foo/entities/" .. service.id,
-        }))
-      end)
-
-      it("sends the appropriate status on an invalid entity", function()
-        assert(bp.workspaces:insert({
-          name = "foo",
-        }))
-        assert.res_status(404, client:send {
-          method = "DELETE",
-          path = "/workspaces/foo/entities/" .. utils.uuid(),
-        })
       end)
     end)
   end)
@@ -1380,9 +1052,9 @@ for _, strategy in helpers.each_strategy() do
 
 describe("Admin API #" .. strategy, function()
   local client
-  local bp, db, _
-  setup(function()
-    bp, db, _ = helpers.get_db_utils(strategy)
+  local bp
+  lazy_setup(function()
+    bp = helpers.get_db_utils(strategy)
 
     assert(helpers.start_kong{
       database = strategy
@@ -1390,7 +1062,7 @@ describe("Admin API #" .. strategy, function()
 
     client = assert(helpers.admin_client())
   end)
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
     if client then
       client:close()
@@ -1399,13 +1071,6 @@ describe("Admin API #" .. strategy, function()
 
   describe("POST /routes", function()
     describe("Refresh the router", function()
-      before_each(function()
-        db:truncate("services")
-        db:truncate("routes")
-        db:truncate("workspaces")
-        db:truncate("workspace_entities")
-      end)
-
       it("doesn't create a route when it conflicts", function()
         -- create service and route in workspace default [[
         local demo_ip_service = bp.services:insert {
@@ -1472,20 +1137,20 @@ describe("Admin API #" .. strategy, function()
         }
 
         bp.services:insert {
-          name = "demo-ip",
+          name = "domo-ip",
           protocol = "http",
           host = "httpbin.org",
           path = "/ip",
         }
 
         bp.services:insert_ws ({
-          name = "demo-anything",
+          name = "domo-anything",
           protocol = "http",
           host = "httpbin.org",
           path = "/anything",
         }, ws)
 
-        assert.res_status(201, client:post("/default/services/demo-ip/routes", {
+        assert.res_status(201, client:post("/default/services/domo-ip/routes", {
           body = {
             paths = { "/my-uri" },
             methods = { "GET" },
@@ -1493,7 +1158,7 @@ describe("Admin API #" .. strategy, function()
           headers = {["Content-Type"] = "application/json"},
         }))
 
-        assert.res_status(409, client:post("/".. ws_name.."/services/demo-anything/routes", {
+        assert.res_status(409, client:post("/".. ws_name.."/services/domo-anything/routes", {
           body = {
             paths = { "/my-uri" },
             methods = { "GET" },
@@ -1509,32 +1174,32 @@ describe("Admin API #" .. strategy, function()
         }
 
         bp.services:insert {
-          name = "demo-ip",
+          name = "arigato-ip",
           protocol = "http",
           host = "httpbin.org",
           path = "/ip",
         }
 
         bp.services:insert_ws ({
-          name = "demo-anything",
+          name = "arigato-anything",
           protocol = "http",
           host = "httpbin.org",
           path = "/anything",
         }, ws)
 
-        assert.res_status(201, client:post("/default/services/demo-ip/routes", {
+        assert.res_status(201, client:post("/default/services/arigato-ip/routes", {
           body = {
-            hosts = {"my.api.com" },
-            paths = { "/my-uri" },
+            hosts = {"my.api.test" },
+            paths = { "/my-path" },
             methods = { "GET" },
           },
           headers = { ["Content-Type"] = "application/json"},
         }))
 
-        local res = client:post("/" .. ws_name .. "/services/demo-anything/routes", {
+        local res = client:post("/" .. ws_name .. "/services/arigato-anything/routes", {
           body = {
-            hosts = {"my.api.com2" },
-            paths = { "/my-uri" },
+            hosts = {"my.api.test2" },
+            paths = { "/my-path" },
             methods = { "GET" },
           },
           headers = {["Content-Type"] = "application/json"},
@@ -1544,8 +1209,8 @@ describe("Admin API #" .. strategy, function()
         -- route collides in different WS
         assert.res_status(409, client:patch("/" .. ws_name .. "/routes/".. res.id, {
           body = {
-            hosts = {"my.api.com" },
-            paths = { "/my-uri" },
+            hosts = {"my.api.test" },
+            paths = { "/my-path" },
             methods = { "GET" },
           },
           headers = {["Content-Type"] = "application/json"},

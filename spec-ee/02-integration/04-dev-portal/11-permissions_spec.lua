@@ -9,6 +9,24 @@ local cjson = require "cjson"
 local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
 
 
+local function get_all_rbac_role_endpoints(db)
+  local rows = {}
+  for row in db.rbac_role_endpoints:each(nil, { workspace = ngx.null }) do
+    table.insert(rows, row)
+  end
+  return rows
+end
+
+
+local function get_all_files(db)
+  local rows = {}
+  for row in db.files:each(nil, { workspace = ngx.null }) do
+    table.insert(rows, row)
+  end
+  return rows
+end
+
+
 local function close_clients(clients)
   for idx, client in ipairs(clients) do
     client:close()
@@ -68,7 +86,7 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Portal Permissions[" .. strategy .. "]", function()
+  describe("Portal Permissions [#" .. strategy .. "]", function()
     describe("can_read", function()
       local bp, db
       setup(function()
@@ -295,7 +313,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(ok)
         assert.equals("contents: cannot parse, files with 'content/' prefix must have valid headmatter/body syntax", err)
 
-        local rows = db.rbac_role_endpoints:select_all()
+        local rows = get_all_rbac_role_endpoints(db)
         assert.same({}, rows)
       end)
 
@@ -310,7 +328,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(ok)
         assert.equals("contents: missing required field", err)
 
-        local rows = db.rbac_role_endpoints:select_all()
+        local rows = get_all_rbac_role_endpoints(db)
         assert.same({}, rows)
       end)
 
@@ -328,7 +346,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(ok)
         assert.equals("could not find role: red", err)
 
-        local rows = db.rbac_role_endpoints:select_all()
+        local rows = get_all_rbac_role_endpoints(db)
         assert.same({}, rows)
       end)
 
@@ -344,7 +362,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert.is_nil(file)
         assert.equal("schema violation (could not find role: red)", err)
-        local rows = db.files:select_all()
+        local rows = get_all_files(db)
         assert.equals(0, #rows)
       end)
 
@@ -360,7 +378,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert.is_nil(file)
         assert.equal("schema violation (could not find role: red)", err)
-        local rows = db.files:select_all()
+        local rows = get_all_files(db)
         assert.equals(0, #rows)
       end)
 
@@ -375,7 +393,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert.is_nil(file)
         assert.equal("schema violation (could not find role: red)", err)
-        local rows = db.files:select_all()
+        local rows = get_all_files(db)
         assert.equals(0, #rows)
       end)
 
@@ -447,7 +465,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert.is_truthy(permissions.set_file_permissions(file, ws))
 
-        local rows = db.rbac_role_endpoints:select_all()
+        local rows = get_all_rbac_role_endpoints(db)
         assert.same({}, rows)
       end)
 
@@ -465,7 +483,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert.is_truthy(permissions.set_file_permissions(file, ws))
 
-        local rows = db.rbac_role_endpoints:select_all()
+        local rows = get_all_rbac_role_endpoints(db)
         assert.equals(1, #rows)
         assert.equals("/" .. file.path, rows[1].endpoint)
         assert.equals(role.id, rows[1].role.id)
@@ -483,7 +501,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert.is_truthy(permissions.set_file_permissions(file, ws))
 
-        local rows = db.rbac_role_endpoints:select_all()
+        local rows = get_all_rbac_role_endpoints(db)
         assert.equals(1, #rows)
         assert.equals("/" .. file.path, rows[1].endpoint)
         assert.equals(role.id, rows[1].role.id)
@@ -505,7 +523,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert.is_truthy(permissions.set_file_permissions(file, ws))
 
-        local rows = db.rbac_role_endpoints:select_all()
+        local rows = get_all_rbac_role_endpoints(db)
 
         assert.equals(2, #rows)
 
@@ -539,7 +557,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert.is_truthy(permissions.set_file_permissions(file, ws))
 
-        local rows = db.rbac_role_endpoints:select_all()
+        local rows = get_all_rbac_role_endpoints(db)
 
         assert.equals(2, #rows)
 
@@ -574,7 +592,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert.is_truthy(permissions.set_file_permissions(file, ws))
 
-        local rows = db.rbac_role_endpoints:select_all()
+        local rows = get_all_rbac_role_endpoints(db)
         assert.equals(1, #rows)
         assert.equals("/" .. file.path, rows[1].endpoint)
         assert.equals(red_role.id, rows[1].role.id)
@@ -590,7 +608,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert.is_truthy(permissions.set_file_permissions(file, ws))
 
-        local rows = db.rbac_role_endpoints:select_all()
+        local rows = get_all_rbac_role_endpoints(db)
         assert.equals(1, #rows)
         assert.equals("/" .. file.path, rows[1].endpoint)
         assert.equals(blue_role.id, rows[1].role.id)
@@ -609,7 +627,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert.is_truthy(permissions.set_file_permissions(file, ws))
 
-        local rows = db.rbac_role_endpoints:select_all()
+        local rows = get_all_rbac_role_endpoints(db)
         assert.equals(1, #rows)
         assert.equals("/" .. file.path, rows[1].endpoint)
         assert.equals(red_role.id, rows[1].role.id)
@@ -623,7 +641,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert.is_truthy(permissions.set_file_permissions(file, ws))
 
-        local rows = db.rbac_role_endpoints:select_all()
+        local rows = get_all_rbac_role_endpoints(db)
         assert.equals(1, #rows)
         assert.equals("/" .. file.path, rows[1].endpoint)
         assert.equals(blue_role.id, rows[1].role.id)
@@ -674,12 +692,12 @@ for _, strategy in helpers.each_strategy() do
 
         assert.is_truthy(permissions.set_file_permissions(file, ws))
 
-        local rows = db.rbac_role_endpoints:select_all()
+        local rows = get_all_rbac_role_endpoints(db)
         assert.equals("/" .. file.path, rows[1].endpoint)
 
         -- delete permissions
         assert.is_truthy(permissions.delete_file_permissions(file, ws))
-        local rows = db.rbac_role_endpoints:select_all()
+        local rows = get_all_rbac_role_endpoints(db)
         assert.same({}, rows)
       end)
 
@@ -696,12 +714,12 @@ for _, strategy in helpers.each_strategy() do
 
         assert.is_truthy(permissions.set_file_permissions(file, ws))
 
-        local rows = db.rbac_role_endpoints:select_all()
+        local rows = get_all_rbac_role_endpoints(db)
         assert.equals("/" .. file.path, rows[1].endpoint)
 
         -- delete permissions
         assert.is_truthy(permissions.delete_file_permissions(file, ws))
-        local rows = db.rbac_role_endpoints:select_all()
+        local rows = get_all_rbac_role_endpoints(db)
         assert.same({}, rows)
       end)
     end)
