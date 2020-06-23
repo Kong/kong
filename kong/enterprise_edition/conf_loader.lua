@@ -658,6 +658,28 @@ local function validate(conf, errors)
 
     conf.audit_log_signing_key = k
   end
+
+
+  -- warn user if admin_gui_auth is on but admin_gui_url is empty
+  if conf.admin_gui_auth and not conf.admin_gui_url then
+    log.warn("when admin_gui_auth is set, admin_gui_url is required")
+  end
+
+  -- warn user if ssl is disabled and rbac is enforced
+  -- TODO CE would probably benefit from some helpers - eg, see
+  -- kong.enterprise_edition.select_listener
+  local ssl_on = (table.concat(conf.admin_listen, ",") .. " "):find("%sssl[%s,]")
+  if conf.enforce_rbac ~= "off" and not ssl_on then
+    log.warn("RBAC authorization is enabled but Admin API calls will not be " ..
+      "encrypted via SSL")
+  end
+
+  -- warn user if rbac is on without admin_gui set
+  local ok, err = validate_enforce_rbac(conf)
+  if not ok then
+    log.warn(err)
+  end
+
 end
 
 
@@ -694,26 +716,6 @@ local function load(conf)
       conf.portal_gui_ssl_cert = pl_path.abspath(conf.portal_gui_ssl_cert)
       conf.portal_gui_ssl_cert_key = pl_path.abspath(conf.portal_gui_ssl_cert_key)
     end
-  end
-
-  -- warn user if admin_gui_auth is on but admin_gui_url is empty
-  if conf.admin_gui_auth and not conf.admin_gui_url then
-    log.warn("when admin_gui_auth is set, admin_gui_url is required")
-  end
-
-  -- warn user if ssl is disabled and rbac is enforced
-  -- TODO CE would probably benefit from some helpers - eg, see
-  -- kong.enterprise_edition.select_listener
-  local ssl_on = (table.concat(conf.admin_listen, ",") .. " "):find("%sssl[%s,]")
-  if conf.enforce_rbac ~= "off" and not ssl_on then
-    log.warn("RBAC authorization is enabled but Admin API calls will not be " ..
-      "encrypted via SSL")
-  end
-
-  -- warn user if rbac is on without admin_gui set
-  local ok, err = validate_enforce_rbac(conf)
-  if not ok then
-    log.warn(err)
   end
 
   -- preserve user-facing name `enforce_rbac` but use
