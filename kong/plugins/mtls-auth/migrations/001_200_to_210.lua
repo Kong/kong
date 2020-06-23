@@ -4,10 +4,10 @@ local plugin_entities = {
   {
     name = "mtls_auth_credentials",
     primary_key = "id",
-    uniques = {},
+    uniques = {"cache_key"},
     fks = {
       {name = "consumer", reference = "consumers", on_delete = "cascade"},
-      {name = "ca_certificate", reference = "ca_certificates", on_delete = "cascade"}
+      -- {name = "ca_certificate", reference = "ca_certificates", on_delete = "cascade"}
     }
   }
 }
