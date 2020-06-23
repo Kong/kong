@@ -4,7 +4,6 @@ local cache     = require "kong.plugins.openid-connect.cache"
 local arguments = require "kong.plugins.openid-connect.arguments"
 
 
-local table = table
 local pcall = pcall
 local get_phase = ngx.get_phase
 
