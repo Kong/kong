@@ -1,4 +1,3 @@
-local typedefs = require "kong.db.schema.typedefs"
 local pl_template = require "pl.template"
 
 
