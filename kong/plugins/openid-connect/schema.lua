@@ -4,7 +4,6 @@ local cache     = require "kong.plugins.openid-connect.cache"
 local arguments = require "kong.plugins.openid-connect.arguments"
 
 
-local table = table
 local pcall = pcall
 local get_phase = ngx.get_phase
 
@@ -1554,21 +1553,6 @@ local config = {
     },
   },
 }
-
-
-do
-  local ok, run_on_first = pcall(function()
-    return typedefs.run_on_first
-  end)
-
-  if ok then
-    if typedefs.run_on_first then
-      table.insert(config.fields, {
-        run_on = run_on_first,
-      })
-    end
-  end
-end
 
 
 return config
