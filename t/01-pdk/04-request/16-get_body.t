@@ -663,3 +663,44 @@ Content-Type: application/x-www-form-urlencoded
 error: request body in temp file not supported
 --- no_error_log
 [error]
+
+
+
+=== TEST 25: request.get_body() returns arguments with multipart/form-data (same part name multiple times)
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            local args, err, mime = pdk.request.get_body()
+
+            ngx.say("type=", type(args))
+            ngx.say("type=", type(args.test))
+            ngx.say("test=", args.test[1])
+            ngx.say("test=", args.test[2])
+            ngx.say("mime=", mime)
+        }
+    }
+--- request
+POST /t
+--AaB03x
+Content-Disposition: form-data; name="test"
+
+form
+--AaB03x
+Content-Disposition: form-data; name="test"
+
+data
+--AaB03x--
+--- more_headers
+Content-Type: multipart/form-data; boundary=AaB03x
+--- response_body
+type=table
+type=table
+test=form
+test=data
+mime=multipart/form-data
+--- no_error_log
+[error]
