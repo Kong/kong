@@ -2001,6 +2001,12 @@
                                  # be logged (the term "updates" refers to the
                                  # creation, update, or deletion of a row).
 
+# audit_log_payload_exclude = token, secret, password
+
+                                 # Comma-separated list of keys that will be
+                                 # filtered out of the payload. Keys that were
+                                 # filtered will be recorded in the audit log.
+
 # audit_log_record_ttl = 2592000 # Length, in seconds, of the TTL for audit log
                                  # records. Records in the database older than
                                  # their TTL are automatically purged.
