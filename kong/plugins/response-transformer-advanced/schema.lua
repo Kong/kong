@@ -1,4 +1,3 @@
-local typedefs = require "kong.db.schema.typedefs"
 local constants = require "kong.plugins.response-transformer-advanced.constants"
 local validate_header_name = require("kong.tools.utils").validate_header_name
 
@@ -109,7 +108,6 @@ local colon_headers_array = {
 return {
   name = "response-transformer-advanced",
   fields = {
-    { run_on = typedefs.run_on_first },
     { config = { type = "record", fields = {
       { remove = { type = "record", fields = {
         { json = strings_array },
