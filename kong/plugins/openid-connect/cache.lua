@@ -787,12 +787,9 @@ local function token_exchange_load(endpoint, opts)
     local err
     res, err = httpc:request_uri(endpoint, opts)
     if not res then
-      httpc:set_keepalive()
       return nil, err
     end
   end
-
-  httpc:set_keepalive()
 
   local body = res.body
   if sub(body, -1) == "\n" then
