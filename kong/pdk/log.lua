@@ -587,13 +587,15 @@ do
         }
       end
 
+      local host_port = ctx.host_port or var.server_port
+
       return {
         session = {
           tls = session_tls,
           received = tonumber(var.bytes_received, 10),
           sent = tonumber(var.bytes_sent, 10),
           status = ongx.status,
-          server_port = tonumber(var.server_port, 10),
+          server_port = tonumber(host_port, 10),
         },
         upstream = {
           received = tonumber(var.upstream_bytes_received, 10),
