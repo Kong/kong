@@ -1,5 +1,3 @@
-local typedefs = require "kong.db.schema.typedefs"
-
 --[[
   config schema
   "config": {
@@ -40,7 +38,6 @@ local rule = {
 return {
   name = "route-by-header",
   fields = {
-    { run_on = typedefs.run_on_first },
     { config = {
       type = "record",
       fields = {
