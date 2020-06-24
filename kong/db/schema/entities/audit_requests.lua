@@ -29,6 +29,9 @@ return {
     { payload = {
       type = "string",
     }},
+    { removed_from_payload = {
+      type = "string",
+    }},
     { status = {
       type = "integer",
       required = true,

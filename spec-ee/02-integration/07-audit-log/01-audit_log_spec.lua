@@ -956,4 +956,79 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
+
+  describe("audit_log audit_log_payload_exclude with #" .. strategy, function()
+    local db, admin_client, proxy_client
+
+    setup(function()
+      db = select(2, helpers.get_db_utils(strategy))
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        audit_log  = "on",
+        audit_log_payload_exclude = "password",
+      }))
+
+      db:truncate("audit_objects")
+      db:truncate("audit_requests")
+    end)
+
+    teardown(function()
+      helpers.stop_kong(nil, true)
+    end)
+
+    before_each(function()
+      admin_client = helpers.admin_client()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    after_each(function()
+      admin_client:close()
+      proxy_client:close()
+    end)
+
+    describe("for an excluded key", function()
+      it("does not include value in the payload", function()
+        local res = assert(admin_client:send({
+          method = "POST",
+          path   = "/consumers",
+          body   = {
+            username = "bob"
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        }))
+        assert.res_status(201, res)
+
+        local res = assert(admin_client:send {
+          method  = "POST",
+          path    = "/consumers/bob/basic-auth",
+          body    = {
+            username = "bob",
+            password = "kong"
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.res_status(201, res)
+
+
+        local rows
+        helpers.wait_until(function()
+          rows = fetch_all(db.audit_requests)
+          return #rows == 2
+        end)
+
+        for _, row in ipairs(rows) do
+          if(row.path == "/consumers/bob/basic-auth") then
+            assert.same("{\"username\":\"bob\"}", row.payload)
+            assert.same("password", row.removed_from_payload)
+          end
+        end
+      end)
+    end)
+  end)
 end
