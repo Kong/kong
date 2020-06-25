@@ -1,76 +1,41 @@
-dist: xenial
-sudo: required
+dist: bionic
 
-language: go
-
-go:
-  - "1.13.x"
-
-notifications:
-  email:
-    recipients:
-    - team-interfaces@konghq.com
-    on_success: never
-    on_failure: always
-
-addons:
-  postgresql: "9.5"
-  apt:
-    packages:
-      - net-tools
-      - libpcre3-dev
-      - build-essential
-
-services:
-  - docker
+jobs:
+  include:
+  - name: Enterprise 1.5.0.x
+    env: KONG_VERSION=1.5.0.x
+  - name: Kong CE 1.5.x
+    env: KONG_VERSION=1.5.x
+  - name: Kong CE 2.0.x
+    env: KONG_VERSION=2.0.x
+  - name: Nightly EE-master
+    env: KONG_VERSION=nightly-ee
+  #- name: Nightly CE-master
+  #  env: KONG_VERSION=nightly
 
 env:
   global:
-    - LUAROCKS=3.3.1
-    - OPENSSL=1.1.1d
-    - CASSANDRA_BASE=2.2.12
-    - CASSANDRA_LATEST=3.9
-    - OPENRESTY_BASE=1.15.8.2
-    - OPENRESTY_LATEST=1.15.8.2
-    - DOWNLOAD_CACHE=$HOME/download-cache
-    - INSTALL_CACHE=$HOME/install-cache
-    - BUSTED_ARGS="-o htest -v --exclude-tags=flaky,ipv6"
-    - PLUGIN_NAME=session
-    - KONG_TEST_PLUGINS=bundled,$PLUGIN_NAME
-    - KONG_PLUGINS=bundled,$PLUGIN_NAME
-
-  matrix:
-    - OPENRESTY=$OPENRESTY_BASE
-      CASSANDRA=$CASSANDRA_BASE
-    - OPENRESTY=$OPENRESTY_LATEST
-      CASSANDRA=$CASSANDRA_LATEST
-
-before_install:
-  - git clone https://$GITHUB_TOKEN:@github.com/Kong/kong-ci.git
-  - source kong-ci/setup_env.sh
-  - git clone -b next https://github.com/Kong/kong.git kong-ce
+  # for Enterprise images
+  - BINTRAY_USERNAME=kong-automation@kong
+  - BINTRAY_REPO=kong
+  - secure: SalrcDiyLF1AMXJm1ik8ltrumfnI0EGEKx+D2OEx3WLwtP4cH6FJbYT3qkyoJ0dN1MSf5LyUHir5ilkVF2uNRK9YTjYdKTLDWVpS1QRxmruj0aduenSar/YsizHJ5fcRtpqfgnvCDpRL0F2EkVt4MV24dWM71KZWN0JR3AgTTGhMSMyXnG6jQr7bVB8BErgM+6K0K1Eqv0hnqIYU8iJAWz62zk4EVZ6qfzPJa18E0+WYJ4qDssAqZI22qqYROz71BTYEXAi4mw9+TvaKIXyyZa1XO9bZQHD4nioi1IADHwWSq/ebOrcrg1a+2Ftqa+RRaB/Gwznt0AWnWWgcKH8b7Fx72R6TYvGYVhTLfPiWWLJ5wM342YKrqllHMiQ6HtbqC13rfTDKnrRlXPZ+p4CEAsGeVYA1UsYu/jL5wK0J9prN+Xj5HiXaOcJfCKrZ95vb6wmAY74iKayMy50X/dZvDXCJUszcYnkJkQbbYvvengxAMNe9XBdsMy9RE/lPuFW7XUQFmASn4kht2vcaQG8+9GweC8j9bn/7SNn87kytIS7kT2FTwc8Xtli5A9ErdPr8hkzWB9KGR5qgIWen7q/ha2CHKxLdg51LJvb24lHGunmzaDO4Jrr6l3yY5lLcarTZBrAMCF+Gdjyd/W5gJsLJQt73pK0tJNM0f+URoWssucI=
+  # for Nightly Enterprise images
+  - NIGHTLY_EE_USER=kong-automation@kong
+  - secure: XS7tRdo5TpZNmb0WhIQE7BzNqEtibU9SwqIGUFRlGwvZ3J+2/2q1QLxdQRUEmaCm1+PebA2SKkExH/gC3HfKE/Y3OeeoS4xLllxBFwzFL4xLul7QhcxxuvwYcaE8FDwVpXnNsJX0cpwcC9SrAin9V3CyezKMchWYQW+sGO7Q5HqeNnOpMO72c/JW31AqHxbdTKaILzjCM9XHj3IWw86WMNMV1MN0W/vJn18WsCRUwOq+iWLBDm9HNVIjtmmTrdOpck4Jkm58fWIXZZk5aDhIooie/kmnVN0jr7c8sUpa0sYCjwTzPmINhTFBnuqgpLS9cbJs2W26e1KsXhPmc4RL4G8lQLnNMRG4+zigkgV+HWAcss67JedvxTkxzUO5iM+MnSDg4pBHF2Ze6m96G+FvAemqKc54ISHuBTDTntkXkf4bMFZJ+X3OtNVfRaCv2Tu5AMYbRx85/UR4CWnWZvz8UZB7roBSEmjMaPptOzPE+4EOyZGmMwo92nHHROiqHi3aLtha0GP8FNBs4anlJvY1PAmi7crkS2VCQtZiOYtqzVytkU3w+PWW7RB37ewc1z5/OknP5e958tGRveoIAlr5o3jg1IDTi+kYFj4lzxxxv44x7jfyCZ8/j3Iz1UAql4o3LDBiRGciIUiq8XQAQiEwW9Ao3nqIuBy2ZveChk0WPXI=
 
 install:
-  - luarocks make
-  - cd kong-ce
-  - make dev
-  - createuser --createdb kong
-  - createdb -U kong kong_tests
-  - cd ../
-  - KONG_DATABASE=postgres KONG_PG_DATABASE=kong_tests kong-ce/bin/kong migrations bootstrap
-  - KONG_DATABASE=cassandra KONG_CASSANDRA_KEYSPACE=kong_tests kong-ce/bin/kong migrations bootstrap
-  - luarocks remove --force lua-resty-session
-  - luarocks install --force lua-resty-session 3.1
-  - cd kong-ce
+- git clone --single-branch https://github.com/Kong/kong-pongo ../kong-pongo
+- "../kong-pongo/pongo.sh up"
+- "../kong-pongo/pongo.sh build"
 
 script:
-  - cd .. && luacheck . && cd kong-ce
-  - bin/busted $BUSTED_ARGS ../spec
+- "../kong-pongo/pongo.sh lint"
+- "../kong-pongo/pongo.sh run"
 
-cache:
-  apt: true
-  pip: true
-  directories:
-    - $DOWNLOAD_CACHE
-    - $INSTALL_CACHE
-    - $HOME/.ccm/repository
+notifications:
+  slack:
+    if: branch = master AND type != pull_request
+    on_success: change
+    on_failure: always
+    rooms:
+      secure: cThgMERsC4Z+YA/ttVKE+QfKYNTG4lodiJCjNkzHek91jWGLulzus60hP1mqZypFQ/oNSxHvbfEGfURCkfovjMInpUpE/X8w7J8W7Wl6+gSPl+jDYbvNVIbpA8FDXijieBERoXdFd7tQxk129lUj929jaf+AIggTn4Rrgb1KWSGX8I9aUF6HKw41FqcxP8q6mtIDpUkjLbCPRtMQI/Tnr6oGUZA9HkZ8zAfo0iCiesnRGvfiFwYxTzalwhBpEvUlBRINMp3p1f5T0sA9qwX6GRBplK3X2gL0lZ67b4aV5mdQk25ORXXplDPBfU8t+X/BIJsJx/h3yAqniXc7oq7RnG74xuLbPI3dN1BRjRz+F+4vT4CtZOyuutt6EIpFvH2LJOCeh9r0VGUWUvzq1bOUOeVVIH2ud8rcVlEHSRCZQiD/tnUz8g70Xjg1SQUYYL4TZRf3dht2Qi8hZML/1ZXmOgzxJOkR4EB3HFl4iyONJA1W9EKFu591LGOSRSQhW2vNErzV5PmGfswDJGHlk89C2H26Uy1iPWQ2nqb15hGtbQ6KuPHJwgwPIji2Du/eVPS5fhVTOapGGqTD9wpXbq6kBFngalIwBZQvW9veGhQ8GqEn6BgHtg0hCs+F4LFQaq9zUcK0jCKn/G6ibUv19LBCuiVclBzKWzDwiLsHYJpg1YM=
