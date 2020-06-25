@@ -6,9 +6,12 @@ go:
   - "1.13.x"
 
 notifications:
-  email:
-    on_success: never
+  slack:
+    if: branch = master AND type != pull_request
+    on_success: change
     on_failure: always
+    rooms:
+      secure: B8NkX4SKLbr3fm5luTjnfzni12foriINUbwCyXWkcJ6g+U9cpg8cxPswvozIYEdGJDNPHf5kyBPYRVPjJfGzlHD4cgiytK7pcW8zkrjb2tyTzJNdkuYwAWylO73OHFHNoF4jAtcYDs9939oqdK124K+NZKS423QjB7LSFgrCXO6kattOdMGj6UnL0xeuooQ5dfCXLKpsnwbT2WQoUk4yeDo170tGwDi2jgN61a76ImU3tbrr2GQJwAwj3hwVtwfsmIVq1xdZefz618GYaByvW46vQ7XwxUZZiWJehDHqCQR//tqjPSV6PmtOPUUkfgBEbeR47k8qGBoIlaOc2ZkdvkpAj2ugyRIp0ReqJN5DRd6ErGk4MTWiDB9c6kmB+kjy61taDWKly/hZtK+rl6pYZcG14KEBJAdm+LM0f2L3IhB4myUB9gjc2Tc/tqBYitmK9cmwwr6OtgrCpibicRsYH8Ap7ojdDaoOBab+8aEYHlvrlIj0Zf9dpsK8aHOoqW3KXtJwEDG1apEtI+tPtfQiC6DqFA9V1MvcFXl/MUatsC3VkkZAq5VdSZHDKPkIdfeDuP8Wv//kHdt8o0sDC+6DyZrqkl3VBSGAXrSw6zJbXMCNvymtfCMFh/6I9GJBSAEzSxGD4weiMe65gwo6wHKnS/JaxNe2KCKx2Qo9YLMWG7w=
 
 services:
   - redis-server
