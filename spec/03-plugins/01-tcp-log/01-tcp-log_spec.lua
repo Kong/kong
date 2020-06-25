@@ -3,6 +3,7 @@ local helpers  = require "spec.helpers"
 
 
 local TCP_PORT = 35001
+local MESSAGE = "echo, ping, pong. echo, ping, pong. echo, ping, pong.\n"
 
 
 for _, strategy in helpers.each_strategy() do
@@ -97,9 +98,63 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      local tcp_srv = bp.services:insert({
+        name = "tcp",
+        host = helpers.mock_upstream_host,
+        port = helpers.mock_upstream_stream_port,
+        protocol = "tcp"
+      })
+
+      local tcp_route = bp.routes:insert {
+        destinations = {
+          { port = 19000, },
+        },
+        protocols = {
+          "tcp",
+        },
+        service = tcp_srv,
+      }
+
+      bp.plugins:insert {
+        route = { id = tcp_route.id },
+        name     = "tcp-log",
+        protocols = { "tcp", "tls", },
+        config   = {
+          host   = "127.0.0.1",
+          port   = TCP_PORT,
+        },
+      }
+
+      local tls_srv = bp.services:insert({
+        name = "tls",
+        host = helpers.mock_upstream_host,
+        port = helpers.mock_upstream_stream_ssl_port,
+        protocol = "tls"
+      })
+
+      local tls_route = bp.routes:insert {
+        destinations = {
+          { port = 19443, },
+        },
+        protocols = { "tls", },
+        service = tls_srv,
+      }
+
+      bp.plugins:insert {
+        route = { id = tls_route.id },
+        name     = "tcp-log",
+        protocols = { "tcp", "tls", },
+        config   = {
+          host   = "127.0.0.1",
+          port   = TCP_PORT,
+        },
+      }
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        stream_listen = helpers.get_proxy_ip(false) .. ":19000," ..
+                        helpers.get_proxy_ip(false) .. ":19443 ssl"
       }))
 
       proxy_client = helpers.proxy_client()
@@ -385,6 +440,70 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("NONE", log_message.request.tls.client_verify)
     end)
 
+    it("#stream reports tcp streams", function()
+      local thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
+
+      local tcp = ngx.socket.tcp()
+      assert(tcp:connect(helpers.get_proxy_ip(false), 19000))
+
+      assert(tcp:send(MESSAGE))
+
+      local body = assert(tcp:receive("*a"))
+      assert.equal(MESSAGE, body)
+
+      tcp:close()
+
+      -- Getting back the TCP server input
+      local ok, res = thread:join()
+      assert.True(ok)
+      assert.is_string(res)
+
+      -- Making sure it's alright
+      local log_message = cjson.decode(res)
+
+      assert.equal("127.0.0.1", log_message.client_ip)
+      assert.is_table(log_message.latencies)
+
+      assert.equal(200, log_message.session.status)
+      assert.equal(#MESSAGE, log_message.session.sent)
+      assert.equal(#MESSAGE, log_message.session.received)
+
+      assert.is_number(log_message.started_at)
+
+      assert.is_table(log_message.route)
+      assert.is_table(log_message.service)
+      assert.is_table(log_message.tries)
+      assert.is_table(log_message.upstream)
+    end)
+
+    it("#stream reports tls streams", function()
+      local thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
+
+      local tcp = ngx.socket.tcp()
+
+      assert(tcp:connect(helpers.get_proxy_ip(true), 19443))
+
+      assert(tcp:sslhandshake(nil, "this-is-needed.test", false))
+
+      assert(tcp:send(MESSAGE))
+
+      local body = assert(tcp:receive("*a"))
+      assert.equal(MESSAGE, body)
+
+      tcp:close()
+
+      -- Getting back the TCP server input
+      local ok, res = thread:join()
+      assert.True(ok)
+      assert.is_string(res)
+
+      -- Making sure it's alright
+      local log_message = cjson.decode(res)
+
+      assert.is_string(log_message.session.tls.cipher)
+      assert.equal("NONE", log_message.session.tls.client_verify)
+      assert.is_string(log_message.session.tls.version)
+    end)
   end)
 
 end
