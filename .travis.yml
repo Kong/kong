@@ -38,7 +38,8 @@ script:
 
 notifications:
   slack:
-    on_success: never
+    if: branch = master AND type != pull_request
+    on_success: change
     on_failure: always
     rooms:
       secure: QbZtpW6ihbx/K19d7u0TGk8b6+Uoydi/N8sL+D/BVYlMfFcVhZiOHGqMGK0F8ow5QTiXpqw/uXjgOID3zTSZsba9Qq+1YuqIPxkQ6Waw6VnCwnrR6Pw0/YGCDgxYQupDsfRUoMplJdAvwbpBYktJK/0Wy+45hHu8G9DbeiVfOqMLtbDo3JLhnrjBM3Yoxl0wwroQj8R47yfPBqHD9w+OaL8bWEIAHz+3AwsUSQ5H1RqmsITdmiuaRfo/WdJIVRjuRPVVDv96E34SwhjrDHlTzSC7j2RsPqAv8YHYD7Xj3lwm2OlIrfmjjM/Tk66wIMwo4ohmFsDEFXFPQKUdi+qKRAYBtFnokvFdi+paZBRhhegvWwXtlHl1mtg1irgsCdeSG/4oXufcVOXij8xjBbHBgrzpY/jne3vGGQfoBjvE3JPHhh319d7XeDzcmxQSTsRVm1VR6w3j28IyRjVt8RJsHpF15C4dg9LJMIeOhUTxHGN8Nvr/Jey2c8TJSL4RIHY8Q60iWXH54gcIXmhSuBVGwT5/Exlwk6sAFdaT8b/Ge0+iF9HgngMdd7jFJnlFNIVcGgAth79nUOuGrNBOP7+J3zK63lsXwisTn5n9I3rSWY6b0f30RR3qoU4wNKro4ZcO724e3QvmXb1pftPM3xWV+xX7IUuLqTEjn3ZwLGozS9Q=
