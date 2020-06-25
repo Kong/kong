@@ -58,7 +58,6 @@ dependencies = {
   "kong-proxy-cache-plugin ~> 1.3",
   "kong-plugin-request-transformer ~> 1.2",
   "kong-plugin-aws-lambda ~> 3.4",
-  "kong-plugin-zipkin ~> 1.0",
   "kong-plugin-acme ~> 0.2",
   "kong-plugin-grpc-web ~> 0.1",
   "kong-plugin-grpc-gateway ~> 0.1",
