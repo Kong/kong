@@ -11,9 +11,6 @@ git clone -b ${KONG_DISTRIBUTIONS_VERSION} https://"$GITHUB_TOKEN"@github.com/Ko
 git clone https://"$GITHUB_TOKEN"@github.com/Kong/docker-kong-ee.git || true
 
 pushd kong-distributions
-  # Set all versions on build.yml to master
-  sed -i -e "s/^\([[:blank:]]*\)version.*$/\1version: master/" kong-images/build.yml
-
   bash package.sh alpine
 
   # Set custom suffix for package ! This is no longer done in distributions
