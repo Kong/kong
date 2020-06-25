@@ -314,6 +314,7 @@ pipeline {
                         sh 'PACKAGE_TYPE=src RESTY_IMAGE_BASE=src make release'
                         sh 'PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 make release'
                         sh 'PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=1 make release'
+                        sh 'PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=2 make release'
                     }
                 }
             }
