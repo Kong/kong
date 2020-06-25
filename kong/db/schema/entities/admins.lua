@@ -6,7 +6,8 @@ return {
   primary_key  = { "id" },
   endpoint_key = "username",
   dao          = "kong.db.dao.admins",
-
+  db_export    = false,
+  
   fields = {
     { id             = typedefs.uuid },
     { created_at     = typedefs.auto_timestamp_s },
