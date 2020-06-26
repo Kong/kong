@@ -115,18 +115,25 @@ config.tos_accepted |            | `false`    | If you are using Let's Encrypt, 
             "host": "127.0.0.1",
             "port": 8500,
             "token": null,
-            "kv_path": "acme"
+            "kv_path": "acme",
+            "timeout": 2000
         },
         "vault": {
             "host": "127.0.0.1",
             "port": 8200,
             "token": null,
-            "kv_path": "acme"
+            "kv_path": "acme",
+            "timeout": 2000,
+            "https": false,
+            "tls_verify": true,
+            "tls_server_name": null
         },
     }
 ```
 
 To configure storage type other than `kong`, please refer to [lua-resty-acme](https://github.com/fffonion/lua-resty-acme#storage-adapters).
+
+Note `tls_verify` and `tls_server_name` parameters for Vault are only supported from plugin version 0.2.6.
 
 ### Local testing and development
 
