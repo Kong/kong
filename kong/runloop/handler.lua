@@ -1258,6 +1258,10 @@ return {
         if service.protocol == "grpcs" then
           return ngx.exec("@grpcs")
         end
+
+        if route.request_buffering == false and http_version == 1.1 then
+          return ngx.exec("@unbuffered")
+        end
       end
     end,
     -- Only executed if the `router` module found a route and allows nginx to proxy it.

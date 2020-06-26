@@ -659,8 +659,9 @@ end
 
 
 function Kong.rewrite()
-  if var.kong_proxy_mode == "grpc" then
-    kong_resty_ctx.apply_ref() -- if kong_proxy_mode is gRPC, this is executing
+  local proxy_mode = var.kong_proxy_mode
+  if proxy_mode == "grpc" or proxy_mode == "unbuffered"  then
+    kong_resty_ctx.apply_ref() -- if kong_proxy_mode is gRPC/unbuffered, this is executing
     kong_resty_ctx.stash_ref() -- after an internal redirect. Restore (and restash)
                                -- context to avoid re-executing phases
 

@@ -8,6 +8,14 @@ return {
         last_seen      TIMESTAMP WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
         config_hash    TEXT NOT NULL
       );
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "routes" ADD "request_buffering" BOOLEAN;
+      EXCEPTION WHEN DUPLICATE_COLUMN THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
     ]],
   },
   cassandra = {
@@ -20,6 +28,8 @@ return {
         config_hash text,
         PRIMARY KEY (id)
       );
+
+      ALTER TABLE routes ADD request_buffering boolean;
     ]],
   }
 }

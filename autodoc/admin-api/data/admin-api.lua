@@ -866,6 +866,13 @@ return {
             the Service's `host`.
           ]]
         },
+        request_buffering = {
+          description = [[
+            Whether to enable request body buffering or not. With HTTP 1.1, it
+            may make sense to turn this off on services that receive data with
+            chunked transfer encoding.
+          ]]
+        },
         service = {
           description = [[
             The Service this Route is associated to.
