@@ -233,8 +233,22 @@ local function truncate_tables(db, tables)
   end
 end
 
-local function bootstrap_database(db)
-  local schema_state = assert(db:schema_state())
+-- @param stop_namespace string|nil A migrations namespace to stop at (example: "kong.db.migrations.core")
+--                                  Note that when the namespace is "kong.db.migrations.core", all other
+--                                  namespaces are not run (as plugin migrations might depend on non-existing
+--                                  core migrations).
+-- @param stop_migration string|nil A migrations name to stop at (example: "007_140_to_150")
+-- If stop_namespace/migration are not present, this will execute all available migrations and plugins
+-- that have not been executed
+local function bootstrap_database(db, stop_namespace, stop_migration)
+  -- If we are not migrating completely, start by removing all migrations
+  if stop_namespace then
+    assert(db:schema_reset())
+  end
+
+  -- if stop_namespace/migration are present, this will set schema_state.new_migrations
+  -- so that it only contains migrations up to (but not including) stop_migration.
+  local schema_state = assert(db:schema_state(stop_namespace, stop_migration))
   if schema_state.needs_bootstrap then
     assert(db:schema_bootstrap())
   end
@@ -247,6 +261,31 @@ local function bootstrap_database(db)
   end
 end
 
+
+local function run_migration(db, subsystem, namespace, mig_name, options)
+  return db:run_migrations(
+    {
+      {
+        subsystem = subsystem,
+        namespace = namespace,
+        migrations = {
+          { name = mig_name }
+        }
+      }
+    }, options)
+end
+
+
+local function run_up_migration(db, subsystem, namespace, mig_name)
+  return run_migration(db, subsystem, namespace, mig_name, { run_up = true })
+end
+
+
+local function run_teardown_migration(db, subsystem, namespace, mig_name)
+  return run_migration(db, subsystem, namespace, mig_name, { run_teardown = true })
+end
+
+
 --- Gets the database utility helpers and prepares the database for a testrun.
 -- This will a.o. bootstrap the datastore and truncate the existing data that
 -- migth be in it. The BluePrint returned can be used to create test entities
@@ -257,6 +296,9 @@ end
 -- @param tables (optional) tables to truncate, this can be used to accelarate
 -- tests if only a few tables are used. By default all tables will be truncated.
 -- @param plugins (optional) array of plugins to mark as loaded. Since kong will load all the bundled plugins by default, this is useful for mostly for marking custom plugins as loaded.
+-- @param options (optional) hash with the following entries:
+--        * `stop_namespace` migration namespace where migrations should stop (see boostrap_database)
+--        * `stop_migration` migration name where migrations should stop (see bootstrap_database)
 -- @return BluePrint, DB
 -- @usage
 -- local PLUGIN_NAME = "my_fancy_plugin"
@@ -273,8 +315,9 @@ end
 --   route = { id = route1.id },
 --   config = {},
 -- }
-local function get_db_utils(strategy, tables, plugins)
+local function get_db_utils(strategy, tables, plugins, options)
   strategy = strategy or conf.database
+  options = options or {}
   if tables ~= nil and type(tables) ~= "table" then
     error("arg #2 must be a list of tables to truncate", 2)
   end
@@ -298,7 +341,7 @@ local function get_db_utils(strategy, tables, plugins)
   local db = assert(DB.new(conf, strategy))
   assert(db:init_connector())
 
-  bootstrap_database(db)
+  bootstrap_database(db, options.stop_namespace, options.stop_migration)
 
   do
     local database = conf.database
@@ -2545,6 +2588,9 @@ end
   get_db_utils = get_db_utils,
   get_cache = get_cache,
   bootstrap_database = bootstrap_database,
+  run_migration = run_migration,
+  run_up_migration = run_up_migration,
+  run_teardown_migration = run_teardown_migration,
   bin_path = BIN_PATH,
   test_conf = conf,
   test_conf_path = TEST_CONF_PATH,

@@ -48,9 +48,18 @@ local Migrations_mt = {
 }
 
 
-local function load_subsystems(db, plugin_names)
+local function load_subsystems(db, plugin_names, stop_namespace, stop_migration)
   if type(plugin_names) ~= "table" then
     error("plugin_names must be a table", 2)
+  end
+
+  if type(stop_namespace) ~= "nil" or type(stop_migration) ~= "nil" then
+    if type(stop_namespace) ~= "string" then
+      error("stop_subsystem must be a string if stop_migration is present, or nil")
+    end
+    if type(stop_namespace) ~= "string" then
+      error("stop_migration must be a string if stop_subsystem is present, or nil")
+    end
   end
 
   local subsystems = require("kong.db.migrations.subsystems")
@@ -88,25 +97,37 @@ local function load_subsystems(db, plugin_names)
   for _, subsys in ipairs(res) do
     subsys.migrations = {}
 
-    for _, mig_name in ipairs(subsys.migrations_index) do
-      local mig_module = fmt("%s.%s", subsys.namespace, mig_name)
-
-      local ok, migration = utils.load_module_if_exists(mig_module)
-      if not ok then
-        return nil, fmt_err(db, "failed to load migration '%s' of '%s' subsystem",
-                            mig_module, subsys.name)
+    local stop_migration_found = false
+    if stop_namespace == "kong.db.migrations.core"
+    and subsys.namespace ~= stop_namespace
+    then
+      stop_migration_found = true
+    end
+    for i, mig_name in ipairs(subsys.migrations_index) do
+      if subsys.namespace == stop_namespace and
+         mig_name == stop_migration then
+         stop_migration_found = true
       end
+      if not stop_migration_found then
+        local mig_module = fmt("%s.%s", subsys.namespace, mig_name)
 
-      migration.name = mig_name
+        local ok, migration = utils.load_module_if_exists(mig_module)
+        if not ok then
+          return nil, fmt_err(db, "failed to load migration '%s' of '%s' subsystem",
+                              mig_module, subsys.name)
+        end
 
-      local ok, errors = MigrationSchema:validate(migration)
-      if not ok then
-        local err_t = Errors:schema_violation(errors)
-        return nil, fmt_err(db, "migration '%s' of '%s' subsystem is invalid: %s",
-                            mig_module, subsys.name, tostring(err_t))
+        migration.name = mig_name
+
+        local ok, errors = MigrationSchema:validate(migration)
+        if not ok then
+          local err_t = Errors:schema_violation(errors)
+          return nil, fmt_err(db, "migration '%s' of '%s' subsystem is invalid: %s",
+                              mig_module, subsys.name, tostring(err_t))
+        end
+
+        table.insert(subsys.migrations, migration)
       end
-
-      table.insert(subsys.migrations, migration)
     end
   end
 
@@ -146,6 +167,16 @@ local function value_or_empty_table(value)
 end
 
 
+-- @tparam stop_subsystem string|nil optional subsystem where migrations will stop.
+--         Example: "kong.db.migrations.core" or "kong.plugins.key_auth.migrations"
+-- @tparam stop_migration string|nil optional migration name at which point migrations will stop.
+--         requires the subsystem attribute to be set
+--         Example: "007_140_to_150" (with "kong.db.migrations.core")
+--         This means core migrations will only execute until migration 006 in core
+--         When core migrations are stopped, other migrations (like plugins) are all stopped
+--         Example: "000_base_key_auth" (with "kong.plugins.key_auth.migrations")
+--         Key-auth migrations will not be executed at all, but the rest (core and
+--         plugins) will.
 -- @return a table with the following structure:
 -- {
 --   executed_migrations = Subsystem[] | nil
@@ -167,11 +198,12 @@ end
 --    },
 -- }
 --
-function State.load(db)
+function State.load(db, stop_subsystem, stop_migration)
 
   log.debug("loading subsystems migrations...")
 
-  local subsystems, err = load_subsystems(db, db.kong_config.loaded_plugins)
+  local subsystems, err = load_subsystems(db, db.kong_config.loaded_plugins,
+                                          stop_subsystem, stop_migration)
   if not subsystems then
     return nil, prefix_err(db, err)
   end
