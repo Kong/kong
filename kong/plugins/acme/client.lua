@@ -68,11 +68,20 @@ local function new(conf)
     return nil, "account ".. conf.account_email .. " not found in storage"
   end
 
+  -- backward compat
+  local url = conf.api_uri
+  if not ngx.re.match(url, "/directory$") then
+    if not ngx.re.match(url, "/$") then
+      url = url .. "/"
+    end
+    url = url .. "directory"
+  end
+
   -- TODO: let acme accept initlizaed storage table alternatively
   return acme.new({
     account_email = conf.account_email,
     account_key = account.key,
-    api_uri = conf.api_uri,
+    api_uri = url,
     storage_adapter = storage_full_path,
     storage_config = conf.storage_config[conf.storage],
   })
