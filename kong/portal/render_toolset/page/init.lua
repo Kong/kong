@@ -1,24 +1,11 @@
 local helpers       = require "kong.portal.render_toolset.helpers"
 local workspaces    = require "kong.workspaces"
 local singletons    = require "kong.singletons"
-local markdown      = require "kong.portal.render_toolset.markdown"
 local lyaml         = require "lyaml"
 local looper        = require "kong.portal.render_toolset.looper"
 local workspace_config = require "kong.portal.workspace_config"
 
-
 local yaml_load     = lyaml.load
-
-
-local function markdownify(contents, route_config)
-  local path_meta = route_config.path_meta or {}
-  local extension = path_meta.extension or ""
-  if extension == "md" or extension == "markdown" then
-    return markdown(contents)
-  end
-
-  return contents
-end
 
 
 return function()
@@ -30,7 +17,7 @@ return function()
   local route_config = render_ctx.route_config or {}
 
   local page = {}
-  page.body = markdownify(route_config.body or "", route_config)
+  page.body = route_config.body or ""
 
   local ok, parsed = pcall(yaml_load, page.body)
   if ok then
