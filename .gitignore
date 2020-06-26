@@ -4,3 +4,4 @@
 /.luarocks
 *.rock
 *.tar.gz
+servroot
