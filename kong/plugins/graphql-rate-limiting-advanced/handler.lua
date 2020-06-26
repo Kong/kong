@@ -124,24 +124,34 @@ function NewRLHandler:new()
 end
 
 
+local function each_by_name(entity, name)
+  local iter = entity:each(1000)
+  local function iterator()
+    local element, err = iter()
+    if err then return nil, err end
+    if element == nil then return end
+    if element.name == name then return element, nil end
+    return iterator()
+  end
+
+  return iterator
+end
+
+
 function NewRLHandler:init_worker()
   local worker_events = kong.worker_events
 
   -- to start with, load existing plugins and create the
   -- namespaces/sync timers
-  local plugins, err = kong.db.plugins:select_all({
-    name = "graphql-rate-limiting-advanced",
-  })
-  if err then
-    kong.log.err("err in fetching plugins: ", err)
-  end
-
-  local namespaces = {}
-  for i = 1, #plugins do
-    local namespace = plugins[i].config.namespace
+  for plugin, err in each_by_name(kong.db.plugins, "graphql-rate-limiting-advanced") do
+    if err then
+      kong.log.err("err in fetching plugins: ", err)
+    end
+    local namespaces = {}
+    local namespace = plugin.config.namespace
 
     if not namespaces[namespace] then
-      local ret = new_namespace(plugins[i].config, true)
+      local ret = new_namespace(plugin.config, true)
 
       if ret then
         namespaces[namespace] = true
