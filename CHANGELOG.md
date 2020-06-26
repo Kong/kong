@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [0.2.6](#026---20200626)
 - [0.2.5](#025---20200604)
 - [0.2.4](#024---20200526)
 - [0.2.3](#023---20200518)
@@ -9,6 +10,11 @@
 - [0.1.2](#012---20191216)
 - [0.1.1](#011---20191212)
 - [0.1.0](#010---20191212)
+
+##  [0.2.6] - 2020/06/26
+
+- Add new `tls_verify` and `tls_server_name` parameter to vault storage.
+- Prepare backward compat for next lua-resty-acme release
 
 ##  [0.2.5] - 2020/06/04
 
@@ -51,6 +57,8 @@
 
 - Initial release of ACME plugin for Kong.
 
+
+[0.2.6]: https://github.com/Kong/kong-plugin-acme/compare/0.2.5...0.2.6
 [0.2.5]: https://github.com/Kong/kong-plugin-acme/compare/0.2.4...0.2.5
 [0.2.4]: https://github.com/Kong/kong-plugin-acme/compare/0.2.3...0.2.4
 [0.2.3]: https://github.com/Kong/kong-plugin-acme/compare/0.2.2...0.2.3
