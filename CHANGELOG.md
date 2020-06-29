@@ -1,3 +1,7 @@
+## 0.2.1
+
+- lua land select all by name
+
 # 0.2.0
 
 - fix invalid post access handler
