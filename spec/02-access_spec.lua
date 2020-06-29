@@ -1,23 +1,22 @@
 local helpers = require "spec.helpers"
-local pl_file = require "pl.file"
 local strategies = require("kong.plugins.proxy-cache.strategies")
 
 
-local TIMEOUT = 10 -- default timeout for non-memory strategies
+--local TIMEOUT = 10 -- default timeout for non-memory strategies
 
 -- use wait_until spec helper only on async strategies
-local function strategy_wait_until(strategy, func, timeout)
-  if strategies.DELAY_STRATEGY_STORE[strategy] then
-    helpers.wait_until(func, timeout)
-  end
-end
+--local function strategy_wait_until(strategy, func, timeout)
+--  if strategies.DELAY_STRATEGY_STORE[strategy] then
+--    helpers.wait_until(func, timeout)
+--  end
+--end
 
 
 do
   local policy = "memory"
   describe("proxy-cache access with policy: " .. policy, function()
     local client, admin_client
-    local cache_key
+    --local cache_key
     local policy_config = { dictionary_name = "kong", }
 
     local strategy = strategies({
@@ -313,7 +312,7 @@ do
       assert.same(body1, body2)
 
       -- examine this cache key against another plugin's cache key for the same req
-      cache_key = cache_key1
+      --cache_key = cache_key1
     end)
 
     it("respects cache ttl", function()
@@ -325,7 +324,7 @@ do
         }
       })
 
-      local cache_key2 = res.headers["X-Cache-Key"]
+      --local cache_key2 = res.headers["X-Cache-Key"]
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
 
@@ -344,7 +343,7 @@ do
 
       assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
-      local cache_key = res.headers["X-Cache-Key"]
+      --local cache_key = res.headers["X-Cache-Key"]
 
       -- if strategy is local, it's enough to simply use a sleep
       if strategies.LOCAL_DATA_STRATEGIES[policy] then
@@ -368,7 +367,7 @@ do
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
-      cache_key = res.headers["X-Cache-Key"]
+      --cache_key = res.headers["X-Cache-Key"]
 
       -- wait until the underlying strategy converges
       --strategy_wait_until(policy, function()
@@ -397,7 +396,7 @@ do
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
-      cache_key = res.headers["X-Cache-Key"]
+      --cache_key = res.headers["X-Cache-Key"]
 
       -- wait until the underlying strategy converges
       --strategy_wait_until(policy, function()
@@ -614,7 +613,7 @@ do
 
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
-        local cache_key = res.headers["X-Cache-Key"]
+        --local cache_key = res.headers["X-Cache-Key"]
 
         -- wait until the underlying strategy converges
         --strategy_wait_until(policy, function()
@@ -632,7 +631,7 @@ do
 
         assert.res_status(200, res)
         assert.same("Hit", res.headers["X-Cache-Status"])
-        local cache_key = res.headers["X-Cache-Key"]
+        --local cache_key = res.headers["X-Cache-Key"]
 
         -- if strategy is local, it's enough to simply use a sleep
         if strategies.LOCAL_DATA_STRATEGIES[policy] then
@@ -669,7 +668,7 @@ do
 
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
-        local cache_key = res.headers["X-Cache-Key"]
+        --local cache_key = res.headers["X-Cache-Key"]
 
         -- wait until the underlying strategy converges
         --strategy_wait_until(policy, function()
@@ -737,7 +736,7 @@ do
       local body1 = assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
       assert.is_nil(res.headers["Content-Length"])
-      local cache_key = res.headers["X-Cache-Key"]
+      --local cache_key = res.headers["X-Cache-Key"]
 
       -- wait until the underlying strategy converges
       --strategy_wait_until(policy, function()
@@ -923,7 +922,7 @@ do
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
 
-      local cache_key = res.headers["X-Cache-Key"]
+      --local cache_key = res.headers["X-Cache-Key"]
 
       -- wait until the underlying strategy converges
       --strategy_wait_until(policy, function()
@@ -954,7 +953,7 @@ do
       })
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
-      local cache_key = res.headers["X-Cache-Key"]
+      --local cache_key = res.headers["X-Cache-Key"]
 
       -- wait until the underlying strategy converges
       --strategy_wait_until(policy, function()
@@ -1113,7 +1112,7 @@ do
 
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
-        local cache_key = res.headers["X-Cache-Key"]
+        --local cache_key = res.headers["X-Cache-Key"]
 
         -- wait until the underlying strategy converges
         --strategy_wait_until(policy, function()
@@ -1201,7 +1200,7 @@ do
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
         assert.matches("^%d+$", res.headers["X-Kong-Upstream-Latency"])
-        cache_key = res.headers["X-Cache-Key"]
+        --cache_key = res.headers["X-Cache-Key"]
 
         -- wait until the underlying strategy converges
         --strategy_wait_until(policy, function()
