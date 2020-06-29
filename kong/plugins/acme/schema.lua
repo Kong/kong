@@ -23,13 +23,24 @@ local REDIS_STORAGE_SCHEMA = {
   { auth = { type = "string" }}
 }
 
-local CONSUL_VAULT_STORAGE_SCHEMA = {
-  { https = { type = "boolean", default = true, }, },
+local CONSUL_STORAGE_SCHEMA = {
+  { https = { type = "boolean", default = false, }, },
   { host = typedefs.host, },
   { port = typedefs.port, },
   { kv_path = { type = "string", }, },
   { timeout = { type = "number", }, },
   { token = { type = "string", }, },
+}
+
+local VAULT_STORAGE_SCHEMA = {
+  { https = { type = "boolean", default = false, }, },
+  { host = typedefs.host, },
+  { port = typedefs.port, },
+  { kv_path = { type = "string", }, },
+  { timeout = { type = "number", }, },
+  { token = { type = "string", }, },
+  { tls_verify = { type = "boolean", default = true, }, },
+  { tls_server_name = { type = "string" }, },
 }
 
 local schema = {
@@ -77,8 +88,8 @@ local schema = {
             { shm = { type = "record", fields = SHM_STORAGE_SCHEMA, } },
             { kong = { type = "record", fields = KONG_STORAGE_SCHEMA, } },
             { redis = { type = "record", fields = REDIS_STORAGE_SCHEMA, } },
-            { consul = { type = "record", fields = CONSUL_VAULT_STORAGE_SCHEMA, } },
-            { vault = { type = "record", fields = CONSUL_VAULT_STORAGE_SCHEMA, } },
+            { consul = { type = "record", fields = CONSUL_STORAGE_SCHEMA, } },
+            { vault = { type = "record", fields = VAULT_STORAGE_SCHEMA, } },
           },
         }, },
       },

@@ -116,7 +116,8 @@ config.tos_accepted |            | `false`    | If you are using Let's Encrypt, 
             "port": 8500,
             "token": null,
             "kv_path": "acme",
-            "timeout": 2000
+            "timeout": 2000,
+            "https": false
         },
         "vault": {
             "host": "127.0.0.1",
