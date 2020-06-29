@@ -1652,7 +1652,7 @@ return {
         },
         weight = {
           description = [[
-            The weight this target gets within the upstream loadbalancer (`0`-`1000`).
+            The weight this target gets within the upstream loadbalancer (`0`-`65535`).
             If the hostname resolves to an SRV record, the `weight` value will be
             overridden by the value from the DNS record.
           ]]
