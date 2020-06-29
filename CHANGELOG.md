@@ -1,3 +1,7 @@
+## 1.3.5
+
+- chore(*) use each_by_name instead of select_all (#47)
+
 ## 1.3.4
 
 ### Fixed
