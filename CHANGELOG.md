@@ -1,3 +1,8 @@
+## 0.2.1
+
+- lua land select all by name
+- update README
+
 # 0.2.0
 
 - proxy authorization headers to introspection request
