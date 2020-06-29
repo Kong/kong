@@ -109,6 +109,7 @@ local get_last_failure = ngx_balancer.get_last_failure
 local set_current_peer = ngx_balancer.set_current_peer
 local set_timeouts     = ngx_balancer.set_timeouts
 local set_more_tries   = ngx_balancer.set_more_tries
+local TTL_ZERO         = { ttl = 0 }
 
 
 local declarative_entities
@@ -273,7 +274,12 @@ local function load_declarative_config(kong_config, entities)
 
   if not kong_config.declarative_config then
     -- no configuration yet, just build empty plugins iterator
-    local ok, err = runloop.build_plugins_iterator(utils.uuid())
+    local new_version, err = kong.core_cache:get("plugins_iterator:version", TTL_ZERO, utils.uuid)
+    if err then
+      return nil, "failed to retrieve plugins iterator version: " .. err
+    end
+
+    local ok, err = runloop.build_plugins_iterator(new_version)
     if not ok then
       error("error building initial plugins iterator: " .. err)
     end
@@ -550,16 +556,15 @@ function Kong.init_worker()
 
   runloop.init_worker.before()
 
+  local init_worker_plugins_iterator = runloop.build_plugins_iterator_for_init_worker_phase()
+  execute_plugins_iterator(init_worker_plugins_iterator, "init_worker")
 
   -- run plugins init_worker context
-  ok, err = runloop.update_plugins_iterator()
+  local retries = 5
+  ok, err = runloop.update_plugins_iterator(retries)
   if not ok then
-    stash_init_worker_error("failed to build the plugins iterator: " .. err)
-    return
+    ngx_log(ngx_ERR, "failed to build the plugins iterator: ", err)
   end
-
-  local plugins_iterator = runloop.get_plugins_iterator()
-  execute_plugins_iterator(plugins_iterator, "init_worker")
 
   if go.is_on() then
     go.manage_pluginserver()
