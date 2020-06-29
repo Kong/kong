@@ -134,7 +134,7 @@ config.tos_accepted |            | `false`    | If you are using Let's Encrypt, 
 
 To configure storage type other than `kong`, please refer to [lua-resty-acme](https://github.com/fffonion/lua-resty-acme#storage-adapters).
 
-Note `tls_verify` and `tls_server_name` parameters for Vault are only supported from plugin version 0.2.6.
+Note `tls_verify` and `tls_server_name` parameters for Vault are only supported from plugin version 0.2.7.
 
 ### Local testing and development
 
