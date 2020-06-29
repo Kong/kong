@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+
+set -e
+
+SCRIPT=$(basename $0)
+LOCAL_PATH=$(dirname $(realpath $0))
+KONG_PLUGIN=${KONG_PLUGIN:-$PWD}
+# XXX Maybe our default could be empty, that could mean, get LAST element
+BUMP_COMPONENT=${BUMP_COMPONENT:-2}
+
+DO_COMMIT=${DO_COMMIT:-1}
+PUSH_PR=${PUSH_PR:-0}
+HUB_PR=${HUB_PR:-0}
+
+function err {
+  >&2 echo -e "$*"
+  exit 1
+}
+
+function get_version {
+  # Method 1
+  VERSION=$(ls -1 *.rockspec | grep -o -P "\\d+\\.\\d+\\.\\d+")
+  [[ $? -eq 0 ]] || err "Could not guess version"
+}
+
+
+function usage {
+cat << EOF
+
+Usage: $SCRIPT action [options...]
+
+Options:
+  --bump-component N    bump component N in x(0).y(1).z(2) (default: 2)
+  --no-commit           do not create a commit, stop after bumping
+  --push                push PR
+  --pr                  create a PR
+  -v                    verbose
+  -h, --help            show this help
+
+EOF
+}
+
+
+function bump_version {
+  local version=$1
+  local p_version
+  local component=$2
+
+  parse_version $version p_version
+  p_version[$BUMP_COMPONENT]=$(( ${p_version[$BUMP_COMPONENT]} + 1 ))
+  echo $(IFS="." ; echo "${p_version[*]}")
+}
+
+function parse_args {
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --bump-component)
+        BUMP_COMPONENT=$2
+        shift
+        ;;
+      --push)
+        PUSH_PR=1
+        ;;
+      --pr)
+        HUB_PR=1
+        ;;
+      --no-commit)
+        DO_COMMIT=0
+        ;;
+      -v|--verbose)
+        set -x
+        ;;
+      -h|--help)
+        usage
+        exit 0
+        ;;
+    esac
+    shift
+  done
+}
+
+
+function main {
+  # 0) Check that current repo is clean
+  git rev-parse --git-dir &> /dev/null || err "not a git repo"
+  [[ -z $(git status --porcelain) ]] || err "repo is not clean"
+
+  # 1) Check if something changed since last tag
+  if [[ -z $(git rev-list $(git describe --tags --abbrev=0)..HEAD) ]]; then
+    >&2 echo "No new commits since last tag"
+    exit 0
+  fi
+
+  # 2)
+  get_version
+  >&2 echo "Found version: $VERSION"
+  OLD_VERSION=$VERSION
+  VERSION=$(bump_version $VERSION)
+  >&2 echo "Bumping to version: $VERSION"
+
+  # 3) Branch into that
+  git checkout -b chore/bump-to-$VERSION
+
+  # rockspec filename
+  git mv $(ls -1 *.rockspec) $(ls -1 *.rockspec | sed -e "s/$OLD_VERSION/$VERSION/")
+
+  # Change version, YOLO style
+  for f in $(grep -l -r -i $OLD_VERSION --include \*.lua --include \*.rockspec); do
+    sed -i '' -e "s/$OLD_VERSION/$VERSION/" $f
+  done
+
+  # Add entries to changelog if it exists
+  if [[ -f CHANGELOG.md ]]; then
+    ex CHANGELOG.md <<eof
+1 insert
+## $VERSION
+
+$( git log --format="- %s" $(git describe --tags --abbrev=0)..HEAD)
+
+.
+xit
+eof
+  fi
+
+  [[ "$DO_COMMIT" == 0 ]] && return
+
+  git add -A
+  git commit -m "chore(*) bump to $VERSION"
+
+  [[ "$PUSH_PR" == 0 ]] && return
+
+  git push origin chore/bump-to-$VERSION
+
+  [[ "$HUB_PR" == 0 ]] && return
+
+  if ! hash hub; then
+    >&2 echo "hub is required to create a PR, leaving as it is"
+    exit 1
+  fi
+
+  hub pull-request -m "Bump to $VERSION"
+}
+
+
+pushd() { builtin pushd $1 > /dev/null; }
+popd() { builtin popd > /dev/null; }
+
+source $LOCAL_PATH/version.sh
+
+parse_args "$@"
+
+pushd $KONG_PLUGIN
+  main "$@"
+popd
