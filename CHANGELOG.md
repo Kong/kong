@@ -1,6 +1,7 @@
 # Table of Contents
 
 
+- [2.0.5](#205)
 - [2.0.4](#204)
 - [2.0.3](#203)
 - [2.0.2](#202)
@@ -41,6 +42,95 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+
+## [2.0.5]
+
+> Released 2020/06/30
+
+### Dependencies
+
+- Bump OpenSSL version from `1.1.1f` to `1.1.1g`.
+  [#5820](https://github.com/Kong/kong/pull/5810)
+- Bump [go-pluginserver](https://github.com/Kong/go-pluginserver) from version
+  from `0.2.0` to `0.3.2`, leveraging [go-pdk](https://github.com/Kong/go-pdk) `0.3.1`.
+  See the [go-pdk changelog](https://github.com/Kong/go-pdk/blob/master/CHANGELOG.md#v031).
+
+### Fixes
+
+##### Core
+
+- Fix a race condition leading to random config fetching failure in DB-less mode.
+  [#5833](https://github.com/Kong/kong/pull/5833)
+- Fix issue where a respawned worker would not use the existing configuration
+  in DB-less mode.
+  [#5850](https://github.com/Kong/kong/pull/5850)
+- Fix issue where declarative configuration would fail with the error:
+  `Cannot serialise table: excessively sparse array`.
+  [#5768](https://github.com/Kong/kong/pull/5865)
+- Targets now support a weight range of 0-65535.
+  [#5871](https://github.com/Kong/kong/pull/5871)
+- Make kong.ctx.plugin light-thread safe
+  Thanks [tdelaune](https://github.com/tdelaune) for the assistance!
+  [#5873](https://github.com/Kong/kong/pull/5873)
+- Go: fix issue with Go plugins where the plugin instance would be
+  intermittently killed.
+  Thanks [primableatom](https://github.com/primableatom) for the patch!
+  [#5903](https://github.com/Kong/kong/pull/5903)
+- Auto-convert `config.anonymous` from empty string to the `ngx.null` value.
+  [#5906](https://github.com/Kong/kong/pull/5906)
+- Fix issue where DB-less wouldn't correctly validate input with missing IDs,
+  names, or cache key.
+  [#5929](https://github.com/Kong/kong/pull/5929)
+- Fix issue where a request to the upstream health endpoint would fail with
+  HTTP 500 Internal Server Error.
+  [#5943](https://github.com/Kong/kong/pull/5943)
+- Fix issue where providing a declarative configuration file containing
+  fields with explicit null values would result in an error.
+  [#5999](https://github.com/Kong/kong/pull/5999)
+- Fix issue where the balancer wouldn't be built for all workers.
+  [#5931](https://github.com/Kong/kong/pull/5931)
+- Fix issue where a declarative configuration file with primary keys specified
+  as numbers would result in an error.
+  [#6005](https://github.com/Kong/kong/pull/6005)
+
+##### CLI
+
+##### Configuration
+
+- Fix issue where the Postgres password from the Kong confiuration file
+  would be truncated if it contained a `#` character.
+  [#5822](https://github.com/Kong/kong/pull/5822)
+
+##### Admin API
+
+- Fix issue where a `PUT` request on `/upstreams/:upstreams/targets/:targets`
+  would result in HTTP 500 Internal Server Error.
+  [#6012](https://github.com/Kong/kong/pull/6012)
+
+##### PDK
+
+- Stop request processing flow if body encoding fails.
+  [#5829](https://github.com/Kong/kong/pull/5829)
+- Ensure `kong.service.set_target()` includes the port number if a non-default
+  port is used.
+  [#5996](https://github.com/Kong/kong/pull/5996)
+
+##### Plugins
+
+- Go: fix issue where the go-pluginserver would not reload Go plugins'
+  configurations.
+  Thanks [wopol](https://github.com/wopol) for the patch!
+  [#5866](https://github.com/Kong/kong/pull/5866)
+- basic-auth: avoid fetching credentials when password is not given.
+  Thanks [Abhishekvrshny](https://github.com/Abhishekvrshny) for the patch!
+  [#5880](https://github.com/Kong/kong/pull/5880)
+- cors: avoid overwriting upstream response `Vary` header; new values are now
+  added as additional `Vary` headers.
+  Thanks [aldor007](https://github.com/aldor007) for the patch!
+  [#5794](https://github.com/Kong/kong/pull/5794)
+
+[Back to TOC](#table-of-contents)
 
 
 ## [2.0.4]
@@ -4780,6 +4870,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.0.5]: https://github.com/Kong/kong/compare/2.0.4...2.0.5
 [2.0.4]: https://github.com/Kong/kong/compare/2.0.3...2.0.4
 [2.0.3]: https://github.com/Kong/kong/compare/2.0.2...2.0.3
 [2.0.2]: https://github.com/Kong/kong/compare/2.0.1...2.0.2
