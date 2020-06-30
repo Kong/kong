@@ -349,7 +349,7 @@ function declarative.load_into_db(entities, meta)
 end
 
 
-local function export_from_db(emitter, skip_ws)
+local function export_from_db(emitter, skip_ws, skip_ttl)
   local schemas = {}
   for _, dao in pairs(kong.db.daos) do
     if not (skip_ws and dao.schema.name == "workspaces") then
@@ -383,6 +383,11 @@ local function export_from_db(emitter, skip_ws)
       if not row then
         kong.log.err(err)
         return nil, err
+      end
+
+      -- XXX hack, do not export ttl values ??
+      if skip_ttl and row.ttl and schema.ttl then
+        row.ttl = nil
       end
 
       for _, foreign_name in ipairs(fks) do
@@ -459,7 +464,7 @@ end
 
 
 function declarative.export_config()
-  return export_from_db(table_emitter.new(), false)
+  return export_from_db(table_emitter.new(), false, true)
 end
 
 
