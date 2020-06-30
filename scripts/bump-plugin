@@ -86,6 +86,7 @@ function main {
   [[ -z $(git status --porcelain) ]] || err "repo is not clean"
 
   # 1) Check if something changed since last tag
+  git fetch --all --tags
   if [[ -z $(git rev-list $(git describe --tags --abbrev=0)..HEAD) ]]; then
     >&2 echo "No new commits since last tag"
     exit 0
