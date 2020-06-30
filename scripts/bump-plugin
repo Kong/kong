@@ -105,8 +105,8 @@ function main {
   git mv $(ls -1 *.rockspec) $(ls -1 *.rockspec | sed -e "s/$OLD_VERSION/$VERSION/")
 
   # Change version, YOLO style
-  for f in $(grep -l -r -i $OLD_VERSION --include \*.lua --include \*.rockspec); do
-    sed -i '' -e "s/$OLD_VERSION/$VERSION/" $f
+  for f in $(grep -l -r -i ${OLD_VERSION//./\\.} --include \*.lua --include \*.rockspec); do
+    sed -i '' -e "s/${OLD_VERSION//./\\.}/$VERSION/" $f
   done
 
   # Add entries to changelog if it exists
