@@ -33,6 +33,8 @@ local rep           = string.rep
 local sub           = string.sub
 local log           = ngx.log
 
+local get_workspace_id = require "kong.workspaces".get_workspace_id
+
 
 local NOTICE        = ngx.NOTICE
 local LIMIT         = {}
@@ -396,7 +398,7 @@ end
 local function get_ws_id()
   local phase = get_phase()
   if phase ~= "init" and phase ~= "init_worker" then
-    return ngx.ctx.workspace or kong.default_workspace
+    return get_workspace_id() or kong.default_workspace
   end
 end
 

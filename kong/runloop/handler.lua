@@ -36,6 +36,8 @@ local subsystem    = ngx.config.subsystem
 local clear_header = ngx.req.clear_header
 local unpack       = unpack
 
+local set_workspace_id = require "kong.workspaces".set_workspace_id
+
 
 local ERR   = ngx.ERR
 local CRIT  = ngx.CRIT
@@ -431,7 +433,7 @@ local function register_events()
       kong.cache:flip()
       core_cache:flip()
       kong.default_workspace = default_ws
-      ngx.ctx.workspace = kong.default_workspace
+      set_workspace_id(kong.default_workspace)
     end, "declarative", "flip_config")
   end
 end
@@ -1014,7 +1016,7 @@ return {
         return exit(500)
       end
 
-      ngx.ctx.workspace = match_t.route and match_t.route.ws_id
+      set_workspace_id(match_t.route and match_t.route.ws_id)
 
       local route = match_t.route
       local service = match_t.service
@@ -1066,7 +1068,7 @@ return {
         return kong.response.exit(404, { message = "no Route matched with those values" })
       end
 
-      ngx.ctx.workspace = match_t.route and match_t.route.ws_id
+      set_workspace_id(match_t.route and match_t.route.ws_id)
 
       local http_version   = ngx.req.http_version()
       local scheme         = var.scheme

@@ -81,7 +81,7 @@ local balancer_execute = require("kong.runloop.balancer").execute
 local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
 local go = require "kong.db.dao.plugins.go"
-
+local set_workspace_id = require "kong.workspaces".set_workspace_id
 
 local kong             = kong
 local ngx              = ngx
@@ -638,7 +638,7 @@ function Kong.ssl_certificate()
   log_init_worker_errors(ctx)
 
   -- this is the first phase to run on an HTTPS request
-  ngx.ctx.workspace = kong.default_workspace
+  set_workspace_id(kong.default_workspace)
 
   runloop.certificate.before(ctx)
 
@@ -685,7 +685,7 @@ function Kong.rewrite()
     plugins_iterator = runloop.get_plugins_iterator()
   else
     -- this is the first phase to run on a plain HTTP request
-    ngx.ctx.workspace = kong.default_workspace
+    set_workspace_id(kong.default_workspace)
 
     plugins_iterator = runloop.get_updated_plugins_iterator()
   end

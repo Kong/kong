@@ -42,7 +42,7 @@ end
 
 local APPLIED_COLUMN = "[applied]"
 
-
+local get_workspace_id = require "kong.workspaces".get_workspace_id
 local cache_key_field = { type = "string" }
 local ws_id_field = { type = "string", uuid = true }
 local workspaces_strategy
@@ -64,7 +64,7 @@ end
 local function get_ws_id()
   local phase = get_phase()
   return (phase ~= "init" and phase ~= "init_worker")
-         and ngx.ctx.workspace or kong.default_workspace
+         and get_workspace_id() or kong.default_workspace
 end
 
 
