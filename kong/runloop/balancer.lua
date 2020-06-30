@@ -1301,6 +1301,7 @@ end
 local function set_host_header(balancer_data)
   -- set the upstream host header if not `preserve_host`
   local upstream_host = var.upstream_host
+  local orig_upstream_host = upstream_host
   local phase = get_phase()
 
 
@@ -1315,10 +1316,12 @@ local function set_host_header(balancer_data)
       upstream_host = upstream_host .. ":" .. balancer_data.port
     end
 
-    var.upstream_host = upstream_host
+    if upstream_host ~= orig_upstream_host then
+      var.upstream_host = upstream_host
 
-    if phase == "balancer" then
-      kong_balancer.update_proxy_request()
+      if phase == "balancer" then
+        kong_balancer.update_proxy_request()
+      end
     end
 
   end
