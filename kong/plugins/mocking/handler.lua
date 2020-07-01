@@ -1,3 +1,4 @@
+print(package.path)
 local cjson       = require("cjson.safe").new()
 local lyaml       = require "lyaml"
 local gsub        = string.gsub
@@ -19,7 +20,9 @@ local isV2 = false
 local function find_key(tbl, key)
 
   for lk, lv in pairs(tbl) do
-    if lk == key then return lv end
+    if lk == key then
+      return lv
+    end
     if type(lv) == "table" then
       for dk, dv in pairs(lv) do
         if dk == key then return dk end
@@ -35,7 +38,7 @@ local function find_key(tbl, key)
   return nil
 end
 
-local function get_example(accept, tbl)
+local function get_example(accept, tbl, schemaVal)
   if isV2 then
     if find_key(tbl, "examples") then
       if find_key(tbl, "examples")[accept] then
@@ -51,8 +54,12 @@ local function get_example(accept, tbl)
   else
     tbl = tbl.content
     if find_key(tbl, accept) then
-      if find_key(tbl, accept).examples.response.value then
-        return find_key(tbl, accept).examples.response.value
+    --start the logic part here we have schema tag accept in OpenApi-V3.0
+      if find_key(tbl, accept).schema then
+        --Obtain the value of schema and format the string to obtain the schema identifier from the pattern
+        local sval= find_key(tbl, accept).schema.value
+        local schemaId = string.gsub( string.sub(find_key(sval,"%$ref"),3),"(%w+)/","" )
+        return find_key(schemaVal,schemaId)
       else
         return ""
       end
@@ -60,7 +67,7 @@ local function get_example(accept, tbl)
   end
 end
 
-local function get_method_path(path, method, accept)
+local function get_method_path(path, method, accept,schemaVal)
 
   local rtn
 
@@ -75,11 +82,11 @@ local function get_method_path(path, method, accept)
   -- need to improve this
   if rtn and rtn.responses then
     if rtn.responses["200"] then
-      return get_example(accept, rtn.responses["200"]), 200
+      return get_example(accept, rtn.responses["200"], schemaVal), 200
     elseif rtn.responses["201"] then
-      return get_example(accept, rtn.responses["201"]), 201
+      return get_example(accept, rtn.responses["201"], schemaVal), 201
     elseif rtn.responses["204"] then
-      return get_example(accept, rtn.responses["204"]), 204
+      return get_example(accept, rtn.responses["204"], schemaVal), 204
     end
   end
 
@@ -120,17 +127,22 @@ end
 local function retrieve_example(parsed_content, uripath, accept, method)
 
   local paths = parsed_content.paths
+  local schemaVal = nil
+  if isV3 then
+    schemaVal = parsed_content.components.schemas
+  end
   local found = false
 
   for specpath, value in pairs(paths) do
 
     -- build formatted string for exact match
+    -- shortest matched {} in the input
     local formatted_path = gsub(specpath, "{(.-)}", "[A-Za-z0-9]+") .. "$"
 
     local strmatch = match(uripath, formatted_path)
     if strmatch then
       found = true
-      local responsepath, status = get_method_path(value, method, accept)
+      local responsepath, status = get_method_path(value, method, accept,schemaVal)
       if responsepath then
         kong.response.exit(status, responsepath)
       else
@@ -178,4 +190,3 @@ function plugin:header_filter(conf)
 end
 
 return plugin
-
