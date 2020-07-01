@@ -20,15 +20,6 @@ function ResponseTransformerHandler:init_worker()
   feature_flag_limit_body.init_worker()
 end
 
-function ResponseTransformerHandler:access(conf)
-  ResponseTransformerHandler.super.access(self)
-
-  local ctx = ngx.ctx
-
-  ctx.rt_body_chunks = {}
-  ctx.rt_body_chunk_number = 1
-end
-
 function ResponseTransformerHandler:header_filter(conf)
   ResponseTransformerHandler.super.header_filter(self)
 
@@ -42,19 +33,19 @@ end
 function ResponseTransformerHandler:body_filter(conf)
   ResponseTransformerHandler.super.body_filter(self)
 
+  local ctx = ngx.ctx
+
+  -- Initializes context here in case this plugin's access phase
+  -- did not run - and hence `rt_body_chunks` and `rt_body_chunk_number`
+  -- were not initialized
+  ctx.rt_body_chunks = ctx.rt_body_chunks or {}
+  ctx.rt_body_chunk_number = ctx.rt_body_chunk_number or 1
+
   if not feature_flag_limit_body.body_filter() then
     return
   end
 
   if is_body_transform_set(conf) then
-    local ctx = ngx.ctx
-
-    -- Initializes context here in case this plugin's access phase
-    -- did not run - and hence `rt_body_chunks` and `rt_body_chunk_number`
-    -- were not initialized
-    ctx.rt_body_chunks = ctx.rt_body_chunks or {}
-    ctx.rt_body_chunk_number = ctx.rt_body_chunk_number or 1
-
     local chunk, eof = ngx.arg[1], ngx.arg[2]
 
     -- if eof wasn't received keep buffering
