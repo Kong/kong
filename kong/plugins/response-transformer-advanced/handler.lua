@@ -1,4 +1,3 @@
-local BasePlugin = require "kong.plugins.base_plugin"
 local body_transformer = require "kong.plugins.response-transformer-advanced.body_transformer"
 local header_transformer = require "kong.plugins.response-transformer-advanced.header_transformer"
 local feature_flag_limit_body = require "kong.plugins.response-transformer-advanced.feature_flags.limit_body"
@@ -9,22 +8,13 @@ local concat = table.concat
 local kong = kong
 local ngx = ngx
 
-local ResponseTransformerHandler = BasePlugin:extend()
-
-
-function ResponseTransformerHandler:new()
-  ResponseTransformerHandler.super.new(self, "response-transformer-advanced")
-end
+local ResponseTransformerHandler = {}
 
 function ResponseTransformerHandler:init_worker()
-  ResponseTransformerHandler.super.init_worker(self, "response-transformer-advanced")
-
   feature_flag_limit_body.init_worker()
 end
 
 function ResponseTransformerHandler:header_filter(conf)
-  ResponseTransformerHandler.super.header_filter(self)
-
   if not feature_flag_limit_body.header_filter() then
     return
   end
@@ -33,8 +23,6 @@ function ResponseTransformerHandler:header_filter(conf)
 end
 
 function ResponseTransformerHandler:body_filter(conf)
-  ResponseTransformerHandler.super.body_filter(self)
-
   local ctx = ngx.ctx
 
   -- Initializes context here in case this plugin's access phase

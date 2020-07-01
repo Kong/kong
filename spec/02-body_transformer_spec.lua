@@ -211,7 +211,6 @@ describe("Plugin: response-transformer-advanced", function()
         config = ngx.config,
       }
       handler = require("kong.plugins.response-transformer-advanced.handler")
-      handler:new()
     end)
 
     teardown(function()
