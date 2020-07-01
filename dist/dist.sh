@@ -32,15 +32,15 @@ export BUILD_DIR=$OUTPUT_DIR
 ACTION=$1
 shift
 
-if [[ $ACTION == "build" ]]; then
-  $KONG_DIST_PATH/package.sh "$@"
-elif [[ $ACTION == "release" ]]; then
-  # We have 0 trust that the release script works if it does not run
-  # within its folder. So:
-  pushd $KONG_DIST_PATH
-    ./release.sh "$@"
-  popd
-else
-  echo $ACTION "$@"
-fi
-
+case $ACTION in
+  release)
+    # We have 0 trust that the release script works if it does not run
+    # within its folder. So:
+    pushd $KONG_DISTRIBUTIONS_PATH
+      ./release.sh "$@"
+    popd
+    ;;
+  *)
+    $KONG_DISTRIBUTIONS_PATH/package.sh $ACTION "$@"
+    ;;
+esac
