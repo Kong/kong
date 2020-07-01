@@ -103,7 +103,6 @@ local function add_top_level_entities(fields, entities)
     definition.endpoint_key = nil
     definition.cache_key = nil
     definition.cache_key_set = nil
-    definition.ttl = nil
     records[entity] = definition
     add_extra_attributes(records[entity].fields, {
       _comment = true,
