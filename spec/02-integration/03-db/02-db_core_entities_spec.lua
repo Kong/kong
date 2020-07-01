@@ -707,6 +707,7 @@ for _, strategy in helpers.each_strategy() do
             service         = route.service,
             https_redirect_status_code = 426,
             request_buffering = true,
+            response_buffering = true,
           }, route)
         end)
 
@@ -750,6 +751,7 @@ for _, strategy in helpers.each_strategy() do
             service         = route.service,
             https_redirect_status_code = 426,
             request_buffering = true,
+            response_buffering = true,
           }, route)
         end)
 
@@ -791,6 +793,7 @@ for _, strategy in helpers.each_strategy() do
             service         = ngx.null,
             https_redirect_status_code = 426,
             request_buffering = true,
+            response_buffering = true,
           }, route)
         end)
 
@@ -1104,6 +1107,7 @@ for _, strategy in helpers.each_strategy() do
             service         = route.service,
             https_redirect_status_code = 426,
             request_buffering = true,
+            response_buffering = true,
           }, new_route)
 
 
@@ -1138,6 +1142,7 @@ for _, strategy in helpers.each_strategy() do
               service         = route.service,
               https_redirect_status_code = 426,
               request_buffering = true,
+              response_buffering = true,
             }, new_route)
           end)
 
@@ -1982,6 +1987,7 @@ for _, strategy in helpers.each_strategy() do
           },
           https_redirect_status_code = 426,
           request_buffering = true,
+          response_buffering = true,
         }, route)
 
         local route_in_db, err, err_t = db.routes:select({ id = route.id }, { nulls = true })

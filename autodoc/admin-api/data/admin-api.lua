@@ -873,6 +873,13 @@ return {
             chunked transfer encoding.
           ]]
         },
+        response_buffering = {
+          description = [[
+            Whether to enable response body buffering or not. With HTTP 1.1, it
+            may make sense to turn this off on services that send data with chunked
+            transfer encoding.
+          ]]
+        },
         service = {
           description = [[
             The Service this Route is associated to.

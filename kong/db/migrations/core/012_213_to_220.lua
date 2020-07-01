@@ -16,6 +16,14 @@ return {
         -- Do nothing, accept existing state
       END;
       $$;
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "routes" ADD "response_buffering" BOOLEAN;
+      EXCEPTION WHEN DUPLICATE_COLUMN THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
     ]],
   },
   cassandra = {
@@ -30,6 +38,7 @@ return {
       );
 
       ALTER TABLE routes ADD request_buffering boolean;
+      ALTER TABLE routes ADD response_buffering boolean;
     ]],
   }
 }

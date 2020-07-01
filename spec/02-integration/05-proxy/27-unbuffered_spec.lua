@@ -191,5 +191,108 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(true, unbuffered_response_latency > unbuffered_request_latency)
       end)
     end)
+
+    describe("number of response chunks", function()
+      local buffered_chunks = 0
+      local unbuffered_chunks = 0
+      local unbuffered_request_chunks = 0
+      local unbuffered_response_chunks = 0
+
+      it("is calculated for buffered", function()
+        warmup_client:get("/buffered/stream/1")
+
+        local res = proxy_client:get("/buffered/stream/1000")
+
+        assert.equal(200, res.status)
+
+        local reader = res.body_reader
+
+        repeat
+          local chunk, err = reader(8192 * 640)
+
+          assert.equal(nil, err)
+
+          if chunk then
+            buffered_chunks = buffered_chunks + 1
+          end
+        until not chunk
+      end)
+
+      it("is calculated for unbuffered", function()
+        warmup_client:get("/unbuffered/stream/1")
+
+        local res = proxy_client:get("/unbuffered/stream/1000")
+
+        assert.equal(200, res.status)
+
+        local reader = res.body_reader
+
+        repeat
+          local chunk, err = reader(8192 * 640)
+
+          assert.equal(nil, err)
+
+          if chunk then
+            unbuffered_chunks = unbuffered_chunks + 1
+          end
+        until not chunk
+      end)
+
+      it("is calculated for unbuffered request", function()
+        warmup_client:get("/unbuffered-request/stream/1")
+
+        local res = proxy_client:get("/unbuffered-request/stream/1000")
+
+        assert.equal(200, res.status)
+
+        local reader = res.body_reader
+
+        repeat
+          local chunk, err = reader(8192 * 640)
+
+          assert.equal(nil, err)
+
+          if chunk then
+            unbuffered_request_chunks = unbuffered_request_chunks + 1
+          end
+        until not chunk
+      end)
+
+      it("is calculated for unbuffered response", function()
+        warmup_client:get("/unbuffered-response/stream/1")
+
+        local res = proxy_client:get("/unbuffered-response/stream/1000")
+
+        assert.equal(200, res.status)
+
+        local reader = res.body_reader
+
+        repeat
+          local chunk, err = reader(8192 * 640)
+
+          assert.equal(nil, err)
+
+          if chunk then
+            unbuffered_response_chunks = unbuffered_response_chunks + 1
+          end
+        until not chunk
+      end)
+
+      it("is greater for unbuffered than buffered", function()
+        assert.equal(true, unbuffered_chunks > buffered_chunks)
+      end)
+
+      it("is greater for unbuffered than unbuffered request", function()
+        assert.equal(true, unbuffered_chunks > unbuffered_request_chunks)
+      end)
+
+      it("is greater for unbuffered response than buffered", function()
+        assert.equal(true, unbuffered_response_chunks > buffered_chunks)
+      end)
+
+      it("is greater for unbuffered response than unbuffered request", function()
+        assert.equal(true, unbuffered_response_chunks > unbuffered_request_chunks)
+      end)
+    end)
   end)
 end
