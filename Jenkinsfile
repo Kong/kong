@@ -69,6 +69,10 @@ pipeline {
             sh "./dist/dist.sh build ubuntu:18.04 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh release -V -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:18.04 -e -R ${env.RELEASE_SCOPE}"
           },
+          ubuntu2004: {
+            sh "./dist/dist.sh build ubuntu:20.04 ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh release -V -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:20.04 -e -R ${env.RELEASE_SCOPE}"
+          },
           amazonlinux1: {
             sh "./dist/dist.sh build amazonlinux:1 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh release -V -u $BINTRAY_USR -k $BINTRAY_PSW -p amazonlinux:1 -e -R ${env.RELEASE_SCOPE}"
