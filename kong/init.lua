@@ -851,7 +851,12 @@ function Kong.balancer()
       return ngx.exit(errcode)
     end
 
-    balancer_set_host_header(balancer_data)
+    ok, err = balancer_set_host_header(balancer_data)
+    if not ok then
+      ngx_log(ngx_ERR, "failed to set balancer Host header: ", err)
+
+      return ngx.exit(500)
+    end
 
   else
     -- first try, so set the max number of retries

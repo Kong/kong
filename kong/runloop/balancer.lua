@@ -4,10 +4,10 @@ local workspaces = require "kong.workspaces"
 local utils = require "kong.tools.utils"
 local hooks = require "kong.hooks"
 local get_certificate = require("kong.runloop.certificate").get_certificate
+local recreate_request = require("ngx.balancer").recreate_request
 
 -- due to startup/require order, cannot use the ones from 'singletons' here
 local dns_client = require "resty.dns.client"
-local kong_balancer = require "resty.kong.balancer"
 
 local table_concat = table.concat
 local crc32 = ngx.crc32_short
@@ -21,6 +21,8 @@ local null = ngx.null
 local find = string.find
 local timer_at = ngx.timer.at
 local run_hook = hooks.run_hook
+local var = ngx.var
+local get_phase = ngx.get_phase
 
 local CRIT  = ngx.CRIT
 local ERR   = ngx.ERR
@@ -1320,12 +1322,13 @@ local function set_host_header(balancer_data)
       var.upstream_host = upstream_host
 
       if phase == "balancer" then
-        kong_balancer.update_proxy_request()
+        return recreate_request()
       end
     end
 
   end
 
+  return true
 end
 
 

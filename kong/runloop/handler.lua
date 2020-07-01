@@ -1247,7 +1247,12 @@ return {
 
       var.upstream_scheme = balancer_data.scheme
 
-      balancer.set_host_header(balancer_data)
+      local ok, err = balancer.set_host_header(balancer_data)
+      if not ok then
+        ngx.log(ngx.ERR, "failed to set balancer Host header: ", err)
+
+        return ngx.exit(500)
+      end
 
       -- clear hop-by-hop request headers:
       for _, header_name in csv(var.http_connection) do
