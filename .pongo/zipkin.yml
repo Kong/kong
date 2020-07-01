@@ -9,6 +9,7 @@ services:
       test:
       - CMD
       - wget
+      - -O/dev/null
       - localhost:9411/health
       timeout: 10s
     restart: on-failure

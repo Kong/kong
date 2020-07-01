@@ -22,7 +22,7 @@ env:
   - secure: F4yDGkmDs7gjV+1X4FWaxuXonOQxSMVx6dtYiNh09h6PFAi5JopjRy4hnqmE35djoaAP8mQ1vXG1yv1O3Ry3ivIq5XDNe7sb6/dP495bVKDDumnAf9E+g0eLf/3OqUiuaYqrcf4+KVn9Y91t5z7h5wdNdDbSppkg043x3/vXWBS7vVjmIjJ1FRwfYjdWqiI3Hmthkmw7rrZYFnDluneRlh+F44Gd2wxbKwWGEl6PmM12mTV9RNvs0zpljDd64DL1PM+q37YtrNBF4yMQLzUiVTFf48H18Yls/6wMjA09UFrqdWHYZRk9D0T7ms7JGkBV/UEMGMqb5bSjOWF126EMiZWcuPvf1s1Wx3SOWE7nesj5IOBri6O0wIT8a0QcfcdaOvOhvtLhq20guaSqOwwMIKehJWOXfV/IV4E2ht7ID3BW21AFmlDhtTPgNguAY9bYk1fs9+LsyGE685ObIm8gQDYcH+8vNHPMDWjMXPPbH45H23ag2X3lwmu6VpxPtLO05waKlGYO2m8VuXvz37u8GlPttY95Y3T1lNBRieEJ8maCv9ttdciNR7CPe7luKO3GbEsVQLCfeBlM1Z907f3brfgGilcerk0IX6Vs7umhngX7S8Iqc9IHWcqzsY6iShD7LX0ptKSl1fqZi660cWyI67dv2siECL5PmgbWV7jreeg=
 
 install:
-- git clone --single-branch --branch zipkin https://github.com/Kong/kong-pongo ../kong-pongo
+- git clone --single-branch https://github.com/Kong/kong-pongo ../kong-pongo
 - "../kong-pongo/pongo.sh up"
 - "../kong-pongo/pongo.sh build"
 
