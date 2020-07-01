@@ -65,7 +65,8 @@ git-add-remote() {
 main() {
   parse_args "$@"
   git-add-remote $f_repo
-  git remote set-url --push $f_repo DISABLED
+
+  [[ $f_repo == "kong" ]] && git remote set-url --push $f_repo DISABLED
 
   git-add-remote $t_repo
 
@@ -73,7 +74,14 @@ main() {
   git fetch $t_repo
 
   git push $t_repo $f_repo/$f_branch
-  browser "https://github.com/Kong/kong-ee/compare/${t_branch}...${f_branch}?expand=1"
+
+  repo_text=""
+  [[ $f_repo == "kong" ]] && repo_text="kong "
+
+  title="Merge ${repo_text}$f_branch into $t_branch $(date +%F)"
+  body="BE CAREFUL RESOLVING CONFLICTS IN GH WEB INTERFACE: https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/resolving-a-merge-conflict-on-github"
+
+  browser "https://github.com/Kong/kong-ee/compare/${t_branch}...${f_branch}?expand=1&pull_request[title]=$title&pull_request[body]=$body"
 }
 
 
