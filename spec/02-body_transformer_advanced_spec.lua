@@ -13,8 +13,9 @@ describe("Plugin: response-transformer-advanced", function()
           json   = {}
         },
         add      = {
-          json   = {"p1:v1", "p3:value:3", "p4:\"v1\""},
-          if_status = {"500"}
+          json   = {"p1:v1", "p3:value:3", "p4:\"v1\"", "p5:-1", "p6:false", "p7:true"},
+          json_types = {"string", "string", "string", "number", "boolean", "boolean"},
+          if_status  = {"500"}
         },
         append   = {
           json   = {}
@@ -40,7 +41,7 @@ describe("Plugin: response-transformer-advanced", function()
         -- status code matches
         local body = body_transformer.transform_json_body(conf_skip, json, 500)
         local body_json = cjson.decode(body)
-        assert.same({p1 = "v1", p2 = "v1", p3 = "value:3", p4 = '"v1"', a = {}}, body_json)
+        assert.same({p1 = "v1", p2 = "v1", p3 = "value:3", p4 = '"v1"', p5 = -1, p6 = false, p7 = true, a = {}}, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
 
         -- status code doesn't match
@@ -48,6 +49,48 @@ describe("Plugin: response-transformer-advanced", function()
         body_json = cjson.decode(body)
         assert.same({p2 = "v1", a = {}}, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
+      end)
+
+      it("number", function()
+        local json = [[{"p2":-1}]]
+
+        -- status code matches
+        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({p1 = "v1", p2 = -1, p3 = "value:3", p4 = '"v1"', p5 = -1, p6 = false, p7 = true}, body_json)
+
+        -- status code doesn't match
+        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        body_json = cjson.decode(body)
+        assert.same({p2 = -1}, body_json)
+      end)
+
+      it("boolean", function()
+        local json = [[{"p2":false}]]
+
+        -- status code matches
+        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({p1 = "v1", p2 = false, p3 = "value:3", p4 = '"v1"', p5 = -1, p6 = false, p7 = true}, body_json)
+
+        -- status code doesn't match
+        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        body_json = cjson.decode(body)
+        assert.same({p2 = false}, body_json)
+      end)
+
+      it("string", function()
+        local json = [[{"p2":"v1"}]]
+
+        -- status code matches
+        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({p1 = "v1", p2 = "v1", p3 = "value:3", p4 = '"v1"', p5 = -1, p6 = false, p7 = true}, body_json)
+
+        -- status code doesn't match
+        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        body_json = cjson.decode(body)
+        assert.same({p2 = "v1"}, body_json)
       end)
     end)
 
@@ -63,7 +106,8 @@ describe("Plugin: response-transformer-advanced", function()
           json   = {}
         },
         append   = {
-          json   = {"p1:v1", "p3:\"v1\""},
+          json   = {"p1:v1", "p3:\"v1\"", "p4:-1", "p5:false", "p6:true"},
+          json_types = {"string", "string", "number", "boolean", "boolean"},
           if_status = {"500"}
         },
         whitelist   = {
@@ -87,7 +131,7 @@ describe("Plugin: response-transformer-advanced", function()
         -- status code matches
         local body = body_transformer.transform_json_body(conf_skip, json, 500)
         local body_json = cjson.decode(body)
-        assert.same({ p2 = "v1", p1 = {"v1"}, p3 = {'"v1"'}, a = {} }, body_json)
+        assert.same({ p2 = "v1", p1 = {"v1"}, p3 = {'"v1"'}, a = {}, p4 = {-1}, p5 = {false}, p6 = {true} }, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
 
         -- status doesn't match
@@ -95,6 +139,48 @@ describe("Plugin: response-transformer-advanced", function()
         body_json = cjson.decode(body)
         assert.same({ p2 = "v1", a = {} }, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
+      end)
+
+      it("number", function()
+        local json = [[{"p4":"v2"}]]
+
+        -- status code matches
+        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({p1 = {"v1"}, p3 = {'"v1"'}, p4={"v2", -1}, p5 = {false}, p6 = {true}}, body_json)
+
+        -- status code doesn't match
+        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        body_json = cjson.decode(body)
+        assert.same({p4 = "v2"}, body_json)
+      end)
+
+      it("boolean", function()
+        local json = [[{"p5":"v5", "p6":"v6"}]]
+
+        -- status code matches
+        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({p1 = {"v1"}, p3 = {'"v1"'}, p4={-1}, p5 = {"v5", false}, p6 = {"v6", true}}, body_json)
+
+        -- status code doesn't match
+        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        body_json = cjson.decode(body)
+        assert.same({p5 = "v5", p6 = "v6"}, body_json)
+      end)
+
+      it("string", function()
+        local json = [[{"p1":"v2"}]]
+
+        -- status code matches
+        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({p1 = {"v2", "v1"}, p3 = {'"v1"'}, p4={-1}, p5 = {false}, p6 = {true}}, body_json)
+
+        -- status code doesn't match
+        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        body_json = cjson.decode(body)
+        assert.same({p1 = "v2"}, body_json)
       end)
     end)
 
@@ -198,7 +284,8 @@ describe("Plugin: response-transformer-advanced", function()
           json   = {}
         },
         replace  = {
-          json   = {"p1:v2", "p2:\"v2\""},
+          json   = {"p1:v2", "p2:\"v2\"", "p3:-1", "p4:false", "p5:true"},
+          json_types = {"string", "string", "number", "boolean", "boolean"},
           if_status = {"500"}
         },
         add      = {
@@ -236,6 +323,34 @@ describe("Plugin: response-transformer-advanced", function()
         local body_json = cjson.decode(body)
         assert.same({p1 = "v1", p2 = "v1", a = {}}, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
+      end)
+
+      it("number", function()
+        local json = [[{"p3" : "v1"}]]
+
+        -- status code matches
+        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({p3 = -1}, body_json)
+
+        -- status code doesn't match
+        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        body_json = cjson.decode(body)
+        assert.same({p3 = "v1"}, body_json)
+      end)
+
+      it("boolean", function()
+        local json = [[{"p4" : "v4", "p5" : "v5"}]]
+
+        -- status code matches
+        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({p4 = false, p5 = true}, body_json)
+
+        -- status code doesn't match
+        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        body_json = cjson.decode(body)
+        assert.same({p4 = "v4", p5 = "v5"}, body_json)
       end)
     end)
 

@@ -111,6 +111,14 @@ return {
     { config = { type = "record", fields = {
       { remove = { type = "record", fields = {
         { json = strings_array },
+        { json_types = {
+          type = "array",
+          default = {},
+          elements = {
+            type = "string",
+            one_of = { "boolean", "number", "string" }
+          }
+        } },
         { headers = strings_array },
         { if_status = status_array },
       }}},
