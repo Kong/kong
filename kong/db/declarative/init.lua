@@ -292,8 +292,7 @@ local function find_or_create_current_workspace(name)
   if not workspace then
     workspace, err, err_t = kong.db.workspaces:upsert_by_name(name, {
       name = name,
-      no_broadcast_crud_event = true,
-    })
+    }, { no_broadcast_crud_event = true })
     if err then
       return nil, err, err_t
     end
