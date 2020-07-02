@@ -1,6 +1,6 @@
 local transform_utils = require "kong.plugins.response-transformer-advanced.transform_utils"
 
-local cjson = require "cjson.safe"
+local cjson = require("cjson.safe").new()
 local inspect = require("inspect")
 
 local skip_transform = transform_utils.skip_transform
@@ -11,6 +11,9 @@ local sub = string.sub
 local gsub = string.gsub
 local match = string.match
 local lower = string.lower
+
+
+cjson.decode_array_with_array_mt(true)
 
 
 local noop = function() end

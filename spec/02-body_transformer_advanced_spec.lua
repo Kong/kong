@@ -1,5 +1,6 @@
 local body_transformer = require "kong.plugins.response-transformer-advanced.body_transformer"
-local cjson = require "cjson"
+local cjson = require("cjson.safe").new()
+cjson.decode_array_with_array_mt(true)
 
 describe("Plugin: response-transformer-advanced", function()
   describe("transform_json_body()", function()
@@ -32,6 +33,22 @@ describe("Plugin: response-transformer-advanced", function()
         local body_json = cjson.decode(body)
         assert.same({p2 = "v1"}, body_json)
       end)
+
+      it("preserves empty arrays", function()
+        local json = [[{"p2":"v1", "a":[]}]]
+
+        -- status code matches
+        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({p1 = "v1", p2 = "v1", p3 = "value:3", p4 = '"v1"', a = {}}, body_json)
+        assert.equals('[]', cjson.encode(body_json.a))
+
+        -- status code doesn't match
+        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        body_json = cjson.decode(body)
+        assert.same({p2 = "v1", a = {}}, body_json)
+        assert.equals('[]', cjson.encode(body_json.a))
+      end)
     end)
 
     describe("append", function()
@@ -62,6 +79,22 @@ describe("Plugin: response-transformer-advanced", function()
         local body = body_transformer.transform_json_body(conf_skip, json, 200)
         local body_json = cjson.decode(body)
         assert.same({p3 = "v2"}, body_json)
+      end)
+
+      it("preserves empty arrays", function()
+        local json = [[{"p2":"v1", "a":[]}]]
+
+        -- status code matches
+        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({ p2 = "v1", p1 = {"v1"}, p3 = {'"v1"'}, a = {} }, body_json)
+        assert.equals('[]', cjson.encode(body_json.a))
+
+        -- status doesn't match
+        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        body_json = cjson.decode(body)
+        assert.same({ p2 = "v1", a = {} }, body_json)
+        assert.equals('[]', cjson.encode(body_json.a))
       end)
     end)
 
@@ -94,12 +127,28 @@ describe("Plugin: response-transformer-advanced", function()
         local body_json = cjson.decode(body)
         assert.same({p1 = "v1", p2 = "v1"}, body_json)
       end)
+
+      it("preserves empty arrays", function()
+        local json = [[{"p1" : "v1", "p2" : "v1", "a": []}]]
+
+        -- status code matches
+        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({a = {}}, body_json)
+        assert.equals('[]', cjson.encode(body_json.a))
+
+        -- status code doesn't match
+        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        body_json = cjson.decode(body)
+        assert.same({p1 = "v1", p2 = "v1", a = {}}, body_json)
+        assert.equals('[]', cjson.encode(body_json.a))
+      end)
     end)
 
     describe("whitelist", function()
       local conf_skip = {
         whitelist   = {
-          json   = {"p1", "p2"},
+          json   = {"p1", "p2", "a"},
           if_status = {"500"}
         },
         replace  = {
@@ -124,6 +173,22 @@ describe("Plugin: response-transformer-advanced", function()
         local body = body_transformer.transform_json_body(conf_skip, json, 200)
         local body_json = cjson.decode(body)
         assert.same({p1 = "v1", p2 = "v1"}, body_json)
+      end)
+
+      it("preserves empty arrays", function()
+        local json = [[{"p1" : "v1", "p2" : "v1", "a": []}]]
+
+        -- status code matches
+        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({p1 = "v1", p2 = "v1", a = {}}, body_json)
+        assert.equals('[]', cjson.encode(body_json.a))
+
+        -- status code doesn't match
+        body = body_transformer.transform_json_body(conf_skip, json, 200)
+        body_json = cjson.decode(body)
+        assert.same({p1 = "v1", p2 = "v1", a = {}}, body_json)
+        assert.equals('[]', cjson.encode(body_json.a))
       end)
     end)
 
@@ -155,6 +220,22 @@ describe("Plugin: response-transformer-advanced", function()
         local body = body_transformer.transform_json_body(conf_skip, json, 200)
         local body_json = cjson.decode(body)
         assert.same({p2 = "v1"}, body_json)
+      end)
+
+      it("preserves empty arrays", function()
+        local json = [[{"p1" : "v1", "p2" : "v1", "a": []}]]
+
+        -- status code matches
+        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({p1 = "v2", p2 = '"v2"', a = {}}, body_json)
+        assert.equals('[]', cjson.encode(body_json.a))
+
+        -- status code doesn't match
+        local body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local body_json = cjson.decode(body)
+        assert.same({p1 = "v1", p2 = "v1", a = {}}, body_json)
+        assert.equals('[]', cjson.encode(body_json.a))
       end)
     end)
 
@@ -351,6 +432,22 @@ describe("Plugin: response-transformer-advanced", function()
         local body = body_transformer.transform_json_body(conf_skip, json, 200)
         local body_json = cjson.decode(body)
         assert.same({p1 = "v1", p2 = "v1"}, body_json)
+      end)
+
+      it("preserves empty array", function()
+        local json = [[{"p1" : "v1", "p2" : "v1", "a" : []}]]
+
+        -- status code matches
+        local body = body_transformer.transform_json_body(conf_skip, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({p2 = "v2", p3 = {"v1", "v2"}, a = {}}, body_json)
+        assert.equals('[]', cjson.encode(body_json.a))
+
+        -- status code doesn't match
+        local body = body_transformer.transform_json_body(conf_skip, json, 200)
+        local body_json = cjson.decode(body)
+        assert.same({p1 = "v1", p2 = "v1", a = {}}, body_json)
+        assert.equals('[]', cjson.encode(body_json.a))
       end)
     end)
   end)
