@@ -8,6 +8,7 @@ return {
   admin_api_name = "audit/requests",
   workspaceable = false,
   ttl = true,
+  db_export = false,
 
   fields = {
     { request_id = {

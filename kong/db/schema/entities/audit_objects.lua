@@ -8,6 +8,7 @@ return {
   admin_api_name = "audit/objects",
   workspaceable = false,
   ttl = true,
+  db_export = false,
 
   fields = {
     { id = typedefs.uuid { required = true } },
