@@ -1,11 +1,13 @@
 local BasePlugin = require "kong.plugins.base_plugin"
-local body_filter = require "kong.plugins.response-transformer-advanced.body_transformer"
-local header_filter = require "kong.plugins.response-transformer-advanced.header_transformer"
+local body_transformer = require "kong.plugins.response-transformer-advanced.body_transformer"
+local header_transformer = require "kong.plugins.response-transformer-advanced.header_transformer"
 local feature_flag_limit_body = require "kong.plugins.response-transformer-advanced.feature_flags.limit_body"
 
-local is_body_transform_set = header_filter.is_body_transform_set
-local is_json_body = header_filter.is_json_body
-local table_concat = table.concat
+local is_body_transform_set = header_transformer.is_body_transform_set
+local is_json_body = header_transformer.is_json_body
+local concat = table.concat
+local kong = kong
+local ngx = ngx
 
 local ResponseTransformerHandler = BasePlugin:extend()
 
@@ -27,7 +29,7 @@ function ResponseTransformerHandler:header_filter(conf)
     return
   end
 
-  header_filter.transform_headers(conf, ngx.header, ngx.status)
+  header_transformer.transform_headers(conf, ngx.header, ngx.status)
 end
 
 function ResponseTransformerHandler:body_filter(conf)
@@ -57,11 +59,11 @@ function ResponseTransformerHandler:body_filter(conf)
     end
 
     -- last piece of body is ready; do the thing
-    local resp_body = table_concat(ctx.rt_body_chunks)
+    local resp_body = concat(ctx.rt_body_chunks)
 
     -- raw body transformation takes precedence over
     -- json transforms
-    local replaced_body = body_filter.replace_body(conf, resp_body, ngx.status)
+    local replaced_body = body_transformer.replace_body(conf, resp_body, ngx.status)
 
     if replaced_body then
       ngx.arg[1] = replaced_body
@@ -69,9 +71,9 @@ function ResponseTransformerHandler:body_filter(conf)
     end
 
     -- transform json
-    if is_json_body(ngx.header["content-type"]) then
+    if is_json_body(kong.response.get_header("Content-Type")) then
       local body, err
-      body, err = body_filter.transform_json_body(conf, resp_body, ngx.status)
+      body, err = body_transformer.transform_json_body(conf, resp_body, ngx.status)
       ngx.arg[1] = body
       if err then
         kong.log.err(err)

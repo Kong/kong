@@ -1,6 +1,58 @@
-local header_transformer = require "kong.plugins.response-transformer-advanced.header_transformer"
+local re_match   = ngx.re.match
+local re_find    = ngx.re.find
+local add_header = require("ngx.resp").add_header
+
+local function get_headers(headers)
+  _G.ngx.resp.get_headers = function()
+    return headers
+  end
+
+  _G.ngx.header = headers
+
+  return headers
+end
 
 describe("Plugin: response-transformer-advanced", function()
+  local header_transformer
+
+  setup(function()
+    _G.ngx = {
+      headers_sent = false,
+      config = {
+        subsystem = { "http" }
+      },
+      resp = {
+        add_header = add_header
+      },
+      re = {
+        match = re_match,
+        find  = re_find
+      }
+    }
+    _G.kong = {
+      response = require "kong.pdk.response".new(),
+      ctx = {
+        core = {
+          phase = 0x00000200,
+        }
+      }
+    }
+
+    -- mock since FFI based ngx.resp.add_header won't work in this setup
+    _G.kong.response.add_header = function(name, value)
+      local new_value = _G.kong.response.get_headers()[name]
+      if type(new_value) ~= "table" then
+        new_value = { new_value }
+      end
+
+      table.insert(new_value, value)
+
+      ngx.header[name] = new_value
+    end
+
+    header_transformer = require "kong.plugins.response-transformer-advanced.header_transformer"
+  end)
+
   describe("execute_headers()", function()
     local default_conf = {
       remove = {
@@ -27,6 +79,10 @@ describe("Plugin: response-transformer-advanced", function()
         json = {},
         headers = {},
         if_status = {}
+      },
+      transform = {
+        functions = {},
+        if_status = {}
       }
     }
 
@@ -43,9 +99,11 @@ describe("Plugin: response-transformer-advanced", function()
       local conf_skip = get_assign(default_conf, {
         remove    = {
           headers = {
-            "h1", "h2",
+            "h1",
+            "h2",
             "h3:v1",
-            "h4:v1", "h4:v2",
+            "h4:v1",
+            "h4:v2",
             "h5:v1",
             "h6:v1",
             "h7:v1",
@@ -79,21 +137,21 @@ describe("Plugin: response-transformer-advanced", function()
       })
 
       it("skips removing headers if response code doesn't match", function()
-        local ngx_headers = {h1 = "value1", h2 = {"value2a", "value2b"}}
-        local ngx_headers_copy = {h1 = "value1", h2 = {"value2a", "value2b"}}
-        header_transformer.transform_headers(conf_skip, ngx_headers, 200)
-        assert.same(ngx_headers, ngx_headers_copy)
+        local headers = get_headers({ h1 = "value1", h2 = { "value2a", "value2b" } })
+        local headers_copy = { h1 = "value1", h2 = { "value2a", "value2b" } }
+        header_transformer.transform_headers(conf_skip, headers, 200)
+        assert.same(headers, headers_copy)
       end)
 
-      it("removes headers if response code is in given range", function()
-        local ngx_headers = {h1 = "value1", h2 = {"value2a", "value2b"}}
-        local ngx_headers_copy = {h1 = "value1", h2 = {"value2a", "value2b"}}
-        header_transformer.transform_headers(conf_skip, ngx_headers, 201)
-        assert.is_not.same(ngx_headers, ngx_headers_copy)
+      it("removes headers if response code is in given range #a", function()
+        local headers = get_headers({ h1 = "value1", h2 = { "value2a", "value2b" } })
+        local headers_copy = { h1 = "value1", h2 = { "value2a", "value2b" } }
+        header_transformer.transform_headers(conf_skip, headers, 201)
+        assert.is_not.same(headers, headers_copy)
       end)
 
       it("specific header value", function()
-        local req_ngx_headers = {
+        local headers = get_headers({
           h1 = {"v1", "v2", "v3"},
           h2 = {"v2"},
           h3 = {"v1"},
@@ -120,9 +178,10 @@ describe("Plugin: response-transformer-advanced", function()
           ["Set-Cookie"] = "JSESSIONID=12345,path=/",
           h24 = "v1,v2,v3",
           h25 = "v1;v2;v3",
-        }
+        })
 
-        header_transformer.transform_headers(conf_skip, req_ngx_headers, 201)
+        header_transformer.transform_headers(conf_skip, headers, 201)
+
         assert.same({
           h4 = {"v3"},
           h5 = {"v2"},
@@ -144,7 +203,7 @@ describe("Plugin: response-transformer-advanced", function()
           h22 = "v22",
           ["Set-Cookie"] = "path=/",
           h24 = "v2,v3",
-        }, req_ngx_headers)
+        }, headers)
       end)
     end)
 
@@ -161,17 +220,17 @@ describe("Plugin: response-transformer-advanced", function()
       })
 
       it("is skipped if response code doesn't match", function()
-        local req_ngx_headers = {h1 = "value1", h2 = {"value2a", "value2b"}}
-        local req_ngx_headers_copy = {h1 = "value1", h2 = {"value2a", "value2b"}}
-        header_transformer.transform_headers(conf_skip, req_ngx_headers, 200)
-        assert.same(req_ngx_headers, req_ngx_headers_copy)
+        local headers = get_headers({ h1 = "value1", h2 = { "value2a", "value2b" } })
+        local headers_copy = { h1 = "value1", h2 = { "value2a", "value2b" } }
+        header_transformer.transform_headers(conf_skip, headers, 200)
+        assert.same(headers, headers_copy)
       end)
 
       it("is not skipped if response code is in range", function()
-        local req_ngx_headers = {h1 = "value1", h2 = {"value2a", "value2b"}}
-        local req_ngx_headers_copy = {h1 = "value1", h2 = {"value2a", "value2b"}}
-        header_transformer.transform_headers(conf_skip, req_ngx_headers, 205)
-        assert.is_not.same(req_ngx_headers, req_ngx_headers_copy)
+        local headers = get_headers({ h1 = "value1", h2 = { "value2a", "value2b" } })
+        local headers_copy = { h1 = "value1", h2 = { "value2a", "value2b" } }
+        header_transformer.transform_headers(conf_skip, headers, 205)
+        assert.is_not.same(headers, headers_copy)
       end)
     end)
 
@@ -192,17 +251,17 @@ describe("Plugin: response-transformer-advanced", function()
       end
 
       it("is skipped if response code doesn't match", function ()
-        local headers = { old1 = 42, set_name = "x was here" }
+        local headers = get_headers({ old1 = 42, set_name = "x was here" })
         local headers_cpy = shallow_cpy(headers)
         header_transformer.transform_headers(conf, headers, 401)
-        assert.same(headers, headers_cpy);
+        assert.same(headers, headers_cpy)
       end)
 
       it("renames header if response code is in range", function ()
-        local headers = { old1 = 42, set_name = "x was here" }
+        local headers = get_headers({ old1 = "42", set_name = "x was here" })
         header_transformer.transform_headers(conf, headers, 201)
         assert.same(headers, {
-          new1 = 42,
+          new1 = "42",
           ["Set-Name"] = "x was here"
         })
       end)
@@ -218,17 +277,17 @@ describe("Plugin: response-transformer-advanced", function()
       })
 
       it("is skipped if response code doesn't match", function()
-        local req_ngx_headers = {h1 = "v1"}
-        local req_ngx_headers_copy = {h1 = "v1"}
-        header_transformer.transform_headers(conf_skip, req_ngx_headers, 200)
-        assert.same(req_ngx_headers, req_ngx_headers_copy)
+        local headers = get_headers({ h1 = "v1" })
+        local headers_copy = {h1 = "v1"}
+        header_transformer.transform_headers(conf_skip, headers, 200)
+        assert.same(headers, headers_copy)
       end)
 
       it("is not skipped if response code is in range", function()
-        local req_ngx_headers = {h1 = "v1"}
-        local req_ngx_headers_copy = {h1 = "v1"}
-        header_transformer.transform_headers(conf_skip, req_ngx_headers, 201)
-        assert.is_not.same(req_ngx_headers, req_ngx_headers_copy)
+        local headers = get_headers({ h1 = "v1" })
+        local headers_copy = {h1 = "v1"}
+        header_transformer.transform_headers(conf_skip, headers, 201)
+        assert.is_not.same(headers, headers_copy)
       end)
     end)
 
@@ -245,14 +304,14 @@ describe("Plugin: response-transformer-advanced", function()
       })
 
       it("is skipped if response code doesn't match", function()
-        local req_ngx_headers = {}
-        header_transformer.transform_headers(conf_skip, req_ngx_headers, 200)
-        assert.same({}, req_ngx_headers)
+        local headers = get_headers({})
+        header_transformer.transform_headers(conf_skip, headers, 200)
+        assert.same({}, headers)
       end)
       it("is not skipped if response code is in range", function()
-        local req_ngx_headers = {}
-        header_transformer.transform_headers(conf_skip, req_ngx_headers, 205)
-        assert.is_not.same({}, req_ngx_headers)
+        local headers = get_headers({})
+        header_transformer.transform_headers(conf_skip, headers, 205)
+        assert.is_not.same({}, headers)
       end)
     end)
 
@@ -278,10 +337,10 @@ describe("Plugin: response-transformer-advanced", function()
       })
 
       it("transforms all headers is skipped if response code doesn't match", function()
-        local req_ngx_headers = {h1 = "v1", h2 = "v2"}
-        local req_ngx_headers_copy = {h1 = "v1", h2 = "v2"}
-        header_transformer.transform_headers(conf_skip, req_ngx_headers, 200)
-        assert.same(req_ngx_headers, req_ngx_headers_copy)
+        local headers = get_headers({ h1 = "v1", h2 = "v2" })
+        local headers_copy = { h1 = "v1", h2 = "v2" }
+        header_transformer.transform_headers(conf_skip, headers, 200)
+        assert.same(headers, headers_copy)
       end)
     end)
   end)

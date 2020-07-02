@@ -7,12 +7,23 @@ local type = type
 local find = string.find
 local lower = string.lower
 local match = string.match
+local kong = kong
+
+
+local noop = function() end
+
 
 local _M = {}
 
+
 local function iter(config_array)
-  return function(config_array, i, previous_header_name, previous_header_value)
+  if type(config_array) ~= "table" then
+    return noop
+  end
+
+  return function(config_array, i)
     i = i + 1
+
     local header_to_test = config_array[i]
     if header_to_test == nil then -- n + 1
       return nil
@@ -27,18 +38,6 @@ local function iter(config_array)
   end, config_array, 0
 end
 
-local function append_value(current_value, value)
-  local current_value_type = type(current_value)
-
-  if current_value_type == "string" then
-    return {current_value, value}
-  elseif current_value_type == "table" then
-    insert(current_value, value)
-    return current_value
-  else
-    return {value}
-  end
-end
 
 local function regex_match(ngx_header_value, header_value)
   local is_regex = header_value:sub(1, 1) == '/' and header_value:sub(-1) == '/'
@@ -60,7 +59,7 @@ local function regex_match(ngx_header_value, header_value)
 
     -- Match. Insert the uncaptured header values in a new table
     if not capture and not err then
-      table.insert(new_ngx_headers, v)
+      insert(new_ngx_headers, v)
 
     -- Bad regex or PCRE error. Do not remove this nginx header value
     elseif err then
@@ -124,10 +123,13 @@ local function is_json_body(content_type)
 end
 
 local function is_body_transform_set(conf)
-  return #conf.add.json > 0  or #conf.remove.json > 0 or #conf.replace.json > 0
-    or conf.replace.body or #conf.append.json > 0
-    or #conf.transform.functions > 0
-    or (conf.whitelist.json and #conf.whitelist.json > 0)
+  return #conf.add.json            > 0 or
+         #conf.remove.json         > 0 or
+         #conf.replace.json        > 0 or
+         #conf.append.json         > 0 or
+         #conf.transform.functions > 0 or
+         conf.replace.body or
+         (conf.whitelist.json and #conf.whitelist.json > 0)
 end
 
 -- export utility functions
@@ -135,27 +137,31 @@ _M.is_json_body = is_json_body
 _M.is_body_transform_set = is_body_transform_set
 
 ---
---   # Example:
---   ngx.headers = header_filter.transform_headers(conf, ngx.headers)
+-- # Example:
+-- ngx.headers = header_filter.transform_headers(conf, ngx.headers)
 -- We run transformations in following order: remove, replace, add, append.
 -- @param[type=table] conf Plugin configuration.
--- @param[type=table] ngx_headers Table of headers, that should be `ngx.headers`
+-- @param[type=table] headers Table of headers, that should be `ngx.headers`
 -- @return table A table containing the new headers.
-function _M.transform_headers(conf, ngx_headers, resp_code)
+function _M.transform_headers(conf, headers, resp_code)
   -- remove headers
   if not skip_transform(resp_code, conf.remove.if_status) then
     for _, header_name, header_value in iter(conf.remove.headers) do
-      ngx_headers[header_name] = remove_value(ngx_headers[header_name],
-                                              header_name, header_value)
+      local v = remove_value(headers[header_name], header_name, header_value)
+      if v == nil then
+        kong.response.clear_header(header_name)
+      else
+        headers[header_name] = v
+      end
     end
   end
 
   -- rename headers
   if conf.rename and not skip_transform(resp_code, conf.rename.if_status) then
       for _, old_header, new_header in iter(conf.rename.headers) do
-        if ngx_headers[old_header] ~= nil and new_header then
-          ngx_headers[new_header] = ngx_headers[old_header]
-          ngx_headers[old_header] = nil
+        if headers[old_header] ~= nil and new_header then
+          kong.response.set_header(new_header, headers[old_header])
+          kong.response.clear_header(old_header)
         end
       end
   end
@@ -163,8 +169,8 @@ function _M.transform_headers(conf, ngx_headers, resp_code)
   -- replace headers
   if not skip_transform(resp_code, conf.replace.if_status) then
     for _, header_name, header_value in iter(conf.replace.headers) do
-      if ngx_headers[header_name] ~= nil then
-        ngx_headers[header_name] = header_value
+      if headers[header_name] ~= nil and header_value then
+        kong.response.set_header(header_name, header_value)
       end
     end
   end
@@ -172,8 +178,8 @@ function _M.transform_headers(conf, ngx_headers, resp_code)
   -- add headers
   if not skip_transform(resp_code, conf.add.if_status) then
     for _, header_name, header_value in iter(conf.add.headers) do
-      if ngx_headers[header_name] == nil then
-        ngx_headers[header_name] = header_value
+      if headers[header_name] == nil and header_value then
+        kong.response.set_header(header_name, header_value)
       end
     end
   end
@@ -181,7 +187,7 @@ function _M.transform_headers(conf, ngx_headers, resp_code)
   -- append headers
   if not skip_transform(resp_code, conf.append.if_status) then
     for _, header_name, header_value in iter(conf.append.headers) do
-      ngx_headers[header_name] = append_value(ngx_headers[header_name], header_value)
+      kong.response.add_header(header_name, header_value)
     end
   end
 
@@ -189,9 +195,9 @@ function _M.transform_headers(conf, ngx_headers, resp_code)
   -- - Body transform is set, it's full body (no matter what content-type) or
   -- - Body transform is set, it's not full body, but is JSON (only content-type
   --   supported for non-full body transforms)
-  if is_body_transform_set(conf) and (conf.replace.body or
-    is_json_body(ngx_headers["content-type"])) then
-    ngx_headers["content-length"] = nil
+  if is_body_transform_set(conf) and
+    (conf.replace.body or is_json_body(headers["Content-Type"])) then
+    kong.response.clear_header("Content-Length")
   end
 end
 
