@@ -129,7 +129,7 @@ local function is_body_transform_set(conf)
          #conf.append.json         > 0 or
          #conf.transform.functions > 0 or
          conf.replace.body or
-         (conf.whitelist.json and #conf.whitelist.json > 0)
+         (conf.allow.json and #conf.allow.json > 0)
 end
 
 -- export utility functions

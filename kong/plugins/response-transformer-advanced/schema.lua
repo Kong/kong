@@ -143,7 +143,7 @@ return {
           { headers = colon_strings_array },
           { if_status = status_array },
       }}},
-      { whitelist  = {
+      { allow  = {
         type = "record",
         fields = {
           { json = strings_set },
@@ -153,4 +153,10 @@ return {
           { if_status = status_array },
       }}},
   }}}},
+  shorthands = {
+    -- deprecated forms, to be removed in Kong EE 3.x
+    { whitelist = function(value)
+        return { allow = value }
+      end },
+  },
 }

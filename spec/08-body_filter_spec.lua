@@ -15,7 +15,7 @@ describe("Plugin: response-transformer-advanced (filter)", function()
       route     = { id = route1.id },
       name      = "response-transformer-advanced",
       config    = {
-        whitelist = {
+        allow = {
           json      = {"headers"},
         }
       }

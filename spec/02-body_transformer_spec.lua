@@ -17,7 +17,7 @@ describe("Plugin: response-transformer-advanced", function()
         append   = {
           json   = {}
         },
-        whitelist    = {
+        allow    = {
           json = {}
         },
         transform = {
@@ -52,7 +52,7 @@ describe("Plugin: response-transformer-advanced", function()
         append   = {
           json   = {"p1:v1", "p3:\"v1\""}
         },
-        whitelist    = {
+        allow    = {
           json = {}
         },
         transform = {
@@ -93,7 +93,7 @@ describe("Plugin: response-transformer-advanced", function()
         append   = {
           json   = {}
         },
-        whitelist    = {
+        allow    = {
           json = {}
         },
         transform = {
@@ -121,7 +121,7 @@ describe("Plugin: response-transformer-advanced", function()
         append   = {
           json   = {}
         },
-        whitelist    = {
+        allow    = {
           json = {}
         },
         transform = {
@@ -162,7 +162,7 @@ describe("Plugin: response-transformer-advanced", function()
         append   = {
           json   = {"p3:v2"}
         },
-        whitelist  = {
+        allow  = {
           json = {}
         },
         transform = {
@@ -237,7 +237,7 @@ describe("Plugin: response-transformer-advanced", function()
           headers = {},
           json    = {},
         },
-        whitelist  = {
+        allow  = {
           json = {}
         },
         transform = {

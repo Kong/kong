@@ -20,7 +20,7 @@ describe("Plugin: response-transformer-advanced", function()
         append   = {
           json   = {}
         },
-        whitelist   = {
+        allow   = {
           json   = {},
         },
         transform = {
@@ -110,7 +110,7 @@ describe("Plugin: response-transformer-advanced", function()
           json_types = {"string", "string", "number", "boolean", "boolean"},
           if_status = {"500"}
         },
-        whitelist   = {
+        allow   = {
           json   = {},
         },
         transform = {
@@ -199,7 +199,7 @@ describe("Plugin: response-transformer-advanced", function()
         append   = {
           json   = {}
         },
-        whitelist   = {
+        allow   = {
           json   = {}
         },
         transform = {
@@ -231,9 +231,9 @@ describe("Plugin: response-transformer-advanced", function()
       end)
     end)
 
-    describe("whitelist", function()
+    describe("allow", function()
       local conf_skip = {
-        whitelist   = {
+        allow   = {
           json   = {"p1", "p2", "a"},
           if_status = {"500"}
         },
@@ -294,7 +294,7 @@ describe("Plugin: response-transformer-advanced", function()
         append   = {
           json   = {}
         },
-        whitelist   = {
+        allow   = {
           json   = {},
         },
         transform = {
@@ -371,7 +371,7 @@ describe("Plugin: response-transformer-advanced", function()
           append   = {
             json   = {}
           },
-          whitelist = {
+          allow = {
             json   = {},
           },
           transform = {
@@ -534,7 +534,7 @@ describe("Plugin: response-transformer-advanced", function()
           json   = {"p3:v2"},
           if_status = {"500"}
         },
-        whitelist   = {
+        allow   = {
           json   = {}
         },
         transform = {
@@ -616,7 +616,7 @@ describe("Plugin: response-transformer-advanced", function()
   describe("filter body", function()
     it("filter body if enabled without status code filter", function()
       local conf = {
-        whitelist   = {
+        allow   = {
           json   = {"p1"},
           if_status = {"200"}
         },
