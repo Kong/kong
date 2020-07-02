@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+
+# $0 -f kong:branch1 -t kong-ee:branch2
+# $0 -f kong-ee:next/1.3.0.x -t kong-ee:next/1.5.0.x
+# $0 -f kong-ee:next/1.5.0.x -t kong-ee:next/2.1.0.x
+# $0 -f kong-ee:next/2.1.0.x -t kong-ee:master
+
+set -x
+
+function browser() {
+   if which open &> /dev/null
+   then
+      open "$1" &
+   elif which xdg-open &> /dev/null
+   then
+      xdg-open "$1" &
+   elif which firefox &> /dev/null
+   then
+      firefox "$1" &
+   fi
+}
+
+
+function die {
+  >&2 echo "$@"
+  exit 1
+}
+
+
+parse_args() {
+  while getopts "f:t:" option; do
+    case $option in
+      f)
+        from=$OPTARG
+        f_repo=$(echo $from | cut -f1 -d: -s)
+        f_repo=${f_repo:-kong-ee}
+
+        f_branch=$(echo $from | cut -f2 -d:)
+        ;;
+      t)
+        to=$OPTARG
+        t_repo=$(echo $to | cut -f1 -d: -s)
+        t_repo=${t_repo:-kong-ee}
+
+        t_branch=$(echo $to | cut -f2 -d:)
+        if [[ $t_repo != "kong-ee" ]] ; then
+          die "to_repo must be kong-ee for now"
+        fi
+        ;;
+    esac
+  done
+
+  echo ${from:?-f is mandatory}
+  echo ${to:?-t is mandatory}
+}
+
+
+git-add-remote() {
+  if ! git remote | grep $1 ; then
+    git remote add $1 git@github.com:Kong/$1.git
+  fi
+}
+
+
+main() {
+  parse_args "$@"
+  git-add-remote $f_repo
+  git remote set-url --push $f_repo DISABLED
+
+  git-add-remote $t_repo
+
+  git fetch $f_repo
+  git fetch $t_repo
+
+  git push $t_repo $f_repo/$f_branch
+  browser "https://github.com/Kong/kong-ee/compare/${t_branch}...${f_branch}?expand=1"
+}
+
+
+main "$@"
