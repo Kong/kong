@@ -4,6 +4,7 @@ local workspaces = require "kong.workspaces"
 local utils = require "kong.tools.utils"
 local hooks = require "kong.hooks"
 local get_certificate = require("kong.runloop.certificate").get_certificate
+local recreate_request = require("ngx.balancer").recreate_request
 
 -- due to startup/require order, cannot use the ones from 'singletons' here
 local dns_client = require "resty.dns.client"
@@ -20,6 +21,8 @@ local null = ngx.null
 local find = string.find
 local timer_at = ngx.timer.at
 local run_hook = hooks.run_hook
+local var = ngx.var
+local get_phase = ngx.get_phase
 
 local CRIT  = ngx.CRIT
 local ERR   = ngx.ERR
@@ -1297,6 +1300,38 @@ local function get_upstream_health(upstream_id)
 end
 
 
+local function set_host_header(balancer_data)
+  -- set the upstream host header if not `preserve_host`
+  local upstream_host = var.upstream_host
+  local orig_upstream_host = upstream_host
+  local phase = get_phase()
+
+
+  if not upstream_host or upstream_host == "" or phase == "balancer" then
+    upstream_host = balancer_data.hostname
+
+    local upstream_scheme = var.upstream_scheme
+    if (upstream_scheme == "http"  and balancer_data.port ~= 80 or
+        upstream_scheme == "https" and balancer_data.port ~= 443) and
+        (upstream_host ~= nil and upstream_host ~= "" )
+    then
+      upstream_host = upstream_host .. ":" .. balancer_data.port
+    end
+
+    if upstream_host ~= orig_upstream_host then
+      var.upstream_host = upstream_host
+
+      if phase == "balancer" then
+        return recreate_request()
+      end
+    end
+
+  end
+
+  return true
+end
+
+
 --------------------------------------------------------------------------------
 -- Get healthcheck information for a balancer.
 -- @param upstream_id the id of the upstream.
@@ -1361,6 +1396,7 @@ return {
   get_upstream_health = get_upstream_health,
   get_upstream_by_id = get_upstream_by_id,
   get_balancer_health = get_balancer_health,
+  set_host_header = set_host_header,
 
   -- ones below are exported for test purposes only
   _create_balancer = create_balancer,
