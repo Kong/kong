@@ -11,6 +11,10 @@ describe("Plugin: response-transformer-advanced (filter)", function()
       hosts = { "response.com" },
     })
 
+    local route2 = bp.routes:insert({
+      hosts = { "response2.com" },
+    })
+
     bp.plugins:insert {
       route     = { id = route1.id },
       name      = "response-transformer-advanced",
@@ -20,6 +24,31 @@ describe("Plugin: response-transformer-advanced (filter)", function()
           if_status = {"500"}
         }
       }
+    }
+
+    bp.plugins:insert {
+      route     = { id = route2.id },
+      name      = "response-transformer-advanced",
+      config    = {
+        replace = {
+          body      = "plugin_text",
+          if_status = {"401"}
+        }
+      }
+    }
+
+    bp.plugins:insert {
+      route     = { id = route2.id },
+      name      = "key-auth",
+    }
+
+    local consumer1 = bp.consumers:insert {
+      username = "consumer1"
+    }
+
+    bp.keyauth_credentials:insert {
+      key = "foo1",
+      consumer = { id = consumer1.id }
     }
 
     assert(helpers.start_kong({
@@ -64,6 +93,25 @@ describe("Plugin: response-transformer-advanced (filter)", function()
       })
       local body = assert.res_status(200, res)
       assert.not_same(body, [["error": "non-sensitive message"]])
+    end)
+    it("does not validate replaced body against content type", function()
+      -- the replaced body will be "plugin_text" -> plain text
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/status/200",
+        headers = {
+          host  = "response2.com",
+        }
+      })
+      -- we got a 401 due to no credentials provided
+      local body = assert.res_status(401, res)
+      local content_type = res.headers["content-type"]
+      -- content type returned by key-auth is application/json
+      assert.same("application/json; charset=utf-8", content_type)
+      -- the plugin doesn’t validate the value in config.replace.body
+      -- against the content type, so ensure that we pass the replaced
+      -- body to the client even though the content type is different
+      assert.equal("plugin_text", body)
     end)
   end)
 end)

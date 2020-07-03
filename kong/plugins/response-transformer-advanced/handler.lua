@@ -70,19 +70,41 @@ function ResponseTransformerHandler:body_filter(conf)
 
     -- raw body transformation takes precedence over
     -- json transforms
-    local body = body_filter.replace_body(conf, resp_body, ngx.status)
-    if body then
-      ngx.arg[1] = body
-      resp_body = body
+    local replaced_body = body_filter.replace_body(conf, resp_body, ngx.status)
+
+    if replaced_body then
+      ngx.arg[1] = replaced_body
+      resp_body = replaced_body
     end
 
     -- transform json
     if is_json_body(ngx.header["content-type"]) then
-      local err
+      local body, err
       body, err = body_filter.transform_json_body(conf, resp_body, ngx.status)
       ngx.arg[1] = body
       if err then
         kong.log.err(err)
+      end
+
+      -- we couldn't transform the JSON but we had a replaced body ready so we
+      -- must pass that replaced body to the client
+      --
+      -- this happens when, for example:
+      --
+      -- 1) we had plain text ready in the replaced body and a header
+      -- `Content-Type = application/json` so we couldn't transform the plain
+      -- text into JSON
+      --
+      -- 2) we had non-ASCII characters ready in the replaced body and a header
+      -- `Content-Type = application/json` so we couldn't transform the
+      -- non-ASCII chracters into JSON
+      --
+      -- Note: the plugin doesn’t validate the value in config.replace.body
+      -- against the content type as defined in the Content-Type response header
+      --
+      -- see FTI-1608 for details
+      if body == nil and replaced_body ~= nil then
+        ngx.arg[1] = replaced_body
       end
     end
   end
