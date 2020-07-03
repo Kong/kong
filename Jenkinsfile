@@ -101,7 +101,7 @@ pipeline {
         parallel (
           // beware! $KONG_VERSION might have an ending \n that swallows everything after it
           alpine: {
-            sh ".dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
+            sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
             // Docker with anonymous reports off. jenkins has no permission + is old method
             sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
           },
