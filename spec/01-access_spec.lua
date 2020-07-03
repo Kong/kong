@@ -2,27 +2,96 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 
-for _ , strategy in helpers.each_strategy() do
-  local introspection_url = string.format("http://%s/introspect" ,
-    helpers.test_conf.proxy_listen[1])
 
-  describe("Plugin: oauth2-introspection (access)" , function()
-    local client , admin_client
+local INTROSPECT_PATH = "/introspect"
+local INTROSPECT_IP = "127.0.0.1"
+local INTROSPECT_PORT = "10000"
+local introspection_url = ("http://%s:%s%s"):format(
+                           INTROSPECT_IP, INTROSPECT_PORT, INTROSPECT_PATH)
+
+
+local fixtures = {
+  http_mock = {
+    mock_introspection = [=[
+      server {
+          server_name mock_introspection;
+          listen ]=] .. INTROSPECT_PORT .. [=[;
+          location ~ "]=] .. INTROSPECT_PATH .. [=[" {
+              content_by_lua_block {
+                local function x()
+
+                  ngx.req.set_header("Content-Type", "application/json")
+
+                  if ngx.req.get_method() == "POST" then
+                    ngx.req.read_body()
+                    local args = ngx.req.get_post_args()
+                    if not args then
+                      return ngx.exit(500)
+                    end
+                    if args.token == "valid" or
+                      args.token == "valid_consumer_client_id" or
+                      args.token == "valid_consumer" or
+                      args.token == "valid_consumer_limited" or
+                      args.token == "valid_complex" then
+
+                      if args.token == "valid_consumer" then
+                        ngx.say([[{"active":true,
+                                   "username":"bob"}]])
+                      elseif args.token == "valid_consumer_client_id" then -- omit `username`, return `client_id`
+                        ngx.say([[{"active":true,
+                                    "client_id": "kongsumer"}]])
+                      elseif args.token == "valid_consumer_limited" then
+                        ngx.say([[{"active":true,
+                                   "username":"limited-bob"}]])
+                      elseif args.token == "valid_complex" then
+                        ngx.say([[{"active":true,
+                                   "username":"some_username",
+                                   "client_id":"some_client_id",
+                                   "scope":"some_scope",
+                                   "sub":"some_sub",
+                                   "aud":"some_aud",
+                                   "iss":"some_iss",
+                                   "exp":"some_exp",
+                                   "iat":"some_iat",
+                                   "foo":"bar",
+                                   "bar":"baz",
+                                   "baz":"baaz"}]])
+                      else
+                        ngx.say([[{"active":true}]])
+                      end
+                      return ngx.exit(200)
+                    end
+                  end
+
+                  ngx.say([[{"active":false}]])
+                  return ngx.exit(200)
+
+                end
+                local ok, err = pcall(x)
+                if not ok then
+                  ngx.log(ngx.ERR, "Mock error: ", err)
+                end
+              }
+          }
+      }
+    ]=]
+  },
+}
+
+
+for _ , strategy in helpers.each_strategy() do
+
+  describe("Plugin: oauth2-introspection (access) #" .. strategy, function()
+    local client , admin_client, introspect_client
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, nil, {"introspection-endpoint",
-                                                      "oauth2-introspection"})
+      local bp = helpers.get_db_utils(strategy, nil, {"oauth2-introspection"})
 
-      assert(bp.routes:insert {
-        name = "introspection-api",
-        paths = { "/introspect" },
-      })
-
-      local route1 = assert(bp.routes:insert {
+      local route1 = bp.routes:insert {
         name = "route-1",
         hosts = { "introspection.com" },
-      })
-      assert(bp.plugins:insert {
+      }
+      bp.plugins:insert {
         name = "oauth2-introspection",
         route = { id = route1.id },
         config = {
@@ -30,13 +99,13 @@ for _ , strategy in helpers.each_strategy() do
           authorization_value = "hello",
           ttl = 1
         }
-      })
+      }
 
-      local route1_cid = assert(bp.routes:insert {
+      local route1_cid = bp.routes:insert {
         name = "route-1cid",
         hosts = { "introspection_client_id.com" },
-      })
-      assert(bp.plugins:insert {
+      }
+      bp.plugins:insert {
         name = "oauth2-introspection",
         route = { id = route1_cid.id },
         config = {
@@ -45,13 +114,13 @@ for _ , strategy in helpers.each_strategy() do
           consumer_by = "client_id",
           ttl = 1
         }
-      })
+      }
 
-      local route2 = assert(bp.routes:insert {
+      local route2 = bp.routes:insert {
         name = "route-2",
         hosts = { "introspection2.com" },
-      })
-      assert(bp.plugins:insert {
+      }
+      bp.plugins:insert {
         name = "oauth2-introspection",
         route = { id = route2.id },
         config = {
@@ -59,34 +128,34 @@ for _ , strategy in helpers.each_strategy() do
           authorization_value = "hello",
           hide_credentials = true
         }
-      })
+      }
 
-      assert(bp.consumers:insert {
+      bp.consumers:insert {
         username = "bob"
-      })
-      assert(bp.consumers:insert {
+      }
+      bp.consumers:insert {
         custom_id = "kongsumer",
-      })
+      }
 
-      local consumer = assert(bp.consumers:insert {
+      local consumer = bp.consumers:insert {
         username = "limited-bob"
-      })
-      assert(bp.plugins:insert {
+      }
+      bp.plugins:insert {
         name = "correlation-id",
         route = { id = route1.id },
         consumer = { id = consumer.id },
         config = {},
-      })
+      }
 
-      local anonymous_user = assert(bp.consumers:insert {
+      local anonymous_user = bp.consumers:insert {
         username = "no-body",
-      })
+      }
 
-      local route3 = assert(bp.routes:insert {
+      local route3 = bp.routes:insert {
         name = "route-3",
         hosts = { "introspection3.com" },
-      })
-      assert(bp.plugins:insert {
+      }
+      bp.plugins:insert {
         name = "oauth2-introspection",
         route = { id = route3.id },
         config = {
@@ -95,13 +164,13 @@ for _ , strategy in helpers.each_strategy() do
           ttl = 1,
           anonymous = anonymous_user.id,
         }
-      })
+      }
 
-      local route4 = assert(bp.routes:insert {
+      local route4 = bp.routes:insert {
         name = "route-4",
         hosts = { "introspection4.com" },
-      })
-      assert(bp.plugins:insert {
+      }
+      bp.plugins:insert {
         name = "oauth2-introspection",
         route = { id = route4.id },
         config = {
@@ -110,13 +179,13 @@ for _ , strategy in helpers.each_strategy() do
           ttl = 1,
           anonymous = utils.uuid(),
         }
-      })
+      }
 
-      local route5 = assert(bp.routes:insert {
+      local route5 = bp.routes:insert {
         name = "route-5",
         hosts = { "introspection5.com" },
-      })
-      assert(bp.plugins:insert {
+      }
+      bp.plugins:insert {
         name = "oauth2-introspection",
         route = { id = route5.id },
         config = {
@@ -125,13 +194,13 @@ for _ , strategy in helpers.each_strategy() do
           ttl = 1,
           run_on_preflight = false
         }
-      })
+      }
 
-      local route6 = assert(bp.routes:insert {
+      local route6 = bp.routes:insert {
         name = "route-6",
         hosts = { "introspection6.com" },
-      })
-      assert(bp.plugins:insert {
+      }
+      bp.plugins:insert {
         name = "oauth2-introspection",
         route = { id = route6.id },
         config = {
@@ -140,29 +209,18 @@ for _ , strategy in helpers.each_strategy() do
           custom_claims_forward = { "foo", "bar" },
           ttl = 1,
         }
-      })
+      }
 
       assert(helpers.start_kong({
         database = strategy,
-        plugins = "bundled,introspection-endpoint,oauth2-introspection",
+        plugins = "bundled,oauth2-introspection",
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua;/kong-plugin/spec/fixtures/custom_plugins/?.lua;;"
-      }))
+      }, nil, nil, fixtures))
 
       client = helpers.proxy_client()
       admin_client = helpers.admin_client()
+      introspect_client = helpers.http_client(INTROSPECT_IP, INTROSPECT_PORT, 60000)
 
-      local res = assert(admin_client:send {
-        method = "POST",
-        path = "/routes/introspection-api/plugins/",
-        body = {
-          name = "introspection-endpoint"
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
-      assert.res_status(201 , res)
     end)
 
     lazy_teardown(function()
@@ -177,9 +235,9 @@ for _ , strategy in helpers.each_strategy() do
 
     describe("Introspection Endpoint Mock" , function()
       it("validates valid token" , function()
-        local res = assert(client:send {
+        local res = assert(introspect_client:send {
           method = "POST",
-          path = "/introspect",
+          path = INTROSPECT_PATH,
           body = ngx.encode_args({ token = "valid" }),
           headers = {
             ["Content-Type"] = "application/x-www-form-urlencoded"
@@ -191,9 +249,9 @@ for _ , strategy in helpers.each_strategy() do
       end)
 
       it("does not validate invalid token" , function()
-        local res = assert(client:send {
+        local res = assert(introspect_client:send {
           method = "POST",
-          path = "/introspect",
+          path = INTROSPECT_PATH,
           body = ngx.encode_args({ token = "invalid" }),
           headers = {
             ["Content-Type"] = "application/x-www-form-urlencoded"
@@ -319,9 +377,10 @@ for _ , strategy in helpers.each_strategy() do
             }
           })
 
-          local body = cjson.decode(assert.res_status(200 , res))
-          assert.equal("limited-bob" , body.headers["x-consumer-username"])
-          assert.is_string(body.headers["kong-request-id"])
+          assert.response(res).has.status(200)
+          local value = assert.request(res).has.header("x-consumer-username")
+          assert.equal("limited-bob", value)
+          assert.request(res).has.header("kong-request-id")
         end)
       end)
 
@@ -481,26 +540,18 @@ for _ , strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("multiple auth" , function()
 
-    local client , user1 , user2 , anonymous , admin_client
 
-    setup(function()
-      local bp = helpers.get_db_utils(strategy)
+  describe("Plugin: oauth2-introspection (hooks) #" .. strategy, function()
+    local client , admin_client
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, nil, {"oauth2-introspection"})
 
-      assert(bp.routes:insert {
-        name = "introspection-api",
-        paths = { "/introspect" },
-      })
-      local route1 = assert(bp.routes:insert {
+      local route1 = bp.routes:insert {
         name = "route-1",
-        hosts = { "logical-and.com" },
-      })
-      assert(bp.plugins:insert {
-        name = "key-auth",
-        route = { id = route1.id },
-      })
-      assert(bp.plugins:insert {
+        hosts = { "introspection.com" },
+      }
+      bp.plugins:insert {
         name = "oauth2-introspection",
         route = { id = route1.id },
         config = {
@@ -508,27 +559,119 @@ for _ , strategy in helpers.each_strategy() do
           authorization_value = "hello",
           ttl = 1
         }
-      })
+      }
 
-      anonymous = assert(bp.consumers:insert {
+      bp.consumers:insert {
+        username = "bob"
+      }
+
+      assert(helpers.start_kong({
+        database = strategy,
+        plugins = "bundled,oauth2-introspection",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }, nil, nil, fixtures))
+
+      client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
+    end)
+
+    lazy_teardown(function()
+      if admin_client then
+        admin_client:close()
+      end
+      if client then
+        client:close()
+      end
+      helpers.stop_kong()
+    end)
+
+    describe("Consumer" , function()
+      it("invalidates a consumer by username" , function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/request?access_token=valid_consumer",
+          headers = {
+            ["Host"] = "introspection.com"
+          }
+        })
+
+        local body = cjson.decode(assert.res_status(200 , res))
+        assert.equal("bob" , body.headers["x-consumer-username"])
+        local consumer_id = body.headers["x-consumer-id"]
+        assert.is_string(consumer_id)
+
+        -- Deletes the consumer
+        local res = assert(admin_client:send {
+          method = "DELETE",
+          path = "/consumers/" .. consumer_id,
+          headers = {
+            ["Host"] = "introspection.com"
+          }
+        })
+        assert.res_status(204 , res)
+
+        -- ensure cache is invalidated
+        helpers.wait_until(function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/request?access_token=valid_consumer",
+            headers = {
+              ["Host"] = "introspection.com"
+            }
+          })
+          local body = cjson.decode(assert.res_status(200 , res))
+          return body.headers["x-consumer-username"] == nil
+        end)
+      end)
+    end)
+  end)
+
+
+  describe("Plugin: oauth2-introspection (multiple-auth) #" .. strategy, function()
+
+    local client , user1 , user2 , anonymous , admin_client
+
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, nil, {--"introspection-endpoint",
+                                                      "oauth2-introspection"})
+
+      local route1 = bp.routes:insert {
+        name = "route-1",
+        hosts = { "logical-and.com" },
+      }
+      bp.plugins:insert {
+        name = "key-auth",
+        route = { id = route1.id },
+      }
+      bp.plugins:insert {
+        name = "oauth2-introspection",
+        route = { id = route1.id },
+        config = {
+          introspection_url = introspection_url,
+          authorization_value = "hello",
+          ttl = 1
+        }
+      }
+
+      anonymous = bp.consumers:insert {
         username = "Anonymous",
-      })
-      user1 = assert(bp.consumers:insert {
+      }
+      user1 = bp.consumers:insert {
         username = "bob",
-      })
-      user2 = assert(bp.consumers:insert {
+      }
+      user2 = bp.consumers:insert {
         username = "alice",
-      })
-      assert(bp.keyauth_credentials:insert {
+      }
+      bp.keyauth_credentials:insert {
         key = "mouse",
         consumer = { id = user2.id },
-      })
+      }
 
-      local route2 = assert(bp.routes:insert {
+      local route2 = bp.routes:insert {
         name = "route-2",
         hosts = { "logical-or.com" },
-      })
-      assert(bp.plugins:insert {
+      }
+      bp.plugins:insert {
         name = "oauth2-introspection",
         route = { id = route2.id },
         config = {
@@ -537,40 +680,27 @@ for _ , strategy in helpers.each_strategy() do
           ttl = 1,
           anonymous = anonymous.id,
         }
-      })
+      }
 
-      assert(bp.plugins:insert {
+      bp.plugins:insert {
         name = "key-auth",
         route = { id = route2.id },
         config = {
           anonymous = anonymous.id,
         },
-      })
+      }
 
       assert(helpers.start_kong({
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        plugins = "bundled,introspection-endpoint, oauth2-introspection",
-        lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua;/kong-plugin/spec/fixtures/custom_plugins/?.lua;;",
-      }))
+        plugins = "bundled,oauth2-introspection",
+      }, nil, nil, fixtures))
 
       client = helpers.proxy_client()
       admin_client = helpers.admin_client()
-
-      local res = assert(admin_client:send {
-        method = "POST",
-        path = "/routes/introspection-api/plugins/",
-        body = {
-          name = "introspection-endpoint"
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
-      assert.res_status(201 , res)
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if client then
         client:close()
       end

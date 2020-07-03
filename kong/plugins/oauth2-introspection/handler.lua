@@ -1,6 +1,5 @@
 -- Copyright (C) Kong Inc.
 
-local BasePlugin = require "kong.plugins.base_plugin"
 local constants = require "kong.constants"
 
 local utils = require "kong.tools.utils"
@@ -9,7 +8,7 @@ local cjson = require "cjson.safe"
 local http = require "resty.http"
 local url = require "socket.url"
 
-local OAuth2Introspection = BasePlugin:extend()
+local OAuth2Introspection = {}
 
 local CONTENT_TYPE = "content-type"
 local CONTENT_LENGTH = "content-length"
@@ -32,10 +31,6 @@ local consumer_by_fields = {
 }
 
 local CONSUMER_BY_DEFAULT = consumer_by_fields[1]
-
-function OAuth2Introspection:new()
-  OAuth2Introspection.super.new(self, "oauth2-introspection")
-end
 
 local function consumers_username_key(username)
   return fmt("oauth2_introspection_consumer_username:%s", username)
@@ -309,8 +304,6 @@ local function do_authentication(conf)
 end
 
 function OAuth2Introspection:access(conf)
-  OAuth2Introspection.super.access(self)
-
   if not conf.run_on_preflight and get_method() == "OPTIONS" then
     return
   end
