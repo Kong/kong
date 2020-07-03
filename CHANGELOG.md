@@ -1,3 +1,17 @@
+## Unreleased
+
+### Added
+
+- Added support to specify JSON types for configuration values. For example, by doing `config.add.json_types: ["number"]`, the plugin will convert the "-1" into -1.
+- Improved performance by not inheriting from the BasePlugin class
+- The plugin is now defensive against possible errors and nil header values
+
+### Fixed
+
+- Preserve empty arrays correctly
+- Prevent the plugin from throwing an error when its access handler did not get a chance to run (e.g. on short-circuited, unauthorized requests)
+- Standardize on `allow` instead of `whitelist` to specify the parameters name which should be allowed in response JSON body
+
 ## 0.3.3
 
 ### Added
