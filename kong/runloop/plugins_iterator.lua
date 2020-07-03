@@ -327,20 +327,16 @@ function PluginsIterator.new(version)
   end
   loaded_plugins = loaded_plugins or get_loaded_plugins()
 
+  local ws_data = new_ws_data()
   local ws = {
-    [kong.default_workspace] = new_ws_data()
+    [kong.default_workspace] = ws_data
   }
 
   local counter = 0
   local page_size = kong.db.plugins.pagination.page_size
   for plugin, err in kong.db.plugins:each(nil, GLOBAL_QUERY_OPTS) do
-    local data = ws[plugin.ws_id]
-    if not data then
-      data = new_ws_data()
-      ws[plugin.ws_id] = data
-    end
-    local map = data.map
-    local combos = data.combos
+    local map = ws_data.map
+    local combos = ws_data.combos
 
     if err then
       return nil, err
@@ -388,14 +384,12 @@ function PluginsIterator.new(version)
   end
 
   for _, plugin in ipairs(loaded_plugins) do
-    for _, data in pairs(ws) do
-      for phase_name, phase in pairs(data.phases) do
-        if phase_name == "init_worker" or data.combos[plugin.name] then
-          local phase_handler = plugin.handler[phase_name]
-          if type(phase_handler) == "function"
-          and phase_handler ~= BasePlugin[phase_name] then
-            phase[plugin.name] = true
-          end
+    for phase_name, phase in pairs(ws_data.phases) do
+      if phase_name == "init_worker" or ws_data.combos[plugin.name] then
+        local phase_handler = plugin.handler[phase_name]
+        if type(phase_handler) == "function"
+        and phase_handler ~= BasePlugin[phase_name] then
+          phase[plugin.name] = true
         end
       end
     end
