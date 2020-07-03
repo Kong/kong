@@ -66,6 +66,11 @@ case $ACTION in
       ./bintray-release.sh "$@"
     popd
     ;;
+  get)
+    git_clone_tmp kong-distributions $KONG_DISTRIBUTIONS_VERSION
+    trap - EXIT SIGINT
+    echo $tmpath
+    ;;
   *)
     git_clone_tmp kong-distributions $KONG_DISTRIBUTIONS_VERSION
     $tmpath/package.sh $ACTION "$@"

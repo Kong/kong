@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+
+set -e
+
+SCRIPT=$(basename $0)
+LOCAL_PATH=$(dirname $(realpath $0))
+DISTRIBUTIONS_PATH=${DISTRIBUTIONS_PATH}
+
+FROM=${FROM:-build}
+TO=${TO:-HEAD}
+FORCE=${FORCE:-0}
+
+ON_EXIT=()
+EXIT_RES=
+
+function on_exit_fn {
+  EXIT_RES=$?
+  for cb in "${ON_EXIT[@]}"; do $cb || true; done
+  return $EXIT_RES
+}
+
+trap on_exit_fn EXIT SIGINT
+
+function on_exit {
+  ON_EXIT+=("$@")
+}
+
+function err {
+  >&2 echo -e "$*"
+  exit 1
+}
+
+function usage {
+cat << EOF
+
+Usage: $SCRIPT action [options...]
+
+Options:
+  --from FROM           check for new commits from, accepts:
+                          - (default) build: whatever is set on build.yml
+                          - last: since last tag
+                          - <tag>: specify a <tag> to check from
+                          - none: ignore from, set to TO
+  --to TO               check for new commits to, accepts:
+                          - (default) HEAD
+                          - last: since last tag
+                          - <tag>: specify a <tag> to check from
+  --bump                bump plugin
+  -f                    do not ask confirmation
+  -v                    verbose
+  -h, --help            show this help
+
+EOF
+}
+
+
+function parse_args {
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -v|--verbose)
+        set -x
+        ;;
+      -h|--help)
+        usage
+        exit 0
+        ;;
+      --to)
+        TO=$2
+        shift
+        ;;
+      --from)
+        FROM=$2
+        shift
+        ;;
+      --bump)
+        DO_BUMP=1
+        ;;
+      -f|--force)
+        FORCE=1
+        ;;
+    esac
+    shift
+  done
+}
+
+function get_distributions {
+  DISTRIBUTIONS_PATH=$($LOCAL_PATH/../dist/dist.sh get)
+  on_exit "rm -rf $DISTRIBUTIONS_PATH"
+  echo $DISTRIBUTIONS_PATH
+}
+
+function check {
+  local index=$1
+  local entry=$2
+
+  local name=$(echo $entry | jq -r '.name')
+  if echo ${ignore[*]} | grep $name 2> /dev/null; then
+    >&2 echo "Ignoring $name"
+    return 0
+  fi
+  local url=$(echo $entry | jq -r '.github_url')
+  local version=$(echo $entry | jq -r '.version')
+  local repo=$(basename $url)
+  local tmpath=$(mktemp -d "/tmp/kong-$repo-XXXXX")
+
+  git clone https://"$GITHUB_TOKEN"@github.com/Kong/${repo} $tmpath 2> /dev/null
+  on_exit "rm -rf $tmpath"
+
+  local from to
+
+  pushd $tmpath
+    case $FROM in
+      build)
+        from=$version
+        ;;
+      last)
+        from=$(git describe --tags --abbrev=0)
+        ;;
+      *)
+        from=$FROM
+        ;;
+    esac
+
+    case $TO in
+      last)
+        to=$(git describe --tags --abbrev=0)
+        ;;
+      *)
+        to=$TO
+        ;;
+    esac
+
+    if [[ $from == "none" ]]; then
+      from="$to~"
+    fi
+
+    if [[ -z $(git rev-list $from..$to) ]]; then
+      >&2 echo "[$name] No new commits from $from until $to"
+      return 0
+    fi
+
+    >&2 echo "[$name] has new commits from $from until $to"
+    confirm "Do you want to bump $name: $version -> $to" && bump $index $from $to
+  popd
+}
+
+
+function bump {
+  # This is not a plugin bumping, it just bumps WITHIN build.yml if a tag
+  # is outdated!
+
+  # yq does what it can do, but clearly this could work better either with
+  # a clever sed, or some python / ruby helper to not mess up with the output
+  # or get more options on how to format it
+  yq w -i $DISTRIBUTIONS_PATH/kong-images/build.yml "enterprise[$1].version" -- "$3"
+}
+
+
+function confirm {
+  local ans=${2:-"y|Y"}
+  [[ $FORCE == 1 ]] && return 0
+  read -r -p "$1 ($ans)? "
+  [[ $REPLY =~ $ans ]]
+}
+
+
+function main {
+  [[ -n $DISTRIBUTIONS_PATH ]] || DISTRIBUTIONS_PATH=$(get_distributions)
+  [[ -d $DISTRIBUTIONS_PATH ]] || err "$DISTRIBUTIONS_PATH does not exist"
+
+  counter=0
+  ignore=("kong-admin" "kong-portal")
+
+  pushd $DISTRIBUTIONS_PATH
+    for entry in $(yq r kong-images/build.yml -j | jq -c '.enterprise[]'); do
+      check $counter $entry
+      ((counter=counter+1))
+    done
+    cat $DISTRIBUTIONS_PATH/kong-images/build.yml | yq r - -I 4
+  popd
+}
+
+
+pushd() { builtin pushd $1 > /dev/null; }
+popd() { builtin popd > /dev/null; }
+
+# source $LOCAL_PATH/version.sh
+
+hash yq || err "This script requires yq for parsing YAML"
+hash jq || err "This script requires jq for parsing JSON"
+
+parse_args "$@"
+main "$@"
