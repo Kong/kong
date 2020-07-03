@@ -462,13 +462,22 @@ local function marshall_route(r)
 
       if header_name ~= "host" then
         local header_values_map = {}
-        for i = 1, #header_values do
+        local header_values_count = #header_values
+        for i = 1, header_values_count do
           header_values_map[lower(header_values[i])] = true
+        end
+        local header_pattern
+        if header_values_count == 1 then
+          local first_header = header_values[1]
+          if sub(first_header, 1, 2) == "~*" then
+            header_pattern = sub(first_header, 3)
+          end
         end
 
         append(headers_t, {
           name = header_name,
           values_map = header_values_map,
+          header_pattern = header_pattern,
         })
       end
     end
@@ -1033,6 +1042,12 @@ do
               matches_headers[header_t.name] = req_header_val
               break
             end
+            -- fallback to regex check if exact match failed
+            if header_t.header_pattern and re_find(req_header_val, header_t.header_pattern) then
+              found_in_req = true
+              ctx.matches.headers[header_t.name] = req_header_val
+              break
+            end
           end
 
         elseif req_header then -- string
@@ -1040,6 +1055,11 @@ do
           if header_t.values_map[req_header] then
             found_in_req = true
             matches_headers[header_t.name] = req_header
+          end
+          -- fallback to regex check if exact match failed
+          if header_t.header_pattern and re_find(req_header, header_t.header_pattern) then
+            found_in_req = true
+            ctx.matches.headers[header_t.name] = req_header
           end
         end
 
