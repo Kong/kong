@@ -225,7 +225,15 @@ end
 
 
 local function execute_plugins_iterator(plugins_iterator, phase, ctx)
-  local old_ws = ctx and ctx.workspace
+  local old_ws
+  local delay_response
+
+  if ctx then
+    old_ws = ctx.workspace
+    delay_response = phase == "access"
+    ctx.delay_response = delay_response
+  end
+
   for plugin, configuration in plugins_iterator:iterate(phase, ctx) do
     if ctx then
       if plugin.handler._go then
@@ -236,10 +244,25 @@ local function execute_plugins_iterator(plugins_iterator, phase, ctx)
     end
 
     kong_global.set_namespaced_log(kong, plugin.name)
-    plugin.handler[phase](plugin.handler, configuration)
+
+    if not delay_response then
+      plugin.handler[phase](plugin.handler, configuration)
+
+    elseif not ctx.delayed_response then
+      local co = coroutine.create(plugin.handler.access)
+      local cok, cerr = coroutine.resume(co, plugin.handler, configuration)
+      if not cok then
+        kong.log.err(cerr)
+        ctx.delayed_response = {
+          status_code = 500,
+          content = { message  = "An unexpected error occurred" },
+        }
+      end
+    end
+
     kong_global.reset_log(kong)
 
-    if ctx then
+    if old_ws then
       ctx.workspace = old_ws
     end
   end
@@ -741,32 +764,9 @@ function Kong.access()
 
   runloop.access.before(ctx)
 
-  ctx.delay_response = true
-
-  local old_ws = ctx.workspace
   local plugins_iterator = runloop.get_plugins_iterator()
-  for plugin, plugin_conf in plugins_iterator:iterate("access", ctx) do
-    if plugin.handler._go then
-      ctx.ran_go_plugin = true
-    end
 
-    if not ctx.delayed_response then
-      kong_global.set_named_ctx(kong, "plugin", plugin.handler)
-      kong_global.set_namespaced_log(kong, plugin.name)
-
-      local err = coroutine.wrap(plugin.handler.access)(plugin.handler, plugin_conf)
-      if err then
-        kong.log.err(err)
-        ctx.delayed_response = {
-          status_code = 500,
-          content     = { message  = "An unexpected error occurred" },
-        }
-      end
-
-      kong_global.reset_log(kong)
-    end
-    ctx.workspace = old_ws
-  end
+  execute_plugins_iterator(plugins_iterator, "access", ctx)
 
   if ctx.delayed_response then
     ctx.KONG_ACCESS_ENDED_AT = get_now_ms()
