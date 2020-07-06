@@ -141,10 +141,14 @@ for _ , strategy in helpers.each_strategy() do
         username = "limited-bob"
       }
       bp.plugins:insert {
-        name = "correlation-id",
+        name = "request-transformer",
         route = { id = route1.id },
         consumer = { id = consumer.id },
-        config = {},
+        config = {
+          add = {
+            headers = { "x-another-header:something" }
+          }
+        },
       }
 
       local anonymous_user = bp.consumers:insert {
@@ -380,7 +384,7 @@ for _ , strategy in helpers.each_strategy() do
           assert.response(res).has.status(200)
           local value = assert.request(res).has.header("x-consumer-username")
           assert.equal("limited-bob", value)
-          assert.request(res).has.header("kong-request-id")
+          assert.request(res).has.header("x-another-header")
         end)
       end)
 
