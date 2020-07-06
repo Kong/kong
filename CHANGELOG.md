@@ -1,5 +1,6 @@
 # Table of Contents
 
+ - [1.7.9](#179---20200703)
  - [1.7.8](#178---20200617)
  - [1.7.7](#177---20200616)
  - [1.7.4](#174---20200409)
@@ -11,6 +12,11 @@
  - [1.5.0](#150---20190813)
 
 ## Unreleased
+
+## [1.7.9] - 2020/07/03
+### Fixed
+- Fix a bug that would make the plugin try to parse request/response body regardless of the content-type
+- Adapts the plugin to select_all removal. drops basic_serializer usage in access stage
 
 ## 1.7.8 - 2020/06/17
 
