@@ -7,8 +7,15 @@ LOCAL_PATH=$(dirname $(realpath $0))
 DISTRIBUTIONS_PATH=${DISTRIBUTIONS_PATH}
 
 FROM=${FROM:-build}
-TO=${TO:-HEAD}
+TO=${TO:-master}
 FORCE=${FORCE:-0}
+DO_PR=${DO_PR:-0}
+# XXX still not used. The idea would be to use scripts/bump-plugin to try and
+# bump the plugin and make a PR
+DO_BUMP=${DO_BUMP:-0}
+
+# Entities to ignore
+IGNORE=("kong-admin" "kong-portal")
 
 source $LOCAL_PATH/common.sh
 
@@ -27,7 +34,8 @@ Options:
                           - (default) HEAD
                           - last: since last tag
                           - <tag>: specify a <tag> to check from
-  --bump                bump plugin
+  --ignore name         ignore component 'name' in build.yml
+  --pr                  make a PR with changes (if something changed)
   -f                    do not ask confirmation
   -v                    verbose
   -h, --help            show this help
@@ -54,11 +62,18 @@ function parse_args {
         FROM=$2
         shift
         ;;
+      --ignore)
+        IGNORE+=("$2")
+        shift
+        ;;
       --bump)
         DO_BUMP=1
         ;;
       -f|--force)
         FORCE=1
+        ;;
+      --pr)
+        DO_PR=1
         ;;
     esac
     shift
@@ -76,7 +91,7 @@ function check {
   local entry=$2
 
   local name=$(echo $entry | jq -r '.name')
-  if echo ${ignore[*]} | grep $name 2> /dev/null; then
+  if echo ${IGNORE[*]} | grep $name 2> /dev/null; then
     >&2 echo "Ignoring $name"
     return 0
   fi
@@ -113,16 +128,16 @@ function check {
     esac
 
     if [[ $from == "none" ]]; then
-      from="$to~"
+      unset from
     fi
 
-    if [[ -z $(git rev-list $from..$to) ]]; then
+    if [[ -n $from ]] && [[ -z $(git rev-list $from..$to) ]]; then
       >&2 echo "[$name] No new commits from $from until $to"
       return 0
     fi
 
     >&2 echo "[$name] has new commits from $from until $to"
-    confirm "Do you want to bump $name: $version -> $to" && bump $index $from $to
+    confirm "Do you want to bump $name: $version -> $to" && bump $index $to
   popd
 }
 
@@ -134,7 +149,7 @@ function bump {
   # yq does what it can do, but clearly this could work better either with
   # a clever sed, or some python / ruby helper to not mess up with the output
   # or get more options on how to format it
-  yq w -i $DISTRIBUTIONS_PATH/kong-images/build.yml "enterprise[$1].version" -- "$3"
+  yq w -i $DISTRIBUTIONS_PATH/kong-images/build.yml "enterprise[$1].version" -- "$2"
 }
 
 
@@ -145,31 +160,52 @@ function confirm {
   [[ $REPLY =~ $ans ]]
 }
 
+function something_changed {
+  git update-index --refresh
+  git diff-index --quiet HEAD --
+  [[ $? != 0 ]]
+
+}
+
+function commit_build_yml {
+  local branch="chore/bump-build-$(date +%s)"
+  git checkout -b $branch
+  git add kong-images/build.yml
+  git commit -m "bump build.yml components"
+  git push origin $branch
+  hub pull-request -m "Bump build.yml components"
+}
 
 function main {
   [[ -n $DISTRIBUTIONS_PATH ]] || DISTRIBUTIONS_PATH=$(get_distributions)
   [[ -d $DISTRIBUTIONS_PATH ]] || err "$DISTRIBUTIONS_PATH does not exist"
 
   counter=0
-  ignore=("kong-admin" "kong-portal")
-
   pushd $DISTRIBUTIONS_PATH
     for entry in $(yq r kong-images/build.yml -j | jq -c '.enterprise[]'); do
       check $counter $entry
       ((counter=counter+1))
     done
-    cat $DISTRIBUTIONS_PATH/kong-images/build.yml | yq r - -I 4
+
+    if something_changed && [[ $DO_PR == "1" ]]; then
+      git --no-pager diff
+      confirm "Do you want to create a PR with these changes" && \
+        commit_build_yml
+    fi
   popd
+
+  cat $DISTRIBUTIONS_PATH/kong-images/build.yml | yq r - -I 4
 }
 
 
 pushd() { builtin pushd $1 > /dev/null; }
 popd() { builtin popd > /dev/null; }
 
-# source $LOCAL_PATH/version.sh
-
 hash yq || err "This script requires yq for parsing YAML"
 hash jq || err "This script requires jq for parsing JSON"
 
 parse_args "$@"
+
+[[ $DO_PR == "1" ]] && ! hash hub && err "hub is required to create a PR"
+
 main "$@"
