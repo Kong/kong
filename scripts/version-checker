@@ -9,6 +9,8 @@ DISTRIBUTIONS_PATH=${DISTRIBUTIONS_PATH}
 FROM=${FROM:-build}
 TO=${TO:-master}
 FORCE=${FORCE:-0}
+FORCE_PR=${FORCE_PR:-0}
+
 DO_PR=${DO_PR:-0}
 # XXX still not used. The idea would be to use scripts/bump-plugin to try and
 # bump the plugin and make a PR
@@ -71,6 +73,9 @@ function parse_args {
         ;;
       -f|--force)
         FORCE=1
+        ;;
+      -fp|--force-pr)
+        FORCE_PR=1
         ;;
       --pr)
         DO_PR=1
@@ -149,7 +154,7 @@ function bump {
   # yq does what it can do, but clearly this could work better either with
   # a clever sed, or some python / ruby helper to not mess up with the output
   # or get more options on how to format it
-  yq w -i $DISTRIBUTIONS_PATH/kong-images/build.yml "enterprise[$1].version" -- "$2"
+  yq w -i -I 4 $DISTRIBUTIONS_PATH/kong-images/build.yml "enterprise[$1].version" -- "$2"
 }
 
 
@@ -186,6 +191,8 @@ function main {
       check $counter $entry
       ((counter=counter+1))
     done
+
+    FORCE=${FORCE_PR:-0}
 
     if something_changed && [[ $DO_PR == "1" ]]; then
       git --no-pager diff
