@@ -12,10 +12,6 @@ DO_COMMIT=${DO_COMMIT:-1}
 PUSH_PR=${PUSH_PR:-0}
 HUB_PR=${HUB_PR:-0}
 
-function err {
-  >&2 echo -e "$*"
-  exit 1
-}
 
 function get_version {
   # Method 1
@@ -50,6 +46,7 @@ function bump_version {
   p_version[$BUMP_COMPONENT]=$(( ${p_version[$BUMP_COMPONENT]} + 1 ))
   echo $(IFS="." ; echo "${p_version[*]}")
 }
+
 
 function parse_args {
   while [[ $# -gt 0 ]]; do
@@ -146,7 +143,7 @@ eof
 pushd() { builtin pushd $1 > /dev/null; }
 popd() { builtin popd > /dev/null; }
 
-source $LOCAL_PATH/version.sh
+source $LOCAL_PATH/common.sh
 
 parse_args "$@"
 

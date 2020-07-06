@@ -10,25 +10,7 @@ FROM=${FROM:-build}
 TO=${TO:-HEAD}
 FORCE=${FORCE:-0}
 
-ON_EXIT=()
-EXIT_RES=
-
-function on_exit_fn {
-  EXIT_RES=$?
-  for cb in "${ON_EXIT[@]}"; do $cb || true; done
-  return $EXIT_RES
-}
-
-trap on_exit_fn EXIT SIGINT
-
-function on_exit {
-  ON_EXIT+=("$@")
-}
-
-function err {
-  >&2 echo -e "$*"
-  exit 1
-}
+source $LOCAL_PATH/common.sh
 
 function usage {
 cat << EOF

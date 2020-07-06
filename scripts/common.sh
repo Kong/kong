@@ -1,3 +1,31 @@
+#!/usr/bin/env bash
+
+ON_EXIT=("${ON_EXIT[@]}")
+EXIT_RES=
+
+function on_exit_fn {
+  EXIT_RES=$?
+  for cb in "${ON_EXIT[@]}"; do $cb || true; done
+  return $EXIT_RES
+}
+
+trap on_exit_fn EXIT SIGINT
+
+function on_exit {
+  ON_EXIT+=("$@")
+}
+
+
+function clear_exit {
+  trap - EXIT SIGINT
+}
+
+
+function err {
+  >&2 echo -e "$*"
+  exit 1
+}
+
 
 parse_version() {
   [[ -z $1 ]] || [[ -z $2 ]] && >&2 echo "parse_version() requires two arguments" && exit 1
@@ -79,5 +107,4 @@ version_gte() {
   (version_gt $1 $2 || version_eq $1 $2) && return 0
   return 1
 }
-
 
