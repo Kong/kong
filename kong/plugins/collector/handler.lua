@@ -135,24 +135,25 @@ function CollectorHandler:new()
 end
 
 function CollectorHandler:access(conf)
-  -- we need to store request state before plugins change it
-  kong.ctx.plugin.serialized_request = basic_serializer.serialize(ngx)
-
   if allowed_to_run and conf.log_bodies then
-    ngx.req.read_body()
     kong.ctx.plugin.request_body = {}
     local content_type = ngx.req.get_headers(0)["Content-Type"]
-    local body = ngx.req.get_body_data()
     local params = {}
     local err
     if type(content_type) == "string" then
       if content_type:find("application/x-www-form-urlencoded", nil, true) then
+        ngx.req.read_body()
         params, err = ngx.req.get_post_args()
       elseif content_type:find("multipart/form-data", nil, true) then
+        ngx.req.read_body()
+        local body = ngx.req.get_body_data()
         params, err = parse_multipart_form_params(body, content_type)
       elseif content_type:find("application/json", nil, true) then
+        ngx.req.read_body()
+        local body = ngx.req.get_body_data()
         params, err = cjson_safe.decode(body)
       end
+
       if err then
         kong.log.err("Could not parse body data: ", err)
       else
@@ -163,36 +164,10 @@ function CollectorHandler:access(conf)
 end
 
 function CollectorHandler:body_filter(conf)
-  if allowed_to_run then
-    if conf.log_bodies then
-      local chunk = ngx.arg[1]
-      local res_body = ngx.ctx.collector and ngx.ctx.collector.res_body or ""
-      res_body = res_body .. (chunk or "")
-
-      if ngx.ctx.collector then
-        ngx.ctx.collector.res_body = res_body
-      end
-      -- catch unauth error
-      if not ngx.ctx.collector then
-        return { status = 403, message = "No API key found in request" }
-      end
-    end
-  else
-    kong.log.err("This plugin is intended to work with only Kong Enterprise.")
-  end
 end
 
 function CollectorHandler:log(conf)
-  local entry = kong.ctx.plugin.serialized_request
-
-  -- If the `access` function isn't executed, the `entry` variable
-  -- is not going to be initialized properly, leading to stack traces
-  if not entry then
-    return
-  end
-
-  local response_entry = basic_serializer.serialize(ngx)
-  entry["response"] = response_entry["response"]
+  local entry = basic_serializer.serialize(ngx)
   entry["request"]["post_data"] = kong.ctx.plugin.request_body
   entry = cjson.encode(entry)
 

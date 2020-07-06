@@ -8,10 +8,24 @@ local function build_params_with_workspace(workspace_name)
   return utils.encode_args(args)
 end
 
+local function each_by_name(entity, name)
+  local iter = entity:each(1000)
+  local function iterator()
+    local element, err = iter()
+    if err then return nil, err end
+    if element == nil then return end
+    if element.name == name then return element, nil end
+    return iterator()
+  end
+
+  return iterator
+end
+
 local function collector_url()
-  local rows = kong.db.plugins:select_all({ name = "collector" })
-  if rows[1] then
-    return rows[1].config.http_endpoint
+  for row, err in each_by_name(kong.db.plugins, "collector") do
+    if not err then
+      return row.config.http_endpoint
+    end
   end
   return nil, "No collector plugin found."
 end
