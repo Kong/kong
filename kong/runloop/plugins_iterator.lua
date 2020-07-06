@@ -334,6 +334,10 @@ function PluginsIterator.new(version)
   local counter = 0
   local page_size = kong.db.plugins.pagination.page_size
   for plugin, err in kong.db.plugins:each(nil, GLOBAL_QUERY_OPTS) do
+    if err then
+      return nil, err
+    end
+
     local data = ws[plugin.ws_id]
     if not data then
       data = new_ws_data()
@@ -342,11 +346,7 @@ function PluginsIterator.new(version)
     local map = data.map
     local combos = data.combos
 
-    if err then
-      return nil, err
-    end
-
-    if kong.core_cache and counter > 0 and counter % page_size == 0 then
+    if kong.core_cache and counter > 0 and counter % page_size == 0 and kong.db.strategy ~= "off" then
       local new_version, err = kong.core_cache:get("plugins_iterator:version", TTL_ZERO, utils.uuid)
       if err then
         return nil, "failed to retrieve plugins iterator version: " .. err

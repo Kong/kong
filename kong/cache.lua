@@ -238,9 +238,17 @@ function _M:get(key, opts, cb, ...)
     error("key must be a string", 2)
   end
 
-  --log(DEBUG, "get from key: ", key)
+  local shadow = (opts or {}).shadow
 
-  local v, err = self.mlcache:get(key, opts, cb, ...)
+  local current_page = self.curr_mlcache or 1
+  local get_page
+  if shadow and #self.mlcaches == 2 then
+    get_page = current_page == 1 and 2 or 1
+  else
+    get_page = current_page
+  end
+
+  local v, err = self.mlcaches[get_page]:get(key, opts, cb, ...)
   if err then
     return nil, "failed to get from node cache: " .. err
   end
@@ -258,7 +266,17 @@ function _M:get_bulk(bulk, opts)
     error("opts must be a table", 2)
   end
 
-  local res, err = self.mlcache:get_bulk(bulk, opts)
+  local shadow = (opts or {}).shadow
+
+  local current_page = self.curr_mlcache or 1
+  local get_bulk_page
+  if shadow and #self.mlcaches == 2 then
+    get_bulk_page = current_page == 1 and 2 or 1
+  else
+    get_bulk_page = current_page
+  end
+
+  local res, err = self.mlcaches[get_bulk_page]:get_bulk(bulk, opts)
   if err then
     return nil, "failed to get_bulk from node cache: " .. err
   end
@@ -267,30 +285,41 @@ function _M:get_bulk(bulk, opts)
 end
 
 
-function _M:safe_set(key, value, shadow_page)
+function _M:safe_set(key, value, shadow)
   local str_marshalled, err = marshall_for_shm(value, self.mlcache.ttl,
                                                       self.mlcache.neg_ttl)
   if err then
     return nil, err
   end
 
-  local page = 1
-  if shadow_page and #self.mlcaches == 2 then
-    page = (self.curr_mlcache == 1) and 2 or 1
+  local current_page = self.curr_mlcache or 1
+
+  local set_page
+  if shadow and #self.mlcaches == 2 then
+    set_page = current_page == 1 and 2 or 1
+  else
+    set_page = current_page
   end
 
-  local shm_name = self.shm_names[page]
-
+  local shm_name = self.shm_names[set_page]
   return ngx.shared[shm_name]:safe_set(shm_name .. key, str_marshalled)
 end
 
 
-function _M:probe(key)
+function _M:probe(key, shadow)
   if type(key) ~= "string" then
     error("key must be a string", 2)
   end
 
-  local ttl, err, v = self.mlcache:peek(key)
+  local current_page = self.curr_mlcache or 1
+  local probe_page
+  if shadow and #self.mlcaches == 2 then
+    probe_page = current_page == 1 and 2 or 1
+  else
+    probe_page = current_page
+  end
+
+  local ttl, err, v = self.mlcaches[probe_page]:peek(key)
   if err then
     return nil, "failed to probe from node cache: " .. err
   end
@@ -299,26 +328,38 @@ function _M:probe(key)
 end
 
 
-function _M:invalidate_local(key)
+function _M:invalidate_local(key, shadow)
   if type(key) ~= "string" then
     error("key must be a string", 2)
   end
 
   log(DEBUG, "invalidating (local): '", key, "'")
 
-  local ok, err = self.mlcache:delete(key)
+  local current_page = self.curr_mlcache or 1
+  local delete_page
+  if shadow and #self.mlcaches == 2 then
+    delete_page = current_page == 1 and 2 or 1
+  else
+    delete_page = current_page
+  end
+
+  local ok, err = self.mlcaches[delete_page]:delete(key)
   if not ok then
     log(ERR, "failed to delete entity from node cache: ", err)
   end
 end
 
 
-function _M:invalidate(key)
+function _M:invalidate(key, shadow)
   if type(key) ~= "string" then
     error("key must be a string", 2)
   end
 
-  self:invalidate_local(key)
+  self:invalidate_local(key, shadow)
+
+  if shadow then
+    return
+  end
 
   log(DEBUG, "broadcasting (cluster) invalidation for key: '", key, "'")
 
@@ -329,15 +370,18 @@ function _M:invalidate(key)
 end
 
 
-function _M:purge(shadow_page)
+function _M:purge(shadow)
   log(NOTICE, "purging (local) cache")
 
-  local page = 1
-  if shadow_page and #self.mlcaches == 2 then
-    page = (self.curr_mlcache == 1) and 2 or 1
+  local current_page = self.curr_mlcache or 1
+  local purge_page
+  if shadow and #self.mlcaches == 2 then
+    purge_page = current_page == 1 and 2 or 1
+  else
+    purge_page = current_page
   end
 
-  local ok, err = self.mlcaches[page]:purge(true)
+  local ok, err = self.mlcaches[purge_page]:purge(true)
   if not ok then
     log(ERR, "failed to purge cache: ", err)
   end
@@ -351,8 +395,11 @@ function _M:flip()
 
   log(DEBUG, "flipping current cache")
 
-  self.curr_mlcache = (self.curr_mlcache == 1) and 2 or 1
-  self.mlcache = self.mlcaches[self.curr_mlcache]
+  local current_page = self.curr_mlcache or 1
+  local next_page = current_page == 1 and 2 or 1
+
+  self.curr_mlcache = next_page
+  self.mlcache = self.mlcaches[next_page]
 end
 
 
