@@ -591,7 +591,7 @@ end
 
 
 local function insert_default_workspace_if_not_given(self, entities)
-  local default_workspace = find_default_ws(entities) or utils.uuid()
+  local default_workspace = find_default_ws(entities) or "0dc6f45b-8f8d-40d2-a504-473544ee190b"
 
   if not entities.workspaces then
     entities.workspaces = {}
