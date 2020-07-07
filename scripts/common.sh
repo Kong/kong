@@ -6,7 +6,9 @@ EXIT_RES=
 function on_exit_fn {
   EXIT_RES=$?
   for cb in "${ON_EXIT[@]}"; do $cb || true; done
-  return $EXIT_RES
+  # read might hang on ctrl-c, this is a hack to finish the script for real
+  clear_exit
+  exit $EXIT_RES
 }
 
 trap on_exit_fn EXIT SIGINT
