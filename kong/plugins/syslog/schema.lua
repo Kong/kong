@@ -8,12 +8,12 @@ local severity = {
 
 local facility = {
 	type = "string",
-	default = "FACILITY_USER",
-	one_of = { "FACILITY_AUTH", "FACILITY_AUTHPRIV",  "FACILITY_CRON",  "FACILITY_DAEMON",
-			"FACILITY_FTP",  "FACILITY_KERN",  "FACILITY_LPR",  "FACILITY_MAIL",
-			"FACILITY_NEWS", "FACILITY_SYSLOG",  "FACILITY_USER",  "FACILITY_UUCP",
-			"FACILITY_LOCAL0",  "FACILITY_LOCAL1", "FACILITY_LOCAL2",  "FACILITY_LOCAL3",
-			"FACILITY_LOCAL4",  "FACILITY_LOCAL5",  "FACILITY_LOCAL6",  "FACILITY_LOCAL7" },
+	default = "USER",
+	one_of = { "AUTH", "AUTHPRIV",  "CRON",  "DAEMON",
+			"FTP",  "KERN",  "LPR",  "MAIL",
+			"NEWS", "SYSLOG",  "USER",  "UUCP",
+			"LOCAL0",  "LOCAL1", "LOCAL2",  "LOCAL3",
+			"LOCAL4",  "LOCAL5",  "LOCAL6",  "LOCAL7" },
 }
 
 return {
