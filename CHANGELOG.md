@@ -1,3 +1,7 @@
+## 0.2.0
+
+- remove `run_on`
+
 ## 0.1.2
 
 - Resolve cascade delete problem with consumers
