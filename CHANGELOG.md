@@ -1,3 +1,10 @@
+## 1.0.1
+
+- chore(respond code) replace `403` to `401` - FTI-1492
+- chore(*) return 500 when error
+- test(*) update tests
+- chore(*) respond 401 instead of 403
+
 ## 1.0.0
 
 ### Fixed
