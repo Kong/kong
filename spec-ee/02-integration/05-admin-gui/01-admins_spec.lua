@@ -4,7 +4,6 @@ local enums      = require "kong.enterprise_edition.dao.enums"
 local utils      = require "kong.tools.utils"
 local ee_jwt     = require "kong.enterprise_edition.jwt"
 local ee_helpers = require "spec-ee.helpers"
-local scope = require "kong.enterprise_edition.workspaces.scope"
 local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local ee_utils = require "kong.enterprise_edition.utils"
@@ -167,9 +166,7 @@ for _, strategy in helpers.each_strategy() do
 
       ee_helpers.register_rbac_resources(db)
 
-      scope.run_with_ws_scope({ another_ws }, function()
-        ee_helpers.register_rbac_resources(db, "another-one")
-      end)
+      ee_helpers.register_rbac_resources(db, "another-one", another_ws)
 
       for i = 1, 3 do
         -- admins that are already approved
@@ -627,11 +624,8 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("retrieves workspaces for an admin outside default", function()
-            local lesser_admin
-            scope.run_with_ws_scope({another_ws}, function ()
-              lesser_admin = ee_helpers.create_admin('outside_default@gmail.com',
-                                                     nil, 0, bp, db)
-            end)
+            local lesser_admin = ee_helpers.create_admin('outside_default@gmail.com',
+                                                     nil, 0, db, nil, another_ws)
 
             local res = assert(client:send {
               method = "GET",
@@ -646,12 +640,8 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("retrieves workspaces for an admin in multiple workspaces", function()
-            local lesser_admin
-
-            scope.run_with_ws_scope({another_ws}, function ()
-              lesser_admin = ee_helpers.create_admin('outside_default2@gmail.com',
-                                                     nil, 0, bp, db)
-            end)
+            local lesser_admin = ee_helpers.create_admin('outside_default2@gmail.com',
+                                                     nil, 0, db, nil, another_ws)
 
             post(client, "/admins/outside_default2@gmail.com/roles", {
               roles = "read-only"
@@ -672,9 +662,8 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("retrieves asterisk workspace for an admin with asterisk role", function()
-            scope.run_with_ws_scope({kong.default_workspace}, function ()
-              return ee_helpers.create_admin('the_admin@test.com', nil, 0, bp, db)
-            end)
+            ee_helpers.create_admin('the_admin@test.com', nil, 0, db, nil,
+              { id = kong.default_workspace })
 
             post(client, "/admins/the_admin@test.com/roles", {
               roles = "read-only" -- has endpoint.workspace = '*'
@@ -1534,9 +1523,7 @@ for _, strategy in helpers.each_strategy() do
         name = "another-one",
       }))
 
-      scope.run_with_ws_scope({ another_ws }, function()
-        ee_helpers.register_rbac_resources(db, "another-one")
-      end)
+      ee_helpers.register_rbac_resources(db, "another-one", another_ws)
 
       ee_helpers.register_rbac_resources(db)
 
@@ -2081,27 +2068,24 @@ for _, strategy in helpers.each_strategy() do
       assert.is_nil(err)
       assert.same("another-one", ws.name)
       local role = db.rbac_roles:insert({ name = "another-one" })
-      scope.run_with_ws_scope({ws}, function ()
-        outside_admin, _ = kong.db.admins:insert({
-          username = "outsider1",
-          email = "outsider1@konghq.com",
-          status = enums.CONSUMERS.STATUS.APPROVED,
-        })
 
-        assert.is_not_nil(role)
-      end)
+      outside_admin, _ = kong.db.admins:insert({
+        username = "outsider1",
+        email = "outsider1@konghq.com",
+        status = enums.CONSUMERS.STATUS.APPROVED,
+      })
 
-      scope.run_with_ws_scope({ws}, function ()
-        assert(db.basicauth_credentials:insert {
-          username    = outside_admin.username,
-          password    = "outsider1pass",
-          consumer = {
-            id = outside_admin.consumer.id,
-          },
-        })
+      assert.is_not_nil(role)
 
-        assert.is_not_nil(role)
-      end)
+      assert(db.basicauth_credentials:insert {
+        username    = outside_admin.username,
+        password    = "outsider1pass",
+        consumer = {
+          id = outside_admin.consumer.id,
+        },
+      }, { workspace = ws.id })
+
+      assert.is_not_nil(role)
 
     end)
 

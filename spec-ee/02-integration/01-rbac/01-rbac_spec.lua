@@ -1,6 +1,5 @@
 local spec_helpers = require "spec.helpers"
 local utils       = require "kong.tools.utils"
-local scope = require "kong.enterprise_edition.workspaces.scope"
 local bit = require "bit"
 
 
@@ -922,42 +921,38 @@ describe("(#" .. strategy .. ")", function()
       another_ws = assert(db.workspaces:insert({ name = "ws1" }))
 
       local function generate_user (i, ws, endpoint_workspace)
-        return scope.run_with_ws_scope({ws}, function ()
-          local user = assert(db.rbac_users:insert({
-            name = "some-user-" .. i,
-            user_token = "billgatesletmeinnow" .. i,
-          }, { show_ws_id = true }))
-          assert(user.ws_id)
+        local user = assert(db.rbac_users:insert({
+          name = "some-user-" .. i,
+          user_token = "billgatesletmeinnow" .. i,
+        }, { show_ws_id = true, workspace = ws.id }))
+        assert(user.ws_id)
 
-          local endpoints = {}
-          local role
+        local endpoints = {}
+        local role
 
-          if endpoint_workspace then
-            role = db.rbac_roles:insert({ name = "role" .. i })
+        if endpoint_workspace then
+          role = db.rbac_roles:insert({ name = "role" .. i }, { workspace = ws.id })
 
-            scope.run_with_ws_scope({}, function ()
-              assert(db.rbac_user_roles:insert({
-                user = user,
-                role = role,
-              }))
-            end)
-
-            endpoints = {
-              [1] = assert(db.rbac_role_endpoints:insert({
-                role = role,
-                workspace = endpoint_workspace,
-                endpoint = "*",
-                actions = rbac.actions_bitfields.read,
-              }))
-            }
-          end
-
-          return {
+          assert(db.rbac_user_roles:insert({
             user = user,
             role = role,
-            endpoints = endpoints
+          }))
+
+          endpoints = {
+            [1] = assert(db.rbac_role_endpoints:insert({
+              role = role,
+              workspace = endpoint_workspace,
+              endpoint = "*",
+              actions = rbac.actions_bitfields.read,
+            }))
           }
-        end)
+        end
+
+        return {
+          user = user,
+          role = role,
+          endpoints = endpoints
+        }
       end
 
       users[1] = generate_user(1, default_ws, "*")
@@ -971,14 +966,13 @@ describe("(#" .. strategy .. ")", function()
       users[4] = generate_user(4, default_ws, nil)
 
       users[5] = generate_user(5, default_ws, "*")
-      scope.run_with_ws_scope({default_ws}, function ()
-        assert(db.rbac_role_endpoints:insert({
-          role = users[5].role,
-          workspace = "*",
-          endpoint = "/consumers",
-          actions = rbac.actions_bitfields.create
-        }))
-      end)
+
+      assert(db.rbac_role_endpoints:insert({
+        role = users[5].role,
+        workspace = "*",
+        endpoint = "/consumers",
+        actions = rbac.actions_bitfields.create
+      }))
     end)
 
     before_each(function()

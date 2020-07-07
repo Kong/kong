@@ -1,10 +1,8 @@
 local helpers    = require "spec.helpers"
 local utils   = require "kong.tools.utils"
-local scope = require "kong.enterprise_edition.workspaces.scope"
 
 for _, strategy in helpers.each_strategy() do
   describe("kong.db [#" .. strategy .. "]", function()
-    local run_ws = scope.run_with_ws_scope
     local bp, db
     -- workspaces objects
     local s1
@@ -52,9 +50,7 @@ for _, strategy in helpers.each_strategy() do
           res = db.services:select({ id = s1.id })
           assert.same(s1, res)
 
-          res = run_ws({ w1 }, function()
-            return db.services:select({ id = s1.id })
-          end)
+          res = db.services:select({ id = s1.id }, { workspace = w1.id })
           assert.is_nil(res)
         end)
 
@@ -63,9 +59,7 @@ for _, strategy in helpers.each_strategy() do
           res = db.services:select({ id = w1s1.id })
           assert.is_nil(res)
 
-          res = run_ws({ w1 }, function()
-            return db.services:select({ id = w1s1.id })
-          end)
+          res = db.services:select({ id = w1s1.id }, { workspace = w1.id })
           assert.same(w1s1, res)
         end)
       end)
@@ -76,9 +70,7 @@ for _, strategy in helpers.each_strategy() do
           res = db.services:page()
           assert.same({ s1 }, res)
 
-          res = run_ws({ w1 }, function()
-            return db.services:page()
-          end)
+          res = db.services:page(nil, nil, { workspace = w1.id })
           assert.not_same({ s1 }, res)
         end)
       end)
@@ -91,13 +83,11 @@ for _, strategy in helpers.each_strategy() do
           end
           assert.same({ s1 }, res_services)
 
-          local res_services = run_ws({ w1 }, function()
-            local res = {}
-            for row in db.services:each() do
-              table.insert(res, row)
-            end
-            return res
-          end)
+          local res_services = {}
+          for row in db.services:each(nil, { workspace = w1.id }) do
+            table.insert(res_services, row)
+          end
+
           assert.not_same({ s1 }, res_services)
         end)
       end)
@@ -111,9 +101,7 @@ for _, strategy in helpers.each_strategy() do
           res = db.services:select({ id = s.id })
           assert.same(s, res)
 
-          res = run_ws({ w1 }, function()
-            return db.services:select({ id = s.id})
-          end)
+          res = db.services:select({ id = s.id}, { workspace = w1.id })
           assert.is_nil(res)
 
           local ok, err = db.services:delete({ id = s.id })
@@ -145,9 +133,7 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           assert.same(s, res)
 
-          res, err = run_ws({ w1 }, function()
-            return db.services:update({ id = s.id }, { name = "test-update"})
-          end)
+          res, err = db.services:update({ id = s.id }, { name = "test-update"}, { workspace = w1.id })
           assert.not_same(s, res)
           assert.same("[" .. strategy .. "] could not find the entity with primary key '{id=\"" .. s.id .. "\"}'", err)
 
@@ -174,9 +160,7 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           assert.same(s, res)
 
-          res, err = run_ws({ w1 }, function()
-            return db.services:select({ id = s.id })
-          end)
+          res, err = db.services:select({ id = s.id }, { workspace = w1.id })
           assert.is_nil(res)
           assert.is_nil(err)
         end)
@@ -220,9 +204,7 @@ for _, strategy in helpers.each_strategy() do
           assert.same(s, res)
 
           -- removing service from workspace [w1] using workspaces [default] service id
-          local ok, err = run_ws({ w1 }, function()
-            return db.services:delete({ id = s.id })
-          end)
+          local ok, err = db.services:delete({ id = s.id }, { workspace = w1.id })
           assert.is_nil(err)
           assert.is_true(ok)
 
@@ -259,10 +241,16 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           assert.same(p.id, res.id)
 
+          local save_ws = ngx.ctx.workspace
+          ngx.ctx.workspace = w1.id
+
+          -- getting plugin cache key to test with
+          local p_cache_key_ws = db.plugins:cache_key(p)
+
+          ngx.ctx.workspace = save_ws
+
           -- retrieving plugin entity from workspace [w1]
-          res, err = run_ws({ w1 }, function()
-            return db.plugins:select_by_cache_key(p_cache_key)
-          end)
+          res, err = db.plugins:select_by_cache_key(p_cache_key_ws)
           assert.is_nil(err)
           assert.is_nil(res)
 
@@ -274,7 +262,6 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("cache_key():", function()
-        -- XXXCORE is this really necessary? since id's are globally unique (uuids)...
         pending("retrieves different cache key for different workspaces", function()
           local res, res_1, res_2, err
 
@@ -285,47 +272,16 @@ for _, strategy in helpers.each_strategy() do
           assert.same(p, res)
 
           -- retrieving plugins cache key from the workspace [default]
-          res_1, err = db.plugins:cache_key(p.id)
+          res_1, err = db.plugins:cache_key("hello")
           assert.is_nil(err)
           assert.not_nil(res_1)
 
           -- retrieving plugins cache key from the workspace [w1]
-          res_2, err = run_ws({ w1 }, function()
-            return db.plugins:cache_key(p.id)
-          end)
+          res_2, err = db.plugins:cache_key("hello", nil, nil, nil, nil, w1.id)
           assert.is_nil(err)
           assert.not_nil(res_2)
 
           assert.not_same(res_1, res_2)
-
-          -- cleanup, removing plugin
-          local ok, err = db.plugins:delete({ id = p.id })
-          assert.is_nil(err)
-          assert.is_true(ok)
-        end)
-
-        it("retrieves same cache key for different workspaces with skip flag on", function()
-          local res, res_1, res_2,  err
-
-          -- adding new plugin to run tests against
-          local p = bp.plugins:insert({ name = "key-auth" })
-          res, err = db.plugins:select({ id = p.id })
-          assert.is_nil(err)
-          assert.same(p, res)
-
-          -- retrieving plugins cache key from the workspace [default]
-          res_1, err = db.plugins:cache_key(p.id, nil, nil, nil, nil, true)
-          assert.is_nil(err)
-          assert.not_nil(res_1)
-
-          -- retrieving plugins cache key from the workspace [w1]
-          res_2, err = run_ws({ w1 }, function()
-            return db.plugins:cache_key(p.id, nil, nil, nil, nil, true)
-          end)
-          assert.is_nil(err)
-          assert.not_nil(res_2)
-
-          assert.same(res_1, res_2)
 
           -- cleanup, removing plugin
           local ok, err = db.plugins:delete({ id = p.id })

@@ -15,7 +15,6 @@ for _, strategy in helpers.each_strategy() do
   pending("#flaky consumers_rbac_users_mapping invalidations #" .. strategy, function()
     local bp
     local db
-    local dao
 
     local admin_client
     local consumer
@@ -24,7 +23,7 @@ for _, strategy in helpers.each_strategy() do
     local headers = {}
 
     setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy)
 
       consumer = assert(bp.consumers:insert {
         username = "hawk",
@@ -39,7 +38,7 @@ for _, strategy in helpers.each_strategy() do
       })
       headers["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong")
 
-      user = assert(dao.rbac_users:insert {
+      user = assert(db.rbac_users:insert {
         name = "hawk",
         user_token = "tawken",
         enabled = true,
@@ -52,7 +51,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       -- make hawk super
-      local _, super_role = ee_helpers.register_rbac_resources(dao)
+      local _, super_role = ee_helpers.register_rbac_resources(db)
       assert(db.rbac_user_roles:insert({
         user_id = user.id,
         role_id = super_role.role_id,
@@ -120,7 +119,7 @@ for _, strategy in helpers.each_strategy() do
 
       pending("invalidates consumer rbac user map cache when admin is deleted",
         function()
-          local admin = ee_helpers.create_admin("gruce@konghq.com", nil, 0, bp, dao)
+          local admin = ee_helpers.create_admin("gruce@konghq.com", nil, 0, db)
 
           local res = assert(admin_client:send {
             method = "DELETE",
