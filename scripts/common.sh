@@ -26,6 +26,21 @@ function err {
   exit 1
 }
 
+function warn {
+  >&2 \echo -en "\033[1;33m"
+  >&2 echo "WARNING: $*"
+  >&2 \echo -en "\033[0m"
+}
+
+
+
+function confirm {
+  local ans=${2:-"y|Y"}
+  [[ $FORCE == 1 ]] && return 0
+  read -r -p "$1 ($ans)? "
+  [[ $REPLY =~ $ans ]]
+}
+
 
 parse_version() {
   [[ -z $1 ]] || [[ -z $2 ]] && >&2 echo "parse_version() requires two arguments" && exit 1
