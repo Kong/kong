@@ -92,6 +92,6 @@ function ResponseTransformerHandler:body_filter(conf)
 end
 
 ResponseTransformerHandler.PRIORITY = 800
-ResponseTransformerHandler.VERSION = "0.3.3"
+ResponseTransformerHandler.VERSION = "0.4.0"
 
 return ResponseTransformerHandler
