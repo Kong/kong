@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
+usage() {
+  echo -e "PR issuer to \033[5msync\033[0m branches between kong repos."
+  cat <<-EOF
 
-# $0 -f kong:branch1 -t kong-ee:branch2
-# $0 -f kong-ee:next/1.3.0.x -t kong-ee:next/1.5.0.x
-# $0 -f kong-ee:next/1.5.0.x -t kong-ee:next/2.1.0.x
-# $0 -f kong-ee:next/2.1.0.x -t kong-ee:master
-
-set -x
+$0 -f kong:next -t kong-ee:master
+$0 -f kong:release/2.1.0 -t kong-ee:next/2.1.0.x
+$0 -f kong-ee:next/1.3.0.x -t kong-ee:next/1.5.0.x
+$0 -f kong-ee:next/1.5.0.x -t kong-ee:next/2.1.0.x
+$0 -f kong-ee:next/2.1.0.x -t kong-ee:master
+EOF
+}
 
 function browser() {
    if which open &> /dev/null
@@ -28,8 +32,11 @@ function die {
 
 
 parse_args() {
-  while getopts "f:t:" option; do
+  while getopts "f:t:h" option; do
     case $option in
+      h)
+        usage && die
+        ;;
       f)
         from=$OPTARG
         f_repo=$(echo $from | cut -f1 -d: -s)
