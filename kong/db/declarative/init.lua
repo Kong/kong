@@ -378,7 +378,7 @@ local function export_from_db(emitter, skip_ws, skip_ttl)
       end
     end
 
-    for row, err in kong.db[name]:each(nil, { nulls = true, workspace = null }) do
+    for row, err in kong.db[name]:each(nil, { nulls = true, workspace = null, show_ws_id = true}) do
       if not row then
         kong.log.err(err)
         return nil, err
