@@ -1,3 +1,9 @@
+## 0.3.0
+
+### Changed
+
+- remove `run_on` field from schema
+
 ## 0.2
 
 ### Changed
