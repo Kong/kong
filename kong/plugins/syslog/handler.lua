@@ -22,26 +22,26 @@ local LOG_LEVELS = {
 }
 
 local FACILITIES = {
-  AUTH = lsyslog.AUTH,
-  AUTHPRIV = lsyslog.AUTHPRIV,
-  CRON = lsyslog.CRON,
-  DAEMON = lsyslog.DAEMON,
-  FTP = lsyslog.FTP,
-  KERN = lsyslog.KERN,
-  LPR = lsyslog.LPR,
-  MAIL = lsyslog.MAIL,
-  NEWS = lsyslog.NEWS,
-  SYSLOG = lsyslog.SYSLOG,
-  USER = lsyslog.USER,
-  UUCP = lsyslog.UUCP,
-  LOCAL0 = lsyslog.LOCAL0,
-  LOCAL1 = lsyslog.LOCAL1,
-  LOCAL2 = lsyslog.LOCAL2,
-  LOCAL3 = lsyslog.LOCAL3,
-  LOCAL4 = lsyslog.LOCAL4,
-  LOCAL5 = lsyslog.LOCAL5,
-  LOCAL6 = lsyslog.LOCAL6,
-  LOCAL7 = lsyslog.LOCAL7
+  AUTH = lsyslog.FACILITY_AUTH,
+  AUTHPRIV = lsyslog.FACILITY_AUTHPRIV,
+  CRON = lsyslog.FACILITY_CRON,
+  DAEMON = lsyslog.FACILITY_DAEMON,
+  FTP = lsyslog.FACILITY_FTP,
+  KERN = lsyslog.FACILITY_KERN,
+  LPR = lsyslog.FACILITY_LPR,
+  MAIL = lsyslog.FACILITY_MAIL,
+  NEWS = lsyslog.FACILITY_NEWS,
+  SYSLOG = lsyslog.FACILITY_SYSLOG,
+  USER = lsyslog.FACILITY_USER,
+  UUCP = lsyslog.FACILITY_UUCP,
+  LOCAL0 = lsyslog.FACILITY_LOCAL0,
+  LOCAL1 = lsyslog.FACILITY_LOCAL1,
+  LOCAL2 = lsyslog.FACILITY_LOCAL2,
+  LOCAL3 = lsyslog.FACILITY_LOCAL3,
+  LOCAL4 = lsyslog.FACILITY_LOCAL4,
+  LOCAL5 = lsyslog.FACILITY_LOCAL5,
+  LOCAL6 = lsyslog.FACILITY_LOCAL6,
+  LOCAL7 = lsyslog.FACILITY_LOCAL7
 }
 
 local sandbox_opts = { env = { kong = kong, ngx = ngx } }
