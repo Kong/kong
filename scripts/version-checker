@@ -10,6 +10,8 @@ FROM=${FROM:-build}
 TO=${TO:-master}
 FORCE=${FORCE:-0}
 FORCE_PR=${FORCE_PR:-0}
+FORCE_MASTER=${FORCE_MASTER:-0}
+SEEK=${SEEK:-0}
 
 DO_PR=${DO_PR:-0}
 # XXX still not used. The idea would be to use scripts/bump-plugin to try and
@@ -17,7 +19,14 @@ DO_PR=${DO_PR:-0}
 DO_BUMP=${DO_BUMP:-0}
 
 # Entities to ignore
-IGNORE=("kong-admin" "kong-portal")
+IGNORE=(
+  # hardcoded or handled not by FTT
+  "kong-admin" "kong-portal"
+  # not handled by FTT
+  "kong-plugin-oauth2-introspection"
+  "kong-plugin-openid-connect-lib"
+  "kong-plugin-jwt-signer"
+)
 
 source $LOCAL_PATH/common.sh
 
@@ -38,6 +47,7 @@ Options:
                           - <tag>: specify a <tag> to check from
   --ignore name         ignore component 'name' in build.yml
   --pr                  make a PR with changes (if something changed)
+  --seek N              ignore first N entries
   -f                    do not ask confirmation
   -v                    verbose
   -h, --help            show this help
@@ -55,6 +65,10 @@ function parse_args {
       -h|--help)
         usage
         exit 0
+        ;;
+      --seek)
+        SEEK=$2
+        shift
         ;;
       --to)
         TO=$2
@@ -91,13 +105,19 @@ function get_distributions {
   echo $DISTRIBUTIONS_PATH
 }
 
+function __open {
+  local index=$1
+  local url=$(echo $entry | jq -r '.github_url')
+  open https://github.com/kong/${repo}
+}
+
 function check {
   local index=$1
   local entry=$2
 
   local name=$(echo $entry | jq -r '.name')
-  if echo ${IGNORE[*]} | grep $name 2> /dev/null; then
-    >&2 echo "Ignoring $name"
+  if echo ${IGNORE[*]} | grep $name 2> /dev/null || [[ $index -le $SEEK ]]; then
+    warn "[$index.$name] ignoring"
     return 0
   fi
   local url=$(echo $entry | jq -r '.github_url')
@@ -131,18 +151,41 @@ function check {
         to=$TO
         ;;
     esac
-
-    if [[ $from == "none" ]]; then
+    #                           There are never commits from master to wherever
+    if [[ $from == "none" ]] || [[ $from == "master" ]]; then
       unset from
     fi
 
     if [[ -n $from ]] && [[ -z $(git rev-list $from..$to) ]]; then
-      >&2 echo "[$name] No new commits from $from until $to"
-      return 0
+      >&2 echo "#$index [$name] No new commits from $from until $to"
+
+      # last tag does not point to HEAD, therefore, it might be an outdated
+      # tag anyway
+      if [[ "$(git rev-list -n 1 $to)" != "$(git rev-list -n 1 HEAD)" ]]; then
+        if ! confirm "#$index [$name] $to is older than HEAD, check repo, want to check?"; then
+          return 0
+        fi
+      else
+        return 0
+      fi
+    else
+      >&2 echo "#$index [$name] has new commits from $from until $to"
     fi
 
-    >&2 echo "[$name] has new commits from $from until $to"
-    confirm "Do you want to bump $name: $version -> $to" && bump $index $to
+    confirm "#$index [$name] Do you want to open the repo github" && __open $index
+
+    if confirm "Do you want to bump $name: $version -> $to"; then
+      bump $index $to
+    elif confirm "Do you want to issue a bump on the plugin itself"; then
+      if ! bump_plugin $index; then
+        >&2 echo "Seems something went wrong with the bump script"
+        confirm "Do you want a shell on this plugin to fix the mess" && $SHELL
+      fi
+
+      if confirm "Do you want to re-run this step, and maybe bump the yml"; then
+        check "$@"
+      fi
+    fi
   popd
 }
 
@@ -158,18 +201,18 @@ function bump {
 }
 
 
-function confirm {
-  local ans=${2:-"y|Y"}
-  [[ $FORCE == 1 ]] && return 0
-  read -r -p "$1 ($ans)? "
-  [[ $REPLY =~ $ans ]]
-}
-
 function something_changed {
   git update-index --refresh
   git diff-index --quiet HEAD --
   [[ $? != 0 ]]
+}
 
+function bump_plugin {
+  # XXX not sure why we need this
+  local errcode=0
+  bash $LOCAL_PATH/bump-plugin || errcode=$?
+  echo Result was: $errcode
+  return $errcode
 }
 
 function commit_build_yml {
