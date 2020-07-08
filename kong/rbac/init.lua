@@ -231,7 +231,7 @@ function _M.register_dao_hooks(db)
     end
 
     if name == "rbac_users" then
-      local _, err = _M.create_default_role(row)
+      local _, err = _M.create_default_role(row, options and options.workspace)
       if err then
         return nil, "failed to create default role for '" .. row.name .. "'"
       end
@@ -432,8 +432,9 @@ end
 
 local function retrieve_group_roles_ids(db, group_id)
   local relations = {}
-  for row, err in db.group_rbac_roles:each_for_group({id = group_id }, nil,
-                                                     {skip_rbac = true})
+  for row, err in db.group_rbac_roles:each_for_group({ id = group_id }, nil,
+                                                     { skip_rbac = true,
+                                                       workspace = null })
   do
     if err then
       return nil, err
@@ -553,7 +554,9 @@ end
 -- allows setting several roles simultaneously, minimizing database accesses
 -- @returns true if the new roles were set successfully
 -- @returns nil, errors_str, errors_array if there was 1 or more errors
-local function set_user_roles(db, user, new_role_names)
+local function set_user_roles(db, user, new_role_names, workspace)
+  assert(utils.is_valid_uuid(workspace), "workspace must be an id (string uuid)")
+
   local existing_roles, err = get_user_roles(db, user, null)
   if err then
     return nil, err, { err }
@@ -573,7 +576,8 @@ local function set_user_roles(db, user, new_role_names)
     local new_role_name = new_role_names[i]
 
     if not existing_hash[new_role_name] then
-      local role = db.rbac_roles:select_by_name(new_role_name)
+      local opts = { workspace = workspace }
+      local role = db.rbac_roles:select_by_name(new_role_name, opts)
       if role then
         local ok, err = db.rbac_user_roles:insert({
           user = user_pk ,
@@ -635,7 +639,10 @@ local function retrieve_users_ids(db, role_id)
 end
 
 
-local function get_role_users(db, role)
+local function get_role_users(db, role, workspace)
+  assert(workspace == null or (type(workspace) == "string" and workspace ~= "*"),
+    "workspace must be an id (string uuid) or ngx.null to mean global")
+
   local cache = kong.cache
 
   local relationship_cache_key = db.rbac_user_roles:cache_key(role.id)
@@ -793,11 +800,12 @@ end
 
 -- helper: create default role and the corresponding user-role association
 -- user: the rbac user entity
-function _M.create_default_role(user)
+function _M.create_default_role(user, ws_id)
   local role, err
+  local opts = { workspace = ws_id }
 
   -- try fetching the role; if it exists, use it
-  role, err = kong.db.rbac_roles:select_by_name(user.name)
+  role, err = kong.db.rbac_roles:select_by_name(user.name, opts)
 
   if err then
     return nil, err
@@ -809,7 +817,7 @@ function _M.create_default_role(user)
       name = user.name,
       comment = "Default user role generated for " .. user.name,
       is_default = true,
-    })
+    }, opts)
     if not role then
       return nil, err
     end
@@ -832,9 +840,12 @@ end
 -- be used on default roles after deleting its main user. Previously
 -- this function had to delete the rbac_user_role relationship. Now
 -- it's managed by delete-cascade at dao level
-function _M.remove_default_role_if_empty(default_role)
+function _M.remove_default_role_if_empty(default_role, workspace)
+  assert(workspace == null or (type(workspace) == "string" and workspace ~= "*"),
+    "workspace must be an id (string uuid) or ngx.null to mean global")
+
   -- get count of users still in the default role
-  local users, err = get_role_users(kong.db, default_role)
+  local users, err = get_role_users(kong.db, default_role, workspace)
   local n_users = #users
   if err then
     return nil, err
@@ -844,7 +855,7 @@ function _M.remove_default_role_if_empty(default_role)
   if n_users == 0 then
     local _, err = kong.db.rbac_roles:delete({
       id = default_role.id,
-    })
+    }, { workspace = workspace })
     if err then
       return nil, err
     end

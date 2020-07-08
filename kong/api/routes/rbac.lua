@@ -238,7 +238,7 @@ return {
 
         local default_role = db.rbac_roles:select_by_name(self.rbac_user.name)
         if default_role then
-          local _, err = rbac.remove_default_role_if_empty(default_role)
+          local _, err = rbac.remove_default_role_if_empty(default_role, ngx.ctx.workspace)
           if err then
             helpers.yield_error(err)
           end
