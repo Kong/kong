@@ -90,6 +90,7 @@ return {
   workspaceable = true,
   endpoint_key = "path",
   dao = "kong.db.dao.files",
+  db_export = false,
   fields = {
     {id = typedefs.uuid},
     {created_at = typedefs.auto_timestamp_s},

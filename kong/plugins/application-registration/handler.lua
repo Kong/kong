@@ -12,7 +12,7 @@ PortalAppHandler.VERSION = "2.0.0"
 
 
 function PortalAppHandler:access(conf)
-  conf.whitelist = { conf.service_id }
+  conf.allow = { conf.service_id }
 
   local consumer = kong.client.get_consumer()
   if not consumer or consumer.type ~= enums.CONSUMERS.TYPE.APPLICATION then

@@ -10,6 +10,7 @@ return {
   workspaceable = true,
   dao           = "kong.db.dao.application_instances",
   generate_admin_api = false,
+  db_export = false,
 
   fields = {
     { id             = typedefs.uuid, },
