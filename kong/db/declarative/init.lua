@@ -11,6 +11,7 @@ local deepcopy = tablex.deepcopy
 local null = ngx.null
 local SHADOW = true
 local md5 = ngx.md5
+local pairs = pairs
 local ngx_socket_tcp = ngx.socket.tcp
 local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
 local PREFIX = ngx.config.prefix()
@@ -830,6 +831,18 @@ function declarative.load_into_cache_with_events(entities, meta, hash)
   end
 
   return true
+end
+
+
+
+function declarative.sanitize_output(entities)
+  entities.workspaces = nil
+
+  for _, s in pairs(entities) do -- set of entities
+    for _, e in pairs(s) do -- individual entity
+      e.ws_id = nil
+    end
+  end
 end
 
 
