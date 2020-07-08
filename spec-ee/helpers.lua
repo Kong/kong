@@ -9,12 +9,9 @@ local _M = {}
 
 
 function _M.register_rbac_resources(db, ws)
-  local utils = require "kong.tools.utils"
   local bit   = require "bit"
   local rbac  = require "kong.rbac"
   local bxor  = bit.bxor
-
-  ws = ws or "default"
 
   -- action int for all
   local action_bits_all = 0x0
@@ -44,6 +41,8 @@ function _M.register_rbac_resources(db, ws)
     endpoint = "*",
     actions = rbac.actions_bitfields.read,
   })
+
+  ws = ws or "default"
 
   if err then
     return nil, nil, err

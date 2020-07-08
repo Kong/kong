@@ -99,7 +99,15 @@ function _Admins:delete(admin, options)
   local consumer_id = admin.consumer.id
   local rbac_user_id = admin.rbac_user.id
 
-  local roles, err = rbac.get_user_roles(kong.db, admin.rbac_user)
+  local workspace
+  if options then
+    workspace = options.workspace
+  end
+  if not workspace then
+    workspace = ngx.ctx.workspace or ngx.null
+  end
+
+  local roles, err = rbac.get_user_roles(kong.db, admin.rbac_user, workspace)
   if err then
     return nil, err
   end

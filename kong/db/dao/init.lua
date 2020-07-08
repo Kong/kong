@@ -350,7 +350,7 @@ local function validate_unique_row_method(self, name, field, unique_value, optio
     validate_options_type(options)
 
     if options.workspace == null and not field.unique_across_ws then
-      local err_t = self.errors:invalid_unique_ws(name)
+      local err_t = self.errors:invalid_unique_global(name)
       return nil, tostring(err_t), err_t
     end
   end

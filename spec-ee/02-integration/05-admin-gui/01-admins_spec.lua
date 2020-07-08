@@ -9,10 +9,140 @@ local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local ee_utils = require "kong.enterprise_edition.utils"
 local escape = require("socket.url").escape
+
+local post = ee_helpers.post
 local get_admin_cookie = ee_helpers.get_admin_cookie_basic_auth
 
 
 for _, strategy in helpers.each_strategy() do
+  describe("Admin API - Admins #" .. strategy, function()
+
+    local function init_db()
+      local conf = utils.deep_copy(helpers.test_conf)
+      conf.cassandra_timeout = 60000 -- default used in the `migrations` cmd as well
+
+      local db = assert(kong.db.new(conf, strategy))
+      assert(db:init_connector())
+      assert(db:connect())
+      finally(function()
+        db.connector:close()
+      end)
+      assert(db.plugins:load_plugin_schemas(helpers.test_conf.loaded_plugins))
+      db:truncate()
+      return db
+    end
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+
+      helpers.unsetenv("KONG_PASSWORD")
+      assert.equal(nil, os.getenv("KONG_PASSWORD"))
+    end)
+
+    it("regression test for role filtering (EBB-336)", function()
+      local db = init_db()
+
+      helpers.setenv("KONG_PASSWORD", "handyshake")
+      assert.equal("handyshake", os.getenv("KONG_PASSWORD"))
+
+      assert(db:schema_reset())
+
+      helpers.bootstrap_database(db)
+
+      assert(helpers.start_kong({
+        database = strategy,
+        admin_gui_auth="basic-auth",
+        enforce_rbac="on",
+        admin_gui_session_conf=[[{"cookie_name":"kong_manager","storage":"kong","secret":"ohyea!","cookie_secure":false,"cookie_lifetime":86400,"cookie_renew":86400}]],
+        portal_is_legacy="false",
+        --admin_gui_url = "http://manager.konghq.com",
+      }))
+
+      local headers = {
+        ["Kong-Admin-Token"] = "handyshake",
+        ["Content-Type"]     = "application/json",
+      }
+
+      local client = assert(helpers.admin_client())
+      finally(function()
+        client:close()
+      end)
+
+      local res = assert(client:send {
+        method = "POST",
+        path  = "/workspaces",
+        headers = headers,
+        body  = {
+          name = "ws1",
+        },
+      })
+      assert.res_status(201, res)
+
+      client = assert(helpers.admin_client())
+      finally(function()
+        client:close()
+      end)
+
+      res = assert(client:send {
+        method = "POST",
+        path  = "/ws1/rbac/roles",
+        headers = headers,
+        body  = {
+          name = "ws1-read-only",
+        },
+      })
+      assert.res_status(201, res)
+
+      client = assert(helpers.admin_client())
+      finally(function()
+        client:close()
+      end)
+
+      res = assert(client:send {
+        method = "POST",
+        path  = "/ws1/rbac/roles/ws1-read-only/endpoints",
+        headers = headers,
+        body  = {
+          workspace = "ws1",
+          endpoint = "*",
+          actions = "read",
+        },
+      })
+      assert.res_status(201, res)
+
+      client = assert(helpers.admin_client())
+      finally(function()
+        client:close()
+      end)
+
+      res = assert(client:send {
+        method = "POST",
+        path  = "/ws1/admins/kong_admin/roles",
+        headers = headers,
+        body  = {
+          roles = "ws1-read-only",
+        },
+      })
+      assert.res_status(201, res)
+
+      client = assert(helpers.admin_client())
+      finally(function()
+        client:close()
+      end)
+
+      res = assert(client:send {
+        method = "GET",
+        path  = "/ws1/admins/kong_admin/roles",
+        headers = headers,
+      })
+      res = assert.res_status(200, res)
+
+      local json = cjson.decode(res)
+      assert.same(1, #json.roles)
+      assert.same("ws1-read-only", json.roles[1].name)
+    end)
+  end)
+
   describe("Admin API - Admins #" .. strategy, function()
     local client
     local db
@@ -454,14 +584,16 @@ for _, strategy in helpers.each_strategy() do
 
       describe("/admins/:admin/workspaces", function()
         describe("GET", function()
+          local headers = {
+            ["Kong-Admin-Token"] = "letmein-default",
+            ["Content-Type"]     = "application/json",
+          }
+
           it("retrieves workspaces for an admin by id", function()
             assert.res_status(201, assert(client:send {
               method = "POST",
               path = "/another-one/admins/" .. admins[2].id .. "/roles",
-              headers = {
-                ["Kong-Admin-Token"] = "letmein-default",
-                ["Content-Type"]     = "application/json",
-              },
+              headers = headers,
               body = {
                 roles = "read-only"
               }
@@ -470,10 +602,7 @@ for _, strategy in helpers.each_strategy() do
             local res = client:send {
               method = "GET",
               path = "/another-one/admins/" .. admins[2].username .. "/workspaces",
-              headers = {
-                ["Kong-Admin-Token"] = "letmein-default",
-                ["Content-Type"]     = "application/json",
-              },
+              headers = headers,
             }
 
             local body = assert.res_status(200, res)
@@ -489,10 +618,7 @@ for _, strategy in helpers.each_strategy() do
             local res = assert(client:send {
               method = "GET",
               path = "/admins/" .. admins[1].username .. "/workspaces",
-              headers = {
-                ["Kong-Admin-Token"] = "letmein-default",
-                ["Content-Type"]     = "application/json",
-              },
+              headers = headers,
             })
 
             local body = assert.res_status(200, res)
@@ -510,10 +636,7 @@ for _, strategy in helpers.each_strategy() do
             local res = assert(client:send {
               method = "GET",
               path = "/".. another_ws.name .. "/admins/" .. lesser_admin.username .. "/workspaces",
-              headers = {
-                ["Kong-Admin-Token"] = "letmein-default",
-                ["Content-Type"]     = "application/json",
-              },
+              headers = headers,
             })
 
             local body = assert.res_status(200, res)
@@ -522,14 +645,60 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(another_ws.name, json[1].name)
           end)
 
+          it("retrieves workspaces for an admin in multiple workspaces", function()
+            local lesser_admin
+
+            scope.run_with_ws_scope({another_ws}, function ()
+              lesser_admin = ee_helpers.create_admin('outside_default2@gmail.com',
+                                                     nil, 0, bp, db)
+            end)
+
+            post(client, "/admins/outside_default2@gmail.com/roles", {
+              roles = "read-only"
+            }, headers, 201)
+
+            local res = assert(client:send {
+              method = "GET",
+              path = "/".. another_ws.name .. "/admins/" .. lesser_admin.username .. "/workspaces",
+              headers = headers,
+            })
+
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+
+            assert.equal(2, #json)
+            assert.equal('*', json[1].name)
+            assert.equal(another_ws.name, json[2].name)
+          end)
+
+          it("retrieves asterisk workspace for an admin with asterisk role", function()
+            scope.run_with_ws_scope({kong.default_workspace}, function ()
+              return ee_helpers.create_admin('the_admin@test.com', nil, 0, bp, db)
+            end)
+
+            post(client, "/admins/the_admin@test.com/roles", {
+              roles = "read-only" -- has endpoint.workspace = '*'
+            }, headers, 201)
+
+            local res = assert(client:send {
+              method = "GET",
+              path = "/admins/the_admin@test.com/workspaces",
+              headers = headers,
+            })
+
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+
+            assert.equal(2, #json)
+            assert.equal('*', json[1].name)
+            assert.equal('default', json[2].name)
+          end)
+
           it("returns 404 if admin not found", function()
             local res = assert(client:send {
               method = "GET",
               path = "/admins/" .. admin.rbac_user.id .. "/workspaces",
-              headers = {
-                ["Kong-Admin-Token"] = "letmein-default",
-                ["Content-Type"]     = "application/json",
-              },
+              headers = headers,
             })
             assert.res_status(404, res)
           end)
@@ -538,10 +707,7 @@ for _, strategy in helpers.each_strategy() do
             local res = assert(client:send {
               method = "GET",
               path = "/another-one/admins/" .. admins[1].id .. "/workspaces",
-              headers = {
-                ["Kong-Admin-Token"] = "letmein-default",
-                ["Content-Type"]     = "application/json",
-              },
+              headers = headers,
             })
             assert.res_status(404, res)
           end)
@@ -549,6 +715,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
+
   describe("Admin API - Admins Register #" .. strategy, function()
     local client
     local db
@@ -1279,20 +1446,14 @@ for _, strategy in helpers.each_strategy() do
 
   describe("Admin API - /admins/:admin/roles #" .. strategy, function()
     local db, client
-    local default_ws
+    local default_ws, another_ws
+    local headers = {
+      ["Kong-Admin-Token"] = "letmein-default",
+      ["Content-Type"]     = "application/json",
+    }
 
     lazy_setup(function()
       _, db = helpers.get_db_utils(strategy)
-
-      default_ws = assert(db.workspaces:select_by_name("default"))
-
-      assert(helpers.start_kong({
-        database = strategy,
-        admin_gui_url = "http://manager.konghq.com",
-      }))
-    end)
-
-    before_each(function()
       db:truncate("rbac_users")
       db:truncate("rbac_user_roles")
       db:truncate("rbac_roles")
@@ -1301,6 +1462,26 @@ for _, strategy in helpers.each_strategy() do
       db:truncate("consumers")
       db:truncate("admins")
 
+      default_ws = assert(db.workspaces:select_by_name("default"))
+
+      another_ws = assert(db.workspaces:insert({
+        name = "another-one",
+      }))
+
+      scope.run_with_ws_scope({ another_ws }, function()
+        ee_helpers.register_rbac_resources(db, "another-one")
+      end)
+
+      ee_helpers.register_rbac_resources(db)
+
+      assert(helpers.start_kong({
+        database = strategy,
+        admin_gui_url = "http://manager.konghq.com",
+        enforce_rbac = "on"
+      }))
+    end)
+
+    before_each(function()
       if client then
         client:close()
       end
@@ -1338,26 +1519,12 @@ for _, strategy in helpers.each_strategy() do
         }))
 
         local res = assert(client:send {
-          method = "POST",
-          path = "/rbac/roles",
-          body = {
-            name = "read-only",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(201, res)
-
-        local res = assert(client:send {
           path = "/admins/bob/roles",
           method = "POST",
           body = {
             roles = "read-only",
           },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
+          headers = headers,
         })
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
@@ -1379,38 +1546,12 @@ for _, strategy in helpers.each_strategy() do
         }))
 
         local res = assert(client:send {
-          method = "POST",
-          path = "/rbac/roles",
-          body = {
-            name = "read-only",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(201, res)
-
-        local res = assert(client:send {
-          method = "POST",
-          path = "/rbac/roles",
-          body = {
-            name = "admin",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(201, res)
-
-        local res = assert(client:send {
           path = "/admins/jerry/roles",
           method = "POST",
           body = {
             roles = "read-only,admin",
           },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
+          headers = headers,
         })
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
@@ -1427,9 +1568,7 @@ for _, strategy in helpers.each_strategy() do
             body = {
               roles = "read-only",
             },
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
+            headers = headers,
           })
 
           local body = assert.res_status(404, res)
@@ -1454,9 +1593,7 @@ for _, strategy in helpers.each_strategy() do
             body = {
               roles = "dne",
             },
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
+            headers = headers,
           })
 
           local body = assert.res_status(400, res)
@@ -1477,26 +1614,12 @@ for _, strategy in helpers.each_strategy() do
           }))
 
           local res = assert(client:send {
-            method = "POST",
-            path = "/rbac/roles",
-            body = {
-              name = "read-only",
-            },
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
-          })
-          assert.res_status(201, res)
-
-          local res = assert(client:send {
             path = "/admins/bill/roles",
             method = "POST",
             body = {
               roles = "read-only",
             },
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
+            headers = headers,
           })
 
           assert.res_status(201, res)
@@ -1507,9 +1630,7 @@ for _, strategy in helpers.each_strategy() do
             body = {
               roles = "read-only",
             },
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
+            headers = headers
           })
 
           assert.res_status(400, res)
@@ -1520,8 +1641,8 @@ for _, strategy in helpers.each_strategy() do
     describe("GET", function()
       it("displays the non-default roles associated with the admin", function()
         assert(admins_helpers.create({
-          username = "bob",
-          email = "bob@konghq.com",
+          username = "bobby",
+          email = "bobby@konghq.com",
           status = enums.CONSUMERS.STATUS.APPROVED,
         }, {
           token_optional = true,
@@ -1530,55 +1651,30 @@ for _, strategy in helpers.each_strategy() do
         }))
 
         local res = assert(client:send {
-          method = "POST",
-          path = "/rbac/roles",
-          body = {
-            name = "read-only",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(201, res)
-
-        local res = assert(client:send {
-          path = "/admins/bob/roles",
+          path = "/admins/bobby/roles",
           method = "POST",
           body = {
             roles = "read-only",
           },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
+          headers = headers,
         })
         assert.res_status(201, res)
 
         local res = assert(client:send {
-          path = "/admins/bob/roles",
+          path = "/admins/bobby/roles",
           method = "GET",
+          headers = headers,
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        -- bob has read-only role
+        -- bobby has read-only role
         assert.same(1, #json.roles)
         assert.same("read-only", json.roles[1].name)
 
-        local res = assert(client:send {
-          method = "POST",
-          path = "/rbac/roles",
-          body = {
-            name = "admin",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(201, res)
-
         assert(admins_helpers.create({
-          username = "jerry",
-          email = "jerry@konghq.com",
+          username = "jerry_s",
+          email = "jerry_s@konghq.com",
           status = enums.CONSUMERS.STATUS.APPROVED,
         }, {
           token_optional = true,
@@ -1587,38 +1683,150 @@ for _, strategy in helpers.each_strategy() do
         }))
 
         local res = assert(client:send {
-          path = "/admins/jerry/roles",
+          path = "/admins/jerry_s/roles",
           method = "POST",
           body = {
             roles = "read-only,admin",
           },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
+          headers = headers,
         })
         assert.res_status(201, res)
 
         res = assert(client:send {
-          path = "/admins/jerry/roles",
+          path = "/admins/jerry_s/roles",
           method = "GET",
+          headers = headers
         })
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        -- jerry has admin and read-only
+        -- jerry_s has admin and read-only
         assert.same(2, #json.roles)
         for _, role in ipairs(json.roles) do
           assert.is_true(role.name == "admin" or role.name == "read-only")
         end
+      end)
+
+      it("displays roles across workspaces", function()
+        assert(admins_helpers.create({
+          custom_id = "larry_outsider",
+          username = "larry_outsider",
+          email = "larry_outsider@konghq.com",
+        }, {
+          token_optional = false,
+          remote_addr = "localhost",
+          db = db,
+          workspace = another_ws.name,
+          raw = true,
+        }))
+
+        post(client, "/" .. another_ws.name .. "/rbac/roles", {
+          name = another_ws.name .. "-read-only",
+        }, headers, 201)
+        post(client, "/admins/larry_outsider/roles", {
+          roles = "read-only",
+        }, headers, 201)
+        post(client, "/" .. another_ws.name .. "/admins/larry_outsider/roles", {
+          roles = another_ws.name .. "-read-only",
+        }, headers, 201)
+
+        post(client, "/" .. another_ws.name .. "/rbac/roles/".. another_ws.name .. "-read-only/endpoints", {
+          workspace = another_ws.name,
+          endpoint = "/consumers",
+          actions = "read"
+        }, headers, 201)
+
+        local res = assert(client:send {
+          path = "/admins/larry_outsider/roles",
+          method = "GET",
+          headers = headers,
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        -- has read-only role in default workspace
+        assert.same(1, #json.roles)
+        assert.same("read-only", json.roles[1].name)
+
+        res = assert(client:send {
+          path = "/" .. another_ws.name .. "/admins/larry_outsider/roles",
+          method = "GET",
+          headers = headers,
+        })
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+
+        -- has workspace specific role only in other workspace
+        assert.same(1, #json.roles)
+        assert.same(another_ws.name .. "-read-only", json.roles[1].name)
+      end)
+
+      it("displays roles across workspaces including asterisk", function()
+        post(client, "/"  .. another_ws.name .. "/rbac/roles", { name = another_ws.name .. "-read-only1", }, headers, 201)
+        post(client, "/rbac/roles", { name = "role-with-everythang" }, headers, 201)
+        post(client, "/"  .. another_ws.name .. "/rbac/roles/" .. another_ws.name .. "-read-only1/endpoints", {
+          workspace = another_ws.name,
+          endpoint = "*",
+          actions = "read"
+        }, headers, 201)
+        post(client, "/rbac/roles/role-with-everythang/endpoints", {
+          workspace = "*",
+          endpoint = "*",
+          actions = "read"
+        }, headers, 201)
+
+        assert(admins_helpers.create({
+          custom_id = "htopper",
+          username = "htopper",
+          email = "htopper@konghq.com",
+        }, {
+          token_optional = false,
+          remote_addr = "localhost",
+          db = db,
+          workspace = kong.default_workspace,
+          raw = true,
+        }))
+
+        post(client, "/admins/htopper/roles", {
+          roles = "role-with-everythang",
+        }, headers, 201)
+
+        post(client, "/" .. another_ws.name .. "/admins/htopper/roles", {
+          roles = another_ws.name .. "-read-only1",
+        }, headers, 201)
+
+        local res = assert(client:send {
+          path = "/default/admins/htopper/roles",
+          method = "GET",
+          headers = headers,
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        -- has read-only1 role in default workspace
+        assert.same(1, #json.roles)
+        assert.same("role-with-everythang", json.roles[1].name)
+
+        res = assert(client:send {
+          path = "/" .. another_ws.name .. "/admins/htopper/roles",
+          method = "GET",
+          headers = headers,
+        })
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+
+        -- has workspace specific role only in other workspace
+        assert.same(1, #json.roles)
+        assert.same(another_ws.name .. "-read-only1", json.roles[1].name)
       end)
     end)
 
     describe("DELETE", function()
       it("removes a role associated with an admin", function()
         assert(admins_helpers.create({
-          username = "bob",
-          email = "bob@konghq.com",
+          username = "bob-remove",
+          email = "bob-remove@konghq.com",
           status = enums.CONSUMERS.STATUS.APPROVED,
         }, {
           token_optional = true,
@@ -1627,81 +1835,42 @@ for _, strategy in helpers.each_strategy() do
         }))
 
         local res = assert(client:send {
-          method = "POST",
-          path = "/rbac/roles",
-          body = {
-            name = "read-only",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(201, res)
-
-        local res = assert(client:send {
-          path = "/admins/bob/roles",
+          path = "/admins/bob-remove/roles",
           method = "POST",
           body = {
             roles = "read-only",
           },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
+          headers = headers,
         })
         assert.res_status(201, res)
 
         local res = assert(client:send {
-          path = "/admins/bob/roles",
+          path = "/admins/bob-remove/roles",
           method = "DELETE",
           body = {
             roles = "read-only",
           },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
+          headers = headers,
         })
         assert.res_status(204, res)
 
         res = assert(client:send {
-          path = "/admins/bob/roles",
+          path = "/admins/bob-remove/roles",
           method = "GET",
+          headers = headers,
         })
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        -- bob didn't have any other public roles
+        -- bob-remove didn't have any other public roles
         assert.same(0, #json.roles)
       end)
 
       it("removes only one role associated with a user", function()
-        local res = assert(client:send {
-          method = "POST",
-          path = "/rbac/roles",
-          body = {
-            name = "read-only",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(201, res)
-
-        local res = assert(client:send {
-          method = "POST",
-          path = "/rbac/roles",
-          body = {
-            name = "admin",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(201, res)
-
         assert(admins_helpers.create({
-          username = "jerry",
-          email = "jerry@konghq.com",
+          username = "jerry_removes",
+          email = "jerry_removes@konghq.com",
           status = enums.CONSUMERS.STATUS.APPROVED,
         }, {
           token_optional = true,
@@ -1710,38 +1879,35 @@ for _, strategy in helpers.each_strategy() do
         }))
 
         local res = assert(client:send {
-          path = "/admins/jerry/roles",
+          path = "/admins/jerry_removes/roles",
           method = "POST",
           body = {
             roles = "read-only,admin",
           },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
+          headers = headers,
         })
         assert.res_status(201, res)
 
         local res = assert(client:send {
-          path = "/admins/jerry/roles",
+          path = "/admins/jerry_removes/roles",
           method = "DELETE",
           body = {
             roles = "read-only",
           },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
+          headers = headers,
         })
         assert.res_status(204, res)
 
         res = assert(client:send {
-          path = "/admins/jerry/roles",
+          path = "/admins/jerry_removes/roles",
           method = "GET",
+          headers = headers,
         })
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        -- jerry no longer has read-only
+        -- jerry_removes no longer has read-only
         assert.same(1, #json.roles)
         assert.same("admin", json.roles[1].name)
       end)
@@ -1754,9 +1920,7 @@ for _, strategy in helpers.each_strategy() do
             body = {
               roles = "read-only",
             },
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
+            headers = headers
           })
 
           local body = assert.res_status(404, res)
@@ -1778,9 +1942,7 @@ for _, strategy in helpers.each_strategy() do
           local res = assert(client:send {
             path = "/admins/bob/roles",
             method = "DELETE",
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
+            headers = headers
           })
 
           local body = assert.res_status(400, res)

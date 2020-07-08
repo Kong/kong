@@ -293,6 +293,7 @@ build = {
     ["kong.db.dao.plugins"] = "kong/db/dao/plugins.lua",
     ["kong.db.dao.rbac_role_endpoints"] = "kong/db/dao/rbac_role_endpoints.lua",
     ["kong.db.dao.rbac_users"] = "kong/db/dao/rbac_users.lua",
+    ["kong.db.dao.rbac_roles"] = "kong/db/dao/rbac_roles.lua",
     ["kong.db.dao.workspaces"] = "kong/db/dao/workspaces.lua",
     ["kong.db.dao.plugins.go"] = "kong/db/dao/plugins/go.lua",
     ["kong.db.dao.tags"] = "kong/db/dao/tags.lua",

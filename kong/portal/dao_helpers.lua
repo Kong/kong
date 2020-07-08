@@ -127,13 +127,15 @@ local function extract_roles(developer)
 end
 
 
-local function get_roles(developer)
+local function get_roles(developer, workspace)
+   assert(workspace, "workspace must be an id (string uuid) or ngx.null to mean global")
+
   local roles = setmetatable({}, cjson.array_mt)
   if not developer.rbac_user then
     return roles
   end
 
-  local existing_roles, err = rbac.get_user_roles(kong.db, developer.rbac_user)
+  local existing_roles, err = rbac.get_user_roles(kong.db, developer.rbac_user, workspace)
   if err then
     return nil, err
   end

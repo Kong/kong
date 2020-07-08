@@ -1,5 +1,4 @@
 local route_collision = require "kong.enterprise_edition.workspaces.route_collision"
-local scope = require "kong.enterprise_edition.workspaces.scope"
 local Router = require "kong.router"
 local singletons = require "kong.singletons"
 local core_handler = require "kong.runloop.handler"
@@ -84,11 +83,8 @@ end
 
 
 local function rebuild_routes(db)
-if kong.configuration.route_validation_strategy == 'smart'  then
-    scope.run_with_ws_scope({},
-      core_handler.build_router,
-      db,
-      uuid())
+  if kong.configuration.route_validation_strategy == 'smart'  then
+    core_handler.build_router(db, uuid())
   end
 end
 
@@ -129,10 +125,7 @@ return {
       -- create temporary router
       rebuild_routes(db)
 
-      local r = scope.run_with_ws_scope({},
-        build_router_without,
-        self.params.routes
-      )
+      local r = build_router_without(self.params.routes)
 
       local ok, err = route_collision.is_route_crud_allowed(self, r)
       if not ok then

@@ -1,8 +1,8 @@
 local passwdqc = require "resty.passwdqc"
-local scope = require "kong.enterprise_edition.workspaces.scope"
 local basicauth_crypto = require "kong.plugins.basic-auth.crypto"
 
 local kong = kong
+local null = ngx.null
 
 local _M = {}
 
@@ -171,11 +171,11 @@ function _M.verify_password(user, old_password, new_password)
       return nil, "Passwords cannot be the same"
     end
 
-    local creds, err = scope.run_with_ws_scope(
-                       {},
-                       kong.db.basicauth_credentials.page_for_consumer,
-                       kong.db.basicauth_credentials,
-                       user.consumer
+    local creds, err = kong.db.basicauth_credentials:page_for_consumer(
+      user.consumer,
+      nil,
+      nil,
+      { workspaces = null }
     )
     if err then
       return nil, nil, err

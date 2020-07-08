@@ -1,6 +1,5 @@
 local singletons = require "kong.singletons"
 local enums = require "kong.enterprise_edition.dao.enums"
-local scope = require "kong.enterprise_edition.workspaces.scope"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local ee_utils = require "kong.enterprise_edition.utils"
 local utils = require "kong.tools.utils"
@@ -98,7 +97,7 @@ function _M.find_all()
   setmetatable(ws_admins, cjson.empty_array_mt)
   for _, v in ipairs(all_admins) do
     local rbac_user = kong.db.rbac_users:select(v.rbac_user, { workspace = null, show_ws_id = true })
-    v.workspaces = rbac.find_all_ws_for_rbac_user(rbac_user)
+    v.workspaces = rbac.find_all_ws_for_rbac_user(rbac_user, null)
 
     for _, ws in ipairs(v.workspaces) do
       if ws.id == ngx.ctx.workspace or ws.name == '*' then
@@ -322,16 +321,9 @@ function _M.update(params, admin_to_update, opts)
     }
   end
 
-  local admin, err = scope.run_with_ws_scope(
-    {},
-    db.admins.update,
-    db.admins,
+  local admin, err = db.admins:update(
     { id = admin_to_update.id },
-    safe_params
-  )
-
-  -- run_with_ws_scope() doesn't return the errors table
-  -- from db.admins.update, so parse the error message
+    safe_params, { workspace = null })
   if err then
     -- schema violation? don't 500
     local i, _ = err:find("schema violation")
@@ -350,16 +342,12 @@ function _M.update(params, admin_to_update, opts)
     params.custom_id and params.custom_id ~= admin_to_update.custom_id
   then
     -- update consumer
-    local _, err = scope.run_with_ws_scope(
-                   {},
-                   db.consumers.update,
-                   db.consumers,
-                   { id = admin_to_update.consumer.id },
-                   {
-                     username = params.username,
-                     custom_id = params.custom_id,
-                   }
-    )
+    local _, err = db.consumers:update(
+    { id = admin_to_update.consumer.id },
+    {
+      username = params.username,
+      custom_id = params.custom_id,
+    }, { workspace = null })
     if err then
       return nil, err
     end
@@ -372,11 +360,9 @@ function _M.update(params, admin_to_update, opts)
       end
 
       if creds[1] then
-        local _, err = scope.run_with_ws_scope({},
-                       db.basicauth_credentials.update,
-                       db.basicauth_credentials,
-                       { id = creds[1].id },
-                       { username = admin.username })
+        local _, err = db.basicauth_credentials:update(
+          { id = creds[1].id },
+          { username = admin.username }, { workspace = null })
         if err then
           return nil, err
         end
@@ -386,15 +372,11 @@ function _M.update(params, admin_to_update, opts)
 
   -- keep rbac_user in sync
   if params.rbac_token_enabled ~= nil then
-    local _, err = scope.run_with_ws_scope(
-      {},
-      db.rbac_users.update,
-      db.rbac_users,
+    local _, err = db.rbac_users:update(
       { id = admin_to_update.rbac_user.id },
       {
         enabled = params.rbac_token_enabled,
-      }
-    )
+      }, {workspace = null})
     if err then
       return nil, err
     end
@@ -415,16 +397,13 @@ function _M.update_password(admin, params)
     return { code = 400, body = { message = bad_req_message }}
   end
 
-  local _, err = scope.run_with_ws_scope(
-                 {},
-                 kong.db.basicauth_credentials.update,
-                 kong.db.basicauth_credentials,
-                 { id = creds.id },
-                 {
-                   consumer = { id = admin.consumer.id },
-                   password = params.password,
-                 }
-  )
+
+  local _, err = kong.db.basicauth_credentials:update(
+    { id = creds.id },
+    {
+      consumer = { id = admin.consumer.id },
+      password = params.password,
+    }, { workspace = null })
 
   if err then
     return nil, err
@@ -524,7 +503,7 @@ function _M.find_by_username_or_id(username_or_id, raw, require_workspace_ctx)
 
   local rbac_user = kong.db.rbac_users:select(admin.rbac_user, { workspace = null, show_ws_id = true })
 
-  local wss, err = rbac.find_all_ws_for_rbac_user(rbac_user)
+  local wss, err = rbac.find_all_ws_for_rbac_user(rbac_user, null)
 
   admin.workspaces = wss
 
@@ -565,7 +544,7 @@ function _M.workspaces_for_admin(username_or_id)
   end
 
   local rbac_user = kong.db.rbac_users:select(admin.rbac_user, { workspace = null, show_ws_id = true })
-  local wss = rbac.find_all_ws_for_rbac_user(rbac_user)
+  local wss = rbac.find_all_ws_for_rbac_user(rbac_user, null)
 
   return {
     code = 200,
