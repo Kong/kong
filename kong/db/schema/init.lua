@@ -2133,10 +2133,14 @@ function Schema.new(definition, is_subschema)
   end
 
   if self.name then
-    _cache[self.name] = {
-      schema = self,
-      constraints = {},
-    }
+    -- do not reset the constraints list if a schema in reloaded
+    if not _cache[self.name] then
+      _cache[self.name] = {
+        constraints = {},
+      }
+    end
+    -- but always update the schema object in cache
+    _cache[self.name].schema = self
   end
 
   return self
