@@ -39,9 +39,11 @@ end
 -- returns lua table with all the values extracted and appended from multiple examples
 local function find_example_value(tbl, key)
   local values = {}
-  for _, lv in pairs(tbl) do
+  for lk, lv in pairs(tbl) do
+    kong.log("find_example_value..first for..")
     if type(lv) == "table" then
       for dk, dv in pairs(lv) do
+        kong.log("find_example_value..second for..")
         if dk == key then table.insert( values, dv) end
       end
     end
@@ -76,6 +78,14 @@ local function get_example(accept, tbl)
         if find_example_value(retval,"value") then
          return  (find_example_value(retval,"value"))
         end
+      -- Single Example use case, Go ahead and use find_key
+      elseif find_key(tbl, accept).example then
+        kong.log("inside example....")
+        local retval = find_key(tbl, accept).example
+         if find_key(retval,"value") then
+          kong.log("inside example.... find val")
+          return  (find_key(retval,"value"))
+         end
       else
         return ""
       end
