@@ -13,8 +13,9 @@ local cjson = require "cjson"
 local emails = singletons.admin_emails
 local kong = kong
 
-local log = ngx.log
-local ERR = ngx.ERR
+local log  = ngx.log
+local ERR  = ngx.ERR
+local null = ngx.null
 
 local _log_prefix = "[admins] "
 
@@ -406,7 +407,11 @@ return {
       end
 
       -- Find the workspace the rbac_user is in
-      local rbac_user, err = db.rbac_users:select({ id = admin.rbac_user.id }, { show_ws_id = true })
+      local rbac_user, err = db.rbac_users:select({ id = admin.rbac_user.id }, {
+        show_ws_id = true,
+        workspace = null,
+      })
+
       if not rbac_user then
         return endpoints.handle_error(err)
       end

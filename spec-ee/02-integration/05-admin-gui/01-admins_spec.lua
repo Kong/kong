@@ -793,50 +793,116 @@ for _, strategy in helpers.each_strategy() do
           assert.same(res_short_pass.message, "Invalid password: too short")
         end)
 
-        it("successfully registers an invited admin", function()
-          local res = assert(admins_helpers.create({
-            username = "bob",
-            email = "hong@konghq.com",
-          }, {
-            db = db,
-            token_optional = false,
-            token_expiry = 3600,
-            remote_addr = "127.0.0.1",
-            raw = true,
-          }))
+        describe("registation", function()
+          local another_ws
 
-          local admin = res.body.admin
-
-          local reset_secret
-          for row, err in db.consumer_reset_secrets:each_for_consumer({id = admin.consumer.id }) do
-            assert.is_nil(err)
-            reset_secret = row
+          local function createAnotherWS(db)
+            return assert(db.workspaces:insert({
+              name = "another-one",
+            }))
           end
-          assert.equal(enums.TOKENS.STATUS.PENDING, reset_secret.status)
 
-          local claims = {id = admin.consumer.id, exp = ngx.time() + 100000}
-          local valid_jwt = ee_jwt.generate_JWT(claims, reset_secret.secret,
-                                                "HS256")
+          local function create_admin(db, params)
+            local res = assert(admins_helpers.create(params, {
+              db = db,
+              token_optional = false,
+              token_expiry = 3600,
+              remote_addr = "127.0.0.1",
+              raw = true,
+            }))
 
-          local res = assert(client:send {
-            method = "POST",
-            path = "/admins/register",
-            headers = {
-              ["Content-Type"] = "application/json"
-            },
-            body  = {
+            return res.body.admin
+          end
+
+          local function get_token_and_secret(db, admin)
+            local reset_secret
+
+            for row, err in db.consumer_reset_secrets:each_for_consumer({
+              id = admin.consumer.id
+            }) do
+              assert.is_nil(err)
+              reset_secret = row
+            end
+
+            assert.equal(enums.TOKENS.STATUS.PENDING, reset_secret.status)
+  
+            local claims = {id = admin.consumer.id, exp = ngx.time() + 100000}
+            local valid_jwt = ee_jwt.generate_JWT(claims, reset_secret.secret,
+                                                  "HS256")
+            return valid_jwt, reset_secret
+          end
+
+          it("successfully registers an invited admin", function()
+            local admin = create_admin(db, {
               username = "bob",
               email = "hong@konghq.com",
-              token = valid_jwt,
-              password = "new2!pas$Word",
-            },
-          })
+            })
 
-          assert.res_status(201, res)
+            local valid_jwt, reset_secret = get_token_and_secret(db, admin)
+  
+            local res = assert(client:send {
+              method = "POST",
+              path = "/admins/register",
+              headers = {
+                ["Content-Type"] = "application/json"
+              },
+              body  = {
+                username = "bob",
+                email = "hong@konghq.com",
+                token = valid_jwt,
+                password = "new2!pas$Word",
+              },
+            })
+  
+            assert.res_status(201, res)
+  
+            reset_secret = db.consumer_reset_secrets:select({ id = reset_secret.id })
+  
+            assert.equal(enums.TOKENS.STATUS.CONSUMED, reset_secret.status)
+          end)
+  
+          it("successfully registers an invited admin in a non-default workspace", function()
+            local admin
+            another_ws = createAnotherWS(db)
 
-          reset_secret = db.consumer_reset_secrets:select({ id = reset_secret.id })
+            scope.run_with_ws_scope({{ id = another_ws.id }}, function()
+              admin = create_admin(db, {
+                username = "bob2",
+                email = "hong2@konghq.com",
+              })
+            end)
 
-          assert.equal(enums.TOKENS.STATUS.CONSUMED, reset_secret.status)
+            local rbac_user = assert(db.rbac_users:select({
+              id = admin.rbac_user.id,
+            },{
+              show_ws_id = true,
+              workspace = ngx.null,
+            }))
+
+            assert.is_equal(rbac_user.ws_id, another_ws.id)
+
+            local valid_jwt, reset_secret = get_token_and_secret(db, admin)
+  
+            local res = assert(client:send {
+              method = "POST",
+              path = "/admins/register",
+              headers = {
+                ["Content-Type"] = "application/json"
+              },
+              body  = {
+                username = "bob2",
+                email = "hong2@konghq.com",
+                token = valid_jwt,
+                password = "new2!pas$Word",
+              },
+            })
+  
+            assert.res_status(201, res)
+  
+            reset_secret = db.consumer_reset_secrets:select({ id = reset_secret.id })
+  
+            assert.equal(enums.TOKENS.STATUS.CONSUMED, reset_secret.status)
+          end)
         end)
       end)
     end)
