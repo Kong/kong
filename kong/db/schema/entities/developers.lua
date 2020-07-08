@@ -31,6 +31,7 @@ return {
   endpoint_key  = "email",
   dao           = "kong.db.dao.developers",
   workspaceable = true,
+  db_export = false,
 
   fields = {
     { id             = typedefs.uuid, },
@@ -44,4 +45,3 @@ return {
     { rbac_user      = { type = "foreign", reference = "rbac_users" }, },
   },
 }
-

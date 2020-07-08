@@ -5,7 +5,7 @@ return {
   name         = "credentials",
   primary_key  = { "id" },
   generate_admin_api = false,
-
+  db_export = false,
   fields = {
     { id              = typedefs.uuid },
     { consumer        = { type = "foreign", reference = "consumers", }, },

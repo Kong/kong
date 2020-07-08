@@ -6,6 +6,7 @@ return {
   primary_key   = { "id" },
   workspaceable = true,
   dao           = "kong.db.dao.applications",
+  db_export     = false,
 
   fields = {
     { id             = typedefs.uuid, },

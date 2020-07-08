@@ -18,6 +18,7 @@ return {
   workspaceable = true,
   endpoint_key = "name",
   generate_admin_api = false,
+  db_export = false,
 
   fields = {
     { id         = typedefs.uuid, },

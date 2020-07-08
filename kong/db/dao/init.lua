@@ -1409,7 +1409,7 @@ function DAO:row_to_entity(row, options)
     end
   end
 
-  if options and options.show_ws_id then
+  if options and self.schema.workspaceable and options.show_ws_id then
     entity.ws_id = ws_id
 
     -- special behavior for blue-green migrations

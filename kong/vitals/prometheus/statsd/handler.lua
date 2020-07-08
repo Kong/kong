@@ -53,15 +53,12 @@ local get_service_id = {
 }
 
 local get_workspace_id = {
-  workspace_id         = function(workspaces)
-    return workspaces and workspaces[1] and workspaces[1].id
+  workspace_id         = function(workspace)
+    return workspace
   end,
-  workspace_name       = function(workspaces)
-    return workspaces and workspaces[1] and workspaces[1].name
-  end
 }
 
-local metrics = {   
+local metrics = {
   unique_users = function (scope_name, message, metric_config, logger)
     local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
     local consumer_id     = get_consumer_id(message.consumer)
@@ -98,7 +95,7 @@ local metrics = {
   end,
   status_count_per_workspace = function (scope_name, message, metric_config, logger)
     local get_workspace_id = get_workspace_id[metric_config.workspace_identifier]
-    local workspace_id     = get_workspace_id(message.workspaces)
+    local workspace_id     = get_workspace_id(message.workspace)
 
     if workspace_id then
       logger:send_statsd(string_format("%s.workspace.%s.status.%s", scope_name,
@@ -194,7 +191,7 @@ local function get_scope_name(message, service_identifier)
     -- configured globally. In fact, this basically disables this plugin when
     -- it is configured to run globally, or per-consumer without an
     -- API/Route/Service.
-    
+
     -- Changes in statsd-advanced: we still log these requests, but into a namespace of
     -- "global.unmatched".
     -- And we don't send upstream_latency and metrics with consumer or route

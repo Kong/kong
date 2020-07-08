@@ -292,8 +292,7 @@ local function find_or_create_current_workspace(name)
   if not workspace then
     workspace, err, err_t = kong.db.workspaces:upsert_by_name(name, {
       name = name,
-      no_broadcast_crud_event = true,
-    })
+    }, { no_broadcast_crud_event = true })
     if err then
       return nil, err, err_t
     end
@@ -379,7 +378,7 @@ local function export_from_db(emitter, skip_ws, skip_ttl)
       end
     end
 
-    for row, err in kong.db[name]:each(nil, { nulls = true, workspace = null }) do
+    for row, err in kong.db[name]:each(nil, { nulls = true, workspace = null, show_ws_id = true}) do
       if not row then
         kong.log.err(err)
         return nil, err
