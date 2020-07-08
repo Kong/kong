@@ -306,8 +306,18 @@ local function toerror(strategy, err, primary_key, entity)
     return nil, errors:primary_key_violation(primary_key)
 
   elseif find(err, "violates foreign key constraint .*_ws_id_fkey") then
-    local ws_id = err:match("ws_id%)=%(([^)]*)%)") or "null"
-    return nil, errors:invalid_workspace(ws_id)
+    if schema.name == "workspaces" then
+      local found, e = find(err, "is still referenced from table", 1, true)
+      if not found then
+        return error("could not parse foreign key violation error message: " .. err)
+      end
+
+      return nil, errors:foreign_key_violation_restricted(schema.name, sub(err, e + 3, -3))
+
+    else
+      local ws_id = err:match("ws_id%)=%(([^)]*)%)") or "null"
+      return nil, errors:invalid_workspace(ws_id)
+    end
 
   elseif find(err, "violates foreign key constraint", 1, true) then
     log(NOTICE, err)
