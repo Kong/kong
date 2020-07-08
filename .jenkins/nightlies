@@ -1,0 +1,71 @@
+// add any other distro here, as "foo", "bar"
+def distros = [ "alpine" ]
+def builds = [:]
+for (x in distros) {
+  def label = x // Need to bind the label variable before the closure - can't do 'for (label in labels)'
+  builds[label] = {
+    node('bionic') {
+      stage(label) {
+        environment {
+          CACHE_DIR = "$HOME/kong-ee-distributions-cache"
+        }
+        stage('prepare') {
+          env.BRANCH_OR_TAG = env.BRANCH_NAME ? env.BRANCH_NAME : "refs/tags/${env.TAG_NAME}"
+
+          checkout([$class: 'GitSCM',
+            branches: [[name: env.BRANCH_OR_TAG]],
+            extensions: [[$class: 'WipeWorkspace']],
+            userRemoteConfigs: [[url: 'git@github.com:Kong/kong-ee.git',
+            // XXX - add other credentials or something
+            credentialsId: 'kong-distributions-deploy-key']]
+          ])
+        }
+        stage('build') {
+          sh "./dist/dist.sh build $label"
+        }
+
+        stage('test') {
+          sh "./dist/dist.sh test $label"
+        }
+
+        stage('build-image') {
+          sh "./dist/dist.sh build-image $label"
+        }
+
+        // not yet implemented
+        // stage('release') {
+        //   sh "./dist/dist.sh push-internal $label"
+        // }
+      }
+    }
+  }
+}
+
+pipeline {
+  agent none
+  options {
+    timeout(time: 100, unit: 'MINUTES')
+  }
+  environment {
+    GITHUB = credentials('GITHUB_TOKEN')
+    GITHUB_TOKEN = credentials('GITHUB_TOKEN')
+    // Do not tag any internal release as latest, as stages my run for
+    // unordered branches
+    TAG_LATEST = 0
+  }
+
+  stages {
+    // build parameters are at this point because if not, first build never
+    // gets them. If we were to just automate this so it just runs all steps
+    // when a tag is pushed, remove this part and set the options to the
+    // desired actions
+
+    stage('build, test, build image') {
+      steps {
+        script {
+          parallel builds
+        }
+      }
+    }
+  }
+}
