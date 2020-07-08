@@ -16,8 +16,7 @@ for (x in distros) {
             branches: [[name: env.BRANCH_OR_TAG]],
             extensions: [[$class: 'WipeWorkspace']],
             userRemoteConfigs: [[url: 'git@github.com:Kong/kong-ee.git',
-            // XXX - add other credentials or something
-            credentialsId: 'kong-distributions-deploy-key']]
+            credentialsId: 'kong-ee-github-deploy-key']]
           ])
         }
         stage('build') {
