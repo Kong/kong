@@ -69,7 +69,7 @@ local ERRORS_NAMES                 = {
   [ERRORS.TRANSFORMATION_ERROR]    = "transformation error",
   [ERRORS.INVALID_FOREIGN_KEY]     = "invalid foreign key",
   [ERRORS.INVALID_WORKSPACE]       = "invalid workspace",
-  [ERRORS.INVALID_UNIQUE_GLOBAL]   = "unique key %s is invalid for global query",
+  [ERRORS.INVALID_UNIQUE_GLOBAL]   = "invalid global query",
 }
 
 
@@ -500,13 +500,13 @@ function _M:invalid_workspace(ws_id)
 end
 
 
-function _M:invalid_unique_global(name, err)
-  if type(err) ~= "string" then
-    error("err must be a string", 2)
+function _M:invalid_unique_global(name)
+  if type(name) ~= "string" then
+    error("name must be a string", 2)
   end
 
-  return new_err_t(self, ERRORS.INVALID_UNIQUE_GLOBAL, err, nil,
-                   fmt(ERRORS_NAMES[ERRORS.INVALID_UNIQUE_GLOBAL], name))
+  return new_err_t(self, ERRORS.INVALID_UNIQUE_GLOBAL,
+                   fmt("unique key %s is invalid for global query", name))
 end
 
 
