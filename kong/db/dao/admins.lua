@@ -124,18 +124,18 @@ function _Admins:delete(admin, options)
     return nil, err
   end
 
-  _, err = self.db.consumers:delete({ id = consumer_id })
+  _, err = self.db.consumers:delete({ id = consumer_id }, options)
   if err then
     return nil, err
   end
 
-  _, err = self.db.rbac_users:delete({ id = rbac_user_id })
+  _, err = self.db.rbac_users:delete({ id = rbac_user_id }, options)
   if err then
     return nil, err
   end
 
   for _, role in ipairs(default_roles) do
-    local _, err = rbac.remove_default_role_if_empty(role)
+    local _, err = rbac.remove_default_role_if_empty(role, workspace)
     if err then
       return nil, err
     end
