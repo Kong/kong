@@ -3811,7 +3811,7 @@ describe("schema", function()
       local transformed_entity, _ = TestEntities:transform(entity)
 
       assert.truthy(transformed_entity)
-      assert.equal("Bob?", transformed_entity.name)
+      assert.equal("How are you Bob?", transformed_entity.name)
     end)
 
     it("transforms any field not just those given as an input", function()
