@@ -1,4 +1,3 @@
-print(package.path)
 local cjson       = require("cjson.safe").new()
 local lyaml       = require "lyaml"
 local gsub        = string.gsub
@@ -20,9 +19,7 @@ local isV2 = false
 local function find_key(tbl, key)
 
   for lk, lv in pairs(tbl) do
-    if lk == key then
-      return lv
-    end
+    if lk == key then return lv end
     if type(lv) == "table" then
       for dk, dv in pairs(lv) do
         if dk == key then return dk end
@@ -38,7 +35,25 @@ local function find_key(tbl, key)
   return nil
 end
 
-local function get_example(accept, tbl, schemaVal)
+-- Extract example value in V3.0
+-- returns lua table with all the values extracted and appended from multiple examples
+local function find_example_value(tbl, key)
+  local values = {}
+  for _, lv in pairs(tbl) do
+    if type(lv) == "table" then
+      for dk, dv in pairs(lv) do
+        if dk == key then table.insert( values, dv) end
+      end
+    end
+  end
+  if next(values) == nil then
+    return nil
+  else
+  return values
+ end
+end
+
+local function get_example(accept, tbl)
   if isV2 then
     if find_key(tbl, "examples") then
       if find_key(tbl, "examples")[accept] then
@@ -54,12 +69,13 @@ local function get_example(accept, tbl, schemaVal)
   else
     tbl = tbl.content
     if find_key(tbl, accept) then
-    --start the logic part here we have schema tag accept in OpenApi-V3.0
-      if find_key(tbl, accept).schema then
-        --Obtain the value of schema and format the string to obtain the schema identifier from the pattern
-        local sval= find_key(tbl, accept).schema.value
-        local schemaId = string.gsub( string.sub(find_key(sval,"%$ref"),3),"(%w+)/","" )
-        return find_key(schemaVal,schemaId)
+      --Removed response object reference as there is no such object within examples hierarchy
+      --Removed value :: Not required, referencing object examples in this case will return value
+      if find_key(tbl, accept).examples then
+       local retval = find_key(tbl, accept).examples
+        if find_example_value(retval,"value") then
+         return  (find_example_value(retval,"value"))
+        end
       else
         return ""
       end
@@ -67,7 +83,8 @@ local function get_example(accept, tbl, schemaVal)
   end
 end
 
-local function get_method_path(path, method, accept,schemaVal)
+
+local function get_method_path(path, method, accept)
 
   local rtn
 
@@ -82,11 +99,11 @@ local function get_method_path(path, method, accept,schemaVal)
   -- need to improve this
   if rtn and rtn.responses then
     if rtn.responses["200"] then
-      return get_example(accept, rtn.responses["200"], schemaVal), 200
+      return get_example(accept, rtn.responses["200"]), 200
     elseif rtn.responses["201"] then
-      return get_example(accept, rtn.responses["201"], schemaVal), 201
+      return get_example(accept, rtn.responses["201"]), 201
     elseif rtn.responses["204"] then
-      return get_example(accept, rtn.responses["204"], schemaVal), 204
+      return get_example(accept, rtn.responses["204"]), 204
     end
   end
 
@@ -125,24 +142,18 @@ local function load_spec(spec_str)
 end
 
 local function retrieve_example(parsed_content, uripath, accept, method)
-
   local paths = parsed_content.paths
-  local schemaVal = nil
-  if isV3 then
-    schemaVal = parsed_content.components.schemas
-  end
   local found = false
-
+  -- Check to make sure we have paths in the spec file, Corrupt or bad spec file
+  if (paths) then
   for specpath, value in pairs(paths) do
 
     -- build formatted string for exact match
-    -- shortest matched {} in the input
     local formatted_path = gsub(specpath, "{(.-)}", "[A-Za-z0-9]+") .. "$"
-
     local strmatch = match(uripath, formatted_path)
     if strmatch then
       found = true
-      local responsepath, status = get_method_path(value, method, accept,schemaVal)
+      local responsepath, status = get_method_path(value, method, accept)
       if responsepath then
         kong.response.exit(status, responsepath)
       else
@@ -150,6 +161,7 @@ local function retrieve_example(parsed_content, uripath, accept, method)
          " resource with Accept Header (" .. accept .. ")"})
       end
     end
+  end
   end
 
   if not found then
@@ -190,3 +202,4 @@ function plugin:header_filter(conf)
 end
 
 return plugin
+
