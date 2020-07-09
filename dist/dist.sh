@@ -31,6 +31,7 @@ git_clone_tmp() {
 export CACHE_DIR=${CACHE_DIR:-/tmp/kong-dist-cache}
 export OUTPUT_DIR=$LOCAL_PATH/output
 export LOCAL_KONG_PATH=$LOCAL_KONG_PATH
+export KONG_DOCKER_VERSION=${KONG_DOCKER_KONG_VERSION}
 # This is for release.sh
 export BUILD_DIR=$OUTPUT_DIR
 
