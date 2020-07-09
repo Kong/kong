@@ -1,7 +1,7 @@
 # Table of Contents
 
 
-- [2.1.0 UNRELEASED](#210-UNRELEASED)
+- [2.1.0rc1](#210rc1)
 - [2.0.4](#204)
 - [2.0.3](#203)
 - [2.0.2](#202)
@@ -44,20 +44,23 @@
 - [0.9.9 and prior](#099---20170202)
 
 
-## [2.1.0 UNRELEASED]
+## [2.1.0rc1]
 
-> Released 2020/05/19
+> Released 2020/07/09
 
 ### Distributions
 
 - :gift: Introduce package for Ubuntu 20.04.
   [#6006](https://github.com/Kong/kong/pull/6006)
-- Add `ca-certificates` to the Alpine Docker image
+- Add `ca-certificates` to the Alpine Docker image.
   [#373](https://github.com/Kong/docker-kong/pull/373)
+- :warning: The [go-pluginserver](https://github.com/Kong/go-pluginserver) no
+  longer ships with Kong packages; users are encouraged to build it along with
+  their Go plugins. For more info, check out the [Go Guide](https://docs.konghq.com/latest/go/).
 
 ### Dependencies
 
-- Bump OpenSSL version from `1.1.1f` to `1.1.1.g`.
+- Bump OpenSSL version from `1.1.1f` to `1.1.1g`.
   [#5820](https://github.com/Kong/kong/pull/5810)
 - Bump [lua-resty-dns-client](https://github.com/Kong/lua-resty-dns-client) from `4.1.3`
   to `5.0.1`.
@@ -67,9 +70,6 @@
 - Bump [lua-resty-openssl](https://github.com/fffonion/lua-resty-openssl)
   from `0.6.0` to `0.6.2`.
   [#5941](https://github.com/Kong/kong/pull/5941)
-- Bump [go-pluginserver](https://github.com/Kong/go-pluginserver) from version
-  from `0.3.0` to `0.4.0`, leveraging [go-pdk](https://github.com/Kong/go-pdk) `0.5.0`.
-  See go-pdk changelog [here](https://github.com/Kong/go-pdk/blob/master/CHANGELOG.md#v050).
 
 ### Changes
 
@@ -303,9 +303,9 @@
   [#5764](https://github.com/Kong/kong/pull/5764)
 - Fix issue where DNS resolution would fail in DB-less mode.
   [#5831](https://github.com/Kong/kong/pull/5831)
-- Fix a race condition leading to random TLS breakages in DB-less mode.
+- Fix a race condition leading to random config fetching failures in DB-less mode.
   [#5833](https://github.com/Kong/kong/pull/5833)
-- Fix issue where a respawned worker would not get the existing configuration
+- Fix issue where a respawned worker would not use the existing configuration
   in DB-less mode.
   [#5850](https://github.com/Kong/kong/pull/5850)
 - Fix issue where declarative configuration would fail with the error:
@@ -377,7 +377,7 @@
 - basic-auth: avoid fetching credentials when password is not given.
   Thanks [Abhishekvrshny](https://github.com/Abhishekvrshny) for the patch!
   [#5880](https://github.com/Kong/kong/pull/5880)
-- cors: avoid overwriting upstream response `Very` header; new values are now
+- cors: avoid overwriting upstream response `Vary` header; new values are now
   added as additional `Vary` headers.
   Thanks [aldor007](https://github.com/aldor007) for the patch!
   [#5794](https://github.com/Kong/kong/pull/5794)
@@ -5142,7 +5142,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[2.1.0 UNRELEASED]: https://github.com/Kong/kong/compare/2.0.4...2.1.0-beta.1
+[2.1.0rc1]: https://github.com/Kong/kong/compare/2.0.5...2.1.0rc1
 [2.0.4]: https://github.com/Kong/kong/compare/2.0.3...2.0.4
 [2.0.3]: https://github.com/Kong/kong/compare/2.0.2...2.0.3
 [2.0.2]: https://github.com/Kong/kong/compare/2.0.1...2.0.2
