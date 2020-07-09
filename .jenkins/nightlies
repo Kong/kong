@@ -31,10 +31,9 @@ for (x in distros) {
           sh "./dist/dist.sh build-image $label nightly"
         }
 
-        // not yet implemented
-        // stage('release') {
-        //   sh "./dist/dist.sh push-internal $label nightly"
-        // }
+        stage('push internal nightly') {
+          sh "./dist/dist.sh push-image $label nightly"
+        }
       }
     }
   }
@@ -61,7 +60,7 @@ pipeline {
     // when a tag is pushed, remove this part and set the options to the
     // desired actions
 
-    stage('build, test, build image') {
+    stage('build, test, build image, push internal nightly') {
       steps {
         script {
           parallel builds
