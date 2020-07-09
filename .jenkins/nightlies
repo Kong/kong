@@ -51,6 +51,8 @@ pipeline {
     // Do not tag any internal release as latest, as stages my run for
     // unordered branches
     TAG_LATEST = 0
+    // Speed up build
+    ENABLE_OPENTRACING = 0
   }
 
   stages {
