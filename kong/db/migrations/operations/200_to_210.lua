@@ -76,8 +76,6 @@ local postgres = {
         END;
         $$;
 
-        -- Reset default value for ws_id once it is populated
-        ALTER TABLE IF EXISTS ONLY "$(TABLE)" ALTER "ws_id" SET DEFAULT NULL;
 
       ]], { TABLE = table_name }))
 
@@ -165,7 +163,12 @@ local postgres = {
     ------------------------------------------------------------------------------
     -- Update keys to workspace-aware formats
     ws_update_keys = function(_, connector, table_name, unique_keys)
-      -- Postgres doesn't need this
+      -- Reset default value for ws_id once it is populated
+      assert(connector:query(render([[
+        ALTER TABLE IF EXISTS ONLY "$(TABLE)" ALTER "ws_id" SET DEFAULT NULL;
+      ]], {
+        TABLE = table_name,
+      })))
     end,
 
 
