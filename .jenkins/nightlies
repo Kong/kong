@@ -48,9 +48,9 @@ pipeline {
   environment {
     GITHUB = credentials('GITHUB_TOKEN')
     GITHUB_TOKEN = credentials('GITHUB_TOKEN')
-    // Do not tag any internal release as latest, as stages my run for
-    // unordered branches
-    TAG_LATEST = 0
+    DOCKER_REGISTRY_URL = "registry.kongcloud.io"
+    // This will map DOCKER_REGISTRY_USR and DOCKER_REGISTRY_PSW
+    DOCKER_REGISTRY = credentials('DOCKER_REGISTRY')
     // Speed up build
     ENABLE_OPENTRACING = 0
   }
