@@ -20,20 +20,20 @@ for (x in distros) {
           ])
         }
         stage('build') {
-          sh "./dist/dist.sh build $label"
+          sh "./dist/dist.sh build $label nightly"
         }
 
         stage('test') {
-          sh "./dist/dist.sh test $label"
+          sh "./dist/dist.sh test $label nightly"
         }
 
         stage('build-image') {
-          sh "./dist/dist.sh build-image $label"
+          sh "./dist/dist.sh build-image $label nightly"
         }
 
         // not yet implemented
         // stage('release') {
-        //   sh "./dist/dist.sh push-internal $label"
+        //   sh "./dist/dist.sh push-internal $label nightly"
         // }
       }
     }
