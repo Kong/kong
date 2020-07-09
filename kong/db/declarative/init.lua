@@ -372,9 +372,14 @@ local function export_from_db(emitter, skip_ws, skip_ttl)
 
     local name = schema.name
     local fks = {}
+    local pointers_to_nonexported = {}
     for field_name, field in schema:each_field() do
       if field.type == "foreign" then
         table.insert(fks, field_name)
+
+        if kong.db[field.reference].schema.db_export == false then
+          pointers_to_nonexported[field_name] = true
+        end
       end
     end
 
@@ -395,6 +400,10 @@ local function export_from_db(emitter, skip_ws, skip_ttl)
           if id ~= nil then
             row[foreign_name] = id
           end
+        end
+
+        if pointers_to_nonexported[foreign_name] then
+          row[foreign_name] = nil
         end
       end
 

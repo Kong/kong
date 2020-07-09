@@ -31,7 +31,7 @@ return {
   endpoint_key  = "email",
   dao           = "kong.db.dao.developers",
   workspaceable = true,
-  db_export = false,
+  db_export = true,
 
   fields = {
     { id             = typedefs.uuid, },
