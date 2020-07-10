@@ -70,6 +70,7 @@ local function log(premature, conf, message)
   end
 end
 
+
 local SysLogHandler = {
   PRIORITY = 4,
   VERSION = "2.1.0",
