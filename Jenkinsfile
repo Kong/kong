@@ -34,7 +34,7 @@ pipeline {
           parameters: [
             // [$class: 'TextParameterDefinition', defaultValue: '', description: 'custom build', name: 'customername'],
             choice(name: 'RELEASE_SCOPE',
-            choices: 'internal-preview\nrc1\nrc2\nrc3\nrc4\nrc5\nGA',
+            choices: 'internal-preview\nbeta1\nbeta2\nrc1\nrc2\nrc3\nrc4\nrc5\nGA',
             description: 'What is the release scope?'),
           ])
           env.RELEASE_SCOPE = input_params
