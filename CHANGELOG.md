@@ -1,3 +1,11 @@
+## v1.6.0 (Upcoming)
+
+- Change the `config.authenticated_groups_claim` is considered even on successful
+  consumer mapping so that it enables dynamic groups, while using consumer mapping.
+  This feature is used with https://docs.konghq.com/enterprise/latest/kong-manager/service-directory-mapping/.
+- Add `X-Authenticated-Groups` request header when doing authenticated groups.
+
+
 ## v1.5.2
 
 - Fix `consumers` to call right function when setting anonymous consumer.

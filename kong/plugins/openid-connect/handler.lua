@@ -1723,89 +1723,91 @@ function OICHandler.access(_, conf)
         }
       end
     end
+  end
 
-    -- trying to find authenticated groups for ACL plugin to filter
-    local authenticated_groups_claim = args.get_conf_arg("authenticated_groups_claim")
-    if authenticated_groups_claim then
-      log("finding authenticated groups claim value")
+  -- trying to find authenticated groups for ACL plugin to filter
+  local authenticated_groups_claim = args.get_conf_arg("authenticated_groups_claim")
+  if authenticated_groups_claim then
+    log("finding authenticated groups claim value")
 
-      local authenticated_groups
-      if type(token_introspected) == "table" then
-        authenticated_groups = claims.find(token_introspected, authenticated_groups_claim)
-        if authenticated_groups then
-          log("authenticated groups claim found in introspection results")
+    local authenticated_groups
+    if type(token_introspected) == "table" then
+      authenticated_groups = claims.find(token_introspected, authenticated_groups_claim)
+      if authenticated_groups then
+        log("authenticated groups claim found in introspection results")
+      else
+        log("authenticated groups claim not found in introspection results")
+      end
+    end
+
+    if not authenticated_groups then
+      if decode_tokens and type(tokens_decoded) ~= "table" then
+        decode_tokens = false
+        tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+        if err then
+          log("error decoding tokens (", err, ")")
+        end
+      end
+
+      if type(tokens_decoded) == "table" then
+        if type(tokens_decoded.id_token) == "table" then
+          authenticated_groups = claims.find(tokens_decoded.id_token.payload, authenticated_groups_claim)
+          if authenticated_groups then
+            log("authenticated groups found in id token")
+          else
+            log("authenticated groups not found in id token")
+          end
+        end
+
+        if not authenticated_groups and type(tokens_decoded.access_token) == "table" then
+          authenticated_groups = claims.find(tokens_decoded.access_token.payload, authenticated_groups_claim)
+          if authenticated_groups then
+            log("authenticated groups claim found in access token")
+          else
+            log("authenticated groups claim not found in access token")
+          end
+        end
+      end
+    end
+
+    if not authenticated_groups and search_userinfo then
+      if type(userinfo) ~= "table" and not userinfo_loaded then
+        log("loading user info")
+        if cache_userinfo then
+          userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
         else
-          log("authenticated groups claim not found in introspection results")
-        end
-      end
-
-      if not authenticated_groups then
-        if decode_tokens and type(tokens_decoded) ~= "table" then
-          decode_tokens = false
-          tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
-          if err then
-            log("error decoding tokens (", err, ")")
-          end
+          userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, false)
         end
 
-        if type(tokens_decoded) == "table" then
-          if type(tokens_decoded.id_token) == "table" then
-            authenticated_groups = claims.find(tokens_decoded.id_token.payload, authenticated_groups_claim)
-            if authenticated_groups then
-              log("authenticated groups found in id token")
-            else
-              log("authenticated groups not found in id token")
-            end
-          end
-
-          if not authenticated_groups and type(tokens_decoded.access_token) == "table" then
-            authenticated_groups = claims.find(tokens_decoded.access_token.payload, authenticated_groups_claim)
-            if authenticated_groups then
-              log("authenticated groups claim found in access token")
-            else
-              log("authenticated groups claim not found in access token")
-            end
-          end
-        end
-      end
-
-      if not authenticated_groups and search_userinfo then
-        if type(userinfo) ~= "table" and not userinfo_loaded then
-          log("loading user info")
-          if cache_userinfo then
-            userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
-          else
-            userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, false)
-          end
-
-          userinfo_loaded = true
-
-          if type(userinfo) == "table" then
-            log("user info loaded")
-          elseif err then
-            log("user info could not be loaded (", err, ")")
-          else
-            log("user info could not be loaded")
-          end
-        end
+        userinfo_loaded = true
 
         if type(userinfo) == "table" then
-          log("trying to find credential using user info")
-          authenticated_groups = claims.find(userinfo, authenticated_groups_claim)
-          if authenticated_groups then
-            log("authenticated groups claim found in user info")
-          else
-            log("authenticated groups claim was not found in user info")
-          end
+          log("user info loaded")
+        elseif err then
+          log("user info could not be loaded (", err, ")")
+        else
+          log("user info could not be loaded")
         end
       end
 
-      if not authenticated_groups then
-        log("authenticated groups claim was not found")
-      else
-        log("authenticated groups found '", authenticated_groups, "'")
-        ctx.authenticated_groups = set.new(authenticated_groups)
+      if type(userinfo) == "table" then
+        log("trying to find credential using user info")
+        authenticated_groups = claims.find(userinfo, authenticated_groups_claim)
+        if authenticated_groups then
+          log("authenticated groups claim found in user info")
+        else
+          log("authenticated groups claim was not found in user info")
+        end
       end
+    end
+
+    if not authenticated_groups then
+      log("authenticated groups claim was not found")
+    else
+      log("authenticated groups found '", authenticated_groups, "'")
+      local groups = set.new(authenticated_groups)
+      ctx.authenticated_groups = groups
+      headers.set_upstream("X-Authenticated-Groups", concat(groups, ", "))
     end
   end
 
