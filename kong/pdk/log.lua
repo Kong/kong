@@ -473,10 +473,47 @@ do
   ---
   -- Generates a table that contains information that are helpful for logging.
   --
+  -- This method can currently be used in the `http` subsystem.
+  --
+  -- The following fields are included in the returned table:
+  -- * `client_ip` - client IP address in textual format
+  -- * `latencies` - request/proxy latencies
+  -- * `request.headers` - request headers
+  -- * `request.method` - request method
+  -- * `request.querystring` - request query strings
+  -- * `request.size` - size of request
+  -- * `request.url` and `request.uri` - URL and URI of request
+  -- * `response.headers` - response headers
+  -- * `response.size` - size of response
+  -- * `response.status` response HTTP status code
+  -- * `route` - route object matched
+  -- * `service` - service object used
+  -- * `started_at` - timestamp this request came in, in milliseconds
+  -- * `tries` - upstream information, this is an array and if balancer retries occurred, will contain more than one entry
+  -- * `upstream_uri` - request URI sent to upstream
+  --
+  -- The following fields are only present in an authenticated request (with consumer):
+  --
+  -- * `authenticated_entity` - credential used for authentication
+  -- * `consumer` - consumer entity accessing the resource
+  --
+  -- The following fields are only present in a TLS/HTTPS request
+  -- * `request.tls.version` - TLS/SSL version used by the connection
+  -- * `request.tls.cipher` - TLS/SSL cipher used by the connection
+  -- * `request.tls.client_verify` - mTLS validation result. Contents are the same as described in [$ssl_client_verify](https://nginx.org/en/docs/http/ngx_http_ssl_module.html#var_ssl_client_verify)
+  --
+  -- Warning: this function may return sensitive data (e.g. API keys).
+  -- Consider filtering before writing it to unsecured locations.
+  --
+  -- To see what content are there on your setup, enable any of the logging
+  -- plugins (e.g. `file-log`) and the output written to log file is the table
+  -- returned by this function JSON encode
+  --
   -- @function kong.log.serialize
   -- @phases log
+  -- @treturn table table containing request information
   -- @usage
-  -- kong.log.serialize()
+  -- local tbl = kong.log.serialize()
   function serialize(options)
     check_phase(PHASES_LOG)
 
