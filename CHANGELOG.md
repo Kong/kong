@@ -1,3 +1,7 @@
+## 0.2.2
+
+- fix configuration transformations that breaks in cp-dp mode
+
 ## 0.2.1
 
 - lua land select all by name
