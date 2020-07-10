@@ -644,7 +644,7 @@ local opts = { neg_ttl = 10 }
 -- and upstream entity tables as values), or nil+error
 local function get_all_upstreams()
   if kong.configuration.worker_consistency == "eventual" then
-    return singletons.core_cache:get("balancer:upstreams", opts, noop)
+    return singletons.core_cache:get("balancer:upstreams", opts, noop) or {}
   end
   local upstreams_dict, err = singletons.core_cache:get("balancer:upstreams", opts,
                                                         load_upstreams_dict_into_memory)
