@@ -8,6 +8,7 @@ local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local ee_utils = require "kong.enterprise_edition.utils"
 local escape = require("socket.url").escape
+local scope = require "kong.enterprise_edition.workspaces.scope"
 
 local post = ee_helpers.post
 local get_admin_cookie = ee_helpers.get_admin_cookie_basic_auth
@@ -814,7 +815,7 @@ for _, strategy in helpers.each_strategy() do
             end
 
             assert.equal(enums.TOKENS.STATUS.PENDING, reset_secret.status)
-  
+
             local claims = {id = admin.consumer.id, exp = ngx.time() + 100000}
             local valid_jwt = ee_jwt.generate_JWT(claims, reset_secret.secret,
                                                   "HS256")
@@ -828,7 +829,7 @@ for _, strategy in helpers.each_strategy() do
             })
 
             local valid_jwt, reset_secret = get_token_and_secret(db, admin)
-  
+
             local res = assert(client:send {
               method = "POST",
               path = "/admins/register",
@@ -842,14 +843,14 @@ for _, strategy in helpers.each_strategy() do
                 password = "new2!pas$Word",
               },
             })
-  
+
             assert.res_status(201, res)
-  
+
             reset_secret = db.consumer_reset_secrets:select({ id = reset_secret.id })
-  
+
             assert.equal(enums.TOKENS.STATUS.CONSUMED, reset_secret.status)
           end)
-  
+
           it("successfully registers an invited admin in a non-default workspace", function()
             local admin
             another_ws = createAnotherWS(db)
@@ -871,7 +872,7 @@ for _, strategy in helpers.each_strategy() do
             assert.is_equal(rbac_user.ws_id, another_ws.id)
 
             local valid_jwt, reset_secret = get_token_and_secret(db, admin)
-  
+
             local res = assert(client:send {
               method = "POST",
               path = "/admins/register",
@@ -885,11 +886,11 @@ for _, strategy in helpers.each_strategy() do
                 password = "new2!pas$Word",
               },
             })
-  
+
             assert.res_status(201, res)
-  
+
             reset_secret = db.consumer_reset_secrets:select({ id = reset_secret.id })
-  
+
             assert.equal(enums.TOKENS.STATUS.CONSUMED, reset_secret.status)
           end)
         end)
