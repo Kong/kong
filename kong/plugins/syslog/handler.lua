@@ -54,6 +54,7 @@ local function send_to_syslog(log_level, severity, message, facility)
   end
 end
 
+
 local function log(premature, conf, message)
   if premature then
     return
