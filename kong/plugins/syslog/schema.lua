@@ -7,13 +7,13 @@ local severity = {
 }
 
 local facility = {
-	type = "string",
-	default = "USER",
-	one_of = { "AUTH", "AUTHPRIV",  "CRON",  "DAEMON",
-			"FTP",  "KERN",  "LPR",  "MAIL",
-			"NEWS", "SYSLOG",  "USER",  "UUCP",
-			"LOCAL0",  "LOCAL1", "LOCAL2",  "LOCAL3",
-			"LOCAL4",  "LOCAL5",  "LOCAL6",  "LOCAL7" },
+  type = "string",
+  default = "USER",
+  one_of = { "AUTH", "AUTHPRIV",  "CRON",  "DAEMON",
+  "FTP",  "KERN",  "LPR",  "MAIL",
+  "NEWS", "SYSLOG",  "USER",  "UUCP",
+  "LOCAL0",  "LOCAL1", "LOCAL2",  "LOCAL3",
+  "LOCAL4",  "LOCAL5",  "LOCAL6",  "LOCAL7" },
 }
 
 return {
