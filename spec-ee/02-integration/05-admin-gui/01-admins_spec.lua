@@ -855,7 +855,7 @@ for _, strategy in helpers.each_strategy() do
             local admin
             another_ws = createAnotherWS(db)
 
-            scope.run_with_ws_scope({{ id = another_ws.id }}, function()
+            scope.run_with_ws_scope({ id = another_ws.id }, function()
               admin = create_admin(db, {
                 username = "bob2",
                 email = "hong2@konghq.com",
