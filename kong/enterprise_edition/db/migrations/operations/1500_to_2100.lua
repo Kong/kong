@@ -219,6 +219,29 @@ local postgres = {
       ]])
     end,
 
+    ws_set_default_ws_for_admin_entities = function(_, connector)
+      local code = {}
+      local entities = { "rbac_user", "consumer" }
+
+      for _, e in ipairs(entities) do
+        table.insert(code,
+          render([[
+
+            -- assign admin linked $(TABLE)' ws_id to default ws id
+
+            update $(TABLE)
+            set ws_id = (select id from workspaces where name='default')
+            where id in (select $(COLUMN) from admins);
+          ]], {
+            TABLE = e .. "s",
+            COLUMN = e .. "_id",
+          })
+        )
+      end
+
+      postgres_run_query_in_transaction(connector, table.concat(code))
+    end,
+
     drop_run_on = function(_, connector)
       connector:query([[
         DO $$
@@ -337,6 +360,55 @@ local cassandra = {
             ]], {
               KEYSPACE = connector.keyspace,
               ID = row.entity_id,
+            }))
+          end
+        end
+      end
+    end,
+
+    ws_set_default_ws_for_admin_entities = function(_, connector)
+      local coordinator = connector:connect_migrations()
+      local entities = { "rbac_user", "consumer" }
+
+      local default_ws, err = connector:query(render([[
+        SELECT id FROM $(KEYSPACE).workspaces
+        WHERE name = 'default';
+      ]], {
+        KEYSPACE = connector.keyspace,
+      }))
+
+      if err then
+        return nil, err
+      end
+
+      -- The core 200_to_210.lua opteration inserts
+      -- `default` ws for cassandra regardless,
+      -- so use the 1st item as default ws.
+      local default_ws_id = default_ws and default_ws[1].id
+
+      for _, e in ipairs(entities) do
+        local column_name = e .. "_id"
+        local cql = render([[
+          SELECT * FROM $(KEYSPACE).admins;
+        ]], {
+          KEYSPACE = connector.keyspace,
+        })
+
+        for rows, err in coordinator:iterate(cql) do
+          if err then
+            return nil, err
+          end
+
+          for _, row in ipairs(rows) do
+            connector:query(render([[
+              update $(KEYSPACE).$(TABLE)
+              set ws_id = $(WS_ID)
+              where id = $(ID);
+            ]], {
+              KEYSPACE = connector.keyspace,
+              TABLE = e .. "s",
+              WS_ID = default_ws_id,
+              ID = row[column_name],
             }))
           end
         end
