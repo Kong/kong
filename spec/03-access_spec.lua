@@ -327,6 +327,39 @@ for i, policy in ipairs({"cluster", "redis"}) do
         }
       })
 
+      -- Shared service with multiple routes
+      local shared_service = bp.services:insert {
+        name = "shared-test-service",
+      }
+      assert(bp.routes:insert {
+        name = "shared-service-route-1",
+        hosts = { "shared-service-test-1.com" },
+        service = { id = shared_service.id },
+      })
+      assert(bp.routes:insert {
+        name = "shared-service-route-2",
+        hosts = { "shared-service-test-2.com" },
+        service = { id = shared_service.id },
+      })
+      assert(bp.plugins:insert {
+        name = "rate-limiting-advanced",
+        service = { id = shared_service.id },
+        config = {
+          strategy = policy,
+          identifier = "service",
+          window_size = { MOCK_RATE },
+          window_type = "fixed",
+          limit = { 6 },
+          sync_rate = 0,
+          redis = {
+            host = REDIS_HOST,
+            port = REDIS_PORT,
+            database = REDIS_DATABASE,
+            password = REDIS_PASSWORD,
+          },
+        },
+      })
+
       assert(helpers.start_kong{
         plugins = "rate-limiting-advanced,key-auth",
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -711,6 +744,63 @@ for i, policy in ipairs({"cluster", "redis"}) do
             }
           })
           assert.res_status(200, res)
+        end)
+        it("should be global to service, and share rate between routes in service", function()
+          for i = 0, 2 do
+            local res = assert(helpers.proxy_client():send {
+              method = "GET",
+              path = "/get",
+              headers = {
+                ["Host"] = "shared-service-test-1.com"
+              }
+            })
+            assert.res_status(200, res)
+            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
+            assert.are.same(6 - ((i * 2) + 1), tonumber(res.headers["x-ratelimit-remaining-3"]))
+
+            res = assert(helpers.proxy_client():send {
+              method = "GET",
+              path = "/get",
+              headers = {
+                ["Host"] = "shared-service-test-2.com"
+              }
+            })
+            assert.res_status(200, res)
+            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
+            assert.are.same(6 - ((i * 2) + 2), tonumber(res.headers["x-ratelimit-remaining-3"]))
+          end
+
+          -- Ensure both routes in shared service have exceeded their limit
+          for i = 1, 2 do
+            local res = assert(helpers.proxy_client():send {
+              method = "GET",
+              path = "/get",
+              headers = {
+                ["Host"] = "shared-service-test-" .. i .. ".com"
+              }
+            })
+            local body = assert.res_status(429, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "API rate limit exceeded" }, json)
+          end
+
+          -- wait a bit longer than our window size
+          ngx.sleep(MOCK_RATE + 1)
+
+          -- Ensure both routes in shared service have not exceeded their limit
+          for i = 1, 2 do
+            -- Additonal request, sliding window is 0 < rate <= limit
+            local res = assert(helpers.proxy_client():send {
+              method = "GET",
+              path = "/get",
+              headers = {
+                ["Host"] = "shared-service-test-" .. i .. ".com"
+              }
+            })
+            assert.res_status(200, res)
+            local rate = tonumber(res.headers["x-ratelimit-remaining-3"])
+            assert.is_true(0 < rate and rate <= 6)
+          end
         end)
       end)
       describe("set to `header` + customers use the same headers", function()

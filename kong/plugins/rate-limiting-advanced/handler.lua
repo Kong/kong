@@ -48,7 +48,8 @@ local id_lookup = {
            kong.client.get_credential().id
   end,
   service = function(conf)
-    return kong.service.id
+    return kong.router.get_service() and
+           kong.router.get_service().id
   end,
   header = function(conf)
     return kong.request.get_header(conf.header_name)
