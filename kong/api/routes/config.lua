@@ -113,6 +113,7 @@ return {
 
       ngx.timer.at(0, reports_timer)
 
+      declarative.sanitize_output(entities)
       return kong.response.exit(201, entities)
     end,
   },
