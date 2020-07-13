@@ -1,3 +1,7 @@
+## 1.3.6
+
+- fix(handler) Corrected service ID lookup (FTI-1704) (#49)
+
 ## 1.3.5
 
 - chore(*) use each_by_name instead of select_all (#47)
