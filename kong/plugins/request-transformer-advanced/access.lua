@@ -165,8 +165,8 @@ local function iter(config_array)
     end
 
     if err then
-      return error("[request-transformer-advanced] failed to render the template ",
-        current_value, ", error:", err)
+      return error("[request-transformer-advanced] failed to render the template " ..
+        tostring(current_value) .. ", error:" .. tostring(err))
     end
 
     kong.log.debug("[request-transformer-advanced] template `", current_value,
