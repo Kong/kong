@@ -176,6 +176,10 @@ local function page_for_key(self, key, size, offset, options)
       item = cache:get(item, nil, nil_cb)
     end
 
+    if not item then
+      return nil, "stale data detected while paginating"
+    end
+
     item = self.schema:process_auto_fields(item, "select", true, {
       no_defaults = true,
       show_ws_id = true,

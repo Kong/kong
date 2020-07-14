@@ -1,8 +1,10 @@
 local Schema = require "kong.db.schema"
 local targets = require "kong.db.schema.entities.targets"
+local certificates = require "kong.db.schema.entities.certificates"
 local upstreams = require "kong.db.schema.entities.upstreams"
 local utils = require "kong.tools.utils"
 
+assert(Schema.new(certificates))
 assert(Schema.new(upstreams))
 local Targets = assert(Schema.new(targets))
 
