@@ -26,7 +26,7 @@ local function validate_issuer(conf)
     headers         = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
   })
 
-  local issuer = cache.issuers.load(issuer_uri, options)
+  local issuer = cache.issuers.rediscover(issuer_uri, options)
   if not issuer then
     return false, "openid connect discovery failed"
   end
@@ -90,7 +90,7 @@ local config = {
             rediscovery_lifetime = {
               required = false,
               type     = "number",
-              default  = 300,
+              default  = 30,
             },
           },
           {

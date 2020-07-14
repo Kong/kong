@@ -1,9 +1,14 @@
 ## v1.6.0 (Upcoming)
 
+- Add `X-Authenticated-Groups` request header when doing authenticated groups.
 - Change the `config.authenticated_groups_claim` is considered even on successful
   consumer mapping so that it enables dynamic groups, while using consumer mapping.
   This feature is used with https://docs.konghq.com/enterprise/latest/kong-manager/service-directory-mapping/.
-- Add `X-Authenticated-Groups` request header when doing authenticated groups.
+- Change code to be more resilient on rediscovery errors.
+- Change `config.rediscovery_lifetime` to default to `30` seconds instead of `300`
+  seconds (`5` minutes).
+- Change plugin to do rediscovery on configuration changes (still respecting `config.rediscovery_lifetime`)
+- Fix `dbless` tries to reload `private key jwts` on each request.
 
 
 ## v1.5.2

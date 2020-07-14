@@ -168,53 +168,93 @@ local function normalize_issuer(issuer)
 end
 
 
-local function discover(issuer, opts, now)
+local function discover(issuer, opts, now, previous)
   opts = opts or {}
 
   local cdec
 
   log.notice("loading configuration for ", issuer, " using discovery")
   local claims, err = configuration.load(issuer, opts)
-  if not claims then
-    log.notice("loading configuration for ", issuer, " using discovery failed with ", err ,
-               " (falling back to empty configuration)")
-    cdec = {
-      issuer = issuer,
-    }
+  if type(claims) ~= "string" then
+    if previous then
+      log.notice("loading configuration for ", issuer, " using discovery failed: ", err or "unknown error",
+                 " (falling back to previous configuration)")
+      cdec, err = json.decode(previous.configuration)
+      if type(cdec) ~= "table" then
+        log.notice("decoding previous discovery document failed: ", err or "unknown error",
+                   " (falling back to empty configuration)")
+        cdec = {
+          issuer = issuer,
+        }
+      end
+
+    else
+      log.notice("loading configuration for ", issuer, " using discovery failed: ", err or "unknown error",
+                 " (falling back to empty configuration)")
+      cdec = {
+        issuer = issuer,
+      }
+    end
 
   else
     cdec, err = json.decode(claims)
-    if not cdec then
-      log.err("decoding discovery document failed with ", err)
-      return nil
+    if type(cdec) ~= "table" then
+      if previous then
+        log.notice("decoding discovery document failed: ", err or "unknown error",
+                   " (falling back to previous configuration)")
+
+        cdec, err = json.decode(previous.configuration)
+        if type(cdec) ~= "table" then
+          log.notice("decoding previous discovery document failed: ", err or "unknown error",
+                     " (falling back to empty configuration)")
+          cdec = {
+            issuer = issuer,
+          }
+        end
+
+      else
+        log.notice("decoding discovery document failed: ", err or "unknown error",
+                   " (falling back to empty configuration)")
+        cdec = {
+          issuer = issuer,
+        }
+      end
     end
   end
 
-  cdec.updated_at = now or time()
-
   local jwks_uri = cdec.jwks_uri
   local jwks
-  if jwks_uri then
+  if type(jwks_uri) == "string" then
     log.notice("loading jwks from ", jwks_uri)
-
     jwks, err = keys.load(jwks_uri, opts)
-    if not jwks then
-      log.err("loading jwks from ", jwks_uri, " failed with ", err)
-      return nil
+    if type(jwks) ~= "string" then
+      log.notice("loading jwks from ", jwks_uri, " failed: ", err or "unknown error")
+
+    else
+      jwks, err = json.decode(jwks)
+      if type(jwks) ~= "table" then
+        log.notice("decoding jwks failed: ", err or "unknown error")
+
+      elseif type(jwks.keys) == "table" then
+        jwks = jwks.keys
+      end
+    end
+  end
+
+  local jdec = cdec.jwks
+  if type(jdec) == "table" then
+    if type(jdec.keys) == "table" then
+      jdec = jdec.keys
     end
 
-    jwks, err = json.decode(jwks)
-    if not jwks then
-      log.err("decoding jwks failed with ", err)
-      return nil
-    end
+    if type(jwks) ~= "table" then
+      jwks = jdec
 
-    if jwks.keys then
-      jwks = jwks.keys
+    else
+      for _, jwk in ipairs(jdec) do
+        insert(jwks, jwk)
+      end
     end
-
-  elseif type(cdec.jwks) == "table" and cdec.jwks.keys then
-    jwks = cdec.jwks.keys
   end
 
   local extra_jwks_uris = opts.extra_jwks_uris
@@ -226,55 +266,86 @@ local function discover(issuer, opts, now)
     local extra_jwks
     for _, extra_jwks_uri in ipairs(extra_jwks_uris) do
       if type(extra_jwks_uri) ~= "string" then
-        log.err("extra jwks uri is not a string (", tostring(extra_jwks_uri) , ")")
-        return nil
+        log.notice("extra jwks uri is not a string (", tostring(extra_jwks_uri) , ")")
 
       else
         log.notice("loading extra jwks from ", extra_jwks_uri)
         extra_jwks, err = keys.load(extra_jwks_uri, opts)
-        if not extra_jwks then
-          log.err("loading extra jwks from ", extra_jwks_uri, " failed with ", err)
-          return nil
-        end
-
-        extra_jwks, err = json.decode(extra_jwks)
-        if not extra_jwks then
-          log.err("decoding extra jwks failed with ", err)
-          return nil
-        end
-
-        if extra_jwks.keys then
-          extra_jwks = extra_jwks.keys
-        end
-
-        if not jwks then
-          jwks = extra_jwks
+        if type(extra_jwks) ~= "string" then
+          log.notice("loading extra jwks from ", extra_jwks_uri, " failed: ", err or "unknown error")
 
         else
-          for _, extra_jwk in ipairs(extra_jwks) do
-            insert(jwks, extra_jwk)
+          extra_jwks, err = json.decode(extra_jwks)
+          if type(extra_jwks) ~= "table" then
+            log.notice("decoding extra jwks failed: ", err or "unknown error")
+
+          else
+            if type(extra_jwks.keys) == "table" then
+              extra_jwks = extra_jwks.keys
+            end
+
+            if type(extra_jwks) ~= "table" then
+              log.notice("unknown extra jwks format")
+
+            else
+              if not jwks then
+                jwks = extra_jwks
+
+              else
+                for _, extra_jwk in ipairs(extra_jwks) do
+                  insert(jwks, extra_jwk)
+                end
+              end
+            end
           end
         end
       end
     end
   end
 
-  if not jwks then
-    jwks = {}
-  end
-
   if type(jwks) == "table" then
     jwks, err = json.encode(jwks)
-    if not jwks then
-      log.err("encoding jwks keys failed with ", err)
-      return nil
+    if type(jwks) ~= "string" then
+      if previous then
+        log.notice("encoding jwks keys failed: ", err or "unknown error",
+                   " (falling back to previous keys)")
+        jwks = previous.jwks
+
+      else
+        log.notice("encoding jwks keys failed: ", err or "unknown error",
+                   " (falling back to empty keys)")
+        jwks = "[]"
+      end
+    end
+
+  else
+    if previous then
+      log.notice("no keys found (falling back to previous keys)")
+      jwks = previous.keys
+
+    else
+      log.notice("no keys found (falling back to empty keys)")
+      jwks = "[]"
     end
   end
 
+  cdec.updated_at = now or time()
+
   claims, err = json.encode(cdec)
-  if not claims then
-    log.err("encoding discovery document failed with ", err)
-    return nil
+  if type(claims) ~= "string" then
+    if previous then
+      log.notice("encoding discovery document failed: ", err or "unknown error",
+                 " (falling back to previous configuration)")
+      claims = previous.configuration
+
+    else
+      log.notice("encoding discovery document failed: ", err or "unknown error",
+                 " (falling back to empty configuration)")
+
+      claims = json.encode({
+        issuer = issuer,
+      })
+    end
   end
 
   return claims, jwks
@@ -299,18 +370,21 @@ function issuers.rediscover(issuer, opts)
       return nil, "decoding discovery document failed with " .. err
     end
 
-    local rediscovery_lifetime = opts.rediscovery_lifetime or 300
+    local rediscovery_lifetime = opts.rediscovery_lifetime or 30
 
     local updated_at = cdec.updated_at or 0
-    if now - updated_at < rediscovery_lifetime then
-      log.notice("openid connect rediscovery was done recently, skipping")
+    local secs_passed = now - updated_at
+    if secs_passed < rediscovery_lifetime then
+      log.notice("openid connect rediscovery was done recently (", rediscovery_lifetime - secs_passed,
+                 " seconds until next rediscovery)")
       return discovery.keys
     end
   end
 
-  local claims, jwks = discover(issuer, opts, now)
+  local claims, jwks = discover(issuer, opts, now, discovery)
   if not claims then
     return nil, "openid connect rediscovery failed"
+
   end
 
   if discovery then
@@ -369,13 +443,13 @@ local function issuers_init(issuer, opts)
 
   log.notice("loading configuration for ", issuer, " from database")
 
-  local results = kong.db.oic_issuers:select_by_issuer(issuer) or discovery_data[issuer]
-  if results then
+  local discovery = kong.db.oic_issuers:select_by_issuer(issuer) or discovery_data[issuer]
+  if discovery then
     return {
       issuer        = issuer,
-      configuration = results.configuration,
-      keys          = results.keys,
-      secret        = results.secret,
+      configuration = discovery.configuration,
+      keys          = discovery.keys,
+      secret        = discovery.secret,
     }
   end
 

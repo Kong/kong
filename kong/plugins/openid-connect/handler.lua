@@ -85,7 +85,7 @@ function OICHandler.access(_, conf)
 
     local discovery_options = args.get_http_opts({
       headers               = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
-      rediscovery_lifetime  = args.get_conf_arg("rediscovery_lifetime", 300),
+      rediscovery_lifetime  = args.get_conf_arg("rediscovery_lifetime", 30),
       extra_jwks_uris       = args.get_conf_arg("extra_jwks_uris"),
     })
 

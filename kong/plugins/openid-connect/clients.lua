@@ -136,9 +136,10 @@ local function find_client(args)
     client.unexpected_redirect_uri   = unexpected_redirect_uris[1]
   end
 
-
-
   if not client.jwk then
+    if kong.configuration.database == "off" then
+      prepare_private_key_jwks()
+    end
     client.jwk = PRIVATE_KEY_JWKS[client.alg] or PRIVATE_KEY_JWKS.RS256
   end
 
