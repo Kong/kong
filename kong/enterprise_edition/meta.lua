@@ -7,7 +7,7 @@ local version = setmetatable({
   e = 0,
 }, {
   __tostring = function(t)
-    return string.format("%d.%d.%d.%d", t.x, t.y, t.z, t.e)
+    return string.format("%d.%d.%d.%dbeta.1", t.x, t.y, t.z, t.e)
   end
 })
 
