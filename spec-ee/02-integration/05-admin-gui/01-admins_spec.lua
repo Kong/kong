@@ -15,7 +15,7 @@ local get_admin_cookie = ee_helpers.get_admin_cookie_basic_auth
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Admin API - Admins #" .. strategy, function()
+  describe("Admin API - Admins - kong_admin #" .. strategy, function()
 
     local function init_db()
       local conf = utils.deep_copy(helpers.test_conf)
@@ -55,7 +55,6 @@ for _, strategy in helpers.each_strategy() do
         enforce_rbac="on",
         admin_gui_session_conf=[[{"cookie_name":"kong_manager","storage":"kong","secret":"ohyea!","cookie_secure":false,"cookie_lifetime":86400,"cookie_renew":86400}]],
         portal_is_legacy="false",
-        --admin_gui_url = "http://manager.konghq.com",
       }))
 
       local headers = {
@@ -267,6 +266,48 @@ for _, strategy in helpers.each_strategy() do
           assert.same(ngx.null, json.next)
         end)
 
+        it("does not retrieve super admins in other workspaces", function()
+          local headers = { ["Kong-Admin-Token"] = "letmein-default" }
+          assert(admins_helpers.create({
+            custom_id = "dj",
+            username = "dj",
+            email = "dj@konghq.com",
+          }, {
+            token_optional = false,
+            remote_addr = "localhost",
+            db = db,
+            workspace = another_ws.name,
+            raw = true,
+          }))
+
+          post(client, "/admins/dj/roles", {
+            roles = "read-only",
+          }, headers, 201)
+          post(client, "/" .. another_ws.name .. "/admins/dj/roles", {
+            roles = "read-only",
+          }, headers, 201)
+
+          local getAdmins = function (path)
+            local res = assert(client:send {
+              method = "GET",
+              path = path,
+              headers = headers
+            })
+            res = assert.res_status(200, res)
+            return cjson.decode(res)
+          end
+
+          local admins = getAdmins("/admins")
+          assert.equal(4, #admins.data)
+          assert(utils.is_array(admins.data))
+          assert.same(ngx.null, admins.next)
+
+          admins = getAdmins("/" .. another_ws.name .. "/admins")
+          assert.equal(1, #admins.data)
+          assert.equal("dj@konghq.com", admins.data[1].email)
+          assert(utils.is_array(admins.data))
+          assert.same(ngx.null, admins.next)
+        end)
       end)
 
       describe("POST", function ()
@@ -526,6 +567,57 @@ for _, strategy in helpers.each_strategy() do
             assert.res_status(404, res)
           end
         end)
+
+        it("allows admin to be updated in workspace outside of admin.rbac_user.ws_id scope", function()
+          local headers = {
+            ["Kong-Admin-Token"] = "letmein-default",
+            ["Content-Type"]     = "application/json",
+          }
+          scope.run_with_ws_scope({ id = another_ws.id }, function()
+            assert(admins_helpers.create({
+              custom_id = "admin_rbac_another",
+              username = "admin_rbac_another",
+              email = "admin_rbac_another@konghq.com",
+            }, {
+              token_optional = false,
+              remote_addr = "localhost",
+              db = db,
+              workspace = another_ws.name,
+              raw = true,
+            }))
+          end)
+
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/admins/admin_rbac_another",
+            body = {
+              username = "alice",
+              rbac_token_enabled = false -- make sure rbac_user data is updated
+            },
+            headers = headers,
+          })
+          assert.res_status(404, res)
+
+          post(client, "/admins/admin_rbac_another/roles", {
+            roles = "read-only"
+          }, headers, 201)
+
+          -- now that it's found, it should not 500, ebb-353
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/admins/admin_rbac_another",
+            body = {
+              username = "alice", -- make sure consumer data is updated
+              rbac_token_enabled = false -- make sure rbac_user data is updated
+            },
+            headers = headers,
+          })
+
+          res = assert.res_status(200, res)
+          local json = cjson.decode(res)
+          assert.equal('alice', json.username)
+          assert.is_false(json.rbac_token_enabled)
+        end)
       end)
 
       describe("DELETE", function()
@@ -606,9 +698,8 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
 
-            assert.equal(2, #json)
-            local names = { json[1].name, json[2].name }
-            assert.contains("default", names)
+            assert.equal(1, #json)
+            local names = { json[1].name }
             assert.contains(another_ws.name, names)
           end)
 
@@ -702,6 +793,31 @@ for _, strategy in helpers.each_strategy() do
             assert.res_status(404, res)
           end)
         end)
+      end)
+    end)
+
+    describe("admin rbac access", function()
+      local headers = {
+        ["Kong-Admin-Token"] = "letmein-default",
+        ["Content-Type"]     = "application/json",
+      }
+
+      it("grants an admin access across workspaces regardless of where the rbac_user was created", function()
+        local admin = ee_helpers.create_admin('ced63e53@gmail.com', nil, 0, db, nil)
+
+        post(client, "/" .. another_ws.name .. "/admins/ced63e53@gmail.com/roles", {
+          roles = "read-only"
+        }, headers, 201)
+
+        local res = assert(client:send {
+          method = "GET",
+          path = "/".. another_ws.name .. "/consumers",
+          headers = {
+            ["Kong-Admin-Token"] = admin.rbac_user.raw_user_token,
+          },
+        })
+
+        assert.res_status(200, res)
       end)
     end)
   end)
@@ -852,9 +968,9 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("successfully registers an invited admin in a non-default workspace", function()
-            local admin
             another_ws = createAnotherWS(db)
 
+            local admin
             scope.run_with_ws_scope({ id = another_ws.id }, function()
               admin = create_admin(db, {
                 username = "bob2",

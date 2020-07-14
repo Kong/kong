@@ -3,6 +3,7 @@ local listeners = require "kong.conf_loader.listeners"
 local cjson = require "cjson.safe"
 local assert = require "luassert"
 local utils = require "kong.tools.utils"
+local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 
 
 local _M = {}
@@ -253,10 +254,14 @@ function _M.create_admin(email, custom_id, status, db, username, workspace)
     status = status,
   }, opts))
 
-  local user_token = utils.uuid()
+  local token_res, err = admins_helpers.update_token(admin)
+  if err then
+    return nil, err
+  end
+
   -- only used for tests so we can reference token
   -- WARNING: do not do this outside test environment
-  admin.rbac_user.raw_user_token = user_token
+  admin.rbac_user.raw_user_token = token_res.body.token
 
   return admin
 end

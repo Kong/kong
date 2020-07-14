@@ -1433,7 +1433,7 @@ load_rbac_ctx = function(ctx, rbac_user, groups)
     end
   end
 
-  local user_ws_scope, err = _M.find_all_ws_for_rbac_user(user, user.ws_id)
+  local user_ws_scope, err = _M.find_all_ws_for_rbac_user(user, null)
   if err then
     kong.log.err(err)
     return kong.response.exit(500, { message = "An unexpected error occurred" })
@@ -1643,7 +1643,14 @@ function _M.find_all_ws_for_rbac_user(rbac_user, workspace)
   local rbac_user_ws_id = assert(rbac_user.ws_id)
   local ws = kong.db.workspaces:select({ id = rbac_user_ws_id })
 
-  if not wsNameMap[ws.name] then
+  -- hide the workspace associated with the admin's rbac_user most of the time,
+  -- but if there is no known workspace or the only workspace is '*', mark it as
+  -- belonging to the admin
+  local numberOfWorkspaces = tablex.size(wsNameMap)
+  if not wsNameMap[ws.name] and
+    ((numberOfWorkspaces == 1 and next(wsNameMap) == '*') or numberOfWorkspaces == 0)
+  then
+    ws.is_admin_workspace = true
     wss[#wss + 1] = ws
   end
 

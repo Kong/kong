@@ -1004,11 +1004,11 @@ describe("(#" .. strategy .. ")", function()
 
       assert.is_nil(err)
       assert.not_nil(wss)
-      assert.equal(3, #wss)
+      assert.equal(2, #wss)
       assert.is_true(includes(wss, another_ws, 'name'))
       assert.is_true(includes(wss, {name = "*"}, 'name'))
-      assert.is_true(includes(wss, default_ws, 'name'))
       assert.is_false(includes(wss, {name = "nope"}, 'name'))
+      assert.is_false(includes(wss, {name = "default"}, 'name'))
     end)
 
     it("returns workspaces of rbac_user when no roles are defined", function()
