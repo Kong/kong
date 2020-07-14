@@ -46,6 +46,11 @@ function parse_args {
     case $1 in
       --bump-component)
         BUMP_COMPONENT=$2
+        parse_integer $BUMP_COMPONENT $2
+        if [ $BUMP_COMPONENT -lt 0 ] || [ $BUMP_COMPONENT -gt 2 ]; then
+          >&2 echo "$1 must be a positive integer between [0..2]"
+          exit 1
+        fi
         shift
         ;;
       -f|--force)

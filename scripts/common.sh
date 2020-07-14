@@ -125,3 +125,16 @@ version_gte() {
   return 1
 }
 
+
+parse_integer() {
+  [[ -z $1 ]] || [[ -z $2 ]] && >&2 echo "parse_integer() requires two arguments" && exit 1
+
+  local value=$1
+  local argv=$2
+
+  if ! [[ "$argv" =~ ^\-?[0-9]+$ ]]; then
+    err "$argv is not a integer"
+    exit 1
+  fi
+  value=$argv
+}
