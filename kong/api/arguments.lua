@@ -175,7 +175,7 @@ local function infer_value(value, field)
     return value
   end
 
-  if value == "" then
+  if value == "" or value == ngx.null then
     return ngx.null
   end
 
