@@ -367,7 +367,7 @@ describe("Admin API #off", function()
         assert.response(res).has.status(201)
       end)
 
-      it("hides workspace related fields from /config response", function()
+      it("#ce hides workspace related fields from /config response", function()
         local res = assert(client:send {
           method = "POST",
           path = "/config",
