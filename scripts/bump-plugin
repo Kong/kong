@@ -104,7 +104,7 @@ function main {
 1 insert
 ## $VERSION
 
-$( git log --format="- %s" $(git describe --tags --abbrev=0)..HEAD)
+$( git log --format="- %s" $(git describe --tags --abbrev=0)..HEAD | sed 's/\s*(#[0-9]*)$//g' )
 
 .
 xit
