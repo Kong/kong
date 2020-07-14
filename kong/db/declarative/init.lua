@@ -5,7 +5,7 @@ local pl_file = require "pl.file"
 local lyaml = require "lyaml"
 local cjson = require "cjson.safe"
 local tablex = require "pl.tablex"
-
+local ee_declarative = require "kong.enterprise_edition.db.declarative"
 
 local deepcopy = tablex.deepcopy
 local null = ngx.null
@@ -831,5 +831,9 @@ function declarative.sanitize_output(entities)
   end
 end
 
+
+for k, v in pairs(ee_declarative) do
+  declarative[k] = v
+end
 
 return declarative
