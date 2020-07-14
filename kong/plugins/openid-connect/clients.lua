@@ -9,18 +9,28 @@ local ipairs   = ipairs
 local PRIVATE_KEY_JWKS = {}
 
 
-local function init_worker()
+local function prepare_private_key_jwks()
   local keys, err = kong.db.oic_jwks:get()
   if not keys then
-    log.err(err)
+    if err then
+      log.err(err)
+    end
 
   else
+    local jwks = {}
     for _, jwk in ipairs(keys.jwks.keys) do
       if jwk.alg ~= "HS256" and jwk.alg ~= "HS384" and jwk.alg ~= "HS512" then
-        PRIVATE_KEY_JWKS[jwk.alg] = jwk
+        jwks[jwk.alg] = jwk
       end
     end
+
+    PRIVATE_KEY_JWKS = jwks
   end
+end
+
+
+local function init_worker()
+  return prepare_private_key_jwks()
 end
 
 
@@ -126,6 +136,8 @@ local function find_client(args)
     client.unexpected_redirect_uri   = unexpected_redirect_uris[1]
   end
 
+
+
   if not client.jwk then
     client.jwk = PRIVATE_KEY_JWKS[client.alg] or PRIVATE_KEY_JWKS.RS256
   end
@@ -160,6 +172,9 @@ local function reset_client(idx, client, oic, options)
   client.unexpected_redirect_uri   = client.unexpected_redirect_uris[new_idx]   or client.unexpected_redirect_uri
 
   if not client.jwk then
+    if kong.configuration.database == "off" then
+      prepare_private_key_jwks()
+    end
     client.jwk = PRIVATE_KEY_JWKS[client.alg] or PRIVATE_KEY_JWKS.RS256
   end
 

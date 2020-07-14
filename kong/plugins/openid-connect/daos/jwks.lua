@@ -57,7 +57,7 @@ local function load_jwks(dao)
     end
   end
 
-  if not keys then
+  if not keys and kong.configuration.database ~= "off" then
     return nil, "unable to load default jwks"
   end
 
