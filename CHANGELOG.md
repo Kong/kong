@@ -1,3 +1,13 @@
+## 0.37.2
+
+### Changed
+
+* properly throw template errors
+
+### Added
+
+* Pongo based CI
+
 ## 0.37.1
 
 ### Changed
