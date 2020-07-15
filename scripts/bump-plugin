@@ -8,6 +8,11 @@ BUMP_COMPONENT=${BUMP_COMPONENT:-2}
 
 FORCE=${FORCE:-0}
 
+# Requirements for script execution
+REQUIRED_COMMANDS=(ex git grep sed)
+OPTIONAL_COMMANDS=(hub)
+
+
 function get_version {
   # Method 1
   VERSION=$(ls -1 *.rockspec | grep -o -P "\\d+\\.\\d+\\.\\d+")
@@ -23,6 +28,7 @@ Usage: $SCRIPT action [options...]
 Options:
   --bump-component N    bump component N in x(0).y(1).z(2) (default: 2)
   -f, --force           do not ask for confirmation
+  --check-requirements  check for required and optional commands
   -v                    verbose
   -h, --help            show this help
 
@@ -55,6 +61,10 @@ function parse_args {
         ;;
       -f|--force)
         FORCE=1
+        ;;
+      --check-requirements)
+        check_requirements 1 0
+        exit 0
         ;;
       -v|--verbose)
         set -x
@@ -130,12 +140,9 @@ eof
     if confirm "Do you want to push the changes"; then
       git push origin chore/bump-to-$VERSION
 
-      if confirm "Do you want to issue a PR"; then
-        if ! hash hub; then
-          >&2 echo "hub is required to create a PR, leaving as it is"
-          exit 1
-        fi
-
+      if ! hash hub >/dev/null 2>&1; then
+        >&2 echo "hub is required to create a PR, leaving as it is"
+      elif confirm "Do you want to issue a PR"; then
         hub pull-request -m "Bump to $VERSION"
       fi
     fi
@@ -149,6 +156,7 @@ popd() { builtin popd > /dev/null; }
 source $LOCAL_PATH/common.sh
 
 parse_args "$@"
+check_requirements
 
 pushd $KONG_PLUGIN
   main "$@"
