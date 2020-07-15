@@ -4,7 +4,6 @@ local gsub        = string.gsub
 local match       = string.match
 local ngx         = ngx
 local random      = math.random
-
 local plugin = {
   VERSION  = "0.1",
   -- Mocking plugin should execute after all other plugins
@@ -22,7 +21,7 @@ local function find_key(tbl, key)
     if lk == key then return lv end
     if type(lv) == "table" then
       for dk, dv in pairs(lv) do
-        if dk == key then return dk end
+        if dk == key then return dv end
         if type(dv) == "table" then
           for ek, ev in pairs(dv) do
             if ek == key then return ev end
@@ -35,16 +34,66 @@ local function find_key(tbl, key)
   return nil
 end
 
+
+local function extractParameters(looppath)
+  local tempindex
+  local stringtable={}
+
+while(string.find( looppath,'&'))
+do
+      tempindex =string.find( looppath,'&')
+      if tempindex == string.len(looppath) then
+          break
+      end
+      table.insert( stringtable, string.sub(looppath, 1,tempindex-1 ))
+      looppath = string.sub(looppath,tempindex+1,string.len( looppath ))
+end
+table.insert(stringtable,looppath)
+return stringtable
+end
+
+
+
+local function filterexamples(example)
+-- filter the key examples here 
+local value
+local skey
+local sval
+local qparams = kong.request.get_raw_query()
+
+if qparams == nil or qparams =='' then
+  return true
+end
+local params = extractParameters(qparams)
+
+if  next(example) == nil then
+  return false
+
+else
+for _,dv in pairs(params)
+do
+skey = string.sub( dv,1,string.find( dv,'=' )-1 )
+sval = string.sub(dv,string.find( dv,'=' )+1,string.len( dv ))
+--kong.log.inspect('skey.....sval'..skey..'.....'..sval)
+value = find_key(example,skey)
+if(string.upper( sval ) ~= string.upper( value )) then
+return false
+end
+end
+return true
+end
+end
+
+
+
 -- Extract example value in V3.0
 -- returns lua table with all the values extracted and appended from multiple examples
 local function find_example_value(tbl, key)
   local values = {}
   for lk, lv in pairs(tbl) do
-    kong.log("find_example_value..first for..")
     if type(lv) == "table" then
       for dk, dv in pairs(lv) do
-        kong.log("find_example_value..second for..")
-        if dk == key then table.insert( values, dv) end
+        if dk == key and filterexamples(dv) then table.insert( values, dv) end
       end
     end
   end
@@ -80,10 +129,8 @@ local function get_example(accept, tbl)
         end
       -- Single Example use case, Go ahead and use find_key
       elseif find_key(tbl, accept).example then
-        kong.log("inside example....")
         local retval = find_key(tbl, accept).example
          if find_key(retval,"value") then
-          kong.log("inside example.... find val")
           return  (find_key(retval,"value"))
          end
       else
@@ -154,10 +201,11 @@ end
 local function retrieve_example(parsed_content, uripath, accept, method)
   local paths = parsed_content.paths
   local found = false
+
   -- Check to make sure we have paths in the spec file, Corrupt or bad spec file
   if (paths) then
   for specpath, value in pairs(paths) do
-
+   
     -- build formatted string for exact match
     local formatted_path = gsub(specpath, "{(.-)}", "[A-Za-z0-9]+") .. "$"
     local strmatch = match(uripath, formatted_path)
@@ -184,13 +232,13 @@ function plugin:access(conf)
 
   -- Get resource information
   local uripath = kong.request.get_path()
+
   -- grab Accept header which is used to retrieve associated mock response, or default to "application/json"
   local accept = kong.request.get_header("Accept") or kong.request.get_header("accept") or "application/json"
   if accept == "*/*" then accept = "application/json" end
   local method = kong.request.get_method()
 
   local specfile, err = kong.db.files:select_by_path("specs/" .. conf.api_specification_filename)
-
   if err or (specfile == nil or specfile == '') then
     return kong.response.exit(404, { message = "API Specification file not found. " ..
      "Check Plugin 'api_specification_filename' (" .. conf.api_specification_filename ")" })
