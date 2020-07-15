@@ -304,7 +304,7 @@ local cassandra = {
         end
 
         for _, row in ipairs(rows) do
-          if not row.cache_key:match(":$") then
+          if row.cache_key:match(":$") then
             local cql = render([[
               UPDATE $(TABLE) SET cache_key = '$(CACHE_KEY)' WHERE $(PARTITION) id = $(ID)
             ]], {
