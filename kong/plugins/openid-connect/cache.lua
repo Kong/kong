@@ -24,6 +24,9 @@ local tostring      = tostring
 local kong          = kong
 
 
+local discovery_data = { n = 0 }
+
+
 local function cache_get(key, opts, func, ...)
   local options
   if type(opts) == "number" then
@@ -156,6 +159,44 @@ local function init_worker()
       end
     end
   end, "crud", "consumers")
+
+  if kong.configuration.database == "off" then
+    local remove = table.remove
+    local pairs = pairs
+    kong.worker_events.register(function()
+      if discovery_data and discovery_data.n > 0 then
+        for i = discovery_data.n, 1, -1 do
+          local key = cache_key(discovery_data[i].issuer, "oic_issuers")
+          cache_invalidate(key)
+
+          remove(discovery_data, i)
+        end
+        for key in pairs(discovery_data) do
+          discovery_data[key] = nil
+        end
+
+        discovery_data.n = 0
+      end
+    end, "openid-connect", "purge-discovery")
+    kong.worker_events.register(function(issuer)
+      local data = discovery_data[issuer]
+      if data then
+        if discovery_data and discovery_data.n > 0 then
+          for i = discovery_data.n, 1, -1 do
+            if discovery_data[i].id == data.id then
+              remove(discovery_data, i)
+              discovery_data.n = discovery_data.n - 1
+            end
+          end
+          discovery_data[data.id] = nil
+          discovery_data[data.issuer] = nil
+
+          local key = cache_key(data.issuer, "oic_issuers")
+          cache_invalidate(key)
+        end
+      end
+    end, "openid-connect", "delete-discovery")
+  end
 end
 
 
@@ -352,7 +393,6 @@ local function discover(issuer, opts, now, previous)
 end
 
 
-local discovery_data = {}
 local issuers = {}
 
 
@@ -394,8 +434,12 @@ function issuers.rediscover(issuer, opts)
     }
 
     if kong.configuration.database == "off" then
+      data.id = utils.uuid()
       data.created_at = discovery.created_at
       data.updated_at = now
+      discovery_data.n = discovery_data.n + 1
+      discovery_data[discovery_data.n] = data
+      discovery_data[data.id] = data
       discovery_data[issuer] = data
 
     else
@@ -420,9 +464,12 @@ function issuers.rediscover(issuer, opts)
     }
 
     if kong.configuration.database == "off" then
+      data.id = utils.uuid()
       data.created_at = now
       data.updated_at = now
-
+      discovery_data.n = discovery_data.n + 1
+      discovery_data[discovery_data.n] = data
+      discovery_data[data.id] = data
       discovery_data[issuer] = data
 
     else
@@ -469,8 +516,12 @@ local function issuers_init(issuer, opts)
 
   if kong.configuration.database == "off" then
     local now = time()
+    data.id = utils.uuid()
     data.created_at = now
     data.updated_at = now
+    discovery_data.n = discovery_data.n + 1
+    discovery_data[discovery_data.n] = data
+    discovery_data[data.id] = data
     discovery_data[issuer] = data
 
   else
@@ -955,4 +1006,5 @@ return {
   tokens         = tokens,
   token_exchange = token_exchange,
   userinfo       = userinfo,
+  discovery_data = discovery_data,
 }
