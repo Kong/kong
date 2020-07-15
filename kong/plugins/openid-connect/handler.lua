@@ -1361,137 +1361,77 @@ function OICHandler.access(_, conf)
       end
     end
 
-    -- scope verification
-    local scopes_required = args.get_conf_arg("scopes_required")
-    if scopes_required then
-      log("verifying required scopes")
-      local scopes_claim = args.get_conf_arg("scopes_claim", { "scope" })
+    local check_required = function(name, required_name, claim_name, default)
+      local requirements = args.get_conf_arg(required_name)
+      if requirements then
+        log("verifying required ", name)
+        local claim_lookup = args.get_conf_arg(claim_name, default)
 
-      local access_token_scopes
-      if type(token_introspected) == "table" then
-        access_token_scopes = claims.find(token_introspected, scopes_claim)
-        if access_token_scopes then
-          log("scopes found in introspection results")
-        else
-          log("scopes not found in introspection results")
-        end
-
-      elseif type(jwt_token_introspected) == "table" then
-        access_token_scopes = claims.find(jwt_token_introspected, scopes_claim)
-        if access_token_scopes then
-          log("scopes found in jwt introspection results")
-        else
-          log("scopes not found in jwt introspection results")
-        end
-      end
-
-      if not access_token_scopes then
-        if decode_tokens and type(tokens_decoded) ~= "table" then
-          decode_tokens = false
-          tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
-          if err then
-            log("error decoding tokens (", err, ")")
-          end
-        end
-
-        if type(tokens_decoded) == "table" and type(tokens_decoded.access_token) == "table" then
-          access_token_scopes = claims.find(tokens_decoded.access_token.payload, scopes_claim)
-          if access_token_scopes then
-            log("scopes found in access token")
+        local access_token_values
+        if type(token_introspected) == "table" then
+          access_token_values = claims.find(token_introspected, claim_lookup)
+          if access_token_values then
+            log(name, " found in introspection results")
           else
-            log("scopes not found in access token")
+            log(name " not found in introspection results")
+          end
+
+        elseif type(jwt_token_introspected) == "table" then
+          access_token_values = claims.find(jwt_token_introspected, claim_lookup)
+          if access_token_values then
+            log(name, " found in jwt introspection results")
+          else
+            log(name, " not found in jwt introspection results")
           end
         end
-      end
 
-      if not access_token_scopes then
-        return response.forbidden("scopes required but no scopes found")
-      end
+        if not access_token_values then
+          if decode_tokens and type(tokens_decoded) ~= "table" then
+            decode_tokens = false
+            tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+            if err then
+              log("error decoding tokens (", err, ")")
+            end
+          end
 
-      access_token_scopes = set.new(access_token_scopes)
-
-      local scopes_valid
-      for _, scope_required in ipairs(scopes_required) do
-        if set.has(scope_required, access_token_scopes) then
-          scopes_valid = true
-          break
+          if type(tokens_decoded) == "table" and type(tokens_decoded.access_token) == "table" then
+            access_token_values = claims.find(tokens_decoded.access_token.payload, claim_lookup)
+            if access_token_values then
+              log(name, " found in access token")
+            else
+              log(name, " not found in access token")
+            end
+          end
         end
-      end
 
-      if scopes_valid then
-        log("required scopes were found")
+        if not access_token_values then
+          return response.forbidden(name " required but no ", name, " found")
+        end
 
-      else
-        return response.forbidden("required scopes were not found [ ",
-                                  concat(access_token_scopes, ", "), " ]")
+        access_token_values = set.new(access_token_values)
+
+        local has_valid_requirements
+        for _, scope_required in ipairs(requirements) do
+          if set.has(scope_required, access_token_values) then
+            has_valid_requirements = true
+            break
+          end
+        end
+
+        if has_valid_requirements then
+          log("required ", name, " were found")
+
+        else
+          return response.forbidden("required ", name, " were not found [ ",
+            concat(access_token_values, ", "), " ]")
+        end
       end
     end
 
-    -- audience verification
-    local audience_required = args.get_conf_arg("audience_required")
-    if audience_required then
-      log("verifying required audience")
-      local audience_claim = args.get_conf_arg("audience_claim", { "aud" })
-
-      local access_token_audience
-      if type(token_introspected) == "table" then
-        access_token_audience = claims.find(token_introspected, audience_claim)
-        if access_token_audience then
-          log("audience found in introspection results")
-        else
-          log("audience not found in introspection results")
-        end
-
-      elseif type(jwt_token_introspected) == "table" then
-        access_token_audience = claims.find(jwt_token_introspected, audience_claim)
-        if access_token_audience then
-          log("audience found in jwt introspection results")
-        else
-          log("audience not found in jwt introspection results")
-        end
-      end
-
-      if not access_token_audience then
-        if decode_tokens and type(tokens_decoded) ~= "table" then
-          decode_tokens = false
-          tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
-          if err then
-            log("error decoding tokens (", err, ")")
-          end
-        end
-
-        if type(tokens_decoded) == "table" and type(tokens_decoded.access_token) == "table" then
-          access_token_audience = claims.find(tokens_decoded.access_token.payload, audience_claim)
-          if access_token_audience then
-            log("audience found in access token")
-          else
-            log("audience not found in access token")
-          end
-        end
-      end
-
-      if not access_token_audience then
-        return response.forbidden("audience required but no audience found")
-      end
-
-      access_token_audience = set.new(access_token_audience)
-
-      local audience_valid
-      for _, aud_required in ipairs(audience_required) do
-        if set.has(aud_required, access_token_audience) then
-          audience_valid = true
-          break
-        end
-      end
-
-      if audience_valid then
-        log("required audience was found")
-
-      else
-        return response.forbidden("required audience was not found [ ",
-                                  concat(access_token_audience, ", "), " ]")
-      end
-    end
+    check_required("scopes", "scopes_required", "scopes_claim", { "scope" })
+    check_required("audience", "audience_required", "audience_claim", { "aud" })
+    check_required("groups", "groups_required", "groups_claim", { "groups" })
+    check_required("roles", "roles_required", "roles_claim", { "roles" })
   end
 
   local userinfo = false

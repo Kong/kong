@@ -342,6 +342,44 @@ local config = {
             },
           },
           {
+            groups_required = {
+              required = false,
+              type     = "array",
+              elements = {
+                type = "string",
+              },
+            },
+          },
+          {
+            groups_claim = {
+              required = false,
+              type     = "array",
+              default  = { "groups" },
+              elements = {
+                type = "string",
+              },
+            },
+          },
+          {
+            roles_required = {
+              required = false,
+              type     = "array",
+              elements = {
+                type = "string",
+              },
+            },
+          },
+          {
+            roles_claim = {
+              required = false,
+              type     = "array",
+              default  = { "roles" },
+              elements = {
+                type = "string",
+              },
+            },
+          },
+          {
             domains = {
               required = false,
               type     = "array",
