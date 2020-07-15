@@ -236,6 +236,48 @@ describe("request-validator schema", function()
       assert.is_nil(err)
       assert.is_truthy(ok)
     end)
+
+    it("errors without a parameter type specified", function()
+      local ok, err = v({
+        version = "draft4",
+        body_schema = nil,
+        parameter_schema = {
+          {
+            name = "kpiId",
+            ["in"] = "query",
+            required = false,
+            -- this schema defines a top-level "AnyOf", which specifies either
+            -- a "string" or an "array", but then the validator doesn't know
+            -- how to deserialize the value
+            schema = [[{
+                        "anyOf": [
+                          {
+                            "maxLength": 5000,
+                            "minLength": 0,
+                            "pattern": "^[\\w\\.\\-]{1,256}$",
+                            "type": "string"
+                          },
+                          {
+                            "maxItems": 10000,
+                            "type": "array",
+                            "items": {
+                              "maxLength": 5000,
+                              "minLength": 0,
+                              "pattern": "^[\\w\\.\\-]{1,256}$",
+                              "type": "string"
+                            }
+                          }
+                        ]
+                      }]],
+            style = "form",
+            explode = false,
+          },
+        }
+      }, request_validator_schema)
+      assert.same("the JSONschema is missing a top-level 'type' property",
+                  err.config.parameter_schema[1].schema)
+      assert.is_nil(ok)
+    end)
   end)
 
 end)

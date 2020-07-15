@@ -28,7 +28,7 @@ function _M.generate(schema, options)
 end
 
 
-function _M.validate(schema_conf)
+function _M.validate(schema_conf, is_parameter)
   local schema
   do
     local t, err = cjson.decode(schema_conf)
@@ -36,6 +36,10 @@ function _M.validate(schema_conf)
       return nil, "failed decoding schema: " .. tostring(err)
     end
     schema = t
+  end
+
+  if is_parameter and not schema.type then
+    return nil, "the JSONschema is missing a top-level 'type' property"
   end
 
   local ok, err = jsonschema.jsonschema_validator(schema)

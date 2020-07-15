@@ -49,7 +49,7 @@ local DEFAULT_CONTENT_TYPES = {
 
 local function validate_param_schema(entity)
   local validator = require("kong.plugins.request-validator.draft4").validate
-  return validator(entity)
+  return validator(entity, true)
 end
 
 
@@ -60,7 +60,7 @@ local function validate_body_schema(entity)
 
   local validator = require("kong.plugins.request-validator." ..
                              entity.config.version).validate
-  return validator(entity.config.body_schema)
+  return validator(entity.config.body_schema, false)
 end
 
 local function validate_style(entity)
