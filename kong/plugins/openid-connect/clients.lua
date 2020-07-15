@@ -30,6 +30,7 @@ end
 
 
 local function init_worker()
+  kong.db.oic_jwks.init_worker()
   return prepare_private_key_jwks()
 end
 
