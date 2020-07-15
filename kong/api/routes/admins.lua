@@ -1,6 +1,5 @@
 local enums      = require "kong.enterprise_edition.dao.enums"
 local rbac       = require "kong.rbac"
-local scope      = require "kong.enterprise_edition.workspaces.scope"
 local singletons = require "kong.singletons"
 local admins     = require "kong.enterprise_edition.admins_helpers"
 local ee_api     = require "kong.enterprise_edition.api_helpers"
@@ -14,8 +13,9 @@ local cjson = require "cjson"
 local emails = singletons.admin_emails
 local kong = kong
 
-local log = ngx.log
-local ERR = ngx.ERR
+local log  = ngx.log
+local ERR  = ngx.ERR
+local null = ngx.null
 
 local _log_prefix = "[admins] "
 
@@ -153,7 +153,8 @@ return {
     end,
 
     GET = function(self, db, helpers, parent)
-      local roles, err = rbac.get_user_roles(db, self.admin.rbac_user)
+      -- get user roles for this workspace
+      local roles, err = rbac.get_user_roles(db, self.admin.rbac_user, ngx.ctx.workspace)
 
       if err then
         return endpoints.handle_error(err)
@@ -186,18 +187,16 @@ return {
 
       -- we've now validated that all our roles exist, and this user exists,
       -- so time to create the assignment
-      scope.run_with_ws_scope({}, function ()
-        for i = 1, #roles do
-          local _, _, err_t = db.rbac_user_roles:insert({
-            user = self.admin.rbac_user,
-            role = roles[i]
-          })
+      for i = 1, #roles do
+        local _, _, err_t = db.rbac_user_roles:insert({
+          user = self.admin.rbac_user,
+          role = roles[i]
+        })
 
-          if err_t then
-            return endpoints.handle_error(err_t)
-          end
+        if err_t then
+          return endpoints.handle_error(err_t)
         end
-      end)
+      end
 
       -- invalidate rbac user so we don't fetch the old roles
       local cache_key = db["rbac_user_roles"]:cache_key(self.admin.rbac_user.id)
@@ -205,7 +204,7 @@ return {
 
       -- re-fetch the users roles so we show all the role objects, not just our
       -- newly assigned mappings
-      roles, err = rbac.get_user_roles(db, self.admin.rbac_user)
+      roles, err = rbac.get_user_roles(db, self.admin.rbac_user, ngx.ctx.workspace)
       if err then
         return endpoints.handle_error(err)
       end
@@ -408,7 +407,11 @@ return {
       end
 
       -- Find the workspace the rbac_user is in
-      local rbac_user, err = db.rbac_users:select({ id = admin.rbac_user.id }, { show_ws_id = true })
+      local rbac_user, err = db.rbac_users:select({ id = admin.rbac_user.id }, {
+        show_ws_id = true,
+        workspace = null,
+      })
+
       if not rbac_user then
         return endpoints.handle_error(err)
       end

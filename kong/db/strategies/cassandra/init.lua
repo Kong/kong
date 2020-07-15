@@ -468,21 +468,14 @@ end
 -- a human pace), and mitigated by the introduction of different levels
 -- of consistency for read vs. write queries, as well as the linearizable
 -- consistency of lightweight transactions (IF [NOT] EXISTS).
-local function build_tags_cql(self, primary_key, schema, new_tags, ttl, read_before_write, ws_id)
+local function build_tags_cql(primary_key, schema, new_tags, ttl, rbw_entity)
   local tags_to_add, tags_to_delete, tags_not_changed
 
   new_tags = (not new_tags or new_tags == null) and {} or new_tags
 
-  if read_before_write then
-    local strategy = _M.new(self.connector, schema,
-                            self.errors)
-    local row, err_t = strategy:select(primary_key, { workspace = ws_id or null })
-    if err_t then
-      return nil, err_t
-    end
-
-    if row and row['tags'] and row['tags'] ~= null then
-      tags_to_add, tags_to_delete, tags_not_changed = set_difference(row['tags'], new_tags)
+  if rbw_entity then
+    if rbw_entity and rbw_entity['tags'] and rbw_entity['tags'] ~= null then
+      tags_to_add, tags_to_delete, tags_not_changed = set_difference(rbw_entity['tags'], new_tags)
     else
       tags_to_add = new_tags
       tags_to_delete = {}
@@ -877,7 +870,7 @@ function _mt:insert(entity, options)
   if schema.fields.tags then
     primary_key = schema:extract_pk_values(entity)
     local err_t
-    cql_batch, err_t = build_tags_cql(self, primary_key, schema, entity["tags"], ttl, false, ws_id)
+    cql_batch, err_t = build_tags_cql(primary_key, schema, entity["tags"], ttl)
     if err_t then
       return nil, err_t
     end
@@ -1394,8 +1387,12 @@ do
     local batch_mode
 
     if schema.fields.tags then
-      local err_t
-      cql_batch, err_t = build_tags_cql(self, primary_key, schema, entity["tags"], ttl, true, ws_id)
+      local rbw_entity, err_t = self:select(primary_key, { workspace = ws_id or null })
+      if err_t then
+        return nil, err_t
+      end
+
+      cql_batch, err_t = build_tags_cql(primary_key, schema, entity["tags"], ttl, rbw_entity)
       if err_t then
         return nil, err_t
       end
@@ -1695,9 +1692,23 @@ do
       args[i] = serialize_arg(field, primary_key[field_name], ws_id)
     end
 
-    local cql_batch, err_t = build_tags_cql(self, primary_key, self.schema, {}, nil, true, ws_id)
-    if err_t then
-      return nil, err_t
+    local rbw_entity, err_t
+    if schema.workspaceable or schema.fields.tags then
+      rbw_entity, err_t = self:select(primary_key, { workspace = ws_id or null })
+      if err_t then
+        return nil, err_t
+      end
+      if not rbw_entity then
+        return true
+      end
+    end
+
+    local cql_batch
+    if schema.fields.tags then
+      cql_batch, err_t = build_tags_cql(primary_key, self.schema, {}, nil, rbw_entity)
+      if err_t then
+        return nil, err_t
+      end
     end
 
     -- execute query

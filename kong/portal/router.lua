@@ -164,7 +164,7 @@ return {
         -- due to many concurrent requests.
         if local_version ~= global_version and not is_building then
           timer_at(0, function()
-            scope.run_with_ws_scope({ws}, function()
+            scope.run_with_ws_scope(ws, function()
               is_building = true
               local ws_router = build_ws_router(db, ws, {})
               if ws_router then

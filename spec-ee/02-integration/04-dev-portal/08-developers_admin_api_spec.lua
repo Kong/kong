@@ -859,6 +859,71 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
       end)
     end)
 
+    describe("DELETE", function()
+      it("deletes a developer", function()
+        local other_developer = assert(db.developers:insert({
+          email = "other_doggo@konghq.com",
+          password = "blep",
+          meta = "{\"full_name\":\"Woof\"}",
+          status = enums.CONSUMERS.STATUS.APPROVED,
+          custom_id = "mlerm"
+        }))
+
+        local res = client:get("/developers/" .. other_developer.id)
+        assert.res_status(200, res)
+
+        res = client:delete("/developers/" .. other_developer.id)
+        assert.res_status(204, res)
+
+        res = client:get("/developers/" .. other_developer.id)
+        assert.res_status(404, res)
+      end)
+
+      it("deletes a developer who has a role assigned to it (regression)", function()
+        local another_developer = assert(db.developers:insert({
+          email = "another_doggo@konghq.com",
+          password = "blep",
+          meta = "{\"full_name\":\"Woof\"}",
+          status = enums.CONSUMERS.STATUS.APPROVED,
+          custom_id = "mlerm_mlerm"
+        }))
+
+        local res = client:get("/developers/" .. another_developer.id)
+        assert.res_status(200, res)
+
+        res = assert(client:post("/developers/roles", {
+          body = {
+            name = "doggo_role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        }))
+
+        assert.res_status(201, res)
+
+        res = assert(client:patch("/developers/" .. another_developer.id, {
+          body = {
+            roles = { "doggo_role" },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        }))
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.same({"doggo_role"}, json.developer.roles)
+
+        res = client:delete("/developers/" .. another_developer.id)
+        assert.res_status(204, res)
+
+        res = client:get("/developers/" .. another_developer.id)
+        assert.res_status(404, res)
+      end)
+    end)
+
     -- TODO DEVX: write developer plugin tests
     describe("/developer/:developer/plugins", function()
     end)

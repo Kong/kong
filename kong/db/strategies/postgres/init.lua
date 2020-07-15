@@ -625,11 +625,19 @@ function _mt:select_by_field(field_name, unique_value, options)
 end
 
 
-function _mt:update(primary_key, entity, options)
-  local res, err = execute(self, "update", self.collapse(primary_key, entity), {
+local function update_options(options)
+  return {
     update = true,
     ttl    = options and options.ttl,
-  })
+    workspace = options and options.workspace ~= null and options.workspace,
+  }
+end
+
+
+function _mt:update(primary_key, entity, options)
+  local res, err = execute(self, "update",
+                           self.collapse(primary_key, entity),
+                           update_options(options))
   if res then
     local row = res[1]
     if row then
@@ -650,10 +658,9 @@ function _mt:update_by_field(field_name, unique_value, entity, options)
     filter = unique_value
   end
 
-  local res, err = execute(self, "update_by_" .. field_name, self.collapse({ [UNIQUE] = filter }, entity), {
-    update = true,
-    ttl    = options and options.ttl,
-  })
+  local res, err = execute(self, "update_by_" .. field_name,
+                           self.collapse({ [UNIQUE] = filter }, entity),
+                           update_options(options))
   if res then
     local row = res[1]
     if row then

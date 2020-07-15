@@ -9,7 +9,6 @@ local rbac = require "kong.rbac"
 local api_helpers = require "kong.api.api_helpers"
 local Schema = require "kong.db.schema"
 local Errors = require "kong.db.errors"
-local scope = require "kong.enterprise_edition.workspaces.scope"
 local endpoints  = require "kong.api.endpoints"
 
 local sub = string.sub
@@ -37,7 +36,7 @@ local strip_foreign_schemas = function(fields)
   end
 end
 
-local function ws_and_rbac_helper(self, dao_factory, helpers)
+local function ws_and_rbac_helper(self)
   local admin_auth = singletons.configuration.admin_gui_auth
 
   if not admin_auth and not ngx.ctx.rbac then
@@ -82,12 +81,8 @@ local function ws_and_rbac_helper(self, dao_factory, helpers)
   }
 
   -- get roles across all workspaces
-  local roles, err = scope.run_with_ws_scope({}, rbac.get_user_roles,
-    kong.db,
-    ngx.ctx.rbac.user)
-  local group_roles = scope.run_with_ws_scope({}, rbac.get_groups_roles,
-    kong.db,
-    ngx.ctx.authenticated_groups)
+  local roles, err = rbac.get_user_roles(kong.db, ngx.ctx.rbac.user, ngx.null)
+  local group_roles = rbac.get_groups_roles(kong.db, ngx.ctx.authenticated_groups)
   roles = rbac.merge_roles(roles, group_roles)
   ee_api.attach_workspaces_roles(self, roles)
 
@@ -186,7 +181,7 @@ return {
   -- See for reference: kong.rbac.authorize_request_endpoint()
   ["/userinfo"] = {
     GET = function(self, dao, helpers)
-      ws_and_rbac_helper(self, dao, helpers)
+      ws_and_rbac_helper(self)
 
       local user_session = kong.ctx.shared.authenticated_session
       local cookie = user_session and user_session.cookie

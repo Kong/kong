@@ -1,0 +1,71 @@
+// add any other distro here, as "foo", "bar"
+def distros = [ "alpine" ]
+def builds = [:]
+for (x in distros) {
+  def label = x // Need to bind the label variable before the closure - can't do 'for (label in labels)'
+  builds[label] = {
+    node('bionic') {
+      stage(label) {
+        environment {
+          CACHE_DIR = "$HOME/kong-ee-distributions-cache"
+        }
+        stage('prepare') {
+          env.BRANCH_OR_TAG = env.BRANCH_NAME ? env.BRANCH_NAME : "refs/tags/${env.TAG_NAME}"
+
+          checkout([$class: 'GitSCM',
+            branches: [[name: env.BRANCH_OR_TAG]],
+            extensions: [[$class: 'WipeWorkspace']],
+            userRemoteConfigs: [[url: 'git@github.com:Kong/kong-ee.git',
+            credentialsId: 'kong-ee-github-deploy-key']]
+          ])
+        }
+        stage('build') {
+          sh "./dist/dist.sh build $label nightly"
+        }
+
+        stage('test') {
+          sh "./dist/dist.sh test $label nightly"
+        }
+
+        stage('build-image') {
+          sh "./dist/dist.sh build-image $label nightly"
+        }
+
+        stage('push internal nightly') {
+          sh "./dist/dist.sh push-image $label nightly"
+        }
+      }
+    }
+  }
+}
+
+pipeline {
+  agent none
+  options {
+    timeout(time: 100, unit: 'MINUTES')
+  }
+  environment {
+    GITHUB = credentials('GITHUB_TOKEN')
+    GITHUB_TOKEN = credentials('GITHUB_TOKEN')
+    DOCKER_REGISTRY_URL = "registry.kongcloud.io"
+    // This will map DOCKER_REGISTRY_USR and DOCKER_REGISTRY_PSW
+    DOCKER_REGISTRY = credentials('DOCKER_REGISTRY')
+    // Speed up build
+    ENABLE_OPENTRACING = 0
+  }
+
+  stages {
+    // build parameters are at this point because if not, first build never
+    // gets them. If we were to just automate this so it just runs all steps
+    // when a tag is pushed, remove this part and set the options to the
+    // desired actions
+
+    stage('build, test, build image, push internal nightly') {
+      steps {
+        script {
+          parallel builds
+        }
+      }
+    }
+  }
+}

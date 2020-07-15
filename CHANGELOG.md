@@ -1,7 +1,7 @@
 # Table of Contents
 
 
-- [2.1.0 UNRELEASED](#210-UNRELEASED)
+- [2.1.0rc1](#210rc1)
 - [2.0.4](#204)
 - [2.0.3](#203)
 - [2.0.2](#202)
@@ -44,20 +44,23 @@
 - [0.9.9 and prior](#099---20170202)
 
 
-## [2.1.0 UNRELEASED]
+## [2.1.0rc1]
 
-> Released 2020/05/19
+> Released 2020/07/09
 
 ### Distributions
 
 - :gift: Introduce package for Ubuntu 20.04.
   [#6006](https://github.com/Kong/kong/pull/6006)
-- Add `ca-certificates` to the Alpine Docker image
+- Add `ca-certificates` to the Alpine Docker image.
   [#373](https://github.com/Kong/docker-kong/pull/373)
+- :warning: The [go-pluginserver](https://github.com/Kong/go-pluginserver) no
+  longer ships with Kong packages; users are encouraged to build it along with
+  their Go plugins. For more info, check out the [Go Guide](https://docs.konghq.com/latest/go/).
 
 ### Dependencies
 
-- Bump OpenSSL version from `1.1.1f` to `1.1.1.g`.
+- Bump OpenSSL version from `1.1.1f` to `1.1.1g`.
   [#5820](https://github.com/Kong/kong/pull/5810)
 - Bump [lua-resty-dns-client](https://github.com/Kong/lua-resty-dns-client) from `4.1.3`
   to `5.0.1`.
@@ -67,9 +70,6 @@
 - Bump [lua-resty-openssl](https://github.com/fffonion/lua-resty-openssl)
   from `0.6.0` to `0.6.2`.
   [#5941](https://github.com/Kong/kong/pull/5941)
-- Bump [go-pluginserver](https://github.com/Kong/go-pluginserver) from version
-  from `0.3.0` to `0.4.0`, leveraging [go-pdk](https://github.com/Kong/go-pdk) `0.5.0`.
-  See go-pdk changelog [here](https://github.com/Kong/go-pdk/blob/master/CHANGELOG.md#v050).
 
 ### Changes
 
@@ -82,12 +82,19 @@
 
 ##### Configuration
 
-- :warning: The configuration property `router_consistency` has been renamed to
-  `worker_consistency`. Its accepted values and default remain the same.
-- :warning: The configuration property `router_update_frequency` has been renamed
-  `worker_state_update_frequency`. Its default value has been changed from `1` to
-  `5`.
-  [5325](https://github.com/Kong/kong/pull/5325)
+- :warning: The configuration properties `router_consistency` and
+  `router_update_frequency` have been renamed to `worker_consistency` and
+  `worker_state_update_frequency`, respectively. The new properties allow for
+  configuring the consistency settings of additional internal structures, see
+  below for details.
+  [#5325](https://github.com/Kong/kong/pull/5325)
+- :warning: The `nginx_upstream_keepalive_*` configuration properties have been
+  renamed to `upstream_keepalive_*`. This is due to the introduction of dynamic
+  upstream keepalve pools, see below for details.
+  [#5771](https://github.com/Kong/kong/pull/5771)
+- :warning: The default value of `worker_state_update_frequency` (previously
+  `router_update_frequency`) was changed from `1` to `5`.
+  [#5325](https://github.com/Kong/kong/pull/5325)
 
 ##### Plugins
 
@@ -103,24 +110,58 @@
 
 ##### Core
 
-- :fireworks: **Asynchronous upstream updates**: when `worker_consistency` is
-  set to `eventual`, upstreams will not be updated in the context of Admin API calls,
-  but rather in a background timer.
+- :fireworks: **Asynchronous upstream updates**: Kong's load balancer is now able to
+  update its internal structures asynchronously instead of onto the request/stream
+  path.
+
+  This change required the introduction of new configuration properties and the
+  deprecation of older ones:
+    - New properties:
+      * `worker_consistency`
+      * `worker_state_update_frequency`
+    - Deprecated properties:
+      * `router_consistency`
+      * `router_update_frequency`
+
+  The new `worker_consistency` property is similar to `router_consistency` and accepts
+  either of `strict` (default, synchronous) or `eventual` (asynchronous). Unlike its
+  deprecated counterpart, this new property aims at configuring the consistency of *all*
+  internal structures of Kong, and not only the router.
   [#5325](https://github.com/Kong/kong/pull/5325)
 - :fireworks: **Read-Only Postgres**: Kong users are now able to configure
   a read-only Postgres replica. When configured, Kong will attempt to fulfill
   read operations through the read-only replica instead of the main Postgres
   connection.
   [#5584](https://github.com/Kong/kong/pull/5584)
+- Introducing **dynamic upstream keepalive pools**. This change prevents virtual
+  host confusion when Kong proxies traffic to virtual services (hosted on the
+  same IP/port) over TLS.
+  Keepalive pools are now created by the `upstream IP/upstream port/SNI/client
+  certificate` tuple instead of `IP/port` only. Users running Kong in front of
+  virtual services should consider adjusting their keepalive settings
+  appropriately.
+
+  This change required the introduction of new configuration properties and
+  the deprecation of older ones:
+    - New properties:
+        * `upstream_keepalive_pool_size`
+        * `upstream_keepalive_max_requests`
+        * `upstream_keepalive_idle_timeout`
+    - Deprecated properties:
+        * `nginx_upstream_keepalive`
+        * `nginx_upstream_keepalive_requests`
+        * `nginx_upstream_keepalive_timeout`
+
+  Additionally, this change allows for specifying an indefinite amount of max
+  requests and idle timeout threshold for upstream keepalive connections, a
+  capability that was previously removed by Nginx 1.15.3.
+  [#5771](https://github.com/Kong/kong/pull/5771)
 - The default certificate for the proxy can now be configured via Admin API
   using the `/certificates` endpoint. A special `*` SNI has been introduced
   which stands for the default certificate.
   [#5404](https://github.com/Kong/kong/pull/5404)
 - Add support for PKI in Hybrid Mode mTLS.
   [#5396](https://github.com/Kong/kong/pull/5396)
-- Go Plugins: fix issue where instances of the same plugin applied to different
-  routes would get mixed.
-  [#5597](https://github.com/Kong/kong/pull/5607)
 - Add `X-Forwarded-Prefix` to set of headers forwarded to upstream requests.
   [#5620](https://github.com/Kong/kong/pull/5620)
 - Introduce a `_transform` option to declarative configuration, which allows
@@ -133,38 +174,21 @@
   `cassandra_consistency` property was deprecated.
   Thanks [Abhishekvrshny](https://github.com/Abhishekvrshny) for the patch!
   [#5812](https://github.com/Kong/kong/pull/5812)
-- Introduce new properties for upstream keepalive pooling and deprecate
-  old properties.
-  New properties:
-    * `upstream_keepalive_pool_size`
-    * `upstream_keepalive_max_requests`
-    * `upstream_keepalive_id`
-  Deprecated properties:
-    * `upstream_keepalive`
-    * `nginx_http_upstream_keepalive`
-    * `nginx_http_upstream_keepalive_requests`
-    * `nginx_http_upstream_keepalive_timeout`
-    * `nginx_upstream_keepalive`
-    * `nginx_upstream_keepalive_requests`
-    * `nginx_upstream_keepalive_timeout`
-  [#5771](https://github.com/Kong/kong/pull/5771)
-- Use dynamic upstream keepalive pools.
-  [#5771](https://github.com/Kong/kong/pull/5771)
 - Introduce certificate expiry and CA constraint checks to Hybrid Mode
   certificates (`cluster_cert` and `cluster_ca_cert`).
   [#6000](https://github.com/Kong/kong/pull/6000)
 - Introduce new attributes to the Services entity, allowing for customizations
-  in TLS verification parameters
+  in TLS verification parameters:
   * `tls_verify`: whether TLS verification is enabled while handshaking
     with the upstream Service
-  * `tls_verify_depth`: the maximum depth of verificatio when validating
+  * `tls_verify_depth`: the maximum depth of verification when validating
     upstream Service's TLS certificate
   * `ca_certificates`: the CA trust store to use when validating upstream
     Service's TLS certificate
 
 ##### CLI
 
-- Migrations: add `--force` flag to `migrations bootstrap`.
+- Migrations: add a new `--force` flag to `kong migrations bootstrap`.
   [#5635](https://github.com/Kong/kong/pull/5635)
 
 ##### Configuration
@@ -187,24 +211,24 @@
   [#5562](https://github.com/Kong/kong/pull/5562)
 - Introduce `kong.client.tls` module, which provides the following methods for
   interacting with downstream mTLS:
-  * `kong.client.tls.request_client_certificate`: request client to present its
+  * `kong.client.tls.request_client_certificate()`: request client to present its
     client-side certificate to initiate mutual TLS authentication between server
     and client.
-  * `kong.client.tls.disable_session_reuse`: prevent the TLS session for the current
+  * `kong.client.tls.disable_session_reuse()`: prevent the TLS session for the current
     connection from being reused by disabling session ticket and session ID for
     the current TLS connection.
-  * `kong.client.tls.get_full_client_certificate_chain`: return the PEM encoded
+  * `kong.client.tls.get_full_client_certificate_chain()`: return the PEM encoded
     downstream client certificate chain with the client certificate at the top
     and intermediate certificates (if any) at the bottom.
   [#5890](https://github.com/Kong/kong/pull/5890)
 - Introduce `kong.log.serialize` method.
   [#5995](https://github.com/Kong/kong/pull/5995)
-- Introduce new methods to `kong.service` PDK module:
-  * `kong.service.set_tls_verify`: set whether TLS verification is enabled while
+- Introduce new methods to the `kong.service` PDK module:
+  * `kong.service.set_tls_verify()`: set whether TLS verification is enabled while
     handshaking with the upstream Service
-  * `kong.service.set_tls_verify_depth`: set the maximum depth of verification
+  * `kong.service.set_tls_verify_depth()`: set the maximum depth of verification
     when validating upstream Service's TLS certificate
-  * `kong.service.set_tls_verify_store`: set the CA trust store to use when
+  * `kong.service.set_tls_verify_store()`: set the CA trust store to use when
     validating upstream Service's TLS certificate
 
 ##### Plugins
@@ -271,26 +295,26 @@
 - Fix memory leak when loading a declarative configuration that fails
   schema validation.
   [#5759](https://github.com/Kong/kong/pull/5759)
-- Fix issue where entities removed from declarative configuration file
+- Fix issue where entities removed from a declarative configuration file
   would persist upon configuration reload.
   [#5769](https://github.com/Kong/kong/pull/5769)
-- Fix migration issue where index for the `ca_certificates` table would fail
-  to be created.
+- Fix migration issue where the index for the `ca_certificates` table would
+  fail to be created.
   [#5764](https://github.com/Kong/kong/pull/5764)
-- Fix issue where DNS resolution would fail in db-less mode.
+- Fix issue where DNS resolution would fail in DB-less mode.
   [#5831](https://github.com/Kong/kong/pull/5831)
-- Fix race condition leading to random TLS breakages in db-less mode.
+- Fix a race condition leading to random config fetching failures in DB-less mode.
   [#5833](https://github.com/Kong/kong/pull/5833)
-- Fix issue where a respawned worker would not get the existing configuration
-  in db-less mode.
+- Fix issue where a respawned worker would not use the existing configuration
+  in DB-less mode.
   [#5850](https://github.com/Kong/kong/pull/5850)
-- Fix issue where declarative configuration would fail with error.
+- Fix issue where declarative configuration would fail with the error:
   `Cannot serialise table: excessively sparse array`.
   [#5768](https://github.com/Kong/kong/issues/5768)
 - Fix issue where the balancer wouldn't be built for all workers.
   [#5931](https://github.com/Kong/kong/pull/5931)
 - Fix issue where a request to the upstream health endpoint would fail with
-  an Internal Server Error.
+  HTTP 500 Internal Server Error.
   [#5943](https://github.com/Kong/kong/pull/5943)
 - Fix issue where DB-less input validation would return wrong error messages.
   [#5929](https://github.com/Kong/kong/pull/5929)
@@ -303,21 +327,17 @@
   fields with explicit null values would result in an error.
   [#5999](https://github.com/Kong/kong/pull/5999)
 - Fix issue where a declarative configuration file with primary keys specified
-  as a number would result in an error.
+  as numbers would result in an error.
   [#6005](https://github.com/Kong/kong/pull/6005)
-- Go: fix issue with go plugins where the plugin instance is intermittently
-  killed.
-  Thanks [primableatom](https://github.com/primableatom) for the patch!
-  [#5903](https://github.com/Kong/kong/pull/5903)
 
-##### Admin
+##### Admin API
 
-- Fix issue where a PUT request on Certificates would result in a `sni is duplicated`
-  error.
+- Fix issue where a `PUT` request on `/certificates` would result in a `sni is
+  duplicated` error.
   [#5660](https://github.com/Kong/kong/pull/5660)
 - Disallow `PATCH` on `/upstreams/:upstreams/targets/:targets`
 - Fix issue where a `PUT` request on `/upstreams/:upstreams/targets/:targets`
-  would result in an Internal Server Error.
+  would result in HTTP 500 Internal Server Error.
   [#6012](https://github.com/Kong/kong/pull/6012)
 
 ##### Configuration
@@ -333,24 +353,31 @@
 
 ##### Plugins
 
-- ACL: respond with 401, rather than 403, if credentials are not provided.
+- Go: fix issue where instances of the same Go plugin applied to different
+  Routes would get mixed up.
+  [#5597](https://github.com/Kong/kong/pull/5607)
+- Go: fix issue with Go plugins where the plugin instance would be
+  intermittently killed.
+  Thanks [primableatom](https://github.com/primableatom) for the patch!
+  [#5903](https://github.com/Kong/kong/pull/5903)
+- Go: fix issue where the go-pluginserver would not reload Go plugins'
+  configurations.
+  Thanks [wopol](https://github.com/wopol) for the patch!
+  [#5866](https://github.com/Kong/kong/pull/5866)
+- Strip `Authorization` value from logged headers. Values are now shown as
+  `REDACTED`.
+  [#5628](https://github.com/Kong/kong/pull/5628).
+- ACL: respond with HTTP 401 rather than 403 if credentials are not provided.
   [#5452](https://github.com/Kong/kong/pull/5452)
 - ldap-auth: set credential ID upon authentication, allowing subsequent
   plugins (e.g., rate-limiting) to act on said value.
   [#5497](https://github.com/Kong/kong/pull/5497)
 - ldap-auth: hash the cache key generated by the plugin.
   [#5497](https://github.com/Kong/kong/pull/5497)
-- Strip `Authorization` value from logged headers. Values are now shown as
-  `REDACTED`.
-  [#5628](https://github.com/Kong/kong/pull/5628).
-- Go plugins: fix issue where the go-pluginserver would not reload plugin
-  configurations.
-  Thanks [wopol](https://github.com/wopol) for the patch!
-  [#5866](https://github.com/Kong/kong/pull/5866)
 - basic-auth: avoid fetching credentials when password is not given.
   Thanks [Abhishekvrshny](https://github.com/Abhishekvrshny) for the patch!
   [#5880](https://github.com/Kong/kong/pull/5880)
-- cors: avoid overwriting upstream response `Very` header; new values are now
+- cors: avoid overwriting upstream response `Vary` header; new values are now
   added as additional `Vary` headers.
   Thanks [aldor007](https://github.com/aldor007) for the patch!
   [#5794](https://github.com/Kong/kong/pull/5794)
@@ -374,7 +401,7 @@
 
 - Stop request processing flow if body encoding fails.
   [#5829](https://github.com/Kong/kong/pull/5829)
-- Ensure `kong.service.set_target` includes the port number if a non-default
+- Ensure `kong.service.set_target()` includes the port number if a non-default
   port is used.
   [#5996](https://github.com/Kong/kong/pull/5996)
 
@@ -5115,7 +5142,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[2.1.0 UNRELEASED]: https://github.com/Kong/kong/compare/2.0.4...2.1.0 UNRELEASED
+[2.1.0rc1]: https://github.com/Kong/kong/compare/2.0.5...2.1.0rc1
 [2.0.4]: https://github.com/Kong/kong/compare/2.0.3...2.0.4
 [2.0.3]: https://github.com/Kong/kong/compare/2.0.2...2.0.3
 [2.0.2]: https://github.com/Kong/kong/compare/2.0.1...2.0.2

@@ -1,21 +1,12 @@
 #!/usr/bin/env bash
 
-set -e
-
 SCRIPT=$(basename $0)
 LOCAL_PATH=$(dirname $(realpath $0))
 KONG_PLUGIN=${KONG_PLUGIN:-$PWD}
 # XXX Maybe our default could be empty, that could mean, get LAST element
 BUMP_COMPONENT=${BUMP_COMPONENT:-2}
 
-DO_COMMIT=${DO_COMMIT:-1}
-PUSH_PR=${PUSH_PR:-0}
-HUB_PR=${HUB_PR:-0}
-
-function err {
-  >&2 echo -e "$*"
-  exit 1
-}
+FORCE=${FORCE:-0}
 
 function get_version {
   # Method 1
@@ -31,9 +22,7 @@ Usage: $SCRIPT action [options...]
 
 Options:
   --bump-component N    bump component N in x(0).y(1).z(2) (default: 2)
-  --no-commit           do not create a commit, stop after bumping
-  --push                push PR
-  --pr                  create a PR
+  -f, --force           do not ask for confirmation
   -v                    verbose
   -h, --help            show this help
 
@@ -51,6 +40,7 @@ function bump_version {
   echo $(IFS="." ; echo "${p_version[*]}")
 }
 
+
 function parse_args {
   while [[ $# -gt 0 ]]; do
     case $1 in
@@ -58,14 +48,8 @@ function parse_args {
         BUMP_COMPONENT=$2
         shift
         ;;
-      --push)
-        PUSH_PR=1
-        ;;
-      --pr)
-        HUB_PR=1
-        ;;
-      --no-commit)
-        DO_COMMIT=0
+      -f|--force)
+        FORCE=1
         ;;
       -v|--verbose)
         set -x
@@ -99,6 +83,10 @@ function main {
   VERSION=$(bump_version $VERSION)
   >&2 echo "Bumping to version: $VERSION"
 
+  if ! confirm "is $VERSION the right version"; then
+    read -r -p "Then plz input the version: " VERSION
+  fi
+
   # 3) Branch into that
   git checkout -b chore/bump-to-$VERSION
 
@@ -116,37 +104,44 @@ function main {
 1 insert
 ## $VERSION
 
-$( git log --format="- %s" $(git describe --tags --abbrev=0)..HEAD)
+$( git log --format="- %s" $(git describe --tags --abbrev=0)..HEAD | sed 's/\s*(#[0-9]*)$//g' )
 
 .
 xit
 eof
   fi
 
-  [[ "$DO_COMMIT" == 0 ]] && return
+  git --no-pager diff
 
-  git add -A
-  git commit -m "chore(*) bump to $VERSION"
-
-  [[ "$PUSH_PR" == 0 ]] && return
-
-  git push origin chore/bump-to-$VERSION
-
-  [[ "$HUB_PR" == 0 ]] && return
-
-  if ! hash hub; then
-    >&2 echo "hub is required to create a PR, leaving as it is"
-    exit 1
+  if confirm "Do you want a shell to fix this mess"; then
+    $SHELL
+    git --no-pager diff
   fi
 
-  hub pull-request -m "Bump to $VERSION"
+  if confirm "Do you want to commit the changes"; then
+    git add -A
+    git commit -m "chore(*) bump to $VERSION"
+
+    if confirm "Do you want to push the changes"; then
+      git push origin chore/bump-to-$VERSION
+
+      if confirm "Do you want to issue a PR"; then
+        if ! hash hub; then
+          >&2 echo "hub is required to create a PR, leaving as it is"
+          exit 1
+        fi
+
+        hub pull-request -m "Bump to $VERSION"
+      fi
+    fi
+  fi
 }
 
 
 pushd() { builtin pushd $1 > /dev/null; }
 popd() { builtin popd > /dev/null; }
 
-source $LOCAL_PATH/version.sh
+source $LOCAL_PATH/common.sh
 
 parse_args "$@"
 

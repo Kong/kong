@@ -2,6 +2,7 @@ local typedefs = require "kong.db.schema.typedefs"
 
 return {
   name = "rbac_roles",
+  dao = "kong.db.dao.rbac_roles",
   generate_admin_api = false,
   admin_api_name = "rbac/roles",
   endpoint_key = "name",

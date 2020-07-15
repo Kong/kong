@@ -1,4 +1,3 @@
-local scope = require "kong.enterprise_edition.workspaces.scope"
 local helpers	   = require "spec.helpers"
 local cjson 	   = require "cjson"
 local utils 	   = require "kong.tools.utils"
@@ -224,32 +223,25 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/groups/:groups/roles : ", function()
-      local function register_resources(db, ws)
-        local _, user_role, err = ee_helpers.register_rbac_resources(db, ws)
-        -- ensure resources
-        assert.is.falsy(err)
-
-        return user_role.role, "letmein-" .. ws
-      end
-
       local function insert_entities(workspace)
         local group = assert(db.groups:insert{ name = "test_group_" .. utils.uuid()})
         local role, token
 
         if not workspace then
           workspace = assert(db.workspaces:insert({ name = "test_ws_" .. utils.uuid()}))
-          scope.run_with_ws_scope({ workspace }, function()
-            role, token = register_resources(db, workspace.name)
-          end)
-        else
-          scope.run_with_ws_scope({ workspace }, function()
-            role = assert(db.rbac_roles:insert(
-              { name = "test_role_" .. utils.uuid() }
-            ))
-          end)
 
-          token = "letmein-" .. workspace.name
+          local _, user_role, err = ee_helpers.register_rbac_resources(db, workspace.name, workspace)
+          -- ensure resources
+          assert.is.falsy(err)
+
+          role = user_role.role
+        else
+          role = assert(db.rbac_roles:insert(
+            { name = "test_role_" .. utils.uuid() },
+            { workspace = workspace.id }))
         end
+
+        token = "letmein-" .. workspace.name
 
         return group, role, workspace, token
       end
@@ -262,9 +254,7 @@ for _, strategy in helpers.each_strategy() do
           group 	  = { id = group.id },
         }
 
-        scope.run_with_ws_scope({ workspace }, function()
-          assert(db.group_rbac_roles:insert(mapping))
-        end)
+        assert(db.group_rbac_roles:insert(mapping))
       end
 
       describe("GET", function()

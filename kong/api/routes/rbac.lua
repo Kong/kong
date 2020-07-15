@@ -238,7 +238,7 @@ return {
 
         local default_role = db.rbac_roles:select_by_name(self.rbac_user.name)
         if default_role then
-          local _, err = rbac.remove_default_role_if_empty(default_role)
+          local _, err = rbac.remove_default_role_if_empty(default_role, ngx.ctx.workspace)
           if err then
             helpers.yield_error(err)
           end
@@ -253,7 +253,7 @@ return {
     methods = {
       GET = function(self, db, helpers)
         find_current_user(self, db, helpers)
-        local roles, err = rbac.get_user_roles(db, self.rbac_user)
+        local roles, err = rbac.get_user_roles(db, self.rbac_user, ngx.ctx.workspace)
         if err then
           ngx.log(ngx.ERR, "[rbac] ", err)
           return kong.response.exit(500, { message = "An unexpected error occurred" })
@@ -275,7 +275,7 @@ return {
     methods = {
       GET = function(self, db, helpers)
         find_current_user(self, db, helpers)
-        local rbac_roles = rbac.get_user_roles(db, self.rbac_user)
+        local rbac_roles = rbac.get_user_roles(db, self.rbac_user, ngx.ctx.workspace)
         rbac_roles = remove_default_roles(rbac_roles)
 
         setmetatable(rbac_roles, cjson.empty_array_mt)
@@ -321,7 +321,7 @@ return {
         -- newly assigned mappings
 
         -- roles, err = db.rbac_users:get_roles(db, self.rbac_user)
-        roles, err = rbac.get_user_roles(db, self.rbac_user)
+        roles, err = rbac.get_user_roles(db, self.rbac_user, ngx.ctx.workspace)
 
         if err then
           return helpers.yield_error(err)
@@ -543,12 +543,12 @@ return {
       end,
     },
 
-  --   GET = function(self, dao_factory, helpers)
-  --     crud.get(self.params, dao_factory.rbac_role_entities,
+  --   GET = function(self, db, helpers)
+  --     crud.get(self.params, db.rbac_role_entities,
   --              post_process_actions)
   --   end,
 
-  --   PATCH = function(self, dao_factory, helpers)
+  --   PATCH = function(self, db, helpers)
   --     if self.params.actions then
   --       action_bitfield(self)
   --     end
@@ -561,12 +561,12 @@ return {
   --     self.params.role_id = nil
   --     self.params.entity_id = nil
 
-  --     crud.patch(self.params, dao_factory.rbac_role_entities, filter,
+  --     crud.patch(self.params, db.rbac_role_entities, filter,
   --                post_process_actions)
   --   end,
 
-  --   DELETE = function(self, dao_factory, helpers)
-  --     crud.delete(self.params, dao_factory.rbac_role_entities)
+  --   DELETE = function(self, db, helpers)
+  --     crud.delete(self.params, db.rbac_role_entities)
       --   end,
   },
 
@@ -596,7 +596,7 @@ return {
                                                  post_process_actions)
       end,
 
-      POST = function(self, dao_factory, helpers)
+      POST = function(self, db, helpers)
         action_bitfield(self)
         if not self.params.endpoint then
           kong.response.exit(400, {message = "'endpoint' is a required field"})
@@ -637,7 +637,7 @@ return {
           kong.response.exit(403, {message = err_str})
         end
 
-        local cache_key = dao_factory["rbac_roles"]:cache_key(self.rbac_role.id)
+        local cache_key = db.rbac_roles:cache_key(self.rbac_role.id)
         singletons.cache:invalidate(cache_key)
 
         -- strip any whitespaces from both ends
@@ -742,7 +742,7 @@ return {
         find_current_role(self, db, helpers)
       end,
 
-      GET = function(self, dao_factory, helpers)
+      GET = function(self, db, helpers)
         local map = rbac.readable_endpoints_permissions({self.rbac_role})
         return kong.response.exit(200, map)
       end,

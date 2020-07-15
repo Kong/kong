@@ -367,6 +367,54 @@ describe("Admin API #off", function()
         assert.response(res).has.status(201)
       end)
 
+      it("#ce hides workspace related fields from /config response", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            _format_version: "1.1"
+            services:
+            - name: my-service
+              id: 0855b320-0dd2-547d-891d-601e9b38647f
+              url: https://example.com
+              plugins:
+              - name: file-log
+                id: 0611a5a9-de73-5a2d-a4e6-6a38ad4c3cb2
+                config:
+                  path: /tmp/file.log
+              - name: key-auth
+                id: 661199ff-aa1c-5498-982c-d57a4bd6e48b
+              routes:
+              - name: my-route
+                id: 481a9539-f49c-51b6-b2e2-fe99ee68866c
+                paths:
+                - /
+            consumers:
+            - username: my-user
+              id: 4b1b701d-de2b-5588-9aa2-3b97061d9f52
+              keyauth_credentials:
+              - key: my-key
+                id: 487ab43c-b2c9-51ec-8da5-367586ea2b61
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        local body = assert.response(res).has.status(201)
+        local entities = cjson.decode(body)
+
+        assert.is_nil(entities.workspaces)
+        assert.is_nil(entities.consumers["4b1b701d-de2b-5588-9aa2-3b97061d9f52"].ws_id)
+        assert.is_nil(entities.keyauth_credentials["487ab43c-b2c9-51ec-8da5-367586ea2b61"].ws_id)
+        assert.is_nil(entities.plugins["0611a5a9-de73-5a2d-a4e6-6a38ad4c3cb2"].ws_id)
+        assert.is_nil(entities.plugins["661199ff-aa1c-5498-982c-d57a4bd6e48b"].ws_id)
+        assert.is_nil(entities.routes["481a9539-f49c-51b6-b2e2-fe99ee68866c"].ws_id)
+        assert.is_nil(entities.services["0855b320-0dd2-547d-891d-601e9b38647f"].ws_id)
+      end)
+
       it("can reload upstreams (regression test)", function()
         local config = [[
           _format_version: "1.1"
@@ -629,6 +677,7 @@ describe("Admin API #off", function()
         local config = assert(lyaml.load(json.config))
         config.workspaces[1].id = "<uuid>" -- see below
         config.workspaces[1].created_at = 12345 -- see below
+        config.consumers[1].ws_id = "<uuid>" -- see below
         assert:set_parameter("TableFormatLevel", -1)
         assert.same({
           _format_version = "2.1",
@@ -640,6 +689,7 @@ describe("Admin API #off", function()
               type = 0,
               custom_id = lyaml.null,
               tags = lyaml.null,
+              ws_id = "<uuid>", -- see above
             },
           },
           workspaces = {

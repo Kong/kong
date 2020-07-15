@@ -1,6 +1,5 @@
 local endpoints          = require "kong.api.endpoints"
 local utils              = require "kong.tools.utils"
-local scope = require "kong.enterprise_edition.workspaces.scope"
 
 local groups             = kong.db.groups
 local group_rbac_roles   = kong.db.group_rbac_roles
@@ -128,17 +127,15 @@ return {
       local cache_key = db["group_rbac_roles"]:cache_key(self.params.groups.id)
       kong.cache:invalidate(cache_key)
 
-      scope.run_with_ws_scope({{ id = self.params.workspace_id }}, function()
-          local _, _, err_t = group_rbac_roles:insert({
-            rbac_role = { id = self.params.rbac_role_id },
-            workspace = { id = self.params.workspace_id },
-            group 	  = { id = self.params.groups.id },
-          })
+      local _, _, err_t = group_rbac_roles:insert({
+        rbac_role = { id = self.params.rbac_role_id },
+        workspace = { id = self.params.workspace_id },
+        group 	  = { id = self.params.groups.id },
+      }, { workspace = self.params.workspace_id })
 
-          if err_t then
-            return endpoints.handle_error(err_t)
-          end
-      end)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
 
       return kong.response.exit(201, response_filter(
         self.params.groups,
@@ -162,16 +159,13 @@ return {
       local cache_key = db["group_rbac_roles"]:cache_key(self.params.groups.id)
       kong.cache:invalidate(cache_key)
 
-      scope.run_with_ws_scope({{ id = self.params.workspace_id }}, function()
-          local _, err = group_rbac_roles:delete({
-            rbac_role = { id = self.params.rbac_role_id },
-            group 	  = { id = self.params.groups.id },
-          })
-
-          if err then
-            kong.log.err('DELETE /groups/:groups/roles:', err)
-          end
-      end)
+      local _, err = group_rbac_roles:delete({
+        rbac_role = { id = self.params.rbac_role_id },
+        group 	  = { id = self.params.groups.id },
+      }, {workspace = self.params.workspace_id })
+      if err then
+        kong.log.err('DELETE /groups/:groups/roles:', err)
+      end
 
       return kong.response.exit(204)
     end,

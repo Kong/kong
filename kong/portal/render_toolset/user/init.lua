@@ -27,7 +27,7 @@ return function()
       return false
     end
 
-    local rbac_roles, err = rbac.get_user_roles(singletons.db, rbac_user)
+    local rbac_roles, err = rbac.get_user_roles(singletons.db, rbac_user, ngx.ctx.workspace)
     if err then
       return false
     end

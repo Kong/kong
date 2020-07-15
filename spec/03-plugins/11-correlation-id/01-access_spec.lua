@@ -86,13 +86,12 @@ for _, strategy in helpers.each_strategy() do
           echo_downstream = true,
         },
       }
-
       bp.plugins:insert {
         name     = "request-termination",
         route = { id = route5.id },
         config   = {
-          status_code = 200,
-          message     = "Success",
+          status_code = 418,
+          message     = "I'm a teapot",
         },
       }
 
@@ -314,8 +313,6 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("executes with echo_downstream when access did not execute", function()
-      -- Regression test for GH issue #3924
-      -- https://github.com/Kong/kong/issues/3924
       local res = assert(proxy_client:send {
         method  = "GET",
         path    = "/request",
@@ -323,9 +320,23 @@ for _, strategy in helpers.each_strategy() do
           ["Host"] = "correlation5.com",
         }
       })
-      local body = assert.res_status(200, res)
-      local json = cjson.decode(body)
-      assert.same({ message = "Success" }, json)
+      assert.response(res).has.status(418, res)
+      local downstream_id = assert.response(res).has.header("kong-request-id")
+      assert.matches(UUID_PATTERN, downstream_id)
+    end)
+
+    it("echoes incoming with echo_downstream when access did not execute", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Host"] = "correlation5.com",
+          ["kong-request-id"] = "my very personal id",
+        }
+      })
+      assert.response(res).has.status(418, res)
+      local downstream_id = assert.response(res).has.header("kong-request-id")
+      assert.equals("my very personal id", downstream_id)
     end)
   end)
 end

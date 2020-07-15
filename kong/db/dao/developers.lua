@@ -38,8 +38,16 @@ end
 --   return Developers:validate_update(entity)
 -- end
 
-function _Developers:get_roles(entity)
-  return dao_helpers.get_roles(entity)
+function _Developers:get_roles(entity, options)
+  local workspace
+  if options then
+    workspace = options.workspace
+  end
+  if not workspace then
+    workspace = ngx.ctx.workspace or ngx.null
+  end
+
+  return dao_helpers.get_roles(entity, workspace)
 end
 
 
@@ -169,14 +177,6 @@ function _Developers:delete(developer_pk, options)
     end
   end
 
-  local rbac_user_id = developer.rbac_user and developer.rbac_user.id
-  if rbac_user_id then
-    local ok, err, err_t = self.db.rbac_users:delete({ id = rbac_user_id })
-    if not ok then
-      return nil, err, err_t
-    end
-  end
-
   local ok, err, err_t = self.super.delete(self, developer_pk, options)
   if not ok then
     return nil, err, err_t
@@ -186,6 +186,15 @@ function _Developers:delete(developer_pk, options)
   if not ok then
     return nil, err, err_t
   end
+
+  local rbac_user_id = developer.rbac_user and developer.rbac_user.id
+  if rbac_user_id then
+    local ok, err, err_t = self.db.rbac_users:delete({ id = rbac_user_id })
+    if not ok then
+      return nil, err, err_t
+    end
+  end
+
 
   return ok, err, err_t
 end

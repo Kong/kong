@@ -99,7 +99,15 @@ function _Admins:delete(admin, options)
   local consumer_id = admin.consumer.id
   local rbac_user_id = admin.rbac_user.id
 
-  local roles, err = rbac.get_user_roles(kong.db, admin.rbac_user)
+  local workspace
+  if options then
+    workspace = options.workspace
+  end
+  if not workspace then
+    workspace = ngx.ctx.workspace or ngx.null
+  end
+
+  local roles, err = rbac.get_user_roles(kong.db, admin.rbac_user, workspace)
   if err then
     return nil, err
   end
@@ -116,18 +124,18 @@ function _Admins:delete(admin, options)
     return nil, err
   end
 
-  _, err = self.db.consumers:delete({ id = consumer_id })
+  _, err = self.db.consumers:delete({ id = consumer_id }, options)
   if err then
     return nil, err
   end
 
-  _, err = self.db.rbac_users:delete({ id = rbac_user_id })
+  _, err = self.db.rbac_users:delete({ id = rbac_user_id }, options)
   if err then
     return nil, err
   end
 
   for _, role in ipairs(default_roles) do
-    local _, err = rbac.remove_default_role_if_empty(role)
+    local _, err = rbac.remove_default_role_if_empty(role, workspace)
     if err then
       return nil, err
     end

@@ -34,7 +34,7 @@ pipeline {
           parameters: [
             // [$class: 'TextParameterDefinition', defaultValue: '', description: 'custom build', name: 'customername'],
             choice(name: 'RELEASE_SCOPE',
-            choices: 'internal-preview\nrc1\nrc2\nrc3\nrc4\nrc5\nGA',
+            choices: 'internal-preview\nbeta1\nbeta2\nrc1\nrc2\nrc3\nrc4\nrc5\nGA',
             description: 'What is the release scope?'),
           ])
           env.RELEASE_SCOPE = input_params
@@ -69,6 +69,10 @@ pipeline {
             sh "./dist/dist.sh build ubuntu:18.04 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh release -V -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:18.04 -e -R ${env.RELEASE_SCOPE}"
           },
+          ubuntu2004: {
+            sh "./dist/dist.sh build ubuntu:20.04 ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh release -V -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:20.04 -e -R ${env.RELEASE_SCOPE}"
+          },
           amazonlinux1: {
             sh "./dist/dist.sh build amazonlinux:1 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh release -V -u $BINTRAY_USR -k $BINTRAY_PSW -p amazonlinux:1 -e -R ${env.RELEASE_SCOPE}"
@@ -92,33 +96,24 @@ pipeline {
         )
       }
     }
-    stage("Prepare Docker Kong EE") {
-      steps {
-        checkout([$class: 'GitSCM',
-            extensions: [[$class: 'WipeWorkspace']],
-            userRemoteConfigs: [[url: 'git@github.com:Kong/docker-kong-ee.git',
-            credentialsId: 'docker-kong-ee-deploy-key']]
-        ])
-      }
-    }
     stage("Build & Push Docker Images") {
       steps {
         parallel (
           // beware! $KONG_VERSION might have an ending \n that swallows everything after it
           alpine: {
-            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
+            sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
             // Docker with anonymous reports off. jenkins has no permission + is old method
-            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
+            sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
           },
           centos7: {
-            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
+            sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
             // Docker with anonymous reports off. jenkins has no permission + is old method
-            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
+            sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
           },
           rhel: {
-            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
+            sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
             // Docker with anonymous reports off. jenkins has no permission + is old method
-            sh "./bintray-release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
+            sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
           },
         )
       }

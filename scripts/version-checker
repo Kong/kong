@@ -1,0 +1,261 @@
+#!/usr/bin/env bash
+
+set -e
+
+SCRIPT=$(basename $0)
+LOCAL_PATH=$(dirname $(realpath $0))
+DISTRIBUTIONS_PATH=${DISTRIBUTIONS_PATH}
+
+FROM=${FROM:-build}
+TO=${TO:-master}
+FORCE=${FORCE:-0}
+FORCE_PR=${FORCE_PR:-0}
+FORCE_MASTER=${FORCE_MASTER:-0}
+SEEK=${SEEK:-0}
+
+DO_PR=${DO_PR:-0}
+# XXX still not used. The idea would be to use scripts/bump-plugin to try and
+# bump the plugin and make a PR
+DO_BUMP=${DO_BUMP:-0}
+
+# Entities to ignore
+IGNORE=(
+  # hardcoded or handled not by FTT
+  "kong-admin" "kong-portal"
+  # not handled by FTT
+  "kong-plugin-oauth2-introspection"
+  "kong-plugin-openid-connect-lib"
+  "kong-plugin-jwt-signer"
+)
+
+source $LOCAL_PATH/common.sh
+
+function usage {
+cat << EOF
+
+Usage: $SCRIPT action [options...]
+
+Options:
+  --from FROM           check for new commits from, accepts:
+                          - (default) build: whatever is set on build.yml
+                          - last: since last tag
+                          - <tag>: specify a <tag> to check from
+                          - none: ignore from, set to TO
+  --to TO               check for new commits to, accepts:
+                          - (default) HEAD
+                          - last: since last tag
+                          - <tag>: specify a <tag> to check from
+  --ignore name         ignore component 'name' in build.yml
+  --pr                  make a PR with changes (if something changed)
+  --seek N              ignore first N entries
+  -f                    do not ask confirmation
+  -v                    verbose
+  -h, --help            show this help
+
+EOF
+}
+
+
+function parse_args {
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -v|--verbose)
+        set -x
+        ;;
+      -h|--help)
+        usage
+        exit 0
+        ;;
+      --seek)
+        SEEK=$2
+        shift
+        ;;
+      --to)
+        TO=$2
+        shift
+        ;;
+      --from)
+        FROM=$2
+        shift
+        ;;
+      --ignore)
+        IGNORE+=("$2")
+        shift
+        ;;
+      --bump)
+        DO_BUMP=1
+        ;;
+      -f|--force)
+        FORCE=1
+        ;;
+      -fp|--force-pr)
+        FORCE_PR=1
+        ;;
+      --pr)
+        DO_PR=1
+        ;;
+    esac
+    shift
+  done
+}
+
+function get_distributions {
+  DISTRIBUTIONS_PATH=$($LOCAL_PATH/../dist/dist.sh get)
+  on_exit "rm -rf $DISTRIBUTIONS_PATH"
+  echo $DISTRIBUTIONS_PATH
+}
+
+function __open {
+  local index=$1
+  local url=$(echo $entry | jq -r '.github_url')
+  open https://github.com/kong/${repo}
+}
+
+function check {
+  local index=$1
+  local entry=$2
+
+  local name=$(echo $entry | jq -r '.name')
+  if echo ${IGNORE[*]} | grep $name 2> /dev/null || [[ $index -le $SEEK ]]; then
+    warn "[$index.$name] ignoring"
+    return 0
+  fi
+  local url=$(echo $entry | jq -r '.github_url')
+  local version=$(echo $entry | jq -r '.version')
+  local repo=$(basename $url)
+  local tmpath=$(mktemp -d "/tmp/kong-$repo-XXXXX")
+
+  git clone https://"$GITHUB_TOKEN"@github.com/Kong/${repo} $tmpath 2> /dev/null
+  on_exit "rm -rf $tmpath"
+
+  local from to
+
+  pushd $tmpath
+    case $FROM in
+      build)
+        from=$version
+        ;;
+      last)
+        from=$(git describe --tags --abbrev=0)
+        ;;
+      *)
+        from=$FROM
+        ;;
+    esac
+
+    case $TO in
+      last)
+        to=$(git describe --tags --abbrev=0)
+        ;;
+      *)
+        to=$TO
+        ;;
+    esac
+    #                           There are never commits from master to wherever
+    if [[ $from == "none" ]] || [[ $from == "master" ]]; then
+      unset from
+    fi
+
+    if [[ -n $from ]] && [[ -z $(git rev-list $from..$to) ]]; then
+      >&2 echo "#$index [$name] No new commits from $from until $to"
+
+      # last tag does not point to HEAD, therefore, it might be an outdated
+      # tag anyway
+      if [[ "$(git rev-list -n 1 $to)" != "$(git rev-list -n 1 HEAD)" ]]; then
+        if ! confirm "#$index [$name] $to is older than HEAD, check repo, want to check?"; then
+          popd; return 0
+        fi
+      else
+        popd; return 0
+      fi
+    else
+      >&2 echo "#$index [$name] has new commits from $from until $to"
+    fi
+
+    confirm "#$index [$name] Do you want to open the repo github" && __open $index
+
+    if confirm "Do you want to bump $name: $version -> $to"; then
+      bump $index $to
+    elif confirm "Do you want to issue a bump on the plugin itself"; then
+      if ! bump_plugin $index; then
+        >&2 echo "Seems something went wrong with the bump script"
+        confirm "Do you want a shell on this plugin to fix the mess" && $SHELL
+      fi
+
+      if confirm "Do you want to re-run this step, and maybe bump the yml"; then
+        check "$@"
+      fi
+    fi
+  popd
+}
+
+
+function bump {
+  # This is not a plugin bumping, it just bumps WITHIN build.yml if a tag
+  # is outdated!
+
+  # yq does what it can do, but clearly this could work better either with
+  # a clever sed, or some python / ruby helper to not mess up with the output
+  # or get more options on how to format it
+  yq w -i -I 4 $DISTRIBUTIONS_PATH/kong-images/build.yml "enterprise[$1].version" -- "$2"
+}
+
+
+function something_changed {
+  git update-index --refresh
+  git diff-index --quiet HEAD --
+  [[ $? != 0 ]]
+}
+
+function bump_plugin {
+  # XXX not sure why we need this
+  local errcode=0
+  bash $LOCAL_PATH/bump-plugin || errcode=$?
+  echo Result was: $errcode
+  return $errcode
+}
+
+function commit_build_yml {
+  local branch="chore/bump-build-$(date +%s)"
+  git checkout -b $branch
+  git add kong-images/build.yml
+  git commit -m "bump build.yml components"
+  git push origin $branch
+  hub pull-request -m "Bump build.yml components"
+}
+
+function main {
+  [[ -n $DISTRIBUTIONS_PATH ]] || DISTRIBUTIONS_PATH=$(get_distributions)
+  [[ -d $DISTRIBUTIONS_PATH ]] || err "$DISTRIBUTIONS_PATH does not exist"
+
+  local counter=0
+  pushd $DISTRIBUTIONS_PATH
+    for entry in $(yq r kong-images/build.yml -j | jq -c '.enterprise[]'); do
+      check $counter $entry
+      ((counter=counter+1))
+    done
+
+    FORCE=${FORCE_PR:-0}
+
+    if something_changed && [[ $DO_PR == "1" ]]; then
+      git --no-pager diff
+      confirm "Do you want to create a PR with these changes" && \
+        commit_build_yml
+    fi
+  popd
+
+  cat $DISTRIBUTIONS_PATH/kong-images/build.yml | yq r - -I 4
+}
+
+
+pushd() { builtin pushd $1 > /dev/null; }
+popd() { builtin popd > /dev/null; }
+
+hash yq || err "This script requires yq for parsing YAML"
+hash jq || err "This script requires jq for parsing JSON"
+
+parse_args "$@"
+
+[[ $DO_PR == "1" ]] && ! hash hub && err "hub is required to create a PR"
+
+main "$@"
