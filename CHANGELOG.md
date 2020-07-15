@@ -1,3 +1,11 @@
+Versioning is strictly based on SemVer
+Also make sure to update the version in `handler.lua`
+
+## 1.0.0 (15-Jul-2020)
+
+- Bump to 1.0.0; considered production ready, and stable
+- Fix: require type in jsonschema for parameters, see [pr #21](https://github.com/Kong/kong-plugin-enterprise-request-validator/pull/21)
+
 ## 0.4.2 (16-may-2020)
 
 - Bump ljsonschema lib to 1.0.0, see [pr #3](https://github.com/Tieske/lua-resty-ljsonschema/pull/3)
