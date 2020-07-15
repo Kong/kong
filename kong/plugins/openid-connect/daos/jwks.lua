@@ -76,7 +76,7 @@ local function load_jwks(dao)
 
           keys = JWKS
 
-          local ok, err = kong.worker_events.post("openid-connect", "reset-jwks", JWKS.jwks.keys)
+          ok, err = kong.worker_events.post("openid-connect", "reset-jwks", JWKS.jwks.keys)
           if ok ~= "done" then
             return nil, err
           end

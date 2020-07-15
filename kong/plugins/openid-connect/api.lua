@@ -106,7 +106,8 @@ return {
 
           ok, err = kong.worker_events.poll()
           if not ok then
-            return endpoints.handle_error("failed to poll worker-events when resetting openid-connect discovery: " .. err)
+            return endpoints.handle_error("failed to poll worker-events when resetting " ..
+                                          "openid-connect discovery: " .. err)
           end
         end
 
@@ -164,7 +165,8 @@ return {
 
           ok, err = kong.worker_events.poll()
           if not ok then
-            return endpoints.handle_error("failed to poll worker-events when resetting openid-connect discovery: " .. err)
+            return endpoints.handle_error("failed to poll worker-events when resetting " ..
+                                          "openid-connect discovery: " .. err)
           end
         end
 
@@ -191,7 +193,7 @@ return {
         })
       end,
       DELETE = function(self, db)
-        endpoints.delete_entity(self, db, jwks_schema, "rem")
+        local _, err = endpoints.delete_entity(self, db, jwks_schema, "rem")
         if err then
           return endpoints.handle_error(err)
         end

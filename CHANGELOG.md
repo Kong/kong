@@ -1,14 +1,19 @@
-## v1.6.0 (Upcoming)
+## v1.6.0
 
 - Add `X-Authenticated-Groups` request header when doing authenticated groups.
-- Change the `config.authenticated_groups_claim` is considered even on successful
+- Add `config.groups_required` and `config.groups_claim`
+- Add `config.roles_required` and `config.roles_claim`
+- Add `DELETE :8001/openid-connect/issuers` endpoint (for cache clearing).
+- Add `DELETE :8001/openid-connect/jwks` endpoint (for rotating the jwks).
+- Add Admin API for DBless (it is a single node only)
+- Change that `config.authenticated_groups_claim` is considered even on successful
   consumer mapping so that it enables dynamic groups, while using consumer mapping.
   This feature is used with https://docs.konghq.com/enterprise/latest/kong-manager/service-directory-mapping/.
 - Change code to be more resilient on rediscovery errors.
 - Change `config.rediscovery_lifetime` to default to `30` seconds instead of `300`
   seconds (`5` minutes).
 - Change plugin to do rediscovery on configuration changes (still respecting `config.rediscovery_lifetime`)
-- Fix `dbless` tries to reload `private key jwts` on each request.
+- Fix DBless to reload `private key jwts` on each request.
 
 
 ## v1.5.2
