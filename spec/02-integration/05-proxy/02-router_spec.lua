@@ -125,6 +125,18 @@ for _, strategy in helpers.each_strategy() do
     local bp
 
     lazy_setup(function()
+      local fixtures = {
+        dns_mock = helpers.dns_mock.new()
+      }
+      fixtures.dns_mock:A {
+        name = "grpcs_1.test",
+        address = "127.0.0.1",
+      }
+      fixtures.dns_mock:A {
+        name = "grpcs_2.test",
+        address = "127.0.0.1",
+      }
+
       bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
@@ -137,7 +149,7 @@ for _, strategy in helpers.each_strategy() do
         database = strategy,
         plugins = "bundled,enable-buffering",
         nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
+      }, nil, nil, fixtures))
     end)
 
     lazy_teardown(function()

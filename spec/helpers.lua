@@ -60,7 +60,13 @@ log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 
 -- Add to package path so dao helpers can insert custom plugins
 -- (while running from the busted environment)
-package.path = CUSTOM_PLUGIN_PATH .. ";" .. package.path
+do
+  local paths = {}
+  table.insert(paths, os.getenv("KONG_LUA_PACKAGE_PATH"))
+  table.insert(paths, CUSTOM_PLUGIN_PATH)
+  table.insert(paths, package.path)
+  package.path = table.concat(paths, ";")
+end
 
 --- Returns the OpenResty version.
 -- Extract the current OpenResty version in use and returns
@@ -282,6 +288,12 @@ local function get_db_utils(strategy, tables, plugins)
     end
   end
 
+  -- Clean workspaces from the context - otherwise, migrations will fail,
+  -- as some of them have dao calls
+  -- If `no_truncate` is falsey, `dao:truncate` and `db:truncate` are called,
+  -- and these set the workspace back again to the new `default` workspace
+  ngx.ctx.workspace = nil
+
   -- DAO (DB module)
   local db = assert(DB.new(conf, strategy))
   assert(db:init_connector())
@@ -301,11 +313,14 @@ local function get_db_utils(strategy, tables, plugins)
   -- not necessary to implement "truncate trigger" in Cassandra
   db:truncate("tags")
 
-  -- cleanup new DB tables
+  _G.kong.db = db
+
+  -- cleanup tables
   if not tables then
     assert(db:truncate())
 
   else
+    tables[#tables + 1] = "workspaces"
     truncate_tables(db, tables)
   end
 
@@ -325,7 +340,10 @@ local function get_db_utils(strategy, tables, plugins)
     end
   end
 
-  _G.kong.db = db
+  if strategy ~= "off" then
+    local workspaces = require "kong.workspaces"
+    workspaces.upsert_default(db)
+  end
 
   return bp, db
 end
@@ -770,6 +788,11 @@ local function http2_client(host, port, tls)
   local host = assert(host)
   local port = assert(port)
   tls = tls or false
+
+  -- if Kong/lua-pack is loaded, unload it first
+  -- so lua-http can use implementation from compat53.string
+  package.loaded.string.unpack = nil
+  package.loaded.string.pack = nil
 
   local request = require "http.request"
   local req = request.new_from_uri({
@@ -2205,7 +2228,7 @@ local function pid_dead(pid, timeout)
     -- still running, wait some more
     ngx.sleep(0.05)
   until ngx.now() >= max_time
-  
+
   return false
 end
 
@@ -2467,6 +2490,7 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc)
   if not preserve_dc then
     config_yml = nil
   end
+  ngx.ctx.workspace = nil
 
   return true
 end
@@ -2614,6 +2638,17 @@ end
       wait_pid(pid_path, timeout)
     end
   end,
+
+  with_current_ws = function(ws,fn, db)
+    local old_ws = ngx.ctx.workspace
+    ngx.ctx.workspace = nil
+    ws = ws or {db.workspaces:select_by_name("default")}
+    ngx.ctx.workspace = ws[1] and ws[1].id
+    local res = fn()
+    ngx.ctx.workspace = old_ws
+    return res
+  end,
+
   signal = function(prefix, signal, pid_path)
     local kill = require "kong.cmd.utils.kill"
 

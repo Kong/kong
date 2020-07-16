@@ -307,10 +307,9 @@ describe("Admin API #off", function()
 
         assert.response(res).has.status(413)
 
-        client:close()
-        client = assert(helpers.admin_client())
-
         helpers.wait_until(function()
+          client:close()
+          client = assert(helpers.admin_client())
           res = assert(client:send {
             method = "GET",
             path = "/consumers/previous",
@@ -366,6 +365,54 @@ describe("Admin API #off", function()
         })
 
         assert.response(res).has.status(201)
+      end)
+
+      it("hides workspace related fields from /config response", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            _format_version: "1.1"
+            services:
+            - name: my-service
+              id: 0855b320-0dd2-547d-891d-601e9b38647f
+              url: https://example.com
+              plugins:
+              - name: file-log
+                id: 0611a5a9-de73-5a2d-a4e6-6a38ad4c3cb2
+                config:
+                  path: /tmp/file.log
+              - name: key-auth
+                id: 661199ff-aa1c-5498-982c-d57a4bd6e48b
+              routes:
+              - name: my-route
+                id: 481a9539-f49c-51b6-b2e2-fe99ee68866c
+                paths:
+                - /
+            consumers:
+            - username: my-user
+              id: 4b1b701d-de2b-5588-9aa2-3b97061d9f52
+              keyauth_credentials:
+              - key: my-key
+                id: 487ab43c-b2c9-51ec-8da5-367586ea2b61
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        local body = assert.response(res).has.status(201)
+        local entities = cjson.decode(body)
+
+        assert.is_nil(entities.workspaces)
+        assert.is_nil(entities.consumers["4b1b701d-de2b-5588-9aa2-3b97061d9f52"].ws_id)
+        assert.is_nil(entities.keyauth_credentials["487ab43c-b2c9-51ec-8da5-367586ea2b61"].ws_id)
+        assert.is_nil(entities.plugins["0611a5a9-de73-5a2d-a4e6-6a38ad4c3cb2"].ws_id)
+        assert.is_nil(entities.plugins["661199ff-aa1c-5498-982c-d57a4bd6e48b"].ws_id)
+        assert.is_nil(entities.routes["481a9539-f49c-51b6-b2e2-fe99ee68866c"].ws_id)
+        assert.is_nil(entities.services["0855b320-0dd2-547d-891d-601e9b38647f"].ws_id)
       end)
 
       it("can reload upstreams (regression test)", function()
@@ -626,17 +673,19 @@ describe("Admin API #off", function()
 
         local body = assert.response(res).has.status(200)
         local json = cjson.decode(body)
-        local yaml_config = lyaml.load(json.config)
-        local expected_config = lyaml.load [[
-_format_version: "1.1"
-consumers:
-- created_at: 1566863706
-  username: bobo
-  id: d885e256-1abe-5e24-80b6-8f68fe59ea8e
-  custom_id: ~
-  tags: ~
-]]
-        assert.same(expected_config, yaml_config)
+        local config = assert(lyaml.load(json.config))
+        assert.same({
+          _format_version = "2.1",
+          _transform = false,
+          consumers = {
+            { id = "d885e256-1abe-5e24-80b6-8f68fe59ea8e",
+              created_at = 1566863706,
+              username = "bobo",
+              custom_id = lyaml.null,
+              tags = lyaml.null,
+            },
+          },
+        }, config)
       end)
     end)
 
@@ -684,13 +733,16 @@ consumers:
 
       assert.response(res).has.status(201)
 
-      local sock = ngx.socket.tcp()
-      assert(sock:connect("127.0.0.1", 9011))
-      assert(sock:send("hi\n"))
       helpers.wait_until(function()
-        return sock:receive() == "hi"
+        local sock = ngx.socket.tcp()
+        assert(sock:connect("127.0.0.1", 9011))
+        assert(sock:send("hi\n"))
+        local pok = pcall(helpers.wait_until, function()
+          return sock:receive() == "hi"
+        end, 1)
+        sock:close()
+        return pok == true
       end)
-      sock:close()
     end)
   end)
 
@@ -959,8 +1011,7 @@ describe("Admin API #off with Unique Foreign #unique", function()
     assert.equal(references.data[1].note, "note")
     assert.equal(references.data[1].unique_foreign.id, foreigns.data[1].id)
 
-
-    local res = assert(client:get("/cache/unique_references|unique_foreign:" ..
+    local res = assert(client:get("/cache/unique_references||unique_foreign:" ..
                                   foreigns.data[1].id))
     local body = assert.res_status(200, res)
     local cached_reference = cjson.decode(body)
@@ -969,7 +1020,7 @@ describe("Admin API #off with Unique Foreign #unique", function()
 
     local cache = {
       get = function(_, k)
-        if k ~= "unique_references|unique_foreign:" .. foreigns.data[1].id then
+        if k ~= "unique_references||unique_foreign:" .. foreigns.data[1].id then
           return nil
         end
 

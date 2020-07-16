@@ -159,6 +159,7 @@ local r =  {
   name = "upstreams",
   primary_key = { "id" },
   endpoint_key = "name",
+  workspaceable = true,
   fields = {
     { id = typedefs.uuid, },
     { created_at = typedefs.auto_timestamp_s },
@@ -180,6 +181,7 @@ local r =  {
     }, },
     { tags = typedefs.tags },
     { host_header = typedefs.host_with_optional_port },
+    { client_certificate = { type = "foreign", reference = "certificates" }, },
   },
   entity_checks = {
     -- hash_on_header must be present when hashing on header

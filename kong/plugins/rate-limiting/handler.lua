@@ -9,12 +9,13 @@ local max = math.max
 local time = ngx.time
 local floor = math.floor
 local pairs = pairs
+local error = error
 local tostring = tostring
 local timer_at = ngx.timer.at
 
 
 local EMPTY = {}
-local EXPIRATIONS = policies.EXPIRATIONS
+local EXPIRATION = require "kong.plugins.rate-limiting.expiration"
 
 
 local RATELIMIT_LIMIT     = "RateLimit-Limit"
@@ -46,7 +47,7 @@ local RateLimitingHandler = {}
 
 
 RateLimitingHandler.PRIORITY = 901
-RateLimitingHandler.VERSION = "2.1.0"
+RateLimitingHandler.VERSION = "2.2.0"
 
 
 local function get_identifier(conf)
@@ -62,6 +63,9 @@ local function get_identifier(conf)
   elseif conf.limit_by == "credential" then
     identifier = (kong.client.get_credential() or
                   EMPTY).id
+
+  elseif conf.limit_by == "header" then
+    identifier = kong.request.get_header(conf.header_name)
   end
 
   return identifier or kong.client.get_forwarded_ip()
@@ -124,12 +128,11 @@ function RateLimitingHandler:access(conf)
 
   local usage, stop, err = get_usage(conf, identifier, current_timestamp, limits)
   if err then
-    if fault_tolerant then
-      kong.log.err("failed to get usage: ", tostring(err))
-    else
-      kong.log.err(err)
-      return kong.response.exit(500, { message = "An unexpected error occurred" })
+    if not fault_tolerant then
+      return error(err)
     end
+
+    kong.log.err("failed to get usage: ", tostring(err))
   end
 
   if usage then
@@ -143,7 +146,7 @@ function RateLimitingHandler:access(conf)
       local remaining
       for k, v in pairs(usage) do
         local current_limit = v.limit
-        local current_window = EXPIRATIONS[k]
+        local current_window = EXPIRATION[k]
         local current_remaining = v.remaining
         if stop == nil or stop == k then
           current_remaining = current_remaining - 1
@@ -178,7 +181,7 @@ function RateLimitingHandler:access(conf)
 
     -- If limit is exceeded, terminate the request
     if stop then
-      return kong.response.exit(429, { message = "API rate limit exceeded" }, {
+      return kong.response.error(429, "API rate limit exceeded", {
         [RETRY_AFTER] = reset
       })
     end

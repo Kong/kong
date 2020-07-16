@@ -31,6 +31,7 @@ Schema.__index     = Schema
 
 
 local _cache = {}
+local _workspaceable = {}
 
 
 local new_tab
@@ -1361,15 +1362,13 @@ end
 -- entries.
 -- @return True on success; nil, error message and error table otherwise.
 function Schema:validate_primary_key(pk, ignore_others)
-  local pk_is_table = type(pk) == "table"
-
   local pk_set = {}
   local errors = {}
 
   for _, k in ipairs(self.primary_key) do
     pk_set[k] = true
     local field = self.fields[k]
-    local v = pk_is_table and pk[k]
+    local v = pk[k]
 
     if not v then
       errors[k] = validation_errors.MISSING_PK
@@ -1383,7 +1382,7 @@ function Schema:validate_primary_key(pk, ignore_others)
     end
   end
 
-  if not ignore_others and pk_is_table then
+  if not ignore_others then
     for k, _ in pairs(pk) do
       if not pk_set[k] then
         errors[k] = validation_errors.NOT_PK
@@ -1627,11 +1626,9 @@ function Schema:process_auto_fields(data, context, nulls, opts)
           data[key] = nulls and null or nil
         end
 
-      else
-        -- set non defined fields to nil, except meta fields (ttl) if enabled
-        if not self.ttl or key ~= "ttl" then
-          data[key] = nil
-        end
+      elseif not ((key == "ttl" and self.ttl) or
+                  (key == "ws_id" and opts and opts.show_ws_id)) then
+        data[key] = nil
       end
     end
   end
@@ -1971,6 +1968,23 @@ end
 
 
 function Schema:get_constraints()
+  if self.name == "workspaces" then
+    -- merge explicit and implicit constraints for workspaces
+    for _, e in ipairs(_cache["workspaces"].constraints) do
+      local found = false
+      for _, w in ipairs(_workspaceable) do
+        if w == e then
+          found = true
+          break
+        end
+      end
+      if not found then
+        table.insert(_workspaceable, e)
+      end
+    end
+    return _workspaceable
+  end
+
   return _cache[self.name].constraints
 end
 
@@ -2001,7 +2015,7 @@ function Schema:transform(input, original_input, context)
     return input
   end
 
-  local output = input
+  local output = nil
   for _, transformation in ipairs(self.transformations) do
     local transform
     if context == "select" then
@@ -2018,11 +2032,11 @@ function Schema:transform(input, original_input, context)
     local args = {}
     local argc = 0
     for _, input_field_name in ipairs(transformation.input) do
-      local value = get_field(original_input or input, input_field_name)
+      local value = get_field(output or original_input or input, input_field_name)
       if is_nonempty(value) then
         argc = argc + 1
         if original_input then
-          args[argc] = get_field(input, input_field_name)
+          args[argc] = get_field(output or input, input_field_name)
         else
           args[argc] = value
         end
@@ -2034,10 +2048,10 @@ function Schema:transform(input, original_input, context)
 
     if transformation.needs then
       for _, need in ipairs(transformation.needs) do
-        local value = get_field(input, need)
+        local value = get_field(output or input, need)
         if is_nonempty(value) then
           argc = argc + 1
-          args[argc] = get_field(input, need)
+          args[argc] = get_field(output or input, need)
 
         else
           goto next
@@ -2050,12 +2064,12 @@ function Schema:transform(input, original_input, context)
       return nil, validation_errors.TRANSFORMATION_ERROR:format(err)
     end
 
-    output = self:merge_values(data, output)
+    output = self:merge_values(data, output or input)
 
     ::next::
   end
 
-  return output
+  return output or input
 end
 
 
@@ -2111,11 +2125,22 @@ function Schema.new(definition, is_subschema)
     end
   end
 
+  if self.workspaceable and self.name then
+    if not _workspaceable[self.name] then
+      _workspaceable[self.name] = true
+      table.insert(_workspaceable, { schema = self })
+    end
+  end
+
   if self.name then
-    _cache[self.name] = {
-      schema = self,
-      constraints = {},
-    }
+    -- do not reset the constraints list if a schema in reloaded
+    if not _cache[self.name] then
+      _cache[self.name] = {
+        constraints = {},
+      }
+    end
+    -- but always update the schema object in cache
+    _cache[self.name].schema = self
   end
 
   return self

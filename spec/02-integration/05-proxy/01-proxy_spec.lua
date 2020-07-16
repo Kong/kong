@@ -129,3 +129,81 @@ describe("#stream proxy interface listeners", function()
     end
   end)
 end)
+
+for _, strategy in helpers.each_strategy() do
+  if strategy ~= "off" then
+    describe("[stream]", function()
+      local MESSAGE = "echo, ping, pong. echo, ping, pong. echo, ping, pong.\n"
+      lazy_setup(function()
+        local bp = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+          "plugins",
+        })
+
+        local service = assert(bp.services:insert {
+          host     = helpers.mock_upstream_host,
+          port     = helpers.mock_upstream_stream_port,
+          protocol = "tcp",
+        })
+
+        assert(bp.routes:insert {
+          destinations = {
+            { port = 19000 },
+          },
+          protocols = {
+            "tcp",
+          },
+          service = service,
+        })
+
+        assert(helpers.start_kong({
+          database      = strategy,
+          stream_listen = helpers.get_proxy_ip(false) .. ":19000, " ..
+                          helpers.get_proxy_ip(false) .. ":18000, " ..
+                          helpers.get_proxy_ip(false) .. ":17000",
+          port_maps     = "19000:18000",
+          plugins       = "bundled,ctx-tests",
+          nginx_conf    = "spec/fixtures/custom_nginx.template",
+          proxy_listen  = "off",
+          admin_listen  = "off",
+        }))
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      it("routes by destination port without port map", function()
+        local tcp_client = ngx.socket.tcp()
+        assert(tcp_client:connect(helpers.get_proxy_ip(false), 19000))
+        assert(tcp_client:send(MESSAGE))
+        local body = assert(tcp_client:receive("*a"))
+        assert.equal(MESSAGE, body)
+        assert(tcp_client:close())
+      end)
+
+      it("uses port maps configuration to route by destination port", function()
+        local tcp_client = ngx.socket.tcp()
+        assert(tcp_client:connect(helpers.get_proxy_ip(false), 18000))
+        assert(tcp_client:send(MESSAGE))
+        local body = assert(tcp_client:receive("*a"))
+        assert.equal(MESSAGE, body)
+        assert(tcp_client:close())
+      end)
+
+      it("fails to route when no port map is specified and route is not found", function()
+        local tcp_client = ngx.socket.tcp()
+        assert(tcp_client:connect(helpers.get_proxy_ip(false), 17000))
+        assert(tcp_client:send(MESSAGE))
+        local body, err = tcp_client:receive("*a")
+        if not err then
+          assert.equal("", body)
+        else
+          assert.equal("connection reset by peer", err)
+        end
+        assert(tcp_client:close())
+      end)
+    end)
+  end
+end

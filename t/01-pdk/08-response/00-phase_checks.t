@@ -151,6 +151,17 @@ qq{
                 body_filter   = true,
                 log           = true,
                 admin_api     = true,
+            }, {
+                method        = "error",
+                args          = { 500 },
+                init_worker   = false,
+                certificate   = "pending",
+                rewrite       = true,
+                access        = true,
+                header_filter = "pending",
+                body_filter   = false,
+                log           = false,
+                admin_api     = true,
             }
         }
 

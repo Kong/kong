@@ -1,9 +1,11 @@
 local version = setmetatable({
   major = 2,
-  minor = 0,
-  patch = 5,
-  -- suffix = ""
+  minor = 1,
+  patch = 0,
+  --suffix = ""
 }, {
+  -- our Makefile during certain releases adjusts this line. Any changes to
+  -- the format need to be reflected in both places
   __tostring = function(t)
     return string.format("%d.%d.%d%s", t.major, t.minor, t.patch,
                          t.suffix or "")

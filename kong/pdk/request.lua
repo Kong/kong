@@ -30,6 +30,7 @@ cjson.decode_array_with_array_mt(true)
 local function new(self)
   local _REQUEST = {}
 
+  local HOST_PORTS             = self.configuration.host_ports or {}
 
   local MIN_HEADERS            = 1
   local MAX_HEADERS_DEFAULT    = 100
@@ -53,6 +54,7 @@ local function new(self)
   local X_FORWARDED_PROTO      = "X-Forwarded-Proto"
   local X_FORWARDED_HOST       = "X-Forwarded-Host"
   local X_FORWARDED_PORT       = "X-Forwarded-Port"
+  local X_FORWARDED_PREFIX     = "X-Forwarded-Prefix"
 
 
   ---
@@ -149,7 +151,7 @@ local function new(self)
   -- `X-Forwarded-Host` if it comes from a trusted source. The returned value
   -- is normalized to lower-case.
   --
-  -- Whether this function considers `X-Forwarded-Proto` or not depends on
+  -- Whether this function considers `X-Forwarded-Host` or not depends on
   -- several Kong configuration parameters:
   --
   -- * [trusted\_ips](https://getkong.org/docs/latest/configuration/#trusted_ips)
@@ -199,9 +201,16 @@ local function new(self)
   -- **Note**: we do not currently offer support for Forwarded HTTP Extension
   -- (RFC 7239) since it is not supported by ngx_http_realip_module.
   --
-  -- @function kong.request.get_forwareded_port
+  -- When running Kong behind the L4 port mapping (or forwarding) you can also
+  -- configure:
+  -- * [port\_maps](https://getkong.org/docs/latest/configuration/#port_maps)
+  --
+  -- `port_maps` configuration parameter enables this function to return the
+  -- port to which the port Kong is listening to is mapped to (in case they differ).
+  --
+  -- @function kong.request.get_forwarded_port
   -- @phases rewrite, access, header_filter, body_filter, log, admin_api
-  -- @treturn number the forwared port
+  -- @treturn number the forwarded port
   -- @usage
   -- kong.request.get_forwarded_port() -- 1234
   function _REQUEST.get_forwarded_port()
@@ -231,7 +240,48 @@ local function new(self)
       end
     end
 
-    return _REQUEST.get_port()
+    local host_port = ngx.ctx.host_port
+    if host_port then
+      return host_port
+    end
+
+    local port = _REQUEST.get_port()
+    return HOST_PORTS[port] or port
+  end
+
+
+  ---
+  -- Returns the path component of the request's URL, but also considers
+  -- `X-Forwarded-Prefix` if it comes from a trusted source. The value
+  -- is returned as a Lua string.
+  --
+  -- Whether this function considers `X-Forwarded-Prefix` or not depends on
+  -- several Kong configuration parameters:
+  --
+  -- * [trusted\_ips](https://getkong.org/docs/latest/configuration/#trusted_ips)
+  -- * [real\_ip\_header](https://getkong.org/docs/latest/configuration/#real_ip_header)
+  -- * [real\_ip\_recursive](https://getkong.org/docs/latest/configuration/#real_ip_recursive)
+  --
+  -- **Note**: we do not currently do any normalization on the request
+  --           path except return `"/"` on empty path.
+  --
+  -- @function kong.request.get_forwarded_path
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
+  -- @treturn string the forwarded path
+  -- @usage
+  -- kong.request.get_forwarded_path() -- /path
+  function _REQUEST.get_forwarded_path()
+    check_phase(PHASES.request)
+
+    if self.ip.is_trusted(self.client.get_ip()) then
+      local prefix = _REQUEST.get_header(X_FORWARDED_PREFIX)
+      if prefix then
+        return prefix
+      end
+    end
+
+    local path = _REQUEST.get_path()
+    return path == "" and "/" or path
   end
 
 

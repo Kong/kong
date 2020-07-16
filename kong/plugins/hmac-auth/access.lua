@@ -6,6 +6,7 @@ local utils = require "kong.tools.utils"
 
 local ngx = ngx
 local kong = kong
+local error = error
 local time = ngx.time
 local abs = math.abs
 local decode_base64 = ngx.decode_base64
@@ -186,8 +187,7 @@ local function load_credential(username)
   end
 
   if err then
-    kong.log.err(err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return error(err)
   end
 
   return credential
@@ -236,6 +236,8 @@ end
 
 
 local function set_consumer(consumer, credential)
+  kong.client.authenticate(consumer, credential)
+
   local set_header = kong.service.request.set_header
   local clear_header = kong.service.request.clear_header
 
@@ -257,19 +259,17 @@ local function set_consumer(consumer, credential)
     clear_header(constants.HEADERS.CONSUMER_USERNAME)
   end
 
-  kong.client.authenticate(consumer, credential)
+  if credential and credential.username then
+    set_header(constants.HEADERS.CREDENTIAL_IDENTIFIER, credential.username)
+    set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
+  else
+    clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
+    clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
+  end
 
   if credential then
-    if credential.username then
-      set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
-    else
-      clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
-    end
-
     clear_header(constants.HEADERS.ANONYMOUS)
-
   else
-    clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
     set_header(constants.HEADERS.ANONYMOUS, true)
   end
 end
@@ -340,8 +340,7 @@ local function do_authentication(conf)
                                       kong.client.load_consumer,
                                       credential.consumer.id)
   if err then
-    kong.log.err(err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return error(err)
   end
 
   set_consumer(consumer, credential)
@@ -369,14 +368,13 @@ function _M.execute(conf)
                                                 kong.client.load_consumer,
                                                 conf.anonymous, true)
       if err then
-        kong.log.err("failed to load anonymous consumer:", err)
-        return kong.response.exit(500, { message = "An unexpected error occurred" })
+        return error(err)
       end
 
-      set_consumer(consumer, nil)
+      set_consumer(consumer)
 
     else
-      return kong.response.exit(err.status, { message = err.message }, err.headers)
+      return kong.response.error(err.status, err.message, err.headers)
     end
   end
 end

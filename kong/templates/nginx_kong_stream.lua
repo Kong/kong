@@ -32,7 +32,7 @@ lua_shared_dict stream_kong_db_cache_2             ${{MEM_CACHE_SIZE}};
 lua_shared_dict stream_kong_db_cache_miss_2        12m;
 > end
 > if database == "cassandra" then
-lua_shared_dict  stream_kong_cassandra             5m;
+lua_shared_dict stream_kong_cassandra              5m;
 > end
 
 > if ssl_ciphers then
@@ -82,8 +82,8 @@ server {
     access_log ${{PROXY_ACCESS_LOG}} basic;
     error_log  ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
-> for i = 1, #trusted_ips do
-    set_real_ip_from $(trusted_ips[i]);
+> for _, ip in ipairs(trusted_ips) do
+    set_real_ip_from $(ip);
 > end
 
     # injected nginx_sproxy_* directives

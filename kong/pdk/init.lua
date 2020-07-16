@@ -211,7 +211,7 @@ assert(package.loaded["resty.core"])
 
 local MAJOR_VERSIONS = {
   [1] = {
-    version = "1.3.1",
+    version = "1.4.0",
     modules = {
       "table",
       "node",
@@ -232,6 +232,9 @@ local MAJOR_VERSIONS = {
   latest = 1,
 }
 
+if ngx.config.subsystem == 'http' then
+  table.insert(MAJOR_VERSIONS[1].modules, 'client.tls')
+end
 
 local _PDK = {
   major_versions = MAJOR_VERSIONS,
@@ -300,7 +303,7 @@ function _PDK.new(kong_config, major_version, self)
   return setmetatable(self, {
     __index = function(t, k)
       if k == "core_log" then
-        return rawget(t, "_log")
+        return (rawget(t, "_log"))
       end
 
       if k == "log" then
@@ -308,7 +311,7 @@ function _PDK.new(kong_config, major_version, self)
           return t.ctx.core.log
         end
 
-        return rawget(t, "_log")
+        return (rawget(t, "_log"))
       end
     end
   })

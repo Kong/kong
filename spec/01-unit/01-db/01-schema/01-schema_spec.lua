@@ -1687,23 +1687,6 @@ describe("schema", function()
       }))
     end)
 
-    it("fails on invalid input", function()
-      local Test = Schema.new({
-        fields = {
-          { a = { type = "string"  }, },
-          { b = { type = "number" }, },
-          { c = { type = "number", default = 110 }, },
-        }
-      })
-      Test.primary_key = { "a", "c" }
-      local ok, err = Test:validate_primary_key(1234)
-      assert.falsy(ok)
-      assert.same({
-        a = 'missing primary key',
-        c = 'missing primary key' ,
-      }, err)
-    end)
-
   end)
 
   describe("validate_insert", function()
@@ -3828,7 +3811,7 @@ describe("schema", function()
       local transformed_entity, _ = TestEntities:transform(entity)
 
       assert.truthy(transformed_entity)
-      assert.equal("Bob?", transformed_entity.name)
+      assert.equal("How are you Bob?", transformed_entity.name)
     end)
 
     it("transforms any field not just those given as an input", function()

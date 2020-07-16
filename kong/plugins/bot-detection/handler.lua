@@ -14,8 +14,8 @@ local BAD_REQUEST = 400
 local FORBIDDEN = 403
 
 local MATCH_EMPTY     = 0
-local MATCH_WHITELIST = 1
-local MATCH_BLACKLIST = 2
+local MATCH_ALLOW = 1
+local MATCH_DENY = 2
 local MATCH_BOT       = 3
 
 
@@ -36,18 +36,18 @@ end
 local function examine_agent(user_agent, conf)
   user_agent = strip(user_agent)
 
-  if conf.whitelist then
-    for _, rule in ipairs(conf.whitelist) do
+  if conf.allow then
+    for _, rule in ipairs(conf.allow) do
       if re_find(user_agent, rule, "jo") then
-        return MATCH_WHITELIST
+        return MATCH_ALLOW
       end
     end
   end
 
-  if conf.blacklist then
-    for _, rule in ipairs(conf.blacklist) do
+  if conf.deny then
+    for _, rule in ipairs(conf.deny) do
       if re_find(user_agent, rule, "jo") then
-        return MATCH_BLACKLIST
+        return MATCH_DENY
       end
     end
   end
@@ -64,7 +64,7 @@ end
 function BotDetectionHandler:access(conf)
   local user_agent, err = get_user_agent()
   if err then
-    return kong.response.exit(BAD_REQUEST, { message = err })
+    return kong.response.error(BAD_REQUEST, err)
   end
 
   if not user_agent then
@@ -83,10 +83,10 @@ function BotDetectionHandler:access(conf)
     cache:set(user_agent, match)
   end
 
-  -- if we saw a blacklisted UA or bot, return forbidden. otherwise,
+  -- if we saw a denied UA or bot, return forbidden. otherwise,
   -- fall out of our handler
   if match > 1 then
-    return kong.response.exit(FORBIDDEN, { message = "Forbidden" })
+    return kong.response.error(FORBIDDEN)
   end
 end
 

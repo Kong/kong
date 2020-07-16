@@ -1,5 +1,6 @@
 local declarative_config = require "kong.db.schema.others.declarative_config"
 local topological_sort = require "kong.db.schema.topological_sort"
+local workspaces = require "kong.workspaces"
 local pl_file = require "pl.file"
 local lyaml = require "lyaml"
 local cjson = require "cjson.safe"
@@ -10,6 +11,7 @@ local deepcopy = tablex.deepcopy
 local null = ngx.null
 local SHADOW = true
 local md5 = ngx.md5
+local pairs = pairs
 local ngx_socket_tcp = ngx.socket.tcp
 local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
 local PREFIX = ngx.config.prefix()
@@ -26,15 +28,18 @@ local Config = {}
 -- specific list of plugins (and their configurations and custom
 -- entities) from a given Kong config.
 -- @tparam table kong_config The Kong configuration table
+-- @tparam boolean partial Input is not a full representation
+-- of the database (e.g. for db_import)
 -- @treturn table A Config schema adjusted for this configuration
-function declarative.new_config(kong_config)
+function declarative.new_config(kong_config, partial)
   local schema, err = declarative_config.load(kong_config.loaded_plugins)
   if not schema then
     return nil, err
   end
 
   local self = {
-    schema = schema
+    schema = schema,
+    partial = partial,
   }
   setmetatable(self, { __index = Config })
   return self
@@ -64,6 +69,21 @@ local function pretty_print_error(err_t, item, indent)
 end
 
 
+-- @treturn table|nil a table with the following format:
+--   {
+--     services: {
+--       ["<uuid>"] = { ... },
+--       ...
+--     },
+
+--   }
+-- @treturn nil|string error message, only if error happened
+-- @treturn nil|table err_t, only if error happened
+-- @treturn table|nil a table with the following format:
+--   {
+--     _format_version: "2.1",
+--     _transform: true,
+--   }
 function Config:parse_file(filename, accept, old_hash)
   if type(filename) ~= "string" then
     error("filename must be a string", 2)
@@ -92,6 +112,21 @@ local function convert_nulls(tbl, from, to)
 end
 
 
+-- @treturn table|nil a table with the following format:
+--   {
+--     services: {
+--       ["<uuid>"] = { ... },
+--       ...
+--     },
+
+--   }
+-- @treturn nil|string error message, only if error happened
+-- @treturn nil|table err_t, only if error happened
+-- @treturn table|nil a table with the following format:
+--   {
+--     _format_version: "2.1",
+--     _transform: true,
+--   }
 function Config:parse_string(contents, filename, accept, old_hash)
   -- we don't care about the strength of the hash
   -- because declarative config is only loaded by Kong administrators,
@@ -99,7 +134,8 @@ function Config:parse_string(contents, filename, accept, old_hash)
   local new_hash = md5(contents)
 
   if old_hash and old_hash == new_hash then
-    return nil, "configuration is identical", nil, nil, old_hash
+    local err = "configuration is identical"
+    return nil, err, { error = err }, nil
   end
 
   -- do not accept Lua by default
@@ -161,27 +197,58 @@ function Config:parse_string(contents, filename, accept, old_hash)
 end
 
 
+-- @tparam dc_table A table with the following format:
+--   {
+--     _format_version: "2.1",
+--     _transform: true,
+--     services: {
+--       ["<uuid>"] = { ... },
+--       ...
+--     },
+--   }
+--   This table is not flattened: entities can exist inside other entities
+-- @treturn table|nil A table with the following format:
+--   {
+--     services: {
+--       ["<uuid>"] = { ... },
+--       ...
+--     },
+--   }
+--   This table is flattened - there are no nested entities inside other entities
+-- @treturn nil|string error message if error
+-- @treturn nil|table err_t if error
+-- @treturn table|nil A table with the following format:
+--   {
+--     _format_version: "2.1",
+--     _transform: true,
+--   }
+-- @treturn string|nil given hash if everything went well,
+--                     new hash if everything went well and no given hash,
 function Config:parse_table(dc_table, hash)
   if type(dc_table) ~= "table" then
     error("expected a table as input", 2)
   end
 
-  local entities, err_t = self.schema:flatten(dc_table)
+  local entities, err_t, meta = self.schema:flatten(dc_table)
   if err_t then
     return nil, pretty_print_error(err_t), err_t
   end
 
-  if not hash then
-    hash = md5(cjson.encode(dc_table))
+  if not self.partial then
+    self.schema:insert_default_workspace_if_not_given(entities)
   end
 
-  return entities, nil, nil, dc_table._format_version, hash
+  if not hash then
+    hash = md5(cjson.encode({ entities, meta }))
+  end
+
+  return entities, nil, nil, meta, hash
 end
 
 
-function declarative.to_yaml_string(entities)
-  convert_nulls(entities, null, lyaml.null)
-  local pok, yaml, err = pcall(lyaml.dump, { entities })
+function declarative.to_yaml_string(tbl)
+  convert_nulls(tbl, null, lyaml.null)
+  local pok, yaml, err = pcall(lyaml.dump, { tbl })
   if not pok then
     return nil, yaml
   end
@@ -216,28 +283,64 @@ function declarative.to_yaml_file(entities, filename)
 end
 
 
-function declarative.load_into_db(dc_table)
-  assert(type(dc_table) == "table")
+local function find_or_create_current_workspace(name)
+  name = name or "default"
+
+  local workspace, err, err_t = kong.db.workspaces:select_by_name(name)
+  if err then
+    return nil, err, err_t
+  end
+
+  if not workspace then
+    workspace, err, err_t = kong.db.workspaces:upsert_by_name(name, {
+      name = name,
+      no_broadcast_crud_event = true,
+    })
+    if err then
+      return nil, err, err_t
+    end
+  end
+
+  workspaces.set_workspace(assert(workspace))
+  return true
+end
+
+
+function declarative.load_into_db(entities, meta)
+  assert(type(entities) == "table")
 
   local schemas = {}
-  for entity_name, _ in pairs(dc_table) do
-    table.insert(schemas, kong.db[entity_name].schema)
+  for entity_name, _ in pairs(entities) do
+    if kong.db[entity_name] then
+      table.insert(schemas, kong.db[entity_name].schema)
+    else
+      return nil, "unknown entity: " .. entity_name
+    end
   end
   local sorted_schemas, err = topological_sort(schemas)
   if not sorted_schemas then
     return nil, err
   end
 
+  local _, err, err_t = find_or_create_current_workspace("default")
+  if err then
+    return nil, err, err_t
+  end
+
+  local options = {
+    transform = meta._transform,
+  }
   local schema, primary_key, ok, err, err_t
   for i = 1, #sorted_schemas do
     schema = sorted_schemas[i]
-    for _, entity in pairs(dc_table[schema.name]) do
+    for _, entity in pairs(entities[schema.name]) do
       entity = deepcopy(entity)
       entity._tags = nil
+      entity.ws_id = nil
 
       primary_key = schema:extract_pk_values(entity)
 
-      ok, err, err_t = kong.db[schema.name]:upsert(primary_key, entity)
+      ok, err, err_t = kong.db[schema.name]:upsert(primary_key, entity, options)
       if not ok then
         return nil, err, err_t
       end
@@ -248,10 +351,12 @@ function declarative.load_into_db(dc_table)
 end
 
 
-local function export_from_db(emitter)
+local function export_from_db(emitter, skip_ws)
   local schemas = {}
   for _, dao in pairs(kong.db.daos) do
-    table.insert(schemas, dao.schema)
+    if not (skip_ws and dao.schema.name == "workspaces") then
+      table.insert(schemas, dao.schema)
+    end
   end
   local sorted_schemas, err = topological_sort(schemas)
   if not sorted_schemas then
@@ -259,7 +364,8 @@ local function export_from_db(emitter)
   end
 
   emitter:emit_toplevel({
-    _format_version = "1.1",
+    _format_version = "2.1",
+    _transform = false,
   })
 
   for _, schema in ipairs(sorted_schemas) do
@@ -275,8 +381,9 @@ local function export_from_db(emitter)
       end
     end
 
-    for row, err in kong.db[name]:each(nil, { nulls = true }) do
-      if err then
+    for row, err in kong.db[name]:each(nil, { nulls = true, workspace = null }) do
+      if not row then
+        kong.log.err(err)
         return nil, err
       end
 
@@ -325,7 +432,7 @@ end
 
 
 function declarative.export_from_db(fd)
-  return export_from_db(fd_emitter.new(fd))
+  return export_from_db(fd_emitter.new(fd), true)
 end
 
 
@@ -354,7 +461,7 @@ end
 
 
 function declarative.export_config()
-  return export_from_db(table_emitter.new())
+  return export_from_db(table_emitter.new(), false)
 end
 
 
@@ -375,27 +482,60 @@ function declarative.get_current_hash()
 end
 
 
-function declarative.load_into_cache(entities, hash, shadow_page)
+local function find_default_ws(entities)
+  for _, v in pairs(entities.workspaces or {}) do
+    if v.name == "default" then
+      return v.id
+    end
+  end
+end
+
+
+-- entities format:
+--   {
+--     services: {
+--       ["<uuid>"] = { ... },
+--       ...
+--     },
+--     ...
+--   }
+-- meta format:
+--   {
+--     _format_version: "2.1",
+--     _transform: true,
+--   }
+function declarative.load_into_cache(entities, meta, hash, shadow)
   -- Array of strings with this format:
   -- "<tag_name>|<entity_name>|<uuid>".
   -- For example, a service tagged "admin" would produce
   -- "admin|services|<the service uuid>"
   local tags = {}
+  meta = meta or {}
+
+  local default_workspace = assert(find_default_ws(entities))
+  local fallback_workspace = default_workspace
+
+  assert(type(fallback_workspace) == "string")
 
   -- Keys: tag name, like "admin"
   -- Values: array of encoded tags, similar to the `tags` variable,
   -- but filtered for a given tag
   local tags_by_name = {}
 
-  kong.core_cache:purge(SHADOW)
-  kong.cache:purge(SHADOW)
+  kong.core_cache:purge(shadow)
+  kong.cache:purge(shadow)
+
+  local transform = meta._transform == nil and true or meta._transform
 
   for entity_name, items in pairs(entities) do
     local dao = kong.db[entity_name]
+    if not dao then
+      return nil, "unknown entity: " .. entity_name
+    end
     local schema = dao.schema
 
     -- Keys: tag_name, eg "admin"
-    -- Values: dictionary of uuids associated to this tag,
+    -- Values: dictionary of keys associated to this tag,
     --         for a specific entity type
     --         i.e. "all the services associated to the 'admin' tag"
     --         The ids are keys, and the values are `true`
@@ -421,20 +561,66 @@ function declarative.load_into_cache(entities, hash, shadow_page)
       end
     end
 
-    local ids = {}
+    local keys_by_ws = {
+      -- map of keys for global queries
+      ["*"] = {}
+    }
     for id, item in pairs(items) do
-      table.insert(ids, id)
+      -- When loading the entities, when we load the default_ws, we
+      -- set it to the current. But this only works in the worker that
+      -- is doing the loading (0), other ones still won't have it
 
-      local cache_key = dao:cache_key(id)
-      item = schema:transform(remove_nulls(item))
-      local ok, err = kong.core_cache:safe_set(cache_key, item, shadow_page)
+      assert(type(fallback_workspace) == "string")
+
+      local ws_id
+      if schema.workspaceable then
+        if item.ws_id == null or item.ws_id == nil then
+          item.ws_id = fallback_workspace
+        end
+        assert(type(item.ws_id) == "string")
+        ws_id = item.ws_id
+
+      else
+        ws_id = ""
+      end
+
+      assert(type(ws_id) == "string")
+
+      local cache_key = dao:cache_key(id, nil, nil, nil, nil, item.ws_id)
+
+      item = remove_nulls(item)
+      if transform then
+        local err
+        item, err = schema:transform(item)
+        if not item then
+          return nil, err
+        end
+      end
+
+      local ok, err = kong.core_cache:safe_set(cache_key, item, shadow)
       if not ok then
         return nil, err
       end
 
+      local global_query_cache_key = dao:cache_key(id, nil, nil, nil, nil, "*")
+      local ok, err = kong.core_cache:safe_set(global_query_cache_key, item, shadow)
+      if not ok then
+        return nil, err
+      end
+
+      -- insert individual entry for global query
+      table.insert(keys_by_ws["*"], cache_key)
+
+      -- insert individual entry for workspaced query
+      if ws_id ~= "" then
+        keys_by_ws[ws_id] = keys_by_ws[ws_id] or {}
+        local keys = keys_by_ws[ws_id]
+        table.insert(keys, cache_key)
+      end
+
       if schema.cache_key then
         local cache_key = dao:cache_key(item)
-        ok, err = kong.core_cache:safe_set(cache_key, item, shadow_page)
+        ok, err = kong.core_cache:safe_set(cache_key, item, shadow)
         if not ok then
           return nil, err
         end
@@ -449,8 +635,13 @@ function declarative.load_into_cache(entities, hash, shadow_page)
             _, unique_key = next(unique_key)
           end
 
-          local cache_key = entity_name .. "|" .. unique .. ":" .. unique_key
-          ok, err = kong.core_cache:safe_set(cache_key, item, shadow_page)
+          local prefix = entity_name .. "|" .. ws_id
+          if schema.fields[unique].unique_across_ws then
+            prefix = entity_name .. "|"
+          end
+
+          local unique_cache_key = prefix .. "|" .. unique .. ":" .. unique_key
+          ok, err = kong.core_cache:safe_set(unique_cache_key, item, shadow)
           if not ok then
             return nil, err
           end
@@ -462,12 +653,22 @@ function declarative.load_into_cache(entities, hash, shadow_page)
           local fschema = kong.db[ref].schema
 
           local fid = declarative_config.pk_string(fschema, item[fname])
-          page_for[ref][fid] = page_for[ref][fid] or {}
-          table.insert(page_for[ref][fid], id)
+
+          -- insert paged search entry for global query
+          page_for[ref]["*"] = page_for[ref]["*"] or {}
+          page_for[ref]["*"][fid] = page_for[ref]["*"][fid] or {}
+          table.insert(page_for[ref]["*"][fid], cache_key)
+
+          -- insert paged search entry for workspaced query
+          page_for[ref][ws_id] = page_for[ref][ws_id] or {}
+          page_for[ref][ws_id][fid] = page_for[ref][ws_id][fid] or {}
+          table.insert(page_for[ref][ws_id][fid], cache_key)
         end
       end
 
       if item.tags then
+
+        local ws = schema.workspaceable and ws_id or ""
         for _, tag_name in ipairs(item.tags) do
           table.insert(tags, tag_name .. "|" .. entity_name .. "|" .. id)
 
@@ -475,58 +676,69 @@ function declarative.load_into_cache(entities, hash, shadow_page)
           table.insert(tags_by_name[tag_name], tag_name .. "|" .. entity_name .. "|" .. id)
 
           taggings[tag_name] = taggings[tag_name] or {}
-          taggings[tag_name][id] = true
+          taggings[tag_name][ws] = taggings[tag_name][ws] or {}
+          taggings[tag_name][ws][cache_key] = true
         end
       end
     end
 
-    local ok, err = kong.core_cache:safe_set(entity_name .. "|list", ids, shadow_page)
-    if not ok then
-      return nil, err
+    for ws_id, keys in pairs(keys_by_ws) do
+      local entity_prefix = entity_name .. "|" .. (schema.workspaceable and ws_id or "")
+
+      local ok, err = kong.core_cache:safe_set(entity_prefix .. "|@list", keys, shadow)
+      if not ok then
+        return nil, err
+      end
+
+      for ref, wss in pairs(page_for) do
+        local fids = wss[ws_id]
+        if fids then
+          for fid, entries in pairs(fids) do
+            local key = entity_prefix .. "|" .. ref .. "|" .. fid .. "|@list"
+            local ok, err = kong.core_cache:safe_set(key, entries, shadow)
+            if not ok then
+              return nil, err
+            end
+          end
+        end
+      end
     end
 
-    for ref, fids in pairs(page_for) do
-      for fid, entries in pairs(fids) do
-        local key = entity_name .. "|" .. ref .. "|" .. fid .. "|list"
-        ok, err = kong.core_cache:safe_set(key, entries, shadow_page)
+    -- taggings:admin|services|ws_id|@list -> uuids of services tagged "admin" on workspace ws_id
+    for tag_name, workspaces_dict in pairs(taggings) do
+      for ws_id, keys_dict in pairs(workspaces_dict) do
+        local key = "taggings:" .. tag_name .. "|" .. entity_name .. "|" .. ws_id .. "|@list"
+
+        -- transform the dict into a sorted array
+        local arr = {}
+        local len = 0
+        for id in pairs(keys_dict) do
+          len = len + 1
+          arr[len] = id
+        end
+        -- stay consistent with pagination
+        table.sort(arr)
+        local ok, err = kong.core_cache:safe_set(key, arr, shadow)
         if not ok then
           return nil, err
         end
       end
     end
-
-    -- taggings:admin|services|list -> uuids of services tagged "admin"
-    for tag_name, entity_ids_dict in pairs(taggings) do
-      local key = "taggings:" .. tag_name .. "|" .. entity_name .. "|list"
-      -- transform the dict into a sorted array
-      local arr = {}
-      local len = 0
-      for id in pairs(entity_ids_dict) do
-        len = len + 1
-        arr[len] = id
-      end
-      -- stay consistent with pagination
-      table.sort(arr)
-      ok, err = kong.core_cache:safe_set(key, arr, shadow_page)
-      if not ok then
-        return nil, err
-      end
-    end
   end
 
   for tag_name, tags in pairs(tags_by_name) do
-    -- tags:admin|list -> all tags tagged "admin", regardless of the entity type
+    -- tags:admin|@list -> all tags tagged "admin", regardless of the entity type
     -- each tag is encoded as a string with the format "admin|services|uuid", where uuid is the service uuid
-    local key = "tags:" .. tag_name .. "|list"
-    local ok, err = kong.core_cache:safe_set(key, tags, shadow_page)
+    local key = "tags:" .. tag_name .. "|@list"
+    local ok, err = kong.core_cache:safe_set(key, tags, shadow)
     if not ok then
       return nil, err
     end
   end
 
-  -- tags|list -> all tags, with no distinction of tag name or entity type.
+  -- tags||@list -> all tags, with no distinction of tag name or entity type.
   -- each tag is encoded as a string with the format "admin|services|uuid", where uuid is the service uuid
-  local ok, err = kong.core_cache:safe_set("tags|list", tags, shadow_page)
+  local ok, err = kong.core_cache:safe_set("tags||@list", tags, shadow)
   if not ok then
     return nil, err
   end
@@ -536,12 +748,13 @@ function declarative.load_into_cache(entities, hash, shadow_page)
     return nil, "failed to set declarative_config:hash in shm: " .. err
   end
 
-  return true
+
+  kong.default_workspace = default_workspace
+  return true, nil, default_workspace
 end
 
 
-function declarative.load_into_cache_with_events(entities, hash)
-
+function declarative.load_into_cache_with_events(entities, meta, hash)
   -- ensure any previous update finished (we're flipped to the latest page)
   local ok, err = kong.worker_events.poll()
   if not ok then
@@ -560,7 +773,7 @@ function declarative.load_into_cache_with_events(entities, hash)
       return nil, err
     end
 
-    local json = cjson.encode({ entities, hash, })
+    local json = cjson.encode({ entities, meta, hash, })
     local bytes
     bytes, err = sock:send(json)
     sock:close()
@@ -572,18 +785,10 @@ function declarative.load_into_cache_with_events(entities, hash)
     assert(bytes == #json, "incomplete config sent to the stream subsystem")
   end
 
-  ok, err = kong.worker_events.post("balancer", "upstreams", {
-    operation = "delete_all",
-    entity = { id = "all", name = "all" }
-  })
-  if not ok then
-    return nil, err
-  end
-
-  ok, err = declarative.load_into_cache(entities, hash, SHADOW)
-
+  local default_ws
+  ok, err, default_ws = declarative.load_into_cache(entities, meta, hash, SHADOW)
   if ok then
-    ok, err = kong.worker_events.post("declarative", "flip_config", true)
+    ok, err = kong.worker_events.post("declarative", "flip_config", default_ws)
     if ok ~= "done" then
       return nil, "failed to flip declarative config cache pages: " .. (err or ok)
     end
@@ -597,25 +802,19 @@ function declarative.load_into_cache_with_events(entities, hash)
     return nil, "failed to persist cache page number inside shdict: " .. err
   end
 
-  kong.core_cache:invalidate("router:version")
-
-  ok, err = kong.worker_events.post("balancer", "upstreams", {
-    operation = "reset",
-    entity = { id = "all", name = "all" }
-  })
-  if not ok then
-    return nil, err
-  end
-
-  ok, err = kong.worker_events.post("balancer", "targets", {
-    operation = "reset",
-    entity = { id = "all", name = "all" }
-  })
-  if not ok then
-    return nil, err
-  end
-
   return true
+end
+
+
+
+function declarative.sanitize_output(entities)
+  entities.workspaces = nil
+
+  for _, s in pairs(entities) do -- set of entities
+    for _, e in pairs(s) do -- individual entity
+      e.ws_id = nil
+    end
+  end
 end
 
 

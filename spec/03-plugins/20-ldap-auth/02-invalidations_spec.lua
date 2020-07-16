@@ -1,7 +1,8 @@
 local helpers = require "spec.helpers"
 local fmt = string.format
 local lower = string.lower
-local md5 = ngx.md5
+local sha1_bin = ngx.sha1_bin
+local to_hex = require "resty.string".to_hex
 
 local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
 
@@ -67,16 +68,16 @@ for _, ldap_strategy in pairs(ldap_strategies) do
         end)
 
         local function cache_key(conf, username, password)
-            local ldap_config_cache = md5(fmt("%s:%u:%s:%s:%u",
-              lower(conf.ldap_host),
-              conf.ldap_port,
-              conf.base_dn,
-              conf.attribute,
-              conf.cache_ttl
-            ))
+          local hash = to_hex(sha1_bin(fmt("%s:%u:%s:%s:%u:%s:%s",
+                                           lower(conf.ldap_host),
+                                           conf.ldap_port,
+                                           conf.base_dn,
+                                           conf.attribute,
+                                           conf.cache_ttl,
+                                           username,
+                                           password)))
 
-          return fmt("ldap_auth_cache:%s:%s:%s", ldap_config_cache,
-                     username, password)
+          return "ldap_auth_cache:" .. hash
         end
 
         describe("authenticated LDAP user get cached", function()
@@ -120,6 +121,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
 
             -- Check that cache is populated
             local cache_key = cache_key(plugin.config, "einstein", "password")
+
             res = assert(admin_client:send {
               method = "GET",
               path   = "/cache/" .. cache_key,

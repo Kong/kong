@@ -4,7 +4,6 @@ local cjson = require "cjson.safe"
 
 for _, strategy in helpers.each_strategy() do
   describe("CP/DP sync works with #" .. strategy .. " backend", function()
-    local proxy_client, client
 
     lazy_setup(function()
       helpers.get_db_utils(strategy, {
@@ -18,6 +17,8 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
         database = strategy,
+        cluster_listen = "127.0.0.1:9005",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
 
       assert(helpers.start_kong({
@@ -27,14 +28,12 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+        cluster_control_plane = "127.0.0.1:9005",
+        proxy_listen = "0.0.0.0:9002",
       }))
-
-      client = helpers.admin_client(10000)
-      proxy_client = helpers.proxy_client()
     end)
 
     lazy_teardown(function()
-      if client then client:close() end
       helpers.stop_kong("servroot2")
       helpers.stop_kong()
     end)
@@ -42,7 +41,12 @@ for _, strategy in helpers.each_strategy() do
     describe("status API", function()
       it("shows DP status", function()
         helpers.wait_until(function()
-          local res = assert(client:get("/clustering/status"))
+          local admin_client = helpers.admin_client()
+          finally(function()
+            admin_client:close()
+          end)
+
+          local res = assert(admin_client:get("/clustering/status"))
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
@@ -58,14 +62,19 @@ for _, strategy in helpers.each_strategy() do
     describe("sync works", function()
       local route_id
 
-      it("proxy on DP follows CP config #flaky", function()
-        local res = assert(client:post("/services", {
-          body = { name = "mockbin-service", url = "https://mockbin.org/request", },
+      it("proxy on DP follows CP config", function()
+        local admin_client = helpers.admin_client(10000)
+        finally(function()
+          admin_client:close()
+        end)
+
+        local res = assert(admin_client:post("/services", {
+          body = { name = "mockbin-service", url = "https://127.0.0.1:15556/request", },
           headers = {["Content-Type"] = "application/json"}
         }))
         assert.res_status(201, res)
 
-        res = assert(client:post("/services/mockbin-service/routes", {
+        res = assert(admin_client:post("/services/mockbin-service/routes", {
           body = { paths = { "/" }, },
           headers = {["Content-Type"] = "application/json"}
         }))
@@ -75,36 +84,45 @@ for _, strategy in helpers.each_strategy() do
         route_id = json.id
 
         helpers.wait_until(function()
-          proxy_client = helpers.proxy_client()
+          local proxy_client = helpers.http_client("127.0.0.1", 9002)
 
-          res = assert(proxy_client:send({
+          res = proxy_client:send({
             method  = "GET",
             path    = "/",
-          }))
+          })
 
-          if res.status == 200 then
+          local status = res and res.status
+          proxy_client:close()
+          if status == 200 then
             return true
           end
-        end, 5)
+        end, 10)
       end)
 
-      it("cache invalidation works on config change #flaky", function()
-        local res = assert(client:send({
+      it("cache invalidation works on config change", function()
+        local admin_client = helpers.admin_client()
+        finally(function()
+          admin_client:close()
+        end)
+
+        local res = assert(admin_client:send({
           method = "DELETE",
           path   = "/routes/" .. route_id,
         }))
         assert.res_status(204, res)
 
         helpers.wait_until(function()
-          proxy_client = helpers.proxy_client()
+          local proxy_client = helpers.http_client("127.0.0.1", 9002)
 
-          res = assert(proxy_client:send({
+          res = proxy_client:send({
             method  = "GET",
             path    = "/",
-          }))
+          })
 
-          -- should remove the route from DP immediately
-          if res.status == 404 then
+          -- should remove the route from DP
+          local status = res and res.status
+          proxy_client:close()
+          if status == 404 then
             return true
           end
         end, 5)

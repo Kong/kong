@@ -5,6 +5,7 @@ return {
   name         = "routes",
   primary_key  = { "id" },
   endpoint_key = "name",
+  workspaceable = true,
   subschema_key = "protocols",
 
   fields = {

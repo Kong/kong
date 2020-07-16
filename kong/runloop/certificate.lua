@@ -2,6 +2,9 @@ local singletons = require "kong.singletons"
 local ngx_ssl = require "ngx.ssl"
 local pl_utils = require "pl.utils"
 local mlcache = require "resty.mlcache"
+local new_tab = require "table.new"
+local openssl_x509_store = require "resty.openssl.x509.store"
+local openssl_x509 = require "resty.openssl.x509"
 
 if jit.arch == 'arm64' then
   jit.off(mlcache.get_bulk)        -- "temporary" workaround for issue #5748 on ARM
@@ -20,10 +23,16 @@ local parse_pem_cert = ngx_ssl.parse_pem_cert
 local parse_pem_priv_key = ngx_ssl.parse_pem_priv_key
 local set_cert = ngx_ssl.set_cert
 local set_priv_key = ngx_ssl.set_priv_key
+local tb_concat   = table.concat
+local tb_sort   = table.sort
+local tostring = tostring
+local ipairs = ipairs
+local ngx_md5 = ngx.md5
 
 
 local default_cert_and_key
 
+local DEFAULT_SNI = "*"
 
 local function log(lvl, ...)
   ngx_log(lvl, "[ssl] ", ...)
@@ -138,6 +147,30 @@ local get_certificate_opts = {
 }
 
 
+local get_ca_store_opts = {
+  l1_serializer = function(cas)
+    local trust_store, err = openssl_x509_store.new()
+    if err then
+      return nil, err
+    end
+
+    for _, ca in ipairs(cas) do
+      local x509, err = openssl_x509.new(ca.cert, "PEM")
+      if err then
+        return nil, err
+      end
+
+      local _, err = trust_store:add(x509)
+      if err then
+        return nil, err
+      end
+    end
+
+    return trust_store
+  end,
+}
+
+
 local function init()
   default_cert_and_key = parse_key_and_cert {
     cert = assert(pl_utils.readfile(singletons.configuration.ssl_cert)),
@@ -161,7 +194,7 @@ local function find_certificate(sni)
 
   local sni_wild_pref, sni_wild_suf = produce_wild_snis(sni)
 
-  local bulk = mlcache.new_bulk(3)
+  local bulk = mlcache.new_bulk(4)
 
   bulk:add("snis:" .. sni, nil, fetch_sni, sni)
 
@@ -172,6 +205,8 @@ local function find_certificate(sni)
   if sni_wild_suf then
     bulk:add("snis:" .. sni_wild_suf, nil, fetch_sni, sni_wild_suf)
   end
+
+  bulk:add("snis:" .. DEFAULT_SNI, nil, fetch_sni, DEFAULT_SNI)
 
   local res, err = kong.core_cache:get_bulk(bulk)
   if err then
@@ -231,10 +266,47 @@ local function execute()
 end
 
 
+local function ca_ids_cache_key(ca_ids)
+  tb_sort(ca_ids)
+  return "ca_stores:" .. ngx_md5(tb_concat(ca_ids, ':'))
+end
+
+
+local function fetch_ca_certificates(ca_ids)
+  local cas = new_tab(#ca_ids, 0)
+  local key = new_tab(1, 0)
+
+  for i, ca_id in ipairs(ca_ids) do
+    key.id = ca_id
+
+    local obj, err = kong.db.ca_certificates:select(key)
+    if not obj then
+      if err then
+        return nil, err
+      end
+
+      return nil, "CA Certificate '" .. tostring(ca_id) .. "' does not exist"
+    end
+
+    cas[i] = obj
+  end
+
+  return cas
+end
+
+
+local function get_ca_certificate_store(ca_ids)
+  return kong.core_cache:get(ca_ids_cache_key(ca_ids),
+                         get_ca_store_opts, fetch_ca_certificates,
+                         ca_ids)
+end
+
+
 return {
   init = init,
   find_certificate = find_certificate,
   produce_wild_snis = produce_wild_snis,
   execute = execute,
   get_certificate = get_certificate,
+  get_ca_certificate_store = get_ca_certificate_store,
 }

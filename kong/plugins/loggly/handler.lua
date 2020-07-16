@@ -1,30 +1,27 @@
-local basic_serializer = require "kong.plugins.log-serializers.basic"
 local cjson = require "cjson"
 
-local LogglyLogHandler = {}
 
-LogglyLogHandler.PRIORITY = 6
-LogglyLogHandler.VERSION = "2.0.0"
-
-local os_date = os.date
+local kong = kong
+local ngx = ngx
+local date = os.date
 local tostring = tostring
-local ngx_log = ngx.log
-local ngx_timer_at = ngx.timer.at
-local ngx_socket_udp = ngx.socket.udp
-local table_concat = table.concat
-local table_insert = table.insert
+local timer_at = ngx.timer.at
+local udp = ngx.socket.udp
+local concat = table.concat
+local insert = table.insert
 
-local function getHostname()
-  local f = io.popen ("/bin/hostname")
+
+local function get_host_name()
+  local f = io.popen("/bin/hostname")
   local hostname = f:read("*a") or ""
   f:close()
   hostname = string.gsub(hostname, "\n$", "")
   return hostname
 end
 
-local HOSTNAME = getHostname()
-local SENDER_NAME = "kong"
 
+local HOSTNAME = get_host_name()
+local SENDER_NAME = "kong"
 local LOG_LEVELS = {
   debug = 7,
   info = 6,
@@ -36,56 +33,65 @@ local LOG_LEVELS = {
   emerg = 0
 }
 
+
 local function merge(conf, message, pri)
   local tags_list = conf.tags
   local tags = {}
   for i = 1, #tags_list do
-    table_insert(tags, "tag=" .. "\"" .. tags_list[i] .. "\"")
+    insert(tags, "tag=" .. '"' .. tags_list[i] .. '"')
   end
 
   local udp_message = {
     "<" .. pri .. ">1",
-    os_date("!%Y-%m-%dT%XZ"),
+    date("!%Y-%m-%dT%XZ"),
     HOSTNAME,
     SENDER_NAME,
     "-",
     "-",
-    "[" .. conf.key .. "@41058", table_concat(tags, " ") .. "]",
+    "[" .. conf.key .. "@41058", concat(tags, " ") .. "]",
     cjson.encode(message)
   }
-  return table_concat(udp_message, " ")
+
+  return concat(udp_message, " ")
 end
+
 
 local function send_to_loggly(conf, message, pri)
   local host = conf.host
   local port = conf.port
   local timeout = conf.timeout
+
   local udp_message = merge(conf, message, pri)
-  local sock = ngx_socket_udp()
+
+  local sock = udp()
+
   sock:settimeout(timeout)
 
   local ok, err = sock:setpeername(host, port)
   if not ok then
-    ngx_log(ngx.ERR, "failed to connect to " .. host .. ":" .. tostring(port) .. ": ", err)
+    kong.log.err("failed to connect to ", host, ":", tostring(port), ": ", err)
     return
   end
+
   local ok, err = sock:send(udp_message)
   if not ok then
-    ngx_log(ngx.ERR, "failed to send data to " .. host .. ":" .. tostring(port) .. ": ", err)
+    kong.log.err("failed to send data to ", host, ":", tostring(port), ": ", err)
   end
 
   local ok, err = sock:close()
   if not ok then
-    ngx_log(ngx.ERR, "failed to close connection from " .. host .. ":" .. tostring(port) .. ": ", err)
+    kong.log.err("failed to close connection from ", host, ":", tostring(port), ": ", err)
     return
   end
 end
 
 local function decide_severity(conf, severity, message)
-  if LOG_LEVELS[severity] <= LOG_LEVELS[conf.log_level] then
-    local pri = 8 + LOG_LEVELS[severity]
-    return send_to_loggly(conf, message, pri)
+  if LOG_LEVELS[severity] > LOG_LEVELS[conf.log_level] then
+    return
   end
+
+  local pri = 8 + LOG_LEVELS[severity]
+  return send_to_loggly(conf, message, pri)
 end
 
 local function log(premature, conf, message)
@@ -95,20 +101,30 @@ local function log(premature, conf, message)
 
   if message.response.status >= 500 then
     return decide_severity(conf, conf.server_errors_severity, message)
-  elseif message.response.status >= 400 then
-    return decide_severity(conf, conf.client_errors_severity, message)
-  else
-    return decide_severity(conf, conf.successful_severity, message)
   end
+
+  if message.response.status >= 400 then
+    return decide_severity(conf, conf.client_errors_severity, message)
+  end
+
+  return decide_severity(conf, conf.successful_severity, message)
 end
+
+
+local LogglyLogHandler = {
+  PRIORITY = 6,
+  VERSION = "2.0.1",
+}
+
 
 function LogglyLogHandler:log(conf)
-  local message = basic_serializer.serialize(ngx)
+  local message = kong.log.serialize()
 
-  local ok, err = ngx_timer_at(0, log, conf, message)
+  local ok, err = timer_at(0, log, conf, message)
   if not ok then
-    ngx_log(ngx.ERR, "failed to create timer: ", err)
+    kong.log.err("failed to create timer: ", err)
   end
 end
+
 
 return LogglyLogHandler

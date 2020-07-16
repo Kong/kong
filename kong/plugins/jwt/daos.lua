@@ -16,6 +16,7 @@ return {
     primary_key = { "id" },
     cache_key = { "key" },
     endpoint_key = "key",
+    workspaceable = true,
     admin_api_name = "jwts",
     admin_api_nested_name = "jwt",
     fields = {

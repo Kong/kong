@@ -389,6 +389,9 @@ describe("kong config", function()
     assert(db.services:truncate())
     assert(db.consumers:truncate())
     assert(db.acls:truncate())
+    assert(db.certificates:truncate())
+    assert(db.targets:truncate())
+    assert(db.upstreams:truncate())
 
     local filename = os.tmpname()
     os.remove(filename)
@@ -436,6 +439,7 @@ describe("kong config", function()
     table.sort(toplevel_keys)
     assert.same({
       "_format_version",
+      "_transform",
       "acls",
       "consumers",
       "keyauth_credentials",
@@ -446,7 +450,8 @@ describe("kong config", function()
 
     convert_yaml_nulls(yaml)
 
-    assert.equals("1.1", yaml._format_version)
+    assert.equals("2.1", yaml._format_version)
+    assert.equals(false, yaml._transform)
 
     assert.equals(2, #yaml.services)
     table.sort(yaml.services, sort_by_name)

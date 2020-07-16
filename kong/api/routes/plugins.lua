@@ -76,8 +76,6 @@ local function patch_plugin(self, db, _, parent)
 
     plugin = plugin or {}
 
-    local post = self.args.post
-
     post.name = post.name or plugin.name
 
     -- Only now we can decode the 'config' table for form-encoded values
