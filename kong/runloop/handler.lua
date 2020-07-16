@@ -443,6 +443,8 @@ local function register_events()
 
         balancer.init()
 
+        ngx.shared.kong:incr("declarative:flips", 1, 0, 60)
+
         return true
       end)
 

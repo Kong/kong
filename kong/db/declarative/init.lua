@@ -16,6 +16,7 @@ local ngx_socket_tcp = ngx.socket.tcp
 local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
 local PREFIX = ngx.config.prefix()
 local SUBSYS = ngx.config.subsystem
+local WORKER_COUNT = ngx.worker.count()
 
 
 local declarative = {}
@@ -801,6 +802,31 @@ function declarative.load_into_cache_with_events(entities, meta, hash)
   if not ok then
     return nil, "failed to persist cache page number inside shdict: " .. err
   end
+
+  ngx.shared.kong:add("declarative:flips", 0, 60)
+
+  local sleep_left = 60
+  local sleep_time = 0.0375
+
+  while sleep_left > 0 do
+    local flips = ngx.shared.kong:get("declarative:flips")
+    if  flips == nil or flips == WORKER_COUNT then
+      break
+    end
+
+    sleep_time = sleep_time * 2
+
+    if sleep_left > sleep_time then
+      ngx.sleep(sleep_time)
+      sleep_left = sleep_left - sleep_time
+
+    else
+      ngx.sleep(sleep_left)
+      break
+    end
+  end
+
+  ngx.shared.kong:delete("declarative:flips")
 
   return true
 end
