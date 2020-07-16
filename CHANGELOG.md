@@ -1,3 +1,9 @@
+## v1.5.0
+
+### Fixed
+
+- made compatible with 2.1.0.0 (remove `run_on`)
+
 ## v1.0.4
 
 ### Fixed
