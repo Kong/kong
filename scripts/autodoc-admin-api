@@ -341,7 +341,7 @@ local function gen_field_info(finfo)
   if finfo.default then
     local json = cjson_encode(finfo.default)
     local default = break_long_code_block(json, ",", 30)
-    table.insert(out, " Defaults to " ..  default .. ".")
+    table.insert(out, " Default: " ..  default .. ".")
   end
 
   return table.concat(out)
