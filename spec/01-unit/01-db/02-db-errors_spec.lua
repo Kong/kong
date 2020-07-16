@@ -383,6 +383,23 @@ describe("DB Errors", function()
       end)
     end)
 
+    describe("INVALID_UNIQUE_GLOBAL", function()
+      local err_t = e:invalid_unique_global("bla")
+
+      it("creates", function()
+        assert.same({
+          code = Errors.codes.INVALID_UNIQUE_GLOBAL,
+          name = "invalid global query",
+          strategy = "some_strategy",
+          message = "unique key bla is invalid for global query",
+        }, err_t)
+      end)
+
+      it("__tostring", function()
+        local s = fmt("[%s] %s", err_t.strategy, err_t.message)
+        assert.equals(s, tostring(err_t))
+      end)
+    end)
 
     describe("INVALID_OPTIONS", function()
       local options_errors = {

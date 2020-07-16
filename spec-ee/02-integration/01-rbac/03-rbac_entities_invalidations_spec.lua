@@ -5,15 +5,27 @@ local ee_helpers   = require "spec-ee.helpers"
 local POLL_INTERVAL = 0.3
 
 
+local function wait_until_admin_client_2_is(status, params)
+  helpers.wait_until(function()
+    local admin_client_2 = helpers.http_client("127.0.0.1", 9001)
+    local res_2 = admin_client_2:send(params)
+    if not res_2 then
+      admin_client_2:close()
+    end
+    local res_status = res_2.status
+    admin_client_2:close()
+    return res_status == status
+  end)
+end
+
+
 for _, strategy in helpers.each_strategy() do
 
 describe("rbac entities are invalidated with db: #" .. strategy, function()
 
   local admin_client_1
-  local admin_client_2
 
   local db, bp
-  local wait_for_propagation
 
   setup(function()
     bp, db = helpers.get_db_utils(strategy)
@@ -48,11 +60,6 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
     })
 
     admin_client_1 = helpers.http_client("127.0.0.1", 8001)
-    admin_client_2 = helpers.http_client("127.0.0.1", 9001)
-
-    wait_for_propagation = function()
-      ngx.sleep(POLL_INTERVAL + db_update_propagation)
-    end
   end)
 
   teardown(function()
@@ -62,12 +69,10 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
 
   before_each(function()
     admin_client_1 = helpers.http_client("127.0.0.1", 8001)
-    admin_client_2 = helpers.http_client("127.0.0.1", 9001)
   end)
 
   after_each(function()
     admin_client_1:close()
-    admin_client_2:close()
   end)
 
   describe("RBAC (user_roles)", function()
@@ -132,7 +137,7 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
       })
       assert.res_status(200, res_1)
 
-      local res_2 = assert(admin_client_2:send {
+      wait_until_admin_client_2_is(200, {
         method  = "GET",
         path    = "/rbac/users/bob/roles",
         headers = {
@@ -140,11 +145,9 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
           ["Content-Type"]     = "application/json",
         },
       })
-      assert.res_status(200, res_2)
     end)
 
-    -- XXX: this keeps messing randomly. I would say it works 1 / 5
-    it("on create #flaky", function()
+    it("on create", function()
       -- this is bob
       -- bob cant see any resources!
       local res = assert(admin_client_1:send {
@@ -157,7 +160,7 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
       })
       assert.res_status(403, res)
 
-      res = assert(admin_client_2:send {
+      wait_until_admin_client_2_is(403, {
         method = "GET",
         path   = "/routes",
         headers = {
@@ -165,7 +168,6 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
           ["Content-Type"]     = "application/json",
         },
       })
-      assert.res_status(403, res)
 
       -- give bob read-only access
       local admin_res = assert(admin_client_1:send {
@@ -194,9 +196,7 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
       })
       assert.res_status(200, res_1)
 
-      wait_for_propagation()
-
-      local res_2 = assert(admin_client_2:send {
+      wait_until_admin_client_2_is(200, {
         method = "GET",
         path   = "/routes",
         headers = {
@@ -204,7 +204,6 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
           ["Content-Type"]     = "application/json",
         },
       })
-      assert.res_status(200, res_2)
     end)
 
     it("on update", function()
@@ -222,7 +221,7 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
       })
       assert.res_status(403, res)
 
-      local res = admin_client_1:post("/services/".. service.id .."/routes", {
+      admin_client_1:post("/services/".. service.id .."/routes", {
         headers = {
           ["Kong-Admin-Token"] = "bob",
           ["Content-Type"]     = "application/json",
@@ -230,13 +229,11 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
         body = {
           name         = "example",
           hosts        = { "example.com" },
-          upstream_url = helpers.mock_upstream_url,
         },
       })
+      admin_client_1:close()
 
-      assert.res_status(403, res)
-
-      res = assert(admin_client_2:send {
+      wait_until_admin_client_2_is(403, {
         method = "POST",
         path   = "/services/".. service.id .."/routes",
         headers = {
@@ -246,12 +243,11 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
         body = {
           name         = "example",
           hosts        = {"example.com"},
-          upstream_url = helpers.mock_upstream_url,
         },
       })
-      assert.res_status(403, res)
 
       -- give bob read-write access
+      admin_client_1 = helpers.http_client("127.0.0.1", 8001)
       local admin_res = assert(admin_client_1:send {
         method = "POST",
         path   = "/rbac/users/bob/roles",
@@ -280,20 +276,17 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
       }))
       assert.res_status(201, res_1)
 
-      wait_for_propagation()
-
-      local res_2 = assert(admin_client_2:post("/services/".. service.id .."/routes", {
+      wait_until_admin_client_2_is(201, {
+        method = "POST",
+        path = "/services/".. service.id .."/routes",
         headers = {
           ["Kong-Admin-Token"] = "bob",
           ["Content-Type"]     = "application/json",
         },
         body = {
-          -- TODO:  add name after 1.0 merge
-          -- name         = "example2",
-          hosts        ={"example.com"},
+          hosts = {"example.com"},
         },
-      }))
-      assert.res_status(201, res_2)
+      })
     end)
 
     it("on delete", function()
@@ -324,14 +317,11 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
         body = {
           name         = "example",
           hosts        = {"example.com"},
-          upstream_url = helpers.mock_upstream_url,
         },
       })
       assert.res_status(403, res_1)
 
-      wait_for_propagation()
-
-      local res_2 = assert(admin_client_2:send {
+      wait_until_admin_client_2_is(403, {
         method = "POST",
         path   = "/services/".. service.id .."/routes",
         headers = {
@@ -341,10 +331,8 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
         body = {
           name         = "example2",
           hosts        = {"example.com"},
-          upstream_url = helpers.mock_upstream_url,
         },
       })
-      assert.res_status(403, res_2)
     end)
   end)
 
@@ -389,16 +377,13 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
       })
       assert.res_status(401, res_1)
 
-      wait_for_propagation()
-
-      local res_2 = assert(admin_client_2:send {
+      wait_until_admin_client_2_is(401, {
         method  = "GET",
         path    = "/",
         headers = {
           ["Kong-Admin-Token"] = "herb",
         },
       })
-      assert.res_status(401, res_2)
     end)
 
     it("on update", function()
@@ -427,16 +412,13 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
       })
       assert.res_status(200, res_1)
 
-      wait_for_propagation()
-
-      local res_2 = assert(admin_client_2:send {
+      wait_until_admin_client_2_is(200, {
         method  = "GET",
         path    = "/",
         headers = {
           ["Kong-Admin-Token"] = "herb",
         },
       })
-      assert.res_status(200, res_2)
     end)
   end)
 
@@ -467,14 +449,13 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
       })
       assert.res_status(403, res_1)
 
-      local res_2 = assert(admin_client_2:send {
+      wait_until_admin_client_2_is(403, {
         method  = "GET",
         path    = "/",
         headers = {
           ["Kong-Admin-Token"] = "alice",
         },
       })
-      assert.res_status(403, res_2)
 
       res_1 = assert(admin_client_1:send {
         method  = "GET",
@@ -485,14 +466,13 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
       })
       assert.res_status(403, res_1)
 
-      res_2 = assert(admin_client_2:send {
+      wait_until_admin_client_2_is(403, {
         method  = "GET",
         path    = "/status",
         headers = {
           ["Kong-Admin-Token"] = "alice",
         },
       })
-      assert.res_status(403, res_2)
 
       res_1 = assert(admin_client_1:send {
         method  = "GET",
@@ -506,7 +486,12 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
       local json_1 = cjson.decode(body_1)
       assert.same({endpoints = {}, entities = {}}, json_1)
 
-      res_2 = assert(admin_client_2:send {
+      local admin_client_2 = helpers.http_client("127.0.0.1", 9001)
+      finally(function()
+        admin_client_2:close()
+      end)
+
+      local res_2 = assert(admin_client_2:send {
         method  = "GET",
         path    = "/rbac/users/alice/permissions",
         headers = {
@@ -545,16 +530,13 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
       })
       assert.res_status(200, res_1)
 
-      wait_for_propagation()
-
-      local res_2 = assert(admin_client_2:send {
+      wait_until_admin_client_2_is(200, {
         method = "GET",
         path   = "/",
         headers = {
           ["Kong-Admin-Token"] = "alice",
         },
       })
-      assert.res_status(200, res_2)
     end)
 
     it("on update", function()
@@ -585,16 +567,13 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
       })
       assert.res_status(200, res_1)
 
-      wait_for_propagation()
-
-      local res_2 = assert(admin_client_2:send {
+      wait_until_admin_client_2_is(200, {
         method = "GET",
         path   = "/status",
         headers = {
           ["Kong-Admin-Token"] = "alice",
         },
       })
-      assert.res_status(200, res_2)
     end)
 
     pending("on delete", function()
@@ -625,16 +604,13 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
       })
       assert.res_status(403, res_1)
 
-      wait_for_propagation()
-
-      local res_2 = assert(admin_client_2:send {
+      wait_until_admin_client_2_is(403, {
         method = "GET",
         path   = "/",
         headers = {
           ["Kong-Admin-Token"] = "alice",
         },
       })
-      assert.res_status(403, res_2)
     end)
   end)
 end)

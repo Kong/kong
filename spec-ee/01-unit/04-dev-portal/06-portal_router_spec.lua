@@ -2,6 +2,7 @@ local constants  = require "kong.constants"
 local router     = require "kong.portal.router"
 local workspaces = require "kong.workspaces"
 local singletons = require "kong.singletons"
+local utils      = require "kong.tools.utils"
 
 local valid_extension_list = constants.PORTAL_RENDERER.EXTENSION_LIST
 
@@ -50,6 +51,7 @@ describe("portal_router", function()
     before_each(function()
       stub(workspaces, "get_workspace").returns({
         name = "default",
+        id = utils.uuid(),
         config = {},
       })
 
@@ -173,6 +175,7 @@ describe("portal_router", function()
     before_each(function()
       stub(workspaces, "get_workspace").returns({
         name = "default",
+        id = utils.uuid(),
         config = {},
       })
     end)
@@ -263,6 +266,7 @@ describe("portal_router", function()
       before_each(function()
         stub(workspaces, "get_workspace").returns({
           name = "default",
+          id = utils.uuid(),
           config = {},
         })
 
@@ -321,6 +325,7 @@ describe("portal_router", function()
       before_each(function()
         stub(workspaces, "get_workspace").returns({
           name = "default",
+          id = utils.uuid(),
           config = {},
         })
 

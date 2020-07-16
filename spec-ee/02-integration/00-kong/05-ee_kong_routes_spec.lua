@@ -2,7 +2,6 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local enums = require "kong.enterprise_edition.dao.enums"
 local admins = require "kong.enterprise_edition.admins_helpers"
-local scope = require "kong.enterprise_edition.workspaces.scope"
 local ee_helpers = require "spec-ee.helpers"
 local rbac = require "kong.rbac"
 
@@ -191,9 +190,7 @@ for _, strategy in helpers.each_strategy() do
         if err then
           ws1 = db.workspaces:select_by_name("test-ws-1")
         end
-        local role1 = scope.run_with_ws_scope({ws1}, function ()
-          return db.rbac_roles:insert({ name = "hello" })
-        end)
+        local role1 = db.rbac_roles:insert({ name = "hello" }, { workspace = ws1.id })
         assert(role1)
 
         ngx.ctx.workspace = ws.id

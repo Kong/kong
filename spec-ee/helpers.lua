@@ -3,18 +3,18 @@ local listeners = require "kong.conf_loader.listeners"
 local cjson = require "cjson.safe"
 local assert = require "luassert"
 local utils = require "kong.tools.utils"
+local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 
 
 local _M = {}
 
 
-function _M.register_rbac_resources(db, ws)
-  local utils = require "kong.tools.utils"
+function _M.register_rbac_resources(db, ws_name, ws_table)
   local bit   = require "bit"
   local rbac  = require "kong.rbac"
   local bxor  = bit.bxor
 
-  ws = ws or "default"
+  local opts = ws_table and { workspace = ws_table.id }
 
   -- action int for all
   local action_bits_all = 0x0
@@ -31,7 +31,7 @@ function _M.register_rbac_resources(db, ws)
     id = utils.uuid(),
     name = "read-only",
     comment = "Read-only access across all initial RBAC resources",
-  })
+  }, opts)
 
   if err then
     return nil, nil, err
@@ -40,10 +40,12 @@ function _M.register_rbac_resources(db, ws)
   -- this role only has the 'read-only' permissions
   _, err = db.rbac_role_endpoints:insert({
     role = { id = roles.read_only.id, },
-    workspace = ws or "*",
+    workspace = ws_name or "*",
     endpoint = "*",
     actions = rbac.actions_bitfields.read,
   })
+
+  ws_name = ws_name or "default"
 
   if err then
     return nil, nil, err
@@ -54,7 +56,7 @@ function _M.register_rbac_resources(db, ws)
     id = utils.uuid(),
     name = "admin",
     comment = "CRUD access to most initial resources (no RBAC)",
-  })
+  }, opts)
 
   if err then
     return nil, nil, err
@@ -92,7 +94,7 @@ function _M.register_rbac_resources(db, ws)
     id = utils.uuid(),
     name = "super-admin",
     comment = "Full CRUD access to all initial resources, including RBAC entities",
-  })
+  }, opts)
 
   if err then
     return nil, nil, err
@@ -122,11 +124,11 @@ function _M.register_rbac_resources(db, ws)
 
   local super_admin, err = db.rbac_users:insert({
     id = utils.uuid(),
-    name = "super_gruce-" .. ws,
-    user_token = "letmein-" .. ws,
+    name = "super_gruce-" .. ws_name,
+    user_token = "letmein-" .. ws_name,
     enabled = true,
     comment = "Test - Initial RBAC Super Admin User"
-  })
+  }, opts)
 
   if err then
     return nil, nil, err
@@ -242,18 +244,24 @@ function _M.post(client, path, body, headers, expected_status)
 end
 
 
-function _M.create_admin(email, custom_id, status, bp, db, username)
+function _M.create_admin(email, custom_id, status, db, username, workspace)
+  local opts = workspace and { workspace = workspace.id }
+
   local admin = assert(db.admins:insert({
     username = username or email,
     custom_id = custom_id,
     email = email,
     status = status,
-  }))
+  }, opts))
 
-  local user_token = utils.uuid()
+  local token_res, err = admins_helpers.update_token(admin)
+  if err then
+    return nil, err
+  end
+
   -- only used for tests so we can reference token
   -- WARNING: do not do this outside test environment
-  admin.rbac_user.raw_user_token = user_token
+  admin.rbac_user.raw_user_token = token_res.body.token
 
   return admin
 end

@@ -38,8 +38,16 @@ end
 --   return Developers:validate_update(entity)
 -- end
 
-function _Developers:get_roles(entity)
-  return dao_helpers.get_roles(entity)
+function _Developers:get_roles(entity, options)
+  local workspace
+  if options then
+    workspace = options.workspace
+  end
+  if not workspace then
+    workspace = ngx.ctx.workspace or ngx.null
+  end
+
+  return dao_helpers.get_roles(entity, workspace)
 end
 
 

@@ -118,10 +118,6 @@ cluster_cert_key = NONE
 cluster_mtls = shared
 cluster_ca_cert = NONE
 cluster_server_name = NONE
-nginx_user = nobody nobody
-nginx_worker_processes = auto
-nginx_optimizations = on
-nginx_daemon = on
 mem_cache_size = 128m
 ssl_cert = NONE
 ssl_cert_key = NONE
@@ -141,6 +137,7 @@ status_ssl_cert_key = NONE
 headers = server_tokens, latency_tokens
 trusted_ips = NONE
 error_default_type = text/plain
+upstream_keepalive = 60
 upstream_keepalive_pool_size = 60
 upstream_keepalive_max_requests = 100
 upstream_keepalive_idle_timeout = 60
@@ -148,6 +145,10 @@ upstream_keepalive_idle_timeout = 60
 admin_gui_ssl_cert = NONE
 admin_gui_ssl_cert_key = NONE
 
+nginx_user = nobody nobody
+nginx_worker_processes = auto
+nginx_optimizations = on
+nginx_daemon = on
 nginx_main_daemon = on
 nginx_main_user = nobody nobody
 nginx_main_worker_processes = auto
@@ -169,21 +170,17 @@ nginx_proxy_real_ip_recursive = off
 nginx_upstream_keepalive = 60
 nginx_upstream_keepalive_requests = 100
 nginx_upstream_keepalive_timeout = 60s
-
-nginx_daemon = on
-nginx_user = nobody nobody
-nginx_worker_processes = auto
-nginx_optimizations = on
-client_max_body_size = 0
-client_body_buffer_size = 8k
-real_ip_header = X-Real-IP
-real_ip_recursive = off
-upstream_keepalive = 60
 nginx_http_upstream_keepalive = 60
 nginx_http_upstream_keepalive_requests = 100
 nginx_http_upstream_keepalive_timeout = 60s
 
+client_max_body_size = 0
+client_body_buffer_size = 8k
+real_ip_header = X-Real-IP
+real_ip_recursive = off
+
 database = postgres
+
 pg_host = 127.0.0.1
 pg_port = 5432
 pg_database = kong
@@ -230,6 +227,7 @@ cassandra_repl_strategy = SimpleStrategy
 cassandra_repl_factor = 1
 cassandra_data_centers = dc1:2,dc2:3
 cassandra_schema_consensus_timeout = 10000
+
 declarative_config = NONE
 
 db_update_frequency = 5

@@ -22,9 +22,11 @@ local scope = {}
 --    local ws = db.workspaces:select_by_name("bla")
 --    local r = db.routes:select_by_name("my-route", { workspace = ws.id })
 --
-function scope.run_with_ws_scope(ws_scope, cb, ...)
+function scope.run_with_ws_scope(ws, cb, ...)
+  assert(type(ws) == "table" and ws.id, "ws must be a workspace table")
+
   local old_ws = ngx.ctx.workspace
-  ngx.ctx.workspace = ws_scope[1] and ws_scope[1].id
+  ngx.ctx.workspace = ws.id
   local res, err = cb(...)
   ngx.ctx.workspace = old_ws
   return res, err

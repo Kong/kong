@@ -127,13 +127,15 @@ local function extract_roles(developer)
 end
 
 
-local function get_roles(developer)
+local function get_roles(developer, workspace)
+   assert(workspace, "workspace must be an id (string uuid) or ngx.null to mean global")
+
   local roles = setmetatable({}, cjson.array_mt)
   if not developer.rbac_user then
     return roles
   end
 
-  local existing_roles, err = rbac.get_user_roles(kong.db, developer.rbac_user)
+  local existing_roles, err = rbac.get_user_roles(kong.db, developer.rbac_user, workspace)
   if err then
     return nil, err
   end
@@ -192,7 +194,8 @@ do
       prefixed_role_names[i] = PORTAL_PREFIX .. new_role_names[i]
     end
 
-    local ok, _, errors = rbac.set_user_roles(kong.db, rbac_user, prefixed_role_names)
+    local workspace = workspaces.get_workspace()
+    local ok, _, errors = rbac.set_user_roles(kong.db, rbac_user, prefixed_role_names, workspace.id)
     if not ok then
       local err_t = Errors:schema_violation({ ["@entity"] = errors })
       return nil, tostring(err_t), err_t
@@ -566,7 +569,7 @@ local function create_developer(self, entity, options)
     end
   end
 
-  -- validate develoer meta field against portal extra fields
+  -- validate developer meta field against portal extra fields
   local ok, err = validate_incoming_developer_meta(workspace, entity)
   if not ok then
    local code = Errors.codes.SCHEMA_VIOLATION
@@ -584,7 +587,6 @@ local function create_developer(self, entity, options)
     return nil, err, err_t
   end
 
-  local workspace = workspaces.get_workspace()
   local portal_auth = workspace_config.retrieve(ws_constants.PORTAL_AUTH, workspace)
 
   if portal_auth ~= "openid-connect" then

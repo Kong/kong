@@ -24,7 +24,7 @@ local function can_read(developer, workspace, file_path)
     return false
   end
 
-  local rbac_roles, err = rbac.get_user_roles(singletons.db, rbac_user)
+  local rbac_roles, err = rbac.get_user_roles(singletons.db, rbac_user, workspace)
   if err then
     return nil, err
   end

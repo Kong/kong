@@ -1,9 +1,9 @@
 package = "kong"
-version = "2.1.0beta.1-0"
+version = "2.1.0rc.1-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.1.0-beta.1"
+  tag = "2.1.0-rc.1"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -39,7 +39,7 @@ dependencies = {
   "lua-resty-dns-client == 4.2.0",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-mediador == 0.1.2",
-  "lua-resty-healthcheck == 1.2.0",
+  "lua-resty-healthcheck == 1.3.0",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.1",
   "lua-messagepack == 0.5.2",
@@ -130,6 +130,7 @@ build = {
     ["kong.enterprise_edition.db"] = "kong/enterprise_edition/db/init.lua",
     ["kong.enterprise_edition.workspaces.scope"] = "kong/enterprise_edition/workspaces/scope.lua",
     ["kong.enterprise_edition.workspaces.route_collision"] = "kong/enterprise_edition/workspaces/route_collision.lua",
+    ["kong.enterprise_edition.db.declarative"] = "kong/enterprise_edition/db/declarative/init.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
@@ -293,6 +294,7 @@ build = {
     ["kong.db.dao.plugins"] = "kong/db/dao/plugins.lua",
     ["kong.db.dao.rbac_role_endpoints"] = "kong/db/dao/rbac_role_endpoints.lua",
     ["kong.db.dao.rbac_users"] = "kong/db/dao/rbac_users.lua",
+    ["kong.db.dao.rbac_roles"] = "kong/db/dao/rbac_roles.lua",
     ["kong.db.dao.workspaces"] = "kong/db/dao/workspaces.lua",
     ["kong.db.dao.plugins.go"] = "kong/db/dao/plugins/go.lua",
     ["kong.db.dao.tags"] = "kong/db/dao/tags.lua",

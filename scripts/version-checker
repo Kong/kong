@@ -163,10 +163,10 @@ function check {
       # tag anyway
       if [[ "$(git rev-list -n 1 $to)" != "$(git rev-list -n 1 HEAD)" ]]; then
         if ! confirm "#$index [$name] $to is older than HEAD, check repo, want to check?"; then
-          return 0
+          popd; return 0
         fi
       else
-        return 0
+        popd; return 0
       fi
     else
       >&2 echo "#$index [$name] has new commits from $from until $to"
@@ -228,7 +228,7 @@ function main {
   [[ -n $DISTRIBUTIONS_PATH ]] || DISTRIBUTIONS_PATH=$(get_distributions)
   [[ -d $DISTRIBUTIONS_PATH ]] || err "$DISTRIBUTIONS_PATH does not exist"
 
-  counter=0
+  local counter=0
   pushd $DISTRIBUTIONS_PATH
     for entry in $(yq r kong-images/build.yml -j | jq -c '.enterprise[]'); do
       check $counter $entry

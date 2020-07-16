@@ -1,8 +1,10 @@
 local inspect = require "inspect"
 local Schema = require "kong.db.schema"
+local certificates = require "kong.db.schema.entities.certificates"
 local upstreams = require "kong.db.schema.entities.upstreams"
 
 
+assert(Schema.new(certificates))
 local Upstreams = Schema.new(upstreams)
 
 local function validate(b)

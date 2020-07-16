@@ -1,7 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local ee_helpers = require "spec-ee.helpers"
-local scope = require "kong.enterprise_edition.workspaces.scope"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local utils = require "kong.tools.utils"
 local admins_helpers = require "kong.enterprise_edition.admins_helpers"
@@ -44,36 +43,34 @@ local function setup_ws_defaults(dao, db, workspace)
   -- create a record we can use to test inter-workspace calls
   assert(db.services:insert({  host = workspace .. "-example.com", }))
 
-  ee_helpers.register_rbac_resources(db, endpoint or workspace)
+  ee_helpers.register_rbac_resources(db, endpoint or workspace, ws)
 
   return ws
 end
 
 
 local function admin(db, workspace, name, role, email)
-  return scope.run_with_ws_scope({workspace}, function ()
-    local admin = assert(db.admins:insert({
-      username = name,
-      email = email,
-      status = 4, -- TODO remove once admins are auto-tagged as invited
+  local admin = assert(db.admins:insert({
+    username = name,
+    email = email,
+    status = 4, -- TODO remove once admins are auto-tagged as invited
+  }, { workspace = workspace.id }))
+
+  if role then
+    local role = db.rbac_roles:select_by_name(role)
+    assert(db.rbac_user_roles:insert({
+      user = { id = admin.rbac_user.id },
+      role = { id = role.id }
     }))
+  end
 
-    if role then
-      local role = db.rbac_roles:select_by_name(role)
-      assert(db.rbac_user_roles:insert({
-        user = { id = admin.rbac_user.id },
-        role = { id = role.id }
-      }))
-    end
+  local raw_user_token = utils.uuid()
+  assert(db.rbac_users:update({id = admin.rbac_user.id}, {
+    user_token = raw_user_token
+  }, { workspace = workspace.id }))
+  admin.rbac_user.raw_user_token = raw_user_token
 
-    local raw_user_token = utils.uuid()
-    assert(db.rbac_users:update({id = admin.rbac_user.id}, {
-      user_token = raw_user_token
-    }))
-    admin.rbac_user.raw_user_token = raw_user_token
-
-    return admin
-  end)
+  return admin
 end
 
 

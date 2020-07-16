@@ -467,7 +467,7 @@ describe("Admin API RBAC with #" .. strategy, function()
       it("filters out admins", function()
         local email = "gruceadmin@konghq.com"
 
-        local admin = ee_helpers.create_admin(email, nil, 0, bp, db)
+        local admin = ee_helpers.create_admin(email, nil, 0, db)
 
         local res = assert(client:send {
           method = "GET",
@@ -568,7 +568,7 @@ describe("Admin API RBAC with #" .. strategy, function()
       end)
 
       it("returns 404 for an rbac_user associated to an admin", function()
-        local admin = ee_helpers.create_admin("global@konghq.com", nil, 0, bp, db)
+        local admin = ee_helpers.create_admin("global@konghq.com", nil, 0, db)
 
         local res = assert(client:send {
           method = "GET",

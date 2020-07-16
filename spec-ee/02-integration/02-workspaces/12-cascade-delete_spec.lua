@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local scope = require "kong.enterprise_edition.workspaces.scope"
 
 
 for _, strategy in helpers.each_strategy() do
@@ -22,9 +21,7 @@ for _, strategy in helpers.each_strategy() do
         consumer = { id = c1.id },
       }, w1))
 
-      assert(scope.run_with_ws_scope({ w1 }, function()
-        return db.consumers:delete({ id = c1.id })
-      end))
+      db.consumers:delete({ id = c1.id }, { workspace = w1.id })
     end)
 
     it(":delete_by", function()
@@ -39,9 +36,7 @@ for _, strategy in helpers.each_strategy() do
         consumer = { id = c1.id },
       }, w1))
 
-      assert(scope.run_with_ws_scope({ w1 }, function()
-        return db.consumers:delete_by_username(c1.username)
-      end))
+      db.consumers:delete_by_username(c1.username, { workspace = w1.id })
     end)
   end)
 end
