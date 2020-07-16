@@ -30,14 +30,25 @@ pipeline {
     stage('Checkpoint') {
       steps {
         script {
-          def input_params = input(message: "Should I continue this build?",
-          parameters: [
-            // [$class: 'TextParameterDefinition', defaultValue: '', description: 'custom build', name: 'customername'],
-            choice(name: 'RELEASE_SCOPE',
-            choices: 'internal-preview\nbeta1\nbeta2\nrc1\nrc2\nrc3\nrc4\nrc5\nGA',
-            description: 'What is the release scope?'),
-          ])
-          env.RELEASE_SCOPE = input_params
+          def input_params = input(
+            message: "Kong Enteprise Edition",
+            parameters: [
+              // Add any needed input here (look for available parameters)
+              // https://www.jenkins.io/doc/book/pipeline/syntax/
+              choice(
+                name: 'release_scope',
+                defaultValue: '',
+                description: 'What is the release scope?',
+                choices: [
+                  'internal-preview',
+                  'beta1', 'beta2',
+                  'rc1', 'rc2', 'rc3', 'rc4', 'rc5',
+                  'GA'
+                ]
+              )
+            ]
+          )
+          env.RELEASE_SCOPE = input_params['release_scope']
         }
       }
     }
