@@ -177,7 +177,7 @@ local postgres = {
     fixup_plugin_config = function(_, connector, plugin_name, fixup_fn)
       local pgmoon_json = require("pgmoon.json")
 
-      for row, err in connector:iterate([[SELECT * FROM "plugins"]]) do
+      for row, err in connector:iterate("SELECT * FROM plugins") do
         if err then
           return nil, err
         end
@@ -186,17 +186,19 @@ local postgres = {
           local fix = fixup_fn(row.config)
 
           if fix then
-            assert(connector:query(render([[
-              UPDATE plugins SET config = '%s' WHERE id = '%s'
+
+            local sql = render([[
+              UPDATE plugins SET config = $(NEW_CONFIG)::jsonb WHERE id = '$(ID)'
             ]], {
-              pgmoon_json.json_encode(row.config),
-              row.id,
-            })))
+              NEW_CONFIG = pgmoon_json.encode_json(row.config),
+              ID = row.id,
+            })
+
+            assert(connector:query(sql))
           end
         end
       end
     end,
-
   },
 
 }
