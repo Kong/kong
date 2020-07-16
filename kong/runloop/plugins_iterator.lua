@@ -298,6 +298,10 @@ local function get_next(self)
   return get_next(self) -- Load next plugin
 end
 
+local function zero_iter()
+  return nil
+end
+
 
 local PluginsIterator = {}
 
@@ -319,9 +323,7 @@ local function iterate(self, phase, ctx)
 
   local ws = self.ws[ws_id]
   if not ws then
-    return function()
-      return nil
-    end
+    return zero_iter
   end
 
   local iteration = {
