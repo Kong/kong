@@ -1,7 +1,7 @@
 # Table of Contents
 
 
-- [2.1.0rc1](#210rc1)
+- [2.1.0](#210)
 - [2.0.4](#204)
 - [2.0.3](#203)
 - [2.0.2](#202)
@@ -44,9 +44,9 @@
 - [0.9.9 and prior](#099---20170202)
 
 
-## [2.1.0rc1]
+## [2.1.0]
 
-> Released 2020/07/09
+> Released 2020/07/16
 
 ### Distributions
 
@@ -5142,7 +5142,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[2.1.0rc1]: https://github.com/Kong/kong/compare/2.0.5...2.1.0rc1
+[2.1.0]: https://github.com/Kong/kong/compare/2.0.5...2.1.0
 [2.0.4]: https://github.com/Kong/kong/compare/2.0.3...2.0.4
 [2.0.3]: https://github.com/Kong/kong/compare/2.0.2...2.0.3
 [2.0.2]: https://github.com/Kong/kong/compare/2.0.1...2.0.2
