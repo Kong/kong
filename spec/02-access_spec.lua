@@ -503,7 +503,7 @@ for _, strategy in helpers.each_strategy() do
         assert.are.equal("/requests/path2", json.vars.request_uri)
       end)
 
-      it("test start with default hash", function()
+      it("test start with default hash #flaky", function()
         local ids = generate_consumers(admin_client, {0,1,2}, 3)
         add_canary(route1.id, {
           upstream_uri = "/requests/path2",
@@ -550,7 +550,7 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      it("test start with default hash and upstream_host", function()
+      it("test start with default hash and upstream_host #flaky", function()
         local server1 = http_server(10, 9, 20002)
         local ids = generate_consumers(admin_client, {0,1,2}, 3)
         add_canary(route1.id, {
