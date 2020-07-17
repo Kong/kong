@@ -503,7 +503,7 @@ do
         request_tls = {
           version = request_tls_ver,
           cipher = var.ssl_cipher,
-          client_verify = ngx.ctx.CLIENT_VERIFY_OVERRIDE or var.ssl_client_verify,
+          client_verify = ctx.CLIENT_VERIFY_OVERRIDE or var.ssl_client_verify,
         }
       end
 
