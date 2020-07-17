@@ -174,6 +174,7 @@ local postgres = {
 
     ------------------------------------------------------------------------------
     -- General function to fixup a plugin configuration
+    --
     fixup_plugin_config = function(_, connector, plugin_name, fixup_fn)
       local pgmoon_json = require("pgmoon.json")
 

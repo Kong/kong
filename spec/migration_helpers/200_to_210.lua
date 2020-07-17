@@ -230,7 +230,7 @@ function _M.c_insert(cn, table_name, tbl)
   for i, c in ipairs(columns) do
     bindings[#bindings + 1] = "?"
     local v = tbl[c]
-    if c ~= "custom_id" and c:sub(-2) == "id" then
+    if c ~= "custom_id" and c ~= "client_id" and c:sub(-2) == "id" then
       v = cassandra.uuid(v)
     end
     values[i] = v
