@@ -1,3 +1,9 @@
+## v1.6.1
+
+- Change arguments parser to use Kong PDK for building dynamic redirect uri.
+  Works with Kong `port_maps` configuration.
+
+
 ## v1.6.0
 
 - Add `X-Authenticated-Groups` request header when doing authenticated groups.

@@ -14,7 +14,6 @@ local set_body_data  = ngx.req.set_body_data
 local get_post_args  = ngx.req.get_post_args
 local get_body_data  = ngx.req.get_body_data
 local encode_args    = ngx.encode_args
-local tonumber       = tonumber
 local select         = select
 local ipairs         = ipairs
 local concat         = table.concat
@@ -645,117 +644,19 @@ local function create_get_auth_methods(get_conf_arg)
 end
 
 
-local function create_get_redirect_uri(get_header)
-  return function()
-    -- we try to use current url as a redirect_uri by default
-    -- if none is configured.
-    local scheme
-    local host
-    local port
+local function get_redirect_uri()
+  local scheme = kong.request.get_forwarded_scheme()
+  local host   = kong.request.get_forwarded_host()
+  local port   = kong.request.get_forwarded_port()
+  local path   = kong.request.get_forwarded_path()
 
-    if kong.ip.is_trusted(var.realip_remote_addr or var.remote_addr) then
-      scheme = get_header("X-Forwarded-Proto")
-      if not scheme then
-        scheme = var.scheme
-        if type(scheme) == "table" then
-          scheme = scheme[1]
-        end
-      end
-
-      scheme = lower(scheme)
-
-      host = get_header("X-Forwarded-Host")
-      if host then
-        local s = find(host, "@", 1, true)
-        if s then
-          host = sub(host, s + 1)
-        end
-
-        s = find(host, ":", 1, true)
-        host = s and lower(sub(host, 1, s - 1)) or lower(host)
-
-      else
-        host = var.host
-        if type(host) == "table" then
-          host = host[1]
-        end
-      end
-
-      port = get_header("X-Forwarded-Port")
-      if port then
-        port = tonumber(port)
-        if not port or port < 1 or port > 65535 then
-          local h = get_header("X-Forwarded-Host")
-          if h then
-            local s = find(h, "@", 1, true)
-            if s then
-              h = sub(h, s + 1)
-            end
-
-            s = find(h, ":", 1, true)
-            if s then
-              port = tonumber(sub(h, s + 1))
-            end
-          end
-        end
-      end
-
-      if not port or port < 1 or port > 65535 then
-        port = var.server_port
-        if type(port) == "table" then
-          port = port[1]
-        end
-
-        port = tonumber(port)
-      end
-
-    else
-      scheme = var.scheme
-      if type(scheme) == "table" then
-        scheme = scheme[1]
-      end
-
-      host = var.host
-      if type(host) == "table" then
-        host = host[1]
-      end
-
-      port = var.server_port
-      if type(port) == "table" then
-        port = port[1]
-      end
-
-      port = tonumber(port)
-    end
-
-    local u = var.request_uri
-    if type(u) == "table" then
-      u = u[1]
-    end
-
-    do
-      local s = find(u, "?", 2, true)
-      if s then
-        u = sub(u, 1, s - 1)
-      end
-    end
-
-    local url = { scheme, "://", host }
-
-    if port == 80 and scheme == "http" then
-      url[4] = u
-
-    elseif port == 443 and scheme == "https" then
-      url[4] = u
-
-    else
-      url[4] = ":"
-      url[5] = port
-      url[6] = u
-    end
-
-    return concat(url)
+  if (port == 80  and scheme == "http")
+  or (port == 443 and scheme == "https")
+  then
+    return scheme .. "://" .. host .. path
   end
+
+  return scheme .. "://" .. host .. ":" .. port .. path
 end
 
 
@@ -790,7 +691,6 @@ return function(conf, hdrs, uargs, pargs, jargs)
   local credentials    = create_get_credentials(conf_arg, header, uri_arg, body_arg)
   local param_types    = create_get_param_types(conf_arg)
   local auth_methods   = create_get_auth_methods(conf_arg)
-  local redirect_uri   = create_get_redirect_uri(header)
 
   return {
     get_value        = get_value,
@@ -816,6 +716,6 @@ return function(conf, hdrs, uargs, pargs, jargs)
     get_credentials  = credentials,
     get_param_types  = param_types,
     get_auth_methods = auth_methods,
-    get_redirect_uri = redirect_uri,
+    get_redirect_uri = get_redirect_uri,
   }
 end
