@@ -474,8 +474,45 @@ do
   ---
   -- Generates a table that contains information that are helpful for logging.
   --
+  -- This method can currently be used in the `http` subsystem.
+  --
+  -- The following fields are included in the returned table:
+  -- * `client_ip` - client IP address in textual format.
+  -- * `latencies` - request/proxy latencies.
+  -- * `request.headers` - request headers.
+  -- * `request.method` - request method.
+  -- * `request.querystring` - request query strings.
+  -- * `request.size` - size of request.
+  -- * `request.url` and `request.uri` - URL and URI of request.
+  -- * `response.headers` - response headers.
+  -- * `response.size` - size of response.
+  -- * `response.status` - response HTTP status code.
+  -- * `route` - route object matched.
+  -- * `service` - service object used.
+  -- * `started_at` - timestamp this request came in, in milliseconds.
+  -- * `tries` - Upstream information; this is an array and if any balancer retries occurred, will contain more than one entry.
+  -- * `upstream_uri` - request URI sent to Upstream.
+  --
+  -- The following fields are only present in an authenticated request (with consumer):
+  --
+  -- * `authenticated_entity` - credential used for authentication.
+  -- * `consumer` - consumer entity accessing the resource.
+  --
+  -- The following fields are only present in a TLS/HTTPS request:
+  -- * `request.tls.version` - TLS/SSL version used by the connection.
+  -- * `request.tls.cipher` - TLS/SSL cipher used by the connection.
+  -- * `request.tls.client_verify` - mTLS validation result. Contents are the same as described in [$ssl_client_verify](https://nginx.org/en/docs/http/ngx_http_ssl_module.html#var_ssl_client_verify).
+  --
+  -- **Warning:** This function may return sensitive data (e.g., API keys).
+  -- Consider filtering before writing it to unsecured locations.
+  --
+  -- To see what content is present in your setup, enable any of the logging
+  -- plugins (e.g., `file-log`) and the output written to the log file is the table
+  -- returned by this function JSON-encoded.
+  --
   -- @function kong.log.serialize
   -- @phases log
+  -- @treturn table the request information table
   -- @usage
   -- kong.log.serialize()
   if ngx.config.subsystem == "http" then

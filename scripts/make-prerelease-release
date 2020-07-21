@@ -117,7 +117,7 @@ fi
 
 version="0.0.0-alpha.0"
 
-while getopts ':v:s' OPTION; do
+while getopts ':v:s:' OPTION; do
   case "$OPTION" in
     v)
       version="$OPTARG"
@@ -280,7 +280,7 @@ case "$step" in
 
       SUCCESS "Release branch is switched locally." \
               "You are ready to run the next step:" \
-              "    $0 -v $version -swrite_changelog"
+              "    $0 -v $version -s write_changelog"
       ;;
    #---------------------------------------------------------------------------
    write_changelog)
@@ -298,7 +298,7 @@ case "$step" in
               "you can run this step again."
               "If it is ready, you can proceed to the next step" \
               "which will commit it:" \
-              "    $0 -v $version -scommit_changelog"
+              "    $0 -v $version -s commit_changelog"
       ;;
    #---------------------------------------------------------------------------
    commit_changelog)
@@ -319,21 +319,19 @@ case "$step" in
 
       SUCCESS "The changelog is now committed locally." \
               "You are ready to run the next step:" \
-              "    $0 -v $version -sversion_bump"
+              "    $0 -v $version -s version_bump"
       ;;
    #---------------------------------------------------------------------------
    version_bump)
-      if ! grep -q "minor = $minor" kong/meta.lua
-      then
-         sed -i 's/major = [0-9]*/major = '$major'/' kong/meta.lua
-         sed -i 's/minor = [0-9]*/minor = '$minor'/' kong/meta.lua
-         sed -i 's/patch = [0-9]*/patch = '$patch'/' kong/meta.lua
-         sed -i 's/-- suffix.*/suffix = "'$prerelease'"/' kong/meta.lua
-      fi
+      sed -i 's/major = [0-9]*/major = '$major'/' kong/meta.lua
+      sed -i 's/minor = [0-9]*/minor = '$minor'/' kong/meta.lua
+      sed -i 's/patch = [0-9]*/patch = '$patch'/' kong/meta.lua
+      sed -i 's/-- suffix.*/suffix = "'$prerelease'"/' kong/meta.lua
+      sed -i 's/ suffix.*/ suffix = "'$prerelease'"/' kong/meta.lua
       if ! [ -f "$rockspec" ]
       then
          old_rockspec=$(ls kong-*-0.rockspec | head -n 1)
-         sed -i 's/^version = ".*"/version = "'$xyzversion'-0"/' "$old_rockspec"
+         sed -i 's/^version = ".*"/version = "'$xyzversion''$prerelease'-0"/' "$old_rockspec"
          sed -i 's/^  tag = ".*"/  tag = "'$version'"/' "$old_rockspec"
       fi
 
@@ -351,7 +349,7 @@ case "$step" in
 
       SUCCESS "Version bump for the release is now committed locally." \
               "You are ready to run the next step:" \
-              "    $0 -v $version -ssubmit"
+              "    $0 -v $version -s submit"
       ;;
    #---------------------------------------------------------------------------
    submit)
@@ -367,10 +365,10 @@ case "$step" in
 
       set -e
       git push --set-upstream origin "$branch"
-      hub pull-request -b master -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge"
+      hub pull-request -b master -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge" | true
 
       SUCCESS "Now get the above PR reviewed and approved. Before continueing on" \
-              "    $0 -v $version -stag"
+              "    $0 -v $version -s tag"
       ;;
    #---------------------------------------------------------------------------
    tag)
@@ -388,19 +386,14 @@ case "$step" in
       hub release create --prerelease -F release-$version.txt "$version"
       rm -f release-$version.txt
 
-      if [ "$beta" == true ]
-      then
-        SUCCESS "Make sure the packages are built and available on Bintray"
+      SUCCESS "While the packages are being built continue to" \
+            "     $0 -v $version -s docs_pr" \
+            "After the packages are built continue to" \
+            "Once they are built, you may run the following steps in parallel:" \
+            "* 'update_docker', then 'merge_docker'"
+            "* 'homebrew'" \
+            "* 'pongo'"
       ;;
-      else
-        SUCCESS "While the packages are being built continue to" \
-                "     $0 -v $version -sdocs_pr" \
-                "After the packages are built continue to" \
-                "Once they are built, you may run the following steps in parallel:" \
-                "* 'update_docker', then 'merge_docker'"
-                "* 'homebrew'" \
-                "* 'pongo'" \
-      fi
    #---------------------------------------------------------------------------
    docs_pr)
       if [ -d ../docs.konghq.com ]
@@ -431,7 +424,7 @@ case "$step" in
       SUCCESS "Make sure you give Team Docs a heads-up" \
               "once the release is pushed to the main repo." \
               "When the main release PR is approved, you can proceed to:" \
-              "    $0 -v $version -supdate_docker"
+              "    $0 -v $version -s update_docker"
       ;;
    #---------------------------------------------------------------------------
    update_docker)
@@ -472,7 +465,7 @@ case "$step" in
       git push origin "$version"
 
       SUCCESS "Now you can run the next step:" \
-              "    $0 -v $version -shomebrew"
+              "    $0 -v $version -s homebrew"
       ;;
    #---------------------------------------------------------------------------
    homebrew)
@@ -503,7 +496,7 @@ case "$step" in
       hub pull-request -b master -h "$branch" -m "Release: $version"
 
       SUCCESS "Make sure you get the PR above approved and merged." \
-              "    $0 -v $version -spongo"
+              "    $0 -v $version -s pongo"
       ;;
    #---------------------------------------------------------------------------
    pongo)

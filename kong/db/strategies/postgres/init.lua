@@ -306,8 +306,18 @@ local function toerror(strategy, err, primary_key, entity)
     return nil, errors:primary_key_violation(primary_key)
 
   elseif find(err, "violates foreign key constraint .*_ws_id_fkey") then
-    local ws_id = err:match("ws_id%)=%(([^)]*)%)") or "null"
-    return nil, errors:invalid_workspace(ws_id)
+    if schema.name == "workspaces" then
+      local found, e = find(err, "is still referenced from table", 1, true)
+      if not found then
+        return error("could not parse foreign key violation error message: " .. err)
+      end
+
+      return nil, errors:foreign_key_violation_restricted(schema.name, sub(err, e + 3, -3))
+
+    else
+      local ws_id = err:match("ws_id%)=%(([^)]*)%)") or "null"
+      return nil, errors:invalid_workspace(ws_id)
+    end
 
   elseif find(err, "violates foreign key constraint", 1, true) then
     log(NOTICE, err)
@@ -615,11 +625,19 @@ function _mt:select_by_field(field_name, unique_value, options)
 end
 
 
-function _mt:update(primary_key, entity, options)
-  local res, err = execute(self, "update", self.collapse(primary_key, entity), {
+local function update_options(options)
+  return {
     update = true,
     ttl    = options and options.ttl,
-  })
+    workspace = options and options.workspace ~= null and options.workspace,
+  }
+end
+
+
+function _mt:update(primary_key, entity, options)
+  local res, err = execute(self, "update",
+                           self.collapse(primary_key, entity),
+                           update_options(options))
   if res then
     local row = res[1]
     if row then
@@ -640,10 +658,9 @@ function _mt:update_by_field(field_name, unique_value, entity, options)
     filter = unique_value
   end
 
-  local res, err = execute(self, "update_by_" .. field_name, self.collapse({ [UNIQUE] = filter }, entity), {
-    update = true,
-    ttl    = options and options.ttl,
-  })
+  local res, err = execute(self, "update_by_" .. field_name,
+                           self.collapse({ [UNIQUE] = filter }, entity),
+                           update_options(options))
   if res then
     local row = res[1]
     if row then

@@ -303,7 +303,7 @@ function _PDK.new(kong_config, major_version, self)
   return setmetatable(self, {
     __index = function(t, k)
       if k == "core_log" then
-        return rawget(t, "_log")
+        return (rawget(t, "_log"))
       end
 
       if k == "log" then
@@ -311,7 +311,7 @@ function _PDK.new(kong_config, major_version, self)
           return t.ctx.core.log
         end
 
-        return rawget(t, "_log")
+        return (rawget(t, "_log"))
       end
     end
   })

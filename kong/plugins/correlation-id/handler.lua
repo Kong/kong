@@ -43,7 +43,7 @@ local CorrelationIdHandler = {}
 
 
 CorrelationIdHandler.PRIORITY = 1
-CorrelationIdHandler.VERSION = "2.0.0"
+CorrelationIdHandler.VERSION = "2.0.1"
 
 
 function CorrelationIdHandler:init_worker()
@@ -75,10 +75,11 @@ function CorrelationIdHandler:header_filter(conf)
     return
   end
 
-  local correlation_id = kong.ctx.plugin.correlation_id
-  if correlation_id then
-    kong.response.set_header(conf.header_name, correlation_id)
-  end
+  local correlation_id = kong.ctx.plugin.correlation_id or
+                         kong.request.get_header(conf.header_name) or
+                         generators[conf.generator]()
+
+  kong.response.set_header(conf.header_name, correlation_id)
 end
 
 

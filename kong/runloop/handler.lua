@@ -57,6 +57,7 @@ local ROUTER_SYNC_OPTS
 local ROUTER_ASYNC_OPTS
 local PLUGINS_ITERATOR_SYNC_OPTS
 local PLUGINS_ITERATOR_ASYNC_OPTS
+local FLIP_CONFIG_OPTS
 local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
 
@@ -428,10 +429,26 @@ local function register_events()
 
   if db.strategy == "off" then
     worker_events.register(function(default_ws)
-      kong.cache:flip()
-      core_cache:flip()
-      kong.default_workspace = default_ws
-      ngx.ctx.workspace = kong.default_workspace
+      local ok, err = concurrency.with_coroutine_mutex(FLIP_CONFIG_OPTS, function()
+        balancer.stop_healthcheckers()
+
+        kong.cache:flip()
+        core_cache:flip()
+
+        kong.default_workspace = default_ws
+        ngx.ctx.workspace = kong.default_workspace
+
+        rebuild_plugins_iterator(PLUGINS_ITERATOR_SYNC_OPTS)
+        rebuild_router(ROUTER_SYNC_OPTS)
+
+        balancer.init()
+
+        return true
+      end)
+
+      if not ok then
+        log(ERR, "config flip failed: ", err)
+      end
     end, "declarative", "flip_config")
   end
 end
@@ -477,7 +494,7 @@ do
 
   update_plugins_iterator = function()
     local version, err = kong.core_cache:get("plugins_iterator:version", TTL_ZERO,
-                                        utils.uuid)
+                                             utils.uuid)
     if err then
       return nil, "failed to retrieve plugins iterator version: " .. err
     end
@@ -503,7 +520,7 @@ do
 
 
   get_updated_plugins_iterator = function()
-    if kong.configuration.worker_consistency == "strict" then
+    if kong.db.strategy ~= "off" and kong.configuration.worker_consistency == "strict" then
       local ok, err = rebuild_plugins_iterator(PLUGINS_ITERATOR_SYNC_OPTS)
       if not ok then
         -- If an error happens while updating, log it and return non-updated
@@ -635,7 +652,7 @@ do
     -- still not ready. For those cases, use a plain Lua table as a cache
     -- instead
     local services_init_cache = {}
-    if not kong.core_cache then
+    if not kong.core_cache and db.strategy ~= "off" then
       services_init_cache, err = build_services_init_cache(db)
       if err then
         services_init_cache = {}
@@ -650,14 +667,16 @@ do
         return nil, "could not load routes: " .. err
       end
 
-      if kong.core_cache and counter > 0 and counter % page_size == 0 then
-        local new_version, err = get_router_version()
-        if err then
-          return nil, "failed to retrieve router version: " .. err
-        end
+      if db.strategy ~= "off" then
+        if kong.core_cache and counter > 0 and counter % page_size == 0 then
+          local new_version, err = get_router_version()
+          if err then
+            return nil, "failed to retrieve router version: " .. err
+          end
 
-        if new_version ~= version then
-          return nil, "router was changed while rebuilding it"
+          if new_version ~= version then
+            return nil, "router was changed while rebuilding it"
+          end
         end
       end
 
@@ -726,7 +745,7 @@ do
 
 
   get_updated_router = function()
-    if kong.configuration.worker_consistency == "strict" then
+    if kong.db.strategy ~= "off" and kong.configuration.worker_consistency == "strict" then
       local ok, err = rebuild_router(ROUTER_SYNC_OPTS)
       if not ok then
         -- If an error happens while updating, log it and return non-updated
@@ -941,31 +960,33 @@ return {
 
       local worker_state_update_frequency = kong.configuration.worker_state_update_frequency or 1
 
-      timer_every(worker_state_update_frequency, function(premature)
-        if premature then
-          return
-        end
+      if kong.db.strategy ~= "off" then
+        timer_every(worker_state_update_frequency, function(premature)
+          if premature then
+            return
+          end
 
-        -- Don't wait for the semaphore (timeout = 0) when updating via the
-        -- timer.
-        -- If the semaphore is locked, that means that the rebuild is
-        -- already ongoing.
-        local ok, err = rebuild_router(ROUTER_ASYNC_OPTS)
-        if not ok then
-          log(ERR, "could not rebuild router via timer: ", err)
-        end
-      end)
+          -- Don't wait for the semaphore (timeout = 0) when updating via the
+          -- timer.
+          -- If the semaphore is locked, that means that the rebuild is
+          -- already ongoing.
+          local ok, err = rebuild_router(ROUTER_ASYNC_OPTS)
+          if not ok then
+            log(ERR, "could not rebuild router via timer: ", err)
+          end
+        end)
 
-      timer_every(worker_state_update_frequency, function(premature)
-        if premature then
-          return
-        end
+        timer_every(worker_state_update_frequency, function(premature)
+          if premature then
+            return
+          end
 
-        local ok, err = rebuild_plugins_iterator(PLUGINS_ITERATOR_ASYNC_OPTS)
-        if not ok then
-          log(ERR, "could not rebuild plugins iterator via timer: ", err)
-        end
-      end)
+          local ok, err = rebuild_plugins_iterator(PLUGINS_ITERATOR_ASYNC_OPTS)
+          if not ok then
+            log(ERR, "could not rebuild plugins iterator via timer: ", err)
+          end
+        end)
+      end
 
       do
         local rebuild_timeout = 60
@@ -976,6 +997,13 @@ return {
 
         if kong.configuration.database == "postgres" then
           rebuild_timeout = kong.configuration.pg_timeout / 1000
+        end
+
+        if kong.db.strategy == "off" then
+          FLIP_CONFIG_OPTS = {
+            name = "flip-config",
+            timeout = rebuild_timeout,
+          }
         end
 
         ROUTER_SYNC_OPTS = {

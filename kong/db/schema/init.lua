@@ -2015,7 +2015,7 @@ function Schema:transform(input, original_input, context)
     return input
   end
 
-  local output = input
+  local output = nil
   for _, transformation in ipairs(self.transformations) do
     local transform
     if context == "select" then
@@ -2032,11 +2032,11 @@ function Schema:transform(input, original_input, context)
     local args = {}
     local argc = 0
     for _, input_field_name in ipairs(transformation.input) do
-      local value = get_field(original_input or input, input_field_name)
+      local value = get_field(output or original_input or input, input_field_name)
       if is_nonempty(value) then
         argc = argc + 1
         if original_input then
-          args[argc] = get_field(input, input_field_name)
+          args[argc] = get_field(output or input, input_field_name)
         else
           args[argc] = value
         end
@@ -2048,10 +2048,10 @@ function Schema:transform(input, original_input, context)
 
     if transformation.needs then
       for _, need in ipairs(transformation.needs) do
-        local value = get_field(input, need)
+        local value = get_field(output or input, need)
         if is_nonempty(value) then
           argc = argc + 1
-          args[argc] = get_field(input, need)
+          args[argc] = get_field(output or input, need)
 
         else
           goto next
@@ -2064,12 +2064,12 @@ function Schema:transform(input, original_input, context)
       return nil, validation_errors.TRANSFORMATION_ERROR:format(err)
     end
 
-    output = self:merge_values(data, output)
+    output = self:merge_values(data, output or input)
 
     ::next::
   end
 
-  return output
+  return output or input
 end
 
 
@@ -2133,10 +2133,14 @@ function Schema.new(definition, is_subschema)
   end
 
   if self.name then
-    _cache[self.name] = {
-      schema = self,
-      constraints = {},
-    }
+    -- do not reset the constraints list if a schema in reloaded
+    if not _cache[self.name] then
+      _cache[self.name] = {
+        constraints = {},
+      }
+    end
+    -- but always update the schema object in cache
+    _cache[self.name].schema = self
   end
 
   return self
