@@ -441,6 +441,7 @@ server {
     }
 }
 
+> if #portal_api_listeners > 0 and portal_api_listen then
 
 server {
     server_name portal_api;
@@ -478,6 +479,7 @@ server {
         return 200 'User-agent: *\nDisallow: /';
     }
 }
+> end
 > end
 
 > if (role == "control_plane" or role == "traditional") and #admin_listeners > 0 then
