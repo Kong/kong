@@ -192,7 +192,13 @@ return {
       for i = 1, idx do
         red:incrby(keys[i], value)
         if expirations[i] then
-          red:expire(keys[i], expirations[i])
+          red:eval([[
+          local exist = redis.call("EXISTS",KEYS[1])
+          if(exist == 0) then
+            redis.call("EXPIRE",KEYS[1],ARGV[1])
+          end
+          ]], 1, keys[i], expirations[i])
+          -- red:expire(keys[i], expirations[i])
         end
       end
 
