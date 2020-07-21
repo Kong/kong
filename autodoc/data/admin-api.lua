@@ -82,7 +82,7 @@ return {
         }
         ```
 
-        An example adding a route to a service named `test-service`:
+        An example adding a Route to a Service named `test-service`:
 
         ```
         curl -i -X POST http://localhost:8001/services/test-service/routes \
@@ -100,9 +100,9 @@ return {
         config.limit=10&config.period=seconds
         ```
 
-        When specifying arrays send the values in order, or use square brackets (numbering
+        When specifying arrays, send the values in order, or use square brackets (numbering
         inside the brackets is optional but if provided it must be 1-indexed, and
-        consecutive). An example route added to a service named `test-service`:
+        consecutive). An example Route added to a Service named `test-service`:
 
         ```
         curl -i -X POST http://localhost:8001/services/test-service/routes \
@@ -111,7 +111,7 @@ return {
              -d "paths[2]=/path/two"
         ```
 
-        The following two are identical to the one above, but less explicit:
+        The following two examples are identical to the one above, but less explicit:
         ```
         curl -i -X POST http://localhost:8001/services/test-service/routes \
              -d "name=test-route" \
@@ -136,8 +136,8 @@ return {
              -F "config.access=@custom-auth.lua"
         ```
 
-        When specifying arrays for this content-type the array indices must be specified.
-        An example route added to a service named `test-service`:
+        When specifying arrays for this content-type, the array indices must be specified.
+        An example Route added to a Service named `test-service`:
 
         ```
         curl -i -X POST http://localhost:8001/services/test-service/routes \
@@ -662,14 +662,14 @@ return {
         tls_verify = {
           description = [[
             Whether to enable verification of upstream server TLS certificate.
-            If set to `null` then Nginx default is respected.
+            If set to `null`, then the Nginx default is respected.
           ]],
           example = true,
         },
         tls_verify_depth = {
           description = [[
-            Maximum depth of chain while verifying upstream server's TLS certificate.
-            If set to `null` when Nginx default is respected.
+            Maximum depth of chain while verifying Upstream server's TLS certificate.
+            If set to `null`, then the Nginx default is respected.
           ]],
         },
         ca_certificates = {
@@ -701,7 +701,7 @@ return {
           description = [[
             Shorthand attribute to set `protocol`, `host`, `port` and `path`
             at once. This attribute is write-only (the Admin API never
-            "returns" the url).
+            returns the URL).
           ]]
         } },
       }
@@ -907,7 +907,7 @@ return {
         username = {
           kind = "semi-optional",
           description = [[
-            The unique username of the consumer. You must send either
+            The unique username of the Consumer. You must send either
             this field or `custom_id` with the request.
           ]],
           example = "my-username",
@@ -915,7 +915,7 @@ return {
         custom_id = {
           kind = "semi-optional",
           description = [[
-            Field for storing an existing unique ID for the consumer -
+            Field for storing an existing unique ID for the Consumer -
             useful for mapping Kong with users in your existing database.
             You must send either this field or `username` with the request.
           ]],
@@ -1077,7 +1077,7 @@ return {
         updated_at = { skip = true },
         name = {
           description = [[
-            The name of the Plugin that's going to be added. Currently the
+            The name of the Plugin that's going to be added. Currently, the
             Plugin must be installed in every Kong instance separately.
           ]],
           example = "rate-limiting",
@@ -1120,7 +1120,7 @@ return {
         },
         tags = {
           description = [[
-            An optional set of strings associated with the Plugin, for grouping and filtering.
+            An optional set of strings associated with the Plugin for grouping and filtering.
           ]],
           examples = {
             { "user-level", "low-priority" },
@@ -1193,7 +1193,7 @@ return {
           example = "-----BEGIN CERTIFICATE-----...",
         },
         cert_digest = {
-          description = [[SHA256 hex digest of the public certificate]],
+          description = [[SHA256 hex digest of the public certificate.]],
           example = "c641e28d77e93544f2fa87b2cf3f3d51...",
         },
         tags = {
@@ -1233,7 +1233,7 @@ return {
         },
         tags = {
           description = [[
-            An optional set of strings associated with the SNIs, for grouping and filtering.
+            An optional set of strings associated with the SNIs for grouping and filtering.
           ]],
           examples = {
             { "user-level", "low-priority" },
@@ -1391,7 +1391,7 @@ return {
         ["healthchecks.threshold"] = { description = [[The minimum percentage of the upstream's targets' weight that must be available for the whole upstream to be considered healthy.]] },
         tags = {
           description = [[
-            An optional set of strings associated with the Upstream, for grouping and filtering.
+            An optional set of strings associated with the Upstream for grouping and filtering.
           ]],
           examples = {
             { "user-level", "low-priority" },
@@ -1660,7 +1660,7 @@ return {
         },
         tags = {
           description = [[
-            An optional set of strings associated with the Target, for grouping and filtering.
+            An optional set of strings associated with the Target for grouping and filtering.
           ]],
           examples = {
             { "user-level", "low-priority" },
