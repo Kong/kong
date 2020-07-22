@@ -140,6 +140,10 @@ local EE_CONF_INFERENCES = {
 
   route_validation_strategy = { enum = {"smart", "path", "off"}},
   enforce_route_path_pattern = {typ = "string"},
+
+  cluster_telemetry_listen = { typ = "array" },
+  cluster_telemetry_server_name = { typ = "string" },
+  cluster_telemetry_endpoint  = { typ = "string" },
 }
 
 
@@ -681,12 +685,19 @@ local function validate(conf, errors)
     log.warn(err)
   end
 
+  if conf.role == "control_plane" then
+    if #conf.cluster_telemetry_listen < 1 or pl_stringx.strip(conf.cluster_telemetry_listen[1]) == "off" then
+      errors[#errors + 1] = "cluster_telemetry_listen must be specified when role = \"control_plane\""
+    end
+  end
+
 end
 
 
 local function load(conf)
   local ok, err = listeners.parse(conf, {
     { name = "admin_gui_listen", subsystem = "http", ssl_flag = "admin_gui_ssl_enabled" },
+    { name = "cluster_telemetry_listen", subsystem = "http" },
   })
   if not ok then
     return nil, err
