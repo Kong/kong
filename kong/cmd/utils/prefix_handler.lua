@@ -57,7 +57,7 @@ local function gen_default_ssl_cert(kong_config, pair_type)
   end
 
   if not pl_path.exists(ssl_cert) and not pl_path.exists(ssl_cert_key) then
-    log.verbose("generating %s %s SSL certificate and key",
+    log.verbose("generating %s SSL certificate and key",
                 pair_type or "default")
 
     local key = openssl_pkey.new { bits = 2048 }
