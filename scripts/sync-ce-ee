@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+LOCAL_PATH=$(dirname $(realpath $0))
+source $LOCAL_PATH/common.sh
+
 usage() {
   echo -e "PR issuer to \033[5msync\033[0m branches between kong repos."
   echo
@@ -65,8 +68,15 @@ parse_args() {
 
 
 git-add-remote() {
-  if ! git remote | grep $1 ; then
+  if ! git remote | grep "^${1}$" ; then
     git remote add "$1" "git@github.com:Kong/$1.git"
+  fi
+  on_exit "git-rem-remote $1"
+}
+
+git-rem-remote() {
+  if git remote | grep "^${1}$" ; then
+    git remote remove "$1"
   fi
 }
 
@@ -109,10 +119,12 @@ main() {
   [[ $f_repo == "kong" ]] && repo_text="kong "
 
   title="Merge ${repo_text}$f_branch into $t_branch $today"
-  body="BE CAREFUL RESOLVING CONFLICTS IN GH WEB INTERFACE: https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/resolving-a-merge-conflict-on-github"
+  body="BE CAREFUL RESOLVING CONFLICTS IN GH WEB INTERFACE: https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/resolving-a-merge-conflict-on-github
+
+--
+$(curl https://quotebot.raimonster.workers.dev/ | jq -r .message)"
 
   browser "https://github.com/Kong/kong-ee/compare/${t_branch}...${f_branch}?expand=1&pull_request[title]=$title&pull_request[body]=$body"
 }
-
 
 main "$@"
