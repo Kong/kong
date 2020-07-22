@@ -35,53 +35,60 @@ local function find_key(tbl, key)
 end
 
 
+-- Tokenize the string with '&' and return a table holding all the query params
 local function extractParameters(looppath)
   local tempindex
   local stringtable={}
 
-while(string.find( looppath,'&'))
-do
+  while(string.find( looppath,'&'))
+  do
       tempindex =string.find( looppath,'&')
+      --only one query param, Break the iteration and insert value in table
       if tempindex == string.len(looppath) then
           break
       end
+      --Extract and insert the sub string using index of '&'
       table.insert( stringtable, string.sub(looppath, 1,tempindex-1 ))
       looppath = string.sub(looppath,tempindex+1,string.len( looppath ))
+  end
+  table.insert(stringtable,looppath)
+  --kong.log.inspect('paramtable',stringtable)
+  return stringtable
 end
-table.insert(stringtable,looppath)
-return stringtable
-end
 
 
-
+-- returns a boolean by comparing value of the fields supplied in query params
 local function filterexamples(example)
--- filter the key examples here 
-local value
-local skey
-local sval
-local qparams = kong.request.get_raw_query()
+  local value
+  local skey
+  local sval
 
-if qparams == nil or qparams =='' then
-  return true
-end
-local params = extractParameters(qparams)
+  local qparams = kong.request.get_raw_query()
+  -- Return true when there are no query params. This will ensure no filtering on examples.
+  if qparams == nil or qparams =='' then
+    return true
+  end
+  local params = extractParameters(qparams)
 
-if  next(example) == nil then
-  return false
+  -- Filter empty response when there is/are query params
+  if  next(example) == nil then
+    return false
 
-else
-for _,dv in pairs(params)
-do
-skey = string.sub( dv,1,string.find( dv,'=' )-1 )
-sval = string.sub(dv,string.find( dv,'=' )+1,string.len( dv ))
---kong.log.inspect('skey.....sval'..skey..'.....'..sval)
-value = find_key(example,skey)
-if(string.upper( sval ) ~= string.upper( value )) then
-return false
-end
-end
-return true
-end
+  -- Loop through the extracted query params and do a case insensitive comparison of field values within examples
+  -- Return true if matched, false if not found
+  else
+    for _,dv in pairs(params) do
+      skey = string.sub( dv,1,string.find( dv,'=' )-1 )
+      sval = string.sub(dv,string.find( dv,'=' )+1,string.len( dv ))
+      --kong.log.inspect('skey.....sval'..skey..'.....'..sval)
+      value = find_key(example,skey)
+      --kong.log.inspect('value....'..value)
+      if(string.upper( sval ) == string.upper( value )) then
+        return true
+      end
+    end
+    return false
+  end
 end
 
 
@@ -89,18 +96,31 @@ end
 -- Extract example value in V3.0
 -- returns lua table with all the values extracted and appended from multiple examples
 local function find_example_value(tbl, key)
+
   local values = {}
-  for lk, lv in pairs(tbl) do
-    if type(lv) == "table" then
-      for dk, dv in pairs(lv) do
-        if dk == key and filterexamples(dv) then table.insert( values, dv) end
+  local no_qparams = (kong.request.get_raw_query() == nil or kong.request.get_raw_query() =='')
+   for _, lv in pairs(tbl) do
+     if type(lv) == "table" then
+       for dk, dv in pairs(lv) do
+        if dk == key then
+          if type(dv) == "table" then
+            --We could have empty {} value in example 
+            --Go ahead in capture it in table if there are no query params, Filter it if qparams exists
+            if (no_qparams and next(dv) == nil) then table.insert( values, dv) end
+            for _, v in pairs(dv) do
+              if filterexamples(v) then table.insert( values, v) end
+            end
+          end
+        end
+       end
       end
     end
-  end
   if next(values) == nil then
+   -- kong.log.inspect('values....',values)
     return nil
   else
-  return values
+    kong.log.inspect('values....',values)
+    return values
  end
 end
 
