@@ -536,7 +536,9 @@ local function new(self, major_version)
       and ngx.req.http_version() == 2
   end
 
-  local function send(status, body, headers)
+  -- XXX EE: hide _send and make send call singleton when available, local
+  -- when not
+  local function _send(status, body, headers)
     if ngx.headers_sent then
       error("headers have already been sent", 2)
     end
@@ -679,6 +681,12 @@ local function new(self, major_version)
     end
 
     return ngx.exit(status)
+  end
+
+
+  local function send(status, body, headers)
+    local fn = kong and kong.response and kong.response.send or _send
+    return fn(status, body, headers)
   end
 
 
@@ -1055,6 +1063,9 @@ local function new(self, major_version)
     end
 
   end
+
+  -- XXX EE: exposed method is the internal _send
+  _RESPONSE.send = _send
 
   return _RESPONSE
 end
