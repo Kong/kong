@@ -1,4 +1,6 @@
 local inspect = require "inspect"
+local cjson = require "cjson.safe"
+
 
 local runloop_handler = require "kong.runloop.handler"
 local workspaces = require "kong.workspaces"
@@ -93,8 +95,8 @@ end
 
 function _M:init_worker()
   kong.response.register_hook("exit", self.exit, self)
+  kong.response.register_hook("send", self.exit, self)
 end
-
 
 function _M:access(conf)
   _M.super.access(self)
@@ -112,6 +114,15 @@ function _M:exit(status, body, headers)
   if not conf then
     return status, body, headers
   end
+
+  -- XXX Both exit and send now contain body as plaintext always
+  -- try to convert back to message and if that fails give it raw
+  local data, err = cjson.decode(body)
+
+  if not err then
+    body = data
+  end
+
 
   -- Reduce on status, body, headers through transform functions
   for _, fn in get_transform_functions(conf) do
