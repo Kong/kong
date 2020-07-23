@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
 usage() {
   echo -e "PR issuer to \033[5msync\033[0m branches between kong repos."
+  echo
   cat <<-EOF
 $0 -f kong:next -t kong-ee:master
 $0 -f kong:release/2.1.0 -t kong-ee:next/2.1.0.x
@@ -63,7 +66,7 @@ parse_args() {
 
 git-add-remote() {
   if ! git remote | grep $1 ; then
-    git remote add $1 git@github.com:Kong/$1.git
+    git remote add "$1" "git@github.com:Kong/$1.git"
   fi
 }
 
@@ -74,7 +77,6 @@ to_branch_name() {
 
 main() {
   today=$(date +%F)
-  set -x
   parse_args "$@"
   git-add-remote $f_repo
 
@@ -87,10 +89,10 @@ main() {
   git fetch $t_repo
 
   # create a temporary branch to check how is the merge looking
-  git checkout -B $(to_branch_name merge-$from-$to-$today) $t_branch
+  git checkout -B $(to_branch_name "merge-$from-into-$to-$today") "$t_branch"
 
   # conflicts? bail out and you're on your own
-  if ! git merge $f_repo/$f_branch ; then
+  if ! git merge "$f_repo/$f_branch" ; then
     die "Conflicts detected. git merge --abort ??"
   fi
 
@@ -101,7 +103,7 @@ main() {
 
   # push the original $from branch to the $t_repo,
   # we leave the merge to github to not have a doublemerge
-  git push $t_repo $f_repo/$f_branch
+  git push $t_repo "$f_repo/$f_branch"
 
   repo_text=""
   [[ $f_repo == "kong" ]] && repo_text="kong "

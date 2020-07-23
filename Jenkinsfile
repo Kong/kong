@@ -30,14 +30,25 @@ pipeline {
     stage('Checkpoint') {
       steps {
         script {
-          def input_params = input(message: "Should I continue this build?",
-          parameters: [
-            // [$class: 'TextParameterDefinition', defaultValue: '', description: 'custom build', name: 'customername'],
-            choice(name: 'RELEASE_SCOPE',
-            choices: 'internal-preview\nbeta1\nbeta2\nrc1\nrc2\nrc3\nrc4\nrc5\nGA',
-            description: 'What is the release scope?'),
-          ])
-          env.RELEASE_SCOPE = input_params
+          def input_params = input(
+            message: "Kong Enteprise Edition",
+            parameters: [
+              // Add any needed input here (look for available parameters)
+              // https://www.jenkins.io/doc/book/pipeline/syntax/
+              choice(
+                name: 'release_scope',
+                defaultValue: '',
+                description: 'What is the release scope?',
+                choices: [
+                  'internal-preview',
+                  'beta1', 'beta2',
+                  'rc1', 'rc2', 'rc3', 'rc4', 'rc5',
+                  'GA'
+                ]
+              )
+            ]
+          )
+          env.RELEASE_SCOPE = input_params['release_scope']
         }
       }
     }
@@ -103,17 +114,17 @@ pipeline {
           alpine: {
             sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
             // Docker with anonymous reports off. jenkins has no permission + is old method
-            sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
+            // sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
           },
           centos7: {
             sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
             // Docker with anonymous reports off. jenkins has no permission + is old method
-            sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
+            // sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
           },
           rhel: {
             sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
             // Docker with anonymous reports off. jenkins has no permission + is old method
-            sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
+            // sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
           },
         )
       }

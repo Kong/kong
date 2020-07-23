@@ -1,5 +1,6 @@
 local log = require "kong.cmd.utils.log"
 local ee_db = require "kong.enterprise_edition.db"
+local fmt = string.format
 
 
 local MIGRATIONS_MUTEX_KEY = "migrations"
@@ -10,6 +11,12 @@ local NEEDS_BOOTSTRAP_MSG = "Database needs bootstrapping or is older than Kong 
   "If you still have 'apis' entities, you can convert them to Routes and Services\n" ..
   "using the 'kong migrations migrate-apis' command in Kong 1.5.0.\n\n"
 
+-- XXX EE
+local function EE_NEEDS_UPGRADE(version)
+  return fmt("Database is older than Kong Enterprise %s.\n\n" ..
+  "To migrate from a version older than Enterprise %s, migrate to Kong " ..
+  "Enterprise %s first.", version, version, version)
+end
 
 local function check_state(schema_state)
   if not schema_state:is_up_to_date() then
@@ -63,6 +70,13 @@ local function up(schema_state, db, opts)
 
   local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
     schema_state = assert(db:schema_state())
+
+    -- XXX EE detect broken migration path from < 1.5 to 2.1
+    if schema_state and schema_state:subsystem_executed("enterprise") then
+      if not schema_state:is_migration_executed("enterprise", "006_1301_to_1500") then
+        error(EE_NEEDS_UPGRADE("1.5.0"))
+      end
+    end
 
     if not opts.force and schema_state.pending_migrations then
       error("Database has pending migrations; run 'kong migrations finish'")
@@ -239,4 +253,5 @@ return {
   check_state = check_state,
   migrate_core_entities = migrate_core_entities,
   NEEDS_BOOTSTRAP_MSG = NEEDS_BOOTSTRAP_MSG,
+  EE_NEEDS_UPGRADE = EE_NEEDS_UPGRADE,
 }
