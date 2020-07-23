@@ -1137,11 +1137,17 @@ end
 
 
 --- Starts a local UDP server.
--- Accepts a single connection, reading once and then closes
+-- Reads the specified number of packets and then closes.
+-- The server-thread return values depend on `n`:
+--
+-- * `n = 1`; returns the received packet (string), or `nil + err`
+--
+-- * `n > 1`; returns `data + err`, where `data` will always be a table with the
+--   received packets. So `err` must explicitly be checked for errors.
 -- @name udp_server
--- @param `port` The port the server will be listening on
--- @param `n` The number of packets that will be read
--- @param `timeout` Timeout per read
+-- @param `port` The port the server will be listening on (default `MOCK_UPSTREAM_PORT`)
+-- @param `n` The number of packets that will be read (default 1)
+-- @param `timeout` Timeout per read (default 360)
 -- @return A thread object (from the `llthreads2` Lua package)
 local function udp_server(port, n, timeout)
   local threads = require "llthreads2.ex"
@@ -1171,6 +1177,7 @@ local function udp_server(port, n, timeout)
         else
           i = i + 1
           data[i] = pkt
+          err = nil -- upon succes it would contain the remote ip address
         end
       end
       server:close()
