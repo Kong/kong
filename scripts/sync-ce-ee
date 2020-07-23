@@ -9,7 +9,7 @@ usage() {
   echo
   cat <<-EOF
 $0 -f kong:next -t kong-ee:master
-$0 -f kong:release/2.1.0 -t kong-ee:next/2.1.0.x
+$0 -f kong:master -t kong-ee:next/2.1.0.x
 $0 -f kong-ee:next/1.3.0.x -t kong-ee:next/1.5.0.x
 $0 -f kong-ee:next/1.5.0.x -t kong-ee:next/2.1.0.x
 $0 -f kong-ee:next/2.1.0.x -t kong-ee:master
