@@ -106,9 +106,9 @@ We have a build script that makes it easy to pull and compile specific versions 
 These commands don't have to be performed as root, since all compilation is done within a subdirectory, and installs everything in the target specified by the `-p` argument (here the `build` directory).
 
 ```
-    git clone https://github.com/kong/openresty-build-tools
+    git clone https://github.com/kong/kong-build-tools
 
-    cd openresty-build-tools
+    cd kong-build-tools/openresty-build-tools
 
     ./kong-ngx-build -p build \
         --openresty 1.15.8.3 \
