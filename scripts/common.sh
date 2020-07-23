@@ -23,17 +23,75 @@ function clear_exit {
 }
 
 
+function colorize() {
+  local color="39" # default
+  case $1 in
+    black)
+      color="30"
+      ;;
+    red|err|error)
+      color="31"
+      ;;
+    green|ok)
+      color="32"
+      ;;
+    yellow|warn)
+      color="33"
+      ;;
+    blue)
+      color="34"
+      ;;
+    magenta)
+      color="35"
+      ;;
+    cyan)
+      color="36"
+      ;;
+    light-gray|light-grey)
+      color="37"
+      ;;
+    dark-gray|drak-grey)
+      color="90"
+      ;;
+    light-red)
+      color="91"
+      ;;
+    light-green)
+      color="92"
+      ;;
+    light-yellow)
+      color="93"
+      ;;
+    light-blue)
+      color="94"
+      ;;
+    light-magenta)
+      color="95"
+      ;;
+    light-cyan)
+      color="96"
+      ;;
+    white)
+      color="97"
+      ;;
+  esac
+  shift
+  local str=$*
+
+  echo -en "\033[1;${color}m"
+  echo -en "$*"
+  echo -en "\033[0m"
+}
+
+
 function err {
   >&2 echo -e "$*"
   exit 1
 }
 
 function warn {
-  >&2 \echo -en "\033[1;33m"
-  >&2 echo "WARNING: $*"
-  >&2 \echo -en "\033[0m"
+  >&2 echo $(colorize yellow WARNING: $*)
 }
-
 
 
 function confirm {
@@ -125,3 +183,56 @@ version_gte() {
   return 1
 }
 
+
+parse_integer() {
+  [[ -z $1 ]] || [[ -z $2 ]] && >&2 echo "parse_integer() requires two arguments" && exit 1
+
+  local value=$1
+  local argv=$2
+
+  if ! [[ "$argv" =~ ^\-?[0-9]+$ ]]; then
+    err "$argv is not a integer"
+    exit 1
+  fi
+  value=$argv
+}
+
+
+check_requirements() {
+  local verbose=0
+  if [ ! -z $1 ] && [ $1 -eq 1 ]; then
+    verbose=1
+  fi
+  local short_circuit=1
+  if [ ! -z $2 ] && [ $2 -eq 0 ]; then
+    short_circuit=0
+  fi
+
+  # Check for required commands
+  local missing_requirement=0
+  for command in ${REQUIRED_COMMANDS[@]}; do
+    if hash $command >/dev/null 2>&1; then
+      if [ $verbose -eq 1 ]; then
+        printf "%-10s %s\n" "$command" "$(colorize ok '[OK]')"
+      fi
+    else
+      >&2 printf "%-10s %s\n" "$command" "$(colorize err '[REQUIRED]')"
+      missing_requirement=1
+    fi
+  done
+
+  # Check for optional commands
+  for command in ${OPTIONAL_COMMANDS[@]}; do
+    if [ $verbose -eq 1 ]; then
+      if hash $command >/dev/null 2>&1; then
+        printf "%-10s %s\n" "$command" "$(colorize ok '[OK]')"
+      else
+        >&2 printf "%-10s %s\n" "$command" "$(colorize warn '[OPTIONAL]')"
+      fi
+    fi
+  done
+
+  if [ $missing_requirement -eq 1 ] && [ $short_circuit -eq 1 ]; then
+    exit 1
+  fi
+}
