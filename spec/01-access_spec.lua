@@ -30,6 +30,7 @@ local fixtures = {
                     end
                     if args.token == "valid" or
                       args.token == "valid_consumer_client_id" or
+                      args.token == "valid_consumer_client_id_not_added_initially" or
                       args.token == "valid_consumer" or
                       args.token == "valid_consumer_limited" or
                       args.token == "valid_complex" then
@@ -40,6 +41,9 @@ local fixtures = {
                       elseif args.token == "valid_consumer_client_id" then -- omit `username`, return `client_id`
                         ngx.say([[{"active":true,
                                     "client_id": "kongsumer"}]])
+                      elseif args.token == "valid_consumer_client_id_not_added_initially" then -- omit `username`, return `client_id`
+                        ngx.say([[{"active":true,
+                                    "client_id": "kongsumer_not_added_initially"}]])
                       elseif args.token == "valid_consumer_limited" then
                         ngx.say([[{"active":true,
                                    "username":"limited-bob"}]])
@@ -113,6 +117,20 @@ for _ , strategy in helpers.each_strategy() do
           authorization_value = "hello",
           consumer_by = "client_id",
           ttl = 1
+        }
+      }
+
+      local route2_cid = bp.routes:insert {
+        name = "route-2cid",
+        hosts = { "introspection_client_id_not_added_initially.com" },
+      }
+      bp.plugins:insert {
+        name = "oauth2-introspection",
+        route = { id = route2_cid.id },
+        config = {
+          introspection_url = introspection_url,
+          authorization_value = "hello",
+          consumer_by = "client_id"
         }
       }
 
@@ -357,7 +375,7 @@ for _ , strategy in helpers.each_strategy() do
           assert.is_nil(res.headers["x-ratelimit-limit-minute"])
         end)
 
-        it("associates oauth2 client_id to consumer custom_id", function()
+        it("associates oauth2 client_id to consumer #custom_id", function()
           local res = assert(client:send {
             method = "GET",
             path = "/request?access_token=valid_consumer_client_id",
@@ -370,6 +388,51 @@ for _ , strategy in helpers.each_strategy() do
           assert.equal("kongsumer" , body.headers["x-consumer-custom-id"])
           assert.is_string(body.headers["x-consumer-id"])
           assert.is_nil(res.headers["x-ratelimit-limit-minute"])
+        end)
+
+        it("ensure cache is invalidated for consumer #custom_id added after introspection request", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/request?access_token=valid_consumer_client_id_not_added_initially",
+            headers = {
+              ["Host"] = "introspection_client_id_not_added_initially.com",
+            }
+          })
+          local body = cjson.decode(assert.res_status(200 , res))
+          assert.equal("kongsumer_not_added_initially" , body.headers["x-credential-client-id"])
+          assert.is_nil(body.headers["x-credential-username"])
+
+          -- Consumer response headers custom-id, username, and consumer-id should not be available
+          assert.is_nil(body.headers["x-consumer-custom-id"])
+          assert.is_nil(body.headers["x-consumer-id"])
+          assert.is_nil(body.headers["x-consumer-username"])
+
+          -- Add the missing consumer and re-execute the intronspection
+          res = assert(admin_client:send {
+            method = "POST",
+            path = "/consumers",
+            body = {
+              custom_id = "kongsumer_not_added_initially",
+              username = "post_kongsumer"
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+          local id = cjson.decode(assert.res_status(201 , res))["id"]
+
+          res = assert(client:send {
+            method = "GET",
+            path = "/request?access_token=valid_consumer_client_id_not_added_initially",
+            headers = {
+              ["Host"] = "introspection_client_id_not_added_initially.com",
+            }
+          })
+          body = cjson.decode(assert.res_status(200 , res))
+          assert.equal(body.headers["x-consumer-custom-id"], body.headers["x-credential-client-id"])
+          assert.equal("kongsumer_not_added_initially" , body.headers["x-consumer-custom-id"])
+          assert.equal(id, body.headers["x-consumer-id"])
+          assert.equal("post_kongsumer", body.headers["x-consumer-username"])
         end)
 
         it("invokes other consumer-specific plugins" , function()

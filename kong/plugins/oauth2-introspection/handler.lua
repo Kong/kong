@@ -232,10 +232,10 @@ local function do_authentication(conf)
 
   local cache = kong.cache
   local cache_key = fmt("oauth2_introspection:%s", access_token)
-  local credential, err = kong.cache:get(cache_key,
-                                              { ttl = conf.ttl },
-                                              load_credential, conf,
-                                              access_token)
+  local credential, err = cache:get(cache_key,
+                                      { ttl = conf.ttl },
+                                      load_credential, conf,
+                                      access_token)
   if err then
     ngx_log(ERR, err)
   end
@@ -255,8 +255,8 @@ local function do_authentication(conf)
   if credential_obj and credential_obj[consumer_by] then
     cache_key = consumers_username_key(credential_obj[consumer_by])
     local consumer, err = cache:get(cache_key, nil, load_consumer,
-                                           credential_obj[consumer_by],
-                                           consumer_by)
+                                      credential_obj[consumer_by],
+                                      consumer_by)
 
     if err then
       return false, {status = 500, message = err}
@@ -264,9 +264,10 @@ local function do_authentication(conf)
     if consumer then
       cache_key = consumers_id_key(consumer.id)
       local _, err = cache:get(cache_key, nil,
-                                function(consumer)
-                                  return consumer.username
-                                end, consumer)
+                                 function(consumer)
+                                   return consumer.username
+                                 end, consumer)
+
       if err then
         return false, {status = 500, message = err}
       end
@@ -276,6 +277,10 @@ local function do_authentication(conf)
       ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
       ngx.ctx.authenticated_consumer = consumer
       credential_obj.consumer_id = consumer.id
+    else
+      -- Ensure the nil cached value is invalidated for post consumer add
+      -- see https://konghq.atlassian.net/browse/FTI-1472
+      cache:invalidate(cache_key)
     end
   end
 
@@ -318,10 +323,11 @@ function OAuth2Introspection:access(conf)
   if not ok then
     if conf.anonymous ~= "" then
       -- get anonymous user
+      local cache = kong.cache
       local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
-      local consumer, err = kong.cache:get(consumer_cache_key, nil,
-        load_consumer_mem,
-        conf.anonymous, true)
+      local consumer, err = cache:get(consumer_cache_key, nil,
+                                        load_consumer_mem,
+                                        conf.anonymous, true)
       if err then
         return kong.response.exit(500, err)
       end
