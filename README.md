@@ -90,7 +90,8 @@ services:
     - /
     plugins:
     - name: grpc-web
-      proto: path/to/hello.proto
+      config:
+        proto: path/to/hello.proto
 ```
 
 or via the administration API:
