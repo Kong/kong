@@ -127,7 +127,7 @@ return {
 
         - **multipart/form-data**
 
-        Similar to url-encoded, this content type uses dotted keys to reference nested
+        Similar to URL-encoded, this content type uses dotted keys to reference nested
         objects. Here is an example of sending a Lua file to the pre-function Kong plugin:
 
         ```
@@ -687,7 +687,7 @@ return {
         },
         tags = {
           description = [[
-            An optional set of strings associated with the Service, for grouping and filtering.
+            An optional set of strings associated with the Service for grouping and filtering.
           ]],
           examples = {
             { "user-level", "low-priority" },
@@ -734,7 +734,7 @@ return {
         #### Path handling algorithms
 
         `"v0"` is the behavior used in Kong 0.x and 2.x. It treats `service.path`, `route.path` and request path as
-        *segments* of a url. It will always join them via slashes. Given a service path `/s`, route path `/r`
+        *segments* of a URL. It will always join them via slashes. Given a service path `/s`, route path `/r`
         and request path `/re`, the concatenated path will be `/s/re`. If the resulting path is a single slash,
         no further transformation is done to it. If it's longer, then the trailing slash is removed.
 
@@ -883,7 +883,7 @@ return {
         },
         tags = {
           description = [[
-            An optional set of strings associated with the Route, for grouping and filtering.
+            An optional set of strings associated with the Route for grouping and filtering.
           ]],
           examples = {
             { "user-level", "low-priority" },
@@ -923,7 +923,7 @@ return {
         },
         tags = {
           description = [[
-            An optional set of strings associated with the Consumer, for grouping and filtering.
+            An optional set of strings associated with the Consumer for grouping and filtering.
           ]],
           examples = {
             { "user-level", "low-priority" },
@@ -1103,7 +1103,7 @@ return {
         consumer = { description = [[
           If set, the plugin will activate only for requests where the specified has been authenticated.
           (Note that some plugins can not be restricted to consumers this way.). Leave unset for the plugin
-          to activate regardless of the authenticated consumer.
+          to activate regardless of the authenticated Consumer.
         ]] },
         protocols = {
           description = [[
@@ -1155,7 +1155,7 @@ return {
         },
         tags = {
           description = [[
-            An optional set of strings associated with the Certificate, for grouping and filtering.
+            An optional set of strings associated with the Certificate for grouping and filtering.
           ]],
           examples = {
             { "user-level", "low-priority" },
@@ -1198,7 +1198,7 @@ return {
         },
         tags = {
           description = [[
-            An optional set of strings associated with the Certificate, for grouping and filtering.
+            An optional set of strings associated with the Certificate for grouping and filtering.
           ]],
           examples = {
             { "user-level", "low-priority" },
@@ -1360,7 +1360,7 @@ return {
         ["slots"] = { description = [[The number of slots in the loadbalancer algorithm (`10`-`65536`).]] },
         ["algorithm"] = { description = [[Which load balancing algorithm to use.]] },
         ["hash_on"] = { description = [[What to use as hashing input. Using `none` results in a weighted-round-robin scheme with no hashing.]] },
-        ["hash_fallback"] = { description = [[What to use as hashing input if the primary `hash_on` does not return a hash (eg. header is missing, or no consumer identified). Not available if `hash_on` is set to `cookie`.]] },
+        ["hash_fallback"] = { description = [[What to use as hashing input if the primary `hash_on` does not return a hash (eg. header is missing, or no Consumer identified). Not available if `hash_on` is set to `cookie`.]] },
         ["hash_on_header"] = { kind = "semi-optional", skip_in_example = true, description = [[The header name to take the value from as hash input. Only required when `hash_on` is set to `header`.]] },
         ["hash_fallback_header"] = { kind = "semi-optional", skip_in_example = true, description = [[The header name to take the value from as hash input. Only required when `hash_fallback` is set to `header`.]] },
         ["hash_on_cookie"] = { kind = "semi-optional", skip_in_example = true, description = [[The cookie name to take the value from as hash input. Only required when `hash_on` or `hash_fallback` is set to `cookie`. If the specified cookie is not in the request, Kong will generate a value and set the cookie in the response.]] },
@@ -2021,7 +2021,7 @@ return {
 
           - **multipart/form-data**
 
-          Similar to url-encoded, this content type uses dotted keys to reference nested objects.
+          Similar to URL-encoded, this content type uses dotted keys to reference nested objects.
           Here is an example of sending a Lua file to the pre-function Kong plugin:
 
           ```
