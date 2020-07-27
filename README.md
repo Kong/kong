@@ -65,9 +65,9 @@ package hello;
 service HelloService {
   rpc SayHello(HelloRequest) returns (HelloResponse) {
     option (google.api.http) = {
-      get: "/v1/messages/{name}"
+      get: "/v1/messages/{greeting}"
       additional_bindings {
-        get: "/v1/messages/legacy/{name=**}"
+        get: "/v1/messages/legacy/{greeting=**}"
       }
       post: "/v1/messages/"
       body: "*"
@@ -78,7 +78,7 @@ service HelloService {
 
 // The request message containing the user's name.
 message HelloRequest {
-  string name = 1;
+  string greeting = 1;
 }
 
 // The response message containing the greetings
@@ -101,7 +101,7 @@ curl -XGET localhost:8000/v1/messages/legacy/Kong2.0
 curl -XGET localhost:8000/v1/messages/legacy/Kong2.0/more/paths
 {"message":"Hello Kong2.0\/more\/paths"}
 
-curl -XPOST localhost:8000/v1/messages/Kong2.0 -d '{"name":"kong2.0"}'
+curl -XPOST localhost:8000/v1/messages/Kong2.0 -d '{"greeting":"kong2.0"}'
 {"message":"Hello kong2.0"}
 ```
 
