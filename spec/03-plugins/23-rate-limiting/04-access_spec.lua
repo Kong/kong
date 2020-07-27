@@ -249,6 +249,26 @@ for _, strategy in helpers.each_strategy() do
           }
         })
 
+        local serviceB = bp.services:insert()
+        bp.routes:insert {
+          paths = { "/servB" },
+          hosts = { "test-service1.com" },
+          service = serviceB,
+        }
+
+        bp.rate_limiting_plugins:insert({
+          service = { id = serviceB.id },
+          config = {
+            policy         = policy,
+            minute         = 6,
+            fault_tolerant = false,
+            redis_host     = REDIS_HOST,
+            redis_port     = REDIS_PORT,
+            redis_password = REDIS_PASSWORD,
+            redis_database = REDIS_DATABASE,
+          }
+        })
+
         assert(helpers.start_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -379,6 +399,54 @@ for _, strategy in helpers.each_strategy() do
           assert.same({ message = "API rate limit exceeded" }, json)
         end)
       end)
+
+      it_with_retry("different services have separate limits", function()
+          for i = 1, 6 do
+            local res = GET("/status/200", {
+              headers = { Host = "test-service1.com" },
+            }, 200)
+
+            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
+            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+            assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+            assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+            local reset = tonumber(res.headers["ratelimit-reset"])
+            assert.equal(true, reset <= 60 and reset > 0)
+          end
+
+          for i = 1, 6 do
+            local res = GET("/servB/status/200", {
+              headers = { Host = "test-service1.com" },
+            }, 200)
+
+            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
+            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+            assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+            assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+            local reset = tonumber(res.headers["ratelimit-reset"])
+            assert.equal(true, reset <= 60 and reset > 0)
+          end
+
+          for _, path in ipairs{ "/status/200", "/servB/status/200" } do
+            -- Additonal request, while limit is 6/minute
+            local res, body = GET(path, {
+              headers = { Host = "test-service1.com" },
+            }, 429)
+
+            assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+            assert.are.same(0, tonumber(res.headers["ratelimit-remaining"]))
+
+            local retry = tonumber(res.headers["retry-after"])
+            assert.equal(true, retry <= 60 and retry > 0)
+
+            local reset = tonumber(res.headers["ratelimit-reset"])
+            assert.equal(true, reset <= 60 and reset > 0)
+
+            local json = cjson.decode(body)
+            assert.same({ message = "API rate limit exceeded" }, json)
+          end
+      end)
+
       describe("With authentication", function()
         describe("API-specific plugin", function()
           it_with_retry("blocks if exceeding limit", function()
