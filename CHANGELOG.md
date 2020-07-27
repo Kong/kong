@@ -61,8 +61,6 @@
 
 ### Dependencies
 
-### Dependencies
-
 - :warning: In order to use all Kong features, including the new
   dynamic upstream keepalive behavior, the required OpenResty version is
   [1.15.8.3](http://openresty.org/en/changelog-1015008.html).
