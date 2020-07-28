@@ -1,3 +1,7 @@
+## 0.5.1
+
+- fix(handler) invalidate cache for unregistered consumers (FTI-1472)
+
 ## 0.5.0
 
 * Extend the load consumer logic to find a consumer by `username` and
