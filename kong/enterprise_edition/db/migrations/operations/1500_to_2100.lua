@@ -165,7 +165,12 @@ local postgres = {
 
       -- XXX EE test what happens here with shared entities
       -- XXX EE for admin-consumers, can we just put them in default?
-      local tables = postgres_list_tables(connector)
+      local tables, err = postgres_list_tables(connector)
+      if err then
+        ngx.log(ngx.ERR, kong.log.inspect(err))
+        return nil, err
+      end
+
       if tables.workspace_entities then
         table.insert(code,
           render([[
