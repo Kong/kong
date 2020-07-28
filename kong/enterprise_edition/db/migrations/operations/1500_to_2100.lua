@@ -276,15 +276,19 @@ local cassandra = {
         if not ws_name and tables.workspace_entities then
           -- assumes that primary keys are 'id',
           -- which is currently true for all workspaceable entities
-          ws_name = ws_name and connector:query(render([[
+          ws_name = ws_name or connector:query(render([[
             SELECT workspace_name FROM $(KEYSPACE).workspace_entities
             WHERE entity_id = '$(ID)' LIMIT 1 ALLOW FILTERING;
           ]], {
             KEYSPACE = connector.keyspace,
-            ID = row[entity.primary_key] .. ':',
-          }))
-        end
+            ID = row[entity.primary_key],
+           }))
 
+          ws_name = ws_name                and
+                    ws_name[1]             and
+                    ws_name.workspace_name and
+                    ws_name.workspace_name .. ":"
+        end
         if not ws_name or not ws_prefix_fixups[ws_name] then
           -- data is already adjusted, bail out
           return
