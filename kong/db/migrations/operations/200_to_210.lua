@@ -62,15 +62,16 @@ local postgres = {
     -- we want the migration to remain self-contained and unchanged no matter
     -- what changes to the schemas in the latest version of Kong.
     -- @return string: SQL
+
+    -- EXECUTE format('ALTER TABLE IF EXISTS ONLY "$(TABLE)" ADD "ws_id" UUID REFERENCES "workspaces" ("id") DEFAULT %L',
+    --                (SELECT "id" FROM "workspaces" WHERE "name" = 'default'));
     ws_add_ws_id = function(_, table_name, fk_users)
       local out = {}
       table.insert(out, render([[
-
         -- Add ws_id to $(TABLE), populating all of them with the default workspace id
         DO $$
         BEGIN
-          EXECUTE format('ALTER TABLE IF EXISTS ONLY "$(TABLE)" ADD "ws_id" UUID REFERENCES "workspaces" ("id") DEFAULT %L',
-                         (SELECT "id" FROM "workspaces" WHERE "name" = 'default'));
+          ALTER TABLE IF EXISTS ONLY "$(TABLE)" ADD "ws_id" UUID REFERENCES "workspaces" ("id");
         EXCEPTION WHEN DUPLICATE_COLUMN THEN
           -- Do nothing, accept existing state
         END;
@@ -149,14 +150,14 @@ local postgres = {
     ------------------------------------------------------------------------------
     -- Update composite cache keys to workspace-aware formats
     ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
-      assert(connector:query(render([[
-        UPDATE "$(TABLE)"
-        SET cache_key = CONCAT(cache_key, ':',
-                               (SELECT id FROM workspaces WHERE name = 'default'))
-        WHERE cache_key LIKE '%:';
-      ]], {
-        TABLE = table_name,
-      })))
+      -- assert(connector:query(render([[
+      --   UPDATE "$(TABLE)"
+      --   SET cache_key = CONCAT(cache_key, ':',
+      --                          (SELECT id FROM workspaces WHERE name = 'default'))
+      --   WHERE cache_key LIKE '%:';
+      -- ]], {
+      --   TABLE = table_name,
+      -- })))
     end,
 
 
@@ -316,37 +317,37 @@ local cassandra = {
     ------------------------------------------------------------------------------
     -- Update composite cache keys to workspace-aware formats
     ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
-      local rows, err = connector:query([[
-        SELECT * FROM workspaces WHERE name='default';
-      ]])
-      if err then
-        return nil, err
-      end
-      local default_ws = rows[1].id
+      -- local rows, err = connector:query([[
+      --   SELECT * FROM workspaces WHERE name='default';
+      -- ]])
+      -- if err then
+      --   return nil, err
+      -- end
+      -- local default_ws = rows[1].id
 
-      local coordinator = assert(connector:connect_migrations())
+      -- local coordinator = assert(connector:connect_migrations())
 
-      for rows, err in coordinator:iterate("SELECT * FROM " .. table_name) do
-        if err then
-          return nil, err
-        end
+      -- for rows, err in coordinator:iterate("SELECT * FROM " .. table_name) do
+      --   if err then
+      --     return nil, err
+      --   end
 
-        for _, row in ipairs(rows) do
-          if row.cache_key:match(":$") then
-            local cql = render([[
-              UPDATE $(TABLE) SET cache_key = '$(CACHE_KEY)' WHERE $(PARTITION) id = $(ID)
-            ]], {
-              TABLE = table_name,
-              CACHE_KEY = row.cache_key .. ":" .. default_ws,
-              PARTITION = is_partitioned
-                        and "partition = '" .. table_name .. "' AND"
-                        or  "",
-              ID = row.id,
-            })
-          assert(connector:query(cql))
-          end
-        end
-      end
+      --   for _, row in ipairs(rows) do
+      --     if row.cache_key:match(":$") then
+      --       local cql = render([[
+      --         UPDATE $(TABLE) SET cache_key = '$(CACHE_KEY)' WHERE $(PARTITION) id = $(ID)
+      --       ]], {
+      --         TABLE = table_name,
+      --         CACHE_KEY = row.cache_key .. ":" .. default_ws,
+      --         PARTITION = is_partitioned
+      --                   and "partition = '" .. table_name .. "' AND"
+      --                   or  "",
+      --         ID = row.id,
+      --       })
+      --     assert(connector:query(cql))
+      --     end
+      --   end
+      -- end
     end,
 
     ------------------------------------------------------------------------------
@@ -500,6 +501,7 @@ local function ws_migrate_plugin(plugin_entities)
     end
   end
 
+  -- XXX EE postgres.ee.up ?
   return {
     postgres = {
       up = ws_migration_up(postgres.up),

@@ -161,6 +161,7 @@ local function execute(args)
     -- exit(0)
 
   elseif args.command == "bootstrap" then
+    kong.config.bootstrapping = true
     if args.force then
       migrations_utils.reset(schema_state, db, args.lock_timeout)
       schema_state = assert(db:schema_state())
