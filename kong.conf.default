@@ -195,7 +195,7 @@
                                  # between control and data plane nodes.
                                  # You can use the `kong hybrid` command to
                                  # generate the certificate/key pair.
-                                 # Under `shared` mode, is must be the same
+                                 # Under `shared` mode, it must be the same
                                  # for all nodes.  Under `pki` mode it
                                  # should be a different certificate for each
                                  # DP node.
