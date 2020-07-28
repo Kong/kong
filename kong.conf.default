@@ -184,11 +184,12 @@
                                  #   Note that CP and DP nodes have to present
                                  #   the same certificate to establish mTLS
                                  #   connections.
-                                 # - `pki`: use `cluster_ca_cert` and
-                                 #   `cluster_server_name` for verification,
-                                 #   these are different certificates for each
+                                 # - `pki`: use `cluster_ca_cert`,
+                                 #   `cluster_server_name` and `cluster_cert`
+                                 #   for verification.
+                                 #   These are different certificates for each
                                  #   DP node, but issued by a cluster-wide
-                                 #   common CA certificate: `cluster_ca_cert`
+                                 #   common CA certificate: `cluster_ca_cert`.
 
 #cluster_cert =                  # Filename of the cluster certificate to use
                                  # when establishing secure communication
