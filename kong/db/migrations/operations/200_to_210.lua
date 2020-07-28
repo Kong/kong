@@ -208,6 +208,29 @@ local postgres = {
 -- Cassandra operations for Workspace migration
 --------------------------------------------------------------------------------
 
+-- -- XXX EE Not used cause we don't have C* connector at up time
+-- local function cassandra_list_tables(connector)
+--   local fmt = string.format
+--   local coordinator = connector:connect_migrations()
+--   local tables = {}
+
+--   local cql = fmt([[
+--     SELECT table_name
+--       FROM system_schema.tables
+--      WHERE keyspace_name='%s';
+--   ]], connector.keyspace)
+--   for rows, err in coordinator:iterate(cql) do
+--     if err then
+--       return nil, err
+--     end
+
+--     for _, row in ipairs(rows) do
+--       tables[row.table_name] = true
+--     end
+--   end
+
+--   return tables
+-- end
 
 local cassandra = {
 
@@ -217,7 +240,9 @@ local cassandra = {
     -- Add `workspaces` table.
     -- @return string: CQL
     ws_add_workspaces = function(_)
-      return render([[
+      local tables = {} -- cassandra_list_tables(connector) XXX CAN I HAZ CONNECTOR?
+      if not tables.workspaces then
+        return render([[
 
           CREATE TABLE IF NOT EXISTS workspaces(
             id         uuid,
@@ -234,8 +259,9 @@ local cassandra = {
           INSERT INTO workspaces(id, name, created_at)
           VALUES (uuid(), 'default', $(NOW));
       ]], {
-        NOW = ngx.time() * 1000
-      })
+          NOW = ngx.time() * 1000
+        })
+      end
     end,
 
     ----------------------------------------------------------------------------
