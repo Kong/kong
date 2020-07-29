@@ -14,7 +14,8 @@ local ngx_encode_base64 = ngx.encode_base64
 
 
 local kong = {
-  table = require("kong.pdk.table").new()
+  table = require("kong.pdk.table").new(),
+  client = require("kong.pdk.client").new(),
 }
 
 
@@ -1373,6 +1374,23 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           })
           local body = assert.res_status(200, res)
           assert.is_table(ngx.re.match(body, [[^\{"token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
+        end)
+        it("authenticates the consumer who provisioned the token", function()
+          local res = assert(proxy_ssl_client:send {
+            method  = "POST",
+            path    = "/oauth2/token",
+            body    = {
+              client_id        = "clientid123",
+              client_secret    = "secret123",
+              scope            = "email",
+              grant_type       = "client_credentials"
+            },
+            headers = {
+              ["Host"]         = "oauth2_4.com",
+              ["Content-Type"] = "application/json"
+            }
+          })
+          assert.is_table(kong.client.get_consumer())
         end)
         it("returns success with an application that has multiple redirect_uri", function()
           local res = assert(proxy_ssl_client:send {
