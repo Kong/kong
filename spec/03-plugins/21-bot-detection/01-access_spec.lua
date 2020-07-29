@@ -38,7 +38,7 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route2.id },
         name     = "bot-detection",
         config   = {
-          blacklist = { HELLOWORLD },
+          deny = { HELLOWORLD },
         },
       }
 
@@ -46,7 +46,7 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route3.id },
         name     = "bot-detection",
         config   = {
-          whitelist = { FACEBOOK },
+          allow = { FACEBOOK },
         },
       }
 
@@ -131,7 +131,7 @@ for _, strategy in helpers.each_strategy() do
       assert.response(res).has.status(403)
     end)
 
-    it("blocks blacklisted user-agents", function()
+    it("blocks denied user-agents", function()
       local res = assert( proxy_client:send {
         method  = "GET",
         path    = "/request",
@@ -143,7 +143,7 @@ for _, strategy in helpers.each_strategy() do
       assert.response(res).has.status(403)
     end)
 
-    it("allows whitelisted user-agents", function()
+    it("allows allowed user-agents", function()
       local res = assert( proxy_client:send {
         method  = "GET",
         path    = "/request",

@@ -22,7 +22,7 @@ function step() {
       fi
    fi
    echo -e "$color $box Step $c) $2"
-   echo "        $0 $version $1 $3"
+   echo "        $0 -v $version -s $1 $3"
    echo -e "$nocolor"
    c="$[c+1]"
 }
@@ -36,7 +36,7 @@ function usage() {
    if [ "$version" = "<x.y.z-alpha.n>" ]
    then
       echo "     List executed steps for a given release"
-      echo "        $0 $version $1 $3"
+      echo "        $0 -v $version -s $1 $3"
       echo
    fi
    c=1
@@ -46,6 +46,14 @@ function usage() {
    step "version_bump"     "bump and commit the version number"
    step "submit"           "push and submit a release PR"
    step "tag"              "tag and sign the release candidate"
+   if [ "$beta" == true ]
+   then
+     step "docs_pr"        "push and submit a docs.konghq.com PR for the release"
+     step "update_docker"  "update and submit a PR to Kong's docker-kong repo"
+     step "merge_docker"   "merge, tag and sign Kong's docker-kong PR"
+     step "homebrew"       "bump version and submit a PR to homebrew-kong"
+     step "pongo"          "bump version and submit a PR to kong-pongo"
+   fi
    exit 0
 }
 
@@ -56,7 +64,7 @@ function die() {
    do
       echo -e "$red$bold*** $line$nocolor"
    done
-   echo "See also: $0 --help"
+   echo "See also: $0 -h"
    echo
    exit 1
 }
@@ -104,21 +112,25 @@ else
 fi
 
 #-------------------------------------------------------------------------------
-# Default help
-#-------------------------------------------------------------------------------
-
-if [ "$1" = "-h" ] || [ "$1" = "--help" ] || ! [ "$1" ]
-then
-   version="<x.y.z-alpha.n>"
-   usage
-fi
-
-#-------------------------------------------------------------------------------
 # Variables
 #-------------------------------------------------------------------------------
 
-version="$1"
-step="$2"
+version="0.0.0-alpha.0"
+
+while getopts ':v:s:' OPTION; do
+  case "$OPTION" in
+    v)
+      version="$OPTARG"
+      ;;
+    s)
+      step="$OPTARG"
+      ;;
+    ?)
+      usage
+      exit 1
+      ;;
+  esac
+done
 
 xyzversion="${version%%-*}"
 major=${xyzversion%%.*}
@@ -130,6 +142,11 @@ rockspec="kong-$xyzversion-0.rockspec"
 branch="release/$xyzversion"
 xyxversion="$major.$minor.0-(alpha|beta).n"
 prev_version="$xyzversion"
+
+beta=false
+if [[ $version == *"beta"* ]]; then
+  beta=true
+fi
 
 if ! [[ "$version" =~ ^[0-9]+.[0-9]+.0-(alpha|beta)\.[0-9]$ ]]
 then
@@ -263,7 +280,7 @@ case "$step" in
 
       SUCCESS "Release branch is switched locally." \
               "You are ready to run the next step:" \
-              "    $0 $version write_changelog"
+              "    $0 -v $version -s write_changelog"
       ;;
    #---------------------------------------------------------------------------
    write_changelog)
@@ -281,7 +298,7 @@ case "$step" in
               "you can run this step again."
               "If it is ready, you can proceed to the next step" \
               "which will commit it:" \
-              "    $0 $version commit_changelog"
+              "    $0 -v $version -s commit_changelog"
       ;;
    #---------------------------------------------------------------------------
    commit_changelog)
@@ -302,21 +319,19 @@ case "$step" in
 
       SUCCESS "The changelog is now committed locally." \
               "You are ready to run the next step:" \
-              "    $0 $version version_bump"
+              "    $0 -v $version -s version_bump"
       ;;
    #---------------------------------------------------------------------------
    version_bump)
-      if ! grep -q "minor = $minor" kong/meta.lua
-      then
-         sed -i 's/major = [0-9]*/major = '$major'/' kong/meta.lua
-         sed -i 's/minor = [0-9]*/minor = '$minor'/' kong/meta.lua
-         sed -i 's/patch = [0-9]*/patch = '$patch'/' kong/meta.lua
-         sed -i 's/-- suffix.*/suffix = "'$prerelease'"/' kong/meta.lua
-      fi
+      sed -i 's/major = [0-9]*/major = '$major'/' kong/meta.lua
+      sed -i 's/minor = [0-9]*/minor = '$minor'/' kong/meta.lua
+      sed -i 's/patch = [0-9]*/patch = '$patch'/' kong/meta.lua
+      sed -i 's/-- suffix.*/suffix = "'$prerelease'"/' kong/meta.lua
+      sed -i 's/ suffix.*/ suffix = "'$prerelease'"/' kong/meta.lua
       if ! [ -f "$rockspec" ]
       then
          old_rockspec=$(ls kong-*-0.rockspec | head -n 1)
-         sed -i 's/^version = ".*"/version = "'$xyzversion'-0"/' "$old_rockspec"
+         sed -i 's/^version = ".*"/version = "'$xyzversion''$prerelease'-0"/' "$old_rockspec"
          sed -i 's/^  tag = ".*"/  tag = "'$version'"/' "$old_rockspec"
       fi
 
@@ -334,7 +349,7 @@ case "$step" in
 
       SUCCESS "Version bump for the release is now committed locally." \
               "You are ready to run the next step:" \
-              "    $0 $version submit"
+              "    $0 -v $version -s submit"
       ;;
    #---------------------------------------------------------------------------
    submit)
@@ -350,10 +365,10 @@ case "$step" in
 
       set -e
       git push --set-upstream origin "$branch"
-      hub pull-request -b master -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge"
+      hub pull-request -b master -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge" | true
 
       SUCCESS "Now get the above PR reviewed and approved. Before continueing on" \
-              "    $0 $version tag"
+              "    $0 -v $version -s tag"
       ;;
    #---------------------------------------------------------------------------
    tag)
@@ -371,7 +386,133 @@ case "$step" in
       hub release create --prerelease -F release-$version.txt "$version"
       rm -f release-$version.txt
 
-      SUCCESS "Make sure the packages are built and available on Bintray"
+      SUCCESS "While the packages are being built continue to" \
+            "     $0 -v $version -s docs_pr" \
+            "After the packages are built continue to" \
+            "Once they are built, you may run the following steps in parallel:" \
+            "* 'update_docker', then 'merge_docker'"
+            "* 'homebrew'" \
+            "* 'pongo'"
+      ;;
+   #---------------------------------------------------------------------------
+   docs_pr)
+      if [ -d ../docs.konghq.com ]
+      then
+         cd ../docs.konghq.com
+      else
+         cd ..
+         git clone https://github.com/kong/docs.konghq.com
+         cd docs.konghq.com
+      fi
+      git checkout master
+      git pull
+      git checkout -B "$branch"
+      bump_docs_kong_versions
+
+      git diff
+
+      CONFIRM "If everything looks all right, press Enter to commit and send a PR to https://github.com/kong/docs.konghq.com" \
+              "or Ctrl-C to cancel."
+
+      set -e
+      git add app/_data/kong_versions.yml
+      git commit -m "chore(*) update release metadata for $version"
+
+      git push --set-upstream origin "$branch"
+      hub pull-request -b master -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge"
+
+      SUCCESS "Make sure you give Team Docs a heads-up" \
+              "once the release is pushed to the main repo." \
+              "When the main release PR is approved, you can proceed to:" \
+              "    $0 -v $version -s update_docker"
+      ;;
+   #---------------------------------------------------------------------------
+   update_docker)
+      if [ -d ../docker-kong ]
+      then
+         cd ../docker-kong
+      else
+         cd ..
+         git clone https://github.com/kong/docker-kong
+         cd docker-kong
+      fi
+
+      set -e
+      ./update.sh "$version"
+
+      SUCCESS "Make sure you get the PR above approved and merged" \
+              "before continuing to the step 'merge_docker'."
+      ;;
+   #---------------------------------------------------------------------------
+   merge_docker)
+      if [ -d ../docker-kong ]
+      then
+         cd ../docker-kong
+      else
+         cd ..
+         git clone https://github.com/kong/docker-kong
+         cd docker-kong
+      fi
+
+      set -e
+      git checkout "$branch"
+      git pull
+      git checkout master
+      git pull
+      git merge "$branch"
+      git push
+      git tag -s "$version" -m "$version"
+      git push origin "$version"
+
+      SUCCESS "Now you can run the next step:" \
+              "    $0 -v $version -s homebrew"
+      ;;
+   #---------------------------------------------------------------------------
+   homebrew)
+      if [ -d ../homebrew-kong ]
+      then
+         cd ../homebrew-kong
+      else
+         cd ..
+         git clone https://github.com/kong/homebrew-kong
+         cd homebrew-kong
+      fi
+
+      git checkout master
+      git pull
+      git checkout -B "$branch"
+      bump_homebrew
+
+      git diff
+
+      CONFIRM "If everything looks all right, press Enter to commit and send a PR to https://github.com/kong/homebrew-kong" \
+              "or Ctrl-C to cancel."
+
+      set -e
+      git add Formula/kong.rb
+      git commit -m "chore(kong) bump kong to $version"
+
+      git push --set-upstream origin "$branch"
+      hub pull-request -b master -h "$branch" -m "Release: $version"
+
+      SUCCESS "Make sure you get the PR above approved and merged." \
+              "    $0 -v $version -s pongo"
+      ;;
+   #---------------------------------------------------------------------------
+   pongo)
+      if [ -d ../kong-pongo ]
+      then
+         cd ../kong-pongo
+      else
+         cd ..
+         git clone https://github.com/kong/kong-pongo
+         cd kong-pongo
+      fi
+
+      git checkout master
+      git pull
+      ./assets/add_version.sh CE $version
+      SUCCESS "Make sure you get the PR above approved and merged."
       ;;
    #---------------------------------------------------------------------------
    *)

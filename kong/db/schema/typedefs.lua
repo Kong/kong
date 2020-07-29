@@ -179,7 +179,7 @@ end
 
 
 local function validate_certificate(cert)
-  local _, err =  openssl_x509.new(cert)
+  local _, err = openssl_x509.new(cert)
   if err then
     return nil, "invalid certificate: " .. err
   end

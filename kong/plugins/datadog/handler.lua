@@ -1,4 +1,3 @@
-local serializer = require "kong.plugins.log-serializers.basic"
 local statsd_logger = require "kong.plugins.datadog.statsd_logger"
 
 
@@ -97,7 +96,7 @@ function DatadogHandler:log(conf)
     return
   end
 
-  local message = serializer.serialize(ngx)
+  local message = kong.log.serialize()
   local ok, err = timer_at(0, log, conf, message)
   if not ok then
     kong.log.err("failed to create timer: ", err)

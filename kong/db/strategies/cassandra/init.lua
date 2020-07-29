@@ -5,6 +5,8 @@ local cjson = require "cjson"
 
 local fmt           = string.format
 local rep           = string.rep
+local sub           = string.sub
+local byte          = string.byte
 local null          = ngx.null
 local type          = type
 local error         = error
@@ -12,6 +14,7 @@ local pairs         = pairs
 local ipairs        = ipairs
 local insert        = table.insert
 local concat        = table.concat
+local get_phase     = ngx.get_phase
 local setmetatable  = setmetatable
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
@@ -41,6 +44,8 @@ local APPLIED_COLUMN = "[applied]"
 
 
 local cache_key_field = { type = "string" }
+local ws_id_field = { type = "string", uuid = true }
+local workspaces_strategy
 
 
 local _M  = {}
@@ -49,12 +54,26 @@ local _mt = {}
 _mt.__index = _mt
 
 
+local function format_cql(...)
+ return (fmt(...):gsub("^%s*", "")
+                 :gsub("%s*$", "")
+                 :gsub("\n%s*", "\n"))
+end
+
+
+local function get_ws_id()
+  local phase = get_phase()
+  return (phase ~= "init" and phase ~= "init_worker")
+         and ngx.ctx.workspace or kong.default_workspace
+end
+
+
 local function is_partitioned(self)
   local cql
 
   -- Assume a release version number of 3 & greater will use the same schema.
   if self.connector.major_version >= 3 then
-    cql = fmt([[
+    cql = format_cql([[
       SELECT * FROM system_schema.columns
       WHERE keyspace_name = '%s'
       AND table_name = '%s'
@@ -62,7 +81,7 @@ local function is_partitioned(self)
     ]], self.connector.keyspace, self.schema.name)
 
   else
-    cql = fmt([[
+    cql = format_cql([[
       SELECT * FROM system.schema_columns
       WHERE keyspace_name = '%s'
       AND columnfamily_name = '%s'
@@ -88,7 +107,8 @@ local function build_queries(self)
   local schema   = self.schema
   local n_fields = #schema.fields
   local n_pk     = #schema.primary_key
-  local composite_cache_key = schema.cache_key and #schema.cache_key > 1
+  local has_composite_cache_key = schema.cache_key and #schema.cache_key > 1
+  local has_ws_id = schema.workspaceable
 
   local select_columns = new_tab(n_fields, 0)
   for field_name, field in schema:each_field() do
@@ -106,9 +126,16 @@ local function build_queries(self)
 
   local insert_bind_args = rep("?, ", n_fields):sub(1, -3)
 
-  if composite_cache_key then
+  if has_composite_cache_key then
     insert_columns = select_columns .. ", cache_key"
     insert_bind_args = insert_bind_args .. ", ?"
+  end
+
+  if has_ws_id then
+    insert_columns = insert_columns .. ", ws_id"
+    insert_bind_args = insert_bind_args .. ", ?"
+
+    select_columns = select_columns .. ", ws_id"
   end
 
   local select_bind_args = new_tab(n_pk, 0)
@@ -132,129 +159,129 @@ local function build_queries(self)
 
   if partitioned then
     return {
-      insert = fmt([[
+      insert = format_cql([[
         INSERT INTO %s (partition, %s) VALUES ('%s', %s) IF NOT EXISTS
       ]], schema.name, insert_columns, schema.name, insert_bind_args),
 
-      insert_ttl = fmt([[
+      insert_ttl = format_cql([[
         INSERT INTO %s (partition, %s) VALUES ('%s', %s) IF NOT EXISTS USING TTL %s
       ]], schema.name, insert_columns, schema.name, insert_bind_args, "%u"),
 
-      insert_no_transaction = fmt([[
+      insert_no_transaction = format_cql([[
         INSERT INTO %s (partition, %s) VALUES ('%s', %s)
       ]], schema.name, insert_columns, schema.name, insert_bind_args),
 
-      insert_no_transaction_ttl = fmt([[
+      insert_no_transaction_ttl = format_cql([[
         INSERT INTO %s (partition, %s) VALUES ('%s', %s) USING TTL %s
       ]], schema.name, insert_columns, schema.name, insert_bind_args, "%u"),
 
-      select = fmt([[
+      select = format_cql([[
         SELECT %s FROM %s WHERE partition = '%s' AND %s
       ]], select_columns, schema.name, schema.name, select_bind_args),
 
-      select_page = fmt([[
+      select_page = format_cql([[
         SELECT %s FROM %s WHERE partition = '%s'
       ]], select_columns, schema.name, schema.name),
 
-      select_with_filter = fmt([[
+      select_with_filter = format_cql([[
         SELECT %s FROM %s WHERE partition = '%s' AND %s
       ]], select_columns, schema.name, schema.name, "%s"),
 
-      select_tags_cond_and_first_tag = fmt([[
+      select_tags_cond_and_first_tag = format_cql([[
         SELECT entity_id FROM tags WHERE entity_name = '%s' AND tag = ?
       ]], schema.name),
 
-      select_tags_cond_and_next_tags = fmt([[
+      select_tags_cond_and_next_tags = format_cql([[
         SELECT entity_id FROM tags WHERE entity_name = '%s' AND tag = ? AND entity_id IN ?
       ]], schema.name),
 
-      select_tags_cond_or = fmt([[
+      select_tags_cond_or = format_cql([[
         SELECT tag, entity_id, other_tags FROM tags WHERE entity_name = '%s' AND tag IN ?
       ]], schema.name),
 
-      update = fmt([[
+      update = format_cql([[
         UPDATE %s SET %s WHERE partition = '%s' AND %s IF EXISTS
       ]], schema.name, "%s", schema.name, select_bind_args),
 
-      update_ttl = fmt([[
+      update_ttl = format_cql([[
         UPDATE %s USING TTL %s SET %s WHERE partition = '%s' AND %s IF EXISTS
       ]], schema.name, "%u", "%s", schema.name, select_bind_args),
 
-      upsert = fmt([[
+      upsert = format_cql([[
         UPDATE %s SET %s WHERE partition = '%s' AND %s
       ]], schema.name, "%s", schema.name, select_bind_args),
 
-      upsert_ttl = fmt([[
+      upsert_ttl = format_cql([[
         UPDATE %s USING TTL %s SET %s WHERE partition = '%s' AND %s
       ]], schema.name, "%u", "%s", schema.name, select_bind_args),
 
-      delete = fmt([[
+      delete = format_cql([[
         DELETE FROM %s WHERE partition = '%s' AND %s
       ]], schema.name, schema.name, select_bind_args),
     }
   end
 
   return {
-    insert = fmt([[
+    insert = format_cql([[
       INSERT INTO %s (%s) VALUES (%s) IF NOT EXISTS
     ]], schema.name, insert_columns, insert_bind_args),
 
-    insert_ttl = fmt([[
+    insert_ttl = format_cql([[
       INSERT INTO %s (%s) VALUES (%s) IF NOT EXISTS USING TTL %s
     ]], schema.name, insert_columns, insert_bind_args, "%u"),
 
-    insert_no_transaction = fmt([[
+    insert_no_transaction = format_cql([[
       INSERT INTO %s (%s) VALUES (%s)
     ]], schema.name, insert_columns, insert_bind_args),
 
-    insert_no_transaction_ttl = fmt([[
+    insert_no_transaction_ttl = format_cql([[
       INSERT INTO %s ( %s) VALUES (%s) USING TTL %s
     ]], schema.name, insert_columns, insert_bind_args, "%u"),
 
     -- might raise a "you must enable ALLOW FILTERING" error
-    select = fmt([[
+    select = format_cql([[
       SELECT %s FROM %s WHERE %s
     ]], select_columns, schema.name, select_bind_args),
 
     -- might raise a "you must enable ALLOW FILTERING" error
-    select_page = fmt([[
+    select_page = format_cql([[
       SELECT %s FROM %s
     ]], select_columns, schema.name),
 
     -- might raise a "you must enable ALLOW FILTERING" error
-    select_with_filter = fmt([[
+    select_with_filter = format_cql([[
       SELECT %s FROM %s WHERE %s
     ]], select_columns, schema.name, "%s"),
 
-    select_tags_cond_and_first_tag = fmt([[
+    select_tags_cond_and_first_tag = format_cql([[
       SELECT entity_id FROM tags WHERE entity_name = '%s' AND tag = ?
     ]], schema.name),
 
-    select_tags_cond_and_next_tags = fmt([[
+    select_tags_cond_and_next_tags = format_cql([[
       SELECT entity_id FROM tags WHERE entity_name = '%s' AND tag = ? AND entity_id IN ?
     ]], schema.name),
 
-    select_tags_cond_or = fmt([[
+    select_tags_cond_or = format_cql([[
       SELECT tag, entity_id, other_tags FROM tags WHERE entity_name = '%s' AND tag IN ?
     ]], schema.name),
 
-    update = fmt([[
+    update = format_cql([[
       UPDATE %s SET %s WHERE %s IF EXISTS
     ]], schema.name, "%s", select_bind_args),
 
-    update_ttl = fmt([[
+    update_ttl = format_cql([[
       UPDATE %s USING TTL %s SET %s WHERE %s IF EXISTS
     ]], schema.name, "%u", "%s", select_bind_args),
 
-    upsert = fmt([[
+    upsert = format_cql([[
       UPDATE %s SET %s WHERE %s
     ]], schema.name, "%s", select_bind_args),
 
-    upsert_ttl = fmt([[
+    upsert_ttl = format_cql([[
       UPDATE %s USING TTL %s SET %s WHERE %s
     ]], schema.name, "%u", "%s", select_bind_args),
 
-    delete = fmt([[
+    delete = format_cql([[
       DELETE FROM %s WHERE %s
     ]], schema.name, select_bind_args),
   }
@@ -274,7 +301,7 @@ local function get_query(self, query_name)
 end
 
 
-local function serialize_arg(field, arg)
+local function serialize_arg(field, arg, ws_id)
   local serialized_arg
 
   if arg == null then
@@ -296,13 +323,17 @@ local function serialize_arg(field, arg)
     serialized_arg = cassandra.boolean(arg)
 
   elseif field.type == "string" then
+    if field.unique and ws_id and not field.unique_across_ws then
+      arg = ws_id .. ":" .. arg
+    end
+
     serialized_arg = cassandra.text(arg)
 
   elseif field.type == "array" then
     local t = {}
 
     for i = 1, #arg do
-      t[i] = serialize_arg(field.elements, arg[i])
+      t[i] = serialize_arg(field.elements, arg[i], ws_id)
     end
 
     serialized_arg = cassandra.list(t)
@@ -311,7 +342,7 @@ local function serialize_arg(field, arg)
     local t = {}
 
     for i = 1, #arg do
-      t[i] = serialize_arg(field.elements, arg[i])
+      t[i] = serialize_arg(field.elements, arg[i], ws_id)
     end
 
     serialized_arg = cassandra.set(t)
@@ -320,7 +351,7 @@ local function serialize_arg(field, arg)
     local t = {}
 
     for k, v in pairs(arg) do
-      t[k] = serialize_arg(field.values, arg[k])
+      t[k] = serialize_arg(field.values, arg[k], ws_id)
     end
 
     serialized_arg = cassandra.map(t)
@@ -331,7 +362,7 @@ local function serialize_arg(field, arg)
   elseif field.type == "foreign" then
     local fk_pk = field.schema.primary_key[1]
     local fk_field = field.schema.fields[fk_pk]
-    serialized_arg = serialize_arg(fk_field, arg[fk_pk])
+    serialized_arg = serialize_arg(fk_field, arg[fk_pk], ws_id)
 
   else
     error("[cassandra strategy] don't know how to serialize field")
@@ -341,7 +372,7 @@ local function serialize_arg(field, arg)
 end
 
 
-local function serialize_foreign_pk(db_columns, args, args_names, foreign_pk)
+local function serialize_foreign_pk(db_columns, args, args_names, foreign_pk, ws_id)
   for _, db_column in ipairs(db_columns) do
     local to_serialize
 
@@ -352,7 +383,7 @@ local function serialize_foreign_pk(db_columns, args, args_names, foreign_pk)
       to_serialize = foreign_pk[db_column.foreign_field_name]
     end
 
-    insert(args, serialize_arg(db_column.foreign_field, to_serialize))
+    insert(args, serialize_arg(db_column.foreign_field, to_serialize, ws_id))
 
     if args_names then
       insert(args_names, db_column.col_name)
@@ -371,12 +402,12 @@ end
 -- a human pace), and mitigated by the introduction of different levels
 -- of consistency for read vs. write queries, as well as the linearizable
 -- consistency of lightweight transactions (IF [NOT] EXISTS).
-local function foreign_pk_exists(self, field_name, field, foreign_pk)
+local function foreign_pk_exists(self, field_name, field, foreign_pk, ws_id)
   local foreign_schema = field.schema
   local foreign_strategy = _M.new(self.connector, foreign_schema,
                                   self.errors)
 
-  local foreign_row, err_t = foreign_strategy:select(foreign_pk)
+  local foreign_row, err_t = foreign_strategy:select(foreign_pk, { workspace = ws_id or null })
   if err_t then
     return nil, err_t
   end
@@ -385,6 +416,10 @@ local function foreign_pk_exists(self, field_name, field, foreign_pk)
     return nil, self.errors:foreign_key_violation_invalid_reference(foreign_pk,
                                                                     field_name,
                                                                     foreign_schema.name)
+  end
+
+  if ws_id and foreign_row.ws_id and foreign_row.ws_id ~= ws_id then
+    return nil, self.errors:invalid_workspace(foreign_row.ws_id or "null")
   end
 
   return true
@@ -433,21 +468,14 @@ end
 -- a human pace), and mitigated by the introduction of different levels
 -- of consistency for read vs. write queries, as well as the linearizable
 -- consistency of lightweight transactions (IF [NOT] EXISTS).
-local function build_tags_cql(self, primary_key, schema, new_tags, ttl, read_before_write)
+local function build_tags_cql(primary_key, schema, new_tags, ttl, rbw_entity)
   local tags_to_add, tags_to_delete, tags_not_changed
 
   new_tags = (not new_tags or new_tags == null) and {} or new_tags
 
-  if read_before_write then
-    local strategy = _M.new(self.connector, schema,
-                            self.errors)
-    local row, err_t = strategy:select(primary_key)
-    if err_t then
-      return nil, err_t
-    end
-
-    if row and row['tags'] and row['tags'] ~= null then
-      tags_to_add, tags_to_delete, tags_not_changed = set_difference(row['tags'], new_tags)
+  if rbw_entity then
+    if rbw_entity and rbw_entity['tags'] and rbw_entity['tags'] ~= null then
+      tags_to_add, tags_to_delete, tags_not_changed = set_difference(rbw_entity['tags'], new_tags)
     else
       tags_to_add = new_tags
       tags_to_delete = {}
@@ -660,6 +688,8 @@ function _mt:deserialize_row(row)
   -- return timestamps in seconds instead of ms
 
   for field_name, field in self.schema:each_field() do
+    local ws_unique = field.unique and not field.unique_across_ws
+
     if field.type == "foreign" then
       local db_columns = self.foreign_keys_db_columns[field_name]
 
@@ -684,6 +714,14 @@ function _mt:deserialize_row(row)
     elseif field.timestamp and row[field_name] ~= nil then
       row[field_name] = row[field_name] / 1000
 
+    elseif field.type == "string" and ws_unique and row[field_name] ~= nil then
+      local value = row[field_name]
+      -- for regular 'unique' values (that are *not* 'unique_across_ws')
+      -- value is of the form "<uuid>:<value>" in the DB: strip the "<uuid>:"
+      if byte(value, 37) == byte(":") then
+        row[field_name] = sub(value, 38)
+      end
+
     else
       row[field_name] = deserialize_aggregates(row[field_name], field)
     end
@@ -693,7 +731,7 @@ function _mt:deserialize_row(row)
 end
 
 
-local function _select(self, cql, args)
+local function _select(self, cql, args, ws_id)
   local rows, err = self.connector:query(cql, args, nil, "read")
   if not rows then
     return nil, self.errors:database_error("could not execute selection query: "
@@ -708,17 +746,22 @@ local function _select(self, cql, args)
     return nil
   end
 
+  if row.ws_id and ws_id and row.ws_id ~= ws_id then
+    return nil
+  end
+
   return self:deserialize_row(row)
 end
 
 
-local function check_unique(self, primary_key, entity, field_name)
+local function check_unique(self, primary_key, entity, field_name, ws_id)
   -- a UNIQUE constaint is set on this field.
   -- We unfortunately follow a read-before-write pattern in this case,
   -- but this is made necessary for Kong to behave in a
   -- database-agnostic fashion between its supported RDBMs and
   -- Cassandra.
-  local row, err_t = self:select_by_field(field_name, entity[field_name])
+  local opts = { workspace = ws_id or null }
+  local row, err_t = self:select_by_field(field_name, entity[field_name], opts)
   if err_t then
     return nil, err_t
   end
@@ -752,22 +795,82 @@ local function check_unique(self, primary_key, entity, field_name)
 end
 
 
+-- Determine if a workspace is to be used, and if so, which one.
+-- If a workspace is given in `options.workspace` and the entity is
+-- workspaceable, it will use it.
+-- If `use_null` is false (indicating the query calling this function
+-- does not accept global queries) or `options.workspace` is not given,
+-- then this function will obtain the current workspace UUID from
+-- the execution context.
+-- @tparam table schema The schema definition table
+-- @tparam table option The DAO request options table
+-- @tparam boolean use_null If true, accept ngx.null as a possible
+-- value of options.workspace and use it to signal a global query
+-- @treturn boolean,string?,table? One of the following:
+--  * false, nil,  nil = entity is not workspaceable
+--  * true,  uuid, nil = entity is workspaceable, this is the workspace to use
+--  * true,  nil,  nil = entity is workspaceable, but a global query was requested
+--  * nil,   nil,  err = database error or selected workspace does not exist
+local function check_workspace(self, options, use_null)
+  local workspace = options and options.workspace
+  local schema = self.schema
+
+  local ws_id
+  local has_ws_id = schema.workspaceable
+  if has_ws_id then
+    if use_null and workspace == null then
+      ws_id = nil
+
+    elseif workspace ~= nil and workspace ~= null then
+      ws_id = workspace
+
+    else
+      ws_id = get_ws_id()
+    end
+  end
+
+  -- check that workspace actually exists
+  if ws_id then
+    if not workspaces_strategy then
+      local Entity = require("kong.db.schema.entity")
+      local schema = Entity.new(require("kong.db.schema.entities.workspaces"))
+      workspaces_strategy = _M.new(self.connector, schema, self.errors)
+    end
+    local row, err_t = workspaces_strategy:select({ id = ws_id })
+    if err_t then
+      return nil, nil, err_t
+    end
+
+    if not row then
+      return nil, nil, self.errors:invalid_workspace(ws_id)
+    end
+  end
+
+  return has_ws_id, ws_id
+end
+
+
 function _mt:insert(entity, options)
   local schema = self.schema
   local args = new_tab(#schema.fields, 0)
   local ttl = schema.ttl and options and options.ttl
-  local composite_cache_key = schema.cache_key and #schema.cache_key > 1
-  local primary_key
+  local has_composite_cache_key = schema.cache_key and #schema.cache_key > 1
+
+  local has_ws_id, ws_id, err = check_workspace(self, options, false)
+  if err then
+    return nil, err
+  end
 
   local cql_batch
   local batch_mode
 
   local mode = 'insert'
 
+  local primary_key
   if schema.fields.tags then
     primary_key = schema:extract_pk_values(entity)
     local err_t
-    cql_batch, err_t = build_tags_cql(self, primary_key, schema, entity["tags"], ttl, false)
+    cql_batch, err_t = build_tags_cql(primary_key, schema, entity["tags"], ttl)
     if err_t then
       return nil, err_t
     end
@@ -804,14 +907,14 @@ function _mt:insert(entity, options)
 
       if foreign_pk ~= null then
         -- if given, check if this foreign entity exists
-        local exists, err_t = foreign_pk_exists(self, field_name, field, foreign_pk)
+        local exists, err_t = foreign_pk_exists(self, field_name, field, foreign_pk, ws_id)
         if not exists then
           return nil, err_t
         end
       end
 
       local db_columns = self.foreign_keys_db_columns[field_name]
-      serialize_foreign_pk(db_columns, args, nil, foreign_pk)
+      serialize_foreign_pk(db_columns, args, nil, foreign_pk, ws_id)
 
     else
       if field.unique
@@ -823,24 +926,28 @@ function _mt:insert(entity, options)
         -- but this is made necessary for Kong to behave in a database-agnostic
         -- fashion between its supported RDBMs and Cassandra.
         primary_key = primary_key or schema:extract_pk_values(entity)
-        local _, err_t = check_unique(self, primary_key, entity, field_name)
+        local _, err_t = check_unique(self, primary_key, entity, field_name, ws_id)
         if err_t then
           return nil, err_t
         end
       end
 
-      insert(args, serialize_arg(field, entity[field_name]))
+      insert(args, serialize_arg(field, entity[field_name], ws_id))
     end
   end
 
-  if composite_cache_key then
+  if has_composite_cache_key then
     primary_key = primary_key or schema:extract_pk_values(entity)
-    local _, err_t = check_unique(self, primary_key, entity, "cache_key")
+    local _, err_t = check_unique(self, primary_key, entity, "cache_key", ws_id)
     if err_t then
       return nil, err_t
     end
 
-    insert(args, serialize_arg(cache_key_field, entity["cache_key"]))
+    insert(args, serialize_arg(cache_key_field, entity["cache_key"], ws_id))
+  end
+
+  if has_ws_id then
+    insert(args, serialize_arg(ws_id_field, ws_id, ws_id))
   end
 
   -- execute query
@@ -890,13 +997,24 @@ function _mt:insert(entity, options)
     res[field_name] = value
   end
 
+  if has_ws_id then
+    res.ws_id = ws_id
+  end
+
   return res
 end
 
 
 function _mt:select(primary_key, options)
   local schema = self.schema
-  local cql, err = get_query(self, "select")
+
+  local _, ws_id, err = check_workspace(self, options, true)
+  if err then
+    return nil, err
+  end
+
+  local cql
+  cql, err = get_query(self, "select")
   if err then
     return nil, err
   end
@@ -905,16 +1023,28 @@ function _mt:select(primary_key, options)
   -- serialize WHERE clause args
 
   for i, field_name, field in self.each_pk_field() do
-    args[i] = serialize_arg(field, primary_key[field_name])
+    args[i] = serialize_arg(field, primary_key[field_name], ws_id)
   end
 
   -- execute query
 
-  return _select(self, cql, args)
+  return _select(self, cql, args, ws_id)
 end
 
 
 function _mt:select_by_field(field_name, field_value, options)
+  local has_ws_id, ws_id, err = check_workspace(self, options, true)
+  if err then
+    return nil, err
+  end
+
+  if has_ws_id and ws_id == nil
+     and not self.schema.fields[field_name].unique_across_ws then
+    -- fail with error: this is not a database failure, this is programmer error
+    error("cannot select on field " .. field_name .. "without a workspace " ..
+          "because it is not marked unique_across_ws")
+  end
+
   local cql, err = get_query(self, "select_with_filter")
   if err then
     return nil, err
@@ -936,9 +1066,9 @@ function _mt:select_by_field(field_name, field_value, options)
 
   local select_cql = fmt(cql, field_name .. " = ?")
   local bind_args = new_tab(1, 0)
-  bind_args[1] = serialize_arg(field, field_value)
+  bind_args[1] = serialize_arg(field, field_value, ws_id)
 
-  return _select(self, select_cql, bind_args)
+  return _select(self, select_cql, bind_args, ws_id)
 end
 
 
@@ -966,14 +1096,29 @@ do
   end
 
   local function query_page(self, offset, foreign_key, foreign_key_db_columns, opts)
+    local _, ws_id, err = check_workspace(self, opts, true)
+    if err then
+      return nil, err
+    end
+
     local cql
     local args
-    local err
 
     if not foreign_key then
-      cql, err = get_query(self, "select_page")
-      if err then
-        return nil, err
+      if ws_id then
+        cql, err = get_query(self, "select_with_filter")
+        if err then
+          return nil, err
+        end
+
+        cql = fmt(cql, "ws_id = ?")
+        args = { serialize_arg(ws_id_field, ws_id, ws_id) }
+
+      else
+        cql, err = get_query(self, "select_page")
+        if err then
+          return nil, err
+        end
       end
 
     elseif foreign_key and foreign_key_db_columns then
@@ -984,7 +1129,7 @@ do
       end
       cql = fmt(cql, foreign_key_db_columns.args_names)
 
-      serialize_foreign_pk(foreign_key_db_columns, args, nil, foreign_key)
+      serialize_foreign_pk(foreign_key_db_columns, args, nil, foreign_key, ws_id)
 
     else
       error("should provide both of: foreign_key, foreign_key_db_columns", 2)
@@ -1217,6 +1362,7 @@ do
 
     opts.page_size = size
     opts.paging_state = offset
+    opts.workspace = options and options.workspace
 
     if options and options.tags then
       return query_page_for_tags(self, size, offset, options.tags, options.tags_cond, opts)
@@ -1231,14 +1377,22 @@ do
   local function update(self, primary_key, entity, mode, options)
     local schema = self.schema
     local ttl = schema.ttl and options and options.ttl
-    local composite_cache_key = schema.cache_key and #schema.cache_key > 1
+
+    local has_ws_id, ws_id, err = check_workspace(self, options, false)
+    if err then
+      return nil, err
+    end
 
     local cql_batch
     local batch_mode
 
     if schema.fields.tags then
-      local err_t
-      cql_batch, err_t = build_tags_cql(self, primary_key, schema, entity["tags"], ttl, true)
+      local rbw_entity, err_t = self:select(primary_key, { workspace = ws_id or null })
+      if err_t then
+        return nil, err_t
+      end
+
+      cql_batch, err_t = build_tags_cql(primary_key, schema, entity["tags"], ttl, rbw_entity)
       if err_t then
         return nil, err_t
       end
@@ -1273,7 +1427,7 @@ do
     for _, field_name, field in self.each_non_pk_field() do
       if entity[field_name] ~= nil then
         if field.unique and entity[field_name] ~= null then
-          local _, err_t = check_unique(self, primary_key, entity, field_name)
+          local _, err_t = check_unique(self, primary_key, entity, field_name, ws_id)
           if err_t then
             return nil, err_t
           end
@@ -1284,35 +1438,41 @@ do
 
           if foreign_pk ~= null then
             -- if given, check if this foreign entity exists
-            local exists, err_t = foreign_pk_exists(self, field_name, field, foreign_pk)
+            local exists, err_t = foreign_pk_exists(self, field_name, field, foreign_pk, ws_id)
             if not exists then
               return nil, err_t
             end
           end
 
           local db_columns = self.foreign_keys_db_columns[field_name]
-          serialize_foreign_pk(db_columns, args, args_names, foreign_pk)
+          serialize_foreign_pk(db_columns, args, args_names, foreign_pk, ws_id)
 
         else
-          insert(args, serialize_arg(field, entity[field_name]))
+          insert(args, serialize_arg(field, entity[field_name], ws_id))
           insert(args_names, field_name)
         end
       end
     end
 
-    if composite_cache_key then
-      local _, err_t = check_unique(self, primary_key, entity, "cache_key")
+    local has_composite_cache_key = schema.cache_key and #schema.cache_key > 1
+
+    if has_composite_cache_key then
+      local _, err_t = check_unique(self, primary_key, entity, "cache_key", ws_id)
       if err_t then
         return nil, err_t
       end
 
-      insert(args, serialize_arg(cache_key_field, entity["cache_key"]))
+      insert(args, serialize_arg(cache_key_field, entity["cache_key"], ws_id))
+    end
+
+    if has_ws_id then
+      insert(args, serialize_arg(ws_id_field, ws_id, ws_id))
     end
 
     -- serialize WHERE clause args
 
     for i, field_name, field in self.each_pk_field() do
-      insert(args, serialize_arg(field, primary_key[field_name]))
+      insert(args, serialize_arg(field, primary_key[field_name], ws_id))
     end
 
     -- inject SET clause bindings
@@ -1324,8 +1484,12 @@ do
       update_columns_binds[i] = args_names[i] .. " = ?"
     end
 
-    if composite_cache_key then
+    if has_composite_cache_key then
       insert(update_columns_binds, "cache_key = ?")
+    end
+
+    if has_ws_id then
+      insert(update_columns_binds, "ws_id = ?")
     end
 
     if ttl then
@@ -1355,7 +1519,7 @@ do
 
     -- SELECT after write
 
-    local row, err_t = self:select(primary_key)
+    local row, err_t = self:select(primary_key, { workspace = ws_id or null })
     if err_t then
       return nil, err_t
     end
@@ -1415,7 +1579,7 @@ end
 
 do
   local function select_by_foreign_key(self, foreign_schema,
-                                       foreign_field_name, foreign_key)
+                                       foreign_field_name, foreign_key, ws_id)
     local n_fields = #foreign_schema.fields
     local strategy = _M.new(self.connector, foreign_schema, self.errors)
     local cql, err = get_query(strategy, "select_with_filter")
@@ -1425,8 +1589,15 @@ do
     local args = new_tab(n_fields, 0)
     local args_names = new_tab(n_fields, 0)
 
-    local db_columns = strategy.foreign_keys_db_columns[foreign_field_name]
-    serialize_foreign_pk(db_columns, args, args_names, foreign_key)
+    if foreign_field_name then
+      local db_columns = strategy.foreign_keys_db_columns[foreign_field_name]
+      serialize_foreign_pk(db_columns, args, args_names, foreign_key, ws_id)
+    else
+      -- workspaces don't have a foreign_field_name
+      -- and the query needs to be different than in "regular" foreign keys
+      cql = fmt(cql, "ws_id = ?")
+      args = { serialize_arg(ws_id_field, ws_id, ws_id) }
+    end
 
     local n_args = #args_names
     local where_clause_binds = new_tab(n_args, 0)
@@ -1436,11 +1607,20 @@ do
 
     cql = fmt(cql, concat(where_clause_binds, " AND "))
 
-    return _select(strategy, cql, args)
+    return _select(strategy, cql, args, ws_id)
   end
 
 
   function _mt:delete(primary_key, options)
+    local _, ws_id, err = check_workspace(self, options, true)
+    if err then
+      return nil, err
+    end
+
+    if self.schema.name == "workspaces" then
+      ws_id = primary_key.id
+    end
+
     local schema = self.schema
     local cql, err = get_query(self, "delete")
     if err then
@@ -1467,7 +1647,7 @@ do
         local row, err_t = select_by_foreign_key(self,
                                                   constraint.schema,
                                                   constraint.field_name,
-                                                  primary_key)
+                                                  primary_key, ws_id)
         if err_t then
           return nil, err_t
         end
@@ -1509,12 +1689,26 @@ do
     -- serialize WHERE clause args
 
     for i, field_name, field in self.each_pk_field() do
-      args[i] = serialize_arg(field, primary_key[field_name])
+      args[i] = serialize_arg(field, primary_key[field_name], ws_id)
     end
 
-    local cql_batch, err_t = build_tags_cql(self, primary_key, self.schema, {}, nil, true)
-    if err_t then
-      return nil, err_t
+    local rbw_entity, err_t
+    if schema.workspaceable or schema.fields.tags then
+      rbw_entity, err_t = self:select(primary_key, { workspace = ws_id or null })
+      if err_t then
+        return nil, err_t
+      end
+      if not rbw_entity then
+        return true
+      end
+    end
+
+    local cql_batch
+    if schema.fields.tags then
+      cql_batch, err_t = build_tags_cql(primary_key, self.schema, {}, nil, rbw_entity)
+      if err_t then
+        return nil, err_t
+      end
     end
 
     -- execute query

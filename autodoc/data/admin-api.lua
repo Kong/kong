@@ -659,6 +659,32 @@ return {
             to the upstream server.
           ]],
         },
+        tls_verify = {
+          description = [[
+            Whether to enable verification of upstream server TLS certificate.
+            If set to `null` then Nginx default is respected.
+          ]],
+          example = true,
+        },
+        tls_verify_depth = {
+          description = [[
+            Maximum depth of chain while verifying upstream server's TLS certificate.
+            If set to `null` when Nginx default is respected.
+          ]],
+        },
+        ca_certificates = {
+          description = [[
+            Array of `CA Certificate` object UUIDs that are used to build the trust store
+            while verifying upstream server's TLS certificate.
+            If set to `null` when Nginx default is respected. If default CA list in Nginx
+            are not specified and TLS verification is enabled, then handshake with upstream
+            server will always fail (because no CA are trusted).
+          ]],
+          example = {
+            "4e3ad2e4-0bc4-4638-8e34-c84a417ba39b",
+            "51e77dc2-8f3e-4afa-9d0e-0e3bbbcfd515",
+          }
+        },
         tags = {
           description = [[
             An optional set of strings associated with the Service, for grouping and filtering.
@@ -1340,6 +1366,7 @@ return {
         ["hash_on_cookie"] = { kind = "semi-optional", skip_in_example = true, description = [[The cookie name to take the value from as hash input. Only required when `hash_on` or `hash_fallback` is set to `cookie`. If the specified cookie is not in the request, Kong will generate a value and set the cookie in the response.]] },
         ["hash_on_cookie_path"] = { kind = "semi-optional", skip_in_example = true, description = [[The cookie path to set in the response headers. Only required when `hash_on` or `hash_fallback` is set to `cookie`.]] },
         ["host_header"] = { description = [[The hostname to be used as `Host` header when proxying requests through Kong.]], example = "example.com", },
+        ["client_certificate"] = { description = [[If set, the certificate to be used as client certificate while TLS handshaking to the upstream server.]] },
         ["healthchecks.active.timeout"] = { description = [[Socket timeout for active health checks (in seconds).]] },
         ["healthchecks.active.concurrency"] = { description = [[Number of targets to check concurrently in active health checks.]] },
         ["healthchecks.active.type"] = { description = [[Whether to perform active health checks using HTTP or HTTPS, or just attempt a TCP connection.]] },
@@ -1626,7 +1653,7 @@ return {
         },
         weight = {
           description = [[
-            The weight this target gets within the upstream loadbalancer (`0`-`1000`).
+            The weight this target gets within the upstream loadbalancer (`0`-`65535`).
             If the hostname resolves to an SRV record, the `weight` value will be
             overridden by the value from the DNS record.
           ]]
@@ -1672,6 +1699,16 @@ return {
         `${foreign_entity} id`<br>**required** | The unique identifier of the ${ForeignEntity} whose ${Entities} are to be retrieved. When using this endpoint, only ${Entities} associated to the specified ${ForeignEntity} will be listed.
       ]],
       fk_endpoint_w_ek = [[
+        ##### List ${Entities} Associated to a Specific ${ForeignEntity}
+
+        <div class="endpoint ${method} indent">/${foreign_entities_url}/{${foreign_entity} ${endpoint_key} or id}/${entities_url}</div>
+
+        {:.indent}
+        Attributes | Description
+        ---:| ---
+        `${foreign_entity} ${endpoint_key} or id`<br>**required** | The unique identifier or the `${endpoint_key}` attribute of the ${ForeignEntity} whose ${Entities} are to be retrieved. When using this endpoint, only ${Entities} associated to the specified ${ForeignEntity} will be listed.
+      ]],
+      fk_endpoint_w_fek = [[
         ##### List ${Entities} Associated to a Specific ${ForeignEntity}
 
         <div class="endpoint ${method} indent">/${foreign_entities_url}/{${foreign_entity} ${endpoint_key} or id}/${entities_url}</div>
@@ -1732,6 +1769,16 @@ return {
         ---:| ---
         `${foreign_entity} ${endpoint_key} or id`<br>**required** | The unique identifier or the `${endpoint_key}` attribute of the ${ForeignEntity} that should be associated to the newly-created ${Entity}.
       ]],
+      fk_endpoint_w_fek = [[
+        ##### Create ${Entity} Associated to a Specific ${ForeignEntity}
+
+        <div class="endpoint ${method} indent">/${foreign_entities_url}/{${foreign_entity} ${endpoint_key} or id}/${entities_url}</div>
+
+        {:.indent}
+        Attributes | Description
+        ---:| ---
+        `${foreign_entity} ${endpoint_key} or id`<br>**required** | The unique identifier or the `${endpoint_key}` attribute of the ${ForeignEntity} that should be associated to the newly-created ${Entity}.
+      ]],
       request_body = [[
         {{ page.${entity}_body }}
       ]],
@@ -1769,6 +1816,16 @@ return {
       Attributes | Description
       ---:| ---
       `${entity} ${endpoint_key} or id`<br>**required** | The unique identifier **or** the ${endpoint_key} of the ${Entity} associated to the ${ForeignEntity} to be ${passive_verb}.
+    ]],
+    fk_endpoint_w_fek = [[
+      ##### ${Active_verb} ${ForeignEntity} Associated to a Specific ${Entity}
+
+      <div class="endpoint ${method} indent">/${entities_url}/{${entity} id}/${foreign_entity_url}</div>
+
+      {:.indent}
+      Attributes | Description
+      ---:| ---
+      `${entity} id`<br>**required** | The unique identifier of the ${Entity} associated to the ${ForeignEntity} to be ${passive_verb}.
     ]],
     endpoint = [[
       ##### ${Active_verb} ${Entity}

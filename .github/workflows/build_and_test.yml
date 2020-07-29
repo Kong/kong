@@ -14,6 +14,7 @@ jobs:
           echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
         
     - uses: azure/docker-login@v1
+      continue-on-error: true
       with:
         username: ${{ secrets.KONG_USERNAME }}
         password: ${{ secrets.KONG_PASSWORD }}
@@ -42,6 +43,7 @@ jobs:
           echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
         
     - uses: azure/docker-login@v1
+      continue-on-error: true
       with:
         username: ${{ secrets.KONG_USERNAME }}
         password: ${{ secrets.KONG_PASSWORD }}
@@ -58,7 +60,7 @@ jobs:
   pdk:
     name: PDK
     runs-on: ubuntu-18.04
-    needs: lint-unit-tests
+    needs: build
 
     env:
       TEST_SUITE: pdk
@@ -71,6 +73,7 @@ jobs:
           echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
         
     - uses: azure/docker-login@v1
+      continue-on-error: true
       with:
         username: ${{ secrets.KONG_USERNAME }}
         password: ${{ secrets.KONG_PASSWORD }}
@@ -87,8 +90,7 @@ jobs:
   package-and-smoke-test:
     name: Package and smoke test Kong
     runs-on: ubuntu-18.04
-    needs: lint-unit-tests
-    if: contains(github.ref, 'merge')
+    needs: build
 
     steps:
     - name: Set env
@@ -97,6 +99,7 @@ jobs:
           echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
           
     - uses: azure/docker-login@v1
+      continue-on-error: true
       with:
         username: ${{ secrets.KONG_USERNAME }}
         password: ${{ secrets.KONG_PASSWORD }}
@@ -116,7 +119,7 @@ jobs:
   integration-tests-dbless:
     name: DB-less integration tests
     runs-on: ubuntu-18.04
-    needs: lint-unit-tests
+    needs: build
 
     env:
       TEST_DATABASE: 'off'
@@ -129,6 +132,7 @@ jobs:
           echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
         
     - uses: azure/docker-login@v1
+      continue-on-error: true
       with:
         username: ${{ secrets.KONG_USERNAME }}
         password: ${{ secrets.KONG_PASSWORD }}
@@ -145,7 +149,7 @@ jobs:
   integration-tests-with-databases:
     name: ${{matrix.database}} (${{ matrix.suite }}) ${{ matrix.split }} integration tests
     runs-on: ubuntu-18.04
-    needs: lint-unit-tests
+    needs: build
 
     strategy:
       matrix:
@@ -172,6 +176,7 @@ jobs:
           echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
         
     - uses: azure/docker-login@v1
+      continue-on-error: true
       with:
         username: ${{ secrets.KONG_USERNAME }}
         password: ${{ secrets.KONG_PASSWORD }}

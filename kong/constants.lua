@@ -34,6 +34,8 @@ local plugins = {
   "proxy-cache",
   "session",
   "acme",
+  "grpc-web",
+  "grpc-gateway",
 }
 
 local plugin_map = {}
@@ -62,7 +64,7 @@ for p,_ in pairs(protocols_with_subsystem) do
 end
 table.sort(protocols)
 
-return {
+local constants = {
   BUNDLED_PLUGINS = plugin_map,
   DEPRECATED_PLUGINS = deprecated_plugin_map,
   -- non-standard headers, specific to Kong
@@ -91,7 +93,11 @@ return {
   },
   -- Notice that the order in which they are listed is important:
   -- schemas of dependencies need to be loaded first.
+  --
+  -- This table doubles as a set (e.g. CORE_ENTITIES["routes"] = true)
+  -- (see below where the set entries are populated)
   CORE_ENTITIES = {
+    "workspaces",
     "consumers",
     "certificates",
     "services",
@@ -102,16 +108,6 @@ return {
     "plugins",
     "tags",
     "ca_certificates",
-    consumers = true,
-    certificates = true,
-    services = true,
-    routes = true,
-    snis = true,
-    upstreams = true,
-    targets = true,
-    plugins = true,
-    tags = true,
-    ca_certificates = true,
   },
   ENTITY_CACHE_STORE = setmetatable({
     consumers = "cache",
@@ -141,7 +137,6 @@ return {
   },
   REPORTS = {
     ADDRESS = "kong-hf.konghq.com",
-    SYSLOG_PORT = 61828,
     STATS_PORT = 61830
   },
   DICTS = {
@@ -167,3 +162,12 @@ return {
   PROTOCOLS = protocols,
   PROTOCOLS_WITH_SUBSYSTEM = protocols_with_subsystem,
 }
+
+
+-- Make the CORE_ENTITIES table usable both as an ordered array and as a set
+for _, v in ipairs(constants.CORE_ENTITIES) do
+  constants.CORE_ENTITIES[v] = true
+end
+
+
+return constants

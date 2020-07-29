@@ -217,6 +217,8 @@ do
     "bdab0e47-4e37-4f0b-8fd0-87d95cc4addc",
     "f00c6da4-3679-4b44-b9fb-36a19bd3ae83",
     "0c61e164-6171-4837-8836-8f5298726d53",
+    "5027BBC1-508C-41F8-87F2-AB1801E9D5C3",
+    "68FDB05B-7B08-47E9-9727-AF7F897CFF1A",
   }
 
   local ctr = 0
@@ -687,6 +689,8 @@ local function gen_fk_endpoint(edata, templates, subs, parent_endpoint, method, 
   else
     if has_ek then
       tk = "fk_endpoint_w_ek"
+    elseif has_fek then
+      tk = "fk_endpoint_w_fek"
     else
       tk = "fk_endpoint"
     end

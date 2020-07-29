@@ -1,3 +1,5 @@
+local operations = require "kong.db.migrations.operations.200_to_210"
+
 local fmt           = string.format
 local openssl_x509  = require "resty.openssl.x509"
 local str           = require "resty.string"
@@ -50,6 +52,84 @@ local function c_ca_certificates_migration(connector)
   end
 end
 
+
+local core_entities = {
+  {
+    name = "upstreams",
+    primary_key = "id",
+    uniques = {"name"},
+    fks = {},
+  }, {
+    name = "targets",
+    primary_key = "id",
+    uniques = {},
+    fks = {{name = "upstream", reference = "upstreams", on_delete = "cascade"}},
+  }, {
+    name = "consumers",
+    primary_key = "id",
+    uniques = {"username", "custom_id"},
+    fks = {},
+  }, {
+    name = "certificates",
+    primary_key = "id",
+    uniques = {},
+    fks = {},
+    partitioned = true,
+  }, {
+    name = "snis",
+    primary_key = "id",
+    -- do not convert "name" because it is unique_across_ws
+    uniques = {},
+    fks = {{name = "certificate", reference = "certificates"}},
+    partitioned = true,
+  }, {
+    name = "services",
+    primary_key = "id",
+    uniques = {"name"},
+    fks = {{name = "client_certificate", reference = "certificates"}},
+    partitioned = true,
+  }, {
+    name = "routes",
+    primary_key = "id",
+    uniques = {"name"},
+    fks = {{name = "service", reference = "services"}},
+    partitioned = true,
+  }, {
+    name = "plugins",
+    cache_key = { "name", "route", "service", "consumer" },
+    primary_key = "id",
+    uniques = {},
+    fks = {{name = "route", reference = "routes", on_delete = "cascade"}, {name = "service", reference = "services", on_delete = "cascade"}, {name = "consumer", reference = "consumers", on_delete = "cascade"}},
+  }
+}
+
+
+--------------------------------------------------------------------------------
+-- High-level description of the migrations to execute on 'up'
+-- @param ops table: table of functions which execute the low-level operations
+-- for the database (each function returns a string).
+-- @return SQL or CQL
+local function ws_migration_up(ops)
+  return ops:ws_add_workspaces()
+      .. ops:ws_adjust_fields(core_entities)
+end
+
+
+--------------------------------------------------------------------------------
+-- High-level description of the migrations to execute on 'teardown'
+-- @param ops table: table of functions which execute the low-level operations
+-- for the database (each function receives a connector).
+-- @return a function that receives a connector
+local function ws_migration_teardown(ops)
+  return function(connector)
+    ops:ws_adjust_data(connector, core_entities)
+  end
+end
+
+
+--------------------------------------------------------------------------------
+
+
 return {
   postgres = {
     up = [[
@@ -63,8 +143,50 @@ return {
             -- Do nothing, accept existing state
           END;
         $$;
-    ]],
+
+        DO $$
+          BEGIN
+            ALTER TABLE services ADD COLUMN "tls_verify" BOOLEAN;
+          EXCEPTION WHEN duplicate_column THEN
+            -- Do nothing, accept existing state
+          END;
+        $$;
+
+        -- add certificates reference to upstreams table
+        DO $$
+          BEGIN
+            ALTER TABLE IF EXISTS ONLY "upstreams" ADD "client_certificate_id" UUID REFERENCES "certificates" ("id");
+          EXCEPTION WHEN DUPLICATE_COLUMN THEN
+            -- Do nothing, accept existing state
+          END;
+        $$;
+
+        DO $$
+          BEGIN
+            ALTER TABLE services ADD COLUMN "tls_verify_depth" SMALLINT;
+          EXCEPTION WHEN duplicate_column THEN
+            -- Do nothing, accept existing state
+          END;
+        $$;
+
+        DO $$
+          BEGIN
+            ALTER TABLE services ADD COLUMN "ca_certificates" UUID[];
+          EXCEPTION WHEN duplicate_column THEN
+            -- Do nothing, accept existing state
+          END;
+        $$;
+
+        DO $$
+          BEGIN
+            CREATE INDEX IF NOT EXISTS "upstreams_fkey_client_certificate" ON "upstreams" ("client_certificate_id");
+          EXCEPTION WHEN UNDEFINED_COLUMN THEN
+            -- Do nothing, accept existing state
+        END$$;
+    ]] .. ws_migration_up(operations.postgres.up),
     teardown = function(connector)
+      ws_migration_teardown(operations.postgres.teardown)(connector)
+
       -- add `cert_digest` field for `ca_certificates` table
       pg_ca_certificates_migration(connector)
     end
@@ -76,8 +198,18 @@ return {
 
       DROP INDEX IF EXISTS ca_certificates_cert_idx;
       CREATE INDEX IF NOT EXISTS ca_certificates_cert_digest_idx ON ca_certificates(cert_digest);
-    ]],
+
+      ALTER TABLE services ADD tls_verify boolean;
+      ALTER TABLE services ADD tls_verify_depth int;
+      ALTER TABLE services ADD ca_certificates set<uuid>;
+
+      -- add certificates reference to upstreams table
+      ALTER TABLE upstreams ADD client_certificate_id uuid;
+      CREATE INDEX IF NOT EXISTS upstreams_client_certificate_id_idx ON upstreams(client_certificate_id);
+    ]] .. ws_migration_up(operations.cassandra.up),
     teardown = function(connector)
+      ws_migration_teardown(operations.cassandra.teardown)(connector)
+
       -- add `cert_digest` field for `ca_certificates` table
       c_ca_certificates_migration(connector)
     end

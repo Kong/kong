@@ -2,21 +2,27 @@ local arrays        = require "pgmoon.arrays"
 local json          = require "pgmoon.json"
 local cjson         = require "cjson"
 local cjson_safe    = require "cjson.safe"
+local pl_tablex     = require "pl.tablex"
 
 
+local kong          = kong
+local ngx           = ngx
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local encode_array  = arrays.encode_array
 local encode_json   = json.encode_json
 local setmetatable  = setmetatable
 local update_time   = ngx.update_time
+local get_phase     = ngx.get_phase
 local tonumber      = tonumber
 local concat        = table.concat
 local insert        = table.insert
+local assert        = assert
 local ipairs        = ipairs
 local pairs         = pairs
 local error         = error
 local upper         = string.upper
+local pack          = table.pack -- luacheck: ignore
 local null          = ngx.null
 local type          = type
 local load          = load
@@ -25,7 +31,6 @@ local now           = ngx.now
 local fmt           = string.format
 local rep           = string.rep
 local sub           = string.sub
-local max           = math.max
 local log           = ngx.log
 
 
@@ -69,151 +74,108 @@ local function now_updated()
 end
 
 
+-- @param name Query name, for debugging purposes
+-- @param query A string describing an array of single-quoted strings which
+-- contain parts of an SQL query including numeric placeholders like $0, $1, etc.
+-- All parts of that array were processed via using string.format("%q"),
+-- so that all newlines and quotes are preserved.
+-- @return Produces a function which, given an array of arguments,
+-- interpolates them in the right places and outputs a ready-to-use SQL query.
 local function compile(name, query)
-  local i, n, p, s, e = 1, 2, 0, find(query, "$1", 1, true)
-  local c = {
-    "local _ = ... or {}\n",
-    "return concat{\n",
-  }
-  while s do
-    if i < s then
-      c[n+1] = "[=[\n"
-      c[n+2] = sub(query, i, s - 1)
-      c[n+3] = "]=], "
-      n=n+3
-    end
-    p=p+1
-    c[n+1] = "_["
-    c[n+2] = p
-    c[n+3] = "], "
-    n=n+3
-    i = e + 1
-    s, e = find(query, "$" .. p + 1, i, true)
-  end
-  s = sub(query, i)
-  if s and s ~= "" then
-    c[n+1] = "[=[\n"
-    c[n+2] = s
-    c[n+3] = "]=]"
-    n=n+3
-  end
-  c[n+1] = " }"
-  return load(concat(c), "=" .. name, "t", { concat = concat })
+  local c = [=====[
+    local v = ... or {}
+    return concat { ]=====]
+    .. query:gsub("$(%d+)", [[", v[%1], "]])
+    .. [=====[
+    }
+  ]=====]
+  return load(c, "=" .. name, "t", { concat = concat })
 end
 
 
 local function expand(name, map)
-  local h = {}
-  local n = 1
-  local c = { "local _ = ... or {}\n" }
+  local skip = {}
+  local c = { "local row = ... or {}\n" }
   for _, field in ipairs(map) do
     local entity = field.entity
-    if not h[entity] then
-      h[entity] = true
-      c[n+1] = "if "
-      n=n+1
+    if not skip[entity] then
+      skip[entity] = true
+
+      local exps = {}
+      local keys = {}
+      local nils = {}
       for _, key in ipairs(map) do
-        if entity == key.entity then
-          c[n+1] = '_["'
-          c[n+2] = field.from
-          c[n+3] = '"] ~= null'
-          c[n+4] = " and "
-          n=n+4
+        if key.entity == entity then
+          insert(exps, 'row["' .. key.from .. '"] ~= null')
+          if key.to ~= "ws_id" then
+            insert(keys, fmt('["%s"] = row["%s"]', key.to, key.from))
+          end
+          insert(nils, fmt('row["%s"] = nil', key.from))
         end
       end
-      c[n] = " then\n"
-      c[n+1] = '  \n  _["'
-      c[n+2] = entity
-      c[n+3] = '"] = {\n'
-      n=n+3
-      for _, key in ipairs(map) do
-        if entity == key.entity then
-          c[n+1] = '    ["'
-          c[n+2] = field.to
-          c[n+3] = '"] = '
-          c[n+4] = '_["'
-          c[n+5] = field.from
-          c[n+6] = '"],\n'
-          n=n+6
+
+      insert(c, (([[
+        if $EXPS then
+           row["$ENTITY"] = { $KEYS }
+        else
+           row["$ENTITY"] = null
         end
-      end
-      c[n+1] = "  }\n\n"
-      c[n+2] = "else\n"
-      c[n+3] = '  _["'
-      c[n+4] = field.entity
-      c[n+5] = '"] = null\n'
-      c[n+6] = "end\n"
-      c[n+7] = '_["'
-      c[n+8] = field.from
-      c[n+9] = '"] = nil\n'
-      n=n+9
+        $NILS
+      ]]):gsub("$(%a+)", {
+        ENTITY = entity,
+        EXPS = concat(exps, " and "),
+        KEYS = concat(keys, ", "),
+        NILS = concat(nils, "; "),
+      })))
     end
   end
-  c[n+1] = "return _"
+  insert(c, "return row")
 
   return load(concat(c), "=" .. name, "t", { null = null })
 end
 
 
 local function collapse(name, map)
-  local h = {}
-  local n = 7
-  local c = {
-    "local t = { ... }\n",
-    "local r = {}\n",
-    "for _, a in ipairs(t) do\n",
-    "  for k, v in pairs(a) do\n",
-    "    r[k] = v\n",
-    "  end\n",
-    "end\n",
-  }
+  local skip = {}
+  local c = { [[
+    local t = { ... }
+    local row = {}
+    for _, a in ipairs(t) do
+      for k, v in pairs(a) do
+        row[k] = v
+      end
+    end
+  ]] }
   for _, field in ipairs(map) do
     local entity = field.entity
-    if not h[entity] then
-      h[entity] = true
-      c[n+1] = 'if r["'
-      c[n+2] = entity
-      c[n+3] = '"] ~= nil and '
-      c[n+4] = 'r["'
-      c[n+5] = entity
-      c[n+6] = '"] ~= null then\n'
-      n=n+6
+    if not skip[entity] then
+      skip[entity] = true
+
+      local keys = {}
+      local nulls = {}
       for _, key in ipairs(map) do
-        if entity == key.entity then
-          c[n+1] = '  r["'
-          c[n+2] = field.from
-          c[n+3] = '"] = '
-          c[n+4] = 'r["'
-          c[n+5] = entity
-          c[n+6] = '"]["'
-          c[n+7] = field.to
-          c[n+8] = '"]\n'
-          n=n+8
+        if key.entity == entity then
+          insert(keys,  fmt('row["%s"] = row["%s"]["%s"]', key.from, entity, key.to))
+          insert(nulls, fmt('row["%s"] = null', key.from))
         end
       end
-      c[n+1] = '  r["'
-      c[n+2] = entity
-      c[n+3] = '"] = nil\n\n'
-      c[n+4] = 'elseif r["'
-      c[n+5] = entity
-      c[n+6] = '"] == null then\n'
-      n=n+6
-      for _, key in ipairs(map) do
-        if entity == key.entity then
-          c[n+1] = '  r["'
-          c[n+2] = field.from
-          c[n+3] = '"] = null\n'
-          n=n+3
+
+      insert(c, (([[
+        if row["$ENTITY"] ~= nil and row["$ENTITY"] ~= null then
+          $KEYS
+          row["$ENTITY"] = nil
+        elseif row["$ENTITY"] == null then
+          $NULLS
+          row["$ENTITY"] = nil
         end
-      end
-      c[n+1] = '  r["'
-      c[n+2] = entity
-      c[n+3] = '"] = nil\n'
-      c[n+4] = "end\n"
-      n=n+4
+      ]]):gsub("$(%a+)", {
+        ENTITY = entity,
+        KEYS = concat(keys, "; "),
+        NULLS = concat(nulls, "; "),
+      })))
     end
   end
-  c[n+1] = "return r"
+  insert(c, "return row")
   local env = { ipairs = ipairs, pairs = pairs, null = null }
   return load(concat(c), "=" .. name, "t", env)
 end
@@ -274,6 +236,9 @@ local function escape_literal(connector, literal, field)
           jsons[i] = cjson.encode(v)
         end
         return encode_array(jsons) .. '::JSONB[]'
+
+      elseif et == "string" and elements.uuid then
+        return encode_array(literal) .. '::UUID[]'
       end
 
       return encode_array(literal)
@@ -284,105 +249,6 @@ local function escape_literal(connector, literal, field)
   end
 
   return connector:escape_literal(literal)
-end
-
-
-local function field_type_to_postgres_type(field)
-  if field.timestamp then
-    return "TIMESTAMP WITH TIME ZONE"
-
-  elseif field.uuid then
-    return "UUID"
-  end
-
-  local t = field.type
-
-  if t == "string" then
-    return "TEXT"
-
-  elseif t == "boolean" then
-    return "BOOLEAN"
-
-  elseif t == "integer" then
-    return "BIGINT"
-
-  elseif t == "number" then
-    return "DOUBLE PRECISION"
-
-  elseif t == "array" or t == "set" then
-    local elements = field.elements
-
-    if elements.timestamp then
-      return "TIMESTAMP[] WITH TIME ZONE", 1
-
-    elseif field.uuid then
-      return "UUID[]", 1
-    end
-
-    local et = elements.type
-
-    if et == "string" then
-      return "TEXT[]", 1
-
-    elseif et == "boolean" then
-      return "BOOLEAN[]", 1
-
-    elseif et == "integer" then
-      return "BIGINT[]", 1
-
-    elseif et == "number" then
-      return "DOUBLE PRECISION[]", 1
-
-    elseif et == "array" or et == "set" then
-      local dm = 1
-      local el = elements
-      repeat
-        dm = dm + 1
-        el = el.elements
-        et = el.type
-      until et ~= "array" and et ~= "set"
-
-      local brackets = rep("[]", dm)
-
-      if el.timestamp then
-        return "TIMESTAMP" .. brackets .. " WITH TIME ZONE", dm
-
-      elseif field.uuid then
-        return "UUID" .. brackets, dm
-      end
-
-      if et == "string" then
-        return "TEXT" .. brackets, dm
-
-      elseif et == "boolean" then
-        return "BOOLEAN" .. brackets, dm
-
-      elseif et == "integer" then
-        return "BIGINT" .. brackets, dm
-
-      elseif et == "number" then
-        return "DOUBLE PRECISION" .. brackets, dm
-
-      elseif et == "map" or et == "record" then
-        return "JSONB" .. brackets, dm
-
-      else
-        return "UNKNOWN" .. brackets, dm
-      end
-
-    elseif et == "map" or et == "record" then
-      return "JSONB[]", 1
-
-    else
-      return "UNKNOWN[]", 1
-    end
-
-  elseif t == "map" or t == "record" then
-    return "JSONB"
-
-  else
-    return "UNKNOWN"
-  end
 end
 
 
@@ -439,6 +305,20 @@ local function toerror(strategy, err, primary_key, entity)
     end
     return nil, errors:primary_key_violation(primary_key)
 
+  elseif find(err, "violates foreign key constraint .*_ws_id_fkey") then
+    if schema.name == "workspaces" then
+      local found, e = find(err, "is still referenced from table", 1, true)
+      if not found then
+        return error("could not parse foreign key violation error message: " .. err)
+      end
+
+      return nil, errors:foreign_key_violation_restricted(schema.name, sub(err, e + 3, -3))
+
+    else
+      local ws_id = err:match("ws_id%)=%(([^)]*)%)") or "null"
+      return nil, errors:invalid_workspace(ws_id)
+    end
+
   elseif find(err, "violates foreign key constraint", 1, true) then
     log(NOTICE, err)
     if find(err, "is not present in table", 1, true) then
@@ -494,7 +374,60 @@ local function toerror(strategy, err, primary_key, entity)
 end
 
 
+local function get_ttl_value(strategy, attributes, options)
+  local ttl_value = options and options.ttl
+  local is_update = options and options.update
+  local fields = strategy.fields
+
+  if ttl_value == 0 or not ttl_value then
+    return null
+  end
+
+  if not is_update and
+     attributes.created_at and
+     fields.created_at and
+     fields.created_at.timestamp and
+     fields.created_at.auto then
+    return ttl_value + attributes.created_at
+  end
+
+  if is_update and
+     attributes.updated_at and
+     fields.updated_at and
+     fields.updated_at.timestamp and
+     fields.updated_at.auto then
+    return ttl_value + attributes.updated_at
+  end
+
+  return ttl_value + now_updated()
+end
+
+
+local function get_ws_id()
+  local phase = get_phase()
+  if phase ~= "init" and phase ~= "init_worker" then
+    return ngx.ctx.workspace or kong.default_workspace
+  end
+end
+
+
 local function execute(strategy, statement_name, attributes, options)
+  local ws_id
+  local has_ws_id = strategy.schema.workspaceable
+  if has_ws_id then
+    if options and options.workspace then
+      if options.workspace ~= null then
+        ws_id = options.workspace
+      end
+    else
+      ws_id = get_ws_id()
+    end
+
+    if not ws_id then
+      statement_name = statement_name .. "_global"
+    end
+  end
+
   local connector = strategy.connector
   local statement = strategy.statements[statement_name]
   if not attributes then
@@ -509,65 +442,33 @@ local function execute(strategy, statement_name, attributes, options)
   clear_tab(argv)
 
   local is_update = options and options.update
-  local has_ttl = strategy.schema.ttl
-  local ttl_value
+  local has_ttl   = strategy.schema.ttl
 
-  if has_ttl then
-    ttl_value = options and options.ttl
-    if ttl_value then
-      if ttl_value == 0 then
-        ttl_value = escape_literal(connector, null, fields.ttl)
-
-      elseif not is_update and
-             attributes.created_at and
-             fields.created_at and
-             fields.created_at.timestamp and
-             fields.created_at.auto then
-        ttl_value = escape_literal(connector, ttl_value + attributes.created_at, fields.ttl)
-
-      elseif is_update and
-             attributes.updated_at and
-             fields.updated_at and
-             fields.updated_at.timestamp and
-             fields.updated_at.auto then
-        ttl_value = escape_literal(connector, ttl_value + attributes.updated_at, fields.ttl)
-
-      else
-        ttl_value = escape_literal(connector, ttl_value + now_updated(), fields.ttl)
-      end
-
-    else
-      if is_update then
-        ttl_value = escape_identifier(connector, "ttl")
-      else
-        ttl_value = escape_literal(connector, null, fields.ttl)
-      end
-    end
+  if has_ws_id then
+    assert(ws_id == nil or type(ws_id) == "string")
+    argv[0] = escape_literal(connector, ws_id, "ws_id")
   end
 
   for i = 1, argc do
-    local name  = argn[i]
+    local name = argn[i]
     local value
     if has_ttl and name == "ttl" then
-      argv[i] = ttl_value
+      value = (options and options.ttl)
+              and get_ttl_value(strategy, attributes, options)
+
+    elseif i == argc and is_update and attributes[UNIQUE] then
+      value = attributes[UNIQUE]
+      if type(value) == "table" then
+        value = value[name]
+      end
 
     else
-      if i == argc and is_update and attributes[UNIQUE] then
-        value = attributes[UNIQUE]
-        if type(value) == "table" then
-          value = value[name]
-        end
-
-      else
-        value = attributes[name]
-      end
-
-      if value == nil and is_update then
-        argv[i] = escape_identifier(connector, name)
-      else
-        argv[i] = escape_literal(connector, value, fields[name])
-      end
+      value = attributes[name]
     end
+
+    argv[i] = (value == nil and is_update)
+              and escape_identifier(connector, name)
+              or  escape_literal(connector, value, fields[name])
   end
 
   local sql = statement.make(argv)
@@ -583,31 +484,26 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
   local limit = size + 1
 
   local statement_name
-  local attributes
+  local attributes = {
+    [LIMIT] = limit,
+  }
+
+  local suffix = token and "_next" or "_first"
+  if foreign_entity_name then
+    statement_name = "page_for_" .. foreign_entity_name .. suffix
+    attributes[foreign_entity_name] = foreign_key
+
+  elseif options and options.tags then
+    statement_name = options.tags_cond == "or" and
+                    "page_by_tags_or" .. suffix or
+                    "page_by_tags_and" .. suffix
+    attributes.tags = options.tags
+
+  else
+    statement_name = "page" .. suffix
+  end
 
   if token then
-    if foreign_entity_name then
-      statement_name = concat({ "page_for", foreign_entity_name, "next" }, "_")
-      attributes     = {
-        [foreign_entity_name] = foreign_key,
-        [LIMIT]               = limit,
-      }
-
-    elseif options and options.tags then
-      statement_name = options.tags_cond == "or" and
-                      "page_by_tags_or_next" or
-                      "page_by_tags_and_next"
-      attributes     = {
-        tags    = options.tags,
-        [LIMIT] = limit,
-      }
-    else
-      statement_name = "page_next"
-      attributes     = {
-        [LIMIT] = limit,
-      }
-    end
-
     local token_decoded = decode_base64(token)
     if not token_decoded then
       return nil, self.errors:invalid_offset(token, "bad base64 encoding")
@@ -620,28 +516,6 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
 
     for i, field_name in ipairs(self.schema.primary_key) do
       attributes[field_name] = token_decoded[i]
-    end
-
-  else
-    if foreign_entity_name then
-      statement_name = concat({ "page_for", foreign_entity_name, "first" }, "_")
-      attributes     = {
-        [foreign_entity_name] = foreign_key,
-        [LIMIT]               = limit,
-      }
-    elseif options and options.tags then
-      statement_name = options.tags_cond == "or" and
-                      "page_by_tags_or_first" or
-                      "page_by_tags_and_first"
-      attributes     = {
-        tags    = options.tags,
-        [LIMIT] = limit,
-      }
-    else
-      statement_name = "page_first"
-      attributes     = {
-        [LIMIT] = limit,
-      }
     end
   end
 
@@ -662,8 +536,8 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
     if i == limit then
       row = res[size]
       local offset = {}
-      for i, field_name in ipairs(self.schema.primary_key) do
-        offset[i] = row[field_name]
+      for _, field_name in ipairs(self.schema.primary_key) do
+        insert(offset, row[field_name])
       end
 
       offset = cjson.encode(offset)
@@ -692,26 +566,8 @@ local _mt   = {}
 _mt.__index = _mt
 
 
-function _mt:create(options)
-  local res, err = execute(self, "create", nil, options)
-  if not res then
-    return toerror(self, err)
-  end
-  return true, nil
-end
-
-
 function _mt:truncate(options)
   local res, err = execute(self, "truncate", nil, options)
-  if not res then
-    return toerror(self, err)
-  end
-  return true, nil
-end
-
-
-function _mt:drop(options)
-  local res, err = execute(self, "drop", nil, options)
   if not res then
     return toerror(self, err)
   end
@@ -769,11 +625,19 @@ function _mt:select_by_field(field_name, unique_value, options)
 end
 
 
-function _mt:update(primary_key, entity, options)
-  local res, err = execute(self, "update", self.collapse(primary_key, entity), {
+local function update_options(options)
+  return {
     update = true,
     ttl    = options and options.ttl,
-  })
+    workspace = options and options.workspace ~= null and options.workspace,
+  }
+end
+
+
+function _mt:update(primary_key, entity, options)
+  local res, err = execute(self, "update",
+                           self.collapse(primary_key, entity),
+                           update_options(options))
   if res then
     local row = res[1]
     if row then
@@ -794,10 +658,9 @@ function _mt:update_by_field(field_name, unique_value, entity, options)
     filter = unique_value
   end
 
-  local res, err = execute(self, "update_by_" .. field_name, self.collapse({ [UNIQUE] = filter }, entity), {
-    update = true,
-    ttl    = options and options.ttl,
-  })
+  local res, err = execute(self, "update_by_" .. field_name,
+                           self.collapse({ [UNIQUE] = filter }, entity),
+                           update_options(options))
   if res then
     local row = res[1]
     if row then
@@ -880,23 +743,6 @@ function _mt:delete_by_field(field_name, unique_value, options)
 end
 
 
-function _mt:count(options)
-  local res, err = execute(self, "count", nil, options)
-  if res then
-    local row = res[1]
-    if row then
-      return row.count, nil
-
-    else
-      -- count should always return results unless there is an error
-      return toerror(self, "unexpected")
-    end
-  end
-
-  return toerror(self, err)
-end
-
-
 function _mt:page(size, token, options)
   return page(self, size, token, nil, nil, options)
 end
@@ -907,41 +753,91 @@ function _mt:escape_literal(literal, field_name)
 end
 
 
+local function format_on_condition(on_condition)
+  if not on_condition then
+    return nil
+  end
+  on_condition = upper(on_condition)
+  if on_condition ~= "RESTRICT" and
+     on_condition ~= "CASCADE"  and
+     on_condition ~= "NULL"     and
+     on_condition ~= "DEFAULT"  then
+     on_condition = nil
+  end
+  return on_condition
+end
+
+
+local function where_clause(where, ...)
+  local inputs = pack(...)
+  return function(add_ws)
+    local exps = {}
+    for i = 1, inputs.n do
+      local exp = inputs[i]
+      if exp then
+        if add_ws then
+          insert(exps, exp)
+        else
+          if not exp:match("%(\"ws_id\" = ") then
+            insert(exps, exp)
+          end
+        end
+      end
+    end
+
+    if #exps == 0 then
+      return ""
+    end
+
+    return where .. concat(exps, "\n" .. rep(" ", #where - 4) .. "AND ") .. "\n"
+  end
+end
+
+
+local function conflict_list(has_ws_id, ...)
+  local inputs = pack(...)
+  return function(add_ws)
+    local exps = inputs
+    if add_ws and has_ws_id then
+      insert(exps, 1, '"ws_id"')
+    end
+
+    return concat(exps, ", ")
+  end
+end
+
+
+-- placeholders in queries must always be constructed as a single string,
+-- to avoid ending up genering code like this: `concat { "... $", "2 AND ..." }`
+local function placeholder(n)
+  return "$" .. n
+end
+
+
 local _M  = {}
 
 
 function _M.new(connector, schema, errors)
   local primary_key                   = schema.primary_key
   local primary_key_fields            = {}
-  local primary_key_count             = 0
 
-  for i, field_name in ipairs(primary_key) do
+  for _, field_name in ipairs(primary_key) do
     primary_key_fields[field_name]    = true
-    primary_key_count = i
   end
 
-  local ttl                           = schema.ttl == true
-  local tags                          = schema.fields.tags ~= nil
-  local composite_cache_key           = schema.cache_key and #schema.cache_key > 1
-  local max_name_length               = schema.cache_key and 11 or (ttl and 3  or 1)
-  local max_type_length               = ttl and 24 or 1
+  local has_ttl                       = schema.ttl == true
+  local has_tags                      = schema.fields.tags ~= nil
+  local has_composite_cache_key       = schema.cache_key and #schema.cache_key > 1
+  local has_ws_id                     = schema.workspaceable == true
   local fields                        = {}
-  local fields_count                  = 0
   local fields_hash                   = {}
 
   local table_name                    = schema.name
   local table_name_escaped            = escape_identifier(connector, table_name)
 
-  local foreign_key_constraints       = {}
-  local foreign_key_constrainst_count = 0
-  local foreign_key_indexes_escaped   = {}
-  local foreign_key_indexes_count     = 0
-  local foreign_key_indexes           = {}
-  local foreign_key_count             = 0
   local foreign_key_list              = {}
   local foreign_keys                  = {}
 
-  local unique_fields_count           = 0
   local unique_fields                 = {}
 
 
@@ -951,33 +847,9 @@ function _M.new(connector, schema, errors)
       local foreign_key_names        = {}
       local foreign_key_escaped      = {}
       local foreign_col_names        = {}
-      local foreign_pk_count         = #foreign_schema.primary_key
-      local is_part_of_composite_key = foreign_pk_count > 1
       local is_unique_foreign        = field.unique == true
 
-      local on_delete = field.on_delete
-      if on_delete then
-        on_delete = upper(on_delete)
-        if on_delete ~= "RESTRICT" and
-           on_delete ~= "CASCADE"  and
-           on_delete ~= "NULL"     and
-           on_delete ~= "DEFAULT"  then
-           on_delete = nil
-        end
-      end
-
-      local on_update = field.on_update
-      if on_update then
-        on_update = upper(on_update)
-        if on_update ~= "RESTRICT" and
-           on_update ~= "CASCADE"  and
-           on_update ~= "NULL"     and
-           on_update ~= "DEFAULT"  then
-           on_update = nil
-        end
-      end
-
-      for i, foreign_field_name in ipairs(foreign_schema.primary_key) do
+      for _, foreign_field_name in ipairs(foreign_schema.primary_key) do
         local foreign_field
         for foreign_schema_field_name, foreign_schema_field in foreign_schema:each_field() do
           if foreign_schema_field_name == foreign_field_name then
@@ -986,34 +858,24 @@ function _M.new(connector, schema, errors)
           end
         end
 
-        local name = concat({ field_name, foreign_field_name }, "_")
+        local name = field_name .. "_" .. foreign_field_name
 
         fields_hash[name] = foreign_field
-
-        local name_escaped           = escape_identifier(connector, name)
-        local name_expression        = escape_identifier(connector, name, foreign_field)
-        local type_postgres          = field_type_to_postgres_type(foreign_field)
-        local is_used_in_primary_key = primary_key_fields[field_name] ~= nil
-        local is_unique              = foreign_field.unique == true
-        local is_endpoint_key        = schema.endpoint_key == field_name
-
-        max_name_length              = max(max_name_length, #name_escaped)
-        max_type_length              = max(max_type_length, #type_postgres)
 
         local prepared_field         = {
           referenced_table           = foreign_schema.name,
           referenced_column          = foreign_field_name,
-          on_update                  = on_update,
-          on_delete                  = on_delete,
+          on_update                  = format_on_condition(field.on_update),
+          on_delete                  = format_on_condition(field.on_delete),
           name                       = name,
-          name_escaped               = name_escaped,
-          name_expression            = name_expression,
+          name_escaped               = escape_identifier(connector, name),
+          name_expression            = escape_identifier(connector, name, foreign_field),
           field_name                 = field_name,
-          type_postgres              = type_postgres,
-          is_used_in_primary_key     = is_used_in_primary_key,
-          is_part_of_composite_key   = is_part_of_composite_key,
-          is_unique                  = is_unique,
-          is_endpoint_key            = is_endpoint_key,
+          is_used_in_primary_key     = primary_key_fields[field_name] ~= nil,
+          is_part_of_composite_key   = #foreign_schema.primary_key > 1,
+          is_unique                  = foreign_field.unique == true,
+          is_unique_across_ws        = foreign_field.unique_across_ws == true,
+          is_endpoint_key            = schema.endpoint_key == field_name,
           is_unique_foreign          = is_unique_foreign,
         }
 
@@ -1021,12 +883,11 @@ function _M.new(connector, schema, errors)
           primary_key_fields[field_name] = prepared_field
         end
 
-        fields_count           = fields_count + 1
-        fields[fields_count]   = prepared_field
+        insert(fields, prepared_field)
 
-        foreign_key_names[i]   = name
-        foreign_key_escaped[i] = name_escaped
-        foreign_col_names[i]   = escape_identifier(connector, foreign_field_name)
+        insert(foreign_key_names, name)
+        insert(foreign_key_escaped, prepared_field.name_escaped)
+        insert(foreign_col_names, escape_identifier(connector, foreign_field_name))
         insert(foreign_key_list, {
           from   = name,
           entity = field_name,
@@ -1037,92 +898,30 @@ function _M.new(connector, schema, errors)
       foreign_keys[field_name] = {
         names   = foreign_key_names,
         escaped = foreign_key_escaped,
-        count   = foreign_pk_count,
       }
-
-      foreign_key_count = foreign_key_count + 1
-
-      if not is_unique_foreign then
-        local foreign_key_index_name       = concat({ table_name, field_name }, "_fkey_")
-        local foreign_key_index_identifier = escape_identifier(connector, foreign_key_index_name)
-
-        foreign_key_indexes_count = foreign_key_indexes_count + 1
-        foreign_key_indexes_escaped[foreign_key_indexes_count] = foreign_key_index_identifier
-        foreign_key_indexes[foreign_key_indexes_count] = concat {
-          "CREATE INDEX IF NOT EXISTS ", foreign_key_index_identifier, " ON ", table_name_escaped, " (", concat(foreign_key_escaped, ", "), ");",
-        }
-      end
-
-      if is_part_of_composite_key then
-        foreign_key_constrainst_count = foreign_key_constrainst_count + 1
-        if on_delete and on_update then
-          foreign_key_constraints[foreign_key_constrainst_count] = concat {
-            "FOREIGN KEY (", concat(foreign_key_escaped, ", "), ")\n",
-            "   REFERENCES ",  escape_identifier(connector, foreign_schema.name), " (", concat(foreign_col_names, ", "), ")\n",
-            "    ON DELETE ",  on_delete, "\n",
-            "    ON UPDATE ",  on_update,
-          }
-
-        elseif on_delete then
-          foreign_key_constraints[foreign_key_constrainst_count] = concat {
-            "FOREIGN KEY (", concat(foreign_key_escaped, ", "), ")\n",
-            "   REFERENCES ",  escape_identifier(connector, foreign_schema.name), " (", concat(foreign_col_names, ", "), ")\n",
-            "    ON DELETE ",  on_delete,
-          }
-
-        elseif on_update then
-          foreign_key_constraints[foreign_key_constrainst_count] = concat {
-            "FOREIGN KEY (", concat(foreign_key_escaped, ", "), ")\n",
-            "   REFERENCES ",  escape_identifier(connector, foreign_schema.name), " (", concat(foreign_col_names, ", "), ")\n",
-            "    ON UPDATE ",  on_update,
-          }
-
-        else
-          foreign_key_constraints[foreign_key_constrainst_count] = concat {
-            "FOREIGN KEY (", concat(foreign_key_escaped, ", "), ")\n",
-            "   REFERENCES ",  escape_identifier(connector, foreign_schema.name), " (", concat(foreign_col_names, ", "), ")",
-          }
-        end
-
-        if is_unique_foreign then
-          foreign_key_constraints[foreign_key_constrainst_count] = concat {
-            foreign_key_constraints[foreign_key_constrainst_count], ",\n",
-            "       UNIQUE (", concat(foreign_key_escaped, ", "), ")"
-          }
-        end
-      end
 
     else
       fields_hash[field_name]        = field
 
-      local name_escaped             = escape_identifier(connector, field_name)
-      local name_expression          = escape_identifier(connector, field_name, field)
-      local type_postgres            = field_type_to_postgres_type(field)
       local is_used_in_primary_key   = primary_key_fields[field_name] ~= nil
-      local is_part_of_composite_key = is_used_in_primary_key and primary_key_count > 1 or false
-      local is_unique                = field.unique == true
-      local is_endpoint_key          = schema.endpoint_key == field_name
-
-      max_name_length = max(max_name_length, #name_escaped)
-      max_type_length = max(max_type_length, #type_postgres)
+      local is_part_of_composite_key = is_used_in_primary_key and #primary_key > 1 or false
 
       local prepared_field       = {
         name                     = field_name,
-        name_escaped             = name_escaped,
-        name_expression          = name_expression,
-        type_postgres            = type_postgres,
+        name_escaped             = escape_identifier(connector, field_name),
+        name_expression          = escape_identifier(connector, field_name, field),
         is_used_in_primary_key   = is_used_in_primary_key,
         is_part_of_composite_key = is_part_of_composite_key,
-        is_unique                = is_unique,
-        is_endpoint_key          = is_endpoint_key,
+        is_unique                = field.unique == true,
+        is_unique_across_ws      = field.unique_across_ws == true,
+        is_endpoint_key          = schema.endpoint_key == field_name,
       }
 
       if prepared_field.is_used_in_primary_key then
         primary_key_fields[field_name] = prepared_field
       end
 
-      fields_count         = fields_count + 1
-      fields[fields_count] = prepared_field
+      insert(fields, prepared_field)
     end
   end
 
@@ -1135,245 +934,123 @@ function _M.new(connector, schema, errors)
   local update_expressions       = {}
   local update_names             = {}
   local update_placeholders      = {}
-  local update_fields_count      = 0
   local upsert_expressions       = {}
-  local create_expressions       = {}
   local page_next_names          = {}
-  local page_next_count          = primary_key_count + 1
 
-  for i = 1, fields_count do
-    local name                     = fields[i].name
-    local name_escaped             = fields[i].name_escaped
-    local name_expression          = fields[i].name_expression
-    local type_postgres            = fields[i].type_postgres
-    local is_used_in_primary_key   = fields[i].is_used_in_primary_key
-    local is_part_of_composite_key = fields[i].is_part_of_composite_key
-    local is_unique                = fields[i].is_unique
-    local is_unique_foreign        = fields[i].is_unique_foreign
-    local is_endpoint_key          = fields[i].is_endpoint_key
-    local referenced_table         = fields[i].referenced_table
-    local referenced_column        = fields[i].referenced_column
-    local on_delete                = fields[i].on_delete
-    local on_update                = fields[i].on_update
+  for i, field in ipairs(fields) do
+    local name                     = field.name
+    local name_escaped             = field.name_escaped
+    local name_expression          = field.name_expression
+    local is_used_in_primary_key   = field.is_used_in_primary_key
+    local is_part_of_composite_key = field.is_part_of_composite_key
+    local is_unique                = field.is_unique
+    local is_unique_foreign        = field.is_unique_foreign
+    local is_endpoint_key          = field.is_endpoint_key
+    local referenced_table         = field.referenced_table
 
-    insert_names[i]       = name
-    insert_columns[i]     = name_escaped
-    insert_expressions[i] = "$" .. i
-    select_expressions[i] = name_expression
+    insert(insert_names,       name)
+    insert(insert_columns,     name_escaped)
+    insert(insert_expressions, "$" .. i)
+    insert(select_expressions, name_expression)
 
     if not is_used_in_primary_key then
-      update_fields_count = update_fields_count + 1
-      update_names[update_fields_count]       = name
-      update_expressions[update_fields_count] = name_escaped .. " = $" .. update_fields_count
-      upsert_expressions[update_fields_count] = name_escaped .. " = "   .. "EXCLUDED." .. name_escaped
+      insert(update_names,       name)
+      insert(update_expressions, name_escaped .. " = $" .. #update_names)
+      insert(upsert_expressions, name_escaped .. " = " .. "EXCLUDED." .. name_escaped)
     end
 
-    local create_expression = {}
-
-    create_expression[1] = name_escaped
-    create_expression[2] = rep(" ", max_name_length - #name_escaped + 2)
-
-    create_expression[3] = type_postgres
-
-    if is_used_in_primary_key and not is_part_of_composite_key then
-      create_expression[4] = rep(" ", max_type_length - #type_postgres + (#type_postgres < max_name_length and 3 or 2))
-      create_expression[5] = "PRIMARY KEY"
-
-      if referenced_table then
-        if is_unique then
-          create_expression[6]  = "  UNIQUE  REFERENCES "
-        else
-          create_expression[6]  = "  REFERENCES "
-        end
-        create_expression[7]  = escape_identifier(connector, referenced_table)
-        create_expression[8]  = " ("
-        create_expression[9]  = escape_identifier(connector, referenced_column)
-        create_expression[10] = ")"
-
-        if on_delete and on_update then
-          create_expression[11] = " ON DELETE "
-          create_expression[12] = on_delete
-          create_expression[13] = " ON UPDATE "
-          create_expression[14] = on_update
-
-        elseif on_delete then
-          create_expression[11] = " ON DELETE "
-          create_expression[12] = on_delete
-
-        elseif on_update then
-          create_expression[11] = " ON UPDATE "
-          create_expression[12] = on_update
-        end
-      end
-
-    elseif referenced_table and not is_part_of_composite_key then
-      create_expression[4] = rep(" ", max_type_length - #type_postgres + (#type_postgres < max_name_length and 3 or 2))
-      if is_unique then
-        create_expression[5] = "UNIQUE  REFERENCES "
-      else
-        create_expression[5] = "REFERENCES "
-      end
-      create_expression[6] = escape_identifier(connector, referenced_table)
-      create_expression[7] = " ("
-      create_expression[8] = escape_identifier(connector, referenced_column)
-      create_expression[9] = ")"
-
-      if on_delete and on_update then
-        create_expression[10] = " ON DELETE "
-        create_expression[11] = on_delete
-        create_expression[12] = " ON UPDATE "
-        create_expression[13] = on_update
-
-      elseif on_delete then
-        create_expression[10] = " ON DELETE "
-        create_expression[11] = on_delete
-
-      elseif on_update then
-        create_expression[10] = " ON UPDATE "
-        create_expression[11] = on_update
-      end
-
-      if is_unique_foreign then
-        unique_fields_count = unique_fields_count + 1
-        unique_fields[unique_fields_count] = fields[i]
-      end
-
-    elseif is_unique then
-      if not is_used_in_primary_key and not referenced_table then
-        create_expression[4] = rep(" ", max_type_length - #type_postgres + (#type_postgres < max_name_length and 3 or 2))
-        create_expression[5] = "UNIQUE"
-      end
-
-      unique_fields_count = unique_fields_count + 1
-      unique_fields[unique_fields_count] = fields[i]
-
-    elseif is_endpoint_key and not is_unique then
-      -- treat it like a unique key anyway - they are indexed (example: target.target)
-      unique_fields_count = unique_fields_count + 1
-      unique_fields[unique_fields_count] = fields[i]
+    if ((not is_used_in_primary_key) or is_part_of_composite_key)
+       and ((referenced_table and not is_part_of_composite_key)
+            or is_unique_foreign
+            or is_unique
+            or (is_endpoint_key and not is_unique))
+    then
+      -- treat endpoint_key like a unique key anyway,
+      -- they are indexed (example: target.target)
+      insert(unique_fields, field)
     end
-
-    create_expressions[i] = concat(create_expression)
   end
 
   local update_args_names = {}
 
-  for i = 1, update_fields_count do
-    update_args_names[i] = update_names[i]
+  for _, update_name in ipairs(update_names) do
+    insert(update_args_names, update_name)
   end
 
-  local create_count = fields_count
-
   local cache_key_escaped
-  local cache_key_index
-  if composite_cache_key then
+  if has_composite_cache_key then
     cache_key_escaped = escape_identifier(connector, "cache_key")
-    cache_key_index = escape_identifier(connector, table_name .. "_" .. "cache_key_idx")
-    update_fields_count = update_fields_count + 1
-    update_names[update_fields_count] = "cache_key"
-    update_args_names[update_fields_count] = "cache_key"
-    update_expressions[update_fields_count] = cache_key_escaped .. " = $" .. update_fields_count
-    upsert_expressions[update_fields_count] = cache_key_escaped .. " = "  .. "EXCLUDED." .. cache_key_escaped
+    insert(update_names, "cache_key")
+    insert(update_args_names, "cache_key")
+    insert(update_expressions, cache_key_escaped .. " = $" .. #update_names)
+    insert(upsert_expressions, cache_key_escaped .. " = "  .. "EXCLUDED." .. cache_key_escaped)
+  end
 
-    local create_expression = {
-      cache_key_escaped,
-      rep(" ", max_name_length - #cache_key_escaped + 2),
-      field_type_to_postgres_type({ type = "string" }),
-    }
-
-    create_count = create_count + 1
-    create_expressions[create_count] = concat(create_expression)
+  local ws_id_escaped
+  if has_ws_id then
+    ws_id_escaped = escape_identifier(connector, "ws_id")
+    insert(select_expressions, ws_id_escaped)
+    insert(update_names, "ws_id")
+    insert(update_args_names, "ws_id")
+    insert(update_expressions, ws_id_escaped .. " = $0")
+    insert(upsert_expressions, ws_id_escaped .. " = "  .. "EXCLUDED." .. ws_id_escaped)
   end
 
   local ttl_escaped
-  local ttl_index
-  if ttl then
+  if has_ttl then
     ttl_escaped = escape_identifier(connector, "ttl")
-    ttl_index = escape_identifier(connector, table_name .. "_" .. "ttl_idx")
-    update_fields_count = update_fields_count + 1
-    update_names[update_fields_count] = "ttl"
-    update_args_names[update_fields_count] = "ttl"
-    update_expressions[update_fields_count] = ttl_escaped .. " = $" .. update_fields_count
-    upsert_expressions[update_fields_count] = ttl_escaped .. " = "  .. "EXCLUDED." .. ttl_escaped
-
-    local create_expression = {
-      ttl_escaped,
-      rep(" ", max_name_length - #ttl_escaped + 2),
-      field_type_to_postgres_type({ timestamp = true }),
-    }
-
-    create_count = create_count + 1
-    create_expressions[create_count] = concat(create_expression)
+    insert(update_names, "ttl")
+    insert(update_args_names, "ttl")
+    insert(update_expressions, ttl_escaped .. " = $" .. #update_names)
+    insert(upsert_expressions, ttl_escaped .. " = "  .. "EXCLUDED." .. ttl_escaped)
   end
 
-  local update_args_count = update_fields_count
   local primary_key_escaped = {}
-  for i = 1, primary_key_count do
-    local primary_key_field              = primary_key_fields[primary_key[i]]
-    primary_key_names[i]                 = primary_key_field.name
-    primary_key_escaped[i]               = primary_key_field.name_escaped
-    update_args_count                    = update_args_count + 1
-    update_args_names[update_args_count] = primary_key_field.name
-    update_placeholders[i]               = "$" .. update_args_count
-    primary_key_placeholders[i]          = "$" .. i
-    page_next_names[i]                   = primary_key[i]
+  for i, key in ipairs(primary_key) do
+    local primary_key_field = primary_key_fields[key]
+
+    insert(page_next_names,          key)
+    insert(primary_key_names,        primary_key_field.name)
+    insert(primary_key_escaped,      primary_key_field.name_escaped)
+    insert(update_args_names,        primary_key_field.name)
+    insert(update_placeholders,      "$" .. #update_args_names)
+    insert(primary_key_placeholders, "$" .. i)
   end
 
-  page_next_names[page_next_count] = LIMIT
+  insert(page_next_names, LIMIT)
 
   local pk_escaped = concat(primary_key_escaped, ", ")
-  if primary_key_count > 1 then
-    create_count = create_count + 1
-    create_expressions[create_count] = concat{
-      "PRIMARY KEY (",  pk_escaped, ")"
-    }
-  end
 
-  for i = 1, foreign_key_constrainst_count do
-    create_count = create_count + 1
-    create_expressions[create_count] = foreign_key_constraints[i]
-  end
-
-  select_expressions       = concat(select_expressions,  ", ")
+  select_expressions       = concat(select_expressions, ", ")
   primary_key_placeholders = concat(primary_key_placeholders, ", ")
   update_placeholders      = concat(update_placeholders, ", ")
 
-  local create_statement
-  local insert_count
-  local insert_statement
-  local upsert_statement
-  local select_statement
-  local page_first_statement
-  local page_next_statement
-  local update_statement
-  local delete_statement
-  local count_statement
-  local drop_statement
-
-  if composite_cache_key then
+  if has_composite_cache_key then
     fields_hash.cache_key = { type = "string" }
 
-    insert_count = fields_count + 1
-    insert_names[insert_count] = "cache_key"
-    insert_expressions[insert_count] = "$" .. insert_count
-    insert_columns[insert_count] = cache_key_escaped
-    fields_count = fields_count + 1
+    insert(insert_names, "cache_key")
+    insert(insert_expressions, "$" .. #insert_names)
+    insert(insert_columns, cache_key_escaped)
   end
 
-  if ttl then
+  local ws_id_select_where
+  if has_ws_id then
+    fields_hash.ws_id = { type = "string", uuid = true }
+
+    insert(insert_names, "ws_id")
+    insert(insert_expressions, "$0")
+    insert(insert_columns, ws_id_escaped)
+
+    ws_id_select_where = "(" .. ws_id_escaped .. " = $0)"
+  end
+
+  local ttl_select_where
+  if has_ttl then
     fields_hash.ttl = { timestamp = true }
 
-    insert_count = fields_count + 1
-    insert_names[insert_count] = "ttl"
-    insert_expressions[insert_count] = "$" .. insert_count
-    insert_columns[insert_count] = ttl_escaped
-
-    insert_expressions = concat(insert_expressions,  ", ")
-    insert_columns = concat(insert_columns, ", ")
-
-    update_expressions = concat(update_expressions, ", ")
-
-    upsert_expressions = concat(upsert_expressions, ", ")
+    insert(insert_names, "ttl")
+    insert(insert_expressions, "$" .. #insert_names)
+    insert(insert_columns, ttl_escaped)
 
     select_expressions = concat {
       select_expressions, ",",
@@ -1382,577 +1059,387 @@ function _M.new(connector, schema, errors)
       "))) AS ", ttl_escaped
     }
 
-    create_statement = concat {
-      "CREATE TABLE IF NOT EXISTS ", table_name_escaped, " (\n",
-      "  ",   concat(create_expressions, ",\n  "), "\n",
-      ");\n", concat(foreign_key_indexes, "\n"), "\n",
-      "CREATE INDEX IF NOT EXISTS ", ttl_index, " ON ", table_name_escaped, " (", ttl_escaped, ");",
-    }
-
-    insert_statement = concat {
-      "INSERT INTO ",  table_name_escaped, " (", insert_columns, ")\n",
-      "     VALUES (", insert_expressions, ")\n",
-      "  RETURNING ",  select_expressions, ";",
-    }
-
-    upsert_statement = concat {
-      "INSERT INTO ",  table_name_escaped, " (", insert_columns, ")\n",
-      "     VALUES (", insert_expressions, ")\n",
-      "ON CONFLICT (", pk_escaped, ") DO UPDATE\n",
-      "        SET ",  upsert_expressions, "\n",
-      "  RETURNING ",  select_expressions, ";",
-    }
-
-
-    update_statement = concat {
-      "   UPDATE ",  table_name_escaped, "\n",
-      "      SET ",  update_expressions, "\n",
-      "    WHERE (", pk_escaped, ") = (", update_placeholders, ")\n",
-      "      AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
-      "RETURNING ",  select_expressions, ";",
-    }
-
-    select_statement = concat {
-      "SELECT ",  select_expressions, "\n",
-      "  FROM ",  table_name_escaped, "\n",
-      " WHERE (", pk_escaped, ") = (", primary_key_placeholders, ")\n",
-      "   AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
-      " LIMIT 1;"
-    }
-
-    page_first_statement = concat {
-      "  SELECT ",  select_expressions, "\n",
-      "    FROM ",  table_name_escaped, "\n",
-      "   WHERE (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
-      "ORDER BY ",  pk_escaped, "\n",
-      "   LIMIT $1;";
-    }
-
-    page_next_statement = concat {
-      "  SELECT ",  select_expressions, "\n",
-      "    FROM ",  table_name_escaped, "\n",
-      "   WHERE (", pk_escaped, ") > (", primary_key_placeholders, ")\n",
-      "     AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
-      "ORDER BY ",  pk_escaped, "\n",
-      "   LIMIT $", page_next_count, ";"
-    }
-
-    delete_statement = concat {
-      "DELETE\n",
-      "  FROM ",  table_name_escaped, "\n",
-      " WHERE (", pk_escaped, ") = (", primary_key_placeholders, ")\n",
-      "   AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC');",
-    }
-
-    count_statement = concat {
-      "SELECT COUNT(*) AS ", escape_identifier(connector, "count"), "\n",
-      "  FROM ",  table_name_escaped, "\n",
-      " WHERE (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
-      " LIMIT 1;"
-    }
-
-    if foreign_key_indexes_count > 0 then
-      drop_statement = concat {
-        "DROP INDEX IF EXISTS ", ttl_index, ", ", concat(foreign_key_indexes_escaped, ", "), ";\n",
-        "DROP TABLE IF EXISTS ", table_name_escaped, ";"
-      }
-
-    else
-      drop_statement = concat {
-        "DROP INDEX IF EXISTS ", ttl_index, ";\n",
-        "DROP TABLE IF EXISTS ", table_name_escaped, ";"
-      }
-    end
-
-  else
-    insert_count = fields_count
-
-    insert_expressions = concat(insert_expressions,  ", ")
-    insert_columns = concat(insert_columns, ", ")
-
-    update_expressions = concat(update_expressions, ", ")
-
-    upsert_expressions = concat(upsert_expressions, ", ")
-
-    create_statement = concat {
-      "CREATE TABLE IF NOT EXISTS ", table_name_escaped, " (\n",
-      "  ",   concat(create_expressions, ",\n  "), "\n",
-      ");\n", concat(foreign_key_indexes, "\n")
-    }
-
-    insert_statement = concat {
-      "INSERT INTO ",  table_name_escaped, " (", insert_columns, ")\n",
-      "     VALUES (", insert_expressions, ")\n",
-      "  RETURNING ", select_expressions, ";",
-    }
-
-    upsert_statement = concat {
-      "INSERT INTO ",  table_name_escaped, " (", insert_columns, ")\n",
-      "     VALUES (", insert_expressions, ")\n",
-      "ON CONFLICT (", pk_escaped, ") DO UPDATE\n",
-      "        SET ",  upsert_expressions, "\n",
-      "  RETURNING ", select_expressions, ";",
-    }
-
-    update_statement = concat {
-      "   UPDATE ",  table_name_escaped, "\n",
-      "      SET ",  update_expressions, "\n",
-      "    WHERE (", pk_escaped, ") = (", update_placeholders, ")\n",
-      "RETURNING ", select_expressions, ";",
-    }
-
-    select_statement = concat {
-      "SELECT ",  select_expressions, "\n",
-      "  FROM ",  table_name_escaped, "\n",
-      " WHERE (", pk_escaped, ") = (", primary_key_placeholders, ")\n",
-      " LIMIT 1;"
-    }
-
-    page_first_statement = concat {
-      "  SELECT ", select_expressions, "\n",
-      "    FROM ", table_name_escaped, "\n",
-      "ORDER BY ", pk_escaped, "\n",
-      "   LIMIT $1;";
-    }
-
-    page_next_statement = concat {
-      "  SELECT ",  select_expressions, "\n",
-      "    FROM ",  table_name_escaped, "\n",
-      "   WHERE (", pk_escaped, ") > (", primary_key_placeholders, ")\n",
-      "ORDER BY ",  pk_escaped, "\n",
-      "   LIMIT $", page_next_count, ";"
-    }
-
-    delete_statement = concat {
-      "DELETE\n",
-      "  FROM ",  table_name_escaped, "\n",
-      " WHERE (", pk_escaped, ") = (", primary_key_placeholders, ");",
-    }
-
-    count_statement = concat {
-      "SELECT COUNT(*) AS ", escape_identifier(connector, "count"), "\n",
-      "  FROM ", table_name_escaped, "\n",
-      " LIMIT 1;"
-    }
-
-    if foreign_key_indexes_count > 0 then
-      drop_statement = concat {
-        "DROP INDEX IF EXISTS ", concat(foreign_key_indexes_escaped, ", "), ";\n",
-        "DROP TABLE IF EXISTS ", table_name_escaped, " CASCADE;"
-      }
-
-    else
-      drop_statement = concat {
-        "DROP TABLE IF EXISTS ", table_name_escaped, " CASCADE;"
-      }
-    end
-  end
-
-  if composite_cache_key then
-    create_statement = concat { create_statement, "\n",
-      "CREATE INDEX IF NOT EXISTS ", cache_key_index,
-      " ON ", table_name_escaped, " (", cache_key_escaped, ");"
+    ttl_select_where = concat {
+      "(", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')"
     }
   end
 
-  local truncate_statement = concat {
-    "TRUNCATE ", table_name_escaped, " RESTART IDENTITY CASCADE;"
-  }
+  insert_expressions = concat(insert_expressions,  ", ")
+  insert_columns = concat(insert_columns, ", ")
 
-  local primary_key_args = new_tab(primary_key_count, 0)
-  local insert_args      = new_tab(insert_count, 0)
-  local update_args      = new_tab(update_args_count, 0)
-  local single_args      = new_tab(1, 0)
-  local page_next_args   = new_tab(page_next_count, 0)
+  update_expressions = concat(update_expressions, ", ")
+
+  upsert_expressions = concat(upsert_expressions, ", ")
+
+  local primary_key_args = {}
+  local insert_args      = {}
+  local update_args      = {}
+  local single_args      = {}
+  local page_next_args   = {}
 
   local self = setmetatable({
-    connector     = connector,
-    schema        = schema,
-    errors        = errors,
-    expand        = foreign_key_count > 0 and
-                    expand(table_name .. "_expand", foreign_key_list) or
-                    noop,
-    collapse      = collapse(table_name .. "_collapse", foreign_key_list),
-    fields        = fields_hash,
-    statements    = {
-      create      = { create_statement, "write", },
-      truncate    = { truncate_statement, "write", },
-      count       = { count_statement, "read", },
-      drop        = { drop_statement, "write", },
-      insert      = {
-        expr      = insert_expressions,
-        cols      = insert_columns,
-        argn      = insert_names,
-        argc      = insert_count,
-        argv      = insert_args,
-        make      = compile(table_name .. "_insert", insert_statement),
-        operation = "write",
+    connector    = connector,
+    schema       = schema,
+    errors       = errors,
+    expand       = #foreign_key_list > 0 and
+                   expand(table_name .. "_expand", foreign_key_list) or
+                   noop,
+    collapse     = collapse(table_name .. "_collapse", foreign_key_list),
+    fields       = fields_hash,
+
+    statements = {
+      truncate = {
+        concat {
+          "TRUNCATE ", table_name_escaped, " RESTART IDENTITY CASCADE;"
+        },
+        "write",
       },
-      upsert      = {
-        expr      = upsert_expressions,
-        argn      = insert_names,
-        argc      = insert_count,
-        argv      = insert_args,
-        make      = compile(table_name .. "_upsert", upsert_statement),
-        operation = "write",
-      },
-      update      = {
-        expr      = update_expressions,
-        argn      = update_args_names,
-        argc      = update_args_count,
-        argv      = update_args,
-        make      = compile(table_name .. "_update", update_statement),
-        operation = "write",
-      },
-      delete      = {
-        argn      = primary_key_names,
-        argc      = primary_key_count,
-        argv      = primary_key_args,
-        make      = compile(table_name .. "_delete", delete_statement),
-        operation = "write",
-      },
-      select      = {
-        expr      = select_expressions,
-        argn      = primary_key_names,
-        argc      = primary_key_count,
-        argv      = primary_key_args,
-        make      = compile(table_name .. "_select" , select_statement),
-        operation = "read",
-      },
-      page_first  = {
-        argn      = { LIMIT },
-        argc      = 1,
-        argv      = single_args,
-        make      = compile(table_name .. "_first" , page_first_statement),
-        operation = "read",
-      },
-      page_next   = {
-        argn      = page_next_names,
-        argc      = page_next_count,
-        argv      = page_next_args,
-        make      = compile(table_name .. "_next" , page_next_statement),
-        operation = "read",
-      },
-    },
+    }
   }, _mt)
 
-  if foreign_key_count > 0 then
-    local statements = self.statements
+  self.statements["truncate_global"] = self.statements["truncate"]
 
+  local add_statement
+  do
+    local function add(name, opts, add_ws)
+      local orig_argn = opts.argn
+      opts = pl_tablex.deepcopy(opts)
+
+      -- ensure LIMIT table is the same
+      for i, n in ipairs(orig_argn) do
+        if type(n) == "table" then
+          opts.argn[i] = n
+        end
+      end
+
+      for i = 1, #opts.code do
+        if type(opts.code[i]) == "function" then
+          opts.code[i] = opts.code[i](add_ws)
+        end
+        opts.code[i] = fmt("%q", opts.code[i])
+      end
+      opts.make = compile(table_name .. "_" .. name, concat(opts.code, ", "))
+      opts.code = nil
+      opts.argc = #opts.argn
+      self.statements[name] = opts
+    end
+
+    add_statement = function(name, opts)
+      add(name .. "_global", opts, false)
+      add(name, opts, true)
+    end
+  end
+
+  add_statement("insert", {
+    operation = "write",
+    expr = insert_expressions,
+    cols = insert_columns,
+    argn = insert_names,
+    argv = insert_args,
+    code =  {
+      "INSERT INTO ",  table_name_escaped, " (", insert_columns, ")\n",
+      "     VALUES (", insert_expressions, ")\n",
+      "  RETURNING ", select_expressions, ";",
+    }
+  })
+
+  add_statement("upsert", {
+    operation = "write",
+    expr = upsert_expressions,
+    argn = insert_names,
+    argv = insert_args,
+    code =  {
+      "INSERT INTO ",  table_name_escaped, " (", insert_columns, ")\n",
+      "     VALUES (", insert_expressions, ")\n",
+      "ON CONFLICT (", pk_escaped, ") DO UPDATE\n",
+      "        SET ",  upsert_expressions, "\n",
+      "  RETURNING ", select_expressions, ";",
+    }
+  })
+
+  add_statement("update", {
+    operation = "write",
+    expr = update_expressions,
+    argn = update_args_names,
+    argv = update_args,
+    code =  {
+      "   UPDATE ",  table_name_escaped, "\n",
+      "      SET ",  update_expressions, "\n",
+      where_clause(
+      "    WHERE ", "(" .. pk_escaped .. ") = (" .. update_placeholders .. ")",
+                    ttl_select_where,
+                    ws_id_select_where),
+      "RETURNING ", select_expressions, ";",
+    }
+  })
+
+  add_statement("delete", {
+    operation = "write",
+    argn = primary_key_names,
+    argv = primary_key_args,
+    code = {
+      "DELETE\n",
+      "  FROM ", table_name_escaped, "\n",
+      where_clause(
+      " WHERE ", "(" .. pk_escaped .. ") = (" .. primary_key_placeholders .. ")",
+                 ttl_select_where,
+                 ws_id_select_where), ";"
+    }
+  })
+
+  add_statement("select", {
+    operation = "read",
+    expr = select_expressions,
+    argn = primary_key_names,
+    argv = primary_key_args,
+    code = {
+      "SELECT ",  select_expressions, "\n",
+      "  FROM ",  table_name_escaped, "\n",
+      where_clause(
+      " WHERE ", "(" .. pk_escaped .. ") = (" .. primary_key_placeholders .. ")",
+                 ttl_select_where,
+                 ws_id_select_where),
+      " LIMIT 1;"
+    }
+  })
+
+  add_statement("page_first", {
+    operation = "read",
+    argn = { LIMIT },
+    argv = single_args,
+    code = {
+      "  SELECT ",  select_expressions, "\n",
+      "    FROM ",  table_name_escaped, "\n",
+      where_clause(
+      "   WHERE ", ttl_select_where,
+                   ws_id_select_where),
+      "ORDER BY ",  pk_escaped, "\n",
+      "   LIMIT $1;";
+    }
+  })
+
+  add_statement("page_next", {
+    operation = "read",
+    argn = page_next_names,
+    argv = page_next_args,
+    code = {
+      "  SELECT ",  select_expressions, "\n",
+      "    FROM ",  table_name_escaped, "\n",
+      where_clause(
+      "   WHERE ", "(" .. pk_escaped .. ") > (" .. primary_key_placeholders .. ")",
+                   ttl_select_where,
+                   ws_id_select_where),
+      "ORDER BY ",  pk_escaped, "\n",
+      "   LIMIT " .. placeholder(#page_next_names), ";"
+    }
+  })
+
+  if #foreign_key_list > 0 then
     for foreign_entity_name, foreign_key in pairs(foreign_keys) do
       local fk_names   = foreign_key.names
       local fk_escaped = foreign_key.escaped
-      local fk_count   = foreign_key.count
 
       local fk_placeholders = {}
       local pk_placeholders = {}
 
       local foreign_key_names = concat(fk_escaped, ", ")
 
-      local argc_first = fk_count + 1
-      local argv_first = new_tab(argc_first, 0)
-      local argn_first = new_tab(argc_first, 0)
-      local argc_next  = argc_first + primary_key_count
-      local argv_next  = new_tab(argc_next, 0)
-      local argn_next  = new_tab(argc_next, 0)
+      local argv_first = {}
+      local argn_first = {}
+      local argv_next  = {}
+      local argn_next  = {}
 
-      for i = 1, fk_count do
-        argn_first[i]      = fk_names[i]
-        argn_next[i]       = fk_names[i]
-        fk_placeholders[i] = "$" .. i
+      for i, fk_name in ipairs(fk_names) do
+        insert(argn_first, fk_name)
+        insert(argn_next, fk_name)
+        insert(fk_placeholders, placeholder(i))
       end
 
-      for i = 1, primary_key_count do
-        local index = i + fk_count
-        argn_next[index]   = primary_key_names[i]
-        pk_placeholders[i] = "$" .. index
+      for i, primary_key_name in ipairs(primary_key_names) do
+        insert(argn_next, primary_key_name)
+        insert(pk_placeholders, placeholder(i + #fk_names))
       end
 
-      argn_first[argc_first] = LIMIT
-      argn_next[argc_next]   = LIMIT
+      insert(argn_first, LIMIT)
+      insert(argn_next, LIMIT)
 
       fk_placeholders = concat(fk_placeholders, ", ")
       pk_placeholders = concat(pk_placeholders, ", ")
 
-      if ttl then
-        page_first_statement = concat {
-          "  SELECT ",  select_expressions, "\n",
-          "    FROM ",  table_name_escaped, "\n",
-          "   WHERE (", foreign_key_names, ") = (", fk_placeholders, ")\n",
-          "     AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
-          "ORDER BY ",  pk_escaped, "\n",
-          "   LIMIT $", argc_first, ";";
-        }
-
-        page_next_statement = concat {
-          "  SELECT ",  select_expressions, "\n",
-          "    FROM ",  table_name_escaped, "\n",
-          "   WHERE (", foreign_key_names, ") = (", fk_placeholders, ")\n",
-          "     AND (", pk_escaped, ") > (", pk_placeholders, ")\n",
-          "     AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
-          "ORDER BY ",  pk_escaped, "\n",
-          "   LIMIT $", argc_next, ";"
-        }
-
-      else
-        page_first_statement = concat {
-          "  SELECT ",  select_expressions, "\n",
-          "    FROM ",  table_name_escaped, "\n",
-          "   WHERE (", foreign_key_names, ") = (", fk_placeholders, ")\n",
-          "ORDER BY ",  pk_escaped, "\n",
-          "   LIMIT $", argc_first, ";";
-        }
-
-        page_next_statement = concat {
-          "  SELECT ",  select_expressions, "\n",
-          "    FROM ",  table_name_escaped, "\n",
-          "   WHERE (", foreign_key_names, ") = (", fk_placeholders, ")\n",
-          "     AND (", pk_escaped, ") > (", pk_placeholders, ")\n",
-          "ORDER BY ",  pk_escaped, "\n",
-          "   LIMIT $", argc_next, ";"
-        }
-      end
-
       local statement_name = "page_for_" .. foreign_entity_name
 
-      statements[statement_name .. "_first"] = {
-        argn      = argn_first,
-        argc      = argc_first,
-        argv      = argv_first,
-        make      = compile(concat({ table_name, statement_name, "first" }, "_"), page_first_statement),
+      add_statement(statement_name .. "_first", {
         operation = "read",
-      }
+        argn = argn_first,
+        argv = argv_first,
+        code = {
+          "  SELECT ",  select_expressions, "\n",
+          "    FROM ",  table_name_escaped, "\n",
+          where_clause(
+          "   WHERE ", "(" .. foreign_key_names .. ") = (" .. fk_placeholders .. ")",
+                       ttl_select_where,
+                       ws_id_select_where),
+          "ORDER BY ", pk_escaped, "\n",
+          "   LIMIT ", placeholder(#argn_first), ";";
+        }
+      })
 
-      statements[statement_name .. "_next"] = {
-        argn      = argn_next,
-        argc      = argc_next,
-        argv      = argv_next,
-        make      = compile(concat({ table_name, statement_name, "next" }, "_"), page_next_statement),
+      add_statement(statement_name .. "_next", {
         operation = "read",
-      }
+        argn = argn_next,
+        argv = argv_next,
+        code = {
+          "  SELECT ",  select_expressions, "\n",
+          "    FROM ",  table_name_escaped, "\n",
+          where_clause(
+          "   WHERE ", "(" .. foreign_key_names .. ") = (" .. fk_placeholders .. ")",
+                       "(" .. pk_escaped .. ") > (" .. pk_placeholders .. ")",
+                       ttl_select_where,
+                       ws_id_select_where),
+          "ORDER BY ", pk_escaped, "\n",
+          "   LIMIT ", placeholder(#argn_next), ";"
+        }
+      })
 
       self[statement_name] = make_select_for(foreign_entity_name)
     end
   end
 
-  if tags then
-    local statements = self.statements
+  if has_tags then
     local pk_placeholders = {}
 
-    local argc_first = 2
-    local argv_first = new_tab(argc_first, 0)
-    local argn_first = new_tab(argc_first, 0)
-    local argc_next  = argc_first + primary_key_count
-    local argv_next  = new_tab(argc_next, 0)
-    local argn_next  = new_tab(argc_next, 0)
+    local argn_first = { "tags", LIMIT }
+    local argn_next  = { "tags" }
 
-    for i = 1, primary_key_count do
-      local index = i + 1
-      argn_next[index]   = primary_key_names[i]
-      pk_placeholders[i] = "$" .. index
+    for i, primary_key_name in ipairs(primary_key_names) do
+      insert(argn_next, primary_key_name)
+      pk_placeholders[i] = placeholder(i + 1)
     end
-
-    pk_placeholders = concat(pk_placeholders, ", ")
-
-    argn_first[1] = "tags"
-    argn_first[argc_first] = LIMIT
-    argn_next[1] = "tags"
-    argn_next[argc_next] = LIMIT
-
-    local page_first_by_tags_statement
-    local page_next_by_tags_statement
+    insert(argn_next, LIMIT)
 
     for cond, op in pairs({["_and"] = "@>", ["_or"] = "&&"}) do
 
-      if ttl then
-        page_first_by_tags_statement = concat {
+      add_statement("page_by_tags" .. cond .. "_first", {
+        operation = "read",
+        argn = argn_first,
+        argv = {},
+        code = {
           "  SELECT ",  select_expressions, "\n",
           "    FROM ",  table_name_escaped, "\n",
-          "   WHERE tags ", op, " $1\n",
-          "     AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
+          where_clause(
+          "   WHERE ", "tags " .. op .. " $1",
+                       ttl_select_where,
+                       ws_id_select_where),
           "ORDER BY ",  pk_escaped, "\n",
           "   LIMIT $2;";
-        }
+        },
+      })
 
-        page_next_by_tags_statement = concat {
-          "  SELECT ",  select_expressions, "\n",
-          "    FROM ",  table_name_escaped, "\n",
-          "   WHERE tags ", op, " $1\n",
-          "     AND (", pk_escaped, ") > (", pk_placeholders, ")\n",
-          "     AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
-          "ORDER BY ",  pk_escaped, "\n",
-          "   LIMIT $", argc_next, ";"
-        }
-      else
-        page_first_by_tags_statement = concat {
-          "  SELECT ",  select_expressions, "\n",
-          "    FROM ",  table_name_escaped, "\n",
-          "   WHERE tags ", op, " $1\n",
-          "ORDER BY ",  pk_escaped, "\n",
-          "   LIMIT $2;";
-        }
-
-        page_next_by_tags_statement = concat {
-          "  SELECT ",  select_expressions, "\n",
-          "    FROM ",  table_name_escaped, "\n",
-          "   WHERE tags ", op, " $1\n",
-          "     AND (", pk_escaped, ") > (", pk_placeholders, ")\n",
-          "ORDER BY ",  pk_escaped, "\n",
-          "   LIMIT $", argc_next, ";"
-        }
-      end
-
-      local statement_name = "page_by_tags"
-
-      statements[statement_name .. cond .. "_first"] = {
-        argn      = argn_first,
-        argc      = argc_first,
-        argv      = argv_first,
-        make      = compile(concat({ table_name, statement_name, "first" }, "_"), page_first_by_tags_statement),
+      add_statement("page_by_tags" .. cond .. "_next", {
         operation = "read",
-      }
-
-      statements[statement_name .. cond .. "_next"] = {
-        argn      = argn_next,
-        argc      = argc_next,
-        argv      = argv_next,
-        make      = compile(concat({ table_name, statement_name, "next" }, "_"), page_next_by_tags_statement),
-        operation = "read",
-      }
+        argn = argn_next,
+        argv = {},
+        code = {
+          "  SELECT ",  select_expressions, "\n",
+          "    FROM ",  table_name_escaped, "\n",
+          where_clause(
+          "   WHERE ", "tags " .. op .. " $1",
+                       "(" .. pk_escaped .. ") > (" .. concat(pk_placeholders, ", ") .. ")",
+                       ttl_select_where,
+                       ws_id_select_where),
+          "ORDER BY ", pk_escaped, "\n",
+          "   LIMIT ", placeholder(#argn_next), ";"
+        }
+      })
     end
   end
 
-  if composite_cache_key then
-    unique_fields_count = unique_fields_count + 1
+  if has_composite_cache_key then
     insert(unique_fields, {
       name = "cache_key",
       name_escaped = escape_identifier(connector, "cache_key"),
     })
   end
 
-  if unique_fields_count > 0 then
-    local update_by_args_count = update_fields_count + 1
-    local update_by_args = new_tab(update_by_args_count, 0)
-    local statements = self.statements
+  if #unique_fields > 0 then
+    local update_by_args = {}
 
-    for i = 1, unique_fields_count do
-      local unique_field   = unique_fields[i]
+    for _, unique_field in ipairs(unique_fields) do
       local field_name     = unique_field.field_name or unique_field.name
       local unique_name    = unique_field.name
       local unique_escaped = unique_field.name_escaped
       local single_names   = { unique_name }
 
-      local select_by_statement_name = "select_by_" .. field_name
-      local select_by_statement
-
-      if ttl then
-        select_by_statement = concat {
+      add_statement("select_by_" .. field_name, {
+        operation = "read",
+        argn = single_names,
+        argv = single_args,
+        code = {
           "SELECT ",  select_expressions, "\n",
           "  FROM ",  table_name_escaped, "\n",
-          " WHERE ",  unique_escaped, " = $1\n",
-          "   AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
+          where_clause(
+          " WHERE ",  unique_escaped .. " = $1",
+                      ttl_select_where,
+                      ws_id_select_where),
           " LIMIT 1;"
-        }
-
-      else
-        select_by_statement = concat {
-          "SELECT ", select_expressions, "\n",
-          "  FROM ", table_name_escaped, "\n",
-          " WHERE ", unique_escaped, " = $1\n",
-          " LIMIT 1;"
-        }
-      end
-
-      statements[select_by_statement_name] = {
-        argn      = single_names,
-        argc      = 1,
-        argv      = single_args,
-        make      = compile(concat({ table_name, select_by_statement_name }, "_"), select_by_statement),
-        operation = "read",
-      }
-
-      local update_by_statement_name = "update_by_" .. field_name
-      local update_by_statement
-
-      if ttl then
-        update_by_statement = concat {
-          "   UPDATE ",  table_name_escaped, "\n",
-          "      SET ",  update_expressions, "\n",
-          "    WHERE ",  unique_escaped, " = $", update_by_args_count, "\n",
-          "      AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC')\n",
-          "RETURNING ", select_expressions, ";",
-        }
-      else
-        update_by_statement = concat {
-          "   UPDATE ", table_name_escaped, "\n",
-          "      SET ", update_expressions, "\n",
-          "    WHERE ", unique_escaped, " = $", update_by_args_count, "\n",
-          "RETURNING ", select_expressions, ";",
-        }
-      end
+        },
+      })
 
       local update_by_args_names = {}
-      for i = 1, update_fields_count do
-        update_by_args_names[i] = update_names[i]
+      for _, update_name in ipairs(update_names) do
+        insert(update_by_args_names, update_name)
       end
 
-      update_by_args_names[update_by_args_count] = unique_name
-      statements[update_by_statement_name] = {
-        argn      = update_by_args_names,
-        argc      = update_by_args_count,
-        argv      = update_by_args,
-        make      = compile(concat({ table_name, update_by_statement_name }, "_"), update_by_statement),
-        operation = "write",
-      }
+      insert(update_by_args_names, unique_name)
 
-      local upsert_by_statement_name = "upsert_by_" .. field_name
+      add_statement("update_by_" .. field_name, {
+        operation = "write",
+        argn = update_by_args_names,
+        argv = update_by_args,
+        code = {
+          "   UPDATE ", table_name_escaped, "\n",
+          "      SET ", update_expressions, "\n",
+          where_clause(
+          "    WHERE ", unique_escaped .. " = $" .. #update_names + 1,
+                        ttl_select_where,
+                        ws_id_select_where),
+          "RETURNING ", select_expressions, ";",
+        }
+      })
+
       local conflict_key = unique_escaped
-      if composite_cache_key then
+      if has_composite_cache_key then
         conflict_key = escape_identifier(connector, "cache_key")
       end
-      local upsert_by_statement = concat {
-        "INSERT INTO ",  table_name_escaped, " (", insert_columns, ")\n",
-        "     VALUES (", insert_expressions, ")\n",
-        "ON CONFLICT (", conflict_key, ") DO UPDATE\n",
-        "        SET ",  upsert_expressions, "\n",
-        "  RETURNING ",  select_expressions, ";",
-      }
 
+      local use_ws_id = has_ws_id and not unique_field.is_unique_across_ws
 
-      statements[upsert_by_statement_name] = {
-        argn = insert_names,
-        argc = insert_count,
-        argv = insert_args,
-        make = compile(concat({ table_name, upsert_by_statement_name }, "_"), upsert_by_statement),
+      add_statement("upsert_by_" .. field_name, {
         operation = "write",
-      }
+        argn = insert_names,
+        argv = insert_args,
+        code = {
+          "INSERT INTO ",  table_name_escaped, " (", insert_columns, ")\n",
+          "     VALUES (", insert_expressions, ")\n",
+          "ON CONFLICT (", conflict_list(use_ws_id, conflict_key), ") DO UPDATE\n",
+          "        SET ",  upsert_expressions, "\n",
+          "  RETURNING ",  select_expressions, ";",
+        }
+      })
 
-      local delete_by_statement_name = "delete_by_" .. field_name
-      local delete_by_statement
-
-      if ttl then
-        delete_by_statement = concat {
+      add_statement("delete_by_" .. field_name, {
+        operation = "write",
+        argn = single_names,
+        argv = single_args,
+        code = {
           "DELETE\n",
           "  FROM ",  table_name_escaped, "\n",
-          " WHERE ",  unique_escaped, " = $1\n",
-          "   AND (", ttl_escaped, " IS NULL OR ", ttl_escaped, " >= CURRENT_TIMESTAMP AT TIME ZONE 'UTC');",
+          where_clause(
+          " WHERE ",  unique_escaped .. " = $1",
+                      ttl_select_where,
+                      ws_id_select_where), ";"
         }
-
-      else
-        delete_by_statement = concat {
-          "DELETE\n",
-          "  FROM ", table_name_escaped, "\n",
-          " WHERE ", unique_escaped, " = $1;",
-        }
-      end
-
-      statements[delete_by_statement_name] = {
-        argn = single_names,
-        argc = 1,
-        argv = single_args,
-        make = compile(concat({ table_name, delete_by_statement_name }, "_"), delete_by_statement),
-        operation = "write",
-      }
+      })
     end
   end
 

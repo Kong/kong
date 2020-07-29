@@ -445,6 +445,35 @@ describe("Configuration loader", function()
     end)
   end)
 
+  describe("port_maps and host_ports", function()
+    it("are empty tables when not specified", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {}))
+      assert.same({}, conf.port_maps)
+      assert.same({}, conf.host_ports)
+    end)
+    it("are tables when specified", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        port_maps = "80:8000,443:8443",
+      }))
+      assert.same({
+        "80:8000",
+        "443:8443",
+      }, conf.port_maps)
+      assert.same({
+        [8000]   = 80,
+        ["8000"] = 80,
+        [8443]   = 443,
+        ["8443"] = 443,
+      }, conf.host_ports)
+    end)
+    it("gives an error with invalid value", function()
+      local _, err = conf_loader(helpers.test_conf_path, {
+        port_maps = "src:dst",
+      })
+      assert.equal("invalid port mapping (`port_maps`): src:dst", err)
+    end)
+  end)
+
   describe("inferences", function()
     it("infer booleans (on/off/true/false strings)", function()
       local conf = assert(conf_loader())
@@ -980,6 +1009,60 @@ describe("Configuration loader", function()
     end)
   end)
 
+  describe("upstream keepalive properties", function()
+    it("are accepted", function()
+      local conf = assert(conf_loader(nil, {
+        upstream_keepalive_pool_size = 10,
+        upstream_keepalive_max_requests = 20,
+        upstream_keepalive_idle_timeout = 30,
+      }))
+      assert.equal(10, conf.upstream_keepalive_pool_size)
+      assert.equal(20, conf.upstream_keepalive_max_requests)
+      assert.equal(30, conf.upstream_keepalive_idle_timeout)
+    end)
+
+    it("accepts upstream_keepalive_pool_size = 0", function()
+      local conf = assert(conf_loader(nil, {
+        upstream_keepalive_pool_size = 0,
+      }))
+      assert.equal(0, conf.upstream_keepalive_pool_size)
+    end)
+
+    it("accepts upstream_keepalive_max_requests = 0", function()
+      local conf = assert(conf_loader(nil, {
+        upstream_keepalive_max_requests = 0,
+      }))
+      assert.equal(0, conf.upstream_keepalive_max_requests)
+    end)
+
+    it("accepts upstream_keepalive_idle_timeout = 0", function()
+      local conf = assert(conf_loader(nil, {
+        upstream_keepalive_idle_timeout = 0,
+      }))
+      assert.equal(0, conf.upstream_keepalive_idle_timeout)
+    end)
+
+    it("rejects negative values", function()
+      local conf, err = conf_loader(nil, {
+        upstream_keepalive_pool_size = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("upstream_keepalive_pool_size must be 0 or greater", err)
+
+      local conf, err = conf_loader(nil, {
+        upstream_keepalive_max_requests = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("upstream_keepalive_max_requests must be 0 or greater", err)
+
+      local conf, err = conf_loader(nil, {
+        upstream_keepalive_idle_timeout = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("upstream_keepalive_idle_timeout must be 0 or greater", err)
+    end)
+  end)
+
   describe("errors", function()
     it("returns inexistent file", function()
       local conf, err = conf_loader "inexistent"
@@ -1050,6 +1133,221 @@ describe("Configuration loader", function()
       }))
       assert.equal("QUORUM", conf.cassandra_read_consistency)
       assert.equal("LOCAL_QUORUM", conf.cassandra_write_consistency)
+    end)
+
+    it("upstream_keepalive -> nginx_http_upstream_keepalive + nginx_upstream_keepalive", function()
+      -- accepted values:
+      -- * upstream_keepalive >= 0
+
+      local conf = assert(conf_loader(nil, {
+        upstream_keepalive = 10,
+      }))
+      assert.equal(10, conf.upstream_keepalive)
+      assert.equal("10", conf.nginx_http_upstream_keepalive)
+      assert.equal("10", conf.nginx_upstream_keepalive)
+
+      local conf = assert(conf_loader(nil, {
+        upstream_keepalive = 0,
+      }))
+      assert.equal(0, conf.upstream_keepalive)
+      assert.equal("NONE", conf.nginx_http_upstream_keepalive)
+      assert.equal("NONE", conf.nginx_upstream_keepalive)
+    end)
+
+    it("nginx_http_upstream_keepalive -> nginx_upstream_keepalive", function()
+      -- accepted values:
+      -- * nginx_http_upstream_keepalive = <string> >= 0
+      -- * nginx_http_upstream_keepalive = <string> "NONE"
+
+      local conf = assert(conf_loader(nil, {
+        nginx_http_upstream_keepalive = "10",
+      }))
+      assert.equal("10", conf.nginx_http_upstream_keepalive)
+      assert.equal("10", conf.nginx_upstream_keepalive)
+
+      local conf = assert(conf_loader(nil, {
+        nginx_http_upstream_keepalive = "NONE",
+      }))
+      assert.equal("NONE", conf.nginx_http_upstream_keepalive)
+      assert.equal("NONE", conf.nginx_upstream_keepalive)
+    end)
+
+    it("nginx_upstream_keepalive -> upstream_keepalive_pool_size", function()
+      -- accepted values:
+      -- * nginx_upstream_keepalive = <string> >= 0
+      -- * nginx_upstream_keepalive = <string> "NONE"
+
+      local conf = assert(conf_loader(nil, {
+        nginx_upstream_keepalive = "10",
+      }))
+      assert.equal("10", conf.nginx_upstream_keepalive)
+      assert.equal(10, conf.upstream_keepalive_pool_size)
+
+      local conf = assert(conf_loader(nil, {
+        nginx_upstream_keepalive = "NONE",
+      }))
+      assert.equal("NONE", conf.nginx_upstream_keepalive)
+      assert.equal(0, conf.upstream_keepalive_pool_size)
+    end)
+
+    it("upstream_keepalive -> upstream_keepalive_pool_size", function()
+      local conf = assert(conf_loader(nil, {
+        upstream_keepalive = 10,
+      }))
+      assert.equal(10, conf.upstream_keepalive)
+      assert.equal("10", conf.nginx_http_upstream_keepalive)
+      assert.equal("10", conf.nginx_upstream_keepalive)
+      assert.equal(10, conf.upstream_keepalive_pool_size)
+
+      local conf = assert(conf_loader(nil, {
+        upstream_keepalive = 0,
+      }))
+      assert.equal(0, conf.upstream_keepalive)
+      assert.equal("NONE", conf.nginx_http_upstream_keepalive)
+      assert.equal("NONE", conf.nginx_upstream_keepalive)
+      assert.equal(0, conf.upstream_keepalive_pool_size)
+    end)
+
+    it("upstream_keepalive + nginx_http_upstream_keepalive", function()
+      local conf = assert(conf_loader(nil, {
+        upstream_keepalive = 10,
+        nginx_http_upstream_keepalive = "20", -- prioritized
+      }))
+      assert.equal(10, conf.upstream_keepalive)
+      assert.equal("20", conf.nginx_http_upstream_keepalive)
+      assert.equal("20", conf.nginx_upstream_keepalive)
+      assert.equal(20, conf.upstream_keepalive_pool_size)
+
+      local conf = assert(conf_loader(nil, {
+        upstream_keepalive = 10,
+        nginx_http_upstream_keepalive = "NONE",
+      }))
+      assert.equal(10, conf.upstream_keepalive)
+      assert.equal("NONE", conf.nginx_http_upstream_keepalive)
+      assert.equal("NONE", conf.nginx_upstream_keepalive)
+      assert.equal(0, conf.upstream_keepalive_pool_size)
+    end)
+
+    it("upstream_keepalive + nginx_http_upstream_keepalive + nginx_upstream_keepalive", function()
+      local conf = assert(conf_loader(nil, {
+        upstream_keepalive = 10,
+        nginx_http_upstream_keepalive = "20",
+        nginx_upstream_keepalive = "30", -- prioritized
+      }))
+      assert.equal(10, conf.upstream_keepalive)
+      assert.equal("20", conf.nginx_http_upstream_keepalive)
+      assert.equal("30", conf.nginx_upstream_keepalive)
+      assert.equal(30, conf.upstream_keepalive_pool_size)
+
+      local conf = assert(conf_loader(nil, {
+        upstream_keepalive = 10,
+        nginx_http_upstream_keepalive = "20",
+        nginx_upstream_keepalive = "NONE", -- prioritized
+      }))
+      assert.equal(10, conf.upstream_keepalive)
+      assert.equal("20", conf.nginx_http_upstream_keepalive)
+      assert.equal("NONE", conf.nginx_upstream_keepalive)
+      assert.equal(0, conf.upstream_keepalive_pool_size)
+    end)
+
+    it("nginx_http_upstream_keepalive_requests -> nginx_upstream_keepalive_requests", function()
+      local conf = assert(conf_loader(nil, {
+        nginx_http_upstream_keepalive_requests = "10",
+      }))
+      assert.equal("10", conf.nginx_http_upstream_keepalive_requests)
+      assert.equal("10", conf.nginx_upstream_keepalive_requests)
+    end)
+
+    it("nginx_upstream_keepalive_requests -> upstream_keepalive_max_requests", function()
+      local conf = assert(conf_loader(nil, {
+        nginx_upstream_keepalive_requests = "10",
+      }))
+      assert.equal("10", conf.nginx_upstream_keepalive_requests)
+      assert.equal(10, conf.upstream_keepalive_max_requests)
+    end)
+
+    it("nginx_http_upstream_keepalive_requests + nginx_upstream_keepalive_requests", function()
+      local conf = assert(conf_loader(nil, {
+        nginx_http_upstream_keepalive_requests = "10",
+        nginx_upstream_keepalive_requests = "20", -- prioritized
+      }))
+      assert.equal("10", conf.nginx_http_upstream_keepalive_requests)
+      assert.equal("20", conf.nginx_upstream_keepalive_requests)
+      assert.equal(20, conf.upstream_keepalive_max_requests)
+    end)
+
+    it("nginx_http_upstream_keepalive_timeout -> nginx_upstream_keepalive_timeout", function()
+      local conf = assert(conf_loader(nil, {
+        nginx_http_upstream_keepalive_timeout = "10s",
+      }))
+      assert.equal("10s", conf.nginx_http_upstream_keepalive_timeout)
+      assert.equal("10s", conf.nginx_upstream_keepalive_timeout)
+    end)
+
+    it("nginx_upstream_keepalive_timeout -> upstream_keepalive_idle_timeout", function()
+      local conf = assert(conf_loader(nil, {
+        nginx_upstream_keepalive_timeout = "10s",
+      }))
+      assert.equal("10s", conf.nginx_upstream_keepalive_timeout)
+      assert.equal(10, conf.upstream_keepalive_idle_timeout)
+    end)
+
+    it("nginx_http_upstream_keepalive_timeout + nginx_upstream_keepalive_timeout", function()
+      local conf = assert(conf_loader(nil, {
+        nginx_http_upstream_keepalive_timeout = "10s",
+        nginx_upstream_keepalive_timeout = "20s", -- prioritized
+      }))
+      assert.equal("10s", conf.nginx_http_upstream_keepalive_timeout)
+      assert.equal("20s", conf.nginx_upstream_keepalive_timeout)
+      assert.equal(20, conf.upstream_keepalive_idle_timeout)
+    end)
+
+    it("nginx_upstream_keepalive_timeout converts units to seconds", function()
+      local conf = assert(conf_loader(nil, {
+        nginx_upstream_keepalive_timeout = "2m",
+      }))
+      assert.equal("2m", conf.nginx_upstream_keepalive_timeout)
+      assert.equal(120, conf.upstream_keepalive_idle_timeout)
+    end)
+
+    it("client_max_body_size -> nginx_http_client_max_body_size", function()
+      local conf = assert(conf_loader(nil, {
+        client_max_body_size = "2m",
+      }))
+      assert.equal("2m", conf.client_max_body_size)
+      assert.equal("2m", conf.nginx_http_client_max_body_size)
+    end)
+
+    it("client_body_buffer_size -> nginx_http_client_body_buffer_size", function()
+      local conf = assert(conf_loader(nil, {
+        client_body_buffer_size = "2m",
+      }))
+      assert.equal("2m", conf.client_body_buffer_size)
+      assert.equal("2m", conf.nginx_http_client_body_buffer_size)
+    end)
+
+    it("no overrides when new properties are specified", function()
+      local conf = assert(conf_loader(nil, {
+        nginx_upstream_keepalive = "10",
+        upstream_keepalive_pool_size = 100,
+
+        nginx_upstream_keepalive_timeout = "10s",
+        upstream_keepalive_idle_timeout = 100,
+
+        nginx_upstream_keepalive_requests = "10",
+        upstream_keepalive_max_requests = 100,
+
+        client_max_body_size = "1m",
+        nginx_http_client_max_body_size = "2m",
+
+        client_body_buffer_size = "1m",
+        nginx_http_client_body_buffer_size = "2m",
+      }))
+      assert.equal(100, conf.upstream_keepalive_pool_size)
+      assert.equal(100, conf.upstream_keepalive_idle_timeout)
+      assert.equal(100, conf.upstream_keepalive_max_requests)
+      assert.equal("2m", conf.nginx_http_client_max_body_size)
+      assert.equal("2m", conf.nginx_http_client_body_buffer_size)
     end)
   end)
 end)

@@ -4,6 +4,7 @@ return {
   name         = "consumers",
   primary_key  = { "id" },
   endpoint_key = "username",
+  workspaceable = true,
 
   fields = {
     { id             = typedefs.uuid, },

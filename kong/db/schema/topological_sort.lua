@@ -73,6 +73,21 @@ local function visit(current, neighbors_map, visited, marked, sorted)
 end
 
 
+local function move_workspaces_to_front(sorted_schemas)
+  local workspaces_schema
+  for i, s in ipairs(sorted_schemas) do
+    if s.name == "workspaces" then
+      workspaces_schema = s
+      table.remove(sorted_schemas, i)
+      break
+    end
+  end
+  if workspaces_schema then
+    table.insert(sorted_schemas, 1, workspaces_schema)
+  end
+end
+
+
 -- Given an array of schemas, return it sorted so that if
 -- schema B has a foreign key to A, then B appears after A
 -- The function returns an error if cycles are found in the schemas
@@ -99,6 +114,8 @@ local function topological_sort(schemas)
       end
     end
   end
+
+  move_workspaces_to_front(sorted)
 
   return sorted
 end

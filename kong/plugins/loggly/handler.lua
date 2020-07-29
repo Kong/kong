@@ -1,4 +1,3 @@
-local serializer = require "kong.plugins.log-serializers.basic"
 local cjson = require "cjson"
 
 
@@ -119,7 +118,7 @@ local LogglyLogHandler = {
 
 
 function LogglyLogHandler:log(conf)
-  local message = serializer.serialize(ngx)
+  local message = kong.log.serialize()
 
   local ok, err = timer_at(0, log, conf, message)
   if not ok then

@@ -28,6 +28,7 @@ local ngx          = ngx
 local var          = ngx.var
 local log          = ngx.log
 local exit         = ngx.exit
+local null         = ngx.null
 local header       = ngx.header
 local timer_at     = ngx.timer.at
 local timer_every  = ngx.timer.every
@@ -37,10 +38,14 @@ local unpack       = unpack
 
 
 local ERR   = ngx.ERR
+local CRIT  = ngx.CRIT
 local WARN  = ngx.WARN
 local DEBUG = ngx.DEBUG
 local COMMA = byte(",")
 local SPACE = byte(" ")
+
+
+local HOST_PORTS = {}
 
 
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
@@ -52,6 +57,8 @@ local ROUTER_SYNC_OPTS
 local ROUTER_ASYNC_OPTS
 local PLUGINS_ITERATOR_SYNC_OPTS
 local PLUGINS_ITERATOR_ASYNC_OPTS
+local FLIP_CONFIG_OPTS
+local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
 
 local get_plugins_iterator, get_updated_plugins_iterator
@@ -279,7 +286,7 @@ local function register_events()
     log(DEBUG, "[events] SSL cert updated, invalidating cached certificates")
     local certificate = data.entity
 
-    for sni, err in db.snis:each_for_certificate({ id = certificate.id }) do
+    for sni, err in db.snis:each_for_certificate({ id = certificate.id }, nil, GLOBAL_QUERY_OPTS) do
       if err then
         log(ERR, "[events] could not find associated snis for certificate: ",
           err)
@@ -421,8 +428,27 @@ local function register_events()
 
 
   if db.strategy == "off" then
-    worker_events.register(function()
-      core_cache:flip()
+    worker_events.register(function(default_ws)
+      local ok, err = concurrency.with_coroutine_mutex(FLIP_CONFIG_OPTS, function()
+        balancer.stop_healthcheckers()
+
+        kong.cache:flip()
+        core_cache:flip()
+
+        kong.default_workspace = default_ws
+        ngx.ctx.workspace = kong.default_workspace
+
+        rebuild_plugins_iterator(PLUGINS_ITERATOR_SYNC_OPTS)
+        rebuild_router(ROUTER_SYNC_OPTS)
+
+        balancer.init()
+
+        return true
+      end)
+
+      if not ok then
+        log(ERR, "config flip failed: ", err)
+      end
     end, "declarative", "flip_config")
   end
 end
@@ -468,7 +494,7 @@ do
 
   update_plugins_iterator = function()
     local version, err = kong.core_cache:get("plugins_iterator:version", TTL_ZERO,
-                                        utils.uuid)
+                                             utils.uuid)
     if err then
       return nil, "failed to retrieve plugins iterator version: " .. err
     end
@@ -494,7 +520,7 @@ do
 
 
   get_updated_plugins_iterator = function()
-    if kong.configuration.worker_consistency == "strict" then
+    if kong.db.strategy ~= "off" and kong.configuration.worker_consistency == "strict" then
       local ok, err = rebuild_plugins_iterator(PLUGINS_ITERATOR_SYNC_OPTS)
       if not ok then
         -- If an error happens while updating, log it and return non-updated
@@ -537,7 +563,7 @@ do
 
 
   local function load_service_from_db(service_pk)
-    local service, err = kong.db.services:select(service_pk)
+    local service, err = kong.db.services:select(service_pk, GLOBAL_QUERY_OPTS)
     if service == nil then
       -- the third value means "do not cache"
       return nil, err, -1
@@ -549,7 +575,7 @@ do
   local function build_services_init_cache(db)
     local services_init_cache = {}
 
-    for service, err in db.services:each() do
+    for service, err in db.services:each(nil, GLOBAL_QUERY_OPTS) do
       if err then
         return nil, err
       end
@@ -577,7 +603,8 @@ do
 
     -- kong.core_cache is available, not in init phase
     if kong.core_cache then
-      local cache_key = db.services:cache_key(service_pk.id)
+      local cache_key = db.services:cache_key(service_pk.id, nil, nil, nil, nil,
+                                              route.ws_id)
       service, err = kong.core_cache:get(cache_key, TTL_ZERO,
                                     load_service_from_db, service_pk)
 
@@ -625,7 +652,7 @@ do
     -- still not ready. For those cases, use a plain Lua table as a cache
     -- instead
     local services_init_cache = {}
-    if not kong.core_cache then
+    if not kong.core_cache and db.strategy ~= "off" then
       services_init_cache, err = build_services_init_cache(db)
       if err then
         services_init_cache = {}
@@ -635,19 +662,21 @@ do
 
     local counter = 0
     local page_size = db.routes.pagination.page_size
-    for route, err in db.routes:each() do
+    for route, err in db.routes:each(nil, GLOBAL_QUERY_OPTS) do
       if err then
         return nil, "could not load routes: " .. err
       end
 
-      if kong.core_cache and counter > 0 and counter % page_size == 0 then
-        local new_version, err = get_router_version()
-        if err then
-          return nil, "failed to retrieve router version: " .. err
-        end
+      if db.strategy ~= "off" then
+        if kong.core_cache and counter > 0 and counter % page_size == 0 then
+          local new_version, err = get_router_version()
+          if err then
+            return nil, "failed to retrieve router version: " .. err
+          end
 
-        if new_version ~= version then
-          return nil, "router was changed while rebuilding it"
+          if new_version ~= version then
+            return nil, "router was changed while rebuilding it"
+          end
         end
       end
 
@@ -716,7 +745,7 @@ do
 
 
   get_updated_router = function()
-    if kong.configuration.worker_consistency == "strict" then
+    if kong.db.strategy ~= "off" and kong.configuration.worker_consistency == "strict" then
       local ok, err = rebuild_router(ROUTER_SYNC_OPTS)
       if not ok then
         -- If an error happens while updating, log it and return non-updated
@@ -757,6 +786,7 @@ end
 local balancer_prepare
 do
   local get_certificate = certificate.get_certificate
+  local get_ca_certificate_store = certificate.get_ca_certificate_store
   local subsystem = ngx.config.subsystem
 
   function balancer_prepare(ctx, scheme, host_type, host, port,
@@ -790,7 +820,9 @@ do
     ctx.balancer_address = balancer_data -- for plugin backward compatibility
 
     if service then
+      local res, err
       local client_certificate = service.client_certificate
+
       if client_certificate then
         local cert, err = get_certificate(client_certificate)
         if not cert then
@@ -799,11 +831,45 @@ do
           return
         end
 
-        local res
         res, err = kong.service.set_tls_cert_key(cert.cert, cert.key)
         if not res then
           log(ERR, "unable to apply upstream client TLS certificate ",
                    client_certificate.id, ": ", err)
+        end
+      end
+
+      local tls_verify = service.tls_verify
+      if tls_verify then
+        res, err = kong.service.set_tls_verify(tls_verify)
+        if not res then
+          log(CRIT, "unable to set upstream TLS verification to: ",
+                   tls_verify, ", err: ", err)
+        end
+      end
+
+      local tls_verify_depth = service.tls_verify_depth
+      if tls_verify_depth then
+        res, err = kong.service.set_tls_verify_depth(tls_verify_depth)
+        if not res then
+          log(CRIT, "unable to set upstream TLS verification to: ",
+                   tls_verify, ", err: ", err)
+          -- in case verify can not be enabled, request can no longer be
+          -- processed without potentially compromising security
+          return kong.response.exit(500)
+        end
+      end
+
+      local ca_certificates = service.ca_certificates
+      if ca_certificates then
+        res, err = get_ca_certificate_store(ca_certificates)
+        if not res then
+          log(CRIT, "unable to get upstream TLS CA store, err: ", err)
+
+        else
+          res, err = kong.service.set_tls_verify_store(res)
+          if not res then
+            log(CRIT, "unable to set upstream TLS CA store, err: ", err)
+          end
         end
       end
     end
@@ -871,6 +937,10 @@ return {
 
   init_worker = {
     before = function()
+      if kong.configuration.host_ports then
+        HOST_PORTS = kong.configuration.host_ports
+      end
+
       if kong.configuration.anonymous_reports then
         reports.configure_ping(kong.configuration)
         reports.add_ping_value("database_version", kong.db.infos.db_ver)
@@ -890,31 +960,33 @@ return {
 
       local worker_state_update_frequency = kong.configuration.worker_state_update_frequency or 1
 
-      timer_every(worker_state_update_frequency, function(premature)
-        if premature then
-          return
-        end
+      if kong.db.strategy ~= "off" then
+        timer_every(worker_state_update_frequency, function(premature)
+          if premature then
+            return
+          end
 
-        -- Don't wait for the semaphore (timeout = 0) when updating via the
-        -- timer.
-        -- If the semaphore is locked, that means that the rebuild is
-        -- already ongoing.
-        local ok, err = rebuild_router(ROUTER_ASYNC_OPTS)
-        if not ok then
-          log(ERR, "could not rebuild router via timer: ", err)
-        end
-      end)
+          -- Don't wait for the semaphore (timeout = 0) when updating via the
+          -- timer.
+          -- If the semaphore is locked, that means that the rebuild is
+          -- already ongoing.
+          local ok, err = rebuild_router(ROUTER_ASYNC_OPTS)
+          if not ok then
+            log(ERR, "could not rebuild router via timer: ", err)
+          end
+        end)
 
-      timer_every(worker_state_update_frequency, function(premature)
-        if premature then
-          return
-        end
+        timer_every(worker_state_update_frequency, function(premature)
+          if premature then
+            return
+          end
 
-        local ok, err = rebuild_plugins_iterator(PLUGINS_ITERATOR_ASYNC_OPTS)
-        if not ok then
-          log(ERR, "could not rebuild plugins iterator via timer: ", err)
-        end
-      end)
+          local ok, err = rebuild_plugins_iterator(PLUGINS_ITERATOR_ASYNC_OPTS)
+          if not ok then
+            log(ERR, "could not rebuild plugins iterator via timer: ", err)
+          end
+        end)
+      end
 
       do
         local rebuild_timeout = 60
@@ -925,6 +997,13 @@ return {
 
         if kong.configuration.database == "postgres" then
           rebuild_timeout = kong.configuration.pg_timeout / 1000
+        end
+
+        if kong.db.strategy == "off" then
+          FLIP_CONFIG_OPTS = {
+            name = "flip-config",
+            timeout = rebuild_timeout,
+          }
         end
 
         ROUTER_SYNC_OPTS = {
@@ -953,6 +1032,8 @@ return {
   },
   preread = {
     before = function(ctx)
+      ctx.host_port = HOST_PORTS[var.server_port] or var.server_port
+
       local router = get_updated_router()
 
       local match_t = router.exec()
@@ -960,6 +1041,8 @@ return {
         log(ERR, "no Route found with those values")
         return exit(500)
       end
+
+      ngx.ctx.workspace = match_t.route and match_t.route.ws_id
 
       local route = match_t.route
       local service = match_t.service
@@ -986,6 +1069,8 @@ return {
   },
   rewrite = {
     before = function(ctx)
+      ctx.host_port = HOST_PORTS[var.server_port] or var.server_port
+
       -- special handling for proxy-authorization and te headers in case
       -- the plugin(s) want to specify them (store the original)
       ctx.http_proxy_authorization = var.http_proxy_authorization
@@ -1009,10 +1094,13 @@ return {
         return kong.response.exit(404, { message = "no Route matched with those values" })
       end
 
+      ngx.ctx.workspace = match_t.route and match_t.route.ws_id
+
       local http_version   = ngx.req.http_version()
       local scheme         = var.scheme
       local host           = var.host
-      local port           = tonumber(var.server_port, 10)
+      local port           = tonumber(ctx.host_port, 10)
+                          or tonumber(var.server_port, 10)
       local content_type   = var.content_type
 
       local route          = match_t.route
@@ -1187,22 +1275,11 @@ return {
 
       var.upstream_scheme = balancer_data.scheme
 
-      do
-        -- set the upstream host header if not `preserve_host`
-        local upstream_host = var.upstream_host
+      local ok, err = balancer.set_host_header(balancer_data)
+      if not ok then
+        ngx.log(ngx.ERR, "failed to set balancer Host header: ", err)
 
-        if not upstream_host or upstream_host == "" then
-          upstream_host = balancer_data.hostname
-
-          local upstream_scheme = var.upstream_scheme
-          if upstream_scheme == "http"  and balancer_data.port ~= 80 or
-             upstream_scheme == "https" and balancer_data.port ~= 443
-          then
-            upstream_host = upstream_host .. ":" .. balancer_data.port
-          end
-
-          var.upstream_host = upstream_host
-        end
+        return ngx.exit(500)
       end
 
       -- clear hop-by-hop request headers:

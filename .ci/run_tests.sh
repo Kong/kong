@@ -52,7 +52,7 @@ if [ "$TEST_SUITE" == "dbless" ]; then
                      spec/02-integration/04-admin_api/15-off_spec.lua
 fi
 if [ "$TEST_SUITE" == "plugins" ]; then
-    set +e
+    set +ex
     rm -f .failed
 
     for p in spec/03-plugins/*; do

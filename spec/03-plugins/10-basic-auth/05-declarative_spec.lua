@@ -102,12 +102,11 @@ for _, strategy in helpers.each_strategy() do
         consumers = { [consumer_def.id] = consumer_def },
         plugins = { [plugin_def.id] = plugin_def },
         basicauth_credentials = { [basicauth_credential_def.id] = basicauth_credential_def },
-      }))
+      }, { _transform = true }))
 
       assert(declarative.load_into_db({
-        _transform = false,
         basicauth_credentials = { [basicauth_hashed_credential_def.id] = basicauth_hashed_credential_def },
-      }))
+      }, { _transform = false }))
     end)
 
     describe("load_into_db", function()
