@@ -34,7 +34,8 @@ return {
         return kong.response.exit(400, { message = "port is not allowed in host" })
       end
 
-      if self.params.test_http_challenge_flow == "true" then
+      -- string "true" automatically becomes boolean true from lapis
+      if self.params.test_http_challenge_flow == true then
         local check_path = string.format("http://%s/.well-known/acme-challenge/", host)
         local httpc = http.new()
         local res, err = httpc:request_uri(check_path .. "x")
