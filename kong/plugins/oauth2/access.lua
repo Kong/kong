@@ -86,6 +86,38 @@ do
   end
 end
 
+local function load_oauth2_credential_into_memory(credential_id)
+  local result, err = kong.db.oauth2_credentials:select { id = credential_id }
+  if err then
+    return nil, err
+  end
+
+  return result
+end
+
+
+local function load_credential_and_consumer_into_memory_from_credential(credential)
+  -- Retrieve the credential from the token credentials
+  local credential_cache_key =
+    kong.db.oauth2_credentials:cache_key(credential.id)
+
+  local cred, err = kong.cache:get(credential_cache_key, nil,
+                                   load_oauth2_credential_into_memory,
+                                   credential.id)
+  if err then
+    return nil, nil, err
+  end
+
+  -- Retrieve the consumer from the credential
+  local consumer_cache_key, consumer
+  consumer_cache_key = kong.db.consumers:cache_key(cred.consumer.id)
+  consumer, err      = kong.cache:get(consumer_cache_key, nil,
+                                      kong.client.load_consumer,
+                                      cred.consumer.id)
+
+  return cred, consumer, err
+end
+
 
 local function generate_token(conf, service, credential, authenticated_userid,
                               scope, state, disable_refresh, existing_token)
@@ -137,6 +169,14 @@ local function generate_token(conf, service, credential, authenticated_userid,
 
   if err then
     return error(err)
+  end
+
+  --Authenticate the consumer and credentials generating the token
+  local cred, consumer, err2 =
+  load_credential_and_consumer_into_memory_from_credential(credential)
+
+  if not err2 then
+    kong.client.authenticate(consumer, cred)
   end
 
   return {
@@ -881,16 +921,6 @@ local function parse_access_token(conf)
 end
 
 
-local function load_oauth2_credential_into_memory(credential_id)
-  local result, err = kong.db.oauth2_credentials:select { id = credential_id }
-  if err then
-    return nil, err
-  end
-
-  return result
-end
-
-
 local function set_consumer(consumer, credential, token)
   kong.client.authenticate(consumer, credential)
 
@@ -1011,23 +1041,10 @@ local function do_authentication(conf)
     end
   end
 
-  -- Retrieve the credential from the token
-  local credential_cache_key =
-    kong.db.oauth2_credentials:cache_key(token.credential.id)
+  -- Retrieve the credential from the token credential
+  local credential, consumer, err =
+  load_credential_and_consumer_into_memory_from_credential(token.credential)
 
-  local credential, err = kong.cache:get(credential_cache_key, nil,
-                                         load_oauth2_credential_into_memory,
-                                         token.credential.id)
-  if err then
-    return error(err)
-  end
-
-  -- Retrieve the consumer from the credential
-  local consumer_cache_key, consumer
-  consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
-  consumer, err      = kong.cache:get(consumer_cache_key, nil,
-                                      kong.client.load_consumer,
-                                      credential.consumer.id)
   if err then
     return error(err)
   end
