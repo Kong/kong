@@ -504,14 +504,20 @@ function PluginsIterator.new(version)
     counter = counter + 1
   end
 
+  local has_response = nil
+
   for _, plugin in ipairs(loaded_plugins) do
     for _, data in pairs(ws) do
       for phase_name, phase in pairs(data.phases) do
         if phase_name == "init_worker" or data.combos[plugin.name] then
           local phase_handler = plugin.handler[phase_name]
           if type(phase_handler) == "function"
-          and phase_handler ~= BasePlugin[phase_name] then
+            and phase_handler ~= BasePlugin[phase_name]
+          then
             phase[plugin.name] = true
+            if phase_name == "response" then
+              has_response = true
+            end
           end
         end
       end
@@ -523,6 +529,7 @@ function PluginsIterator.new(version)
     ws = ws,
     loaded = loaded_plugins,
     iterate = iterate,
+    has_response = has_response,
   }
 end
 

@@ -730,6 +730,10 @@ function Kong.access()
 
   execute_plugins_iterator(plugins_iterator, "access", ctx)
 
+  if plugins_iterator.has_response then
+    kong.ctx.core.buffered_proxying = true
+  end
+
   if ctx.delayed_response then
     ctx.KONG_ACCESS_ENDED_AT = get_now_ms()
     ctx.KONG_ACCESS_TIME = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_ACCESS_START
@@ -779,28 +783,13 @@ do
   }
 
   function Kong.response()
-    if ngx.req.http_version() >= 2 then
+    if ngx.req.http_version() >= 2 or not kong.ctx.core.buffered_proxying then
       return
     end
 
     local plugins_iterator = runloop.get_plugins_iterator()
 
     local ctx = ngx.ctx
-    local buffered_proxying = kong.ctx.core.buffered_proxying
-    if not buffered_proxying then
-      for plugin in plugins_iterator:iterate("response", ctx) do
-        if plugin.handler.response and plugin.handler._go then
-          buffered_proxying = true
-          break
-        end
-      end
-
-      if not buffered_proxying then
-        return
-      end
-
-      kong.ctx.core.buffered_proxying = true
-    end
 
     -- buffered proxying (that also executes the balancer)
     ngx.req.read_body()

@@ -26,12 +26,9 @@ if subsystem == "http" then
     ngx_log(DEBUG, "executing plugin \"", self._name, "\": access")
   end
 
-  -- If implemented, it will implicitly turn on the request buffering
-  -- for HTTP 1.x requests
-  --
-  --function BasePlugin:response()
-  --  ngx_log(DEBUG, "executing plugin \"", self._name, "\": response")
-  --end
+  function BasePlugin:response()
+   ngx_log(DEBUG, "executing plugin \"", self._name, "\": response")
+  end
 
   function BasePlugin:header_filter()
     ngx_log(DEBUG, "executing plugin \"", self._name, "\": header_filter")

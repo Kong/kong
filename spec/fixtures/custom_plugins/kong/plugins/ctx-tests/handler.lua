@@ -307,7 +307,7 @@ end
 
 
 function CtxTests:response(config)
-  assert(config.buffered == true, "response should only be executed when buffering the response was requested")
+--   assert(config.buffered == true, "response should only be executed when buffering the response was requested")
 
   local ctx = ngx.ctx
   assert(is_equal_to_start_time(ctx, "KONG_PROCESSING_START"))
@@ -359,17 +359,17 @@ function CtxTests:header_filter(config)
   assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_ACCESS_ENDED_AT", "KONG_BALANCER_START"))
   assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_BALANCER_START", "KONG_BALANCER_ENDED_AT"))
   assert(is_non_negative_integer(ctx, "KONG_BALANCER_TIME"))
-  if config.buffered then
+--   if config.buffered then
     assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_BALANCER_ENDED_AT", "KONG_RESPONSE_START"))
     assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_RESPONSE_START", "KONG_RESPONSE_ENDED_AT"))
     assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_RESPONSE_ENDED_AT", "KONG_HEADER_FILTER_START"))
     assert(is_non_negative_integer(ctx, "KONG_RESPONSE_TIME"))
-  else
-    assert(is_nil(ctx, "KONG_RESPONSE_START"))
-    assert(is_nil(ctx, "KONG_RESPONSE_ENDED_AT"))
-    assert(is_nil(ctx, "KONG_RESPONSE_TIME"))
-    assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_BALANCER_ENDED_AT", "KONG_HEADER_FILTER_START"))
-  end
+--   else
+--     assert(is_nil(ctx, "KONG_RESPONSE_START"))
+--     assert(is_nil(ctx, "KONG_RESPONSE_ENDED_AT"))
+--     assert(is_nil(ctx, "KONG_RESPONSE_TIME"))
+--     assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_BALANCER_ENDED_AT", "KONG_HEADER_FILTER_START"))
+--   end
   assert(is_true(ctx, "KONG_PROXIED"))
   assert(has_correct_proxy_latency(ctx))
   assert(has_correct_waiting_time(ctx))
