@@ -84,8 +84,6 @@ local function provision_token(host, extra_headers, client_id, client_secret, co
   assert.response(res).has.status(200)
   local token = assert.response(res).has.jsonbody()
   assert.is_table(token)
-  --Validate authenticated consumer context post token provision
-  assert.is_table(kong.client.get_consumer())
   request_client:close()
   return token
 end
