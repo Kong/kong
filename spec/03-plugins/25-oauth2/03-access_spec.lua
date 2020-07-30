@@ -1357,7 +1357,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           local json = cjson.decode(body)
           assert.same({ error_description = "Invalid provision_key", error = "invalid_provision_key" }, json)
         end)
-        it("returns success", function()
+        it("returns success and authenticates the consumer who provisioned the token", function()
           local res = assert(proxy_ssl_client:send {
             method  = "POST",
             path    = "/oauth2/token",
@@ -1374,22 +1374,6 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           })
           local body = assert.res_status(200, res)
           assert.is_table(ngx.re.match(body, [[^\{"token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
-        end)
-        it("authenticates the consumer who provisioned the token", function()
-          local res = assert(proxy_ssl_client:send {
-            method  = "POST",
-            path    = "/oauth2/token",
-            body    = {
-              client_id        = "clientid123",
-              client_secret    = "secret123",
-              scope            = "email",
-              grant_type       = "client_credentials"
-            },
-            headers = {
-              ["Host"]         = "oauth2_4.com",
-              ["Content-Type"] = "application/json"
-            }
-          })
           assert.is_table(kong.client.get_consumer())
         end)
         it("returns success with an application that has multiple redirect_uri", function()
