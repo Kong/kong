@@ -1,0 +1,851 @@
+---
+-- This namespace contains an instance of a "logging facility", which is a
+-- table containing all of the methods described below.
+--
+-- This instance is namespaced per plugin, and Kong will make sure that before
+-- executing a plugin, it will swap this instance with a logging facility
+-- dedicated to the plugin. This allows the logs to be prefixed with the
+-- plugin's name for debugging purposes.
+--
+-- @module kong.log
+local errlog = require "ngx.errlog"
+local ngx_re = require "ngx.re"
+local inspect = require "inspect"
+local ngx_ssl = require "ngx.ssl"
+local phase_checker = require "kong.pdk.private.phases"
+local sub = string.sub
+local type = type
+local find = string.find
+local select = select
+local concat = table.concat
+local getinfo = debug.getinfo
+local reverse = string.reverse
+local tostring = tostring
+local tonumber = tonumber
+local setmetatable = setmetatable
+local ngx = ngx
+local kong = kong
+local check_phase = phase_checker.check
+local _PREFIX = "[kong] "
+local _DEFAULT_FORMAT = "%file_src:%line_src %message"
+local _DEFAULT_NAMESPACED_FORMAT = "%file_src:%line_src [%namespace] %message"
+local PHASES_LOG = phase_checker.phases.log
+local _LEVELS = {
+  debug = ngx.DEBUG,
+  info = ngx.INFO,
+  notice = ngx.NOTICE,
+  warn = ngx.WARN,
+  err = ngx.ERR,
+  crit = ngx.CRIT,
+  alert = ngx.ALERT,
+  emerg = ngx.EMERG,
+}
+local _MODIFIERS = {
+  ["%file_src"] = {
+    flag = "S",
+    info = function(info)
+      local short_src = info.short_src
+      if short_src then
+        local rev_src = reverse(short_src)
+        local idx = find(rev_src, "/", nil, true)
+        if idx then
+          return sub(short_src, #rev_src - idx + 2)
+        end
+        return short_src
+      end
+    end
+  },
+  ["%line_src"] = {
+    flag = "l",
+    info_key = "currentline",
+  },
+  ["%func_name"] = {
+    flag = "n",
+    info_key = "name",
+  },
+  ["%message"] = {
+    message = true,
+  },
+  -- %namespace -- precompiled
+}
+local function parse_modifiers(format)
+  local buf, err = ngx_re.split(format, [==[(?<!%)(%[a-z_]+)]==], nil, nil, 0)
+  if not buf then
+    return nil, "could not parse format: " .. err
+  end
+  local buf_len = #buf
+  for i = 1, buf_len do
+    local mod = _MODIFIERS[buf[i]]
+    if mod then
+      if mod.message then
+        buf.message_idxs = buf.message_idxs or {}
+        table.insert(buf.message_idxs, i)
+      else
+        buf.debug_flags = (buf.debug_flags or "") .. mod.flag
+        buf.modifiers = buf.modifiers or {}
+        table.insert(buf.modifiers, {
+          idx = i,
+          info = mod.info,
+          info_key = mod.info_key,
+        })
+      end
+    end
+  end
+  buf.n_modifiers = buf.modifiers and #buf.modifiers or 0
+  buf.n_messages = buf.message_idxs and #buf.message_idxs or 0
+  buf.n_len = buf_len
+  return buf
+end
+local serializers = {
+  [1] = function(buf, to_string, ...)
+    buf[1] = to_string((select(1, ...)))
+  end,
+  [2] = function(buf, to_string, ...)
+    buf[1] = to_string((select(1, ...)))
+    buf[2] = to_string((select(2, ...)))
+  end,
+  [3] = function(buf, to_string, ...)
+    buf[1] = to_string((select(1, ...)))
+    buf[2] = to_string((select(2, ...)))
+    buf[3] = to_string((select(3, ...)))
+  end,
+  [4] = function(buf, to_string, ...)
+    buf[1] = to_string((select(1, ...)))
+    buf[2] = to_string((select(2, ...)))
+    buf[3] = to_string((select(3, ...)))
+    buf[4] = to_string((select(4, ...)))
+  end,
+  [5] = function(buf, to_string, ...)
+    buf[1] = to_string((select(1, ...)))
+    buf[2] = to_string((select(2, ...)))
+    buf[3] = to_string((select(3, ...)))
+    buf[4] = to_string((select(4, ...)))
+    buf[5] = to_string((select(5, ...)))
+  end,
+}
+--- Write a log line to the location specified by the current Nginx
+-- configuration block's `error_log` directive, with the `notice` level (similar
+-- to `print()`).
+--
+-- The Nginx `error_log` directive is set via the `log_level`, `proxy_error_log`
+-- and `admin_error_log` Kong configuration properties.
+--
+-- Arguments given to this function will be concatenated similarly to
+-- `ngx.log()`, and the log line will report the Lua file and line number from
+-- which it was invoked. Unlike `ngx.log()`, this function will prefix error
+-- messages with `[kong]` instead of `[lua]`.
+--
+-- Arguments given to this function can be of any type, but table arguments
+-- will be converted to strings via `tostring` (thus potentially calling a
+-- table's `__tostring` metamethod if set). This behavior differs from
+-- `ngx.log()` (which only accepts table arguments if they define the
+-- `__tostring` metamethod) with the intent to simplify its usage and be more
+-- forgiving and intuitive.
+--
+-- Produced log lines have the following format when logging is invoked from
+-- within the core:
+--
+-- ``` plain
+-- [kong] %file_src:%line_src %message
+-- ```
+--
+-- In comparison, log lines produced by plugins have the following format:
+--
+-- ``` plain
+-- [kong] %file_src:%line_src [%namespace] %message
+-- ```
+--
+-- Where:
+--
+-- * `%namespace`: is the configured namespace (the plugin name in this case).
+-- * `%file_src`: is the file name from where the log was called from.
+-- * `%line_src`: is the line number from where the log was called from.
+-- * `%message`: is the message, made of concatenated arguments given by the caller.
+--
+-- For example, the following call:
+--
+-- ``` lua
+-- kong.log("hello ", "world")
+-- ```
+--
+-- would, within the core, produce a log line similar to:
+--
+-- ``` plain
+-- 2017/07/09 19:36:25 [notice] 25932#0: *1 [kong] some_file.lua:54 hello world, client: 127.0.0.1, server: localhost, request: "GET /log HTTP/1.1", host: "localhost"
+-- ```
+--
+-- If invoked from within a plugin (e.g. `key-auth`) it would include the
+-- namespace prefix, like so:
+--
+-- ``` plain
+-- 2017/07/09 19:36:25 [notice] 25932#0: *1 [kong] some_file.lua:54 [key-auth] hello world, client: 127.0.0.1, server: localhost, request: "GET /log HTTP/1.1", host: "localhost"
+-- ```
+--
+-- @function kong.log
+-- @phases init_worker, certificate, rewrite, access, header_filter, body_filter, log
+-- @param ... all params will be concatenated and stringified before being sent to the log
+-- @return Nothing; throws an error on invalid inputs.
+--
+-- @usage
+-- kong.log("hello ", "world") -- alias to kong.log.notice()
+---
+-- Similar to `kong.log()`, but the produced log will have the severity given by
+-- `<level>`, instead of `notice`. The supported levels are:
+--
+-- * `kong.log.alert()`
+-- * `kong.log.crit()`
+-- * `kong.log.err()`
+-- * `kong.log.warn()`
+-- * `kong.log.notice()`
+-- * `kong.log.info()`
+-- * `kong.log.debug()`
+--
+-- Logs have the same format as that of `kong.log()`. For
+-- example, the following call:
+--
+-- ``` lua
+--  kong.log.err("hello ", "world")
+-- ```
+--
+-- would, within the core, produce a log line similar to:
+--
+-- ``` plain
+-- 2017/07/09 19:36:25 [error] 25932#0: *1 [kong] some_file.lua:54 hello world, client: 127.0.0.1, server: localhost, request: "GET /log HTTP/1.1", host: "localhost"
+-- ```
+--
+-- If invoked from within a plugin (e.g. `key-auth`) it would include the
+-- namespace prefix, like so:
+--
+-- ``` plain
+-- 2017/07/09 19:36:25 [error] 25932#0: *1 [kong] some_file.lua:54 [key-auth] hello world, client: 127.0.0.1, server: localhost, request: "GET /log HTTP/1.1", host: "localhost"
+-- ```
+--
+-- @function kong.log.LEVEL
+-- @phases init_worker, certificate, rewrite, access, header_filter, body_filter, log
+-- @param ... all params will be concatenated and stringified before being sent to the log
+-- @return Nothing; throws an error on invalid inputs.
+-- @usage
+-- kong.log.warn("something require attention")
+-- kong.log.err("something failed: ", err)
+-- kong.log.alert("something requires immediate action")
+local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
+  to_string = to_string or tostring
+  stack_level = stack_level or 2
+  local sys_log_level
+  local variadic_buf = {}
+  return function(...)
+    if not sys_log_level and ngx.get_phase() ~= "init" then
+      -- only grab sys_log_level after init_by_lua, where it is
+      -- hard-coded
+      sys_log_level = errlog.get_sys_filter_level()
+    end
+    if sys_log_level and lvl_const > sys_log_level then
+      -- early exit if sys_log_level is higher than the current
+      -- log call
+      return
+    end
+    local n = select("#", ...)
+    if imm_buf.debug_flags then
+      local info = getinfo(stack_level, imm_buf.debug_flags)
+      for i = 1, imm_buf.n_modifiers do
+        local mod = imm_buf.modifiers[i]
+        if not info then
+          imm_buf[mod.idx] = "?"
+        elseif mod.info then
+          imm_buf[mod.idx] = mod.info(info) or "?"
+        else
+          imm_buf[mod.idx] = info[mod.info_key] or "?"
+        end
+      end
+    end
+    if serializers[n] then
+      serializers[n](variadic_buf, to_string, ...)
+    else
+      for i = 1, n do
+        variadic_buf[i] = to_string((select(i, ...)))
+      end
+    end
+    local msg = concat(variadic_buf, sep, 1, n)
+    for i = 1, imm_buf.n_messages do
+      imm_buf[imm_buf.message_idxs[i]] = msg
+    end
+    local fullmsg = concat(imm_buf, nil, 1, imm_buf.n_len)
+    if to_string == inspect then
+      local fullmsg_len = #fullmsg
+      local WRAP = 120
+      if fullmsg:find("\n", 1, true) or fullmsg_len > WRAP then
+        local i = 1
+        errlog.raw_log(lvl_const, "+" .. ("-"):rep(WRAP) .. "+")
+        while i <= fullmsg_len do
+          local part = string.sub(fullmsg, i, i + WRAP - 1)
+          local nl = part:match("()\n")
+          if nl then
+            part = string.sub(fullmsg, i, i + nl - 2)
+            i = i + nl
+          else
+            i = i + WRAP
+          end
+          part = part .. (" "):rep(WRAP - #part)
+          errlog.raw_log(lvl_const, "|" .. part .. "|")
+          if i > fullmsg_len then
+            errlog.raw_log(lvl_const, "+" .. ("-"):rep(WRAP) .. "+")
+          end
+        end
+        return
+      end
+    end
+    errlog.raw_log(lvl_const, fullmsg)
+  end
+end
+---
+-- Like `kong.log()`, this function will produce a log with the `notice` level,
+-- and accepts any number of arguments as well. If inspect logging is disabled
+-- via `kong.log.inspect.off()`, then this function prints nothing, and is
+-- aliased to a "NOP" function in order to save CPU cycles.
+--
+-- ``` lua
+-- kong.log.inspect("...")
+-- ```
+--
+-- This function differs from `kong.log()` in the sense that arguments will be
+-- concatenated with a space(`" "`), and each argument will be
+-- "pretty-printed":
+--
+-- * numbers will printed (e.g. `5` -> `"5"`)
+-- * strings will be quoted (e.g. `"hi"` -> `'"hi"'`)
+-- * array-like tables will be rendered (e.g. `{1,2,3}` -> `"{1, 2, 3}"`)
+-- * dictionary-like tables will be rendered on multiple lines
+--
+-- This function is intended for use with debugging purposes in mind, and usage
+-- in production code paths should be avoided due to the expensive formatting
+-- operations it can perform. Existing statements can be left in production code
+-- but nopped by calling `kong.log.inspect.off()`.
+--
+-- When writing logs, `kong.log.inspect()` always uses its own format, defined
+-- as:
+--
+-- ``` plain
+-- %file_src:%func_name:%line_src %message
+-- ```
+--
+-- Where:
+--
+-- * `%file_src`: is the file name from where the log was called from.
+-- * `%func_name`: is the name of the function from where the log was called
+--   from.
+-- * `%line_src`: is the line number from where the log was called from.
+-- * `%message`: is the message, made of concatenated, pretty-printed arguments
+--   given by the caller.
+--
+-- This function uses the [inspect.lua](https://github.com/kikito/inspect.lua)
+-- library to pretty-print its arguments.
+--
+-- @function kong.log.inspect
+-- @phases init_worker, certificate, rewrite, access, header_filter, body_filter, log
+-- @param ... Parameters will be concatenated with spaces between them and
+-- rendered as described
+-- @usage
+-- kong.log.inspect("some value", a_variable)
+local new_inspect
+do
+  local _INSPECT_FORMAT = _PREFIX .. "%file_src:%func_name:%line_src %message"
+  local inspect_buf = assert(parse_modifiers(_INSPECT_FORMAT))
+  local function nop() end
+  local _inspect_mt = {
+    __call = function(self, ...)
+      self.print(...)
+    end,
+  }
+  new_inspect = function(format)
+    local self = {}
+    ---
+    -- Enables inspect logs for this logging facility. Calls to
+    -- `kong.log.inspect` will be writing log lines with the appropriate
+    -- formatting of arguments.
+    --
+    -- @function kong.log.inspect.on
+    -- @phases init_worker, certificate, rewrite, access, header_filter, body_filter, log
+    -- @usage
+    -- kong.log.inspect.on()
+    function self.on()
+      self.print = gen_log_func(_LEVELS.notice, inspect_buf, inspect, 3, " ")
+    end
+    ---
+    -- Disables inspect logs for this logging facility. All calls to
+    -- `kong.log.inspect()` will be nopped.
+    --
+    -- @function kong.log.inspect.off
+    -- @phases init_worker, certificate, rewrite, access, header_filter, body_filter, log
+    -- @usage
+    -- kong.log.inspect.off()
+    function self.off()
+      self.print = nop
+    end
+    self.on()
+    return setmetatable(self, _inspect_mt)
+  end
+end
+local _log_mt = {
+  __call = function(self, ...)
+    return self.notice(...)
+  end,
+}
+local serialize
+do
+  local REDACTED_REQUEST_HEADERS = { "authorization", "proxy-authorization" }
+  local REDACTED_RESPONSE_HEADERS = {}
+  ---
+  -- Generates a table that contains information that are helpful for logging.
+  --
+  -- @function kong.log.serialize
+  -- @phases log
+  -- @usage
+  -- kong.log.serialize()
+  if ngx.config.subsystem == "http" then
+    function serialize(options)
+      check_phase(PHASES_LOG)
+      local ongx = (options or {}).ngx or ngx
+      local okong = (options or {}).kong or kong
+      local ctx = ongx.ctx
+      local var = ongx.var
+      local req = ongx.req
+      local authenticated_entity
+      if ctx.authenticated_credential ~= nil then
+        authenticated_entity = {
+          id = ctx.authenticated_credential.id,
+          consumer_id = ctx.authenticated_credential.consumer_id
+        }
+      end
+      local request_tls
+      local request_tls_ver = ngx_ssl.get_tls1_version_str()
+      if request_tls_ver then
+        request_tls = {
+          version = request_tls_ver,
+          cipher = var.ssl_cipher,
+          client_verify = ngx.ctx.CLIENT_VERIFY_OVERRIDE or var.ssl_client_verify,
+        }
+      end
+      local request_uri = var.request_uri or ""
+      local req_headers = okong.request.get_headers()
+      for _, header in ipairs(REDACTED_REQUEST_HEADERS) do
+        if req_headers[header] then
+          req_headers[header] = "REDACTED"
+        end
+      end
+      local resp_headers = ongx.resp.get_headers()
+      for _, header in ipairs(REDACTED_RESPONSE_HEADERS) do
+        if resp_headers[header] then
+          resp_headers[header] = "REDACTED"
+        end
+      end
+
+       local host_port = ctx.host_port or var.server_port
+
+       local request_body
+       local response_body
+       if kong.ctx.plugin then
+         request_body = kong.ctx.plugin.request_body
+         response_body = kong.ctx.plugin.response_body
+       end
+
+       return {
+         request = {
+           uri = request_uri,
+           url = var.scheme .. "://" .. var.host .. ":" .. host_port .. request_uri,
+           querystring = okong.request.get_query(), -- parameters, as a table
+           method = okong.request.get_method(), -- http method
+           headers = req_headers,
+           body = request_body,
+           size = var.request_length,
+           tls = request_tls
+         },
+         upstream_uri = var.upstream_uri,
+         response = {
+           status = ongx.status,
+           headers = resp_headers,
+           body = response_body,
+           size = var.bytes_sent
+         },
+         tries = (ctx.balancer_data or {}).tries,
+  22  kong/plugins/tcp-log/handler.lua 
+
+ @@ -52,6 +52,28 @@ local TcpLogHandler = {
+ }
+
+
+ function TcpLogHandler:access(conf)
+   if conf.log_body then
+     local body, err = kong.request.get_raw_body()
+     if err then
+       kong.log.err(err)
+       kong.ctx.plugin.request_body = ""
+     else
+       kong.ctx.plugin.request_body = body
+     end
+     kong.ctx.plugin.response_body = ""
+   end
+ end
+
+
+ function TcpLogHandler:body_filter(conf)
+   if conf.log_body then
+     local chunk = ngx.arg[1]
+     kong.ctx.plugin.response_body = kong.ctx.plugin.response_body .. (chunk or "")
+   end
+ end
+
+
+ function TcpLogHandler:log(conf)
+   local message = kong.log.serialize()
+   local ok, err = timer_at(0, log, conf, message)
+  1  kong/plugins/tcp-log/schema.lua 
+
+ @@ -13,6 +13,7 @@ return {
+           { keepalive = { type = "number", default = 60000 }, },
+           { tls = { type = "boolean", default = false }, },
+           { tls_sni = { type = "string" }, },
+           { log_body = { default = false, type = "boolean" }, },
+         },
+     }, },
+   }
+  2  spec/01-unit/01-db/01-schema/11-declarative_config/02-process_auto_fields_spec.lua 
+
+ @@ -359,6 +359,7 @@ describe("declarative config: process_auto_fields", function()
+                       keepalive = 60000,
+                       timeout = 10000,
+                       tls = false,
+                       log_body = false,
+                     }
+                   },
+                 }
+ @@ -666,6 +667,7 @@ describe("declarative config: process_auto_fields", function()
+                           keepalive = 60000,
+                           timeout = 10000,
+                           tls = false,
+                           log_body = false,
+                         }
+                       }
+                     }
+  6  spec/01-unit/01-db/01-schema/11-declarative_config/03-flatten_spec.lua 
+
+ @@ -587,7 +587,8 @@ describe("declarative config: flatten", function()
+                   port = 10000,
+                   timeout = 10000,
+                   tls = false,
+                   tls_sni = null
+                   tls_sni = null,
+                   log_body = false,
+                 },
+                 consumer = null,
+                 created_at = 1234567890,
+ @@ -1061,7 +1062,8 @@ describe("declarative config: flatten", function()
+                   port = 10000,
+                   timeout = 10000,
+                   tls = false,
+                   tls_sni = null
+                   tls_sni = null,
+                   log_body = false,
+                 },
+                 consumer = null,
+                 created_at = 1234567890,
+  13  spec/01-unit/10-log_serializer_spec.lua 
+
+ @@ -192,6 +192,19 @@ describe("kong.log.serialize", function()
+
+         kong.log.warn = orig_warn
+       end)
+
+       it("serializes request and response bodies present in the ngx context", function()
+         kong.ctx.plugin = {
+           request_body = "request body",
+           response_body = "response body",
+         }
+
+         local res = kong.log.serialize({ngx = ngx, kong = kong, })
+         assert.is_table(res)
+
+         assert.equal(res.request.body, "request body")
+         assert.equal(res.response.body, "response body")
+       end)
+     end)
+   end)
+
+  108  spec/03-plugins/01-tcp-log/01-tcp-log_spec.lua 
+
+ @@ -45,11 +45,26 @@ for _, strategy in helpers.each_strategy() do
+
+
+       local route2 = bp.routes:insert {
+         hosts = { "tcp_logging_tls.com" },
+         hosts = { "tcp_logging.com" },
+         paths = { "/log_body" },
+       }
+
+       bp.plugins:insert {
+         route = { id = route2.id },
+         name = "tcp-log",
+         config = {
+           host = "127.0.0.1",
+           port = TCP_PORT,
+           log_body = true,
+         },
+       }
+
+       local route3 = bp.routes:insert {
+         hosts = { "tcp_logging_tls.com" },
+       }
+
+       bp.plugins:insert {
+         route = { id = route3.id },
+         name     = "tcp-log",
+         config   = {
+           host   = "127.0.0.1",
+ @@ -58,19 +73,35 @@ for _, strategy in helpers.each_strategy() do
+         },
+       }
+
+       local route4 = bp.routes:insert {
+         hosts = { "tcp_logging_tls.com" },
+         paths = { "/log_body" },
+       }
+
+       bp.plugins:insert {
+         route = { id = route4.id },
+         name = "tcp-log",
+         config = {
+           host = "127.0.0.1",
+           port = TCP_PORT,
+           tls = true,
+           log_body = true,
+         },
+       }
+
+       local grpc_service = assert(bp.services:insert {
+         name = "grpc-service",
+         url = "grpc://localhost:15002",
+       })
+
+       local route3 = assert(bp.routes:insert {
+       local route5 = assert(bp.routes:insert {
+         service = grpc_service,
+         protocols = { "grpc" },
+         hosts = { "tcp_logging_grpc.test" },
+       })
+
+       bp.plugins:insert {
+         route = { id = route3.id },
+         route = { id = route5.id },
+         name     = "tcp-log",
+         config   = {
+           host   = "127.0.0.1",
+ @@ -83,14 +114,14 @@ for _, strategy in helpers.each_strategy() do
+         url = "grpcs://localhost:15003",
+       })
+
+       local route4 = assert(bp.routes:insert {
+       local route6 = assert(bp.routes:insert {
+         service = grpcs_service,
+         protocols = { "grpcs" },
+         hosts = { "tcp_logging_grpcs.test" },
+       })
+
+       bp.plugins:insert {
+         route = { id = route4.id },
+         route = { id = route6.id },
+         name     = "tcp-log",
+         config   = {
+           host   = "127.0.0.1",
+ @@ -195,6 +226,41 @@ for _, strategy in helpers.each_strategy() do
+
+       -- Since it's over HTTP, let's make sure there are no TLS information
+       assert.is_nil(log_message.request.tls)
+
+       -- Since log_body is false, let's make sure there are no bodies information
+       assert.is_nil(log_message.request.body)
+       assert.is_nil(log_message.response.body)
+     end)
+
+     it("logs(with body) to TCP", function()
+       local thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
+
+       -- Making the request
+       local r = assert(proxy_client:send {
+         method = "POST",
+         path = "/log_body/request",
+         headers = {
+           host = "tcp_logging.com",
+         },
+         body = "request body",
+       })
+       assert.response(r).has.status(200)
+
+       -- Getting back the TCP server input
+       local ok, res = thread:join()
+       assert.True(ok)
+       assert.is_string(res)
+
+       -- Making sure it's alright
+       local log_message = cjson.decode(res)
+       assert.equal("127.0.0.1", log_message.client_ip)
+
+       -- Since it's over HTTP, let's make sure there are no TLS information
+       assert.is_nil(log_message.request.tls)
+
+       -- Since log_body is true, let's make sure there are right bodies information
+       assert.equal("request body", log_message.request.body);
+       assert.is_string(log_message.response.body)
+     end)
+
+     it("logs to TCP (#grpc)", function()
+ @@ -355,6 +421,38 @@ for _, strategy in helpers.each_strategy() do
+       -- Making sure it's alright
+       local log_message = cjson.decode(res)
+       assert.equal("127.0.0.1", log_message.client_ip)
+
+       -- Since log_body is false, let's make sure there are no bodies information
+       assert.is_nil(log_message.request.body)
+       assert.is_nil(log_message.response.body)
+     end)
+
+     it("performs a TLS handshake(with body) on the remote TCP server", function()
+       local thread = helpers.tcp_server(TCP_PORT, { tls = true })
+
+       -- Making the request
+       local r = assert(proxy_client:send {
+         method = "POST",
+         path = "/log_body/request",
+         headers = {
+           host = "tcp_logging_tls.com",
+         },
+         body = "request body",
+       })
+       assert.response(r).has.status(200)
+
+       -- Getting back the TCP server input
+       local ok, res = thread:join()
+       assert.True(ok)
+       assert.is_string(res)
+
+       -- Making sure it's alright
+       local log_message = cjson.decode(res)
+       assert.equal("127.0.0.1", log_message.client_ip)
+
+       -- Since log_body is true, let's make sure there are right bodies information
+       assert.equal("request body", log_message.request.body);
+       assert.is_string(log_message.response.body)
+     end)
+
+     it("logs TLS info", function()
+     local thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
+      -- Making the request
+      local r = assert(proxy_ssl_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          host  = "tcp_logging.com",
+        },
+      })
+      assert.response(r).has.status(200)
+      -- Getting back the TCP server input
+      local ok, res = thread:join()
+      assert.True(ok)
+      assert.is_string(res)
+      -- Making sure it's alright
+      local log_message = cjson.decode(res)
+      assert.equal("TLSv1.2", log_message.request.tls.version)
+      assert.is_string(log_message.request.tls.cipher)
+      assert.equal("NONE", log_message.request.tls.client_verify)
+    end)
+    it("TLS client_verify can be overwritten", function()
+      local thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
+      -- Making the request
+      local r = assert(proxy_ssl_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          host  = "tcp_logging.com",
+          ["x-ssl-client-verify"] = "SUCCESS",
+        },
+      })
+      assert.response(r).has.status(200)
+      -- Getting back the TCP server input
+      local ok, res = thread:join()
+      assert.True(ok)
+      assert.is_string(res)
+      -- Making sure it's alright
+      local log_message = cjson.decode(res)
+      assert.equal("TLSv1.2", log_message.request.tls.version)
+      assert.is_string(log_message.request.tls.cipher)
+      assert.equal("SUCCESS", log_message.request.tls.client_verify)
+    end)
+    it("logs TLS info (#grpcs)", function()
+      local thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
+      -- Making the request
+      local ok, resp = proxy_client_grpcs({
+        service = "hello.HelloService.SayHello",
+        body = {
+          greeting = "world!"
+        },
+        opts = {
+          ["-authority"] = "tcp_logging_grpcs.test",
+        }
+      })
+      assert.truthy(ok)
+      assert.truthy(resp)
+      -- Getting back the TCP server input
+      local ok, res = thread:join()
+      assert.True(ok)
+      assert.is_string(res)
+      -- Making sure it's alright
+      local log_message = cjson.decode(res)
+      assert.equal("grpcs", log_message.service.protocol)
+      assert.equal("TLSv1.2", log_message.request.tls.version)
+      assert.is_string(log_message.request.tls.cipher)
+      assert.equal("NONE", log_message.request.tls.client_verify)
+    end)
+    it("#stream reports tcp streams", function()
+      local thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
+      local tcp = ngx.socket.tcp()
+      assert(tcp:connect(helpers.get_proxy_ip(false), 19000))
+      assert(tcp:send(MESSAGE))
+      local body = assert(tcp:receive("*a"))
+      assert.equal(MESSAGE, body)
+      tcp:close()
+      -- Getting back the TCP server input
+      local ok, res = thread:join()
+      assert.True(ok)
+      assert.is_string(res)
+      -- Making sure it's alright
+      local log_message = cjson.decode(res)
+      assert.equal("127.0.0.1", log_message.client_ip)
+      assert.is_table(log_message.latencies)
+      assert.equal(200, log_message.session.status)
+      assert.equal(#MESSAGE, log_message.session.sent)
+      assert.equal(#MESSAGE, log_message.session.received)
+      assert.is_number(log_message.started_at)
+      assert.is_table(log_message.route)
+      assert.is_table(log_message.service)
+      assert.is_table(log_message.tries)
+      assert.is_table(log_message.upstream)
+    end)
+    it("#stream reports tls streams", function()
+      local thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
+      local tcp = ngx.socket.tcp()
+      assert(tcp:connect(helpers.get_proxy_ip(true), 19443))
+      assert(tcp:sslhandshake(nil, "this-is-needed.test", false))
+      assert(tcp:send(MESSAGE))
+      local body = assert(tcp:receive("*a"))
+      assert.equal(MESSAGE, body)
+      tcp:close()
+      -- Getting back the TCP server input
+      local ok, res = thread:join()
+      assert.True(ok)
+      assert.is_string(res)
+      -- Making sure it's alright
+      local log_message = cjson.decode(res)
+      assert.is_string(log_message.session.tls.cipher)
+      assert.equal("NONE", log_message.session.tls.client_verify)
+      assert.is_string(log_message.session.tls.version)
+    end)
+  end)
+end
