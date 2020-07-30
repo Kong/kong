@@ -124,11 +124,11 @@ local function debug_header_present()
     return false
   end
 
-  if not header_safe_phase() then
-    return false
+  if ngx.req and ngx.req.get_headers and header_safe_phase() then
+    return ngx.req.get_headers()[debug_header] ~= nil
   end
 
-  return ngx.req.get_headers()[debug_header] ~= nil
+  return false
 end
 
 
@@ -367,10 +367,14 @@ function _M.trace(name, ctx)
 
   ngx.ctx.kong_trace_parent = trace_parent
 
+  local t = time()
+
   local trace = {
     node_id = get_node_id(),
     request = request_id(),
-    date    = http_time(time()),
+    date    = http_time and http_time(t) or
+              -- Wed, 22 Jul 2020 13:56:56 GMT
+              os.date("%a, %d %b %Y %H:%M:%S GMT", t),
     start   = gettimeofday(),
     name    = name,
     parent  = parent,
