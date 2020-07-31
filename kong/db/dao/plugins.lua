@@ -142,6 +142,10 @@ function Plugins:check_db_against_config(plugin_set)
 end
 
 local function implements(plugin, method)
+  if type(plugin) ~= "table" then
+    return false
+  end
+
   local m = plugin[method]
   return type(m) == "function" and m ~= BasePlugin[method]
 end
