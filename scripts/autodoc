@@ -1,3 +1,4 @@
 rm -rf ./autodoc/output
 ./autodoc/admin-api/generate.lua && \
-./autodoc/cli/generate.lua
+./autodoc/cli/generate.lua && \
+./autodoc/conf/generate.lua
