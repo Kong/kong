@@ -21,6 +21,7 @@ for _, strategy in helpers.each_strategy() do
           "plugins",
         }, {
           "enable-buffering",
+          "enable-buffering-response",
         })
 
         local r1 = bp.routes:insert {
@@ -62,7 +63,7 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.plugins:insert {
-          name = "enable-buffering",
+          name = "enable-buffering-response",
           route = r3,
           protocols = {
             "http",
@@ -79,7 +80,7 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.plugins:insert {
-          name = "enable-buffering",
+          name = "enable-buffering-response",
           route = r4,
           protocols = {
             "http",
@@ -93,7 +94,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert(helpers.start_kong({
           database      = strategy,
-          plugins       = "bundled,enable-buffering",
+          plugins       = "bundled,enable-buffering,enable-buffering-response",
           nginx_conf    = "spec/fixtures/custom_nginx.template",
           stream_listen = "off",
           admin_listen  = "off",
@@ -143,29 +144,29 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("yes", res.headers["Modified"])
       end)
 
---       it("header can be set from upstream response body on response phase", function()
---         local res = proxy_client:get("/3/status/235")
---         local body = assert.res_status(235, res)
---         assert.equal(md5(body), res.headers["MD5"])
---
---         local res = proxy_ssl_client:get("/3/status/236")
---         local body = assert.res_status(236, res)
---         assert.equal(md5(body), res.headers["MD5"])
---       end)
+      it("header can be set from upstream response body on response phase", function()
+        local res = proxy_client:get("/3/status/235")
+        local body = assert.res_status(235, res)
+        assert.equal(md5(body), res.headers["MD5"])
 
---       it("header can be set from upstream response body and body can be modified on response phase", function()
---         local res = proxy_client:get("/4/status/237")
---         local body = assert.res_status(237, res)
---         local json = cjson.decode(body)
---         assert.equal(true, json.modified)
---         assert.equal("yes", res.headers["Modified"])
---
---         local res = proxy_ssl_client:get("/4/status/238")
---         local body = assert.res_status(238, res)
---         local json = cjson.decode(body)
---         assert.equal(true, json.modified)
---         assert.equal("yes", res.headers["Modified"])
---       end)
+        local res = proxy_ssl_client:get("/3/status/236")
+        local body = assert.res_status(236, res)
+        assert.equal(md5(body), res.headers["MD5"])
+      end)
+
+      it("header can be set from upstream response body and body can be modified on response phase", function()
+        local res = proxy_client:get("/4/status/237")
+        local body = assert.res_status(237, res)
+        local json = cjson.decode(body)
+        assert.equal(true, json.modified)
+        assert.equal("yes", res.headers["Modified"])
+
+        local res = proxy_ssl_client:get("/4/status/238")
+        local body = assert.res_status(238, res)
+        local json = cjson.decode(body)
+        assert.equal(true, json.modified)
+        assert.equal("yes", res.headers["Modified"])
+      end)
     end)
   end)
 end

@@ -346,97 +346,6 @@ function CtxTests:response(config)
 end
 
 
--- function CtxTests:header_filter(config)
---   local ctx = ngx.ctx
---   assert(is_equal_to_start_time(ctx, "KONG_PROCESSING_START"))
---   assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_PROCESSING_START", "KONG_REWRITE_START"))
---   assert(is_greater_or_equal_to_start_time(ctx, "KONG_REWRITE_START"))
---   assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_REWRITE_START", "KONG_REWRITE_ENDED_AT"))
---   assert(is_non_negative_integer(ctx, "KONG_REWRITE_TIME"))
---   assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_REWRITE_ENDED_AT", "KONG_ACCESS_START"))
---   assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_ACCESS_START", "KONG_ACCESS_ENDED_AT"))
---   assert(is_non_negative_integer(ctx, "KONG_ACCESS_TIME"))
---   assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_ACCESS_ENDED_AT", "KONG_BALANCER_START"))
---   assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_BALANCER_START", "KONG_BALANCER_ENDED_AT"))
---   assert(is_non_negative_integer(ctx, "KONG_BALANCER_TIME"))
--- --   if config.buffered then
---     assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_BALANCER_ENDED_AT", "KONG_RESPONSE_START"))
---     assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_RESPONSE_START", "KONG_RESPONSE_ENDED_AT"))
---     assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_RESPONSE_ENDED_AT", "KONG_HEADER_FILTER_START"))
---     assert(is_non_negative_integer(ctx, "KONG_RESPONSE_TIME"))
--- --   else
--- --     assert(is_nil(ctx, "KONG_RESPONSE_START"))
--- --     assert(is_nil(ctx, "KONG_RESPONSE_ENDED_AT"))
--- --     assert(is_nil(ctx, "KONG_RESPONSE_TIME"))
--- --     assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_BALANCER_ENDED_AT", "KONG_HEADER_FILTER_START"))
--- --   end
---   assert(is_true(ctx, "KONG_PROXIED"))
---   assert(has_correct_proxy_latency(ctx))
---   assert(has_correct_waiting_time(ctx))
---   assert(is_nil(ctx, "KONG_PREREAD_START"))
---   assert(is_nil(ctx, "KONG_PREREAD_ENDED_AT"))
---   assert(is_nil(ctx, "KONG_PREREAD_TIME"))
---   assert(is_nil(ctx, "KONG_HEADER_FILTER_ENDED_AT"))
---   assert(is_nil(ctx, "KONG_HEADER_FILTER_TIME"))
---   assert(is_nil(ctx, "KONG_BODY_FILTER_START"))
---   assert(is_nil(ctx, "KONG_BODY_FILTER_ENDED_AT"))
---   assert(is_nil(ctx, "KONG_BODY_FILTER_TIME"))
---   assert(is_nil(ctx, "KONG_LOG_START"))
---   assert(is_nil(ctx, "KONG_LOG_ENDED_AT"))
---   assert(is_nil(ctx, "KONG_LOG_TIME"))
---   assert(is_nil(ctx, "KONG_RESPONSE_LATENCY"))
---   assert(is_nil(ctx, "KONG_RECEIVE_TIME"))
--- end
-
-
--- function CtxTests:body_filter(config)
---   if not ngx.arg[2] then
---     return
---   end
---
---   local ctx = ngx.ctx
---   assert(is_equal_to_start_time(ctx, "KONG_PROCESSING_START"))
---   assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_PROCESSING_START", "KONG_REWRITE_START"))
---   assert(is_greater_or_equal_to_start_time(ctx, "KONG_REWRITE_START"))
---   assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_REWRITE_START", "KONG_REWRITE_ENDED_AT"))
---   assert(is_non_negative_integer(ctx, "KONG_REWRITE_TIME"))
---   assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_REWRITE_ENDED_AT", "KONG_ACCESS_START"))
---   assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_ACCESS_START", "KONG_ACCESS_ENDED_AT"))
---   assert(is_non_negative_integer(ctx, "KONG_ACCESS_TIME"))
---   assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_ACCESS_ENDED_AT", "KONG_BALANCER_START"))
---   assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_BALANCER_START", "KONG_BALANCER_ENDED_AT"))
---   assert(is_non_negative_integer(ctx, "KONG_BALANCER_TIME"))
---   assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_BALANCER_ENDED_AT", "KONG_HEADER_FILTER_START"))
---   if config.buffered then
---     assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_BALANCER_ENDED_AT", "KONG_RESPONSE_START"))
---     assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_RESPONSE_START", "KONG_RESPONSE_ENDED_AT"))
---     assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_RESPONSE_ENDED_AT", "KONG_HEADER_FILTER_START"))
---     assert(is_non_negative_integer(ctx, "KONG_RESPONSE_TIME"))
---   else
---     assert(is_nil(ctx, "KONG_RESPONSE_START"))
---     assert(is_nil(ctx, "KONG_RESPONSE_ENDED_AT"))
---     assert(is_nil(ctx, "KONG_RESPONSE_TIME"))
---     assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_BALANCER_ENDED_AT", "KONG_HEADER_FILTER_START"))
---   end
---   assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_HEADER_FILTER_START", "KONG_HEADER_FILTER_ENDED_AT"))
---   assert(is_non_negative_integer(ctx, "KONG_HEADER_FILTER_TIME"))
---   assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_HEADER_FILTER_ENDED_AT", "KONG_BODY_FILTER_START"))
---   assert(is_true(ctx, "KONG_PROXIED"))
---   assert(has_correct_proxy_latency(ctx))
---   assert(has_correct_waiting_time(ctx))
---   assert(is_nil(ctx, "KONG_PREREAD_START"))
---   assert(is_nil(ctx, "KONG_PREREAD_ENDED_AT"))
---   assert(is_nil(ctx, "KONG_PREREAD_TIME"))
---   assert(is_nil(ctx, "KONG_BODY_FILTER_ENDED_AT"))
---   assert(is_nil(ctx, "KONG_BODY_FILTER_TIME"))
---   assert(is_nil(ctx, "KONG_LOG_START"))
---   assert(is_nil(ctx, "KONG_LOG_ENDED_AT"))
---   assert(is_nil(ctx, "KONG_LOG_TIME"))
---   assert(is_nil(ctx, "KONG_RESPONSE_LATENCY"))
---   assert(is_nil(ctx, "KONG_RECEIVE_TIME"))
--- end
-
-
 function CtxTests:log(config)
   local ctx = ngx.ctx
   if subsystem == "stream" then
@@ -489,17 +398,12 @@ function CtxTests:log(config)
     assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_BALANCER_START", "KONG_BALANCER_ENDED_AT"))
     assert(is_non_negative_integer(ctx, "KONG_BALANCER_TIME"))
     assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_BALANCER_ENDED_AT", "KONG_HEADER_FILTER_START"))
-    if config.buffered then
-      assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_BALANCER_ENDED_AT", "KONG_RESPONSE_START"))
-      assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_RESPONSE_START", "KONG_RESPONSE_ENDED_AT"))
-      assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_RESPONSE_ENDED_AT", "KONG_HEADER_FILTER_START"))
-      assert(is_non_negative_integer(ctx, "KONG_RESPONSE_TIME"))
-    else
-      assert(is_nil(ctx, "KONG_RESPONSE_START"))
-      assert(is_nil(ctx, "KONG_RESPONSE_ENDED_AT"))
-      assert(is_nil(ctx, "KONG_RESPONSE_TIME"))
-      assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_BALANCER_ENDED_AT", "KONG_HEADER_FILTER_START"))
-    end
+
+    assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_BALANCER_ENDED_AT", "KONG_RESPONSE_START"))
+    assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_RESPONSE_START", "KONG_RESPONSE_ENDED_AT"))
+    assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_RESPONSE_ENDED_AT", "KONG_HEADER_FILTER_START"))
+    assert(is_non_negative_integer(ctx, "KONG_RESPONSE_TIME"))
+
     assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_HEADER_FILTER_START", "KONG_HEADER_FILTER_ENDED_AT"))
     assert(is_non_negative_integer(ctx, "KONG_HEADER_FILTER_TIME"))
     assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_HEADER_FILTER_ENDED_AT", "KONG_BODY_FILTER_START"))
