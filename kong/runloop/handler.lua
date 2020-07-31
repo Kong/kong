@@ -488,7 +488,7 @@ local function register_events()
        file_helpers.is_spec_path(file.path) then
       local workspace = workspaces.get_workspace()
       local cache_key = "portal_router-" .. workspace.name .. ":version"
-      local cache_val = tostring(file.created_at) .. file.checksum
+      local cache_val = tostring(ngx.now()) .. file.checksum
 
       -- to node worker event
       local ok, err = worker_events.post("portal", "router", {

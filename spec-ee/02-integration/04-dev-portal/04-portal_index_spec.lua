@@ -527,5 +527,111 @@ for _, strategy in helpers.each_strategy() do
         assert.not_nil(string.match(res.body, '{"message":"An unexpected error occurred"}'))
       end)
     end)
+
+    describe("router refresh", function()
+      local db
+
+      setup(function()
+        _, db, _ = helpers.get_db_utils(strategy)
+        assert(helpers.start_kong({
+          database    = strategy,
+          portal      = true,
+          portal_is_legacy = false,
+        }))
+
+        configure_portal(db, "default")
+
+        ngx.sleep(5)
+        db:truncate("files")
+
+        create_workspace_files("default")
+        ngx.sleep(2)
+      end)
+
+      teardown(function()
+        db:truncate()
+        helpers.stop_kong()
+      end)
+
+      it("regression - refreshes after consecutive CRUD actions on single file", function()
+        assert(client_request({
+          method = "POST",
+          path = "/default/files",
+          body = {
+            path = "content/specs.txt",
+            contents =  [[
+              ---
+              layout: specs.html
+              ---
+            ]]
+          },
+          headers = {["Content-Type"] = "application/json"},
+        }))
+
+        assert(client_request({
+          method = "POST",
+          path = "/default/files",
+          body = {
+            path = "themes/test-theme/layouts/specs.html",
+            contents =  [[
+              {% for _, spec in each(portal.specs_by_tag()) do %}
+                <h1>{{spec.parsed.info.title}}</h1>
+              {% end %}
+            ]]
+          },
+          headers = {["Content-Type"] = "application/json"},
+        }))
+
+        assert(client_request({
+          method = "POST",
+          path = "/default/files",
+          body = {
+            path = "specs/dog.yaml",
+            contents = [[
+              openapi: 3.0.0
+              info:
+                title: DogsRKewl
+                version: 1.0.0
+            ]]
+          },
+          headers = {["Content-Type"] = "application/json"},
+        }))
+
+        gui_client_request({
+          method = "GET",
+          path = "/default/specs",
+        })
+
+        local res = gui_client_request({
+          method = "GET",
+          path = "/default/specs",
+        })
+        assert.equals(res.status, 200)
+
+        assert.not_nil(string.match(res.body, 'DogsRKewl'))
+
+        assert(client_request({
+          method = "DELETE",
+          path = "/default/files/specs/dog.yaml",
+          headers = {["Content-Type"] = "application/json"},
+        }))
+
+        -- force router rebuild
+        gui_client_request({
+          method = "GET",
+          path = "/default/specs",
+        })
+
+        ngx.sleep(2)
+
+        res = gui_client_request({
+          method = "GET",
+          path = "/default/specs",
+        })
+        assert.equals(res.status, 200)
+
+        assert.is_nil(string.match(res.body, 'DogsRKewl'))
+      end)
+    end)
   end)
 end
