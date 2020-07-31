@@ -107,14 +107,19 @@ local function find_example_value(tbl, key)
             --We could have empty {} value in example 
             --Go ahead in capture it in table if there are no query params, Filter it if qparams exists
             if (no_qparams and next(dv) == nil) then table.insert( values, dv) end
-            for _, v in pairs(dv) do
-              if filterexamples(v) then table.insert( values, v) end
-            end
+             for _, v in pairs(dv) do
+              -- If the example values are just Key Value pairs go ahead and add them to table
+              if(type(v) ~= "table") then
+                table.insert( values, dv)
+                break
+              elseif filterexamples(v) then table.insert( values, v) end
+             end
           end
         end
        end
       end
     end
+  
   if next(values) == nil then
    -- kong.log.inspect('values....',values)
     return nil
