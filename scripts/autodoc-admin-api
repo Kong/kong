@@ -5,7 +5,7 @@ setmetatable(_G, nil)
 local lfs = require("lfs")
 local cjson = require("cjson")
 local pl_tablex = require("pl.tablex")
-local general = require("autodoc.general")
+local general = require("autodoc.admin-api.general")
 
 local method_array = {
   "POST",
@@ -83,7 +83,7 @@ if not pok then
   error("failed loading Kong modules. please set the KONG_PATH environment variable.")
 end
 
-local admin_api_data = require("autodoc.data.admin-api")
+local admin_api_data = require("autodoc.admin-api.data.admin-api")
 
 local function deep_merge(t1, t2)
   local copy = {}
