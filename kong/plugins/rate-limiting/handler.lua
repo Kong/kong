@@ -54,7 +54,8 @@ local function get_identifier(conf)
   local identifier
 
   if conf.limit_by == "service" then
-    identifier = ""
+    identifier = (kong.router.get_service() or
+                  EMPTY).id
   elseif conf.limit_by == "consumer" then
     identifier = (kong.client.get_consumer() or
                   kong.client.get_credential() or
