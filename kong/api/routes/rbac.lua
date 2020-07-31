@@ -61,8 +61,8 @@ local function action_bitfield(self)
       end
 
       if not rbac.actions_bitfields[action] then
-        return kong.response.exit(400, "Undefined RBAC action " ..
-                                               action_names[i])
+        return kong.response.exit(400, { message = "Undefined RBAC action " ..
+                                               action_names[i] })
       end
 
       bitfield = bxor(bitfield, rbac.actions_bitfields[action])
@@ -288,13 +288,13 @@ return {
         find_current_user(self, db, helpers)
         -- we have the user, now verify our roles
         if not self.params.roles then
-          return kong.response.exit(400, "must provide >= 1 role")
+          return kong.response.exit(400, { message = "must provide >= 1 role" })
         end
 
         local roles, err = rbac.objects_from_names(db, self.params.roles, "role")
         if err then
           if err:find("not found with name", nil, true) then
-            return kong.response.exit(400, {message = err})
+            return kong.response.exit(400, { message = err })
           else
             return helpers.yield_error(err)
           end
@@ -338,14 +338,14 @@ return {
 
       DELETE = function(self, db, helpers)
         if not self.params.roles then
-          return kong.response.exit(400, {message = "must provide >= 1 role"})
+          return kong.response.exit(400, { message = "must provide >= 1 role" })
         end
         find_current_user(self, db, helpers)
 
         local roles, err = rbac.objects_from_names(db, self.params.roles, "role")
         if err then
           if err:find("not found with name", nil, true) then
-            return kong.response.exit(400, {message = err})
+            return kong.response.exit(400, { message = err })
 
           else
             return helpers.yield_error(err)
@@ -436,7 +436,9 @@ return {
       action_bitfield(self)
 
       if not self.params.entity_id then
-        return kong.response.exit(400, "Missing required parameter: 'entity_id'")
+        return kong.response.exit(400, {
+          message = "Missing required parameter: 'entity_id'"
+        })
       end
 
       local entity_type = self.params.entity_type
@@ -445,13 +447,17 @@ return {
       end
 
       if not entity_type then
-        return kong.response.exit(400, "Missing required parameter: 'entity_type'")
+        return kong.response.exit(400, {
+          message = "Missing required parameter: 'entity_type'"
+        })
       end
 
       if entity_type ~= "wildcard" then
         local row = db[entity_type]:select({ id = self.params.entity_id })
         if not row then
-          return kong.response.exit(400, "There is no entity of type '" .. entity_type .. "' with given entity_id")
+          return kong.response.exit(400, {
+            message = "There is no entity of type '" .. entity_type .. "' with given entity_id"
+          })
         end
       end
 
@@ -487,8 +493,9 @@ return {
         self.rbac_role_id = rbac_role.id
 
         if self.params.entity_id ~= "*" and not utils.is_valid_uuid(self.params.entity_id) then
-          return kong.response.exit(400,
-            self.params.entity_id .. " is not a valid uuid")
+          return kong.response.exit(400, {
+            message = self.params.entity_id .. " is not a valid uuid"
+          })
         end
         self.entity_id = self.params.entity_id
       end,
@@ -599,7 +606,9 @@ return {
       POST = function(self, db, helpers)
         action_bitfield(self)
         if not self.params.endpoint then
-          kong.response.exit(400, {message = "'endpoint' is a required field"})
+          kong.response.exit(400, {
+            message = "'endpoint' is a required field"
+          })
         end
 
         local request_ws_id = workspaces.get_workspace_id()
@@ -634,7 +643,7 @@ return {
           local err_str = fmt(
             "%s is not allowed to create cross workspace permissions",
             ngx.ctx.rbac.user.name)
-          kong.response.exit(403, {message = err_str})
+          kong.response.exit(403, { message = err_str })
         end
 
         local cache_key = db.rbac_roles:cache_key(self.rbac_role.id)
