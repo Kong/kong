@@ -1,6 +1,7 @@
 # Table of Contents
 
 
+- [2.1.1](#211)
 - [2.1.0](#210)
 - [2.0.5](#205)
 - [2.0.4](#204)
@@ -43,6 +44,42 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+
+## [2.1.1]
+
+> Released 2020/07/31
+
+### Dependencies
+
+- Bumped [lua-multipart](https://github.com/Kong/lua-multipart) to `0.5.9`.
+  [#6148](https://github.com/Kong/kong/pull/6148)
+
+### Fixes
+
+##### Core
+
+- Routes without a `service` field are no longer counted together under a "global" plugin.
+  [#6157](https://github.com/Kong/kong/pull/6157)
+- Avoid plugin worker interator collisions
+  [#6011](https://github.com/Kong/kong/pull/6011)
+- Erroneously migrating empty cassandra values
+  [#6171](https://github.com/Kong/kong/pull/6171)
+
+##### CLI
+
+##### Configuration
+
+##### Admin API
+
+##### PDK
+
+##### Plugins
+
+- rate-limit plugin: perform atomic Redis increments
+  [#6150](https://github.com/Kong/kong/pull/6150)
+
+[Back to TOC](#table-of-contents)
 
 
 ## [2.1.0]
@@ -5171,6 +5208,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.1.1]: https://github.com/Kong/kong/compare/2.1.0...2.1.1
 [2.1.0]: https://github.com/Kong/kong/compare/2.0.5...2.1.0
 [2.0.5]: https://github.com/Kong/kong/compare/2.0.4...2.0.5
 [2.0.4]: https://github.com/Kong/kong/compare/2.0.3...2.0.4
