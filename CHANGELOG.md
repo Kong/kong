@@ -61,6 +61,16 @@
 
 ### Dependencies
 
+- :warning: In order to use all Kong features, including the new
+  dynamic upstream keepalive behavior, the required OpenResty version is
+  [1.15.8.3](http://openresty.org/en/changelog-1015008.html).
+  If you are installing Kong from one of our distribution
+  packages, this version and all required patches and modules are included.
+  If you are building from source, you must apply
+  Kong's [OpenResty patches](https://github.com/Kong/kong-build-tools/tree/master/openresty-build-tools/openresty-patches)
+  as well as include [lua-kong-nginx-module](https://github.com/Kong/lua-kong-nginx-module).
+  Our [kong-build-tools](https://github.com/Kong/kong-build-tools)
+  repository allows you to do both easily.
 - Bump OpenSSL version from `1.1.1f` to `1.1.1g`.
   [#5820](https://github.com/Kong/kong/pull/5810)
 - Bump [lua-resty-dns-client](https://github.com/Kong/lua-resty-dns-client) from `4.1.3`

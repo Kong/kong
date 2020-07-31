@@ -832,8 +832,13 @@ for _, strategy in helpers.each_strategy() do
           }
         })
 
+        local service = bp.services:insert()
+
         for i = 1, 6 do
-          bp.routes:insert({ hosts = { fmt("test%d.com", i) } })
+          bp.routes:insert({
+            hosts = { fmt("test%d.com", i) },
+            service = service,
+          })
         end
 
         assert(helpers.start_kong({
@@ -877,6 +882,94 @@ for _, strategy in helpers.each_strategy() do
 
         local json = cjson.decode(body)
         assert.same({ message = "API rate limit exceeded" }, json)
+      end)
+    end)
+
+    describe(fmt("Plugin: rate-limiting (access - per service) with policy: %s [#%s]", policy, strategy), function()
+      local bp
+      local db
+
+      lazy_setup(function()
+        helpers.kill_all()
+        flush_redis()
+        bp, db = helpers.get_db_utils(strategy)
+
+        -- global plugin (not attached to route, service or consumer)
+        bp.rate_limiting_plugins:insert({
+          config = {
+            limit_by       = "service",
+            policy         = policy,
+            minute         = 6,
+            fault_tolerant = false,
+            redis_host     = REDIS_HOST,
+            redis_port     = REDIS_PORT,
+            redis_password = REDIS_PASSWORD,
+            redis_database = REDIS_DATABASE,
+          }
+        })
+
+        local service1 = bp.services:insert()
+        bp.routes:insert {
+          hosts = { "test1.com" },
+          service = service1,
+        }
+
+        local service2 = bp.services:insert()
+        bp.routes:insert {
+          hosts = { "test2.com" },
+          service = service2,
+        }
+
+        assert(helpers.start_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+      end)
+
+      lazy_teardown(function()
+        helpers.kill_all()
+        assert(db:truncate())
+      end)
+
+      it_with_retry("blocks if exceeding limit", function()
+        for i = 1, 6 do
+          local res = GET("/status/200", { headers = { Host = "test1.com" } }, 200)
+
+          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
+          assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+          assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+          assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+          local reset = tonumber(res.headers["ratelimit-reset"])
+          assert.equal(true, reset <= 60 and reset > 0)
+        end
+
+        for i = 1, 6 do
+          local res = GET("/status/200", { headers = { Host = "test2.com" } }, 200)
+
+          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
+          assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+          assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+          assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+          local reset = tonumber(res.headers["ratelimit-reset"])
+          assert.equal(true, reset <= 60 and reset > 0)
+        end
+
+        -- Additonal request, while limit is 6/minute
+        for _, host in ipairs{ "test1.com", "test2.com" } do
+          local res, body = GET("/status/200", { headers = { Host = host } }, 429)
+
+          assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+          assert.are.same(0, tonumber(res.headers["ratelimit-remaining"]))
+
+          local retry = tonumber(res.headers["retry-after"])
+          assert.equal(true, retry <= 60 and retry > 0)
+
+          local reset = tonumber(res.headers["ratelimit-reset"])
+          assert.equal(true, reset <= 60 and reset > 0)
+
+          local json = cjson.decode(body)
+          assert.same({ message = "API rate limit exceeded" }, json)
+        end
       end)
     end)
 
