@@ -186,7 +186,7 @@ return {
       end
       local _, err = red:commit_pipeline()
       if err then
-        kong.log.err("failed to commit pipeline in Resit: ", err)
+        kong.log.err("failed to commit increment pipeline in Redis: ", err)
         return nil, err
       end
 
