@@ -287,6 +287,9 @@ local function get_next(self)
       local cfg = load_configuration_through_combos(ctx, combos, plugin)
       if cfg then
         plugins[name] = cfg
+        if plugin.handler.response and plugin.handler.response ~= BasePlugin.response then
+          self.iterator.has_response = true
+        end
       end
     end
   end
@@ -327,6 +330,7 @@ local function iterate(self, phase, ctx)
   end
 
   local iteration = {
+    iterator = self,
     configure = MUST_LOAD_CONFIGURATION_IN_PHASES[phase],
     loaded = self.loaded,
     phases = ws.phases[phase] or EMPTY_T,
@@ -504,8 +508,6 @@ function PluginsIterator.new(version)
     counter = counter + 1
   end
 
-  local has_response = nil
-
   for _, plugin in ipairs(loaded_plugins) do
     for _, data in pairs(ws) do
       for phase_name, phase in pairs(data.phases) do
@@ -515,9 +517,6 @@ function PluginsIterator.new(version)
             and phase_handler ~= BasePlugin[phase_name]
           then
             phase[plugin.name] = true
-            if phase_name == "response" then
-              has_response = true
-            end
           end
         end
       end
@@ -529,7 +528,6 @@ function PluginsIterator.new(version)
     ws = ws,
     loaded = loaded_plugins,
     iterate = iterate,
-    has_response = has_response,
   }
 end
 
