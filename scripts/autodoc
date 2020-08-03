@@ -1,1 +1,2 @@
-./autodoc/admin-api/generate.lua
+rm -rf ./autodoc/output
+./autodoc/admin-api/generate.lua && \

@@ -978,7 +978,7 @@ local function write_admin_api(filename, data, title)
 
   outfd:close()
 
-  print("Wrote " .. outpath)
+  print("  Wrote " .. outpath)
 end
 
 --------------------------------------------------------------------------------
@@ -1011,7 +1011,7 @@ local function write_admin_api_nav(filename, data)
 
   outfd:close()
 
-  print("Wrote " .. outpath)
+  print("  Wrote " .. outpath)
 end
 
 --------------------------------------------------------------------------------
