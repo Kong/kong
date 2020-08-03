@@ -149,13 +149,13 @@ local constants = {
     "kong_rate_limiting_counters",
   },
   DATABASE = {
+    -- These constants are not used anywhere in the Kong code. They're here as a useful reference
     POSTGRES = {
       MIN = "9.5",
-      -- also accepts a DEPRECATED key, i.e. DEPRECATED = "9.4"
     },
     CASSANDRA = {
-      MIN = "2.2",
-      -- also accepts a DEPRECATED key
+      MIN = "3.0",
+      DEPRECATED = "2.2",
     }
   },
   PROTOCOLS = protocols,
