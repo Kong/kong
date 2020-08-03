@@ -1,0 +1,35 @@
+swagger: "2.0"
+info:
+  title: Sample API
+  description: A Sample API
+  version: 1.0.0
+host: api.example.com
+basePath: /v1
+schemes:
+  - https
+paths:
+ /users/{id}:
+    get:
+      summary: Returns an individual user
+      description: Returns an individual user
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id   # Note the name is the same as in the path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: The user ID
+      responses:
+        "200":
+          description: OK
+          examples:
+            "application/json" : {
+                                "sub": "jdoe",
+                                "name": "Jane Doe",
+                                "given_name": "Jane",
+                                "family_name": "Doe",
+                                "email": "janedoe@example.com"
+                                }
