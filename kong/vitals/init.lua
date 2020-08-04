@@ -1178,7 +1178,7 @@ end
 
 
 function _M:get_stats(query_type, level, node_id, start_ts)
-  if kong.configuration.vitals_strategy == "influxdb" then
+  if kong.configuration.vitals_strategy ~= "database" then
     if query_type ~= "days" and query_type ~= "hours" and query_type ~= "minutes" and query_type ~= "seconds" then
       return nil, "Invalid query params: interval must be 'days', 'hours', 'minutes' or 'seconds'"
     end
@@ -1199,7 +1199,7 @@ function _M:get_stats(query_type, level, node_id, start_ts)
   if start_ts and not tonumber(start_ts) then
     return nil, "Invalid query params: start_ts must be a number"
   end
-
+  
   local res, err = self.strategy:select_stats(query_type, level, node_id, start_ts)
 
   if res and not res[1] then
@@ -1224,7 +1224,7 @@ function _M:get_stats(query_type, level, node_id, start_ts)
 end
 
 function _M:get_status_codes(opts, key_by)
-  if kong.configuration.vitals_strategy == "influxdb" then
+  if kong.configuration.vitals_strategy ~= "database" then
     if opts.duration ~= "days" and opts.duration ~= "hours" and opts.duration ~= "minutes" and opts.duration ~= "seconds" then
       return nil, "Invalid query params: interval must be 'days', 'hours', 'minutes' or 'seconds'"
     end
@@ -1303,7 +1303,7 @@ function _M:get_consumer_stats(opts)
     return nil, "Invalid query params: consumer_id, duration, and level are required"
   end
 
-  if kong.configuration.vitals_strategy == "influxdb" then
+  if kong.configuration.vitals_strategy ~= "database" then
     if opts.duration ~= "days" and opts.duration ~= "hours" and opts.duration ~= "minutes" and opts.duration ~= "seconds" then
       return nil, "Invalid query params: interval must be 'days', 'hours', 'minutes' or 'seconds'"
     end
@@ -1343,12 +1343,12 @@ function _M:get_consumer_stats(opts)
 end
 
 function _M:get_report(opts)
-  if kong.configuration.vitals_strategy ~= "influxdb" then
-    return nil, "Unsupported vitals_strategy"
+  if kong.configuration.vitals_strategy == "database" then
+    return nil, "Invalid query params: unsupported vitals_strategy"
   end
 
   if opts.entity_type ~= "consumer" and opts.entity_type ~= "service" and opts.entity_type ~= "hostname" then
-    return nil, "Unsupported vitals report"
+    return nil, "Invalid query params: unsupported vitals report"
   end
 
   if opts.entity_id ~= nil then

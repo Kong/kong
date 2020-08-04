@@ -27,7 +27,21 @@ if not ok or type(new_tab) ~= "function" then
     new_tab = function (narr, nrec) return {} end
 end
 
-local MINUTE = 60
+local duration_to_interval = {
+  [1] = "seconds",
+  [60] = "minutes",
+  [3600] = "hours",
+  [86400] = "days",
+  [604800] = "weeks",
+}
+
+local interval_to_duration = {
+  seconds = 1,
+  minutes = 60,
+  hours = 3600,
+  days = 86400,
+  weeks = 604800,
+}
 
 local _log_prefix = "[vitals-strategy] "
 
@@ -51,7 +65,10 @@ function _M.select_phone_home()
   return {}, nil
 end
 
-function _M.node_exists()
+function _M.node_exists(node_id)
+  if node_id == nil then
+    return false
+  end
   return true, nil
 end
 
@@ -191,13 +208,7 @@ function _M:init()
 end
 
 function _M:interval_width(level)
-  if level == "seconds" then
-    return self.scrape_interval
-  elseif level == "minutes" then
-    return 60
-  else
-    return nil, "interval must be 'seconds' or 'minutes'"
-  end
+  return interval_to_duration[level]
 end
 
 function _M:query(start_ts, metrics_query, interval)
@@ -238,11 +249,12 @@ function _M:query(start_ts, metrics_query, interval)
 
 
   for i, q in ipairs(metrics_query) do
-
+    kong.log.err("QUERY " ..  "/api/v1/query_range?query=" ..  ngx_escape_uri(q[2]) .. "&start=" .. start_ts 
+    .. "&end=" .. end_ts .. "&step=" .. interval .. "s")
     local res, err = client:request {
         method = "GET",
         path = "/api/v1/query_range?query=" ..  ngx_escape_uri(q[2]) .. "&start=" .. start_ts 
-                  .. "&end=" .. end_ts .. "&step=" .. interval,
+                  .. "&end=" .. end_ts .. "&step=" .. interval .. "s",
         headers = self.headers,
     }
     if not res then
@@ -289,11 +301,8 @@ local function translate_vitals_stats(metrics_query, prometheus_stats, interval,
     stats = {},
   }
 
-  if interval == MINUTE then
-    ret.meta.interval = "minutes"
-  else
-    ret.meta.interval = "seconds"
-  end
+
+  ret.meta.interval = duration_to_interval[interval]
 
   ret.meta.interval_width = interval
 
@@ -481,12 +490,7 @@ local function translate_vitals_status(metrics_query, prometheus_stats, interval
     stats = {},
   }
 
-  if interval == MINUTE then
-    ret.meta.interval = "minutes"
-  else
-    ret.meta.interval = "seconds"
-  end
-
+  ret.meta.interval = duration_to_interval[interval]
   ret.meta.interval_width = interval
 
   if aggregate then
@@ -592,11 +596,11 @@ end
 
 local function get_interval_and_start_ts(level, start_ts, scrape_interval)
   local interval
-  if level == "minutes" or level == MINUTE then
-    interval = MINUTE
+  if interval_to_duration[level] then
+    interval = interval_to_duration[level]
     -- backward compatibility for client that doesn't send start_ts
     if start_ts == nil then
-      start_ts = ngx_time() - 720 * 60
+      start_ts = ngx_time() - interval * 60
     end
   else
     interval = scrape_interval
