@@ -582,7 +582,7 @@ end
 
 function _M.reset_password(plugin, collection, consumer, new_password, secret_id)
   log(DEBUG, _log_prefix, "searching ", plugin.name, "creds for consumer ", consumer.id)
-  for row, err in collection:each_for_consumer({ id = consumer.id }, nil, { workspace = null }) do
+  for row, err in collection:each_for_consumer({ id = consumer.id }, nil, { workspace = null, show_ws_id = true }) do
     if err then
       return nil, err
     end
@@ -593,12 +593,17 @@ function _M.reset_password(plugin, collection, consumer, new_password, secret_id
         consumer = { id = consumer.id },
         [plugin.credential_key] = new_password,
       },
-      { workspace = null }
+      { workspace = row.ws_id }
     )
 
     if err then
       return nil, err
     end
+
+    -- invalidate auth credential cache
+    -- could be removed after we migrates/creates consumer's ws_id to default ws id
+    local cache_key = kong.db[plugin.dao]:cache_key(row.username, nil, nil, nil, nil, row.ws_id)
+    kong.cache:invalidate(cache_key)
   end
 
   log(DEBUG, _log_prefix, "password was reset, updating secrets")

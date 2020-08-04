@@ -1262,6 +1262,121 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("PATCH", function()
+        local function initWS2(db)
+          local ws = assert(db.workspaces:insert({
+            name = "ws2",
+          }))
+          
+          local res = assert(client:send {
+            method = "POST",
+            path = "/ws2/rbac/roles",
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["Kong-Admin-Token"] = "letmein-default", 
+            },
+            body  = {
+              name = "ws2-read-only",
+            },
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+
+          return ws, json
+        end
+
+        local function create_admin(db, params, ws)
+          if ws == nil then
+            ws = "default"
+          end
+          
+          params.rbac_token_enabled = false
+
+          local res = assert(client:send {
+            method = "POST",
+            path = "/" .. ws .. "/admins",
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["Kong-Admin-Token"] = "letmein-default", 
+            },
+            body  = params,
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          return db.admins:select_by_username(json.admin.username)
+        end
+
+        local function get_token(db, admin)
+          local reset_secret
+
+          for row, err in db.consumer_reset_secrets:each_for_consumer({
+            id = admin.consumer.id
+          }) do
+            assert.is_nil(err)
+            reset_secret = row
+          end
+
+          assert.equal(enums.TOKENS.STATUS.PENDING, reset_secret.status)
+
+          local claims = {id = admin.consumer.id, exp = ngx.time() + 100000}
+          local valid_jwt = ee_jwt.generate_JWT(claims, reset_secret.secret,
+                                                "HS256")
+          return valid_jwt
+        end
+
+        local function set_password(username, email, password, token)
+          return assert(client:send {
+            method = "POST",
+            path = "/admins/register",
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+            body  = {
+              username  = username,
+              email = email,
+              password = password,
+              token = token,
+            },
+          })
+        end
+
+        local function reset_password(admin, password)
+          -- create a token for updating password
+          local jwt, err = secrets.create(admin.consumer, "localhost", ngx.time() + 100000)
+            assert.is_nil(err)
+            assert.is_not_nil(jwt)
+
+          -- update password
+          local res = assert(client:send {
+            method = "PATCH",
+            path  = "/admins/password_resets",
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+            body  = {
+              email = admin.email,
+              password = password,
+              token = jwt,
+            }
+          })
+
+          assert.res_status(200, res)
+        end
+
+        local function log_in(username, password)
+          -- use password
+          local res = assert(client:send {
+            method = "GET",
+            path = "/auth",
+            headers = {
+              ["Authorization"] = "Basic " ..
+                                  ngx.encode_base64(username .. ":" .. password),
+              ["Kong-Admin-User"] = username,
+            }
+          })
+          assert.res_status(200, res) 
+        end
+
         it("validates parameters", function()
           local res = assert(client:send {
             method = "PATCH",
@@ -1294,18 +1409,10 @@ for _, strategy in helpers.each_strategy() do
 
         it("updates password", function()
           -- create admin
-          local res = assert(admins_helpers.create({
+          local admin = create_admin(db, {
             username = "kinman",
             email = "kinman@konghq.com",
-          }, {
-            db = db,
-            token_optional = false,
-            token_expiry = 3600,
-            remote_addr = "127.0.0.1",
-            raw = true,
-          }))
-
-          local admin = res.body.admin
+          })
 
           -- give admin a role so API request will succeed
           local role = assert(db.rbac_roles:select_by_name("read-only"))
@@ -1315,96 +1422,104 @@ for _, strategy in helpers.each_strategy() do
           }))
 
           -- get JWT for setting password
-          local token
-          local claims = {
-            id = admin.consumer.id,
-            exp = ngx.time() + 100000,
-          }
-          for row, err in db.consumer_reset_secrets:each_for_consumer({ id = admin.consumer.id }) do
-            assert.is_nil(err)
-            token = ee_jwt.generate_JWT(claims, row.secret, "HS256")
-          end
+          local token = get_token(db, admin)
 
           -- set invalid password
-          res = assert(client:send {
-            method = "POST",
-            path = "/admins/register",
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
-            body  = {
-              username  = "kinman",
-              email = "kinman@konghq.com",
-              password = "password",
-              token = token,
-            },
-          })
+          local res = set_password("kinman", "kinman@konghq.com", "password", token)
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
           assert.truthy(string.match(json.message, "Invalid password"))
 
           -- set new password
           local new_password = "resetPassword123"
-          res = assert(client:send {
-            method = "POST",
-            path = "/admins/register",
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
-            body  = {
-              username  = "kinman",
-              email = "kinman@konghq.com",
-              password = new_password,
-              token = token,
-            },
-          })
+          res = set_password("kinman", "kinman@konghq.com", new_password, token)
           assert.res_status(201, res)
 
           -- use password
-          res = assert(client:send {
-            method = "GET",
-            path = "/auth",
-            headers = {
-              ["Authorization"] = "Basic " ..
-                                  ngx.encode_base64("kinman:" .. new_password),
-              ["Kong-Admin-User"] = "kinman",
-            }
-          })
-          assert.res_status(200, res)
-
-          -- create a token for updating password
-          local jwt, err = secrets.create(admin.consumer, "localhost", ngx.time() + 100000)
-          assert.is_nil(err)
-          assert.is_not_nil(jwt)
+          log_in("kinman", new_password)
 
           -- update password
           new_password = "update-Password"
-          res = assert(client:send {
-            method = "PATCH",
-            path  = "/admins/password_resets",
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
-            body  = {
-              email = "kinman@konghq.com",
-              password = new_password,
-              token = jwt,
-            }
-          })
-          assert.res_status(200, res)
+          reset_password(admin, new_password)
 
           -- use password
-          res = assert(client:send {
-            method = "GET",
-            path = "/auth",
-            headers = {
-              ["Authorization"] = "Basic " ..
-                                  ngx.encode_base64("kinman:" .. new_password),
-              ["Kong-Admin-User"] = "kinman",
-            }
-          })
+          log_in("kinman", new_password)
+        end)
 
-          assert.res_status(200, res)
+        it("updates password with a user across ws", function()
+          local default_ws = assert(db.workspaces:select_by_name("default"))
+          local default_role = assert(db.rbac_roles:select_by_name("read-only"))
+
+          local ws2, ws2_role = initWS2(db)
+
+          local list = {
+            {
+              ws = default_ws, role = default_role,
+              username = "jeff_1", email = "jeff_1@konghq.com",
+            },
+            { ws = ws2, role = ws2_role,
+              username = "jeff_2", email = "jeff_2@konghq.com",
+            },
+          }
+
+          for _, row in ipairs(list) do
+            -- create admin
+            local admin = create_admin(db, {
+              username = row.username,
+              email = row.email,
+            }, row.ws.name)
+
+            -- give admin a role so API request will succeed
+            assert(db.rbac_user_roles:insert({
+              user = admin.rbac_user,
+              role = default_role,
+            }))
+
+            assert(db.rbac_user_roles:insert({
+              user = admin.rbac_user,
+              role = ws2_role,
+            }))
+
+            -- get JWT for setting password
+            local token = get_token(db, admin)
+
+            -- set new password
+            local new_password = "resetPassword123"
+            set_password(row.username, row.email, new_password, token) 
+
+            -- verify consumer and basic-auth cred table having a correct ws_id
+            assert(db.consumers:select({ id = admin.consumer.id },
+                  { show_ws_id = true, workspace = row.ws.id }))
+            
+            assert(db.basicauth_credentials:select_by_username(admin.username, 
+                  { show_ws_id = true, workspace = row.ws.id }))
+
+            -- use password
+            log_in(row.username, new_password)
+
+            -- update password
+            new_password = "update-Password"
+            reset_password(admin, new_password)
+
+            -- use password
+            log_in(row.username, new_password)
+
+            -- remove default ws role
+            assert(db.rbac_user_roles:delete({
+              user = admin.rbac_user,
+              role = default_role,
+            }))
+
+            -- use password
+            log_in(row.username, new_password)
+            
+            -- update password
+            new_password = "update-Password2"
+            reset_password(admin, new_password)
+
+            -- use password
+            log_in(row.username, new_password)
+          end
         end)
       end)
     end)
