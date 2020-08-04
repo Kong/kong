@@ -321,7 +321,7 @@ local function renew_certificate_storage(conf)
       local crt, err = x509.new(cert_entity.cert)
       if err then
         kong.log.info("can't parse cert stored in kong: ", err)
-      elseif crt.get_not_after() - 86400 * conf.renew_threshold_days > ngx.time() then
+      elseif crt:get_not_after() - 86400 * conf.renew_threshold_days > ngx.time() then
         kong.log.info("certificate for host ", host, " is not due for renewal (DAO)")
         goto renew_continue
       end
