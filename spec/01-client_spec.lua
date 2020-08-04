@@ -8,11 +8,14 @@ local x509 = require("resty.openssl.x509")
 
 local client
 
-local function new_cert_key_pair()
+local function new_cert_key_pair(expire)
   local key = pkey.new(nil, 'EC', 'prime256v1')
   local crt = x509.new()
   crt:set_pubkey(key)
   crt:set_version(3)
+  if expire then
+    crt:set_not_after(expire)
+  end
   crt:sign(key)
   return key:to_PEM("private"), crt:to_PEM()
 end
@@ -25,7 +28,7 @@ table.insert(strategies, "off")
 
 local proper_config = {
   account_email = "someone@somedomain.com",
-  api_uri = "http://api.acme.org",
+  api_uri = "http://api.someacme.org",
   storage = "shm",
   storage_config = {
     shm = { shm_name = "kong" },
@@ -176,6 +179,11 @@ for _, strategy in ipairs(strategies) do
     local bp
     local cert
     local host = "test1.com"
+    local host_not_expired = "test2.com"
+    -- make it due for renewal
+    local key, crt = new_cert_key_pair(ngx.time() - 23333)
+    -- make it not due for renewal
+    local key_not_expired, crt_not_expired = new_cert_key_pair(ngx.time() + 365 * 86400)
 
     lazy_setup(function()
       bp, _ = helpers.get_db_utils(strategy, {
@@ -183,7 +191,6 @@ for _, strategy in ipairs(strategies) do
         "snis",
       }, { "acme", })
 
-      local key, crt = new_cert_key_pair()
       cert = bp.certificates:insert {
         cert = crt,
         key = key,
@@ -195,11 +202,23 @@ for _, strategy in ipairs(strategies) do
         certificate = cert,
         tags = { "managed-by-acme" },
       }
-      client = require("kong.plugins.acme.client")
 
+      cert = bp.certificates:insert {
+        cert = crt_not_expired,
+        key = key_not_expired,
+        tags = { "managed-by-acme" },
+      }
+
+      bp.snis:insert {
+        name = host_not_expired,
+        certificate = cert,
+        tags = { "managed-by-acme" },
+      }
+
+      client = require("kong.plugins.acme.client")
     end)
 
-    describe("storage", function()
+    describe("", function()
       it("deletes renew config is cert is deleted", function()
         local c, err = client.new(proper_config)
         assert.is_nil(err)
@@ -219,6 +238,58 @@ for _, strategy in ipairs(strategies) do
         local v, err = c.storage:get(client._renew_key_prefix .. host)
         assert.is_nil(err)
         assert.is_nil(v)
+      end)
+
+      it("renews a certificate when it's expired", function()
+        local f
+        if strategy == "off" then
+          f = client._check_expire_dbless
+        else
+          f = client._check_expire_dao
+        end
+
+        local c, err = client.new(proper_config)
+
+        assert.is_nil(err)
+        if strategy == "off" then
+          err = c.storage:set(client._certkey_key_prefix .. host, cjson.encode({
+            cert = crt,
+            key = key,
+          }))
+          assert.is_nil(err)
+        end
+        -- check renewal
+        local key, renew, clean, err = f(c.storage, host, 30 * 86400)
+        assert.is_nil(err)
+        assert.not_nil(key)
+        assert.is_truthy(renew)
+        assert.is_falsy(clean)
+      end)
+
+      it("does not renew a certificate when it's not expired", function()
+        local f
+        if strategy == "off" then
+          f = client._check_expire_dbless
+        else
+          f = client._check_expire_dao
+        end
+
+        local c, err = client.new(proper_config)
+
+        assert.is_nil(err)
+        if strategy == "off" then
+          err = c.storage:set(client._certkey_key_prefix .. host_not_expired, cjson.encode({
+            cert = crt_not_expired,
+            key = key_not_expired,
+          }))
+          assert.is_nil(err)
+        end
+        -- check renewal
+        local key, renew, clean, err = f(c.storage, host_not_expired, 30 * 86400)
+        assert.is_nil(err)
+        assert.is_nil(key)
+        assert.is_falsy(renew)
+        assert.is_falsy(clean)
       end)
     end)
 
