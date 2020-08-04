@@ -50,22 +50,25 @@ local function new()
   end
 
 
-    ---
-  -- Get upstream node health
+  ---
+  -- Get healthcheck information for an upstream.
   --
-  -- @function kong.upstream.node_health
+  -- @function kong.upstream.get_upstream_health
   -- @phases access
   -- @tparam string upstream_name
   -- @treturn health_info|nil `health_info` on success, or `nil` if no health_info entities where found
   -- @treturn string|nil An error message describing the error if there was one.
+  -- @return health_info:
+  -- * if healthchecks are enabled, a table mapping keys ("ip:port") to booleans;
+  -- * if healthchecks are disabled, nil;
   --
   -- @usage
-  -- local ok, err = kong.upstream.node_health("upstream_name")
+  -- local ok, err = kong.upstream.get_upstream_health("upstream_name")
   -- if not ok then
   --   kong.log.err(err)
   --   return
   -- end
-  function upstream.node_health(upstream_name)
+  function upstream.get_upstream_health(upstream_name)
     check_phase(PHASES.access)
 
     if type(upstream_name) ~= "string" then
