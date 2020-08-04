@@ -729,6 +729,95 @@ function _M:select_consumer_stats(opts)
   end
 end
 
+-- @param entity: consumer or service
+-- @param entity_id: UUID or null, signifies how each row is indexed
+-- @param interval: seconds, minutes, hours, days, weeks, months
+-- @param start_ts: seconds from now
+function _M:status_code_report_by(entity, entity_id, interval, start_ts)
+  start_ts = start_ts or 36000
+  interval = interval or 60
+  local is_consumer = entity == "consumer"
+  local is_timeseries_report = not not entity_id
+  local stats = {}
+  local inspect = require "inspect"
+  local all_services = "count by (service)(kong_status_code_per_workspace)"
+  local all_consumers = "count by (consumer)(kong_status_code_per_consumer)"
+  local one_consumer = fmt("sum(kong_status_code_per_consumer{consumer=\"%s\"})", entity_id)
+  local one_service = fmt("sum(kong_status_code_per_workspace{service=\"%s\"})", entity_id)
+  local metrics_query
+
+  if is_consumer then
+    metrics_query = is_timeseries_report and one_consumer or all_consumers
+  else
+    metrics_query = is_timeseries_report and one_service or all_services
+  end
+  kong.log.err("AAAAAAAAAAAAAAAAAAAAAAAAAAAA" .. interval)
+  kong.log.err(metrics_query)
+
+  local res, err, duration_seconds = self:query(
+    start_ts,
+    {{"", metrics_query}},
+    interval
+  )
+  kong.log.err(inspect(res))
+  for _, series_list in ipairs(res) do
+    for _, series in ipairs(series_list) do
+    kong.log.err("Entity ID!!!!!!! " .. series.metric[entity])
+    local index = series.metric[entity]
+    stats[index] = stats[index] or { ["total"] = 0, ["2XX"] = 0, ["4XX"] = 0, ["5XX"] = 0 }
+    end
+  end
+  local meta = {
+    earliest_ts = start_ts,
+    latest_ts = ngx.time(),
+    stat_labels = {
+      "name",
+      "total",
+      "2XX",
+      "4XX",
+      "5XX"
+    },
+  }
+  if is_consumer then
+    meta.stat_labels = {
+      "name",
+      "app_name",
+      "app_id",
+      "total",
+      "2XX",
+      "4XX",
+      "5XX"
+    }
+  end
+  return { stats=stats, meta=meta }
+end
+
+-- @param hostname: kong node hostname
+-- @param interval: seconds, minutes, hours, days, weeks, months
+-- @param start_ts: seconds from now
+function _M:latency_report(hostname, interval, start_ts)
+  start_ts = start_ts or 36000
+  local columns = {
+    "proxy_max",
+    "proxy_min",
+    "proxy_avg",
+    "upstream_max",
+    "upstream_min",
+    "upstream_avg",
+  }
+
+
+  local stats = {}
+
+  local meta = {
+    earliest_ts = start_ts,
+    latest_ts = ngx.time(),
+    stat_labels = columns,
+  }
+  
+  return { stats=stats, meta=meta }
+end
+
 function _M:log()
   self.statsd_handler:log()
 end
