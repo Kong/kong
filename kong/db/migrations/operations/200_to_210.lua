@@ -345,11 +345,13 @@ local cassandra = {
         for _, row in ipairs(rows) do
           local set_list = { "ws_id = " .. default_ws }
           for _, key in ipairs(unique_keys) do
-            table.insert(set_list, render([[$(KEY) = '$(WS):$(VALUE)']], {
-              KEY = key,
-              WS = default_ws,
-              VALUE = row[key],
-            }))
+            if row[key] then
+              table.insert(set_list, render([[$(KEY) = '$(WS):$(VALUE)']], {
+                KEY = key,
+                WS = default_ws,
+                VALUE = row[key],
+              }))
+            end
           end
 
           local cql = render([[
