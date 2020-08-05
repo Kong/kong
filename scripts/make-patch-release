@@ -212,6 +212,7 @@ function bump_docs_kong_versions() {
       local version = "'$version'"
 
       local state = "start"
+      local version_line
       for line in fd_in:lines() do
          if state == "start" then
             if line:match("^  release: \"'$major'.'$minor'.x\"") then
@@ -220,11 +221,18 @@ function bump_docs_kong_versions() {
             fd_out:write(line .. "\n")
          elseif state == "version" then
             if line:match("^  version: \"") then
+               version_line = line
+               state = "edition"
+            end
+         elseif state == "edition" then
+            if line:match("^  edition.*community.*") then
                fd_out:write("  version: \"'$version'\"\n")
                state = "wait_for_luarocks_version"
             else
-               fd_out:write(line .. "\n")
+               fd_out:write(version_line .. "\n")
+               state = "start"
             end
+            fd_out:write(line .. "\n")
          elseif state == "wait_for_luarocks_version" then
             if line:match("^  luarocks_version: \"") then
                fd_out:write("  luarocks_version: \"'$version'-0\"\n")
