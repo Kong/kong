@@ -1474,9 +1474,15 @@ load_rbac_ctx = function(ctx, rbac_user, groups)
       _roles[#_roles + 1] = role
     end
 
-    local entities_perms, _, err = resolve_role_entity_permissions(_roles)
-    if err then
-      return nil, err
+    local entities_perms = {}
+    if kong.configuration and
+      (kong.configuration.rbac == "both" or
+      kong.configuration.rbac == "entity") then
+      local err
+      entities_perms, _, err = resolve_role_entity_permissions(_roles)
+      if err then
+        return nil, err
+      end
     end
 
     for id, perm in pairs(entities_perms) do
