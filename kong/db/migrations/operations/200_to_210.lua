@@ -25,7 +25,7 @@ local postgres = {
     ----------------------------------------------------------------------------
     -- Add `workspaces` table.
     -- @return string: SQL
-    ws_add_workspaces = function()
+    ws_add_workspaces = function() -- XXX EE only boot
       return render([[
 
         CREATE TABLE IF NOT EXISTS "workspaces" (
@@ -63,10 +63,26 @@ local postgres = {
     -- what changes to the schemas in the latest version of Kong.
     -- @return string: SQL
 
-    -- EXECUTE format('ALTER TABLE IF EXISTS ONLY "$(TABLE)" ADD "ws_id" UUID REFERENCES "workspaces" ("id") DEFAULT %L',
-    --                (SELECT "id" FROM "workspaces" WHERE "name" = 'default'));
-    ws_add_ws_id = function(_, table_name, fk_users)
+    ws_add_ws_id = function(_, table_name, fk_users) -- XXX EE Always (part)
       local out = {}
+      if kong.bootstrapping then
+
+      table.insert(out, render([[
+        -- Add ws_id to $(TABLE), populating all of them with the default workspace id
+        DO $$
+        BEGIN
+          EXECUTE format('ALTER TABLE IF EXISTS ONLY "$(TABLE)" ADD "ws_id" UUID REFERENCES "workspaces" ("id") DEFAULT %L',
+                        (SELECT "id" FROM "workspaces" WHERE "name" = 'default'));
+        EXCEPTION WHEN DUPLICATE_COLUMN THEN
+          -- Do nothing, accept existing state
+        END;
+        $$;
+
+
+      ]], { TABLE = table_name }))
+
+      else
+
       table.insert(out, render([[
         -- Add ws_id to $(TABLE), populating all of them with the default workspace id
         DO $$
@@ -79,6 +95,8 @@ local postgres = {
 
 
       ]], { TABLE = table_name }))
+      end
+
 
       table.insert(out, render([[
 
@@ -100,7 +118,8 @@ local postgres = {
     -- @param table_name string: name of the table, e.g. "services"
     -- @param field_name string: name of the field, e.g. "name"
     -- @return string: SQL
-    ws_unique_field = function(_, table_name, field_name)
+    -- XXX EE: WE HAVE TO DO THIS ANYWAY!
+    ws_unique_field = function(_, table_name, field_name) -- XXX EE always
       return render([[
 
           -- Make '$(TABLE).$(FIELD)' unique per workspace
@@ -128,7 +147,7 @@ local postgres = {
     -- @param foreign_table_name string: name of the table the foreign field
     -- refers to e.g. "services"
     -- @return string: SQL
-    ws_adjust_foreign_key = function(_, table_name, fk_prefix, foreign_table_name, is_cascade)
+    ws_adjust_foreign_key = function(_, table_name, fk_prefix, foreign_table_name, is_cascade) -- XXX EE always
       return render([[
 
           -- Update foreign key relationship
@@ -149,21 +168,21 @@ local postgres = {
 
     ------------------------------------------------------------------------------
     -- Update composite cache keys to workspace-aware formats
-    ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
-      -- assert(connector:query(render([[
-      --   UPDATE "$(TABLE)"
-      --   SET cache_key = CONCAT(cache_key, ':',
-      --                          (SELECT id FROM workspaces WHERE name = 'default'))
-      --   WHERE cache_key LIKE '%:';
-      -- ]], {
-      --   TABLE = table_name,
-      -- })))
+    ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned) -- XXX EE only when boot
+      assert(connector:query(render([[
+        UPDATE "$(TABLE)"
+        SET cache_key = CONCAT(cache_key, ':',
+                               (SELECT id FROM workspaces WHERE name = 'default'))
+        WHERE cache_key LIKE '%:';
+      ]], {
+        TABLE = table_name,
+      })))
     end,
 
 
     ------------------------------------------------------------------------------
     -- Update keys to workspace-aware formats
-    ws_update_keys = function(_, connector, table_name, unique_keys)
+    ws_update_keys = function(_, connector, table_name, unique_keys) -- XXX EE ALWAYS (see part)
       -- Reset default value for ws_id once it is populated
       assert(connector:query(render([[
         ALTER TABLE IF EXISTS ONLY "$(TABLE)" ALTER "ws_id" SET DEFAULT NULL;
@@ -175,7 +194,7 @@ local postgres = {
 
     ------------------------------------------------------------------------------
     -- General function to fixup a plugin configuration
-    fixup_plugin_config = function(_, connector, plugin_name, fixup_fn)
+    fixup_plugin_config = function(_, connector, plugin_name, fixup_fn) -- XXX EE Always (idcare)
       local pgmoon_json = require("pgmoon.json")
 
       for row, err in connector:iterate("SELECT * FROM plugins") do
@@ -209,30 +228,6 @@ local postgres = {
 -- Cassandra operations for Workspace migration
 --------------------------------------------------------------------------------
 
--- -- XXX EE Not used cause we don't have C* connector at up time
--- local function cassandra_list_tables(connector)
---   local fmt = string.format
---   local coordinator = connector:connect_migrations()
---   local tables = {}
-
---   local cql = fmt([[
---     SELECT table_name
---       FROM system_schema.tables
---      WHERE keyspace_name='%s';
---   ]], connector.keyspace)
---   for rows, err in coordinator:iterate(cql) do
---     if err then
---       return nil, err
---     end
-
---     for _, row in ipairs(rows) do
---       tables[row.table_name] = true
---     end
---   end
-
---   return tables
--- end
-
 local cassandra = {
 
   up = {
@@ -240,11 +235,8 @@ local cassandra = {
     ----------------------------------------------------------------------------
     -- Add `workspaces` table.
     -- @return string: CQL
-    ws_add_workspaces = function(_)
-      local tables = {} -- cassandra_list_tables(connector) XXX CAN I HAZ CONNECTOR?
-      if not tables.workspaces then
-        return render([[
-
+    ws_add_workspaces = function(_) -- XXX EE only boot
+      return render([[
           CREATE TABLE IF NOT EXISTS workspaces(
             id         uuid,
             name       text,
@@ -260,9 +252,8 @@ local cassandra = {
           INSERT INTO workspaces(id, name, created_at)
           VALUES (uuid(), 'default', $(NOW));
       ]], {
-          NOW = ngx.time() * 1000
-        })
-      end
+        NOW = ngx.time() * 1000
+      })
     end,
 
     ----------------------------------------------------------------------------
@@ -274,7 +265,7 @@ local cassandra = {
     -- we want the migration to remain self-contained and unchanged no matter
     -- what changes to the schemas in the latest version of Kong.
     -- @return string: CQL
-    ws_add_ws_id = function(_, table_name, fk_users)
+    ws_add_ws_id = function(_, table_name, fk_users) -- XXX EE Always (idcare)
       return render([[
 
           -- 1. Add ws_id to $(TABLE)
@@ -293,7 +284,7 @@ local cassandra = {
     -- @param table_name string: name of the table, e.g. "services"
     -- @param field_name string: name of the field, e.g. "name"
     -- @return string: CQL
-    ws_unique_field = function(_, table_name, field_name)
+    ws_unique_field = function(_, table_name, field_name) -- XXX EE Always (idcare)
       -- The Cassandra strategy controls this via Lua code
       return ""
     end,
@@ -306,7 +297,7 @@ local cassandra = {
     -- @param foreign_table_name string: name of the table the foreign field
     -- refers to e.g. "services"
     -- @return string: CQL
-    ws_adjust_foreign_key = function(_, table_name, fk_prefix, foreign_table_name)
+    ws_adjust_foreign_key = function(_, table_name, fk_prefix, foreign_table_name) --- XXX EE Always (idcare)
       -- The Cassandra strategy controls this via Lua code
       return ""
     end,
@@ -316,43 +307,43 @@ local cassandra = {
 
     ------------------------------------------------------------------------------
     -- Update composite cache keys to workspace-aware formats
-    ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
-      -- local rows, err = connector:query([[
-      --   SELECT * FROM workspaces WHERE name='default';
-      -- ]])
-      -- if err then
-      --   return nil, err
-      -- end
-      -- local default_ws = rows[1].id
+    ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned) -- XXX only boot (or none)
+      local rows, err = connector:query([[
+        SELECT * FROM workspaces WHERE name='default';
+      ]])
+      if err then
+        return nil, err
+      end
+      local default_ws = rows[1].id
 
-      -- local coordinator = assert(connector:connect_migrations())
+      local coordinator = assert(connector:connect_migrations())
 
-      -- for rows, err in coordinator:iterate("SELECT * FROM " .. table_name) do
-      --   if err then
-      --     return nil, err
-      --   end
+      for rows, err in coordinator:iterate("SELECT * FROM " .. table_name) do
+        if err then
+          return nil, err
+        end
 
-      --   for _, row in ipairs(rows) do
-      --     if row.cache_key:match(":$") then
-      --       local cql = render([[
-      --         UPDATE $(TABLE) SET cache_key = '$(CACHE_KEY)' WHERE $(PARTITION) id = $(ID)
-      --       ]], {
-      --         TABLE = table_name,
-      --         CACHE_KEY = row.cache_key .. ":" .. default_ws,
-      --         PARTITION = is_partitioned
-      --                   and "partition = '" .. table_name .. "' AND"
-      --                   or  "",
-      --         ID = row.id,
-      --       })
-      --     assert(connector:query(cql))
-      --     end
-      --   end
-      -- end
+        for _, row in ipairs(rows) do
+          if row.cache_key:match(":$") then
+            local cql = render([[
+              UPDATE $(TABLE) SET cache_key = '$(CACHE_KEY)' WHERE $(PARTITION) id = $(ID)
+            ]], {
+              TABLE = table_name,
+              CACHE_KEY = row.cache_key .. ":" .. default_ws,
+              PARTITION = is_partitioned
+                        and "partition = '" .. table_name .. "' AND"
+                        or  "",
+              ID = row.id,
+            })
+          assert(connector:query(cql))
+          end
+        end
+      end
     end,
 
     ------------------------------------------------------------------------------
     -- Update keys to workspace-aware formats
-    ws_update_keys = function(_, connector, table_name, unique_keys, is_partitioned)
+    ws_update_keys = function(_, connector, table_name, unique_keys, is_partitioned) -- XXX EE only boot (or none)
 
       local rows, err = connector:query([[
         SELECT * FROM workspaces WHERE name='default';
@@ -399,7 +390,7 @@ local cassandra = {
 
     ------------------------------------------------------------------------------
     -- General function to fixup a plugin configuration
-    fixup_plugin_config = function(_, connector, plugin_name, fixup_fn)
+    fixup_plugin_config = function(_, connector, plugin_name, fixup_fn) -- XXX EE only boot (or none)
       local cassandra = require("cassandra")
       local cjson = require("cjson")
 
@@ -488,6 +479,23 @@ cassandra.teardown.ws_adjust_data = ws_adjust_data
 -- Super high-level shortcut for plugins
 --------------------------------------------------------------------------------
 
+local function vasectomize(t)
+  local nop = function() return "" end -- nop function
+
+  -- up
+  t.up.ws_add_workspaces = nop
+  -- t.up.ws_add_ws_id = nop
+  -- t.up.ws_unique_field = nop
+  -- t.up.ws_adjust_foreign_key = nop
+
+  -- teardown
+  t.teardown.ws_update_composite_cache_key = nop
+  t.teardown.ws_update_keys = nop
+  t.teardown.fixup_plugin_config = nop
+
+  return t
+end
+
 
 local function ws_migrate_plugin(plugin_entities)
 
@@ -502,17 +510,34 @@ local function ws_migrate_plugin(plugin_entities)
   end
 
   -- XXX EE postgres.ee.up ?
-  return {
-    postgres = {
-      up = ws_migration_up(postgres.up),
-      teardown = ws_migration_teardown(postgres.teardown),
-    },
+  -- ngx.log(ngx.ERR, [[kong.bootstrapping:]], require("inspect")(kong.bootstrapping))
 
-    cassandra = {
-      up = ws_migration_up(cassandra.up),
-      teardown = ws_migration_teardown(cassandra.teardown),
-    },
-  }
+  if kong.bootstrapping then
+    return {
+      postgres = {
+        up = ws_migration_up(postgres.up),
+        teardown = ws_migration_teardown(postgres.teardown),
+      },
+
+      cassandra = {
+        up = ws_migration_up(cassandra.up),
+        teardown = ws_migration_teardown(cassandra.teardown),
+      },
+    }
+  else
+    vasectomize(postgres)
+    vasectomize(cassandra)
+    return {
+      postgres = {
+        up = ws_migration_up(postgres.up),
+        teardown = ws_migration_teardown(postgres.teardown)
+      },
+      cassandra = {
+        up = ws_migration_up(cassandra.up),
+        teardown = ws_migration_teardown(cassandra.teardown),
+      }
+    }
+  end
 end
 
 

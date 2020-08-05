@@ -103,6 +103,12 @@ local function execute(args)
   local db = assert(DB.new(conf))
   assert(db:init_connector())
 
+  if args.command == "bootstrap" then -- Needs to be here cause
+                                      -- schema_state loads the
+                                      -- ops/200_to_210 file
+    kong.bootstrapping = true
+  end
+
   local schema_state = assert(db:schema_state())
 
   if args.command == "list" then
@@ -161,7 +167,6 @@ local function execute(args)
     -- exit(0)
 
   elseif args.command == "bootstrap" then
-    kong.config.bootstrapping = true
     if args.force then
       migrations_utils.reset(schema_state, db, args.lock_timeout)
       schema_state = assert(db:schema_state())
