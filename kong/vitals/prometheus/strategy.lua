@@ -757,7 +757,8 @@ _M.resolve_entity_metadata = resolve_entity_metadata
 -- @param start_ts: seconds from now
 function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   start_ts = start_ts or 36000
-  interval = interval or 60
+  interval = interval or "minutes"
+  local duration = interval_to_duration[interval]
   local is_consumer = entity == "consumer"
   local is_timeseries_report = not not entity_id
 
@@ -765,10 +766,10 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   local plural_entity = entity .. 's'
   if is_timeseries_report then
     local row = kong.db[plural_entity]:select({ id = entity_id }, { workspace = null })
-    entities[row.id] = resolve_entity_metadata(row)
+    if row ~= nil then entities[row.id] = resolve_entity_metadata(row) end
   else
     for row in kong.db[plural_entity]:each(nil, { workspace = null }) do
-      entities[row.id] = resolve_entity_metadata(row)
+      if row ~= nil then entities[row.id] = resolve_entity_metadata(row) end
     end
   end
 
@@ -776,42 +777,64 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   local inspect = require "inspect"
   local all_services = "count by (service)(kong_status_code_per_workspace)"
   local all_consumers = "count by (consumer)(kong_status_code_per_consumer)"
-  local one_consumer = fmt("sum(kong_status_code_per_consumer{consumer=\"%s\"})", entity_id)
-  local one_service = fmt("sum(kong_status_code_per_workspace{service=\"%s\"})", entity_id)
   local metrics_query
 
   if is_consumer then
-    metrics_query = is_timeseries_report and one_consumer or all_consumers
+    if is_timeseries_report then
+      local one_consumer = "sum(kong_status_code_per_consumer{consumer='" .. entity_id .. "'})"
+      kong.log.err(entity .. " ID Passed in!!!!!!! " .. entity_id)
+      metrics_query = one_consumer
+    else
+      kong.log.err(entity .. " TIMESERIES")
+      metrics_query = all_consumers
+    end
   else
-    metrics_query = is_timeseries_report and one_service or all_services
+    if is_timeseries_report then
+      kong.log.err(entity .. " ID Passed in!!!!!!! " .. entity_id)
+      local one_service = "sum(kong_status_code_per_workspace{service='" .. entity_id .. "'})"
+      metrics_query = one_service
+    else
+      kong.log.err(entity .. " TIMESERIES")
+      metrics_query = all_services
+    end
   end
-  kong.log.err("AAAAAAAAAAAAAAAAAAAAAAAAAAAA" .. interval)
+  kong.log.err("INTERVAL: " .. interval)
   kong.log.err(metrics_query)
-
+ -- todo: handle err
   local res, err, duration_seconds = self:query(
     start_ts,
     {{"", metrics_query}},
-    interval
+    duration
   )
+
   kong.log.err(inspect(res))
+  kong.log.err(inspect(err))
   for _, series_list in ipairs(res) do
     for _, series in ipairs(series_list) do
       local index, entity_metadata
-      -- if is_timeseries_report then
-      --   local timestamp = tostring(value[1])
-      --   index = timestamp
-      --   entity_metadata = entities[entity_id] or {}
-      -- else
-      index = series.metric[entity]
-      entity_metadata = entities[index] or {}
-      -- end
-      kong.log.err("Entity ID!!!!!!! " .. series.metric[entity])
-      local index = series.metric[entity]
-      stats[index] = stats[index] or { ["total"] = 0, ["2XX"] = 0, ["4XX"] = 0, ["5XX"] = 0 }
-      stats[index]["name"] = entity_metadata.name
-      if is_consumer then
-        stats[index]["app_id"] = entity_metadata.app_id
-        stats[index]["app_name"] = entity_metadata.app_name
+      if is_timeseries_report then
+        for _, value in ipairs(series.values) do
+          local timestamp = tostring(value[1])
+          local total = value[2]
+          index = timestamp
+          entity_metadata = entities[entity_id] or {}
+          stats[index] = stats[index] or { ["total"] = 0, ["2XX"] = 0, ["4XX"] = 0, ["5XX"] = 0 }
+          stats[index]["total"] = total
+          stats[index]["name"] = entity_metadata.name
+          if is_consumer then
+            stats[index]["app_id"] = entity_metadata.app_id
+            stats[index]["app_name"] = entity_metadata.app_name
+          end
+        end
+      else
+        index = series.metric[entity]
+        entity_metadata = entities[index] or {}
+        stats[index] = stats[index] or { ["total"] = 0, ["2XX"] = 0, ["4XX"] = 0, ["5XX"] = 0 }
+        stats[index]["name"] = entity_metadata.name
+        if is_consumer then
+          stats[index]["app_id"] = entity_metadata.app_id
+          stats[index]["app_name"] = entity_metadata.app_name
+        end
       end
     end
   end

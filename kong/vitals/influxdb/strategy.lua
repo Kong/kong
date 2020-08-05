@@ -668,10 +668,10 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   local entities = {}
   if is_timeseries_report then
     local row = kong.db[plural_entity]:select({ id = entity_id }, { workspace = null })
-    entities[row.id] = resolve_entity_metadata(row)
+    if row ~= nil then entities[row.id] = resolve_entity_metadata(row) end
   else
     for row in kong.db[plural_entity]:each(nil, { workspace = null }) do
-      entities[row.id] = resolve_entity_metadata(row)
+      if row ~= nil then entities[row.id] = resolve_entity_metadata(row) end
     end
   end
 
