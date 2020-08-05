@@ -4,13 +4,18 @@ local version = require("version").version or require("version")
 
 local PLUGIN_NAME = "mocking"
 
+local WORKING_DIR = "/Users/steve.young/Documents/GitHub/kong-plugin-mocking"
+
 
 for _, strategy in helpers.each_strategy() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
     local client
       
       lazy_setup(function()
-        local users_apispec = assert(io.open("users_OASv2.yaml"))
+        local f = assert(io.open("spec/resources/stock.json"))
+        local str = f:read("*a")
+        f:close()
+
         local bp = helpers.get_db_utils(strategy, {
           "routes",
           "services",
@@ -18,8 +23,8 @@ for _, strategy in helpers.each_strategy() do
         })
 
         local anonymous_user = bp.files:insert {
-          path = "default:specs/users.yaml",
-          content = "",
+          path = "default:specs/stock.json",
+          content = str,
         }
 
       -- Inject a test route. No need to create a service, there is a default
@@ -28,23 +33,12 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "test1.com" },
       })
     
-      local route2 = bp.routes:insert({
-        hosts = { "mock-error.com" },
-      })
       -- add the plugin to test to the route we created
       bp.plugins:insert {
         name = PLUGIN_NAME,
         route = { id = route1.id },
         config = {
-          api_specification_filename = "users.yaml",
-        },
-      }
-      
-      bp.plugins:insert {
-        name = PLUGIN_NAME,
-        route = { id = route2.id },
-        config = {
-          api_specification_filename = "",
+          api_specification_filename = "stock.json",
         },
       }
 
@@ -77,7 +71,7 @@ for _, strategy in helpers.each_strategy() do
       it("gets a X-Kong-Mocking-Plugin header", function()
         local r = assert(client:send {
           method = "GET",
-          path = "/request",  -- makes mockbin return the entire request
+          path = "/stock/historical",  -- makes mockbin return the entire request
           headers = {
             host = "test1.com"
           }
@@ -87,6 +81,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         local upStreamHeaderVal  = json.headers["X-Kong-Mocking-Plugin"]
+        -- check mocking plugin 
         assert.equal("true",upStreamHeaderVal)
       end)
     end)
@@ -97,9 +92,9 @@ for _, strategy in helpers.each_strategy() do
       it("Empty spec filename check", function()
         local r = assert(client:send {
           method = "GET",
-          path = "/request",  -- makes mockbin return the entire request
+          path = "/no_path",  -- makes mockbin return the entire request
           headers = {
-            host = "mock-error.com"
+            host = "test1.com"
           }
         })
         -- validate that the request succeeded, response status 200
