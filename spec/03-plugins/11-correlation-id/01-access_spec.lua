@@ -48,6 +48,15 @@ for _, strategy in helpers.each_strategy() do
         hosts     = { "correlation-error.com" },
       }
 
+      local route_grpc = assert(bp.routes:insert {
+        protocols = { "grpc" },
+        paths = { "/hello.HelloService/" },
+        service = assert(bp.services:insert {
+          name = "grpc",
+          url = "grpc://localhost:15002",
+        }),
+      })
+
       bp.plugins:insert {
         name     = "correlation-id",
         route = { id = route1.id },
@@ -121,6 +130,14 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      bp.plugins:insert {
+        name     = "correlation-id",
+        route = { id = route_grpc.id },
+        config   = {
+          echo_downstream = true,
+        },
+      }
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -172,6 +189,36 @@ for _, strategy in helpers.each_strategy() do
         local counter2 = string.match(id2, "#(%d)$")
         assert.equal("1", counter1)
         assert.equal("2", counter2)
+      end)
+
+      it("increments the counter part #grpc", function()
+        local ok, res = helpers.proxy_client_grpc(){
+          service = "hello.HelloService.SayHello",
+          opts = {
+            ["-v"] = true,
+          },
+        }
+        assert.truthy(ok)
+        local id1  = string.match(res, "kong%-request%-id: (" .. UUID_COUNTER_PATTERN .. ")")
+        assert.matches(UUID_COUNTER_PATTERN, id1)
+
+        local ok, res = helpers.proxy_client_grpc(){
+          service = "hello.HelloService.SayHello",
+          opts = {
+            ["-v"] = true,
+          },
+        }
+        assert.truthy(ok)
+
+        local id2  = string.match(res, "kong%-request%-id: (" .. UUID_COUNTER_PATTERN .. ")")
+        assert.matches(UUID_COUNTER_PATTERN, id2)
+        assert.not_equal(id1, id2)
+
+        -- only one nginx worker in our test instance allows us
+        -- to test this.
+        local counter1 = string.match(id1, "#(%d)$")
+        local counter2 = string.match(id2, "#(%d)$")
+        assert(counter2 > counter1)
       end)
     end)
 
